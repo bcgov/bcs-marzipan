@@ -173,9 +173,13 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
   });
 
   it('filters omitted activities out of each month section', async () => {
+    const retainedActivityDate = '2026-06-10';
+    const omittedActivityDate = '2026-06-12';
+    const expectedSectionId = retainedActivityDate.slice(0, 7);
+
     activitiesService.findAll.mockResolvedValue([
-      createActivity(10, '2026-05-10'),
-      createActivity(11, '2026-05-12'),
+      createActivity(10, retainedActivityDate),
+      createActivity(11, omittedActivityDate),
     ]);
     vi.spyOn(service, 'getActivitiesForReport').mockResolvedValue([
       { activityId: 11, omitted: true },
@@ -187,13 +191,15 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       ctx
     );
 
-    const maySection = result.sections.find(
-      (section) => section.id === '2026-05'
+    const matchingSection = result.sections.find(
+      (section) => section.id === expectedSectionId
     );
-    expect(maySection?.activities.map((activity) => activity.id)).toEqual([10]);
+    expect(matchingSection?.activities.map((activity) => activity.id)).toEqual([
+      10,
+    ]);
     expect(
       result.sections
-        .filter((section) => section.id !== '2026-05')
+        .filter((section) => section.id !== expectedSectionId)
         .every((section) => section.activities.length === 0)
     ).toBe(true);
   });
