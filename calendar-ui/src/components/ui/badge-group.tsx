@@ -144,9 +144,12 @@ export function BadgeGroup({
         fitCount += 1;
       }
 
-      // Reserve one slot for the +N trigger when overflow exists.
+      // Reserve one slot for the +N trigger when overflow exists, but keep at
+      // least one real badge visible so rows never collapse to only "+N".
       const nextVisibleCount =
-        fitCount < items.length ? Math.max(0, fitCount - 1) : fitCount;
+        fitCount < items.length
+          ? Math.max(items.length > 0 ? 1 : 0, fitCount - 1)
+          : fitCount;
       setVisibleCount(nextVisibleCount);
       return;
     }
@@ -164,7 +167,7 @@ export function BadgeGroup({
       }
       if (rowTops.length > maxLines) {
         setVisibleCount((current) =>
-          current == null ? 0 : Math.max(current - 1, 0)
+          current == null ? 0 : Math.max(current - 1, items.length > 0 ? 1 : 0)
         );
       }
     }

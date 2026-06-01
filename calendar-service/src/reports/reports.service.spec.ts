@@ -183,18 +183,18 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
 
     const result = await service.getReportData(
       'thirty-sixty-ninety',
-      defaultQuery,
+      reportDataQuerySchema.parse({
+        startDateFrom: '2026-05-01',
+        startDateTo: '2026-05-31',
+      }),
       ctx
     );
 
     const maySection = result.sections.find(
       (section) => section.id === '2026-05'
     );
+    expect(maySection).toBeDefined();
     expect(maySection?.activities.map((activity) => activity.id)).toEqual([10]);
-    expect(
-      result.sections
-        .filter((section) => section.id !== '2026-05')
-        .every((section) => section.activities.length === 0)
-    ).toBe(true);
+    expect(result.sections).toHaveLength(1);
   });
 });
