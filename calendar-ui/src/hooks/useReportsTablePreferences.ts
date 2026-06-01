@@ -99,7 +99,7 @@ export function useReportsTablePreferences(
     setSearchParams(preferencesToParams(prefs, activeReportName), {
       replace: true,
     });
-  }, [activeReportName, canSeeDeleted, setSearchParams]);
+  }, [activeReportName, bundle, canSeeDeleted, setSearchParams]);
 
   useEffect(() => {
     if (!hasUserChangedRef.current || !activeReportName) return;

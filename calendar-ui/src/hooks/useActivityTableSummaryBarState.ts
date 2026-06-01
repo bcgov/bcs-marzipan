@@ -10,7 +10,6 @@ import type {
 import { useAuth } from '@/hooks/useAuth';
 import {
   useActivityStatuses,
-  useCategories,
   useEventPlanners,
   useMinistries,
   useOrganizations,
@@ -67,7 +66,6 @@ export function useActivityTableSummaryBarState({
     };
   }, [user]);
 
-  const { data: categoriesForFilter = [] } = useCategories();
   const { data: activityStatusesForFilter = [] } = useActivityStatuses();
   const { data: pitchRequiredStatusesForFilter = [] } =
     usePitchRequiredStatuses();
@@ -80,14 +78,6 @@ export function useActivityTableSummaryBarState({
     useTranslationLanguages();
   const { data: translationRequiredStatusesForFilter = [] } =
     useTranslationRequiredStatuses();
-
-  const categoryOptions = useMemo(
-    () =>
-      categoriesForFilter
-        .filter((c) => c.isActive)
-        .map((c) => ({ value: c.displayName, label: c.displayName })),
-    [categoriesForFilter]
-  );
 
   const statusOptions = useMemo(
     () =>

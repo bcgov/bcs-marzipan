@@ -48,7 +48,7 @@ function buildDefaultFilterDateRangeForReport(
  */
 export function buildDefaultPreferencesForReport(
   reportName: string,
-  canSeeDeleted: boolean
+  _canSeeDeleted: boolean
 ): ActivityTablePreferences {
   const configDefaults = getReportTypeConfigByReportName(reportName)?.defaults;
   const dateRange: DateRangeValue =
