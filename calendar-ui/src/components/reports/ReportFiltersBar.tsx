@@ -15,7 +15,6 @@ import {
   ResponsiveFilterRow,
   type ResponsiveFilterSlot,
 } from '@/components/shared/ResponsiveFilterRow';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,17 +34,8 @@ import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreference
 export interface ReportFiltersBarProps {
   preferences: ActivityTablePreferences;
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
-  /**
-   * When set, shows a “Print preview” checkbox on a row below the search field (activity list pattern).
-   */
-  printPreviewConstraint?: {
-    checked: boolean;
-    onCheckedChange: (checked: boolean) => void;
-  };
-  /** Optional controls on the left of the print-preview row (e.g. 30/60/90 month tabs). */
+  /** Optional controls on the row below the search field (e.g. 30/60/90 month tabs). */
   printPreviewRowLeading?: ReactNode;
-  /** Optional warning or status on the right of the print-preview row, before the checkbox. */
-  printPreviewRowTrailing?: ReactNode;
 }
 
 /**
@@ -55,9 +45,7 @@ export interface ReportFiltersBarProps {
 export function ReportFiltersBar({
   preferences,
   setPreferences,
-  printPreviewConstraint,
   printPreviewRowLeading,
-  printPreviewRowTrailing,
 }: ReportFiltersBarProps) {
   const { user } = useAuth();
   const canSeeDeleted =
@@ -446,28 +434,10 @@ export function ReportFiltersBar({
           ) : null}
         </div>
       </div>
-      {printPreviewConstraint ||
-      printPreviewRowLeading ||
-      printPreviewRowTrailing ? (
+      {printPreviewRowLeading ? (
         <div className="mb-2 flex h-9 items-center justify-between gap-4">
           <div className="flex min-w-0 items-center">
             {printPreviewRowLeading}
-          </div>
-          <div className="flex shrink-0 items-center gap-4">
-            {printPreviewRowTrailing}
-            {printPreviewConstraint ? (
-              <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
-                <Checkbox
-                  checked={printPreviewConstraint.checked}
-                  onCheckedChange={(v) =>
-                    printPreviewConstraint.onCheckedChange(v === true)
-                  }
-                  aria-label="Print preview"
-                  className="border-input"
-                />
-                Print preview
-              </label>
-            ) : null}
           </div>
         </div>
       ) : null}

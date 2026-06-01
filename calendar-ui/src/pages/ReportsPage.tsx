@@ -21,8 +21,10 @@ import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
 import { ReportLargeRangeWarning } from '@/components/reports/ReportLargeRangeWarning';
 import { ReportMonthRangeTabs } from '@/components/reports/ReportMonthRangeTabs';
+import { ReportTableSummaryBar } from '@/components/reports/ReportTableSummaryBar';
 import { StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLiveActivityRowHighlights } from '@/hooks/useLiveActivitySyncContext';
@@ -306,19 +308,10 @@ export function ReportsPage() {
               isFullscreenPrintPreview(activeReport) ? 'gap-0' : 'gap-4'
             )}
           >
-            <div className="shrink-0">
+            <div className="flex shrink-0 flex-col gap-4">
               <ReportFiltersBar
                 preferences={preferences}
                 setPreferences={setPreferences}
-                printPreviewConstraint={
-                  isFullscreenPrintPreview(activeReport)
-                    ? {
-                        checked: previewSheetWidthMode === 'print',
-                        onCheckedChange: (checked) =>
-                          setPreviewSheetWidthMode(checked ? 'print' : 'full'),
-                      }
-                    : undefined
-                }
                 printPreviewRowLeading={
                   reportUsesDayRangeTabs(activeReport) ? (
                     <LookAheadDayRangeTabs
@@ -332,14 +325,12 @@ export function ReportsPage() {
                     />
                   ) : undefined
                 }
-                printPreviewRowTrailing={
-                  isFullscreenPrintPreview(activeReport) ? (
-                    <ReportLargeRangeWarning
-                      showLargeRangeWarning={showLargeRangeWarning}
-                      wasClamped={wasDateRangeClamped}
-                    />
-                  ) : undefined
-                }
+              />
+              <ReportTableSummaryBar
+                preferences={preferences}
+                setPreferences={setPreferences}
+                canSeeDeleted={canSeeDeleted}
+                activityCount={data?.meta?.activityCount ?? 0}
               />
             </div>
 
@@ -356,9 +347,28 @@ export function ReportsPage() {
                 ) : data ? (
                   isFullscreenPrintPreview(report.name) ? (
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                      <div className="border-border flex h-9 shrink-0 items-center justify-end gap-4 border-t">
+                        <ReportLargeRangeWarning
+                          showLargeRangeWarning={showLargeRangeWarning}
+                          wasClamped={wasDateRangeClamped}
+                        />
+                        <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={previewSheetWidthMode === 'print'}
+                            onCheckedChange={(checked) =>
+                              setPreviewSheetWidthMode(
+                                checked ? 'print' : 'full'
+                              )
+                            }
+                            aria-label="Print preview"
+                            className="border-input"
+                          />
+                          Print preview
+                        </label>
+                      </div>
                       <div
                         className={cn(
-                          'report-html-container border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t bg-white transition-opacity duration-150',
+                          'report-html-container flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white transition-opacity duration-150',
                           isFetching && 'opacity-[0.98]'
                         )}
                       >
