@@ -188,7 +188,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       'thirty-sixty-ninety',
       reportDataQuerySchema.parse({
         startDateFrom: '2026-05-01',
-        startDateTo: '2026-05-31',
+        startDateTo: '2026-06-30',
       }),
       ctx
     );
@@ -198,6 +198,10 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     );
     expect(maySection).toBeDefined();
     expect(maySection?.activities.map((activity) => activity.id)).toEqual([10]);
-    expect(result.sections).toHaveLength(1);
+    expect(
+      result.sections
+        .filter((section) => section.id !== '2026-05')
+        .every((section) => section.activities.length === 0)
+    ).toBe(true);
   });
 });

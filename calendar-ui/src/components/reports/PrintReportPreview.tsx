@@ -1,6 +1,5 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, type ComponentProps, type ReactNode } from 'react';
 
-import type { ReportDataResponse } from '@corpcal/shared/api/types';
 import {
   buildTranslationLanguageLabelResolver,
   CUSTOM_REPORT_PRINT_STYLES,
@@ -13,7 +12,13 @@ import {
   type ReactRenderableReportType,
 } from '@corpcal/shared/reports/reportPrintHtml';
 import { trimTrailingSlashes } from '@corpcal/shared/utils';
+import type { ReportDataResponse } from '@/api/reportsApi';
 import { useTranslationLanguages } from '@/hooks/useLookups';
+
+/** Print components resolve from shared src; API types resolve from shared dist. */
+type PrintReportDocumentData = ComponentProps<
+  typeof PrintReportDocument
+>['data'];
 
 /**
  * Resolves the public application base URL used when building absolute
@@ -83,18 +88,19 @@ function PrintReportPreviewRoot({
     typeof buildTranslationLanguageLabelResolver
   >;
 }) {
+  const printData = data as PrintReportDocumentData;
   let document: ReactNode;
   if (reportTypeName === 'custom') {
     document = (
       <PrintCustomReportDocument
-        data={data}
+        data={printData}
         highlightActivityIds={highlightActivityIds}
       />
     );
   } else {
     document = (
       <PrintReportDocument
-        data={data}
+        data={printData}
         variant={rollupPrintVariantForReportType(reportTypeName)}
         activityBaseUrl={activityBaseUrl}
         highlightActivityIds={highlightActivityIds}

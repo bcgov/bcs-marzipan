@@ -11,6 +11,7 @@
 import {
   formatCalendarDateCover,
   formatCalendarDateHeading,
+  formatCalendarDateRangeHeading,
   formatCalendarDateShort,
   formatCalendarDateShortNoYear,
   formatCivilOrInstantTime,
@@ -34,6 +35,17 @@ export function formatDayHeading(date: CalendarDateString | string): string {
   const key = isCalendarDateString(date) ? date : pacificDayKey(date);
   if (key == null) return '';
   return formatCalendarDateHeading(key);
+}
+
+/** Inclusive day-heading range for grouped empty days in per-day print sections. */
+export function formatDayRangeHeading(
+  start: CalendarDateString | string,
+  end: CalendarDateString | string
+): string {
+  const startKey = isCalendarDateString(start) ? start : pacificDayKey(start);
+  const endKey = isCalendarDateString(end) ? end : pacificDayKey(end);
+  if (startKey == null || endKey == null) return '';
+  return formatCalendarDateRangeHeading(startKey, endKey);
 }
 
 /** Cover/range formatting, e.g. `Mon, Apr 27, 2026`. */

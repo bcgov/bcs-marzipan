@@ -272,7 +272,7 @@ export function ReportsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="default"
               disabled={!data || isExporting || !activeReport}
               className="gap-2"
               onClick={() => void runExport(exportConfig.format)}

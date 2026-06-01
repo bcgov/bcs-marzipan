@@ -98,6 +98,31 @@ export function formatCalendarDateHeading(date: CalendarDateString): string {
   ).toUpperCase();
 }
 
+/**
+ * Inclusive day-heading range for grouped empty days, e.g.
+ * `MONDAY, MAY 4 – WEDNESDAY, MAY 6, 2026` or a single-day heading when equal.
+ */
+export function formatCalendarDateRangeHeading(
+  start: CalendarDateString,
+  end: CalendarDateString
+): string {
+  if (start === end) {
+    return formatCalendarDateHeading(start);
+  }
+
+  const startYear = start.slice(0, 4);
+  const endYear = end.slice(0, 4);
+  const endHeading = formatCalendarDateHeading(end);
+
+  if (startYear === endYear) {
+    const startHeading = formatCalendarDateHeading(start);
+    const startWithoutYear = startHeading.replace(/, \d{4}$/, '');
+    return `${startWithoutYear} – ${endHeading}`;
+  }
+
+  return `${formatCalendarDateHeading(start)} – ${endHeading}`;
+}
+
 /** `Mon, Apr 27, 2026` - cover/range strings on print and PDF overlays. */
 export function formatCalendarDateCover(date: CalendarDateString): string {
   return CALENDAR_COVER_FORMATTER.format(calendarDateToAnchorInstant(date));
