@@ -18,3 +18,9 @@ export {
   type LookAheadSectionRow,
   type ResolveLookAheadSectionRowsOptions,
 } from './resolveLookAheadSectionRows';
+export {
+  defaultLookAheadDateRange,
+  lookAheadDateRangeFromTomorrow,
+  type LookAheadDateRange,
+  type LookAheadDayCount,
+} from './lookAheadDateRange';

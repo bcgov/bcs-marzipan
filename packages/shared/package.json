@@ -105,6 +105,18 @@
       "import": "./dist/esm/reports/look-ahead/index.js",
       "require": "./dist/cjs/reports/look-ahead/index.js",
       "default": "./dist/esm/reports/look-ahead/index.js"
+    },
+    "./reports/thirty-sixty-ninety": {
+      "types": "./dist/esm/reports/thirty-sixty-ninety/index.d.ts",
+      "import": "./dist/esm/reports/thirty-sixty-ninety/index.js",
+      "require": "./dist/cjs/reports/thirty-sixty-ninety/index.js",
+      "default": "./dist/esm/reports/thirty-sixty-ninety/index.js"
+    },
+    "./reports/reportDateRange": {
+      "types": "./dist/esm/reports/reportDateRange.d.ts",
+      "import": "./dist/esm/reports/reportDateRange.js",
+      "require": "./dist/cjs/reports/reportDateRange.js",
+      "default": "./dist/esm/reports/reportDateRange.js"
     }
   },
   "scripts": {

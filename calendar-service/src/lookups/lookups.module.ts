@@ -10,5 +10,6 @@ import { LookupsService } from './lookups.service';
   imports: [DatabaseModule, TeamsModule, ActivitiesModule],
   providers: [LookupsService],
   controllers: [LookupsController],
+  exports: [LookupsService],
 })
 export class LookupsModule {}

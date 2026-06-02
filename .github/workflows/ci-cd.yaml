@@ -39,6 +39,12 @@ jobs:
       - name: Run tests
         run: npm run test
 
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Validate k6 performance scripts
+        run: npm run perf:k6:inspect
+
   # build-and-push:
   #   runs-on: ubuntu-latest
   #   steps:

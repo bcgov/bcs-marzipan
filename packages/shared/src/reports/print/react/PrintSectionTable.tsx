@@ -9,6 +9,59 @@ export const PRINT_SECTION_COLUMN_HEADERS = [
   'Activity',
 ] as const;
 
+const THIRTY_SIXTY_NINETY_COLUMN_HEADERS = [
+  'Date & time',
+  'Activity details',
+  'Comms & strategy',
+  'Activity',
+] as const;
+
+const PLANNING_COLUMN_HEADERS = [
+  'Date & time',
+  'Activity details',
+  'Significance',
+  'Activity',
+] as const;
+
+const RELEASE_COLUMN_HEADER = 'Release';
+
+/** Column headers for a section table; omits Release when configured. */
+export function printSectionColumnHeaders(
+  omitReleaseColumn: boolean,
+  variant?: PrintReportVariant
+): readonly string[] {
+  if (variant === 'thirtySixtyNinety') {
+    return THIRTY_SIXTY_NINETY_COLUMN_HEADERS;
+  }
+  if (variant === 'planning') {
+    return PLANNING_COLUMN_HEADERS;
+  }
+  if (!omitReleaseColumn) return PRINT_SECTION_COLUMN_HEADERS;
+  return PRINT_SECTION_COLUMN_HEADERS.filter(
+    (label) => label !== RELEASE_COLUMN_HEADER
+  );
+}
+
+export function printSectionColumnCount(omitReleaseColumn: boolean): number {
+  return omitReleaseColumn ? 3 : PRINT_SECTION_COLUMN_HEADERS.length;
+}
+
+/** Maps a logical column index (0..n-1) to `corpcal-print-col-*` when Release may be skipped. */
+export function printSectionColumnClass(
+  logicalIndex: number,
+  omitReleaseColumn: boolean
+): string {
+  if (omitReleaseColumn) {
+    const classes = [
+      'corpcal-print-col-1',
+      'corpcal-print-col-2',
+      'corpcal-print-col-4',
+    ] as const;
+    return classes[logicalIndex] ?? '';
+  }
+  return `corpcal-print-col-${logicalIndex + 1}`;
+}
+
 const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 function safeSwatchColor(color: string | null | undefined): string | null {
@@ -61,35 +114,49 @@ export interface PrintGroupedSectionDayBlock {
   rows: PrintRowViewModel[];
 }
 
-function PrintSectionColGroup() {
+function PrintSectionColGroup({
+  omitReleaseColumn,
+}: {
+  omitReleaseColumn: boolean;
+}) {
   return (
     <colgroup>
       <col className="corpcal-print-col-1" />
       <col className="corpcal-print-col-2" />
-      <col className="corpcal-print-col-3" />
+      {!omitReleaseColumn ? <col className="corpcal-print-col-3" /> : null}
       <col className="corpcal-print-col-4" />
     </colgroup>
   );
 }
 
-const SECTION_COLUMN_SPAN = PRINT_SECTION_COLUMN_HEADERS.length;
+function printSectionTableClassName(omitReleaseColumn: boolean): string {
+  const base = 'corpcal-print-table';
+  return omitReleaseColumn
+    ? `${base} corpcal-print-table--omit-release`
+    : base;
+}
 
 function PrintSectionColumnHeaderRow({
   sectionLegendColor,
   rowClassName,
+  omitReleaseColumn,
+  variant,
 }: {
   sectionLegendColor: string | null;
   /** Applied to the column-header `<tr>`; per-day vs flat-rollup thead use distinct classes for border/radius. */
   rowClassName?: string;
+  omitReleaseColumn: boolean;
+  variant?: PrintReportVariant;
 }) {
+  const headers = printSectionColumnHeaders(omitReleaseColumn, variant);
   const bgHex = safeSwatchColor(sectionLegendColor);
   const foreground = bgHex ? contrastingBlackOrWhiteForegroundHex(bgHex) : null;
   const lines = foreground ? theadHeaderLinesFromFg(foreground) : null;
 
   return (
     <tr className={rowClassName}>
-      {PRINT_SECTION_COLUMN_HEADERS.map((label, i) => {
-        const colClass = `corpcal-print-col-${i + 1}`;
+      {headers.map((label, i) => {
+        const colClass = printSectionColumnClass(i, omitReleaseColumn);
         if (!bgHex || foreground === null || !lines) {
           return (
             <th key={label} scope="col" className={colClass}>
@@ -133,6 +200,8 @@ export function PrintGroupedSectionTable({
   variant,
   showPerDayPrintChrome,
   showEventLead = false,
+  omitReleaseColumn = false,
+  highlightActivityIds,
 }: {
   sectionPrintLabel: string;
   /** When set on the section config, table header cells inherit the legend swatch. */
@@ -147,18 +216,23 @@ export function PrintGroupedSectionTable({
   showPerDayPrintChrome: boolean;
   /** Corporate Look Ahead: show comms event lead under executive summary when enabled by report fields. */
   showEventLead?: boolean;
+  /** When true, omit the Release column; Activity details uses the freed width. */
+  omitReleaseColumn?: boolean;
+  /** In-app preview: rows to flash briefly after remote activity updates. */
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
+  const columnSpan = printSectionColumnCount(omitReleaseColumn);
+  const tableClassName = `${printSectionTableClassName(omitReleaseColumn)} corpcal-print-section-rollup-table`;
+  const hasRows = days.some((day) => day.rows.length > 0);
+
   return (
     <div className="corpcal-print-table-wrap corpcal-print-table-wrap--section-rollup">
-      <table
-        className="corpcal-print-table corpcal-print-section-rollup-table"
-        role="grid"
-      >
-        <PrintSectionColGroup />
+      <table className={tableClassName} role="grid">
+        <PrintSectionColGroup omitReleaseColumn={omitReleaseColumn} />
         <thead>
           <tr>
             <td
-              colSpan={SECTION_COLUMN_SPAN}
+              colSpan={columnSpan}
               className="corpcal-print-section-heading-cell"
             >
               <PrintSectionHeading
@@ -171,6 +245,8 @@ export function PrintGroupedSectionTable({
             <PrintSectionColumnHeaderRow
               rowClassName="corpcal-print-rollup-thead-column-header-row"
               sectionLegendColor={sectionLegendColor}
+              omitReleaseColumn={omitReleaseColumn}
+              variant={variant}
             />
           ) : null}
         </thead>
@@ -179,7 +255,7 @@ export function PrintGroupedSectionTable({
             <tbody key={day.dayKey} className="corpcal-print-day-tbody">
               <tr className="corpcal-print-day-heading-row">
                 <td
-                  colSpan={SECTION_COLUMN_SPAN}
+                  colSpan={columnSpan}
                   className="corpcal-print-day-heading-cell"
                 >
                   <h3 className="corpcal-print-day-heading">
@@ -190,28 +266,53 @@ export function PrintGroupedSectionTable({
               <PrintSectionColumnHeaderRow
                 rowClassName="corpcal-print-per-day-column-header-row"
                 sectionLegendColor={sectionLegendColor}
+                omitReleaseColumn={omitReleaseColumn}
+                variant={variant}
               />
-              {day.rows.map((row) => (
-                <PrintRow
-                  key={row.activityId}
-                  row={row}
-                  variant={variant}
-                  showEventLead={showEventLead}
-                />
-              ))}
+              {day.rows.length > 0 ? (
+                day.rows.map((row) => (
+                  <PrintRow
+                    key={row.activityId}
+                    row={row}
+                    variant={variant}
+                    showEventLead={showEventLead}
+                    omitReleaseColumn={omitReleaseColumn}
+                    highlightActivityIds={highlightActivityIds}
+                  />
+                ))
+              ) : (
+                <tr className="corpcal-print-empty-month-row">
+                  <td
+                    colSpan={columnSpan}
+                    className="corpcal-print-empty-month"
+                  >
+                    No activities.
+                  </td>
+                </tr>
+              )}
             </tbody>
           ))
         ) : (
           <tbody className="corpcal-print-day-tbody">
-            {days.flatMap((day) =>
-              day.rows.map((row) => (
-                <PrintRow
-                  key={row.activityId}
-                  row={row}
-                  variant={variant}
-                  showEventLead={showEventLead}
-                />
-              ))
+            {hasRows ? (
+              days.flatMap((day) =>
+                day.rows.map((row) => (
+                  <PrintRow
+                    key={row.activityId}
+                    row={row}
+                    variant={variant}
+                    showEventLead={showEventLead}
+                    omitReleaseColumn={omitReleaseColumn}
+                    highlightActivityIds={highlightActivityIds}
+                  />
+                ))
+              )
+            ) : (
+              <tr className="corpcal-print-empty-month-row">
+                <td colSpan={columnSpan} className="corpcal-print-empty-month">
+                  No activities.
+                </td>
+              </tr>
             )}
           </tbody>
         )}
@@ -240,6 +341,8 @@ export function PrintSectionTable({
   sectionLegendColor,
   showSectionHeading = true,
   showEventLead = false,
+  omitReleaseColumn = false,
+  highlightActivityIds,
 }: {
   sectionName: string;
   rows: PrintRowViewModel[];
@@ -248,6 +351,8 @@ export function PrintSectionTable({
   /** When false, omits the section heading; parent supplies it once per section. */
   showSectionHeading?: boolean;
   showEventLead?: boolean;
+  omitReleaseColumn?: boolean;
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
   const resolvedLegend =
     sectionLegendColor === undefined ? null : sectionLegendColor;
@@ -260,10 +365,17 @@ export function PrintSectionTable({
         />
       ) : null}
       <div className="corpcal-print-table-wrap">
-        <table className="corpcal-print-table" role="grid">
-          <PrintSectionColGroup />
+        <table
+          className={printSectionTableClassName(omitReleaseColumn)}
+          role="grid"
+        >
+          <PrintSectionColGroup omitReleaseColumn={omitReleaseColumn} />
           <thead>
-            <PrintSectionColumnHeaderRow sectionLegendColor={resolvedLegend} />
+            <PrintSectionColumnHeaderRow
+              sectionLegendColor={resolvedLegend}
+              omitReleaseColumn={omitReleaseColumn}
+              variant={variant}
+            />
           </thead>
           <tbody>
             {rows.map((row) => (
@@ -272,6 +384,8 @@ export function PrintSectionTable({
                 row={row}
                 variant={variant}
                 showEventLead={showEventLead}
+                omitReleaseColumn={omitReleaseColumn}
+                highlightActivityIds={highlightActivityIds}
               />
             ))}
           </tbody>

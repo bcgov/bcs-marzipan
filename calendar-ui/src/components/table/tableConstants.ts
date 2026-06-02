@@ -7,6 +7,10 @@
 export const TABLE_SCROLL_HEIGHT =
   'max(240px, min(720px, 60vh, 100vh - 400px))';
 
+/** Print preview scroll height; same as {@link TABLE_SCROLL_HEIGHT} minus the preview toolbar row (h-9). */
+export const REPORT_PRINT_PREVIEW_SCROLL_HEIGHT =
+  'max(240px, min(720px, 60vh, 100vh - 436px))';
+
 /** Min-width for filter/sort dropdown and popover panels. Use as className (e.g. with cn()) so base components stay flexible. */
 export const FILTER_PANEL_MIN_WIDTH = 'min-w-[180px]';
 

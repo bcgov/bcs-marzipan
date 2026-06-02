@@ -1,11 +1,12 @@
-import { Languages } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { ExternalLink, Languages, NotebookText } from 'lucide-react';
 
 import { PrintRichText } from './PrintRichText';
 import {
+  isExecLikeRollupVariant,
+  splitActivityDisplayIdForPrint,
+  type ColumnFlags,
   type PrintReportVariant,
   type PrintRowViewModel,
-  splitActivityDisplayIdForPrint,
 } from './rowViewModel';
 
 /** Corporate Look Ahead and Executive Look Ahead print layouts. */
@@ -13,9 +14,62 @@ function isLookAheadRollupVariant(variant: PrintReportVariant): boolean {
   return variant === 'lookAhead' || variant === 'execLookAhead';
 }
 
-/** Column‑3 narrative: executive summary vs title + summary. */
-function narrativeIsExecutiveSummaryInline(variant: PrintReportVariant): boolean {
+/** Corporate Look Ahead: executive summary (flags render as badges above). */
+function narrativeIsExecutiveSummaryInline(
+  variant: PrintReportVariant
+): boolean {
   return variant === 'lookAhead';
+}
+
+/** Exec Look Ahead and 30/60/90: title + inline summary (flags render as badges above). */
+function narrativeIsExecTitleSummaryInline(
+  variant: PrintReportVariant
+): boolean {
+  return isExecLikeRollupVariant(variant);
+}
+
+/** Confidential, Issue, and FYI badges on one line at the top of Activity details. */
+function ActivityDetailBadges({ flags }: { flags: ColumnFlags }) {
+  if (!flags.isConfidential && !flags.isIssue && !flags.isFyi) {
+    return null;
+  }
+
+  return (
+    <div className="corpcal-print-flags">
+      {flags.isConfidential ? (
+        <span className="corpcal-print-pill corpcal-print-pill-confidential">
+          Confidential
+        </span>
+      ) : null}
+      {flags.isIssue ? (
+        <span className="corpcal-print-pill corpcal-print-pill-issue">
+          Issue
+        </span>
+      ) : null}
+      {flags.isFyi ? (
+        <span className="corpcal-print-pill corpcal-print-pill-fyi">FYI</span>
+      ) : null}
+    </div>
+  );
+}
+
+function ActivityIdLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      className="corpcal-print-link corpcal-print-activity-link"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <span>{label}</span>
+      <ExternalLink
+        className="corpcal-print-activity-link-icon"
+        size={14}
+        strokeWidth={2}
+        aria-hidden
+      />
+    </a>
+  );
 }
 
 /**
@@ -27,14 +81,24 @@ export function PrintRow({
   row,
   variant,
   showEventLead = false,
+  omitReleaseColumn = false,
+  highlightActivityIds,
 }: {
   row: PrintRowViewModel;
   variant: PrintReportVariant;
   /** When true and variant is Look Ahead, render comms lead under executive summary. */
   showEventLead?: boolean;
+  /** When true, skip the Release column; Activity details uses the wider layout. */
+  omitReleaseColumn?: boolean;
+  /**
+   * In-app preview: flash rows after remote activity updates (`live-row-highlight` CSS in shell).
+   */
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
+  const highlighted = highlightActivityIds?.has(row.activityId) ?? false;
+
   return (
-    <tr>
+    <tr className={highlighted ? 'live-row-highlight' : undefined}>
       <td className="corpcal-print-col-1">
         <DateTimeCell row={row} variant={variant} />
       </td>
@@ -45,9 +109,17 @@ export function PrintRow({
           showEventLead={showEventLead}
         />
       </td>
-      <td className="corpcal-print-col-3">
-        <ReleaseCell row={row} variant={variant} />
-      </td>
+      {!omitReleaseColumn ? (
+        <td className="corpcal-print-col-3">
+          {variant === 'planning' ? (
+            <SignificanceCell row={row} />
+          ) : variant === 'thirtySixtyNinety' ? (
+            <CommsStrategyCell row={row} />
+          ) : (
+            <ReleaseCell row={row} variant={variant} />
+          )}
+        </td>
+      ) : null}
       <td className="corpcal-print-col-4">
         <ActivityCell row={row} variant={variant} />
       </td>
@@ -55,23 +127,14 @@ export function PrintRow({
   );
 }
 
-function lookAheadDateTimeStatusContent(
-  variant: PrintReportVariant,
-  status: string
-): ReactNode {
-  const isLookAheadVariant =
-    variant === 'lookAhead' || variant === 'execLookAhead';
-  if (isLookAheadVariant && status === 'Date TBD') {
-    return (
-      <strong className="corpcal-print-tbd-strong">Date TBD</strong>
-    );
-  }
-  if (isLookAheadVariant && status === 'Time TBD') {
-    return (
-      <strong className="corpcal-print-tbd-strong">Time TBD</strong>
-    );
-  }
-  return status;
+/** En dash in compact date ranges; screen readers should hear "to" instead. */
+const PRINT_DATE_RANGE_EN_DASH = '\u2013';
+
+/** Gap before date/time status labels (en space; breaks independently of the value). */
+const PRINT_DATE_TIME_STATUS_GAP = '\u2002';
+
+function printDateRangeAriaLabel(display: string): string {
+  return display.replaceAll(PRINT_DATE_RANGE_EN_DASH, ' to ');
 }
 
 function DateTimeCell({
@@ -83,11 +146,13 @@ function DateTimeCell({
 }) {
   const { dateTime } = row;
   const dateRange = dateTime.endDate
-    ? `${dateTime.startDate} – ${dateTime.endDate}`
+    ? `${dateTime.startDate} ${PRINT_DATE_RANGE_EN_DASH} ${dateTime.endDate}`
     : dateTime.startDate;
+  const dateRangeAriaLabel = dateRange.includes(PRINT_DATE_RANGE_EN_DASH)
+    ? printDateRangeAriaLabel(dateRange)
+    : undefined;
   const showTimeLine = Boolean(dateTime.startTime || dateTime.timeStatus);
-  const useLookAheadDtValueStyle =
-    variant === 'lookAhead' || variant === 'execLookAhead';
+  const useLookAheadDtValueStyle = isExecLikeRollupVariant(variant);
   const valueClass = useLookAheadDtValueStyle
     ? 'corpcal-print-dt-value'
     : 'corpcal-print-meta-strong';
@@ -95,35 +160,29 @@ function DateTimeCell({
   return (
     <div className="corpcal-print-stack">
       {dateRange || dateTime.dateStatus ? (
-        <div className="corpcal-print-inline-row corpcal-print-dt-inline-row">
+        <div className="corpcal-print-dt-line">
           {dateRange ? (
-            <span className={valueClass}>{dateRange}</span>
-          ) : null}
-          {dateRange && dateTime.dateStatus ? (
-            <span className="corpcal-print-inline-sep" aria-hidden="true">
-              ·
+            <span className={valueClass} aria-label={dateRangeAriaLabel}>
+              {dateRange}
             </span>
           ) : null}
           {dateTime.dateStatus ? (
             <span className="corpcal-print-inline-status">
-              {lookAheadDateTimeStatusContent(variant, dateTime.dateStatus)}
+              {dateRange ? PRINT_DATE_TIME_STATUS_GAP : null}
+              {dateTime.dateStatus}
             </span>
           ) : null}
         </div>
       ) : null}
       {showTimeLine ? (
-        <div className="corpcal-print-inline-row corpcal-print-dt-inline-row">
+        <div className="corpcal-print-dt-line corpcal-print-dt-time-line">
           {dateTime.startTime ? (
             <span className={valueClass}>{dateTime.startTime}</span>
           ) : null}
-          {dateTime.startTime && dateTime.timeStatus ? (
-            <span className="corpcal-print-inline-sep" aria-hidden="true">
-              ·
-            </span>
-          ) : null}
           {dateTime.timeStatus ? (
             <span className="corpcal-print-inline-status">
-              {lookAheadDateTimeStatusContent(variant, dateTime.timeStatus)}
+              {dateTime.startTime ? PRINT_DATE_TIME_STATUS_GAP : null}
+              {dateTime.timeStatus}
             </span>
           ) : null}
         </div>
@@ -141,6 +200,25 @@ function DateTimeCell({
           </span>
         </div>
       ) : null}
+      {variant === 'planning' ? (
+        <PlanningDateExtras row={row} />
+      ) : null}
+    </div>
+  );
+}
+
+function PlanningDateExtras({ row }: { row: PrintRowViewModel }) {
+  const { schedulingNotesStored, premierRequested } = row;
+  if (!schedulingNotesStored && !premierRequested) return null;
+
+  return (
+    <div className="corpcal-print-stack-md corpcal-print-planning-date-extras">
+      {schedulingNotesStored ? (
+        <div className="corpcal-print-text">{schedulingNotesStored}</div>
+      ) : null}
+      {premierRequested ? (
+        <div className="corpcal-print-meta-faint">{premierRequested}</div>
+      ) : null}
     </div>
   );
 }
@@ -154,74 +232,52 @@ function ActivityDetailsCell({
   variant: PrintReportVariant;
   showEventLead: boolean;
 }) {
-  const flags: { key: string; label: string; className: string }[] = [];
-  if (row.flags.isIssue) {
-    flags.push({
-      key: 'issue',
-      label: 'ISSUE',
-      className: 'corpcal-print-flag corpcal-print-flag-alert',
-    });
-  }
-  if (row.flags.isConfidential) {
-    flags.push({
-      key: 'confidential',
-      label: 'CONFIDENTIAL',
-      className: 'corpcal-print-flag corpcal-print-flag-alert',
-    });
-  }
-
   const venueLines: string[] = [];
   if (row.venue.city) venueLines.push(row.venue.city);
   if (row.venue.name) venueLines.push(row.venue.name);
   if (row.venue.address) venueLines.push(row.venue.address);
 
-  const showVenuePlanner = variant !== 'lookAhead';
-  const eventPlannerLeadClass = isLookAheadRollupVariant(variant)
-    ? 'corpcal-print-meta-look-ahead-green'
-    : 'corpcal-print-meta-faint';
+  const showVenue = isExecLikeRollupVariant(variant);
+  const showLastUpdatedInDetails = isExecLikeRollupVariant(variant);
+  const showSignificanceInDetails =
+    isExecLikeRollupVariant(variant) && variant !== 'planning';
 
   return (
     <div className="corpcal-print-stack-md">
-      {flags.length > 0 ? (
-        <div className="corpcal-print-flags">
-          {flags.map((flag) => (
-            <span key={flag.key} className={flag.className}>
-              {flag.label}
-            </span>
-          ))}
-        </div>
-      ) : null}
+      <ActivityDetailBadges flags={row.flags} />
 
       {narrativeIsExecutiveSummaryInline(variant) ? (
         <>
           <div className="corpcal-print-exec-summary-inline corpcal-print-narrative-head">
-            {row.flags.isFyi ? (
-              <span className="corpcal-print-flag corpcal-print-flag-fyi corpcal-print-flag-narrative-inline">
-                FYI
-              </span>
-            ) : null}
-            {row.flags.isFyi ? ' ' : null}
             <PrintRichText
               value={row.executiveSummaryStored}
               className="corpcal-print-rich corpcal-print-rich-inline"
             />
           </div>
-          {showEventLead && row.eventLeadStored ? (
+          {showEventLead && row.commsContactLead ? (
             <div className="corpcal-print-meta-faint">
-              Event lead: {row.eventLeadStored}
+              Event lead: {row.commsContactLead}
             </div>
+          ) : null}
+        </>
+      ) : narrativeIsExecTitleSummaryInline(variant) ? (
+        <>
+          <div className="corpcal-print-exec-summary-inline corpcal-print-narrative-head">
+            {row.title ? <strong>{row.title}</strong> : null}
+            {row.title && row.summaryStored ? ' ' : null}
+            <PrintRichText
+              value={row.summaryStored}
+              className="corpcal-print-rich corpcal-print-rich-inline"
+            />
+          </div>
+          {showSignificanceInDetails ? (
+            <PrintRichText value={row.significanceStored} />
           ) : null}
         </>
       ) : (
         <>
           {row.title ? (
             <div className="corpcal-print-title corpcal-print-narrative-head">
-              {row.flags.isFyi ? (
-                <span className="corpcal-print-flag corpcal-print-flag-fyi corpcal-print-flag-narrative-inline">
-                  FYI
-                </span>
-              ) : null}
-              {row.flags.isFyi ? ' ' : null}
               {row.title}
             </div>
           ) : null}
@@ -229,14 +285,68 @@ function ActivityDetailsCell({
         </>
       )}
 
-      {showVenuePlanner && venueLines.length > 0 ? (
+      {showVenue && venueLines.length > 0 ? (
         <div className="corpcal-print-meta-strong">{venueLines.join(', ')}</div>
       ) : null}
 
-      {showVenuePlanner && row.eventPlannerLead ? (
-        <div className={eventPlannerLeadClass}>
-          Event planner: {row.eventPlannerLead}
+      {showLastUpdatedInDetails && row.lastUpdated ? (
+        <div className="corpcal-print-meta-faint">
+          Last updated {row.lastUpdated}
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SignificanceCell({ row }: { row: PrintRowViewModel }) {
+  if (!row.significanceStored) {
+    return <span className="corpcal-print-meta-faint">—</span>;
+  }
+
+  return <PrintRichText value={row.significanceStored} />;
+}
+
+function CommsStrategyCell({ row }: { row: PrintRowViewModel }) {
+  const hasCommsMaterials = row.commsMaterials.length > 0;
+  const hasStrategy = Boolean(row.strategyStored);
+  const translationsLine = row.release.translationsLine.trim();
+  const hasTranslations =
+    translationsLine.length > 0 && translationsLine !== 'none';
+
+  if (!hasCommsMaterials && !hasStrategy && !hasTranslations) {
+    return <span className="corpcal-print-meta-faint">—</span>;
+  }
+
+  return (
+    <div className="corpcal-print-stack">
+      {hasCommsMaterials ? (
+        <div className="corpcal-print-inline-row corpcal-print-translations-row">
+          <NotebookText
+            className="corpcal-print-comms-materials-icon"
+            size={14}
+            strokeWidth={2}
+            aria-hidden
+          />
+          <span className="corpcal-print-text">
+            {row.commsMaterials.join(', ')}
+          </span>
+        </div>
+      ) : null}
+      {hasTranslations ? (
+        <div className="corpcal-print-inline-row corpcal-print-translations-row">
+          <Languages
+            className="corpcal-print-translations-icon"
+            size={14}
+            strokeWidth={2}
+            aria-hidden
+          />
+          <span className="corpcal-print-meta-look-ahead-green">
+            {translationsLine}
+          </span>
+        </div>
+      ) : null}
+      {hasStrategy ? (
+        <div className="corpcal-print-text">{row.strategyStored}</div>
       ) : null}
     </div>
   );
@@ -294,9 +404,17 @@ function ActivityCell({
   row: PrintRowViewModel;
   variant: PrintReportVariant;
 }) {
-  const { activityLink, lastUpdated } = row;
-  const showUpdated = variant !== 'lookAhead';
-  const splitId = isLookAheadRollupVariant(variant)
+  const { activityLink, lastUpdated, commsContactLead } = row;
+  const showUpdated =
+    variant !== 'lookAhead' &&
+    variant !== 'execLookAhead' &&
+    variant !== 'thirtySixtyNinety' &&
+    variant !== 'planning';
+  const usesSplitActivityId =
+    isLookAheadRollupVariant(variant) ||
+    variant === 'thirtySixtyNinety' ||
+    variant === 'planning';
+  const splitId = usesSplitActivityId
     ? splitActivityDisplayIdForPrint(activityLink.label)
     : null;
 
@@ -311,14 +429,10 @@ function ActivityCell({
               </div>
             ) : null}
             <div>
-              <a
-                className="corpcal-print-link"
+              <ActivityIdLink
                 href={activityLink.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {splitId.idForLink}
-              </a>
+                label={splitId.idForLink}
+              />
             </div>
           </div>
         ) : (
@@ -332,8 +446,13 @@ function ActivityCell({
           </a>
         )}
       </div>
+      {variant === 'thirtySixtyNinety' && commsContactLead ? (
+        <div className="corpcal-print-meta-faint">{commsContactLead}</div>
+      ) : null}
       {showUpdated && lastUpdated ? (
-        <div className="corpcal-print-meta-faint">Updated {lastUpdated}</div>
+        <div className="corpcal-print-meta-faint">
+          Last updated {lastUpdated}
+        </div>
       ) : null}
     </div>
   );

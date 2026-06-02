@@ -2,17 +2,19 @@ import { useMemo, type ReactNode } from 'react';
 
 import type { ReportDataResponse } from '@corpcal/shared/api/types';
 import {
+  buildTranslationLanguageLabelResolver,
   CUSTOM_REPORT_PRINT_STYLES,
   isReactRenderableReportType,
   PRINT_STYLES,
   PrintCustomReportDocument,
   PrintPdfFooterHintLine,
-  PrintPlanningDocument,
   PrintReportDocument,
   rollupPrintVariantForReportType,
   type ReactRenderableReportType,
 } from '@corpcal/shared/reports/reportPrintHtml';
 import { trimTrailingSlashes } from '@corpcal/shared/utils';
+import { useTranslationLanguages } from '@/hooks/useLookups';
+import { toPrintReportDocumentData } from '@/lib/print-report-data';
 
 /**
  * Resolves the public application base URL used when building absolute
@@ -38,11 +40,20 @@ function resolveActivityBaseUrl(): string {
 export function PrintReportPreview({
   reportTypeName,
   data,
+  highlightActivityIds,
 }: {
   reportTypeName: string;
   data: ReportDataResponse;
+  /** In-app: flash preview rows briefly after remote activity updates. */
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
   const activityBaseUrl = useMemo(() => resolveActivityBaseUrl(), []);
+  const { data: translationLanguages = [] } = useTranslationLanguages();
+  const resolveTranslationLanguageLabel = useMemo(
+    () => buildTranslationLanguageLabelResolver(translationLanguages),
+    [translationLanguages]
+  );
+  const printData = useMemo(() => toPrintReportDocumentData(data), [data]);
 
   if (!isReactRenderableReportType(reportTypeName)) {
     return null;
@@ -51,35 +62,51 @@ export function PrintReportPreview({
   return (
     <PrintReportPreviewRoot
       reportTypeName={reportTypeName}
-      data={data}
+      printData={printData}
       activityBaseUrl={activityBaseUrl}
+      highlightActivityIds={highlightActivityIds}
+      resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
     />
   );
 }
 
 function PrintReportPreviewRoot({
   reportTypeName,
-  data,
+  printData,
   activityBaseUrl,
+  highlightActivityIds,
+  resolveTranslationLanguageLabel,
 }: {
   reportTypeName: ReactRenderableReportType;
-  data: ReportDataResponse;
+  printData: ReturnType<typeof toPrintReportDocumentData>;
   activityBaseUrl: string;
+  highlightActivityIds?: ReadonlySet<number>;
+  resolveTranslationLanguageLabel?: ReturnType<
+    typeof buildTranslationLanguageLabelResolver
+  >;
 }) {
   let document: ReactNode;
-  if (reportTypeName === 'planning') {
-    document = <PrintPlanningDocument />;
-  } else if (reportTypeName === 'custom') {
-    document = <PrintCustomReportDocument data={data} />;
+  if (reportTypeName === 'custom') {
+    document = (
+      <PrintCustomReportDocument
+        data={printData}
+        highlightActivityIds={highlightActivityIds}
+      />
+    );
   } else {
     document = (
       <PrintReportDocument
-        data={data}
+        data={printData}
         variant={rollupPrintVariantForReportType(reportTypeName)}
         activityBaseUrl={activityBaseUrl}
+        highlightActivityIds={highlightActivityIds}
+        resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
       />
     );
   }
+
+  const showFooterChangedHint =
+    reportTypeName !== 'thirty-sixty-ninety' && reportTypeName !== 'planning';
 
   return (
     <>
@@ -92,7 +119,7 @@ function PrintReportPreviewRoot({
           the same stylesheet, when injected into the Puppeteer-rendered PDF
           (which has no shell), leaves print output unaffected. */}
       <div className="corpcal-print-preview-shell">
-        <PrintPdfFooterHintLine />
+        {showFooterChangedHint ? <PrintPdfFooterHintLine /> : null}
         {document}
       </div>
     </>

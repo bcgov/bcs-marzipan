@@ -67,26 +67,32 @@ function DateTimeCell({ activity }: { activity: ActivityResponse }) {
     <div className="custom-report-stack custom-report-stack-md">
       <div>
         {dateText !== '–' || dateStatus ? (
-          <div className="custom-report-text-sm-medium">
+          <div className="custom-report-text-sm-medium custom-report-dt-line">
             {dateText !== '–' ? (
               <span className="custom-report-dt-value">{dateText}</span>
             ) : null}
             {dateStatus ? (
-              <span className="custom-report-dt-inline-muted">
-                {dateText !== '–' ? ' · ' : null}
+              <span
+                className={`custom-report-dt-status${
+                  dateText !== '–' ? ' custom-report-dt-status-gap' : ''
+                }`}
+              >
                 {dateStatus}
               </span>
             ) : null}
           </div>
         ) : null}
         {showTimeRow ? (
-          <div className="custom-report-text-sm-medium custom-report-dt-time-row">
+          <div className="custom-report-text-sm-medium custom-report-dt-line custom-report-dt-time-row">
             {timeText !== '–' ? (
               <span className="custom-report-dt-value">{timeText}</span>
             ) : null}
             {timeStatus ? (
-              <span className="custom-report-dt-inline-muted">
-                {timeText !== '–' ? ' · ' : null}
+              <span
+                className={`custom-report-dt-status${
+                  timeText !== '–' ? ' custom-report-dt-status-gap' : ''
+                }`}
+              >
                 {timeStatus}
               </span>
             ) : null}
@@ -291,15 +297,17 @@ function CustomReportHeader() {
 function CustomReportActivityRow({
   activity,
   zebraEven,
+  highlighted,
 }: {
   activity: ActivityResponse;
   zebraEven: boolean;
+  highlighted?: boolean;
 }) {
   return (
     <tr
       className={`custom-report-tr ${
         zebraEven ? 'custom-report-row-even' : 'custom-report-row-odd'
-      }`}
+      }${highlighted ? ' live-row-highlight' : ''}`}
     >
       <td className="custom-report-td">
         <DateTimeCell activity={activity} />
@@ -349,8 +357,10 @@ function buildBodyRows(data: ReportDataResponse): CustomReportBodyRow[] {
 
 export function PrintCustomReportDocument({
   data,
+  highlightActivityIds,
 }: {
   data: ReportDataResponse;
+  highlightActivityIds?: ReadonlySet<number>;
 }) {
   const bodyRows = buildBodyRows(data);
 
@@ -374,6 +384,7 @@ export function PrintCustomReportDocument({
                     key={row.key}
                     activity={row.activity}
                     zebraEven={row.zebraEven}
+                    highlighted={highlightActivityIds?.has(row.activity.id)}
                   />
                 )
               )}

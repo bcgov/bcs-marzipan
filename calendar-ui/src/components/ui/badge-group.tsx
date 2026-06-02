@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
 import { useElementWidth } from '@/hooks/useElementWidth';
 import { cn } from '@/lib/utils';
@@ -16,6 +23,7 @@ export interface BadgeGroupItem {
   label: string;
   variant?: BadgeProps['variant'];
   className?: string;
+  style?: CSSProperties;
 }
 
 export interface BadgeGroupProps {
@@ -136,9 +144,12 @@ export function BadgeGroup({
         fitCount += 1;
       }
 
-      // Reserve one slot for the +N trigger when overflow exists.
+      // Reserve one slot for the +N trigger when overflow exists, but keep at
+      // least one real badge visible so rows never collapse to only "+N".
       const nextVisibleCount =
-        fitCount < items.length ? Math.max(0, fitCount - 1) : fitCount;
+        fitCount < items.length
+          ? Math.max(items.length > 0 ? 1 : 0, fitCount - 1)
+          : fitCount;
       setVisibleCount(nextVisibleCount);
       return;
     }
@@ -156,7 +167,7 @@ export function BadgeGroup({
       }
       if (rowTops.length > maxLines) {
         setVisibleCount((current) =>
-          current == null ? 0 : Math.max(current - 1, 0)
+          current == null ? 0 : Math.max(current - 1, items.length > 0 ? 1 : 0)
         );
       }
     }
@@ -186,6 +197,7 @@ export function BadgeGroup({
           data-badge-group-measure="true"
           variant={item.variant ?? badgeVariant}
           className={cn(badgeClassName, item.className)}
+          style={item.style}
         >
           {item.label}
         </Badge>

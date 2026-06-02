@@ -12,6 +12,7 @@
  *    CORP_PACIFIC_TIME_ZONE` so output is independent of `process.env.TZ`.
  */
 
+import { pacificCalendarDateFromInstant, pacificDayKey } from './calendar';
 import { CORP_PACIFIC_OFFSET_MS, CORP_PACIFIC_TIME_ZONE } from './constants';
 import {
   isCalendarDateString,
@@ -75,6 +76,11 @@ const CALENDAR_LONG_NO_WEEKDAY_FORMATTER = pacificDateFormatter({
   year: 'numeric',
 });
 
+const CALENDAR_MONTH_YEAR_FORMATTER = pacificDateFormatter({
+  month: 'long',
+  year: 'numeric',
+});
+
 const PACIFIC_TIME_FORMATTER = pacificDateFormatter({
   hour: 'numeric',
   minute: '2-digit',
@@ -90,6 +96,31 @@ export function formatCalendarDateHeading(date: CalendarDateString): string {
   return CALENDAR_LONG_FORMATTER.format(
     calendarDateToAnchorInstant(date)
   ).toUpperCase();
+}
+
+/**
+ * Inclusive day-heading range for grouped empty days, e.g.
+ * `MONDAY, MAY 4 – WEDNESDAY, MAY 6, 2026` or a single-day heading when equal.
+ */
+export function formatCalendarDateRangeHeading(
+  start: CalendarDateString,
+  end: CalendarDateString
+): string {
+  if (start === end) {
+    return formatCalendarDateHeading(start);
+  }
+
+  const startYear = start.slice(0, 4);
+  const endYear = end.slice(0, 4);
+  const endHeading = formatCalendarDateHeading(end);
+
+  if (startYear === endYear) {
+    const startHeading = formatCalendarDateHeading(start);
+    const startWithoutYear = startHeading.replace(/, \d{4}$/, '');
+    return `${startWithoutYear} – ${endHeading}`;
+  }
+
+  return `${formatCalendarDateHeading(start)} – ${endHeading}`;
 }
 
 /** `Mon, Apr 27, 2026` - cover/range strings on print and PDF overlays. */
@@ -114,6 +145,13 @@ export function formatCalendarDateShortNoYear(
 /** `April 27, 2026` - long phrase without weekday. */
 export function formatCalendarDateLong(date: CalendarDateString): string {
   return CALENDAR_LONG_NO_WEEKDAY_FORMATTER.format(
+    calendarDateToAnchorInstant(date)
+  );
+}
+
+/** `August 2026` - month section heading for rollup reports. */
+export function formatCalendarMonthYear(date: CalendarDateString): string {
+  return CALENDAR_MONTH_YEAR_FORMATTER.format(
     calendarDateToAnchorInstant(date)
   );
 }
@@ -247,4 +285,85 @@ export function formatCalendarDateShortNullable(
   if (date == null || date === '') return '';
   if (!isCalendarDateString(date)) return '';
   return formatCalendarDateShort(date);
+}
+
+const LOOK_AHEAD_DATE_RANGE_SEP = '\u2013';
+/** Cross-month and cross-year ranges only; same-month stays compact (`Jan 1–31`). */
+const LOOK_AHEAD_DATE_RANGE_SEP_SPACED = ` ${LOOK_AHEAD_DATE_RANGE_SEP} `;
+
+function calendarDateYear(date: CalendarDateString): number {
+  return Number.parseInt(date.slice(0, 4), 10);
+}
+
+function calendarDateMonth(date: CalendarDateString): number {
+  return Number.parseInt(date.slice(5, 7), 10);
+}
+
+function formatCalendarDayOfMonth(date: CalendarDateString): string {
+  return PACIFIC_DAY_FORMATTER.format(calendarDateToAnchorInstant(date));
+}
+
+function formatCalendarMonthShort(date: CalendarDateString): string {
+  return PACIFIC_MONTH_SHORT_FORMATTER.format(
+    calendarDateToAnchorInstant(date)
+  );
+}
+
+function formatLookAheadSingleDate(
+  date: CalendarDateString,
+  referenceYear: number
+): string {
+  if (calendarDateYear(date) === referenceYear) {
+    return formatCalendarDateShortNoYear(date);
+  }
+  return formatCalendarDateShort(date);
+}
+
+/**
+ * Look Ahead report activity date cell: compact single dates and ranges.
+ *
+ * - Single date in the reference year: `Dec 12`; other years: `Dec 12, 2027`.
+ * - Same-month range: `Jan 1–31` or `Jan 1–31, 2027`.
+ * - Cross-month range, same year: `Jan 31 – Feb 2` or `Jan 31 – Feb 2, 2027`.
+ * - Cross-year range: `Dec 16, 2026 – Jan 1, 2027`.
+ *
+ * `referenceInstant` defaults to now (Pacific calendar year).
+ */
+export function formatLookAheadActivityDate(
+  start: CalendarDateString | string | null | undefined,
+  end: CalendarDateString | string | null | undefined,
+  options?: { referenceInstant?: Date | number | string }
+): string {
+  const startKey = pacificDayKey(start);
+  if (startKey == null) return '';
+
+  const referenceDate = pacificCalendarDateFromInstant(
+    options?.referenceInstant ?? new Date()
+  );
+  const referenceYear = referenceDate
+    ? calendarDateYear(referenceDate)
+    : new Date().getFullYear();
+
+  const endKey = pacificDayKey(end);
+  if (endKey == null || endKey === startKey) {
+    return formatLookAheadSingleDate(startKey, referenceYear);
+  }
+
+  const startYear = calendarDateYear(startKey);
+  const endYear = calendarDateYear(endKey);
+
+  if (startYear !== endYear) {
+    return `${formatCalendarDateShort(startKey)}${LOOK_AHEAD_DATE_RANGE_SEP_SPACED}${formatCalendarDateShort(endKey)}`;
+  }
+
+  if (calendarDateMonth(startKey) === calendarDateMonth(endKey)) {
+    const monthShort = formatCalendarMonthShort(startKey);
+    const startDay = formatCalendarDayOfMonth(startKey);
+    const endDay = formatCalendarDayOfMonth(endKey);
+    const range = `${monthShort} ${startDay}${LOOK_AHEAD_DATE_RANGE_SEP}${endDay}`;
+    return startYear === referenceYear ? range : `${range}, ${startYear}`;
+  }
+
+  const range = `${formatCalendarDateShortNoYear(startKey)}${LOOK_AHEAD_DATE_RANGE_SEP_SPACED}${formatCalendarDateShortNoYear(endKey)}`;
+  return startYear === referenceYear ? range : `${range}, ${startYear}`;
 }

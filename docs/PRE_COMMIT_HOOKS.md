@@ -198,16 +198,6 @@ fix:bug
 feature: add new component
 ```
 
-#### Using Commitizen (Optional)
-
-For an interactive commit prompt, use Commitizen:
-
-```bash
-npm run commit
-```
-
-This will guide you through creating a properly formatted commit message. Note that you can still use `git commit` directly without Commitizen.
-
 #### Troubleshooting Commit Messages
 
 If your commit message is rejected:
@@ -226,14 +216,6 @@ git commit -m "Added new feature"
 # ✅ Valid
 git commit -m "feat: add new feature"
 ```
-
-If `npm run commit` fails:
-
-1. Ensure Commitizen is installed: `npm install`
-2. Check that `cz-conventional-changelog` is in `node_modules`
-3. Try running directly: `npx cz`
-
-Remember: Commitizen is optional. You can always use `git commit` directly with a properly formatted message.
 
 ### Branch Naming Validation
 

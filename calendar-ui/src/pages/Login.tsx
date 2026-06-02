@@ -382,6 +382,7 @@ export function Login() {
                 />
                 <button
                   type="button"
+                  data-testid="login-new-password-toggle"
                   onClick={() => setShowNewPassword(!showNewPassword)}
                   className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
                   tabIndex={-1}
@@ -526,6 +527,7 @@ export function Login() {
               <Button
                 type="submit"
                 className="h-11 w-full font-medium"
+                data-testid="login-verify-reset-code"
                 disabled={isLoading || !resetCodeInput.trim()}
               >
                 {isLoading ? (
@@ -567,7 +569,10 @@ export function Login() {
   // Render: main login card (email-entry + password-entry)
   // -------------------------------------------------------------------------
   return (
-    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 p-4">
+    <div
+      className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 p-4"
+      data-testid="login-page"
+    >
       <Card className="w-full max-w-md border-0 shadow-xl">
         <CardHeader className="space-y-4 pb-2 text-center">
           <div className="flex flex-col items-center space-y-4">
@@ -655,6 +660,7 @@ export function Login() {
                   <Button
                     type="submit"
                     className="h-11 w-full font-medium"
+                    data-testid="login-continue-email"
                     disabled={isLoading || !emailInput.trim()}
                   >
                     {isLoading ? (
@@ -724,6 +730,7 @@ export function Login() {
                       />
                       <button
                         type="button"
+                        data-testid="login-password-toggle"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
                         tabIndex={-1}
@@ -746,6 +753,7 @@ export function Login() {
                   <Button
                     type="submit"
                     className="h-11 w-full font-medium"
+                    data-testid="login-submit-password"
                     disabled={isLoading || !password}
                   >
                     {isLoading ? (
@@ -832,6 +840,7 @@ export function Login() {
               <Button
                 type="submit"
                 className="h-11 w-full font-medium"
+                data-testid="login-submit-mock"
                 disabled={isLoading || !mockUsername.trim()}
               >
                 {isLoading ? (
