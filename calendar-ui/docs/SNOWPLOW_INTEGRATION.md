@@ -94,6 +94,27 @@ npm test
 - Optional fields in `calendar_action` may be omitted or set to `null` instead of empty strings.
 - Coordinate with the analytics team to confirm data retention and schema definitions.
 
+### Data sent (sanitization)
+
+To avoid transmitting PII, `calendar-ui` sends only sanitized summaries of filter state and search activity. Raw user identifiers, contact lists, and free-text search terms are never sent. The following sanitized fields are used when emitting `calendar_action` for a search event:
+
+- `dateRangeActive` (boolean) — whether a date range is active
+- `dateConfirmedFilter` (string) — `'any'` or the selected confirmation filter
+- `timeConfirmedFilter` (string) — `'any'` or the selected confirmation filter
+- `categoryCount` (number) — number of selected categories
+- `statusCount` (number) — number of selected statuses
+- `tagCount` (number) — number of selected tags
+- `leadMinistryCount` (number) — number of selected lead ministries
+- `leadOrgCount` (number) — number of selected lead organizations
+- `commsContactCount` (number) — total selected comms contacts (lead + others)
+- `eventPlannerCount` (number) — total selected event planners (lead + others)
+- `translationStatusCount` (number) — number of translation statuses selected
+- `translationLanguageCount` (number) — number of translation languages selected
+- `search_present` (boolean) — whether a search term was entered
+- `search_length_bucket` (string|null) — coarse length bucket (`'<20'`, `'<100'`, `'>=100'`) instead of raw text
+
+If additional detail is required by analytics (for example hashed values or sampling of text), please request a privacy review and schema update before sending any identifiable or hashed data.
+
 ## Rollout checklist
 
 - [ ] Confirm analytics team has receiver/collector configured for the environment.
