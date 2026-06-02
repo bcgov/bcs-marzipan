@@ -1,6 +1,6 @@
 Calendar Analytics (Snowplow) - Dev/Test Integration
 
-- Dev/test only: The Snowplow snippet was added to `index.html` for dev/test environments only. Do NOT deploy this snippet to Prod until instructed.
+- Runtime-gated: The Snowplow snippet is included in `index.html` but only initializes when `window.__APP_CONFIG__.ENABLE_SNOWPLOW === 'true'`. Keep the flag disabled in Prod until instructed.
 
 - Files added:
   - `src/lib/analytics.ts` — helper wrapper exposing `trackCalendarClick(action)` and `trackCalendarAction(payload)`.
