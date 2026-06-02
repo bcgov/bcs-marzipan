@@ -242,12 +242,8 @@ export function ReportFiltersBar({
           tagCount: (fs.tagIds || []).length,
           leadMinistryCount: (fs.leadMinistryIds || []).length,
           leadOrgCount: (fs.leadOrgIds || []).length,
-          commsContactCount:
-            ((fs.commsContactLeadUserIds || []).length || 0) +
-            ((fs.commsContactUserIds || []).length || 0),
-          eventPlannerCount:
-            ((fs.eventPlannerLeadIds || []).length || 0) +
-            ((fs.eventPlannerIds || []).length || 0),
+          commsContactCount: (fs.commsContactLeadUserIds || []).length,
+          eventPlannerCount: (fs.eventPlannerLeadIds || []).length,
           translationStatusCount: (fs.translationRequiredStatusIds || [])
             .length,
           translationLanguageCount: (fs.translationLanguageIds || []).length,
