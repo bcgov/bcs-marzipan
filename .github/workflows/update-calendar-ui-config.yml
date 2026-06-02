@@ -21,6 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install oc CLI
+        run: |
+          curl -L https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz | tar xz
+          sudo mv oc /usr/local/bin/
       - name: Create config.js
         run: |
           cat > config.js <<'EOF'
