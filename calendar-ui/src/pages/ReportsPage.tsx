@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from 'react';
 
+import { activityFilterStateToQueryParams } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { shouldWarnLargeReportRange } from '@corpcal/shared/reports/reportDateRange';
 import { reportPrintSheetLayoutWidthPx } from '@corpcal/shared/reports/reportPrintHtml';
@@ -31,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLiveActivityRowHighlights } from '@/hooks/useLiveActivitySyncContext';
 import { useActivityStatuses, useReports } from '@/hooks/useLookups';
+import { useReportsSavedFilters } from '@/hooks/useReportsSavedFilters';
 import { useReportsTablePreferences } from '@/hooks/useReportsTablePreferences';
 import {
   loadCustomReportConfig,
@@ -43,10 +45,10 @@ import {
   type ReportExportFormat,
 } from '@/lib/report-export';
 import {
-  buildReportDataRequestParamsFromActivityPreferences,
   resolveReportQueryDateRange,
   stableSerializeReportQueryParams,
-} from '@/lib/report-from-activity-filters';
+} from '@/lib/report-query-params';
+import { filterReportDataBySearchKeyword } from '@/lib/report-search-filter';
 import { reportQueryKeys } from '@/lib/reportQueryKeys';
 import {
   getStoredReportTabName,
@@ -119,6 +121,14 @@ export function ReportsPage() {
     canSeeDeleted,
     activeReport
   );
+
+  const savedFiltersState = useReportsSavedFilters({
+    preferences,
+    setPreferences,
+    canSeeDeleted,
+  });
+
+  const setReportPreferences = savedFiltersState.setPreferencesAndClearSaved;
   const { data: activityStatusesForFilter = [] } = useActivityStatuses();
 
   const statusArchiveIds = useMemo(() => {
@@ -132,19 +142,38 @@ export function ReportsPage() {
     };
   }, [activityStatusesForFilter]);
 
-  const reportQueryParams = useMemo(
+  const reportFetchParams = useMemo(
     () =>
-      buildReportDataRequestParamsFromActivityPreferences(
-        preferences,
+      activityFilterStateToQueryParams(
+        {
+          filterState: preferences.filterState,
+          searchKeyword: preferences.searchKeyword,
+          showCompleted: preferences.showCompleted,
+          showDeleted: preferences.showDeleted,
+        },
         statusArchiveIds,
         canSeeDeleted
       ),
-    [preferences, statusArchiveIds, canSeeDeleted]
+    [
+      preferences.filterState,
+      preferences.showCompleted,
+      preferences.showDeleted,
+      statusArchiveIds,
+      canSeeDeleted,
+    ]
   );
 
-  const reportQueryParamsKey = useMemo(
-    () => stableSerializeReportQueryParams(reportQueryParams),
-    [reportQueryParams]
+  const reportFetchParamsKey = useMemo(
+    () => stableSerializeReportQueryParams(reportFetchParams),
+    [reportFetchParams]
+  );
+
+  const reportExportParams = useMemo(
+    () => ({
+      ...reportFetchParams,
+      search: preferences.searchKeyword.trim() || undefined,
+    }),
+    [reportFetchParams, preferences.searchKeyword]
   );
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -175,16 +204,24 @@ export function ReportsPage() {
   }, [reports, searchParams]);
 
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: reportQueryKeys.data(activeReport, reportQueryParamsKey),
+    queryKey: reportQueryKeys.data(activeReport, reportFetchParamsKey),
     queryFn: () =>
       activeReport
-        ? fetchReportData(activeReport, reportQueryParams)
+        ? fetchReportData(activeReport, reportFetchParams)
         : Promise.reject(new Error('No report selected')),
     enabled: !!activeReport,
     placeholderData: (previousData) => previousData,
   });
 
-  const activityCount = useMemo(() => countReportActivities(data), [data]);
+  const displayData = useMemo(
+    () => filterReportDataBySearchKeyword(data, preferences.searchKeyword),
+    [data, preferences.searchKeyword]
+  );
+
+  const displayActivityCount = useMemo(
+    () => countReportActivities(displayData),
+    [displayData]
+  );
 
   const resolvedReportDateRange = useMemo(() => {
     if (!activeReport) return null;
@@ -234,8 +271,8 @@ export function ReportsPage() {
       await handleReportExport({
         reportType: activeReport,
         format,
-        data,
-        queryParams: reportQueryParams,
+        data: displayData,
+        queryParams: reportExportParams,
         customReportFields:
           activeReport === 'custom' ? customReportFields : undefined,
       });
@@ -295,7 +332,7 @@ export function ReportsPage() {
             <Button
               type="button"
               variant="default"
-              disabled={!data || isExporting || !activeReport}
+              disabled={!displayData || isExporting || !activeReport}
               className="gap-2"
               onClick={() => void runExport(exportConfig.format)}
             >
@@ -333,17 +370,27 @@ export function ReportsPage() {
             <ReportFiltersBar
               reportName={activeReport}
               preferences={preferences}
-              setPreferences={setPreferences}
+              setPreferences={setReportPreferences}
+              savedFilters={savedFiltersState.savedFiltersHook}
+              onApplySavedFilter={savedFiltersState.onApplySavedFilter}
+              activeSavedFilterId={
+                savedFiltersState.activeSavedFilter?.id ?? null
+              }
+              filterSummaryContext={savedFiltersState.filterSummaryContext}
+              parseSavedFilterForDraft={
+                savedFiltersState.parseSavedFilterForDraft
+              }
+              validFilterLookups={savedFiltersState.validFilterLookups}
               printPreviewRowLeading={
                 reportUsesDayRangeTabs(activeReport) ? (
                   <LookAheadDayRangeTabs
                     preferences={preferences}
-                    setPreferences={setPreferences}
+                    setPreferences={setReportPreferences}
                   />
                 ) : reportUsesMonthRangeTabs(activeReport) ? (
                   <ReportMonthRangeTabs
                     preferences={preferences}
-                    setPreferences={setPreferences}
+                    setPreferences={setReportPreferences}
                   />
                 ) : undefined
               }
@@ -353,9 +400,13 @@ export function ReportsPage() {
               <ReportTableSummaryBar
                 reportName={activeReport}
                 preferences={preferences}
-                setPreferences={setPreferences}
+                setPreferences={setReportPreferences}
                 canSeeDeleted={canSeeDeleted}
-                activityCount={activityCount}
+                activityCount={displayActivityCount}
+                appliedSavedFilterName={
+                  savedFiltersState.appliedSavedFilterName
+                }
+                onClearSavedFilter={savedFiltersState.handleClearPanelFilters}
               />
             ) : null}
           </div>
@@ -370,7 +421,7 @@ export function ReportsPage() {
                 <div className="flex items-center justify-center py-12">
                   <p className="text-muted-foreground">Loading report...</p>
                 </div>
-              ) : data ? (
+              ) : displayData ? (
                 isFullscreenPrintPreview(report.name) ? (
                   <div className="flex min-h-0 flex-col">
                     <div className="border-border flex h-9 shrink-0 items-center justify-end gap-4 border-t">
@@ -417,7 +468,7 @@ export function ReportsPage() {
                         >
                           <PrintReportPreview
                             reportTypeName={report.name}
-                            data={data}
+                            data={displayData}
                             highlightActivityIds={reportHighlightSet}
                           />
                         </div>
@@ -430,9 +481,9 @@ export function ReportsPage() {
                       showLargeRangeWarning={showLargeRangeWarning}
                       wasClamped={wasDateRangeClamped}
                     />
-                    {data.sections[0] ? (
+                    {displayData.sections[0] ? (
                       <CustomReportPreviewSection
-                        section={data.sections[0]}
+                        section={displayData.sections[0]}
                         config={customReportFields}
                         onFieldsChange={setCustomReportFields}
                         highlightedActivityIds={reportHighlightSet}

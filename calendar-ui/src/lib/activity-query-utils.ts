@@ -1,4 +1,10 @@
-import type { ActivityFilterState } from '@corpcal/shared';
+import {
+  activityMatchesFilterState,
+  activityMatchesSearchKeyword,
+  type ActivityFilterMatchInput,
+  type ActivityFilterState,
+  type ActivitySearchableInput,
+} from '@corpcal/shared';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type {
   FilterActivitiesQueryParams,
@@ -6,267 +12,150 @@ import type {
 } from '@corpcal/shared/schemas';
 import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
 import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
-import { CONFIRMED_STATUS_NAMES } from '@/lib/datetime-utils';
 import type { OptionItem } from '@/schemas/types';
+
+/** Maps a table row to the shared searchable-text input. */
+function activityTableRowToSearchableInput(
+  row: ActivityTableRow
+): ActivitySearchableInput {
+  return {
+    title: row.title,
+    displayId: row.displayId,
+    summaryPlainText: plainTextFromActivityRichField(row.summary),
+    executiveSummaryPlainText: plainTextFromActivityRichField(
+      row.executiveSummary
+    ),
+    categoryNames: row.activityCategories,
+    tagTexts: row.tags.map((t) => t.text),
+    lookAheadStatus: row.lookAheadStatus,
+    lookAheadSection: row.lookAheadSection,
+    venueText: row.venue ?? '',
+    leadOrg: row.leadOrg,
+    leadMinistryAbbreviation: row.leadMinistryAbbreviation,
+    leadMinistry: row.leadMinistry,
+    commsLeadName: row.commsLeadName,
+    eventPlanners: row.eventPlanners ?? [],
+    activityStatus: row.activityStatus,
+    representatives: row.activityRepresentatives,
+  };
+}
 
 /**
  * Client-side keyword filter for activity table rows.
- * Matches when the trimmed keyword appears (case-insensitive) in any searchable field.
- * Returns all rows when keyword is empty.
+ * Delegates to the shared keyword matcher so the searchable field set stays in
+ * sync with the Reports server search. Returns all rows when keyword is empty.
  */
 export function filterActivityRowsByKeyword(
   rows: ActivityTableRow[],
   keyword: string
 ): ActivityTableRow[] {
-  const term = keyword.trim();
-  if (term === '') return rows;
-  const lower = term.toLowerCase();
-  return rows.filter((row) => {
-    const searchableValues: string[] = [
-      row.title,
-      row.displayId ?? '',
-      plainTextFromActivityRichField(row.summary),
-      row.activityCategories.join(' '),
-      row.tags.map((t) => t.text).join(' '),
-      row.lookAheadStatus ?? '',
-      row.lookAheadSection ?? '',
-      row.venue ?? '',
-      row.leadOrg ?? '',
-      row.leadMinistryAbbreviation ?? '',
-      row.leadMinistry ?? '',
-      row.commsLeadName ?? '',
-      (row.eventPlanners ?? []).join(' '),
-      row.activityStatus,
-      row.activityRepresentatives.join(' '),
-    ];
-    return searchableValues.some((v) => v.toLowerCase().includes(lower));
-  });
+  if (keyword.trim() === '') return rows;
+  return rows.filter((row) =>
+    activityMatchesSearchKeyword(
+      activityTableRowToSearchableInput(row),
+      keyword
+    )
+  );
 }
 
-/**
- * Returns true when a single ISO date string falls within the given range.
- * noStartDate = no lower bound; noEndDate = no upper bound.
- */
-function isDateInRange(
-  isoDate: string,
-  startDate: string,
-  endDate: string,
-  noStartDate: boolean,
-  noEndDate: boolean
-): boolean {
-  const d = isoDate.slice(0, 10);
-  if (!noStartDate && startDate !== '' && d < startDate) return false;
-  if (!noEndDate && endDate !== '' && d > endDate) return false;
-  return true;
-}
-
-/** Optional context for filterActivityRowsByFilters (e.g. lookup options to resolve IDs to labels). */
+/** Optional context for filterActivityRowsByFilters (lookup options to resolve IDs to labels). */
 export interface FilterActivityRowsContext {
-  /** Options for translation required statuses (value = id, label = displayName matching row.translationsRequiredStatus). */
+  /**
+   * Options for translation required statuses. No longer required for status
+   * matching (resolved via row.translationsRequiredStatusId); retained for
+   * backward compatibility with existing callers.
+   */
   translationRequiredStatusOptions?: OptionItem[];
   /** Options for translation languages (value = id, label = string that appears in row.translationsRequired). */
   translationLanguageOptions?: OptionItem[];
 }
 
+export function canResolveTranslationLanguageFilter(
+  filterState: ActivityFilterState,
+  context?: FilterActivityRowsContext
+): boolean {
+  if (filterState.translationLanguageIds.length === 0) return true;
+  return (context?.translationLanguageOptions?.length ?? 0) > 0;
+}
+
+/** Maps a table row to the shared filter-match input. */
+function activityTableRowToFilterMatchInput(
+  row: ActivityTableRow
+): ActivityFilterMatchInput {
+  return {
+    id: row.id,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    categoryNames: row.activityCategories,
+    activityStatusId: row.activityStatusId,
+    pitchRequiredStatusName: row.pitchRequiredStatus,
+    pitchDate: row.pitchDate,
+    lookAheadStatus: row.lookAheadStatus,
+    lookAheadSection: row.lookAheadSection,
+    dateStatusName: row.dateStatus,
+    timeStatusName: row.timeStatus,
+    tagIds: row.tags.map((t) => t.id),
+    leadMinistryId: row.leadMinistryId,
+    leadOrgId: row.leadOrgId,
+    commsContactLeadUserId: row.commsContactLeadUserId,
+    eventPlannerLeadIds: row.eventPlannerLeadIds ?? [],
+    translationsRequiredStatusId: row.translationsRequiredStatusId,
+    translationLanguageNames: row.translationsRequired,
+  };
+}
+
+/** Builds a translation-language id -> label resolver from lookup options. */
+function buildTranslationLanguageLabelById(
+  options: OptionItem[] | undefined
+): Map<number, string> | undefined {
+  if (!options) return undefined;
+  const map = new Map<number, string>();
+  for (const opt of options) {
+    const id = parseInt(opt.value, 10);
+    if (Number.isFinite(id)) map.set(id, opt.label);
+  }
+  return map;
+}
+
 /**
  * Client-side filter by date range, category (names), status (IDs), pitch, tags, leads, translations, etc.
- * Same semantics as backend where applicable.
- * Optional context provides lookup options to resolve filter IDs to labels (e.g. for translation languages).
+ * Delegates to the shared {@link activityMatchesFilterState} predicate so list and
+ * Reports apply identical rules. Optional context resolves translation-language
+ * IDs to labels (the only dimension that cannot be matched by ID on the client).
  */
 export function filterActivityRowsByFilters(
   rows: ActivityTableRow[],
   filterState: ActivityFilterState,
   context?: FilterActivityRowsContext
 ): ActivityTableRow[] {
-  let result = rows;
-
-  const dr = filterState.dateRange;
-  const dateRangeActive =
-    dr.startDate !== '' || dr.endDate !== '' || dr.noStartDate || dr.noEndDate;
-  if (dateRangeActive) {
-    result = result.filter((row) => {
-      const start = row.startDate ?? '';
-      const end = row.endDate ?? '';
-      if (start === '' || end === '') return false;
-      return (
-        isDateInRange(
-          start,
-          dr.startDate,
-          dr.endDate,
-          dr.noStartDate,
-          dr.noEndDate
-        ) &&
-        isDateInRange(
-          end,
-          dr.startDate,
-          dr.endDate,
-          dr.noStartDate,
-          dr.noEndDate
-        )
-      );
-    });
-  }
-
-  if (filterState.categoryNames.length > 0) {
-    const set = new Set(
-      filterState.categoryNames.map((n) => n.toLowerCase().trim())
-    );
-    result = result.filter((row) =>
-      row.activityCategories.some((c) => set.has(c.toLowerCase().trim()))
-    );
-  }
-
-  if (filterState.activityStatusIds.length > 0) {
-    const statusSet = new Set(filterState.activityStatusIds);
-    result = result.filter((row) => statusSet.has(row.activityStatusId));
-  }
-
-  if (filterState.pitchRequiredStatusNames.length > 0) {
-    const pitchSet = new Set(
-      filterState.pitchRequiredStatusNames.map((n) => n.trim().toLowerCase())
-    );
-    result = result.filter((row) => {
-      const status = row.pitchRequiredStatus?.trim().toLowerCase() ?? '';
-      return status !== '' && pitchSet.has(status);
-    });
-  }
-
-  const pdf = filterState.pitchDateFilter;
-  if (pdf.kind === 'not_scheduled') {
-    result = result.filter((row) => row.pitchDate == null);
-  } else if (pdf.kind === 'scheduled') {
-    result = result.filter((row) => {
-      if (row.pitchDate == null) return false;
-      const dr = pdf.dateRange;
-      const rangeActive =
-        dr.startDate !== '' ||
-        dr.endDate !== '' ||
-        dr.noStartDate ||
-        dr.noEndDate;
-      if (!rangeActive) return true;
-      return isDateInRange(
-        row.pitchDate,
-        dr.startDate,
-        dr.endDate,
-        dr.noStartDate,
-        dr.noEndDate
-      );
-    });
-  }
-
-  if (filterState.lookAheadStatusValues.length > 0) {
-    const statusSet = new Set(filterState.lookAheadStatusValues);
-    result = result.filter((row) => {
-      const status = row.lookAheadStatus ?? null;
-      return status !== null && statusSet.has(status);
-    });
-  }
-
-  if (filterState.lookAheadSectionValues.length > 0) {
-    const sectionSet = new Set(filterState.lookAheadSectionValues);
-    result = result.filter((row) => {
-      const section = row.lookAheadSection ?? null;
-      return section !== null && sectionSet.has(section);
-    });
-  }
-
-  const isStatusConfirmed = (s: string) =>
-    CONFIRMED_STATUS_NAMES.includes((s ?? '').trim().toLowerCase());
-  if (filterState.dateConfirmedFilter !== 'any') {
-    if (filterState.dateConfirmedFilter === 'confirmed') {
-      result = result.filter((row) => isStatusConfirmed(row.dateStatus));
-    } else {
-      result = result.filter((row) => !isStatusConfirmed(row.dateStatus));
-    }
-  }
-  if (filterState.timeConfirmedFilter !== 'any') {
-    if (filterState.timeConfirmedFilter === 'confirmed') {
-      result = result.filter((row) => isStatusConfirmed(row.timeStatus));
-    } else {
-      result = result.filter((row) => !isStatusConfirmed(row.timeStatus));
-    }
-  }
-
-  if (filterState.tagIds.length > 0) {
-    const tagIdSet = new Set(filterState.tagIds);
-    result = result.filter((row) => row.tags.some((t) => tagIdSet.has(t.id)));
-  }
-
-  if (filterState.leadMinistryIds.length > 0) {
-    const ministrySet = new Set(filterState.leadMinistryIds);
-    result = result.filter(
-      (row) => row.leadMinistryId != null && ministrySet.has(row.leadMinistryId)
-    );
-  }
-  if (filterState.leadOrgIds.length > 0) {
-    const orgSet = new Set(filterState.leadOrgIds);
-    result = result.filter(
-      (row) => row.leadOrgId != null && orgSet.has(row.leadOrgId)
-    );
-  }
-  if (filterState.commsContactLeadUserIds.length > 0) {
-    const commsSet = new Set(filterState.commsContactLeadUserIds);
-    result = result.filter(
-      (row) =>
-        row.commsContactLeadUserId != null &&
-        commsSet.has(row.commsContactLeadUserId)
-    );
-  }
-  if (filterState.eventPlannerLeadIds.length > 0) {
-    const plannerSet = new Set(filterState.eventPlannerLeadIds);
-    result = result.filter((row) =>
-      (row.eventPlannerLeadIds ?? []).some((id) => plannerSet.has(id))
-    );
-  }
-
-  if (
-    filterState.translationRequiredStatusIds.length > 0 &&
-    context?.translationRequiredStatusOptions
-  ) {
-    const idSet = new Set(filterState.translationRequiredStatusIds);
-    const statusLabelSet = new Set(
-      context.translationRequiredStatusOptions
-        .filter((opt) => idSet.has(parseInt(opt.value, 10)))
-        .map((opt) => opt.label)
-    );
-    result = result.filter(
-      (row) =>
-        row.translationsRequiredStatus != null &&
-        statusLabelSet.has(row.translationsRequiredStatus)
-    );
-  }
-
-  if (
-    filterState.translationLanguageIds.length > 0 &&
+  const translationLanguageLabelById = buildTranslationLanguageLabelById(
     context?.translationLanguageOptions
-  ) {
-    const idSet = new Set(filterState.translationLanguageIds);
-    const labelSet = new Set(
-      context.translationLanguageOptions
-        .filter((opt) => idSet.has(parseInt(opt.value, 10)))
-        .map((opt) => opt.label)
-    );
-    result = result.filter((row) =>
-      row.translationsRequired.some((t) => labelSet.has(t))
-    );
-  }
-
-  return result;
+  );
+  return rows.filter((row) =>
+    activityMatchesFilterState(
+      filterState,
+      activityTableRowToFilterMatchInput(row),
+      { translationLanguageLabelById }
+    )
+  );
 }
 
-/** Params for activity list query (archive + context only; date/status filtered client-side). */
+/** Params for activity list query (archive + tab context only; panel filters are client-side). */
 export type ActivityListQueryParams = Partial<
   Pick<
     FilterActivitiesQueryParams,
     | 'includeCompleted'
     | 'includeDeleted'
-    | 'leadTeamId'
-    | 'commsContactLeadUserId'
-    | 'sharedWithTeamId'
+    | 'leadTeamIds'
+    | 'commsContactLeadUserIds'
     | 'sharedWithTeamIds'
-    | 'flagAssigneeUserId'
+    | 'flagAssigneeUserIds'
   >
 >;
+
+function sortNumericArray(ids: number[]): number[] {
+  return [...ids].sort((a, b) => a - b);
+}
 
 /** Normalize filters so the same logical view produces a stable query key. */
 export function normalizeListParams(
@@ -275,23 +164,29 @@ export function normalizeListParams(
   const {
     includeCompleted,
     includeDeleted,
-    leadTeamId,
-    commsContactLeadUserId,
-    sharedWithTeamId,
+    leadTeamIds,
+    commsContactLeadUserIds,
     sharedWithTeamIds,
-    flagAssigneeUserId,
+    flagAssigneeUserIds,
   } = params;
   const out: ActivityListQueryParams = {};
   if (includeCompleted !== undefined) out.includeCompleted = includeCompleted;
   if (includeDeleted !== undefined) out.includeDeleted = includeDeleted;
-  if (leadTeamId !== undefined) out.leadTeamId = leadTeamId;
-  if (commsContactLeadUserId !== undefined)
-    out.commsContactLeadUserId = commsContactLeadUserId;
-  if (sharedWithTeamId !== undefined) out.sharedWithTeamId = sharedWithTeamId;
-  if (sharedWithTeamIds !== undefined && sharedWithTeamIds.length > 0)
-    out.sharedWithTeamIds = [...sharedWithTeamIds].sort((a, b) => a - b);
-  if (flagAssigneeUserId !== undefined)
-    out.flagAssigneeUserId = flagAssigneeUserId;
+  if (leadTeamIds !== undefined && leadTeamIds.length > 0) {
+    out.leadTeamIds = sortNumericArray(leadTeamIds);
+  }
+  if (
+    commsContactLeadUserIds !== undefined &&
+    commsContactLeadUserIds.length > 0
+  ) {
+    out.commsContactLeadUserIds = sortNumericArray(commsContactLeadUserIds);
+  }
+  if (sharedWithTeamIds !== undefined && sharedWithTeamIds.length > 0) {
+    out.sharedWithTeamIds = sortNumericArray(sharedWithTeamIds);
+  }
+  if (flagAssigneeUserIds !== undefined && flagAssigneeUserIds.length > 0) {
+    out.flagAssigneeUserIds = sortNumericArray(flagAssigneeUserIds);
+  }
   return out;
 }
 

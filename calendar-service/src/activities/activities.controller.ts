@@ -80,6 +80,7 @@ import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-dele
 import { CanRestoreActivityGuard } from '../policy/guards/can-restore-activity.guard';
 import { ActivityResponseRedactionInterceptor } from './interceptors/activity-response-redaction.interceptor';
 import { ActivitiesService } from './services/activities.service';
+import { hasActivityFindAllFilterFields } from './services/activity-find-all-filters';
 
 @ApiTags('activities')
 @Controller('activities')
@@ -209,23 +210,7 @@ export class ActivitiesController {
     // query is now validated and typed by ZodValidationPipe
     // filterActivitiesQuerySchema has defaults for page/limit, so query will always have those
     // Check if there are any actual filter fields (excluding pagination defaults)
-    const hasFilters =
-      query.title !== undefined ||
-      query.startDateFrom !== undefined ||
-      query.startDateTo !== undefined ||
-      query.endDateFrom !== undefined ||
-      query.endDateTo !== undefined ||
-      query.activityStatusId !== undefined ||
-      query.leadMinistryId !== undefined ||
-      query.leadTeamId !== undefined ||
-      query.commsContactLeadUserId !== undefined ||
-      query.sharedWithTeamId !== undefined ||
-      query.sharedWithTeamIds !== undefined ||
-      query.lookAheadSection !== undefined ||
-      query.city !== undefined ||
-      query.isIssue !== undefined ||
-      query.includeCompleted !== undefined ||
-      query.includeDeleted !== undefined;
+    const hasFilters = hasActivityFindAllFilterFields(query);
     const filters = hasFilters ? query : undefined;
     const results = await this.activitiesService.findAll(filters, ctx);
     return {

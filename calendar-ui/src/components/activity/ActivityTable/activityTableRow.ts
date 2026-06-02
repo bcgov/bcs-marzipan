@@ -24,6 +24,8 @@ export interface ActivityTableRow {
 
   // Summary column
   summary: string;
+  /** Executive summary (raw rich-text/string); used for keyword search parity with Reports. */
+  executiveSummary: string;
   tags: Array<{ id: number; text: string }>;
   lookAheadStatus: string | null;
   lookAheadSection: string | null;
@@ -58,6 +60,8 @@ export interface ActivityTableRow {
   // Materials column
   translationsRequired: string[];
   translationsRequiredStatus: string | null;
+  /** Translation required status ID for ID-based filtering (parity with server). */
+  translationsRequiredStatusId: number | null;
   commsMaterials: string[];
 
   // Status column
@@ -118,6 +122,7 @@ export function mapActivityResponseToTableRow(
 
     // Summary
     summary: activity.summary,
+    executiveSummary: activity.executiveSummary ?? '',
     tags: activity.tags,
     lookAheadStatus: activity.lookAheadStatus ?? null,
     lookAheadSection: activity.lookAheadSection ?? null,
@@ -149,6 +154,7 @@ export function mapActivityResponseToTableRow(
     // Materials
     translationsRequired: activity.translationsRequired ?? [],
     translationsRequiredStatus: activity.translationsRequiredStatus ?? null,
+    translationsRequiredStatusId: activity.translationsRequiredStatusId ?? null,
     commsMaterials: activity.commsMaterials,
 
     // Status

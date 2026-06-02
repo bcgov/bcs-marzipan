@@ -32,6 +32,10 @@ const URL_PARAM_LOOK_AHEAD_SECTION = 'lookAheadSection';
 const URL_PARAM_DATE_CONFIRMED = 'dateConfirmed';
 const URL_PARAM_TIME_CONFIRMED = 'timeConfirmed';
 const URL_PARAM_TAG = 'tag';
+const URL_PARAM_LEAD_MINISTRY = 'leadMinistry';
+const URL_PARAM_LEAD_ORG = 'leadOrg';
+const URL_PARAM_COMMS_LEAD = 'commsLead';
+const URL_PARAM_EVENT_PLANNER = 'eventPlanner';
 const URL_PARAM_TRANSLATION = 'translation';
 const URL_PARAM_TRANSLATION_STATUS = 'translationStatus';
 
@@ -199,6 +203,42 @@ function parseFromSearchParams(
           .filter((n) => Number.isFinite(n))
       : [];
 
+  const leadMinistryParam = searchParams.get(URL_PARAM_LEAD_MINISTRY);
+  const leadMinistryIds =
+    typeof leadMinistryParam === 'string' && leadMinistryParam.trim()
+      ? leadMinistryParam
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n))
+      : [];
+
+  const leadOrgParam = searchParams.get(URL_PARAM_LEAD_ORG);
+  const leadOrgIds =
+    typeof leadOrgParam === 'string' && leadOrgParam.trim()
+      ? leadOrgParam
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n))
+      : [];
+
+  const commsLeadParam = searchParams.get(URL_PARAM_COMMS_LEAD);
+  const commsContactLeadUserIds =
+    typeof commsLeadParam === 'string' && commsLeadParam.trim()
+      ? commsLeadParam
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n))
+      : [];
+
+  const eventPlannerParam = searchParams.get(URL_PARAM_EVENT_PLANNER);
+  const eventPlannerLeadIds =
+    typeof eventPlannerParam === 'string' && eventPlannerParam.trim()
+      ? eventPlannerParam
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n))
+      : [];
+
   const translationParam = searchParams.get(URL_PARAM_TRANSLATION);
   const translationLanguageIds =
     typeof translationParam === 'string' && translationParam.trim()
@@ -233,10 +273,10 @@ function parseFromSearchParams(
     dateConfirmedFilter,
     timeConfirmedFilter,
     tagIds,
-    leadMinistryIds: [],
-    leadOrgIds: [],
-    commsContactLeadUserIds: [],
-    eventPlannerLeadIds: [],
+    leadMinistryIds,
+    leadOrgIds,
+    commsContactLeadUserIds,
+    eventPlannerLeadIds,
     translationRequiredStatusIds,
     translationLanguageIds,
   };
@@ -560,6 +600,10 @@ export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
     searchParams.has(URL_PARAM_DATE_CONFIRMED) ||
     searchParams.has(URL_PARAM_TIME_CONFIRMED) ||
     searchParams.has(URL_PARAM_TAG) ||
+    searchParams.has(URL_PARAM_LEAD_MINISTRY) ||
+    searchParams.has(URL_PARAM_LEAD_ORG) ||
+    searchParams.has(URL_PARAM_COMMS_LEAD) ||
+    searchParams.has(URL_PARAM_EVENT_PLANNER) ||
     searchParams.has(URL_PARAM_TRANSLATION) ||
     searchParams.has(URL_PARAM_TRANSLATION_STATUS)
   );
@@ -598,6 +642,10 @@ export function preferencesToParams(
     [URL_PARAM_TIME_CONFIRMED]:
       f.timeConfirmedFilter === 'any' ? '' : f.timeConfirmedFilter,
     [URL_PARAM_TAG]: f.tagIds.join(','),
+    [URL_PARAM_LEAD_MINISTRY]: f.leadMinistryIds.join(','),
+    [URL_PARAM_LEAD_ORG]: f.leadOrgIds.join(','),
+    [URL_PARAM_COMMS_LEAD]: f.commsContactLeadUserIds.join(','),
+    [URL_PARAM_EVENT_PLANNER]: f.eventPlannerLeadIds.join(','),
     [URL_PARAM_TRANSLATION]: f.translationLanguageIds.join(','),
     [URL_PARAM_TRANSLATION_STATUS]: f.translationRequiredStatusIds.join(','),
   };

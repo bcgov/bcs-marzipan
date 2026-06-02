@@ -65,12 +65,9 @@ export class LookAheadService {
       // `requireLookAheadKey: true` guarantees a non-null key, but narrow for TS.
       if (row.lookAheadKey === null) continue;
       const filters: FilterActivitiesQueryParams = {
-        lookAheadSection: row.lookAheadKey,
+        lookAheadSectionValues: [row.lookAheadKey],
         page: 1,
         limit: 500,
-        sharedWithTeamIds: undefined,
-        includeCompleted: undefined,
-        includeDeleted: undefined,
       };
       if (options?.startDate) {
         filters.startDateFrom = options.startDate;

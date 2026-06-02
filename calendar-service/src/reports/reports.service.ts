@@ -92,8 +92,29 @@ function pickDefinedActivityFilters(
 function withoutActivityStartDateWindow(
   filters: Partial<FilterActivitiesQueryParams>
 ): Partial<FilterActivitiesQueryParams> {
-  const { startDateFrom: _f, startDateTo: _t, ...rest } = filters;
+  const {
+    startDateFrom: _f,
+    startDateTo: _t,
+    scheduledBothDatesInRange: _b,
+    ...rest
+  } = filters;
   return rest;
+}
+
+/** Intersect admin-pinned look-ahead section with user section filter. */
+function mergePinnedLookAheadSection(
+  filters: FilterActivitiesQueryParams,
+  pinnedSection: string | undefined
+): void {
+  if (!pinnedSection) return;
+  const userSections = filters.lookAheadSectionValues;
+  if (userSections != null && userSections.length > 0) {
+    filters.lookAheadSectionValues = userSections.includes(pinnedSection)
+      ? [pinnedSection]
+      : ['__no_matching_section__'];
+  } else {
+    filters.lookAheadSectionValues = [pinnedSection];
+  }
 }
 
 /** User query filters ready to merge onto section-scoped activity queries. */
@@ -584,9 +605,6 @@ export class ReportsService {
       const filters: FilterActivitiesQueryParams = {
         page: 1,
         limit: 100,
-        sharedWithTeamIds: undefined,
-        includeCompleted: undefined,
-        includeDeleted: undefined,
         startDateFrom: queryWindow.queryStartDateFrom,
         startDateTo: queryWindow.queryStartDateTo,
       };
@@ -597,7 +615,10 @@ export class ReportsService {
       );
 
       if (report.config.globalFilter?.lookAheadSection) {
-        filters.lookAheadSection = report.config.globalFilter.lookAheadSection;
+        mergePinnedLookAheadSection(
+          filters,
+          report.config.globalFilter.lookAheadSection
+        );
       }
 
       let activities = await this.activitiesService.findAll(filters, ctx);
@@ -638,9 +659,6 @@ export class ReportsService {
         const filters: FilterActivitiesQueryParams = {
           page: 1,
           limit: 100,
-          sharedWithTeamIds: undefined,
-          includeCompleted: undefined,
-          includeDeleted: undefined,
           startDateFrom: dateWindow.start,
           startDateTo: dateWindow.end,
         };
@@ -651,7 +669,7 @@ export class ReportsService {
         );
 
         if (mergedFilter?.lookAheadSection) {
-          filters.lookAheadSection = mergedFilter.lookAheadSection;
+          mergePinnedLookAheadSection(filters, mergedFilter.lookAheadSection);
         }
 
         let activities = await this.activitiesService.findAll(filters, ctx);

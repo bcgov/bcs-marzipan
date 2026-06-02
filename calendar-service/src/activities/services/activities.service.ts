@@ -9,14 +9,13 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, gte, inArray, isNull, lte, ne, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 
 import {
   activities,
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
-  activityFlags,
   activityHistory,
   activityReportSettings,
   activityRepresentatives,
@@ -98,6 +97,7 @@ import { getVisibleTagIds } from '../../policy/tag-scoping.helper';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
+import { buildActivityFindAllConditions } from './activity-find-all-filters';
 import { ActivityFlagsService } from './activity-flags.service';
 import { ActivityHistoryService } from './activity-history.service';
 import { ActivityJunctionService } from './activity-junction.service';
@@ -1465,84 +1465,23 @@ export class ActivitiesService {
         ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN);
 
     if (filters) {
-      const conditions: SQL[] = [];
-      if (filters.title) {
-        conditions.push(eq(activities.title, filters.title));
-      }
-      if (filters.activityStatusId !== undefined) {
-        conditions.push(
-          eq(activities.activityStatusId, filters.activityStatusId)
-        );
-      } else {
-        if (!allowIncludeDeleted && deletedStatusId !== undefined) {
-          conditions.push(ne(activities.activityStatusId, deletedStatusId));
-        }
-        if (
-          filters.includeCompleted !== true &&
-          completedStatusId !== undefined
-        ) {
-          conditions.push(ne(activities.activityStatusId, completedStatusId));
-        }
-      }
-      if (filters.isIssue !== undefined) {
-        conditions.push(eq(activities.isIssue, filters.isIssue));
-      }
-      if (filters.leadMinistryId !== undefined) {
-        conditions.push(eq(activities.leadMinistryId, filters.leadMinistryId));
-      }
-      if (filters.leadTeamId !== undefined) {
-        conditions.push(eq(activities.leadTeamId, filters.leadTeamId));
-      }
-      if (filters.lookAheadSection) {
-        conditions.push(
-          eq(activities.lookAheadSection, filters.lookAheadSection)
-        );
-      }
-      // Note: City filter is handled after initial query with a separate join
-      // TODO: Optimize with proper join in main query
-      if (filters.startDateFrom) {
-        conditions.push(gte(activities.startDate, filters.startDateFrom));
-      }
-      if (filters.startDateTo) {
-        conditions.push(lte(activities.startDate, filters.startDateTo));
-      }
-      if (filters.endDateFrom) {
-        conditions.push(gte(activities.endDate, filters.endDateFrom));
-      }
-      if (filters.endDateTo) {
-        conditions.push(lte(activities.endDate, filters.endDateTo));
-      }
+      const conditions = buildActivityFindAllConditions({
+        filters,
+        deletedStatusId,
+        completedStatusId,
+        allowIncludeDeleted,
+        db: this.databaseService.db,
+      });
+
       if (conditions.length > 0) {
         activityResults = await this.databaseService.db
           .select()
           .from(activities)
           .where(and(...conditions));
       } else {
-        // No other conditions: apply default status exclusions
-        const statusConditions: SQL[] = [];
-        if (!allowIncludeDeleted && deletedStatusId !== undefined) {
-          statusConditions.push(
-            ne(activities.activityStatusId, deletedStatusId)
-          );
-        }
-        if (
-          filters.includeCompleted !== true &&
-          completedStatusId !== undefined
-        ) {
-          statusConditions.push(
-            ne(activities.activityStatusId, completedStatusId)
-          );
-        }
-        if (statusConditions.length > 0) {
-          activityResults = await this.databaseService.db
-            .select()
-            .from(activities)
-            .where(and(...statusConditions));
-        } else {
-          activityResults = await this.databaseService.db
-            .select()
-            .from(activities);
-        }
+        activityResults = await this.databaseService.db
+          .select()
+          .from(activities);
       }
     } else {
       // No filters: exclude deleted only (other callers e.g. calendar may want completed)
@@ -1556,80 +1495,6 @@ export class ActivitiesService {
           .select()
           .from(activities);
       }
-    }
-
-    // Handle city filter with proper join if needed
-    if (filters && filters.city !== undefined) {
-      const activitiesWithCity = await this.databaseService.db
-        .select({ activityId: venueAddresses.activityId })
-        .from(venueAddresses)
-        .where(eq(venueAddresses.city, filters.city));
-
-      const activityIdsWithCity = new Set(
-        activitiesWithCity.map((a) => a.activityId)
-      );
-      activityResults = activityResults.filter((a) =>
-        activityIdsWithCity.has(a.id)
-      );
-    }
-
-    // Restrict to activities where this user is the comms contact lead
-    if (filters?.commsContactLeadUserId !== undefined) {
-      const commsLeadRows = await this.databaseService.db
-        .select({ activityId: activityCommsContacts.activityId })
-        .from(activityCommsContacts)
-        .where(
-          and(
-            eq(activityCommsContacts.userId, filters.commsContactLeadUserId),
-            eq(activityCommsContacts.isLead, true),
-            eq(activityCommsContacts.isActive, true)
-          )
-        );
-      const commsLeadIds = new Set(commsLeadRows.map((r) => r.activityId));
-      activityResults = activityResults.filter((a) => commsLeadIds.has(a.id));
-    }
-
-    // Restrict to activities flag-assigned to this user
-    if (filters?.flagAssigneeUserId !== undefined) {
-      const flagRows = await this.databaseService.db
-        .select({ activityId: activityFlags.activityId })
-        .from(activityFlags)
-        .where(eq(activityFlags.assigneeId, filters.flagAssigneeUserId));
-      const flaggedIds = new Set(flagRows.map((r) => r.activityId));
-      activityResults = activityResults.filter((a) => flaggedIds.has(a.id));
-    }
-
-    // Restrict to activities shared with this team
-    if (filters?.sharedWithTeamId !== undefined) {
-      const sharedRows = await this.databaseService.db
-        .select({ activityId: activitySharedWithTeams.activityId })
-        .from(activitySharedWithTeams)
-        .where(
-          and(
-            eq(activitySharedWithTeams.teamId, filters.sharedWithTeamId),
-            eq(activitySharedWithTeams.isActive, true)
-          )
-        );
-      const sharedIds = new Set(sharedRows.map((r) => r.activityId));
-      activityResults = activityResults.filter((a) => sharedIds.has(a.id));
-    }
-
-    // Restrict to activities shared with any of these teams
-    if (
-      filters?.sharedWithTeamIds !== undefined &&
-      filters.sharedWithTeamIds.length > 0
-    ) {
-      const sharedRows = await this.databaseService.db
-        .select({ activityId: activitySharedWithTeams.activityId })
-        .from(activitySharedWithTeams)
-        .where(
-          and(
-            inArray(activitySharedWithTeams.teamId, filters.sharedWithTeamIds),
-            eq(activitySharedWithTeams.isActive, true)
-          )
-        );
-      const sharedIds = new Set(sharedRows.map((r) => r.activityId));
-      activityResults = activityResults.filter((a) => sharedIds.has(a.id));
     }
 
     // Team-based data scoping: when bypass is false, restrict to activities visible by visibility rules

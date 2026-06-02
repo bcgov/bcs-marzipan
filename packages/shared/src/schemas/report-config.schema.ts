@@ -34,7 +34,7 @@ export const reportFilterConfigSchema = z.object({
   /**
    * Bound the section to a single look-ahead bucket key (e.g. `events`).
    * Look-ahead-aware features may interpret this; generic report engine
-   * forwards it to the activity finder via `FilterActivitiesQueryParams.lookAheadSection`.
+   * forwards it to the activity finder via `FilterActivitiesQueryParams.lookAheadSectionValues`.
    */
   lookAheadSection: z.string().optional(),
 });

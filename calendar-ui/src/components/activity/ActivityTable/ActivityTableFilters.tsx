@@ -1,7 +1,10 @@
 import { Search, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
-import type { ActivityFilterState } from '@corpcal/shared';
+import {
+  hasActivityFilterCriteria,
+  type ActivityFilterState,
+} from '@corpcal/shared';
 import { canViewActivityFieldScope } from '@corpcal/shared/auth';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import {
@@ -74,67 +77,23 @@ export interface ActivityTableFiltersProps {
   };
 }
 
+/**
+ * True when any filter criteria are present in `filterState`.
+ *
+ * Delegates to the shared {@link hasActivityFilterCriteria}: detection is purely
+ * value-based, so applied pitch / look-ahead criteria count as active even when
+ * their controls are hidden by field scope. The optional `pitchVisibility`
+ * parameter is retained for call-site compatibility but no longer affects the
+ * result (pitch criteria always count when present).
+ */
 export function hasAnyActivityTableFilterActive(
   filterState: ActivityFilterState,
-  pitchVisibility?: {
+  _pitchVisibility?: {
     canViewPitchStatus: boolean;
     canViewPitchDate: boolean;
   }
 ): boolean {
-  const canViewPitchStatus = pitchVisibility?.canViewPitchStatus ?? true;
-  const canViewPitchDate = pitchVisibility?.canViewPitchDate ?? true;
-  const {
-    dateRange,
-    categoryNames,
-    activityStatusIds,
-    pitchRequiredStatusNames,
-    pitchDateFilter,
-    lookAheadStatusValues,
-    lookAheadSectionValues,
-    dateConfirmedFilter,
-    timeConfirmedFilter,
-    tagIds,
-    leadMinistryIds,
-    leadOrgIds,
-    commsContactLeadUserIds,
-    eventPlannerLeadIds,
-    translationRequiredStatusIds,
-    translationLanguageIds,
-  } = filterState;
-  const pitchDateRangeActive =
-    pitchDateFilter.kind === 'scheduled' &&
-    isDateRangeActive(pitchDateFilter.dateRange);
-  const pitchStatusPartActive =
-    canViewPitchStatus && pitchRequiredStatusNames.length > 0;
-  const pitchDatePartActive =
-    canViewPitchDate &&
-    (pitchDateFilter.kind !== 'any' || pitchDateRangeActive);
-  const pitchActive = pitchStatusPartActive || pitchDatePartActive;
-  const lookAheadActive =
-    lookAheadStatusValues.length > 0 || lookAheadSectionValues.length > 0;
-  const leadsActive =
-    leadMinistryIds.length > 0 ||
-    leadOrgIds.length > 0 ||
-    commsContactLeadUserIds.length > 0 ||
-    eventPlannerLeadIds.length > 0;
-  const translationsActive =
-    translationRequiredStatusIds.length > 0 ||
-    translationLanguageIds.length > 0;
-  return (
-    dateRange.startDate !== '' ||
-    dateRange.endDate !== '' ||
-    dateRange.noStartDate ||
-    dateRange.noEndDate ||
-    categoryNames.length > 0 ||
-    activityStatusIds.length > 0 ||
-    pitchActive ||
-    lookAheadActive ||
-    dateConfirmedFilter !== 'any' ||
-    timeConfirmedFilter !== 'any' ||
-    tagIds.length > 0 ||
-    leadsActive ||
-    translationsActive
-  );
+  return hasActivityFilterCriteria(filterState);
 }
 
 export function ActivityTableFilters({

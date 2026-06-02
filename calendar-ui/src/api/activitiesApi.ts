@@ -3,15 +3,16 @@ import type {
   ActivityResponse,
   GlobalActivityHistoryEntry,
 } from '@corpcal/shared/api/types';
-import type {
-  AddActivityHistoryNoteRequest,
-  CloneActivityRequest,
-  CreateActivityRequest,
-  FilterActivitiesQueryParams,
-  RequestDeleteRequest,
-  RestoreRequest,
-  SoftDeleteRequest,
-  UpdateActivityRequest,
+import {
+  serializeFilterActivitiesQueryParams,
+  type AddActivityHistoryNoteRequest,
+  type CloneActivityRequest,
+  type CreateActivityRequest,
+  type FilterActivitiesQueryParams,
+  type RequestDeleteRequest,
+  type RestoreRequest,
+  type SoftDeleteRequest,
+  type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
 
 import { createLogger } from '../lib/logger';
@@ -24,13 +25,7 @@ const logger = createLogger('ActivitiesAPI');
 export async function fetchActivities(
   filters?: Partial<FilterActivitiesQueryParams>
 ): Promise<ActivityResponse[]> {
-  const params =
-    filters?.sharedWithTeamIds != null && filters.sharedWithTeamIds.length > 0
-      ? {
-          ...filters,
-          sharedWithTeamIds: filters.sharedWithTeamIds.join(','),
-        }
-      : filters;
+  const params = serializeFilterActivitiesQueryParams(filters);
   const res = await api.get<{ success: boolean; data: ActivityResponse[] }>(
     '/activities',
     {

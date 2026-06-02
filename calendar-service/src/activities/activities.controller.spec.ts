@@ -166,13 +166,7 @@ describe('ActivitiesController', () => {
       mockActivitiesService.findAll.mockResolvedValue(activities);
 
       const result = await controller.findAll(
-        {
-          page: 1,
-          limit: 10,
-          sharedWithTeamIds: undefined,
-          includeCompleted: undefined,
-          includeDeleted: undefined,
-        },
+        { page: 1, limit: 10 },
         {} as Parameters<ActivitiesController['findAll']>[1]
       );
 
@@ -189,9 +183,6 @@ describe('ActivitiesController', () => {
         page: 1,
         limit: 10,
         title: 'Test',
-        sharedWithTeamIds: undefined,
-        includeCompleted: undefined,
-        includeDeleted: undefined,
       };
       mockActivitiesService.findAll.mockResolvedValue(activities);
 
