@@ -7,10 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       enable_snowplow:
-        description: 'Set to "true" to enable Snowplow, "false" to disable'
+        description: 'Enable Snowplow runtime tracking'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
         required: false
         default: 'true'
-
 jobs:
   update-config:
     name: Create/update config.js ConfigMap and rollout
