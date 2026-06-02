@@ -37,10 +37,10 @@ jobs:
         run: |
           oc project "$NAMESPACE"
 
-      - name: Apply ConfigMap (create-or-update)
+      - name: Apply ConfigMap (update config.js key only)
         run: |
-          oc create configmap calendar-ui-config --from-file=config.js=config.js -o yaml --dry-run=client | oc apply -f -
-
+          CONFIG_JS_JSON=$(python3 -c 'import json; print(json.dumps(open("config.js", "r", encoding="utf-8").read()))')
+          oc patch configmap/calendar-ui-config --type merge -p "{\"data\":{\"config.js\":${CONFIG_JS_JSON}}}"
       - name: Restart calendar-ui deployment
         run: |
           oc rollout restart deployment/calendar-ui
