@@ -50,7 +50,7 @@ export function AdminSection({
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
-              {title.charAt(0).toUpperCase() + title.slice(1)}
+              {title}
             </h2>
             {description && (
               <p className="mt-1 text-sm text-slate-600">{description}</p>

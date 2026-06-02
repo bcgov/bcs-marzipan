@@ -167,11 +167,11 @@ const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   },
   {
     id: 'startDate',
-    label: 'Scheduled Date',
+    label: 'Scheduled date',
     defaultDirection: 'asc',
     tieBreakers: [{ key: 'startTime', direction: 'asc' }],
   },
-  { id: 'lastUpdated', label: 'Last Updated', defaultDirection: 'desc' },
+  { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
   { id: 'createdDateTime', label: 'Date Created', defaultDirection: 'desc' },
 ];
 

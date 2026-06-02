@@ -31,7 +31,7 @@ const KEYWORD_DEBOUNCE_MS = 400;
 const USER_SORT_COLUMNS: SortColumnConfig[] = [
   { id: 'name', label: 'Name', defaultDirection: 'asc' },
   { id: 'role', label: 'Role', defaultDirection: 'asc' },
-  { id: 'lastUpdated', label: 'Last Updated', defaultDirection: 'desc' },
+  { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
 ];
 
 export interface FilterOption {
