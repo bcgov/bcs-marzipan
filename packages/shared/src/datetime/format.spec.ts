@@ -4,6 +4,7 @@ import {
   formatCalendarDateCover,
   formatCalendarDateHeading,
   formatCalendarDateLong,
+  formatCalendarDateRangeHeading,
   formatCalendarDateShort,
   formatCalendarDateShortNoYear,
   formatCalendarDateShortNullable,
@@ -23,6 +24,21 @@ const APR_27 = toCalendarDateString('2026-04-27');
 describe('calendar-date formatters', () => {
   it('formatCalendarDateHeading uses uppercase weekday-month-day-year', () => {
     expect(formatCalendarDateHeading(APR_27)).toBe('MONDAY, APRIL 27, 2026');
+  });
+
+  it('formatCalendarDateRangeHeading renders same-year inclusive ranges', () => {
+    expect(
+      formatCalendarDateRangeHeading(
+        toCalendarDateString('2026-05-04'),
+        toCalendarDateString('2026-05-06')
+      )
+    ).toBe('MONDAY, MAY 4 – WEDNESDAY, MAY 6, 2026');
+  });
+
+  it('formatCalendarDateRangeHeading collapses to a single day heading', () => {
+    expect(formatCalendarDateRangeHeading(APR_27, APR_27)).toBe(
+      'MONDAY, APRIL 27, 2026'
+    );
   });
 
   it('formatCalendarDateCover renders short weekday, short month, year', () => {

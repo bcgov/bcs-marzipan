@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { DateRangeValue } from '@corpcal/shared';
 import {
-  defaultThirtySixtyNinetyDateRange,
   pacificCalendarDateFromInstant,
   thirtySixtyNinetyDateRangeFromPacificDate,
   type CalendarDateString,
@@ -14,10 +12,10 @@ import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreference
 const MONTH_COUNTS = [1, 3, 6] as const;
 const PACIFIC_DATE_CHECK_MS = 60_000;
 
-export type ThirtySixtyNinetyMonthCount = (typeof MONTH_COUNTS)[number];
+export type ReportMonthCount = (typeof MONTH_COUNTS)[number];
 
 function monthRangePreset(
-  monthCount: ThirtySixtyNinetyMonthCount,
+  monthCount: ReportMonthCount,
   pacificToday: CalendarDateString
 ) {
   return thirtySixtyNinetyDateRangeFromPacificDate(monthCount, pacificToday);
@@ -27,7 +25,7 @@ function activeMonthCountFromRange(
   startDate: string,
   endDate: string,
   pacificToday: CalendarDateString
-): ThirtySixtyNinetyMonthCount | null {
+): ReportMonthCount | null {
   if (!startDate || !endDate) return null;
   for (const count of MONTH_COUNTS) {
     const preset = monthRangePreset(count, pacificToday);
@@ -38,19 +36,21 @@ function activeMonthCountFromRange(
   return null;
 }
 
-export interface ThirtySixtyNinetyMonthRangeTabsProps {
+export interface ReportMonthRangeTabsProps {
   preferences: ActivityTablePreferences;
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
+  /** Accessible label for the tab list. */
+  ariaLabel?: string;
 }
 
 /**
- * Quick-pick month windows for the 30/60/90 report beneath the shared filters.
- * Presets anchor to the first day of the current Pacific calendar month.
+ * Quick-pick month windows for reports that anchor to the current Pacific month.
  */
-export function ThirtySixtyNinetyMonthRangeTabs({
+export function ReportMonthRangeTabs({
   preferences,
   setPreferences,
-}: ThirtySixtyNinetyMonthRangeTabsProps) {
+  ariaLabel = 'Report month range',
+}: ReportMonthRangeTabsProps) {
   const [clockTick, setClockTick] = useState(() => Date.now());
   const dateRange = preferences.filterState.dateRange;
   const pacificToday = useMemo(
@@ -67,7 +67,7 @@ export function ThirtySixtyNinetyMonthRangeTabs({
   }, []);
 
   const applyMonthCount = useCallback(
-    (monthCount: ThirtySixtyNinetyMonthCount) => {
+    (monthCount: ReportMonthCount) => {
       if (!pacificToday) return;
       const preset = monthRangePreset(monthCount, pacificToday);
       setPreferences({
@@ -124,21 +124,11 @@ export function ThirtySixtyNinetyMonthRangeTabs({
       }}
       className="w-auto"
     >
-      <TabsList size="sm" aria-label="30/60/90 month range">
+      <TabsList size="sm" aria-label={ariaLabel}>
         <TabsTrigger value="1">1 month</TabsTrigger>
         <TabsTrigger value="3">3 months</TabsTrigger>
         <TabsTrigger value="6">6 months</TabsTrigger>
       </TabsList>
     </Tabs>
   );
-}
-
-export function buildDefaultThirtySixtyNinetyFilterDateRange(): DateRangeValue {
-  const preset = defaultThirtySixtyNinetyDateRange(3);
-  return {
-    startDate: preset.start,
-    endDate: preset.end,
-    noStartDate: false,
-    noEndDate: false,
-  };
 }

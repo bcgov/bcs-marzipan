@@ -30,6 +30,7 @@ export {
   formatCalendarDateCover,
   formatCalendarDateHeading,
   formatCalendarDateLong,
+  formatCalendarDateRangeHeading,
   formatCalendarMonthYear,
   formatCalendarDateShort,
   formatCalendarDateShortNoYear,
