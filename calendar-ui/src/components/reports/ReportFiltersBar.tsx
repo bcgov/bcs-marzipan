@@ -17,7 +17,6 @@ import {
 } from '@/components/shared/ResponsiveFilterRow';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import analytics from '@/lib/analytics';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -32,6 +31,7 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
+import analytics from '@/lib/analytics';
 
 export interface ReportFiltersBarProps {
   preferences: ActivityTablePreferences;
@@ -227,12 +227,45 @@ export function ReportFiltersBar({
   const handleSearchEnter = useCallback(() => {
     // Send a calendar_action event with some filter context when the user submits a search
     try {
+      const sanitizeFilters = (
+        fs: typeof filterState,
+        keyword: string | undefined
+      ) => {
+        return {
+          // Date filters: indicate whether a date range or confirmations are active
+          dateRangeActive: isDateRangeActive(fs.dateRange),
+          dateConfirmedFilter: fs.dateConfirmedFilter || 'any',
+          timeConfirmedFilter: fs.timeConfirmedFilter || 'any',
+          // Counts instead of raw IDs or lists
+          categoryCount: (fs.categoryNames || []).length,
+          statusCount: (fs.activityStatusIds || []).length,
+          tagCount: (fs.tagIds || []).length,
+          leadMinistryCount: (fs.leadMinistryIds || []).length,
+          leadOrgCount: (fs.leadOrgIds || []).length,
+          commsContactCount:
+            ((fs.commsContactLeadUserIds || []).length || 0) +
+            ((fs.commsContactUserIds || []).length || 0),
+          eventPlannerCount:
+            ((fs.eventPlannerLeadIds || []).length || 0) +
+            ((fs.eventPlannerIds || []).length || 0),
+          translationStatusCount: (fs.translationRequiredStatusIds || [])
+            .length,
+          translationLanguageCount: (fs.translationLanguageIds || []).length,
+          // Search presence only — do not send raw search text
+          search_present: Boolean(keyword && keyword.length > 0),
+          search_length_bucket: keyword
+            ? keyword.length < 20
+              ? '<20'
+              : keyword.length < 100
+                ? '<100'
+                : '>=100'
+            : null,
+        };
+      };
+
       analytics.trackCalendarAction({
         action: 'Search',
-        filters: {
-          ...filterState,
-          searchKeyword: searchKeyword || null,
-        },
+        filters: sanitizeFilters(filterState, searchKeyword),
       });
     } catch {
       /* ignore */
