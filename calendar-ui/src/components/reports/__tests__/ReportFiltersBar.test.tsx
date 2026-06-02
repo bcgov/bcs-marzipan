@@ -1,7 +1,10 @@
-import { describe, it, vi, beforeEach, afterEach, expect } from 'vitest';
 import { fireEvent } from '@testing-library/react';
-import { render } from '@/test/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
+import { render } from '@/test/test-utils';
+
+import { ReportFiltersBar } from '../ReportFiltersBar';
 
 // Mock analytics module
 const mockTrackCalendarAction = vi.fn();
@@ -20,17 +23,15 @@ vi.mock('@/hooks/useAuth', () => ({
     isLoading: false,
     isAuthenticated: true,
     pendingLoginModal: false,
-    login: async () => ({ success: false }),
-    logout: async () => {},
-    refreshUser: async () => {},
+    login: () => Promise.resolve({ success: false }),
+    logout: () => Promise.resolve(),
+    refreshUser: () => Promise.resolve(),
     dismissLoginModal: () => {},
     hasPermission: () => false,
     hasAnyPermission: () => false,
     hasAllPermissions: () => false,
   }),
 }));
-
-import { ReportFiltersBar } from '../ReportFiltersBar';
 
 describe('ReportFiltersBar analytics', () => {
   beforeEach(() => {
@@ -42,7 +43,7 @@ describe('ReportFiltersBar analytics', () => {
     vi.clearAllMocks();
   });
 
-  it('sends calendar_action on Enter key when searchKeyword is present', async () => {
+  it('sends calendar_action on Enter key when searchKeyword is present', () => {
     const preferences = {
       sortKey: 'startDate',
       sortDirection: 'desc',
@@ -56,10 +57,14 @@ describe('ReportFiltersBar analytics', () => {
     const setPreferences = vi.fn();
 
     const { getByLabelText } = render(
-      <ReportFiltersBar preferences={preferences} setPreferences={setPreferences} />
+      <ReportFiltersBar
+        reportName="Activity Report"
+        preferences={preferences}
+        setPreferences={setPreferences}
+      />
     );
 
-    const input = getByLabelText('Search activities') as HTMLElement;
+    const input = getByLabelText('Search activities');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
     expect(mockTrackCalendarAction).toHaveBeenCalled();
@@ -67,7 +72,7 @@ describe('ReportFiltersBar analytics', () => {
     expect(payload.action).toBe('Search');
   });
 
-  it('sends calendar_click on clear search click and clears search', async () => {
+  it('sends calendar_click on clear search click and clears search', () => {
     const preferences = {
       sortKey: 'startDate',
       sortDirection: 'desc',
@@ -80,8 +85,12 @@ describe('ReportFiltersBar analytics', () => {
 
     const setPreferences = vi.fn();
 
-    const { getByLabelText, getByRole } = render(
-      <ReportFiltersBar preferences={preferences} setPreferences={setPreferences} />
+    const { getByRole } = render(
+      <ReportFiltersBar
+        reportName="Activity Report"
+        preferences={preferences}
+        setPreferences={setPreferences}
+      />
     );
 
     // button has aria-label "Clear search"
