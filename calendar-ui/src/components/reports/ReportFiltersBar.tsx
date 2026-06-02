@@ -31,7 +31,6 @@ import {
   buildReportBaselineDateFilterPatch,
   buildReportClearFilterState,
   hasReportClearableFiltersActive,
-  isReportBaselineDateRange,
 } from '@/lib/report-filter-state';
 
 export interface ReportFiltersBarProps {
@@ -236,16 +235,9 @@ export function ReportFiltersBar({
     [reportName]
   );
 
-  const dateFilterDeviatesFromBaseline = !isReportBaselineDateRange(
-    filterState.dateRange,
-    reportName
-  );
   const dateConfirmedActive = filterState.dateConfirmedFilter !== 'any';
   const timeConfirmedActive = filterState.timeConfirmedFilter !== 'any';
-  const dateFilterClearable =
-    dateFilterDeviatesFromBaseline ||
-    dateConfirmedActive ||
-    timeConfirmedActive;
+  const dateRangeActive = isDateRangeActive(filterState.dateRange);
 
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
@@ -264,12 +256,9 @@ export function ReportFiltersBar({
           />
         ),
         triggerProps: {
-          active: dateFilterClearable,
+          active: dateRangeActive || dateConfirmedActive || timeConfirmedActive,
           count:
-            (dateFilterDeviatesFromBaseline &&
-            isDateRangeActive(filterState.dateRange)
-              ? 1
-              : 0) +
+            (dateRangeActive ? 1 : 0) +
             (dateConfirmedActive ? 1 : 0) +
             (timeConfirmedActive ? 1 : 0),
           onClear: () =>
@@ -420,8 +409,7 @@ export function ReportFiltersBar({
       eventPlannerOptions,
       baselineDatePatch,
       dateConfirmedActive,
-      dateFilterClearable,
-      dateFilterDeviatesFromBaseline,
+      dateRangeActive,
       timeConfirmedActive,
     ]
   );
