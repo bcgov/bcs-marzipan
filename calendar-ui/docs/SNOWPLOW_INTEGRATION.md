@@ -31,7 +31,7 @@ We use a runtime `config.js` file (served at `/config.js`) to control whether th
 
 OpenShift example (CI step):
 
-1. Create/update the `ConfigMap` with `config.js` data:
+1. Create/update the `ConfigMap` with `config.js` data (safe: patch only the `config.js` key):
 
 ```bash
 # generate config locally
@@ -39,11 +39,24 @@ cat > /tmp/config.js <<'EOF'
 window.__APP_CONFIG__ = { ENABLE_SNOWPLOW: 'true' };
 EOF
 
-# apply or update ConfigMap
-oc create configmap calendar-ui-config --from-file=config.js=/tmp/config.js --dry-run=client -o yaml | oc apply -f -
+# Patch the existing ConfigMap's config.js key (preserves other keys),
+# or create the ConfigMap if it doesn't exist.
+NAMESPACE=<your-namespace>
+
+if oc get configmap calendar-ui-config -n "$NAMESPACE" >/dev/null 2>&1; then
+  CONFIG_JS_JSON=$(python3 - <<'PY'
+import json
+print(json.dumps(open('/tmp/config.js','r',encoding='utf-8').read()))
+PY
+)
+  oc patch configmap/calendar-ui-config -n "$NAMESPACE" --type merge -p "{\"data\":{\"config.js\":${CONFIG_JS_JSON}}}"
+else
+  oc create configmap calendar-ui-config -n "$NAMESPACE" --from-file=config.js=/tmp/config.js
+fi
 
 # restart deployment
-oc rollout restart deployment/calendar-ui -n <namespace>
+oc rollout restart deployment/calendar-ui -n "$NAMESPACE"
+oc rollout status deployment/calendar-ui -n "$NAMESPACE" -w
 ```
 
 ## Local development
