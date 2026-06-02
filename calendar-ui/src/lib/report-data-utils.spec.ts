@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
+import type { ReportDataResponse } from '@corpcal/shared/api/types';
+
 import { countReportActivities } from './report-data-utils';
+
+const MINIMAL_REPORT: ReportDataResponse['report'] = {
+  id: 1,
+  name: 'test',
+  displayName: 'Test',
+  sortOrder: 0,
+  isActive: true,
+  visibility: 'global',
+  config: null,
+  description: null,
+};
 
 describe('countReportActivities', () => {
   it('returns 0 when data is undefined', () => {
@@ -10,7 +23,7 @@ describe('countReportActivities', () => {
   it('sums activities across sections', () => {
     expect(
       countReportActivities({
-        report: { id: 1, name: 'test', displayName: 'Test', config: null },
+        report: MINIMAL_REPORT,
         sections: [
           {
             id: 'a',
@@ -32,7 +45,7 @@ describe('countReportActivities', () => {
   it('counts rows when meta is missing', () => {
     expect(
       countReportActivities({
-        report: { id: 1, name: 'test', displayName: 'Test', config: null },
+        report: MINIMAL_REPORT,
         sections: [
           { id: 'a', name: 'A', order: 0, activities: [{ id: 1 }] as never[] },
         ],

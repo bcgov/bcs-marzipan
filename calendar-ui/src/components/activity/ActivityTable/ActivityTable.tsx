@@ -1473,8 +1473,8 @@ export function ActivityTable({
         <ActivityTableLayout
           scrollRef={tableScrollRef}
           count={0}
-          singularLabel="entry"
-          pluralLabel="entries"
+          singularLabel="activity"
+          pluralLabel="activities"
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
           appliedFilterTypeLabels={appliedFilterTypeLabels}
@@ -1513,8 +1513,8 @@ export function ActivityTable({
         <ActivityTableLayout
           scrollRef={tableScrollRef}
           count={0}
-          singularLabel="entry"
-          pluralLabel="entries"
+          singularLabel="activity"
+          pluralLabel="activities"
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
           appliedFilterTypeLabels={appliedFilterTypeLabels}
@@ -1550,8 +1550,8 @@ export function ActivityTable({
         <ActivityTableLayout
           scrollRef={tableScrollRef}
           count={sortedData.length}
-          singularLabel="entry"
-          pluralLabel="entries"
+          singularLabel="activity"
+          pluralLabel="activities"
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
           appliedFilterTypeLabels={appliedFilterTypeLabels}

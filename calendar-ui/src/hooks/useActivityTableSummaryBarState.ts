@@ -1,6 +1,9 @@
 import { useCallback, useMemo } from 'react';
 
-import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
+import {
+  DEFAULT_ACTIVITY_FILTER_STATE,
+  type ActivityFilterState,
+} from '@corpcal/shared';
 import type {
   BooleanFilter,
   TableSummaryFilterDetailLine,
@@ -19,6 +22,10 @@ export interface UseActivityTableSummaryBarStateOptions {
   canSeeDeleted: boolean;
   /** When set, toggling show completed/deleted clears the saved filter selection. */
   onClearSavedFilter?: () => void;
+  /** When set, panel clear resets to this state instead of {@link DEFAULT_ACTIVITY_FILTER_STATE}. */
+  getResetFilterState?: () => ActivityFilterState;
+  /** When set, overrides default panel-active detection for showing "Clear filters". */
+  hasClearablePanelFilters?: boolean;
 }
 
 export interface ActivityTableSummaryBarState {
@@ -26,8 +33,8 @@ export interface ActivityTableSummaryBarState {
   appliedFilterTypeLabels: string[];
   filterDetailLines: TableSummaryFilterDetailLine[];
   onClearFilters: (() => void) | undefined;
-  singularLabel: 'entry';
-  pluralLabel: 'entries';
+  singularLabel: 'activity';
+  pluralLabel: 'activities';
 }
 
 export function useActivityTableSummaryBarState({
@@ -35,6 +42,8 @@ export function useActivityTableSummaryBarState({
   setPreferences,
   canSeeDeleted,
   onClearSavedFilter,
+  getResetFilterState,
+  hasClearablePanelFilters,
 }: UseActivityTableSummaryBarStateOptions): ActivityTableSummaryBarState {
   const filterState = preferences.filterState;
   const searchKeyword = preferences.searchKeyword;
@@ -97,19 +106,20 @@ export function useActivityTableSummaryBarState({
 
   const handleClearPanelFilters = useCallback(() => {
     clearSavedFilterIfNeeded();
-    setPreferences({ filterState: DEFAULT_ACTIVITY_FILTER_STATE });
-  }, [setPreferences, clearSavedFilterIfNeeded]);
+    setPreferences({
+      filterState: getResetFilterState?.() ?? DEFAULT_ACTIVITY_FILTER_STATE,
+    });
+  }, [setPreferences, clearSavedFilterIfNeeded, getResetFilterState]);
 
-  const onClearFilters = hasPanelFiltersActive
-    ? handleClearPanelFilters
-    : undefined;
+  const showClearFilters = hasClearablePanelFilters ?? hasPanelFiltersActive;
+  const onClearFilters = showClearFilters ? handleClearPanelFilters : undefined;
 
   return {
     filters,
     appliedFilterTypeLabels,
     filterDetailLines,
     onClearFilters,
-    singularLabel: 'entry',
-    pluralLabel: 'entries',
+    singularLabel: 'activity',
+    pluralLabel: 'activities',
   };
 }

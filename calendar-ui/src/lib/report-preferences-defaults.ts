@@ -31,7 +31,7 @@ export function buildDefaultReportMonthFilterDateRange(): DateRangeValue {
   };
 }
 
-function buildDefaultFilterDateRangeForReport(
+export function buildDefaultFilterDateRangeForReport(
   reportName: string
 ): DateRangeValue {
   switch (reportName) {

@@ -335,6 +335,7 @@ export function ReportsPage() {
         >
           <div className="flex flex-col gap-4">
             <ReportFiltersBar
+              reportName={activeReport}
               preferences={preferences}
               setPreferences={setPreferences}
               printPreviewRowLeading={
@@ -352,8 +353,9 @@ export function ReportsPage() {
               }
               printPreviewRowTrailing={printPreviewRowTrailing}
             />
-            {activeReport !== 'custom' ? (
+            {activeReport ? (
               <ReportTableSummaryBar
+                reportName={activeReport}
                 preferences={preferences}
                 setPreferences={setPreferences}
                 canSeeDeleted={canSeeDeleted}
@@ -441,20 +443,12 @@ export function ReportsPage() {
                       wasClamped={wasDateRangeClamped}
                     />
                     {data.sections[0] ? (
-                      <div className="space-y-4">
-                        <ReportTableSummaryBar
-                          preferences={preferences}
-                          setPreferences={setPreferences}
-                          canSeeDeleted={canSeeDeleted}
-                          activityCount={activityCount}
-                        />
-                        <CustomReportPreviewSection
-                          section={data.sections[0]}
-                          config={customReportFields}
-                          onFieldsChange={setCustomReportFields}
-                          highlightedActivityIds={reportHighlightSet}
-                        />
-                      </div>
+                      <CustomReportPreviewSection
+                        section={data.sections[0]}
+                        config={customReportFields}
+                        onFieldsChange={setCustomReportFields}
+                        highlightedActivityIds={reportHighlightSet}
+                      />
                     ) : (
                       <div className="flex items-center justify-center py-12">
                         <p className="text-muted-foreground">
