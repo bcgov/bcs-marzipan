@@ -39,6 +39,7 @@ import {
   saveCustomReportConfig,
 } from '@/lib/custom-report-config-storage';
 import { showErrorToast } from '@/lib/error-toast';
+import { countReportActivities } from '@/lib/report-data-utils';
 import {
   handleReportExport,
   type ReportExportFormat,
@@ -190,7 +191,10 @@ export function ReportsPage() {
         ? fetchReportData(activeReport, reportQueryParams)
         : Promise.reject(new Error('No report selected')),
     enabled: !!activeReport,
+    placeholderData: (previousData) => previousData,
   });
+
+  const activityCount = useMemo(() => countReportActivities(data), [data]);
 
   const resolvedReportDateRange = useMemo(() => {
     if (!activeReport) return null;
@@ -353,7 +357,7 @@ export function ReportsPage() {
                 preferences={preferences}
                 setPreferences={setPreferences}
                 canSeeDeleted={canSeeDeleted}
-                activityCount={data?.meta?.activityCount ?? 0}
+                activityCount={activityCount}
               />
             ) : null}
           </div>
@@ -442,7 +446,7 @@ export function ReportsPage() {
                           preferences={preferences}
                           setPreferences={setPreferences}
                           canSeeDeleted={canSeeDeleted}
-                          activityCount={data.meta?.activityCount ?? 0}
+                          activityCount={activityCount}
                         />
                         <CustomReportPreviewSection
                           section={data.sections[0]}
