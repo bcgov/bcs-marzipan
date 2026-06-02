@@ -453,7 +453,7 @@ export function CategoriesAdmin() {
     <GenericLookupAdmin<Category>
       title="Categories"
       description="Manage activity categories"
-      entityType="category"
+      entityType="Category"
       apiEndpoint="/lookups/categories"
       queryKey={lookupQueryKeys.categories()}
       queryFn={fetchCategories}

@@ -145,7 +145,7 @@ export function Settings() {
   return (
     <>
       <h1 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">
-        Settings & configuration
+        Settings and Configuration
       </h1>
       <p className="mb-8 text-sm text-slate-600 sm:text-base">
         Manage lookup data and system configuration
