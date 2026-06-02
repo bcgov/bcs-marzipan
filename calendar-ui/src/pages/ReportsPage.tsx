@@ -23,10 +23,8 @@ import { ReportLargeRangeWarning } from '@/components/reports/ReportLargeRangeWa
 import { ReportMonthRangeTabs } from '@/components/reports/ReportMonthRangeTabs';
 import { ReportTableSummaryBar } from '@/components/reports/ReportTableSummaryBar';
 import { StatusMessage } from '@/components/shared';
-import {
-  tableContainer,
-  tableScrollWrapper,
-} from '@/components/table/tableConstants';
+import { REPORT_PRINT_PREVIEW_SCROLL_HEIGHT } from '@/components/table/tableConstants';
+import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -59,14 +57,6 @@ import { cn } from '@/lib/utils';
 
 /** Persists fullscreen print preview width (full viewport vs Letter content width). */
 const REPORTS_PREVIEW_SHEET_WIDTH_KEY = 'reportsPreviewSheetWidth';
-
-/**
- * Max height for the print preview panel so report content scrolls inside the bordered
- * container. Reserves space for app header, PageContainer py-8, page header, tabs,
- * filters, summary bar, preview toolbar, and bottom gutter.
- */
-const REPORT_PRINT_PREVIEW_MAX_HEIGHT =
-  'calc(100dvh - var(--header-height, 3.5rem) - 21rem)';
 
 type ReportPreviewSheetWidthMode = 'full' | 'print';
 
@@ -376,10 +366,7 @@ export function ReportsPage() {
                 </div>
               ) : data ? (
                 isFullscreenPrintPreview(report.name) ? (
-                  <div
-                    className="flex min-h-0 flex-col"
-                    style={{ maxHeight: REPORT_PRINT_PREVIEW_MAX_HEIGHT }}
-                  >
+                  <div className="flex min-h-0 flex-col">
                     <div className="border-border flex h-9 shrink-0 items-center justify-end gap-4 border-t">
                       <ReportLargeRangeWarning
                         showLargeRangeWarning={showLargeRangeWarning}
@@ -397,44 +384,39 @@ export function ReportsPage() {
                         Print width
                       </label>
                     </div>
-                    <div
+                    <TableScrollContainer
+                      scrollHeight={REPORT_PRINT_PREVIEW_SCROLL_HEIGHT}
+                      scrollAriaLabel="Report preview"
                       className={cn(
-                        'report-html-container min-h-0 flex-1',
-                        tableContainer,
-                        'border-border',
+                        'report-html-container border-border',
                         isFetching && 'opacity-[0.98]'
                       )}
                     >
-                      <div
-                        className={tableScrollWrapper}
-                        aria-label="Report preview"
-                      >
-                        <div className="px-6 pt-0 pb-6">
-                          <div
-                            className={
-                              previewSheetWidthMode === 'full'
-                                ? 'report-print-preview-root min-w-0'
-                                : 'report-print-preview-root'
-                            }
-                            style={
-                              (previewSheetWidthMode === 'full'
-                                ? {
-                                    '--corpcal-print-root-max-width': 'none',
-                                  }
-                                : {
-                                    minWidth: previewSheetLayoutWidthPx,
-                                  }) as CSSProperties
-                            }
-                          >
-                            <PrintReportPreview
-                              reportTypeName={report.name}
-                              data={data}
-                              highlightActivityIds={reportHighlightSet}
-                            />
-                          </div>
+                      <div className="px-6 pt-0 pb-6">
+                        <div
+                          className={
+                            previewSheetWidthMode === 'full'
+                              ? 'report-print-preview-root min-w-0'
+                              : 'report-print-preview-root'
+                          }
+                          style={
+                            (previewSheetWidthMode === 'full'
+                              ? {
+                                  '--corpcal-print-root-max-width': 'none',
+                                }
+                              : {
+                                  minWidth: previewSheetLayoutWidthPx,
+                                }) as CSSProperties
+                          }
+                        >
+                          <PrintReportPreview
+                            reportTypeName={report.name}
+                            data={data}
+                            highlightActivityIds={reportHighlightSet}
+                          />
                         </div>
                       </div>
-                    </div>
+                    </TableScrollContainer>
                   </div>
                 ) : (
                   <>
