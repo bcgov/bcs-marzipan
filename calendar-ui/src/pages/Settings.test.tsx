@@ -58,8 +58,8 @@ const SYSTEM_ADMIN_ROLE_ID = 6;
 const ADMIN_ROLE_ID = 5;
 
 const SYSTEM_ADMIN_ONLY_LINKS = [
-  'System Banner',
-  'Login Modal',
+  'System banner',
+  'Login modal',
   'Edit lock idle',
   'Activity completion',
   'Look Ahead reset',

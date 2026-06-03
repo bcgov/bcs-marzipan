@@ -35,11 +35,11 @@ const formFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
 ];
 
 export function CategoriesAdmin() {
@@ -121,7 +121,7 @@ export function CategoriesAdmin() {
       },
       {
         accessorKey: 'displayName',
-        header: 'Display Name',
+        header: 'Display name',
         cell: ({ row }) => (
           <span className="text-slate-600">
             {row.original.displayName || '—'}
@@ -130,7 +130,7 @@ export function CategoriesAdmin() {
       },
       {
         accessorKey: 'sortOrder',
-        header: 'Sort Order',
+        header: 'Sort order',
         cell: ({ row }) => (
           <span className="text-slate-600">{row.original.sortOrder}</span>
         ),

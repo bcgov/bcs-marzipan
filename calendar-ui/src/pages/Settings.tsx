@@ -70,13 +70,13 @@ export function Settings() {
   const sections = [
     {
       id: 'banner' as Section,
-      label: 'System Banner',
+      label: 'System banner',
       icon: Megaphone,
       show: isSystemAdmin,
     },
     {
       id: 'login-modal' as Section,
-      label: 'Login Modal',
+      label: 'Login modal',
       icon: LogIn,
       show: isSystemAdmin,
     },
@@ -117,20 +117,20 @@ export function Settings() {
     { id: 'ministries' as Section, label: 'Ministries', icon: Building2 },
     {
       id: 'representatives' as Section,
-      label: 'Government Representatives',
+      label: 'Government representatives',
       icon: Users,
     },
     { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
     { id: 'cities' as Section, label: 'Cities', icon: MapPin },
     {
       id: 'comms' as Section,
-      label: 'Communications Materials',
+      label: 'Communications materials',
       icon: FileText,
     },
     { id: 'tags' as Section, label: 'Tags', icon: Tag },
-    { id: 'statuses' as Section, label: 'Activity Statuses', icon: Activity },
+    { id: 'statuses' as Section, label: 'Activity statuses', icon: Activity },
     { id: 'themes' as Section, label: 'Themes', icon: Palette },
-    { id: 'venue-presets' as Section, label: 'Venue Presets', icon: Bookmark },
+    { id: 'venue-presets' as Section, label: 'Venue presets', icon: Bookmark },
   ];
 
   const visibleSections = sections.filter((s) => s.show !== false);
