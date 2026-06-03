@@ -269,16 +269,27 @@ export function PrintGroupedSectionTable({
                 omitReleaseColumn={omitReleaseColumn}
                 variant={variant}
               />
-              {day.rows.map((row) => (
-                <PrintRow
-                  key={row.activityId}
-                  row={row}
-                  variant={variant}
-                  showEventLead={showEventLead}
-                  omitReleaseColumn={omitReleaseColumn}
-                  highlightActivityIds={highlightActivityIds}
-                />
-              ))}
+              {day.rows.length > 0 ? (
+                day.rows.map((row) => (
+                  <PrintRow
+                    key={row.activityId}
+                    row={row}
+                    variant={variant}
+                    showEventLead={showEventLead}
+                    omitReleaseColumn={omitReleaseColumn}
+                    highlightActivityIds={highlightActivityIds}
+                  />
+                ))
+              ) : (
+                <tr className="corpcal-print-empty-month-row">
+                  <td
+                    colSpan={columnSpan}
+                    className="corpcal-print-empty-month"
+                  >
+                    No activities.
+                  </td>
+                </tr>
+              )}
             </tbody>
           ))
         ) : (

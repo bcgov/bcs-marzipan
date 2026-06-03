@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ReportDataResponse } from '../../../api/report-data';
+import { toCalendarDateString } from '../../../datetime/types';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
 import { buildReportPdfFooterTemplateHtml } from './buildReportPdfFooterTemplate';
@@ -527,7 +528,7 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Translations:');
   });
 
-  it('renders an empty-state message when no activities exist', () => {
+  it('renders section-level empty placeholder when no activities exist', () => {
     const empty: ReportDataResponse = {
       ...FIXTURE,
       sections: [{ ...FIXTURE.sections[0], activities: [] }],
@@ -537,7 +538,49 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'http://localhost:3000',
     });
 
-    expect(html).toContain('No activities in the selected range.');
+    expect(html).toContain('No activities.');
+    expect(html).not.toContain('No activities in the selected range.');
+  });
+
+  it('renders grouped empty days for per-day sections across the resolved date range', () => {
+    const emptyEvents: ReportDataResponse = {
+      ...FIXTURE,
+      report: {
+        ...FIXTURE.report,
+        config: {
+          fields: [],
+          sections: [
+            {
+              id: 'events',
+              name: 'Events',
+              order: 1,
+              filter: { lookAheadSection: 'events' },
+              printPerDayColumnHeaderRepeat: true,
+            },
+          ],
+        },
+      },
+      sections: [{ ...FIXTURE.sections[0], activities: [] }],
+      meta: {
+        resolvedDateRange: {
+          start: toCalendarDateString('2026-04-27'),
+          end: toCalendarDateString('2026-04-29'),
+        },
+        wasClamped: false,
+        inferredBound: null,
+        activityCount: 0,
+        largeResultWarning: false,
+      },
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', emptyEvents, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+
+    expect(html).toContain('MONDAY, APRIL 27 – WEDNESDAY, APRIL 29, 2026');
+    expect(html).toContain('corpcal-print-empty-month');
+    expect(html).toContain('No activities.');
+    expect(html).not.toContain('No activities in the selected range.');
   });
 
   it('renders the section heading swatch when the report config supplies a legendColor', () => {

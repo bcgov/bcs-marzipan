@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { activityReportSettings, reports } from '@corpcal/database/schema';
 import type { Visibility } from '@corpcal/shared';
 import type {
+  ReportDataMeta,
   ReportDataResponse,
   ReportResponse,
   ReportSectionData,
@@ -16,6 +17,11 @@ import {
   renderLookAheadCoverOverlayHtml,
   type LookAheadCoverOverlayRow,
 } from '@corpcal/shared/reports/print/react';
+import {
+  resolveReportActivityDateWindow,
+  shouldWarnLargeReportRange,
+  type NormalizedReportDateRange,
+} from '@corpcal/shared/reports/reportDateRange';
 import {
   buildReportExportTable,
   serializeReportTableToCsv,
@@ -96,9 +102,43 @@ function buildUserActivityFilterOverlay(
   sectionPinsStartDateWindow: boolean
 ): Partial<FilterActivitiesQueryParams> {
   const picked = pickDefinedActivityFilters(filters);
-  return sectionPinsStartDateWindow
+  const overlay = sectionPinsStartDateWindow
     ? withoutActivityStartDateWindow(picked)
     : picked;
+  const { startDateFrom: _f, startDateTo: _t, ...withoutDates } = overlay;
+  return withoutDates;
+}
+
+function buildReportDataMeta(
+  dateWindow: NormalizedReportDateRange,
+  sections: ReportSectionData[]
+): ReportDataMeta {
+  const activityCount = sections.reduce(
+    (total, section) => total + section.activities.length,
+    0
+  );
+  return {
+    resolvedDateRange: {
+      start: dateWindow.start,
+      end: dateWindow.end,
+    },
+    wasClamped: dateWindow.wasClamped,
+    inferredBound: dateWindow.inferredBound,
+    activityCount,
+    largeResultWarning: shouldWarnLargeReportRange({
+      spanDays: dateWindow.spanDays,
+    }),
+  };
+}
+
+function withReportMeta(
+  response: Omit<ReportDataResponse, 'meta'>,
+  dateWindow: NormalizedReportDateRange
+): ReportDataResponse {
+  return {
+    ...response,
+    meta: buildReportDataMeta(dateWindow, response.sections),
+  };
 }
 
 export interface ReportSettingsDto {
@@ -475,7 +515,14 @@ export class ReportsService {
     const normalized = reportName.trim().toLowerCase();
 
     if (normalized === 'custom') {
+      const dateWindow = resolveReportActivityDateWindow({
+        reportName: 'custom',
+        startDateFrom: query.startDateFrom,
+        startDateTo: query.startDateTo,
+      });
       const filters = reportDataQueryToActivityFindAllFilters(query);
+      filters.startDateFrom = dateWindow.start;
+      filters.startDateTo = dateWindow.end;
       let activities = await this.activitiesService.findAll(filters, ctx);
       activities = filterActivityResponsesBySearchKeyword(activities, search);
       const report: ReportResponse = {
@@ -488,17 +535,20 @@ export class ReportsService {
         config: null,
         description: null,
       };
-      return {
-        report,
-        sections: [
-          {
-            id: 'results',
-            name: 'Results',
-            order: 1,
-            activities,
-          },
-        ],
-      };
+      return withReportMeta(
+        {
+          report,
+          sections: [
+            {
+              id: 'results',
+              name: 'Results',
+              order: 1,
+              activities,
+            },
+          ],
+        },
+        dateWindow
+      );
     }
 
     const report = await this.findReportByName(reportName);
@@ -515,6 +565,11 @@ export class ReportsService {
     const omittedActivityIds = await this.getOmittedActivityIds(report.id);
     const sections: ReportSectionData[] = [];
     const queryActivityFilters = reportDataQueryToActivityFindAllFilters(query);
+    const reportLevelDateWindow = resolveReportActivityDateWindow({
+      reportName: report.name,
+      startDateFrom: query.startDateFrom,
+      startDateTo: query.startDateTo,
+    });
 
     if (report.name === 'thirty-sixty-ninety') {
       const queryWindow = resolveThirtySixtyNinetyQueryWindow({
@@ -527,19 +582,14 @@ export class ReportsService {
       });
 
       const filters: FilterActivitiesQueryParams = {
-        page: query.page,
-        limit: query.limit,
+        page: 1,
+        limit: 100,
         sharedWithTeamIds: undefined,
         includeCompleted: undefined,
         includeDeleted: undefined,
+        startDateFrom: queryWindow.queryStartDateFrom,
+        startDateTo: queryWindow.queryStartDateTo,
       };
-
-      if (queryWindow.queryStartDateFrom) {
-        filters.startDateFrom = queryWindow.queryStartDateFrom;
-      }
-      if (queryWindow.queryStartDateTo) {
-        filters.startDateTo = queryWindow.queryStartDateTo;
-      }
 
       Object.assign(
         filters,
@@ -567,7 +617,7 @@ export class ReportsService {
         });
       }
 
-      return { report, sections };
+      return withReportMeta({ report, sections }, reportLevelDateWindow);
     }
 
     const sectionResults = await Promise.all(
@@ -576,26 +626,28 @@ export class ReportsService {
           report.config!.globalFilter,
           sectionConfig.filter
         );
+        const sectionPinsDates = mergedFilter?.dateRange != null;
+        const pinnedDateRange = mergedFilter?.dateRange ?? null;
+        const dateWindow = resolveReportActivityDateWindow({
+          reportName: report.name,
+          startDateFrom: query.startDateFrom,
+          startDateTo: query.startDateTo,
+          pinnedDateRange: sectionPinsDates ? pinnedDateRange : null,
+        });
 
         const filters: FilterActivitiesQueryParams = {
-          page: query.page,
-          limit: query.limit,
+          page: 1,
+          limit: 100,
           sharedWithTeamIds: undefined,
           includeCompleted: undefined,
           includeDeleted: undefined,
+          startDateFrom: dateWindow.start,
+          startDateTo: dateWindow.end,
         };
-
-        if (mergedFilter?.dateRange) {
-          filters.startDateFrom = mergedFilter.dateRange.start;
-          filters.startDateTo = mergedFilter.dateRange.end;
-        }
 
         Object.assign(
           filters,
-          buildUserActivityFilterOverlay(
-            queryActivityFilters,
-            mergedFilter?.dateRange != null
-          )
+          buildUserActivityFilterOverlay(queryActivityFilters, sectionPinsDates)
         );
 
         if (mergedFilter?.lookAheadSection) {
@@ -623,7 +675,7 @@ export class ReportsService {
       });
     }
 
-    return { report, sections };
+    return withReportMeta({ report, sections }, reportLevelDateWindow);
   }
 
   /**

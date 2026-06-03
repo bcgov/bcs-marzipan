@@ -88,6 +88,10 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       startDateFrom: expectedRange.start,
       startDateTo: expectedRange.end,
     });
+    expect(result.meta?.resolvedDateRange).toEqual({
+      start: expectedRange.start,
+      end: expectedRange.end,
+    });
   });
 
   it('uses one activity query for the requested date window', async () => {
@@ -131,7 +135,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     ).toEqual([20]);
   });
 
-  it('derives an open-ended future query when only start is provided', async () => {
+  it('derives a bounded future query when only start is provided', async () => {
     const window = resolveThirtySixtyNinetyQueryWindow({
       startDateFrom: '2026-05-01',
     });
@@ -147,14 +151,15 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     expect(activitiesService.findAll).toHaveBeenCalledTimes(1);
     expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
       startDateFrom: '2026-05-01',
+      startDateTo: window.queryStartDateTo,
     });
-    expect(activitiesService.findAll.mock.calls[0]?.[0]).not.toHaveProperty(
-      'startDateTo'
-    );
-    expect(window.queryStartDateTo).toBeUndefined();
   });
 
-  it('derives an open-ended past query when only end is provided', async () => {
+  it('derives a bounded past query when only end is provided', async () => {
+    const window = resolveThirtySixtyNinetyQueryWindow({
+      startDateTo: '2026-06-30',
+    });
+
     await service.getReportData(
       'thirty-sixty-ninety',
       reportDataQuerySchema.parse({
@@ -165,11 +170,9 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
 
     expect(activitiesService.findAll).toHaveBeenCalledTimes(1);
     expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
+      startDateFrom: window.queryStartDateFrom,
       startDateTo: '2026-06-30',
     });
-    expect(activitiesService.findAll.mock.calls[0]?.[0]).not.toHaveProperty(
-      'startDateFrom'
-    );
   });
 
   it('filters omitted activities out of each month section', async () => {
@@ -189,7 +192,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       'thirty-sixty-ninety',
       reportDataQuerySchema.parse({
         startDateFrom: '2026-05-01',
-        startDateTo: '2026-05-31',
+        startDateTo: '2026-06-30',
       }),
       ctx
     );

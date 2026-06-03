@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import puppeteer, { type Browser, type PDFOptions } from 'puppeteer';
+import type { Browser, PDFOptions } from 'puppeteer-core';
 
 import {
   REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS,
@@ -11,6 +11,8 @@ import {
   REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
 } from '@corpcal/shared/reports/reportPrintHtml';
+
+import { puppeteer, puppeteerLaunchOptions } from './report-pdf-puppeteer';
 
 export type GenerateReportPdfOptions = {
   /** Puppeteer `footerTemplate` HTML; enables `displayHeaderFooter` and bottom margin. */
@@ -86,10 +88,7 @@ export class PdfGeneratorService implements OnModuleDestroy {
 
   private async getBrowser(): Promise<Browser> {
     if (!this.browserLaunch) {
-      this.browserLaunch = puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
+      this.browserLaunch = puppeteer.launch(puppeteerLaunchOptions());
     }
     try {
       return await this.browserLaunch;

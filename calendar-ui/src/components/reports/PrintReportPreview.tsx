@@ -14,6 +14,7 @@ import {
 } from '@corpcal/shared/reports/reportPrintHtml';
 import { trimTrailingSlashes } from '@corpcal/shared/utils';
 import { useTranslationLanguages } from '@/hooks/useLookups';
+import { toPrintReportDocumentData } from '@/lib/print-report-data';
 
 /**
  * Resolves the public application base URL used when building absolute
@@ -52,6 +53,7 @@ export function PrintReportPreview({
     () => buildTranslationLanguageLabelResolver(translationLanguages),
     [translationLanguages]
   );
+  const printData = useMemo(() => toPrintReportDocumentData(data), [data]);
 
   if (!isReactRenderableReportType(reportTypeName)) {
     return null;
@@ -60,7 +62,7 @@ export function PrintReportPreview({
   return (
     <PrintReportPreviewRoot
       reportTypeName={reportTypeName}
-      data={data}
+      printData={printData}
       activityBaseUrl={activityBaseUrl}
       highlightActivityIds={highlightActivityIds}
       resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
@@ -70,13 +72,13 @@ export function PrintReportPreview({
 
 function PrintReportPreviewRoot({
   reportTypeName,
-  data,
+  printData,
   activityBaseUrl,
   highlightActivityIds,
   resolveTranslationLanguageLabel,
 }: {
   reportTypeName: ReactRenderableReportType;
-  data: ReportDataResponse;
+  printData: ReturnType<typeof toPrintReportDocumentData>;
   activityBaseUrl: string;
   highlightActivityIds?: ReadonlySet<number>;
   resolveTranslationLanguageLabel?: ReturnType<
@@ -87,14 +89,14 @@ function PrintReportPreviewRoot({
   if (reportTypeName === 'custom') {
     document = (
       <PrintCustomReportDocument
-        data={data}
+        data={printData}
         highlightActivityIds={highlightActivityIds}
       />
     );
   } else {
     document = (
       <PrintReportDocument
-        data={data}
+        data={printData}
         variant={rollupPrintVariantForReportType(reportTypeName)}
         activityBaseUrl={activityBaseUrl}
         highlightActivityIds={highlightActivityIds}
