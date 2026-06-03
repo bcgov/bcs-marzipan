@@ -70,14 +70,14 @@ const LOOKUP_LINKS = [
   'Report PDF cover contact',
   'Ministry groups',
   'Ministries',
-  'Government Representatives',
+  'Government representatives',
   'Categories',
   'Cities',
-  'Communications Materials',
+  'Communications materials',
   'Tags',
-  'Activity Statuses',
+  'Activity statuses',
   'Themes',
-  'Venue Presets',
+  'Venue presets',
 ];
 
 describe('Settings quick navigation', () => {
