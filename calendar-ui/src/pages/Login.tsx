@@ -62,6 +62,23 @@ function validatePassword(pwd: string): string | null {
   return null;
 }
 
+const MicrosoftLogo = ({
+  className = 'w-4 h-4 mr-2',
+}: {
+  className?: string;
+}) => (
+  <svg
+    className={className}
+    viewBox="0 0 21 21"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect x="0" y="0" width="10" height="10" fill="#F25022" />
+    <rect x="11" y="0" width="10" height="10" fill="#7FBA00" />
+    <rect x="0" y="11" width="10" height="10" fill="#00A4EF" />
+    <rect x="11" y="11" width="10" height="10" fill="#FFB900" />
+  </svg>
+);
+
 export function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -365,6 +382,7 @@ export function Login() {
                 />
                 <button
                   type="button"
+                  data-testid="login-new-password-toggle"
                   onClick={() => setShowNewPassword(!showNewPassword)}
                   className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
                   tabIndex={-1}
@@ -509,6 +527,7 @@ export function Login() {
               <Button
                 type="submit"
                 className="h-11 w-full font-medium"
+                data-testid="login-verify-reset-code"
                 disabled={isLoading || !resetCodeInput.trim()}
               >
                 {isLoading ? (
@@ -550,7 +569,10 @@ export function Login() {
   // Render: main login card (email-entry + password-entry)
   // -------------------------------------------------------------------------
   return (
-    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 p-4">
+    <div
+      className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 p-4"
+      data-testid="login-page"
+    >
       <Card className="w-full max-w-md border-0 shadow-xl">
         <CardHeader className="space-y-4 pb-2 text-center">
           <div className="flex flex-col items-center space-y-4">
@@ -586,7 +608,10 @@ export function Login() {
                   Redirecting to Microsoft...
                 </>
               ) : (
-                'Sign in with IDIR'
+                <>
+                  <MicrosoftLogo />
+                  Sign in with Microsoft
+                </>
               )}
             </Button>
           )}
@@ -635,6 +660,7 @@ export function Login() {
                   <Button
                     type="submit"
                     className="h-11 w-full font-medium"
+                    data-testid="login-continue-email"
                     disabled={isLoading || !emailInput.trim()}
                   >
                     {isLoading ? (
@@ -704,6 +730,7 @@ export function Login() {
                       />
                       <button
                         type="button"
+                        data-testid="login-password-toggle"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
                         tabIndex={-1}
@@ -726,6 +753,7 @@ export function Login() {
                   <Button
                     type="submit"
                     className="h-11 w-full font-medium"
+                    data-testid="login-submit-password"
                     disabled={isLoading || !password}
                   >
                     {isLoading ? (
@@ -812,6 +840,7 @@ export function Login() {
               <Button
                 type="submit"
                 className="h-11 w-full font-medium"
+                data-testid="login-submit-mock"
                 disabled={isLoading || !mockUsername.trim()}
               >
                 {isLoading ? (

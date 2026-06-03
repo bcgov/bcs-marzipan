@@ -55,6 +55,7 @@ export type UserListItem = z.infer<typeof userListItemSchema>;
  */
 export const userDetailSchema = userListItemSchema.extend({
   notes: z.string().nullable(),
+  flagColour: z.string().nullable(),
 });
 
 export type UserDetail = z.infer<typeof userDetailSchema>;
@@ -107,6 +108,23 @@ export const updateUserBodySchema = z.object({
 });
 
 export type UpdateUserBody = z.infer<typeof updateUserBodySchema>;
+
+/**
+ * PATCH /users/:id/settings - Update per-user configurable settings.
+ */
+export const updateUserSettingsBodySchema = z.object({
+  flagColour: z
+    .string()
+    .regex(
+      /^#[0-9a-fA-F]{6}$/,
+      'Must be a valid 6-digit hex colour (e.g. #FF0000)'
+    )
+    .nullable(),
+});
+
+export type UpdateUserSettingsBody = z.infer<
+  typeof updateUserSettingsBodySchema
+>;
 
 /**
  * POST /users/:userId/teams - Add a user to a team.

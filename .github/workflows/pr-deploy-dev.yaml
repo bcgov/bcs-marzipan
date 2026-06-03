@@ -20,6 +20,7 @@ jobs:
       APP_VERSION: ${{ vars.APP_VERSION }}
       AUTH_COOKIE_DOMAIN: ${{ vars.AUTH_COOKIE_DOMAIN }}
       POST_LOGIN_REDIRECT_URL: ${{ vars.POST_LOGIN_REDIRECT_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
@@ -72,6 +73,7 @@ jobs:
 
       - name: Deploy to Dev environment
         run: |
+          : "${JWT_SECRET:?JWT_SECRET must be set as a GitHub Actions secret before deploying}"
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${DEV_NAMESPACE}
           oc kustomize openshift/deploy/overlays/dev | envsubst | oc apply -f -

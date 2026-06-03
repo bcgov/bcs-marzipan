@@ -202,9 +202,7 @@ const FormLabel = forwardRef<
         htmlFor={formItemId}
         {...props}
       >
-        <span
-          className={cn('inline-flex items-center', showRequired && 'gap-1')}
-        >
+        <span className="inline-flex items-center gap-1">
           {children}
           {showRequired ? <RequiredFieldIndicator className="inline" /> : null}
         </span>

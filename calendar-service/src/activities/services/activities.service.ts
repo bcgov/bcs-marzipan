@@ -16,6 +16,7 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
+  activityFlags,
   activityHistory,
   activityReportSettings,
   activityRepresentatives,
@@ -52,6 +53,7 @@ import {
   SYSTEM_ROLES,
   type ActivityStatusName,
 } from '@corpcal/shared';
+import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import {
   CLONE_ADVANCED_FIELD_PATHS,
   CLONE_ALLOWED_INCLUDE_PATHS,
@@ -96,6 +98,7 @@ import { getVisibleTagIds } from '../../policy/tag-scoping.helper';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
+import { ActivityFlagsService } from './activity-flags.service';
 import { ActivityHistoryService } from './activity-history.service';
 import { ActivityJunctionService } from './activity-junction.service';
 import { ActivityMapperService } from './activity-mapper.service';
@@ -116,6 +119,7 @@ export class ActivitiesService {
     private readonly applicationSettings: ApplicationSettingsService,
     private readonly policyService: PolicyService,
     private readonly teamsService: TeamsService,
+    private readonly flagsService: ActivityFlagsService,
     private readonly lookAheadPolicy: LookAheadPolicyService
   ) {}
 
@@ -623,7 +627,10 @@ export class ActivitiesService {
     related: Awaited<
       ReturnType<ActivitiesService['fetchRelatedForActivityIds']>
     >,
-    opts?: { canEdit?: boolean }
+    opts?: {
+      canEdit?: boolean;
+      flags?: ActivityFlagResponse[];
+    }
   ): ActivityResponse {
     const id = activity.id;
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
@@ -661,6 +668,7 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
       ...(opts?.canEdit !== undefined ? { canEdit: opts.canEdit } : {}),
+      flags: opts?.flags ?? [],
     });
   }
 
@@ -1581,6 +1589,16 @@ export class ActivitiesService {
       activityResults = activityResults.filter((a) => commsLeadIds.has(a.id));
     }
 
+    // Restrict to activities flag-assigned to this user
+    if (filters?.flagAssigneeUserId !== undefined) {
+      const flagRows = await this.databaseService.db
+        .select({ activityId: activityFlags.activityId })
+        .from(activityFlags)
+        .where(eq(activityFlags.assigneeId, filters.flagAssigneeUserId));
+      const flaggedIds = new Set(flagRows.map((r) => r.activityId));
+      activityResults = activityResults.filter((a) => flaggedIds.has(a.id));
+    }
+
     // Restrict to activities shared with this team
     if (filters?.sharedWithTeamId !== undefined) {
       const sharedRows = await this.databaseService.db
@@ -1630,13 +1648,18 @@ export class ActivitiesService {
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
     const canReview =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
-    const [related, reviewLookups, reviewExemptFieldKeys] = await Promise.all([
-      this.fetchRelatedForActivityIds(activityIds, activityResults),
-      canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
-      canReview
-        ? this.getEffectiveReviewExemptFieldKeys()
-        : Promise.resolve(undefined),
-    ]);
+    const userTeamIds = ctx?.user?.teamIds ?? [];
+    const [related, reviewLookups, reviewExemptFieldKeys, flagsMap] =
+      await Promise.all([
+        this.fetchRelatedForActivityIds(activityIds, activityResults),
+        canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
+        canReview
+          ? this.getEffectiveReviewExemptFieldKeys()
+          : Promise.resolve(undefined),
+        userTeamIds.length > 0
+          ? this.flagsService.fetchFlagsForActivities(activityIds, userTeamIds)
+          : Promise.resolve(new Map<number, ActivityFlagResponse[]>()),
+      ]);
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
       related.categoriesResult;
 
@@ -1689,6 +1712,7 @@ export class ActivitiesService {
         leadTeamDisplayName:
           related.leadTeamDisplayMap.get(activity.id) ?? null,
         canEdit: canEdit ?? undefined,
+        flags: flagsMap.get(activity.id) ?? [],
       });
       if (canReview) {
         response.changedFieldsSinceReview =
@@ -1757,13 +1781,18 @@ export class ActivitiesService {
     // Fetch related data
     const canReview =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
-    const [related, reviewLookups, reviewExemptFieldKeys] = await Promise.all([
-      this.fetchRelatedForActivityIds([id], [activity]),
-      canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
-      canReview
-        ? this.getEffectiveReviewExemptFieldKeys()
-        : Promise.resolve(undefined),
-    ]);
+    const userTeamIds = ctx?.user?.teamIds ?? [];
+    const [related, reviewLookups, reviewExemptFieldKeys, flags] =
+      await Promise.all([
+        this.fetchRelatedForActivityIds([id], [activity]),
+        canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
+        canReview
+          ? this.getEffectiveReviewExemptFieldKeys()
+          : Promise.resolve(undefined),
+        userTeamIds.length > 0
+          ? this.flagsService.fetchFlagsForActivity(id, userTeamIds)
+          : Promise.resolve([]),
+      ]);
     const commsContacts = related.commsContactsMap.get(id) ?? [];
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
@@ -1780,6 +1809,7 @@ export class ActivitiesService {
 
     const response = this.mapFetchedActivityToResponseDto(activity, related, {
       canEdit: canEdit ?? undefined,
+      flags,
     });
 
     if (canReview) {
@@ -2554,10 +2584,9 @@ export class ActivitiesService {
    * - Field-level write scopes the user cannot edit are stripped.
    * - Initial activity status matches **create** rules: `new` or `reviewed` from
    *   `markAsReviewed` when the user has `activities.review` (see `create`).
-   * Two history entries are recorded with the same optional note:
-   * - `created` on the new activity (with source provenance in `changes`).
-   * - `cloned` on the source activity (with new-activity provenance in
-   *   `changes`).
+   * A single history entry is recorded on the new activity (`created`) with
+   * source provenance (`clonedFromActivityId` / `clonedFromDisplayId`) in
+   * `changes`. No history record is written to the source activity.
    */
   async clone(
     sourceId: number,
@@ -2638,25 +2667,6 @@ export class ActivitiesService {
     const created = await this.create(dto, userId, context, {
       extraCreateChanges: sourceProvenance,
     });
-
-    await this.activityHistoryService.recordChange(
-      sourceId,
-      userId,
-      'cloned',
-      [
-        {
-          field: 'clonedToActivityId',
-          oldValue: null,
-          newValue: created.id,
-        },
-        {
-          field: 'clonedToDisplayId',
-          oldValue: null,
-          newValue: created.displayId ?? null,
-        },
-      ],
-      body.activityHistoryNotes
-    );
 
     return created;
   }
@@ -2744,6 +2754,8 @@ export class ActivitiesService {
 
       await tx.delete(activities).where(eq(activities.id, id));
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
 
     return { message: `Activity #${id} deleted successfully` };
   }
@@ -3133,7 +3145,7 @@ export class ActivitiesService {
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
 
-    return this.mapperService.mapToResponseDto(updated, {
+    const dto = this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
@@ -3165,6 +3177,10 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
+    return dto;
   }
 
   /**
@@ -3259,7 +3275,7 @@ export class ActivitiesService {
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
 
-    return this.mapperService.mapToResponseDto(updated, {
+    const dto = this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
@@ -3291,6 +3307,10 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
+    return dto;
   }
 
   /**
@@ -3377,7 +3397,7 @@ export class ActivitiesService {
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
 
-    return this.mapperService.mapToResponseDto(updated, {
+    const dto = this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
@@ -3409,6 +3429,10 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
+    return dto;
   }
 
   /**

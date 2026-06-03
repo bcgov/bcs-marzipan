@@ -34,13 +34,16 @@ jobs:
 
       # Security audit: check for known vulnerabilities in dependencies
       - name: Run npm audit
-        # Note: we have to temporarily raise this to build until eslint updates to ajv >8.18.0, and @swc updates to "@swc/cli" >10.2.1
-        # TODO: return to moderate asap
-        # https://github.com/eslint/eslint/issues/20508
-        run: npm audit --audit-level=critical
+        run: npm audit --audit-level=moderate
 
       - name: Run tests
         run: npm run test
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Validate k6 performance scripts
+        run: npm run perf:k6:inspect
 
   # build-and-push:
   #   runs-on: ubuntu-latest

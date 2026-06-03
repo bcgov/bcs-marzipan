@@ -1,11 +1,6 @@
 import { useFormContext } from 'react-hook-form';
 
-import type { TranslationRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import {
-  FormSelectSafe,
-  FormSelectTrigger,
-} from '@/components/app/form-select';
 import {
   Combobox,
   ComboboxChip,
@@ -25,16 +20,19 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { InfoIconButton } from '@/components/ui/info-icon-button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
-import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
-import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
-import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivityCommsSectionProps = {
@@ -44,14 +42,6 @@ type ActivityCommsSectionProps = {
     displayName?: string;
   }>;
   commsLeadOptions: OptionItem[];
-  translationLanguageOptions: Array<{
-    id: number;
-    name: string;
-    displayName?: string;
-  }>;
-  newsReleaseDistributionOptions: OptionItem[];
-  newsReleaseOriginOptions: OptionItem[];
-  translationRequiredStatuses: TranslationRequiredStatusLookupItem[];
 };
 
 function optionItemsEqual(a: OptionItem, b: OptionItem): boolean {
@@ -79,28 +69,16 @@ function buildCommsContactsFromSelection(
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
   commsLeadOptions,
-  translationLanguageOptions,
-  newsReleaseDistributionOptions,
-  newsReleaseOriginOptions,
-  translationRequiredStatuses,
 }) => {
   const { readOnly } = useActivityEdit();
-  const translationsScope = useActivityFieldScopeControl('translations');
   const form = useFormContext<ActivityFormData>();
   const commsContactsAnchorRef = useComboboxAnchor();
   const commsMaterialsAnchorRef = useComboboxAnchor();
-  const translationsAnchorRef = useComboboxAnchor();
 
   const commsMaterialComboboxOptions = commsMaterialOptions.map((m) => ({
     value: String(m.id),
     label: m.displayName ?? m.name,
   }));
-  const translationLanguageComboboxOptions = translationLanguageOptions.map(
-    (l) => ({
-      value: String(l.id),
-      label: l.displayName ?? l.name,
-    })
-  );
 
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.comms}>
@@ -125,7 +103,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           });
 
           const handleValueChange = (selected: OptionItem[]) => {
-            field.onChange(
+            setActivityFormFieldValue(
+              form,
+              field.name,
               buildCommsContactsFromSelection(selected, field.value)
             );
           };
@@ -135,7 +115,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               ...c,
               isLead: c.userId === userId,
             }));
-            field.onChange(next);
+            setActivityFormFieldValue(form, field.name, next);
           };
 
           return (
@@ -223,20 +203,32 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         name="strategy"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <InfoIconButton aria-label="About strategy" />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
+                    align="start"
+                  >
+                    <p>
+                      Describe any promotion, digital content, or visuals
+                      planned as part of the announcement vision.
+                    </p>
+                  </PopoverContent>
+                </Popover>
+              </>
+            </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter strategy"
                 readOnly={readOnly}
                 rows={4}
-                name={field.name}
-                ref={field.ref}
-                onBlur={field.onBlur}
+                {...field}
                 value={field.value ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  field.onChange(v === '' ? undefined : v);
-                }}
               />
             </FormControl>
             <FormMessage />
@@ -260,7 +252,11 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected) =>
-                    field.onChange(selected.map((o) => Number(o.value)))
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      selected.map((o) => Number(o.value))
+                    )
                   }
                   itemToStringValue={(o) => o.label}
                   readOnly={readOnly}
@@ -294,182 +290,6 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   </ComboboxContent>
                 </Combobox>
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          );
-        }}
-      />
-
-      <ActivityFormHeading>Release</ActivityFormHeading>
-
-      <FormField
-        control={form.control}
-        name="newsReleaseOriginId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormSelectSafe
-              readOnly={readOnly}
-              optionValues={newsReleaseOriginOptions.map((o) => o.value)}
-              onValueChange={(value) =>
-                field.onChange(value ? parseInt(value, 10) : null)
-              }
-              value={field.value?.toString() || ''}
-            >
-              <FormControl data-field={field.name}>
-                <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select news release origin" />
-                </FormSelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {newsReleaseOriginOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </FormSelectSafe>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="newsReleaseDistributionId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormSelectSafe
-              readOnly={readOnly}
-              optionValues={newsReleaseDistributionOptions.map((o) => o.value)}
-              onValueChange={(value) =>
-                field.onChange(value ? parseInt(value, 10) : null)
-              }
-              value={field.value?.toString() || ''}
-            >
-              <FormControl data-field={field.name}>
-                <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select news release distribution" />
-                </FormSelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {newsReleaseDistributionOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </FormSelectSafe>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="translationsRequiredStatusId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-            <FormSelectSafe
-              readOnly={translationsScope.readOnly}
-              disabled={translationsScope.fieldScopeDisabled}
-              optionValues={translationRequiredStatuses.map((s) =>
-                String(s.id)
-              )}
-              value={
-                field.value !== undefined && field.value !== null
-                  ? String(field.value)
-                  : ''
-              }
-              onValueChange={(value) =>
-                field.onChange(value === '' ? undefined : Number(value))
-              }
-            >
-              <ActivityFieldScopePermissionTooltip scope="translations">
-                <FormControl data-field={field.name}>
-                  <FormSelectTrigger
-                    readOnly={
-                      translationsScope.readOnly &&
-                      !translationsScope.fieldScopeDisabled
-                    }
-                  >
-                    <SelectValue placeholder="Select status" />
-                  </FormSelectTrigger>
-                </FormControl>
-              </ActivityFieldScopePermissionTooltip>
-              <SelectContent>
-                {translationRequiredStatuses.map((status) => (
-                  <SelectItem key={status.id} value={String(status.id)}>
-                    {status.displayName ?? status.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </FormSelectSafe>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="translationLanguageIds"
-        render={({ field }) => {
-          const selectedOptions = translationLanguageComboboxOptions.filter(
-            (o) => (field.value ?? []).includes(Number(o.value))
-          );
-          return (
-            <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-              <ActivityFieldScopePermissionTooltip scope="translations">
-                <FormControl data-field={field.name}>
-                  <Combobox
-                    items={translationLanguageComboboxOptions}
-                    multiple
-                    value={selectedOptions}
-                    onValueChange={(selected) =>
-                      field.onChange(selected.map((o) => Number(o.value)))
-                    }
-                    itemToStringValue={(o) => o.label}
-                    readOnly={
-                      translationsScope.readOnly &&
-                      !translationsScope.fieldScopeDisabled
-                    }
-                    disabled={translationsScope.fieldScopeDisabled}
-                  >
-                    <ComboboxChips
-                      ref={translationsAnchorRef}
-                      className="w-full"
-                    >
-                      <ComboboxValue>
-                        {(values: OptionItem[]) => (
-                          <>
-                            {values.map((option) => (
-                              <ComboboxChip key={option.value}>
-                                {option.label}
-                              </ComboboxChip>
-                            ))}
-                            <ComboboxChipsInput placeholder="Select translation languages" />
-                          </>
-                        )}
-                      </ComboboxValue>
-                    </ComboboxChips>
-                    <ComboboxContent anchor={translationsAnchorRef}>
-                      <ComboboxEmpty>
-                        No translation languages found.
-                      </ComboboxEmpty>
-                      <ComboboxList>
-                        {(option: OptionItem) => (
-                          <ComboboxItem key={option.value} value={option}>
-                            {option.label}
-                          </ComboboxItem>
-                        )}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                </FormControl>
-              </ActivityFieldScopePermissionTooltip>
               <FormMessage />
             </FormItem>
           );

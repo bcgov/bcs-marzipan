@@ -1,12 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { ReportDataResponse } from '../../../api/report-data';
+import { PRINT_FOOTER_CHANGED_EXPLANATION_BODY } from './dateFormatters';
 import { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 import { PrintCustomReportDocument } from './PrintCustomReportDocument';
-import { PrintPlanningDocument } from './PrintPlanningDocument';
 import { PrintReportDocument } from './PrintReportDocument';
 import { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
 import type { PrintReportVariant } from './rowViewModel';
+import type { TranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
 
 export { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 export { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
@@ -20,29 +21,51 @@ export type ReactRenderableReportType =
   | 'custom';
 
 export interface RenderReportOptions {
-  /** Absolute URL used to build `<a>` hrefs to the activity page for each row. */
   activityBaseUrl: string;
-  /**
-   * Optional override for the generation timestamp embedded in the footer.
-   * Used in tests and snapshot rendering; defaults to `new Date()`.
-   */
-  generatedAt?: Date;
+  /** Maps `translationsRequired` shortcodes to lookup display names for Look Ahead print. */
+  resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
+}
+
+/**
+ * Browser print / in-app preview only: Puppeteer PDFs embed the same copy in
+ * {@link buildReportPdfFooterTemplateHtml} so the hint stays in the footer
+ * band and cannot overlap body content (see `.corpcal-print-pdf-footer-hint-line`).
+ *
+ * Wrapped HTML for headless PDF no longer inserts this component.
+ */
+export function PrintPdfFooterHintLine() {
+  return (
+    <div className="corpcal-print-pdf-footer-hint-line" aria-hidden="true">
+      * <strong>Changed</strong> {PRINT_FOOTER_CHANGED_EXPLANATION_BODY}
+    </div>
+  );
+}
+
+export function printPdfFooterHintLineHtml(): string {
+  return renderToStaticMarkup(<PrintPdfFooterHintLine />);
 }
 
 const REPORT_TYPE_TO_VARIANT: Record<
-  Exclude<ReactRenderableReportType, 'planning' | 'custom'>,
+  Exclude<ReactRenderableReportType, 'custom'>,
   PrintReportVariant
 > = {
   'look-ahead': 'lookAhead',
-  'thirty-sixty-ninety': 'lookAhead',
-  exec: 'exec',
+  'thirty-sixty-ninety': 'thirtySixtyNinety',
+  exec: 'execLookAhead',
+  planning: 'planning',
 };
 
 const REACT_RENDERABLE_REPORT_TYPES = new Set<string>([
   ...Object.keys(REPORT_TYPE_TO_VARIANT),
-  'planning',
   'custom',
 ]);
+
+/** Maps rollup print `ReactRenderableReportType` to row layout variant (excludes custom). */
+export function rollupPrintVariantForReportType(
+  reportTypeName: Exclude<ReactRenderableReportType, 'custom'>
+): PrintReportVariant {
+  return REPORT_TYPE_TO_VARIANT[reportTypeName];
+}
 
 export function isReactRenderableReportType(
   reportTypeName: string
@@ -59,16 +82,9 @@ export function renderPrintReportFragmentHtml(
   data: ReportDataResponse,
   options: RenderReportOptions
 ): string {
-  if (reportTypeName === 'planning') {
-    return renderToStaticMarkup(<PrintPlanningDocument />);
-  }
-
   if (reportTypeName === 'custom') {
     return renderToStaticMarkup(
-      <PrintCustomReportDocument
-        data={data}
-        generatedAt={options.generatedAt ?? new Date()}
-      />
+      <PrintCustomReportDocument data={data} />
     );
   }
 
@@ -78,7 +94,7 @@ export function renderPrintReportFragmentHtml(
       data={data}
       variant={variant}
       activityBaseUrl={options.activityBaseUrl}
-      generatedAt={options.generatedAt ?? new Date()}
+      resolveTranslationLanguageLabel={options.resolveTranslationLanguageLabel}
     />
   );
 }
@@ -117,6 +133,11 @@ export type WrapPrintReportHtmlDocumentOptions = {
   fontFaceCss?: string;
   /** Prepended inside `<body>` before the report fragment (e.g. PDF-only cover). */
   coverPageHtml?: string;
+  /**
+   * Sets a body class so standalone cover PDF CSS can relax `.corpcal-print-cover-sheet`
+   * break-after (no forced blank page when this HTML is cover-only).
+   */
+  coverStandalonePdf?: boolean;
 };
 
 export function wrapPrintReportHtmlDocument(
@@ -125,7 +146,11 @@ export function wrapPrintReportHtmlDocument(
 ): string {
   const fontFaceCss = options.fontFaceCss ?? '';
   const coverPageHtml = options.coverPageHtml ?? '';
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body style="margin:0;background:#fff;">${coverPageHtml}${fragmentHtml}</body></html>`;
+  const bodyClass = options.coverStandalonePdf
+    ? 'corpcal-print-pdf-cover-sheet-only-doc'
+    : '';
+  const bodyClassAttr = bodyClass ? ` class="${bodyClass}"` : '';
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body${bodyClassAttr} style="margin:0;background:#fff;">${coverPageHtml}${fragmentHtml}</body></html>`;
 }
 
 /** Back-compat utility: `CORPCAL_PRINT_ROOT_CLASS` as a namespaced selector value. */

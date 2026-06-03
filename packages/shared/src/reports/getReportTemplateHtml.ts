@@ -15,6 +15,8 @@ import {
 export interface ReportTemplateOptions {
   /** Absolute URL used when rendering links to activity pages (per deployment env). */
   activityBaseUrl: string;
+  /** Maps `translationsRequired` shortcodes to lookup display names for Look Ahead print. */
+  resolveTranslationLanguageLabel?: import('./print/react/translationLanguageDisplayLabels').TranslationLanguageLabelResolver;
 }
 
 const DEFAULT_OPTIONS: ReportTemplateOptions = {
@@ -55,6 +57,7 @@ export function getReportTemplateHtml(
     }
     return renderPrintReportFragmentHtml(reportTypeName, data, {
       activityBaseUrl: options.activityBaseUrl,
+      resolveTranslationLanguageLabel: options.resolveTranslationLanguageLabel,
     });
   }
 

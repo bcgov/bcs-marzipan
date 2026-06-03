@@ -1,5 +1,8 @@
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { normalizeReportSettings } from '@corpcal/shared/utils';
+import {
+  normalizeReportSettings,
+  prepareActivityFormDataForSubmit,
+} from '@corpcal/shared/utils';
 
 function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
   if (!arr || arr.length === 0) return undefined;
@@ -10,6 +13,35 @@ export type CreatePayloadOptions = {
   markAsReviewed?: boolean;
 };
 
+function buildPayloadFromPrepared(
+  prepared: ActivityFormData,
+  preparedFormValues: ActivityFormData,
+  options?: CreatePayloadOptions
+): Record<string, unknown> {
+  const { markAsReviewed } = options ?? {};
+  const { activityStatusId: _omit, ...rest } = prepared;
+  const payload: Record<string, unknown> = {
+    ...rest,
+    startDate: prepared.startDate ?? null,
+    endDate: prepared.endDate ?? null,
+    startTime: prepared.startTime ?? null,
+    endTime: prepared.endTime ?? null,
+    categoryIds: toUndefinedIfEmpty(preparedFormValues.categoryIds),
+    tagIds: toUndefinedIfEmpty(preparedFormValues.tagIds),
+    commsMaterialIds: toUndefinedIfEmpty(preparedFormValues.commsMaterialIds),
+    translationLanguageIds: toUndefinedIfEmpty(
+      preparedFormValues.translationLanguageIds
+    ),
+    representatives: toUndefinedIfEmpty(preparedFormValues.representatives),
+    sharedWithTeamIds: toUndefinedIfEmpty(preparedFormValues.sharedWithTeamIds),
+    commsContacts: toUndefinedIfEmpty(preparedFormValues.commsContacts),
+  };
+  if (markAsReviewed !== undefined) {
+    payload.markAsReviewed = markAsReviewed;
+  }
+  return payload;
+}
+
 /**
  * Builds the request payload for creating an activity from form values.
  * Backend sets activityStatusId from markAsReviewed + role; do not send activityStatusId.
@@ -19,28 +51,11 @@ export function buildPayloadForCreate(
   formValues: ActivityFormData,
   options?: CreatePayloadOptions
 ): Record<string, unknown> {
-  const { markAsReviewed } = options ?? {};
-  const { activityStatusId: _omit, ...rest } = data;
-  const payload: Record<string, unknown> = {
-    ...rest,
-    startDate: data.startDate ?? null,
-    endDate: data.endDate ?? null,
-    startTime: data.startTime ?? null,
-    endTime: data.endTime ?? null,
-    categoryIds: toUndefinedIfEmpty(formValues.categoryIds),
-    tagIds: toUndefinedIfEmpty(formValues.tagIds),
-    commsMaterialIds: toUndefinedIfEmpty(formValues.commsMaterialIds),
-    translationLanguageIds: toUndefinedIfEmpty(
-      formValues.translationLanguageIds
-    ),
-    representatives: toUndefinedIfEmpty(formValues.representatives),
-    sharedWithTeamIds: toUndefinedIfEmpty(formValues.sharedWithTeamIds),
-    commsContacts: toUndefinedIfEmpty(formValues.commsContacts),
-  };
-  if (markAsReviewed !== undefined) {
-    payload.markAsReviewed = markAsReviewed;
-  }
-  return payload;
+  return buildPayloadFromPrepared(
+    prepareActivityFormDataForSubmit(data),
+    prepareActivityFormDataForSubmit(formValues),
+    options
+  );
 }
 
 export type UpdatePayloadOptions = {
@@ -58,12 +73,14 @@ export function buildPayloadForUpdate(
   formValues: ActivityFormData,
   options?: UpdatePayloadOptions
 ): Record<string, unknown> {
+  const prepared = prepareActivityFormDataForSubmit(data);
+  const preparedFormValues = prepareActivityFormDataForSubmit(formValues);
   const normalizedReportSettings = normalizeReportSettings(
-    formValues.reportSettings
+    preparedFormValues.reportSettings
   );
   const { markAsReviewed, markAsCompleted } = options ?? {};
   const payload: Record<string, unknown> = {
-    ...buildPayloadForCreate(data, formValues),
+    ...buildPayloadFromPrepared(prepared, preparedFormValues),
     reportSettings: normalizedReportSettings,
     // For updates, always send the representatives array (even if empty) so the server
     // can detect when all representatives have been removed. buildPayloadForCreate uses

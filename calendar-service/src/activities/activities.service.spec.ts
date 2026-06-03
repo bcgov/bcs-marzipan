@@ -37,6 +37,7 @@ import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
 import { createMockActivityDataFetcherService } from './services/activity-data-fetcher.service.mock';
+import { ActivityFlagsService } from './services/activity-flags.service';
 import { ActivityHistoryService } from './services/activity-history.service';
 import { ActivityJunctionService } from './services/activity-junction.service';
 import { ActivityMapperService } from './services/activity-mapper.service';
@@ -124,6 +125,7 @@ describe('ActivitiesService', () => {
     notifyActivityUpdate: vi.fn(),
     notifyLockReleased: vi.fn(),
     broadcastActivityCreated: vi.fn(),
+    broadcastActivityUpdated: vi.fn(),
     server: {
       to: vi.fn().mockReturnThis(),
       emit: vi.fn(),
@@ -279,6 +281,13 @@ describe('ActivitiesService', () => {
         {
           provide: TeamsService,
           useValue: mockTeamsService,
+        },
+        {
+          provide: ActivityFlagsService,
+          useValue: {
+            fetchFlagsForActivities: vi.fn().mockResolvedValue(new Map()),
+            fetchFlagsForActivity: vi.fn().mockResolvedValue([]),
+          },
         },
         {
           provide: ApplicationSettingsService,
@@ -2125,6 +2134,9 @@ describe('ActivitiesService', () => {
         'Reason with at least ten characters',
         expect.anything()
       );
+      expect(
+        mockActivitiesGateway.broadcastActivityUpdated
+      ).toHaveBeenCalledWith(1);
     });
 
     it('should throw ConflictException when status is already delete_requested', async () => {
@@ -2516,6 +2528,9 @@ describe('ActivitiesService', () => {
         'Restored',
         expect.anything()
       );
+      expect(
+        mockActivitiesGateway.broadcastActivityUpdated
+      ).toHaveBeenCalledWith(1);
     });
 
     it('should throw BadRequestException when status is not delete_requested or deleted', async () => {
@@ -2617,6 +2632,9 @@ describe('ActivitiesService', () => {
         'Restored from deletion',
         expect.anything()
       );
+      expect(
+        mockActivitiesGateway.broadcastActivityUpdated
+      ).toHaveBeenCalledWith(1);
     });
   });
 
@@ -2667,6 +2685,9 @@ describe('ActivitiesService', () => {
       expect(mockTx.delete).toHaveBeenCalled();
       expect(deleteWhere).toHaveBeenCalled();
       expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(14);
+      expect(
+        mockActivitiesGateway.broadcastActivityUpdated
+      ).toHaveBeenCalledWith(1);
     });
 
     it('should throw ForbiddenException when user lacks delete.any and is not comms/lead-team', async () => {
@@ -2893,6 +2914,9 @@ describe('ActivitiesService', () => {
         'No longer needed for the event',
         expect.anything()
       );
+      expect(
+        mockActivitiesGateway.broadcastActivityUpdated
+      ).toHaveBeenCalledWith(1);
     });
 
     it('should clear the review snapshot before updating status', async () => {
@@ -3362,7 +3386,7 @@ describe('ActivitiesService', () => {
       expect((dto as Record<string, unknown>).markAsReviewed).toBe(true);
     });
 
-    it('records a "cloned" history entry on the source with the same notes', async () => {
+    it('does not record a history entry on the source activity', async () => {
       const source = createMockActivityResponse({
         id: 100,
         displayId: 'GCPE-000100',
@@ -3386,20 +3410,7 @@ describe('ActivitiesService', () => {
         cloneContext
       );
 
-      expect(mockActivityHistoryService.recordChange).toHaveBeenCalledWith(
-        100,
-        42,
-        'cloned',
-        [
-          { field: 'clonedToActivityId', oldValue: null, newValue: 200 },
-          {
-            field: 'clonedToDisplayId',
-            oldValue: null,
-            newValue: 'GCPE-000200',
-          },
-        ],
-        'same note'
-      );
+      expect(mockActivityHistoryService.recordChange).not.toHaveBeenCalled();
     });
 
     it('omits advanced field paths not present in includeFieldPaths', async () => {

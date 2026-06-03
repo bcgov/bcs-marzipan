@@ -29,6 +29,20 @@
       "when": 1746403200000,
       "tag": "0003_20260504_user_activity_favourites",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1746576000000,
+      "tag": "0004_20260506_activity_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1747612800000,
+      "tag": "0005_20260519_user_settings",
+      "breakpoints": true
     }
   ]
 }

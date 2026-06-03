@@ -66,11 +66,8 @@
     /* Link / interactive blue (#0F6CBD equivalent) */
     --link: oklch(0.5263 0.1493 251.63);
 
-    /* Activity status badge colours */
-    --status-blue: #b7e8ea;
-    --status-yellow: #ffddb3;
+    /* Activity status badge colours (blue/yellow/red: corpcal-tokens.css) */
     --status-green: #d0f1c8;
-    --status-red: #ff978d;
     --status-grey: #ebebeb;
     --status-dark: #292929;
     --status-purple: #d8caff;
@@ -86,8 +83,11 @@
     /* Required field asterisk — matches Deleted activity status badge background */
     --required-field-indicator: var(--activity-status-deleted);
 
+    /* Flag / assignment feature */
+    --fluent-success-foreground-inverted: #13a10e;
+    --flag-button-icon: var(--fluent-success-foreground-inverted);
     /* Sync with REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS in @corpcal/shared/reports/reportPrintDimensions. */
-    --corpcal-report-sheet-content-max-width: 1024px;
+    --corpcal-report-sheet-content-max-width: 933px;
   }
 
   .dark {
@@ -266,4 +266,18 @@
   background-color: color-mix(in oklch, var(--sidebar) 85%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+@keyframes live-row-highlight-fade {
+  0% {
+    background-color: rgb(254 249 195 / 0.55);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* Cross-user refresh flash (reports preview + Look Ahead table). Animated from globals.css in app shell only. */
+.live-row-highlight {
+  animation: live-row-highlight-fade 1.5s ease-out forwards;
 }

@@ -56,10 +56,12 @@ import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
 import {
   useDeleteActivity,
+  useRemoveActivityFlag,
   useRequestDeleteActivity,
   useRestoreActivity,
   useSoftDeleteActivity,
   useUpdateActivity,
+  useUpsertActivityFlag,
 } from '../hooks/useCalendar';
 import {
   EDIT_LOCK_CONFLICT_TOAST,
@@ -164,6 +166,7 @@ export function ActivityPage({
   const canRequestDelete = hasPermission(PERMISSIONS.ACTIVITIES.REQUEST_DELETE);
   const canDeleteAny = hasPermission(PERMISSIONS.ACTIVITIES.DELETE_ANY);
   const canEditWhenBlocked = canDeleteAny;
+  const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
   const canRestore =
     normalizedStatus === 'deleted'
       ? canDeleteAny
@@ -255,6 +258,12 @@ export function ActivityPage({
   const restoreMutation = useRestoreActivity();
   const softDeleteMutation = useSoftDeleteActivity();
   const requestDeleteMutation = useRequestDeleteActivity();
+  const upsertFlagMutation = useUpsertActivityFlag({
+    onSuccess: () => void refreshActivity(),
+  });
+  const removeFlagMutation = useRemoveActivityFlag({
+    onSuccess: () => void refreshActivity(),
+  });
 
   const handleRequestForceHandoff = useCallback(async () => {
     setForceHandoffPending(true);
@@ -643,8 +652,20 @@ export function ActivityPage({
 
   const handleReviewConfirm = async (
     notes?: string,
-    markAsCompleted?: boolean
+    markAsCompleted?: boolean,
+    unassignMe?: boolean
   ) => {
+    if (unassignMe) {
+      const myFlags =
+        activity.flags?.filter((f) => f.assigneeId === user?.id) ?? [];
+      myFlags.forEach((flag) => {
+        removeFlagMutation.mutate({
+          activityId: id,
+          teamId: flag.teamId,
+          assigneeName: flag.assigneeName,
+        });
+      });
+    }
     if (markAsCompleted) {
       if (isDirty) {
         await form.handleSubmit(async (data) => {
@@ -841,6 +862,24 @@ export function ActivityPage({
         lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={() => setHistoryOpen(true)}
+        flags={activity.flags ?? []}
+        canFlag={canFlag}
+        onFlagAssign={
+          canFlag
+            ? (teamId, assigneeId, note, assigneeName) =>
+                upsertFlagMutation.mutate({
+                  activityId: id,
+                  body: { teamId, assigneeId, note },
+                  assigneeName,
+                })
+            : undefined
+        }
+        onFlagUnassign={(teamId, assigneeName) =>
+          removeFlagMutation.mutate({ activityId: id, teamId, assigneeName })
+        }
+        isFlagPending={
+          upsertFlagMutation.isPending || removeFlagMutation.isPending
+        }
         isFavourite={isFavourite(id)}
         onFavouriteToggle={() => toggleFavourite(id)}
         isFavouriteToggling={isFavouriteToggling}
@@ -1082,12 +1121,15 @@ export function ActivityPage({
         onOpenChange={setShowReviewModal}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes, markAsCompleted) =>
-          void handleReviewConfirm(notes, markAsCompleted)
+        onConfirm={(notes, markAsCompleted, unassignMe) =>
+          void handleReviewConfirm(notes, markAsCompleted, unassignMe)
         }
         displayId={displayId}
         showMarkAsCompletedOption={actionFlags.showCompleteAction}
         activityEndedAtLabel={reviewModalActivityEndedAtLabel}
+        showUnassignMeOption={(activity.flags ?? []).some(
+          (f) => f.assigneeId === user?.id
+        )}
       />
       <CompleteActivityModal
         open={showCompleteModal}

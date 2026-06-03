@@ -1,3 +1,7 @@
+import type {
+  InferredReportDateBound,
+  ReportDateRange,
+} from '../reports/normalizeReportActivityDateRange';
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ReportResponse } from '../schemas/lookup.schema';
 
@@ -9,7 +13,16 @@ export interface ReportSectionData {
   activities: ActivityResponse[];
 }
 
+export interface ReportDataMeta {
+  resolvedDateRange: ReportDateRange;
+  wasClamped: boolean;
+  inferredBound: InferredReportDateBound;
+  activityCount: number;
+  largeResultWarning: boolean;
+}
+
 export interface ReportDataResponse {
   report: ReportResponse;
   sections: ReportSectionData[];
+  meta?: ReportDataMeta;
 }

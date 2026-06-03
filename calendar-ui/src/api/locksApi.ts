@@ -1,3 +1,5 @@
+import { trimTrailingSlashes } from '@corpcal/shared/utils';
+
 import { createLogger } from '../lib/logger';
 import api from './axios';
 
@@ -74,7 +76,7 @@ export async function getLockStatus(
 
 function locksApiBaseUrl(): string {
   const base = import.meta.env.VITE_API_BASE_URL || '/api';
-  return base.replace(/\/$/, '');
+  return trimTrailingSlashes(base);
 }
 
 /**

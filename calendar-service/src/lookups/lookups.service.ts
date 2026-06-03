@@ -94,6 +94,7 @@ export class LookupsService {
         sortOrder: categories.sortOrder,
         isActive: categories.isActive,
         visibility: categories.visibility,
+        description: categories.description,
       })
       .from(categories)
       .where(and(eq(categories.isActive, true), inArray(categories.id, ids)))
@@ -108,6 +109,7 @@ export class LookupsService {
       sortOrder: cat.sortOrder,
       isActive: cat.isActive,
       visibility: cat.visibility as 'global' | 'team',
+      description: cat.description,
     }));
   }
 

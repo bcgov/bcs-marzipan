@@ -49,10 +49,10 @@ describe('ActivityTableEmptyState', () => {
   it('renders no-favourites variant', () => {
     render(<ActivityTableEmptyState variant="no-favourites" />);
 
-    expect(screen.getByText('No favourite activities')).toBeInTheDocument();
+    expect(screen.getByText('No watchlist activities')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Star an activity to add it to your favourites and find it here quickly.'
+        'Add an activity to your watchlist to find it here quickly.'
       )
     ).toBeInTheDocument();
   });

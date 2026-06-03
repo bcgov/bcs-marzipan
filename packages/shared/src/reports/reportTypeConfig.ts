@@ -30,6 +30,7 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'title',
       'isConfidential',
       'executiveSummary',
+      'event_lead',
       'summary',
       'category',
       'isIssue',
@@ -39,7 +40,6 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
     ],
   },
   EXEC: {
-    // Placeholder until DB report types are introduced.
     fields: [
       'startDate',
       'endDate',
@@ -47,11 +47,14 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'displayId',
       'title',
       'isConfidential',
-      'executiveSummary',
       'summary',
+      'significance',
       'category',
       'isIssue',
       'newsReleaseOrigin',
+      'lookAheadStatus',
+      'lookAheadSection',
+      'lastUpdatedDateTime',
     ],
   },
   '30_60_90': {
@@ -63,16 +66,17 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'title',
       'isConfidential',
       'summary',
+      'significance',
       'category',
       'isIssue',
-      'newsReleaseOrigin',
       'strategy',
+      'commsMaterials',
+      'translationsRequired',
       'commsContact',
       'lastUpdatedDateTime',
     ],
   },
   PLANNING: {
-    // Placeholder until DB report types are introduced.
     fields: [
       'startDate',
       'endDate',
@@ -81,10 +85,13 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'title',
       'isConfidential',
       'summary',
+      'significance',
       'category',
       'isIssue',
-      'newsReleaseOrigin',
-      'strategy',
+      'schedulingNotes',
+      'premierRequested',
+      'lookAheadStatus',
+      'lastUpdatedDateTime',
     ],
   },
 };
@@ -92,7 +99,7 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
 /**
  * Maps the DB `reports.name` to an internal `ReportType`.
  *
- * Note: `exec` and `planning` are placeholders for future DB entries.
+ * Note: `exec` is a placeholder comment drift fix — it is seeded in DB.
  */
 const REPORT_TYPE_BY_DB_REPORT_NAME: Record<string, ReportType> = {
   'look-ahead': 'LOOK_AHEAD',
@@ -147,4 +154,22 @@ export function getEffectiveReportDetailText(
     return activity.summary ?? null;
   }
   return activity.executiveSummary ?? null;
+}
+
+/** Display name of the comms contact flagged as lead (report field `event_lead`). */
+export function getCommsContactLeadDisplayName(
+  activity: ActivityResponse
+): string | null {
+  const raw = activity.commsContacts?.find((c) => c.isLead)?.name?.trim();
+  return raw && raw.length > 0 ? raw : null;
+}
+
+/** Whether the effective report field list includes event comms lead (`event_lead` or `eventLead`). */
+export function effectiveReportFieldsIncludeEventLead(
+  effectiveFields: readonly string[]
+): boolean {
+  return (
+    effectiveFields.includes('event_lead') ||
+    effectiveFields.includes('eventLead')
+  );
 }

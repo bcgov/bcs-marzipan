@@ -12,6 +12,10 @@
 // Re-export types from Zod schemas (single source of truth)
 export type { ActivityResponse } from '../schemas/activity-response.schema';
 export type {
+  ActivityFlagResponse,
+  UpsertActivityFlagRequest,
+} from '../schemas/activity-flag.schema';
+export type {
   BannerSettings,
   UpsertBannerSettingsBody,
 } from '../schemas/banner.schema';
@@ -40,6 +44,7 @@ export type {
   RoleOption,
   CreateUserBody,
   UpdateUserBody,
+  UpdateUserSettingsBody,
   AddUserToTeamBody,
   UpdateUserTeamRoleBody,
   TransferActivitiesBody,
@@ -102,4 +107,8 @@ export type {
   VenuePresetItem,
 } from '../schemas/lookup.schema';
 
-export type { ReportDataResponse, ReportSectionData } from './report-data';
+export type {
+  ReportDataMeta,
+  ReportDataResponse,
+  ReportSectionData,
+} from './report-data';

@@ -1,5 +1,4 @@
 import { format, startOfDay } from 'date-fns';
-import { Info } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 
@@ -23,13 +22,24 @@ import {
   FormMessage,
   useFormDisplayOptions,
 } from '@/components/ui/form';
+import { InfoIconButton } from '@/components/ui/info-icon-button';
 import { Label } from '@/components/ui/label';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { TimePicker } from '@/components/ui/time-picker';
+import {
+  optionalIdSelectDisplayValue,
+  optionalSelectIdValue,
+} from '@/lib/activity-form-coerce-value';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import {
   getPresetAnchorToday,
   parseIsoDateLocal,
@@ -48,12 +58,6 @@ const INLINE_STATUS_FORM_ITEM_CLASS = 'shrink-0 space-y-0';
 
 const PRIMARY_AND_STATUS_ROW_CLASS =
   'grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center';
-
-const setDateOpts = {
-  shouldDirty: true,
-  shouldTouch: true,
-  shouldValidate: true,
-} as const;
 
 const DATE_GROUP_FIELDS = ['startDate', 'endDate', 'dateStatusId'] as const;
 const TIME_GROUP_FIELDS = [
@@ -171,14 +175,18 @@ export function ActivityScheduleSection({
                     <ScheduledDatePopoverField
                       value={field.value ?? ''}
                       onChange={(iso) => {
-                        field.onChange(iso || undefined);
+                        setActivityFormFieldValue(
+                          form,
+                          field.name,
+                          iso || undefined
+                        );
                         const end = form.getValues('endDate');
                         if (
                           end &&
                           iso &&
                           String(end).slice(0, 10) < iso.slice(0, 10)
                         ) {
-                          form.setValue('endDate', iso, setDateOpts);
+                          setActivityFormFieldValue(form, 'endDate', iso);
                         }
                       }}
                       label={startButtonLabel}
@@ -196,7 +204,13 @@ export function ActivityScheduleSection({
                             variant="ghost"
                             size="sm"
                             className="text-primary text-sm"
-                            onClick={() => field.onChange(undefined)}
+                            onClick={() =>
+                              setActivityFormFieldValue(
+                                form,
+                                field.name,
+                                undefined
+                              )
+                            }
                           >
                             Clear
                           </Button>
@@ -225,7 +239,13 @@ export function ActivityScheduleSection({
                      */}
                     <ScheduledDatePopoverField
                       value={field.value ?? ''}
-                      onChange={(iso) => field.onChange(iso || undefined)}
+                      onChange={(iso) =>
+                        setActivityFormFieldValue(
+                          form,
+                          field.name,
+                          iso || undefined
+                        )
+                      }
                       label={endButtonLabel}
                       triggerMuted={!endStr}
                       readOnly={readOnly}
@@ -242,7 +262,13 @@ export function ActivityScheduleSection({
                             variant="ghost"
                             size="sm"
                             className="text-primary text-sm"
-                            onClick={() => field.onChange(undefined)}
+                            onClick={() =>
+                              setActivityFormFieldValue(
+                                form,
+                                field.name,
+                                undefined
+                              )
+                            }
                           >
                             Clear
                           </Button>
@@ -265,15 +291,12 @@ export function ActivityScheduleSection({
                 <FormSelectSafe
                   readOnly={readOnly}
                   optionValues={dateStatuses.map((s) => String(s.id))}
-                  value={
-                    statusField.value !== undefined &&
-                    statusField.value !== null
-                      ? String(statusField.value)
-                      : ''
-                  }
+                  value={optionalIdSelectDisplayValue(statusField.value)}
                   onValueChange={(value) =>
-                    statusField.onChange(
-                      value === '' ? undefined : Number(value)
+                    setActivityFormFieldValue(
+                      form,
+                      statusField.name,
+                      optionalSelectIdValue(value)
                     )
                   }
                 >
@@ -345,7 +368,11 @@ export function ActivityScheduleSection({
                         allDay={{
                           isAllDay: !!isAllDay,
                           onAllDayChange: (checked) => {
-                            form.setValue('isAllDay', checked, setDateOpts);
+                            setActivityFormFieldValue(
+                              form,
+                              'isAllDay',
+                              checked
+                            );
                           },
                           label: getActivityFieldLabel('isAllDay'),
                         }}
@@ -356,7 +383,9 @@ export function ActivityScheduleSection({
                         }
                         value={String(field.value ?? '')}
                         onChange={(next) =>
-                          field.onChange(
+                          setActivityFormFieldValue(
+                            form,
+                            field.name,
                             next === undefined || next === '' ? undefined : next
                           )
                         }
@@ -396,7 +425,11 @@ export function ActivityScheduleSection({
                             allDay={{
                               isAllDay: !!isAllDay,
                               onAllDayChange: (checked) => {
-                                form.setValue('isAllDay', checked, setDateOpts);
+                                setActivityFormFieldValue(
+                                  form,
+                                  'isAllDay',
+                                  checked
+                                );
                               },
                               label: getActivityFieldLabel('isAllDay'),
                             }}
@@ -405,7 +438,9 @@ export function ActivityScheduleSection({
                             placeholderMuted={!String(field.value ?? '').trim()}
                             value={String(field.value ?? '')}
                             onChange={(next) =>
-                              field.onChange(
+                              setActivityFormFieldValue(
+                                form,
+                                field.name,
                                 next === undefined || next === ''
                                   ? undefined
                                   : next
@@ -439,15 +474,12 @@ export function ActivityScheduleSection({
                 <FormSelectSafe
                   readOnly={readOnly}
                   optionValues={timeStatuses.map((s) => String(s.id))}
-                  value={
-                    statusField.value !== undefined &&
-                    statusField.value !== null
-                      ? String(statusField.value)
-                      : ''
-                  }
+                  value={optionalIdSelectDisplayValue(statusField.value)}
                   onValueChange={(value) =>
-                    statusField.onChange(
-                      value === '' ? undefined : Number(value)
+                    setActivityFormFieldValue(
+                      form,
+                      statusField.name,
+                      optionalSelectIdValue(value)
                     )
                   }
                 >
@@ -499,26 +531,38 @@ export function ActivityScheduleSection({
         name="schedulingNotes"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="flex items-center gap-1">
-              {getActivityFieldLabel(field.name)}
-              <Info
-                className="text-muted-foreground ml-1 size-4 shrink-0"
-                aria-hidden
-              />
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <InfoIconButton aria-label="About scheduling notes" />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
+                    align="start"
+                  >
+                    <p className="mb-2">
+                      Communicate any details and statuses related to
+                      scheduling:
+                    </p>
+                    <ul className="list-disc space-y-1 pl-4">
+                      <li>date or timeframe being requested</li>
+                      <li>approvals received or still outstanding</li>
+                      <li>criteria holding up the activity</li>
+                      <li>date or time confirmed by a joint third-party</li>
+                    </ul>
+                  </PopoverContent>
+                </Popover>
+              </>
             </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
                 placeholder="Enter scheduling considerations"
                 readOnly={readOnly}
                 rows={4}
-                name={field.name}
-                ref={field.ref}
-                onBlur={field.onBlur}
+                {...field}
                 value={field.value ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  field.onChange(v === '' ? undefined : v);
-                }}
               />
             </FormControl>
             <FormMessage />

@@ -32,6 +32,7 @@ describe('UsersService', () => {
       groupBy: vi.fn(),
       limit: vi.fn(),
       innerJoin: vi.fn(),
+      leftJoin: vi.fn(),
     };
     chain.from.mockReturnValue(chain);
     chain.where.mockReturnValue(chain);
@@ -39,6 +40,7 @@ describe('UsersService', () => {
     chain.limit.mockReturnValue(chain);
     chain.groupBy.mockReturnValue(chain);
     chain.innerJoin.mockReturnValue(chain);
+    chain.leftJoin.mockReturnValue(chain);
     (chain[terminal] as ReturnType<typeof vi.fn>).mockResolvedValue(value);
     return chain;
   };

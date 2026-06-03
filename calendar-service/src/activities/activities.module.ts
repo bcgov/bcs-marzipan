@@ -8,10 +8,12 @@ import { PolicyModule } from '../policy/policy.module';
 import { TeamsModule } from '../teams/teams.module';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesGateway } from './activities.gateway';
+import { ActivityFlagsController } from './activity-flags.controller';
 import { ActivityResponseRedactionInterceptor } from './interceptors/activity-response-redaction.interceptor';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
 import { ActivityDisplayIdSyncService } from './services/activity-display-id-sync.service';
+import { ActivityFlagsService } from './services/activity-flags.service';
 import { ActivityHistoryService } from './services/activity-history.service';
 import { ActivityJunctionService } from './services/activity-junction.service';
 import { ActivityMapperService } from './services/activity-mapper.service';
@@ -30,6 +32,7 @@ import { ActivityUtilsService } from './services/activity-utils.service';
     ActivityResponseRedactionInterceptor,
     ActivitiesService,
     ActivitiesGateway,
+    ActivityFlagsService,
     ActivityHistoryService,
     ActivityJunctionService,
     ActivityDataFetcherService,
@@ -37,10 +40,11 @@ import { ActivityUtilsService } from './services/activity-utils.service';
     ActivityUtilsService,
     ActivityDisplayIdSyncService,
   ],
-  controllers: [ActivitiesController],
+  controllers: [ActivitiesController, ActivityFlagsController],
   exports: [
     ActivitiesService,
     ActivitiesGateway,
+    ActivityFlagsService,
     ActivityHistoryService,
     ActivityDisplayIdSyncService,
   ],

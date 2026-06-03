@@ -74,6 +74,14 @@ export const filterActivitiesQuerySchema = z.object({
     .pipe(z.number().int())
     .optional(),
   /**
+   * Restrict to activities that have been flag-assigned to this user.
+   */
+  flagAssigneeUserId: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().int())
+    .optional(),
+  /**
    * Restrict to activities shared with this team (in activity_shared_with_teams).
    */
   sharedWithTeamId: z
@@ -150,15 +158,11 @@ export type FilterActivitiesQueryParams = z.infer<
 /**
  * Reports report-data and CSV export query: same filters as activity list,
  * plus optional keyword search and report-friendly date aliases.
+ * Reports fetch the full bounded result set (no pagination limit).
  */
 export const reportDataQuerySchema = filterActivitiesQuerySchema
-  .omit({ limit: true })
+  .omit({ page: true, limit: true })
   .extend({
-    limit: z
-      .string()
-      .default('500')
-      .transform(Number)
-      .pipe(z.number().int().positive().min(1).max(500)),
     search: z.string().optional(),
     /** When set, applies as startDateFrom unless startDateFrom is already provided. */
     startDate: z.string().date().optional(),
@@ -172,7 +176,11 @@ export function reportDataQueryToActivityFindAllFilters(
   query: ReportDataQueryParams
 ): FilterActivitiesQueryParams {
   const { search: _search, startDate, endDate, ...rest } = query;
-  const filters: FilterActivitiesQueryParams = { ...rest };
+  const filters: FilterActivitiesQueryParams = {
+    ...rest,
+    page: 1,
+    limit: 100,
+  };
   if (startDate !== undefined && filters.startDateFrom === undefined) {
     filters.startDateFrom = startDate;
   }

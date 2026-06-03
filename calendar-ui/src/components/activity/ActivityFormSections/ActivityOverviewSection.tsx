@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { useFormContext, useWatch } from 'react-hook-form';
+import { useFormContext, useWatch, type FieldPathValue } from 'react-hook-form';
 
 import { TEAM_PREFIX_FALLBACK } from '@corpcal/shared';
 import type {
@@ -45,12 +45,23 @@ import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
+import { InfoIconButton } from '@/components/ui/info-icon-button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { RichTextField } from '@/components/ui/rich-text-field';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  optionalIdSelectDisplayValue,
+  optionalSelectIdValue,
+} from '@/lib/activity-form-coerce-value';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import {
   getPresetAnchorToday,
   parseIsoDateLocal,
@@ -66,9 +77,6 @@ import {
 } from '../activity-lead-team-field-config';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
-
-/** Mark cascaded `setValue` updates as dirty so edit confirmation and PATCH diffs stay correct. */
-const DIRTY_CASCADE = { shouldDirty: true } as const;
 
 type LeadOrganizationOption = {
   value: number;
@@ -114,14 +122,18 @@ function LeadOrganizationField({
                 ? (value[0] ?? null)
                 : value;
           if (!single) {
-            field.onChange(null);
-            form.setValue('leadOrgName', null, DIRTY_CASCADE);
+            setActivityFormFieldValue(form, field.name, null);
+            setActivityFormFieldValue(form, 'leadOrgName', null);
           } else if (single.type === 'option') {
-            field.onChange(Number(single.value));
-            form.setValue('leadOrgName', null, DIRTY_CASCADE);
+            setActivityFormFieldValue(
+              form,
+              field.name,
+              optionalSelectIdValue(single.value) ?? null
+            );
+            setActivityFormFieldValue(form, 'leadOrgName', null);
           } else {
-            field.onChange(null);
-            form.setValue('leadOrgName', single.value, DIRTY_CASCADE);
+            setActivityFormFieldValue(form, field.name, null);
+            setActivityFormFieldValue(form, 'leadOrgName', single.value);
           }
         };
 
@@ -233,21 +245,27 @@ function LeadTeamField({
               currentLeadOrgId == null &&
               (currentLeadOrgName == null || currentLeadOrgName === ''));
 
-          const teamId = option ? Number(option.value) : undefined;
-          field.onChange(teamId);
+          const teamId = option
+            ? optionalSelectIdValue(option.value)
+            : undefined;
+          setActivityFormFieldValue(
+            form,
+            field.name,
+            teamId as FieldPathValue<ActivityFormData, typeof field.name>
+          );
 
           if (teamId == null) {
-            form.setValue('leadMinistryId', undefined, DIRTY_CASCADE);
+            setActivityFormFieldValue(form, 'leadMinistryId', undefined);
             if (leadOrgInSyncWithTeam) {
-              form.setValue('leadOrgId', null, DIRTY_CASCADE);
-              form.setValue('leadOrgName', null, DIRTY_CASCADE);
+              setActivityFormFieldValue(form, 'leadOrgId', null);
+              setActivityFormFieldValue(form, 'leadOrgName', null);
             }
           } else {
             const team = mergedTeams.find((t) => t.id === teamId);
-            form.setValue(
+            setActivityFormFieldValue(
+              form,
               'leadMinistryId',
-              team?.ministryId ?? undefined,
-              DIRTY_CASCADE
+              team?.ministryId ?? undefined
             );
             if (leadOrgInSyncWithTeam && team) {
               const orgForMinistry =
@@ -255,11 +273,15 @@ function LeadTeamField({
                   ? organizations.find((o) => o.ministryId === team.ministryId)
                   : undefined;
               if (orgForMinistry) {
-                form.setValue('leadOrgId', orgForMinistry.value, DIRTY_CASCADE);
-                form.setValue('leadOrgName', null, DIRTY_CASCADE);
+                setActivityFormFieldValue(
+                  form,
+                  'leadOrgId',
+                  orgForMinistry.value
+                );
+                setActivityFormFieldValue(form, 'leadOrgName', null);
               } else {
-                form.setValue('leadOrgId', null, DIRTY_CASCADE);
-                form.setValue('leadOrgName', null, DIRTY_CASCADE);
+                setActivityFormFieldValue(form, 'leadOrgId', null);
+                setActivityFormFieldValue(form, 'leadOrgName', null);
               }
             }
           }
@@ -315,6 +337,7 @@ type ActivityOverviewSectionProps = {
     name: string;
     displayName?: string;
     visibility?: string;
+    description?: string | null;
   }>;
   organizations: LeadOrganizationOption[];
   tags: Array<{ id: number; text: string; visibility?: string }>;
@@ -386,7 +409,29 @@ export const ActivityOverviewSection: React.FC<
           return (
             <FormItem>
               <FormLabel showRequired>
-                {getActivityFieldLabel(field.name)}
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  {categories.some((c) => c.description) ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <InfoIconButton aria-label="About categories" />
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-80 max-w-[calc(100vw-2rem)] space-y-1 text-sm"
+                        align="start"
+                      >
+                        {categories
+                          .filter((c) => c.description)
+                          .map((c) => (
+                            <p key={c.id}>
+                              <strong>{c.displayName ?? c.name}</strong>:{' '}
+                              {c.description}
+                            </p>
+                          ))}
+                      </PopoverContent>
+                    </Popover>
+                  ) : null}
+                </>
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
@@ -394,7 +439,11 @@ export const ActivityOverviewSection: React.FC<
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected) =>
-                    field.onChange(selected.map((o) => Number(o.value)))
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      selected.map((o) => Number(o.value))
+                    )
                   }
                   itemToStringValue={(o) => o.label}
                   readOnly={readOnly}
@@ -495,7 +544,9 @@ export const ActivityOverviewSection: React.FC<
               <RichTextField
                 name={field.name}
                 value={field.value ?? ''}
-                onChange={field.onChange}
+                onChange={(json) =>
+                  setActivityFormFieldValue(form, field.name, json)
+                }
                 onBlur={field.onBlur}
                 placeholder="Enter activity summary"
                 readOnly={readOnly}
@@ -514,12 +565,12 @@ export const ActivityOverviewSection: React.FC<
           <FormItem className="flex flex-row items-start space-y-0 space-x-3">
             <FormControl data-field={field.name}>
               <Checkbox
-                checked={field.value}
+                checked={!!field.value}
                 readOnly={readOnly}
                 onCheckedChange={(checked) => {
-                  field.onChange(checked);
+                  setActivityFormFieldValue(form, field.name, checked === true);
                   if (checked) {
-                    form.setValue('visibility', 'team', DIRTY_CASCADE);
+                    setActivityFormFieldValue(form, 'visibility', 'team');
                     const executiveSummary = form.getValues('executiveSummary');
                     if (
                       isActivityRichTextEffectivelyEmpty(executiveSummary ?? '')
@@ -535,10 +586,10 @@ export const ActivityOverviewSection: React.FC<
                           team.name ||
                           'team'
                         : 'team';
-                      form.setValue(
+                      setActivityFormFieldValue(
+                        form,
                         'executiveSummary',
-                        tipTapDocJsonFromPlainText(`Hold for ${holdFor}.`),
-                        DIRTY_CASCADE
+                        tipTapDocJsonFromPlainText(`Hold for ${holdFor}.`)
                       );
                     }
                   }
@@ -546,7 +597,29 @@ export const ActivityOverviewSection: React.FC<
               />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <InfoIconButton aria-label="About confidential" />
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-80 max-w-[calc(100vw-2rem)] text-sm"
+                      align="start"
+                    >
+                      <p>
+                        Select if the activity is highly confidential or
+                        sensitive. By default viewing the activity will be
+                        restricted to your team. For Corporate Look Ahead, enter
+                        placeholder executive-summary copy; other reports may
+                        include summary fields as configured.
+                      </p>
+                      <p className="mt-2">Contact admin@email.com</p>
+                    </PopoverContent>
+                  </Popover>
+                </>
+              </FormLabel>
             </div>
           </FormItem>
         )}
@@ -559,13 +632,34 @@ export const ActivityOverviewSection: React.FC<
           <FormItem className="flex flex-row items-start space-y-0 space-x-3">
             <FormControl data-field={field.name}>
               <Checkbox
-                checked={field.value}
+                checked={!!field.value}
                 readOnly={readOnly}
-                onCheckedChange={field.onChange}
+                onCheckedChange={(checked) =>
+                  setActivityFormFieldValue(form, field.name, checked === true)
+                }
               />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <InfoIconButton aria-label="About issue" />
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-80 max-w-[calc(100vw-2rem)] text-sm"
+                      align="start"
+                    >
+                      <p>
+                        Select if this activity is a current or potential media
+                        issue, or an issue for government in any way based on
+                        topic.
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                </>
+              </FormLabel>
             </div>
           </FormItem>
         )}
@@ -576,12 +670,32 @@ export const ActivityOverviewSection: React.FC<
         name="significance"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <InfoIconButton aria-label="About significance" />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
+                    align="start"
+                  >
+                    <p>
+                      Describe how this will impact people and why it is
+                      important.
+                    </p>
+                  </PopoverContent>
+                </Popover>
+              </>
+            </FormLabel>
             <FormControl>
               <RichTextField
                 name={field.name}
                 value={field.value ?? ''}
-                onChange={field.onChange}
+                onChange={(json) =>
+                  setActivityFormFieldValue(form, field.name, json)
+                }
                 onBlur={field.onBlur}
                 placeholder="Enter significance"
                 readOnly={readOnly}
@@ -604,13 +718,13 @@ export const ActivityOverviewSection: React.FC<
                 readOnly={pitchStatusScope.readOnly}
                 disabled={pitchStatusScope.fieldScopeDisabled}
                 optionValues={pitchRequiredStatuses.map((s) => String(s.id))}
-                value={
-                  field.value !== undefined && field.value !== null
-                    ? String(field.value)
-                    : ''
-                }
+                value={optionalIdSelectDisplayValue(field.value)}
                 onValueChange={(value) =>
-                  field.onChange(value === '' ? undefined : Number(value))
+                  setActivityFormFieldValue(
+                    form,
+                    field.name,
+                    optionalSelectIdValue(value)
+                  )
                 }
               >
                 <ActivityFieldScopePermissionTooltip scope="pitchStatus">
@@ -656,7 +770,13 @@ export const ActivityOverviewSection: React.FC<
                     <ScheduledDatePopoverField
                       triggerVariant="form"
                       value={raw}
-                      onChange={(iso) => field.onChange(iso || undefined)}
+                      onChange={(iso) =>
+                        setActivityFormFieldValue(
+                          form,
+                          field.name,
+                          iso || undefined
+                        )
+                      }
                       label={pitchLabel}
                       triggerMuted={!raw}
                       readOnly={pitchDateScope.readOnly}
@@ -673,7 +793,13 @@ export const ActivityOverviewSection: React.FC<
                             variant="ghost"
                             size="sm"
                             className="text-primary text-sm"
-                            onClick={() => field.onChange(undefined)}
+                            onClick={() =>
+                              setActivityFormFieldValue(
+                                form,
+                                field.name,
+                                undefined
+                              )
+                            }
                           >
                             Clear
                           </Button>
@@ -706,14 +832,8 @@ export const ActivityOverviewSection: React.FC<
                       readOnly={notesScope.readOnly}
                       disabled={notesScope.fieldScopeDisabled}
                       rows={4}
-                      name={field.name}
-                      ref={field.ref}
-                      onBlur={field.onBlur}
+                      {...field}
                       value={field.value ?? ''}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        field.onChange(v === '' ? undefined : v);
-                      }}
                     />
                   </FormControl>
                 </ActivityFieldScopePermissionTooltip>
@@ -740,7 +860,11 @@ export const ActivityOverviewSection: React.FC<
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected) =>
-                    field.onChange(selected.map((o) => Number(o.value)))
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      selected.map((o) => Number(o.value))
+                    )
                   }
                   itemToStringValue={(o) => o.label}
                   readOnly={readOnly}

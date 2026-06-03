@@ -31,6 +31,7 @@ import {
   createUserBodySchema,
   transferActivitiesBodySchema,
   updateUserBodySchema,
+  updateUserSettingsBodySchema,
   updateUserTeamRoleBodySchema,
 } from '@corpcal/shared/schemas';
 
@@ -45,6 +46,7 @@ import {
   TransferActivitiesDto,
   TransferActivitiesResponseDto,
   UpdateUserDto,
+  UpdateUserSettingsDto,
   UpdateUserTeamRoleDto,
   UserActivitiesResponseWrapperDto,
   UserDetailResponseWrapperDto,
@@ -179,6 +181,31 @@ export class UsersController {
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: UserDetail }> {
     const data = await this.usersService.update(id, dto, user.id);
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Update user settings (flag colour, etc.)',
+    description:
+      'Upserts per-user configurable settings. Only admins and sys-admins may have settings saved; permission check is enforced by users.edit.',
+  })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiBody({ type: UpdateUserSettingsDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Updated user with new settings',
+    type: UserDetailResponseWrapperDto,
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @RequirePermission('users.edit')
+  @Patch(':id/settings')
+  async updateSettings(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(updateUserSettingsBodySchema))
+    dto: UpdateUserSettingsDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: UserDetail }> {
+    const data = await this.usersService.updateUserSettings(id, dto, user.id);
     return { success: true, data };
   }
 

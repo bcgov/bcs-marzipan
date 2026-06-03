@@ -1,6 +1,9 @@
 export {
   isReactRenderableReportType,
+  rollupPrintVariantForReportType,
+  printPdfFooterHintLineHtml,
   printRootClassName,
+  PrintPdfFooterHintLine,
   renderPrintReportDocumentHtml,
   renderPrintReportFragmentHtml,
   wrapPrintReportHtmlDocument,
@@ -11,33 +14,43 @@ export {
 export { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 export { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
 export { PrintCustomReportDocument } from './PrintCustomReportDocument';
-export { PrintPageFooter } from './PrintPageFooter';
-export { PrintPlanningDocument } from './PrintPlanningDocument';
 export { PrintReportDocument } from './PrintReportDocument';
 export { PrintRow } from './PrintRow';
 export { PrintSectionTable } from './PrintSectionTable';
 export { PrintRichText } from './PrintRichText';
 export {
+  buildTranslationLanguageLabelResolver,
+  passthroughTranslationLanguageLabelResolver,
+  resolveTranslationLanguageDisplayLabel,
+  resolveTranslationLanguageDisplayLabels,
+  type TranslationLanguageLabelResolver,
+  type TranslationLanguageLookup,
+} from './translationLanguageDisplayLabels';
+export {
   buildTranslationsLine,
   compareActivitiesForPrint,
+  createCompareActivitiesForPrint,
   resolveLeadOrgForPrint,
   toPrintRowViewModel,
   TRANSLATIONS_COLLAPSE_AT,
+  type CompareActivitiesForPrintOptions,
   type LookAheadBadge,
+  type PrintDateCellStyle,
   type PrintReportVariant,
   type PrintRowViewModel,
 } from './rowViewModel';
 export { buildLookAheadCoverDateRangeLine } from './lookAheadCoverDateRange';
 export {
-  LOOK_AHEAD_COVER_FIGMA_PAGE_WIDTH_PX,
-  lookAheadCoverLayoutPx,
-  lookAheadCoverLayoutScale,
-} from './lookAheadCoverLayout';
-export {
   renderLookAheadCoverOverlayHtml,
   type LookAheadCoverOverlayContent,
   type LookAheadCoverOverlayRow,
 } from './renderLookAheadCoverOverlayHtml';
+export { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
+export type { BuildLookAheadReportPdfHeaderTemplateOptions } from './buildLookAheadReportPdfHeaderTemplate';
+export {
+  buildReportPdfFooterTemplateHtml,
+  type BuildReportPdfFooterTemplateOptions,
+} from './buildReportPdfFooterTemplate';
 export {
   dateKeyLocal,
   formatCoverDate,
@@ -45,6 +58,8 @@ export {
   formatLastUpdated,
   formatPrintReportGeneratedAt,
   formatShortDate,
+  formatShortDateNoYear,
   formatTime12h,
   PRINT_FOOTER_CHANGED_EXPLANATION,
+  PRINT_FOOTER_CHANGED_EXPLANATION_BODY,
 } from './dateFormatters';

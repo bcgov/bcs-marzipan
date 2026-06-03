@@ -69,6 +69,11 @@ spec:
                 configMapKeyRef:
                   name: calendar-service-config
                   key: POST_LOGIN_REDIRECT_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: JWT_SECRET
             - name: AZURE_TENANT_ID
               valueFrom:
                 secretKeyRef:

@@ -51,6 +51,41 @@ describe('reportExportFormat', () => {
     expect(table.rows[0][6]).toBe('BC');
   });
 
+  it('appends event lead to Activity Details when configured', () => {
+    const table = buildReportExportTable({
+      report: {
+        ...minimalReport,
+        config: {
+          fields: ['executiveSummary', 'event_lead'],
+          sections: [{ id: 'events', name: 'Events', order: 1 }],
+        },
+      },
+      sections: [
+        {
+          name: 'Sec A',
+          activities: [
+            createMockActivityResponse({
+              id: 1,
+              title: 'T1',
+              displayId: 'BC-1-2',
+              startDate: '2025-03-01',
+              startTime: '10:00',
+              lookAheadStatus: 'new',
+              summary: 'S',
+              executiveSummary: 'E',
+              category: [],
+              tags: [],
+              representativesAttending: [],
+              commsContacts: [{ userId: 2, name: 'Lead Person', isLead: true }],
+            }),
+          ],
+        },
+      ],
+    });
+
+    expect(table.rows[0][4]).toBe('T1 – E – Event lead: Lead Person');
+  });
+
   it('serializeReportTableToCsv escapes quotes', () => {
     const csv = serializeReportTableToCsv({
       columns: ['A'],

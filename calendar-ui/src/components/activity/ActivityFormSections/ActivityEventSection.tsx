@@ -9,6 +9,7 @@ import type {
   VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { normalizeEventPlannerFormEntries } from '@corpcal/shared/utils';
 import { fetchCities, fetchVenuePresets } from '@/api/lookupsApi';
 import {
   FormSelectSafe,
@@ -51,8 +52,13 @@ import {
 } from '@/components/ui/freeform-combobox';
 import { Input } from '@/components/ui/input';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import {
+  optionalIdSelectDisplayValue,
+  optionalSelectIdValue,
+} from '@/lib/activity-form-coerce-value';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
@@ -137,22 +143,13 @@ function applyVenueAddress(
   for (const key of VENUE_ADDRESS_KEYS) {
     const nk = normVenueScalar(next[key]);
     if (prev[key] === nk) continue;
-    form.setValue(`venueAddress.${key}`, nk, {
-      shouldDirty: true,
-      shouldTouch: true,
-      shouldValidate: true,
-    });
+    setActivityFormFieldValue(form, `venueAddress.${key}`, nk);
   }
 }
 
-const venueStatusClearOpts = {
-  shouldDirty: true,
-  shouldTouch: true,
-} as const;
-
 function clearVenueStatusIdIfSet(form: UseFormReturn<ActivityFormData>) {
   if (form.getValues('venueStatusId') !== undefined) {
-    form.setValue('venueStatusId', undefined, venueStatusClearOpts);
+    setActivityFormFieldValue(form, 'venueStatusId', undefined);
   }
 }
 
@@ -359,11 +356,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
       if (v.value.startsWith(VENUE_OPTION_STATUS_PREFIX)) {
         const id = Number(v.value.slice(VENUE_OPTION_STATUS_PREFIX.length));
         if (!Number.isNaN(id)) {
-          form.setValue('venueStatusId', id, {
-            shouldDirty: true,
-            shouldTouch: true,
-            shouldValidate: true,
-          });
+          setActivityFormFieldValue(form, 'venueStatusId', id);
           applyVenueAddress(form, EMPTY_VENUE);
         }
         return;
@@ -425,11 +418,14 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             <FormSelectSafe
               readOnly={readOnly}
               optionValues={premierRequestedOptions.map((o) => o.value)}
-              onValueChange={(value) => {
-                const parsed = value ? parseInt(value, 10) : null;
-                field.onChange(isNaN(parsed as number) ? null : parsed);
-              }}
-              value={field.value ? field.value.toString() : ''}
+              value={optionalIdSelectDisplayValue(field.value)}
+              onValueChange={(value) =>
+                setActivityFormFieldValue(
+                  form,
+                  field.name,
+                  optionalSelectIdValue(value)
+                )
+              }
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
@@ -470,7 +466,9 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected: OptionItem[]) => {
-                    field.onChange(
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
                       selected.map((o) => ({
                         representativeId: parseInt(o.value, 10),
                       }))
@@ -605,10 +603,14 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   value={field.value ?? ''}
                   onAddressSelect={handleVenueAddressAutofill}
                   onInputValueChange={(value) =>
-                    field.onChange(value === '' ? null : value)
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      value === '' ? null : value
+                    )
                   }
                   onBlurCommit={(v) => {
-                    field.onChange(v);
+                    setActivityFormFieldValue(form, field.name, v);
                     void field.onBlur();
                   }}
                   readOnly={readOnly}
@@ -626,11 +628,16 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               <FormLabel>{getActivityFieldLabel('addressLine2')}</FormLabel>
               <FormControl data-field={field.name}>
                 <Input
+                  {...field}
                   value={field.value ?? ''}
                   readOnly={readOnly}
                   onChange={(e) => {
                     const raw = e.target.value;
-                    field.onChange(raw.trim() === '' ? null : raw);
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      raw.trim() === '' ? null : raw
+                    );
                   }}
                   placeholder="Floor, room, etc."
                 />
@@ -674,11 +681,16 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               <FormLabel>{getActivityFieldLabel('provinceOrState')}</FormLabel>
               <FormControl data-field={field.name}>
                 <Input
+                  {...field}
                   value={field.value ?? ''}
                   readOnly={readOnly}
                   onChange={(e) => {
                     const raw = e.target.value;
-                    field.onChange(raw.trim() === '' ? null : raw);
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      raw.trim() === '' ? null : raw
+                    );
                   }}
                 />
               </FormControl>
@@ -696,11 +708,16 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             <FormLabel>{getActivityFieldLabel('country')}</FormLabel>
             <FormControl data-field={field.name}>
               <Input
+                {...field}
                 value={field.value ?? ''}
                 readOnly={readOnly}
                 onChange={(e) => {
                   const raw = e.target.value;
-                  field.onChange(raw.trim() === '' ? null : raw);
+                  setActivityFormFieldValue(
+                    form,
+                    field.name,
+                    raw.trim() === '' ? null : raw
+                  );
                 }}
               />
             </FormControl>
@@ -740,7 +757,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                     )
                   : [value];
             if (arr.length === 0) {
-              field.onChange([]);
+              setActivityFormFieldValue(form, field.name, []);
               return;
             }
             const current = field.value ?? [];
@@ -768,15 +785,21 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             if (next.length > 0 && !next.some((p) => p.isLead)) {
               next[0] = { ...next[0], isLead: true };
             }
-            field.onChange(next);
+            setActivityFormFieldValue(
+              form,
+              field.name,
+              normalizeEventPlannerFormEntries(next)
+            );
           };
 
           const setLead = (index: number) => {
-            const next = (field.value ?? []).map((p, i) => ({
-              ...p,
-              isLead: i === index,
-            }));
-            field.onChange(next);
+            const next = normalizeEventPlannerFormEntries(
+              (field.value ?? []).map((p, i) => ({
+                ...p,
+                isLead: i === index,
+              }))
+            );
+            setActivityFormFieldValue(form, field.name, next);
           };
 
           return (

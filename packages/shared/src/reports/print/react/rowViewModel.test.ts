@@ -1,13 +1,23 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import {
   buildTranslationsLine,
   compareActivitiesForPrint,
+  createCompareActivitiesForPrint,
   resolveLeadOrgForPrint,
+  splitActivityDisplayIdForPrint,
   toPrintRowViewModel,
   TRANSLATIONS_COLLAPSE_AT,
 } from './rowViewModel';
+import { buildTranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
+
+const TEST_TRANSLATION_RESOLVER = buildTranslationLanguageLabelResolver([
+  { shortcode: 'FR', displayName: 'French' },
+  { shortcode: 'PUN', displayName: 'Punjabi' },
+  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'SPA', displayName: 'Spanish' },
+]);
 
 const BASE_ACTIVITY: ActivityResponse = {
   id: 42,
@@ -73,6 +83,7 @@ const BASE_ACTIVITY: ActivityResponse = {
   leadTeamDisplayName: null,
   venueAddress: null,
   reportSettings: [],
+  flags: [],
 };
 
 describe('buildTranslationsLine', () => {
@@ -102,6 +113,58 @@ describe('buildTranslationsLine', () => {
 });
 
 describe('toPrintRowViewModel', () => {
+  const REFERENCE = new Date('2026-05-21T12:00:00.000Z');
+
+  it('sets confidential flag on the row view-model', () => {
+    const row = toPrintRowViewModel(
+      { ...BASE_ACTIVITY, isConfidential: true },
+      { activityBaseUrl: 'http://localhost:3000', variant: 'lookAhead' }
+    );
+    expect(row.flags.isConfidential).toBe(true);
+  });
+
+  it('formats start dates with calendar year unless dateCellStyle is shortNoYear', () => {
+    const dated = {
+      ...BASE_ACTIVITY,
+      startDate: '2026-04-27',
+      endDate: null,
+    };
+
+    const withYear = toPrintRowViewModel(dated, {
+      activityBaseUrl: 'http://localhost:3000',
+    });
+    expect(withYear.dateTime.startDate).toContain('Apr 27');
+    expect(withYear.dateTime.startDate).toContain('2026');
+
+    const noYear = toPrintRowViewModel(dated, {
+      activityBaseUrl: 'http://localhost:3000',
+      dateCellStyle: 'shortNoYear',
+    });
+    expect(noYear.dateTime.startDate).toBe('Apr 27');
+    expect(noYear.dateTime.startDate).not.toContain('2026');
+    expect(noYear.dateTime.endDate).toBe('');
+  });
+
+  it('formats look-ahead date ranges with compact rules when dateCellStyle is shortNoYear', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(REFERENCE);
+
+    const ranged = {
+      ...BASE_ACTIVITY,
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
+    };
+
+    const row = toPrintRowViewModel(ranged, {
+      activityBaseUrl: 'http://localhost:3000',
+      dateCellStyle: 'shortNoYear',
+    });
+    expect(row.dateTime.startDate).toBe('Jan 1\u201331');
+    expect(row.dateTime.endDate).toBe('');
+
+    vi.useRealTimers();
+  });
+
   it('maps core fields, resolving lead preference order and absolute href', () => {
     const row = toPrintRowViewModel(BASE_ACTIVITY, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca/',
@@ -170,12 +233,119 @@ describe('toPrintRowViewModel', () => {
     expect(asChanged.dateTime.lookAheadStatus).toBe('changed');
   });
 
+  it('maps date/time status for look-ahead print variants (Confirmed hidden, else TBC when date/time present)', () => {
+    const unsettled = {
+      ...BASE_ACTIVITY,
+      dateStatus: 'Tentative',
+      timeStatus: 'Proposed',
+    };
+
+    const lookAhead = toPrintRowViewModel(unsettled, {
+      activityBaseUrl: 'http://localhost:3000',
+      variant: 'lookAhead',
+    });
+    expect(lookAhead.dateTime.dateStatus).toBe('TBC');
+    expect(lookAhead.dateTime.timeStatus).toBe('TBC');
+
+    const execLa = toPrintRowViewModel(unsettled, {
+      activityBaseUrl: 'http://localhost:3000',
+      variant: 'execLookAhead',
+    });
+    expect(execLa.dateTime.dateStatus).toBe('TBC');
+    expect(execLa.dateTime.timeStatus).toBe('TBC');
+
+    const confirmed = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        dateStatus: 'Confirmed',
+        timeStatus: 'confirmed',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(confirmed.dateTime.dateStatus).toBe('');
+    expect(confirmed.dateTime.timeStatus).toBe('');
+
+    const noDateOrTime = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        startDate: null,
+        startTime: null,
+        dateStatus: 'Tentative',
+        timeStatus: 'Proposed',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(noDateOrTime.dateTime.startDate).toBe('');
+    expect(noDateOrTime.dateTime.startTime).toBe('');
+    expect(noDateOrTime.dateTime.dateStatus).toBe('');
+    expect(noDateOrTime.dateTime.timeStatus).toBe('');
+
+    const thirty = toPrintRowViewModel(unsettled, {
+      activityBaseUrl: 'http://localhost:3000',
+      variant: 'thirtySixtyNinety',
+    });
+    expect(thirty.dateTime.dateStatus).toBe('TBC');
+    expect(thirty.dateTime.timeStatus).toBe('TBC');
+  });
+
   it('derives FYI flag from the category list', () => {
     const fyi = toPrintRowViewModel(
       { ...BASE_ACTIVITY, category: ['Announcement', 'FYI'] },
       { activityBaseUrl: 'http://localhost:3000' }
     );
     expect(fyi.flags.isFyi).toBe(true);
+  });
+
+  it('maps planning scheduling and premier requested fields on the row view-model', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        schedulingNotes: 'Tentative: first week of next month.',
+        premierRequested: 'Premier David Eby',
+        significance: 'High-profile announcement.',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'planning',
+      }
+    );
+
+    expect(row.schedulingNotesStored).toBe(
+      'Tentative: first week of next month.'
+    );
+    expect(row.premierRequested).toBe('Premier David Eby');
+    expect(row.significanceStored).toBe('High-profile announcement.');
+    expect(row.dateTime.dateStatus).toBe('');
+    expect(row.dateTime.timeStatus).toBe('');
+    expect(row.release.translationsLine).toBe('');
+  });
+
+  it('maps 30/60/90 comms and strategy fields on the row view-model', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        strategy: 'Lead with housing affordability message.',
+        commsMaterials: ['Media advisory', 'Backgrounder'],
+        commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
+        translationsRequired: ['FR'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'thirtySixtyNinety',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
+      }
+    );
+
+    expect(row.strategyStored).toBe('Lead with housing affordability message.');
+    expect(row.commsMaterials).toEqual(['Media advisory', 'Backgrounder']);
+    expect(row.commsContactLead).toBe('Jordan Smith');
+    expect(row.release.translationsLine).toBe('French');
   });
 
   it('collapses translations when 4 or more are required', () => {
@@ -187,6 +357,120 @@ describe('toPrintRowViewModel', () => {
       { activityBaseUrl: 'http://localhost:3000' }
     );
     expect(many.release.translationsLine).toBe('Translations: 4 languages');
+  });
+
+  it('omits look-ahead translations when not Release category and no news release origin', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Announcement'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['French'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('');
+  });
+
+  it('includes look-ahead translations when category is Release', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['French'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('French');
+  });
+
+  it('maps translation shortcodes to display names on look-ahead', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['FR', 'PUN'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
+      }
+    );
+    expect(row.release.translationsLine).toBe('French, Punjabi');
+  });
+
+  it('collapses look-ahead translations to a count at four or more', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        newsReleaseOrigin: null,
+        translationsRequired: ['FR', 'PUN', 'SC', 'SPA'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+        resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
+      }
+    );
+    expect(row.release.translationsLine).toBe('4 translations');
+  });
+
+  it('uses TBD on look-ahead when translation status is pending review and no languages', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        translationsRequiredStatus: 'Pending review',
+        translationsRequired: [],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('TBD');
+  });
+
+  it('uses TBD when translation status uses internal pending name', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        translationsRequiredStatus: 'pending',
+        translationsRequired: [],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('TBD');
+  });
+
+  it('still lists languages on look-ahead when pending review but languages exist', () => {
+    const row = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        category: ['Release'],
+        translationsRequiredStatus: 'Pending review',
+        translationsRequired: ['French'],
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(row.release.translationsLine).toBe('French');
   });
 
   it('fills the activity URL with numeric id when displayId is absent', () => {
@@ -233,6 +517,26 @@ describe('toPrintRowViewModel', () => {
   });
 });
 
+describe('splitActivityDisplayIdForPrint', () => {
+  it('splits PREFIX-NUMERIC display ids', () => {
+    expect(splitActivityDisplayIdForPrint('MOTT-123456')).toEqual({
+      acronym: 'MOTT',
+      idForLink: '123456',
+    });
+    expect(splitActivityDisplayIdForPrint('ACT-000042')).toEqual({
+      acronym: 'ACT',
+      idForLink: '000042',
+    });
+  });
+
+  it('puts the whole label in the link when no hyphen', () => {
+    expect(splitActivityDisplayIdForPrint('ACT42')).toEqual({
+      acronym: '',
+      idForLink: 'ACT42',
+    });
+  });
+});
+
 describe('compareActivitiesForPrint', () => {
   it('sorts by startTime then by title', () => {
     const a: ActivityResponse = {
@@ -255,5 +559,31 @@ describe('compareActivitiesForPrint', () => {
     };
     const sorted = [a, b, c].sort(compareActivitiesForPrint);
     expect(sorted.map((s) => s.id)).toEqual([2, 3, 1]);
+  });
+});
+
+describe('createCompareActivitiesForPrint', () => {
+  it('sorts by Pacific day key before startTime when sortByDayKey is true', () => {
+    const compare = createCompareActivitiesForPrint({ sortByDayKey: true });
+    const a: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      id: 1,
+      startDate: '2026-05-28',
+      startTime: '09:00',
+    };
+    const b: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      id: 2,
+      startDate: '2026-05-01',
+      startTime: '10:00',
+    };
+    const c: ActivityResponse = {
+      ...BASE_ACTIVITY,
+      id: 3,
+      startDate: '2026-05-01',
+      startTime: '08:00',
+    };
+    const sorted = [a, b, c].sort(compare);
+    expect(sorted.map((s) => s.id)).toEqual([3, 2, 1]);
   });
 });

@@ -1,6 +1,7 @@
 import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import { activities } from './schema/activity';
+import { activityFlags } from './schema/activityFlags';
 import { activityHistory } from './schema/activityHistory';
 import {
   activityStatuses,
@@ -120,6 +121,10 @@ export type NewOrganization = InferInsertModel<typeof organizations>;
 // Activity History
 export type ActivityHistory = InferSelectModel<typeof activityHistory>;
 export type NewActivityHistory = InferInsertModel<typeof activityHistory>;
+
+// Activity Flags
+export type ActivityFlag = InferSelectModel<typeof activityFlags>;
+export type NewActivityFlag = InferInsertModel<typeof activityFlags>;
 
 // Team History
 export type TeamHistory = InferSelectModel<typeof teamHistory>;

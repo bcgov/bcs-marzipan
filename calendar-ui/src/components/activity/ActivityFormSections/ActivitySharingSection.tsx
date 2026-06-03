@@ -30,9 +30,16 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { InfoIconButton } from '@/components/ui/info-icon-button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
+import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
 
@@ -157,7 +164,39 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
         name="visibility"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <InfoIconButton aria-label="About visibility" />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
+                    align="start"
+                  >
+                    <p className="mb-2">
+                      Sets who can see and view the activity details in
+                      Corporate Calendar:
+                    </p>
+                    <ul className="list-disc space-y-1 pl-4">
+                      <li>
+                        restrict to only your team (and those you share with)
+                      </li>
+                      <li>leave unchecked to make visible for everyone</li>
+                    </ul>
+                    <p className="mt-2">
+                      GCPE executive, Strategic Communications and Cabinet
+                      Priorities staff, and Calendar admin can always view
+                      and/or edit all activities.
+                    </p>
+                    <p className="mt-2">
+                      Does not affect inclusion in the Look Ahead report.
+                    </p>
+                  </PopoverContent>
+                </Popover>
+              </>
+            </FormLabel>
             <FormSelect
               readOnly={readOnly}
               onValueChange={(value) => {
@@ -166,7 +205,7 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                 ).includes(value)
                   ? (value as Visibility)
                   : DEFAULT_VISIBILITY;
-                field.onChange(visibility);
+                setActivityFormFieldValue(form, field.name, visibility);
               }}
               value={field.value || DEFAULT_VISIBILITY}
             >
@@ -206,9 +245,15 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
           const toggleIds = (targetIds: number[], remove: boolean) => {
             const target = new Set(targetIds);
             if (remove) {
-              field.onChange(selectedIds.filter((id) => !target.has(id)));
+              setActivityFormFieldValue(
+                form,
+                field.name,
+                selectedIds.filter((id) => !target.has(id))
+              );
             } else {
-              field.onChange([...new Set([...selectedIds, ...targetIds])]);
+              setActivityFormFieldValue(form, field.name, [
+                ...new Set([...selectedIds, ...targetIds]),
+              ]);
             }
           };
 
@@ -224,7 +269,11 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected: OptionItem[]) => {
-                    field.onChange(selected.map((o) => parseInt(o.value, 10)));
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      selected.map((o) => parseInt(o.value, 10))
+                    );
                   }}
                   itemToStringValue={(o: OptionItem) => o.label}
                   readOnly={readOnly}

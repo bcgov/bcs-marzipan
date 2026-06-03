@@ -63,7 +63,7 @@ export function resolveCustomReportColumnWidthPx(
   return getDefaultCustomReportColumnWidth(field.key);
 }
 
-/** SheetJS `!cols` character width from pixel width (rough match to Excel). */
+/** Spreadsheet column character width from pixel width (rough match to Excel). */
 export function customReportWidthPxToWch(px: number): number {
   return Math.min(72, Math.max(6, Math.round(px / 7)));
 }

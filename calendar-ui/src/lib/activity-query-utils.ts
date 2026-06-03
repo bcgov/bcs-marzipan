@@ -264,6 +264,7 @@ export type ActivityListQueryParams = Partial<
     | 'commsContactLeadUserId'
     | 'sharedWithTeamId'
     | 'sharedWithTeamIds'
+    | 'flagAssigneeUserId'
   >
 >;
 
@@ -278,6 +279,7 @@ export function normalizeListParams(
     commsContactLeadUserId,
     sharedWithTeamId,
     sharedWithTeamIds,
+    flagAssigneeUserId,
   } = params;
   const out: ActivityListQueryParams = {};
   if (includeCompleted !== undefined) out.includeCompleted = includeCompleted;
@@ -288,6 +290,8 @@ export function normalizeListParams(
   if (sharedWithTeamId !== undefined) out.sharedWithTeamId = sharedWithTeamId;
   if (sharedWithTeamIds !== undefined && sharedWithTeamIds.length > 0)
     out.sharedWithTeamIds = [...sharedWithTeamIds].sort((a, b) => a - b);
+  if (flagAssigneeUserId !== undefined)
+    out.flagAssigneeUserId = flagAssigneeUserId;
   return out;
 }
 

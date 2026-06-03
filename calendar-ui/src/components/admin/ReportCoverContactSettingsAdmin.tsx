@@ -13,6 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePermission } from '@/hooks/usePermissions';
 
+/** Aligns with `FormLabel` (`min-h-[18px]`, `gap-2`) so label rows match other settings sections. */
+const SETTINGS_FIELD_LABEL_ROW_CLASS = 'flex min-h-[18px] items-center gap-2';
+
 export function ReportCoverContactSettingsAdmin(): ReactElement | null {
   const queryClient = useQueryClient();
   const canManage = usePermission(PERMISSIONS.SETTINGS.MANAGE);
@@ -47,10 +50,10 @@ export function ReportCoverContactSettingsAdmin(): ReactElement | null {
       void queryClient.invalidateQueries({
         queryKey: ['settings', 'report-cover-contact'],
       });
-      toast.success('Report cover contact details updated');
+      toast.success('Calendar admin contact details updated');
     },
     onError: () => {
-      toast.error('Failed to update report cover contact details');
+      toast.error('Failed to update calendar admin contact details');
     },
   });
 
@@ -60,8 +63,8 @@ export function ReportCoverContactSettingsAdmin(): ReactElement | null {
 
   return (
     <AdminSection
-      title="Look-ahead report PDF cover"
-      description="Phone and email appear on the cover page of exported look-ahead family PDFs (Corporate Look Ahead, 30-60-90, Executive). Leave blank to omit one or both from the footer."
+      title="Calendar admin contact"
+      description="Configure contact phone and text for reports and help sections."
       isLoading={isLoading}
       headerAction={
         <Button
@@ -77,35 +80,44 @@ export function ReportCoverContactSettingsAdmin(): ReactElement | null {
         <p className="text-destructive text-sm">Could not load settings.</p>
       )}
       {!isLoading && !error && (
-        <div className="max-w-md space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="report-cover-contact-phone">
-              Contact phone (optional)
-            </Label>
-            <Input
-              id="report-cover-contact-phone"
-              type="text"
-              autoComplete="tel"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              disabled={saveMutation.isPending}
-              maxLength={120}
-            />
+        <div className="max-w-4xl space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+            <div className="space-y-2">
+              <div className={SETTINGS_FIELD_LABEL_ROW_CLASS}>
+                <Label htmlFor="report-cover-contact-phone">
+                  Contact phone (optional)
+                </Label>
+              </div>
+              <Input
+                id="report-cover-contact-phone"
+                type="text"
+                autoComplete="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                disabled={saveMutation.isPending}
+                maxLength={120}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className={SETTINGS_FIELD_LABEL_ROW_CLASS}>
+                <Label htmlFor="report-cover-contact-email">
+                  Contact text (optional)
+                </Label>
+              </div>
+              <Input
+                id="report-cover-contact-email"
+                type="text"
+                autoComplete="off"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                disabled={saveMutation.isPending}
+                maxLength={254}
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="report-cover-contact-email">
-              Contact email (optional)
-            </Label>
-            <Input
-              id="report-cover-contact-email"
-              type="email"
-              autoComplete="email"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              disabled={saveMutation.isPending}
-              maxLength={254}
-            />
-          </div>
+          <p className="text-muted-foreground text-xs">
+            Shown in reports and help sections.
+          </p>
         </div>
       )}
     </AdminSection>

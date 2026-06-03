@@ -1,4 +1,7 @@
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type {
+  ActivityFlagResponse,
+  ActivityResponse,
+} from '@corpcal/shared/api/types';
 
 /**
  * View-model for the activity table. Derived from ActivityResponse
@@ -63,6 +66,9 @@ export interface ActivityTableRow {
   lastUpdatedDateTime: string;
   lastUpdatedBy: number;
   createdDateTime: string;
+
+  // Flags (team-scoped assignments)
+  flags: ActivityFlagResponse[];
 }
 
 /**
@@ -151,5 +157,8 @@ export function mapActivityResponseToTableRow(
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
     createdDateTime: activity.createdDateTime,
+
+    // Flags
+    flags: activity.flags ?? [],
   };
 }

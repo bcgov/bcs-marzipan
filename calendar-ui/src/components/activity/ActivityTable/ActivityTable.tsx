@@ -28,8 +28,11 @@ import {
   type CSSProperties,
 } from 'react';
 
-import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
-import { canViewActivityFieldScope, SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
+import { SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { sanitizeLegendSwatchHexColor } from '@corpcal/shared/schemas';
+import { contrastingBlackOrWhiteForegroundHex } from '@corpcal/shared/utils';
+import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
 import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
@@ -62,31 +65,29 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getLookAheadStatusLabel } from '@/constants/form-options';
+import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
-import { useActivityList } from '@/hooks/useCalendar';
+import {
+  useActivityList,
+  useRemoveActivityFlag,
+  useUpsertActivityFlag,
+} from '@/hooks/useCalendar';
+import {
+  useLiveActivityRowHighlights,
+  useLiveActivitySyncContext,
+} from '@/hooks/useLiveActivitySyncContext';
 import {
   getLookAheadSectionLabelFromRows,
+  getLookAheadSectionLegendColorFromRows,
   useLookAheadSectionRows,
 } from '@/hooks/useLookAheadSectionRows';
 import {
-  useActivityStatuses,
   useCategories,
-  useEventPlanners,
-  useMinistries,
-  useOrganizations,
-  usePitchRequiredStatuses,
-  useTags,
   useTranslationLanguages,
-  useTranslationRequiredStatuses,
   useUsers,
 } from '@/hooks/useLookups';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
-import {
-  buildActivityFilterSummaryLinesForDetailPopover,
-  getAppliedActivityFilterTypeLabels,
-  type ActivityFilterSummaryContext,
-} from '@/lib/activity-filter-summary';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import {
   filterActivityRowsByFilters,
@@ -94,6 +95,11 @@ import {
   type ActivityListQueryParams,
   type FilterActivityRowsContext,
 } from '@/lib/activity-query-utils';
+import {
+  buildActivityTableBooleanFilters,
+  buildActivityTableFilterSummaryDetails,
+  resolveEffectiveArchiveFilterVisibility,
+} from '@/lib/activity-table-summary-bar-state';
 import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
 import {
   CORP_PACIFIC_TIME_ZONE,
@@ -226,9 +232,21 @@ function toSentenceCase(s: string): string {
 function OverviewCell({
   row,
   canViewPitchStatus,
+  canFlag,
+  onFlagAssign,
+  onFlagUnassign,
+  flagPending,
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
+  canFlag?: boolean;
+  onFlagAssign?: (
+    teamId: number,
+    assigneeId: number,
+    assigneeName?: string
+  ) => void;
+  onFlagUnassign?: (teamId: number, assigneeName?: string) => void;
+  flagPending?: boolean;
 }) {
   const pitchLabel =
     (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
@@ -239,6 +257,18 @@ function OverviewCell({
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs font-semibold text-slate-900">
+        {(canFlag || row.flags.length > 0) &&
+          onFlagAssign &&
+          onFlagUnassign && (
+            <ActivityFlagPopover
+              activityId={row.id}
+              flags={row.flags}
+              readOnly={!canFlag}
+              onAssign={onFlagAssign}
+              onUnassign={onFlagUnassign}
+              isPending={flagPending}
+            />
+          )}
         <span
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
@@ -253,18 +283,25 @@ function OverviewCell({
             {displayIdText}
           </CopyableText>
         </span>
-        {row.isConfidential && (
-          <span className="text-corpcal-text-alert font-bold uppercase">
-            CONFIDENTIAL
-          </span>
-        )}
-        {row.isIssue && (
-          <span className="text-corpcal-text-alert font-bold uppercase">
-            ISSUE
-          </span>
-        )}
       </div>
-      <div className="mb-1 text-[16px] font-semibold text-slate-900">
+      {(row.isConfidential || row.isIssue) && (
+        <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-sm font-semibold">
+          {row.isConfidential && (
+            <span className="text-corpcal-text-alert font-bold uppercase">
+              CONFIDENTIAL
+            </span>
+          )}
+          {row.isIssue && (
+            <span className="text-corpcal-text-alert font-bold uppercase">
+              ISSUE
+            </span>
+          )}
+        </div>
+      )}
+      <div
+        className="mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900"
+        title={row.title}
+      >
         {row.title}
       </div>
       {pitchLabel && (
@@ -278,19 +315,28 @@ function OverviewCell({
             (cat): BadgeGroupItem => ({
               key: cat,
               label: cat,
-              variant: 'primary',
-              className: 'h-auto min-h-5 whitespace-normal text-white',
+              variant: 'outline',
+              className:
+                'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
             })
           )}
           maxLines={1}
           lineHeight={28}
-          badgeVariant="primary"
-          badgeClassName="h-auto min-h-5 whitespace-normal text-white"
+          badgeVariant="outline"
+          badgeClassName="h-auto min-h-5 whitespace-normal text-slate-600"
           containerClassName="gap-1"
         />
       )}
     </div>
   );
+}
+
+const SUMMARY_MAX_LINES = 5;
+const SUMMARY_LINE_HEIGHT_PX = 20;
+
+function summaryContentNeedsTruncation(el: HTMLDivElement): boolean {
+  const maxHeight = SUMMARY_LINE_HEIGHT_PX * SUMMARY_MAX_LINES;
+  return el.scrollHeight > maxHeight + 1 || el.scrollWidth > el.clientWidth + 1;
 }
 
 function SummaryCell({ row }: { row: ActivityTableRow }) {
@@ -300,12 +346,9 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
   const showMoreLessRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (contentRef.current) {
-      const lineHeight = 20;
-      const maxLines = 5;
-      setNeedsTruncation(
-        contentRef.current.scrollHeight > lineHeight * maxLines
-      );
+    const el = contentRef.current;
+    if (el) {
+      setNeedsTruncation(summaryContentNeedsTruncation(el));
     }
   }, [row.summary]);
 
@@ -326,12 +369,26 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       : null;
 
   const summaryBadgeGroupItems = useMemo((): BadgeGroupItem[] => {
+    const sectionLegendColor = sanitizeLegendSwatchHexColor(
+      section
+        ? getLookAheadSectionLegendColorFromRows(lookAheadSectionRows, section)
+        : null
+    );
     const lookAheadItem: BadgeGroupItem | null = lookAheadLabel
       ? {
           key: 'look-ahead',
           label: lookAheadLabel,
           variant: 'primary',
-          className: 'h-auto min-h-5 text-xs text-white',
+          className: sectionLegendColor
+            ? 'h-auto min-h-5 border-transparent text-xs'
+            : 'h-auto min-h-5 text-xs text-white',
+          style: sectionLegendColor
+            ? {
+                backgroundColor: sectionLegendColor,
+                color: contrastingBlackOrWhiteForegroundHex(sectionLegendColor),
+                borderColor: 'transparent',
+              }
+            : undefined,
         }
       : null;
     const tagItems: BadgeGroupItem[] = row.tags.map((tag) => ({
@@ -341,7 +398,7 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       className: 'h-auto min-h-5 text-xs whitespace-normal text-slate-600',
     }));
     return lookAheadItem ? [lookAheadItem, ...tagItems] : tagItems;
-  }, [lookAheadLabel, row.tags]);
+  }, [lookAheadLabel, lookAheadSectionRows, row.tags, section]);
 
   const isCollapsedWithTruncation = needsTruncation && !expanded;
 
@@ -370,13 +427,10 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
       >
         <div
           ref={contentRef}
-          className="text-[14px] leading-[1.4]"
-          style={{
-            display: '-webkit-box',
-            WebkitLineClamp: expanded ? 'unset' : 5,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
+          className={cn(
+            'text-[14px] leading-[1.4] wrap-anywhere',
+            !expanded && 'line-clamp-5'
+          )}
         >
           <ActivityRichTextContent value={row.summary} stopLinkPropagation />
         </div>
@@ -510,13 +564,14 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
 function LeadsCell({ row }: { row: ActivityTableRow }) {
   const lines: Array<{ label: string; value: string }> = [];
 
-  if (row.leadOrg) lines.push({ label: 'Lead org', value: row.leadOrg });
   const leadMinistryDisplay =
     row.leadMinistryAbbreviation ?? row.leadMinistry ?? null;
+  if (row.leadOrg && row.leadOrg !== leadMinistryDisplay)
+    lines.push({ label: 'Lead org', value: row.leadOrg });
   if (leadMinistryDisplay)
     lines.push({ label: 'Lead ministry', value: leadMinistryDisplay });
   if (row.commsLeadName)
-    lines.push({ label: 'Comms lead', value: row.commsLeadName });
+    lines.push({ label: 'Comms contact', value: row.commsLeadName });
   if (row.eventPlanners?.length)
     lines.push({
       label: 'Event planners',
@@ -535,7 +590,7 @@ function LeadsCell({ row }: { row: ActivityTableRow }) {
         <div key={label}>
           <span className="text-slate-500">{label}: </span>
           <span className="font-medium">{value}</span>
-          {label === 'Comms lead' && additionalComms > 0 && (
+          {label === 'Comms contact' && additionalComms > 0 && (
             <Badge
               variant="outline"
               className="ml-1 h-auto min-h-5 text-xs text-slate-600"
@@ -687,6 +742,8 @@ export interface ActivityTableProps {
   sharedWithTeamIds?: number[];
   /** When set, only activities whose IDs are in this list are shown (favourites tab). */
   favouriteActivityIds?: number[];
+  /** When set, only activities flag-assigned to this user are shown. */
+  flagAssigneeUserId?: number;
   /**
    * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
    * is considered applied (e.g. single ActivityTable across activity list tabs).
@@ -703,25 +760,32 @@ export function ActivityTable({
   sharedWithTeamId,
   sharedWithTeamIds,
   favouriteActivityIds,
+  flagAssigneeUserId,
   activeSavedFilter: activeSavedFilterFromParent,
   onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const pitchFieldVisibility = useMemo(() => {
-    if (!user) {
-      return { canViewPitchStatus: false, canViewPitchDate: false };
-    }
-    const ctx = { permissions: user.permissions, roleName: user.roleName };
-    return {
-      canViewPitchStatus: canViewActivityFieldScope(ctx, 'pitchStatus'),
-      canViewPitchDate: canViewActivityFieldScope(ctx, 'pitchDate'),
-    };
-  }, [user]);
+  const { user, hasPermission } = useAuth();
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+
+  const {
+    pitchFieldVisibility,
+    statusArchiveIds,
+    statusOptions,
+    pitchRequiredStatusOptions,
+    tagOptions,
+    ministryOptions,
+    organizationOptions,
+    commsContactOptions,
+    eventPlannerOptions,
+    translationOptions,
+    translationStatusOptions,
+    filterSummaryContext: filterSummaryContextForBar,
+    hasActivityStatuses,
+  } = useActivityTableFilterLookups(canSeeDeleted);
 
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const { preferences, setPreferences } =
@@ -766,18 +830,8 @@ export function ActivityTable({
   const [pageIndex, setPageIndex] = useState(0);
 
   const { data: categoriesForFilter = [] } = useCategories();
-  const { data: activityStatusesForFilter = [] } = useActivityStatuses();
-  const { data: pitchRequiredStatusesForFilter = [] } =
-    usePitchRequiredStatuses();
-  const { data: tagsForFilter = [] } = useTags();
-  const { data: ministriesForFilter = [] } = useMinistries();
-  const { data: organizationsForFilter = [] } = useOrganizations();
-  const { data: usersForFilter = [] } = useUsers();
-  const { data: eventPlannersForFilter = [] } = useEventPlanners();
   const { data: translationLanguagesForFilter = [] } =
     useTranslationLanguages();
-  const { data: translationRequiredStatusesForFilter = [] } =
-    useTranslationRequiredStatuses();
   const categoryOptions = useMemo(
     () =>
       categoriesForFilter
@@ -785,88 +839,7 @@ export function ActivityTable({
         .map((c) => ({ value: c.displayName, label: c.displayName })),
     [categoriesForFilter]
   );
-  const statusArchiveIds = useMemo(() => {
-    const completed = activityStatusesForFilter.find(
-      (s) => s.name === 'completed'
-    );
-    const deleted = activityStatusesForFilter.find((s) => s.name === 'deleted');
-    return {
-      completedStatusId: completed?.id,
-      deletedStatusId: deleted?.id,
-    };
-  }, [activityStatusesForFilter]);
 
-  const statusOptions = useMemo(
-    () =>
-      activityStatusesForFilter
-        .filter((s) => canSeeDeleted || s.name !== 'deleted')
-        .map((s) => ({
-          value: String(s.id),
-          label: s.displayName,
-        })),
-    [activityStatusesForFilter, canSeeDeleted]
-  );
-
-  const pitchRequiredStatusOptions = useMemo(
-    () =>
-      pitchRequiredStatusesForFilter.map((s) => ({
-        value: s.displayName,
-        label: s.displayName,
-      })),
-    [pitchRequiredStatusesForFilter]
-  );
-
-  const tagOptions = useMemo(
-    () =>
-      tagsForFilter.map((t) => ({
-        value: String(t.id),
-        label: t.displayName ?? t.label ?? String(t.id),
-      })),
-    [tagsForFilter]
-  );
-
-  const ministryOptions = useMemo(
-    () =>
-      ministriesForFilter.map((m) => ({
-        value: String(m.id),
-        label: m.displayName ?? m.name ?? m.label ?? String(m.id),
-      })),
-    [ministriesForFilter]
-  );
-  const organizationOptions = useMemo(
-    () =>
-      organizationsForFilter.map((o) => ({
-        value: String(o.id),
-        label: o.displayName ?? o.name ?? o.label ?? String(o.id),
-      })),
-    [organizationsForFilter]
-  );
-  const commsContactOptions = useMemo(
-    () =>
-      usersForFilter.map((u) => ({
-        value: String(u.id),
-        label: u.name ?? u.email ?? String(u.id),
-      })),
-    [usersForFilter]
-  );
-  const eventPlannerOptions = useMemo(
-    () =>
-      eventPlannersForFilter.map((ep) => ({
-        value: String(ep.id),
-        label: ep.label ?? String(ep.id),
-      })),
-    [eventPlannersForFilter]
-  );
-  const translationOptions = useMemo(
-    () =>
-      translationLanguagesForFilter.map((l) => {
-        const displayLabel = l.shortcode
-          ? `${l.displayName} (${l.shortcode.toUpperCase()})`
-          : (l.displayName ?? String(l.id));
-        return { value: String(l.id), label: displayLabel };
-      }),
-    [translationLanguagesForFilter]
-  );
   const translationLanguageOptionsForFilter = useMemo(
     () =>
       translationLanguagesForFilter.map((l) => ({
@@ -874,22 +847,6 @@ export function ActivityTable({
         label: l.shortcode ?? l.displayName ?? String(l.id),
       })),
     [translationLanguagesForFilter]
-  );
-  const translationStatusOptions = useMemo(
-    () =>
-      translationRequiredStatusesForFilter.map((s) => ({
-        value: String(s.id),
-        label: s.displayName ?? s.name ?? String(s.id),
-      })),
-    [translationRequiredStatusesForFilter]
-  );
-  const translationRequiredStatusOptionsForFilter = useMemo(
-    () =>
-      translationRequiredStatusesForFilter.map((s) => ({
-        value: String(s.id),
-        label: s.displayName ?? s.name ?? String(s.id),
-      })),
-    [translationRequiredStatusesForFilter]
   );
 
   const validFilterLookupsForDefaultApply = useMemo((): ValidFilterLookups => {
@@ -921,7 +878,7 @@ export function ActivityTable({
   ]);
 
   const savedFilterDefaultLookupsReady =
-    activityStatusesForFilter.length > 0 && !savedFiltersHook.isLoading;
+    hasActivityStatuses && !savedFiltersHook.isLoading;
 
   useEffect(() => {
     const decision = getSavedFilterAutoApplyDecision({
@@ -982,19 +939,14 @@ export function ActivityTable({
     pitchFieldVisibility,
   ]);
 
-  const hasStatusFilter = filterState.activityStatusIds.length > 0;
-  const statusFilterIncludesCompleted =
-    statusArchiveIds.completedStatusId != null &&
-    filterState.activityStatusIds.includes(statusArchiveIds.completedStatusId);
-  const statusFilterIncludesDeleted =
-    statusArchiveIds.deletedStatusId != null &&
-    filterState.activityStatusIds.includes(statusArchiveIds.deletedStatusId);
-  const effectiveShowCompleted = hasStatusFilter
-    ? statusFilterIncludesCompleted
-    : showCompleted;
-  const effectiveShowDeleted = hasStatusFilter
-    ? statusFilterIncludesDeleted && canSeeDeleted
-    : showDeleted && canSeeDeleted;
+  const { hasStatusFilter, effectiveShowCompleted, effectiveShowDeleted } =
+    resolveEffectiveArchiveFilterVisibility(
+      filterState,
+      statusArchiveIds,
+      showCompleted,
+      showDeleted,
+      canSeeDeleted
+    );
 
   const pagination = useMemo(
     () => ({ pageIndex, pageSize: preferences.pageSize }),
@@ -1015,6 +967,7 @@ export function ActivityTable({
       ...(sharedWithTeamId !== undefined && { sharedWithTeamId }),
       ...(sharedWithTeamIds !== undefined &&
         sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
+      ...(flagAssigneeUserId !== undefined && { flagAssigneeUserId }),
     };
   }, [
     effectiveShowCompleted,
@@ -1023,6 +976,7 @@ export function ActivityTable({
     commsContactLeadUserId,
     sharedWithTeamId,
     sharedWithTeamIds,
+    flagAssigneeUserId,
   ]);
 
   // Reset to first page when user changes filters so results match expectations
@@ -1045,6 +999,7 @@ export function ActivityTable({
       prev.leadTeamId === activityFilters.leadTeamId &&
       prev.commsContactLeadUserId === activityFilters.commsContactLeadUserId &&
       prev.sharedWithTeamId === activityFilters.sharedWithTeamId &&
+      prev.flagAssigneeUserId === activityFilters.flagAssigneeUserId &&
       sameSharedWithTeamIds;
     if (!same) {
       prevFiltersRef.current = activityFilters;
@@ -1070,10 +1025,23 @@ export function ActivityTable({
     }
   }, [filterState]);
 
-  const activitiesQuery = useActivityList(activityFilters);
+  const { isSocketConnected } = useLiveActivitySyncContext();
+
+  const activitiesQuery = useActivityList(activityFilters, {
+    suppressPollingWhileLive: isSocketConnected,
+  });
+
+  const tableRemoteHighlightIds = useLiveActivityRowHighlights(
+    activitiesQuery.isFetching
+  );
+
   const usersQuery = useUsers();
   const loading = activitiesQuery.isPending && !activitiesQuery.data;
   const error = activitiesQuery.isError ? activitiesQuery.error : null;
+
+  const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
+  const upsertFlagMutation = useUpsertActivityFlag();
+  const removeFlagMutation = useRemoveActivityFlag();
 
   const onPaginationChangeStable = useCallback(
     (
@@ -1116,24 +1084,19 @@ export function ActivityTable({
   );
 
   const filterContext = useMemo((): FilterActivityRowsContext | undefined => {
-    const hasTranslationStatus =
-      translationRequiredStatusOptionsForFilter.length > 0;
+    const hasTranslationStatus = translationStatusOptions.length > 0;
     const hasTranslationLanguages =
       translationLanguageOptionsForFilter.length > 0;
     if (!hasTranslationStatus && !hasTranslationLanguages) return undefined;
     return {
       ...(hasTranslationStatus && {
-        translationRequiredStatusOptions:
-          translationRequiredStatusOptionsForFilter,
+        translationRequiredStatusOptions: translationStatusOptions,
       }),
       ...(hasTranslationLanguages && {
         translationLanguageOptions: translationLanguageOptionsForFilter,
       }),
     };
-  }, [
-    translationRequiredStatusOptionsForFilter,
-    translationLanguageOptionsForFilter,
-  ]);
+  }, [translationStatusOptions, translationLanguageOptionsForFilter]);
 
   const filteredData = useMemo(() => {
     const afterKeyword = filterActivityRowsByKeyword(data, searchKeyword);
@@ -1238,6 +1201,24 @@ export function ActivityTable({
           <OverviewCell
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+            canFlag={canFlag}
+            onFlagAssign={(teamId, assigneeId, assigneeName) =>
+              upsertFlagMutation.mutate({
+                activityId: row.original.id,
+                body: { teamId, assigneeId },
+                assigneeName,
+              })
+            }
+            onFlagUnassign={(teamId, assigneeName) =>
+              removeFlagMutation.mutate({
+                activityId: row.original.id,
+                teamId,
+                assigneeName,
+              })
+            }
+            flagPending={
+              upsertFlagMutation.isPending || removeFlagMutation.isPending
+            }
           />
         ),
       }),
@@ -1342,6 +1323,9 @@ export function ActivityTable({
       effectiveSortDirection,
       handleSortChange,
       pitchFieldVisibility.canViewPitchStatus,
+      canFlag,
+      upsertFlagMutation,
+      removeFlagMutation,
     ]
   );
 
@@ -1362,45 +1346,31 @@ export function ActivityTable({
     meta: { userMap, handleHeaderSort },
   });
 
-  const eventTableFilters = useMemo(() => {
-    const disabledTooltip = hasStatusFilter
-      ? 'Controlled by status filter'
-      : undefined;
-    const filters = [
-      {
-        id: 'show-completed',
-        label: 'Show completed',
-        checked: effectiveShowCompleted,
-        onCheckedChange: (checked: boolean) => {
+  const eventTableFilters = useMemo(
+    () =>
+      buildActivityTableBooleanFilters({
+        hasStatusFilter,
+        effectiveShowCompleted,
+        effectiveShowDeleted,
+        canSeeDeleted,
+        onShowCompletedChange: (checked) => {
           setActiveSavedFilter(null);
           setPreferences({ showCompleted: checked });
         },
-        disabled: hasStatusFilter,
-        disabledTooltip,
-      },
-    ];
-    if (canSeeDeleted) {
-      filters.push({
-        id: 'show-deleted',
-        label: 'Show deleted',
-        checked: effectiveShowDeleted,
-        onCheckedChange: (checked: boolean) => {
+        onShowDeletedChange: (checked) => {
           setActiveSavedFilter(null);
           setPreferences({ showDeleted: checked });
         },
-        disabled: hasStatusFilter,
-        disabledTooltip,
-      });
-    }
-    return filters;
-  }, [
-    hasStatusFilter,
-    effectiveShowCompleted,
-    effectiveShowDeleted,
-    canSeeDeleted,
-    setPreferences,
-    setActiveSavedFilter,
-  ]);
+      }),
+    [
+      hasStatusFilter,
+      effectiveShowCompleted,
+      effectiveShowDeleted,
+      canSeeDeleted,
+      setPreferences,
+      setActiveSavedFilter,
+    ]
+  );
 
   const handleFilterStateChange = useCallback(
     (nextFilterState: typeof filterState) => {
@@ -1418,55 +1388,25 @@ export function ActivityTable({
     return fromList?.name ?? activeSavedFilter.name;
   }, [activeSavedFilter, savedFiltersHook.savedFilters]);
 
-  const filterSummaryContextForBar = useMemo(
-    (): ActivityFilterSummaryContext => ({
-      statusOptions,
-      pitchRequiredStatusOptions,
-      tagOptions,
-      ministryOptions,
-      organizationOptions,
-      commsContactOptions,
-      eventPlannerOptions,
-      translationStatusOptions,
-      translationOptions,
-    }),
-    [
-      statusOptions,
-      pitchRequiredStatusOptions,
-      tagOptions,
-      ministryOptions,
-      organizationOptions,
-      commsContactOptions,
-      eventPlannerOptions,
-      translationStatusOptions,
-      translationOptions,
-    ]
-  );
-
-  const appliedFilterTypeLabels = useMemo(
+  const {
+    appliedFilterTypeLabels,
+    filterDetailLines,
+    hasPanelFiltersActive,
+    hasActiveCriteria,
+  } = useMemo(
     () =>
-      getAppliedActivityFilterTypeLabels(
+      buildActivityTableFilterSummaryDetails({
         filterState,
         searchKeyword,
-        filterSummaryContextForBar
-      ),
-    [filterState, searchKeyword, filterSummaryContextForBar]
-  );
-
-  const hasActiveCriteria =
-    hasAnyActivityTableFilterActive(filterState, pitchFieldVisibility) ||
-    searchKeyword.trim() !== '';
-
-  const filterDetailLines = useMemo(
-    () =>
-      hasActiveCriteria
-        ? buildActivityFilterSummaryLinesForDetailPopover(
-            filterState,
-            searchKeyword,
-            filterSummaryContextForBar
-          )
-        : [],
-    [filterState, searchKeyword, filterSummaryContextForBar, hasActiveCriteria]
+        filterSummaryContext: filterSummaryContextForBar,
+        pitchFieldVisibility,
+      }),
+    [
+      filterState,
+      searchKeyword,
+      filterSummaryContextForBar,
+      pitchFieldVisibility,
+    ]
   );
 
   const handleClearPanelFilters = useCallback(() => {
@@ -1486,10 +1426,7 @@ export function ActivityTable({
     });
   }, [setPreferences, setActiveSavedFilter]);
 
-  const tableSummaryOnClearFilters = hasAnyActivityTableFilterActive(
-    filterState,
-    pitchFieldVisibility
-  )
+  const tableSummaryOnClearFilters = hasPanelFiltersActive
     ? handleClearPanelFilters
     : undefined;
 
@@ -1536,8 +1473,8 @@ export function ActivityTable({
         <ActivityTableLayout
           scrollRef={tableScrollRef}
           count={0}
-          singularLabel="entry"
-          pluralLabel="entries"
+          singularLabel="activity"
+          pluralLabel="activities"
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
           appliedFilterTypeLabels={appliedFilterTypeLabels}
@@ -1576,8 +1513,8 @@ export function ActivityTable({
         <ActivityTableLayout
           scrollRef={tableScrollRef}
           count={0}
-          singularLabel="entry"
-          pluralLabel="entries"
+          singularLabel="activity"
+          pluralLabel="activities"
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
           appliedFilterTypeLabels={appliedFilterTypeLabels}
@@ -1613,8 +1550,8 @@ export function ActivityTable({
         <ActivityTableLayout
           scrollRef={tableScrollRef}
           count={sortedData.length}
-          singularLabel="entry"
-          pluralLabel="entries"
+          singularLabel="activity"
+          pluralLabel="activities"
           filters={eventTableFilters}
           appliedSavedFilterName={appliedSavedFilterName}
           appliedFilterTypeLabels={appliedFilterTypeLabels}
@@ -1692,12 +1629,17 @@ export function ActivityTable({
               <tbody>
                 {pageRows.map((row) => {
                   const isNewRow = newRowIds.has(row.original.id);
+                  const isHighlightRow = tableRemoteHighlightIds.has(
+                    row.original.id
+                  );
                   return (
                     <tr
                       key={row.id}
-                      className={`group/row ${tableBodyRow} cursor-pointer ${
-                        isNewRow ? 'animate-in fade-in-0 duration-300' : ''
-                      }`}
+                      className={cn(
+                        `group/row ${tableBodyRow} cursor-pointer`,
+                        isNewRow && 'animate-in fade-in-0 duration-300',
+                        isHighlightRow && 'live-row-highlight'
+                      )}
                       tabIndex={0}
                       onClick={(e) => {
                         if (

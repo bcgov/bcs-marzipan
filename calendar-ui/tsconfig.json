@@ -11,12 +11,14 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],
+      "@corpcal/shared/assets/*": ["../packages/shared/assets/*"],
+      "@corpcal/shared/reports/*": ["../packages/shared/src/reports/*"],
       "@corpcal/shared": ["../packages/shared/dist/esm"],
       "@corpcal/shared/*": ["../packages/shared/dist/esm/*"],
       "@corpcal/database": ["../packages/database/dist/esm"],
       "@corpcal/database/*": ["../packages/database/dist/esm/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "vite-chunk-groups.ts"],
   "exclude": ["node_modules"]
 }

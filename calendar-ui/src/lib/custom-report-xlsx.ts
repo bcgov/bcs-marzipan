@@ -1,5 +1,3 @@
-import * as XLSX from 'xlsx';
-
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import type { CustomReportFieldConfig } from '@corpcal/shared/reports/customReportFieldConfig';
 import {
@@ -33,22 +31,45 @@ export function buildCustomReportXlsxFilename(date: Date = new Date()): string {
   return `Custom_Report_${stamp}.xlsx`;
 }
 
+function triggerBrowserDownload(buffer: BlobPart, filename: string): void {
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 /**
  * Client-side Custom Report spreadsheet — aligns with preview cell text from
  * {@link formatCustomReportCell}.
  */
-export function downloadCustomReportXlsx(
+export async function downloadCustomReportXlsx(
   activities: ActivityResponse[],
   config: CustomReportFieldConfig[]
-): void {
+): Promise<void> {
+  const { default: ExcelJS } = await import('exceljs');
   const { aoa, columns } = buildSheetAoA(activities, config);
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  if (columns.length > 0) {
-    ws['!cols'] = columns.map((col) => ({
-      wch: customReportWidthPxToWch(resolveCustomReportColumnWidthPx(col)),
-    }));
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Custom Report');
+
+  for (const row of aoa) {
+    sheet.addRow(row);
   }
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Custom Report');
-  XLSX.writeFile(wb, buildCustomReportXlsxFilename());
+
+  if (columns.length > 0) {
+    columns.forEach((col, index) => {
+      sheet.getColumn(index + 1).width = customReportWidthPxToWch(
+        resolveCustomReportColumnWidthPx(col)
+      );
+    });
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  triggerBrowserDownload(buffer, buildCustomReportXlsxFilename());
 }

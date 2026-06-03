@@ -1,10 +1,7 @@
 import { Search, X } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 
-import {
-  DEFAULT_ACTIVITY_FILTER_STATE,
-  type ActivityFilterState,
-} from '@corpcal/shared';
+import type { ActivityFilterState } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { LeadsFilterPanel } from '@/components/activity/ActivityTable/LeadsFilter';
 import { ScheduledDateFilterPanel } from '@/components/activity/ActivityTable/ScheduledDateFilter';
@@ -30,10 +27,20 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
+import {
+  buildReportBaselineDateFilterPatch,
+  buildReportClearFilterState,
+  hasReportClearableFiltersActive,
+} from '@/lib/report-filter-state';
 
 export interface ReportFiltersBarProps {
+  reportName: string;
   preferences: ActivityTablePreferences;
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
+  /** Optional controls on the row below the search field (e.g. 30/60/90 month tabs). */
+  printPreviewRowLeading?: ReactNode;
+  /** Optional trailing controls on the same row (e.g. Customize, print preview). */
+  printPreviewRowTrailing?: ReactNode;
 }
 
 /**
@@ -41,8 +48,11 @@ export interface ReportFiltersBarProps {
  * Updates `preferences.filterState` using the same keys as {@link ActivityFilterState}.
  */
 export function ReportFiltersBar({
+  reportName,
   preferences,
   setPreferences,
+  printPreviewRowLeading,
+  printPreviewRowTrailing,
 }: ReportFiltersBarProps) {
   const { user } = useAuth();
   const canSeeDeleted =
@@ -210,9 +220,24 @@ export function ReportFiltersBar({
 
   const handleClearAllFilters = useCallback(() => {
     setPreferences({
-      filterState: { ...DEFAULT_ACTIVITY_FILTER_STATE },
+      filterState: buildReportClearFilterState(reportName),
     });
-  }, [setPreferences]);
+  }, [reportName, setPreferences]);
+
+  const hasClearableFilters = useMemo(
+    () =>
+      hasReportClearableFiltersActive(filterState, reportName, searchKeyword),
+    [filterState, reportName, searchKeyword]
+  );
+
+  const baselineDatePatch = useMemo(
+    () => buildReportBaselineDateFilterPatch(reportName),
+    [reportName]
+  );
+
+  const dateConfirmedActive = filterState.dateConfirmedFilter !== 'any';
+  const timeConfirmedActive = filterState.timeConfirmedFilter !== 'any';
+  const dateRangeActive = isDateRangeActive(filterState.dateRange);
 
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
@@ -231,25 +256,15 @@ export function ReportFiltersBar({
           />
         ),
         triggerProps: {
-          active:
-            isDateRangeActive(filterState.dateRange) ||
-            filterState.dateConfirmedFilter !== 'any' ||
-            filterState.timeConfirmedFilter !== 'any',
+          active: dateRangeActive || dateConfirmedActive || timeConfirmedActive,
           count:
-            (isDateRangeActive(filterState.dateRange) ? 1 : 0) +
-            (filterState.dateConfirmedFilter !== 'any' ? 1 : 0) +
-            (filterState.timeConfirmedFilter !== 'any' ? 1 : 0),
+            (dateRangeActive ? 1 : 0) +
+            (dateConfirmedActive ? 1 : 0) +
+            (timeConfirmedActive ? 1 : 0),
           onClear: () =>
             onFilterStateChange({
               ...filterState,
-              dateRange: {
-                startDate: '',
-                endDate: '',
-                noStartDate: false,
-                noEndDate: false,
-              },
-              dateConfirmedFilter: 'any',
-              timeConfirmedFilter: 'any',
+              ...baselineDatePatch,
             }),
           clearAriaLabel: 'Clear Datetime filter',
         },
@@ -392,24 +407,28 @@ export function ReportFiltersBar({
       organizationOptions,
       commsContactOptions,
       eventPlannerOptions,
+      baselineDatePatch,
+      dateConfirmedActive,
+      dateRangeActive,
+      timeConfirmedActive,
     ]
   );
 
   return (
     <div
-      className="mb-4 flex flex-nowrap items-center justify-between gap-8"
+      className="flex flex-col"
       role="search"
       aria-label="Filter report activities by datetime, category, status, leads, translations, tags, and keyword"
     >
-      <div className="flex min-w-0 flex-1 items-center">
-        <ResponsiveFilterRow
-          slots={filterSlots}
-          overflowTriggerClassName="h-10"
-          onClearAll={handleClearAllFilters}
-        />
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="relative max-w-md min-w-[240px] flex-1">
+      <div className="mb-4 flex flex-nowrap items-center justify-between gap-8">
+        <div className="flex min-w-0 flex-1 items-center">
+          <ResponsiveFilterRow
+            slots={filterSlots}
+            overflowTriggerClassName="h-10"
+            onClearAll={hasClearableFilters ? handleClearAllFilters : undefined}
+          />
+        </div>
+        <div className="relative max-w-md min-w-[240px] shrink-0">
           <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
           <Input
             type="text"
@@ -431,6 +450,18 @@ export function ReportFiltersBar({
           ) : null}
         </div>
       </div>
+      {printPreviewRowLeading || printPreviewRowTrailing ? (
+        <div className="mb-2 flex h-9 items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center">
+            {printPreviewRowLeading}
+          </div>
+          {printPreviewRowTrailing ? (
+            <div className="flex shrink-0 items-center gap-4">
+              {printPreviewRowTrailing}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

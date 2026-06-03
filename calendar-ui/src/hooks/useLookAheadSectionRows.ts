@@ -77,3 +77,16 @@ export function getLookAheadSectionLabelFromRows(
   const match = rows.find((r) => r.lookAheadKey === value);
   return match?.uiLabel ?? value;
 }
+
+/**
+ * Look up the configured legend swatch color for a stored `activity.lookAheadSection`
+ * value using the resolved rows.
+ */
+export function getLookAheadSectionLegendColorFromRows(
+  rows: ReadonlyArray<LookAheadSectionRow>,
+  value: string | null | undefined
+): string | null {
+  if (!value) return null;
+  const match = rows.find((r) => r.lookAheadKey === value);
+  return match?.legendColor ?? null;
+}
