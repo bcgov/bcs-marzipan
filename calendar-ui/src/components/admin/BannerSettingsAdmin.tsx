@@ -62,12 +62,12 @@ const DEFAULT_FORM_DATA: BannerFormData = {
  * Quick color presets to match media-hub-app for consistency across apps
  */
 const COLOR_PRESETS = [
-  { name: 'Golden Amber (Default)', bg: '#E6A635', text: '#000000' },
-  { name: 'BC Blue', bg: '#003366', text: '#FFFFFF' },
-  { name: 'Emergency Red', bg: '#DC2626', text: '#FFFFFF' },
-  { name: 'Success Green', bg: '#059669', text: '#FFFFFF' },
-  { name: 'Warning Orange', bg: '#EA580C', text: '#FFFFFF' },
-  { name: 'Info Blue', bg: '#0284C7', text: '#FFFFFF' },
+  { name: 'Golden amber (Default)', bg: '#E6A635', text: '#000000' },
+  { name: 'BC blue', bg: '#003366', text: '#FFFFFF' },
+  { name: 'Emergency red', bg: '#DC2626', text: '#FFFFFF' },
+  { name: 'Success green', bg: '#059669', text: '#FFFFFF' },
+  { name: 'Warning orange', bg: '#EA580C', text: '#FFFFFF' },
+  { name: 'Info blue', bg: '#0284C7', text: '#FFFFFF' },
 ];
 
 /**
@@ -277,7 +277,7 @@ export function BannerSettingsAdmin() {
 
   return (
     <AdminSection
-      title="System Banner"
+      title="System banner"
       description="Manage the dismissible info banner shown at the top of the app for all signed-in users."
       isLoading={isLoading}
       headerAction={
@@ -296,7 +296,7 @@ export function BannerSettingsAdmin() {
               onClick={handleSave}
               disabled={!hasChanges || saveMutation.isPending}
             >
-              Save Banner
+              Save banner
             </Button>
           </div>
         ) : null
@@ -327,7 +327,7 @@ export function BannerSettingsAdmin() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="banner-content">Banner Content</Label>
+              <Label htmlFor="banner-content">Banner content</Label>
               <div className="flex gap-2">
                 {canManage && (
                   <>
@@ -454,7 +454,7 @@ export function BannerSettingsAdmin() {
 
           <div className="grid gap-4">
             <div className="space-y-2">
-              <Label htmlFor="banner-bg-color">Background Color</Label>
+              <Label htmlFor="banner-bg-color">Background color</Label>
               <div className="flex items-center gap-3">
                 <Input
                   id="banner-bg-color"
@@ -478,7 +478,7 @@ export function BannerSettingsAdmin() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="banner-text-color">Text Color</Label>
+              <Label htmlFor="banner-text-color">Text color</Label>
               <div className="flex items-center gap-3">
                 <Input
                   id="banner-text-color"
@@ -521,7 +521,7 @@ export function BannerSettingsAdmin() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="banner-dismiss-scope">Dismiss Scope</Label>
+              <Label htmlFor="banner-dismiss-scope">Dismiss scope</Label>
               <select
                 id="banner-dismiss-scope"
                 value={formData.dismissScope}
@@ -539,7 +539,7 @@ export function BannerSettingsAdmin() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="banner-start">Start Date / Time</Label>
+              <Label htmlFor="banner-start">Start date / time</Label>
               <Input
                 id="banner-start"
                 type="datetime-local"
@@ -552,7 +552,7 @@ export function BannerSettingsAdmin() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="banner-end">End Date / Time</Label>
+              <Label htmlFor="banner-end">End date / time</Label>
               <Input
                 id="banner-end"
                 type="datetime-local"

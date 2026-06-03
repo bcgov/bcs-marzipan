@@ -50,7 +50,7 @@ export function EditReportModal({
     <AdminModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Edit Report"
+      title="Edit report"
       description="Select fields and customize labels for this report"
       onConfirm={handleSave}
       confirmLabel="Save"

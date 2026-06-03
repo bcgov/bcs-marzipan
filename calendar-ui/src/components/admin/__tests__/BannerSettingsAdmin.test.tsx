@@ -47,9 +47,9 @@ describe('BannerSettingsAdmin', () => {
     await waitFor(() => expect(mockFetchBannerSettings).toHaveBeenCalled(), {
       timeout: 20000,
     });
-    expect(screen.getByText(/System Banner/i)).toBeInTheDocument();
+    expect(screen.getByText(/System banner/i)).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /Save Banner/i })
+      screen.getByRole('button', { name: /Save banner/i })
     ).toBeInTheDocument();
   }, 20000);
 

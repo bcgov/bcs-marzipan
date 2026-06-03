@@ -256,7 +256,7 @@ export const DEFAULT_CUSTOM_REPORT_FIELD_CONFIG: readonly CustomReportFieldConfi
     },
     {
       key: 'lookAheadStatus',
-      label: 'Look ahead status',
+      label: 'Look Ahead status',
       selected: true,
       section: CUSTOM_REPORT_SECTIONS.COMMS,
       order: 30,

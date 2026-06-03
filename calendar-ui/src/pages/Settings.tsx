@@ -70,13 +70,13 @@ export function Settings() {
   const sections = [
     {
       id: 'banner' as Section,
-      label: 'System Banner',
+      label: 'System banner',
       icon: Megaphone,
       show: isSystemAdmin,
     },
     {
       id: 'login-modal' as Section,
-      label: 'Login Modal',
+      label: 'Login modal',
       icon: LogIn,
       show: isSystemAdmin,
     },
@@ -117,20 +117,20 @@ export function Settings() {
     { id: 'ministries' as Section, label: 'Ministries', icon: Building2 },
     {
       id: 'representatives' as Section,
-      label: 'Government Representatives',
+      label: 'Government representatives',
       icon: Users,
     },
     { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
     { id: 'cities' as Section, label: 'Cities', icon: MapPin },
     {
       id: 'comms' as Section,
-      label: 'Communications Materials',
+      label: 'Communications materials',
       icon: FileText,
     },
     { id: 'tags' as Section, label: 'Tags', icon: Tag },
-    { id: 'statuses' as Section, label: 'Activity Statuses', icon: Activity },
+    { id: 'statuses' as Section, label: 'Activity statuses', icon: Activity },
     { id: 'themes' as Section, label: 'Themes', icon: Palette },
-    { id: 'venue-presets' as Section, label: 'Venue Presets', icon: Bookmark },
+    { id: 'venue-presets' as Section, label: 'Venue presets', icon: Bookmark },
   ];
 
   const visibleSections = sections.filter((s) => s.show !== false);
@@ -145,7 +145,7 @@ export function Settings() {
   return (
     <>
       <h1 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">
-        Settings & Configuration
+        Settings and configuration
       </h1>
       <p className="mb-8 text-sm text-slate-600 sm:text-base">
         Manage lookup data and system configuration
@@ -159,7 +159,7 @@ export function Settings() {
         >
           <div className="border-b border-slate-200 p-4 sm:p-6">
             <h2 className="mb-2 text-lg font-semibold text-slate-900">
-              Quick Navigation
+              Quick navigation
             </h2>
             <p className="text-sm text-slate-600">Jump to any admin section</p>
           </div>
