@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchActivityHistory } from '@/api/activitiesApi';
-import { ErrorState, ExpandableText } from '@/components/shared';
+import { ErrorState } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -470,7 +470,7 @@ export default function ActivityHistory({
                                               {formatHistoryFieldValue(
                                                 change.field,
                                                 change.oldValue,
-                                                dateStatusMap
+                                                lookupMaps
                                               )}
                                             </span>{' '}
                                             →{' '}
@@ -478,7 +478,7 @@ export default function ActivityHistory({
                                               {formatHistoryFieldValue(
                                                 change.field,
                                                 change.newValue,
-                                                dateStatusMap
+                                                lookupMaps
                                               )}
                                             </span>
                                           </div>
