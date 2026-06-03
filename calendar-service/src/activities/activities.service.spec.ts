@@ -140,6 +140,18 @@ describe('ActivitiesService', () => {
     getLastPublishedState: vi.fn().mockResolvedValue(null),
     getPreviousStatusIdBeforeDelete: vi.fn().mockResolvedValue(null),
     generateChangeList: vi.fn().mockReturnValue([]),
+    buildEntityResolutionMaps: vi.fn().mockResolvedValue(new Map()),
+    resolveCommsContacts: vi
+      .fn()
+      .mockImplementation(
+        (_db: unknown, contacts: Array<{ userId: number; isLead: boolean }>) =>
+          Promise.resolve(
+            contacts.map((c) => ({
+              userName: `User ${c.userId}`,
+              isLead: c.isLead,
+            }))
+          )
+      ),
   };
 
   // Mock junction service

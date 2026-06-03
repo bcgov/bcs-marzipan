@@ -20,12 +20,6 @@ interface EditActivityConfirmModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   changes: HistoryChange[];
-  dateStatuses?: Array<{ id: string | number; label: string }>;
-  venueStatuses?: Array<{
-    id: number;
-    name: string;
-    displayName?: string;
-  }>;
   onConfirm: (notes?: string) => void;
   isSubmitting: boolean;
 }
@@ -34,8 +28,6 @@ export function EditActivityConfirmModal({
   open,
   onOpenChange,
   changes,
-  dateStatuses,
-  venueStatuses,
   onConfirm,
   isSubmitting,
 }: EditActivityConfirmModalProps) {
@@ -68,8 +60,6 @@ export function EditActivityConfirmModal({
           <ActivityFormChangesList
             key={open ? 'edit-confirm-open' : 'edit-confirm-closed'}
             changes={changes}
-            dateStatuses={dateStatuses}
-            venueStatuses={venueStatuses}
           />
 
           <div className="mt-4 space-y-2">

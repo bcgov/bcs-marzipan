@@ -10,5 +10,6 @@ export {
   LockBannerContent,
   type LockBannerProps,
 } from './LockBanner';
+export { ExpandableText } from './ExpandableText';
 export { ResponsiveFilterRow } from './ResponsiveFilterRow';
 export { UserSwitcher } from './UserSwitcher';
