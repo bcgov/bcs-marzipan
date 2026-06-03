@@ -254,7 +254,7 @@ export function CategoriesAdmin() {
       <AdminModal
         open={showModal}
         onOpenChange={setShowModal}
-        title={editingItem ? 'Edit Category' : 'Add Category'}
+        title={editingItem ? 'Edit category' : 'Add category'}
         description={
           editingItem ? 'Update category details' : 'Create a new category'
         }

@@ -327,7 +327,7 @@ export function BannerSettingsAdmin() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="banner-content">Banner Content</Label>
+              <Label htmlFor="banner-content">Banner content</Label>
               <div className="flex gap-2">
                 {canManage && (
                   <>
@@ -454,7 +454,7 @@ export function BannerSettingsAdmin() {
 
           <div className="grid gap-4">
             <div className="space-y-2">
-              <Label htmlFor="banner-bg-color">Background Color</Label>
+              <Label htmlFor="banner-bg-color">Background color</Label>
               <div className="flex items-center gap-3">
                 <Input
                   id="banner-bg-color"
@@ -478,7 +478,7 @@ export function BannerSettingsAdmin() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="banner-text-color">Text Color</Label>
+              <Label htmlFor="banner-text-color">Text color</Label>
               <div className="flex items-center gap-3">
                 <Input
                   id="banner-text-color"
@@ -521,7 +521,7 @@ export function BannerSettingsAdmin() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="banner-dismiss-scope">Dismiss Scope</Label>
+              <Label htmlFor="banner-dismiss-scope">Dismiss scope</Label>
               <select
                 id="banner-dismiss-scope"
                 value={formData.dismissScope}
@@ -539,7 +539,7 @@ export function BannerSettingsAdmin() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="banner-start">Start Date / Time</Label>
+              <Label htmlFor="banner-start">Start date / time</Label>
               <Input
                 id="banner-start"
                 type="datetime-local"
@@ -552,7 +552,7 @@ export function BannerSettingsAdmin() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="banner-end">End Date / Time</Label>
+              <Label htmlFor="banner-end">End date / time</Label>
               <Input
                 id="banner-end"
                 type="datetime-local"
