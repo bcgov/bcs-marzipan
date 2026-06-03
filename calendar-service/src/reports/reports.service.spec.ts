@@ -192,7 +192,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       'thirty-sixty-ninety',
       reportDataQuerySchema.parse({
         startDateFrom: '2026-05-01',
-        startDateTo: '2026-06-30',
+        startDateTo: '2026-05-31',
       }),
       ctx
     );
@@ -200,6 +200,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     const matchingSection = result.sections.find(
       (section) => section.id === expectedSectionId
     );
+    expect(matchingSection).toBeDefined();
     expect(matchingSection?.activities.map((activity) => activity.id)).toEqual([
       10,
     ]);
