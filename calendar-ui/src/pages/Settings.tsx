@@ -31,6 +31,7 @@ import {
   GovernmentRepresentativesAdmin,
   MinistriesAdmin,
   MinistryGroupsAdmin,
+  PermissionsVisibilityAdminSection,
   TagsAdmin,
   ThemesAdmin,
   VenuePresetsAdmin,
@@ -56,7 +57,8 @@ type Section =
   | 'ministries'
   | 'statuses'
   | 'themes'
-  | 'venue-presets';
+  | 'venue-presets'
+  | 'permissions-visibility';
 
 /**
  * Modern Settings Page
@@ -131,6 +133,12 @@ export function Settings() {
     { id: 'statuses' as Section, label: 'Activity Statuses', icon: Activity },
     { id: 'themes' as Section, label: 'Themes', icon: Palette },
     { id: 'venue-presets' as Section, label: 'Venue Presets', icon: Bookmark },
+    {
+      id: 'permissions-visibility' as Section,
+      label: 'Permission visibility',
+      icon: ListChecks,
+      show: isSystemAdmin,
+    },
   ];
 
   const visibleSections = sections.filter((s) => s.show !== false);
@@ -254,6 +262,10 @@ export function Settings() {
 
           <div id="section-venue-presets">
             <VenuePresetsAdmin />
+          </div>
+
+          <div id="section-permissions-visibility">
+            <PermissionsVisibilityAdminSection />
           </div>
         </div>
       </div>

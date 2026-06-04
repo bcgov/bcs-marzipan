@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Header,
   NotFoundException,
@@ -21,7 +22,11 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 
-import { DYNAMIC_LOOKUP_CACHE_SECONDS, type AuthUser } from '@corpcal/shared';
+import {
+  DYNAMIC_LOOKUP_CACHE_SECONDS,
+  SYSTEM_ROLE_IDS,
+  type AuthUser,
+} from '@corpcal/shared';
 import type {
   ActivityTeamSharingResponse,
   CategoryLookupItem,
@@ -273,6 +278,48 @@ export class LookupsController {
   }> {
     const roleId = Number(id);
     const data = await this.lookupsService.getRolePermissions(roleId);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all permissions (admin only)' })
+  @ApiResponse({ status: 200, description: 'Permissions retrieved' })
+  @ApiResponse({ status: 403, description: 'Caller is not system admin' })
+  @Get('permissions')
+  async getAllPermissions(
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    this.ensureSystemAdmin(user);
+    const data = await this.lookupsService.getAllPermissions();
+    return { success: true, data };
+  }
+
+  private ensureSystemAdmin(user: AuthUser): void {
+    if (user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN) {
+      throw new ForbiddenException(
+        'Only System Admin users can manage permission visibility.'
+      );
+    }
+  }
+
+  @ApiOperation({ summary: 'Update permission visibility in user management' })
+  @ApiResponse({ status: 200, description: 'Permission updated' })
+  @ApiResponse({ status: 403, description: 'Caller is not system admin' })
+  @Patch('permissions/:id/visibility')
+  async updatePermissionVisibility(
+    @Param('id') id: string,
+    @Body('showInUserManagement') showInUserManagement: boolean,
+    @CurrentUser() user: AuthUser
+  ): Promise<{
+    success: boolean;
+    data: { id: number; key: string; showInUserManagement: boolean };
+  }> {
+    this.ensureSystemAdmin(user);
+    const pid = Number(id);
+    const data = await this.lookupsService.updatePermissionVisibility(
+      pid,
+      !!showInUserManagement,
+      user.id
+    );
     return { success: true, data };
   }
 

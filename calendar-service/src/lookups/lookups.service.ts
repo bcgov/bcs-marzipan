@@ -207,6 +207,52 @@ export class LookupsService {
   }
 
   /**
+   * Update whether a permission should be shown in user management UI.
+   */
+  async updatePermissionVisibility(
+    permissionId: number,
+    show: boolean,
+    updatedBy?: number
+  ): Promise<{ id: number; key: string; showInUserManagement: boolean }> {
+    const { db } = this.databaseService;
+
+    const existing = await db
+      .select({ id: permissions.id })
+      .from(permissions)
+      .where(eq(permissions.id, permissionId))
+      .limit(1);
+
+    if (existing.length === 0) {
+      throw new NotFoundException('Permission not found');
+    }
+
+    await db
+      .update(permissions)
+      .set({
+        showInUserManagement: show,
+        updatedAt: sql`now()`,
+        updatedBy: updatedBy ?? null,
+      })
+      .where(eq(permissions.id, permissionId));
+
+    const row = await db
+      .select({
+        id: permissions.id,
+        key: permissions.key,
+        showInUserManagement: permissions.showInUserManagement,
+      })
+      .from(permissions)
+      .where(eq(permissions.id, permissionId))
+      .limit(1);
+
+    return {
+      id: row[0].id,
+      key: row[0].key,
+      showInUserManagement: Boolean(row[0].showInUserManagement),
+    };
+  }
+
+  /**
    * Get all active users
    * Computes display name from adDisplayName or falls back to adUsername
    * Supports filtering by userIds to fetch specific users
@@ -368,6 +414,38 @@ export class LookupsService {
       value: status.id,
       name: status.name,
       displayName: status.displayName,
+    }));
+  }
+
+  /**
+   * Return all permissions (for admin management)
+   */
+  async getAllPermissions(): Promise<
+    {
+      id: number;
+      key: string;
+      displayName: string;
+      description: string | null;
+      showInUserManagement: boolean;
+    }[]
+  > {
+    const rows = await this.databaseService.db
+      .select({
+        id: permissions.id,
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+        showInUserManagement: permissions.showInUserManagement,
+      })
+      .from(permissions)
+      .orderBy(asc(permissions.key));
+
+    return rows.map((r) => ({
+      id: r.id,
+      key: r.key,
+      displayName: r.displayName,
+      description: r.description,
+      showInUserManagement: Boolean(r.showInUserManagement),
     }));
   }
 
