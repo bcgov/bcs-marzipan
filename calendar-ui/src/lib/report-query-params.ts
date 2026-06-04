@@ -7,6 +7,14 @@ import type { ReportDataQueryParams } from '@corpcal/shared/schemas';
 import type { ReportDataRequestParams } from '@/api/reportsApi';
 import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 
+function normalizeReportQueryParamValue(value: unknown): unknown {
+  if (!Array.isArray(value) || value.length === 0) return value;
+  if (typeof value[0] === 'number') {
+    return [...value].sort((a, b) => (a as number) - (b as number));
+  }
+  return [...value].sort((a, b) => String(a).localeCompare(String(b)));
+}
+
 /**
  * Stable string for React Query `queryKey` so refetches track param *values*, not object identity.
  */
@@ -17,6 +25,10 @@ export function stableSerializeReportQueryParams(
     Object.fromEntries(
       Object.entries(params)
         .filter(([, v]) => v !== undefined)
+        .map(([k, v]): [string, unknown] => [
+          k,
+          normalizeReportQueryParamValue(v),
+        ])
         .sort(([a], [b]) => a.localeCompare(b))
     )
   );

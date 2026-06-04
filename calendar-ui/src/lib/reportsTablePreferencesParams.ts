@@ -2,6 +2,7 @@ import {
   DEFAULT_ACTIVITY_FILTER_STATE,
   type ActivityFilterState,
 } from '@corpcal/shared';
+import { parseIdListFromQueryParam } from '@corpcal/shared/schemas';
 import { buildDefaultPreferencesForReport } from '@/lib/report-preferences-defaults';
 
 export const STORAGE_KEY = 'reportsTablePreferences';
@@ -122,14 +123,9 @@ function parseFromSearchParams(
           .map((s) => s.trim())
           .filter(Boolean)
       : [];
-  const statusParam = searchParams.get(URL_PARAM_STATUS);
-  const activityStatusIds =
-    typeof statusParam === 'string' && statusParam.trim()
-      ? statusParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
+  const activityStatusIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_STATUS)
+  );
 
   const pitchStatusParam = searchParams.get(URL_PARAM_PITCH_STATUS);
   const pitchRequiredStatusNames =
@@ -194,68 +190,25 @@ function parseFromSearchParams(
       ? timeConfirmedParam
       : 'any';
 
-  const tagParam = searchParams.get(URL_PARAM_TAG);
-  const tagIds =
-    typeof tagParam === 'string' && tagParam.trim()
-      ? tagParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
-
-  const leadMinistryParam = searchParams.get(URL_PARAM_LEAD_MINISTRY);
-  const leadMinistryIds =
-    typeof leadMinistryParam === 'string' && leadMinistryParam.trim()
-      ? leadMinistryParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
-
-  const leadOrgParam = searchParams.get(URL_PARAM_LEAD_ORG);
-  const leadOrgIds =
-    typeof leadOrgParam === 'string' && leadOrgParam.trim()
-      ? leadOrgParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
-
-  const commsLeadParam = searchParams.get(URL_PARAM_COMMS_LEAD);
-  const commsContactLeadUserIds =
-    typeof commsLeadParam === 'string' && commsLeadParam.trim()
-      ? commsLeadParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
-
-  const eventPlannerParam = searchParams.get(URL_PARAM_EVENT_PLANNER);
-  const eventPlannerLeadIds =
-    typeof eventPlannerParam === 'string' && eventPlannerParam.trim()
-      ? eventPlannerParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
-
-  const translationParam = searchParams.get(URL_PARAM_TRANSLATION);
-  const translationLanguageIds =
-    typeof translationParam === 'string' && translationParam.trim()
-      ? translationParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
-
-  const translationStatusParam = searchParams.get(URL_PARAM_TRANSLATION_STATUS);
-  const translationRequiredStatusIds =
-    typeof translationStatusParam === 'string' && translationStatusParam.trim()
-      ? translationStatusParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
+  const tagIds = parseIdListFromQueryParam(searchParams.get(URL_PARAM_TAG));
+  const leadMinistryIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_LEAD_MINISTRY)
+  );
+  const leadOrgIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_LEAD_ORG)
+  );
+  const commsContactLeadUserIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_COMMS_LEAD)
+  );
+  const eventPlannerLeadIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_EVENT_PLANNER)
+  );
+  const translationLanguageIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_TRANSLATION)
+  );
+  const translationRequiredStatusIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_TRANSLATION_STATUS)
+  );
 
   const filterState: ActivityFilterState = {
     dateRange: {

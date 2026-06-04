@@ -60,6 +60,7 @@ import { ApplicationSettingsService } from '../locks/application-settings.servic
 import { LookupsService } from '../lookups/lookups.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
+import { mergePinnedLookAheadSection } from './merge-pinned-look-ahead-section';
 import { mergePdfBuffersInOrder } from './merge-report-pdfs';
 import { PdfGeneratorService } from './pdf-generator.service';
 import {
@@ -104,22 +105,6 @@ function withoutActivityStartDateWindow(
     ...rest
   } = filters;
   return rest;
-}
-
-/** Intersect admin-pinned look-ahead section with user section filter. */
-function mergePinnedLookAheadSection(
-  filters: FilterActivitiesQueryParams,
-  pinnedSection: string | undefined
-): void {
-  if (!pinnedSection) return;
-  const userSections = filters.lookAheadSectionValues;
-  if (userSections != null && userSections.length > 0) {
-    filters.lookAheadSectionValues = userSections.includes(pinnedSection)
-      ? [pinnedSection]
-      : ['__no_matching_section__'];
-  } else {
-    filters.lookAheadSectionValues = [pinnedSection];
-  }
 }
 
 /** User query filters ready to merge onto section-scoped activity queries. */

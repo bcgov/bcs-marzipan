@@ -88,12 +88,45 @@ function isFullscreenPrintPreview(reportName: string): boolean {
   }
 }
 
+/** Report tabs that use the shared preview toolbar + fixed-height scroll container. */
+function usesReportPreviewShell(reportName: string): boolean {
+  return isFullscreenPrintPreview(reportName) || reportName === 'custom';
+}
+
 function getExportConfig(reportType: string) {
   if (reportType === 'custom') {
     return { label: 'Export XLSX', format: 'xlsx' as const };
   }
 
   return { label: 'Export PDF', format: 'pdf' as const };
+}
+
+/**
+ * Empty state for report preview shell with centered message.
+ * Used for loading, no-data, and error states.
+ */
+function ReportPreviewEmptyState({
+  ref,
+  message,
+  className,
+}: {
+  ref: React.Ref<HTMLDivElement | null>;
+  message: string;
+  className?: string;
+}) {
+  return (
+    <TableScrollContainer
+      ref={ref}
+      scrollHeight={REPORT_PRINT_PREVIEW_SCROLL_HEIGHT}
+      scrollAriaLabel="Report preview"
+      scrollClassName="flex flex-col"
+      className={className}
+    >
+      <div className="flex w-full flex-1 flex-col items-center justify-center px-6 pt-0 pb-6">
+        <p className="text-muted-foreground">{message}</p>
+      </div>
+    </TableScrollContainer>
+  );
 }
 
 function reportUsesDayRangeTabs(reportName: string): boolean {
@@ -184,6 +217,8 @@ export function ReportsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [previewSheetWidthMode, setPreviewSheetWidthMode] =
     useState<ReportPreviewSheetWidthMode>(readStoredPreviewSheetWidth);
+  const reportPreviewScrollRef = useRef<HTMLDivElement | null>(null);
+
   const initialTabAppliedRef = useRef(false);
 
   const { data: reports = [] } = useReports();
@@ -219,9 +254,20 @@ export function ReportsPage() {
     [data, preferences.searchKeyword]
   );
 
+  /** Placeholder data from a previous tab must not drive preview or export. */
+  const isReportDataStale = useMemo(
+    () =>
+      !!displayData &&
+      !!activeReport &&
+      displayData.report.name !== activeReport,
+    [displayData, activeReport]
+  );
+
+  const isReportPreviewLoading = (isLoading && !data) || isReportDataStale;
+
   const displayActivityCount = useMemo(
-    () => countReportActivities(displayData),
-    [displayData]
+    () => (isReportDataStale ? 0 : countReportActivities(displayData)),
+    [displayData, isReportDataStale]
   );
 
   const resolvedReportDateRange = useMemo(() => {
@@ -263,6 +309,7 @@ export function ReportsPage() {
   const handleTabChange = (reportName: string) => {
     setActiveReport(reportName);
     sessionStorage.setItem(REPORTS_TAB_STORAGE_KEY, reportName);
+    reportPreviewScrollRef.current?.scrollTo(0, 0);
   };
 
   const runExport = async (format: ReportExportFormat) => {
@@ -311,6 +358,13 @@ export function ReportsPage() {
       </Button>
     ) : undefined;
 
+  // Subtle fade (0.98 opacity) during background refetch to indicate activity
+  // without visual jarring or layout shift.
+  const reportPreviewScrollClassName = cn(
+    'report-html-container border-border',
+    isFetching && !isReportPreviewLoading && 'opacity-[0.98]'
+  );
+
   if (error && activeReport) {
     return (
       <StatusMessage
@@ -333,7 +387,12 @@ export function ReportsPage() {
             <Button
               type="button"
               variant="default"
-              disabled={!displayData || isExporting || !activeReport}
+              disabled={
+                !displayData ||
+                isReportDataStale ||
+                isExporting ||
+                !activeReport
+              }
               className="gap-2"
               onClick={() => void runExport(exportConfig.format)}
             >
@@ -364,7 +423,7 @@ export function ReportsPage() {
         <div
           className={cn(
             'mt-0 min-w-0',
-            isFullscreenPrintPreview(activeReport) ? 'space-y-0' : 'space-y-4'
+            usesReportPreviewShell(activeReport) ? 'space-y-0' : 'space-y-4'
           )}
         >
           <div className="flex flex-col gap-4">
@@ -418,18 +477,15 @@ export function ReportsPage() {
               value={report.name}
               className="mt-0 outline-none data-[state=inactive]:hidden"
             >
-              {isLoading && !data ? (
-                <div className="flex items-center justify-center py-12">
-                  <p className="text-muted-foreground">Loading report...</p>
-                </div>
-              ) : displayData ? (
-                isFullscreenPrintPreview(report.name) ? (
-                  <div className="flex min-h-0 flex-col">
-                    <div className="border-border flex h-9 shrink-0 items-center justify-end gap-4 border-t">
-                      <ReportLargeRangeWarning
-                        showLargeRangeWarning={showLargeRangeWarning}
-                        wasClamped={wasDateRangeClamped}
-                      />
+              {activeReport === report.name &&
+              usesReportPreviewShell(report.name) ? (
+                <div className="flex min-h-0 flex-col">
+                  <div className="border-border flex h-9 shrink-0 items-center justify-end gap-4 border-t">
+                    <ReportLargeRangeWarning
+                      showLargeRangeWarning={showLargeRangeWarning}
+                      wasClamped={wasDateRangeClamped}
+                    />
+                    {isFullscreenPrintPreview(report.name) ? (
                       <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
                         <Checkbox
                           checked={previewSheetWidthMode === 'print'}
@@ -441,16 +497,40 @@ export function ReportsPage() {
                         />
                         Print width
                       </label>
-                    </div>
+                    ) : null}
+                  </div>
+                  {isReportPreviewLoading ? (
+                    <ReportPreviewEmptyState
+                      ref={reportPreviewScrollRef}
+                      message="Loading report..."
+                      className={reportPreviewScrollClassName}
+                    />
+                  ) : report.name === 'custom' ? (
+                    displayData?.sections[0] ? (
+                      <CustomReportPreviewSection
+                        layout="reportPreview"
+                        section={displayData.sections[0]}
+                        config={customReportFields}
+                        onFieldsChange={setCustomReportFields}
+                        highlightedActivityIds={reportHighlightSet}
+                        scrollContainerRef={reportPreviewScrollRef}
+                      />
+                    ) : (
+                      <ReportPreviewEmptyState
+                        ref={reportPreviewScrollRef}
+                        message="No activities to display"
+                        className={reportPreviewScrollClassName}
+                      />
+                    )
+                  ) : displayData ? (
                     <TableScrollContainer
+                      ref={reportPreviewScrollRef}
                       scrollHeight={REPORT_PRINT_PREVIEW_SCROLL_HEIGHT}
                       scrollAriaLabel="Report preview"
-                      className={cn(
-                        'report-html-container border-border',
-                        isFetching && 'opacity-[0.98]'
-                      )}
+                      scrollClassName="flex flex-col"
+                      className={reportPreviewScrollClassName}
                     >
-                      <div className="px-6 pt-0 pb-6">
+                      <div className="flex w-full flex-1 flex-col px-6 pt-0 pb-6">
                         <div
                           className={
                             previewSheetWidthMode === 'full'
@@ -475,29 +555,8 @@ export function ReportsPage() {
                         </div>
                       </div>
                     </TableScrollContainer>
-                  </div>
-                ) : (
-                  <>
-                    <ReportLargeRangeWarning
-                      showLargeRangeWarning={showLargeRangeWarning}
-                      wasClamped={wasDateRangeClamped}
-                    />
-                    {displayData.sections[0] ? (
-                      <CustomReportPreviewSection
-                        section={displayData.sections[0]}
-                        config={customReportFields}
-                        onFieldsChange={setCustomReportFields}
-                        highlightedActivityIds={reportHighlightSet}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center py-12">
-                        <p className="text-muted-foreground">
-                          No activities to display
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )
+                  ) : null}
+                </div>
               ) : (
                 <div className="flex items-center justify-center py-12">
                   <p className="text-muted-foreground">

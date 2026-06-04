@@ -11,6 +11,17 @@ function parseIntegerQuerySegment(segment: string): number | null {
   return Number.isInteger(n) ? n : null;
 }
 
+/** Parse comma-separated digit-only ints from a URL param; skips invalid segments. */
+export function parseIdListFromQueryParam(param: string | null): number[] {
+  if (param == null || param.trim() === '') return [];
+  const ids: number[] = [];
+  for (const segment of param.split(',')) {
+    const parsed = parseIntegerQuerySegment(segment);
+    if (parsed != null) ids.push(parsed);
+  }
+  return ids;
+}
+
 function parseCommaSeparatedInts(val: string): number[] {
   const ids: number[] = [];
   for (const segment of val.split(',')) {

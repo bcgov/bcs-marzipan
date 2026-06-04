@@ -14,6 +14,7 @@ export * from './lookup.schema';
 export * from './legend-swatch-hex';
 export * from './ministry-groups.schema';
 export * from './report-config.schema';
+export * from './query-param-helpers';
 export * from './query-params.schema';
 export * from './report-cover-contact-settings.schema';
 export * from './review-exempt-field-keys.schema';

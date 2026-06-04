@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseIdListFromQueryParam } from './query-param-helpers';
 import {
   filterActivitiesQuerySchema,
   lookupQueryParamsSchema,
@@ -7,6 +8,21 @@ import {
   reportDataQueryToActivityFindAllFilters,
   serializeFilterActivitiesQueryParams,
 } from './query-params.schema';
+
+describe('parseIdListFromQueryParam', () => {
+  it('parses comma-separated digit-only ids', () => {
+    expect(parseIdListFromQueryParam('1,2,3')).toEqual([1, 2, 3]);
+    expect(parseIdListFromQueryParam(' 5 ')).toEqual([5]);
+  });
+
+  it('returns empty for null, blank, or all-invalid input', () => {
+    expect(parseIdListFromQueryParam(null)).toEqual([]);
+    expect(parseIdListFromQueryParam('')).toEqual([]);
+    expect(parseIdListFromQueryParam('   ')).toEqual([]);
+    expect(parseIdListFromQueryParam('1e2,0x10,1.5')).toEqual([]);
+    expect(parseIdListFromQueryParam('1,bad,3')).toEqual([1, 3]);
+  });
+});
 
 describe('lookupQueryParamsSchema', () => {
   it('accepts valid empty input', () => {

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 
 import type { CustomReportFieldConfig } from '@corpcal/shared/reports/customReportFieldConfig';
 import type { ReportSectionData } from '@/api/reportsApi';
+import { REPORT_PRINT_PREVIEW_SCROLL_HEIGHT } from '@/components/table/tableConstants';
 import {
   DEFAULT_PAGE_SIZE,
   TablePagination,
@@ -16,6 +17,13 @@ interface CustomReportPreviewSectionProps {
   onFieldsChange?: (fields: CustomReportFieldConfig[]) => void;
   /** In-app preview: flash matching activity rows briefly after remote updates. */
   highlightedActivityIds?: ReadonlySet<number>;
+  /**
+   * `reportPreview` matches the Reports page print-preview shell (fixed height,
+   * bordered scroll container). `default` keeps the legacy flex growth layout.
+   */
+  layout?: 'default' | 'reportPreview';
+  /** Scroll parent for pagination when `layout` is `reportPreview`. */
+  scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -27,10 +35,14 @@ export function CustomReportPreviewSection({
   config,
   onFieldsChange,
   highlightedActivityIds,
+  layout = 'default',
+  scrollContainerRef,
 }: CustomReportPreviewSectionProps) {
-  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const internalScrollRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = scrollContainerRef ?? internalScrollRef;
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const useReportPreviewLayout = layout === 'reportPreview';
 
   useEffect(() => {
     setPageIndex(0);
@@ -47,15 +59,44 @@ export function CustomReportPreviewSection({
 
   const hasSelectedColumns = config.some((f) => f.selected);
 
-  if (!hasSelectedColumns) {
+  const table = (
+    <CustomReportPreviewTable
+      activities={hasSelectedColumns ? paginatedActivities : []}
+      config={config}
+      onFieldsChange={onFieldsChange}
+      highlightedActivityIds={highlightedActivityIds}
+    />
+  );
+
+  const pagination =
+    totalItems > 0 ? (
+      <TablePagination
+        totalItems={totalItems}
+        page={safePageIndex + 1}
+        pageSize={pageSize}
+        onPageChange={(p) => setPageIndex(p - 1)}
+        onPageSizeChange={(ps) => {
+          setPageSize(ps);
+          setPageIndex(0);
+        }}
+        scrollContainerRef={tableScrollRef}
+        aria-label="Custom report preview pagination"
+      />
+    ) : null;
+
+  if (useReportPreviewLayout) {
     return (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-1">
-        <CustomReportPreviewTable
-          activities={[]}
-          config={config}
-          onFieldsChange={onFieldsChange}
-          highlightedActivityIds={highlightedActivityIds}
-        />
+      <div className="flex min-h-0 flex-col">
+        <TableScrollContainer
+          ref={tableScrollRef}
+          scrollHeight={REPORT_PRINT_PREVIEW_SCROLL_HEIGHT}
+          scrollAriaLabel="Report preview"
+          scrollClassName="flex flex-col"
+          className="report-html-container border-border"
+        >
+          <div className="flex w-full flex-1 flex-col">{table}</div>
+        </TableScrollContainer>
+        {pagination}
       </div>
     );
   }
@@ -63,27 +104,9 @@ export function CustomReportPreviewSection({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-1">
       <TableScrollContainer ref={tableScrollRef} className="min-h-0 flex-1">
-        <CustomReportPreviewTable
-          activities={paginatedActivities}
-          config={config}
-          onFieldsChange={onFieldsChange}
-          highlightedActivityIds={highlightedActivityIds}
-        />
+        {table}
       </TableScrollContainer>
-      {totalItems > 0 ? (
-        <TablePagination
-          totalItems={totalItems}
-          page={safePageIndex + 1}
-          pageSize={pageSize}
-          onPageChange={(p) => setPageIndex(p - 1)}
-          onPageSizeChange={(ps) => {
-            setPageSize(ps);
-            setPageIndex(0);
-          }}
-          scrollContainerRef={tableScrollRef}
-          aria-label="Custom report preview pagination"
-        />
-      ) : null}
+      {pagination}
     </div>
   );
 }

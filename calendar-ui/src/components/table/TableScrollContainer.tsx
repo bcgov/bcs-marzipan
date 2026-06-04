@@ -11,6 +11,8 @@ import {
 export interface TableScrollContainerProps {
   children: ReactNode;
   className?: string;
+  /** Class names for the inner scroll element (merged with {@link tableScrollWrapper}). */
+  scrollClassName?: string;
   /** Defaults to {@link TABLE_SCROLL_HEIGHT}. */
   scrollHeight?: string;
   scrollAriaLabel?: string;
@@ -25,7 +27,13 @@ export const TableScrollContainer = forwardRef<
   HTMLDivElement,
   TableScrollContainerProps
 >(function TableScrollContainer(
-  { children, className, scrollHeight = TABLE_SCROLL_HEIGHT, scrollAriaLabel },
+  {
+    children,
+    className,
+    scrollClassName,
+    scrollHeight = TABLE_SCROLL_HEIGHT,
+    scrollAriaLabel,
+  },
   ref
 ) {
   return (
@@ -35,7 +43,7 @@ export const TableScrollContainer = forwardRef<
     >
       <div
         ref={ref}
-        className={tableScrollWrapper}
+        className={cn(tableScrollWrapper, scrollClassName)}
         aria-label={scrollAriaLabel}
       >
         {children}
