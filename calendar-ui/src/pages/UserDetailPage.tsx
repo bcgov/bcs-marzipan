@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle, Edit, Key, Mail, Phone } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle,
+  Edit,
+  Key,
+  Mail,
+  Phone,
+  XCircle,
+} from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect, useMemo, useState } from 'react';
@@ -36,33 +44,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { UserEditModal } from '@/components/users/UserEditModal';
 import { useAuth } from '@/hooks/useAuth';
 
-// Static mapping of common role names to human-readable permission lists.
-const ROLE_PERMISSIONS: Record<string, string[]> = {
-  Viewer: [
-    'Can view activities visible to their team',
-    'Cannot edit activities',
-    'Can view and export reports',
-  ],
-  Editor: [
-    'Can view and edit activities visible to their team',
-    'Can view, edit, and export reports',
-    'Cannot view and edit system settings',
-  ],
-  'Advanced viewer': [
-    'Can view all activities',
-    'Cannot edit activities',
-    'Can view and export reports',
-  ],
-  'Advanced editor': [
-    'Can view, edit, delete, and restore all activities',
-    'Can view, edit, and export reports',
-  ],
-  'Admin / System admin': [
-    'Can view, edit, delete, and restore all activities',
-    'Can view, edit, and deactivate users, user roles, and teams',
-    'Can view and edit system settings',
-  ],
-};
+// Permissions are authoritative from the backend; no frontend fallback maintained.
 
 export default function UserDetailPage() {
   const { id } = useParams();
@@ -157,13 +139,74 @@ export default function UserDetailPage() {
     roles.find((r) => r.id === selectedRoleId)?.name ?? '';
 
   const [rolePermissionList, setRolePermissionList] = useState<string[]>([]);
+  const [rolePermissionRows, setRolePermissionRows] = useState<
+    {
+      displayName?: string | null;
+      description?: string | null;
+      key?: string;
+      hasPermission?: boolean;
+    }[]
+  >([]);
   const [showAllPermissions, setShowAllPermissions] = useState(false);
+  const [rolesPermissionsMap, setRolesPermissionsMap] = useState<
+    Record<
+      number,
+      {
+        displayName?: string | null;
+        description?: string | null;
+        hasPermission: boolean;
+      }[]
+    >
+  >({});
+
+  // Prefetch permissions for all available roles and cache them. This
+  // allows the UI to show role permission lists quickly and avoids
+  // refetching the same data repeatedly when switching roles.
+  useEffect(() => {
+    if (!roles?.length) return;
+    let cancelled = false;
+    void (async () => {
+      const results = await Promise.allSettled(
+        roles.map(async (r) => {
+          try {
+            const rows = await fetchRolePermissions(r.id);
+            return { id: r.id, rows };
+          } catch {
+            return { id: r.id, rows: [] };
+          }
+        })
+      );
+      if (cancelled) return;
+      const map: Record<number, any[]> = {};
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          map[r.value.id] = r.value.rows;
+        }
+      }
+      setRolesPermissionsMap(map as any);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [roles]);
 
   useEffect(() => {
     let cancelled = false;
     setRolePermissionList([]);
     setShowAllPermissions(false);
     if (!selectedRoleId) return;
+
+    // Use cached map when available, otherwise fetch single role permissions.
+    const cached = rolesPermissionsMap[selectedRoleId];
+    if (cached) {
+      const rows = cached as any[];
+      setRolePermissionRows(rows);
+      setRolePermissionList(
+        rows.map((r) => r.displayName ?? r.description ?? r.key)
+      );
+      return;
+    }
+
     void fetchRolePermissions(selectedRoleId)
       .then((rows) => {
         if (cancelled) return;
@@ -171,24 +214,28 @@ export default function UserDetailPage() {
           .map((r) => r.displayName ?? r.description ?? r.key)
           .filter(Boolean);
         if (descriptions.length > 0) setRolePermissionList(descriptions);
-        else setRolePermissionList(ROLE_PERMISSIONS[selectedRoleName] ?? []);
+        else setRolePermissionList([]);
+        setRolePermissionRows(rows);
+        setRolesPermissionsMap(
+          (m) => ({ ...m, [selectedRoleId]: rows }) as any
+        );
       })
       .catch(() => {
         if (cancelled) return;
-        setRolePermissionList(ROLE_PERMISSIONS[selectedRoleName] ?? []);
+        setRolePermissionList([]);
       });
     return () => {
       cancelled = true;
     };
-  }, [selectedRoleId, selectedRoleName]);
+  }, [selectedRoleId, selectedRoleName, rolesPermissionsMap]);
 
-  const permissionList = rolePermissionList;
+  const permissionRows = rolePermissionRows;
 
   const MAX_PERMISSIONS = 8;
-  const totalPermissions = permissionList.length;
-  const visiblePermissions = showAllPermissions
-    ? permissionList
-    : permissionList.slice(0, MAX_PERMISSIONS);
+  const totalPermissions = permissionRows.length;
+  const visibleRows = showAllPermissions
+    ? permissionRows
+    : permissionRows.slice(0, MAX_PERMISSIONS);
 
   const handleSave = () => {
     const body: { roleId?: number; notes?: string | null } = {};
@@ -317,16 +364,25 @@ export default function UserDetailPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {permissionList.length > 0 && (
+                {totalPermissions > 0 && (
                   <>
                     <ul className="mt-2 space-y-2 p-2 text-sm text-slate-700">
-                      {visiblePermissions.map((p, i) => (
+                      {visibleRows.map((r, i) => (
                         <li key={i} className="flex items-start gap-2">
-                          <CheckCircle
-                            className="h-5 w-5 shrink-0 text-green-600"
-                            aria-hidden
-                          />
-                          <span>{p}</span>
+                          {r.hasPermission ? (
+                            <CheckCircle
+                              className="h-6 w-6 shrink-0 text-green-600"
+                              aria-hidden
+                            />
+                          ) : (
+                            <XCircle
+                              className="h-6 w-6 shrink-0 text-red-600"
+                              aria-hidden
+                            />
+                          )}
+                          <span className="leading-tight">
+                            {r.displayName ?? r.description ?? r.key}
+                          </span>
                         </li>
                       ))}
                     </ul>

@@ -168,29 +168,54 @@ export class LookupsService {
   /**
    * Get active permissions for a given role id (key + description)
    */
-  async getRolePermissions(
-    roleId: number
-  ): Promise<{ key: string; description: string | null }[]> {
-    const rows = await this.databaseService.db
+  async getRolePermissions(roleId: number): Promise<
+    {
+      key: string;
+      displayName: string | null;
+      description: string | null;
+      hasPermission: boolean;
+    }[]
+  > {
+    // Determine if this role is an admin-style role (Admin or System Admin)
+    const roleRow = await this.databaseService.db
+      .select({ id: roles.id, name: roles.name })
+      .from(roles)
+      .where(eq(roles.id, roleId))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    const isAdminLike =
+      roleRow && (roleRow.name === 'Admin' || roleRow.name === 'System Admin');
+
+    // Build query: if admin-like, include all permissions; otherwise include only those flagged show_in_user_management
+    const base = this.databaseService.db
       .select({
         key: permissions.key,
         displayName: permissions.displayName,
         description: permissions.description,
+        permissionId: permissions.id,
+        rolePermissionActive: rolePermissions.isActive,
       })
-      .from(rolePermissions)
-      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-      .where(
+      .from(permissions)
+      .leftJoin(
+        rolePermissions,
         and(
-          eq(rolePermissions.roleId, roleId),
-          eq(rolePermissions.isActive, true)
+          eq(rolePermissions.permissionId, permissions.id),
+          eq(rolePermissions.roleId, roleId)
         )
-      )
-      .orderBy(permissions.key);
+      );
+
+    if (!isAdminLike) {
+      base.where(eq(permissions.showInUserManagement, true));
+    }
+
+    const rows = await base.orderBy(permissions.key);
 
     return rows.map((r) => ({
       key: r.key,
       displayName: r.displayName,
       description: r.description,
+      hasPermission: Boolean(r.rolePermissionActive),
     }));
   }
 

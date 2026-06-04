@@ -181,6 +181,7 @@ export async function fetchRolePermissions(roleId: number): Promise<
     key: string;
     displayName?: string | null;
     description?: string | null;
+    hasPermission?: boolean;
   }[]
 > {
   const response = await api.get<{ success: boolean; data: any }>(
