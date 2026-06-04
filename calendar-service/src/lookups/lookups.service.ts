@@ -176,18 +176,7 @@ export class LookupsService {
       hasPermission: boolean;
     }[]
   > {
-    // Determine if this role is an admin-style role (Admin or System Admin)
-    const roleRow = await this.databaseService.db
-      .select({ id: roles.id, name: roles.name })
-      .from(roles)
-      .where(eq(roles.id, roleId))
-      .limit(1)
-      .then((rows) => rows[0]);
-
-    const isAdminLike =
-      roleRow && (roleRow.name === 'Admin' || roleRow.name === 'System Admin');
-
-    // Build query: if admin-like, include all permissions; otherwise include only those flagged show_in_user_management
+    // Build query: include only permissions flagged `show_in_user_management`
     const base = this.databaseService.db
       .select({
         key: permissions.key,
@@ -205,9 +194,7 @@ export class LookupsService {
         )
       );
 
-    if (!isAdminLike) {
-      base.where(eq(permissions.showInUserManagement, true));
-    }
+    base.where(eq(permissions.showInUserManagement, true));
 
     const rows = await base.orderBy(permissions.key);
 

@@ -230,12 +230,7 @@ export default function UserDetailPage() {
   }, [selectedRoleId, selectedRoleName, rolesPermissionsMap]);
 
   const permissionRows = rolePermissionRows;
-
-  const MAX_PERMISSIONS = 8;
-  const totalPermissions = permissionRows.length;
-  const visibleRows = showAllPermissions
-    ? permissionRows
-    : permissionRows.slice(0, MAX_PERMISSIONS);
+  const visibleRows = permissionRows;
 
   const handleSave = () => {
     const body: { roleId?: number; notes?: string | null } = {};
@@ -364,44 +359,27 @@ export default function UserDetailPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {totalPermissions > 0 && (
-                  <>
-                    <ul className="mt-2 space-y-2 p-2 text-sm text-slate-700">
-                      {visibleRows.map((r, i) => (
-                        <li key={i} className="flex items-start gap-2">
-                          {r.hasPermission ? (
-                            <CheckCircle
-                              className="h-6 w-6 shrink-0 text-green-600"
-                              aria-hidden
-                            />
-                          ) : (
-                            <XCircle
-                              className="h-6 w-6 shrink-0 text-red-600"
-                              aria-hidden
-                            />
-                          )}
-                          <span className="leading-tight">
-                            {r.displayName ?? r.description ?? r.key}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {totalPermissions > MAX_PERMISSIONS && (
-                      <div className="mt-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowAllPermissions((s) => !s)}
-                          className="px-0"
-                        >
-                          {showAllPermissions
-                            ? 'Show less'
-                            : `Show ${totalPermissions - MAX_PERMISSIONS} more`}
-                        </Button>
+                {visibleRows.length > 0 && (
+                  <div className="mt-2 grid grid-cols-1 gap-2 p-2 text-sm text-slate-700 sm:grid-cols-2">
+                    {visibleRows.map((r, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        {r.hasPermission ? (
+                          <CheckCircle
+                            className="h-6 w-6 shrink-0 text-green-600"
+                            aria-hidden
+                          />
+                        ) : (
+                          <XCircle
+                            className="h-6 w-6 shrink-0 text-red-600"
+                            aria-hidden
+                          />
+                        )}
+                        <span className="leading-tight">
+                          {r.displayName ?? r.description ?? r.key}
+                        </span>
                       </div>
-                    )}
-                  </>
+                    ))}
+                  </div>
                 )}
               </div>
 
