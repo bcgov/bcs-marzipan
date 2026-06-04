@@ -25,7 +25,7 @@ import {
 } from '@tanstack/react-table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type { ActivityListItem } from '@corpcal/shared/api/types';
 import type { CustomReportFieldConfig } from '@corpcal/shared/reports/customReportFieldConfig';
 import {
   tableBodyRow,
@@ -71,7 +71,7 @@ function applySelectedColumnOrderToConfig(
 }
 
 export interface CustomReportPreviewTableProps {
-  activities: ActivityResponse[];
+  activities: ActivityListItem[];
   config: CustomReportFieldConfig[];
   /** When set, column resize and reorder update `config` (order / width). */
   onFieldsChange?: (fields: CustomReportFieldConfig[]) => void;
@@ -80,7 +80,7 @@ export interface CustomReportPreviewTableProps {
 }
 
 interface SortableReportHeaderProps {
-  header: Header<ActivityResponse, unknown>;
+  header: Header<ActivityListItem, unknown>;
   canResize: boolean;
   onResizePointerDown: (e: { stopPropagation: () => void }) => void;
   onResizeTouchStart: (e: { stopPropagation: () => void }) => void;
@@ -196,7 +196,7 @@ export function CustomReportPreviewTable({
     [config]
   );
 
-  const columns = useMemo<ColumnDef<ActivityResponse, unknown>[]>(() => {
+  const columns = useMemo<ColumnDef<ActivityListItem, unknown>[]>(() => {
     const keys = columnOrder.filter((id) => fieldByKey.get(id)?.selected);
     const missing = config
       .filter((f) => f.selected && !keys.includes(f.key))
@@ -211,8 +211,8 @@ export function CustomReportPreviewTable({
       }
       return {
         id: field.key,
-        accessorFn: (row: ActivityResponse) =>
-          row[field.key as keyof ActivityResponse],
+        accessorFn: (row: ActivityListItem) =>
+          row[field.key as keyof ActivityListItem],
         header: field.label,
         enableResizing: true,
         size: resolveCustomReportColumnWidthPx(field),

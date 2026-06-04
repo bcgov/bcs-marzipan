@@ -1,11 +1,12 @@
 import type {
   ActivityFlagResponse,
+  ActivityListItem,
   ActivityResponse,
 } from '@corpcal/shared/api/types';
 
 /**
- * View-model for the activity table. Derived from ActivityResponse
- * with minimal transformations for table display.
+ * View-model for the activity table. Mapped from {@link ActivityListItem}
+ * (or full {@link ActivityResponse}) with minimal transformations for display.
  *
  * All date/time fields are ISO strings to match the API contract.
  */
@@ -100,11 +101,10 @@ function formatVenueAddress(
 }
 
 /**
- * Map an ActivityResponse (API contract) to an ActivityTableRow (table view-model).
- * This is the single transformation point between the API and the table component.
+ * Map an activity list item or full API response to an ActivityTableRow.
  */
-export function mapActivityResponseToTableRow(
-  activity: ActivityResponse
+export function mapActivityToTableRow(
+  activity: ActivityListItem | ActivityResponse
 ): ActivityTableRow {
   const commsLead = activity.commsContacts.find((c) => c.isLead);
 

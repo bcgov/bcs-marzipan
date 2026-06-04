@@ -156,6 +156,7 @@ export function ReportsPage() {
       ),
     [
       preferences.filterState,
+      preferences.searchKeyword,
       preferences.showCompleted,
       preferences.showDeleted,
       statusArchiveIds,

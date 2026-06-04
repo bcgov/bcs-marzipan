@@ -1,4 +1,4 @@
-import type { ActivityResponse, ReportResponse } from '../api/types';
+import type { ReportActivityRow, ReportResponse } from '../api/types';
 import { isCalendarDateString } from '../datetime';
 import {
   effectiveReportFieldsIncludeEventLead,
@@ -30,7 +30,7 @@ export interface ReportExportSource {
   report: ReportResponse;
   sections: Array<{
     name: string;
-    activities: ActivityResponse[];
+    activities: ReportActivityRow[];
   }>;
 }
 

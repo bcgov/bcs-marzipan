@@ -1,5 +1,5 @@
 import type { ReportDataResponse } from '../../../api/report-data';
-import type { ActivityResponse } from '../../../schemas/activity-response.schema';
+import type { ReportActivityRow } from '../../../api/types';
 import { resolveLookAheadSectionRows } from '../../look-ahead';
 import type { ReportDateRange } from '../../normalizeReportActivityDateRange';
 import {
@@ -33,7 +33,7 @@ interface SortedSection {
   showPerDayPrintChrome: boolean;
   /** When true, print omits the Release column for this section. */
   omitReleaseColumn: boolean;
-  activitiesByKey: Map<string, ActivityResponse[]>;
+  activitiesByKey: Map<string, ReportActivityRow[]>;
 }
 
 /**
@@ -58,10 +58,10 @@ const VARIANT_TO_FIRST_PAGE_TITLE: Partial<
 };
 
 function indexActivitiesByDay(
-  activities: ActivityResponse[]
-): Map<string, ActivityResponse[]> {
+  activities: ReportActivityRow[]
+): Map<string, ReportActivityRow[]> {
   const sorted = [...activities].sort(compareActivitiesForPrint);
-  const byKey = new Map<string, ActivityResponse[]>();
+  const byKey = new Map<string, ReportActivityRow[]>();
   for (const activity of sorted) {
     const key = dateKeyLocal(activity.startDate);
     if (!key) continue;

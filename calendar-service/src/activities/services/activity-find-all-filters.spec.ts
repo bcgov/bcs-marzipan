@@ -4,6 +4,7 @@ import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
 
 import {
   buildActivityFindAllConditions,
+  buildActivityVisibilityCondition,
   hasActivityFindAllFilterFields,
 } from './activity-find-all-filters';
 
@@ -178,8 +179,8 @@ describe('buildActivityFindAllConditions', () => {
       allowIncludeDeleted: false,
       db,
     });
-    // 4 non-empty date guards + 2 lower bounds + 2 upper bounds + 2 archive exclusions
-    expect(conditions).toHaveLength(10);
+    // 2 non-null date guards + 2 lower bounds + 2 upper bounds + 2 archive exclusions
+    expect(conditions).toHaveLength(8);
   });
 
   it('uses single-sided start date bounds when scheduledBothDatesInRange is false', () => {
@@ -219,8 +220,8 @@ describe('buildActivityFindAllConditions', () => {
       allowIncludeDeleted: false,
       db,
     });
-    // 2 archive exclusions + isNotNull + non-empty guard
-    expect(conditions).toHaveLength(4);
+    // 2 archive exclusions + isNotNull
+    expect(conditions).toHaveLength(3);
   });
 
   it('builds confirmed-status exists queries for date and time filters', () => {
@@ -286,5 +287,60 @@ describe('buildActivityFindAllConditions', () => {
     // 2 archive exclusions + 1 inArray on activities.translationsRequiredStatusId
     expect(conditions).toHaveLength(3);
     expect(select).not.toHaveBeenCalled();
+  });
+
+  it('adds visibility condition for scoped users with no teams (global only)', () => {
+    const { db } = createMockDb();
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters(),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      db,
+      dataScope: { teamIds: [], bypass: false },
+    });
+    // 2 archive exclusions + 1 visibility
+    expect(conditions).toHaveLength(3);
+  });
+
+  it('adds visibility condition for scoped users with team membership', () => {
+    const { select, db } = createMockDb();
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters(),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      db,
+      dataScope: { teamIds: [1, 2], bypass: false },
+    });
+    expect(conditions).toHaveLength(3);
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits visibility condition when dataScope bypass is true', () => {
+    const { db } = createMockDb();
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters(),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      db,
+      dataScope: { teamIds: [1], bypass: true },
+    });
+    expect(conditions).toHaveLength(2);
+  });
+});
+
+describe('buildActivityVisibilityCondition', () => {
+  it('uses global-only match when teamIds is empty', () => {
+    const { select, db } = createMockDb();
+    buildActivityVisibilityCondition(db, []);
+    expect(select).not.toHaveBeenCalled();
+  });
+
+  it('builds shared-with exists subquery when teamIds is non-empty', () => {
+    const { select, db } = createMockDb();
+    buildActivityVisibilityCondition(db, [10, 20]);
+    expect(select).toHaveBeenCalledTimes(1);
   });
 });

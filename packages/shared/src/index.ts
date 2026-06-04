@@ -1,3 +1,4 @@
+export * from './activities';
 export * from './activity-filter-state';
 export * from './activity-completion';
 export * from './datetime';

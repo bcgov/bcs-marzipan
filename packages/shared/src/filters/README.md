@@ -52,3 +52,7 @@ is interpreted across the Reports (server SQL) path and the Activity List
    summary chips in `calendar-ui/src/lib/activity-filter-summary.ts`.
 7. Cover it in `activity-filter-match.spec.ts` fixtures and, if needed,
    `activity-find-all-filters.spec.ts`.
+8. If the dimension needs joined data on the activity list API, add the relation
+   to `LIST_FILTER_RELATION_KEYS` or `SEARCH_ACTIVITY_RELATION_KEYS` in
+   `packages/shared/src/activities/activity-relation-registry.ts` (list hydration
+   is the union of search + filter + `LIST_TABLE_DISPLAY_RELATION_KEYS`).

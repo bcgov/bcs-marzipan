@@ -3,6 +3,7 @@ import {
   ACTIVITY_FIELD_SCOPES,
   canViewActivityFieldScope,
 } from '../auth/activity-field-scopes';
+import type { ActivityListItem } from '../schemas/activity-list-item.schema';
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 
 /**
@@ -31,11 +32,10 @@ interface FieldScopeUser {
  * Strip fields from an ActivityResponse that the user lacks view permission for.
  * Returns a shallow copy; the original is not mutated.
  */
-export function redactActivityResponse(
-  activity: ActivityResponse,
-  user: FieldScopeUser
-): ActivityResponse {
-  const redacted = { ...activity };
+export function redactActivityResponse<
+  T extends ActivityResponse | ActivityListItem,
+>(activity: T, user: FieldScopeUser): T {
+  const redacted = { ...activity } as Record<string, unknown> & T;
   let didRedact = false;
 
   for (const scope of ACTIVITY_FIELD_SCOPES) {
@@ -47,9 +47,13 @@ export function redactActivityResponse(
     }
   }
 
-  if (didRedact && redacted.changedFieldsSinceReview) {
+  if (
+    didRedact &&
+    'changedFieldsSinceReview' in redacted &&
+    Array.isArray(redacted.changedFieldsSinceReview)
+  ) {
     redacted.changedFieldsSinceReview = filterChangedFields(
-      redacted.changedFieldsSinceReview,
+      redacted.changedFieldsSinceReview as string[],
       user
     );
   }

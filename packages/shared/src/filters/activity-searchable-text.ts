@@ -1,3 +1,4 @@
+import type { ActivityListItem } from '../schemas/activity-list-item.schema';
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 import { plainTextFromActivityRichField } from '../utils/activity-rich-text';
 
@@ -87,9 +88,12 @@ export function activityMatchesSearchKeyword(
   );
 }
 
-/** Maps an {@link ActivityResponse} to the shared searchable input. */
+/** Activity list/report row or full response — fields needed for keyword search. */
+export type ActivitySearchableSource = ActivityListItem | ActivityResponse;
+
+/** Maps an activity list/report row or full response to the shared searchable input. */
 export function activityResponseToSearchableInput(
-  activity: ActivityResponse
+  activity: ActivitySearchableSource
 ): ActivitySearchableInput {
   const commsLead = activity.commsContacts.find((c) => c.isLead);
   return {

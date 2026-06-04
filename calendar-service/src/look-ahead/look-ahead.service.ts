@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
-import type { ActivityResponse, ReportResponse } from '@corpcal/shared/api';
+import { HYDRATION_PROFILES } from '@corpcal/shared';
+import type { ActivityListItem, ReportResponse } from '@corpcal/shared/api';
 import {
   LOOK_AHEAD_REPORT_NAME,
   resolveLookAheadSectionRows,
@@ -16,7 +17,7 @@ export interface LookAheadSectionData {
   /** Display name (defaults to `reportDisplayName` from config, falling back to `name`). */
   name: string;
   order: number;
-  activities: ActivityResponse[];
+  activities: ActivityListItem[];
 }
 
 export interface LookAheadResponse {
@@ -76,7 +77,14 @@ export class LookAheadService {
         filters.startDateTo = options.endDate;
       }
 
-      const activities = await this.activitiesService.findAll(filters);
+      const activities = await this.activitiesService.findAll(
+        filters,
+        undefined,
+        {
+          profile: HYDRATION_PROFILES.list,
+          outputShape: 'list',
+        }
+      );
       const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
 
       sections.push({

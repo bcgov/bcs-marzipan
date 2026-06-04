@@ -60,6 +60,20 @@ describe('filterActivitiesQuerySchema', () => {
     expect(result.sharedWithTeamIds).toEqual([1]);
   });
 
+  it('rejects non-integer comma-separated id tokens', () => {
+    const invalid = [
+      { tagIds: '1.5' },
+      { tagIds: '1e2' },
+      { tagIds: '0x10' },
+      { activityStatusIds: '1,2.5,3' },
+    ];
+    for (const query of invalid) {
+      const result = filterActivitiesQuerySchema.parse(query);
+      const key = Object.keys(query)[0] as keyof typeof result;
+      expect(result[key]).toBeUndefined();
+    }
+  });
+
   it('parses confirmed filters and pitch date flags', () => {
     const result = filterActivitiesQuerySchema.parse({
       dateConfirmedFilter: 'confirmed',

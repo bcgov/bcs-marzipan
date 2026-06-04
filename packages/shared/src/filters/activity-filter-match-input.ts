@@ -1,3 +1,4 @@
+import type { ActivityListItem } from '../schemas/activity-list-item.schema';
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 
 /**
@@ -49,12 +50,15 @@ export interface ActivityFilterMatchInput {
   translationLanguageIds?: number[] | null;
 }
 
+/** Activity list/report row or full response — fields needed for filter matching. */
+export type ActivityFilterSource = ActivityListItem | ActivityResponse;
+
 /**
- * Maps an {@link ActivityResponse} to the shared filter-match input.
+ * Maps an activity list/report row or full response to the shared filter-match input.
  * Used by the Reports server path and any consumer holding the API response.
  */
 export function activityResponseToFilterMatchInput(
-  activity: ActivityResponse
+  activity: ActivityFilterSource
 ): ActivityFilterMatchInput {
   const commsLead = activity.commsContacts.find((c) => c.isLead);
   return {

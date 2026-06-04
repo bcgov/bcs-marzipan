@@ -5,7 +5,7 @@ import {
   type ActivityFilterState,
   type ActivitySearchableInput,
 } from '@corpcal/shared';
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type { ActivityListItem } from '@corpcal/shared/api/types';
 import type {
   FilterActivitiesQueryParams,
   UpdateActivityRequest,
@@ -204,14 +204,14 @@ const OPTIMISTIC_MERGEABLE_KEYS = [
   'lookAheadStatus',
   'lookAheadSection',
   'pitchDate',
-] as const satisfies readonly (keyof ActivityResponse &
+] as const satisfies readonly (keyof ActivityListItem &
   keyof UpdateActivityRequest)[];
 
 /** Merge an update payload into an existing activity for optimistic UI; only mergeable keys are applied. */
 export function buildOptimisticActivity(
-  existing: ActivityResponse,
+  existing: ActivityListItem,
   update: UpdateActivityRequest
-): ActivityResponse {
+): ActivityListItem {
   const merged = { ...existing };
   for (const key of OPTIMISTIC_MERGEABLE_KEYS) {
     if (key in update) {

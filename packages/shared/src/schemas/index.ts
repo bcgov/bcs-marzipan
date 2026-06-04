@@ -5,6 +5,7 @@ export * from './activity-flag.schema';
 export * from './clone-activity.schema';
 export * from './look-ahead-reset.schema';
 export * from './activity-response.schema';
+export * from './activity-list-item.schema';
 export * from './activity-junction.schema';
 export * from './banner.schema';
 export * from './login-modal.schema';

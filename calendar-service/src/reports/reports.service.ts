@@ -3,13 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { and, eq } from 'drizzle-orm';
 
 import { activityReportSettings, reports } from '@corpcal/database/schema';
-import type { Visibility } from '@corpcal/shared';
+import {
+  resolveReportHydrationProfile,
+  type Visibility,
+} from '@corpcal/shared';
 import type {
   ReportDataMeta,
   ReportDataResponse,
   ReportResponse,
   ReportSectionData,
 } from '@corpcal/shared/api/types';
+import { DEFAULT_CUSTOM_REPORT_FIELD_CONFIG } from '@corpcal/shared/reports/customReportFieldConfig';
 import { resolveLookAheadSectionRows } from '@corpcal/shared/reports/look-ahead';
 import {
   buildLookAheadCoverDateRangeLine,
@@ -35,6 +39,7 @@ import {
   REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE,
   wrapReportHtmlDocument,
 } from '@corpcal/shared/reports/reportPrintHtml';
+import { getEffectiveReportFields } from '@corpcal/shared/reports/reportTypeConfig';
 import {
   buildCalendarMonthSections,
   groupActivitiesByMonthSection,
@@ -521,6 +526,28 @@ export class ReportsService {
     return new Set(omitted);
   }
 
+  private customReportEffectiveFieldKeys(): string[] {
+    return DEFAULT_CUSTOM_REPORT_FIELD_CONFIG.filter((f) => f.selected).map(
+      (f) => f.key
+    );
+  }
+
+  private async findActivitiesForReport(
+    filters: FilterActivitiesQueryParams,
+    ctx: RequestContextType,
+    effectiveFields: readonly string[],
+    query: ReportDataQueryParams
+  ) {
+    const profile = resolveReportHydrationProfile({
+      effectiveFields,
+      query,
+    });
+    return this.activitiesService.findAll(filters, ctx, {
+      profile,
+      outputShape: 'list',
+    });
+  }
+
   /**
    * Get report data for a specific report type
    * @param reportName - The report name (e.g., 'look-ahead', 'thirty-sixty-ninety') or `custom` for a configured-free dataset
@@ -544,7 +571,12 @@ export class ReportsService {
       const filters = reportDataQueryToActivityFindAllFilters(query);
       filters.startDateFrom = dateWindow.start;
       filters.startDateTo = dateWindow.end;
-      let activities = await this.activitiesService.findAll(filters, ctx);
+      let activities = await this.findActivitiesForReport(
+        filters,
+        ctx,
+        this.customReportEffectiveFieldKeys(),
+        query
+      );
       activities = filterActivityResponsesBySearchKeyword(activities, search);
       const report: ReportResponse = {
         id: -1,
@@ -621,7 +653,12 @@ export class ReportsService {
         );
       }
 
-      let activities = await this.activitiesService.findAll(filters, ctx);
+      let activities = await this.findActivitiesForReport(
+        filters,
+        ctx,
+        getEffectiveReportFields(report),
+        query
+      );
       activities = filterActivityResponsesBySearchKeyword(activities, search);
       const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
       const activitiesByMonth = groupActivitiesByMonthSection(
@@ -672,7 +709,12 @@ export class ReportsService {
           mergePinnedLookAheadSection(filters, mergedFilter.lookAheadSection);
         }
 
-        let activities = await this.activitiesService.findAll(filters, ctx);
+        let activities = await this.findActivitiesForReport(
+          filters,
+          ctx,
+          getEffectiveReportFields(report),
+          query
+        );
         activities = filterActivityResponsesBySearchKeyword(activities, search);
         const filtered = activities.filter(
           (a) => !omittedActivityIds.has(a.id)

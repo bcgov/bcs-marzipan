@@ -32,6 +32,7 @@ import { CONFIRMED_STATUS_NAMES } from '@corpcal/shared';
 import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
 
 import type { DatabaseService } from '../../database/database.service';
+import type { DataScope } from '../../policy/dto/user-context.dto';
 
 function lowerTrimMatch(column: unknown, value: string): SQL {
   return sql`lower(trim(${column})) = ${value.toLowerCase().trim()}`;
@@ -49,7 +50,7 @@ function buildConfirmedStatusMatch(
     sql`lower(trim(${statusTable.name})) = ${confirmedName}`,
     sql`lower(trim(${statusTable.displayName})) = ${confirmedName}`,
   ]);
-  const confirmedMatch = or(...confirmedParts);
+  const confirmedMatch = or(...confirmedParts)!;
   if (wantConfirmed) {
     return exists(
       db
@@ -68,7 +69,7 @@ function buildConfirmedStatusMatch(
           and(eq(statusTable.id, statusIdColumn), sql`NOT (${confirmedMatch})`)
         )
     )
-  );
+  )!;
 }
 
 export interface BuildActivityFindAllConditionsOptions {
@@ -77,6 +78,46 @@ export interface BuildActivityFindAllConditionsOptions {
   completedStatusId: number | undefined;
   allowIncludeDeleted: boolean;
   db: DatabaseService['db'];
+  /** When set and bypass is false, restricts rows to team visibility rules in SQL. */
+  dataScope?: DataScope;
+}
+
+/**
+ * SQL condition matching {@link ActivitiesService.getVisibleActivityIdsForTeams}:
+ * global activities for all users; team activities when lead team or shared-with matches.
+ */
+export function buildActivityVisibilityCondition(
+  db: DatabaseService['db'],
+  teamIds: number[]
+): SQL {
+  const globalVisible = eq(activities.visibility, 'global');
+
+  if (teamIds.length === 0) {
+    return globalVisible;
+  }
+
+  const teamLeadVisible = and(
+    eq(activities.visibility, 'team'),
+    inArray(activities.leadTeamId, teamIds)
+  )!;
+
+  const teamSharedVisible = and(
+    eq(activities.visibility, 'team'),
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(activitySharedWithTeams)
+        .where(
+          and(
+            eq(activitySharedWithTeams.activityId, activities.id),
+            inArray(activitySharedWithTeams.teamId, teamIds),
+            eq(activitySharedWithTeams.isActive, true)
+          )
+        )
+    )
+  )!;
+
+  return or(globalVisible, teamLeadVisible, teamSharedVisible)!;
 }
 
 /**
@@ -97,6 +138,7 @@ export function buildActivityFindAllConditions(
     completedStatusId,
     allowIncludeDeleted,
     db,
+    dataScope,
   } = options;
   const conditions: SQL[] = [];
 
@@ -171,8 +213,6 @@ export function buildActivityFindAllConditions(
   if (filters.scheduledBothDatesInRange === true) {
     conditions.push(isNotNull(activities.startDate));
     conditions.push(isNotNull(activities.endDate));
-    conditions.push(ne(activities.startDate, ''));
-    conditions.push(ne(activities.endDate, ''));
     if (filters.startDateFrom) {
       conditions.push(gte(activities.startDate, filters.startDateFrom));
       conditions.push(gte(activities.endDate, filters.startDateFrom));
@@ -201,7 +241,6 @@ export function buildActivityFindAllConditions(
     conditions.push(sql`${activities.pitchDate} IS NULL`);
   } else if (filters.pitchDateScheduled === true) {
     conditions.push(isNotNull(activities.pitchDate));
-    conditions.push(ne(activities.pitchDate, ''));
   } else {
     if (filters.pitchDateFrom) {
       conditions.push(gte(activities.pitchDate, filters.pitchDateFrom));
@@ -437,6 +476,10 @@ export function buildActivityFindAllConditions(
           )
       )
     );
+  }
+
+  if (dataScope && !dataScope.bypass) {
+    conditions.push(buildActivityVisibilityCondition(db, dataScope.teamIds));
   }
 
   return conditions;

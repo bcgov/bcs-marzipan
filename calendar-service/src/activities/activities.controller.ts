@@ -22,8 +22,9 @@ import {
 } from '@nestjs/swagger';
 
 import type { Category } from '@corpcal/database/types';
-import type { AuthUser } from '@corpcal/shared';
+import { HYDRATION_PROFILES, type AuthUser } from '@corpcal/shared';
 import type {
+  ActivityListItem,
   ActivityResponse,
   GlobalActivityHistoryEntry,
 } from '@corpcal/shared/api';
@@ -206,13 +207,16 @@ export class ActivitiesController {
     @Query(new ZodValidationPipe(filterActivitiesQuerySchema))
     query: FilterActivitiesQueryParams,
     @RequestContext() ctx: RequestContextType
-  ): Promise<{ success: boolean; data: ActivityResponse[] }> {
+  ): Promise<{ success: boolean; data: ActivityListItem[] }> {
     // query is now validated and typed by ZodValidationPipe
     // filterActivitiesQuerySchema has defaults for page/limit, so query will always have those
     // Check if there are any actual filter fields (excluding pagination defaults)
     const hasFilters = hasActivityFindAllFilterFields(query);
     const filters = hasFilters ? query : undefined;
-    const results = await this.activitiesService.findAll(filters, ctx);
+    const results = await this.activitiesService.findAll(filters, ctx, {
+      profile: HYDRATION_PROFILES.list,
+      outputShape: 'list',
+    });
     return {
       success: true,
       data: results,

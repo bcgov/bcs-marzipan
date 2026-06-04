@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ActivityResponse, ReportResponse } from '../api/types';
+import type { ReportResponse } from '../api/types';
+import { createMockActivityListItem } from '../test-utils';
 import { buildReportExportTable } from './reportExportFormat';
 
 describe('buildReportExportTable', () => {
@@ -27,15 +28,14 @@ describe('buildReportExportTable', () => {
         {
           name: 'Section A',
           activities: [
-            {
+            createMockActivityListItem({
               displayId: 'A-1',
               title: 'Act',
               startDate: '2026-04-27',
               startTime: '09:30',
-              lookAheadStatus: 'ok',
-              executiveSummary: null,
-              summary: null,
-            } as unknown as ActivityResponse,
+              lookAheadStatus: 'none',
+              summary: '',
+            }),
           ],
         },
       ],
@@ -52,15 +52,14 @@ describe('buildReportExportTable', () => {
         {
           name: 'Section A',
           activities: [
-            {
+            createMockActivityListItem({
               displayId: 'A-1',
               title: 'Act',
               startDate: '2026-04-27T00:00:00.000Z',
-              startTime: '',
-              lookAheadStatus: '',
-              executiveSummary: null,
-              summary: null,
-            } as unknown as ActivityResponse,
+              startTime: null,
+              lookAheadStatus: null,
+              summary: '',
+            }),
           ],
         },
       ],

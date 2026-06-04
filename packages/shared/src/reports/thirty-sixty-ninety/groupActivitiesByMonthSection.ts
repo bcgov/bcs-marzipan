@@ -1,4 +1,4 @@
-import type { ActivityResponse } from '../../api/types';
+import type { ReportActivityRow } from '../../api/types';
 import { pacificDayKey } from '../../datetime';
 import { createCompareActivitiesForPrint } from '../print/react/rowViewModel';
 import type { CalendarMonthSection } from './buildCalendarMonthSections';
@@ -13,11 +13,11 @@ const compareActivitiesForMonthSection = createCompareActivitiesForPrint({
  * are omitted.
  */
 export function groupActivitiesByMonthSection(
-  activities: ActivityResponse[],
+  activities: ReportActivityRow[],
   monthSections: CalendarMonthSection[]
-): Map<string, ActivityResponse[]> {
+): Map<string, ReportActivityRow[]> {
   const buckets = new Map(
-    monthSections.map((section) => [section.id, [] as ActivityResponse[]])
+    monthSections.map((section) => [section.id, [] as ReportActivityRow[]])
   );
   const rangeById = new Map(
     monthSections.map((section) => [section.id, section.dateRange])

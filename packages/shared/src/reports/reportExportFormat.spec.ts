@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ReportResponse } from '../schemas/lookup.schema';
-import { createMockActivityResponse } from '../test-utils';
+import { createMockActivityListItem } from '../test-utils';
 import {
   buildReportExportTable,
   serializeReportTableToCsv,
@@ -26,7 +26,7 @@ describe('reportExportFormat', () => {
         {
           name: 'Sec A',
           activities: [
-            createMockActivityResponse({
+            createMockActivityListItem({
               id: 1,
               title: 'T1',
               displayId: 'BC-1-2',
@@ -64,7 +64,7 @@ describe('reportExportFormat', () => {
         {
           name: 'Sec A',
           activities: [
-            createMockActivityResponse({
+            createMockActivityListItem({
               id: 1,
               title: 'T1',
               displayId: 'BC-1-2',

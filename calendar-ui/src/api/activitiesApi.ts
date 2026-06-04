@@ -1,5 +1,6 @@
 import type {
   ActivityHistoryEntry,
+  ActivityListItem,
   ActivityResponse,
   GlobalActivityHistoryEntry,
 } from '@corpcal/shared/api/types';
@@ -24,9 +25,9 @@ const logger = createLogger('ActivitiesAPI');
 
 export async function fetchActivities(
   filters?: Partial<FilterActivitiesQueryParams>
-): Promise<ActivityResponse[]> {
+): Promise<ActivityListItem[]> {
   const params = serializeFilterActivitiesQueryParams(filters);
-  const res = await api.get<{ success: boolean; data: ActivityResponse[] }>(
+  const res = await api.get<{ success: boolean; data: ActivityListItem[] }>(
     '/activities',
     {
       params,

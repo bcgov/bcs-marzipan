@@ -126,7 +126,7 @@ import {
 } from './ActivityTableFilters';
 import { ActivityTableLayout } from './ActivityTableLayout';
 import {
-  mapActivityResponseToTableRow,
+  mapActivityToTableRow,
   type ActivityTableRow,
 } from './activityTableRow';
 import { compareActivityRowsByLevels } from './activityTableSort';
@@ -1086,7 +1086,7 @@ export function ActivityTable({
   }, [usersQuery.data]);
 
   const data = useMemo(
-    () => (activitiesQuery.data ?? []).map(mapActivityResponseToTableRow),
+    () => (activitiesQuery.data ?? []).map(mapActivityToTableRow),
     [activitiesQuery.data]
   );
 
