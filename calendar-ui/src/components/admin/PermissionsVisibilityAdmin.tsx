@@ -7,6 +7,14 @@ import {
   fetchAllPermissions,
   updatePermissionVisibility,
 } from '@/api/lookupsApi';
+import { AdminSection } from '@/components/admin';
+import {
+  tableBodyRow,
+  tableTable,
+  tableTd,
+  tableTh,
+  tableThead,
+} from '@/components/table/tableConstants';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -39,47 +47,47 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
   if (!isSystemAdmin) return null;
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">
-        Permission Visibility (User Management)
-      </h3>
-      <div className="overflow-auto">
-        <table className="w-full table-fixed text-left">
-          <thead>
+    <AdminSection
+      title="Permission Visibility"
+      description="Toggle permission visibility in user management form (does not affect actual permissions)."
+    >
+      <table className={`${tableTable} text-left`}>
+        <thead className={tableThead}>
+          <tr>
+            <th className={`${tableTh} w-1/3`}>Permission</th>
+            <th className={`${tableTh} w-1/3`}>Display name</th>
+            <th className={`${tableTh} w-1/3`}>Visible in user management</th>
+          </tr>
+        </thead>
+        <tbody>
+          {isPending ? (
             <tr>
-              <th className="w-1/3 pr-4">Permission</th>
-              <th className="w-1/3 pr-4">Display name</th>
-              <th className="w-1/3 pr-4">Visible in user management</th>
+              <td className={tableTd} colSpan={3}>
+                Loading...
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {isPending ? (
-              <tr>
-                <td colSpan={3}>Loading...</td>
+          ) : (
+            perms.map((p: any) => (
+              <tr key={p.id} className={tableBodyRow}>
+                <td className={`${tableTd} text-sm text-slate-700`}>{p.key}</td>
+                <td className={`${tableTd} text-sm text-slate-700`}>
+                  {p.displayName}
+                </td>
+                <td className={tableTd}>
+                  <Switch
+                    checked={Boolean(p.showInUserManagement)}
+                    onCheckedChange={(v) =>
+                      mutation.mutate({ id: p.id, show: Boolean(v) })
+                    }
+                    disabled={mutation.isPending}
+                  />
+                </td>
               </tr>
-            ) : (
-              perms.map((p: any) => (
-                <tr key={p.id} className="border-t align-top">
-                  <td className="py-2 pr-4 text-sm text-slate-700">{p.key}</td>
-                  <td className="py-2 pr-4 text-sm text-slate-700">
-                    {p.displayName}
-                  </td>
-                  <td className="py-2 pr-4">
-                    <Switch
-                      checked={Boolean(p.showInUserManagement)}
-                      onCheckedChange={(v) =>
-                        mutation.mutate({ id: p.id, show: Boolean(v) })
-                      }
-                      disabled={mutation.isPending}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+            ))
+          )}
+        </tbody>
+      </table>
+    </AdminSection>
   );
 }
 

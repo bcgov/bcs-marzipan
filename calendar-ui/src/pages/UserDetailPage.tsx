@@ -280,7 +280,7 @@ export default function UserDetailPage() {
                     {userDetail.adDisplayName || userDetail.adUsername}
                   </h2>
                   <div className="mt-1">
-                    <div className="text-sm text-slate-600">
+                    <div className="text-sm text-slate-900">
                       {userDetail.roleName}
                     </div>
                     <div className="mt-2">
@@ -291,7 +291,7 @@ export default function UserDetailPage() {
                       </Badge>
                     </div>
                   </div>
-                  <div className="mt-1 text-[16px] font-medium text-pink-600">
+                  <div className="mt-1 text-[16px] font-medium text-slate-900">
                     {userDetail.jobTitle}
                   </div>
 
