@@ -4,14 +4,17 @@ import {
   formatCalendarDateCover,
   formatCalendarDateHeading,
   formatCalendarDateLong,
+  formatCalendarDateRangeHeading,
   formatCalendarDateShort,
   formatCalendarDateShortNoYear,
   formatCalendarDateShortNullable,
+  formatCalendarMonthYear,
   formatCivilOrInstantTime,
   formatCivilTime12h,
   formatInstantInPacific,
   formatInstantPacificDate,
   formatInstantPacificTime,
+  formatLookAheadActivityDate,
   formatPacificFooterTimestamp,
 } from './format';
 import { toCalendarDateString, toCivilTimeString } from './types';
@@ -21,6 +24,21 @@ const APR_27 = toCalendarDateString('2026-04-27');
 describe('calendar-date formatters', () => {
   it('formatCalendarDateHeading uses uppercase weekday-month-day-year', () => {
     expect(formatCalendarDateHeading(APR_27)).toBe('MONDAY, APRIL 27, 2026');
+  });
+
+  it('formatCalendarDateRangeHeading renders same-year inclusive ranges', () => {
+    expect(
+      formatCalendarDateRangeHeading(
+        toCalendarDateString('2026-05-04'),
+        toCalendarDateString('2026-05-06')
+      )
+    ).toBe('MONDAY, MAY 4 – WEDNESDAY, MAY 6, 2026');
+  });
+
+  it('formatCalendarDateRangeHeading collapses to a single day heading', () => {
+    expect(formatCalendarDateRangeHeading(APR_27, APR_27)).toBe(
+      'MONDAY, APRIL 27, 2026'
+    );
   });
 
   it('formatCalendarDateCover renders short weekday, short month, year', () => {
@@ -37,6 +55,10 @@ describe('calendar-date formatters', () => {
 
   it('formatCalendarDateLong renders long month without weekday', () => {
     expect(formatCalendarDateLong(APR_27)).toBe('April 27, 2026');
+  });
+
+  it('formatCalendarMonthYear renders month and year only', () => {
+    expect(formatCalendarMonthYear(APR_27)).toBe('April 2026');
   });
 
   it('formatCalendarDateShortNullable handles empty/invalid input', () => {
@@ -121,5 +143,69 @@ describe('formatCivilOrInstantTime', () => {
 
   it('returns empty when both are missing', () => {
     expect(formatCivilOrInstantTime(null, null)).toBe('');
+  });
+});
+
+describe('formatLookAheadActivityDate', () => {
+  const REFERENCE = new Date('2026-05-21T12:00:00.000Z');
+
+  it('formats a single date in the reference year without year', () => {
+    expect(
+      formatLookAheadActivityDate('2026-12-12', null, {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Dec 12');
+  });
+
+  it('formats a single date in another year with year', () => {
+    expect(
+      formatLookAheadActivityDate('2027-12-12', null, {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Dec 12, 2027');
+  });
+
+  it('formats a same-month range in the reference year compactly', () => {
+    expect(
+      formatLookAheadActivityDate('2026-01-01', '2026-01-31', {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Jan 1\u201331');
+  });
+
+  it('formats a same-month range in another year with year suffix', () => {
+    expect(
+      formatLookAheadActivityDate('2027-01-01', '2027-01-31', {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Jan 1\u201331, 2027');
+  });
+
+  it('formats a cross-month range in the reference year without year', () => {
+    expect(
+      formatLookAheadActivityDate('2026-01-31', '2026-02-02', {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Jan 31 \u2013 Feb 2');
+  });
+
+  it('formats a cross-month range in another year with year suffix', () => {
+    expect(
+      formatLookAheadActivityDate('2027-01-31', '2027-02-02', {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Jan 31 \u2013 Feb 2, 2027');
+  });
+
+  it('formats a cross-year range with both years', () => {
+    expect(
+      formatLookAheadActivityDate('2026-12-16', '2027-01-01', {
+        referenceInstant: REFERENCE,
+      })
+    ).toBe('Dec 16, 2026 \u2013 Jan 1, 2027');
+  });
+
+  it('returns empty when start date is missing', () => {
+    expect(formatLookAheadActivityDate(null, '2026-01-02')).toBe('');
   });
 });

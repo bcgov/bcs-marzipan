@@ -3,7 +3,7 @@ import { REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS } from '../../reportPrintDimen
 export const CUSTOM_REPORT_PRINT_STYLES = `
 .custom-report-root {
   font-family: BCSans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --print-body-font-size: 14px;
+  --print-body-font-size: 16px;
   font-size: var(--print-body-font-size);
   line-height: 1.4;
   color: #0f172a;
@@ -92,13 +92,19 @@ export const CUSTOM_REPORT_PRINT_STYLES = `
   font-weight: 500;
   color: var(--corpcal-text-alert);
 }
+.custom-report-dt-line {
+  line-height: 1.35;
+}
 .custom-report-dt-value {
-  font-weight: 500;
+  font-weight: 700;
   color: #0f172a;
 }
-.custom-report-dt-inline-muted {
-  font-weight: 500;
-  color: #64748b;
+.custom-report-dt-status {
+  font-weight: 400;
+  color: #0f172a;
+}
+.custom-report-dt-status-gap {
+  margin-left: 0.6em;
 }
 .custom-report-dt-time-row {
   margin-top: 0.125rem;

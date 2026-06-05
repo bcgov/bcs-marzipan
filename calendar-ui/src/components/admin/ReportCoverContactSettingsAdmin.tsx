@@ -64,7 +64,7 @@ export function ReportCoverContactSettingsAdmin(): ReactElement | null {
   return (
     <AdminSection
       title="Calendar admin contact"
-      description="Configure admin contact phone and email. This info may be included in reports and help sections."
+      description="Configure contact phone and text for reports and help sections."
       isLoading={isLoading}
       headerAction={
         <Button
@@ -97,32 +97,27 @@ export function ReportCoverContactSettingsAdmin(): ReactElement | null {
                 disabled={saveMutation.isPending}
                 maxLength={120}
               />
-              <p className="text-muted-foreground text-xs">
-                Shown on the PDF cover footer with the admin contact email when
-                both are saved.
-              </p>
             </div>
             <div className="space-y-2">
               <div className={SETTINGS_FIELD_LABEL_ROW_CLASS}>
                 <Label htmlFor="report-cover-contact-email">
-                  Contact email (optional)
+                  Contact text (optional)
                 </Label>
               </div>
               <Input
                 id="report-cover-contact-email"
-                type="email"
-                autoComplete="email"
+                type="text"
+                autoComplete="off"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
                 disabled={saveMutation.isPending}
                 maxLength={254}
               />
-              <p className="text-muted-foreground text-xs">
-                Use the address staff should reply to when they have feedback on
-                the report.
-              </p>
             </div>
           </div>
+          <p className="text-muted-foreground text-xs">
+            Shown in reports and help sections.
+          </p>
         </div>
       )}
     </AdminSection>

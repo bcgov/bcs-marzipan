@@ -198,7 +198,7 @@ export function VenuePresetForm({
           htmlFor="venue-preset-venue-name"
           className="text-sm font-medium"
         >
-          Venue Name
+          Venue name
           <span className="text-destructive ml-1">*</span>
         </Label>
         <Input
@@ -318,7 +318,7 @@ export function VenuePresetForm({
             htmlFor="venue-preset-sort-order"
             className="text-sm font-medium"
           >
-            Sort Order
+            Sort order
           </Label>
           <Input
             id="venue-preset-sort-order"
@@ -339,7 +339,7 @@ export function VenuePresetForm({
             htmlFor="venue-preset-pinned-sort-order"
             className="text-sm font-medium"
           >
-            Pinned Sort Order
+            Pinned sort order
           </Label>
           <Input
             id="venue-preset-pinned-sort-order"

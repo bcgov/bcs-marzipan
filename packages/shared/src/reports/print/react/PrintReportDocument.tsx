@@ -1,22 +1,20 @@
 import type { ReportDataResponse } from '../../../api/report-data';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { resolveLookAheadSectionRows } from '../../look-ahead';
+import type { ReportDateRange } from '../../normalizeReportActivityDateRange';
 import {
   effectiveReportFieldsIncludeEventLead,
   getEffectiveReportFields,
 } from '../../reportTypeConfig';
-import { dateKeyLocal, formatDayHeading } from './dateFormatters';
-import {
-  PrintGroupedSectionTable,
-  type PrintGroupedSectionDayBlock,
-} from './PrintSectionTable';
+import { buildPrintGroupedDayBlocks } from '../buildPrintGroupedDayBlocks';
+import { PrintGroupedSectionTable } from './PrintSectionTable';
 import { CORPCAL_PRINT_ROOT_CLASS } from './printStyles';
 import {
   compareActivitiesForPrint,
-  toPrintRowViewModel,
   type PrintReportVariant,
-  type PrintRowViewModel,
 } from './rowViewModel';
+import type { TranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
+import { dateKeyLocal } from './dateFormatters';
 
 interface SortedSection {
   id: string;
@@ -33,6 +31,8 @@ interface SortedSection {
    * `ReportConfig` (default false when omitted).
    */
   showPerDayPrintChrome: boolean;
+  /** When true, print omits the Release column for this section. */
+  omitReleaseColumn: boolean;
   activitiesByKey: Map<string, ActivityResponse[]>;
 }
 
@@ -42,6 +42,20 @@ interface SortedSection {
  * render as continuous activity rows.
  */
 const DEFAULT_SHOW_PER_DAY_PRINT_CHROME = false;
+
+const VARIANT_TO_TEMPLATE_SLUG: Record<PrintReportVariant, string> = {
+  execLookAhead: 'EXEC_LOOK_AHEAD',
+  thirtySixtyNinety: 'THIRTY_SIXTY_NINETY',
+  planning: 'PLANNING',
+  lookAhead: 'LOOK_AHEAD',
+};
+
+const VARIANT_TO_FIRST_PAGE_TITLE: Partial<
+  Record<PrintReportVariant, string>
+> = {
+  thirtySixtyNinety: '30/60/90 Report',
+  planning: 'Planning Report',
+};
 
 function indexActivitiesByDay(
   activities: ActivityResponse[]
@@ -65,6 +79,7 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
   const legendColorById = new Map<string, string | null>();
   const printHeadingById = new Map<string, string>();
   const showPerDayChromeById = new Map<string, boolean>();
+  const omitReleaseColumnById = new Map<string, boolean>();
   if (data.report?.config) {
     for (const row of resolveLookAheadSectionRows(data.report.config)) {
       legendColorById.set(row.sectionId, row.legendColor);
@@ -72,6 +87,10 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
       showPerDayChromeById.set(
         row.sectionId,
         row.printPerDayColumnHeaderRepeat ?? DEFAULT_SHOW_PER_DAY_PRINT_CHROME
+      );
+      omitReleaseColumnById.set(
+        row.sectionId,
+        row.printOmitReleaseColumn === true
       );
     }
   }
@@ -85,12 +104,9 @@ function collectSortedSections(data: ReportDataResponse): SortedSection[] {
       showPerDayPrintChrome:
         showPerDayChromeById.get(section.id) ??
         DEFAULT_SHOW_PER_DAY_PRINT_CHROME,
+      omitReleaseColumn: omitReleaseColumnById.get(section.id) ?? false,
       activitiesByKey: indexActivitiesByDay(section.activities),
     }));
-}
-
-function sortedDateKeysForSection(section: SortedSection): string[] {
-  return [...section.activitiesByKey.keys()].sort();
 }
 
 function reportHasAnyActivities(sections: SortedSection[]): boolean {
@@ -109,25 +125,35 @@ export function PrintReportDocument({
   data,
   variant,
   activityBaseUrl,
+  highlightActivityIds,
+  resolveTranslationLanguageLabel,
 }: {
   data: ReportDataResponse;
   variant: PrintReportVariant;
   activityBaseUrl: string;
+  /** In-app preview: flash rows briefly after remote activity updates. */
+  highlightActivityIds?: ReadonlySet<number>;
+  resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
 }) {
   const sections = collectSortedSections(data);
+  const hasSections = sections.length > 0;
   const hasAny = reportHasAnyActivities(sections);
   const effectiveFields = getEffectiveReportFields(data.report);
   const showEventLead = effectiveReportFieldsIncludeEventLead(effectiveFields);
+  const firstPageTitle = hasAny
+    ? VARIANT_TO_FIRST_PAGE_TITLE[variant]
+    : undefined;
 
   return (
     <div
       className={CORPCAL_PRINT_ROOT_CLASS}
-      data-report-template={
-        variant === 'execLookAhead' ? 'EXEC_LOOK_AHEAD' : 'LOOK_AHEAD'
-      }
+      data-report-template={VARIANT_TO_TEMPLATE_SLUG[variant]}
     >
       <div className="corpcal-print-body">
-        {!hasAny ? (
+        {firstPageTitle ? (
+          <PrintPdfFirstPageTitle title={firstPageTitle} />
+        ) : null}
+        {!hasSections ? (
           <div className="corpcal-print-empty">
             No activities in the selected range.
           </div>
@@ -139,10 +165,21 @@ export function PrintReportDocument({
               variant={variant}
               activityBaseUrl={activityBaseUrl}
               showEventLead={showEventLead}
+              highlightActivityIds={highlightActivityIds}
+              resolvedDateRange={data.meta?.resolvedDateRange}
+              resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
             />
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+function PrintPdfFirstPageTitle({ title }: { title: string }) {
+  return (
+    <div className="corpcal-print-pdf-first-page-title" aria-hidden="true">
+      {title}
     </div>
   );
 }
@@ -152,29 +189,25 @@ function SectionGroup({
   variant,
   activityBaseUrl,
   showEventLead,
+  highlightActivityIds,
+  resolvedDateRange,
+  resolveTranslationLanguageLabel,
 }: {
   section: SortedSection;
   variant: PrintReportVariant;
   activityBaseUrl: string;
   showEventLead: boolean;
+  highlightActivityIds?: ReadonlySet<number>;
+  resolvedDateRange?: ReportDateRange;
+  resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
 }) {
-  const dateKeys = sortedDateKeysForSection(section);
-  if (dateKeys.length === 0) return null;
-
-  const dayBlocks: PrintGroupedSectionDayBlock[] = dateKeys.map((dayKey) => {
-    const activities = section.activitiesByKey.get(dayKey) ?? [];
-    const rows: PrintRowViewModel[] = activities.map((a) =>
-      toPrintRowViewModel(a, {
-        activityBaseUrl,
-        dateCellStyle: 'shortNoYear',
-        variant,
-      })
-    );
-    return {
-      dayKey,
-      dayHeading: formatDayHeading(dayKey),
-      rows,
-    };
+  const dayBlocks = buildPrintGroupedDayBlocks({
+    activitiesByKey: section.activitiesByKey,
+    resolvedDateRange,
+    showPerDayPrintChrome: section.showPerDayPrintChrome,
+    variant,
+    activityBaseUrl,
+    resolveTranslationLanguageLabel,
   });
 
   return (
@@ -186,6 +219,8 @@ function SectionGroup({
         variant={variant}
         showPerDayPrintChrome={section.showPerDayPrintChrome}
         showEventLead={showEventLead}
+        omitReleaseColumn={section.omitReleaseColumn}
+        highlightActivityIds={highlightActivityIds}
       />
     </section>
   );

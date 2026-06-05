@@ -76,6 +76,7 @@ export interface CustomReportPreviewTableProps {
   /** When set, column resize and reorder update `config` (order / width). */
   onFieldsChange?: (fields: CustomReportFieldConfig[]) => void;
   className?: string;
+  highlightedActivityIds?: ReadonlySet<number>;
 }
 
 interface SortableReportHeaderProps {
@@ -122,7 +123,7 @@ function SortableReportHeader({
       style={style}
       className={cn(
         tableTh,
-        'text-foreground relative font-semibold [overflow-wrap:anywhere] break-words whitespace-normal',
+        'relative [overflow-wrap:anywhere] break-words whitespace-normal',
         isDragging && 'z-20 bg-slate-200/80',
         isOver && !isDragging && 'ring-primary/40 ring-2 ring-inset'
       )}
@@ -131,7 +132,7 @@ function SortableReportHeader({
         <button
           type="button"
           className={cn(
-            'text-foreground min-w-0 flex-1 cursor-grab border-0 bg-transparent py-0 pr-2 pl-0 text-left text-sm font-semibold [overflow-wrap:anywhere] break-words whitespace-normal active:cursor-grabbing',
+            'min-w-0 flex-1 cursor-grab border-0 bg-transparent py-0 pr-2 pl-0 text-left [overflow-wrap:anywhere] break-words whitespace-normal text-inherit active:cursor-grabbing',
             dragDisabled && 'cursor-default'
           )}
           {...(dragDisabled ? {} : { ...attributes, ...listeners })}
@@ -175,6 +176,7 @@ export function CustomReportPreviewTable({
   config,
   onFieldsChange,
   className,
+  highlightedActivityIds,
 }: CustomReportPreviewTableProps) {
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
     selectedColumnOrderFromConfig(config)
@@ -324,7 +326,11 @@ export function CustomReportPreviewTable({
       onDragEnd={handleDragEnd}
     >
       <table
-        className={cn(tableTable, 'text-sm', className)}
+        className={cn(
+          tableTable,
+          'min-w-[640px] border-separate border-spacing-0',
+          className
+        )}
         style={{
           width: table.getTotalSize(),
           minWidth: '100%',
@@ -382,7 +388,12 @@ export function CustomReportPreviewTable({
             table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className={cn(tableBodyRow, 'odd:bg-white even:bg-slate-50/60')}
+                className={cn(
+                  tableBodyRow,
+                  'odd:bg-white even:bg-slate-50/60',
+                  highlightedActivityIds?.has(row.original.id) &&
+                    'live-row-highlight'
+                )}
               >
                 {row.getVisibleCells().map((cell) => (
                   <td

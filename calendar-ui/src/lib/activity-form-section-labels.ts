@@ -20,7 +20,7 @@ export const ACTIVITY_FORM_SECTION_LABELS: Record<
 > = {
   overview: 'Overview',
   comms: 'Comms',
-  newsRelease: 'News release',
+  newsRelease: 'Release',
   reports: 'Reports',
   schedule: 'Schedule',
   event: 'Event',

@@ -132,5 +132,18 @@ export const CORPCAL_SEMANTIC_TOKEN_CSS = `/*
   --corpcal-print-accent-blue-soft: var(--bcsds-bc-blue-20);
   --corpcal-print-accent-amber: var(--bcsds-gold-80);
   --corpcal-print-accent-amber-soft: var(--bcsds-gold-15);
+  /* Issue badge (Look Ahead issues section legend #ccc0d9) */
+  --corpcal-print-accent-purple: #5c4d7a;
+  --corpcal-print-accent-purple-soft: #ccc0d9;
+
+  /* Activity / report status badge fills (shared with calendar-ui) */
+  --status-blue: #b7e8ea;
+  --status-yellow: #ffddb3;
+  --status-red: #ff978d;
+
+  /* Look Ahead report activity flag badge fills */
+  --corpcal-print-badge-confidential: var(--status-red);
+  --corpcal-print-badge-fyi: var(--status-yellow);
+  --corpcal-print-badge-issue: var(--corpcal-print-accent-purple-soft);
 }
 `;

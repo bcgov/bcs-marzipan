@@ -4,10 +4,10 @@ import type { ReportDataResponse } from '../../../api/report-data';
 import { PRINT_FOOTER_CHANGED_EXPLANATION_BODY } from './dateFormatters';
 import { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 import { PrintCustomReportDocument } from './PrintCustomReportDocument';
-import { PrintPlanningDocument } from './PrintPlanningDocument';
 import { PrintReportDocument } from './PrintReportDocument';
 import { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
 import type { PrintReportVariant } from './rowViewModel';
+import type { TranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
 
 export { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
 export { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
@@ -22,6 +22,8 @@ export type ReactRenderableReportType =
 
 export interface RenderReportOptions {
   activityBaseUrl: string;
+  /** Maps `translationsRequired` shortcodes to lookup display names for Look Ahead print. */
+  resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
 }
 
 /**
@@ -44,23 +46,23 @@ export function printPdfFooterHintLineHtml(): string {
 }
 
 const REPORT_TYPE_TO_VARIANT: Record<
-  Exclude<ReactRenderableReportType, 'planning' | 'custom'>,
+  Exclude<ReactRenderableReportType, 'custom'>,
   PrintReportVariant
 > = {
   'look-ahead': 'lookAhead',
   'thirty-sixty-ninety': 'thirtySixtyNinety',
   exec: 'execLookAhead',
+  planning: 'planning',
 };
 
 const REACT_RENDERABLE_REPORT_TYPES = new Set<string>([
   ...Object.keys(REPORT_TYPE_TO_VARIANT),
-  'planning',
   'custom',
 ]);
 
-/** Maps rollup print `ReactRenderableReportType` to row layout variant (excludes planning/custom). */
+/** Maps rollup print `ReactRenderableReportType` to row layout variant (excludes custom). */
 export function rollupPrintVariantForReportType(
-  reportTypeName: Exclude<ReactRenderableReportType, 'planning' | 'custom'>
+  reportTypeName: Exclude<ReactRenderableReportType, 'custom'>
 ): PrintReportVariant {
   return REPORT_TYPE_TO_VARIANT[reportTypeName];
 }
@@ -80,10 +82,6 @@ export function renderPrintReportFragmentHtml(
   data: ReportDataResponse,
   options: RenderReportOptions
 ): string {
-  if (reportTypeName === 'planning') {
-    return renderToStaticMarkup(<PrintPlanningDocument />);
-  }
-
   if (reportTypeName === 'custom') {
     return renderToStaticMarkup(
       <PrintCustomReportDocument data={data} />
@@ -96,6 +94,7 @@ export function renderPrintReportFragmentHtml(
       data={data}
       variant={variant}
       activityBaseUrl={options.activityBaseUrl}
+      resolveTranslationLanguageLabel={options.resolveTranslationLanguageLabel}
     />
   );
 }

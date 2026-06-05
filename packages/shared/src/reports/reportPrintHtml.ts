@@ -1,13 +1,22 @@
 export {
   REPORT_LETTER_CONTENT_WIDTH_PX,
+  REPORT_LETTER_LANDSCAPE_CONTENT_WIDTH_PX,
   REPORT_LETTER_PAGE_HEIGHT_PX,
   REPORT_PDF_PAGE_FOOTER_MARGIN_BOTTOM_CSS,
   REPORT_PDF_PAGE_HEADER_MARGIN_TOP_CSS,
+  REPORT_PRINT_BODY_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_COVER_CONTENT_WIDTH_PX,
+  REPORT_PRINT_COVER_PDF_LAYOUT_TO_LETTER_SCALE,
+  REPORT_PRINT_COVER_SHEET_WIDTH_PX,
+  REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX,
+  REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE,
   REPORT_PRINT_LAYOUT_WIDTH_PX,
   REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX,
   REPORT_PRINT_PDF_BODY_CONTENT_HEIGHT_PX,
   REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS,
+  reportPdfLayoutToLetterScale,
+  reportPdfTemplateCssPxForPrintPt,
+  reportPrintSheetLayoutWidthPx,
 } from './reportPrintDimensions';
 export {
   getReportTemplateHtml,
@@ -17,6 +26,7 @@ export {
   type WrapPrintReportHtmlDocumentOptions,
 } from './getReportTemplateHtml';
 export {
+  buildTranslationLanguageLabelResolver,
   buildLookAheadReportPdfHeaderTemplateHtml,
   buildReportPdfFooterTemplateHtml,
   CORPCAL_PRINT_ROOT_CLASS,
@@ -26,7 +36,6 @@ export {
   printPdfFooterHintLineHtml,
   PrintCustomReportDocument,
   PrintPdfFooterHintLine,
-  PrintPlanningDocument,
   PrintReportDocument,
   PrintRichText,
   PrintRow,

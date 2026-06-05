@@ -30,6 +30,8 @@ export {
   formatCalendarDateCover,
   formatCalendarDateHeading,
   formatCalendarDateLong,
+  formatCalendarDateRangeHeading,
+  formatCalendarMonthYear,
   formatCalendarDateShort,
   formatCalendarDateShortNoYear,
   formatCalendarDateShortNullable,
@@ -38,6 +40,7 @@ export {
   formatInstantInPacific,
   formatInstantPacificDate,
   formatInstantPacificTime,
+  formatLookAheadActivityDate,
   formatPacificFooterTimestamp,
 } from './format';
 export { toCalendarDateStringFromDb, toCivilTimeStringFromDb } from './mapper';

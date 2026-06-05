@@ -2425,9 +2425,16 @@ export class ActivitiesService {
     // Generate change list for history tracking (main activity fields)
     // Convert Activity objects to generic records for comparison
     // Activity is a plain object that can be treated as Record<string, unknown>
+    const entityResolutions =
+      await this.activityHistoryService.buildEntityResolutionMaps(
+        this.databaseService.db,
+        oldActivity,
+        updated
+      );
     const mainChanges = this.activityHistoryService.generateChangeList(
       oldActivity,
-      updated
+      updated,
+      entityResolutions
     );
 
     // Collect all changes from this update into a single array
@@ -2456,10 +2463,20 @@ export class ActivitiesService {
       commsContactsArray !== undefined &&
       !isDeepEqual(existingComms, commsContactsArray)
     ) {
+      const [resolvedOld, resolvedNew] = await Promise.all([
+        this.activityHistoryService.resolveCommsContacts(
+          this.databaseService.db,
+          existingComms
+        ),
+        this.activityHistoryService.resolveCommsContacts(
+          this.databaseService.db,
+          commsContactsArray
+        ),
+      ]);
       allChanges.push({
         field: 'commsContacts',
-        oldValue: existingComms,
-        newValue: commsContactsArray,
+        oldValue: resolvedOld,
+        newValue: resolvedNew,
       });
     }
 
@@ -2737,6 +2754,8 @@ export class ActivitiesService {
 
       await tx.delete(activities).where(eq(activities.id, id));
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
 
     return { message: `Activity #${id} deleted successfully` };
   }
@@ -3126,7 +3145,7 @@ export class ActivitiesService {
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
 
-    return this.mapperService.mapToResponseDto(updated, {
+    const dto = this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
@@ -3158,6 +3177,10 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
+    return dto;
   }
 
   /**
@@ -3252,7 +3275,7 @@ export class ActivitiesService {
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
 
-    return this.mapperService.mapToResponseDto(updated, {
+    const dto = this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
@@ -3284,6 +3307,10 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
+    return dto;
   }
 
   /**
@@ -3370,7 +3397,7 @@ export class ActivitiesService {
     const { namesMap: categoriesList, idsMap: categoryIdsList } =
       related.categoriesResult;
 
-    return this.mapperService.mapToResponseDto(updated, {
+    const dto = this.mapperService.mapToResponseDto(updated, {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
@@ -3402,6 +3429,10 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
     });
+
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
+    return dto;
   }
 
   /**

@@ -7,7 +7,10 @@ import {
   activityHistory,
   activitySubscriptions,
   categories,
+  ministries,
+  organizations,
   tags,
+  teams,
   users,
 } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
@@ -814,22 +817,162 @@ export class ActivityHistoryService {
   }
 
   /**
+   * Resolves the userId values inside a comms-contacts array to display names,
+   * returning `{ userName: string; isLead: boolean }[]` for human-readable
+   * history storage.  Any userId not found in the DB falls back to `"User {id}"`.
+   */
+  async resolveCommsContacts(
+    db: DrizzleDbExecutor,
+    contacts: Array<{ userId: number; isLead: boolean }>
+  ): Promise<Array<{ userName: string; isLead: boolean }>> {
+    if (contacts.length === 0) return [];
+
+    const userIds = [...new Set(contacts.map((c) => c.userId))];
+    const rows = await db
+      .select({
+        id: users.id,
+        adDisplayName: users.adDisplayName,
+        adUsername: users.adUsername,
+      })
+      .from(users)
+      .where(inArray(users.id, userIds));
+
+    const nameMap = new Map<number, string>();
+    for (const r of rows) {
+      nameMap.set(r.id, r.adDisplayName || r.adUsername || `User ${r.id}`);
+    }
+
+    return contacts.map((c) => ({
+      userName: nameMap.get(c.userId) ?? `User ${c.userId}`,
+      isLead: c.isLead,
+    }));
+  }
+
+  /**
+   * Fetches display-name maps for user, team, ministry, and org IDs that appear
+   * in the given old/new activity objects for the five FK fields that store raw
+   * IDs (lastUpdatedBy, createdBy, leadTeamId, leadMinistryId, leadOrgId).
+   *
+   * Returns a map of field name → (id → displayName) so that
+   * generateChangeList can substitute readable labels instead of numeric IDs.
+   */
+  async buildEntityResolutionMaps(
+    db: DrizzleDbExecutor,
+    oldActivity: Record<string, unknown>,
+    newActivity: Record<string, unknown>
+  ): Promise<Map<string, Map<number, string>>> {
+    const result = new Map<string, Map<number, string>>();
+
+    const collectIds = (field: string): number[] => {
+      const ids = new Set<number>();
+      for (const obj of [oldActivity, newActivity]) {
+        const v = obj[field];
+        if (typeof v === 'number') ids.add(v);
+      }
+      return [...ids];
+    };
+
+    // Users: lastUpdatedBy, createdBy
+    const userIds = [
+      ...new Set([...collectIds('lastUpdatedBy'), ...collectIds('createdBy')]),
+    ];
+    if (userIds.length > 0) {
+      const rows = await db
+        .select({
+          id: users.id,
+          adDisplayName: users.adDisplayName,
+          adUsername: users.adUsername,
+        })
+        .from(users)
+        .where(inArray(users.id, userIds));
+      const userMap = new Map<number, string>();
+      for (const r of rows) {
+        userMap.set(r.id, r.adDisplayName || r.adUsername || `User ${r.id}`);
+      }
+      result.set('lastUpdatedBy', userMap);
+      result.set('createdBy', userMap);
+    }
+
+    // Teams: leadTeamId
+    const teamIds = collectIds('leadTeamId');
+    if (teamIds.length > 0) {
+      const rows = await db
+        .select({
+          id: teams.id,
+          displayName: teams.displayName,
+          name: teams.name,
+        })
+        .from(teams)
+        .where(inArray(teams.id, teamIds));
+      const teamMap = new Map<number, string>();
+      for (const r of rows) {
+        teamMap.set(r.id, r.displayName || r.name);
+      }
+      result.set('leadTeamId', teamMap);
+    }
+
+    // Ministries: leadMinistryId
+    const ministryIds = collectIds('leadMinistryId');
+    if (ministryIds.length > 0) {
+      const rows = await db
+        .select({ id: ministries.id, displayName: ministries.displayName })
+        .from(ministries)
+        .where(inArray(ministries.id, ministryIds));
+      const ministryMap = new Map<number, string>();
+      for (const r of rows) {
+        ministryMap.set(r.id, r.displayName);
+      }
+      result.set('leadMinistryId', ministryMap);
+    }
+
+    // Organizations: leadOrgId
+    const orgIds = collectIds('leadOrgId');
+    if (orgIds.length > 0) {
+      const rows = await db
+        .select({
+          id: organizations.id,
+          displayName: organizations.displayName,
+        })
+        .from(organizations)
+        .where(inArray(organizations.id, orgIds));
+      const orgMap = new Map<number, string>();
+      for (const r of rows) {
+        orgMap.set(r.id, r.displayName);
+      }
+      result.set('leadOrgId', orgMap);
+    }
+
+    return result;
+  }
+
+  /**
    * Compare two activity objects and generate a list of changes
    * Useful for tracking what fields changed during an update
    *
    * @param oldActivity - The activity state before the change
    * @param newActivity - The activity state after the change
+   * @param resolutions - Optional map of field name → (id → displayName) for
+   *   resolving FK fields to human-readable values before storing in history
    * @returns Array of changes detected between the two states
    */
   generateChangeList(
     oldActivity: Record<string, unknown>,
-    newActivity: Record<string, unknown>
+    newActivity: Record<string, unknown>,
+    resolutions?: Map<string, Map<number, string>>
   ): HistoryChange[] {
     const changes: HistoryChange[] = [];
     const allKeys = new Set([
       ...Object.keys(oldActivity),
       ...Object.keys(newActivity),
     ]);
+
+    const resolve = (field: string, value: unknown): unknown => {
+      if (resolutions && typeof value === 'number') {
+        const map = resolutions.get(field);
+        if (map) return map.get(value) ?? value;
+      }
+      return value;
+    };
 
     for (const key of allKeys) {
       const oldValue = oldActivity[key];
@@ -850,8 +993,8 @@ export class ActivityHistoryService {
       if (!isDeepEqual(oldValue, newValue)) {
         changes.push({
           field: key,
-          oldValue: oldValue ?? null,
-          newValue: newValue ?? null,
+          oldValue: resolve(key, oldValue) ?? null,
+          newValue: resolve(key, newValue) ?? null,
         });
       }
     }

@@ -1,5 +1,11 @@
+import type { ActivityFilterState } from '@corpcal/shared';
+import {
+  resolveReportActivityDateWindow,
+  type NormalizedReportDateRange,
+} from '@corpcal/shared/reports/reportDateRange';
 import type { ReportDataQueryParams } from '@corpcal/shared/schemas';
 import type { ReportDataRequestParams } from '@/api/reportsApi';
+import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import type { ActivityTablePreferences } from '@/lib/activityTablePreferencesParams';
 
 /**
@@ -64,8 +70,6 @@ export function buildReportDataRequestParamsFromActivityPreferences(
   }
 
   const params: ReportDataRequestParams = {
-    page: 1,
-    limit: 500,
     search,
     includeCompleted: effectiveShowCompleted,
     includeDeleted: canSeeDeleted ? effectiveShowDeleted : false,
@@ -97,4 +101,34 @@ export function buildReportDataRequestParamsFromActivityPreferences(
   }
 
   return params;
+}
+
+function dateRangeQueryBounds(dateRange: ActivityFilterState['dateRange']): {
+  startDateFrom?: string;
+  startDateTo?: string;
+} {
+  if (!isDateRangeActive(dateRange)) {
+    return {};
+  }
+  const bounds: { startDateFrom?: string; startDateTo?: string } = {};
+  if (!dateRange.noStartDate && dateRange.startDate !== '') {
+    bounds.startDateFrom = dateRange.startDate;
+  }
+  if (!dateRange.noEndDate && dateRange.endDate !== '') {
+    bounds.startDateTo = dateRange.endDate;
+  }
+  return bounds;
+}
+
+/** Mirrors server date resolution for warnings and stable query keys. */
+export function resolveReportQueryDateRange(
+  reportName: string,
+  filterState: ActivityFilterState
+): NormalizedReportDateRange {
+  const bounds = dateRangeQueryBounds(filterState.dateRange);
+  return resolveReportActivityDateWindow({
+    reportName,
+    startDateFrom: bounds.startDateFrom,
+    startDateTo: bounds.startDateTo,
+  });
 }

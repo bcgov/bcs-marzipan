@@ -682,6 +682,7 @@ export const reports = pgTable('reports', {
   //     fields?: string[],                        // optional per-section fields override
   //     printPerDayColumnHeaderRepeat?: boolean,  // per-day date row + cloned column header band
   //                                               // (look-ahead print rollup; opt-in, defaults to false)
+  //     printOmitReleaseColumn?: boolean,         // hide Release column; widen Activity details (print/PDF)
   //   }
   config: jsonb('config'),
 

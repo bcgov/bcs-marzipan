@@ -33,7 +33,7 @@ export class LookAheadService {
 
   /**
    * Get Look Ahead report data: report config and activities grouped by section.
-   * Excludes activities omitted from the report and confidential activities.
+   * Excludes activities omitted from the report.
    *
    * Sections (id, label, lookAhead key, order) come from
    * `reports.config.sections` via the shared resolver — keeping section
@@ -80,9 +80,7 @@ export class LookAheadService {
       }
 
       const activities = await this.activitiesService.findAll(filters);
-      const filtered = activities.filter(
-        (a) => !omittedActivityIds.has(a.id) && !a.isConfidential
-      );
+      const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
 
       sections.push({
         id: row.sectionId,

@@ -5,10 +5,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { sanitizeLegendSwatchHexColor } from '../../../schemas/legend-swatch-hex';
 import {
   LOOK_AHEAD_COVER_OVERLAY_BANNER_TOP_BASELINE_PX,
-  LOOK_AHEAD_COVER_OVERLAY_CONTENTS_HEADING_RIGHT_BASELINE_PX,
   LOOK_AHEAD_COVER_OVERLAY_CONTENTS_HEADING_TOP_BASELINE_PX,
-  LOOK_AHEAD_COVER_OVERLAY_CONTENTS_LIST_RIGHT_BASELINE_PX,
   LOOK_AHEAD_COVER_OVERLAY_CONTENTS_LIST_TOP_BASELINE_PX,
+  LOOK_AHEAD_COVER_OVERLAY_CONTENTS_RIGHT_BASELINE_PX,
   LOOK_AHEAD_COVER_OVERLAY_DATE_RANGE_RIGHT_BASELINE_PX,
   LOOK_AHEAD_COVER_OVERLAY_DATE_RANGE_TOP_BASELINE_PX,
   LOOK_AHEAD_COVER_OVERLAY_FOOTER_RIGHT_BASELINE_PX,
@@ -83,22 +82,38 @@ function renderLookAheadCoverFooterContactIconMailHtml(): string {
   );
 }
 
-function renderLookAheadCoverFooterContactHtml(
+function renderLookAheadCoverFooterContactItemHtml(
+  kind: 'phone' | 'email',
+  text: string
+): string {
+  const iconHtml =
+    kind === 'phone'
+      ? renderLookAheadCoverFooterContactIconPhoneHtml()
+      : renderLookAheadCoverFooterContactIconMailHtml();
+  return `<span class="corpcal-print-cover-footer-contact-item corpcal-print-cover-footer-contact-item--${kind}">${iconHtml}<span class="corpcal-print-cover-footer-contact-text">${text}</span></span>`;
+}
+
+function renderLookAheadCoverQuestionsLineHtml(
   phone: string,
   email: string
 ): string {
-  const chunks: string[] = [];
-  if (phone.length > 0) {
-    chunks.push(
-      `<span class="corpcal-print-cover-footer-contact-item">${renderLookAheadCoverFooterContactIconPhoneHtml()}<span class="corpcal-print-cover-footer-contact-text">${phone}</span></span>`
-    );
+  const hasPhone = phone.length > 0;
+  const hasEmail = email.length > 0;
+  const stackedClass =
+    hasPhone && hasEmail
+      ? ' corpcal-print-cover-footer-questions-line--stacked'
+      : '';
+
+  const parts = [
+    `<span class="corpcal-print-cover-footer-questions-prefix">${escapeHtml(LOOK_AHEAD_COVER_FOOTER_QUESTIONS_PREFIX)}</span>`,
+  ];
+  if (hasPhone) {
+    parts.push(renderLookAheadCoverFooterContactItemHtml('phone', phone));
   }
-  if (email.length > 0) {
-    chunks.push(
-      `<span class="corpcal-print-cover-footer-contact-item">${renderLookAheadCoverFooterContactIconMailHtml()}<span class="corpcal-print-cover-footer-contact-text">${email}</span></span>`
-    );
+  if (hasEmail) {
+    parts.push(renderLookAheadCoverFooterContactItemHtml('email', email));
   }
-  return chunks.join('');
+  return `<span class="corpcal-print-cover-footer-questions-line${stackedClass}">${parts.join('')}</span>`;
 }
 
 const LOOK_AHEAD_COVER_GCPE_TITLE =
@@ -118,7 +133,7 @@ const LOOK_AHEAD_COVER_FOOTER_INFO_CONFIDENTIAL =
   'Information is confidential and subject to change' as const;
 
 const LOOK_AHEAD_COVER_FOOTER_QUESTIONS_PREFIX =
-  'Questions or comments: ' as const;
+  'Questions or comments:' as const;
 
 function renderContentsListHtml(
   rows: ReadonlyArray<LookAheadCoverOverlayRow>
@@ -149,16 +164,10 @@ export function renderLookAheadCoverOverlayHtml(
       : escapeHtml(LOOK_AHEAD_COVER_DATE_EMPTY);
   const phone = escapeHtml(content.contactPhone.trim());
   const email = escapeHtml(content.contactEmail.trim());
-  const contactMid = renderLookAheadCoverFooterContactHtml(phone, email);
-  const contactWrapped =
-    contactMid.length > 0
-      ? `<span class="corpcal-print-cover-footer-contact-cluster">${contactMid}</span>`
-      : '';
+  const questionsLine = renderLookAheadCoverQuestionsLineHtml(phone, email);
   const footerBody =
-    escapeHtml(LOOK_AHEAD_COVER_FOOTER_INFO_CONFIDENTIAL) +
-    '\n' +
-    escapeHtml(LOOK_AHEAD_COVER_FOOTER_QUESTIONS_PREFIX) +
-    contactWrapped;
+    `<span class="corpcal-print-cover-footer-confidential">${escapeHtml(LOOK_AHEAD_COVER_FOOTER_INFO_CONFIDENTIAL)}</span>` +
+    `<span class="corpcal-print-cover-footer-questions">${questionsLine}</span>`;
   const contentsListHtml = renderContentsListHtml(content.sectionRows);
   const footerTop = scaleLookAheadCoverLayoutPx(
     lookAheadCoverFooterTopBaselinePx(content.sectionRows.length)
@@ -181,8 +190,8 @@ export function renderLookAheadCoverOverlayHtml(
 <div class="corpcal-print-cover-banner-corporate"><span class="corpcal-print-cover-banner-corporate-line">${corp1}</span><span class="corpcal-print-cover-banner-corporate-line">${corp2}</span></div>
 </div>
 <div class="corpcal-print-cover-abs corpcal-print-cover-date-range" style="left:${px(LOOK_AHEAD_COVER_OVERLAY_LEFT_COL_LEFT_BASELINE_PX)};top:${px(LOOK_AHEAD_COVER_OVERLAY_DATE_RANGE_TOP_BASELINE_PX)};right:${px(LOOK_AHEAD_COVER_OVERLAY_DATE_RANGE_RIGHT_BASELINE_PX)}">${dateLine}</div>
-<div class="corpcal-print-cover-abs corpcal-print-cover-contents-heading" style="left:${px(LOOK_AHEAD_COVER_OVERLAY_LEFT_COL_LEFT_BASELINE_PX)};top:${px(LOOK_AHEAD_COVER_OVERLAY_CONTENTS_HEADING_TOP_BASELINE_PX)};right:${px(LOOK_AHEAD_COVER_OVERLAY_CONTENTS_HEADING_RIGHT_BASELINE_PX)}">${contentsHeading}</div>
-<div class="corpcal-print-cover-abs corpcal-print-cover-contents-list" style="left:${px(LOOK_AHEAD_COVER_OVERLAY_LEFT_COL_LEFT_BASELINE_PX)};top:${px(LOOK_AHEAD_COVER_OVERLAY_CONTENTS_LIST_TOP_BASELINE_PX)};right:${px(LOOK_AHEAD_COVER_OVERLAY_CONTENTS_LIST_RIGHT_BASELINE_PX)}">${contentsListHtml}</div>
+<div class="corpcal-print-cover-abs corpcal-print-cover-contents-heading" style="left:${px(LOOK_AHEAD_COVER_OVERLAY_LEFT_COL_LEFT_BASELINE_PX)};top:${px(LOOK_AHEAD_COVER_OVERLAY_CONTENTS_HEADING_TOP_BASELINE_PX)};right:${px(LOOK_AHEAD_COVER_OVERLAY_CONTENTS_RIGHT_BASELINE_PX)}">${contentsHeading}</div>
+<div class="corpcal-print-cover-abs corpcal-print-cover-contents-list" style="left:${px(LOOK_AHEAD_COVER_OVERLAY_LEFT_COL_LEFT_BASELINE_PX)};top:${px(LOOK_AHEAD_COVER_OVERLAY_CONTENTS_LIST_TOP_BASELINE_PX)};right:${px(LOOK_AHEAD_COVER_OVERLAY_CONTENTS_RIGHT_BASELINE_PX)}">${contentsListHtml}</div>
 <div class="corpcal-print-cover-abs corpcal-print-cover-footer-note" style="left:${px(LOOK_AHEAD_COVER_OVERLAY_LEFT_COL_LEFT_BASELINE_PX)};top:${footerTop}px;right:${px(LOOK_AHEAD_COVER_OVERLAY_FOOTER_RIGHT_BASELINE_PX)}">${footerBody}</div>
 </div>`;
 }

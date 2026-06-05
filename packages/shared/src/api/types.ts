@@ -107,4 +107,8 @@ export type {
   VenuePresetItem,
 } from '../schemas/lookup.schema';
 
-export type { ReportDataResponse, ReportSectionData } from './report-data';
+export type {
+  ReportDataMeta,
+  ReportDataResponse,
+  ReportSectionData,
+} from './report-data';

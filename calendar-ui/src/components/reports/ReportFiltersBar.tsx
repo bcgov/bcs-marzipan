@@ -1,10 +1,7 @@
 import { Search, X } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 
-import {
-  DEFAULT_ACTIVITY_FILTER_STATE,
-  type ActivityFilterState,
-} from '@corpcal/shared';
+import type { ActivityFilterState } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { LeadsFilterPanel } from '@/components/activity/ActivityTable/LeadsFilter';
 import { ScheduledDateFilterPanel } from '@/components/activity/ActivityTable/ScheduledDateFilter';
@@ -15,7 +12,6 @@ import {
   ResponsiveFilterRow,
   type ResponsiveFilterSlot,
 } from '@/components/shared/ResponsiveFilterRow';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,17 +27,20 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
+import {
+  buildReportBaselineDateFilterPatch,
+  buildReportClearFilterState,
+  hasReportClearableFiltersActive,
+} from '@/lib/report-filter-state';
 
 export interface ReportFiltersBarProps {
+  reportName: string;
   preferences: ActivityTablePreferences;
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
-  /**
-   * When set, shows a “Print preview” checkbox on a row below the search field (activity list pattern).
-   */
-  printPreviewConstraint?: {
-    checked: boolean;
-    onCheckedChange: (checked: boolean) => void;
-  };
+  /** Optional controls on the row below the search field (e.g. 30/60/90 month tabs). */
+  printPreviewRowLeading?: ReactNode;
+  /** Optional trailing controls on the same row (e.g. Customize, print preview). */
+  printPreviewRowTrailing?: ReactNode;
 }
 
 /**
@@ -49,9 +48,11 @@ export interface ReportFiltersBarProps {
  * Updates `preferences.filterState` using the same keys as {@link ActivityFilterState}.
  */
 export function ReportFiltersBar({
+  reportName,
   preferences,
   setPreferences,
-  printPreviewConstraint,
+  printPreviewRowLeading,
+  printPreviewRowTrailing,
 }: ReportFiltersBarProps) {
   const { user } = useAuth();
   const canSeeDeleted =
@@ -219,9 +220,24 @@ export function ReportFiltersBar({
 
   const handleClearAllFilters = useCallback(() => {
     setPreferences({
-      filterState: { ...DEFAULT_ACTIVITY_FILTER_STATE },
+      filterState: buildReportClearFilterState(reportName),
     });
-  }, [setPreferences]);
+  }, [reportName, setPreferences]);
+
+  const hasClearableFilters = useMemo(
+    () =>
+      hasReportClearableFiltersActive(filterState, reportName, searchKeyword),
+    [filterState, reportName, searchKeyword]
+  );
+
+  const baselineDatePatch = useMemo(
+    () => buildReportBaselineDateFilterPatch(reportName),
+    [reportName]
+  );
+
+  const dateConfirmedActive = filterState.dateConfirmedFilter !== 'any';
+  const timeConfirmedActive = filterState.timeConfirmedFilter !== 'any';
+  const dateRangeActive = isDateRangeActive(filterState.dateRange);
 
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
@@ -240,25 +256,15 @@ export function ReportFiltersBar({
           />
         ),
         triggerProps: {
-          active:
-            isDateRangeActive(filterState.dateRange) ||
-            filterState.dateConfirmedFilter !== 'any' ||
-            filterState.timeConfirmedFilter !== 'any',
+          active: dateRangeActive || dateConfirmedActive || timeConfirmedActive,
           count:
-            (isDateRangeActive(filterState.dateRange) ? 1 : 0) +
-            (filterState.dateConfirmedFilter !== 'any' ? 1 : 0) +
-            (filterState.timeConfirmedFilter !== 'any' ? 1 : 0),
+            (dateRangeActive ? 1 : 0) +
+            (dateConfirmedActive ? 1 : 0) +
+            (timeConfirmedActive ? 1 : 0),
           onClear: () =>
             onFilterStateChange({
               ...filterState,
-              dateRange: {
-                startDate: '',
-                endDate: '',
-                noStartDate: false,
-                noEndDate: false,
-              },
-              dateConfirmedFilter: 'any',
-              timeConfirmedFilter: 'any',
+              ...baselineDatePatch,
             }),
           clearAriaLabel: 'Clear Datetime filter',
         },
@@ -401,6 +407,10 @@ export function ReportFiltersBar({
       organizationOptions,
       commsContactOptions,
       eventPlannerOptions,
+      baselineDatePatch,
+      dateConfirmedActive,
+      dateRangeActive,
+      timeConfirmedActive,
     ]
   );
 
@@ -415,7 +425,7 @@ export function ReportFiltersBar({
           <ResponsiveFilterRow
             slots={filterSlots}
             overflowTriggerClassName="h-10"
-            onClearAll={handleClearAllFilters}
+            onClearAll={hasClearableFilters ? handleClearAllFilters : undefined}
           />
         </div>
         <div className="relative max-w-md min-w-[240px] shrink-0">
@@ -440,23 +450,16 @@ export function ReportFiltersBar({
           ) : null}
         </div>
       </div>
-      {printPreviewConstraint ? (
-        <div className="flex justify-end">
-          <div className="flex h-9 w-full max-w-md min-w-[240px] items-center justify-end">
-            <div className="flex flex-wrap items-center gap-4">
-              <label className="text-foreground flex cursor-pointer items-center gap-2 text-sm">
-                <Checkbox
-                  checked={printPreviewConstraint.checked}
-                  onCheckedChange={(v) =>
-                    printPreviewConstraint.onCheckedChange(v === true)
-                  }
-                  aria-label="Print preview"
-                  className="border-input"
-                />
-                Print preview
-              </label>
-            </div>
+      {printPreviewRowLeading || printPreviewRowTrailing ? (
+        <div className="mb-2 flex h-9 items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center">
+            {printPreviewRowLeading}
           </div>
+          {printPreviewRowTrailing ? (
+            <div className="flex shrink-0 items-center gap-4">
+              {printPreviewRowTrailing}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

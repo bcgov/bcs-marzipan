@@ -128,7 +128,7 @@ export const ActivityReportsSection: React.FC = () => {
         <>
           <FormSectionDivider />
 
-          <ActivityFormHeading>Look ahead</ActivityFormHeading>
+          <ActivityFormHeading>Look Ahead</ActivityFormHeading>
 
           <FormField
             control={form.control}

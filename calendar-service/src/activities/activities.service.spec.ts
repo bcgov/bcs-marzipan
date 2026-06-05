@@ -125,6 +125,7 @@ describe('ActivitiesService', () => {
     notifyActivityUpdate: vi.fn(),
     notifyLockReleased: vi.fn(),
     broadcastActivityCreated: vi.fn(),
+    broadcastActivityUpdated: vi.fn(),
     server: {
       to: vi.fn().mockReturnThis(),
       emit: vi.fn(),
@@ -139,6 +140,18 @@ describe('ActivitiesService', () => {
     getLastPublishedState: vi.fn().mockResolvedValue(null),
     getPreviousStatusIdBeforeDelete: vi.fn().mockResolvedValue(null),
     generateChangeList: vi.fn().mockReturnValue([]),
+    buildEntityResolutionMaps: vi.fn().mockResolvedValue(new Map()),
+    resolveCommsContacts: vi
+      .fn()
+      .mockImplementation(
+        (_db: unknown, contacts: Array<{ userId: number; isLead: boolean }>) =>
+          Promise.resolve(
+            contacts.map((c) => ({
+              userName: `User ${c.userId}`,
+              isLead: c.isLead,
+            }))
+          )
+      ),
   };
 
   // Mock junction service
@@ -2121,6 +2134,9 @@ describe('ActivitiesService', () => {
         'Reason with at least ten characters',
         expect.anything()
       );
+      expect(
+        mockActivitiesGateway.broadcastActivityUpdated
+      ).toHaveBeenCalledWith(1);
     });
 
     it('should throw ConflictException when status is already delete_requested', async () => {
@@ -2512,6 +2528,9 @@ describe('ActivitiesService', () => {
         'Restored',
         expect.anything()
       );
+      expect(
+        mockActivitiesGateway.broadcastActivityUpdated
+      ).toHaveBeenCalledWith(1);
     });
 
     it('should throw BadRequestException when status is not delete_requested or deleted', async () => {
@@ -2613,6 +2632,9 @@ describe('ActivitiesService', () => {
         'Restored from deletion',
         expect.anything()
       );
+      expect(
+        mockActivitiesGateway.broadcastActivityUpdated
+      ).toHaveBeenCalledWith(1);
     });
   });
 
@@ -2663,6 +2685,9 @@ describe('ActivitiesService', () => {
       expect(mockTx.delete).toHaveBeenCalled();
       expect(deleteWhere).toHaveBeenCalled();
       expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(14);
+      expect(
+        mockActivitiesGateway.broadcastActivityUpdated
+      ).toHaveBeenCalledWith(1);
     });
 
     it('should throw ForbiddenException when user lacks delete.any and is not comms/lead-team', async () => {
@@ -2889,6 +2914,9 @@ describe('ActivitiesService', () => {
         'No longer needed for the event',
         expect.anything()
       );
+      expect(
+        mockActivitiesGateway.broadcastActivityUpdated
+      ).toHaveBeenCalledWith(1);
     });
 
     it('should clear the review snapshot before updating status', async () => {
