@@ -9,6 +9,7 @@ import {
 import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
 
 import { ActivitiesService } from '../activities/services/activities.service';
+import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { ReportsService } from '../reports/reports.service';
 
 export interface LookAheadSectionData {
@@ -40,10 +41,13 @@ export class LookAheadService {
    * `reports.config.sections` via the shared resolver — keeping section
    * identity in lockstep with the activity form, table filter, and PDF cover.
    */
-  async getLookAheadData(options?: {
-    startDate?: string;
-    endDate?: string;
-  }): Promise<LookAheadResponse> {
+  async getLookAheadData(
+    ctx: RequestContextType,
+    options?: {
+      startDate?: string;
+      endDate?: string;
+    }
+  ): Promise<LookAheadResponse> {
     const report = await this.reportsService.findReportByName(
       LOOK_AHEAD_REPORT_NAME
     );
@@ -77,14 +81,10 @@ export class LookAheadService {
         filters.startDateTo = options.endDate;
       }
 
-      const activities = await this.activitiesService.findAll(
-        filters,
-        undefined,
-        {
-          profile: HYDRATION_PROFILES.list,
-          outputShape: 'list',
-        }
-      );
+      const activities = await this.activitiesService.findAll(filters, ctx, {
+        profile: HYDRATION_PROFILES.list,
+        outputShape: 'list',
+      });
       const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
 
       sections.push({

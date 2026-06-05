@@ -78,8 +78,8 @@ export interface BuildActivityFindAllConditionsOptions {
   completedStatusId: number | undefined;
   allowIncludeDeleted: boolean;
   db: DatabaseService['db'];
-  /** When set and bypass is false, restricts rows to team visibility rules in SQL. */
-  dataScope?: DataScope;
+  /** Resolved request data scope; visibility is enforced unless bypass is true. */
+  dataScope: DataScope;
 }
 
 /**
@@ -478,7 +478,7 @@ export function buildActivityFindAllConditions(
     );
   }
 
-  if (dataScope && !dataScope.bypass) {
+  if (!dataScope.bypass) {
     conditions.push(buildActivityVisibilityCondition(db, dataScope.teamIds));
   }
 

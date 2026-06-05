@@ -15,25 +15,6 @@ const commsContactSchema = z.object({
 /** Discriminator for list/report bulk payloads vs full {@link ActivityResponse}. */
 export const ACTIVITY_LIST_ITEM_SHAPE = 'list' as const;
 
-/** Detail-only response keys that must not appear on list items. */
-const ACTIVITY_RESPONSE_ONLY_KEYS = [
-  'notes',
-  'newsReleaseId',
-  'newsReleaseOriginId',
-  'newsReleaseDistributionId',
-  'leadOrgName',
-  'visibility',
-  'reportSettings',
-  'sharedWith',
-  'changedFieldsSinceReview',
-  'pitchRequiredStatusId',
-  'premierRequestedId',
-  'dateStatusId',
-  'timeStatusId',
-  'venueStatusId',
-  'leadTeamId',
-] as const;
-
 /**
  * Slim read model for activity list and report bulk endpoints.
  * Uses the same property names as {@link ActivityResponse} where fields overlap
@@ -108,26 +89,13 @@ export function isActivityListItemPayload(
 ): value is ActivityListItem {
   if (value === null || typeof value !== 'object') return false;
   const o = value as Record<string, unknown>;
-  if (o._shape === ACTIVITY_LIST_ITEM_SHAPE) {
-    return (
-      typeof o.id === 'number' &&
-      typeof o.title === 'string' &&
-      typeof o.isIssue === 'boolean' &&
-      typeof o.activityStatusId === 'number'
-    );
-  }
-  if (isActivityResponsePayloadShape(o)) return false;
   return (
+    o._shape === ACTIVITY_LIST_ITEM_SHAPE &&
     typeof o.id === 'number' &&
     typeof o.title === 'string' &&
     typeof o.isIssue === 'boolean' &&
-    typeof o.activityStatusId === 'number' &&
-    !ACTIVITY_RESPONSE_ONLY_KEYS.some((key) => key in o)
+    typeof o.activityStatusId === 'number'
   );
-}
-
-function isActivityResponsePayloadShape(o: Record<string, unknown>): boolean {
-  return 'notes' in o || 'visibility' in o || 'leadOrgName' in o;
 }
 
 /** Maps a full {@link ActivityResponse} to the list/report read model. */

@@ -96,7 +96,10 @@ import { ApplicationSettingsService } from '../../locks/application-settings.ser
 import { LocksService } from '../../locks/locks.service';
 import { LookAheadPolicyService } from '../../look-ahead/look-ahead-policy.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
-import type { RequestContext as RequestContextType } from '../../policy/dto/user-context.dto';
+import {
+  resolveDataScope,
+  type RequestContext as RequestContextType,
+} from '../../policy/dto/user-context.dto';
 import { PolicyService } from '../../policy/policy.service';
 import { getVisibleTagIds } from '../../policy/tag-scoping.helper';
 import { TeamsService } from '../../teams/teams.service';
@@ -1440,8 +1443,10 @@ export class ActivitiesService {
       return created;
     });
 
-    // Fetch the created activity with all related data
-    const createdActivity = await this.findOne(result.id);
+    // Fetch the created activity with all related data (bypass visibility — creator just inserted it)
+    const createdActivity = await this.findOne(result.id, {
+      dataScope: { bypass: true, teamIds: [] },
+    });
 
     // Record activity creation in history (include initial status)
     const createdChanges: HistoryChange[] = [
@@ -1544,7 +1549,8 @@ export class ActivitiesService {
   /**
    * Find all activities with optional filtering
    * @param filters - Optional query filters (title, dates, status, etc.)
-   * @param ctx - Request context (user + dataScope). Used to enforce includeDeleted only for Admin/System Admin.
+   * @param ctx - Request context (user + dataScope). Enforces activity visibility by default;
+   *   pass `{ dataScope: { bypass: true } }` only for intentional internal full-access callers.
    * @param options - Hydration profile controls which relations are batch-loaded.
    */
   async findAll(
@@ -1581,6 +1587,8 @@ export class ActivitiesService {
       (ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
         ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN);
 
+    const dataScope = resolveDataScope(ctx?.dataScope);
+
     if (filters) {
       const conditions = buildActivityFindAllConditions({
         filters,
@@ -1588,7 +1596,7 @@ export class ActivitiesService {
         completedStatusId,
         allowIncludeDeleted,
         db: this.databaseService.db,
-        dataScope: ctx?.dataScope,
+        dataScope,
       });
 
       if (conditions.length > 0) {
@@ -1607,8 +1615,7 @@ export class ActivitiesService {
       if (deletedStatusId !== undefined) {
         conditions.push(ne(activities.activityStatusId, deletedStatusId));
       }
-      const dataScope = ctx?.dataScope;
-      if (dataScope && !dataScope.bypass) {
+      if (!dataScope.bypass) {
         conditions.push(
           buildActivityVisibilityCondition(
             this.databaseService.db,
@@ -1628,7 +1635,6 @@ export class ActivitiesService {
       }
     }
 
-    const dataScope = ctx?.dataScope;
     const activityIds = activityResults.map((a) => a.id);
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
@@ -1804,7 +1810,7 @@ export class ActivitiesService {
     id: number,
     ctx?: RequestContextType
   ): Promise<ActivityResponse> {
-    const dataScope = ctx?.dataScope;
+    const dataScope = resolveDataScope(ctx?.dataScope);
     const [activity] = await this.databaseService.db
       .select()
       .from(activities)
@@ -1815,7 +1821,7 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity #${id} not found`);
     }
 
-    if (dataScope && !dataScope.bypass) {
+    if (!dataScope.bypass) {
       const visibleIds = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
       );
@@ -2757,8 +2763,8 @@ export class ActivitiesService {
       }
     }
 
-    // Verify activity exists so we return 404 for non-existent IDs
-    await this.findOne(id);
+    // Verify activity exists so we return 404 for non-existent IDs (auth already enforced above)
+    await this.findOne(id, { dataScope: { bypass: true, teamIds: [] } });
 
     const reason = options?.reason ?? undefined;
 
@@ -2834,14 +2840,14 @@ export class ActivitiesService {
   private async getVisibleActivityIds(
     ctx?: RequestContextType
   ): Promise<number[] | null> {
-    const dataScope = ctx?.dataScope;
-    if (dataScope && !dataScope.bypass) {
+    const dataScope = resolveDataScope(ctx?.dataScope);
+    if (!dataScope.bypass) {
       const visibleSet = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
       );
       return Array.from(visibleSet);
     }
-    // Admin / no scope: all activities are visible — return null to skip IN filter
+    // Admin / explicit bypass: all activities are visible — return null to skip IN filter
     return null;
   }
 

@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
 
 import {
+  DEFAULT_DATA_SCOPE,
+  resolveDataScope,
+  type DataScope,
+} from '../../policy/dto/user-context.dto';
+import {
   buildActivityFindAllConditions,
   buildActivityVisibilityCondition,
   hasActivityFindAllFilterFields,
@@ -10,6 +15,8 @@ import {
 
 const DELETED_STATUS_ID = 99;
 const COMPLETED_STATUS_ID = 5;
+/** Bypass visibility so filter-only tests stay focused on non-visibility conditions. */
+const BYPASS_DATA_SCOPE: DataScope = { teamIds: [], bypass: true };
 
 function createMockDb() {
   const select = vi.fn(() => ({
@@ -75,6 +82,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(conditions).toHaveLength(2);
   });
@@ -87,6 +95,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(conditions).toHaveLength(1);
   });
@@ -99,6 +108,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(conditions).toHaveLength(1);
   });
@@ -111,6 +121,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: true,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(conditions).toHaveLength(1);
   });
@@ -127,6 +138,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     // 2 archive exclusions + 3 inArray filters
     expect(conditions).toHaveLength(5);
@@ -143,6 +155,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(select).toHaveBeenCalledTimes(2);
   });
@@ -161,6 +174,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(select).toHaveBeenCalledTimes(1);
     expect(from).toHaveBeenCalled();
@@ -178,6 +192,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     // 2 non-null date guards + 2 lower bounds + 2 upper bounds + 2 archive exclusions
     expect(conditions).toHaveLength(8);
@@ -194,6 +209,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     // 2 archive exclusions + 2 start-date bounds
     expect(conditions).toHaveLength(4);
@@ -207,6 +223,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(conditions).toHaveLength(3);
   });
@@ -219,6 +236,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     // 2 archive exclusions + isNotNull
     expect(conditions).toHaveLength(3);
@@ -235,6 +253,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(select).toHaveBeenCalledTimes(2);
   });
@@ -247,6 +266,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(select).toHaveBeenCalledTimes(1);
   });
@@ -259,6 +279,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(select).toHaveBeenCalledTimes(1);
   });
@@ -271,6 +292,7 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     expect(select).toHaveBeenCalledTimes(1);
   });
@@ -283,10 +305,26 @@ describe('buildActivityFindAllConditions', () => {
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
       db,
+      dataScope: BYPASS_DATA_SCOPE,
     });
     // 2 archive exclusions + 1 inArray on activities.translationsRequiredStatusId
     expect(conditions).toHaveLength(3);
     expect(select).not.toHaveBeenCalled();
+  });
+
+  it('applies visibility when dataScope is resolved from missing ctx (default-deny)', () => {
+    const { db } = createMockDb();
+    expect(resolveDataScope(undefined)).toEqual(DEFAULT_DATA_SCOPE);
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters(),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      db,
+      dataScope: resolveDataScope(undefined),
+    });
+    // 2 archive exclusions + 1 visibility (global-only)
+    expect(conditions).toHaveLength(3);
   });
 
   it('adds visibility condition for scoped users with no teams (global only)', () => {

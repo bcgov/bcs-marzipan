@@ -3,18 +3,23 @@ import {
   ACTIVITY_FIELD_SCOPES,
   canViewActivityFieldScope,
 } from '../auth/activity-field-scopes';
-import type { ActivityListItem } from '../schemas/activity-list-item.schema';
+import {
+  ACTIVITY_LIST_ITEM_SHAPE,
+  type ActivityListItem,
+} from '../schemas/activity-list-item.schema';
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 
 /**
  * True when `value` is a full ActivityResponse-shaped object (HTTP `data` fragment).
- * Not for history rows, category lookups, or global-history activity summaries.
+ * Not for list/report rows (`_shape: 'list'`), history rows, category lookups, or
+ * global-history activity summaries.
  */
 export function isActivityResponsePayload(
   value: unknown
 ): value is ActivityResponse {
   if (value === null || typeof value !== 'object') return false;
   const o = value as Record<string, unknown>;
+  if (o._shape === ACTIVITY_LIST_ITEM_SHAPE) return false;
   return (
     typeof o.id === 'number' &&
     typeof o.title === 'string' &&

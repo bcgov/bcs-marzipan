@@ -1,4 +1,7 @@
-import type { ActivityFilterState } from '../activity-filter-state';
+import {
+  ACTIVITY_FILTER_ARRAY_STATE_KEYS,
+  type ActivityFilterState,
+} from '../activity-filter-state';
 
 /**
  * True when `filterState` contains any filter criteria.
@@ -12,25 +15,14 @@ export function hasActivityFilterCriteria(
   filterState: ActivityFilterState
 ): boolean {
   const dr = filterState.dateRange;
+  const dateRangeActive =
+    dr.startDate !== '' || dr.endDate !== '' || dr.noStartDate || dr.noEndDate;
+
   return (
-    dr.startDate !== '' ||
-    dr.endDate !== '' ||
-    dr.noStartDate ||
-    dr.noEndDate ||
-    filterState.categoryNames.length > 0 ||
-    filterState.activityStatusIds.length > 0 ||
-    filterState.pitchRequiredStatusNames.length > 0 ||
+    dateRangeActive ||
     filterState.pitchDateFilter.kind !== 'any' ||
-    filterState.lookAheadStatusValues.length > 0 ||
-    filterState.lookAheadSectionValues.length > 0 ||
     filterState.dateConfirmedFilter !== 'any' ||
     filterState.timeConfirmedFilter !== 'any' ||
-    filterState.tagIds.length > 0 ||
-    filterState.leadMinistryIds.length > 0 ||
-    filterState.leadOrgIds.length > 0 ||
-    filterState.commsContactLeadUserIds.length > 0 ||
-    filterState.eventPlannerLeadIds.length > 0 ||
-    filterState.translationRequiredStatusIds.length > 0 ||
-    filterState.translationLanguageIds.length > 0
+    ACTIVITY_FILTER_ARRAY_STATE_KEYS.some((key) => filterState[key].length > 0)
   );
 }
