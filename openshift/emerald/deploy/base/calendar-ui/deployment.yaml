@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calendar-ui
+  labels:
+    app: calendar-ui
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calendar-ui
+  template:
+    metadata:
+      labels:
+        app: calendar-ui
+    spec:
+      containers:
+        - name: calendar-ui
+          image: calendar-ui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 8080
+          env:
+            - name: VITE_API_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-ui-config
+                  key: VITE_API_BASE_URL
+            - name: API_PROXY_UPSTREAM
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-ui-config
+                  key: API_PROXY_UPSTREAM
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-ui-config
+                  key: NODE_ENV
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-ui-secrets
+                  key: DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
