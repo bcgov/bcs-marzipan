@@ -277,8 +277,8 @@ export class LookupsController {
     }[];
   }> {
     const roleId = Number(id);
+    if (!Number.isInteger(roleId)) throw new NotFoundException('Role not found');
     const data = await this.lookupsService.getRolePermissions(roleId);
-    return { success: true, data };
   }
 
   @ApiOperation({ summary: 'Get all permissions (admin only)' })
