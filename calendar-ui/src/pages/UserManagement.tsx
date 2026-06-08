@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Copy, Plus } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem, UserListItem } from '@corpcal/shared/api/types';
@@ -34,6 +35,13 @@ import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 export function Users() {
   const [activeTab, setActiveTab] = useState<'users' | 'teams'>('users');
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'teams' || tab === 'users') setActiveTab(tab);
+  }, [location.search]);
   const [editUser, setEditUser] = useState<UserListItem | null>(null);
   const [transferSourceUser, setTransferSourceUser] =
     useState<UserListItem | null>(null);
