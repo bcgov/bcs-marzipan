@@ -315,13 +315,13 @@ export class LookupsController {
   }> {
     this.ensureSystemAdmin(user);
     const pid = Number(id);
+    if (!Number.isInteger(pid)) throw new NotFoundException('Permission not found');
     const data = await this.lookupsService.updatePermissionVisibility(
       pid,
-      !!showInUserManagement,
+      showInUserManagement === true,
       user.id
     );
     return { success: true, data };
-  }
 
   @ApiOperation({
     summary: 'Get all users',
