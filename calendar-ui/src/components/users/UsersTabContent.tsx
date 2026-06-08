@@ -13,6 +13,7 @@ import {
   Pencil,
   UsersRound,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
@@ -418,13 +419,14 @@ export function UsersTabContent({
                         <span className="text-slate-400">-</span>
                       ) : (
                         user.teams.map((t) => (
-                          <span
+                          <Link
                             key={t.teamId}
+                            to={`/teams/${t.teamId}`}
                             className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
                           >
                             {t.teamName}
                             {t.role !== 'member' ? ` (${t.role})` : ''}
-                          </span>
+                          </Link>
                         ))
                       )}
                     </div>
