@@ -326,7 +326,7 @@ export class UsersService {
         target: userSettings.userId,
         set: {
           flagColour: dto.flagColour ?? null,
-          directLoginEnabled: dto.directLoginEnabled ?? false,
+          directLoginEnabled: dto.directLoginEnabled ?? existing.directLoginEnabled ?? false,
           updatedAt: new Date(),
         },
       });
