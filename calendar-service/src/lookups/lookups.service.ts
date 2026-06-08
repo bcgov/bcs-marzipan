@@ -194,9 +194,9 @@ export class LookupsService {
         )
       );
 
-    base.where(eq(permissions.showInUserManagement, true));
-
-    const rows = await base.orderBy(permissions.key);
+    const rows = await base
+      .where(eq(permissions.showInUserManagement, true))
+      .orderBy(permissions.key);
 
     return rows.map((r) => ({
       key: r.key,
