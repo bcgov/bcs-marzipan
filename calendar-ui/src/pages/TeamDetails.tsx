@@ -31,7 +31,7 @@ export function TeamDetails() {
   }
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
         title={team.displayName ?? team.name}
         description={team.description ?? undefined}
@@ -41,7 +41,6 @@ export function TeamDetails() {
           </Button>
         }
       />
-
       <div className="space-y-6">
         <div className="grid max-w-3xl grid-cols-2 gap-4">
           <div>
