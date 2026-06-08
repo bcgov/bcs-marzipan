@@ -35,7 +35,7 @@ jobs:
       GITOPS_BASE_BRANCH: ${{ vars.GITOPS_BASE_BRANCH }}
       # Required repo variables with file paths in your GitOps repo
       GITOPS_EMERALD_DEV_KUSTOMIZE_PATH: ${{ vars.GITOPS_EMERALD_DEV_KUSTOMIZE_PATH }}
-      GITOPS_EMERALD_STAGING_KUSTOMIZE_PATH: ${{ vars.GITOPS_EMERALD_STAGING_KUSTOMIZE_PATH }}
+      GITOPS_EMERALD_TEST_KUSTOMIZE_PATH: ${{ vars.GITOPS_EMERALD_TEST_KUSTOMIZE_PATH }}
       GITOPS_EMERALD_PROD_KUSTOMIZE_PATH: ${{ vars.GITOPS_EMERALD_PROD_KUSTOMIZE_PATH }}
       APP_VERSION: ${{ vars.APP_VERSION }}
     steps:
@@ -45,7 +45,7 @@ jobs:
         run: |
           : "${GITOPS_REPO:?Set repo variable GITOPS_REPO (owner/repo)}"
           : "${GITOPS_EMERALD_DEV_KUSTOMIZE_PATH:?Set repo variable GITOPS_EMERALD_DEV_KUSTOMIZE_PATH}"
-          : "${GITOPS_EMERALD_STAGING_KUSTOMIZE_PATH:?Set repo variable GITOPS_EMERALD_STAGING_KUSTOMIZE_PATH}"
+          : "${GITOPS_EMERALD_TEST_KUSTOMIZE_PATH:?Set repo variable GITOPS_EMERALD_TEST_KUSTOMIZE_PATH}"
           : "${GITOPS_EMERALD_PROD_KUSTOMIZE_PATH:?Set repo variable GITOPS_EMERALD_PROD_KUSTOMIZE_PATH}"
           : "${GITOPS_REPO_TOKEN:?Set secret GITOPS_REPO_TOKEN with access to your GitOps repo}"
 
@@ -122,8 +122,8 @@ jobs:
           fi
 
           yq -i '
-            (.images[] | select(.name == "calendar-service").newTag) = strenv(IMAGE_TAG) |
-            (.images[] | select(.name == "calendar-ui").newTag) = strenv(IMAGE_TAG)
+            (.images[] | select(.name == "calendar-service" or .name == "calendar-service:latest").newTag) = strenv(IMAGE_TAG) |
+            (.images[] | select(.name == "calendar-ui" or .name == "calendar-ui:latest").newTag) = strenv(IMAGE_TAG)
           ' "$KUSTOMIZATION_FILE_ABS"
 
           if git -C gitops diff --quiet -- "$KUSTOMIZATION_FILE"; then
