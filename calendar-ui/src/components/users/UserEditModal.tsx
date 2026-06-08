@@ -169,12 +169,6 @@ export function UserEditModal({
     updateMutation.mutate({
       roleId: newRoleId,
       notes: notes || null,
-      adDisplayName: `${(firstName || '').trim()} ${(
-        lastName || ''
-      ).trim()}`.trim(),
-      adEmail: (email || '').trim() || null,
-      phoneNumber: (phone || '').trim() || null,
-      jobTitle: (jobTitle || '').trim() || null,
       isActive: Boolean(isActive),
     });
 
