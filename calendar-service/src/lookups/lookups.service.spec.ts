@@ -101,8 +101,8 @@ describe('LookupsService', () => {
       expect.objectContaining({
         permissionId: permissionId,
         changedBy: updatedBy,
-        oldValue: false,
-        newValue: true,
+        oldValue: 0,
+        newValue: 1,
       })
     );
   });
