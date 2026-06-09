@@ -33,7 +33,9 @@ export function lazyWithRetry<T extends ComponentType<any>>(
           });
           return { default: fallback as any };
         }
-        console.error('lazyWithRetry: no usable export found', { keys });
+        throw new Error(
+          `lazyWithRetry: resolved module missing default export and no usable fallback export was found (exports: ${keys.join(', ')})`
+        );
       }
       return mod;
     } catch (firstError) {
