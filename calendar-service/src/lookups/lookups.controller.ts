@@ -280,6 +280,15 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get permissions for all roles' })
+  @ApiResponse({ status: 200, description: 'Permissions map retrieved' })
+  @Get('roles/permissions')
+  @Header('Cache-Control', lookupGetCacheControl())
+  async getRolesPermissionsMap(): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.getRolesPermissionsMap();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get all permissions (admin only)' })
   @ApiResponse({ status: 200, description: 'Permissions retrieved' })
   @ApiResponse({ status: 403, description: 'Caller is not system admin' })

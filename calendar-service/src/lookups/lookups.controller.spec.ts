@@ -52,6 +52,7 @@ describe('LookupsController', () => {
     getRolePermissions: vi.fn(),
     getAllPermissions: vi.fn(),
     updatePermissionVisibility: vi.fn(),
+    getRolesPermissionsMap: vi.fn(),
   };
 
   const mockTeamsService = {
@@ -358,6 +359,35 @@ describe('LookupsController', () => {
 
       expect(result).toEqual({ success: true, data: mockPerms });
       expect(mockLookupsService.getRolePermissions).toHaveBeenCalledWith(3);
+    });
+
+    it('getRolesPermissionsMap returns map envelope', async () => {
+      const map = {
+        1: [
+          {
+            key: 'perm.a',
+            displayName: 'A',
+            description: null,
+            hasPermission: true,
+          },
+        ],
+        2: [
+          {
+            key: 'perm.a',
+            displayName: 'A',
+            description: null,
+            hasPermission: false,
+          },
+        ],
+      };
+      mockLookupsService.getRolesPermissionsMap.mockResolvedValue(map);
+
+      const result = await controller.getRolesPermissionsMap();
+
+      expect(result).toEqual({ success: true, data: map });
+      expect(mockLookupsService.getRolesPermissionsMap).toHaveBeenCalledTimes(
+        1
+      );
     });
 
     it('getAllPermissions rejects non-system-admin callers', async () => {

@@ -196,7 +196,7 @@ export class LookupsService {
 
     const rows = await base
       .where(eq(permissions.showInUserManagement, true))
-      .orderBy(permissions.key);
+      .orderBy(permissions.sortOrder);
 
     return rows.map((r) => ({
       key: r.key,
@@ -204,6 +204,58 @@ export class LookupsService {
       description: r.description,
       hasPermission: Boolean(r.rolePermissionActive),
     }));
+  }
+
+  /**
+   * Get permissions for all roles in a single query.
+   * Returns a map of roleId -> permission rows (only permissions flagged showInUserManagement)
+   */
+  async getRolesPermissionsMap(): Promise<
+    Record<
+      number,
+      {
+        key: string;
+        displayName?: string | null;
+        description?: string | null;
+        hasPermission: boolean;
+      }[]
+    >
+  > {
+    const { db } = this.databaseService;
+
+    const rows = await db
+      .select({
+        roleId: roles.id,
+        permissionId: permissions.id,
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+        rolePermissionActive: rolePermissions.isActive,
+      })
+      .from(roles)
+      .crossJoin(permissions)
+      .leftJoin(
+        rolePermissions,
+        and(
+          eq(rolePermissions.roleId, roles.id),
+          eq(rolePermissions.permissionId, permissions.id)
+        )
+      )
+      .where(eq(permissions.showInUserManagement, true))
+      .orderBy(permissions.sortOrder);
+
+    const map: Record<number, any[]> = {};
+    for (const r of rows) {
+      const rid = r.roleId;
+      if (!map[rid]) map[rid] = [];
+      map[rid].push({
+        key: r.key,
+        displayName: r.displayName,
+        description: r.description,
+        hasPermission: Boolean(r.rolePermissionActive),
+      });
+    }
+    return map;
   }
 
   /**
@@ -438,7 +490,7 @@ export class LookupsService {
         showInUserManagement: permissions.showInUserManagement,
       })
       .from(permissions)
-      .orderBy(asc(permissions.key));
+      .orderBy(permissions.sortOrder);
 
     return rows.map((r) => ({
       id: r.id,

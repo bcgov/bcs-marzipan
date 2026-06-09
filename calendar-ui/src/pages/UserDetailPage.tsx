@@ -18,6 +18,7 @@ import {
   SYSTEM_ROLE_IDS,
 } from '@corpcal/shared';
 import type { UserDetail } from '@corpcal/shared/api/types';
+import { fetchRolesPermissionsMap } from '@/api/lookupsApi';
 import {
   fetchRolePermissions,
   fetchRoles,
@@ -158,6 +159,26 @@ export default function UserDetailPage() {
     >
   >({});
 
+  const {
+    data: rolesPermissionsMapData,
+    isSuccess: rolesPermissionsMapLoaded,
+  } = useQuery<Record<string, any[]>>({
+    queryKey: ['roles', 'permissions', 'map'],
+    queryFn: fetchRolesPermissionsMap,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // populate local cache from bulk endpoint when available
+  useEffect(() => {
+    if (!rolesPermissionsMapLoaded || !rolesPermissionsMapData) return;
+    const normalized: Record<number, any[]> = {};
+    for (const k of Object.keys(rolesPermissionsMapData)) {
+      const numeric = Number(k);
+      normalized[numeric] = rolesPermissionsMapData[k];
+    }
+    setRolesPermissionsMap((m) => ({ ...normalized, ...m }));
+  }, [rolesPermissionsMapLoaded, rolesPermissionsMapData]);
+
   // Note: do not prefetch permissions for all roles — fetch only for the
   // currently selected role to avoid unnecessary parallel requests.
 
@@ -176,7 +197,6 @@ export default function UserDetailPage() {
     void fetchRolePermissions(selectedRoleId)
       .then((rows) => {
         if (cancelled) return;
-        // descriptions were used by a previous design; keep only rows
         setRolePermissionRows(rows);
         setRolesPermissionsMap(
           (m) => ({ ...m, [selectedRoleId]: rows }) as any
@@ -184,7 +204,7 @@ export default function UserDetailPage() {
       })
       .catch(() => {
         if (cancelled) return;
-        setRolePermissionList([]);
+        setRolePermissionRows([]);
       });
     return () => {
       cancelled = true;

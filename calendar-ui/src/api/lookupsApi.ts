@@ -404,6 +404,15 @@ export async function fetchAllPermissions(): Promise<
   return res.data.data;
 }
 
+export async function fetchRolesPermissionsMap(): Promise<
+  Record<number, any[]>
+> {
+  const res = await api.get<{ success: boolean; data: Record<number, any[]> }>(
+    `/lookups/roles/permissions`
+  );
+  return res.data.data;
+}
+
 export async function updatePermissionVisibility(
   id: number,
   showInUserManagement: boolean
