@@ -4,7 +4,11 @@ import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
 import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
-import type { UserDetail, UserListItem } from '@corpcal/shared/api/types';
+import type {
+  UpdateUserBody,
+  UserDetail,
+  UserListItem,
+} from '@corpcal/shared/api/types';
 import {
   addUserToTeam,
   fetchRoles,
@@ -101,7 +105,7 @@ export function UserEditModal({
   }, [detail]);
 
   const updateMutation = useMutation({
-    mutationFn: (body: any) => updateUser(user.id, body),
+    mutationFn: (body: UpdateUserBody) => updateUser(user.id, body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['user', user.id] });
       void queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -226,7 +230,9 @@ export function UserEditModal({
               <Label>Email</Label>
               <Input
                 value={email ?? ''}
-                onChange={(e) => setEmail(e.target.value)}
+                readOnly
+                disabled
+                className="bg-slate-50"
               />
             </div>
 
@@ -234,7 +240,9 @@ export function UserEditModal({
               <Label>Phone</Label>
               <Input
                 value={phone ?? ''}
-                onChange={(e) => setPhone(e.target.value)}
+                readOnly
+                disabled
+                className="bg-slate-50"
               />
             </div>
 
@@ -242,7 +250,9 @@ export function UserEditModal({
               <Label>Job title</Label>
               <Input
                 value={jobTitle ?? ''}
-                onChange={(e) => setJobTitle(e.target.value)}
+                readOnly
+                disabled
+                className="bg-slate-50"
               />
             </div>
 
