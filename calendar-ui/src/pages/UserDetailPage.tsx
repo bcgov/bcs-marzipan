@@ -138,7 +138,6 @@ export default function UserDetailPage() {
   const selectedRoleName =
     roles.find((r) => r.id === selectedRoleId)?.name ?? '';
 
-  const [rolePermissionList, setRolePermissionList] = useState<string[]>([]);
   const [rolePermissionRows, setRolePermissionRows] = useState<
     {
       displayName?: string | null;
@@ -147,7 +146,7 @@ export default function UserDetailPage() {
       hasPermission?: boolean;
     }[]
   >([]);
-  const [showAllPermissions, setShowAllPermissions] = useState(false);
+  // rolePermissionRows holds the permission rows for the selected role
   const [rolesPermissionsMap, setRolesPermissionsMap] = useState<
     Record<
       number,
@@ -159,41 +158,11 @@ export default function UserDetailPage() {
     >
   >({});
 
-  // Prefetch permissions for all available roles and cache them. This
-  // allows the UI to show role permission lists quickly and avoids
-  // refetching the same data repeatedly when switching roles.
-  useEffect(() => {
-    if (!roles?.length) return;
-    let cancelled = false;
-    void (async () => {
-      const results = await Promise.allSettled(
-        roles.map(async (r) => {
-          try {
-            const rows = await fetchRolePermissions(r.id);
-            return { id: r.id, rows };
-          } catch {
-            return { id: r.id, rows: [] };
-          }
-        })
-      );
-      if (cancelled) return;
-      const map: Record<number, any[]> = {};
-      for (const r of results) {
-        if (r.status === 'fulfilled') {
-          map[r.value.id] = r.value.rows;
-        }
-      }
-      setRolesPermissionsMap(map as any);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [roles]);
+  // Note: do not prefetch permissions for all roles — fetch only for the
+  // currently selected role to avoid unnecessary parallel requests.
 
   useEffect(() => {
     let cancelled = false;
-    setRolePermissionList([]);
-    setShowAllPermissions(false);
     if (!selectedRoleId) return;
 
     // Use cached map when available, otherwise fetch single role permissions.
@@ -201,20 +170,13 @@ export default function UserDetailPage() {
     if (cached) {
       const rows = cached as any[];
       setRolePermissionRows(rows);
-      setRolePermissionList(
-        rows.map((r) => r.displayName ?? r.description ?? r.key)
-      );
       return;
     }
 
     void fetchRolePermissions(selectedRoleId)
       .then((rows) => {
         if (cancelled) return;
-        const descriptions = rows
-          .map((r) => r.displayName ?? r.description ?? r.key)
-          .filter(Boolean);
-        if (descriptions.length > 0) setRolePermissionList(descriptions);
-        else setRolePermissionList([]);
+        // descriptions were used by a previous design; keep only rows
         setRolePermissionRows(rows);
         setRolesPermissionsMap(
           (m) => ({ ...m, [selectedRoleId]: rows }) as any

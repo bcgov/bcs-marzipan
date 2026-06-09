@@ -29,7 +29,7 @@ export const userSettings = pgTable('user_settings', {
   /**
    * Whether the user is allowed to sign in directly using local credentials.
    * Null/false means direct login is disabled.
-   Only settable by administrators.
+   * Only settable by administrators.
    */
   directLoginEnabled: boolean('direct_login_enabled').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true })
