@@ -214,15 +214,24 @@ export default function UserDetailPage() {
   const permissionRows = rolePermissionRows;
   const visibleRows = permissionRows;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const body: { roleId?: number; notes?: string | null } = {};
     if (selectedRoleId != null) body.roleId = selectedRoleId;
     body.notes = localNotes || null;
-    mutation.mutate(body);
 
-    // Persist direct login setting if it changed from the server value
-    if (userDetail && userDetail.directLoginEnabled !== directLoginEnabled) {
-      settingsMutation.mutate({ directLoginEnabled });
+    const serverDirectLoginEnabled = Boolean(userDetail?.directLoginEnabled);
+
+    try {
+      await mutation.mutateAsync(body);
+
+      // Persist direct login setting if it changed from the server value
+      if (userDetail && serverDirectLoginEnabled !== directLoginEnabled) {
+        await settingsMutation.mutateAsync({ directLoginEnabled });
+      }
+
+      void navigate('/users');
+    } catch {
+      // Errors are surfaced via mutation onError handlers
     }
   };
 
