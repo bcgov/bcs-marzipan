@@ -378,8 +378,8 @@ export class LookupsService {
         await tx.insert(permissionVisibilityAudit).values({
           permissionId: pid,
           changedBy: updatedBy ?? null,
-          oldValue: existing[0].show ? 1 : 0,
-          newValue: item.showInUserManagement ? 1 : 0,
+          oldValue: Boolean(existing[0].show),
+          newValue: item.showInUserManagement,
         });
       }
       return results;
