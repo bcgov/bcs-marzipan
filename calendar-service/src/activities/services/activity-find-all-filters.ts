@@ -121,8 +121,54 @@ export function buildActivityVisibilityCondition(
 }
 
 /**
+ * Overlap conditions for `startDateFrom` / `startDateTo` windows:
+ * `activity.end >= windowStart` AND `activity.start <= windowEnd`.
+ * When `scheduledDateRangeOverlaps` is true, both activity dates must be set.
+ * Otherwise missing `endDate` is treated as single-day (`COALESCE(end, start)`).
+ */
+export function buildScheduledWindowOverlapConditions(
+  filters: FilterActivitiesQueryParams
+): SQL[] {
+  const hasLower =
+    filters.startDateFrom != null && filters.startDateFrom !== '';
+  const hasUpper = filters.startDateTo != null && filters.startDateTo !== '';
+  const requireFullSpan = filters.scheduledDateRangeOverlaps === true;
+  if (!hasLower && !hasUpper) {
+    return requireFullSpan
+      ? [isNotNull(activities.startDate), isNotNull(activities.endDate)]
+      : [];
+  }
+  const result: SQL[] = [];
+
+  result.push(isNotNull(activities.startDate));
+
+  if (requireFullSpan) {
+    result.push(isNotNull(activities.endDate));
+  }
+
+  if (hasLower) {
+    if (requireFullSpan) {
+      result.push(gte(activities.endDate, filters.startDateFrom!));
+    } else {
+      result.push(
+        gte(
+          sql`COALESCE(${activities.endDate}, ${activities.startDate})`,
+          filters.startDateFrom!
+        )
+      );
+    }
+  }
+
+  if (hasUpper) {
+    result.push(lte(activities.startDate, filters.startDateTo!));
+  }
+
+  return result;
+}
+
+/**
  * Builds SQL WHERE conditions for {@link ActivitiesService.findAll}.
- * Array params use OR semantics; scheduled date range requires both start and end in bounds.
+ * Array params use OR semantics; scheduled date windows use span overlap.
  *
  * This SQL builder is the Reports/list API implementation. Its behavioral
  * specification (dimension semantics, AND across / OR within) is documented and
@@ -210,25 +256,9 @@ export function buildActivityFindAllConditions(
     );
   }
 
-  if (filters.scheduledBothDatesInRange === true) {
-    conditions.push(isNotNull(activities.startDate));
-    conditions.push(isNotNull(activities.endDate));
-    if (filters.startDateFrom) {
-      conditions.push(gte(activities.startDate, filters.startDateFrom));
-      conditions.push(gte(activities.endDate, filters.startDateFrom));
-    }
-    if (filters.startDateTo) {
-      conditions.push(lte(activities.startDate, filters.startDateTo));
-      conditions.push(lte(activities.endDate, filters.startDateTo));
-    }
-  } else {
-    if (filters.startDateFrom) {
-      conditions.push(gte(activities.startDate, filters.startDateFrom));
-    }
-    if (filters.startDateTo) {
-      conditions.push(lte(activities.startDate, filters.startDateTo));
-    }
-  }
+  const scheduledWindowConditions =
+    buildScheduledWindowOverlapConditions(filters);
+  conditions.push(...scheduledWindowConditions);
 
   if (filters.endDateFrom) {
     conditions.push(gte(activities.endDate, filters.endDateFrom));
@@ -494,7 +524,7 @@ export function hasActivityFindAllFilterFields(
     query.startDateTo !== undefined ||
     query.endDateFrom !== undefined ||
     query.endDateTo !== undefined ||
-    query.scheduledBothDatesInRange === true ||
+    query.scheduledDateRangeOverlaps === true ||
     (query.activityStatusIds != null && query.activityStatusIds.length > 0) ||
     (query.leadMinistryIds != null && query.leadMinistryIds.length > 0) ||
     (query.leadOrgIds != null && query.leadOrgIds.length > 0) ||

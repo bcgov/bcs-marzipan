@@ -293,7 +293,7 @@ describe('filterActivityRowsByFilters', () => {
     expect(result.map((r) => r.id)).toEqual([1, 2]);
   });
 
-  it('filters by date range (activity start and end must fall within range)', () => {
+  it('filters by date range (activity span must overlap range)', () => {
     const rows = [
       makeRow({
         id: 1,
@@ -303,12 +303,17 @@ describe('filterActivityRowsByFilters', () => {
       makeRow({
         id: 2,
         startDate: '2024-12-01',
-        endDate: '2024-12-31',
+        endDate: '2025-01-10',
       }),
       makeRow({
         id: 3,
         startDate: '2025-02-01',
         endDate: '2025-02-28',
+      }),
+      makeRow({
+        id: 4,
+        startDate: '2024-12-15',
+        endDate: '2025-02-15',
       }),
     ];
     const result = filterActivityRowsByFilters(rows, {
@@ -322,7 +327,7 @@ describe('filterActivityRowsByFilters', () => {
       categoryNames: [],
       activityStatusIds: [],
     });
-    expect(result.map((r) => r.id)).toEqual([1]);
+    expect(result.map((r) => r.id)).toEqual([1, 2, 4]);
   });
 
   it('filters by look-ahead status', () => {

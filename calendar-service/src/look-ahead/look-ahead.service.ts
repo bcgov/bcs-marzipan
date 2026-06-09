@@ -80,6 +80,9 @@ export class LookAheadService {
       if (options?.endDate) {
         filters.startDateTo = options.endDate;
       }
+      if (options?.startDate ?? options?.endDate) {
+        filters.scheduledDateRangeOverlaps = true;
+      }
 
       const activities = await this.activitiesService.findAll(filters, ctx, {
         profile: HYDRATION_PROFILES.list,

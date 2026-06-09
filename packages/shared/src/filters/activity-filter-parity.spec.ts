@@ -145,7 +145,7 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
     ).toBe(false);
   });
 
-  it('scheduled date range maps to bounds and requires both dates in window', () => {
+  it('scheduled date range maps to bounds and uses span overlap', () => {
     const filterState: ActivityFilterState = {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
       dateRange: {
@@ -166,7 +166,7 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
     );
     expect(params.startDateFrom).toBe('2025-01-01');
     expect(params.startDateTo).toBe('2025-01-31');
-    expect(params.scheduledBothDatesInRange).toBe(true);
+    expect(params.scheduledDateRangeOverlaps).toBe(true);
 
     expect(
       activityMatchesFilterState(
@@ -178,6 +178,12 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
       activityMatchesFilterState(
         filterState,
         makeMatchInput({ startDate: '2025-01-10', endDate: '2025-02-10' })
+      )
+    ).toBe(true);
+    expect(
+      activityMatchesFilterState(
+        filterState,
+        makeMatchInput({ startDate: '2025-02-01', endDate: '2025-02-10' })
       )
     ).toBe(false);
     expect(

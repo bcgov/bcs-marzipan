@@ -1,5 +1,5 @@
 import type { ReportActivityRow } from '../../api/types';
-import { pacificDayKey } from '../../datetime';
+import { activityReportDisplayMonthKey } from '../../filters/activity-filter-date';
 import { createCompareActivitiesForPrint } from '../print/react/rowViewModel';
 import type { CalendarMonthSection } from './buildCalendarMonthSections';
 
@@ -7,10 +7,24 @@ const compareActivitiesForMonthSection = createCompareActivitiesForPrint({
   sortByDayKey: true,
 });
 
+function queryRangeFromMonthSections(monthSections: CalendarMonthSection[]): {
+  start: CalendarMonthSection['dateRange']['start'];
+  end: CalendarMonthSection['dateRange']['end'];
+} | null {
+  if (monthSections.length === 0) return null;
+  let start = monthSections[0].dateRange.start;
+  let end = monthSections[0].dateRange.end;
+  for (const section of monthSections.slice(1)) {
+    if (section.dateRange.start < start) start = section.dateRange.start;
+    if (section.dateRange.end > end) end = section.dateRange.end;
+  }
+  return { start, end };
+}
+
 /**
- * Buckets activities into calendar month sections by Pacific start date.
- * Activities outside a section's clipped date range or without a start date
- * are omitted.
+ * Buckets activities into calendar month sections by the first overlapping day
+ * within the report query range (legacy parity: spanning events land in the
+ * first month the report contains, not the activity start month when earlier).
  */
 export function groupActivitiesByMonthSection(
   activities: ReportActivityRow[],
@@ -19,17 +33,16 @@ export function groupActivitiesByMonthSection(
   const buckets = new Map(
     monthSections.map((section) => [section.id, [] as ReportActivityRow[]])
   );
-  const rangeById = new Map(
-    monthSections.map((section) => [section.id, section.dateRange])
-  );
+  const queryRange = queryRangeFromMonthSections(monthSections);
+  if (queryRange == null) return buckets;
 
   for (const activity of activities) {
-    const dayKey = pacificDayKey(activity.startDate);
-    if (!dayKey) continue;
-    const monthId = dayKey.slice(0, 7);
-    const range = rangeById.get(monthId);
-    if (!range) continue;
-    if (dayKey < range.start || dayKey > range.end) continue;
+    const monthId = activityReportDisplayMonthKey(
+      activity.startDate,
+      activity.endDate,
+      queryRange
+    );
+    if (!monthId) continue;
     buckets.get(monthId)?.push(activity);
   }
 

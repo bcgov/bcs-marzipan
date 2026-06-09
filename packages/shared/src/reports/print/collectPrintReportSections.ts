@@ -1,7 +1,8 @@
 import type { ReportDataResponse } from '../../api/report-data';
 import type { ReportActivityRow } from '../../api/types';
+import { activityReportDisplayDayKey } from '../../filters/activity-filter-date';
 import { resolveLookAheadSectionRows } from '../look-ahead';
-import { dateKeyLocal } from './react/dateFormatters';
+import type { ReportDateRange } from '../normalizeReportActivityDateRange';
 import { compareActivitiesForPrint } from './react/rowViewModel';
 
 /** Default when section config omits `printPerDayColumnHeaderRepeat`. */
@@ -18,12 +19,17 @@ export interface PrintReportSortedSection {
 }
 
 function indexActivitiesByDay(
-  activities: ReportActivityRow[]
+  activities: ReportActivityRow[],
+  resolvedDateRange: ReportDateRange | null | undefined
 ): Map<string, ReportActivityRow[]> {
   const sorted = [...activities].sort(compareActivitiesForPrint);
   const byKey = new Map<string, ReportActivityRow[]>();
   for (const activity of sorted) {
-    const key = dateKeyLocal(activity.startDate);
+    const key = activityReportDisplayDayKey(
+      activity.startDate,
+      activity.endDate,
+      resolvedDateRange ?? undefined
+    );
     if (!key) continue;
     const bucket = byKey.get(key);
     if (bucket) {
@@ -38,6 +44,7 @@ function indexActivitiesByDay(
 export function collectPrintReportSections(
   data: ReportDataResponse
 ): PrintReportSortedSection[] {
+  const resolvedDateRange = data.meta?.resolvedDateRange;
   const legendColorById = new Map<string, string | null>();
   const printHeadingById = new Map<string, string>();
   const showPerDayChromeById = new Map<string, boolean>();
@@ -67,7 +74,10 @@ export function collectPrintReportSections(
         showPerDayChromeById.get(section.id) ??
         DEFAULT_SHOW_PER_DAY_PRINT_CHROME,
       omitReleaseColumn: omitReleaseColumnById.get(section.id) ?? false,
-      activitiesByKey: indexActivitiesByDay(section.activities),
+      activitiesByKey: indexActivitiesByDay(
+        section.activities,
+        resolvedDateRange
+      ),
     }));
 }
 

@@ -142,8 +142,8 @@ describe('activityMatchesFilterState', () => {
     expect(matchIds(DEFAULT_ACTIVITY_FILTER_STATE)).toEqual([1, 2, 3, 4]);
   });
 
-  describe('scheduled date range (both dates must fall in window)', () => {
-    it('excludes activities with a date outside the window or a missing bound', () => {
+  describe('scheduled date range (span must overlap window)', () => {
+    it('excludes disjoint activities and those with a missing bound', () => {
       expect(
         matchIds(
           state({
@@ -155,7 +155,7 @@ describe('activityMatchesFilterState', () => {
             },
           })
         )
-      ).toEqual([1, 4]); // 2 end outside; 3 missing start
+      ).toEqual([1, 2, 4]); // 3 missing start; 2 spans into Feb but overlaps Jan
     });
 
     it('honors noStartDate (open lower bound)', () => {
@@ -170,7 +170,7 @@ describe('activityMatchesFilterState', () => {
             },
           })
         )
-      ).toEqual([1, 4]); // 2 end in Feb; 3 missing start
+      ).toEqual([1, 2, 4]); // 3 missing start
     });
   });
 

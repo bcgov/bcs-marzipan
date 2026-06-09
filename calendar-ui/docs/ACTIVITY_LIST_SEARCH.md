@@ -26,6 +26,7 @@ Unified query shape: all ID-list filters use `…Ids` array params in HTTP (comm
 Both surfaces interpret `ActivityFilterState` through one shared specification in `packages/shared/src/filters/`:
 
 - `activityMatchesFilterState` (in `activity-filter-match.ts`) is the canonical predicate (AND across dimensions, OR within a multi-select). The Activity List client filter delegates to it; the server SQL builder (`calendar-service/.../activity-find-all-filters.ts`) is the API owner and is kept in sync with it.
+- Scheduled date filters use **span overlap** (not containment): an activity is included when its start/end range overlaps the filter window. Reports place spanning activities under the **first in-range day** (print/preview) or **first overlapping month** (30/60/90).
 - `activityMatchesSearchKeyword` / `getActivitySearchableTexts` (in `activity-searchable-text.ts`) define the single keyword field set used by both the list and Reports search.
 - `hasActivityFilterCriteria` (in `activity-filter-active.ts`) detects applied criteria for "Clear filters" / summary affordances — purely value-based, so applied **Pitch** / **Look Ahead** criteria count even when their controls are hidden by field scope.
 

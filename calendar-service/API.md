@@ -93,11 +93,11 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | Parameter                      | Type                           | Description                                                                                                                     |
 | ------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | `title`                        | string                         | Exact title match                                                                                                               |
-| `startDateFrom`                | ISO date                       | Activity `startDate` on or after (see `scheduledBothDatesInRange`)                                                              |
-| `startDateTo`                  | ISO date                       | Activity `startDate` on or before (see `scheduledBothDatesInRange`)                                                             |
+| `startDateFrom`                | ISO date                       | Lower bound of the scheduled-span overlap window (optional; may be used alone)                                                  |
+| `startDateTo`                  | ISO date                       | Upper bound of the scheduled-span overlap window (optional; may be used alone)                                                  |
 | `endDateFrom`                  | ISO date                       | Activity `endDate` on or after                                                                                                  |
 | `endDateTo`                    | ISO date                       | Activity `endDate` on or before                                                                                                 |
-| `scheduledBothDatesInRange`    | boolean (`true`)               | When set with `startDateFrom`/`startDateTo`, both `startDate` and `endDate` must be non-empty and fall within the window        |
+| `scheduledDateRangeOverlaps`   | boolean (`true`)               | Requires both activity dates and span overlap; UI/reports set this with date bounds (see below)                                 |
 | `activityStatusIds`            | int[]                          | Filter by status IDs (OR). When omitted, deleted activities are excluded; completed are excluded unless `includeCompleted=true` |
 | `leadMinistryIds`              | int[]                          | Lead ministry IDs (OR)                                                                                                          |
 | `leadOrgIds`                   | int[]                          | Lead organization IDs (OR)                                                                                                      |
@@ -125,6 +125,10 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | `includeDeleted`               | boolean (`true`)               | Include deleted-status activities (Admin/System Admin only)                                                                     |
 | `page`                         | integer                        | Page number (default `1`)                                                                                                       |
 | `limit`                        | integer                        | Page size (default `20`, max `100`; not applied to unpaginated list responses today)                                            |
+
+**Scheduled date window (`startDateFrom` / `startDateTo`):** bounds use **span overlap**, not containment. An activity matches when its scheduled range intersects the window: `activity.end >= startDateFrom` (when set) and `activity.start <= startDateTo` (when set). Either bound may be omitted for an open-ended window. `startDate` must be set; activities with no start date never match.
+
+When `scheduledDateRangeOverlaps=true` (Activity List, Reports, and Look Ahead always send this with date bounds), `endDate` must also be set. Without the flag, a missing `endDate` is treated as a single-day span (`COALESCE(endDate, startDate)`).
 
 **Example:** `GET /activities?startDateFrom=2026-01-01&activityStatusIds=1,3&tagIds=5`
 

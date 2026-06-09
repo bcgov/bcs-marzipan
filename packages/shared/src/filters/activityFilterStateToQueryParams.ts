@@ -65,7 +65,7 @@ export function activityFilterStateToQueryParams(
     if (!fs.dateRange.noEndDate && fs.dateRange.endDate !== '') {
       params.startDateTo = fs.dateRange.endDate;
     }
-    params.scheduledBothDatesInRange = true;
+    params.scheduledDateRangeOverlaps = true;
   }
 
   const statusIds = nonEmptyArray(fs.activityStatusIds);

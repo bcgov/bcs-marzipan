@@ -6,20 +6,21 @@ is interpreted across the Reports (server SQL) path and the Activity List
 
 ## Modules
 
-| File                                  | Responsibility                                                                                     |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `../activity-filter-state.ts`         | `ActivityFilterState` type, defaults, coercion, key allow-list.                                    |
-| `activityFilterStateToQueryParams.ts` | Maps filter state to HTTP query params for the Reports/list API.                                   |
-| `activity-filter-match-input.ts`      | `ActivityFilterMatchInput` — normalized per-activity fields; `activityResponseToFilterMatchInput`. |
-| `activity-filter-date.ts`             | Date helpers (`isDateInRange`, `isDateRangeActive`, `activityScheduledRangeMatches`).              |
-| `activity-filter-match.ts`            | `activityMatchesFilterState` — the canonical predicate.                                            |
-| `activity-searchable-text.ts`         | `getActivitySearchableTexts` / `activityMatchesSearchKeyword` — the single keyword field set.      |
-| `activity-filter-active.ts`           | `hasActivityFilterCriteria` — value-based "any filter applied" check.                              |
+| File                                  | Responsibility                                                                                       |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `../activity-filter-state.ts`         | `ActivityFilterState` type, defaults, coercion, key allow-list.                                      |
+| `activityFilterStateToQueryParams.ts` | Maps filter state to HTTP query params for the Reports/list API.                                     |
+| `activity-filter-match-input.ts`      | `ActivityFilterMatchInput` — normalized per-activity fields; `activityResponseToFilterMatchInput`.   |
+| `activity-filter-date.ts`             | Date helpers (`isDateInRange`, `isDateRangeActive`, overlap helpers, report display day/month keys). |
+| `activity-filter-match.ts`            | `activityMatchesFilterState` — the canonical predicate.                                              |
+| `activity-searchable-text.ts`         | `getActivitySearchableTexts` / `activityMatchesSearchKeyword` — the single keyword field set.        |
+| `activity-filter-active.ts`           | `hasActivityFilterCriteria` — value-based "any filter applied" check.                                |
 
 ## Predicate semantics
 
 - **AND across dimensions**: every dimension with a value in state must pass.
 - **OR within a multi-select**: any selected value matches.
+- **Scheduled date range**: activity span must **overlap** the filter window. The Activity List and Reports set `scheduledDateRangeOverlaps=true`, so both activity `startDate` and `endDate` are required. Without that API flag, SQL overlap still applies but a missing `endDate` is treated as single-day.
 - A dimension with no value in state is skipped.
 - Field-scope visibility (e.g. pitch) does **not** gate predicates: criteria
   apply whenever present in state. The same goes for `hasActivityFilterCriteria`.
