@@ -121,7 +121,7 @@ jobs:
             exit 1
           fi
 
-          yq -i '
+          IMAGE_TAG="$IMAGE_TAG" yq -i '
             (.images[] | select(.name == "calendar-service" or .name == "calendar-service:latest").newTag) = strenv(IMAGE_TAG) |
             (.images[] | select(.name == "calendar-ui" or .name == "calendar-ui:latest").newTag) = strenv(IMAGE_TAG)
           ' "$KUSTOMIZATION_FILE_ABS"
