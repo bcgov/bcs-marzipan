@@ -406,10 +406,11 @@ export default function UserDetailPage() {
                 <Button
                   variant="outline"
                   onClick={() => {
+                    if (!canEdit) return;
                     setResetCodeResult({ code: '', expiresInHours: 0 });
                     resetMutation.mutate();
                   }}
-                  disabled={resetMutation.status === 'pending'}
+                  disabled={!canEdit || resetMutation.status === 'pending'}
                   className="flex items-center gap-2 text-slate-500"
                 >
                   <Key className="h-4 w-4" aria-hidden />
