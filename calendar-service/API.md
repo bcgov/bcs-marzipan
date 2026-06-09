@@ -93,11 +93,11 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | Parameter                      | Type                           | Description                                                                                                                     |
 | ------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | `title`                        | string                         | Exact title match                                                                                                               |
-| `startDateFrom`                | ISO date                       | Activity `startDate` on or after (see `scheduledBothDatesInRange`)                                                              |
-| `startDateTo`                  | ISO date                       | Activity `startDate` on or before (see `scheduledBothDatesInRange`)                                                             |
+| `startDateFrom`                | ISO date                       | With `startDateTo`, lower bound for scheduled-span overlap (see `scheduledDateRangeOverlaps`)                                   |
+| `startDateTo`                  | ISO date                       | With `startDateFrom`, upper bound for scheduled-span overlap (see `scheduledDateRangeOverlaps`)                                 |
 | `endDateFrom`                  | ISO date                       | Activity `endDate` on or after                                                                                                  |
 | `endDateTo`                    | ISO date                       | Activity `endDate` on or before                                                                                                 |
-| `scheduledBothDatesInRange`    | boolean (`true`)               | When set with `startDateFrom`/`startDateTo`, both `startDate` and `endDate` must be non-empty and fall within the window        |
+| `scheduledDateRangeOverlaps`   | boolean (`true`)               | When set with `startDateFrom`/`startDateTo`, activity `startDate` and `endDate` must be non-empty and overlap the window        |
 | `activityStatusIds`            | int[]                          | Filter by status IDs (OR). When omitted, deleted activities are excluded; completed are excluded unless `includeCompleted=true` |
 | `leadMinistryIds`              | int[]                          | Lead ministry IDs (OR)                                                                                                          |
 | `leadOrgIds`                   | int[]                          | Lead organization IDs (OR)                                                                                                      |

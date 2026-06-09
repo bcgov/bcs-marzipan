@@ -61,10 +61,11 @@ export const filterActivitiesQuerySchema = z.object({
   endDateFrom: z.string().date().optional(),
   endDateTo: z.string().date().optional(),
   /**
-   * When true with startDateFrom/startDateTo, both activity start and end dates
-   * must fall within the scheduled window (matches activity list client filter).
+   * When true with startDateFrom/startDateTo, activity start and end must be
+   * non-empty and the scheduled span must overlap the window (matches activity
+   * list client filter).
    */
-  scheduledBothDatesInRange: z
+  scheduledDateRangeOverlaps: z
     .string()
     .optional()
     .transform((val): boolean | undefined =>

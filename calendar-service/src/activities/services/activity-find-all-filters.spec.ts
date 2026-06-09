@@ -54,7 +54,7 @@ describe('hasActivityFindAllFilterFields', () => {
   it.each([
     ['title', { title: 'Briefing' }],
     ['startDateFrom', { startDateFrom: '2026-01-01' }],
-    ['scheduledBothDatesInRange', { scheduledBothDatesInRange: true }],
+    ['scheduledDateRangeOverlaps', { scheduledDateRangeOverlaps: true }],
     ['activityStatusIds', { activityStatusIds: [1, 2] }],
     ['tagIds', { tagIds: [10] }],
     ['categoryNames', { categoryNames: ['Event'] }],
@@ -180,11 +180,11 @@ describe('buildActivityFindAllConditions', () => {
     expect(from).toHaveBeenCalled();
   });
 
-  it('requires both start and end in range when scheduledBothDatesInRange is true', () => {
+  it('requires full span overlap when scheduledDateRangeOverlaps is true', () => {
     const { db } = createMockDb();
     const conditions = buildActivityFindAllConditions({
       filters: baseFilters({
-        scheduledBothDatesInRange: true,
+        scheduledDateRangeOverlaps: true,
         startDateFrom: '2026-05-01',
         startDateTo: '2026-05-31',
       }),
@@ -194,11 +194,11 @@ describe('buildActivityFindAllConditions', () => {
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
-    // 2 non-null date guards + 2 lower bounds + 2 upper bounds + 2 archive exclusions
-    expect(conditions).toHaveLength(8);
+    // 1 start guard + 1 end guard + 1 overlap lower + 1 overlap upper + 2 archive exclusions
+    expect(conditions).toHaveLength(6);
   });
 
-  it('uses single-sided start date bounds when scheduledBothDatesInRange is false', () => {
+  it('uses span overlap when date bounds are set without the flag', () => {
     const { db } = createMockDb();
     const conditions = buildActivityFindAllConditions({
       filters: baseFilters({
@@ -211,8 +211,8 @@ describe('buildActivityFindAllConditions', () => {
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
-    // 2 archive exclusions + 2 start-date bounds
-    expect(conditions).toHaveLength(4);
+    // 2 archive exclusions + 1 start guard + 1 coalesce lower + 1 upper overlap
+    expect(conditions).toHaveLength(5);
   });
 
   it('adds pitch date null guard when pitchDateNotScheduled is true', () => {

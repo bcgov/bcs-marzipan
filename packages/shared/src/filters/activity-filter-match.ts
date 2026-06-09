@@ -1,6 +1,6 @@
 import type { ActivityFilterState } from '../activity-filter-state';
 import {
-  activityScheduledRangeMatches,
+  activityScheduledRangeOverlaps,
   isDateInRange,
   isDateRangeActive,
 } from './activity-filter-date';
@@ -38,10 +38,10 @@ export function activityMatchesFilterState(
   input: ActivityFilterMatchInput,
   options?: ActivityFilterMatchOptions
 ): boolean {
-  // Scheduled date range: both start and end must fall within bounds.
+  // Scheduled date range: activity span must overlap the filter window.
   if (isDateRangeActive(filterState.dateRange)) {
     if (
-      !activityScheduledRangeMatches(
+      !activityScheduledRangeOverlaps(
         input.startDate,
         input.endDate,
         filterState.dateRange

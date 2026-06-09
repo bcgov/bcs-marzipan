@@ -94,17 +94,28 @@ function pickDefinedActivityFilters(
   );
 }
 
-/** When the report section already pins the activity start-date window, query dates must not override it. */
+/** When the report section already pins the activity date window, query dates must not override it. */
 function withoutActivityStartDateWindow(
   filters: Partial<FilterActivitiesQueryParams>
 ): Partial<FilterActivitiesQueryParams> {
-  const {
-    startDateFrom: _f,
-    startDateTo: _t,
-    scheduledBothDatesInRange: _b,
-    ...rest
-  } = filters;
+  const { startDateFrom: _f, startDateTo: _t, ...rest } = filters;
   return rest;
+}
+
+function applyScheduledDateWindowToFilters(
+  filters: FilterActivitiesQueryParams,
+  start: string | undefined,
+  end: string | undefined
+): void {
+  if (start) {
+    filters.startDateFrom = start;
+  }
+  if (end) {
+    filters.startDateTo = end;
+  }
+  if (start ?? end) {
+    filters.scheduledDateRangeOverlaps = true;
+  }
 }
 
 /** User query filters ready to merge onto section-scoped activity queries. */
@@ -554,8 +565,11 @@ export class ReportsService {
         startDateTo: query.startDateTo,
       });
       const filters = reportDataQueryToActivityFindAllFilters(query);
-      filters.startDateFrom = dateWindow.start;
-      filters.startDateTo = dateWindow.end;
+      applyScheduledDateWindowToFilters(
+        filters,
+        dateWindow.start,
+        dateWindow.end
+      );
       let activities = await this.findActivitiesForReport(
         filters,
         ctx,
@@ -622,9 +636,13 @@ export class ReportsService {
       const filters: FilterActivitiesQueryParams = {
         page: 1,
         limit: 100,
-        startDateFrom: queryWindow.queryStartDateFrom,
-        startDateTo: queryWindow.queryStartDateTo,
       };
+
+      applyScheduledDateWindowToFilters(
+        filters,
+        queryWindow.queryStartDateFrom,
+        queryWindow.queryStartDateTo
+      );
 
       Object.assign(
         filters,
@@ -681,9 +699,13 @@ export class ReportsService {
         const filters: FilterActivitiesQueryParams = {
           page: 1,
           limit: 100,
-          startDateFrom: dateWindow.start,
-          startDateTo: dateWindow.end,
         };
+
+        applyScheduledDateWindowToFilters(
+          filters,
+          dateWindow.start,
+          dateWindow.end
+        );
 
         Object.assign(
           filters,

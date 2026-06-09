@@ -53,7 +53,7 @@ describe('activityFilterStateToQueryParams', () => {
     expect(result.search).toBeUndefined();
   });
 
-  it('maps scheduled date range with both-dates flag', () => {
+  it('maps scheduled date range with overlap flag', () => {
     const result = activityFilterStateToQueryParams(
       {
         filterState: {
@@ -73,7 +73,7 @@ describe('activityFilterStateToQueryParams', () => {
     );
     expect(result.startDateFrom).toBe('2025-01-01');
     expect(result.startDateTo).toBe('2025-01-31');
-    expect(result.scheduledBothDatesInRange).toBe(true);
+    expect(result.scheduledDateRangeOverlaps).toBe(true);
   });
 
   it('maps multi-select arrays', () => {
