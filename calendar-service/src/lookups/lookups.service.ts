@@ -373,12 +373,18 @@ export class LookupsService {
           showInUserManagement: Boolean(row.showInUserManagement),
         });
 
-        await tx.insert(permissionVisibilityAudit).values({
-          permissionId: pid,
-          changedBy: updatedBy ?? null,
-          oldValue: Boolean(existing[0].show),
-          newValue: Boolean(item.showInUserManagement),
-        });
+        try {
+          await tx.insert(permissionVisibilityAudit).values({
+            permissionId: pid,
+            changedBy: updatedBy ?? null,
+            oldValue: Boolean(existing[0].show),
+            newValue: Boolean(item.showInUserManagement),
+          });
+        } catch (err) {
+          this.logger.warn(
+            `Failed to write permission visibility audit for permission ${pid} (bulk): ${String(err)}`
+          );
+        }
       }
       return results;
     });
