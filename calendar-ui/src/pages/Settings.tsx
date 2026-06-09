@@ -137,7 +137,10 @@ export function Settings() {
       id: 'permissions-visibility' as Section,
       label: 'Permission visibility',
       icon: ListChecks,
-      show: isSystemAdmin,
+      show: Boolean(
+        user?.permissions?.includes('system.manage_permissions') ||
+          user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+      ),
     },
   ];
 
