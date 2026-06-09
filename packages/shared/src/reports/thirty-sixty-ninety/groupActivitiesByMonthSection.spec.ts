@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ActivityResponse } from '../../api/types';
+import type { ActivityListItem } from '../../schemas/activity-list-item.schema';
+import { createMockActivityListItem } from '../../test-utils';
 import { buildCalendarMonthSections } from './buildCalendarMonthSections';
 import { groupActivitiesByMonthSection } from './groupActivitiesByMonthSection';
 
@@ -8,14 +9,14 @@ function createActivity(
   id: number,
   startDate: string,
   startTime?: string
-): ActivityResponse {
-  return {
+): ActivityListItem {
+  return createMockActivityListItem({
     id,
     displayId: `ACT-${id}`,
     title: `Activity ${id}`,
     startDate,
     startTime: startTime ?? null,
-  } as ActivityResponse;
+  });
 }
 
 describe('groupActivitiesByMonthSection', () => {

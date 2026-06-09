@@ -1,4 +1,4 @@
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type { ActivityListItem } from '@corpcal/shared/api/types';
 import type { CustomReportFieldConfig } from '@corpcal/shared/reports/customReportFieldConfig';
 import {
   customReportWidthPxToWch,
@@ -8,7 +8,7 @@ import { getSelectedCustomReportColumns } from '@/lib/custom-report-columns';
 import { formatCustomReportCell } from '@/lib/custom-report-preview-format';
 
 function buildSheetAoA(
-  activities: ActivityResponse[],
+  activities: ActivityListItem[],
   config: CustomReportFieldConfig[]
 ): { aoa: string[][]; columns: CustomReportFieldConfig[] } {
   const columns = getSelectedCustomReportColumns(config);
@@ -50,7 +50,7 @@ function triggerBrowserDownload(buffer: BlobPart, filename: string): void {
  * {@link formatCustomReportCell}.
  */
 export async function downloadCustomReportXlsx(
-  activities: ActivityResponse[],
+  activities: ActivityListItem[],
   config: CustomReportFieldConfig[]
 ): Promise<void> {
   const { default: ExcelJS } = await import('exceljs');

@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ReportResponse } from '../schemas/lookup.schema';
-import { createMockActivityResponse } from '../test-utils';
+import { createMockActivityListItem } from '../test-utils';
 import {
   buildReportExportTable,
   serializeReportTableToCsv,
@@ -19,6 +19,10 @@ const minimalReport = {
 } satisfies ReportResponse;
 
 describe('reportExportFormat', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('buildReportExportTable produces aligned columns and rows', () => {
     const table = buildReportExportTable({
       report: minimalReport,
@@ -26,7 +30,7 @@ describe('reportExportFormat', () => {
         {
           name: 'Sec A',
           activities: [
-            createMockActivityResponse({
+            createMockActivityListItem({
               id: 1,
               title: 'T1',
               displayId: 'BC-1-2',
@@ -64,7 +68,7 @@ describe('reportExportFormat', () => {
         {
           name: 'Sec A',
           activities: [
-            createMockActivityResponse({
+            createMockActivityListItem({
               id: 1,
               title: 'T1',
               displayId: 'BC-1-2',
@@ -92,5 +96,72 @@ describe('reportExportFormat', () => {
       rows: [['say "hi"']],
     });
     expect(csv).toBe('"A"\n"say ""hi"""');
+  });
+
+  it('passes through YYYY-MM-DD startDate verbatim', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const table = buildReportExportTable({
+      report: {
+        ...minimalReport,
+        sortOrder: 0,
+        visibility: 'global',
+        config: {
+          fields: ['displayId', 'title'],
+          sections: [{ id: 'events', name: 'Events', order: 1 }],
+        },
+      },
+      sections: [
+        {
+          name: 'Section A',
+          activities: [
+            createMockActivityListItem({
+              displayId: 'A-1',
+              title: 'Act',
+              startDate: '2026-04-27',
+              startTime: '09:30',
+              lookAheadStatus: 'none',
+              summary: '',
+            }),
+          ],
+        },
+      ],
+    });
+    expect(table.rows[0]?.[1]).toBe('2026-04-27');
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('omits date and logs when startDate is not YYYY-MM-DD', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const table = buildReportExportTable({
+      report: {
+        ...minimalReport,
+        sortOrder: 0,
+        visibility: 'global',
+        config: {
+          fields: ['displayId', 'title'],
+          sections: [{ id: 'events', name: 'Events', order: 1 }],
+        },
+      },
+      sections: [
+        {
+          name: 'Section A',
+          activities: [
+            createMockActivityListItem({
+              displayId: 'A-1',
+              title: 'Act',
+              startDate: '2026-04-27T00:00:00.000Z',
+              startTime: null,
+              lookAheadStatus: null,
+              summary: '',
+            }),
+          ],
+        },
+      ],
+    });
+    expect(table.rows[0]?.[1]).toBe('');
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toMatch(
+      /activity\.startDate must be YYYY-MM-DD/i
+    );
   });
 });

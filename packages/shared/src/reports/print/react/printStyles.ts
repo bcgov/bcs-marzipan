@@ -819,13 +819,5 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
     color: inherit;
     font-weight: 700;
   }
-  /* Preview sticky must not bleed into PDF/print output. */
-  .corpcal-print-preview-shell .corpcal-print-section-rollup-table .corpcal-print-section-heading-cell,
-  .corpcal-print-preview-shell .corpcal-print-section-rollup-table thead tr.corpcal-print-rollup-thead-column-header-row th,
-  .corpcal-print-preview-shell .corpcal-print-section-rollup-table .corpcal-print-day-heading-cell,
-  .corpcal-print-preview-shell .corpcal-print-section-rollup-table tbody tr.corpcal-print-per-day-column-header-row th {
-    position: static !important;
-    top: auto !important;
-  }
 }
 `;

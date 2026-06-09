@@ -55,8 +55,26 @@ export const ACTIVITY_FILTER_STATE_KEYS = [
   'translationLanguageIds',
 ] as const satisfies readonly (keyof ActivityFilterState)[];
 
+/** Keys of {@link ActivityFilterState} whose values are multi-select arrays. */
+export type ActivityFilterArrayStateKey = {
+  [K in keyof ActivityFilterState]: ActivityFilterState[K] extends readonly unknown[]
+    ? K
+    : never;
+}[keyof ActivityFilterState];
+
+const NON_ARRAY_ACTIVITY_FILTER_STATE_KEYS = new Set<keyof ActivityFilterState>(
+  ['dateRange', 'pitchDateFilter', 'dateConfirmedFilter', 'timeConfirmedFilter']
+);
+
+/** Array-valued filter keys derived from {@link ACTIVITY_FILTER_STATE_KEYS}. */
+export const ACTIVITY_FILTER_ARRAY_STATE_KEYS =
+  ACTIVITY_FILTER_STATE_KEYS.filter(
+    (key): key is ActivityFilterArrayStateKey =>
+      !NON_ARRAY_ACTIVITY_FILTER_STATE_KEYS.has(key)
+  );
+
 const ALLOWED_FILTER_STATE_KEY_SET = new Set<string>(
-  ACTIVITY_FILTER_STATE_KEYS as unknown as string[]
+  ACTIVITY_FILTER_STATE_KEYS
 );
 
 export const DEFAULT_PITCH_DATE_RANGE: DateRangeValue = {

@@ -10,6 +10,7 @@ import { map } from 'rxjs/operators';
 
 import type { AuthUser } from '@corpcal/shared';
 import {
+  isActivityListItemPayload,
   isActivityResponsePayload,
   redactActivityResponse,
 } from '@corpcal/shared/utils';
@@ -30,15 +31,22 @@ function redactSuccessDataBody(
     };
   }
 
+  if (isActivityListItemPayload(data)) {
+    return {
+      ...envelope,
+      data: redactActivityResponse(data, user),
+    };
+  }
+
   if (
     Array.isArray(data) &&
     data.length > 0 &&
-    isActivityResponsePayload(data[0])
+    (isActivityResponsePayload(data[0]) || isActivityListItemPayload(data[0]))
   ) {
     return {
       ...envelope,
       data: data.map((item) =>
-        isActivityResponsePayload(item)
+        isActivityResponsePayload(item) || isActivityListItemPayload(item)
           ? redactActivityResponse(item, user)
           : item
       ),

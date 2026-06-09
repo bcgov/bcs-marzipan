@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
-import type { ActivityResponse, ReportResponse } from '@corpcal/shared/api';
+import { HYDRATION_PROFILES } from '@corpcal/shared';
+import type { ActivityListItem, ReportResponse } from '@corpcal/shared/api';
 import {
   LOOK_AHEAD_REPORT_NAME,
   resolveLookAheadSectionRows,
@@ -8,6 +9,7 @@ import {
 import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
 
 import { ActivitiesService } from '../activities/services/activities.service';
+import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { ReportsService } from '../reports/reports.service';
 
 export interface LookAheadSectionData {
@@ -16,7 +18,7 @@ export interface LookAheadSectionData {
   /** Display name (defaults to `reportDisplayName` from config, falling back to `name`). */
   name: string;
   order: number;
-  activities: ActivityResponse[];
+  activities: ActivityListItem[];
 }
 
 export interface LookAheadResponse {
@@ -39,10 +41,13 @@ export class LookAheadService {
    * `reports.config.sections` via the shared resolver — keeping section
    * identity in lockstep with the activity form, table filter, and PDF cover.
    */
-  async getLookAheadData(options?: {
-    startDate?: string;
-    endDate?: string;
-  }): Promise<LookAheadResponse> {
+  async getLookAheadData(
+    ctx: RequestContextType,
+    options?: {
+      startDate?: string;
+      endDate?: string;
+    }
+  ): Promise<LookAheadResponse> {
     const report = await this.reportsService.findReportByName(
       LOOK_AHEAD_REPORT_NAME
     );
@@ -65,12 +70,9 @@ export class LookAheadService {
       // `requireLookAheadKey: true` guarantees a non-null key, but narrow for TS.
       if (row.lookAheadKey === null) continue;
       const filters: FilterActivitiesQueryParams = {
-        lookAheadSection: row.lookAheadKey,
+        lookAheadSectionValues: [row.lookAheadKey],
         page: 1,
         limit: 500,
-        sharedWithTeamIds: undefined,
-        includeCompleted: undefined,
-        includeDeleted: undefined,
       };
       if (options?.startDate) {
         filters.startDateFrom = options.startDate;
@@ -79,7 +81,10 @@ export class LookAheadService {
         filters.startDateTo = options.endDate;
       }
 
-      const activities = await this.activitiesService.findAll(filters);
+      const activities = await this.activitiesService.findAll(filters, ctx, {
+        profile: HYDRATION_PROFILES.list,
+        outputShape: 'list',
+      });
       const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
 
       sections.push({

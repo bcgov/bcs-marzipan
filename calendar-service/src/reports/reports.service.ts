@@ -3,13 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { and, eq } from 'drizzle-orm';
 
 import { activityReportSettings, reports } from '@corpcal/database/schema';
-import type { Visibility } from '@corpcal/shared';
+import {
+  resolveReportHydrationProfile,
+  type Visibility,
+} from '@corpcal/shared';
 import type {
   ReportDataMeta,
   ReportDataResponse,
   ReportResponse,
   ReportSectionData,
 } from '@corpcal/shared/api/types';
+import { DEFAULT_CUSTOM_REPORT_FIELD_CONFIG } from '@corpcal/shared/reports/customReportFieldConfig';
 import { resolveLookAheadSectionRows } from '@corpcal/shared/reports/look-ahead';
 import {
   buildLookAheadCoverDateRangeLine,
@@ -35,6 +39,7 @@ import {
   REPORT_PRINT_LANDSCAPE_PDF_LAYOUT_TO_LETTER_SCALE,
   wrapReportHtmlDocument,
 } from '@corpcal/shared/reports/reportPrintHtml';
+import { getEffectiveReportFields } from '@corpcal/shared/reports/reportTypeConfig';
 import {
   buildCalendarMonthSections,
   groupActivitiesByMonthSection,
@@ -55,6 +60,7 @@ import { ApplicationSettingsService } from '../locks/application-settings.servic
 import { LookupsService } from '../lookups/lookups.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
+import { mergePinnedLookAheadSection } from './merge-pinned-look-ahead-section';
 import { mergePdfBuffersInOrder } from './merge-report-pdfs';
 import { PdfGeneratorService } from './pdf-generator.service';
 import {
@@ -92,7 +98,12 @@ function pickDefinedActivityFilters(
 function withoutActivityStartDateWindow(
   filters: Partial<FilterActivitiesQueryParams>
 ): Partial<FilterActivitiesQueryParams> {
-  const { startDateFrom: _f, startDateTo: _t, ...rest } = filters;
+  const {
+    startDateFrom: _f,
+    startDateTo: _t,
+    scheduledBothDatesInRange: _b,
+    ...rest
+  } = filters;
   return rest;
 }
 
@@ -500,6 +511,28 @@ export class ReportsService {
     return new Set(omitted);
   }
 
+  private customReportEffectiveFieldKeys(): string[] {
+    return DEFAULT_CUSTOM_REPORT_FIELD_CONFIG.filter((f) => f.selected).map(
+      (f) => f.key
+    );
+  }
+
+  private async findActivitiesForReport(
+    filters: FilterActivitiesQueryParams,
+    ctx: RequestContextType,
+    effectiveFields: readonly string[],
+    query: ReportDataQueryParams
+  ) {
+    const profile = resolveReportHydrationProfile({
+      effectiveFields,
+      query,
+    });
+    return this.activitiesService.findAll(filters, ctx, {
+      profile,
+      outputShape: 'list',
+    });
+  }
+
   /**
    * Get report data for a specific report type
    * @param reportName - The report name (e.g., 'look-ahead', 'thirty-sixty-ninety') or `custom` for a configured-free dataset
@@ -523,7 +556,12 @@ export class ReportsService {
       const filters = reportDataQueryToActivityFindAllFilters(query);
       filters.startDateFrom = dateWindow.start;
       filters.startDateTo = dateWindow.end;
-      let activities = await this.activitiesService.findAll(filters, ctx);
+      let activities = await this.findActivitiesForReport(
+        filters,
+        ctx,
+        this.customReportEffectiveFieldKeys(),
+        query
+      );
       activities = filterActivityResponsesBySearchKeyword(activities, search);
       const report: ReportResponse = {
         id: -1,
@@ -584,9 +622,6 @@ export class ReportsService {
       const filters: FilterActivitiesQueryParams = {
         page: 1,
         limit: 100,
-        sharedWithTeamIds: undefined,
-        includeCompleted: undefined,
-        includeDeleted: undefined,
         startDateFrom: queryWindow.queryStartDateFrom,
         startDateTo: queryWindow.queryStartDateTo,
       };
@@ -597,10 +632,18 @@ export class ReportsService {
       );
 
       if (report.config.globalFilter?.lookAheadSection) {
-        filters.lookAheadSection = report.config.globalFilter.lookAheadSection;
+        mergePinnedLookAheadSection(
+          filters,
+          report.config.globalFilter.lookAheadSection
+        );
       }
 
-      let activities = await this.activitiesService.findAll(filters, ctx);
+      let activities = await this.findActivitiesForReport(
+        filters,
+        ctx,
+        getEffectiveReportFields(report),
+        query
+      );
       activities = filterActivityResponsesBySearchKeyword(activities, search);
       const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
       const activitiesByMonth = groupActivitiesByMonthSection(
@@ -638,9 +681,6 @@ export class ReportsService {
         const filters: FilterActivitiesQueryParams = {
           page: 1,
           limit: 100,
-          sharedWithTeamIds: undefined,
-          includeCompleted: undefined,
-          includeDeleted: undefined,
           startDateFrom: dateWindow.start,
           startDateTo: dateWindow.end,
         };
@@ -651,10 +691,15 @@ export class ReportsService {
         );
 
         if (mergedFilter?.lookAheadSection) {
-          filters.lookAheadSection = mergedFilter.lookAheadSection;
+          mergePinnedLookAheadSection(filters, mergedFilter.lookAheadSection);
         }
 
-        let activities = await this.activitiesService.findAll(filters, ctx);
+        let activities = await this.findActivitiesForReport(
+          filters,
+          ctx,
+          getEffectiveReportFields(report),
+          query
+        );
         activities = filterActivityResponsesBySearchKeyword(activities, search);
         const filtered = activities.filter(
           (a) => !omittedActivityIds.has(a.id)

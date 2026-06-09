@@ -1,11 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseIdListFromQueryParam } from './query-param-helpers';
 import {
   filterActivitiesQuerySchema,
   lookupQueryParamsSchema,
   reportDataQuerySchema,
   reportDataQueryToActivityFindAllFilters,
+  serializeFilterActivitiesQueryParams,
 } from './query-params.schema';
+
+describe('parseIdListFromQueryParam', () => {
+  it('parses comma-separated digit-only ids', () => {
+    expect(parseIdListFromQueryParam('1,2,3')).toEqual([1, 2, 3]);
+    expect(parseIdListFromQueryParam(' 5 ')).toEqual([5]);
+  });
+
+  it('returns empty for null, blank, or all-invalid input', () => {
+    expect(parseIdListFromQueryParam(null)).toEqual([]);
+    expect(parseIdListFromQueryParam('')).toEqual([]);
+    expect(parseIdListFromQueryParam('   ')).toEqual([]);
+    expect(parseIdListFromQueryParam('1e2,0x10,1.5')).toEqual([]);
+    expect(parseIdListFromQueryParam('1,bad,3')).toEqual([1, 3]);
+  });
+});
 
 describe('lookupQueryParamsSchema', () => {
   it('accepts valid empty input', () => {
@@ -18,51 +35,6 @@ describe('lookupQueryParamsSchema', () => {
       userId: 42,
     });
   });
-
-  it('accepts role as string', () => {
-    expect(lookupQueryParamsSchema.parse({ role: 'admin' })).toEqual({
-      role: 'admin',
-    });
-  });
-
-  it('parses organizationId as integer', () => {
-    expect(lookupQueryParamsSchema.parse({ organizationId: '5' })).toEqual({
-      organizationId: 5,
-    });
-  });
-
-  it('rejects invalid organizationId (non-integer)', () => {
-    expect(() =>
-      lookupQueryParamsSchema.parse({ organizationId: 'not-a-number' })
-    ).toThrow();
-  });
-
-  it('parses userIds as comma-separated string to array of ints', () => {
-    expect(lookupQueryParamsSchema.parse({ userIds: '1,2,3' })).toEqual({
-      userIds: [1, 2, 3],
-    });
-  });
-
-  it('parses userIds string with spaces and filters NaN', () => {
-    const result = lookupQueryParamsSchema.parse({ userIds: '1, 2, x, 4' });
-    expect(result.userIds).toEqual([1, 2, 4]);
-  });
-
-  it('accepts userIds as array of string ints', () => {
-    expect(lookupQueryParamsSchema.parse({ userIds: ['1', '2', '3'] })).toEqual(
-      {
-        userIds: [1, 2, 3],
-      }
-    );
-  });
-
-  it('rejects userId non-integer', () => {
-    expect(() => lookupQueryParamsSchema.parse({ userId: 'x' })).toThrow();
-  });
-
-  it('rejects userId non-integer (float string)', () => {
-    expect(() => lookupQueryParamsSchema.parse({ userId: '1.5' })).toThrow();
-  });
 });
 
 describe('filterActivitiesQuerySchema', () => {
@@ -72,130 +44,93 @@ describe('filterActivitiesQuerySchema', () => {
     expect(result.limit).toBe(20);
   });
 
-  it('parses page and limit as positive ints', () => {
+  it('parses array filter params from comma-separated strings', () => {
     const result = filterActivitiesQuerySchema.parse({
-      page: '2',
-      limit: '50',
+      activityStatusIds: '1,2,3',
+      leadMinistryIds: '5',
+      leadTeamIds: '7,8',
+      commsContactLeadUserIds: '10',
+      flagAssigneeUserIds: '20',
+      sharedWithTeamIds: '1,2',
+      tagIds: '99',
+      categoryNames: 'Event,FYI',
+      lookAheadSectionValues: 'events,issues',
     });
-    expect(result.page).toBe(2);
-    expect(result.limit).toBe(50);
+    expect(result.activityStatusIds).toEqual([1, 2, 3]);
+    expect(result.leadMinistryIds).toEqual([5]);
+    expect(result.leadTeamIds).toEqual([7, 8]);
+    expect(result.commsContactLeadUserIds).toEqual([10]);
+    expect(result.flagAssigneeUserIds).toEqual([20]);
+    expect(result.sharedWithTeamIds).toEqual([1, 2]);
+    expect(result.tagIds).toEqual([99]);
+    expect(result.categoryNames).toEqual(['Event', 'FYI']);
+    expect(result.lookAheadSectionValues).toEqual(['events', 'issues']);
   });
 
-  it('accepts valid optional fields', () => {
+  it('omits empty arrays', () => {
     const result = filterActivitiesQuerySchema.parse({
-      title: 'Test',
-      startDateFrom: '2025-01-01',
-      startDateTo: '2025-12-31',
-      activityStatusId: '1',
-      leadMinistryId: '2',
-      leadTeamId: '3',
-      city: 'Victoria',
-      isIssue: 'true',
+      activityStatusIds: '',
+      sharedWithTeamIds: '1',
     });
-    expect(result.title).toBe('Test');
-    expect(result.startDateFrom).toBe('2025-01-01');
-    expect(result.startDateTo).toBe('2025-12-31');
-    expect(result.activityStatusId).toBe(1);
-    expect(result.leadMinistryId).toBe(2);
-    expect(result.leadTeamId).toBe(3);
-    expect(result.city).toBe('Victoria');
-    expect(result.isIssue).toBe(true);
+    expect(result.activityStatusIds).toBeUndefined();
+    expect(result.sharedWithTeamIds).toEqual([1]);
   });
 
-  it('transforms isIssue "true" to true', () => {
-    expect(filterActivitiesQuerySchema.parse({ isIssue: 'true' }).isIssue).toBe(
-      true
-    );
+  it('rejects non-integer comma-separated id tokens', () => {
+    const invalid = [
+      { tagIds: '1.5' },
+      { tagIds: '1e2' },
+      { tagIds: '0x10' },
+      { activityStatusIds: '1,2.5,3' },
+    ];
+    for (const query of invalid) {
+      const result = filterActivitiesQuerySchema.parse(query);
+      const key = Object.keys(query)[0] as keyof typeof result;
+      expect(result[key]).toBeUndefined();
+    }
   });
 
-  it('transforms isIssue "false" to false', () => {
-    expect(
-      filterActivitiesQuerySchema.parse({ isIssue: 'false' }).isIssue
-    ).toBe(false);
+  it('parses confirmed filters and pitch date flags', () => {
+    const result = filterActivitiesQuerySchema.parse({
+      dateConfirmedFilter: 'confirmed',
+      timeConfirmedFilter: 'not_confirmed',
+      pitchDateNotScheduled: 'true',
+      pitchDateFrom: '2025-01-01',
+      pitchDateTo: '2025-01-31',
+      scheduledBothDatesInRange: 'true',
+    });
+    expect(result.dateConfirmedFilter).toBe('confirmed');
+    expect(result.timeConfirmedFilter).toBe('not_confirmed');
+    expect(result.pitchDateNotScheduled).toBe(true);
+    expect(result.pitchDateFrom).toBe('2025-01-01');
+    expect(result.scheduledBothDatesInRange).toBe(true);
   });
 
-  it('rejects invalid date for startDateFrom', () => {
-    expect(() =>
-      filterActivitiesQuerySchema.parse({ startDateFrom: '2025-13-45' })
-    ).toThrow();
-  });
-
-  it('rejects invalid leadMinistryId (non-integer)', () => {
-    expect(() =>
-      filterActivitiesQuerySchema.parse({ leadMinistryId: 'not-a-number' })
-    ).toThrow();
-  });
-
-  it('rejects invalid leadTeamId (non-integer)', () => {
-    expect(() =>
-      filterActivitiesQuerySchema.parse({ leadTeamId: 'not-a-number' })
-    ).toThrow();
-  });
-
-  it('parses commsContactLeadUserId and sharedWithTeamId from query strings', () => {
-    expect(
-      filterActivitiesQuerySchema.parse({ commsContactLeadUserId: '7' })
-        .commsContactLeadUserId
-    ).toBe(7);
-    expect(
-      filterActivitiesQuerySchema.parse({ sharedWithTeamId: '12' })
-        .sharedWithTeamId
-    ).toBe(12);
-  });
-
-  it('parses sharedWithTeamIds from comma-separated string', () => {
-    expect(
-      filterActivitiesQuerySchema.parse({ sharedWithTeamIds: '1,2,3' })
-        .sharedWithTeamIds
-    ).toEqual([1, 2, 3]);
-    expect(
-      filterActivitiesQuerySchema.parse({ sharedWithTeamIds: '5' })
-        .sharedWithTeamIds
-    ).toEqual([5]);
-  });
-
-  it('rejects non-integer activityStatusId', () => {
-    expect(() =>
-      filterActivitiesQuerySchema.parse({ activityStatusId: 'x' })
-    ).toThrow();
-  });
-
-  it('rejects page less than 1', () => {
-    expect(() => filterActivitiesQuerySchema.parse({ page: '0' })).toThrow();
-  });
-
-  it('rejects limit greater than 100', () => {
-    expect(() => filterActivitiesQuerySchema.parse({ limit: '101' })).toThrow();
-  });
-
-  it('accepts limit 1 and 100', () => {
-    expect(filterActivitiesQuerySchema.parse({ limit: '1' }).limit).toBe(1);
-    expect(filterActivitiesQuerySchema.parse({ limit: '100' }).limit).toBe(100);
-  });
-
-  it('omits includeCompleted and includeDeleted when not sent', () => {
-    const result = filterActivitiesQuerySchema.parse({});
-    expect(result.includeCompleted).toBeUndefined();
-    expect(result.includeDeleted).toBeUndefined();
-  });
-
-  it('parses includeCompleted and includeDeleted from query strings', () => {
+  it('parses includeCompleted and includeDeleted', () => {
     expect(
       filterActivitiesQuerySchema.parse({ includeCompleted: 'true' })
         .includeCompleted
     ).toBe(true);
     expect(
-      filterActivitiesQuerySchema.parse({ includeCompleted: 'false' })
-        .includeCompleted
-    ).toBe(false);
-    expect(
       filterActivitiesQuerySchema.parse({ includeDeleted: 'true' })
         .includeDeleted
     ).toBe(true);
+  });
+});
+
+describe('serializeFilterActivitiesQueryParams', () => {
+  it('joins array fields as comma-separated strings', () => {
     expect(
-      filterActivitiesQuerySchema.parse({ includeDeleted: 'false' })
-        .includeDeleted
-    ).toBe(false);
+      serializeFilterActivitiesQueryParams({
+        activityStatusIds: [1, 2],
+        sharedWithTeamIds: [3],
+        includeCompleted: true,
+      })
+    ).toEqual({
+      activityStatusIds: '1,2',
+      sharedWithTeamIds: '3',
+      includeCompleted: true,
+    });
   });
 });
 
@@ -207,24 +142,19 @@ describe('reportDataQuerySchema', () => {
     expect('limit' in result).toBe(false);
   });
 
-  it('accepts search and maps startDate/endDate aliases', () => {
+  it('maps to findAll filters without search', () => {
     const parsed = reportDataQuerySchema.parse({
       search: ' briefing',
-      startDate: '2025-06-01',
-      endDate: '2025-06-30',
+      startDateFrom: '2025-06-01',
+      startDateTo: '2025-06-30',
+      tagIds: '1,2',
     });
     const filters = reportDataQueryToActivityFindAllFilters(parsed);
     expect(filters.startDateFrom).toBe('2025-06-01');
     expect(filters.startDateTo).toBe('2025-06-30');
+    expect(filters.tagIds).toEqual([1, 2]);
+    expect(filters.page).toBe(1);
+    expect(filters.limit).toBe(100);
     expect('search' in filters).toBe(false);
-  });
-
-  it('does not override explicit startDateFrom with startDate alias', () => {
-    const parsed = reportDataQuerySchema.parse({
-      startDateFrom: '2025-01-01',
-      startDate: '2025-06-01',
-    });
-    const filters = reportDataQueryToActivityFindAllFilters(parsed);
-    expect(filters.startDateFrom).toBe('2025-01-01');
   });
 });

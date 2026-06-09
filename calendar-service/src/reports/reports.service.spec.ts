@@ -206,4 +206,23 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     ]);
     expect(result.sections).toHaveLength(1);
   });
+
+  it('passes array filter params through to findAll', async () => {
+    await service.getReportData(
+      'thirty-sixty-ninety',
+      reportDataQuerySchema.parse({
+        tagIds: '1,2',
+        activityStatusIds: '3',
+        categoryNames: 'Event,FYI',
+      }),
+      ctx
+    );
+
+    expect(activitiesService.findAll).toHaveBeenCalledTimes(1);
+    expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
+      tagIds: [1, 2],
+      activityStatusIds: [3],
+      categoryNames: ['Event', 'FYI'],
+    });
+  });
 });

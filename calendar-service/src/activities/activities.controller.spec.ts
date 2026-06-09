@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import type { Category } from '@corpcal/database/types';
-import type { AuthUser } from '@corpcal/shared';
+import { HYDRATION_PROFILES, type AuthUser } from '@corpcal/shared';
 
 import {
+  createMockActivityListItem,
   createMockActivityRequest,
   createMockActivityResponse,
   createMockUpdateRequest,
@@ -18,6 +19,11 @@ import { ActivitiesService } from './services/activities.service';
 
 const mockRequestContext: RequestContextType = {
   dataScope: { teamIds: [], bypass: true },
+};
+
+const findAllListOptions = {
+  profile: HYDRATION_PROFILES.list,
+  outputShape: 'list' as const,
 };
 
 const mockUser: AuthUser = {
@@ -161,50 +167,58 @@ describe('ActivitiesController', () => {
   });
 
   describe('findAll', () => {
-    it('should return all activities', async () => {
-      const activities = [mockActivityResponse];
-      mockActivitiesService.findAll.mockResolvedValue(activities);
+    const mockActivityListItem = createMockActivityListItem({
+      lookAheadStatus: 'none',
+      lookAheadSection: 'events',
+      commsMaterials: ['Media kit'],
+      premierRequested: 'Yes',
+    });
+
+    it('should return list-shaped activities', async () => {
+      mockActivitiesService.findAll.mockResolvedValue([mockActivityListItem]);
 
       const result = await controller.findAll(
-        {
-          page: 1,
-          limit: 10,
-          sharedWithTeamIds: undefined,
-          includeCompleted: undefined,
-          includeDeleted: undefined,
-        },
+        { page: 1, limit: 10 },
         {} as Parameters<ActivitiesController['findAll']>[1]
       );
 
-      expect(result).toEqual({
-        success: true,
-        data: activities,
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]).toMatchObject({
+        _shape: 'list',
+        id: mockActivityListItem.id,
+        title: mockActivityListItem.title,
+        commsMaterials: ['Media kit'],
+        premierRequested: 'Yes',
       });
-      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(undefined, {});
+      expect(result.data[0]).not.toHaveProperty('notes');
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(
+        undefined,
+        {},
+        findAllListOptions
+      );
     });
 
-    it('should return filtered activities', async () => {
-      const activities = [mockActivityResponse];
+    it('should return filtered list-shaped activities', async () => {
       const filters = {
         page: 1,
         limit: 10,
         title: 'Test',
-        sharedWithTeamIds: undefined,
-        includeCompleted: undefined,
-        includeDeleted: undefined,
       };
-      mockActivitiesService.findAll.mockResolvedValue(activities);
+      mockActivitiesService.findAll.mockResolvedValue([mockActivityListItem]);
 
       const result = await controller.findAll(
         filters,
         {} as Parameters<ActivitiesController['findAll']>[1]
       );
 
-      expect(result).toEqual({
-        success: true,
-        data: activities,
-      });
-      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(filters, {});
+      expect(result.data[0]._shape).toBe('list');
+      expect(result.data[0]).not.toHaveProperty('notes');
+      expect(mockActivitiesService.findAll).toHaveBeenCalledWith(
+        filters,
+        {},
+        findAllListOptions
+      );
     });
   });
 
