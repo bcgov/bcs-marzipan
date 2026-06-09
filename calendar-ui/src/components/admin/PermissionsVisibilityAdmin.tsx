@@ -34,6 +34,10 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
       void queryClient.invalidateQueries({
         queryKey: ['admin', 'permissions'],
       });
+      // Ensure any cached bulk role->permissions map is refreshed so UI reflects changes
+      void queryClient.invalidateQueries({
+        queryKey: ['roles', 'permissions', 'map'],
+      });
       toast.success('Permission visibility updated');
     },
     onError: (err: any) => {

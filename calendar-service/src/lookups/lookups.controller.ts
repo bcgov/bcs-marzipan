@@ -343,6 +343,50 @@ export class LookupsController {
     );
     return { success: true, data };
   }
+
+  @ApiOperation({ summary: 'Bulk update permission visibility (admin only)' })
+  @ApiResponse({ status: 200, description: 'Permissions updated' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 403, description: 'Caller is not system admin' })
+  @ApiBody({
+    description: 'Array of permission visibility updates',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'number', example: 12 },
+          showInUserManagement: { type: 'boolean', example: true },
+        },
+        required: ['id', 'showInUserManagement'],
+      },
+      example: [
+        { id: 12, showInUserManagement: true },
+        { id: 15, showInUserManagement: false },
+      ],
+    },
+  })
+  @Patch('permissions/visibility')
+  @RequirePermission('system.manage_permissions')
+  async bulkUpdatePermissionVisibility(
+    @Body(
+      new ZodValidationPipe(
+        z.array(z.object({ id: z.number(), showInUserManagement: z.boolean() }))
+      )
+    )
+    body: { id: number; showInUserManagement: boolean }[],
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    this.ensureSystemAdmin(user);
+    const results = await this.lookupsService.bulkUpdatePermissionVisibility(
+      body.map((b) => ({
+        id: b.id,
+        showInUserManagement: b.showInUserManagement,
+      })),
+      user.id
+    );
+    return { success: true, data: results };
+  }
   @ApiOperation({
     summary: 'Get all users',
     description:

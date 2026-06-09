@@ -25,6 +25,7 @@ import {
   newsReleaseOrigins,
   organizations,
   permissions,
+  permissionVisibilityAudit,
   pitchRequiredStatuses,
   pitchStatuses,
   premierRequested,
@@ -269,7 +270,7 @@ export class LookupsService {
     const { db } = this.databaseService;
 
     const existing = await db
-      .select({ id: permissions.id })
+      .select({ id: permissions.id, show: permissions.showInUserManagement })
       .from(permissions)
       .where(eq(permissions.id, permissionId))
       .limit(1);
@@ -287,6 +288,21 @@ export class LookupsService {
       })
       .where(eq(permissions.id, permissionId));
 
+    // Record audit entry for this change
+    try {
+      const oldValue = Boolean(existing[0].show);
+      await db.insert(permissionVisibilityAudit).values({
+        permissionId: permissionId,
+        changedBy: updatedBy ?? null,
+        oldValue,
+        newValue: show,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to write permission visibility audit for permission ${permissionId}: ${String(err)}`
+      );
+    }
+
     const row = await db
       .select({
         id: permissions.id,
@@ -302,6 +318,71 @@ export class LookupsService {
       key: row[0].key,
       showInUserManagement: Boolean(row[0].showInUserManagement),
     };
+  }
+
+  /**
+   * Bulk update permission visibility inside a single DB transaction.
+   * Returns the updated permission rows.
+   */
+  async bulkUpdatePermissionVisibility(
+    items: { id: number; showInUserManagement: boolean }[],
+    updatedBy?: number
+  ): Promise<{ id: number; key: string; showInUserManagement: boolean }[]> {
+    return this.databaseService.db.transaction(async (tx) => {
+      const results: {
+        id: number;
+        key: string;
+        showInUserManagement: boolean;
+      }[] = [];
+      for (const item of items) {
+        const pid = Number(item.id);
+        if (!Number.isInteger(pid)) continue;
+
+        const existing = await tx
+          .select({
+            id: permissions.id,
+            show: permissions.showInUserManagement,
+          })
+          .from(permissions)
+          .where(eq(permissions.id, pid))
+          .limit(1);
+
+        if (!existing || existing.length === 0) continue;
+
+        await tx
+          .update(permissions)
+          .set({
+            showInUserManagement: item.showInUserManagement,
+            updatedAt: sql`now()`,
+            updatedBy: updatedBy ?? null,
+          })
+          .where(eq(permissions.id, pid));
+
+        const [row] = await tx
+          .select({
+            id: permissions.id,
+            key: permissions.key,
+            showInUserManagement: permissions.showInUserManagement,
+          })
+          .from(permissions)
+          .where(eq(permissions.id, pid))
+          .limit(1);
+
+        results.push({
+          id: row.id,
+          key: row.key,
+          showInUserManagement: Boolean(row.showInUserManagement),
+        });
+
+        await tx.insert(permissionVisibilityAudit).values({
+          permissionId: pid,
+          changedBy: updatedBy ?? null,
+          oldValue: Boolean(existing[0].show),
+          newValue: item.showInUserManagement,
+        });
+      }
+      return results;
+    });
   }
 
   /**
