@@ -206,14 +206,18 @@ export function UserEditModal({
                 <Label>First name</Label>
                 <Input
                   value={firstName ?? ''}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  readOnly
+                  disabled
+                  className="bg-slate-50"
                 />
               </div>
               <div className="space-y-2">
                 <Label>Last name</Label>
                 <Input
                   value={lastName ?? ''}
-                  onChange={(e) => setLastName(e.target.value)}
+                  readOnly
+                  disabled
+                  className="bg-slate-50"
                 />
               </div>
             </div>
