@@ -79,8 +79,8 @@ export default function UserDetailPage() {
   const mutation = useMutation({
     mutationFn: (payload: { roleId?: number; notes?: string | null }) =>
       updateUser(userId, payload),
-    onSuccess: () => {
-      void navigate('/users');
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to update user');
     },
   });
 
