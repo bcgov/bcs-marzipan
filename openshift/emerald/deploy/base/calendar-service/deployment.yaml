@@ -7,19 +7,7 @@ metadata:
     app.kubernetes.io/name: calendar
     app.kubernetes.io/component: service
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/instance: dev
     app.kubernetes.io/managed-by: kubectl
-  annotations:
-    image.openshift.io/triggers: |
-      [
-        {
-          "from": {
-            "kind": "ImageStreamTag",
-            "name": "calendar-service:${APP_VERSION}"
-          },
-          "fieldPath": "spec.template.spec.containers[?(@.name=='calendar-service')].image"
-        }
-      ]
 spec:
   replicas: 1
   selector:

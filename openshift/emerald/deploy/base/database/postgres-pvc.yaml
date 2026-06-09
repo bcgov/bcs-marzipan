@@ -1,12 +1,16 @@
 apiVersion: v1
-kind: ConfigMap
+kind: PersistentVolumeClaim
 metadata:
-  name: calendar-ui-config
+  name: postgres-pvc
   labels:
     app.kubernetes.io/name: calendar
-    app.kubernetes.io/component: ui
+    app.kubernetes.io/component: postgres
     app.kubernetes.io/part-of: corporate-calendar
     app.kubernetes.io/instance: dev
     app.kubernetes.io/managed-by: kubectl
-data:
-  VITE_API_BASE_URL: /api
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
