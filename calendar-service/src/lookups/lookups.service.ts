@@ -288,15 +288,13 @@ export class LookupsService {
       })
       .where(eq(permissions.id, permissionId));
 
-    // Record audit entry for this change (store as integers 0/1)
+    // Record audit entry for this change
     try {
-      const oldValueNum = existing[0].show ? 1 : 0;
-      const newValueNum = show ? 1 : 0;
       await db.insert(permissionVisibilityAudit).values({
         permissionId,
         changedBy: updatedBy ?? null,
-        oldValue: oldValueNum,
-        newValue: newValueNum,
+        oldValue: Boolean(existing[0].show),
+        newValue: Boolean(show),
       });
     } catch (err) {
       this.logger.warn(
@@ -378,8 +376,8 @@ export class LookupsService {
         await tx.insert(permissionVisibilityAudit).values({
           permissionId: pid,
           changedBy: updatedBy ?? null,
-          oldValue: existing[0].show ? 1 : 0,
-          newValue: item.showInUserManagement ? 1 : 0,
+          oldValue: Boolean(existing[0].show),
+          newValue: Boolean(item.showInUserManagement),
         });
       }
       return results;
