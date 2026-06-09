@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
 import { DatabaseService } from '../database/database.service';
 import { LookupsService } from './lookups.service';
-
 describe('LookupsService', () => {
   let service: LookupsService;
 
