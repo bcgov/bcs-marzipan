@@ -123,7 +123,7 @@ function SortableReportHeader({
       style={style}
       className={cn(
         tableTh,
-        'relative [overflow-wrap:anywhere] break-words whitespace-normal',
+        'relative wrap-break-word whitespace-normal',
         isDragging && 'z-20 bg-slate-200/80',
         isOver && !isDragging && 'ring-primary/40 ring-2 ring-inset'
       )}
@@ -132,7 +132,7 @@ function SortableReportHeader({
         <button
           type="button"
           className={cn(
-            'min-w-0 flex-1 cursor-grab border-0 bg-transparent py-0 pr-2 pl-0 text-left [overflow-wrap:anywhere] break-words whitespace-normal text-inherit active:cursor-grabbing',
+            'min-w-0 flex-1 cursor-grab border-0 bg-transparent py-0 pr-2 pl-0 text-left wrap-break-word whitespace-normal text-inherit active:cursor-grabbing',
             dragDisabled && 'cursor-default'
           )}
           {...(dragDisabled ? {} : { ...attributes, ...listeners })}
@@ -400,7 +400,7 @@ export function CustomReportPreviewTable({
                     key={cell.id}
                     className={cn(
                       tableTd,
-                      'text-foreground text-sm [overflow-wrap:anywhere] break-words whitespace-normal'
+                      'text-foreground text-sm wrap-break-word whitespace-normal'
                     )}
                     style={{
                       width: cell.column.getSize(),
