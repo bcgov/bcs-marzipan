@@ -309,11 +309,17 @@ export function ReportsPage() {
       <Tabs value={activeReport} onValueChange={handleTabChange}>
         <div className="mb-0">
           <TabsList className="mb-0" variant="line" size="med">
-            {reports.map((report) => (
-              <TabsTrigger key={report.id} value={report.name}>
-                {report.displayName}
-              </TabsTrigger>
-            ))}
+            {reports.map((report) => {
+              const display = (report.displayName ?? '').replace(
+                /\bReport$/,
+                'report'
+              );
+              return (
+                <TabsTrigger key={report.id} value={report.name}>
+                  {display}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
         </div>
 
