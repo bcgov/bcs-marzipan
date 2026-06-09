@@ -25,14 +25,11 @@ function indexActivitiesByDay(
   const sorted = [...activities].sort(compareActivitiesForPrint);
   const byKey = new Map<string, ReportActivityRow[]>();
   for (const activity of sorted) {
-    const key =
-      activityReportDisplayDayKey(
-        activity.startDate,
-        activity.endDate,
-        resolvedDateRange ?? undefined
-      ) ??
-      activity.startDate?.slice(0, 10) ??
-      null;
+    const key = activityReportDisplayDayKey(
+      activity.startDate,
+      activity.endDate,
+      resolvedDateRange ?? undefined
+    );
     if (!key) continue;
     const bucket = byKey.get(key);
     if (bucket) {

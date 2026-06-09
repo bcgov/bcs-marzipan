@@ -61,4 +61,37 @@ describe('collectPrintReportSections', () => {
     expect(events.activitiesByKey.get('2025-06-16')).toHaveLength(1);
     expect(events.activitiesByKey.has('2025-06-01')).toBe(false);
   });
+
+  it('omits activities when resolvedDateRange is missing', () => {
+    const data: ReportDataResponse = {
+      report: {
+        id: 1,
+        name: 'look-ahead',
+        displayName: 'Look Ahead',
+        sortOrder: 1,
+        isActive: true,
+        visibility: 'team',
+        config: { fields: ['startDate', 'title'], sections: [] },
+        description: null,
+      },
+      sections: [
+        {
+          id: 'events',
+          name: 'Events',
+          order: 1,
+          activities: [
+            createMockActivityListItem({
+              id: 1,
+              startDate: '2025-06-18',
+              endDate: '2025-06-20',
+              title: 'Unbucketed',
+            }),
+          ],
+        },
+      ],
+    };
+
+    const sections = collectPrintReportSections(data);
+    expect(sections[0].activitiesByKey.size).toBe(0);
+  });
 });

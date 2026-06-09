@@ -1,5 +1,5 @@
 import type { ReportActivityRow } from '../../api/types';
-import { activityReportDisplayDayKey } from '../../filters/activity-filter-date';
+import { activityReportDisplayMonthKey } from '../../filters/activity-filter-date';
 import { createCompareActivitiesForPrint } from '../print/react/rowViewModel';
 import type { CalendarMonthSection } from './buildCalendarMonthSections';
 
@@ -37,13 +37,12 @@ export function groupActivitiesByMonthSection(
   if (queryRange == null) return buckets;
 
   for (const activity of activities) {
-    const dayKey = activityReportDisplayDayKey(
+    const monthId = activityReportDisplayMonthKey(
       activity.startDate,
       activity.endDate,
       queryRange
     );
-    if (!dayKey) continue;
-    const monthId = dayKey.slice(0, 7);
+    if (!monthId) continue;
     buckets.get(monthId)?.push(activity);
   }
 

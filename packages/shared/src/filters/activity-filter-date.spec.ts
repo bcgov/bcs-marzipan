@@ -136,6 +136,19 @@ describe('activityReportDisplayDayKey', () => {
       activityReportDisplayDayKey('2025-06-01', '2025-06-30', null)
     ).toBeNull();
   });
+
+  it('normalizes UTC instants to Pacific calendar dates', () => {
+    expect(
+      activityReportDisplayDayKey(
+        '2026-04-27T06:59:00.000Z',
+        '2026-04-27T06:59:00.000Z',
+        {
+          start: toCalendarDateString('2026-04-26'),
+          end: toCalendarDateString('2026-04-28'),
+        }
+      )
+    ).toBe('2026-04-26');
+  });
 });
 
 describe('activityReportDisplayMonthKey', () => {

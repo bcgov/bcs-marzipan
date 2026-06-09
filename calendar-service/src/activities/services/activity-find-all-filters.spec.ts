@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  activityDateSpanOverlapsRange,
+  activityScheduledRangeOverlaps,
+  type DateRangeValue,
+} from '@corpcal/shared';
 import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
 
 import {
@@ -10,6 +15,7 @@ import {
 import {
   buildActivityFindAllConditions,
   buildActivityVisibilityCondition,
+  buildScheduledWindowOverlapConditions,
   hasActivityFindAllFilterFields,
 } from './activity-find-all-filters';
 
@@ -17,6 +23,66 @@ const DELETED_STATUS_ID = 99;
 const COMPLETED_STATUS_ID = 5;
 /** Bypass visibility so filter-only tests stay focused on non-visibility conditions. */
 const BYPASS_DATA_SCOPE: DataScope = { teamIds: [], bypass: true };
+
+type ScheduledWindowFilters = Pick<
+  FilterActivitiesQueryParams,
+  'startDateFrom' | 'startDateTo' | 'scheduledDateRangeOverlaps'
+>;
+
+/** Mirrors `buildScheduledWindowOverlapConditions` semantics for parity tests. */
+function activityMatchesScheduledWindowOverlap(
+  startDate: string | null,
+  endDate: string | null,
+  filters: ScheduledWindowFilters
+): boolean {
+  const hasLower =
+    filters.startDateFrom != null && filters.startDateFrom !== '';
+  const hasUpper = filters.startDateTo != null && filters.startDateTo !== '';
+  if (!hasLower && !hasUpper) {
+    if (filters.scheduledDateRangeOverlaps === true) {
+      return (
+        startDate != null &&
+        startDate !== '' &&
+        endDate != null &&
+        endDate !== ''
+      );
+    }
+    return true;
+  }
+
+  if (startDate == null || startDate === '') return false;
+
+  const requireFullSpan = filters.scheduledDateRangeOverlaps === true;
+  if (requireFullSpan && (endDate == null || endDate === '')) return false;
+
+  const effectiveEnd = requireFullSpan ? endDate! : (endDate ?? startDate);
+
+  if (hasLower && effectiveEnd < filters.startDateFrom!) return false;
+  if (hasUpper && startDate > filters.startDateTo!) return false;
+  return true;
+}
+
+function scheduledWindowToDateRange(
+  filters: ScheduledWindowFilters
+): DateRangeValue {
+  return {
+    startDate: filters.startDateFrom ?? '',
+    endDate: filters.startDateTo ?? '',
+    noStartDate: filters.startDateFrom == null || filters.startDateFrom === '',
+    noEndDate: filters.startDateTo == null || filters.startDateTo === '',
+  };
+}
+
+function sharedScheduledOverlapPredicate(
+  startDate: string | null,
+  endDate: string | null,
+  filters: ScheduledWindowFilters
+): boolean {
+  const range = scheduledWindowToDateRange(filters);
+  return filters.scheduledDateRangeOverlaps === true
+    ? activityScheduledRangeOverlaps(startDate, endDate, range)
+    : activityDateSpanOverlapsRange(startDate, endDate, range);
+}
 
 function createMockDb() {
   const select = vi.fn(() => ({
@@ -366,6 +432,168 @@ describe('buildActivityFindAllConditions', () => {
       dataScope: { teamIds: [1], bypass: true },
     });
     expect(conditions).toHaveLength(2);
+  });
+});
+
+describe('buildScheduledWindowOverlapConditions', () => {
+  const window: ScheduledWindowFilters = {
+    startDateFrom: '2026-05-01',
+    startDateTo: '2026-05-31',
+  };
+
+  const withFlag: ScheduledWindowFilters = {
+    ...window,
+    scheduledDateRangeOverlaps: true,
+  };
+
+  const activities = {
+    fullyInside: { start: '2026-05-10', end: '2026-05-20' },
+    fullyContainsWindow: { start: '2026-04-01', end: '2026-06-30' },
+    endsBeforeWindow: { start: '2026-04-01', end: '2026-04-30' },
+    startsAfterWindow: { start: '2026-06-01', end: '2026-06-30' },
+    overlapsStart: { start: '2026-04-15', end: '2026-05-10' },
+    overlapsEnd: { start: '2026-05-20', end: '2026-06-15' },
+    singleDayInWindow: { start: '2026-05-15', end: null },
+    missingStart: { start: null, end: '2026-05-15' },
+  } as const;
+
+  it('returns no conditions when neither bound is set without the flag', () => {
+    expect(buildScheduledWindowOverlapConditions(baseFilters())).toEqual([]);
+  });
+
+  it('returns non-null date guards when the flag is set but neither bound is set', () => {
+    expect(
+      buildScheduledWindowOverlapConditions(
+        baseFilters({ scheduledDateRangeOverlaps: true })
+      )
+    ).toHaveLength(2);
+  });
+
+  it('builds open lower-bound overlap (startDateFrom only)', () => {
+    const filters = baseFilters({ startDateFrom: '2026-05-01' });
+    expect(buildScheduledWindowOverlapConditions(filters)).toHaveLength(2);
+    expect(
+      activityMatchesScheduledWindowOverlap(
+        activities.endsBeforeWindow.start,
+        activities.endsBeforeWindow.end,
+        filters
+      )
+    ).toBe(false);
+    expect(
+      activityMatchesScheduledWindowOverlap(
+        activities.overlapsEnd.start,
+        activities.overlapsEnd.end,
+        filters
+      )
+    ).toBe(true);
+  });
+
+  it('builds open upper-bound overlap (startDateTo only)', () => {
+    const filters = baseFilters({ startDateTo: '2026-05-31' });
+    expect(buildScheduledWindowOverlapConditions(filters)).toHaveLength(2);
+    expect(
+      activityMatchesScheduledWindowOverlap(
+        activities.startsAfterWindow.start,
+        activities.startsAfterWindow.end,
+        filters
+      )
+    ).toBe(false);
+    expect(
+      activityMatchesScheduledWindowOverlap(
+        activities.overlapsStart.start,
+        activities.overlapsStart.end,
+        filters
+      )
+    ).toBe(true);
+  });
+
+  it.each([
+    ['fully inside', activities.fullyInside, true],
+    ['fully contains window', activities.fullyContainsWindow, true],
+    ['ends before window', activities.endsBeforeWindow, false],
+    ['starts after window', activities.startsAfterWindow, false],
+    ['overlaps start edge', activities.overlapsStart, true],
+    ['overlaps end edge', activities.overlapsEnd, true],
+    ['missing start', activities.missingStart, false],
+  ] as const)(
+    'with scheduledDateRangeOverlaps: %s => %s',
+    (_label, activity, expected) => {
+      expect(
+        activityMatchesScheduledWindowOverlap(
+          activity.start,
+          activity.end,
+          withFlag
+        )
+      ).toBe(expected);
+      expect(
+        sharedScheduledOverlapPredicate(activity.start, activity.end, withFlag)
+      ).toBe(expected);
+    }
+  );
+
+  it('requires both activity dates when scheduledDateRangeOverlaps is true', () => {
+    expect(
+      activityMatchesScheduledWindowOverlap(
+        activities.singleDayInWindow.start,
+        activities.singleDayInWindow.end,
+        withFlag
+      )
+    ).toBe(false);
+    expect(
+      sharedScheduledOverlapPredicate(
+        activities.singleDayInWindow.start,
+        activities.singleDayInWindow.end,
+        withFlag
+      )
+    ).toBe(false);
+    expect(
+      buildScheduledWindowOverlapConditions(baseFilters(withFlag))
+    ).toHaveLength(4);
+  });
+
+  it('treats missing end as single-day overlap without the flag', () => {
+    const filters = baseFilters(window);
+    expect(
+      activityMatchesScheduledWindowOverlap(
+        activities.singleDayInWindow.start,
+        activities.singleDayInWindow.end,
+        filters
+      )
+    ).toBe(true);
+    expect(
+      sharedScheduledOverlapPredicate(
+        activities.singleDayInWindow.start,
+        activities.singleDayInWindow.end,
+        filters
+      )
+    ).toBe(true);
+    expect(buildScheduledWindowOverlapConditions(filters)).toHaveLength(3);
+  });
+
+  it('matches shared overlap predicates for calendar-date fixtures', () => {
+    const cases = [
+      activities.fullyInside,
+      activities.fullyContainsWindow,
+      activities.endsBeforeWindow,
+      activities.startsAfterWindow,
+      activities.overlapsStart,
+      activities.overlapsEnd,
+      activities.singleDayInWindow,
+      activities.missingStart,
+    ];
+    for (const activity of cases) {
+      for (const filters of [window, withFlag]) {
+        expect(
+          activityMatchesScheduledWindowOverlap(
+            activity.start,
+            activity.end,
+            filters
+          )
+        ).toBe(
+          sharedScheduledOverlapPredicate(activity.start, activity.end, filters)
+        );
+      }
+    }
   });
 });
 

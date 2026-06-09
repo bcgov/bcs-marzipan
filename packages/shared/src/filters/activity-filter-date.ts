@@ -1,4 +1,5 @@
 import type { DateRangeValue } from '../activity-filter-state';
+import { pacificDayKey } from '../datetime/calendar';
 import type { CalendarDateString } from '../datetime/types';
 
 /** Inclusive calendar-date bounds (`YYYY-MM-DD`). */
@@ -7,18 +8,14 @@ export interface CalendarDateBounds {
   end: CalendarDateString;
 }
 
-function calendarDatePrefix(value: string | null | undefined): string {
-  return value?.slice(0, 10) ?? '';
-}
-
 function normalizedActivitySpan(
   startDate: string | null,
   endDate: string | null
 ): { start: string; end: string } | null {
-  const start = calendarDatePrefix(startDate);
-  if (start === '') return null;
-  const endRaw = calendarDatePrefix(endDate);
-  const end = endRaw === '' ? start : endRaw;
+  const start = pacificDayKey(startDate);
+  if (start == null) return null;
+  const endRaw = pacificDayKey(endDate);
+  const end = endRaw ?? start;
   return { start, end };
 }
 
@@ -83,9 +80,9 @@ export function activityScheduledRangeOverlaps(
   endDate: string | null,
   range: DateRangeValue
 ): boolean {
-  const start = calendarDatePrefix(startDate);
-  const end = calendarDatePrefix(endDate);
-  if (start === '' || end === '') return false;
+  const start = pacificDayKey(startDate);
+  const end = pacificDayKey(endDate);
+  if (start == null || end == null) return false;
   return activityDateSpanOverlapsRange(startDate, endDate, range);
 }
 

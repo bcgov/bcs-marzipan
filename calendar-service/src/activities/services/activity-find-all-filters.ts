@@ -132,9 +132,12 @@ export function buildScheduledWindowOverlapConditions(
   const hasLower =
     filters.startDateFrom != null && filters.startDateFrom !== '';
   const hasUpper = filters.startDateTo != null && filters.startDateTo !== '';
-  if (!hasLower && !hasUpper) return [];
-
   const requireFullSpan = filters.scheduledDateRangeOverlaps === true;
+  if (!hasLower && !hasUpper) {
+    return requireFullSpan
+      ? [isNotNull(activities.startDate), isNotNull(activities.endDate)]
+      : [];
+  }
   const result: SQL[] = [];
 
   result.push(isNotNull(activities.startDate));
