@@ -1,11 +1,9 @@
-import type { ActivityFilterState } from '@corpcal/shared';
+import { isDateRangeActive, type ActivityFilterState } from '@corpcal/shared';
 import {
   resolveReportActivityDateWindow,
   type NormalizedReportDateRange,
 } from '@corpcal/shared/reports/reportDateRange';
-import type { ReportDataQueryParams } from '@corpcal/shared/schemas';
 import type { ReportDataRequestParams } from '@/api/reportsApi';
-import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 
 function normalizeReportQueryParamValue(value: unknown): unknown {
   if (!Array.isArray(value) || value.length === 0) return value;
@@ -63,5 +61,3 @@ export function resolveReportQueryDateRange(
     startDateTo: bounds.startDateTo,
   });
 }
-
-export type { ReportDataQueryParams };

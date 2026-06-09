@@ -9,7 +9,6 @@ export interface ActivityStatusArchiveIds {
 
 export interface ActivityFilterPreferencesInput {
   filterState: ActivityFilterState;
-  searchKeyword: string;
   showCompleted: boolean;
   showDeleted: boolean;
 }
@@ -24,8 +23,13 @@ function nonEmptyTrimmedStrings(arr: string[]): string[] | undefined {
 }
 
 /**
- * Maps activity table preferences to report / activities query params.
+ * Maps activity filter panel state to report / activities API query params.
  * All ID-list filters use array params with OR semantics on the server.
+ *
+ * Keyword search is intentionally excluded: the Activity List applies it
+ * client-side over the cached list; Reports preview does the same over the
+ * cached payload (stable fetch query key). Pass `search` separately when
+ * exporting so PDF/CSV/XLSX match the on-screen filter.
  */
 export function activityFilterStateToQueryParams(
   input: ActivityFilterPreferencesInput,

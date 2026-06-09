@@ -23,6 +23,7 @@ import {
   useLookAheadSectionRows,
 } from '@/hooks/useLookAheadSectionRows';
 import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
+import { buildValidFilterLookupsFromOptions } from '@/lib/activity-filter-lookups';
 import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
 import {
   sanitizeSavedFilterPayload,
@@ -168,33 +169,29 @@ export function ActivityTableFilters({
     getLookAheadSectionLabel,
   ]);
 
-  const validFilterLookupsForPreview = useMemo((): ValidFilterLookups => {
-    const nums = (options: OptionItem[]) =>
-      new Set(
-        options
-          .map((o) => parseInt(o.value, 10))
-          .filter((n) => Number.isFinite(n))
-      );
-    return {
-      statusIds: nums(statusOptions),
-      tagIds: nums(tagOptions),
-      ministryIds: nums(ministryOptions),
-      orgIds: nums(organizationOptions),
-      commsContactUserIds: nums(commsContactOptions),
-      eventPlannerIds: nums(eventPlannerOptions),
-      translationStatusIds: nums(translationStatusOptions),
-      translationLanguageIds: nums(translationOptions),
-    };
-  }, [
-    statusOptions,
-    tagOptions,
-    ministryOptions,
-    organizationOptions,
-    commsContactOptions,
-    eventPlannerOptions,
-    translationStatusOptions,
-    translationOptions,
-  ]);
+  const validFilterLookupsForPreview = useMemo(
+    (): ValidFilterLookups =>
+      buildValidFilterLookupsFromOptions({
+        statusOptions,
+        tagOptions,
+        ministryOptions,
+        organizationOptions,
+        commsContactOptions,
+        eventPlannerOptions,
+        translationStatusOptions,
+        translationOptions,
+      }),
+    [
+      statusOptions,
+      tagOptions,
+      ministryOptions,
+      organizationOptions,
+      commsContactOptions,
+      eventPlannerOptions,
+      translationStatusOptions,
+      translationOptions,
+    ]
+  );
 
   const parseSavedFilterForDraft = useCallback(
     (sf: SavedFilterResponse) => {

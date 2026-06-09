@@ -486,6 +486,15 @@ export function getStoredReportTabName(): string | null {
   }
 }
 
+export function setStoredReportTabName(reportName: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(REPORTS_TAB_STORAGE_KEY, reportName);
+  } catch {
+    /* private mode */
+  }
+}
+
 export function getPreferencesForReport(
   bundle: ReportsPreferencesBundle,
   reportName: string,

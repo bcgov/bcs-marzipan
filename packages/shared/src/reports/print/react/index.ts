@@ -16,14 +16,7 @@ export { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
 export { PrintCustomReportDocument } from './PrintCustomReportDocument';
 export { PrintReportDocument } from './PrintReportDocument';
 export { PrintRow } from './PrintRow';
-export {
-  PrintSectionTable,
-  PrintSectionColGroup,
-  PrintSectionColumnHeaderRow,
-  PrintSectionHeading,
-  printSectionColumnCount,
-  printSectionTableClassName,
-} from './PrintSectionTable';
+export { PrintSectionTable } from './PrintSectionTable';
 export { PrintRichText } from './PrintRichText';
 export {
   buildTranslationLanguageLabelResolver,

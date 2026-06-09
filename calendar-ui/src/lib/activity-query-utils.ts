@@ -60,22 +60,8 @@ export function filterActivityRowsByKeyword(
 
 /** Optional context for filterActivityRowsByFilters (lookup options to resolve IDs to labels). */
 export interface FilterActivityRowsContext {
-  /**
-   * Options for translation required statuses. No longer required for status
-   * matching (resolved via row.translationsRequiredStatusId); retained for
-   * backward compatibility with existing callers.
-   */
-  translationRequiredStatusOptions?: OptionItem[];
   /** Options for translation languages (value = id, label = string that appears in row.translationsRequired). */
   translationLanguageOptions?: OptionItem[];
-}
-
-export function canResolveTranslationLanguageFilter(
-  filterState: ActivityFilterState,
-  context?: FilterActivityRowsContext
-): boolean {
-  if (filterState.translationLanguageIds.length === 0) return true;
-  return (context?.translationLanguageOptions?.length ?? 0) > 0;
 }
 
 /** Maps a table row to the shared filter-match input. */
@@ -115,6 +101,22 @@ function buildTranslationLanguageLabelById(
     if (Number.isFinite(id)) map.set(id, opt.label);
   }
   return map;
+}
+
+/**
+ * True when every selected translation-language filter ID can be resolved from
+ * lookup options. Used to defer client-side filtering until lookups load.
+ */
+export function canResolveTranslationLanguageFilter(
+  filterState: ActivityFilterState,
+  context?: FilterActivityRowsContext
+): boolean {
+  if (filterState.translationLanguageIds.length === 0) return true;
+  const labelById = buildTranslationLanguageLabelById(
+    context?.translationLanguageOptions
+  );
+  if (!labelById) return false;
+  return filterState.translationLanguageIds.every((id) => labelById.has(id));
 }
 
 /**

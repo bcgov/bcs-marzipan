@@ -49,7 +49,6 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
     const params = activityFilterStateToQueryParams(
       {
         filterState,
-        searchKeyword: '',
         showCompleted: false,
         showDeleted: false,
       },
@@ -73,7 +72,6 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
     const params = activityFilterStateToQueryParams(
       {
         filterState,
-        searchKeyword: 'keyword',
         showCompleted: true,
         showDeleted: false,
       },
@@ -97,7 +95,6 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
     const params = activityFilterStateToQueryParams(
       {
         filterState,
-        searchKeyword: '',
         showCompleted: false,
         showDeleted: false,
       },
@@ -126,7 +123,6 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
     const params = activityFilterStateToQueryParams(
       {
         filterState,
-        searchKeyword: '',
         showCompleted: false,
         showDeleted: false,
       },
@@ -162,7 +158,6 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
     const params = activityFilterStateToQueryParams(
       {
         filterState,
-        searchKeyword: '',
         showCompleted: false,
         showDeleted: false,
       },
@@ -209,7 +204,6 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
     const params = activityFilterStateToQueryParams(
       {
         filterState,
-        searchKeyword: '',
         showCompleted: false,
         showDeleted: false,
       },
@@ -242,7 +236,6 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
     const params = activityFilterStateToQueryParams(
       {
         filterState,
-        searchKeyword: '',
         showCompleted: false,
         showDeleted: false,
       },

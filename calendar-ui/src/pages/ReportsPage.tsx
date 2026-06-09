@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -11,7 +11,6 @@ import {
 
 import { activityFilterStateToQueryParams } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
-import { shouldWarnLargeReportRange } from '@corpcal/shared/reports/reportDateRange';
 import { reportPrintSheetLayoutWidthPx } from '@corpcal/shared/reports/reportPrintHtml';
 import { fetchReportData } from '@/api/reportsApi';
 import { PageHeader } from '@/components/layout';
@@ -32,12 +31,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useLiveActivityRowHighlights } from '@/hooks/useLiveActivitySyncContext';
 import { useActivityStatuses, useReports } from '@/hooks/useLookups';
+import { useReportDataFreshness } from '@/hooks/useReportDataFreshness';
 import { useReportsSavedFilters } from '@/hooks/useReportsSavedFilters';
 import { useReportsTablePreferences } from '@/hooks/useReportsTablePreferences';
 import {
   loadCustomReportConfig,
   saveCustomReportConfig,
 } from '@/lib/custom-report-config-storage';
+import { deriveReportRangeWarnings } from '@/lib/deriveReportRangeWarnings';
 import { showErrorToast } from '@/lib/error-toast';
 import { countReportActivities } from '@/lib/report-data-utils';
 import {
@@ -52,7 +53,7 @@ import { filterReportDataBySearchKeyword } from '@/lib/report-search-filter';
 import { reportQueryKeys } from '@/lib/reportQueryKeys';
 import {
   getStoredReportTabName,
-  REPORTS_TAB_STORAGE_KEY,
+  setStoredReportTabName,
   URL_PARAM_REPORT,
 } from '@/lib/reportsTablePreferencesParams';
 import { cn } from '@/lib/utils';
@@ -142,6 +143,7 @@ function reportUsesMonthRangeTabs(reportName: string): boolean {
 }
 
 export function ReportsPage() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
@@ -180,7 +182,6 @@ export function ReportsPage() {
       activityFilterStateToQueryParams(
         {
           filterState: preferences.filterState,
-          searchKeyword: preferences.searchKeyword,
           showCompleted: preferences.showCompleted,
           showDeleted: preferences.showDeleted,
         },
@@ -189,7 +190,6 @@ export function ReportsPage() {
       ),
     [
       preferences.filterState,
-      preferences.searchKeyword,
       preferences.showCompleted,
       preferences.showDeleted,
       statusArchiveIds,
@@ -200,14 +200,6 @@ export function ReportsPage() {
   const reportFetchParamsKey = useMemo(
     () => stableSerializeReportQueryParams(reportFetchParams),
     [reportFetchParams]
-  );
-
-  const reportExportParams = useMemo(
-    () => ({
-      ...reportFetchParams,
-      search: preferences.searchKeyword.trim() || undefined,
-    }),
-    [reportFetchParams, preferences.searchKeyword]
   );
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -239,7 +231,7 @@ export function ReportsPage() {
     }
   }, [reports, searchParams]);
 
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, isFetching, isPlaceholderData, error } = useQuery({
     queryKey: reportQueryKeys.data(activeReport, reportFetchParamsKey),
     queryFn: () =>
       activeReport
@@ -254,20 +246,17 @@ export function ReportsPage() {
     [data, preferences.searchKeyword]
   );
 
-  /** Placeholder data from a previous tab must not drive preview or export. */
-  const isReportDataStale = useMemo(
-    () =>
-      !!displayData &&
-      !!activeReport &&
-      displayData.report.name !== activeReport,
-    [displayData, activeReport]
-  );
-
-  const isReportPreviewLoading = (isLoading && !data) || isReportDataStale;
+  const { isFresh, isWrongReport, isPreviewLoading } = useReportDataFreshness({
+    activeReport,
+    displayData,
+    isPlaceholderData,
+    isLoading,
+    hasData: !!data,
+  });
 
   const displayActivityCount = useMemo(
-    () => (isReportDataStale ? 0 : countReportActivities(displayData)),
-    [displayData, isReportDataStale]
+    () => (isWrongReport ? 0 : countReportActivities(displayData)),
+    [displayData, isWrongReport]
   );
 
   const resolvedReportDateRange = useMemo(() => {
@@ -275,18 +264,15 @@ export function ReportsPage() {
     return resolveReportQueryDateRange(activeReport, preferences.filterState);
   }, [activeReport, preferences.filterState]);
 
-  const showLargeRangeWarning = useMemo(() => {
-    if (!resolvedReportDateRange) return false;
-    if (data?.meta?.largeResultWarning != null) {
-      return data.meta.largeResultWarning;
-    }
-    return shouldWarnLargeReportRange({
-      spanDays: resolvedReportDateRange.spanDays,
-    });
-  }, [data?.meta?.largeResultWarning, resolvedReportDateRange]);
-
-  const wasDateRangeClamped =
-    data?.meta?.wasClamped ?? resolvedReportDateRange?.wasClamped ?? false;
+  const { showLargeRangeWarning, wasDateRangeClamped } = useMemo(
+    () =>
+      deriveReportRangeWarnings({
+        resolvedReportDateRange,
+        dataMeta: data?.meta,
+        isPlaceholderData,
+      }),
+    [resolvedReportDateRange, data?.meta, isPlaceholderData]
+  );
 
   const reportHighlightSet = useLiveActivityRowHighlights(isFetching);
 
@@ -308,7 +294,7 @@ export function ReportsPage() {
 
   const handleTabChange = (reportName: string) => {
     setActiveReport(reportName);
-    sessionStorage.setItem(REPORTS_TAB_STORAGE_KEY, reportName);
+    setStoredReportTabName(reportName);
     reportPreviewScrollRef.current?.scrollTo(0, 0);
   };
 
@@ -316,11 +302,26 @@ export function ReportsPage() {
     if (!activeReport) return;
     setIsExporting(true);
     try {
+      let exportData = displayData;
+      if (activeReport === 'custom' && format === 'xlsx') {
+        const freshData = await queryClient.fetchQuery({
+          queryKey: reportQueryKeys.data(activeReport, reportFetchParamsKey),
+          queryFn: () => fetchReportData(activeReport, reportFetchParams),
+        });
+        exportData = filterReportDataBySearchKeyword(
+          freshData,
+          preferences.searchKeyword
+        );
+      }
+
       await handleReportExport({
         reportType: activeReport,
         format,
-        data: displayData,
-        queryParams: reportExportParams,
+        data: exportData,
+        queryParams: {
+          ...reportFetchParams,
+          search: preferences.searchKeyword.trim() || undefined,
+        },
         customReportFields:
           activeReport === 'custom' ? customReportFields : undefined,
       });
@@ -362,7 +363,7 @@ export function ReportsPage() {
   // without visual jarring or layout shift.
   const reportPreviewScrollClassName = cn(
     'report-html-container border-border',
-    isFetching && !isReportPreviewLoading && 'opacity-[0.98]'
+    isFetching && !isPreviewLoading && 'opacity-[0.98]'
   );
 
   if (error && activeReport) {
@@ -388,10 +389,7 @@ export function ReportsPage() {
               type="button"
               variant="default"
               disabled={
-                !displayData ||
-                isReportDataStale ||
-                isExporting ||
-                !activeReport
+                !displayData || !isFresh || isExporting || !activeReport
               }
               className="gap-2"
               onClick={() => void runExport(exportConfig.format)}
@@ -499,7 +497,7 @@ export function ReportsPage() {
                       </label>
                     ) : null}
                   </div>
-                  {isReportPreviewLoading ? (
+                  {isPreviewLoading ? (
                     <ReportPreviewEmptyState
                       ref={reportPreviewScrollRef}
                       message="Loading report..."
@@ -508,7 +506,6 @@ export function ReportsPage() {
                   ) : report.name === 'custom' ? (
                     displayData?.sections[0] ? (
                       <CustomReportPreviewSection
-                        layout="reportPreview"
                         section={displayData.sections[0]}
                         config={customReportFields}
                         onFieldsChange={setCustomReportFields}

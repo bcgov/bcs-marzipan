@@ -114,7 +114,7 @@ export interface PrintGroupedSectionDayBlock {
   rows: PrintRowViewModel[];
 }
 
-export function PrintSectionColGroup({
+function PrintSectionColGroup({
   omitReleaseColumn,
 }: {
   omitReleaseColumn: boolean;
@@ -129,12 +129,12 @@ export function PrintSectionColGroup({
   );
 }
 
-export function printSectionTableClassName(omitReleaseColumn: boolean): string {
+function printSectionTableClassName(omitReleaseColumn: boolean): string {
   const base = 'corpcal-print-table';
   return omitReleaseColumn ? `${base} corpcal-print-table--omit-release` : base;
 }
 
-export function PrintSectionColumnHeaderRow({
+function PrintSectionColumnHeaderRow({
   sectionLegendColor,
   rowClassName,
   omitReleaseColumn,

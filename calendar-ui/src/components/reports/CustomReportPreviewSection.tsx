@@ -17,12 +17,7 @@ interface CustomReportPreviewSectionProps {
   onFieldsChange?: (fields: CustomReportFieldConfig[]) => void;
   /** In-app preview: flash matching activity rows briefly after remote updates. */
   highlightedActivityIds?: ReadonlySet<number>;
-  /**
-   * `reportPreview` matches the Reports page print-preview shell (fixed height,
-   * bordered scroll container). `default` keeps the legacy flex growth layout.
-   */
-  layout?: 'default' | 'reportPreview';
-  /** Scroll parent for pagination when `layout` is `reportPreview`. */
+  /** Scroll parent for pagination. */
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
 
@@ -35,14 +30,12 @@ export function CustomReportPreviewSection({
   config,
   onFieldsChange,
   highlightedActivityIds,
-  layout = 'default',
   scrollContainerRef,
 }: CustomReportPreviewSectionProps) {
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const tableScrollRef = scrollContainerRef ?? internalScrollRef;
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const useReportPreviewLayout = layout === 'reportPreview';
 
   useEffect(() => {
     setPageIndex(0);
@@ -84,27 +77,16 @@ export function CustomReportPreviewSection({
       />
     ) : null;
 
-  if (useReportPreviewLayout) {
-    return (
-      <div className="flex min-h-0 flex-col">
-        <TableScrollContainer
-          ref={tableScrollRef}
-          scrollHeight={REPORT_PRINT_PREVIEW_SCROLL_HEIGHT}
-          scrollAriaLabel="Report preview"
-          scrollClassName="flex flex-col"
-          className="report-html-container border-border"
-        >
-          <div className="flex w-full flex-1 flex-col">{table}</div>
-        </TableScrollContainer>
-        {pagination}
-      </div>
-    );
-  }
-
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-1">
-      <TableScrollContainer ref={tableScrollRef} className="min-h-0 flex-1">
-        {table}
+    <div className="flex min-h-0 flex-col">
+      <TableScrollContainer
+        ref={tableScrollRef}
+        scrollHeight={REPORT_PRINT_PREVIEW_SCROLL_HEIGHT}
+        scrollAriaLabel="Report preview"
+        scrollClassName="flex flex-col"
+        className="report-html-container border-border"
+      >
+        <div className="flex w-full flex-1 flex-col">{table}</div>
       </TableScrollContainer>
       {pagination}
     </div>

@@ -11,7 +11,6 @@ describe('activityFilterStateToQueryParams', () => {
     const result = activityFilterStateToQueryParams(
       {
         filterState: DEFAULT_ACTIVITY_FILTER_STATE,
-        searchKeyword: '',
         showCompleted: true,
         showDeleted: false,
       },
@@ -30,7 +29,6 @@ describe('activityFilterStateToQueryParams', () => {
           ...DEFAULT_ACTIVITY_FILTER_STATE,
           activityStatusIds: [1, 5],
         },
-        searchKeyword: '  briefing ',
         showCompleted: false,
         showDeleted: false,
       },
@@ -40,6 +38,18 @@ describe('activityFilterStateToQueryParams', () => {
     expect(result.activityStatusIds).toEqual([1, 5]);
     expect(result.includeCompleted).toBe(true);
     expect(result.includeDeleted).toBe(false);
+  });
+
+  it('does not map keyword search (applied client-side or at export)', () => {
+    const result = activityFilterStateToQueryParams(
+      {
+        filterState: DEFAULT_ACTIVITY_FILTER_STATE,
+        showCompleted: false,
+        showDeleted: false,
+      },
+      {},
+      false
+    );
     expect(result.search).toBeUndefined();
   });
 
@@ -55,7 +65,6 @@ describe('activityFilterStateToQueryParams', () => {
             noEndDate: false,
           },
         },
-        searchKeyword: '',
         showCompleted: false,
         showDeleted: false,
       },
@@ -77,7 +86,6 @@ describe('activityFilterStateToQueryParams', () => {
     const result = activityFilterStateToQueryParams(
       {
         filterState,
-        searchKeyword: '',
         showCompleted: false,
         showDeleted: false,
       },
@@ -104,7 +112,6 @@ describe('activityFilterStateToQueryParams', () => {
             },
           },
         },
-        searchKeyword: '',
         showCompleted: false,
         showDeleted: false,
       },
