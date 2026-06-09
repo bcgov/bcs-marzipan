@@ -2,9 +2,9 @@
 ALTER TABLE user_settings
   ADD COLUMN IF NOT EXISTS direct_login_enabled boolean;
 
+-- Normalise any NULLs (covers existing rows after ADD COLUMN)
+UPDATE user_settings SET direct_login_enabled = false WHERE direct_login_enabled IS NULL;
+
 ALTER TABLE user_settings
   ALTER COLUMN direct_login_enabled SET DEFAULT false,
   ALTER COLUMN direct_login_enabled SET NOT NULL;
-
--- Normalise any NULLs if the column existed previously
-UPDATE user_settings SET direct_login_enabled = false WHERE direct_login_enabled IS NULL;
