@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS public.permission_visibility_audit (
   id serial PRIMARY KEY,
   permission_id integer NOT NULL REFERENCES public.permissions(id),
-  changed_by integer NULL REFERENCES public.users(id),
+  changed_by integer NULL REFERENCES public.users(id) ON DELETE SET NULL,
   old_value boolean NOT NULL,
   new_value boolean NOT NULL,
   note text NULL,

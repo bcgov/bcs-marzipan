@@ -278,8 +278,9 @@ export class LookupsController {
     success: boolean;
     data: {
       key: string;
-      displayName?: string | null;
+      displayName: string | null;
       description: string | null;
+      hasPermission: boolean;
     }[];
   }> {
     const roleId = Number(id);

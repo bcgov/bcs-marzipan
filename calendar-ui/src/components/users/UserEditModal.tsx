@@ -55,12 +55,8 @@ export function UserEditModal({
     displayParts.length > 1 ? displayParts[displayParts.length - 1] : ''
   );
   const [email, setEmail] = useState<string | null>(user.adEmail ?? '');
-  const [phone, setPhone] = useState<string | null>(
-    (user as any).phoneNumber ?? ''
-  );
-  const [jobTitle, setJobTitle] = useState<string | null>(
-    (user as any).jobTitle ?? (user as any).adJobTitle ?? ''
-  );
+  const [phone, setPhone] = useState<string | null>('');
+  const [jobTitle, setJobTitle] = useState<string | null>('');
   const [isActive, setIsActive] = useState<boolean>(true);
   const [addTeamId, setAddTeamId] = useState<string>('');
   const [addTeamRole, setAddTeamRole] = useState<'owner' | 'member'>('member');

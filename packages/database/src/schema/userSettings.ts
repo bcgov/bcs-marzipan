@@ -27,8 +27,9 @@ export const userSettings = pgTable('user_settings', {
    */
   flagColour: varchar('flag_colour', { length: 7 }),
   /**
+  /**
    * Whether the user is allowed to sign in directly using local credentials.
-   * Null/false means direct login is disabled.
+   * False means direct login is disabled.
    * Only settable by administrators.
    */
   directLoginEnabled: boolean('direct_login_enabled').notNull().default(false),

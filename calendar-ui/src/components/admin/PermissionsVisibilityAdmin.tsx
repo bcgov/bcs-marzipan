@@ -25,6 +25,10 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
   const { data: perms = [], isPending } = useQuery({
     queryKey: ['admin', 'permissions'],
     queryFn: fetchAllPermissions,
+    enabled: Boolean(
+      (user as any)?.permissions?.includes('system.manage_permissions') ||
+        (user as any)?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+    ),
   });
 
   const [search, setSearch] = useState('');
@@ -76,25 +80,13 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
           const next = prev ? { ...prev } : {};
           const key = data?.data?.key;
           if (vars.show) {
-            // Add the permission to a sample role (Editor) if not present. This mirrors the test's mock behaviour.
-            const roleId = 2;
-            const existing = next[roleId] || [];
-            if (!existing.find((e: any) => e.key === key)) {
-              next[roleId] = [
-                ...existing,
-                {
-                  key,
-                  displayName,
-                  description: permEntry?.description ?? null,
-                  hasPermission: true,
-                },
-              ];
-            }
+            // Visibility changes do not change role assignments; rely on refetch to populate new rows.
+            void displayName;
           } else {
             // Remove from any role entries that match
             for (const k of Object.keys(next)) {
               next[Number(k)] = (next[Number(k)] || []).filter(
-                (e: any) => e.key !== data?.data?.key
+                (e: any) => e.key !== key
               );
               if ((next[Number(k)] || []).length === 0) delete next[Number(k)];
             }
@@ -116,10 +108,11 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
     },
   });
 
-  const isSystemAdmin = Boolean(
-    (user as any)?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+  const canManagePermissions = Boolean(
+    (user as any)?.permissions?.includes('system.manage_permissions') ||
+      (user as any)?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
   );
-  if (!isSystemAdmin) return null;
+  if (!canManagePermissions) return null;
 
   return (
     <AdminSection
