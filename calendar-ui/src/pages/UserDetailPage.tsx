@@ -215,11 +215,8 @@ export default function UserDetailPage() {
   const visibleRows = permissionRows;
 
   // Memoize rendered permission items to avoid unnecessary re-renders
-  const renderedPermissionItems = useMemo(() => {
     return visibleRows.map((r, i) => (
-      <div key={i} className="flex items-start gap-2">
-        {r.hasPermission ? (
-          <CheckCircle
+      <div key={r.key ?? i} className="flex items-start gap-2">
             className="h-6 w-6 shrink-0 text-green-600"
             aria-hidden
           />
