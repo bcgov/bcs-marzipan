@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: calendar-service
-          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-service:${APP_VERSION}
+          image: calendar-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

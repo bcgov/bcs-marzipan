@@ -88,7 +88,6 @@ export function buildActivityTableFilterSummaryDetails(options: {
 }): {
   appliedFilterTypeLabels: string[];
   filterDetailLines: TableSummaryFilterDetailLine[];
-  hasPanelFiltersActive: boolean;
   hasActiveCriteria: boolean;
 } {
   const appliedFilterTypeLabels = getAppliedActivityFilterTypeLabels(
@@ -111,15 +110,9 @@ export function buildActivityTableFilterSummaryDetails(options: {
       )
     : [];
 
-  const hasPanelFiltersActive = hasAnyActivityTableFilterActive(
-    options.filterState,
-    options.pitchFieldVisibility
-  );
-
   return {
     appliedFilterTypeLabels,
     filterDetailLines,
-    hasPanelFiltersActive,
     hasActiveCriteria,
   };
 }

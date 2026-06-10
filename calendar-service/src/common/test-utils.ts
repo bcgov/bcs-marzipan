@@ -21,11 +21,16 @@ import type {
 
 // Re-export shared test fixtures for ActivityResponse and teams
 import {
+  createMockActivityListItem,
   createMockActivityResponse,
   createMockTeamListItem,
 } from '@corpcal/shared/test-utils';
 
-export { createMockActivityResponse, createMockTeamListItem };
+export {
+  createMockActivityListItem,
+  createMockActivityResponse,
+  createMockTeamListItem,
+};
 
 export const createMockActivityRequest = (
   overrides?: Partial<CreateActivityRequest>

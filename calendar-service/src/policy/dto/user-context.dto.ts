@@ -16,6 +16,17 @@ export interface DataScope {
   bypass: boolean;
 }
 
+/** Fail-closed default: global-only visibility when no request scope is present. */
+export const DEFAULT_DATA_SCOPE: DataScope = {
+  teamIds: [],
+  bypass: false,
+};
+
+/** Resolves data scope; missing scope defaults to restricted (not bypass). */
+export function resolveDataScope(dataScope?: DataScope): DataScope {
+  return dataScope ?? { teamIds: [], bypass: false };
+}
+
 /**
  * Context slice of the augmented Express Request (user + dataScope).
  * dataScope is required because @RequestContext() always provides it (defaults when absent).

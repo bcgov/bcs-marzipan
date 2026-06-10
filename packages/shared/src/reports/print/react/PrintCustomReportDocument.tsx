@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { ReportDataResponse } from '../../../api/report-data';
-import type { ActivityResponse } from '../../../schemas/activity-response.schema';
+import type { ActivityListItem } from '../../../schemas/activity-list-item.schema';
 import { formatShortDate, formatTime12h } from './dateFormatters';
 import { PrintRichText } from './PrintRichText';
 import { resolveLeadOrgForPrint } from './rowViewModel';
@@ -23,22 +23,22 @@ type CustomReportBodyRow =
   | {
       type: 'activity';
       key: string;
-      activity: ActivityResponse;
+      activity: ActivityListItem;
       zebraEven: boolean;
     };
 
 function getEventPlannerLeadName(
-  activity: ActivityResponse
+  activity: ActivityListItem
 ): string | undefined {
   const lead = activity.eventPlannerDetails?.find((p) => p.isLead);
   return lead?.name?.trim() || undefined;
 }
 
-function formatReportDate(activity: ActivityResponse): string {
+function formatReportDate(activity: ActivityListItem): string {
   return formatShortDate(activity.startDate) || '–';
 }
 
-function formatReportTime(activity: ActivityResponse): string {
+function formatReportTime(activity: ActivityListItem): string {
   return formatTime12h(null, activity.startTime) || '–';
 }
 
@@ -56,7 +56,7 @@ function CustomBadge({
   );
 }
 
-function DateTimeCell({ activity }: { activity: ActivityResponse }) {
+function DateTimeCell({ activity }: { activity: ActivityListItem }) {
   const dateStatus = activity.dateStatus?.trim();
   const timeStatus = activity.timeStatus?.trim();
   const dateText = formatReportDate(activity);
@@ -121,7 +121,7 @@ function DateTimeCell({ activity }: { activity: ActivityResponse }) {
   );
 }
 
-function LeadCell({ activity }: { activity: ActivityResponse }) {
+function LeadCell({ activity }: { activity: ActivityListItem }) {
   const ministry =
     activity.leadMinistryAbbreviation ?? activity.leadMinistry ?? '–';
   const org = resolveLeadOrgForPrint(activity);
@@ -157,7 +157,7 @@ function RichTextBlock({
   );
 }
 
-function ActivityDetailsCell({ activity }: { activity: ActivityResponse }) {
+function ActivityDetailsCell({ activity }: { activity: ActivityListItem }) {
   const plannerLead = getEventPlannerLeadName(activity);
 
   return (
@@ -198,7 +198,7 @@ function ActivityDetailsCell({ activity }: { activity: ActivityResponse }) {
   );
 }
 
-function ReleaseCell({ activity }: { activity: ActivityResponse }) {
+function ReleaseCell({ activity }: { activity: ActivityListItem }) {
   const commsLead = activity.commsContacts.find((c) => c.isLead);
   const commsLeadName = commsLead?.name ?? '–';
   const translationsRequired = activity.translationsRequired ?? [];
@@ -249,7 +249,7 @@ function ReleaseCell({ activity }: { activity: ActivityResponse }) {
   );
 }
 
-function ActivityIdCell({ activity }: { activity: ActivityResponse }) {
+function ActivityIdCell({ activity }: { activity: ActivityListItem }) {
   const displayIdText = activity.displayId ?? String(activity.id);
 
   return (
@@ -299,7 +299,7 @@ function CustomReportActivityRow({
   zebraEven,
   highlighted,
 }: {
-  activity: ActivityResponse;
+  activity: ActivityListItem;
   zebraEven: boolean;
   highlighted?: boolean;
 }) {

@@ -12,6 +12,7 @@ export * from './activity-field-labels';
 export * from './build-review-diff-lookups';
 export * from './report-settings';
 export * from './redact-activity-response';
+export { isActivityListItemPayload } from '../schemas/activity-list-item.schema';
 export * from './apply-field-level-write-policy';
 export * from './activity-rich-text';
 export * from './wcagContrast';

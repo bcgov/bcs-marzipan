@@ -8,13 +8,67 @@ import {
   LOOK_AHEAD_STATUS,
   toCalendarDateStringFromDb,
   toCivilTimeStringFromDb,
+  type ActivityListItem,
   type ActivityResponse,
   type EventPlannerDetail,
   type LookAheadStatus,
   type Visibility,
 } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
-import { activityResponseSchema } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_LIST_ITEM_SHAPE,
+  activityListItemSchema,
+  activityResponseSchema,
+} from '@corpcal/shared/schemas';
+
+/** Related rows joined when mapping an activity to API shapes. */
+export type ActivityMapperRelatedData = {
+  categories?: string[];
+  categoryIds?: number[];
+  tags?: Array<{ id: number; text: string }>;
+  activityStatus?: string;
+  dateStatus?: string;
+  timeStatus?: string;
+  venueStatus?: string;
+  newsReleaseOrigin?: string | null;
+  newsReleaseDistribution?: string | null;
+  premierRequested?: string | null;
+  venueAddress?: {
+    venueName: string | null;
+    addressLine1: string | null;
+    addressLine2: string | null;
+    city: string | null;
+    provinceOrState: string | null;
+    country: string | null;
+  } | null;
+  commsMaterials?: string[];
+  translationsRequired?: string[];
+  representativesAttending?: string[];
+  sharedWith?: string[];
+  commsContacts?: Array<{
+    userId: number;
+    name: string;
+    isLead: boolean;
+  }>;
+  eventPlannerDetails?: EventPlannerDetail[];
+  eventPlanners?: string[];
+  eventPlannerLeadIds?: number[];
+  leadOrgName?: string | null;
+  reportSettings?: Array<{
+    id: number;
+    name: string;
+    displayName: string;
+    omitted: boolean;
+  }>;
+  pitchRequiredStatus?: string | null;
+  translationsRequiredStatus?: string | null;
+  leadMinistry?: string | null;
+  leadMinistryAbbreviation?: string | null;
+  leadTeamDisplayName?: string | null;
+  canEdit?: boolean;
+  changedFieldsSinceReview?: string[];
+  flags?: ActivityFlagResponse[];
+};
 
 /**
  * Service for mapping database Activity entities to API ActivityResponse DTOs
@@ -29,53 +83,7 @@ export class ActivityMapperService {
    */
   mapToResponseDto(
     activity: Activity,
-    relatedData?: {
-      categories?: string[];
-      categoryIds?: number[];
-      tags?: Array<{ id: number; text: string }>;
-      activityStatus?: string;
-      dateStatus?: string;
-      timeStatus?: string;
-      venueStatus?: string;
-      newsReleaseOrigin?: string | null;
-      newsReleaseDistribution?: string | null;
-      premierRequested?: string | null;
-      venueAddress?: {
-        venueName: string | null;
-        addressLine1: string | null;
-        addressLine2: string | null;
-        city: string | null;
-        provinceOrState: string | null;
-        country: string | null;
-      } | null;
-      commsMaterials?: string[];
-      translationsRequired?: string[];
-      representativesAttending?: string[];
-      sharedWith?: string[];
-      commsContacts?: Array<{
-        userId: number;
-        name: string;
-        isLead: boolean;
-      }>;
-      eventPlannerDetails?: EventPlannerDetail[];
-      eventPlanners?: string[];
-      eventPlannerLeadIds?: number[];
-      leadOrgName?: string | null;
-      reportSettings?: Array<{
-        id: number;
-        name: string;
-        displayName: string;
-        omitted: boolean;
-      }>;
-      pitchRequiredStatus?: string | null;
-      translationsRequiredStatus?: string | null;
-      leadMinistry?: string | null;
-      leadMinistryAbbreviation?: string | null;
-      leadTeamDisplayName?: string | null;
-      canEdit?: boolean;
-      changedFieldsSinceReview?: string[];
-      flags?: ActivityFlagResponse[];
-    }
+    relatedData?: ActivityMapperRelatedData
   ): ActivityResponse {
     // Calendar dates and civil times come from `@corpcal/database` as strings
     // (Drizzle's `date()` and `time()` default to mode `'string'`). The
@@ -232,5 +240,94 @@ export class ActivityMapperService {
         `Response validation failed: ${errorMessage}. This indicates a mismatch between the mapping logic and the ActivityResponse schema.`
       );
     }
+  }
+
+  /**
+   * Map database Activity to API ActivityListItem (list/report bulk endpoints).
+   */
+  mapToListItemDto(
+    activity: Activity,
+    relatedData?: ActivityMapperRelatedData
+  ): ActivityListItem {
+    const formatDate = (
+      value: Date | string | null | undefined
+    ): string | null => toCalendarDateStringFromDb(value);
+
+    const formatTime = (value: string | null | undefined): string | null =>
+      toCivilTimeStringFromDb(value);
+
+    const eventPlannerDetails = (relatedData?.eventPlannerDetails ?? []).map(
+      (d) => ({
+        ...d,
+        eventPlannerName: d.eventPlannerName ?? undefined,
+      })
+    );
+
+    const dto: ActivityListItem = {
+      _shape: ACTIVITY_LIST_ITEM_SHAPE,
+      id: activity.id,
+      displayId: activity.displayId ?? null,
+      title: activity.title ?? '',
+      summary: activity.summary ?? '',
+      executiveSummary: activity.executiveSummary ?? null,
+      significance: activity.significance ?? null,
+      strategy: activity.strategy ?? null,
+      schedulingNotes: activity.schedulingNotes ?? null,
+      isIssue: activity.isIssue ?? false,
+      isConfidential: activity.isConfidential ?? false,
+      category: relatedData?.categories ?? [],
+      tags: relatedData?.tags ?? [],
+      pitchDate: formatDate(activity.pitchDate),
+      pitchRequiredStatus: relatedData?.pitchRequiredStatus ?? null,
+      lookAheadStatus: LOOK_AHEAD_STATUS.includes(
+        activity.lookAheadStatus as LookAheadStatus
+      )
+        ? (activity.lookAheadStatus as LookAheadStatus)
+        : (DEFAULT_LOOK_AHEAD_STATUS satisfies LookAheadStatus),
+      lookAheadSection: activity.lookAheadSection ?? null,
+      isAllDay: activity.isAllDay ?? false,
+      startDate: formatDate(activity.startDate),
+      endDate: formatDate(activity.endDate),
+      startTime: formatTime(activity.startTime),
+      endTime: formatTime(activity.endTime),
+      dateStatus: relatedData?.dateStatus ?? DEFAULT_STATUS,
+      timeStatus: relatedData?.timeStatus ?? DEFAULT_STATUS,
+      venueAddress: relatedData?.venueAddress ?? null,
+      premierRequested: relatedData?.premierRequested ?? null,
+      representativesAttending: relatedData?.representativesAttending ?? [],
+      leadOrg: relatedData?.leadOrgName ?? null,
+      leadOrgId: activity.leadOrgId ?? null,
+      leadMinistry: relatedData?.leadMinistry ?? null,
+      leadMinistryAbbreviation: relatedData?.leadMinistryAbbreviation ?? null,
+      leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
+      leadMinistryId: activity.leadMinistryId ?? null,
+      commsContacts: relatedData?.commsContacts ?? [],
+      eventPlanners: relatedData?.eventPlanners ?? [],
+      eventPlannerLeadIds: relatedData?.eventPlannerLeadIds ?? [],
+      eventPlannerDetails,
+      translationsRequired: relatedData?.translationsRequired ?? [],
+      translationsRequiredStatus:
+        relatedData?.translationsRequiredStatus ?? null,
+      translationsRequiredStatusId:
+        activity.translationsRequiredStatusId ?? null,
+      commsMaterials: relatedData?.commsMaterials ?? [],
+      newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,
+      newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
+      activityStatus: relatedData?.activityStatus ?? DEFAULT_STATUS,
+      activityStatusId: activity.activityStatusId ?? 0,
+      lastUpdatedDateTime:
+        activity.lastUpdatedDateTime?.toISOString() ??
+        activity.createdDateTime?.toISOString() ??
+        new Date().toISOString(),
+      lastUpdatedBy: activity.lastUpdatedBy ?? 0,
+      createdDateTime:
+        activity.createdDateTime?.toISOString() ?? new Date().toISOString(),
+      ...(relatedData?.canEdit !== undefined && {
+        canEdit: relatedData.canEdit,
+      }),
+      flags: relatedData?.flags ?? [],
+    };
+
+    return activityListItemSchema.parse(dto);
   }
 }

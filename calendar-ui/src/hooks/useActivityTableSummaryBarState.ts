@@ -92,7 +92,7 @@ export function useActivityTableSummaryBarState({
     ]
   );
 
-  const { appliedFilterTypeLabels, filterDetailLines, hasPanelFiltersActive } =
+  const { appliedFilterTypeLabels, filterDetailLines, hasActiveCriteria } =
     useMemo(
       () =>
         buildActivityTableFilterSummaryDetails({
@@ -108,10 +108,11 @@ export function useActivityTableSummaryBarState({
     clearSavedFilterIfNeeded();
     setPreferences({
       filterState: getResetFilterState?.() ?? DEFAULT_ACTIVITY_FILTER_STATE,
+      searchKeyword: '',
     });
   }, [setPreferences, clearSavedFilterIfNeeded, getResetFilterState]);
 
-  const showClearFilters = hasClearablePanelFilters ?? hasPanelFiltersActive;
+  const showClearFilters = hasClearablePanelFilters ?? hasActiveCriteria;
   const onClearFilters = showClearFilters ? handleClearPanelFilters : undefined;
 
   return {
