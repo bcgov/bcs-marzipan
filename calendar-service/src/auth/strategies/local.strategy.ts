@@ -97,3 +97,16 @@ export async function updateUserStatus(
     .set({ status, lastUpdatedDateTime: new Date() })
     .where(and(eq(users.id, userId)));
 }
+
+/**
+ * Record a successful login by stamping the user's last-login timestamp.
+ */
+export async function updateLastLogin(
+  db: Database,
+  userId: number
+): Promise<void> {
+  await db
+    .update(users)
+    .set({ lastLoginDateTime: new Date() })
+    .where(eq(users.id, userId));
+}

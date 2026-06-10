@@ -16,6 +16,7 @@ import { AuthService } from './auth.service';
 import {
   findUserByEmailLocal,
   findUserByIdLocal,
+  updateLastLogin,
   updateUserPassword,
   updateUserStatus,
 } from './strategies/local.strategy';
@@ -66,6 +67,7 @@ vi.mock('bcryptjs', () => ({
 vi.mock('./strategies/local.strategy', () => ({
   findUserByEmailLocal: vi.fn(),
   findUserByIdLocal: vi.fn(),
+  updateLastLogin: vi.fn(),
   updateUserPassword: vi.fn(),
   updateUserStatus: vi.fn(),
 }));
@@ -234,6 +236,7 @@ describe('AuthService — local auth methods', () => {
     vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
     vi.mocked(updateUserPassword).mockResolvedValue(undefined);
     vi.mocked(updateUserStatus).mockResolvedValue(undefined);
+    vi.mocked(updateLastLogin).mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -357,6 +360,42 @@ describe('AuthService — local auth methods', () => {
         'hashed-value',
         'active'
       );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // login() — local email/password
+  // -------------------------------------------------------------------------
+
+  describe('login() — local', () => {
+    it('records the last-login timestamp on a successful password login', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ id: 7, status: 'active' })
+      );
+      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+
+      await service.login({
+        username: 'test@example.com',
+        password: 'ValidPass1!',
+      });
+
+      expect(updateLastLogin).toHaveBeenCalledWith(localMockDb, 7);
+    });
+
+    it('does not record a last-login when the password is invalid', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({ id: 7, status: 'active' })
+      );
+      vi.mocked(bcrypt.compare).mockResolvedValue(false as never);
+
+      await expect(
+        service.login({
+          username: 'test@example.com',
+          password: 'WrongPass1!',
+        })
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(updateLastLogin).not.toHaveBeenCalled();
     });
   });
 
