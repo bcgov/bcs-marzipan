@@ -28,6 +28,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/hooks/useAuth';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 interface UserEditModalProps {
@@ -67,6 +68,12 @@ export function UserEditModal({
   const [flagColour, setFlagColour] = useState<string>('');
 
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
+
+  // Editing personal profile details is limited to admins / sys-admins.
+  const canEditProfile =
+    currentUser?.roleId === SYSTEM_ROLE_IDS.ADMIN ||
+    currentUser?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
 
   const { data: detail, isLoading } = useQuery<UserDetail | null>({
     queryKey: ['user', user.id],
@@ -98,8 +105,8 @@ export function UserEditModal({
       setFirstName(parts.slice(0, -1).join(' ') || parts[0] || '');
       setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
       setEmail(detail.adEmail ?? '');
-      setPhone((detail as any).phoneNumber ?? '');
-      setJobTitle((detail as any).jobTitle ?? (detail as any).adJobTitle ?? '');
+      setPhone(detail.phone ?? '');
+      setJobTitle(detail.jobTitle ?? '');
       setIsActive(Boolean(detail.isActive));
     }
   }, [detail]);
@@ -170,11 +177,26 @@ export function UserEditModal({
   const handleSave = () => {
     const newRoleId = parseInt(roleId, 10);
     if (Number.isNaN(newRoleId)) return;
-    updateMutation.mutate({
+
+    const body: UpdateUserBody = {
       roleId: newRoleId,
       notes: notes || null,
       isActive: Boolean(isActive),
-    });
+    };
+
+    // Profile fields are only editable by admins / sys-admins.
+    if (canEditProfile) {
+      const combinedName = [firstName, lastName]
+        .map((part) => (part ?? '').trim())
+        .filter(Boolean)
+        .join(' ');
+      body.displayName = combinedName || null;
+      body.email = (email ?? '').trim() || null;
+      body.phone = (phone ?? '').trim() || null;
+      body.jobTitle = (jobTitle ?? '').trim() || null;
+    }
+
+    updateMutation.mutate(body);
 
     // Save settings separately if the user is admin/sys-admin and the colour changed
     const savedFlagColour = detail?.flagColour ?? null;
@@ -210,18 +232,20 @@ export function UserEditModal({
                 <Label>First name</Label>
                 <Input
                   value={firstName ?? ''}
-                  readOnly
-                  disabled
-                  className="bg-slate-50"
+                  onChange={(e) => setFirstName(e.target.value)}
+                  readOnly={!canEditProfile}
+                  disabled={!canEditProfile}
+                  className={canEditProfile ? undefined : 'bg-slate-50'}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Last name</Label>
                 <Input
                   value={lastName ?? ''}
-                  readOnly
-                  disabled
-                  className="bg-slate-50"
+                  onChange={(e) => setLastName(e.target.value)}
+                  readOnly={!canEditProfile}
+                  disabled={!canEditProfile}
+                  className={canEditProfile ? undefined : 'bg-slate-50'}
                 />
               </div>
             </div>
@@ -229,10 +253,12 @@ export function UserEditModal({
             <div className="space-y-2">
               <Label>Email</Label>
               <Input
+                type="email"
                 value={email ?? ''}
-                readOnly
-                disabled
-                className="bg-slate-50"
+                onChange={(e) => setEmail(e.target.value)}
+                readOnly={!canEditProfile}
+                disabled={!canEditProfile}
+                className={canEditProfile ? undefined : 'bg-slate-50'}
               />
             </div>
 
@@ -240,9 +266,10 @@ export function UserEditModal({
               <Label>Phone</Label>
               <Input
                 value={phone ?? ''}
-                readOnly
-                disabled
-                className="bg-slate-50"
+                onChange={(e) => setPhone(e.target.value)}
+                readOnly={!canEditProfile}
+                disabled={!canEditProfile}
+                className={canEditProfile ? undefined : 'bg-slate-50'}
               />
             </div>
 
@@ -250,9 +277,10 @@ export function UserEditModal({
               <Label>Job title</Label>
               <Input
                 value={jobTitle ?? ''}
-                readOnly
-                disabled
-                className="bg-slate-50"
+                onChange={(e) => setJobTitle(e.target.value)}
+                readOnly={!canEditProfile}
+                disabled={!canEditProfile}
+                className={canEditProfile ? undefined : 'bg-slate-50'}
               />
             </div>
 

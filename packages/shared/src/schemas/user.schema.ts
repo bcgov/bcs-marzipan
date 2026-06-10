@@ -59,6 +59,8 @@ export const userDetailSchema = userListItemSchema.extend({
   directLoginEnabled: z.boolean().optional(),
   /** Active Directory job title (if available) */
   jobTitle: z.string().nullable().optional(),
+  /** Contact phone number (if available) */
+  phone: z.string().nullable().optional(),
   /** ISO timestamp for the user's last successful login */
   lastLoginDateTime: z.string().nullable().optional(),
 });
@@ -110,6 +112,20 @@ export const updateUserBodySchema = z.object({
   roleId: z.number().int().optional(),
   isActive: z.boolean().optional(),
   notes: z.string().nullable().optional(),
+  /**
+   * Profile fields. Editing these is restricted to admins / sys-admins
+   * (enforced server-side in the users controller).
+   */
+  displayName: z.string().trim().max(255).nullable().optional(),
+  email: z
+    .string()
+    .trim()
+    .email('Invalid email format')
+    .max(255)
+    .nullable()
+    .optional(),
+  phone: z.string().trim().max(50).nullable().optional(),
+  jobTitle: z.string().trim().max(255).nullable().optional(),
 });
 
 export type UpdateUserBody = z.infer<typeof updateUserBodySchema>;

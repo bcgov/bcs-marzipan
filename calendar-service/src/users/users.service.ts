@@ -250,6 +250,7 @@ export class UsersService {
         flagColour: userSettings.flagColour,
         directLoginEnabled: userSettings.directLoginEnabled,
         adJobTitle: users.adJobTitle,
+        adPhone: users.adPhone,
         lastLoginDateTime: users.lastLoginDateTime,
       })
       .from(users)
@@ -288,6 +289,7 @@ export class UsersService {
       flagColour: u.flagColour ?? null,
       directLoginEnabled: u.directLoginEnabled ?? undefined,
       jobTitle: u.adJobTitle ?? null,
+      phone: u.adPhone ?? null,
       lastLoginDateTime: u.lastLoginDateTime
         ? u.lastLoginDateTime instanceof Date
           ? u.lastLoginDateTime.toISOString()
@@ -319,14 +321,16 @@ export class UsersService {
       .values({
         userId: id,
         flagColour: dto.flagColour ?? null,
-        directLoginEnabled: dto.directLoginEnabled ?? existing.directLoginEnabled ?? false,
+        directLoginEnabled:
+          dto.directLoginEnabled ?? existing.directLoginEnabled ?? false,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: userSettings.userId,
         set: {
           flagColour: dto.flagColour ?? null,
-          directLoginEnabled: dto.directLoginEnabled ?? existing.directLoginEnabled ?? false,
+          directLoginEnabled:
+            dto.directLoginEnabled ?? existing.directLoginEnabled ?? false,
           updatedAt: new Date(),
         },
       });
@@ -403,6 +407,42 @@ export class UsersService {
       });
     }
 
+    if (
+      dto.displayName !== undefined &&
+      dto.displayName !== existing.adDisplayName
+    ) {
+      updates.adDisplayName = dto.displayName;
+      changes.push({
+        field: 'adDisplayName',
+        oldValue: existing.adDisplayName,
+        newValue: dto.displayName,
+      });
+    }
+    if (dto.email !== undefined && dto.email !== existing.adEmail) {
+      updates.adEmail = dto.email;
+      changes.push({
+        field: 'adEmail',
+        oldValue: existing.adEmail,
+        newValue: dto.email,
+      });
+    }
+    if (dto.phone !== undefined && dto.phone !== existing.phone) {
+      updates.adPhone = dto.phone;
+      changes.push({
+        field: 'adPhone',
+        oldValue: existing.phone ?? null,
+        newValue: dto.phone,
+      });
+    }
+    if (dto.jobTitle !== undefined && dto.jobTitle !== existing.jobTitle) {
+      updates.adJobTitle = dto.jobTitle;
+      changes.push({
+        field: 'adJobTitle',
+        oldValue: existing.jobTitle ?? null,
+        newValue: dto.jobTitle,
+      });
+    }
+
     if (Object.keys(updates).length === 0) return existing;
 
     updates.lastUpdatedBy = changedByUserId;
@@ -418,7 +458,9 @@ export class UsersService {
         ? 'deactivated'
         : updates.isActive === true
           ? 'activated'
-          : 'role_changed';
+          : updates.roleId !== undefined
+            ? 'role_changed'
+            : 'updated';
     await this.recordUserHistory(
       id,
       changedByUserId,

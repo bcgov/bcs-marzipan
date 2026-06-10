@@ -305,18 +305,18 @@ export default function UserDetailPage() {
                     {userDetail.jobTitle}
                   </div>
 
-                  <div className="mt-2 flex flex-col gap-1 text-sm text-slate-600">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-slate-600">
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-slate-400" aria-hidden />
                       <span className="text-sm text-slate-700">
                         {userDetail.adEmail}
                       </span>
                     </div>
-                    {(userDetail as any).phoneNumber && (
+                    {userDetail.phone && (
                       <div className="flex items-center gap-2">
                         <Phone className="h-4 w-4 text-slate-400" aria-hidden />
                         <span className="text-sm text-slate-700">
-                          {(userDetail as any).phoneNumber}
+                          {userDetail.phone}
                         </span>
                       </div>
                     )}
