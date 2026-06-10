@@ -25,3 +25,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface Window {
+  snowplow?: (...args: any[]) => void;
+}
