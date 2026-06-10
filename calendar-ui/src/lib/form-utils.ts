@@ -1,4 +1,5 @@
 import type { FieldErrors, FieldValues, FormState } from 'react-hook-form';
+import type { ZodError } from 'zod';
 
 /**
  * Extracts missing required field labels from react-hook-form FormState errors.
@@ -59,4 +60,36 @@ export function getMissingRequiredFields<TFieldValues extends FieldValues>(
 
   extractErrors(errors);
   return missingFields;
+}
+
+/** Maps Zod safeParse issues to top-level field labels for submit gating UI. */
+export function getMissingRequiredFieldsFromZodError(
+  error: ZodError,
+  getFieldLabel?: (fieldName: string) => string
+): string[] {
+  const missingFields: string[] = [];
+  const seenFields = new Set<string>();
+
+  for (const issue of error.issues) {
+    const topLevelField = issue.path[0];
+    if (typeof topLevelField !== 'string' || seenFields.has(topLevelField)) {
+      continue;
+    }
+    seenFields.add(topLevelField);
+    missingFields.push(
+      getFieldLabel ? getFieldLabel(topLevelField) : topLevelField
+    );
+  }
+
+  return missingFields;
+}
+
+/** Muted sticky-bar copy when create/edit submit is blocked by required fields. */
+export function formatMissingRequiredFieldsCountMessage(
+  count: number
+): string | null {
+  if (count <= 0) return null;
+  return count === 1
+    ? '1 required field missing'
+    : `${count} required fields missing`;
 }

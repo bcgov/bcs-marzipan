@@ -5,6 +5,7 @@ import { useState, type FC } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import {
+  createActivityRequestSchema,
   type ActivityFormData,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
@@ -24,6 +25,7 @@ import {
   PopoverTrigger,
 } from '../components/ui/popover';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
+import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState';
 import { useAuth } from '../hooks/useAuth';
 import { useCreateActivity } from '../hooks/useCalendar';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
@@ -77,6 +79,12 @@ export const CreateActivityForm: FC = () => {
     userTeamIds: user?.teamIds,
     hasCreateAny,
   });
+
+  const { isFormValid, missingFields, missingFieldsHelperText } =
+    useActivityFormSubmitState(form, {
+      getFieldLabel: getActivityFieldLabel,
+      schema: createActivityRequestSchema,
+    });
 
   const handleCancel = () => {
     void form.reset();
@@ -160,12 +168,6 @@ export const CreateActivityForm: FC = () => {
     });
   };
 
-  const isFormValid = form.formState.isValid;
-  const missingFields = getMissingRequiredFields(
-    form.formState,
-    getActivityFieldLabel
-  );
-
   // Show loading state while checking auth
   if (isAuthLoading) {
     return (
@@ -248,61 +250,70 @@ export const CreateActivityForm: FC = () => {
             }}
           />
 
-          <div className="flex justify-end gap-4 pt-6">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                void handleCancel();
-              }}
-              disabled={isSubmitting}
-              title="Close the create window without saving"
-            >
-              Cancel
-            </Button>
-            {!isFormValid && missingFields.length > 0 ? (
-              <Popover open={showMissingFieldsPopover}>
-                <PopoverTrigger asChild>
-                  <div
+          <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+              {missingFieldsHelperText != null && (
+                <p className="text-muted-foreground text-sm">
+                  {missingFieldsHelperText}
+                </p>
+              )}
+            </div>
+            <div className="flex shrink-0 gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void handleCancel();
+                }}
+                disabled={isSubmitting}
+                title="Close the create window without saving"
+              >
+                Cancel
+              </Button>
+              {!isFormValid && missingFields.length > 0 ? (
+                <Popover open={showMissingFieldsPopover}>
+                  <PopoverTrigger asChild>
+                    <div
+                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
+                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                    >
+                      <Button
+                        type="submit"
+                        disabled={!isFormValid || isSubmitting}
+                        variant="default"
+                        className="cursor-not-allowed"
+                      >
+                        {isSubmitting ? 'Submitting...' : 'Submit'}
+                      </Button>
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-80"
                     onMouseEnter={() => setShowMissingFieldsPopover(true)}
                     onMouseLeave={() => setShowMissingFieldsPopover(false)}
                   >
-                    <Button
-                      type="submit"
-                      disabled={true}
-                      variant={canReviewActivities ? 'outline' : 'default'}
-                      className="cursor-not-allowed"
-                    >
-                      {isSubmitting ? 'Submitting...' : 'Submit'}
-                    </Button>
-                  </div>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-80"
-                  onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                  onMouseLeave={() => setShowMissingFieldsPopover(false)}
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium">
+                        Required fields missing:
+                      </h4>
+                      <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                        {missingFields.map((field) => (
+                          <li key={field}>{field}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Button
+                  type="submit"
+                  variant="default"
+                  disabled={!isFormValid || isSubmitting}
                 >
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium">
-                      Required fields missing:
-                    </h4>
-                    <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                      {missingFields.map((field) => (
-                        <li key={field}>{field}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <Button
-                type="submit"
-                variant={canReviewActivities ? 'outline' : 'default'}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit'}
-              </Button>
-            )}
+                  {isSubmitting ? 'Submitting...' : 'Submit'}
+                </Button>
+              )}
+            </div>
           </div>
         </form>
       </Form>
