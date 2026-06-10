@@ -397,6 +397,7 @@ export default function UserDetailPage() {
                   <Switch
                     checked={directLoginEnabled}
                     onCheckedChange={(v) => setDirectLoginEnabled(Boolean(v))}
+                    disabled={!canEdit}
                   />
                 </div>
                 <div className="text-sm text-slate-500">
