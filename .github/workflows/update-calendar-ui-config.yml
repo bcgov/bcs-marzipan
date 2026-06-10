@@ -46,6 +46,7 @@ jobs:
 
       - name: Apply ConfigMap (update config.js key only)
         run: |
+          oc get configmap/calendar-ui-config >/dev/null 2>&1 || { echo "ERROR: ConfigMap calendar-ui-config not found in the current namespace. Deploy calendar-ui (and its ConfigMap) before running this workflow." >&2; exit 1; }
           CONFIG_JS_JSON=$(python3 -c 'import json; print(json.dumps(open("config.js", "r", encoding="utf-8").read()))')
           oc patch configmap/calendar-ui-config --type merge -p "{\"data\":{\"config.js\":${CONFIG_JS_JSON}}}"
       - name: Restart calendar-ui deployment

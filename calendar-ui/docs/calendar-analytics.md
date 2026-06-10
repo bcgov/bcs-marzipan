@@ -66,7 +66,7 @@ Schema references:
 - calendar_click: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/calendar_click/jsonschema/1-0-0
 - calendar_action (draft): https://github.com/bcgov/GDX-Analytics/blob/bcs-schemas/examples/schemas/ca.bc.gov.bcs/calendar_action/jsonschema/1-0-0
 
-If you'd like, I can:
+Possible next steps:
 - Instrument additional interactions (filters, export, view buttons).
 - Add automated tests that mock `window.snowplow` and assert calls.
 - Add a feature flag or env-var guard to control activation more explicitly.
