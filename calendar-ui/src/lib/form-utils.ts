@@ -1,5 +1,9 @@
 import type { FieldErrors, FieldValues, FormState } from 'react-hook-form';
-import type { ZodError } from 'zod';
+
+export type MissingRequiredFieldItem = {
+  name: string;
+  label: string;
+};
 
 /**
  * Extracts missing required field labels from react-hook-form FormState errors.
@@ -18,12 +22,12 @@ import type { ZodError } from 'zod';
  * );
  * ```
  */
-export function getMissingRequiredFields<TFieldValues extends FieldValues>(
+export function getMissingRequiredFieldItems<TFieldValues extends FieldValues>(
   formState: FormState<TFieldValues>,
   getFieldLabel?: (fieldName: string) => string
-): string[] {
+): MissingRequiredFieldItem[] {
   const errors = formState.errors;
-  const missingFields: string[] = [];
+  const missingFields: MissingRequiredFieldItem[] = [];
   const seenFields = new Set<string>();
 
   const extractErrors = (
@@ -41,10 +45,10 @@ export function getMissingRequiredFields<TFieldValues extends FieldValues>(
         const topLevelField = currentPath.split('.')[0];
         if (!seenFields.has(topLevelField)) {
           seenFields.add(topLevelField);
-          const label = getFieldLabel
-            ? getFieldLabel(topLevelField)
-            : topLevelField;
-          missingFields.push(label);
+          missingFields.push({
+            name: topLevelField,
+            label: getFieldLabel ? getFieldLabel(topLevelField) : topLevelField,
+          });
         }
       } else if (
         error &&
@@ -62,12 +66,23 @@ export function getMissingRequiredFields<TFieldValues extends FieldValues>(
   return missingFields;
 }
 
-/** Maps Zod safeParse issues to top-level field labels for submit gating UI. */
-export function getMissingRequiredFieldsFromZodError(
-  error: ZodError,
+export function getMissingRequiredFields<TFieldValues extends FieldValues>(
+  formState: FormState<TFieldValues>,
   getFieldLabel?: (fieldName: string) => string
 ): string[] {
-  const missingFields: string[] = [];
+  return getMissingRequiredFieldItems(formState, getFieldLabel).map(
+    (field) => field.label
+  );
+}
+
+type ZodIssueLike = { path: ReadonlyArray<PropertyKey> };
+
+/** Maps Zod safeParse issues to top-level field names/labels for submit gating UI. */
+export function getMissingRequiredFieldItemsFromZodError(
+  error: { issues: ReadonlyArray<ZodIssueLike> },
+  getFieldLabel?: (fieldName: string) => string
+): MissingRequiredFieldItem[] {
+  const missingFields: MissingRequiredFieldItem[] = [];
   const seenFields = new Set<string>();
 
   for (const issue of error.issues) {
@@ -76,12 +91,23 @@ export function getMissingRequiredFieldsFromZodError(
       continue;
     }
     seenFields.add(topLevelField);
-    missingFields.push(
-      getFieldLabel ? getFieldLabel(topLevelField) : topLevelField
-    );
+    missingFields.push({
+      name: topLevelField,
+      label: getFieldLabel ? getFieldLabel(topLevelField) : topLevelField,
+    });
   }
 
   return missingFields;
+}
+
+/** Maps Zod safeParse issues to top-level field labels for submit gating UI. */
+export function getMissingRequiredFieldsFromZodError(
+  error: { issues: ReadonlyArray<ZodIssueLike> },
+  getFieldLabel?: (fieldName: string) => string
+): string[] {
+  return getMissingRequiredFieldItemsFromZodError(error, getFieldLabel).map(
+    (field) => field.label
+  );
 }
 
 /** Muted sticky-bar copy when create/edit submit is blocked by required fields. */

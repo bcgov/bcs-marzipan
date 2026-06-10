@@ -102,4 +102,32 @@ describe('setActivityFormFieldValue', () => {
       expect(result.current.getFieldState('summary').error).toBeUndefined();
     });
   });
+
+  it('sets commsContacts error when the field is cleared', async () => {
+    const { result } = renderHook(() =>
+      useForm<ActivityFormData>({
+        resolver: zodResolver(
+          createActivityRequestSchema
+        ) as Resolver<ActivityFormData>,
+        mode: 'onChange',
+        defaultValues: {
+          ...getDefaultFormValues(),
+          title: 'Test',
+          summary:
+            '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Summary text"}]}]}',
+          leadTeamId: 1,
+          categoryIds: [1],
+          commsContacts: [{ userId: 1, isLead: true }],
+        } as ActivityFormData,
+      })
+    );
+
+    act(() => {
+      setActivityFormFieldValue(result.current, 'commsContacts', []);
+    });
+
+    await waitFor(() => {
+      expect(result.current.getFieldState('commsContacts').error).toBeDefined();
+    });
+  });
 });

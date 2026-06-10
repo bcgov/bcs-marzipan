@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildActivityDisplayId, TEAM_PREFIX_FALLBACK } from '@corpcal/shared';
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
+  createActivityRequestSchema,
   type ActivityFormData,
   type ActivityResponse,
   type CloneActivityRequest,
@@ -51,6 +52,7 @@ import {
 import { useActivityEditActions } from '../hooks/useActivityEditActions';
 import { useActivityEditFormHydration } from '../hooks/useActivityEditFormHydration';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
+import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState';
 import { useActivityLock } from '../hooks/useActivityLock';
 import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
@@ -82,7 +84,6 @@ import { showActivityMutationSuccessToast } from '../lib/activity-mutation-succe
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showErrorToast } from '../lib/error-toast';
-import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('ActivityPage');
@@ -133,6 +134,11 @@ export function ActivityPage({
     userTeamIds: user?.teamIds,
     hasCreateAny,
   });
+  const { isFormValid, missingFields, missingFieldItems } =
+    useActivityFormSubmitState(form, {
+      getFieldLabel: getActivityFieldLabel,
+      schema: createActivityRequestSchema,
+    });
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const reviewerChangedPaths = useMemo<ReadonlySet<string>>(() => {
     const paths = canReviewActivities
@@ -371,11 +377,6 @@ export function ActivityPage({
   });
 
   const isDirty = form.formState.isDirty;
-  const isFormValid = form.formState.isValid;
-  const missingFields = getMissingRequiredFields(
-    form.formState,
-    getActivityFieldLabel
-  );
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -424,9 +425,6 @@ export function ActivityPage({
     LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
     0
   );
-  const canSubmitWithoutValidationErrors =
-    isFormValid || missingFields.length === 0;
-
   const actionFlags = useActivityEditActions({
     lockState,
     mayEditFormFields,
@@ -434,7 +432,7 @@ export function ActivityPage({
     canCompleteActivities,
     markCompleteEligible,
     hasEditLock,
-    canSubmitWithoutValidationErrors,
+    canSubmitWithoutValidationErrors: isFormValid,
     isSubmitting,
     readOnly,
     isDirty,
@@ -636,13 +634,9 @@ export function ActivityPage({
 
   const onError = () => {
     logger.error('Form validation failed');
-    const missing = getMissingRequiredFields(
-      form.formState,
-      getActivityFieldLabel
-    );
     const detail =
-      missing.length > 0
-        ? `Required fields missing: ${missing.join(', ')}`
+      missingFields.length > 0
+        ? `Required fields missing: ${missingFields.join(', ')}`
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
@@ -1014,7 +1008,7 @@ export function ActivityPage({
                   Clone
                 </Button>
               )}
-              {!canSubmitWithoutValidationErrors ? (
+              {!isFormValid ? (
                 <Popover open={showMissingFieldsPopover}>
                   <PopoverTrigger asChild>
                     <div
@@ -1045,8 +1039,8 @@ export function ActivityPage({
                         Required fields missing:
                       </h4>
                       <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                        {missingFields.map((field) => (
-                          <li key={field}>{field}</li>
+                        {missingFieldItems.map((field) => (
+                          <li key={field.name}>{field.label}</li>
                         ))}
                       </ul>
                     </div>

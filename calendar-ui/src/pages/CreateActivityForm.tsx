@@ -21,8 +21,8 @@ import { Button } from '@/components/ui/button';
 import { Form } from '../components/ui/form';
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
 } from '../components/ui/popover';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState';
@@ -38,7 +38,6 @@ import {
   ACCESS_DENIED_TITLE,
 } from '../lib/error-messages';
 import { showErrorToast } from '../lib/error-toast';
-import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('CreateActivityForm');
@@ -154,13 +153,9 @@ export const CreateActivityForm: FC = () => {
 
   const onError = () => {
     logger.error('Form validation failed');
-    const missing = getMissingRequiredFields(
-      form.formState,
-      getActivityFieldLabel
-    );
     const detail =
-      missing.length > 0
-        ? `Required fields missing: ${missing.join(', ')}`
+      missingFields.length > 0
+        ? `Required fields missing: ${missingFields.join(', ')}`
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
@@ -252,13 +247,6 @@ export const CreateActivityForm: FC = () => {
 
           <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
-              {missingFieldsHelperText != null && (
-                <p className="text-muted-foreground text-sm">
-                  {missingFieldsHelperText}
-                </p>
-              )}
-            </div>
-            <div className="flex shrink-0 gap-4">
               <Button
                 type="button"
                 variant="outline"
@@ -270,25 +258,24 @@ export const CreateActivityForm: FC = () => {
               >
                 Cancel
               </Button>
-              {!isFormValid && missingFields.length > 0 ? (
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-4">
+              {missingFieldsHelperText != null && (
                 <Popover open={showMissingFieldsPopover}>
-                  <PopoverTrigger asChild>
-                    <div
+                  <PopoverAnchor asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="text-muted-foreground h-auto px-2 py-1 font-normal"
                       onMouseEnter={() => setShowMissingFieldsPopover(true)}
                       onMouseLeave={() => setShowMissingFieldsPopover(false)}
                     >
-                      <Button
-                        type="submit"
-                        disabled={!isFormValid || isSubmitting}
-                        variant="default"
-                        className="cursor-not-allowed"
-                      >
-                        {isSubmitting ? 'Submitting...' : 'Submit'}
-                      </Button>
-                    </div>
-                  </PopoverTrigger>
+                      {missingFieldsHelperText}
+                    </Button>
+                  </PopoverAnchor>
                   <PopoverContent
                     className="w-80"
+                    align="end"
                     onMouseEnter={() => setShowMissingFieldsPopover(true)}
                     onMouseLeave={() => setShowMissingFieldsPopover(false)}
                   >
@@ -304,15 +291,15 @@ export const CreateActivityForm: FC = () => {
                     </div>
                   </PopoverContent>
                 </Popover>
-              ) : (
-                <Button
-                  type="submit"
-                  variant="default"
-                  disabled={!isFormValid || isSubmitting}
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit'}
-                </Button>
               )}
+              <Button
+                type="submit"
+                variant="default"
+                disabled={!isFormValid || isSubmitting}
+                className={!isFormValid ? 'cursor-not-allowed' : undefined}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit'}
+              </Button>
             </div>
           </div>
         </form>

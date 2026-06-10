@@ -74,10 +74,19 @@ const activityRichTextStoredStringSchema = z
  * Core activity fields schema
  * These fields exist in the database activities table
  */
+const TITLE_REQUIRED_MESSAGE = 'An activity title is required';
+const SUMMARY_REQUIRED_MESSAGE = 'A summary is required';
+
 const activityCoreFieldsSchema = z.object({
   // Required fields
-  title: z.string().min(1).max(255),
-  summary: activityRichTextStoredStringSchema,
+  title: z.preprocess(
+    (val) => (val === undefined || val === null ? '' : val),
+    z.string().min(1, { message: TITLE_REQUIRED_MESSAGE }).max(255)
+  ),
+  summary: z.preprocess(
+    (val) => (val === undefined || val === null ? '' : val),
+    activityRichTextStoredStringSchema
+  ),
   significance: z.preprocess(
     emptyStringToNull,
     z
@@ -261,7 +270,9 @@ const junctionTableIdsSchema = z.object({
   reportSettings: z.array(reportSettingSchema).optional(), // Report settings for the activity
 });
 
-const CATEGORY_IDS_MIN_MESSAGE = 'At least one category is required.';
+const CATEGORY_IDS_MIN_MESSAGE = 'At least one category is required';
+const LEAD_CONTACT_REFINE_MESSAGE = 'A lead contact is required';
+const LEAD_CONTACT_REFINE_PATH = ['commsContacts'] as const;
 
 /** Create requests require at least one category ID. */
 const createJunctionTableIdsSchema = junctionTableIdsSchema.extend({
@@ -270,8 +281,14 @@ const createJunctionTableIdsSchema = junctionTableIdsSchema.extend({
     .min(1, { message: CATEGORY_IDS_MIN_MESSAGE }),
 });
 
-const LEAD_CONTACT_REFINE_MESSAGE = 'A lead contact is required.';
-const LEAD_CONTACT_REFINE_PATH = ['commsContacts'] as const;
+/** Field-level create validation so RHF trigger('commsContacts') catches empty arrays. */
+const createCommsContactsFieldSchema = z
+  .array(commsContactSchema)
+  .min(1, { message: LEAD_CONTACT_REFINE_MESSAGE })
+  .refine((contacts) => contacts.filter((c) => c.isLead).length === 1, {
+    message: LEAD_CONTACT_REFINE_MESSAGE,
+  })
+  .optional();
 
 /** Create: commsContacts must have at least one contact and exactly one lead. */
 function createLeadContactRefine(data: {
@@ -291,7 +308,7 @@ function updateLeadContactRefine(data: {
 }
 
 const EVENT_PLANNER_LEAD_REFINE_MESSAGE =
-  'When event planners are provided, exactly one must be marked as lead.';
+  'When event planners are provided, exactly one must be marked as lead';
 const EVENT_PLANNER_LEAD_REFINE_PATH = ['eventPlanners'] as const;
 
 /** When eventPlanners is provided and non-empty, exactly one must have isLead true. */
@@ -329,9 +346,10 @@ const createBaseSchema = activityCoreFieldsSchema
  * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
  * Requires at least one Comms contact with exactly one marked as lead.
  */
-const SUMMARY_REQUIRED_MESSAGE = 'Summary is required.';
-
 export const createActivityRequestSchema = createBaseSchema
+  .extend({
+    commsContacts: createCommsContactsFieldSchema,
+  })
   .refine(createLeadContactRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,
     path: [...LEAD_CONTACT_REFINE_PATH],
@@ -372,7 +390,7 @@ export const updateActivityRequestSchema = createBaseSchema
     (data) => !(data.markAsReviewed === true && data.markAsCompleted === true),
     {
       message:
-        'markAsReviewed and markAsCompleted are mutually exclusive; set at most one.',
+        'markAsReviewed and markAsCompleted are mutually exclusive; set at most one',
       path: ['markAsCompleted'],
     }
   );

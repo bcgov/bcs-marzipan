@@ -5,13 +5,22 @@ import {
   type FormState,
   type UseFormReturn,
 } from 'react-hook-form';
-import type { ZodType } from 'zod';
 
 import {
   formatMissingRequiredFieldsCountMessage,
-  getMissingRequiredFields,
-  getMissingRequiredFieldsFromZodError,
+  getMissingRequiredFieldItems,
+  getMissingRequiredFieldItemsFromZodError,
+  type MissingRequiredFieldItem,
 } from '../lib/form-utils';
+
+type ActivityFormValidationSchema<TFieldValues extends FieldValues> = {
+  safeParse: (data: unknown) =>
+    | { success: true; data: TFieldValues }
+    | {
+        success: false;
+        error: Parameters<typeof getMissingRequiredFieldItemsFromZodError>[0];
+      };
+};
 
 type UseActivityFormSubmitStateOptions<TFieldValues extends FieldValues> = {
   getFieldLabel?: (fieldName: string) => string;
@@ -20,12 +29,13 @@ type UseActivityFormSubmitStateOptions<TFieldValues extends FieldValues> = {
    * watched values so the sticky bar updates as the user edits (not only after
    * RHF async validation settles).
    */
-  schema?: ZodType<TFieldValues>;
+  schema?: ActivityFormValidationSchema<TFieldValues>;
 };
 
 export type ActivityFormSubmitState = {
   isFormValid: boolean;
   missingFields: string[];
+  missingFieldItems: MissingRequiredFieldItem[];
   missingFieldsHelperText: string | null;
   canSubmit: boolean;
 };
@@ -37,41 +47,45 @@ export function useActivityFormSubmitState<TFieldValues extends FieldValues>(
   form: UseFormReturn<TFieldValues>,
   options?: UseActivityFormSubmitStateOptions<TFieldValues>
 ): ActivityFormSubmitState {
-  const watchedValues = useWatch({ control: form.control });
+  // useWatch subscribes to edits; getValues() reads the latest store on each render.
+  // Do not memoize getValues() on watchedValues — RHF may reuse the watch object reference.
+  useWatch({ control: form.control });
+  const values = form.getValues();
   const { isValid, errors } = useFormState({
     control: form.control,
   });
 
   if (options?.schema) {
-    const values = (watchedValues ?? form.getValues()) as TFieldValues;
     const result = options.schema.safeParse(values);
-    const missingFields = result.success
+    const missingFieldItems = result.success
       ? []
-      : getMissingRequiredFieldsFromZodError(
+      : getMissingRequiredFieldItemsFromZodError(
           result.error,
           options.getFieldLabel
         );
 
     return {
       isFormValid: result.success,
-      missingFields,
+      missingFields: missingFieldItems.map((field) => field.label),
+      missingFieldItems,
       missingFieldsHelperText: formatMissingRequiredFieldsCountMessage(
-        missingFields.length
+        missingFieldItems.length
       ),
       canSubmit: result.success,
     };
   }
 
-  const missingFields = getMissingRequiredFields(
+  const missingFieldItems = getMissingRequiredFieldItems(
     { errors } as FormState<TFieldValues>,
     options?.getFieldLabel
   );
 
   return {
     isFormValid: isValid,
-    missingFields,
+    missingFields: missingFieldItems.map((field) => field.label),
+    missingFieldItems,
     missingFieldsHelperText: formatMissingRequiredFieldsCountMessage(
-      missingFields.length
+      missingFieldItems.length
     ),
     canSubmit: isValid,
   };
