@@ -188,21 +188,6 @@ export function useActivityFormSetup({
     }
   }, [mode, leadTeamOptions, userTeamIds, lookups.organizations, form]);
 
-  // Seed full-form validation after create defaults hydrate so Submit gating is accurate on first paint.
-  useEffect(() => {
-    if (mode !== 'create') return;
-    if (lookups.isLoading) return;
-    void form.trigger();
-  }, [
-    mode,
-    lookups.isLoading,
-    lookups.dateStatuses,
-    lookups.timeStatuses,
-    leadTeamOptions,
-    lookups.organizations,
-    form,
-  ]);
-
   return {
     form,
     lookups,

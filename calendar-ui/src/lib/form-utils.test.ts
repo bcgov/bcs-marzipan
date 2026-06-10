@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 import {
   formatMissingRequiredFieldsCountMessage,
+  getMissingRequiredFieldItems,
+  getMissingRequiredFieldItemsFromZodError,
   getMissingRequiredFields,
   getMissingRequiredFieldsFromZodError,
 } from './form-utils';
@@ -58,5 +60,47 @@ describe('getMissingRequiredFieldsFromZodError', () => {
     );
 
     expect(missing).toEqual(['Label:title', 'Label:categoryIds']);
+  });
+});
+
+describe('getMissingRequiredFieldItemsFromZodError', () => {
+  it('returns field names and labels while deduping top-level paths', () => {
+    const schema = z.object({
+      title: z.string().min(1),
+      categoryIds: z.array(z.number()).min(1),
+    });
+
+    const result = schema.safeParse({ title: '', categoryIds: [] });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    const missing = getMissingRequiredFieldItemsFromZodError(
+      result.error,
+      (field) => `Label:${field}`
+    );
+
+    expect(missing).toEqual([
+      { name: 'title', label: 'Label:title' },
+      { name: 'categoryIds', label: 'Label:categoryIds' },
+    ]);
+  });
+});
+
+describe('getMissingRequiredFieldItems', () => {
+  it('extracts top-level field names and labels from nested errors', () => {
+    const missing = getMissingRequiredFieldItems(
+      {
+        errors: {
+          title: { type: 'too_small', message: 'Required' },
+          categoryIds: { type: 'too_small', message: 'At least one category' },
+        },
+      } as never,
+      (field) => `Label:${field}`
+    );
+
+    expect(missing).toEqual([
+      { name: 'title', label: 'Label:title' },
+      { name: 'categoryIds', label: 'Label:categoryIds' },
+    ]);
   });
 });

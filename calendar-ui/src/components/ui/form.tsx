@@ -107,6 +107,10 @@ const useFormField = () => {
 
   const fieldState = getFieldState(fieldContext.name, formState);
   const { id, ariaRequired } = itemContext;
+  const showError = Boolean(
+    fieldState.error &&
+    (fieldState.isTouched || fieldState.isDirty || formState.submitCount > 0)
+  );
 
   return {
     id,
@@ -116,6 +120,7 @@ const useFormField = () => {
     formMessageId: `${id}-form-item-message`,
     ariaRequired,
     ...fieldState,
+    showError,
   };
 };
 
@@ -284,19 +289,24 @@ const FormControl = forwardRef<
   ElementRef<typeof Slot>,
   ComponentPropsWithoutRef<typeof Slot>
 >(({ ...props }, ref) => {
-  const { error, formItemId, formDescriptionId, formMessageId, ariaRequired } =
-    useFormField();
+  const {
+    showError,
+    formItemId,
+    formDescriptionId,
+    formMessageId,
+    ariaRequired,
+  } = useFormField();
 
   return (
     <Slot
       ref={ref}
       id={formItemId}
       aria-describedby={
-        !error
+        !showError
           ? `${formDescriptionId}`
           : `${formDescriptionId} ${formMessageId}`
       }
-      aria-invalid={!!error}
+      aria-invalid={showError}
       {...props}
       aria-required={ariaRequired ? true : undefined}
     />
@@ -325,8 +335,8 @@ const FormMessage = forwardRef<
   HTMLParagraphElement,
   HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
-  const { error, formMessageId } = useFormField();
-  const body = error ? String(error?.message) : children;
+  const { error, showError, formMessageId } = useFormField();
+  const body = showError && error ? String(error?.message) : children;
 
   if (!body) {
     return null;
