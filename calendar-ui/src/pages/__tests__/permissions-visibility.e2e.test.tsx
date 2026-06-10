@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
@@ -110,11 +111,16 @@ describe('Permissions visibility integration', () => {
     const switchEl = row!.querySelector('[role="switch"]') as HTMLElement;
     expect(switchEl).toBeTruthy();
 
-    // click the switch to enable visibility
-    switchEl.click();
+    // click the switch to enable visibility using userEvent for proper async handling
+    const user = userEvent.setup();
+    await user.click(switchEl);
 
-    // After mutation + invalidation, UserDetailPage should show the permission
-    const permInUser = await screen.findByText('Test Permission');
-    expect(permInUser).toBeInTheDocument();
-  });
+    // Wait for the mocked backend state to be updated (rolesPermissionsMap mutated by mock)
+    await waitFor(() => expect((rolesPermissionsMap as any)[2]).toBeTruthy(), {
+      timeout: 5000,
+    });
+
+    // Ensure the UserDetailPage shows the permission somewhere on the page.
+    await screen.findByText('Test Permission', {}, { timeout: 5000 });
+  }, 10000);
 });

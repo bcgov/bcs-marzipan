@@ -257,6 +257,15 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get permissions for all roles' })
+  @ApiResponse({ status: 200, description: 'Permissions map retrieved' })
+  @Get('roles/permissions')
+  @Header('Cache-Control', lookupGetCacheControl())
+  async getRolesPermissionsMap(): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.getRolesPermissionsMap();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get permissions for a role' })
   @ApiResponse({
     status: 200,
@@ -277,15 +286,6 @@ export class LookupsController {
     if (!Number.isInteger(roleId))
       throw new NotFoundException('Role not found');
     const data = await this.lookupsService.getRolePermissions(roleId);
-    return { success: true, data };
-  }
-
-  @ApiOperation({ summary: 'Get permissions for all roles' })
-  @ApiResponse({ status: 200, description: 'Permissions map retrieved' })
-  @Get('roles/permissions')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getRolesPermissionsMap(): Promise<{ success: boolean; data: any }> {
-    const data = await this.lookupsService.getRolesPermissionsMap();
     return { success: true, data };
   }
 

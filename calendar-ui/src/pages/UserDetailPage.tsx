@@ -214,6 +214,25 @@ export default function UserDetailPage() {
   const permissionRows = rolePermissionRows;
   const visibleRows = permissionRows;
 
+  // Memoize rendered permission items to avoid unnecessary re-renders
+  const renderedPermissionItems = useMemo(() => {
+    return visibleRows.map((r, i) => (
+      <div key={i} className="flex items-start gap-2">
+        {r.hasPermission ? (
+          <CheckCircle
+            className="h-6 w-6 shrink-0 text-green-600"
+            aria-hidden
+          />
+        ) : (
+          <XCircle className="h-6 w-6 shrink-0 text-red-600" aria-hidden />
+        )}
+        <span className="leading-tight">
+          {r.displayName ?? r.description ?? r.key}
+        </span>
+      </div>
+    ));
+  }, [visibleRows]);
+
   const handleSave = async () => {
     const body: { roleId?: number; notes?: string | null } = {};
     if (selectedRoleId != null) body.roleId = selectedRoleId;
@@ -352,24 +371,7 @@ export default function UserDetailPage() {
                 </Select>
                 {visibleRows.length > 0 && (
                   <div className="mt-2 grid grid-cols-1 gap-2 p-2 text-sm text-slate-700 sm:grid-cols-2">
-                    {visibleRows.map((r, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        {r.hasPermission ? (
-                          <CheckCircle
-                            className="h-6 w-6 shrink-0 text-green-600"
-                            aria-hidden
-                          />
-                        ) : (
-                          <XCircle
-                            className="h-6 w-6 shrink-0 text-red-600"
-                            aria-hidden
-                          />
-                        )}
-                        <span className="leading-tight">
-                          {r.displayName ?? r.description ?? r.key}
-                        </span>
-                      </div>
-                    ))}
+                    {renderedPermissionItems}
                   </div>
                 )}
               </div>
@@ -426,10 +428,23 @@ export default function UserDetailPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        void navigator.clipboard.writeText(
-                          resetCodeResult.code
-                        );
-                        toast.success('Copied to clipboard');
+                        void (async () => {
+                          try {
+                            if (
+                              resetCodeResult?.code &&
+                              navigator?.clipboard?.writeText
+                            ) {
+                              await navigator.clipboard.writeText(
+                                resetCodeResult.code
+                              );
+                              toast.success('Copied to clipboard');
+                            } else {
+                              toast.error('Clipboard not available');
+                            }
+                          } catch {
+                            toast.error('Failed to copy to clipboard');
+                          }
+                        })();
                       }}
                       aria-label="Copy reset code"
                     >
@@ -452,7 +467,7 @@ export default function UserDetailPage() {
               </Button>
               {canEdit && (
                 <Button
-                  onClick={handleSave}
+                  onClick={() => void handleSave()}
                   disabled={mutation.status === 'pending'}
                 >
                   Save
