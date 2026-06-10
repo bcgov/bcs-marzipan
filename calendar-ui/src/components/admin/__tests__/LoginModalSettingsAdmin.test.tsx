@@ -57,7 +57,7 @@ describe('LoginModalSettingsAdmin', () => {
     );
 
     expect(
-      screen.getByRole('heading', { name: /Login Modal/i })
+      screen.getByRole('heading', { name: /Login modal/i })
     ).toBeInTheDocument();
     expect(screen.getByTestId('input-login-modal-title')).toBeInTheDocument();
     expect(

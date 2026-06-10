@@ -23,6 +23,7 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     isConfidential: false,
     isIssue: false,
     summary: '',
+    executiveSummary: '',
     tags: [],
     lookAheadStatus: null,
     lookAheadSection: null,
@@ -48,6 +49,7 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     commsContactLeadUserId: null,
     translationsRequired: [],
     translationsRequiredStatus: null,
+    translationsRequiredStatusId: null,
     commsMaterials: [],
     activityStatus: '',
     activityStatusId: 0,
@@ -114,21 +116,21 @@ describe('normalizeListParams', () => {
     });
   });
 
-  it('includes leadTeamId, commsContactLeadUserId, sharedWithTeamId, sharedWithTeamIds when provided', () => {
+  it('includes tab context array params when provided', () => {
     expect(
       normalizeListParams({
         includeCompleted: true,
-        leadTeamId: 5,
+        leadTeamIds: [5],
       })
-    ).toEqual({ includeCompleted: true, leadTeamId: 5 });
+    ).toEqual({ includeCompleted: true, leadTeamIds: [5] });
     expect(
       normalizeListParams({
-        commsContactLeadUserId: 10,
-        sharedWithTeamId: 3,
+        commsContactLeadUserIds: [10],
+        flagAssigneeUserIds: [3],
       })
     ).toEqual({
-      commsContactLeadUserId: 10,
-      sharedWithTeamId: 3,
+      commsContactLeadUserIds: [10],
+      flagAssigneeUserIds: [3],
     });
     expect(
       normalizeListParams({
@@ -137,12 +139,12 @@ describe('normalizeListParams', () => {
     ).toEqual({ sharedWithTeamIds: [1, 2, 3] });
   });
 
-  it('omits date and activityStatusId (filtered client-side)', () => {
+  it('omits unsupported panel filter fields', () => {
     expect(
       normalizeListParams({
         startDateFrom: '2025-01-01',
         startDateTo: '2025-01-31',
-        activityStatusId: 2,
+        activityStatusIds: [2],
       } as Parameters<typeof normalizeListParams>[0])
     ).toEqual({});
   });
@@ -291,7 +293,7 @@ describe('filterActivityRowsByFilters', () => {
     expect(result.map((r) => r.id)).toEqual([1, 2]);
   });
 
-  it('filters by date range (activity start and end must fall within range)', () => {
+  it('filters by date range (activity span must overlap range)', () => {
     const rows = [
       makeRow({
         id: 1,
@@ -301,12 +303,17 @@ describe('filterActivityRowsByFilters', () => {
       makeRow({
         id: 2,
         startDate: '2024-12-01',
-        endDate: '2024-12-31',
+        endDate: '2025-01-10',
       }),
       makeRow({
         id: 3,
         startDate: '2025-02-01',
         endDate: '2025-02-28',
+      }),
+      makeRow({
+        id: 4,
+        startDate: '2024-12-15',
+        endDate: '2025-02-15',
       }),
     ];
     const result = filterActivityRowsByFilters(rows, {
@@ -320,7 +327,7 @@ describe('filterActivityRowsByFilters', () => {
       categoryNames: [],
       activityStatusIds: [],
     });
-    expect(result.map((r) => r.id)).toEqual([1]);
+    expect(result.map((r) => r.id)).toEqual([1, 2, 4]);
   });
 
   it('filters by look-ahead status', () => {
@@ -580,28 +587,17 @@ describe('filterActivityRowsByFilters', () => {
     expect(result.map((r) => r.id)).toEqual([1, 2]);
   });
 
-  it('filters by translationRequiredStatusIds when context provides options', () => {
+  it('filters by translationRequiredStatusIds (ID-based, no context needed)', () => {
     const rows = [
-      makeRow({ id: 1, translationsRequiredStatus: 'Required' }),
-      makeRow({ id: 2, translationsRequiredStatus: 'Pending' }),
-      makeRow({ id: 3, translationsRequiredStatus: null }),
-      makeRow({ id: 4, translationsRequiredStatus: 'Required' }),
+      makeRow({ id: 1, translationsRequiredStatusId: 2 }),
+      makeRow({ id: 2, translationsRequiredStatusId: 1 }),
+      makeRow({ id: 3, translationsRequiredStatusId: null }),
+      makeRow({ id: 4, translationsRequiredStatusId: 2 }),
     ];
-    const context = {
-      translationRequiredStatusOptions: [
-        { value: '1', label: 'Pending' },
-        { value: '2', label: 'Required' },
-        { value: '3', label: 'Not required' },
-      ],
-    };
-    const result = filterActivityRowsByFilters(
-      rows,
-      {
-        ...DEFAULT_ACTIVITY_FILTER_STATE,
-        translationRequiredStatusIds: [2],
-      },
-      context
-    );
+    const result = filterActivityRowsByFilters(rows, {
+      ...DEFAULT_ACTIVITY_FILTER_STATE,
+      translationRequiredStatusIds: [2],
+    });
     expect(result.map((r) => r.id)).toEqual([1, 4]);
   });
 });
@@ -745,5 +741,13 @@ describe('filterActivityRowsByKeyword', () => {
     ];
     expect(filterActivityRowsByKeyword(rows, 'environment')).toEqual(rows);
     expect(filterActivityRowsByKeyword(rows, 'Event')).toEqual(rows);
+  });
+
+  it('matches in executiveSummary (parity with Reports search)', () => {
+    const rows = [
+      makeRow({ id: 1, executiveSummary: 'Cabinet briefing scheduled' }),
+      makeRow({ id: 2, executiveSummary: 'Other' }),
+    ];
+    expect(filterActivityRowsByKeyword(rows, 'briefing')).toEqual([rows[0]]);
   });
 });

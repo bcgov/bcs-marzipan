@@ -82,6 +82,10 @@ export function buildPayloadForUpdate(
   const payload: Record<string, unknown> = {
     ...buildPayloadFromPrepared(prepared, preparedFormValues),
     reportSettings: normalizedReportSettings,
+    // For updates, always send the representatives array (even if empty) so the server
+    // can detect when all representatives have been removed. buildPayloadForCreate uses
+    // toUndefinedIfEmpty which converts [] to undefined, hiding removals from history.
+    representatives: formValues.representatives ?? [],
   };
   if (markAsReviewed !== undefined) {
     payload.markAsReviewed = markAsReviewed;

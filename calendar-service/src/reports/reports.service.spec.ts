@@ -34,7 +34,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     get: vi.fn(),
   };
   const applicationSettings = {};
-  const lookupsService = {};
+  const lookupsService = {} as never;
 
   let service: ReportsService;
   const ctx = {} as never;
@@ -48,7 +48,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       pdfGeneratorService as never,
       configService as never,
       applicationSettings as never,
-      lookupsService as never
+      lookupsService
     );
 
     vi.spyOn(service, 'findReportByName').mockResolvedValue({
@@ -176,9 +176,13 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
   });
 
   it('filters omitted activities out of each month section', async () => {
+    const retainedActivityDate = '2026-05-10';
+    const omittedActivityDate = '2026-05-12';
+    const expectedSectionId = retainedActivityDate.slice(0, 7);
+
     activitiesService.findAll.mockResolvedValue([
-      createActivity(10, '2026-05-10'),
-      createActivity(11, '2026-05-12'),
+      createActivity(10, retainedActivityDate),
+      createActivity(11, omittedActivityDate),
     ]);
     vi.spyOn(service, 'getActivitiesForReport').mockResolvedValue([
       { activityId: 11, omitted: true },
@@ -188,20 +192,37 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       'thirty-sixty-ninety',
       reportDataQuerySchema.parse({
         startDateFrom: '2026-05-01',
-        startDateTo: '2026-06-30',
+        startDateTo: '2026-05-31',
       }),
       ctx
     );
 
-    const maySection = result.sections.find(
-      (section) => section.id === '2026-05'
+    const matchingSection = result.sections.find(
+      (section) => section.id === expectedSectionId
     );
-    expect(maySection).toBeDefined();
-    expect(maySection?.activities.map((activity) => activity.id)).toEqual([10]);
-    expect(
-      result.sections
-        .filter((section) => section.id !== '2026-05')
-        .every((section) => section.activities.length === 0)
-    ).toBe(true);
+    expect(matchingSection).toBeDefined();
+    expect(matchingSection?.activities.map((activity) => activity.id)).toEqual([
+      10,
+    ]);
+    expect(result.sections).toHaveLength(1);
+  });
+
+  it('passes array filter params through to findAll', async () => {
+    await service.getReportData(
+      'thirty-sixty-ninety',
+      reportDataQuerySchema.parse({
+        tagIds: '1,2',
+        activityStatusIds: '3',
+        categoryNames: 'Event,FYI',
+      }),
+      ctx
+    );
+
+    expect(activitiesService.findAll).toHaveBeenCalledTimes(1);
+    expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
+      tagIds: [1, 2],
+      activityStatusIds: [3],
+      categoryNames: ['Event', 'FYI'],
+    });
   });
 });

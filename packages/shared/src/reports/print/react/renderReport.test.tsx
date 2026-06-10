@@ -36,7 +36,7 @@ const BASE_ACTIVITY: ActivityResponse = {
   leadOrgId: null,
   leadOrgName: null,
   isAllDay: false,
-  startDate: '2026-04-27T00:00:00.000Z',
+  startDate: '2026-04-27',
   endDate: null,
   dateStatusId: undefined,
   startTime: '10:00',
@@ -122,6 +122,16 @@ const FIXTURE: ReportDataResponse = {
       activities: [BASE_ACTIVITY],
     },
   ],
+  meta: {
+    resolvedDateRange: {
+      start: toCalendarDateString('2026-04-27'),
+      end: toCalendarDateString('2026-04-29'),
+    },
+    wasClamped: false,
+    inferredBound: null,
+    activityCount: 1,
+    largeResultWarning: false,
+  },
 };
 
 const FIXED_GENERATED_AT = new Date('2026-04-27T15:30:00.000Z');
@@ -660,6 +670,13 @@ describe('renderPrintReportFragmentHtml', () => {
           ],
         },
       ],
+      meta: {
+        ...FIXTURE.meta!,
+        resolvedDateRange: {
+          start: toCalendarDateString('2026-04-27'),
+          end: toCalendarDateString('2026-04-27'),
+        },
+      },
     };
 
     const html = renderPrintReportFragmentHtml('look-ahead', eventsAndIssues, {

@@ -212,7 +212,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       },
       {
         accessorKey: 'displayName',
-        header: 'Display Name',
+        header: 'Display name',
         cell: ({ row }) => (
           <span className="text-slate-600">
             {row.original.displayName || '—'}
@@ -222,7 +222,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       ...additionalColumns,
       {
         accessorKey: 'sortOrder',
-        header: 'Sort Order',
+        header: 'Sort order',
         cell: ({ row }) => (
           <span className="text-slate-600">{row.original.sortOrder}</span>
         ),

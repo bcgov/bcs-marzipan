@@ -5,7 +5,7 @@ import { AppModule } from '../src/app.module';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { createAuthRequest, e2eLogin } from './test-helpers';
 
-describe('Login Modal API permissions', () => {
+describe('Login modal API permissions', () => {
   let app: INestApplication;
   let nonAdminToken: string;
   let systemAdminToken: string;

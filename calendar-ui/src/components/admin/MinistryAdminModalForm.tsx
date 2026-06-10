@@ -196,7 +196,7 @@ export function MinistryAdminModalForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="ministry-display-name" className="text-sm font-medium">
-          Display Name<span className="text-destructive ml-1">*</span>
+          Display name<span className="text-destructive ml-1">*</span>
         </Label>
         <Input
           id="ministry-display-name"
@@ -252,7 +252,7 @@ export function MinistryAdminModalForm({
       </div>
       <div className="space-y-2">
         <Label htmlFor="ministry-sort" className="text-sm font-medium">
-          Sort Order
+          Sort order
         </Label>
         <Input
           id="ministry-sort"

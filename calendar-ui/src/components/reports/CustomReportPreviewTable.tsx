@@ -25,7 +25,7 @@ import {
 } from '@tanstack/react-table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type { ActivityListItem } from '@corpcal/shared/api/types';
 import type { CustomReportFieldConfig } from '@corpcal/shared/reports/customReportFieldConfig';
 import {
   tableBodyRow,
@@ -71,7 +71,7 @@ function applySelectedColumnOrderToConfig(
 }
 
 export interface CustomReportPreviewTableProps {
-  activities: ActivityResponse[];
+  activities: ActivityListItem[];
   config: CustomReportFieldConfig[];
   /** When set, column resize and reorder update `config` (order / width). */
   onFieldsChange?: (fields: CustomReportFieldConfig[]) => void;
@@ -80,7 +80,7 @@ export interface CustomReportPreviewTableProps {
 }
 
 interface SortableReportHeaderProps {
-  header: Header<ActivityResponse, unknown>;
+  header: Header<ActivityListItem, unknown>;
   canResize: boolean;
   onResizePointerDown: (e: { stopPropagation: () => void }) => void;
   onResizeTouchStart: (e: { stopPropagation: () => void }) => void;
@@ -123,7 +123,7 @@ function SortableReportHeader({
       style={style}
       className={cn(
         tableTh,
-        'relative [overflow-wrap:anywhere] break-words whitespace-normal',
+        'relative wrap-break-word whitespace-normal',
         isDragging && 'z-20 bg-slate-200/80',
         isOver && !isDragging && 'ring-primary/40 ring-2 ring-inset'
       )}
@@ -132,7 +132,7 @@ function SortableReportHeader({
         <button
           type="button"
           className={cn(
-            'min-w-0 flex-1 cursor-grab border-0 bg-transparent py-0 pr-2 pl-0 text-left [overflow-wrap:anywhere] break-words whitespace-normal text-inherit active:cursor-grabbing',
+            'min-w-0 flex-1 cursor-grab border-0 bg-transparent py-0 pr-2 pl-0 text-left wrap-break-word whitespace-normal text-inherit active:cursor-grabbing',
             dragDisabled && 'cursor-default'
           )}
           {...(dragDisabled ? {} : { ...attributes, ...listeners })}
@@ -196,7 +196,7 @@ export function CustomReportPreviewTable({
     [config]
   );
 
-  const columns = useMemo<ColumnDef<ActivityResponse, unknown>[]>(() => {
+  const columns = useMemo<ColumnDef<ActivityListItem, unknown>[]>(() => {
     const keys = columnOrder.filter((id) => fieldByKey.get(id)?.selected);
     const missing = config
       .filter((f) => f.selected && !keys.includes(f.key))
@@ -211,8 +211,8 @@ export function CustomReportPreviewTable({
       }
       return {
         id: field.key,
-        accessorFn: (row: ActivityResponse) =>
-          row[field.key as keyof ActivityResponse],
+        accessorFn: (row: ActivityListItem) =>
+          row[field.key as keyof ActivityListItem],
         header: field.label,
         enableResizing: true,
         size: resolveCustomReportColumnWidthPx(field),
@@ -400,7 +400,7 @@ export function CustomReportPreviewTable({
                     key={cell.id}
                     className={cn(
                       tableTd,
-                      'text-foreground text-sm [overflow-wrap:anywhere] break-words whitespace-normal'
+                      'text-foreground text-sm wrap-break-word whitespace-normal'
                     )}
                     style={{
                       width: cell.column.getSize(),

@@ -1,11 +1,12 @@
 import type {
   ActivityFlagResponse,
+  ActivityListItem,
   ActivityResponse,
 } from '@corpcal/shared/api/types';
 
 /**
- * View-model for the activity table. Derived from ActivityResponse
- * with minimal transformations for table display.
+ * View-model for the activity table. Mapped from {@link ActivityListItem}
+ * (or full {@link ActivityResponse}) with minimal transformations for display.
  *
  * All date/time fields are ISO strings to match the API contract.
  */
@@ -24,6 +25,8 @@ export interface ActivityTableRow {
 
   // Summary column
   summary: string;
+  /** Executive summary (raw rich-text/string); used for keyword search parity with Reports. */
+  executiveSummary: string;
   tags: Array<{ id: number; text: string }>;
   lookAheadStatus: string | null;
   lookAheadSection: string | null;
@@ -58,6 +61,8 @@ export interface ActivityTableRow {
   // Materials column
   translationsRequired: string[];
   translationsRequiredStatus: string | null;
+  /** Translation required status ID for ID-based filtering (parity with server). */
+  translationsRequiredStatusId: number | null;
   commsMaterials: string[];
 
   // Status column
@@ -96,11 +101,10 @@ function formatVenueAddress(
 }
 
 /**
- * Map an ActivityResponse (API contract) to an ActivityTableRow (table view-model).
- * This is the single transformation point between the API and the table component.
+ * Map an activity list item or full API response to an ActivityTableRow.
  */
-export function mapActivityResponseToTableRow(
-  activity: ActivityResponse
+export function mapActivityToTableRow(
+  activity: ActivityListItem | ActivityResponse
 ): ActivityTableRow {
   const commsLead = activity.commsContacts.find((c) => c.isLead);
 
@@ -118,6 +122,7 @@ export function mapActivityResponseToTableRow(
 
     // Summary
     summary: activity.summary,
+    executiveSummary: activity.executiveSummary ?? '',
     tags: activity.tags,
     lookAheadStatus: activity.lookAheadStatus ?? null,
     lookAheadSection: activity.lookAheadSection ?? null,
@@ -149,6 +154,7 @@ export function mapActivityResponseToTableRow(
     // Materials
     translationsRequired: activity.translationsRequired ?? [],
     translationsRequiredStatus: activity.translationsRequiredStatus ?? null,
+    translationsRequiredStatusId: activity.translationsRequiredStatusId ?? null,
     commsMaterials: activity.commsMaterials,
 
     // Status

@@ -269,7 +269,7 @@ export function AssignActivityModal({
             </div>
           </div>
 
-          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+          <DialogFooter className="flex-col gap-2 pt-4 sm:flex-row sm:justify-between">
             <div>
               {existingFlag && (
                 <Button

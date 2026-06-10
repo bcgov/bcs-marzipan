@@ -9,5 +9,4 @@ metadata:
     app.kubernetes.io/instance: dev
     app.kubernetes.io/managed-by: kubectl
 data:
-  NODE_ENV: development
   VITE_API_BASE_URL: /api

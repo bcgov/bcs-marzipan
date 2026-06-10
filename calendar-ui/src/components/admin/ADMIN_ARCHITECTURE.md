@@ -106,7 +106,7 @@ This document describes the new reusable admin component architecture for managi
 ```tsx
 const fields: FormField[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number' },
 ];
 
 <LookupForm
@@ -245,8 +245,8 @@ export async function fetchNewLookups(): Promise<NewLookup[]> {
 ```tsx
 const newLookupFields: FormField[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
-  { name: 'displayName', label: 'Display Name', type: 'text' },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number' },
+  { name: 'displayName', label: 'Display name', type: 'text' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number' },
 ];
 ```
 

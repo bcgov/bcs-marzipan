@@ -40,6 +40,7 @@ export {
   PrintRichText,
   PrintRow,
   PrintSectionTable,
+  type TranslationLanguageLabelResolver,
   renderPrintReportDocumentHtml,
   renderPrintReportFragmentHtml,
   wrapPrintReportHtmlDocument,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { buildDefaultPreferencesForReport } from '@/lib/report-preferences-defaults';
 import {
@@ -7,9 +7,38 @@ import {
   getPreferencesForReport,
   hasAnyKnownParam,
   preferencesToParams,
+  REPORTS_TAB_STORAGE_KEY,
+  setStoredReportTabName,
   URL_PARAM_REPORT,
   type ActivityTablePreferences,
 } from '@/lib/reportsTablePreferencesParams';
+
+describe('setStoredReportTabName', () => {
+  it('writes the active report tab to sessionStorage', () => {
+    const setItem = vi.fn();
+    Object.defineProperty(window, 'sessionStorage', {
+      value: { setItem },
+      configurable: true,
+    });
+
+    setStoredReportTabName('custom');
+
+    expect(setItem).toHaveBeenCalledWith(REPORTS_TAB_STORAGE_KEY, 'custom');
+  });
+
+  it('ignores sessionStorage write failures', () => {
+    Object.defineProperty(window, 'sessionStorage', {
+      value: {
+        setItem: () => {
+          throw new Error('blocked');
+        },
+      },
+      configurable: true,
+    });
+
+    expect(() => setStoredReportTabName('custom')).not.toThrow();
+  });
+});
 
 describe('buildDefaultPreferencesForReport', () => {
   it('uses distinct date ranges for look-ahead vs thirty-sixty-ninety', () => {

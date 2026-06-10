@@ -3,7 +3,10 @@ import { useCallback, useMemo, type ReactNode } from 'react';
 
 import type { ActivityFilterState } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
+import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import { LeadsFilterPanel } from '@/components/activity/ActivityTable/LeadsFilter';
+import { LookAheadFilterPanel } from '@/components/activity/ActivityTable/LookAheadFilter';
+import { PitchFilterPanel } from '@/components/activity/ActivityTable/PitchFilter';
 import { ScheduledDateFilterPanel } from '@/components/activity/ActivityTable/ScheduledDateFilter';
 import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { TagsFilterPanel } from '@/components/activity/ActivityTable/TagsFilter';
@@ -14,6 +17,7 @@ import {
 } from '@/components/shared/ResponsiveFilterRow';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
+import { useActivityPitchFieldVisibility } from '@/hooks/useActivityTableFilterLookups';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useActivityStatuses,
@@ -21,6 +25,7 @@ import {
   useEventPlanners,
   useMinistries,
   useOrganizations,
+  usePitchRequiredStatuses,
   useTags,
   useTranslationLanguages,
   useTranslationRequiredStatuses,
@@ -28,11 +33,14 @@ import {
 } from '@/hooks/useLookups';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
 import analytics from '@/lib/analytics';
+import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
+import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
 import {
   buildReportBaselineDateFilterPatch,
   buildReportClearFilterState,
   hasReportClearableFiltersActive,
 } from '@/lib/report-filter-state';
+import type { ValidFilterLookups } from '@/lib/savedFilterSanitize';
 
 export interface ReportFiltersBarProps {
   reportName: string;
@@ -42,6 +50,19 @@ export interface ReportFiltersBarProps {
   printPreviewRowLeading?: ReactNode;
   /** Optional trailing controls on the same row (e.g. Customize, print preview). */
   printPreviewRowTrailing?: ReactNode;
+  savedFilters?: UseSavedFiltersReturn;
+  onApplySavedFilter?: (
+    filterState: ActivityFilterState,
+    searchKeyword: string,
+    appliedFrom: { id: number; name: string }
+  ) => void;
+  activeSavedFilterId?: number | null;
+  filterSummaryContext?: ActivityFilterSummaryContext;
+  parseSavedFilterForDraft?: (savedFilter: SavedFilterResponse) => {
+    filterState: ActivityFilterState;
+    searchKeyword: string;
+  };
+  validFilterLookups?: ValidFilterLookups;
 }
 
 /**
@@ -54,6 +75,12 @@ export function ReportFiltersBar({
   setPreferences,
   printPreviewRowLeading,
   printPreviewRowTrailing,
+  savedFilters,
+  onApplySavedFilter,
+  activeSavedFilterId = null,
+  filterSummaryContext,
+  parseSavedFilterForDraft,
+  validFilterLookups,
 }: ReportFiltersBarProps) {
   const { user } = useAuth();
   const canSeeDeleted =
@@ -82,8 +109,15 @@ export function ReportFiltersBar({
     [setPreferences]
   );
 
+  const pitchFieldVisibility = useActivityPitchFieldVisibility();
+  const canViewPitchStatus = pitchFieldVisibility.canViewPitchStatus;
+  const canViewPitchDate = pitchFieldVisibility.canViewPitchDate;
+  const showPitchFilter = canViewPitchStatus || canViewPitchDate;
+
   const { data: categoriesForFilter = [] } = useCategories();
   const { data: activityStatusesForFilter = [] } = useActivityStatuses();
+  const { data: pitchRequiredStatusesForFilter = [] } =
+    usePitchRequiredStatuses();
   const { data: tagsForFilter = [] } = useTags();
   const { data: ministriesForFilter = [] } = useMinistries();
   const { data: organizationsForFilter = [] } = useOrganizations();
@@ -111,6 +145,15 @@ export function ReportFiltersBar({
           label: s.displayName,
         })),
     [activityStatusesForFilter, canSeeDeleted]
+  );
+
+  const pitchRequiredStatusOptions = useMemo(
+    () =>
+      pitchRequiredStatusesForFilter.map((s) => ({
+        value: s.displayName,
+        label: s.displayName,
+      })),
+    [pitchRequiredStatusesForFilter]
   );
 
   const tagOptions = useMemo(
@@ -342,6 +385,31 @@ export function ReportFiltersBar({
         },
       },
       {
+        key: 'lookAhead',
+        label: 'Look Ahead',
+        panel: (
+          <LookAheadFilterPanel
+            filterState={filterState}
+            onFilterStateChange={onFilterStateChange}
+          />
+        ),
+        triggerProps: {
+          active:
+            filterState.lookAheadStatusValues.length > 0 ||
+            filterState.lookAheadSectionValues.length > 0,
+          count:
+            filterState.lookAheadStatusValues.length +
+            filterState.lookAheadSectionValues.length,
+          onClear: () =>
+            onFilterStateChange({
+              ...filterState,
+              lookAheadStatusValues: [],
+              lookAheadSectionValues: [],
+            }),
+          clearAriaLabel: 'Clear Look Ahead filter',
+        },
+      },
+      {
         key: 'status',
         label: 'Status',
         panel: (
@@ -440,6 +508,60 @@ export function ReportFiltersBar({
           clearAriaLabel: 'Clear Tags filter',
         },
       },
+      ...(showPitchFilter
+        ? [
+            {
+              key: 'pitch',
+              label: 'Pitch',
+              panel: (
+                <PitchFilterPanel
+                  filterState={filterState}
+                  onFilterStateChange={onFilterStateChange}
+                  pitchRequiredStatusOptions={pitchRequiredStatusOptions}
+                  canViewPitchStatus={canViewPitchStatus}
+                  canViewPitchDate={canViewPitchDate}
+                />
+              ),
+              triggerProps: {
+                active: (() => {
+                  const pitchDateRangeActive =
+                    filterState.pitchDateFilter.kind === 'scheduled' &&
+                    isDateRangeActive(filterState.pitchDateFilter.dateRange);
+                  const statusPart =
+                    canViewPitchStatus &&
+                    filterState.pitchRequiredStatusNames.length > 0;
+                  const datePart =
+                    canViewPitchDate &&
+                    (filterState.pitchDateFilter.kind !== 'any' ||
+                      pitchDateRangeActive);
+                  return statusPart || datePart;
+                })(),
+                count: (() => {
+                  const pitchDateRangeActive =
+                    filterState.pitchDateFilter.kind === 'scheduled' &&
+                    isDateRangeActive(filterState.pitchDateFilter.dateRange);
+                  return (
+                    (canViewPitchStatus
+                      ? filterState.pitchRequiredStatusNames.length
+                      : 0) +
+                    (canViewPitchDate &&
+                    (filterState.pitchDateFilter.kind !== 'any' ||
+                      pitchDateRangeActive)
+                      ? 1
+                      : 0)
+                  );
+                })(),
+                onClear: () =>
+                  onFilterStateChange({
+                    ...filterState,
+                    pitchRequiredStatusNames: [],
+                    pitchDateFilter: { kind: 'any' },
+                  }),
+                clearAriaLabel: 'Clear Pitch filter',
+              },
+            } satisfies ResponsiveFilterSlot,
+          ]
+        : []),
     ],
     [
       filterState,
@@ -465,6 +587,10 @@ export function ReportFiltersBar({
       dateConfirmedActive,
       dateRangeActive,
       timeConfirmedActive,
+      pitchRequiredStatusOptions,
+      showPitchFilter,
+      canViewPitchStatus,
+      canViewPitchDate,
     ]
   );
 
@@ -472,7 +598,7 @@ export function ReportFiltersBar({
     <div
       className="flex flex-col"
       role="search"
-      aria-label="Filter report activities by datetime, category, status, leads, translations, tags, and keyword"
+      aria-label="Filter report activities by datetime, category, look ahead, status, leads, translations, tags, pitch, and keyword"
     >
       <div className="mb-4 flex flex-nowrap items-center justify-between gap-8">
         <div className="flex min-w-0 flex-1 items-center">
@@ -480,6 +606,14 @@ export function ReportFiltersBar({
             slots={filterSlots}
             overflowTriggerClassName="h-10"
             onClearAll={hasClearableFilters ? handleClearAllFilters : undefined}
+            savedFilters={savedFilters}
+            filterState={filterState}
+            searchKeyword={searchKeyword}
+            onApplySavedFilter={onApplySavedFilter}
+            activeSavedFilterId={activeSavedFilterId}
+            filterSummaryContext={filterSummaryContext}
+            parseSavedFilterForDraft={parseSavedFilterForDraft}
+            validFilterLookups={validFilterLookups}
           />
         </div>
         <div className="relative max-w-md min-w-[240px] shrink-0">

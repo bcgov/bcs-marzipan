@@ -155,11 +155,11 @@ export const ActivityListPage = () => {
         return base;
       case 'ministry':
         return effectiveLeadTeamId != null
-          ? { ...base, leadTeamId: effectiveLeadTeamId }
+          ? { ...base, leadTeamIds: [effectiveLeadTeamId] }
           : base;
       case 'my-activities':
         return user?.id != null
-          ? { ...base, commsContactLeadUserId: user.id }
+          ? { ...base, commsContactLeadUserIds: [user.id] }
           : base;
       case 'recent':
         return base;
@@ -171,7 +171,7 @@ export const ActivityListPage = () => {
         return { ...base, favouriteActivityIds };
       case 'assigned-to-me':
         return user?.id != null
-          ? { ...base, flagAssigneeUserId: user.id }
+          ? { ...base, flagAssigneeUserIds: [user.id] }
           : base;
       default:
         return base;

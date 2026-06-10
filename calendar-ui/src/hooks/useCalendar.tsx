@@ -2,7 +2,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type {
+  ActivityListItem,
+  ActivityResponse,
+} from '@corpcal/shared/api/types';
 import type {
   AddActivityHistoryNoteRequest,
   RequestDeleteRequest,
@@ -61,7 +64,7 @@ export function useActivityList(
       ? false
       : ACTIVITY_LIST_REFETCH_FALLBACK_MS;
 
-  return useQuery<ActivityResponse[]>({
+  return useQuery<ActivityListItem[]>({
     queryKey: ['activities', 'list', normalized],
     queryFn: () => fetchActivities(normalized),
     staleTime: ACTIVITY_LIST_STALE_TIME,
@@ -106,10 +109,10 @@ export function useUpdateActivity() {
       updateActivity(id, data),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ['activities', 'list'] });
-      const snapshot = qc.getQueriesData<ActivityResponse[]>({
+      const snapshot = qc.getQueriesData<ActivityListItem[]>({
         queryKey: ['activities', 'list'],
       });
-      qc.setQueriesData<ActivityResponse[]>(
+      qc.setQueriesData<ActivityListItem[]>(
         { queryKey: ['activities', 'list'] },
         (oldList) => {
           if (!Array.isArray(oldList)) return oldList;
@@ -146,10 +149,10 @@ export function useDeleteActivity() {
     onMutate: async (vars) => {
       const id = vars.id;
       await qc.cancelQueries({ queryKey: ['activities', 'list'] });
-      const snapshot = qc.getQueriesData<ActivityResponse[]>({
+      const snapshot = qc.getQueriesData<ActivityListItem[]>({
         queryKey: ['activities', 'list'],
       });
-      qc.setQueriesData<ActivityResponse[]>(
+      qc.setQueriesData<ActivityListItem[]>(
         { queryKey: ['activities', 'list'] },
         (oldList) => {
           if (!Array.isArray(oldList)) return oldList;

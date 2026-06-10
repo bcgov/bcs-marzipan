@@ -2,6 +2,7 @@ import {
   DEFAULT_ACTIVITY_FILTER_STATE,
   type ActivityFilterState,
 } from '@corpcal/shared';
+import { parseIdListFromQueryParam } from '@corpcal/shared/schemas';
 
 export const STORAGE_KEY = 'activityTablePreferences';
 
@@ -110,14 +111,9 @@ function parseFromSearchParams(
           .map((s) => s.trim())
           .filter(Boolean)
       : [];
-  const statusParam = searchParams.get(URL_PARAM_STATUS);
-  const activityStatusIds =
-    typeof statusParam === 'string' && statusParam.trim()
-      ? statusParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
+  const activityStatusIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_STATUS)
+  );
 
   const pitchStatusParam = searchParams.get(URL_PARAM_PITCH_STATUS);
   const pitchRequiredStatusNames =
@@ -182,32 +178,13 @@ function parseFromSearchParams(
       ? timeConfirmedParam
       : 'any';
 
-  const tagParam = searchParams.get(URL_PARAM_TAG);
-  const tagIds =
-    typeof tagParam === 'string' && tagParam.trim()
-      ? tagParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
-
-  const translationParam = searchParams.get(URL_PARAM_TRANSLATION);
-  const translationLanguageIds =
-    typeof translationParam === 'string' && translationParam.trim()
-      ? translationParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
-
-  const translationStatusParam = searchParams.get(URL_PARAM_TRANSLATION_STATUS);
-  const translationRequiredStatusIds =
-    typeof translationStatusParam === 'string' && translationStatusParam.trim()
-      ? translationStatusParam
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => Number.isFinite(n))
-      : [];
+  const tagIds = parseIdListFromQueryParam(searchParams.get(URL_PARAM_TAG));
+  const translationLanguageIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_TRANSLATION)
+  );
+  const translationRequiredStatusIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_TRANSLATION_STATUS)
+  );
 
   const filterState: ActivityFilterState = {
     dateRange: {
