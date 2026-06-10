@@ -176,7 +176,7 @@ export default function UserDetailPage() {
       const numeric = Number(k);
       normalized[numeric] = rolesPermissionsMapData[k];
     }
-    setRolesPermissionsMap((m) => ({ ...m, ...normalized }));
+    setRolesPermissionsMap(normalized);
   }, [rolesPermissionsMapLoaded, rolesPermissionsMapData]);
 
   // Note: do not prefetch permissions for all roles — fetch only for the
