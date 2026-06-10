@@ -9,14 +9,7 @@ import type {
   UserDetail,
   UserListItem,
 } from '@corpcal/shared/api/types';
-import {
-  addUserToTeam,
-  fetchRoles,
-  fetchTeams,
-  fetchUser,
-  updateUser,
-  updateUserSettings,
-} from '@/api/usersApi';
+import { fetchUser, updateUser } from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -29,21 +22,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
-import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 interface UserEditModalProps {
   user: UserListItem;
   onClose: () => void;
   onSaved: () => void;
-  onRemoveFromTeam: (userId: number, teamId: number) => void;
 }
 
-export function UserEditModal({
-  user,
-  onClose,
-  onSaved,
-  onRemoveFromTeam,
-}: UserEditModalProps) {
+export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
   const [roleId, setRoleId] = useState<string>(String(user.roleId));
   const [notes, setNotes] = useState('');
   const displayInitial = user.adDisplayName || user.adUsername || '';
@@ -58,10 +44,6 @@ export function UserEditModal({
   const [phone, setPhone] = useState<string | null>('');
   const [jobTitle, setJobTitle] = useState<string | null>('');
   const [isActive, setIsActive] = useState<boolean>(true);
-  const [addTeamId, setAddTeamId] = useState<string>('');
-  const [addTeamRole, setAddTeamRole] = useState<'owner' | 'member'>('member');
-  const [addTeamNotes, setAddTeamNotes] = useState('');
-  const [flagColour, setFlagColour] = useState<string>('');
 
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
@@ -77,24 +59,10 @@ export function UserEditModal({
     enabled: !!user.id,
   });
 
-  const { data: roles = [] } = useQuery({
-    queryKey: ['roles'],
-    queryFn: async () => {
-      const res = await fetchRoles();
-      return res;
-    },
-  });
-
-  const { data: teams = [] } = useQuery({
-    queryKey: lookupQueryKeys.teams(),
-    queryFn: fetchTeams,
-  });
-
   useEffect(() => {
     if (detail) {
       setRoleId(String(detail.roleId));
       setNotes(detail.notes ?? '');
-      setFlagColour(detail.flagColour ?? '');
       // populate new simplified fields
       const display = detail.adDisplayName || detail.adUsername || '';
       const parts = display.split(' ');
@@ -122,54 +90,6 @@ export function UserEditModal({
     },
   });
 
-  const settingsMutation = useMutation({
-    mutationFn: (body: { flagColour: string | null }) =>
-      updateUserSettings(user.id, body),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['user', user.id] });
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to save flag colour', {
-        id: `user-settings-${user.id}`,
-      });
-    },
-  });
-
-  const addTeamMutation = useMutation({
-    mutationFn: (teamId: number) =>
-      addUserToTeam(user.id, {
-        teamId,
-        role: addTeamRole,
-        ...(addTeamNotes.trim() && { notes: addTeamNotes.trim() }),
-      }),
-    onSuccess: (_data, teamId) => {
-      void queryClient.invalidateQueries({ queryKey: ['user', user.id] });
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User added to team', {
-        id: `user-added-to-team-${user.id}-${teamId}`,
-      });
-      setAddTeamId('');
-      setAddTeamNotes('');
-    },
-    onError: (err: Error, teamId) => {
-      toast.error(err.message || 'Add to team failed', {
-        id:
-          typeof teamId === 'number'
-            ? `user-added-to-team-${user.id}-${teamId}`
-            : undefined,
-      });
-    },
-  });
-
-  const currentTeamIds = detail?.teams?.map((t) => t.teamId) ?? [];
-  const availableTeams = teams.filter((t) => !currentTeamIds.includes(t.id));
-
-  const selectedRoleId = parseInt(roleId, 10);
-  const isAdminOrSysAdmin =
-    selectedRoleId === SYSTEM_ROLE_IDS.ADMIN ||
-    selectedRoleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
-
   const handleSave = () => {
     const newRoleId = parseInt(roleId, 10);
     if (Number.isNaN(newRoleId)) return;
@@ -193,19 +113,6 @@ export function UserEditModal({
     }
 
     updateMutation.mutate(body);
-
-    // Save settings separately if the user is admin/sys-admin and the colour changed
-    const savedFlagColour = detail?.flagColour ?? null;
-    const newFlagColour = flagColour.trim() || null;
-    if (isAdminOrSysAdmin && newFlagColour !== savedFlagColour) {
-      settingsMutation.mutate({ flagColour: newFlagColour });
-    }
-  };
-
-  const handleAddToTeam = () => {
-    const tid = parseInt(addTeamId, 10);
-    if (Number.isNaN(tid)) return;
-    addTeamMutation.mutate(tid);
   };
 
   const displayName =
@@ -295,11 +202,7 @@ export function UserEditModal({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={
-              updateMutation.isPending ||
-              settingsMutation.isPending ||
-              isLoading
-            }
+            disabled={updateMutation.isPending || isLoading}
           >
             Save changes
           </Button>
