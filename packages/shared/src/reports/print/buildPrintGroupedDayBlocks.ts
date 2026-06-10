@@ -1,5 +1,5 @@
+import type { ReportActivityRow } from '../../api/types';
 import type { CalendarDateString } from '../../datetime/types';
-import type { ActivityResponse } from '../../schemas/activity-response.schema';
 import type { ReportDateRange } from '../normalizeReportActivityDateRange';
 import { buildCalendarDayKeys } from './buildCalendarDayKeys';
 import {
@@ -19,7 +19,7 @@ import {
 import type { TranslationLanguageLabelResolver } from './react/translationLanguageDisplayLabels';
 
 export interface BuildPrintGroupedDayBlocksOptions {
-  activitiesByKey: Map<string, ActivityResponse[]>;
+  activitiesByKey: Map<string, ReportActivityRow[]>;
   resolvedDateRange: ReportDateRange | null | undefined;
   showPerDayPrintChrome: boolean;
   emptyDayDisplayMode?: PrintPerDayEmptyDayDisplayMode;
@@ -29,13 +29,13 @@ export interface BuildPrintGroupedDayBlocksOptions {
 }
 
 function activityDayKeys(
-  activitiesByKey: Map<string, ActivityResponse[]>
+  activitiesByKey: Map<string, ReportActivityRow[]>
 ): CalendarDateString[] {
   return [...activitiesByKey.keys()].sort() as CalendarDateString[];
 }
 
 function toRowViewModels(
-  activities: ActivityResponse[],
+  activities: ReportActivityRow[],
   options: Pick<
     BuildPrintGroupedDayBlocksOptions,
     'activityBaseUrl' | 'variant' | 'resolveTranslationLanguageLabel'

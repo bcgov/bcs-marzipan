@@ -1,5 +1,5 @@
 import { pacificDayKey } from '../../../datetime';
-import type { ActivityResponse } from '../../../schemas/activity-response.schema';
+import type { ActivityListItem } from '../../../schemas/activity-list-item.schema';
 import { trimTrailingSlashes } from '../../../utils/trimTrailingSlashes';
 import { getCommsContactLeadDisplayName } from '../../reportTypeConfig';
 import {
@@ -180,7 +180,7 @@ export function buildTranslationsLine(
   return `Translations: ${translations.length} languages`;
 }
 
-function activityCategoryIncludesRelease(activity: ActivityResponse): boolean {
+function activityCategoryIncludesRelease(activity: ActivityListItem): boolean {
   return Array.isArray(activity.category)
     ? activity.category.some((c) => norm(c) === 'release')
     : false;
@@ -191,7 +191,7 @@ function activityCategoryIncludesRelease(activity: ActivityResponse): boolean {
  * activities (Release category and/or news release origin).
  */
 export function lookAheadShowsTranslationsLine(
-  activity: ActivityResponse
+  activity: ActivityListItem
 ): boolean {
   return (
     activityCategoryIncludesRelease(activity) ||
@@ -212,7 +212,7 @@ function isTranslationsPendingReviewDisplay(
  * `none`. No `Translations:` prefix — {@link PrintRow} renders a Languages icon.
  */
 export function buildLookAheadReleaseTranslationsLine(
-  activity: ActivityResponse,
+  activity: ActivityListItem,
   resolveLabel?: TranslationLanguageLabelResolver
 ): string {
   const langs = activity.translationsRequired ?? [];
@@ -235,7 +235,7 @@ export function buildLookAheadReleaseTranslationsLine(
   return `${displayLabels.length} translations`;
 }
 
-function pickLeadMinistryOrTeam(activity: ActivityResponse): string | null {
+function pickLeadMinistryOrTeam(activity: ActivityListItem): string | null {
   const abbrev = activity.leadMinistryAbbreviation?.trim();
   if (abbrev) return abbrev;
   const ministry = activity.leadMinistry?.trim();
@@ -245,7 +245,7 @@ function pickLeadMinistryOrTeam(activity: ActivityResponse): string | null {
 }
 
 function buildVenueAddressLine(
-  venue: ActivityResponse['venueAddress']
+  venue: ActivityListItem['venueAddress']
 ): string | null {
   if (!venue) return null;
   const parts = [venue.addressLine1, venue.addressLine2, venue.provinceOrState]
@@ -254,7 +254,7 @@ function buildVenueAddressLine(
   return parts.length > 0 ? parts.join(', ') : null;
 }
 
-function pickEventPlannerLead(activity: ActivityResponse): string | null {
+function pickEventPlannerLead(activity: ActivityListItem): string | null {
   const lead = activity.eventPlannerDetails?.find((p) => p.isLead);
   const name = lead?.name?.trim();
   return name && name.length > 0 ? name : null;
@@ -266,7 +266,7 @@ function pickEventPlannerLead(activity: ActivityResponse): string | null {
  * already uses as its primary lead label.
  */
 export function resolveLeadOrgForPrint(
-  activity: ActivityResponse
+  activity: ActivityListItem
 ): string | null {
   const org = toNonEmpty(activity.leadOrg);
   if (!org) return null;
@@ -317,7 +317,7 @@ function shouldUseLookAheadDateTimeStatusRules(
 }
 
 /**
- * Shape an `ActivityResponse` into the pure row view-model consumed by the
+ * Shape an `ActivityListItem` into the pure row view-model consumed by the
  * print React row. All data massaging (date formatting, url assembly,
  * translations collapsing) lives here so the React layer stays declarative.
  *
@@ -329,7 +329,7 @@ function shouldUseLookAheadDateTimeStatusRules(
  * is present (no date/time value means no status label).
  */
 export function toPrintRowViewModel(
-  activity: ActivityResponse,
+  activity: ActivityListItem,
   options: {
     activityBaseUrl: string;
     /** @default `'shortWithYear'` */
@@ -444,7 +444,7 @@ export type CompareActivitiesForPrintOptions = {
  */
 export function createCompareActivitiesForPrint(
   options: CompareActivitiesForPrintOptions = {}
-): (a: ActivityResponse, b: ActivityResponse) => number {
+): (a: ActivityListItem, b: ActivityListItem) => number {
   const { sortByDayKey = false } = options;
   return (a, b) => {
     if (sortByDayKey) {

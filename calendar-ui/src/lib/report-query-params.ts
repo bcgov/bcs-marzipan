@@ -1,0 +1,63 @@
+import { isDateRangeActive, type ActivityFilterState } from '@corpcal/shared';
+import {
+  resolveReportActivityDateWindow,
+  type NormalizedReportDateRange,
+} from '@corpcal/shared/reports/reportDateRange';
+import type { ReportDataRequestParams } from '@/api/reportsApi';
+
+function normalizeReportQueryParamValue(value: unknown): unknown {
+  if (!Array.isArray(value) || value.length === 0) return value;
+  if (typeof value[0] === 'number') {
+    return [...value].sort((a, b) => (a as number) - (b as number));
+  }
+  return [...value].sort((a, b) => String(a).localeCompare(String(b)));
+}
+
+/**
+ * Stable string for React Query `queryKey` so refetches track param *values*, not object identity.
+ */
+export function stableSerializeReportQueryParams(
+  params: ReportDataRequestParams
+): string {
+  return JSON.stringify(
+    Object.fromEntries(
+      Object.entries(params)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]): [string, unknown] => [
+          k,
+          normalizeReportQueryParamValue(v),
+        ])
+        .sort(([a], [b]) => a.localeCompare(b))
+    )
+  );
+}
+
+function dateRangeQueryBounds(dateRange: ActivityFilterState['dateRange']): {
+  startDateFrom?: string;
+  startDateTo?: string;
+} {
+  if (!isDateRangeActive(dateRange)) {
+    return {};
+  }
+  const bounds: { startDateFrom?: string; startDateTo?: string } = {};
+  if (!dateRange.noStartDate && dateRange.startDate !== '') {
+    bounds.startDateFrom = dateRange.startDate;
+  }
+  if (!dateRange.noEndDate && dateRange.endDate !== '') {
+    bounds.startDateTo = dateRange.endDate;
+  }
+  return bounds;
+}
+
+/** Mirrors server date resolution for warnings and stable query keys. */
+export function resolveReportQueryDateRange(
+  reportName: string,
+  filterState: ActivityFilterState
+): NormalizedReportDateRange {
+  const bounds = dateRangeQueryBounds(filterState.dateRange);
+  return resolveReportActivityDateWindow({
+    reportName,
+    startDateFrom: bounds.startDateFrom,
+    startDateTo: bounds.startDateTo,
+  });
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { SYSTEM_ROLES } from '../auth/constants';
+import { createMockActivityListItem } from '../test-utils/activity-list-item.fixture';
 import { createMockActivityResponse } from '../test-utils/activity-response.fixture';
 import {
   isActivityResponsePayload,
@@ -29,6 +30,10 @@ describe('isActivityResponsePayload', () => {
   it('returns true for a full activity-shaped object', () => {
     const activity = createMockActivityResponse();
     expect(isActivityResponsePayload(activity)).toBe(true);
+  });
+
+  it('returns false for list/report activity rows', () => {
+    expect(isActivityResponsePayload(createMockActivityListItem())).toBe(false);
   });
 
   it('returns false for category lookup rows', () => {

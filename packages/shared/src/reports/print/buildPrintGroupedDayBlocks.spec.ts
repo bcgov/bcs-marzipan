@@ -30,6 +30,26 @@ describe('buildCalendarDayKeys', () => {
 });
 
 describe('buildPrintGroupedDayBlocks', () => {
+  it('places a spanning activity under the first in-range day for per-day chrome', () => {
+    const spanningActivity = {
+      ...BASE_ACTIVITY,
+      startDate: '2026-04-20',
+      endDate: '2026-04-30',
+    };
+    const blocks = buildPrintGroupedDayBlocks({
+      activitiesByKey: new Map([['2026-04-27', [spanningActivity]]]),
+      resolvedDateRange: { start: APR_27, end: APR_29 },
+      showPerDayPrintChrome: true,
+      emptyDayDisplayMode: 'grouped',
+      variant: 'lookAhead',
+      activityBaseUrl: 'https://example.test',
+    });
+
+    const dayWithActivity = blocks.find((block) => block.rows.length > 0);
+    expect(dayWithActivity?.dayKey).toBe('2026-04-27');
+    expect(dayWithActivity?.rows).toHaveLength(1);
+  });
+
   it('includes every day in range for per-day chrome with grouped empty runs', () => {
     const blocks = buildPrintGroupedDayBlocks({
       activitiesByKey: new Map([['2026-04-28', [BASE_ACTIVITY]]]),

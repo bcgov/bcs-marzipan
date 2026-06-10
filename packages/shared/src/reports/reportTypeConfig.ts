@@ -1,4 +1,4 @@
-import type { ActivityResponse, ReportResponse } from '../api/types';
+import type { ActivityListItem, ReportResponse } from '../api/types';
 
 export type ReportType = 'LOOK_AHEAD' | 'EXEC' | '30_60_90' | 'PLANNING';
 
@@ -144,7 +144,7 @@ export function getEffectiveReportFields(
  * - Otherwise default to `executiveSummary` to preserve current behavior.
  */
 export function getEffectiveReportDetailText(
-  activity: ActivityResponse,
+  activity: ActivityListItem,
   effectiveFields: readonly string[]
 ): string | null {
   if (effectiveFields.includes('executiveSummary')) {
@@ -158,7 +158,7 @@ export function getEffectiveReportDetailText(
 
 /** Display name of the comms contact flagged as lead (report field `event_lead`). */
 export function getCommsContactLeadDisplayName(
-  activity: ActivityResponse
+  activity: ActivityListItem
 ): string | null {
   const raw = activity.commsContacts?.find((c) => c.isLead)?.name?.trim();
   return raw && raw.length > 0 ? raw : null;

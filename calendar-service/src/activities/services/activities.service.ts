@@ -9,14 +9,13 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, gte, inArray, isNull, lte, ne, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, type SQL } from 'drizzle-orm';
 
 import {
   activities,
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
-  activityFlags,
   activityHistory,
   activityReportSettings,
   activityRepresentatives,
@@ -45,13 +44,18 @@ import type { Activity, Category } from '@corpcal/database/types';
 import {
   buildEffectiveReviewExemptKeys,
   DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
+  HYDRATION_PROFILES,
   isManualCompleteEligible,
   normalizeActivityStatusLabel,
   PERMISSIONS,
   PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
+  profileIncludesRelation,
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
+  type ActivityHydrationProfile,
+  type ActivityListItem,
   type ActivityStatusName,
+  type EventPlannerDetail,
 } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import {
@@ -92,16 +96,26 @@ import { ApplicationSettingsService } from '../../locks/application-settings.ser
 import { LocksService } from '../../locks/locks.service';
 import { LookAheadPolicyService } from '../../look-ahead/look-ahead-policy.service';
 import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
-import type { RequestContext as RequestContextType } from '../../policy/dto/user-context.dto';
+import {
+  resolveDataScope,
+  type RequestContext as RequestContextType,
+} from '../../policy/dto/user-context.dto';
 import { PolicyService } from '../../policy/policy.service';
 import { getVisibleTagIds } from '../../policy/tag-scoping.helper';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
+import {
+  buildActivityFindAllConditions,
+  buildActivityVisibilityCondition,
+} from './activity-find-all-filters';
 import { ActivityFlagsService } from './activity-flags.service';
 import { ActivityHistoryService } from './activity-history.service';
 import { ActivityJunctionService } from './activity-junction.service';
-import { ActivityMapperService } from './activity-mapper.service';
+import {
+  ActivityMapperService,
+  type ActivityMapperRelatedData,
+} from './activity-mapper.service';
 import { ActivityUtilsService } from './activity-utils.service';
 
 @Injectable()
@@ -694,13 +708,53 @@ export class ActivitiesService {
   }
 
   /**
-   * Fetch all related data (categories, tags, statuses, etc.) for the given activity IDs.
-   * Used by mapToResponseDto (bulk), findOne, update, requestDelete, and restore.
+   * Fetch related data for the given activity IDs, scoped by hydration profile.
    */
+  private emptyCategoriesResult(): {
+    namesMap: Map<number, string[]>;
+    idsMap: Map<number, number[]>;
+  } {
+    return { namesMap: new Map(), idsMap: new Map() };
+  }
+
   private async fetchRelatedForActivityIds(
     activityIds: number[],
-    activityRows: Activity[]
+    activityRows: Activity[],
+    profile: ActivityHydrationProfile = HYDRATION_PROFILES.detail
   ) {
+    if (activityIds.length === 0) {
+      return {
+        categoriesResult: this.emptyCategoriesResult(),
+        tagsMap: new Map(),
+        activityStatusesMap: new Map(),
+        dateStatusesMap: new Map(),
+        timeStatusesMap: new Map(),
+        venueStatusesMap: new Map(),
+        venueAddressesMap: new Map(),
+        commsMaterialsMap: new Map(),
+        translationsRequiredMap: new Map(),
+        representativesAttendingMap: new Map(),
+        sharedWithMap: new Map(),
+        commsContactsMap: new Map(),
+        leadOrgNamesMap: new Map(),
+        eventPlannerDetailsMap: new Map(),
+        eventPlannersMap: new Map(),
+        eventPlannerIdsMap: new Map(),
+        newsReleaseOriginsMap: new Map(),
+        newsReleaseDistributionsMap: new Map(),
+        premierRequestedMap: new Map(),
+        reportSettingsMap: new Map(),
+        pitchRequiredStatusMap: new Map(),
+        translationsRequiredStatusMap: new Map(),
+        leadMinistryNamesMap: new Map(),
+        leadMinistryAbbreviationsMap: new Map(),
+        leadTeamDisplayMap: new Map(),
+      };
+    }
+
+    const needs = (key: Parameters<typeof profileIncludesRelation>[1]) =>
+      profileIncludesRelation(profile, key);
+
     const [
       categoriesResult,
       tagsMap,
@@ -726,45 +780,104 @@ export class ActivitiesService {
       leadMinistryAbbreviationsMap,
       leadTeamDisplayMap,
     ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities(activityIds),
-      this.dataFetcherService.fetchTagsForActivities(activityIds),
-      this.dataFetcherService.fetchActivityStatusesForActivities(activityIds),
-      this.dataFetcherService.fetchDateStatusesForActivities(activityIds),
-      this.dataFetcherService.fetchTimeStatusesForActivities(activityIds),
-      this.dataFetcherService.fetchVenueStatusesForActivities(activityIds),
-      this.dataFetcherService.fetchVenueAddressesForActivities(activityIds),
-      this.dataFetcherService.fetchCommsMaterialsForActivities(activityIds),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds),
-      this.dataFetcherService.fetchCommsContactsForActivities(activityIds),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities(activityRows),
-      this.dataFetcherService.fetchEventPlannerDetailsForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities(activityIds),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchPremierRequestedForActivities(activityIds),
-      this.dataFetcherService.fetchReportSettingsForActivities(activityIds),
-      this.dataFetcherService.fetchPitchRequiredStatusForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchLeadMinistryNamesForActivities(activityIds),
-      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities(
-        activityIds
-      ),
-      this.dataFetcherService.fetchLeadTeamDisplayForActivities(
-        activityRows.map((a) => ({ id: a.id, leadTeamId: a.leadTeamId }))
-      ),
+      needs('categories')
+        ? this.dataFetcherService.fetchCategoriesForActivities(activityIds)
+        : Promise.resolve(this.emptyCategoriesResult()),
+      needs('tags')
+        ? this.dataFetcherService.fetchTagsForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('activityStatus')
+        ? this.dataFetcherService.fetchActivityStatusesForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map()),
+      needs('dateStatus')
+        ? this.dataFetcherService.fetchDateStatusesForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('timeStatus')
+        ? this.dataFetcherService.fetchTimeStatusesForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('venueStatus')
+        ? this.dataFetcherService.fetchVenueStatusesForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('venueAddress')
+        ? this.dataFetcherService.fetchVenueAddressesForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('commsMaterials')
+        ? this.dataFetcherService.fetchCommsMaterialsForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('translationsRequired')
+        ? this.dataFetcherService.fetchTranslationsRequiredForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map()),
+      needs('representativesAttending')
+        ? this.dataFetcherService.fetchRepresentativesAttendingForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map()),
+      needs('sharedWith')
+        ? this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('commsContacts')
+        ? this.dataFetcherService.fetchCommsContactsForActivities(activityIds)
+        : Promise.resolve(
+            new Map<
+              number,
+              Array<{ userId: number; name: string; isLead: boolean }>
+            >()
+          ),
+      needs('leadOrg')
+        ? this.dataFetcherService.fetchLeadOrgNamesForActivities(activityRows)
+        : Promise.resolve(new Map()),
+      needs('eventPlannerDetails')
+        ? this.dataFetcherService.fetchEventPlannerDetailsForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map<number, EventPlannerDetail[]>()),
+      needs('newsReleaseOrigin')
+        ? this.dataFetcherService.fetchNewsReleaseOriginsForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map()),
+      needs('newsReleaseDistribution')
+        ? this.dataFetcherService.fetchNewsReleaseDistributionsForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map()),
+      needs('premierRequested')
+        ? this.dataFetcherService.fetchPremierRequestedForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map()),
+      needs('reportSettings')
+        ? this.dataFetcherService.fetchReportSettingsForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('pitchRequiredStatus')
+        ? this.dataFetcherService.fetchPitchRequiredStatusForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map()),
+      needs('translationsRequiredStatus')
+        ? this.dataFetcherService.fetchTranslationsRequiredStatusForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map()),
+      needs('leadMinistry')
+        ? this.dataFetcherService.fetchLeadMinistryNamesForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map()),
+      needs('leadMinistryAbbreviation')
+        ? this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities(
+            activityIds
+          )
+        : Promise.resolve(new Map()),
+      needs('leadTeamDisplay')
+        ? this.dataFetcherService.fetchLeadTeamDisplayForActivities(
+            activityRows.map((a) => ({ id: a.id, leadTeamId: a.leadTeamId }))
+          )
+        : Promise.resolve(new Map()),
     ]);
     // Derive eventPlannersMap and eventPlannerIdsMap from details for backward compatibility
     const eventPlannersMap = new Map<number, string[]>();
@@ -1330,8 +1443,10 @@ export class ActivitiesService {
       return created;
     });
 
-    // Fetch the created activity with all related data
-    const createdActivity = await this.findOne(result.id);
+    // Fetch the created activity with all related data (bypass visibility — creator just inserted it)
+    const createdActivity = await this.findOne(result.id, {
+      dataScope: { bypass: true, teamIds: [] },
+    });
 
     // Record activity creation in history (include initial status)
     const createdChanges: HistoryChange[] = [
@@ -1434,12 +1549,20 @@ export class ActivitiesService {
   /**
    * Find all activities with optional filtering
    * @param filters - Optional query filters (title, dates, status, etc.)
-   * @param ctx - Request context (user + dataScope). Used to enforce includeDeleted only for Admin/System Admin.
+   * @param ctx - Request context (user + dataScope). Enforces activity visibility by default;
+   *   pass `{ dataScope: { bypass: true } }` only for intentional internal full-access callers.
+   * @param options - Hydration profile controls which relations are batch-loaded.
    */
   async findAll(
     filters?: FilterActivitiesQueryParams,
-    ctx?: RequestContextType
-  ): Promise<ActivityResponse[]> {
+    ctx?: RequestContextType,
+    options?: {
+      profile?: ActivityHydrationProfile;
+      outputShape?: 'list' | 'detail';
+    }
+  ): Promise<ActivityListItem[] | ActivityResponse[]> {
+    const profile = options?.profile ?? HYDRATION_PROFILES.detail;
+    const outputShape = options?.outputShape ?? 'detail';
     let activityResults: Activity[];
 
     // Resolve status IDs for default exclusions
@@ -1464,53 +1587,41 @@ export class ActivitiesService {
       (ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
         ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN);
 
+    const dataScope = resolveDataScope(ctx?.dataScope);
+
     if (filters) {
-      const conditions: SQL[] = [];
-      if (filters.title) {
-        conditions.push(eq(activities.title, filters.title));
-      }
-      if (filters.activityStatusId !== undefined) {
-        conditions.push(
-          eq(activities.activityStatusId, filters.activityStatusId)
-        );
+      const conditions = buildActivityFindAllConditions({
+        filters,
+        deletedStatusId,
+        completedStatusId,
+        allowIncludeDeleted,
+        db: this.databaseService.db,
+        dataScope,
+      });
+
+      if (conditions.length > 0) {
+        activityResults = await this.databaseService.db
+          .select()
+          .from(activities)
+          .where(and(...conditions));
       } else {
-        if (!allowIncludeDeleted && deletedStatusId !== undefined) {
-          conditions.push(ne(activities.activityStatusId, deletedStatusId));
-        }
-        if (
-          filters.includeCompleted !== true &&
-          completedStatusId !== undefined
-        ) {
-          conditions.push(ne(activities.activityStatusId, completedStatusId));
-        }
+        activityResults = await this.databaseService.db
+          .select()
+          .from(activities);
       }
-      if (filters.isIssue !== undefined) {
-        conditions.push(eq(activities.isIssue, filters.isIssue));
+    } else {
+      // No filters: exclude deleted only (other callers e.g. calendar may want completed)
+      const conditions: SQL[] = [];
+      if (deletedStatusId !== undefined) {
+        conditions.push(ne(activities.activityStatusId, deletedStatusId));
       }
-      if (filters.leadMinistryId !== undefined) {
-        conditions.push(eq(activities.leadMinistryId, filters.leadMinistryId));
-      }
-      if (filters.leadTeamId !== undefined) {
-        conditions.push(eq(activities.leadTeamId, filters.leadTeamId));
-      }
-      if (filters.lookAheadSection) {
+      if (!dataScope.bypass) {
         conditions.push(
-          eq(activities.lookAheadSection, filters.lookAheadSection)
+          buildActivityVisibilityCondition(
+            this.databaseService.db,
+            dataScope.teamIds
+          )
         );
-      }
-      // Note: City filter is handled after initial query with a separate join
-      // TODO: Optimize with proper join in main query
-      if (filters.startDateFrom) {
-        conditions.push(gte(activities.startDate, filters.startDateFrom));
-      }
-      if (filters.startDateTo) {
-        conditions.push(lte(activities.startDate, filters.startDateTo));
-      }
-      if (filters.endDateFrom) {
-        conditions.push(gte(activities.endDate, filters.endDateFrom));
-      }
-      if (filters.endDateTo) {
-        conditions.push(lte(activities.endDate, filters.endDateTo));
       }
       if (conditions.length > 0) {
         activityResults = await this.databaseService.db
@@ -1518,202 +1629,68 @@ export class ActivitiesService {
           .from(activities)
           .where(and(...conditions));
       } else {
-        // No other conditions: apply default status exclusions
-        const statusConditions: SQL[] = [];
-        if (!allowIncludeDeleted && deletedStatusId !== undefined) {
-          statusConditions.push(
-            ne(activities.activityStatusId, deletedStatusId)
-          );
-        }
-        if (
-          filters.includeCompleted !== true &&
-          completedStatusId !== undefined
-        ) {
-          statusConditions.push(
-            ne(activities.activityStatusId, completedStatusId)
-          );
-        }
-        if (statusConditions.length > 0) {
-          activityResults = await this.databaseService.db
-            .select()
-            .from(activities)
-            .where(and(...statusConditions));
-        } else {
-          activityResults = await this.databaseService.db
-            .select()
-            .from(activities);
-        }
-      }
-    } else {
-      // No filters: exclude deleted only (other callers e.g. calendar may want completed)
-      if (deletedStatusId !== undefined) {
-        activityResults = await this.databaseService.db
-          .select()
-          .from(activities)
-          .where(ne(activities.activityStatusId, deletedStatusId));
-      } else {
         activityResults = await this.databaseService.db
           .select()
           .from(activities);
       }
     }
 
-    // Handle city filter with proper join if needed
-    if (filters && filters.city !== undefined) {
-      const activitiesWithCity = await this.databaseService.db
-        .select({ activityId: venueAddresses.activityId })
-        .from(venueAddresses)
-        .where(eq(venueAddresses.city, filters.city));
-
-      const activityIdsWithCity = new Set(
-        activitiesWithCity.map((a) => a.activityId)
-      );
-      activityResults = activityResults.filter((a) =>
-        activityIdsWithCity.has(a.id)
-      );
-    }
-
-    // Restrict to activities where this user is the comms contact lead
-    if (filters?.commsContactLeadUserId !== undefined) {
-      const commsLeadRows = await this.databaseService.db
-        .select({ activityId: activityCommsContacts.activityId })
-        .from(activityCommsContacts)
-        .where(
-          and(
-            eq(activityCommsContacts.userId, filters.commsContactLeadUserId),
-            eq(activityCommsContacts.isLead, true),
-            eq(activityCommsContacts.isActive, true)
-          )
-        );
-      const commsLeadIds = new Set(commsLeadRows.map((r) => r.activityId));
-      activityResults = activityResults.filter((a) => commsLeadIds.has(a.id));
-    }
-
-    // Restrict to activities flag-assigned to this user
-    if (filters?.flagAssigneeUserId !== undefined) {
-      const flagRows = await this.databaseService.db
-        .select({ activityId: activityFlags.activityId })
-        .from(activityFlags)
-        .where(eq(activityFlags.assigneeId, filters.flagAssigneeUserId));
-      const flaggedIds = new Set(flagRows.map((r) => r.activityId));
-      activityResults = activityResults.filter((a) => flaggedIds.has(a.id));
-    }
-
-    // Restrict to activities shared with this team
-    if (filters?.sharedWithTeamId !== undefined) {
-      const sharedRows = await this.databaseService.db
-        .select({ activityId: activitySharedWithTeams.activityId })
-        .from(activitySharedWithTeams)
-        .where(
-          and(
-            eq(activitySharedWithTeams.teamId, filters.sharedWithTeamId),
-            eq(activitySharedWithTeams.isActive, true)
-          )
-        );
-      const sharedIds = new Set(sharedRows.map((r) => r.activityId));
-      activityResults = activityResults.filter((a) => sharedIds.has(a.id));
-    }
-
-    // Restrict to activities shared with any of these teams
-    if (
-      filters?.sharedWithTeamIds !== undefined &&
-      filters.sharedWithTeamIds.length > 0
-    ) {
-      const sharedRows = await this.databaseService.db
-        .select({ activityId: activitySharedWithTeams.activityId })
-        .from(activitySharedWithTeams)
-        .where(
-          and(
-            inArray(activitySharedWithTeams.teamId, filters.sharedWithTeamIds),
-            eq(activitySharedWithTeams.isActive, true)
-          )
-        );
-      const sharedIds = new Set(sharedRows.map((r) => r.activityId));
-      activityResults = activityResults.filter((a) => sharedIds.has(a.id));
-    }
-
-    // Team-based data scoping: when bypass is false, restrict to activities visible by visibility rules
-    // (global visibility for all; team visibility for lead team or shared-with teams only)
-    const dataScope = ctx?.dataScope;
-    if (dataScope && !dataScope.bypass) {
-      const visibleIds = await this.getVisibleActivityIdsForTeams(
-        dataScope.teamIds
-      );
-      activityResults = activityResults.filter((a) => visibleIds.has(a.id));
-    }
-
-    // Fetch related data for all activities
     const activityIds = activityResults.map((a) => a.id);
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
+    const isListOutput = outputShape === 'list';
     const canReview =
-      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
+      !isListOutput &&
+      profile.includeReviewDiff === true &&
+      (ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ??
+        false);
     const userTeamIds = ctx?.user?.teamIds ?? [];
+    const fetchFlags = profile.includeFlags === true && userTeamIds.length > 0;
     const [related, reviewLookups, reviewExemptFieldKeys, flagsMap] =
       await Promise.all([
-        this.fetchRelatedForActivityIds(activityIds, activityResults),
+        this.fetchRelatedForActivityIds(activityIds, activityResults, profile),
         canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
         canReview
           ? this.getEffectiveReviewExemptFieldKeys()
           : Promise.resolve(undefined),
-        userTeamIds.length > 0
+        fetchFlags
           ? this.flagsService.fetchFlagsForActivities(activityIds, userTeamIds)
           : Promise.resolve(new Map<number, ActivityFlagResponse[]>()),
       ]);
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
       related.categoriesResult;
 
-    return activityResults.map((activity) => {
-      const commsContacts = related.commsContactsMap.get(activity.id) ?? [];
-      const canEdit =
-        ctx?.user &&
-        hasEditPermission &&
-        this.computeCanEdit(
-          activity.leadTeamId,
-          commsContacts.map((c) => c.userId),
-          ctx.user.id,
-          ctx.user.teamIds,
-          dataScope?.bypass ?? false
-        );
-      const response = this.mapperService.mapToResponseDto(activity, {
-        categories: categoriesMap.get(activity.id) ?? [],
-        categoryIds: categoryIdsMap.get(activity.id) ?? [],
-        tags: related.tagsMap.get(activity.id) ?? [],
-        activityStatus: related.activityStatusesMap.get(activity.id),
-        dateStatus: related.dateStatusesMap.get(activity.id),
-        timeStatus: related.timeStatusesMap.get(activity.id),
-        venueStatus: related.venueStatusesMap.get(activity.id),
-        venueAddress: related.venueAddressesMap.get(activity.id) ?? null,
-        commsMaterials: related.commsMaterialsMap.get(activity.id) ?? [],
-        translationsRequired:
-          related.translationsRequiredMap.get(activity.id) ?? [],
-        representativesAttending:
-          related.representativesAttendingMap.get(activity.id) ?? [],
-        sharedWith: related.sharedWithMap.get(activity.id) ?? [],
-        commsContacts,
-        eventPlannerDetails:
-          related.eventPlannerDetailsMap.get(activity.id) ?? [],
-        eventPlanners: related.eventPlannersMap.get(activity.id) ?? [],
-        eventPlannerLeadIds: related.eventPlannerIdsMap.get(activity.id) ?? [],
-        leadOrgName: related.leadOrgNamesMap.get(activity.id) ?? null,
-        newsReleaseOrigin:
-          related.newsReleaseOriginsMap.get(activity.id) ?? null,
-        newsReleaseDistribution:
-          related.newsReleaseDistributionsMap.get(activity.id) ?? null,
-        premierRequested: related.premierRequestedMap.get(activity.id) ?? null,
-        reportSettings: related.reportSettingsMap.get(activity.id) ?? [],
-        pitchRequiredStatus:
-          related.pitchRequiredStatusMap.get(activity.id) ?? null,
-        translationsRequiredStatus:
-          related.translationsRequiredStatusMap.get(activity.id) ?? null,
-        leadMinistry: related.leadMinistryNamesMap.get(activity.id) ?? null,
-        leadMinistryAbbreviation:
-          related.leadMinistryAbbreviationsMap.get(activity.id) ?? null,
-        leadTeamDisplayName:
-          related.leadTeamDisplayMap.get(activity.id) ?? null,
-        canEdit: canEdit ?? undefined,
-        flags: flagsMap.get(activity.id) ?? [],
+    if (isListOutput) {
+      return activityResults.map((activity) => {
+        const relatedData = this.buildMapperRelatedDataForActivity(activity, {
+          related,
+          categoriesMap,
+          categoryIdsMap,
+          flagsMap,
+          profile,
+          ctx,
+          hasEditPermission,
+          dataScope,
+        });
+        return this.mapperService.mapToListItemDto(activity, relatedData);
       });
+    }
+
+    return activityResults.map((activity) => {
+      const relatedData = this.buildMapperRelatedDataForActivity(activity, {
+        related,
+        categoriesMap,
+        categoryIdsMap,
+        flagsMap,
+        profile,
+        ctx,
+        hasEditPermission,
+        dataScope,
+      });
+      const response = this.mapperService.mapToResponseDto(
+        activity,
+        relatedData
+      );
       if (canReview) {
         response.changedFieldsSinceReview =
           this.computeChangedFieldsSinceReview(
@@ -1726,6 +1703,81 @@ export class ActivitiesService {
       }
       return response;
     });
+  }
+
+  private buildMapperRelatedDataForActivity(
+    activity: Activity,
+    ctx: {
+      related: Awaited<
+        ReturnType<ActivitiesService['fetchRelatedForActivityIds']>
+      >;
+      categoriesMap: Map<number, string[]>;
+      categoryIdsMap: Map<number, number[]>;
+      flagsMap: Map<number, ActivityFlagResponse[]>;
+      profile: ActivityHydrationProfile;
+      ctx?: RequestContextType;
+      hasEditPermission: boolean;
+      dataScope?: RequestContextType['dataScope'];
+    }
+  ): ActivityMapperRelatedData {
+    const commsContacts: Array<{
+      userId: number;
+      name: string;
+      isLead: boolean;
+    }> = ctx.related.commsContactsMap.get(activity.id) ?? [];
+    const canEdit =
+      ctx.profile.includeCanEdit === true &&
+      ctx.ctx?.user &&
+      ctx.hasEditPermission &&
+      this.computeCanEdit(
+        activity.leadTeamId,
+        commsContacts.map((c) => c.userId),
+        ctx.ctx.user.id,
+        ctx.ctx.user.teamIds,
+        ctx.dataScope?.bypass ?? false
+      );
+
+    return {
+      categories: ctx.categoriesMap.get(activity.id) ?? [],
+      categoryIds: ctx.categoryIdsMap.get(activity.id) ?? [],
+      tags: ctx.related.tagsMap.get(activity.id) ?? [],
+      activityStatus: ctx.related.activityStatusesMap.get(activity.id),
+      dateStatus: ctx.related.dateStatusesMap.get(activity.id),
+      timeStatus: ctx.related.timeStatusesMap.get(activity.id),
+      venueStatus: ctx.related.venueStatusesMap.get(activity.id),
+      venueAddress: ctx.related.venueAddressesMap.get(activity.id) ?? null,
+      commsMaterials: ctx.related.commsMaterialsMap.get(activity.id) ?? [],
+      translationsRequired:
+        ctx.related.translationsRequiredMap.get(activity.id) ?? [],
+      representativesAttending:
+        ctx.related.representativesAttendingMap.get(activity.id) ?? [],
+      sharedWith: ctx.related.sharedWithMap.get(activity.id) ?? [],
+      commsContacts,
+      eventPlannerDetails:
+        ctx.related.eventPlannerDetailsMap.get(activity.id) ?? [],
+      eventPlanners: ctx.related.eventPlannersMap.get(activity.id) ?? [],
+      eventPlannerLeadIds:
+        ctx.related.eventPlannerIdsMap.get(activity.id) ?? [],
+      leadOrgName: ctx.related.leadOrgNamesMap.get(activity.id) ?? null,
+      newsReleaseOrigin:
+        ctx.related.newsReleaseOriginsMap.get(activity.id) ?? null,
+      newsReleaseDistribution:
+        ctx.related.newsReleaseDistributionsMap.get(activity.id) ?? null,
+      premierRequested:
+        ctx.related.premierRequestedMap.get(activity.id) ?? null,
+      reportSettings: ctx.related.reportSettingsMap.get(activity.id) ?? [],
+      pitchRequiredStatus:
+        ctx.related.pitchRequiredStatusMap.get(activity.id) ?? null,
+      translationsRequiredStatus:
+        ctx.related.translationsRequiredStatusMap.get(activity.id) ?? null,
+      leadMinistry: ctx.related.leadMinistryNamesMap.get(activity.id) ?? null,
+      leadMinistryAbbreviation:
+        ctx.related.leadMinistryAbbreviationsMap.get(activity.id) ?? null,
+      leadTeamDisplayName:
+        ctx.related.leadTeamDisplayMap.get(activity.id) ?? null,
+      canEdit: canEdit ?? undefined,
+      flags: ctx.flagsMap.get(activity.id) ?? [],
+    };
   }
 
   /**
@@ -1758,7 +1810,7 @@ export class ActivitiesService {
     id: number,
     ctx?: RequestContextType
   ): Promise<ActivityResponse> {
-    const dataScope = ctx?.dataScope;
+    const dataScope = resolveDataScope(ctx?.dataScope);
     const [activity] = await this.databaseService.db
       .select()
       .from(activities)
@@ -1769,7 +1821,7 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity #${id} not found`);
     }
 
-    if (dataScope && !dataScope.bypass) {
+    if (!dataScope.bypass) {
       const visibleIds = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
       );
@@ -1793,7 +1845,11 @@ export class ActivitiesService {
           ? this.flagsService.fetchFlagsForActivity(id, userTeamIds)
           : Promise.resolve([]),
       ]);
-    const commsContacts = related.commsContactsMap.get(id) ?? [];
+    const commsContacts: Array<{
+      userId: number;
+      name: string;
+      isLead: boolean;
+    }> = related.commsContactsMap.get(id) ?? [];
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
     const canEdit =
@@ -1830,9 +1886,15 @@ export class ActivitiesService {
       const dateStatusName = related.dateStatusesMap?.get(activity.id);
       const timeStatusName = related.timeStatusesMap?.get(activity.id);
       const eligibility = isManualCompleteEligible(Date.now(), {
-        activityStatusName: normalizeActivityStatusLabel(statusName ?? ''),
-        dateStatusName: normalizeActivityStatusLabel(dateStatusName ?? ''),
-        timeStatusName: normalizeActivityStatusLabel(timeStatusName ?? ''),
+        activityStatusName: normalizeActivityStatusLabel(
+          String(statusName ?? '')
+        ),
+        dateStatusName: normalizeActivityStatusLabel(
+          String(dateStatusName ?? '')
+        ),
+        timeStatusName: normalizeActivityStatusLabel(
+          String(timeStatusName ?? '')
+        ),
         endDate: activity.endDate ? String(activity.endDate) : null,
         endTime: activity.endTime ?? null,
         isAllDay: activity.isAllDay,
@@ -2701,8 +2763,8 @@ export class ActivitiesService {
       }
     }
 
-    // Verify activity exists so we return 404 for non-existent IDs
-    await this.findOne(id);
+    // Verify activity exists so we return 404 for non-existent IDs (auth already enforced above)
+    await this.findOne(id, { dataScope: { bypass: true, teamIds: [] } });
 
     const reason = options?.reason ?? undefined;
 
@@ -2778,14 +2840,14 @@ export class ActivitiesService {
   private async getVisibleActivityIds(
     ctx?: RequestContextType
   ): Promise<number[] | null> {
-    const dataScope = ctx?.dataScope;
-    if (dataScope && !dataScope.bypass) {
+    const dataScope = resolveDataScope(ctx?.dataScope);
+    if (!dataScope.bypass) {
       const visibleSet = await this.getVisibleActivityIdsForTeams(
         dataScope.teamIds
       );
       return Array.from(visibleSet);
     }
-    // Admin / no scope: all activities are visible — return null to skip IN filter
+    // Admin / explicit bypass: all activities are visible — return null to skip IN filter
     return null;
   }
 

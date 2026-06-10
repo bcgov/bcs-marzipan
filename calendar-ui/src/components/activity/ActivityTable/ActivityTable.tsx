@@ -90,6 +90,7 @@ import {
 import { useSavedFilters } from '@/hooks/useSavedFilters';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import {
+  canResolveTranslationLanguageFilter,
   filterActivityRowsByFilters,
   filterActivityRowsByKeyword,
   type ActivityListQueryParams,
@@ -125,7 +126,7 @@ import {
 } from './ActivityTableFilters';
 import { ActivityTableLayout } from './ActivityTableLayout';
 import {
-  mapActivityResponseToTableRow,
+  mapActivityToTableRow,
   type ActivityTableRow,
 } from './activityTableRow';
 import { compareActivityRowsByLevels } from './activityTableSort';
@@ -732,18 +733,16 @@ export type ActivityTableActiveSavedFilter = {
 };
 
 export interface ActivityTableProps {
-  /** When set, only activities with this lead team are shown (e.g. ministry tab). */
-  leadTeamId?: number;
-  /** When set, only activities where this user is comms contact lead are shown. */
-  commsContactLeadUserId?: number;
-  /** When set, only activities shared with this team are shown. */
-  sharedWithTeamId?: number;
+  /** When set, only activities with any of these lead teams are shown (e.g. ministry tab). */
+  leadTeamIds?: number[];
+  /** When set, only activities where any of these users is comms contact lead are shown. */
+  commsContactLeadUserIds?: number[];
   /** When set, only activities shared with any of these teams are shown. */
   sharedWithTeamIds?: number[];
   /** When set, only activities whose IDs are in this list are shown (favourites tab). */
   favouriteActivityIds?: number[];
-  /** When set, only activities flag-assigned to this user are shown. */
-  flagAssigneeUserId?: number;
+  /** When set, only activities flag-assigned to any of these users are shown. */
+  flagAssigneeUserIds?: number[];
   /**
    * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
    * is considered applied (e.g. single ActivityTable across activity list tabs).
@@ -755,12 +754,11 @@ export interface ActivityTableProps {
 }
 
 export function ActivityTable({
-  leadTeamId,
-  commsContactLeadUserId,
-  sharedWithTeamId,
+  leadTeamIds,
+  commsContactLeadUserIds,
   sharedWithTeamIds,
   favouriteActivityIds,
-  flagAssigneeUserId,
+  flagAssigneeUserIds,
   activeSavedFilter: activeSavedFilterFromParent,
   onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
@@ -830,8 +828,10 @@ export function ActivityTable({
   const [pageIndex, setPageIndex] = useState(0);
 
   const { data: categoriesForFilter = [] } = useCategories();
-  const { data: translationLanguagesForFilter = [] } =
-    useTranslationLanguages();
+  const {
+    data: translationLanguagesForFilter = [],
+    isLoading: isTranslationLanguagesLoading,
+  } = useTranslationLanguages();
   const categoryOptions = useMemo(
     () =>
       categoriesForFilter
@@ -960,47 +960,54 @@ export function ActivityTable({
     return {
       includeCompleted: effectiveShowCompleted,
       includeDeleted: effectiveShowDeleted,
-      ...(leadTeamId !== undefined && { leadTeamId }),
-      ...(commsContactLeadUserId !== undefined && {
-        commsContactLeadUserId,
-      }),
-      ...(sharedWithTeamId !== undefined && { sharedWithTeamId }),
+      ...(leadTeamIds !== undefined &&
+        leadTeamIds.length > 0 && { leadTeamIds }),
+      ...(commsContactLeadUserIds !== undefined &&
+        commsContactLeadUserIds.length > 0 && { commsContactLeadUserIds }),
       ...(sharedWithTeamIds !== undefined &&
         sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
-      ...(flagAssigneeUserId !== undefined && { flagAssigneeUserId }),
+      ...(flagAssigneeUserIds !== undefined &&
+        flagAssigneeUserIds.length > 0 && { flagAssigneeUserIds }),
     };
   }, [
     effectiveShowCompleted,
     effectiveShowDeleted,
-    leadTeamId,
-    commsContactLeadUserId,
-    sharedWithTeamId,
+    leadTeamIds,
+    commsContactLeadUserIds,
     sharedWithTeamIds,
-    flagAssigneeUserId,
+    flagAssigneeUserIds,
   ]);
+
+  const sameNumericArray = (
+    a: number[] | undefined,
+    b: number[] | undefined
+  ): boolean =>
+    (a == null && b == null) ||
+    (a != null &&
+      b != null &&
+      a.length === b.length &&
+      a.every((id, i) => id === b[i]));
 
   // Reset to first page when user changes filters so results match expectations
   const prevFiltersRef = useRef(activityFilters);
   useEffect(() => {
     const prev = prevFiltersRef.current;
-    const sameSharedWithTeamIds =
-      (prev.sharedWithTeamIds == null &&
-        activityFilters.sharedWithTeamIds == null) ||
-      (prev.sharedWithTeamIds != null &&
-        activityFilters.sharedWithTeamIds != null &&
-        prev.sharedWithTeamIds.length ===
-          activityFilters.sharedWithTeamIds.length &&
-        prev.sharedWithTeamIds.every(
-          (id, i) => id === activityFilters.sharedWithTeamIds![i]
-        ));
     const same =
       prev.includeCompleted === activityFilters.includeCompleted &&
       prev.includeDeleted === activityFilters.includeDeleted &&
-      prev.leadTeamId === activityFilters.leadTeamId &&
-      prev.commsContactLeadUserId === activityFilters.commsContactLeadUserId &&
-      prev.sharedWithTeamId === activityFilters.sharedWithTeamId &&
-      prev.flagAssigneeUserId === activityFilters.flagAssigneeUserId &&
-      sameSharedWithTeamIds;
+      sameNumericArray(prev.leadTeamIds, activityFilters.leadTeamIds) &&
+      sameNumericArray(
+        prev.commsContactLeadUserIds,
+        activityFilters.commsContactLeadUserIds
+      ) &&
+      sameNumericArray(
+        prev.sharedWithTeamIds,
+        activityFilters.sharedWithTeamIds
+      ) &&
+      sameNumericArray(
+        prev.flagAssigneeUserIds,
+        activityFilters.flagAssigneeUserIds
+      );
     if (!same) {
       prevFiltersRef.current = activityFilters;
       setPageIndex(0);
@@ -1079,7 +1086,7 @@ export function ActivityTable({
   }, [usersQuery.data]);
 
   const data = useMemo(
-    () => (activitiesQuery.data ?? []).map(mapActivityResponseToTableRow),
+    () => (activitiesQuery.data ?? []).map(mapActivityToTableRow),
     [activitiesQuery.data]
   );
 
@@ -1099,6 +1106,15 @@ export function ActivityTable({
   }, [translationStatusOptions, translationLanguageOptionsForFilter]);
 
   const filteredData = useMemo(() => {
+    const translationLanguageFilterPending =
+      filterState.translationLanguageIds.length > 0 &&
+      (isTranslationLanguagesLoading ||
+        !canResolveTranslationLanguageFilter(filterState, filterContext));
+
+    if (translationLanguageFilterPending) {
+      return [];
+    }
+
     const afterKeyword = filterActivityRowsByKeyword(data, searchKeyword);
     const afterFilters = filterActivityRowsByFilters(
       afterKeyword,
@@ -1110,7 +1126,14 @@ export function ActivityTable({
       return afterFilters.filter((row) => favouriteSet.has(row.id));
     }
     return afterFilters;
-  }, [data, searchKeyword, filterState, filterContext, favouriteActivityIds]);
+  }, [
+    data,
+    searchKeyword,
+    filterState,
+    filterContext,
+    favouriteActivityIds,
+    isTranslationLanguagesLoading,
+  ]);
 
   const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
   const effectiveSortDirection =
@@ -1388,33 +1411,22 @@ export function ActivityTable({
     return fromList?.name ?? activeSavedFilter.name;
   }, [activeSavedFilter, savedFiltersHook.savedFilters]);
 
-  const {
-    appliedFilterTypeLabels,
-    filterDetailLines,
-    hasPanelFiltersActive,
-    hasActiveCriteria,
-  } = useMemo(
-    () =>
-      buildActivityTableFilterSummaryDetails({
+  const { appliedFilterTypeLabels, filterDetailLines, hasActiveCriteria } =
+    useMemo(
+      () =>
+        buildActivityTableFilterSummaryDetails({
+          filterState,
+          searchKeyword,
+          filterSummaryContext: filterSummaryContextForBar,
+          pitchFieldVisibility,
+        }),
+      [
         filterState,
         searchKeyword,
-        filterSummaryContext: filterSummaryContextForBar,
+        filterSummaryContextForBar,
         pitchFieldVisibility,
-      }),
-    [
-      filterState,
-      searchKeyword,
-      filterSummaryContextForBar,
-      pitchFieldVisibility,
-    ]
-  );
-
-  const handleClearPanelFilters = useCallback(() => {
-    defaultSuppressedByClearRef.current = true;
-    defaultAppliedRef.current = false;
-    setActiveSavedFilter(null);
-    setPreferences({ filterState: DEFAULT_ACTIVITY_FILTER_STATE });
-  }, [setPreferences, setActiveSavedFilter]);
+      ]
+    );
 
   const handleClearAllCriteria = useCallback(() => {
     defaultSuppressedByClearRef.current = true;
@@ -1426,8 +1438,8 @@ export function ActivityTable({
     });
   }, [setPreferences, setActiveSavedFilter]);
 
-  const tableSummaryOnClearFilters = hasPanelFiltersActive
-    ? handleClearPanelFilters
+  const tableSummaryOnClearFilters = hasActiveCriteria
+    ? handleClearAllCriteria
     : undefined;
 
   const filterBar = (

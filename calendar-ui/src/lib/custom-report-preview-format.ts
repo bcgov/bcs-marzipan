@@ -1,4 +1,4 @@
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type { ActivityListItem } from '@corpcal/shared/api/types';
 import type { VenueAddressBase } from '@corpcal/shared/schemas';
 import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
 import {
@@ -55,10 +55,10 @@ function previewStringFromArrayItem(value: unknown): string {
  * Single cell string for Custom Report preview / export: one value, no HTML.
  */
 export function formatCustomReportCell(
-  activity: ActivityResponse,
+  activity: ActivityListItem,
   key: string
 ): string {
-  const raw = activity[key as keyof ActivityResponse];
+  const raw = activity[key as keyof ActivityListItem];
 
   if (raw === null || raw === undefined) {
     return '';
