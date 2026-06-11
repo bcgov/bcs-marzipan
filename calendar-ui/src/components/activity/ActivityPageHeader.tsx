@@ -1,9 +1,9 @@
-import { Flag, History, Star } from 'lucide-react';
+import { History, Star } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
+import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
 import { AssignActivityModal } from '@/components/activity/activities/AssignActivityModal';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CopyableText } from '@/components/ui/copyable-text';
@@ -85,6 +85,7 @@ export function ActivityPageHeader({
   const currentFlag = hasSingleFlag ? sortedFlags[0] : null;
 
   const iconButtonClassName = 'shrink-0 shadow-none';
+  const headerActionIconClassName = 'text-muted-foreground size-4';
   const timestampClassName = 'text-muted-foreground text-xs sm:text-sm';
   const showActionButtons =
     canFlag || isFlagged || onFavouriteToggle || onHistoryClick;
@@ -168,36 +169,12 @@ export function ActivityPageHeader({
               }
               onClick={() => setAssignModalOpen(true)}
               disabled={isFlagPending}
-              className={`relative ${iconButtonClassName}`}
+              className={iconButtonClassName}
             >
-              {isFlagged && currentFlag ? (
-                <>
-                  <Avatar size="sm" className="size-full">
-                    <AvatarFallback className="text-[10px] font-medium">
-                      {currentFlag.assigneeName
-                        .split(' ')
-                        .slice(0, 2)
-                        .map((n) => n[0])
-                        .join('')
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <Flag
-                    className="absolute -right-0.5 -bottom-0.5 size-2.5"
-                    style={{
-                      fill:
-                        currentFlag.assigneeFlagColour ??
-                        'var(--flag-button-icon)',
-                      color:
-                        currentFlag.assigneeFlagColour ??
-                        'var(--flag-button-icon)',
-                    }}
-                    aria-hidden
-                  />
-                </>
-              ) : (
-                <Flag className="h-4 w-4" />
-              )}
+              <ActivityFlagIcon
+                assigneeName={isFlagged ? currentFlag?.assigneeName : null}
+                assigneeFlagColour={currentFlag?.assigneeFlagColour}
+              />
             </Button>
           )}
           {!canFlag && isFlagged && currentFlag && onFlagUnassign && (
@@ -211,27 +188,11 @@ export function ActivityPageHeader({
                 onFlagUnassign(currentFlag.teamId, currentFlag.assigneeName)
               }
               disabled={isFlagPending}
-              className={`relative ${iconButtonClassName}`}
+              className={iconButtonClassName}
             >
-              <Avatar size="sm" className="size-full">
-                <AvatarFallback className="text-[10px] font-medium">
-                  {currentFlag.assigneeName
-                    .split(' ')
-                    .slice(0, 2)
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <Flag
-                className="absolute -right-0.5 -bottom-0.5 size-2.5"
-                style={{
-                  fill:
-                    currentFlag.assigneeFlagColour ?? 'var(--flag-button-icon)',
-                  color:
-                    currentFlag.assigneeFlagColour ?? 'var(--flag-button-icon)',
-                }}
-                aria-hidden
+              <ActivityFlagIcon
+                assigneeName={currentFlag.assigneeName}
+                assigneeFlagColour={currentFlag.assigneeFlagColour}
               />
             </Button>
           )}
@@ -246,7 +207,7 @@ export function ActivityPageHeader({
               className={iconButtonClassName}
             >
               <Star
-                className="h-4 w-4"
+                className={headerActionIconClassName}
                 fill={isFavourite ? 'currentColor' : 'none'}
               />
             </Button>
@@ -260,7 +221,7 @@ export function ActivityPageHeader({
               onClick={onHistoryClick}
               className={iconButtonClassName}
             >
-              <History className="h-4 w-4" />
+              <History className={headerActionIconClassName} />
             </Button>
           )}
         </div>
