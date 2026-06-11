@@ -14,11 +14,57 @@ export function lazyWithRetry<T extends ComponentType<any>>(
 ) {
   return lazy(async () => {
     try {
-      return await importFn();
+      const mod = await importFn();
+      // If the resolved module doesn't have a usable default export, try to
+      // pick the first function/class export we can find so lazy() receives
+      // a valid component. This guards against modules that accidentally
+      // export named-only components or against build-time changes.
+      if (!mod || !mod.default) {
+        const keys = Object.keys(mod || {});
+        console.warn('lazyWithRetry: resolved module missing default export', {
+          keys,
+        });
+        const fallback = Object.values(mod || {}).find(
+          (v) => typeof v === 'function'
+        );
+        if (fallback) {
+          console.warn('lazyWithRetry: using fallback export from module', {
+            keys,
+          });
+          return { default: fallback as any };
+        }
+        throw new Error(
+          `lazyWithRetry: resolved module missing default export and no usable fallback export was found (exports: ${keys.join(', ')})`
+        );
+      }
+      return mod;
     } catch (firstError) {
       // One retry — gives the browser a chance to fetch the new manifest.
       try {
-        return await importFn();
+        const mod = await importFn();
+        if (!mod || !mod.default) {
+          const keys = Object.keys(mod || {});
+          console.warn(
+            'lazyWithRetry (retry): resolved module missing default export',
+            {
+              keys,
+            }
+          );
+          const fallback = Object.values(mod || {}).find(
+            (v) => typeof v === 'function'
+          );
+          if (fallback) {
+            console.warn(
+              'lazyWithRetry (retry): using fallback export from module',
+              { keys }
+            );
+            return { default: fallback as any };
+          }
+          throw new Error(
+            `lazyWithRetry (retry): resolved module missing default export and no usable fallback export was found (exports: ${keys.join(', ')})`
+          );
+        }
+        return mod;
       } catch {
         throw new ChunkLoadError(firstError);
       }

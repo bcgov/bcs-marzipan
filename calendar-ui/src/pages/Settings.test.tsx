@@ -41,6 +41,7 @@ vi.mock('@/components/admin/LookupAdmins', () => ({
   MinistryGroupsAdmin: () => <div>MinistryGroups</div>,
   TagsAdmin: () => <div>Tags</div>,
   ThemesAdmin: () => <div>Themes</div>,
+  PermissionsVisibilityAdminSection: () => <div>PermissionsVisibility</div>,
   VenuePresetsAdmin: () => <div>VenuePresets</div>,
 }));
 vi.mock('@/components/admin/ReportCoverContactSettingsAdmin', () => ({
@@ -64,6 +65,7 @@ const SYSTEM_ADMIN_ONLY_LINKS = [
   'Activity completion',
   'Look Ahead reset',
   'Review-exempt fields',
+  'Permission visibility',
 ];
 
 const LOOKUP_LINKS = [

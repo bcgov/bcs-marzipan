@@ -13,6 +13,7 @@ import {
   Pencil,
   UsersRound,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
@@ -136,6 +137,7 @@ export function UsersTabContent({
   onReactivate,
   onInitiateReset,
 }: UsersTabContentProps) {
+  const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [teamIds, setTeamIds] = useState<number[]>([]);
   const [roleIds, setRoleIds] = useState<number[]>([]);
@@ -399,7 +401,13 @@ export function UsersTabContent({
               pageRows.map((user) => (
                 <tr key={user.id} className={tableBodyRow}>
                   <td className={`${tableTd} font-medium text-slate-900`}>
-                    {displayName(user)}
+                    <button
+                      type="button"
+                      className="text-left hover:underline"
+                      onClick={() => void navigate(`/users/${user.id}`)}
+                    >
+                      {displayName(user)}
+                    </button>
                   </td>
                   <td className={`${tableTd} text-slate-600`}>
                     {user.adEmail ?? '-'}

@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import type { AuthUser } from '@corpcal/shared';
+import { SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 import type { LookupItem, VenuePresetItem } from '@corpcal/shared/api/types';
 import type { TeamListItem } from '@corpcal/shared/schemas';
 
@@ -49,6 +49,10 @@ describe('LookupsController', () => {
     updateVenuePreset: vi.fn(),
     deleteVenuePreset: vi.fn(),
     getActivityTeamSharingQuickShare: vi.fn(),
+    getRolePermissions: vi.fn(),
+    getAllPermissions: vi.fn(),
+    updatePermissionVisibility: vi.fn(),
+    getRolesPermissionsMap: vi.fn(),
   };
 
   const mockTeamsService = {
@@ -329,6 +333,118 @@ describe('LookupsController', () => {
       expect(result).toEqual({ success: true });
       expect(mockLookupsService.deleteVenuePreset).toHaveBeenCalledWith(1);
       expect(mockLookupsService.deleteVenuePreset).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('permissions endpoints', () => {
+    it('getRolePermissions returns envelope and calls service with numeric id', async () => {
+      const mockPerms = [
+        {
+          key: 'perm.view_users',
+          displayName: 'View users',
+          description: 'Can view users',
+          hasPermission: true,
+        },
+        {
+          key: 'perm.edit_users',
+          displayName: 'Edit users',
+          description: null,
+          hasPermission: false,
+        },
+      ];
+
+      mockLookupsService.getRolePermissions.mockResolvedValue(mockPerms);
+
+      const result = await controller.getRolePermissions('3');
+
+      expect(result).toEqual({ success: true, data: mockPerms });
+      expect(mockLookupsService.getRolePermissions).toHaveBeenCalledWith(3);
+    });
+
+    it('getRolesPermissionsMap returns map envelope', async () => {
+      const map = {
+        1: [
+          {
+            key: 'perm.a',
+            displayName: 'A',
+            description: null,
+            hasPermission: true,
+          },
+        ],
+        2: [
+          {
+            key: 'perm.a',
+            displayName: 'A',
+            description: null,
+            hasPermission: false,
+          },
+        ],
+      };
+      mockLookupsService.getRolesPermissionsMap.mockResolvedValue(map);
+
+      const result = await controller.getRolesPermissionsMap();
+
+      expect(result).toEqual({ success: true, data: map });
+      expect(mockLookupsService.getRolesPermissionsMap).toHaveBeenCalledTimes(
+        1
+      );
+    });
+
+    it('getAllPermissions rejects non-system-admin callers', async () => {
+      mockLookupsService.getAllPermissions.mockResolvedValue([]);
+
+      await expect(controller.getAllPermissions(mockUser)).rejects.toThrow(
+        'Only System Admin users can manage permission visibility.'
+      );
+      expect(mockLookupsService.getAllPermissions).not.toHaveBeenCalled();
+    });
+
+    it('getAllPermissions returns data for system admin', async () => {
+      const sysAdminUser = {
+        ...mockUser,
+        roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+        permissions: ['system.manage_permissions'],
+      };
+      const perms = [{ id: 1, key: 'perm.a', showInUserManagement: true }];
+      mockLookupsService.getAllPermissions.mockResolvedValue(perms);
+
+      const result = await controller.getAllPermissions(sysAdminUser);
+
+      expect(result).toEqual({ success: true, data: perms });
+      expect(mockLookupsService.getAllPermissions).toHaveBeenCalledTimes(1);
+    });
+
+    it('updatePermissionVisibility rejects non-system-admin callers', async () => {
+      await expect(
+        controller.updatePermissionVisibility(
+          '10',
+          { showInUserManagement: true } as any,
+          mockUser
+        )
+      ).rejects.toThrow(
+        'Only System Admin users can manage permission visibility.'
+      );
+    });
+
+    it('updatePermissionVisibility calls service and returns envelope for system admin', async () => {
+      const sysAdminUser = {
+        ...mockUser,
+        roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+        permissions: ['system.manage_permissions'],
+      };
+      const updated = { id: 10, key: 'perm.x', showInUserManagement: true };
+      mockLookupsService.updatePermissionVisibility.mockResolvedValue(updated);
+
+      const result = await controller.updatePermissionVisibility(
+        '10',
+        { showInUserManagement: true },
+        sysAdminUser
+      );
+
+      expect(result).toEqual({ success: true, data: updated });
+      expect(
+        mockLookupsService.updatePermissionVisibility
+      ).toHaveBeenCalledWith(10, true, sysAdminUser.id);
     });
   });
 });

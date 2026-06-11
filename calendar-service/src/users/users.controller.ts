@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -20,7 +21,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 import type {
   UserDetail,
   UserHistoryEntry,
@@ -180,8 +181,28 @@ export class UsersController {
     @Body(new ZodValidationPipe(updateUserBodySchema)) dto: UpdateUserDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: UserDetail }> {
+    // Editing personal profile fields (name, email, phone, job title) is
+    // restricted to admins and sys-admins. Role/active/notes remain governed
+    // by the users.edit permission only.
+    const editsProfile =
+      dto.displayName !== undefined ||
+      dto.email !== undefined ||
+      dto.phone !== undefined ||
+      dto.jobTitle !== undefined;
+    if (editsProfile && !this.canEditProfile(user)) {
+      throw new ForbiddenException(
+        'Only admins and sys-admins can edit user profile details.'
+      );
+    }
     const data = await this.usersService.update(id, dto, user.id);
     return { success: true, data };
+  }
+
+  private canEditProfile(user: AuthUser): boolean {
+    return (
+      user.roleId === SYSTEM_ROLE_IDS.ADMIN ||
+      user.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+    );
   }
 
   @ApiOperation({

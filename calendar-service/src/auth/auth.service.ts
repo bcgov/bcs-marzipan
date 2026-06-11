@@ -37,6 +37,7 @@ import {
 import {
   findUserByEmailLocal,
   findUserByIdLocal,
+  updateLastLogin,
   updateUserPassword,
   updateUserStatus,
 } from './strategies/local.strategy';
@@ -232,6 +233,8 @@ export class AuthService {
     if (!valid) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    await updateLastLogin(this.databaseService.db, dbUser.id);
 
     return this.buildAuthResponse(dbUser);
   }

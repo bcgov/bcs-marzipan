@@ -6,11 +6,7 @@ import { useCallback, useState } from 'react';
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem, UserListItem } from '@corpcal/shared/api/types';
 import { updateTeam } from '@/api/teamsApi';
-import {
-  initiatePasswordReset,
-  removeUserFromTeam,
-  updateUser,
-} from '@/api/usersApi';
+import { initiatePasswordReset, updateUser } from '@/api/usersApi';
 import { PageHeader } from '@/components/layout';
 import { TeamEditModal } from '@/components/teams/TeamEditModal';
 import { TeamHistoryDrawer } from '@/components/teams/TeamHistoryDrawer';
@@ -75,22 +71,6 @@ export function Users() {
     onError: (err: Error, variables) => {
       toast.error(err.message || 'Update failed', {
         id: variables ? `user-updated-${variables.id}` : undefined,
-      });
-    },
-  });
-
-  const removeTeamMutation = useMutation({
-    mutationFn: ({ userId, teamId }: { userId: number; teamId: number }) =>
-      removeUserFromTeam(userId, teamId),
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('User removed from team', {
-        id: `user-removed-from-team-${variables.userId}-${variables.teamId}`,
-      });
-    },
-    onError: (err: Error, variables) => {
-      toast.error(err.message || 'Remove from team failed', {
-        id: `user-removed-from-team-${variables.userId}-${variables.teamId}`,
       });
     },
   });
@@ -193,9 +173,6 @@ export function Users() {
                 void queryClient.invalidateQueries({ queryKey: ['users'] });
                 setEditUser(null);
               }}
-              onRemoveFromTeam={(userId, teamId) =>
-                removeTeamMutation.mutate({ userId, teamId })
-              }
             />
           )}
 

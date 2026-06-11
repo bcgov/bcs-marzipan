@@ -388,6 +388,44 @@ export async function updateCity(
   return res.data;
 }
 
+// Permissions admin
+export async function fetchAllPermissions(): Promise<
+  {
+    id: number;
+    key: string;
+    displayName: string;
+    description: string | null;
+    showInUserManagement: boolean;
+  }[]
+> {
+  const res = await api.get<{ success: boolean; data: any[] }>(
+    `/lookups/permissions`
+  );
+  return res.data.data;
+}
+
+export async function fetchRolesPermissionsMap(): Promise<
+  Record<number, any[]>
+> {
+  const res = await api.get<{ success: boolean; data: Record<number, any[]> }>(
+    `/lookups/roles/permissions`
+  );
+  return res.data.data;
+}
+
+export async function updatePermissionVisibility(
+  id: number,
+  showInUserManagement: boolean
+): Promise<{
+  success: boolean;
+  data: { id: number; key: string; showInUserManagement: boolean };
+}> {
+  const res = await api.patch(`/lookups/permissions/${id}/visibility`, {
+    showInUserManagement,
+  });
+  return res.data;
+}
+
 // Ministries
 export async function createMinistry(
   data: CreateMinistryRequest
