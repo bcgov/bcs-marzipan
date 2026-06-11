@@ -1,5 +1,12 @@
 import type { FieldErrors, FieldValues, FormState } from 'react-hook-form';
 
+import {
+  isZodMissingRequiredIssue,
+  type ZodIssueLike,
+} from '@corpcal/shared/validation';
+
+export { isZodMissingRequiredIssue };
+
 export type MissingRequiredFieldItem = {
   name: string;
   label: string;
@@ -75,45 +82,11 @@ export function getMissingRequiredFields<TFieldValues extends FieldValues>(
   );
 }
 
-type ZodIssueLike = {
-  path: ReadonlyArray<PropertyKey>;
-  code?: string;
-  message?: unknown;
-};
-
 /**
- * True when a Zod issue represents an empty/missing required value, not length,
- * format, or structural refine rules (e.g. event-planner lead selection).
+ * Maps Zod safeParse issues to top-level field names/labels for submit gating UI.
+ * Issue classification is defined in `@corpcal/shared` — see REQUIRED_FIELDS.md
+ * when adding required activity fields.
  */
-export function isZodMissingRequiredIssue(issue: ZodIssueLike): boolean {
-  const code = issue.code;
-
-  if (code === 'too_big' || code === 'too_long') {
-    return false;
-  }
-
-  if (code === 'too_small' || code === 'invalid_type') {
-    return true;
-  }
-
-  if (code === 'custom') {
-    const message = typeof issue.message === 'string' ? issue.message : '';
-    if (
-      message.includes('Maximum character limit exceeded') ||
-      message.startsWith('When event planners are provided') ||
-      message.includes('markAsReviewed and markAsCompleted')
-    ) {
-      return false;
-    }
-    if (/ is required$/i.test(message) || /^At least one /i.test(message)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/** Maps Zod safeParse issues to top-level field names/labels for submit gating UI. */
 export function getMissingRequiredFieldItemsFromZodError(
   error: { issues: ReadonlyArray<ZodIssueLike> },
   getFieldLabel?: (fieldName: string) => string

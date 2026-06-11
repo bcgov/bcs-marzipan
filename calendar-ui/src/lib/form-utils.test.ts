@@ -9,7 +9,6 @@ import {
   getMissingRequiredFieldItemsFromZodError,
   getMissingRequiredFields,
   getMissingRequiredFieldsFromZodError,
-  isZodMissingRequiredIssue,
 } from './form-utils';
 
 function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
@@ -80,26 +79,6 @@ describe('getMissingRequiredFieldsFromZodError', () => {
   });
 });
 
-describe('isZodMissingRequiredIssue', () => {
-  it('excludes max-length issues', () => {
-    const schema = z.object({ title: z.string().max(5) });
-    const result = schema.safeParse({ title: 'too long title' });
-    expect(result.success).toBe(false);
-    if (result.success) return;
-
-    expect(isZodMissingRequiredIssue(result.error.issues[0])).toBe(false);
-  });
-
-  it('includes empty-string min-length issues', () => {
-    const schema = z.object({ title: z.string().min(1) });
-    const result = schema.safeParse({ title: '' });
-    expect(result.success).toBe(false);
-    if (result.success) return;
-
-    expect(isZodMissingRequiredIssue(result.error.issues[0])).toBe(true);
-  });
-});
-
 describe('getMissingRequiredFieldItemsFromZodError', () => {
   it('excludes max-length failures from the missing-fields hint', () => {
     const result = createActivityRequestSchema.safeParse(
@@ -129,6 +108,22 @@ describe('getMissingRequiredFieldItemsFromZodError', () => {
     );
 
     expect(missing.map((item) => item.name)).toContain('summary');
+  });
+
+  it('excludes commsContacts when contacts exist but no lead is selected', () => {
+    const result = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({
+        commsContacts: [{ userId: 1, isLead: false }],
+      })
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    const missing = getMissingRequiredFieldItemsFromZodError(
+      result.error,
+      (field) => field
+    );
+    expect(missing).toEqual([]);
   });
 
   it('excludes event-planner lead refine failures', () => {
