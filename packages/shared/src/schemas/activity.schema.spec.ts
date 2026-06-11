@@ -60,11 +60,14 @@ describe('createActivityRequestSchema', () => {
     expect(undefinedTitle.error.issues[0].message).toBe(
       'An activity title is required'
     );
-    expect(() =>
-      createActivityRequestSchema.parse(
-        minimalCreateRequest({ title: 'a'.repeat(256) })
-      )
-    ).toThrow();
+    const tooLongTitle = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ title: 'a'.repeat(256) })
+    );
+    if (tooLongTitle.success) throw new Error('Expected failure');
+    expect(tooLongTitle.error.issues[0].path).toEqual(['title']);
+    expect(tooLongTitle.error.issues[0].message).toBe(
+      'Maximum character limit exceeded'
+    );
   });
 
   it('rejects create when summary is empty or missing', () => {

@@ -76,12 +76,16 @@ const activityRichTextStoredStringSchema = z
  */
 const TITLE_REQUIRED_MESSAGE = 'An activity title is required';
 const SUMMARY_REQUIRED_MESSAGE = 'A summary is required';
+const MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE = 'Maximum character limit exceeded';
 
 const activityCoreFieldsSchema = z.object({
   // Required fields
   title: z.preprocess(
     (val) => (val === undefined || val === null ? '' : val),
-    z.string().min(1, { message: TITLE_REQUIRED_MESSAGE }).max(255)
+    z
+      .string()
+      .min(1, { message: TITLE_REQUIRED_MESSAGE })
+      .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
   ),
   summary: z.preprocess(
     (val) => (val === undefined || val === null ? '' : val),
@@ -101,7 +105,11 @@ const activityCoreFieldsSchema = z.object({
       ])
       .optional()
   ),
-  schedulingNotes: z.string().max(500).optional().nullable(),
+  schedulingNotes: z
+    .string()
+    .max(500, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .optional()
+    .nullable(),
   strategy: z.string().nullable().optional(),
 
   // Status IDs (numbers for database; venue optional when activity has no venue)
@@ -162,7 +170,11 @@ const activityCoreFieldsSchema = z.object({
     emptyStringToNull,
     z.number().int().nullable().optional()
   ),
-  leadOrgName: z.string().max(255).nullable().optional(),
+  leadOrgName: z
+    .string()
+    .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .nullable()
+    .optional(),
   newsReleaseId: z.preprocess(
     emptyStringToNull,
     z.string().uuid().nullable().optional()
@@ -195,7 +207,10 @@ const activityCoreFieldsSchema = z.object({
 const representativeSchema = z
   .object({
     representativeId: z.number().int().optional(),
-    representativeName: z.string().max(255).optional(),
+    representativeName: z
+      .string()
+      .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+      .optional(),
   })
   .refine(
     (data) => {
@@ -219,7 +234,10 @@ const representativeSchema = z
  */
 const eventPlannerSchema = z.object({
   eventPlannerId: z.number().int().optional(),
-  eventPlannerName: z.string().max(255).optional(),
+  eventPlannerName: z
+    .string()
+    .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .optional(),
   isLead: z.boolean().default(false),
 });
 
