@@ -845,7 +845,7 @@ export function ActivityPage({
         displayId={displayId}
         title={activity.title ?? ''}
         categories={categories}
-        leadOrg={activity.leadOrg ?? null}
+        leadMinistry={activity.leadMinistry ?? null}
         activityStatus={activity.activityStatus ?? null}
         lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
         createdDateTime={activity.createdDateTime ?? null}
