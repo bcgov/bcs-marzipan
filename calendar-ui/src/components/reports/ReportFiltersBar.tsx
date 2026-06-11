@@ -32,9 +32,9 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
-import analytics from '@/lib/analytics';
 import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
 import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
+import analytics from '@/lib/analytics';
 import {
   buildReportBaselineDateFilterPatch,
   buildReportClearFilterState,
