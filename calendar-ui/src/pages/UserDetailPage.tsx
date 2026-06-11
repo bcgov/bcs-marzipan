@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   PERMISSIONS as SHARED_PERMISSIONS,
@@ -69,16 +69,29 @@ export default function UserDetailPage() {
   const [localNotes, setLocalNotes] = useState<string>('');
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
 
+  // Seed the editable fields only once per user. React Query refetches the
+  // user (e.g. on window focus, reconnect, or cache invalidation) and returns
+  // a fresh object reference each time; re-seeding on every change would
+  // silently overwrite unsaved Role/Notes edits with stale server values,
+  // causing saves to appear to "fail silently".
+  const seededUserIdRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!userDetail) return;
+    if (seededUserIdRef.current === userId) return;
+    seededUserIdRef.current = userId;
     setLocalNotes(userDetail.notes ?? '');
     setSelectedRoleId(userDetail.roleId ?? null);
     setDirectLoginEnabled(Boolean(userDetail.directLoginEnabled));
-  }, [userDetail]);
+  }, [userDetail, userId]);
 
   const mutation = useMutation({
     mutationFn: (payload: { roleId?: number; notes?: string | null }) =>
       updateUser(userId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['user', userId] });
+      void queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to update user');
     },
