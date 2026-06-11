@@ -101,12 +101,10 @@ Append-only notes for fork-level UI changes that diverge from stock Shadcn/Radix
 
 **Files:**
 
-| File                                                        | Change                                                                                                                                                                                                                                      |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [src/components/ui/form.tsx](../src/components/ui/form.tsx) | `useFormField` exposes `showError`: error is shown only when `isTouched`, `isDirty`, or `submitCount > 0`. `FormControl` and `FormMessage` use `showError` instead of raw `error` for `aria-invalid`, `aria-describedby`, and message text. |
+| File                                                        | Change                                                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [src/components/ui/form.tsx](../src/components/ui/form.tsx) | `useFormField` exposes `showError`: error is shown only when `isTouched`, `isDirty`, or `submitCount > 0`. `FormControl`, `FormMessage`, and `FormLabel` use `showError` instead of raw `error` for `aria-invalid`, `aria-describedby`, message text, and destructive label styling. |
 
-**Scope:** Applies to all forms using `FormControl` / `FormMessage` from this module (not opt-in via `FormDisplayOptionsProvider`).
-
-**Note:** `FormLabel` still uses raw `error` for destructive label styling; labels may turn red before the inline message appears.
+**Scope:** Applies to all forms using `FormControl` / `FormMessage` / `FormLabel` from this module (not opt-in via `FormDisplayOptionsProvider`).
 
 **Rationale:** Keeps validation running on change for submit gating without showing errors on untouched empty fields on first paint. Left in `useFormField` so message, control, and a11y attributes stay consistent in one place.

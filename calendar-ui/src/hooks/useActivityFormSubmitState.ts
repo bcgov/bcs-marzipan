@@ -53,6 +53,7 @@ export function useActivityFormSubmitState<TFieldValues extends FieldValues>(
   const values = form.getValues();
   const { isValid, errors } = useFormState({
     control: form.control,
+    disabled: Boolean(options?.schema),
   });
 
   if (options?.schema) {

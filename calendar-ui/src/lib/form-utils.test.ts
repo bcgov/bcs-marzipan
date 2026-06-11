@@ -1,13 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { createActivityRequestSchema } from '@corpcal/shared/schemas';
+
 import {
   formatMissingRequiredFieldsCountMessage,
   getMissingRequiredFieldItems,
   getMissingRequiredFieldItemsFromZodError,
   getMissingRequiredFields,
   getMissingRequiredFieldsFromZodError,
+  isZodMissingRequiredIssue,
 } from './form-utils';
+
+function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
+  return {
+    title: 'Test Activity',
+    summary: 'Summary',
+    dateStatusId: 1,
+    timeStatusId: 1,
+    leadTeamId: 1,
+    leadMinistryId: 1,
+    categoryIds: [1],
+    commsContacts: [{ userId: 1, isLead: true }],
+    ...overrides,
+  };
+}
 
 describe('formatMissingRequiredFieldsCountMessage', () => {
   it('returns null when count is zero', () => {
@@ -63,7 +80,74 @@ describe('getMissingRequiredFieldsFromZodError', () => {
   });
 });
 
+describe('isZodMissingRequiredIssue', () => {
+  it('excludes max-length issues', () => {
+    const schema = z.object({ title: z.string().max(5) });
+    const result = schema.safeParse({ title: 'too long title' });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    expect(isZodMissingRequiredIssue(result.error.issues[0])).toBe(false);
+  });
+
+  it('includes empty-string min-length issues', () => {
+    const schema = z.object({ title: z.string().min(1) });
+    const result = schema.safeParse({ title: '' });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    expect(isZodMissingRequiredIssue(result.error.issues[0])).toBe(true);
+  });
+});
+
 describe('getMissingRequiredFieldItemsFromZodError', () => {
+  it('excludes max-length failures from the missing-fields hint', () => {
+    const result = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ title: 'a'.repeat(256) })
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    const missing = getMissingRequiredFieldItemsFromZodError(
+      result.error,
+      (field) => field
+    );
+
+    expect(missing).toEqual([]);
+  });
+
+  it('includes summary required refine failures', () => {
+    const result = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ summary: '' })
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    const missing = getMissingRequiredFieldItemsFromZodError(
+      result.error,
+      (field) => field
+    );
+
+    expect(missing.map((item) => item.name)).toContain('summary');
+  });
+
+  it('excludes event-planner lead refine failures', () => {
+    const result = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({
+        eventPlanners: [{ eventPlannerName: 'Planner A', isLead: false }],
+      })
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    const missing = getMissingRequiredFieldItemsFromZodError(
+      result.error,
+      (field) => field
+    );
+
+    expect(missing).toEqual([]);
+  });
+
   it('returns field names and labels while deduping top-level paths', () => {
     const schema = z.object({
       title: z.string().min(1),

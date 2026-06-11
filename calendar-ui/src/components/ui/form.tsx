@@ -183,7 +183,7 @@ const FormLabel = forwardRef<
     },
     ref
   ) => {
-    const { error, formItemId, isDirty, name } = useFormField();
+    const { showError, formItemId, isDirty, name } = useFormField();
     const { setAriaRequired } = useContext(FormItemContext)!;
     const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
 
@@ -199,7 +199,7 @@ const FormLabel = forwardRef<
       <Label
         ref={ref}
         className={cn(
-          error && 'text-destructive',
+          showError && 'text-destructive',
           className,
           'flex items-center gap-2',
           showChangedBadges && showDirtyIndicator && 'min-h-[18px]'

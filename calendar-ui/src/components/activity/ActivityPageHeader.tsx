@@ -116,7 +116,7 @@ export function ActivityPageHeader({
       <div className="col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:col-start-1">
         <h1 className="text-lg font-bold">{title}</h1>
         {categories.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {categories.map((cat, idx) => (
               <Badge
                 key={idx}
