@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+import {
+  commaSeparatedIntArray,
+  commaSeparatedStringArray,
+  confirmedFilterEnum,
+} from './query-param-helpers';
+
 /**
  * Query Parameter Schemas
  *
@@ -45,8 +51,8 @@ export type LookupQueryParams = z.infer<typeof lookupQueryParamsSchema>;
 // ============================================
 
 /**
- * Schema for filtering activities (query parameters)
- * Uses z.transform().pipe() for proper type conversion from HTTP strings
+ * Unified array-based activity filter query params.
+ * Tabs pass single-element arrays; multi-select filters pass multiple IDs (OR semantics).
  */
 export const filterActivitiesQuerySchema = z.object({
   title: z.string().optional(),
@@ -54,85 +60,65 @@ export const filterActivitiesQuerySchema = z.object({
   startDateTo: z.string().date().optional(),
   endDateFrom: z.string().date().optional(),
   endDateTo: z.string().date().optional(),
-  activityStatusId: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().int())
-    .optional(),
-  leadMinistryId: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().int())
-    .optional(),
-  leadTeamId: z.string().transform(Number).pipe(z.number().int()).optional(),
   /**
-   * Restrict to activities where this user is the comms contact lead (isLead = true).
+   * When true with startDateFrom/startDateTo, activity start and end must be
+   * non-empty and the scheduled span must overlap the window (matches activity
+   * list client filter).
    */
-  commsContactLeadUserId: z
+  scheduledDateRangeOverlaps: z
     .string()
-    .transform(Number)
-    .pipe(z.number().int())
-    .optional(),
-  /**
-   * Restrict to activities that have been flag-assigned to this user.
-   */
-  flagAssigneeUserId: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().int())
-    .optional(),
-  /**
-   * Restrict to activities shared with this team (in activity_shared_with_teams).
-   */
-  sharedWithTeamId: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().int())
-    .optional(),
-  /**
-   * Restrict to activities shared with any of these teams (in activity_shared_with_teams).
-   * Comma-separated team IDs in query string.
-   */
-  sharedWithTeamIds: z
-    .union([
-      z.array(z.string().transform(Number).pipe(z.number().int())),
-      z.string().transform((val) =>
-        val
-          .split(',')
-          .map((id) => parseInt(id.trim(), 10))
-          .filter((id) => !isNaN(id))
-      ),
-    ])
     .optional()
-    .transform((val) =>
-      val == null || (Array.isArray(val) && val.length === 0) ? undefined : val
+    .transform((val): boolean | undefined =>
+      val === undefined ? undefined : val === 'true'
     ),
-  /**
-   * Bound the activity list to a single look-ahead section bucket. Allowed
-   * values are configured by report admin via `reports.config.sections[].filter.lookAheadSection`
-   * and validated at write time via `LookAheadPolicyService`; the query layer
-   * keeps the field permissive (bounded length) so admin-defined keys flow
-   * through without code changes.
-   */
-  lookAheadSection: z.string().min(1).max(50).optional(),
-  city: z.string().optional(),
-  isIssue: z
-    .string()
-    .transform((val) => val === 'true')
-    .pipe(z.boolean())
-    .optional(),
-  /**
-   * When true, include activities with status 'completed'. Omit or false for list default (exclude completed).
-   */
-  includeCompleted: z
+  activityStatusIds: commaSeparatedIntArray(),
+  leadMinistryIds: commaSeparatedIntArray(),
+  leadOrgIds: commaSeparatedIntArray(),
+  leadTeamIds: commaSeparatedIntArray(),
+  commsContactLeadUserIds: commaSeparatedIntArray(),
+  flagAssigneeUserIds: commaSeparatedIntArray(),
+  sharedWithTeamIds: commaSeparatedIntArray(),
+  eventPlannerLeadIds: commaSeparatedIntArray(),
+  tagIds: commaSeparatedIntArray(),
+  categoryNames: commaSeparatedStringArray(),
+  translationRequiredStatusIds: commaSeparatedIntArray(),
+  translationLanguageIds: commaSeparatedIntArray(),
+  pitchRequiredStatusNames: commaSeparatedStringArray(),
+  lookAheadStatusValues: commaSeparatedStringArray(),
+  lookAheadSectionValues: commaSeparatedStringArray(),
+  dateConfirmedFilter: confirmedFilterEnum.optional(),
+  timeConfirmedFilter: confirmedFilterEnum.optional(),
+  pitchDateNotScheduled: z
     .string()
     .optional()
     .transform((val): boolean | undefined =>
       val === undefined ? undefined : val === 'true'
     ),
   /**
-   * When true, include soft-deleted activities. Only effective for Admin/System Admin; ignored otherwise.
+   * When true, activity must have a pitch date set (no bounds). Used when the UI
+   * selects "scheduled" without an active pitch date range.
    */
+  pitchDateScheduled: z
+    .string()
+    .optional()
+    .transform((val): boolean | undefined =>
+      val === undefined ? undefined : val === 'true'
+    ),
+  pitchDateFrom: z.string().date().optional(),
+  pitchDateTo: z.string().date().optional(),
+  search: z.string().optional(),
+  city: z.string().optional(),
+  isIssue: z
+    .string()
+    .transform((val) => val === 'true')
+    .pipe(z.boolean())
+    .optional(),
+  includeCompleted: z
+    .string()
+    .optional()
+    .transform((val): boolean | undefined =>
+      val === undefined ? undefined : val === 'true'
+    ),
   includeDeleted: z
     .string()
     .optional()
@@ -151,41 +137,77 @@ export const filterActivitiesQuerySchema = z.object({
     .pipe(z.number().int().positive().min(1).max(100)),
 });
 
-export type FilterActivitiesQueryParams = z.infer<
+/** Parsed query shape; Zod transforms infer many keys as required `T | undefined`. */
+type ParsedFilterActivitiesQueryParams = z.infer<
   typeof filterActivitiesQuerySchema
 >;
 
+/** Activity list / findAll filters. Only pagination defaults are required keys. */
+export type FilterActivitiesQueryParams = Pick<
+  ParsedFilterActivitiesQueryParams,
+  'page' | 'limit'
+> &
+  Partial<Omit<ParsedFilterActivitiesQueryParams, 'page' | 'limit'>>;
+
+/** Int-array query fields serialized as comma-separated strings in HTTP. */
+export const FILTER_ACTIVITIES_INT_ARRAY_KEYS = [
+  'activityStatusIds',
+  'leadMinistryIds',
+  'leadOrgIds',
+  'leadTeamIds',
+  'commsContactLeadUserIds',
+  'flagAssigneeUserIds',
+  'sharedWithTeamIds',
+  'eventPlannerLeadIds',
+  'tagIds',
+  'translationRequiredStatusIds',
+  'translationLanguageIds',
+] as const satisfies readonly (keyof FilterActivitiesQueryParams)[];
+
+/** String-array query fields serialized as comma-separated strings in HTTP. */
+export const FILTER_ACTIVITIES_STRING_ARRAY_KEYS = [
+  'categoryNames',
+  'pitchRequiredStatusNames',
+  'lookAheadStatusValues',
+  'lookAheadSectionValues',
+] as const satisfies readonly (keyof FilterActivitiesQueryParams)[];
+
 /**
- * Reports report-data and CSV export query: same filters as activity list,
- * plus optional keyword search and report-friendly date aliases.
- * Reports fetch the full bounded result set (no pagination limit).
+ * Serialize activity filter params for HTTP query strings (arrays → comma-separated).
  */
-export const reportDataQuerySchema = filterActivitiesQuerySchema
-  .omit({ page: true, limit: true })
-  .extend({
-    search: z.string().optional(),
-    /** When set, applies as startDateFrom unless startDateFrom is already provided. */
-    startDate: z.string().date().optional(),
-    /** When set, applies as startDateTo unless startDateTo is already provided. */
-    endDate: z.string().date().optional(),
-  });
+export function serializeFilterActivitiesQueryParams(
+  filters: Partial<FilterActivitiesQueryParams> | undefined
+): Record<string, string | number | boolean | undefined> {
+  if (filters == null) return {};
+  const out: Record<string, string | number | boolean | undefined> = {};
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      out[key] = value.join(',');
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
+/**
+ * Reports report-data and export query: activity filters without pagination.
+ */
+export const reportDataQuerySchema = filterActivitiesQuerySchema.omit({
+  page: true,
+  limit: true,
+});
 
 export type ReportDataQueryParams = z.infer<typeof reportDataQuerySchema>;
 
 export function reportDataQueryToActivityFindAllFilters(
   query: ReportDataQueryParams
 ): FilterActivitiesQueryParams {
-  const { search: _search, startDate, endDate, ...rest } = query;
-  const filters: FilterActivitiesQueryParams = {
+  const { search: _search, ...rest } = query;
+  return {
     ...rest,
     page: 1,
     limit: 100,
   };
-  if (startDate !== undefined && filters.startDateFrom === undefined) {
-    filters.startDateFrom = startDate;
-  }
-  if (endDate !== undefined && filters.startDateTo === undefined) {
-    filters.startDateTo = endDate;
-  }
-  return filters;
 }

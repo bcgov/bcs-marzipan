@@ -15,6 +15,8 @@ export interface ReportTableSummaryBarProps {
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
   canSeeDeleted: boolean;
   activityCount: number;
+  appliedSavedFilterName?: string | null;
+  onClearSavedFilter?: () => void;
 }
 
 export function ReportTableSummaryBar({
@@ -23,6 +25,8 @@ export function ReportTableSummaryBar({
   setPreferences,
   canSeeDeleted,
   activityCount,
+  appliedSavedFilterName = null,
+  onClearSavedFilter,
 }: ReportTableSummaryBarProps) {
   const { pitchFieldVisibility } = useActivityTableFilterLookups(canSeeDeleted);
 
@@ -37,7 +41,8 @@ export function ReportTableSummaryBar({
         preferences.filterState,
         reportName,
         preferences.searchKeyword,
-        pitchFieldVisibility
+        pitchFieldVisibility,
+        { includeSearchKeyword: true }
       ),
     [
       preferences.filterState,
@@ -53,6 +58,7 @@ export function ReportTableSummaryBar({
     canSeeDeleted,
     getResetFilterState,
     hasClearablePanelFilters,
+    onClearSavedFilter,
   });
 
   return (
@@ -64,6 +70,7 @@ export function ReportTableSummaryBar({
       appliedFilterTypeLabels={summary.appliedFilterTypeLabels}
       filterDetailLines={summary.filterDetailLines}
       onClearFilters={summary.onClearFilters}
+      appliedSavedFilterName={appliedSavedFilterName}
     />
   );
 }

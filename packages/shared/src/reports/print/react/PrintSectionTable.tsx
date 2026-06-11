@@ -131,9 +131,7 @@ function PrintSectionColGroup({
 
 function printSectionTableClassName(omitReleaseColumn: boolean): string {
   const base = 'corpcal-print-table';
-  return omitReleaseColumn
-    ? `${base} corpcal-print-table--omit-release`
-    : base;
+  return omitReleaseColumn ? `${base} corpcal-print-table--omit-release` : base;
 }
 
 function PrintSectionColumnHeaderRow({

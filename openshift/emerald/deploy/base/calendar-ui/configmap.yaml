@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: calendar-ui-config
+  labels:
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
+data:
+  NODE_ENV: development
+  VITE_API_BASE_URL: /api
+  API_PROXY_UPSTREAM: http://calendar-service:3001

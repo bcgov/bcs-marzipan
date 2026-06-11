@@ -3,17 +3,23 @@ import {
   ACTIVITY_FIELD_SCOPES,
   canViewActivityFieldScope,
 } from '../auth/activity-field-scopes';
+import {
+  ACTIVITY_LIST_ITEM_SHAPE,
+  type ActivityListItem,
+} from '../schemas/activity-list-item.schema';
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 
 /**
  * True when `value` is a full ActivityResponse-shaped object (HTTP `data` fragment).
- * Not for history rows, category lookups, or global-history activity summaries.
+ * Not for list/report rows (`_shape: 'list'`), history rows, category lookups, or
+ * global-history activity summaries.
  */
 export function isActivityResponsePayload(
   value: unknown
 ): value is ActivityResponse {
   if (value === null || typeof value !== 'object') return false;
   const o = value as Record<string, unknown>;
+  if (o._shape === ACTIVITY_LIST_ITEM_SHAPE) return false;
   return (
     typeof o.id === 'number' &&
     typeof o.title === 'string' &&
@@ -31,11 +37,10 @@ interface FieldScopeUser {
  * Strip fields from an ActivityResponse that the user lacks view permission for.
  * Returns a shallow copy; the original is not mutated.
  */
-export function redactActivityResponse(
-  activity: ActivityResponse,
-  user: FieldScopeUser
-): ActivityResponse {
-  const redacted = { ...activity };
+export function redactActivityResponse<
+  T extends ActivityResponse | ActivityListItem,
+>(activity: T, user: FieldScopeUser): T {
+  const redacted = { ...activity } as Record<string, unknown> & T;
   let didRedact = false;
 
   for (const scope of ACTIVITY_FIELD_SCOPES) {
@@ -47,9 +52,13 @@ export function redactActivityResponse(
     }
   }
 
-  if (didRedact && redacted.changedFieldsSinceReview) {
+  if (
+    didRedact &&
+    'changedFieldsSinceReview' in redacted &&
+    Array.isArray(redacted.changedFieldsSinceReview)
+  ) {
     redacted.changedFieldsSinceReview = filterChangedFields(
-      redacted.changedFieldsSinceReview,
+      redacted.changedFieldsSinceReview as string[],
       user
     );
   }

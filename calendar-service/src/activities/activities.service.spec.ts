@@ -47,6 +47,9 @@ vi.mock('../policy/tag-scoping.helper', () => ({
   getVisibleTagIds: vi.fn(),
 }));
 
+/** mapToResponseDto tests exercise mapping only, not team visibility rules. */
+const BYPASS_FIND_ONE_CTX = { dataScope: { bypass: true, teamIds: [] } };
+
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
 
@@ -311,7 +314,7 @@ describe('ActivitiesService', () => {
       const mockActivity = createMockActivity();
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
       // Verify the result matches the schema
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
@@ -326,7 +329,7 @@ describe('ActivitiesService', () => {
         new Map([[1, 'ABC']])
       );
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.leadMinistryAbbreviation).toBe('ABC');
@@ -339,7 +342,7 @@ describe('ActivitiesService', () => {
         new Map()
       );
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
       expect(result.leadMinistryAbbreviation).toBeNull();
     });
@@ -374,7 +377,7 @@ describe('ActivitiesService', () => {
 
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
       // Verify the result matches the schema
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
@@ -396,7 +399,7 @@ describe('ActivitiesService', () => {
 
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
       // Verify the result matches the schema
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
@@ -414,7 +417,7 @@ describe('ActivitiesService', () => {
         new Map([[1, [{ name: 'External Event Lead', isLead: true }]]])
       );
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.eventPlanners).toEqual(['External Event Lead']);
@@ -433,7 +436,7 @@ describe('ActivitiesService', () => {
 
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
       // Verify the result matches the schema
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
@@ -451,7 +454,7 @@ describe('ActivitiesService', () => {
 
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       expect(result.startTime).toBe('09:00');
@@ -462,7 +465,7 @@ describe('ActivitiesService', () => {
       const mockActivity = createMockActivity();
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
       // Verify all required fields from schema are present
       expect(result).toHaveProperty('id');
@@ -511,7 +514,7 @@ describe('ActivitiesService', () => {
         const mockActivity = createMockActivity(testCase);
         mockDatabaseService.db.select = createMockSelect([mockActivity]);
 
-        const result = await service.findOne(1);
+        const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
         expect(() => activityResponseSchema.parse(result)).not.toThrow();
         expect(result.lookAheadStatus).toBe(testCase.lookAheadStatus);
@@ -528,7 +531,7 @@ describe('ActivitiesService', () => {
 
       mockDatabaseService.db.select = createMockSelect([mockActivity]);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, BYPASS_FIND_ONE_CTX);
 
       expect(() => activityResponseSchema.parse(result)).not.toThrow();
       // Verify ISO datetime format
