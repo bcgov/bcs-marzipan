@@ -14,6 +14,7 @@ import {
 } from '@corpcal/shared/schemas';
 import {
   ActivityFormBody,
+  ActivityFormMissingFieldsHint,
   ActivityFormStickyHeader,
   ActivityPageHeader,
   ActivityStatusBanner,
@@ -44,11 +45,6 @@ import {
 import { cloneActivity, fetchActivityHistory } from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
 import { cancelForceHandoff, requestForceHandoff } from '../api/locksApi';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '../components/ui/popover';
 import { useActivityEditActions } from '../hooks/useActivityEditActions';
 import { useActivityEditFormHydration } from '../hooks/useActivityEditFormHydration';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
@@ -134,7 +130,7 @@ export function ActivityPage({
     userTeamIds: user?.teamIds,
     hasCreateAny,
   });
-  const { isFormValid, missingFields, missingFieldItems } =
+  const { isFormValid, missingFields, missingFieldsHelperText } =
     useActivityFormSubmitState(form, {
       getFieldLabel: getActivityFieldLabel,
       schema: createActivityRequestSchema,
@@ -242,8 +238,6 @@ export function ActivityPage({
   const [deleteModalInitialNotes, setDeleteModalInitialNotes] = useState<
     string | undefined
   >(undefined);
-  const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
-    useState(false);
   /**
    * Forces remount of form-body UI controls (combobox/popover/select internals)
    * when edit lock is externally lost, so open overlays cannot remain stuck.
@@ -984,19 +978,25 @@ export function ActivityPage({
                     Delete
                   </Button>
                 )}
+                {isDirty && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="animate-in fade-in duration-200"
+                    onClick={() => setShowLeaveConfirm(true)}
+                    disabled={isSubmitting}
+                  >
+                    Discard changes
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="flex shrink-0 gap-4">
-              {isDirty && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="animate-in fade-in duration-200"
-                  onClick={() => setShowLeaveConfirm(true)}
-                  disabled={isSubmitting}
-                >
-                  Discard changes
-                </Button>
+            <div className="flex shrink-0 flex-wrap items-center gap-4">
+              {missingFieldsHelperText != null && (
+                <ActivityFormMissingFieldsHint
+                  helperText={missingFieldsHelperText}
+                  fields={missingFields}
+                />
               )}
               {canCloneActivity && (
                 <Button
@@ -1008,62 +1008,26 @@ export function ActivityPage({
                   Clone
                 </Button>
               )}
-              {!isFormValid ? (
-                <Popover open={showMissingFieldsPopover}>
-                  <PopoverTrigger asChild>
-                    <div
-                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                    >
-                      <Button
-                        type="submit"
-                        disabled={true}
-                        variant={
-                          canReviewActivities || actionFlags.showCompleteAction
-                            ? 'outline'
-                            : 'default'
-                        }
-                        className="cursor-not-allowed"
-                      >
-                        {isSubmitting ? 'Saving...' : 'Save'}
-                      </Button>
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80"
-                    onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                    onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                  >
-                    <div>
-                      <h4 className="mb-3 text-sm font-medium">
-                        Required fields remaining:
-                      </h4>
-                      <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                        {missingFieldItems.map((field) => (
-                          <li key={field.name}>{field.label}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <Button
-                  type="submit"
-                  variant={
-                    canReviewActivities || actionFlags.showCompleteAction
-                      ? 'outline'
-                      : 'default'
-                  }
-                  disabled={!actionFlags.canSubmitUpdate}
-                >
-                  {isSubmitting ? 'Saving...' : 'Save'}
-                </Button>
-              )}
+              <Button
+                type="submit"
+                variant={
+                  canReviewActivities || actionFlags.showCompleteAction
+                    ? 'outline'
+                    : 'default'
+                }
+                disabled={!actionFlags.canSubmitUpdate}
+                className={!isFormValid ? 'cursor-not-allowed' : undefined}
+              >
+                {isSubmitting ? 'Saving...' : 'Save'}
+              </Button>
               {actionFlags.showReviewAction && (
                 <Button
                   type="button"
                   aria-label={isDirty ? 'Save and Review' : 'Review'}
                   disabled={!actionFlags.reviewActionEnabled}
+                  className={
+                    isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
+                  }
                   onClick={() => ensureEditThen(() => setShowReviewModal(true))}
                 >
                   <ReviewActionButtonLabel isDirty={isDirty} />
@@ -1075,6 +1039,9 @@ export function ActivityPage({
                     type="button"
                     aria-label={isDirty ? 'Save and complete' : 'Complete'}
                     disabled={!actionFlags.completeActionEnabled}
+                    className={
+                      isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
+                    }
                     onClick={() =>
                       ensureEditThen(() => setShowCompleteModal(true))
                     }

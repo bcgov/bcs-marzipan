@@ -1,5 +1,5 @@
 import { Info } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 
 import {
   Popover,
@@ -42,6 +42,11 @@ export function ActivityFormMissingFieldsHint({
   const [open, setOpen] = useState(false);
   const prefersHover = usePrefersHover();
   const closeTimerRef = useRef<number | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const preventMouseFocus = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
 
   const cancelScheduledClose = () => {
     if (closeTimerRef.current != null) {
@@ -61,6 +66,7 @@ export function ActivityFormMissingFieldsHint({
     cancelScheduledClose();
     closeTimerRef.current = window.setTimeout(() => {
       setOpen(false);
+      triggerRef.current?.blur();
       closeTimerRef.current = null;
     }, HOVER_CLOSE_DELAY_MS);
   };
@@ -84,10 +90,12 @@ export function ActivityFormMissingFieldsHint({
         </span>
         <PopoverTrigger asChild>
           <button
+            ref={triggerRef}
             type="button"
             className={infoTriggerClassName}
             aria-label={`${helperText}. Show required field details.`}
             aria-expanded={open}
+            onMouseDown={preventMouseFocus}
             onMouseEnter={handleHoverOpen}
             onMouseLeave={handleHoverScheduleClose}
           >
@@ -100,9 +108,10 @@ export function ActivityFormMissingFieldsHint({
         align={align}
         onMouseEnter={handleHoverOpen}
         onMouseLeave={handleHoverScheduleClose}
+        onCloseAutoFocus={(event) => event.preventDefault()}
       >
         <div>
-          <h4 className="mb-4 text-sm font-medium">
+          <h4 className="mb-3 text-sm font-medium">
             Required fields remaining:
           </h4>
           <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
