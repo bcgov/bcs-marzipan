@@ -19,6 +19,21 @@ global.ResizeObserver = class ResizeObserver {
 // Mock scrollIntoView (required by cmdk)
 Element.prototype.scrollIntoView = vi.fn();
 
+// Mock matchMedia (required by ActivityFormMissingFieldsHint, use-mobile, etc.)
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();
