@@ -116,6 +116,6 @@ export function formatMissingRequiredFieldsCountMessage(
 ): string | null {
   if (count <= 0) return null;
   return count === 1
-    ? '1 required field missing'
-    : `${count} required fields missing`;
+    ? '1 more required field'
+    : `${count} more required fields`;
 }

@@ -11,6 +11,7 @@ import {
 } from '@corpcal/shared/schemas';
 import {
   ActivityFormBody,
+  ActivityFormMissingFieldsHint,
   ActivityFormStickyHeader,
 } from '@/components/activity';
 import { CreateActivityConfirmModal } from '@/components/activity/activities/CreateActivityConfirmModal';
@@ -19,11 +20,6 @@ import { FormErrorFallback, StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 
 import { Form } from '../components/ui/form';
-import {
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-} from '../components/ui/popover';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState';
 import { useAuth } from '../hooks/useAuth';
@@ -49,8 +45,6 @@ export const CreateActivityForm: FC = () => {
   const listOrBackPath = getActivityFormBackTarget(location.state) ?? '/';
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
-    useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [validatedData, setValidatedData] = useState<ActivityFormData | null>(
     null
@@ -261,36 +255,10 @@ export const CreateActivityForm: FC = () => {
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-4">
               {missingFieldsHelperText != null && (
-                <Popover open={showMissingFieldsPopover}>
-                  <PopoverAnchor asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="text-muted-foreground h-auto px-2 py-1 font-normal"
-                      onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                      onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                    >
-                      {missingFieldsHelperText}
-                    </Button>
-                  </PopoverAnchor>
-                  <PopoverContent
-                    className="w-80"
-                    align="end"
-                    onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                    onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                  >
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium">
-                        Required fields missing:
-                      </h4>
-                      <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                        {missingFields.map((field) => (
-                          <li key={field}>{field}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                <ActivityFormMissingFieldsHint
+                  helperText={missingFieldsHelperText}
+                  fields={missingFields}
+                />
               )}
               <Button
                 type="submit"

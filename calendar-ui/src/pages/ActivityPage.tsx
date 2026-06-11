@@ -1034,9 +1034,9 @@ export function ActivityPage({
                     onMouseEnter={() => setShowMissingFieldsPopover(true)}
                     onMouseLeave={() => setShowMissingFieldsPopover(false)}
                   >
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium">
-                        Required fields missing:
+                    <div>
+                      <h4 className="mb-3 text-sm font-medium">
+                        Required fields remaining:
                       </h4>
                       <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
                         {missingFieldItems.map((field) => (

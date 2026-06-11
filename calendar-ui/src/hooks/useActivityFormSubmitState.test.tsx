@@ -48,7 +48,7 @@ describe('useActivityFormSubmitState', () => {
     expect(result.current.submitState.missingFields).toContain('title');
     expect(result.current.submitState.missingFields).toContain('categoryIds');
     expect(result.current.submitState.missingFieldsHelperText).toBe(
-      '2 required fields missing'
+      '2 more required fields'
     );
 
     act(() => {
@@ -61,7 +61,7 @@ describe('useActivityFormSubmitState', () => {
     expect(result.current.submitState.missingFields).not.toContain('title');
     expect(result.current.submitState.missingFields).toEqual(['categoryIds']);
     expect(result.current.submitState.missingFieldsHelperText).toBe(
-      '1 required field missing'
+      '1 more required field'
     );
     expect(result.current.submitState.isFormValid).toBe(false);
 
@@ -120,7 +120,7 @@ describe('useActivityFormSubmitState', () => {
     expect(result.current.submitState.isFormValid).toBe(false);
     expect(result.current.submitState.missingFields).toContain('commsContacts');
     expect(result.current.submitState.missingFieldsHelperText).toBe(
-      '1 required field missing'
+      '1 more required field'
     );
   });
 
@@ -128,7 +128,7 @@ describe('useActivityFormSubmitState', () => {
     const { result } = renderHook(() => useTestActivityFormSubmitState());
 
     expect(result.current.submitState.missingFieldsHelperText).toBe(
-      '2 required fields missing'
+      '2 more required fields'
     );
 
     act(() => {
@@ -139,7 +139,7 @@ describe('useActivityFormSubmitState', () => {
 
     expect(result.current.submitState.missingFields).toEqual(['categoryIds']);
     expect(result.current.submitState.missingFieldsHelperText).toBe(
-      '1 required field missing'
+      '1 more required field'
     );
   });
 });

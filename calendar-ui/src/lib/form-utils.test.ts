@@ -16,13 +16,13 @@ describe('formatMissingRequiredFieldsCountMessage', () => {
 
   it('uses singular copy for one field', () => {
     expect(formatMissingRequiredFieldsCountMessage(1)).toBe(
-      '1 required field missing'
+      '1 more required field'
     );
   });
 
   it('uses plural copy for multiple fields', () => {
     expect(formatMissingRequiredFieldsCountMessage(4)).toBe(
-      '4 required fields missing'
+      '4 more required fields'
     );
   });
 });
