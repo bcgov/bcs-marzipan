@@ -19,7 +19,7 @@ vi.mock('@/lib/analytics', () => ({
 // Mock useAuth to avoid needing AuthProvider
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
-    user: { roleName: 'user' },
+    user: { roleName: 'user', permissions: [] },
     isLoading: false,
     isAuthenticated: true,
     pendingLoginModal: false,
@@ -31,6 +31,19 @@ vi.mock('@/hooks/useAuth', () => ({
     hasAnyPermission: () => false,
     hasAllPermissions: () => false,
   }),
+}));
+
+vi.mock('@/hooks/useLookups', () => ({
+  useActivityStatuses: () => ({ data: [] }),
+  useCategories: () => ({ data: [] }),
+  useEventPlanners: () => ({ data: [] }),
+  useMinistries: () => ({ data: [] }),
+  useOrganizations: () => ({ data: [] }),
+  usePitchRequiredStatuses: () => ({ data: [] }),
+  useTags: () => ({ data: [] }),
+  useTranslationLanguages: () => ({ data: [] }),
+  useTranslationRequiredStatuses: () => ({ data: [] }),
+  useUsers: () => ({ data: [] }),
 }));
 
 describe('ReportFiltersBar analytics', () => {
@@ -67,9 +80,13 @@ describe('ReportFiltersBar analytics', () => {
     const input = getByLabelText('Search activities');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
-    expect(mockTrackCalendarAction).toHaveBeenCalled();
-    const [[payload]] = mockTrackCalendarAction.mock.calls;
-    expect(payload.action).toBe('Search');
+    expect(mockTrackCalendarAction).toHaveBeenCalledWith({
+      action: 'Search',
+      filters: expect.objectContaining({
+        search_present: true,
+        search_length_bucket: '<20',
+      }),
+    });
   });
 
   it('sends calendar_click on clear search click and clears search', () => {

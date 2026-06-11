@@ -5,11 +5,13 @@ import { useState, type FC } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import {
+  createActivityRequestSchema,
   type ActivityFormData,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
 import {
   ActivityFormBody,
+  ActivityFormMissingFieldsHint,
   ActivityFormStickyHeader,
 } from '@/components/activity';
 import { CreateActivityConfirmModal } from '@/components/activity/activities/CreateActivityConfirmModal';
@@ -18,12 +20,8 @@ import { FormErrorFallback, StatusMessage } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 
 import { Form } from '../components/ui/form';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '../components/ui/popover';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
+import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState';
 import { useAuth } from '../hooks/useAuth';
 import { useCreateActivity } from '../hooks/useCalendar';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
@@ -36,7 +34,6 @@ import {
   ACCESS_DENIED_TITLE,
 } from '../lib/error-messages';
 import { showErrorToast } from '../lib/error-toast';
-import { getMissingRequiredFields } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('CreateActivityForm');
@@ -48,8 +45,6 @@ export const CreateActivityForm: FC = () => {
   const listOrBackPath = getActivityFormBackTarget(location.state) ?? '/';
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showMissingFieldsPopover, setShowMissingFieldsPopover] =
-    useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [validatedData, setValidatedData] = useState<ActivityFormData | null>(
     null
@@ -77,6 +72,12 @@ export const CreateActivityForm: FC = () => {
     userTeamIds: user?.teamIds,
     hasCreateAny,
   });
+
+  const { isFormValid, missingFields, missingFieldsHelperText } =
+    useActivityFormSubmitState(form, {
+      getFieldLabel: getActivityFieldLabel,
+      schema: createActivityRequestSchema,
+    });
 
   const handleCancel = () => {
     void form.reset();
@@ -146,25 +147,15 @@ export const CreateActivityForm: FC = () => {
 
   const onError = () => {
     logger.error('Form validation failed');
-    const missing = getMissingRequiredFields(
-      form.formState,
-      getActivityFieldLabel
-    );
     const detail =
-      missing.length > 0
-        ? `Required fields missing: ${missing.join(', ')}`
+      missingFields.length > 0
+        ? `Required fields missing: ${missingFields.join(', ')}`
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
       duration: 6000,
     });
   };
-
-  const isFormValid = form.formState.isValid;
-  const missingFields = getMissingRequiredFields(
-    form.formState,
-    getActivityFieldLabel
-  );
 
   // Show loading state while checking auth
   if (isAuthLoading) {
@@ -248,61 +239,36 @@ export const CreateActivityForm: FC = () => {
             }}
           />
 
-          <div className="flex justify-end gap-4 pt-6">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                void handleCancel();
-              }}
-              disabled={isSubmitting}
-              title="Close the create window without saving"
-            >
-              Cancel
-            </Button>
-            {!isFormValid && missingFields.length > 0 ? (
-              <Popover open={showMissingFieldsPopover}>
-                <PopoverTrigger asChild>
-                  <div
-                    onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                    onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                  >
-                    <Button
-                      type="submit"
-                      disabled={true}
-                      variant={canReviewActivities ? 'outline' : 'default'}
-                      className="cursor-not-allowed"
-                    >
-                      {isSubmitting ? 'Submitting...' : 'Submit'}
-                    </Button>
-                  </div>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-80"
-                  onMouseEnter={() => setShowMissingFieldsPopover(true)}
-                  onMouseLeave={() => setShowMissingFieldsPopover(false)}
-                >
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium">
-                      Required fields missing:
-                    </h4>
-                    <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                      {missingFields.map((field) => (
-                        <li key={field}>{field}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            ) : (
+          <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void handleCancel();
+                }}
+                disabled={isSubmitting}
+                title="Close the create window without saving"
+              >
+                Cancel
+              </Button>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-4">
+              {missingFieldsHelperText != null && (
+                <ActivityFormMissingFieldsHint
+                  helperText={missingFieldsHelperText}
+                  fields={missingFields}
+                />
+              )}
               <Button
                 type="submit"
-                variant={canReviewActivities ? 'outline' : 'default'}
-                disabled={isSubmitting}
+                variant="default"
+                disabled={!isFormValid || isSubmitting}
+                className={!isFormValid ? 'cursor-not-allowed' : undefined}
               >
                 {isSubmitting ? 'Submitting...' : 'Submit'}
               </Button>
-            )}
+            </div>
           </div>
         </form>
       </Form>

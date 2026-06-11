@@ -24,7 +24,7 @@ export function trackCalendarClick(action: string) {
       schema: 'iglu:ca.bc.gov.bcs/calendar_click/jsonschema/1-0-0',
       data: { action },
     });
-  } catch (e) {
+  } catch {
     // swallow errors to avoid breaking the app
     // logging can be added here if desired
   }
@@ -42,7 +42,7 @@ export function trackCalendarAction(payload: CalendarAction) {
       schema: 'iglu:ca.bc.gov.bcs/calendar_action/jsonschema/1-0-0',
       data: eventData,
     });
-  } catch (e) {
+  } catch {
     // swallow
   }
 }

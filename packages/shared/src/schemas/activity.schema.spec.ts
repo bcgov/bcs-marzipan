@@ -44,11 +44,53 @@ describe('createActivityRequestSchema', () => {
     expect(() =>
       createActivityRequestSchema.parse(minimalCreateRequest({ title: '' }))
     ).toThrow();
-    expect(() =>
-      createActivityRequestSchema.parse(
-        minimalCreateRequest({ title: 'a'.repeat(256) })
-      )
-    ).toThrow();
+    const emptyTitle = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ title: '' })
+    );
+    if (emptyTitle.success) throw new Error('Expected failure');
+    expect(emptyTitle.error.issues[0].path).toEqual(['title']);
+    expect(emptyTitle.error.issues[0].message).toBe(
+      'An activity title is required'
+    );
+    const missingTitle = minimalCreateRequest();
+    delete (missingTitle as Record<string, unknown>).title;
+    const undefinedTitle = createActivityRequestSchema.safeParse(missingTitle);
+    if (undefinedTitle.success) throw new Error('Expected failure');
+    expect(undefinedTitle.error.issues[0].path).toEqual(['title']);
+    expect(undefinedTitle.error.issues[0].message).toBe(
+      'An activity title is required'
+    );
+    const tooLongTitle = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ title: 'a'.repeat(256) })
+    );
+    if (tooLongTitle.success) throw new Error('Expected failure');
+    expect(tooLongTitle.error.issues[0].path).toEqual(['title']);
+    expect(tooLongTitle.error.issues[0].message).toBe(
+      'Maximum character limit exceeded'
+    );
+  });
+
+  it('rejects create when summary is empty or missing', () => {
+    const emptySummary = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ summary: '' })
+    );
+    if (emptySummary.success) throw new Error('Expected failure');
+    expect(emptySummary.error.issues.some((i) => i.path[0] === 'summary')).toBe(
+      true
+    );
+    expect(
+      emptySummary.error.issues.find((i) => i.path[0] === 'summary')?.message
+    ).toBe('A summary is required');
+
+    const missingSummary = minimalCreateRequest();
+    delete (missingSummary as Record<string, unknown>).summary;
+    const undefinedSummary =
+      createActivityRequestSchema.safeParse(missingSummary);
+    if (undefinedSummary.success) throw new Error('Expected failure');
+    expect(
+      undefinedSummary.error.issues.find((i) => i.path[0] === 'summary')
+        ?.message
+    ).toBe('A summary is required');
   });
 
   it('enforces summary and significance max rich-text bytes and valid storage', () => {
@@ -213,7 +255,7 @@ describe('createActivityRequestSchema', () => {
     const err = createActivityRequestSchema.safeParse(withoutComms);
     if (err.success) throw new Error('Expected failure');
     expect(err.error.issues[0].path).toEqual(['commsContacts']);
-    expect(err.error.issues[0].message).toBe('A lead contact is required.');
+    expect(err.error.issues[0].message).toBe('A lead contact is required');
   });
 
   it('rejects create when commsContacts is empty array', () => {
@@ -307,7 +349,7 @@ describe('createActivityRequestSchema', () => {
     if (err.success) throw new Error('Expected failure');
     expect(err.error.issues[0].path).toEqual(['eventPlanners']);
     expect(err.error.issues[0].message).toBe(
-      'When event planners are provided, exactly one must be marked as lead.'
+      'When event planners are provided, exactly one must be marked as lead'
     );
   });
 
@@ -414,7 +456,7 @@ describe('updateActivityRequestSchema', () => {
     });
     if (err.success) throw new Error('Expected failure');
     expect(err.error.issues[0].path).toEqual(['commsContacts']);
-    expect(err.error.issues[0].message).toBe('A lead contact is required.');
+    expect(err.error.issues[0].message).toBe('A lead contact is required');
   });
 
   it('rejects update when commsContacts has two leads', () => {
@@ -464,7 +506,7 @@ describe('updateActivityRequestSchema', () => {
     if (err.success) throw new Error('Expected failure');
     expect(err.error.issues[0].path).toEqual(['categoryIds']);
     expect(err.error.issues[0].message).toBe(
-      'At least one category is required.'
+      'At least one category is required'
     );
   });
 

@@ -1,9 +1,9 @@
-import { Flag, History, Star } from 'lucide-react';
+import { History, Star } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
+import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
 import { AssignActivityModal } from '@/components/activity/activities/AssignActivityModal';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CopyableText } from '@/components/ui/copyable-text';
@@ -20,7 +20,7 @@ type ActivityPageHeaderProps = {
   displayId: string;
   title: string;
   categories: string[];
-  leadOrg?: string | null;
+  leadMinistry?: string | null;
   activityStatus?: unknown;
   lastUpdatedDateTime?: string | null;
   createdDateTime?: string | null;
@@ -49,7 +49,7 @@ export function ActivityPageHeader({
   displayId,
   title,
   categories,
-  leadOrg,
+  leadMinistry,
   activityStatus,
   lastUpdatedDateTime,
   createdDateTime,
@@ -84,38 +84,60 @@ export function ActivityPageHeader({
   const hasSingleFlag = sortedFlags.length === 1;
   const currentFlag = hasSingleFlag ? sortedFlags[0] : null;
 
+  const iconButtonClassName = 'shrink-0 shadow-none';
+  const headerActionIconClassName = 'text-muted-foreground size-4';
+  const timestampClassName = 'text-muted-foreground text-xs sm:text-sm';
+  const showActionButtons =
+    canFlag || isFlagged || onFavouriteToggle || onHistoryClick;
+
   return (
-    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-      <div className="min-w-0 flex-1">
+    <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 sm:gap-x-12 sm:gap-y-1">
+      <div className="col-start-1 row-start-1 w-fit justify-self-start">
         <CopyableText
           text={displayId}
           copyLabel="Copy display ID"
-          className="text-md text-muted-foreground hover:text-foreground mb-1.5 -ml-2 px-2 py-1"
+          className="text-md text-muted-foreground hover:text-foreground -ml-2 px-2 py-1"
         >
           {displayId}
         </CopyableText>
+      </div>
+
+      {statusDisplay !== '' ? (
+        <div className="col-start-2 row-start-1 self-start justify-self-end">
+          <Badge
+            size="md"
+            variant={getActivityStatusBadgeVariant(statusDisplay)}
+          >
+            {statusDisplay}
+          </Badge>
+        </div>
+      ) : null}
+
+      <div className="col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:col-start-1">
         <h1 className="text-lg font-bold">{title}</h1>
         {categories.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {categories.map((cat, idx) => (
-              <Badge key={idx} variant="default" className="bg-primary">
+              <Badge
+                key={idx}
+                variant="default"
+                className="bg-primary hover:bg-primary"
+              >
                 {cat}
               </Badge>
             ))}
           </div>
         )}
-        {leadOrg && (
-          <div className="text-muted-foreground mt-3 text-sm">{leadOrg}</div>
-        )}
       </div>
 
-      <div className="flex shrink-0 flex-col items-end gap-2 text-right">
-        {statusDisplay !== '' ? (
-          <Badge variant={getActivityStatusBadgeVariant(statusDisplay)}>
-            {statusDisplay}
-          </Badge>
+      <div className="col-span-2 row-start-3 self-end sm:col-span-1 sm:col-start-1">
+        {leadMinistry ? (
+          <div className="text-muted-foreground text-sm">{leadMinistry}</div>
         ) : null}
-        <div className="text-muted-foreground text-xs sm:text-sm">
+      </div>
+
+      <div className="col-start-1 row-start-4 self-center sm:col-start-2 sm:row-start-2 sm:self-auto sm:text-right">
+        <div className={timestampClassName}>
           {updatedLabel ? <div>Updated {updatedLabel}</div> : null}
           <div>
             Created{' '}
@@ -126,127 +148,84 @@ export function ActivityPageHeader({
               : ''}
           </div>
         </div>
-        {(canFlag || isFlagged || onFavouriteToggle || onHistoryClick) && (
-          <div className="flex items-center gap-2">
-            {canFlag && onFlagAssign && onFlagUnassign && (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                title={
-                  isFlagged
-                    ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
-                    : 'Assign activity'
-                }
-                aria-label={
-                  isFlagged
-                    ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
-                    : 'Assign activity'
-                }
-                onClick={() => setAssignModalOpen(true)}
-                disabled={isFlagPending}
-                className="relative shrink-0"
-              >
-                {isFlagged && currentFlag ? (
-                  <>
-                    <Avatar size="sm" className="size-full">
-                      <AvatarFallback className="text-[10px] font-medium">
-                        {currentFlag.assigneeName
-                          .split(' ')
-                          .slice(0, 2)
-                          .map((n) => n[0])
-                          .join('')
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <Flag
-                      className="absolute -right-0.5 -bottom-0.5 size-2.5"
-                      style={{
-                        fill:
-                          currentFlag.assigneeFlagColour ??
-                          'var(--flag-button-icon)',
-                        color:
-                          currentFlag.assigneeFlagColour ??
-                          'var(--flag-button-icon)',
-                      }}
-                      aria-hidden
-                    />
-                  </>
-                ) : (
-                  <Flag className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-            {!canFlag && isFlagged && currentFlag && onFlagUnassign && (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                title={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
-                aria-label={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
-                onClick={() =>
-                  onFlagUnassign(currentFlag.teamId, currentFlag.assigneeName)
-                }
-                disabled={isFlagPending}
-                className="relative shrink-0"
-              >
-                <Avatar size="sm" className="size-full">
-                  <AvatarFallback className="text-[10px] font-medium">
-                    {currentFlag.assigneeName
-                      .split(' ')
-                      .slice(0, 2)
-                      .map((n) => n[0])
-                      .join('')
-                      .toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <Flag
-                  className="absolute -right-0.5 -bottom-0.5 size-2.5"
-                  style={{
-                    fill:
-                      currentFlag.assigneeFlagColour ??
-                      'var(--flag-button-icon)',
-                    color:
-                      currentFlag.assigneeFlagColour ??
-                      'var(--flag-button-icon)',
-                  }}
-                  aria-hidden
-                />
-              </Button>
-            )}
-            {onFavouriteToggle && (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                title={
-                  isFavourite ? 'Remove from watchlist' : 'Add to watchlist'
-                }
-                onClick={onFavouriteToggle}
-                disabled={isFavouriteToggling}
-                className="shrink-0"
-              >
-                <Star
-                  className="h-4 w-4"
-                  fill={isFavourite ? 'currentColor' : 'none'}
-                />
-              </Button>
-            )}
-            {onHistoryClick && (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                title="View history"
-                onClick={onHistoryClick}
-                className="shrink-0"
-              >
-                <History className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        )}
       </div>
+
+      {showActionButtons && (
+        <div className="col-start-2 row-start-4 flex items-center gap-2 self-center sm:col-start-2 sm:row-start-3 sm:mt-auto sm:self-end sm:justify-self-end">
+          {canFlag && onFlagAssign && onFlagUnassign && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title={
+                isFlagged
+                  ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
+                  : 'Assign activity'
+              }
+              aria-label={
+                isFlagged
+                  ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
+                  : 'Assign activity'
+              }
+              onClick={() => setAssignModalOpen(true)}
+              disabled={isFlagPending}
+              className={iconButtonClassName}
+            >
+              <ActivityFlagIcon
+                assigneeName={isFlagged ? currentFlag?.assigneeName : null}
+                assigneeFlagColour={currentFlag?.assigneeFlagColour}
+              />
+            </Button>
+          )}
+          {!canFlag && isFlagged && currentFlag && onFlagUnassign && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
+              aria-label={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
+              onClick={() =>
+                onFlagUnassign(currentFlag.teamId, currentFlag.assigneeName)
+              }
+              disabled={isFlagPending}
+              className={iconButtonClassName}
+            >
+              <ActivityFlagIcon
+                assigneeName={currentFlag.assigneeName}
+                assigneeFlagColour={currentFlag.assigneeFlagColour}
+              />
+            </Button>
+          )}
+          {onFavouriteToggle && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title={isFavourite ? 'Remove from watchlist' : 'Add to watchlist'}
+              onClick={onFavouriteToggle}
+              disabled={isFavouriteToggling}
+              className={iconButtonClassName}
+            >
+              <Star
+                className={headerActionIconClassName}
+                fill={isFavourite ? 'currentColor' : 'none'}
+              />
+            </Button>
+          )}
+          {onHistoryClick && (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title="View history"
+              onClick={onHistoryClick}
+              className={iconButtonClassName}
+            >
+              <History className={headerActionIconClassName} />
+            </Button>
+          )}
+        </div>
+      )}
 
       {canFlag && onFlagAssign && onFlagUnassign && (
         <AssignActivityModal
