@@ -16,6 +16,30 @@ beforeAll(() => {
   }
 });
 
+const mockTranslationRequiredStatuses = [
+  {
+    id: 1,
+    name: 'pending',
+    displayName: 'Pending review',
+    label: 'Pending review',
+    value: 1,
+  },
+  {
+    id: 2,
+    name: 'required',
+    displayName: 'Required',
+    label: 'Required',
+    value: 2,
+  },
+  {
+    id: 3,
+    name: 'not_required',
+    displayName: 'Not required',
+    label: 'Not required',
+    value: 3,
+  },
+];
+
 const mockLookups = {
   isLoading: false,
   hasError: false,
@@ -33,22 +57,7 @@ const mockLookups = {
     { id: 1, name: 'French', displayName: 'French' },
     { id: 2, name: 'Spanish', displayName: 'Spanish' },
   ],
-  translationRequiredStatuses: [
-    {
-      id: 1,
-      name: 'Not required',
-      displayName: 'Not required',
-      label: 'Not required',
-      value: 1,
-    },
-    {
-      id: 2,
-      name: 'Required',
-      displayName: 'Required',
-      label: 'Required',
-      value: 2,
-    },
-  ],
+  translationRequiredStatuses: mockTranslationRequiredStatuses,
   governmentRepresentatives: [],
   newsReleaseDistributions: [{ value: '1', label: 'Internal' }],
   premierRequested: [],
@@ -63,12 +72,17 @@ const mockLookups = {
 function ActivityReleaseSectionHarness({
   readOnly,
   canEditFieldScope,
+  defaultValues,
 }: {
   readOnly: boolean;
   canEditFieldScope?: (s: string) => boolean;
+  defaultValues?: Partial<ActivityFormData>;
 }) {
   const form = useForm<ActivityFormData>({
-    defaultValues: getDefaultFormValues() as ActivityFormData,
+    defaultValues: {
+      ...(getDefaultFormValues() as ActivityFormData),
+      ...defaultValues,
+    },
   });
 
   return (
@@ -105,6 +119,7 @@ describe('ActivityReleaseSection permissions', () => {
       <ActivityReleaseSectionHarness
         readOnly={false}
         canEditFieldScope={(s: string) => s !== 'translations'}
+        defaultValues={{ translationsRequiredStatusId: 2 }}
       />
     );
 
@@ -112,5 +127,33 @@ describe('ActivityReleaseSection permissions', () => {
       /Select translation languages/i
     );
     expect(input).toBeDisabled();
+  });
+});
+
+describe('ActivityReleaseSection translation languages visibility', () => {
+  it('hides translation languages when status is not Required', () => {
+    render(
+      <ActivityReleaseSectionHarness
+        readOnly={false}
+        defaultValues={{ translationsRequiredStatusId: 1 }}
+      />
+    );
+
+    expect(
+      screen.queryByPlaceholderText(/Select translation languages/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows translation languages when status is Required', async () => {
+    render(
+      <ActivityReleaseSectionHarness
+        readOnly={false}
+        defaultValues={{ translationsRequiredStatusId: 2 }}
+      />
+    );
+
+    expect(
+      await screen.findByPlaceholderText(/Select translation languages/i)
+    ).toBeInTheDocument();
   });
 });

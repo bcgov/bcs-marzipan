@@ -1,5 +1,7 @@
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
+import { useMemo } from 'react';
 
+import { TRANSLATION_REQUIRED_LOOKUP_NAME } from '@corpcal/shared';
 import type { TranslationRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
@@ -51,6 +53,108 @@ type ActivityReleaseSectionProps = {
   }>;
 };
 
+function resolveTranslationRequiredStatusId(
+  statuses: TranslationRequiredStatusLookupItem[],
+  lookupName: string
+): number | undefined {
+  return statuses.find((status) => status.name === lookupName)?.id;
+}
+
+/**
+ * Isolated so `useWatch('translationsRequiredStatusId')` only re-renders this
+ * subtree when that field changes, not the entire release section.
+ */
+function TranslationLanguagesField({
+  requiredTranslationStatusId,
+  translationLanguageComboboxOptions,
+}: {
+  requiredTranslationStatusId: number | undefined;
+  translationLanguageComboboxOptions: OptionItem[];
+}) {
+  const form = useFormContext<ActivityFormData>();
+  const translationsScope = useActivityFieldScopeControl('translations');
+  const translationsAnchorRef = useComboboxAnchor();
+  const translationsRequiredStatusId = useWatch({
+    control: form.control,
+    name: 'translationsRequiredStatusId',
+  });
+
+  const showLanguages =
+    requiredTranslationStatusId != null &&
+    translationsRequiredStatusId === requiredTranslationStatusId;
+
+  if (!showLanguages) {
+    return null;
+  }
+
+  return (
+    <FormField
+      control={form.control}
+      name="translationLanguageIds"
+      render={({ field }) => {
+        const selectedOptions = translationLanguageComboboxOptions.filter((o) =>
+          (field.value ?? []).includes(Number(o.value))
+        );
+        return (
+          <FormItem>
+            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <ActivityFieldScopePermissionTooltip scope="translations">
+              <FormControl data-field={field.name}>
+                <Combobox
+                  items={translationLanguageComboboxOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={(selected) =>
+                    setActivityFormFieldValue(
+                      form,
+                      field.name,
+                      selected.map((o) => Number(o.value))
+                    )
+                  }
+                  itemToStringValue={(o) => o.label}
+                  readOnly={
+                    translationsScope.readOnly &&
+                    !translationsScope.fieldScopeDisabled
+                  }
+                  disabled={translationsScope.fieldScopeDisabled}
+                >
+                  <ComboboxChips ref={translationsAnchorRef} className="w-full">
+                    <ComboboxValue>
+                      {(values: OptionItem[]) => (
+                        <>
+                          {values.map((option) => (
+                            <ComboboxChip key={option.value}>
+                              {option.label}
+                            </ComboboxChip>
+                          ))}
+                          <ComboboxChipsInput placeholder="Select translation languages" />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={translationsAnchorRef}>
+                    <ComboboxEmpty>
+                      No translation languages found.
+                    </ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: OptionItem) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FormControl>
+            </ActivityFieldScopePermissionTooltip>
+            <FormMessage />
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
+
 export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
   newsReleaseDistributionOptions,
   newsReleaseOriginOptions,
@@ -60,7 +164,15 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
   const form = useFormContext<ActivityFormData>();
   const { readOnly } = useActivityEdit();
   const translationsScope = useActivityFieldScopeControl('translations');
-  const translationsAnchorRef = useComboboxAnchor();
+
+  const requiredTranslationStatusId = useMemo(
+    () =>
+      resolveTranslationRequiredStatusId(
+        translationRequiredStatuses,
+        TRANSLATION_REQUIRED_LOOKUP_NAME
+      ),
+    [translationRequiredStatuses]
+  );
 
   const translationLanguageComboboxOptions: OptionItem[] =
     translationLanguageOptions.map((l) => ({
@@ -155,13 +267,13 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
                 String(s.id)
               )}
               value={optionalIdSelectDisplayValue(field.value)}
-              onValueChange={(value) =>
-                setActivityFormFieldValue(
-                  form,
-                  field.name,
-                  optionalSelectIdValue(value)
-                )
-              }
+              onValueChange={(value) => {
+                const nextStatusId = optionalSelectIdValue(value);
+                setActivityFormFieldValue(form, field.name, nextStatusId);
+                if (nextStatusId !== requiredTranslationStatusId) {
+                  setActivityFormFieldValue(form, 'translationLanguageIds', []);
+                }
+              }}
             >
               <ActivityFieldScopePermissionTooltip scope="translations">
                 <FormControl data-field={field.name}>
@@ -188,72 +300,9 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="translationLanguageIds"
-        render={({ field }) => {
-          const selectedOptions = translationLanguageComboboxOptions.filter(
-            (o) => (field.value ?? []).includes(Number(o.value))
-          );
-          return (
-            <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
-              <ActivityFieldScopePermissionTooltip scope="translations">
-                <FormControl data-field={field.name}>
-                  <Combobox
-                    items={translationLanguageComboboxOptions}
-                    multiple
-                    value={selectedOptions}
-                    onValueChange={(selected) =>
-                      setActivityFormFieldValue(
-                        form,
-                        field.name,
-                        selected.map((o) => Number(o.value))
-                      )
-                    }
-                    itemToStringValue={(o) => o.label}
-                    readOnly={
-                      translationsScope.readOnly &&
-                      !translationsScope.fieldScopeDisabled
-                    }
-                    disabled={translationsScope.fieldScopeDisabled}
-                  >
-                    <ComboboxChips
-                      ref={translationsAnchorRef}
-                      className="w-full"
-                    >
-                      <ComboboxValue>
-                        {(values: OptionItem[]) => (
-                          <>
-                            {values.map((option) => (
-                              <ComboboxChip key={option.value}>
-                                {option.label}
-                              </ComboboxChip>
-                            ))}
-                            <ComboboxChipsInput placeholder="Select translation languages" />
-                          </>
-                        )}
-                      </ComboboxValue>
-                    </ComboboxChips>
-                    <ComboboxContent anchor={translationsAnchorRef}>
-                      <ComboboxEmpty>
-                        No translation languages found.
-                      </ComboboxEmpty>
-                      <ComboboxList>
-                        {(option: OptionItem) => (
-                          <ComboboxItem key={option.value} value={option}>
-                            {option.label}
-                          </ComboboxItem>
-                        )}
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                </FormControl>
-              </ActivityFieldScopePermissionTooltip>
-              <FormMessage />
-            </FormItem>
-          );
-        }}
+      <TranslationLanguagesField
+        requiredTranslationStatusId={requiredTranslationStatusId}
+        translationLanguageComboboxOptions={translationLanguageComboboxOptions}
       />
     </ActivityFormSection>
   );
