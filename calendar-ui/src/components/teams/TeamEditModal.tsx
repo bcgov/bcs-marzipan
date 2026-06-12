@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TeamDetail, TeamListItem } from '@corpcal/shared/api/types';
 import { fetchMinistries } from '@/api/lookupsApi';
@@ -14,7 +14,6 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
-  ComboboxValue,
 } from '@/components/ui/combobox';
 import {
   Dialog,
@@ -177,10 +176,14 @@ export function TeamEditModal({
 
   const isLoading = !isCreate && isLoadingDetail;
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const dialogContentRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+      <DialogContent
+        ref={dialogContentRef}
+        className="max-h-[90vh] max-w-lg overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>{isCreate ? 'Create team' : 'Edit team'}</DialogTitle>
           <DialogDescription className="sr-only">
@@ -255,41 +258,19 @@ export function TeamEditModal({
               <Label>Ministry</Label>
               <Combobox
                 items={ministryOptions}
-                value={ministryId}
-                onValueChange={(
-                  value: string | OptionItem | null,
-                  _eventDetails?: unknown
-                ) =>
-                  setMinistryId(
-                    typeof value === 'string'
-                      ? value
-                      : value
-                        ? value.value
-                        : null
-                  )
-                }
-                itemToStringValue={(o: OptionItem | string) =>
-                  typeof o === 'string'
-                    ? (ministryOptions.find((m) => m.value === o)?.label ?? '')
-                    : o.label
-                }
+                value={selectedMinistry}
+                onValueChange={(option: OptionItem | null) => {
+                  console.log('TeamEditModal Combobox onValueChange', option);
+                  setMinistryId(option ? option.value : null);
+                }}
+                itemToStringValue={(o: OptionItem) => o.label}
               >
                 <ComboboxInput placeholder="Select ministry..." />
-                <ComboboxValue>
-                  {(val: string | OptionItem | null) => {
-                    if (!val) return null;
-                    const value = typeof val === 'string' ? val : val.value;
-                    return (
-                      ministryOptions.find((m) => m.value === value)?.label ??
-                      null
-                    );
-                  }}
-                </ComboboxValue>
-                <ComboboxContent>
+                <ComboboxContent container={dialogContentRef}>
                   <ComboboxEmpty>No ministries found.</ComboboxEmpty>
                   <ComboboxList>
                     {(option: OptionItem) => (
-                      <ComboboxItem key={option.value} value={option.value}>
+                      <ComboboxItem key={option.value} value={option}>
                         {option.label}
                       </ComboboxItem>
                     )}
