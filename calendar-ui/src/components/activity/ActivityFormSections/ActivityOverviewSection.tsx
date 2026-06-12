@@ -520,18 +520,7 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <LeadTeamField
-        leadTeamOptions={leadTeamOptions}
-        leadTeamDisplayLabel={leadTeamDisplayLabel}
-        leadTeamOptionsFetching={leadTeamOptionsFetching}
-        organizations={organizations}
-        readOnly={readOnly}
-      />
-
-      <LeadOrganizationField
-        organizations={organizations}
-        readOnly={readOnly}
-      />
+      {/* Lead team/organization moved below Significance per layout changes */}
       <FormField
         control={form.control}
         name="summary"
@@ -664,7 +653,6 @@ export const ActivityOverviewSection: React.FC<
           </FormItem>
         )}
       />
-      <FormSectionDivider />
       <FormField
         control={form.control}
         name="significance"
@@ -706,6 +694,22 @@ export const ActivityOverviewSection: React.FC<
           </FormItem>
         )}
       />
+
+      {/* Lead team and lead organization moved below Significance */}
+      <LeadTeamField
+        leadTeamOptions={leadTeamOptions}
+        leadTeamDisplayLabel={leadTeamDisplayLabel}
+        leadTeamOptionsFetching={leadTeamOptionsFetching}
+        organizations={organizations}
+        readOnly={readOnly}
+      />
+
+      <LeadOrganizationField
+        organizations={organizations}
+        readOnly={readOnly}
+      />
+
+      <FormSectionDivider />
 
       {canViewPitchStatus ? (
         <FormField
@@ -817,8 +821,6 @@ export const ActivityOverviewSection: React.FC<
 
       {canViewNotes && (
         <>
-          <FormSectionDivider />
-
           <FormField
             control={form.control}
             name="notes"

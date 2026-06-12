@@ -12,3 +12,8 @@ data:
   NODE_ENV: development
   VITE_API_BASE_URL: /api
   API_PROXY_UPSTREAM: http://10.98.65.134:3001
+  # Runtime config JS served as /config.js - can be replaced per environment via ConfigMap
+  config.js: |-
+    window.__APP_CONFIG__ = {
+      ENABLE_SNOWPLOW: 'false'
+    };

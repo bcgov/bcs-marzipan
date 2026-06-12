@@ -56,6 +56,13 @@ export type UserListItem = z.infer<typeof userListItemSchema>;
 export const userDetailSchema = userListItemSchema.extend({
   notes: z.string().nullable(),
   flagColour: z.string().nullable(),
+  directLoginEnabled: z.boolean().optional(),
+  /** Active Directory job title (if available) */
+  jobTitle: z.string().nullable().optional(),
+  /** Contact phone number (if available) */
+  phone: z.string().nullable().optional(),
+  /** ISO timestamp for the user's last successful login */
+  lastLoginDateTime: z.string().nullable().optional(),
 });
 
 export type UserDetail = z.infer<typeof userDetailSchema>;
@@ -105,6 +112,20 @@ export const updateUserBodySchema = z.object({
   roleId: z.number().int().optional(),
   isActive: z.boolean().optional(),
   notes: z.string().nullable().optional(),
+  /**
+   * Profile fields. Editing these is restricted to admins / sys-admins
+   * (enforced server-side in the users controller).
+   */
+  displayName: z.string().trim().max(255).nullable().optional(),
+  email: z
+    .string()
+    .trim()
+    .email('Invalid email format')
+    .max(255)
+    .nullable()
+    .optional(),
+  phone: z.string().trim().max(50).nullable().optional(),
+  jobTitle: z.string().trim().max(255).nullable().optional(),
 });
 
 export type UpdateUserBody = z.infer<typeof updateUserBodySchema>;
@@ -120,6 +141,10 @@ export const updateUserSettingsBodySchema = z.object({
       'Must be a valid 6-digit hex colour (e.g. #FF0000)'
     )
     .nullable(),
+  /**
+   * Allow admins to enable or disable direct (email+password) login for a user.
+   */
+  directLoginEnabled: z.boolean().optional(),
 });
 
 export type UpdateUserSettingsBody = z.infer<

@@ -27,6 +27,9 @@ export type ActivityFieldLabelKey =
  * Form/API field keys that are required on create (matches createActivityRequestSchema
  * and comms lead rule). Visibility is omitted — it defaults to global in the schema.
  * Use for required indicators in the UI; keep in sync when validation changes.
+ *
+ * When adding a required field, also follow `src/validation/REQUIRED_FIELDS.md`
+ * (schema validation, `params.kind` on custom refines, label here, contract test).
  */
 export const ACTIVITY_CREATE_REQUIRED_FIELD_KEYS = [
   'categoryIds',
@@ -79,8 +82,8 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   pitchDate: 'Pitch date',
   executiveSummary: 'Executive summary',
   schedulingNotes: 'Scheduling notes',
-  lookAheadStatus: 'Look ahead status',
-  lookAheadSection: 'Look ahead section',
+  lookAheadStatus: 'Look Ahead status',
+  lookAheadSection: 'Look Ahead section',
   pitchRequiredStatusId: 'Pitch required',
   translationsRequiredStatusId: 'Translations required',
   newsReleaseId: 'News release',

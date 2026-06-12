@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Header,
   NotFoundException,
@@ -20,6 +21,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { z } from 'zod';
 
 import { DYNAMIC_LOOKUP_CACHE_SECONDS, type AuthUser } from '@corpcal/shared';
 import type {
@@ -255,6 +257,137 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get permissions for all roles' })
+  @ApiResponse({ status: 200, description: 'Permissions map retrieved' })
+  @Get('roles/permissions')
+  @Header('Cache-Control', lookupGetCacheControl())
+  async getRolesPermissionsMap(): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.getRolesPermissionsMap();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get permissions for a role' })
+  @ApiResponse({
+    status: 200,
+    description: 'Permissions retrieved successfully',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Role ID' })
+  @Get('roles/:id/permissions')
+  @Header('Cache-Control', lookupGetCacheControl())
+  async getRolePermissions(@Param('id') id: string): Promise<{
+    success: boolean;
+    data: {
+      key: string;
+      displayName: string | null;
+      description: string | null;
+      hasPermission: boolean;
+    }[];
+  }> {
+    const roleId = Number(id);
+    if (!Number.isInteger(roleId))
+      throw new NotFoundException('Role not found');
+    const data = await this.lookupsService.getRolePermissions(roleId);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all permissions (admin only)' })
+  @ApiResponse({ status: 200, description: 'Permissions retrieved' })
+  @ApiResponse({ status: 403, description: 'Caller is not system admin' })
+  @Get('permissions')
+  @RequirePermission('system.manage_permissions')
+  async getAllPermissions(
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    // Guarded by RequirePermission; keep a defensive check for callers that bypass guards
+    this.ensureSystemAdmin(user);
+    const data = await this.lookupsService.getAllPermissions();
+    return { success: true, data };
+  }
+
+  private ensureSystemAdmin(user: AuthUser): void {
+    // Prefer RBAC permission check instead of hard-coded role id
+    if (
+      !user.permissions ||
+      !user.permissions.includes('system.manage_permissions')
+    ) {
+      throw new ForbiddenException(
+        'Only System Admin users can manage permission visibility.'
+      );
+    }
+  }
+
+  @ApiOperation({ summary: 'Update permission visibility in user management' })
+  @ApiResponse({ status: 200, description: 'Permission updated' })
+  @ApiResponse({ status: 403, description: 'Caller is not system admin' })
+  @Patch('permissions/:id/visibility')
+  @RequirePermission('system.manage_permissions')
+  async updatePermissionVisibility(
+    @Param('id') id: string,
+    @Body(
+      new ZodValidationPipe(z.object({ showInUserManagement: z.boolean() }))
+    )
+    body: { showInUserManagement: boolean },
+    @CurrentUser() user: AuthUser
+  ): Promise<{
+    success: boolean;
+    data: { id: number; key: string; showInUserManagement: boolean };
+  }> {
+    // Guarded by RequirePermission; keep a defensive check for callers that bypass guards
+    this.ensureSystemAdmin(user);
+    const pid = Number(id);
+    if (!Number.isInteger(pid))
+      throw new NotFoundException('Permission not found');
+    const data = await this.lookupsService.updatePermissionVisibility(
+      pid,
+      body.showInUserManagement === true,
+      user.id
+    );
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Bulk update permission visibility (admin only)' })
+  @ApiResponse({ status: 200, description: 'Permissions updated' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 403, description: 'Caller is not system admin' })
+  @ApiBody({
+    description: 'Array of permission visibility updates',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'number', example: 12 },
+          showInUserManagement: { type: 'boolean', example: true },
+        },
+        required: ['id', 'showInUserManagement'],
+      },
+      example: [
+        { id: 12, showInUserManagement: true },
+        { id: 15, showInUserManagement: false },
+      ],
+    },
+  })
+  @Patch('permissions/visibility')
+  @RequirePermission('system.manage_permissions')
+  async bulkUpdatePermissionVisibility(
+    @Body(
+      new ZodValidationPipe(
+        z.array(z.object({ id: z.number(), showInUserManagement: z.boolean() }))
+      )
+    )
+    body: { id: number; showInUserManagement: boolean }[],
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    this.ensureSystemAdmin(user);
+    const results = await this.lookupsService.bulkUpdatePermissionVisibility(
+      body.map((b) => ({
+        id: b.id,
+        showInUserManagement: b.showInUserManagement,
+      })),
+      user.id
+    );
+    return { success: true, data: results };
+  }
   @ApiOperation({
     summary: 'Get all users',
     description:

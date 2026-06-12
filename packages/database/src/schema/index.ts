@@ -26,3 +26,4 @@ export * from './userActivitySavedFilterDefaults';
 export * from './activityFlags';
 export * from './userActivityFavourites';
 export * from './userSettings';
+export * from './permissionVisibilityAudit';

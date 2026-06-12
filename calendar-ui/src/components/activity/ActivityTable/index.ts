@@ -3,4 +3,4 @@ export {
   type ActivityTableActiveSavedFilter,
 } from './ActivityTable';
 export type { ActivityTableRow } from './activityTableRow';
-export { mapActivityResponseToTableRow } from './activityTableRow';
+export { mapActivityToTableRow } from './activityTableRow';

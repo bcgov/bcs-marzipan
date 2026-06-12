@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: calendar-ui
-          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-ui:${APP_VERSION}
+          image: calendar-ui:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -71,3 +71,14 @@ spec:
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 20
+          volumeMounts:
+            - name: calendar-ui-config-volume
+              mountPath: /usr/share/nginx/html/config.js
+              subPath: config.js
+      volumes:
+        - name: calendar-ui-config-volume
+          configMap:
+            name: calendar-ui-config
+            items:
+              - key: config.js
+                path: config.js

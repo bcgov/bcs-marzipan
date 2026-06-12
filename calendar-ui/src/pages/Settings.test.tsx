@@ -41,6 +41,7 @@ vi.mock('@/components/admin/LookupAdmins', () => ({
   MinistryGroupsAdmin: () => <div>MinistryGroups</div>,
   TagsAdmin: () => <div>Tags</div>,
   ThemesAdmin: () => <div>Themes</div>,
+  PermissionsVisibilityAdminSection: () => <div>PermissionsVisibility</div>,
   VenuePresetsAdmin: () => <div>VenuePresets</div>,
 }));
 vi.mock('@/components/admin/ReportCoverContactSettingsAdmin', () => ({
@@ -58,26 +59,27 @@ const SYSTEM_ADMIN_ROLE_ID = 6;
 const ADMIN_ROLE_ID = 5;
 
 const SYSTEM_ADMIN_ONLY_LINKS = [
-  'System Banner',
-  'Login Modal',
+  'System banner',
+  'Login modal',
   'Edit lock idle',
   'Activity completion',
   'Look Ahead reset',
   'Review-exempt fields',
+  'Permission visibility',
 ];
 
 const LOOKUP_LINKS = [
   'Report PDF cover contact',
   'Ministry groups',
   'Ministries',
-  'Government Representatives',
+  'Government representatives',
   'Categories',
   'Cities',
-  'Communications Materials',
+  'Communications materials',
   'Tags',
-  'Activity Statuses',
+  'Activity statuses',
   'Themes',
-  'Venue Presets',
+  'Venue presets',
 ];
 
 describe('Settings quick navigation', () => {

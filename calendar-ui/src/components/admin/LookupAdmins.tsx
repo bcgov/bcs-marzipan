@@ -40,6 +40,7 @@ import {
   MinistryAdminModalForm,
   type MinisterFormSelection,
 } from './MinistryAdminModalForm';
+import PermissionsVisibilityAdmin from './PermissionsVisibilityAdmin';
 import { VenuePresetForm } from './VenuePresetForm';
 
 // Type definitions - these extend the base LookupItem from the API
@@ -112,11 +113,11 @@ const categoryFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -135,7 +136,7 @@ const cityFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
@@ -151,7 +152,7 @@ const cityFields: FormField[] = [
     type: 'text',
     placeholder: 'Canada',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -170,11 +171,11 @@ const commsMaterialFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -193,7 +194,7 @@ const govRepFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
@@ -203,7 +204,7 @@ const govRepFields: FormField[] = [
     type: 'text',
     placeholder: 'Minister, MLA, etc.',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -222,11 +223,11 @@ const tagFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -246,7 +247,7 @@ const ministryCoreFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     required: true,
     placeholder: 'Full ministry name',
@@ -258,7 +259,7 @@ const ministryCoreFields: FormField[] = [
     required: true,
     placeholder: 'e.g., AG',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -369,7 +370,7 @@ const ministryGroupFields: FormField[] = [
     required: true,
     placeholder: 'e.g., Social, Resource',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
 ];
 
 const statusFields: FormField[] = [
@@ -382,11 +383,11 @@ const statusFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -405,11 +406,11 @@ const themeFields: FormField[] = [
   },
   {
     name: 'displayName',
-    label: 'Display Name',
+    label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -421,18 +422,48 @@ const themeFields: FormField[] = [
 const venuePresetFields: FormField[] = [
   {
     name: 'venueName',
-    label: 'Venue Name',
+    label: 'Venue name',
     type: 'text',
     required: true,
     placeholder: 'Enter venue name',
   },
-  { name: 'sortOrder', label: 'Sort Order', type: 'number', placeholder: '0' },
   {
-    name: 'pinnedSortOrder',
-    label: 'Pinned Sort Order',
-    type: 'number',
-    placeholder: '0',
+    name: 'displayName',
+    label: 'Display name',
+    type: 'text',
+    placeholder: 'Optional display name',
   },
+  {
+    name: 'addressLine1',
+    label: 'Street address',
+    type: 'text',
+    placeholder: 'Address line 1',
+  },
+  {
+    name: 'addressLine2',
+    label: 'Line 2',
+    type: 'text',
+    placeholder: 'Address line 2',
+  },
+  {
+    name: 'city',
+    label: 'City',
+    type: 'text',
+    placeholder: 'City',
+  },
+  {
+    name: 'provinceOrState',
+    label: 'Province / state',
+    type: 'text',
+    placeholder: 'BC',
+  },
+  {
+    name: 'country',
+    label: 'Country',
+    type: 'text',
+    placeholder: 'Canada',
+  },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -445,8 +476,13 @@ const venuePresetFields: FormField[] = [
     type: 'checkbox',
     placeholder: 'Show as badge',
   },
+  {
+    name: 'pinnedSortOrder',
+    label: 'Pinned sort order',
+    type: 'number',
+    placeholder: '0',
+  },
 ];
-
 // Component exports
 export function CategoriesAdmin() {
   return (
@@ -499,7 +535,7 @@ export function CitiesAdmin() {
 export function CommsMaterialsAdmin() {
   return (
     <GenericLookupAdmin<CommsMaterial>
-      title="Communications Materials"
+      title="Communications materials"
       description="Manage communication material types"
       entityType="Communications Material"
       apiEndpoint="/lookups/comms-materials"
@@ -513,7 +549,7 @@ export function CommsMaterialsAdmin() {
 export function GovernmentRepresentativesAdmin() {
   return (
     <GenericLookupAdmin<GovernmentRepresentative>
-      title="Government Representatives"
+      title="Government representatives"
       description="Manage government representatives. Ministers can be assigned from the Ministries section when creating or editing a ministry."
       entityType="Government Representative"
       apiEndpoint="/lookups/government-representatives"
@@ -751,7 +787,7 @@ export function MinistriesAdmin() {
 export function ActivityStatusesAdmin() {
   return (
     <GenericLookupAdmin<ActivityStatus>
-      title="Activity Statuses"
+      title="Activity statuses"
       description="Manage activity status types"
       entityType="Activity Status"
       apiEndpoint="/lookups/activity-statuses"
@@ -775,6 +811,10 @@ export function ThemesAdmin() {
       getItemName={(item) => item.displayName ?? item.label ?? String(item.id)}
     />
   );
+}
+
+export function PermissionsVisibilityAdminSection() {
+  return <PermissionsVisibilityAdmin />;
 }
 
 const venuePresetAdditionalColumns: ColumnDef<VenuePreset>[] = [
@@ -813,7 +853,7 @@ const venuePresetAdditionalColumns: ColumnDef<VenuePreset>[] = [
 export function VenuePresetsAdmin() {
   return (
     <GenericLookupAdmin<VenuePreset>
-      title="Venue Presets"
+      title="Venue presets"
       description="Manage venue presets for the activity form"
       entityType="Venue Preset"
       apiEndpoint="/lookups/venue-presets"

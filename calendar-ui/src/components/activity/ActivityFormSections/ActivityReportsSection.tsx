@@ -54,80 +54,8 @@ export const ActivityReportsSection: React.FC = () => {
 
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.reports}>
-      <FormField
-        control={form.control}
-        name="reportSettings"
-        render={({ field }) => {
-          const reportSettings = field.value ?? [];
-
-          // Get current omitted status for 30/60/90 report
-          const getThirtySixtyNinetyOmitted = () => {
-            if (!thirtySixtyNinetyReport) return false;
-            const setting = reportSettings.find(
-              (s) => s.reportId === thirtySixtyNinetyReport.id
-            );
-            return setting?.omitted ?? false;
-          };
-
-          const thirtySixtyNinetyOmitted = getThirtySixtyNinetyOmitted();
-
-          // Update report settings when checkbox changes
-          const updateReportSetting = (reportId: number, omitted: boolean) => {
-            const updatedSettings = reportSettings.filter(
-              (s) => s.reportId !== reportId
-            );
-            updatedSettings.push({ reportId, omitted });
-            setActivityFormFieldValue(form, field.name, updatedSettings);
-          };
-
-          if (reportsLoading) {
-            return (
-              <FormItem>
-                <div className="text-muted-foreground text-sm">
-                  Loading reports...
-                </div>
-              </FormItem>
-            );
-          }
-
-          return (
-            <>
-              {/* 30-60-90 Checkbox */}
-              {thirtySixtyNinetyReport && (
-                <FormItem>
-                  <div className="flex items-center space-x-2">
-                    <FormControl data-field={field.name}>
-                      <Checkbox
-                        id="thirty-sixty-ninety"
-                        checked={!thirtySixtyNinetyOmitted}
-                        readOnly={readOnly}
-                        onCheckedChange={(checked) => {
-                          updateReportSetting(
-                            thirtySixtyNinetyReport.id,
-                            !checked
-                          );
-                        }}
-                      />
-                    </FormControl>
-                    <label
-                      htmlFor="thirty-sixty-ninety"
-                      className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70 peer-data-readonly:opacity-100!"
-                    >
-                      30-60-90
-                    </label>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            </>
-          );
-        }}
-      />
-
       {canViewLookAhead && (
         <>
-          <FormSectionDivider />
-
           <ActivityFormHeading>Look ahead</ActivityFormHeading>
 
           <FormField
@@ -248,8 +176,79 @@ export const ActivityReportsSection: React.FC = () => {
               </FormItem>
             )}
           />
+          <FormSectionDivider />
         </>
       )}
+
+      <FormField
+        control={form.control}
+        name="reportSettings"
+        render={({ field }) => {
+          const reportSettings = field.value ?? [];
+
+          // Get current omitted status for 30/60/90 report
+          const getThirtySixtyNinetyOmitted = () => {
+            if (!thirtySixtyNinetyReport) return false;
+            const setting = reportSettings.find(
+              (s) => s.reportId === thirtySixtyNinetyReport.id
+            );
+            return setting?.omitted ?? false;
+          };
+
+          const thirtySixtyNinetyOmitted = getThirtySixtyNinetyOmitted();
+
+          // Update report settings when checkbox changes
+          const updateReportSetting = (reportId: number, omitted: boolean) => {
+            const updatedSettings = reportSettings.filter(
+              (s) => s.reportId !== reportId
+            );
+            updatedSettings.push({ reportId, omitted });
+            setActivityFormFieldValue(form, field.name, updatedSettings);
+          };
+
+          if (reportsLoading) {
+            return (
+              <FormItem>
+                <div className="text-muted-foreground text-sm">
+                  Loading reports...
+                </div>
+              </FormItem>
+            );
+          }
+
+          return (
+            <>
+              {/* 30-60-90 Checkbox */}
+              {thirtySixtyNinetyReport && (
+                <FormItem>
+                  <div className="flex items-center space-x-2">
+                    <FormControl data-field={field.name}>
+                      <Checkbox
+                        id="thirty-sixty-ninety"
+                        checked={!thirtySixtyNinetyOmitted}
+                        readOnly={readOnly}
+                        onCheckedChange={(checked) => {
+                          updateReportSetting(
+                            thirtySixtyNinetyReport.id,
+                            !checked
+                          );
+                        }}
+                      />
+                    </FormControl>
+                    <label
+                      htmlFor="thirty-sixty-ninety"
+                      className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70 peer-data-readonly:opacity-100!"
+                    >
+                      30-60-90
+                    </label>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            </>
+          );
+        }}
+      />
     </ActivityFormSection>
   );
 };

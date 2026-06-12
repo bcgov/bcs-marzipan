@@ -90,3 +90,21 @@ Append-only notes for fork-level UI changes that diverge from stock Shadcn/Radix
 **Component:** [form.tsx](../src/components/ui/form.tsx) exports `RequiredFieldIndicator` (asterisk using `text-[var(--color-required-field-indicator)]`).
 
 **Activity sections using it:** [ActivityOverviewSection.tsx](../src/components/activity/ActivityFormSections/ActivityOverviewSection.tsx) (category, title, lead team, summary), [ActivityScheduleSection.tsx](../src/components/activity/ActivityFormSections/ActivityScheduleSection.tsx) (Date / Time row labels), [ActivityCommsSection.tsx](../src/components/activity/ActivityFormSections/ActivityCommsSection.tsx) (comms lead). Visibility intentionally has no required asterisk (API defaults `global`).
+
+---
+
+## Deferred inline field errors (activity / onChange forms)
+
+**Date:** 2026-06-10
+
+**Goal:** With `mode: 'onChange'` and programmatic `setValue(..., { shouldValidate: true })`, react-hook-form can hold validation errors on mount while the sticky submit bar still uses live Zod/RHF state. Inline `FormMessage` / `aria-invalid` should not appear until the user has interacted with a field or attempted submit.
+
+**Files:**
+
+| File                                                        | Change                                                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [src/components/ui/form.tsx](../src/components/ui/form.tsx) | `useFormField` exposes `showError`: error is shown only when `isTouched`, `isDirty`, or `submitCount > 0`. `FormControl`, `FormMessage`, and `FormLabel` use `showError` instead of raw `error` for `aria-invalid`, `aria-describedby`, message text, and destructive label styling. |
+
+**Scope:** Applies to all forms using `FormControl` / `FormMessage` / `FormLabel` from this module (not opt-in via `FormDisplayOptionsProvider`).
+
+**Rationale:** Keeps validation running on change for submit gating without showing errors on untouched empty fields on first paint. Left in `useFormField` so message, control, and a11y attributes stay consistent in one place.

@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+  boolean,
   integer,
   pgTable,
   serial,
@@ -25,6 +26,12 @@ export const userSettings = pgTable('user_settings', {
    * Only settable for admin / sys-admin users via the Edit User modal.
    */
   flagColour: varchar('flag_colour', { length: 7 }),
+  /**
+   * Whether the user is allowed to sign in directly using local credentials.
+   * False means direct login is disabled.
+   * Only settable by administrators.
+   */
+  directLoginEnabled: boolean('direct_login_enabled').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

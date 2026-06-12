@@ -26,7 +26,7 @@ export function AdminSection({
   title,
   description,
   onAdd,
-  addButtonLabel = 'Add New',
+  addButtonLabel = 'Add new',
   children,
   className,
   isLoading = false,
@@ -63,7 +63,7 @@ export function AdminSection({
               className="flex items-center gap-1 text-sm text-slate-600 transition-colors hover:text-slate-900"
             >
               <ArrowUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to Quick Navigation</span>
+              <span className="hidden sm:inline">Back to quick navigation</span>
             </button>
             {onAdd && (
               <Button

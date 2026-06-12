@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: calendar-db-migrate
+  labels:
+    app: calendar-db-migrate
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: job
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: calendar-db-migrate
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: postgres:16-alpine
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: DATABASE_URL
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+
+              echo "Waiting for database..."
+              until pg_isready -d "$DATABASE_URL"; do
+                sleep 2
+              done
+
+              echo "Checking for migration files..."
+
+              found=false
+              for f in /migrations/*.sql; do
+                if [ ! -e "$f" ]; then
+                  continue
+                fi
+                found=true
+                break
+              done
+              if [ "$found" = false ]; then
+                echo "No migration files found. Nothing to apply."
+                exit 0
+              fi
+
+              pg_dump -d "$DATABASE_URL" -Fc -f /tmp/pre_migration_backup.dump
+              echo "Database backup created at /tmp/pre_migration_backup.dump"
+
+              psql "$DATABASE_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
+
+              echo "Running DB migrations..."
+              for f in /migrations/*.sql; do
+                echo "Applying $f"
+                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+              done
+
+              echo "DB migrations completed successfully."
+      volumes:
+        - name: migrations
+          configMap:
+            name: calendar-db-migrations

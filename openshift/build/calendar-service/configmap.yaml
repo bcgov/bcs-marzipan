@@ -9,5 +9,4 @@ metadata:
     app.kubernetes.io/instance: dev
     app.kubernetes.io/managed-by: kubectl
 data:
-  NODE_ENV: development
-  CORS_ALLOWED_ORIGINS: 'https://calendar-ui-d8b00f-dev.apps.silver.devops.gov.bc.ca,https://calendar-ui-b3237c-dev.apps.gold.devops.gov.bc.ca,http://localhost:3000,http://localhost:4173,http://localhost:8080'
+  CORS_ALLOWED_ORIGINS: 'https://calendar-ui-d8b00f-dev.apps.silver.devops.gov.bc.ca,http://localhost:3000,http://localhost:4173,http://localhost:8080'

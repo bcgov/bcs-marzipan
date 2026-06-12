@@ -112,7 +112,7 @@ export function LookAheadDayRangeTabs({
       }}
       className="w-auto"
     >
-      <TabsList size="sm" aria-label="Look ahead day range">
+      <TabsList size="sm" aria-label="Look Ahead day range">
         <TabsTrigger value="1">1 day</TabsTrigger>
         <TabsTrigger value="7">7 days</TabsTrigger>
         <TabsTrigger value="14">14 days</TabsTrigger>
