@@ -27,7 +27,7 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
     queryFn: fetchAllPermissions,
     enabled: Boolean(
       (user as any)?.permissions?.includes('system.manage_permissions') ||
-        (user as any)?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+      (user as any)?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
     ),
   });
 
@@ -110,7 +110,7 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
 
   const canManagePermissions = Boolean(
     (user as any)?.permissions?.includes('system.manage_permissions') ||
-      (user as any)?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+    (user as any)?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
   );
   if (!canManagePermissions) return null;
 

@@ -139,7 +139,7 @@ export function Settings() {
       icon: ListChecks,
       show: Boolean(
         user?.permissions?.includes('system.manage_permissions') ||
-          user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+        user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
       ),
     },
   ];
