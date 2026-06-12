@@ -12,30 +12,12 @@ import {
   ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_KEYS,
   ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS,
 } from './review-exempt-settings';
-import {
-  createActivityRequestSchema,
-  type ActivityFormData,
-} from './schemas/activity.schema';
+import { createActivityRequestSchema } from './schemas/activity.schema';
 import {
   CLONE_ADVANCED_FIELD_GROUPS,
   CLONE_ADVANCED_FIELD_PATHS,
   CLONE_ADVANCED_SECTIONS,
 } from './schemas/clone-activity.schema';
-
-type RegistryFieldKey = {
-  [Section in (typeof ACTIVITY_FORM_SECTION_IDS)[number]]: (typeof ACTIVITY_FORM_SECTION_FIELDS)[Section][number];
-}[(typeof ACTIVITY_FORM_SECTION_IDS)[number]];
-
-type UnaccountedActivityFormKey = Exclude<
-  keyof ActivityFormData,
-  | RegistryFieldKey
-  | (typeof ACTIVITY_FORM_SECTION_REGISTRY_OMITTED_KEYS)[number]
->;
-
-/** Compile-time guard: registry + omitted keys must cover all ActivityFormData keys. */
-const _registryCompleteness: UnaccountedActivityFormKey extends never
-  ? true
-  : UnaccountedActivityFormKey = true;
 
 describe('activity-form-sections', () => {
   it('uses unique field keys across sections', () => {
@@ -145,5 +127,3 @@ describe('activity-form-sections', () => {
     );
   });
 });
-
-void _registryCompleteness;

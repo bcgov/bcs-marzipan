@@ -48,10 +48,7 @@ export const ACTIVITY_FORM_SECTION_LABELS: Record<
  * Top-level `ActivityFormData` keys owned by each section.
  * Include code-exempt or clone-excluded keys here for completeness; consumers filter.
  */
-export const ACTIVITY_FORM_SECTION_FIELDS: Record<
-  ActivityFormSectionId,
-  readonly (keyof ActivityFormData)[]
-> = {
+export const ACTIVITY_FORM_SECTION_FIELDS = {
   overview: [
     'title',
     'categoryIds',
@@ -99,7 +96,10 @@ export const ACTIVITY_FORM_SECTION_FIELDS: Record<
     'eventPlanners',
   ],
   sharing: ['visibility', 'sharedWithTeamIds'],
-};
+} as const satisfies Record<
+  ActivityFormSectionId,
+  readonly (keyof ActivityFormData)[]
+>;
 
 /**
  * Top-level `ActivityFormData` keys intentionally omitted from the section registry.
@@ -113,6 +113,24 @@ export const ACTIVITY_FORM_SECTION_REGISTRY_OMITTED_KEYS = [
   'commsContactLeadId',
   'leadMinistryId',
 ] as const satisfies readonly (keyof ActivityFormData)[];
+
+type ActivityFormSectionFieldKey = {
+  [Section in ActivityFormSectionId]: (typeof ACTIVITY_FORM_SECTION_FIELDS)[Section][number];
+}[ActivityFormSectionId];
+
+type UnaccountedActivityFormDataKey = Exclude<
+  keyof ActivityFormData,
+  | ActivityFormSectionFieldKey
+  | (typeof ACTIVITY_FORM_SECTION_REGISTRY_OMITTED_KEYS)[number]
+>;
+
+/** Compile-time guard: registry + omitted keys must cover all ActivityFormData keys. */
+type AssertRegistryComplete = UnaccountedActivityFormDataKey extends never
+  ? true
+  : UnaccountedActivityFormDataKey;
+
+const _assertRegistryComplete: AssertRegistryComplete = true;
+void _assertRegistryComplete;
 
 /** Flat list of all section field keys in section order (each key appears at most once). */
 export function getActivityFormSectionFieldKeys(): readonly string[] {
