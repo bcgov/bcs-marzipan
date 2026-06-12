@@ -55,10 +55,13 @@ jobs:
           oc rollout status deployment/calendar-ui -w
 
       - name: Smoke-check config.js served (optional)
-        if: ${{ secrets.CALENDAR_UI_URL }}
         env:
           CALENDAR_UI_URL: ${{ secrets.CALENDAR_UI_URL }}
         run: |
+          if [ -z "$CALENDAR_UI_URL" ]; then
+            echo "Skipping smoke check (CALENDAR_UI_URL secret not set)"
+            exit 0
+          fi
           echo "Checking $CALENDAR_UI_URL/config.js"
           curl -fsS "$CALENDAR_UI_URL/config.js" | head -n 5
 
