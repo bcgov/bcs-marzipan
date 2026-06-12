@@ -122,6 +122,8 @@ type ActivitySharingSectionProps = {
   quickShareGroups: QuickShareGroupLookup[];
 };
 
+const RESTRICT_ACCESS_SWITCH_ID = 'activity-visibility-restrict-access';
+
 export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
   sharedWithTeams,
   quickShareGroups,
@@ -174,6 +176,7 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
               <div className="flex flex-row items-start space-y-0 space-x-3">
                 <FormControl data-field={field.name}>
                   <Switch
+                    id={RESTRICT_ACCESS_SWITCH_ID}
                     checked={isRestricted}
                     readOnly={readOnly}
                     onCheckedChange={(checked) => {
@@ -186,7 +189,7 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">
-                  <FormLabel>
+                  <FormLabel htmlFor={RESTRICT_ACCESS_SWITCH_ID}>
                     <>
                       {getActivityFieldLabel(field.name)}
                       <Popover>

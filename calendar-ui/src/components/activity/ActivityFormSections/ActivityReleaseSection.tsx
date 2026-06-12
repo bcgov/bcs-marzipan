@@ -1,7 +1,6 @@
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useMemo } from 'react';
 
-import { TRANSLATION_REQUIRED_LOOKUP_NAME } from '@corpcal/shared';
 import type { TranslationRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
@@ -35,6 +34,7 @@ import {
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
+import { resolveTranslationRequiredStatusId } from '@/lib/activity-form-translation-required';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
@@ -52,13 +52,6 @@ type ActivityReleaseSectionProps = {
     displayName?: string;
   }>;
 };
-
-function resolveTranslationRequiredStatusId(
-  statuses: TranslationRequiredStatusLookupItem[],
-  lookupName: string
-): number | undefined {
-  return statuses.find((status) => status.name === lookupName)?.id;
-}
 
 /**
  * Isolated so `useWatch('translationsRequiredStatusId')` only re-renders this
@@ -166,11 +159,7 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
   const translationsScope = useActivityFieldScopeControl('translations');
 
   const requiredTranslationStatusId = useMemo(
-    () =>
-      resolveTranslationRequiredStatusId(
-        translationRequiredStatuses,
-        TRANSLATION_REQUIRED_LOOKUP_NAME
-      ),
+    () => resolveTranslationRequiredStatusId(translationRequiredStatuses),
     [translationRequiredStatuses]
   );
 

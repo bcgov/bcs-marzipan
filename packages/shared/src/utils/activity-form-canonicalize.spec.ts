@@ -132,6 +132,30 @@ describe('prepareActivityFormDataForSubmit', () => {
     expect(prepared.lookAheadSection).toBe('events');
   });
 
+  it('clears translationLanguageIds when status is not required', () => {
+    const prepared = prepareActivityFormDataForSubmit(
+      minimalForm({
+        translationsRequiredStatusId: 1,
+        translationLanguageIds: [1, 2],
+      }),
+      { requiredTranslationStatusId: 2 }
+    );
+
+    expect(prepared.translationLanguageIds).toEqual([]);
+  });
+
+  it('preserves translationLanguageIds when status is required', () => {
+    const prepared = prepareActivityFormDataForSubmit(
+      minimalForm({
+        translationsRequiredStatusId: 2,
+        translationLanguageIds: [1, 2],
+      }),
+      { requiredTranslationStatusId: 2 }
+    );
+
+    expect(prepared.translationLanguageIds).toEqual([1, 2]);
+  });
+
   it('preserves non-empty optional field values', () => {
     const prepared = prepareActivityFormDataForSubmit(
       minimalForm({

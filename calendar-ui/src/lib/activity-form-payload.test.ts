@@ -71,6 +71,19 @@ describe('buildPayloadForCreate', () => {
     expect(payload.notes).not.toBe('');
     expect(payload.significance).not.toBe(EMPTY_RICH_TEXT_DOC);
   });
+
+  it('strips orphan translationLanguageIds when status is not required', () => {
+    const formValues = minimalForm({
+      translationsRequiredStatusId: 1,
+      translationLanguageIds: [1, 2],
+    });
+
+    const payload = buildPayloadForCreate(formValues, formValues, {
+      requiredTranslationStatusId: 2,
+    });
+
+    expect(payload.translationLanguageIds).toBeUndefined();
+  });
 });
 
 describe('buildPayloadForUpdate', () => {
@@ -98,5 +111,18 @@ describe('buildPayloadForUpdate', () => {
     expect(payload.schedulingNotes).toBeNull();
     expect(payload.strategy).toBeNull();
     expect(payload.significance).toBeNull();
+  });
+
+  it('strips orphan translationLanguageIds when status is not required', () => {
+    const formValues = minimalForm({
+      translationsRequiredStatusId: 3,
+      translationLanguageIds: [1],
+    });
+
+    const payload = buildPayloadForUpdate(formValues, formValues, {
+      requiredTranslationStatusId: 2,
+    });
+
+    expect(payload.translationLanguageIds).toBeUndefined();
   });
 });
