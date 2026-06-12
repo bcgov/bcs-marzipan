@@ -40,6 +40,7 @@ import {
   MinistryAdminModalForm,
   type MinisterFormSelection,
 } from './MinistryAdminModalForm';
+import PermissionsVisibilityAdmin from './PermissionsVisibilityAdmin';
 import { VenuePresetForm } from './VenuePresetForm';
 
 // Type definitions - these extend the base LookupItem from the API
@@ -810,6 +811,10 @@ export function ThemesAdmin() {
       getItemName={(item) => item.displayName ?? item.label ?? String(item.id)}
     />
   );
+}
+
+export function PermissionsVisibilityAdminSection() {
+  return <PermissionsVisibilityAdmin />;
 }
 
 const venuePresetAdditionalColumns: ColumnDef<VenuePreset>[] = [

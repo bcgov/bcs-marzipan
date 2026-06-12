@@ -1,10 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Edit, Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useState } from 'react';
 
+import { PERMISSIONS } from '@corpcal/shared';
 import { fetchTeamById } from '@/api/teamsApi';
-import { ActivityFormStickyHeader } from '@/components/activity/ActivityFormStickyHeader';
-import { PageContainer, PageHeader } from '@/components/layout';
+import { PageContainer } from '@/components/layout';
+import { TeamEditModal } from '@/components/teams/TeamEditModal';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 export function TeamDetails() {
   const params = useParams();
@@ -16,6 +20,10 @@ export function TeamDetails() {
     queryFn: () => fetchTeamById(id),
     enabled: !Number.isNaN(id),
   });
+
+  const queryClient = useQueryClient();
+  const [showEditTeam, setShowEditTeam] = useState(false);
+  const { hasPermission } = useAuth();
 
   if (isLoading) {
     return (
@@ -37,15 +45,51 @@ export function TeamDetails() {
 
   return (
     <>
-      <ActivityFormStickyHeader onBack={handleBack} />
-
       <PageContainer variant="narrow" className="space-y-6">
-        <PageHeader
-          title={team.displayName ?? team.name}
-          description={team.description ?? undefined}
-        />
+        <div className="flex items-center justify-start">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            className="shrink-0 gap-2"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            Go back
+          </Button>
+        </div>
 
         <div>
+          <div className="flex items-start gap-4">
+            <div>
+              <h2 className="text-2xl leading-tight font-semibold">
+                {team.displayName ?? team.name}
+              </h2>
+              {team.description && (
+                <div className="mt-1 text-sm text-slate-600">
+                  {team.description}
+                </div>
+              )}
+            </div>
+
+            <div className="ms-auto">
+              {/* Edit button placed inline with heading to match UserDetailPage */}
+              {hasPermission(PERMISSIONS.TEAMS.EDIT) ? (
+                <div className="ml-0.5">
+                  <Button
+                    size="sm"
+                    onClick={() => setShowEditTeam(true)}
+                    className="focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:ring-2"
+                    aria-label="Edit team"
+                  >
+                    <Edit className="h-4 w-4" aria-hidden />
+                    Edit
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
           <div className="grid max-w-3xl grid-cols-2 gap-4">
             <div>
               <h3 className="text-sm font-medium text-slate-600">Name</h3>
@@ -85,6 +129,33 @@ export function TeamDetails() {
           </div>
         </div>
       </PageContainer>
+      <TeamEditModal
+        team={
+          team
+            ? {
+                id: team.id,
+                name: team.name,
+                displayName: team.displayName ?? null,
+                abbreviation: team.abbreviation ?? '',
+                description: team.description ?? null,
+                sortOrder: (team as any).sortOrder ?? 0,
+                isActive: (team as any).isActive ?? true,
+                roleId: null,
+                memberCount: team.members ? team.members.length : 0,
+                ministryId: team.ministryId ?? null,
+                ministryName: team.ministryName ?? null,
+              }
+            : null
+        }
+        open={showEditTeam}
+        onClose={() => setShowEditTeam(false)}
+        onSaved={() => {
+          setShowEditTeam(false);
+          if (!Number.isNaN(id)) {
+            void queryClient.invalidateQueries({ queryKey: ['team', id] });
+          }
+        }}
+      />
     </>
   );
 }

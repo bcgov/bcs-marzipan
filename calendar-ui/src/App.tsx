@@ -63,6 +63,9 @@ const Users = lazyWithRetry(() =>
 const TeamDetails = lazyWithRetry(() =>
   import('./pages/TeamDetails').then((m) => ({ default: m.TeamDetails }))
 );
+const UserDetailPage = lazyWithRetry(() =>
+  import('./pages/UserDetailPage').then((m) => ({ default: m.default }))
+);
 
 function LoginModalContainer() {
   const { isAuthenticated, isLoading, pendingLoginModal, dismissLoginModal } =
@@ -167,6 +170,15 @@ function App() {
                   element={
                     <ProtectedRoute requiredPermission={PERMISSIONS.TEAMS.VIEW}>
                       <TeamDetails />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="users/:id"
+                  element={
+                    <ProtectedRoute requiredPermission={PERMISSIONS.USERS.VIEW}>
+                      <UserDetailPage />
                     </ProtectedRoute>
                   }
                 />

@@ -416,6 +416,99 @@ Reference data for dropdowns and filters. All responses follow the format: `{ "s
 
 **GET** `/lookups/event-planners`
 
+### Get permissions for all roles (bulk)
+
+**GET** `/lookups/roles/permissions`
+
+Returns a map where keys are role IDs and values are arrays of permission rows. Only permissions with `show_in_user_management = true` are returned and rows are ordered by `permissions.sortOrder`.
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "2": [
+      {
+        "key": "activities.create",
+        "displayName": "Create activities",
+        "description": "Can create activities",
+        "hasPermission": true
+      },
+      {
+        "key": "activities.edit",
+        "displayName": "Edit activities",
+        "description": "Can edit activities",
+        "hasPermission": false
+      }
+    ],
+    "3": [
+      /* role 3 permissions */
+    ]
+  }
+}
+```
+
+Only System Admin-visible permissions are included in the rows (those flagged `show_in_user_management`). This endpoint is used by the UI to avoid N+1 requests when rendering per-role permission lists.
+
+---
+
+### Update permission visibility (single)
+
+**PATCH** `/lookups/permissions/:id/visibility`
+
+Requires System Admin privileges (permission `system.manage_permissions`). Updates whether a permission is shown in the user-management form.
+
+**Request body:**
+
+```json
+{ "showInUserManagement": true }
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": { "id": 12, "key": "activities.create", "showInUserManagement": true }
+}
+```
+
+---
+
+### Bulk update permission visibility (atomic)
+
+**PATCH** `/lookups/permissions/visibility`
+
+Requires System Admin privileges (`system.manage_permissions`). Accepts an array of `{ id, showInUserManagement }` objects and performs the updates in a single database transaction. An audit row is inserted for each change into `permission_visibility_audit`.
+
+**Request body:**
+
+```json
+[
+  { "id": 12, "showInUserManagement": true },
+  { "id": 15, "showInUserManagement": false }
+]
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": [
+    { "id": 12, "key": "activities.create", "showInUserManagement": true },
+    { "id": 15, "key": "activities.edit", "showInUserManagement": false }
+  ]
+}
+```
+
+Behavior notes:
+
+- The endpoint validates the request body and returns `400` on validation errors.
+- All updates are performed atomically; if any update fails the transaction is rolled back.
+- Each change is recorded in `permission_visibility_audit(permission_id, changed_by, old_value, new_value, created_at)`.
+
 **Cache:** 1 hour
 
 ```json
