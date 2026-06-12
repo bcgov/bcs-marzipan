@@ -3,7 +3,10 @@ import type {
   ReportDataResponse,
   ReportSectionData,
 } from '@corpcal/shared/api/types';
-import type { ReportDataQueryParams } from '@corpcal/shared/schemas';
+import {
+  serializeFilterActivitiesQueryParams,
+  type ReportDataQueryParams,
+} from '@corpcal/shared/schemas';
 
 import api from './axios';
 
@@ -18,12 +21,19 @@ export type ReportDataRequestParams = Partial<ReportDataQueryParams>;
  */
 const REPORT_PDF_EXPORT_TIMEOUT_MS = 60_000;
 
+/** Axios bracket-array encoding is not parsed by report query schemas; use comma-separated IDs. */
+function serializeReportDataQueryParams(
+  params?: ReportDataRequestParams
+): Record<string, string | number | boolean | undefined> {
+  return serializeFilterActivitiesQueryParams(params);
+}
+
 export async function fetchReportData(
   type: string,
   params?: ReportDataRequestParams
 ): Promise<ReportDataResponse> {
   const response = await api.get<ReportDataResponse>(`/reports/data/${type}`, {
-    params,
+    params: serializeReportDataQueryParams(params),
   });
   return response.data;
 }
@@ -34,7 +44,7 @@ async function downloadReportFile(
   params?: ReportDataRequestParams
 ): Promise<void> {
   const response = await api.get(`/reports/export/${type}/${ext}`, {
-    params,
+    params: serializeReportDataQueryParams(params),
     responseType: 'blob',
     timeout: ext === 'pdf' ? REPORT_PDF_EXPORT_TIMEOUT_MS : undefined,
   });
