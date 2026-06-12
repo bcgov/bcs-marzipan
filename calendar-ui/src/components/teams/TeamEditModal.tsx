@@ -256,7 +256,18 @@ export function TeamEditModal({
               <Combobox
                 items={ministryOptions}
                 value={ministryId}
-                onValueChange={(value: string | null) => setMinistryId(value)}
+                onValueChange={(
+                  value: string | OptionItem | null,
+                  _eventDetails?: unknown
+                ) =>
+                  setMinistryId(
+                    typeof value === 'string'
+                      ? value
+                      : value
+                        ? value.value
+                        : null
+                  )
+                }
                 itemToStringValue={(o: OptionItem | string) =>
                   typeof o === 'string'
                     ? (ministryOptions.find((m) => m.value === o)?.label ?? '')
