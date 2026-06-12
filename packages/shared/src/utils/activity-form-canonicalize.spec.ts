@@ -121,6 +121,15 @@ describe('prepareActivityFormDataForSubmit', () => {
     expect(prepared.strategy).toBeNull();
     expect(prepared.significance).toBeNull();
     expect(prepared.executiveSummary).toBeNull();
+    expect(prepared.lookAheadSection).toBeNull();
+  });
+
+  it('preserves lookAheadSection when a section key is set', () => {
+    const prepared = prepareActivityFormDataForSubmit(
+      minimalForm({ lookAheadSection: 'events' })
+    );
+
+    expect(prepared.lookAheadSection).toBe('events');
   });
 
   it('preserves non-empty optional field values', () => {

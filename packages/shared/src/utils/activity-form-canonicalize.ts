@@ -131,5 +131,6 @@ export function prepareActivityFormDataForSubmit(
     strategy: c.strategy ?? null,
     significance: c.significance ?? null,
     executiveSummary: c.executiveSummary ?? null,
+    lookAheadSection: c.lookAheadSection ?? null,
   };
 }

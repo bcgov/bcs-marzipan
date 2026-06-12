@@ -40,6 +40,22 @@ describe('buildMarkReviewedOnlyPayload', () => {
 });
 
 describe('buildPayloadForCreate', () => {
+  it('maps cleared lookAheadSection to null for API', () => {
+    const formValues = minimalForm({ lookAheadSection: undefined });
+
+    const payload = buildPayloadForCreate(formValues, formValues);
+
+    expect(payload.lookAheadSection).toBeNull();
+  });
+
+  it('preserves lookAheadSection when a section is selected', () => {
+    const formValues = minimalForm({ lookAheadSection: 'events' });
+
+    const payload = buildPayloadForCreate(formValues, formValues);
+
+    expect(payload.lookAheadSection).toBe('events');
+  });
+
   it('strips UI sentinels from optional fields before sending to API', () => {
     const formValues = minimalForm({
       notes: '',
@@ -58,6 +74,16 @@ describe('buildPayloadForCreate', () => {
 });
 
 describe('buildPayloadForUpdate', () => {
+  it('maps cleared lookAheadSection to null so PATCH clears the DB column', () => {
+    const formValues = minimalForm({
+      lookAheadSection: undefined,
+    });
+
+    const payload = buildPayloadForUpdate(formValues, formValues);
+
+    expect(payload.lookAheadSection).toBeNull();
+  });
+
   it('strips UI sentinels from optional fields before sending to API', () => {
     const formValues = minimalForm({
       notes: '',

@@ -26,6 +26,7 @@ function buildPayloadFromPrepared(
     endDate: prepared.endDate ?? null,
     startTime: prepared.startTime ?? null,
     endTime: prepared.endTime ?? null,
+    lookAheadSection: prepared.lookAheadSection ?? null,
     categoryIds: toUndefinedIfEmpty(preparedFormValues.categoryIds),
     tagIds: toUndefinedIfEmpty(preparedFormValues.tagIds),
     commsMaterialIds: toUndefinedIfEmpty(preparedFormValues.commsMaterialIds),
