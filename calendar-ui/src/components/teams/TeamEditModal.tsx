@@ -14,6 +14,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ComboboxValue,
 } from '@/components/ui/combobox';
 import {
   Dialog,
@@ -254,18 +255,30 @@ export function TeamEditModal({
               <Label>Ministry</Label>
               <Combobox
                 items={ministryOptions}
-                value={selectedMinistry}
-                onValueChange={(option: OptionItem | null) =>
-                  setMinistryId(option ? option.value : null)
+                value={ministryId}
+                onValueChange={(value: string | null) => setMinistryId(value)}
+                itemToStringValue={(o: OptionItem | string) =>
+                  typeof o === 'string'
+                    ? (ministryOptions.find((m) => m.value === o)?.label ?? '')
+                    : o.label
                 }
-                itemToStringValue={(o: OptionItem) => o.label}
               >
                 <ComboboxInput placeholder="Select ministry..." />
+                <ComboboxValue>
+                  {(val: string | OptionItem | null) => {
+                    if (!val) return null;
+                    const value = typeof val === 'string' ? val : val.value;
+                    return (
+                      ministryOptions.find((m) => m.value === value)?.label ??
+                      null
+                    );
+                  }}
+                </ComboboxValue>
                 <ComboboxContent>
                   <ComboboxEmpty>No ministries found.</ComboboxEmpty>
                   <ComboboxList>
                     {(option: OptionItem) => (
-                      <ComboboxItem key={option.value} value={option}>
+                      <ComboboxItem key={option.value} value={option.value}>
                         {option.label}
                       </ComboboxItem>
                     )}
