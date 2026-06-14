@@ -5,64 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1777489308565,
-      "tag": "0000_20260429_postgresql_extensions",
+      "when": 1781420370104,
+      "tag": "0000_20260613_postgresql_extensions",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1777489308566,
-      "tag": "0001_20260429_squash_login_modal",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1778088976959,
-      "tag": "0002_20260430_local_auth",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1746403200000,
-      "tag": "0003_20260504_user_activity_favourites",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1746576000000,
-      "tag": "0004_20260506_activity_flags",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1747612800000,
-      "tag": "0005_20260519_user_settings",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1781318400000,
-      "tag": "0006_20260604_show_in_user_management",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1781318400001,
-      "tag": "0007_20260609_direct_login_enabled",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1781318400002,
-      "tag": "0008_20260609_permission_visibility_audit",
+      "when": 1781420370105,
+      "tag": "0001_20260613_regenerate_migration_meta",
       "breakpoints": true
     },
     {
