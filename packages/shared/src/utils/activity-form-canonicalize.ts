@@ -128,10 +128,10 @@ export function stripTranslationLanguagesWhenNotRequired(
   data: ActivityFormData,
   requiredTranslationStatusId: number | undefined
 ): ActivityFormData {
-  if (
-    requiredTranslationStatusId != null &&
-    data.translationsRequiredStatusId === requiredTranslationStatusId
-  ) {
+  if (requiredTranslationStatusId == null) {
+    return data;
+  }
+  if (data.translationsRequiredStatusId === requiredTranslationStatusId) {
     return data;
   }
   if (!data.translationLanguageIds?.length) {

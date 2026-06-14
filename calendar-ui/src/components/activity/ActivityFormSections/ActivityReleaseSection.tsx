@@ -259,7 +259,10 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
               onValueChange={(value) => {
                 const nextStatusId = optionalSelectIdValue(value);
                 setActivityFormFieldValue(form, field.name, nextStatusId);
-                if (nextStatusId !== requiredTranslationStatusId) {
+                if (
+                  requiredTranslationStatusId != null &&
+                  nextStatusId !== requiredTranslationStatusId
+                ) {
                   setActivityFormFieldValue(form, 'translationLanguageIds', []);
                 }
               }}

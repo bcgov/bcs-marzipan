@@ -156,6 +156,17 @@ describe('prepareActivityFormDataForSubmit', () => {
     expect(prepared.translationLanguageIds).toEqual([1, 2]);
   });
 
+  it('preserves translationLanguageIds when required status lookup is unresolved', () => {
+    const prepared = prepareActivityFormDataForSubmit(
+      minimalForm({
+        translationsRequiredStatusId: 2,
+        translationLanguageIds: [1, 2],
+      })
+    );
+
+    expect(prepared.translationLanguageIds).toEqual([1, 2]);
+  });
+
   it('preserves non-empty optional field values', () => {
     const prepared = prepareActivityFormDataForSubmit(
       minimalForm({
