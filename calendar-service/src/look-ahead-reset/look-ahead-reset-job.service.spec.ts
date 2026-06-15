@@ -17,7 +17,13 @@ describe('LookAheadResetJobService', () => {
   let applicationSettings: {
     getLookAheadResetWindowDays: ReturnType<typeof vi.fn>;
     getLookAheadResetCronSettings: ReturnType<typeof vi.fn>;
+    getLookAheadResetCronMode: ReturnType<typeof vi.fn>;
+    setLookAheadResetCronMode: ReturnType<typeof vi.fn>;
     clearLookAheadResetPausedForDate: ReturnType<typeof vi.fn>;
+  };
+  let activityHistoryService: {
+    recordLookAheadStatusResetBatch: ReturnType<typeof vi.fn>;
+    recordLookAheadStatusChangeBatch: ReturnType<typeof vi.fn>;
   };
 
   function mockTxLock(acquired: boolean, candidates: unknown[] = []) {
@@ -75,7 +81,13 @@ describe('LookAheadResetJobService', () => {
         cronEnabled: true,
         pausedForDate: null,
       }),
+      getLookAheadResetCronMode: vi.fn().mockResolvedValue('running'),
+      setLookAheadResetCronMode: vi.fn().mockResolvedValue(undefined),
       clearLookAheadResetPausedForDate: vi.fn().mockResolvedValue(undefined),
+    };
+    activityHistoryService = {
+      recordLookAheadStatusResetBatch: vi.fn(),
+      recordLookAheadStatusChangeBatch: vi.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -88,10 +100,7 @@ describe('LookAheadResetJobService', () => {
         },
         {
           provide: ActivityHistoryService,
-          useValue: {
-            recordLookAheadStatusResetBatch: vi.fn(),
-            recordLookAheadStatusChangeBatch: vi.fn(),
-          },
+          useValue: activityHistoryService,
         },
       ],
     }).compile();
@@ -263,5 +272,197 @@ describe('LookAheadResetJobService', () => {
     const serialized = JSON.stringify(sqlArg.queryChunks ?? sqlArg);
     expect(serialized).toContain('pg_try_advisory_xact_lock');
     expect(serialized).toMatch(/7881904/);
+  });
+
+  it('pauses tonight inside the transaction when manual run requests it', async () => {
+    const mockTx = mockTxLock(true, [{ id: 10, lookAheadStatus: 'new' }]);
+    databaseService.db.transaction.mockImplementation(
+      (fn: (tx: unknown) => unknown) => Promise.resolve(fn(mockTx))
+    );
+
+    const result = await service.runBatch({
+      actorUserId: 42,
+      trigger: 'manual',
+      pauseScheduledTonight: true,
+      manual: { scope: 'window', days: 7 },
+    });
+
+    expect(result).toEqual({
+      updated: 1,
+      skipped: false,
+      scheduledRunPausedTonight: true,
+    });
+    expect(applicationSettings.getLookAheadResetCronMode).toHaveBeenCalledWith(
+      mockTx
+    );
+    expect(applicationSettings.setLookAheadResetCronMode).toHaveBeenCalledWith(
+      'paused_today',
+      mockTx
+    );
+  });
+
+  it('returns rollback skipReason in_flight when a batch is already running', async () => {
+    let finish!: (value: unknown) => void;
+    databaseService.db.transaction.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+
+    const batch = service.runBatch({
+      actorUserId: 999,
+      trigger: 'schedule',
+    });
+    await Promise.resolve();
+
+    const result = await service.rollbackLastClear(999);
+    expect(result).toEqual({
+      restored: 0,
+      skipped: 0,
+      rollbackAvailable: true,
+      skippedRollback: true,
+      skipReason: 'in_flight',
+    });
+
+    finish({ updated: 0, skipped: false });
+    await batch;
+  });
+
+  it('returns rollback skipReason advisory_lock when lock is not acquired', async () => {
+    const mockTx = mockTxLock(false);
+    databaseService.db.transaction.mockImplementation(
+      (fn: (tx: unknown) => unknown) => Promise.resolve(fn(mockTx))
+    );
+
+    const result = await service.rollbackLastClear(999);
+
+    expect(result).toEqual({
+      restored: 0,
+      skipped: 0,
+      rollbackAvailable: true,
+      skippedRollback: true,
+      skipReason: 'advisory_lock',
+    });
+  });
+
+  it('restores snapshot entries and deletes the snapshot on rollback', async () => {
+    const snapshot = {
+      id: 1,
+      entries: [
+        { activityId: 10, lookAheadStatus: 'new' },
+        { activityId: 11, lookAheadStatus: 'changed' },
+      ],
+    };
+    const mockTx = {
+      execute: vi
+        .fn()
+        .mockResolvedValueOnce([{ acquired: true }])
+        .mockResolvedValue(undefined),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([snapshot]),
+          }),
+        }),
+      }),
+      delete: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
+      }),
+    };
+    mockTx.select.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([snapshot]),
+        }),
+      }),
+    });
+    mockTx.select.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([
+          { id: 10, lookAheadStatus: 'none' },
+          { id: 11, lookAheadStatus: 'none' },
+        ]),
+      }),
+    });
+
+    databaseService.db.transaction.mockImplementation(
+      (fn: (tx: unknown) => unknown) => Promise.resolve(fn(mockTx))
+    );
+
+    const result = await service.rollbackLastClear(42);
+
+    expect(result).toEqual({
+      restored: 2,
+      skipped: 0,
+      rollbackAvailable: false,
+    });
+    expect(mockTx.execute).toHaveBeenCalledTimes(2);
+    expect(
+      activityHistoryService.recordLookAheadStatusChangeBatch
+    ).toHaveBeenCalledWith(
+      mockTx,
+      expect.objectContaining({
+        actorUserId: 42,
+        entries: [
+          {
+            activityId: 10,
+            oldLookAheadStatus: 'none',
+            newLookAheadStatus: 'new',
+          },
+          {
+            activityId: 11,
+            oldLookAheadStatus: 'none',
+            newLookAheadStatus: 'changed',
+          },
+        ],
+      })
+    );
+    expect(mockTx.delete).toHaveBeenCalled();
+  });
+
+  it('skips deleted activities during rollback', async () => {
+    const snapshot = {
+      id: 1,
+      entries: [
+        { activityId: 10, lookAheadStatus: 'new' },
+        { activityId: 99, lookAheadStatus: 'changed' },
+      ],
+    };
+    const mockTx = {
+      execute: vi
+        .fn()
+        .mockResolvedValueOnce([{ acquired: true }])
+        .mockResolvedValue(undefined),
+      select: vi.fn(),
+      delete: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
+      }),
+    };
+    mockTx.select.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([snapshot]),
+        }),
+      }),
+    });
+    mockTx.select.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ id: 10, lookAheadStatus: 'none' }]),
+      }),
+    });
+
+    databaseService.db.transaction.mockImplementation(
+      (fn: (tx: unknown) => unknown) => Promise.resolve(fn(mockTx))
+    );
+
+    const result = await service.rollbackLastClear(42);
+
+    expect(result).toEqual({
+      restored: 1,
+      skipped: 1,
+      rollbackAvailable: false,
+    });
+    expect(mockTx.execute).toHaveBeenCalledTimes(2);
   });
 });

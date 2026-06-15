@@ -25,6 +25,7 @@ import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 
 const PREVIEW_LIST_LIMIT = 500;
+const RESTORE_CHUNK_SIZE = 500;
 
 export type LookAheadResetManualRunParams = {
   /** Defaults to `window`. `all_future` is supported by the API but not exposed in admin UI. */
@@ -108,6 +109,8 @@ export class LookAheadResetJobService {
     trigger: 'schedule' | 'manual';
     referenceUtcMs?: number;
     manual?: LookAheadResetManualRunParams;
+    /** Manual only: skip tonight's scheduled run in the same transaction as the clear. */
+    pauseScheduledTonight?: boolean;
   }): Promise<LookAheadResetBatchRunResult> {
     if (this.inFlight) {
       return { updated: 0, skipped: true, skipReason: 'in_flight' };
@@ -167,7 +170,25 @@ export class LookAheadResetJobService {
         this.logger.log(
           `Look Ahead reset finished: ${updated} activity(s) updated in ${elapsed}ms (window ${windowLabel})`
         );
-        return { updated, skipped: false };
+
+        let scheduledRunPausedTonight = false;
+        if (params.trigger === 'manual' && params.pauseScheduledTonight) {
+          const cronMode =
+            await this.applicationSettings.getLookAheadResetCronMode(tx);
+          if (cronMode === 'running') {
+            await this.applicationSettings.setLookAheadResetCronMode(
+              'paused_today',
+              tx
+            );
+            scheduledRunPausedTonight = true;
+          }
+        }
+
+        return {
+          updated,
+          skipped: false,
+          ...(scheduledRunPausedTonight ? { scheduledRunPausedTonight } : {}),
+        };
       });
     } catch (err) {
       this.logger.error(
@@ -184,7 +205,13 @@ export class LookAheadResetJobService {
     actorUserId: number
   ): Promise<LookAheadResetRollbackResult> {
     if (this.inFlight) {
-      return { restored: 0, skipped: 0, rollbackAvailable: true };
+      return {
+        restored: 0,
+        skipped: 0,
+        rollbackAvailable: true,
+        skippedRollback: true,
+        skipReason: 'in_flight',
+      };
     }
     this.inFlight = true;
 
@@ -194,7 +221,13 @@ export class LookAheadResetJobService {
           sql`SELECT pg_try_advisory_xact_lock(${LOOK_AHEAD_RESET_JOB_ADVISORY_CLASS}::integer, ${LOOK_AHEAD_RESET_JOB_ADVISORY_KEY}::integer) AS acquired`
         );
         if (!(lockResult as { acquired: boolean }).acquired) {
-          return { restored: 0, skipped: 0, rollbackAvailable: true };
+          return {
+            restored: 0,
+            skipped: 0,
+            rollbackAvailable: true,
+            skippedRollback: true,
+            skipReason: 'advisory_lock',
+          };
         }
 
         const [snapshot] = await tx
@@ -229,13 +262,12 @@ export class LookAheadResetJobService {
         );
 
         const now = new Date();
-        let restored = 0;
-        let skipped = 0;
-        const historyEntries: Array<{
+        const toRestore: Array<{
           activityId: number;
+          lookAheadStatus: string | null;
           oldLookAheadStatus: string | null;
-          newLookAheadStatus: string | null;
         }> = [];
+        let skipped = 0;
 
         for (const entry of entries) {
           const current = currentById.get(entry.activityId);
@@ -243,21 +275,31 @@ export class LookAheadResetJobService {
             skipped += 1;
             continue;
           }
-          await tx
-            .update(activities)
-            .set({
-              lookAheadStatus: entry.lookAheadStatus,
-              lastUpdatedBy: actorUserId,
-              lastUpdatedDateTime: now,
-            })
-            .where(eq(activities.id, entry.activityId));
-          historyEntries.push({
+          toRestore.push({
             activityId: entry.activityId,
+            lookAheadStatus: entry.lookAheadStatus,
             oldLookAheadStatus: current,
-            newLookAheadStatus: entry.lookAheadStatus,
           });
-          restored += 1;
         }
+
+        if (toRestore.length > 0) {
+          await this.batchRestoreLookAheadStatuses(
+            tx,
+            actorUserId,
+            toRestore.map((entry) => ({
+              activityId: entry.activityId,
+              lookAheadStatus: entry.lookAheadStatus,
+            })),
+            now
+          );
+        }
+
+        const historyEntries = toRestore.map((entry) => ({
+          activityId: entry.activityId,
+          oldLookAheadStatus: entry.oldLookAheadStatus,
+          newLookAheadStatus: entry.lookAheadStatus,
+        }));
+        const restored = toRestore.length;
 
         if (historyEntries.length > 0) {
           await this.activityHistoryService.recordLookAheadStatusChangeBatch(
@@ -377,6 +419,31 @@ export class LookAheadResetJobService {
       days: params.days,
       includePast: params.includePast,
     });
+  }
+
+  private async batchRestoreLookAheadStatuses(
+    tx: DrizzleDbExecutor,
+    actorUserId: number,
+    entries: Array<{ activityId: number; lookAheadStatus: string | null }>,
+    now: Date
+  ): Promise<void> {
+    for (let i = 0; i < entries.length; i += RESTORE_CHUNK_SIZE) {
+      const chunk = entries.slice(i, i + RESTORE_CHUNK_SIZE);
+      if (chunk.length === 0) continue;
+
+      const valueRows = chunk.map(
+        (entry) => sql`(${entry.activityId}, ${entry.lookAheadStatus})`
+      );
+      await tx.execute(sql`
+        UPDATE activities AS a
+        SET
+          look_ahead_status = v.status,
+          last_updated_by = ${actorUserId},
+          last_updated_date_time = ${now}
+        FROM (VALUES ${sql.join(valueRows, sql`, `)}) AS v(id, status)
+        WHERE a.id = v.id
+      `);
+    }
   }
 
   private buildEligibilityWhere(dateWindow: LookAheadResetDateWindow | null) {

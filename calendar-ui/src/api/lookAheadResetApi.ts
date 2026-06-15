@@ -1,31 +1,20 @@
 import type {
-  LookAheadManualClearScope,
   LookAheadResetBatchRunResult,
-  LookAheadResetCronMode,
-  LookAheadResetLastClearSummary,
   LookAheadResetRollbackResult,
 } from '@corpcal/shared';
+import type {
+  LookAheadResetManualRunBody,
+  LookAheadResetSettings,
+} from '@corpcal/shared/schemas';
 
 import api from './axios';
 
-export type LookAheadResetSettings = {
-  windowDaysAfterToday: number;
-  cronMode: LookAheadResetCronMode;
-  rollbackAvailable: boolean;
-  lastClear?: LookAheadResetLastClearSummary;
-};
+export type { LookAheadResetManualRunBody, LookAheadResetSettings };
 
 export type LookAheadResetRunPreview = {
   count: number;
   items: Array<{ displayId: string | null; title: string }>;
   listTruncated: boolean;
-};
-
-export type LookAheadResetManualRunBody = {
-  scope?: LookAheadManualClearScope;
-  days?: number;
-  includePast?: boolean;
-  pauseScheduledTonight?: boolean;
 };
 
 export async function fetchLookAheadResetSettings(): Promise<LookAheadResetSettings> {
@@ -38,7 +27,7 @@ export async function fetchLookAheadResetSettings(): Promise<LookAheadResetSetti
 
 export async function patchLookAheadResetSettings(body: {
   windowDaysAfterToday?: number;
-  cronMode?: LookAheadResetCronMode;
+  cronMode?: LookAheadResetSettings['cronMode'];
 }): Promise<LookAheadResetSettings> {
   const res = await api.patch<{
     success: boolean;
@@ -48,7 +37,7 @@ export async function patchLookAheadResetSettings(body: {
 }
 
 export async function fetchLookAheadResetRunPreview(params: {
-  scope?: LookAheadManualClearScope;
+  scope?: LookAheadResetManualRunBody['scope'];
   days?: number;
   includePast?: boolean;
 }): Promise<LookAheadResetRunPreview> {

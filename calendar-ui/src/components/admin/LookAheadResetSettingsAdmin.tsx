@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { Eraser, Loader2, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
@@ -74,6 +75,16 @@ function clampWindowDays(value: number): number {
 
 function formatLastClearTrigger(trigger: 'schedule' | 'manual'): string {
   return trigger === 'schedule' ? 'scheduled job' : 'manual clear';
+}
+
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (
+    isAxiosError(error) &&
+    typeof error.response?.data?.message === 'string'
+  ) {
+    return error.response.data.message;
+  }
+  return fallback;
 }
 
 function isAutomatedLookAheadResetEnabled(
@@ -227,8 +238,13 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
         }`
       );
     },
-    onError: () => {
-      toast.error('Failed to restore previous Look Ahead statuses');
+    onError: (error) => {
+      toast.error(
+        getApiErrorMessage(
+          error,
+          'Failed to restore previous Look Ahead statuses'
+        )
+      );
     },
   });
 
@@ -313,7 +329,7 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
                   disabled={automatedResetMutation.isPending}
                 />
                 <Label htmlFor="la-reset-automated" className="font-normal">
-                  Daily automated Look Ahead status reset
+                  Daily automated reset
                 </Label>
               </div>
               <p className="text-muted-foreground text-xs">
@@ -503,6 +519,7 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
                 runNowMutation.mutate({
                   scope: 'window',
                   days: manualDays,
+                  includePast: false,
                   pauseScheduledTonight:
                     canSkipTonight && cronMode === 'running'
                       ? pauseScheduledTonight

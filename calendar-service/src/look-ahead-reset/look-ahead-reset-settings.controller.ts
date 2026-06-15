@@ -155,6 +155,7 @@ export class LookAheadResetSettingsController {
     const result = await this.lookAheadResetJob.runBatch({
       actorUserId: user.id,
       trigger: 'manual',
+      pauseScheduledTonight: parsed.data.pauseScheduledTonight,
       manual: {
         scope: parsed.data.scope,
         days: parsed.data.days,
@@ -165,21 +166,9 @@ export class LookAheadResetSettingsController {
       throw new InternalServerErrorException('Look Ahead reset job failed');
     }
 
-    let scheduledRunPausedTonight = false;
-    if (parsed.data.pauseScheduledTonight && !result.skipped) {
-      const currentMode =
-        await this.applicationSettings.getLookAheadResetCronMode();
-      if (currentMode === 'running') {
-        await this.applicationSettings.setLookAheadResetCronMode(
-          'paused_today'
-        );
-        scheduledRunPausedTonight = true;
-      }
-    }
-
     return {
       success: true,
-      data: { ...result, scheduledRunPausedTonight },
+      data: result,
     };
   }
 
@@ -199,6 +188,13 @@ export class LookAheadResetSettingsController {
     }
 
     const result = await this.lookAheadResetJob.rollbackLastClear(user.id);
+    if (result.skippedRollback) {
+      throw new ConflictException(
+        result.skipReason === 'in_flight'
+          ? 'Look Ahead restore is already running on this server'
+          : 'Another instance is running the Look Ahead restore. Try again shortly.'
+      );
+    }
     if (
       !result.rollbackAvailable &&
       result.restored === 0 &&

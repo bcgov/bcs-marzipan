@@ -46,10 +46,16 @@ export type LookAheadResetLastClearSummary = {
   trigger: 'schedule' | 'manual';
 };
 
+export type LookAheadResetRollbackSkipReason = 'in_flight' | 'advisory_lock';
+
 export type LookAheadResetRollbackResult = {
   restored: number;
+  /** Activities missing or deleted since the clear. */
   skipped: number;
   rollbackAvailable: boolean;
+  /** Entire rollback did not run (contention), distinct from per-activity skips. */
+  skippedRollback?: boolean;
+  skipReason?: LookAheadResetRollbackSkipReason;
 };
 
 // ============================================================================
