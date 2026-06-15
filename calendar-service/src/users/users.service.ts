@@ -868,6 +868,30 @@ export class UsersService {
       'activities_transferred',
       [
         { field: 'targetUserId', oldValue: null, newValue: dto.targetUserId },
+        {
+          field: 'targetUserName',
+          oldValue: null,
+          newValue: targetDisplayName,
+        },
+        { field: 'activityCount', oldValue: null, newValue: transferredCount },
+        { field: 'activityIds', oldValue: null, newValue: activityIds },
+      ],
+      dto.notes ?? null
+    );
+
+    // Record the receiving side on the target user's history so activities
+    // assigned *to* them appear in their change log.
+    await this.recordUserHistory(
+      dto.targetUserId,
+      changedByUserId,
+      'activities_received',
+      [
+        { field: 'sourceUserId', oldValue: null, newValue: sourceUserId },
+        {
+          field: 'sourceUserName',
+          oldValue: null,
+          newValue: sourceDisplayName,
+        },
         { field: 'activityCount', oldValue: null, newValue: transferredCount },
         { field: 'activityIds', oldValue: null, newValue: activityIds },
       ],

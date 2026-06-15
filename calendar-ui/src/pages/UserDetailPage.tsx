@@ -44,6 +44,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { TransferActivitiesTab } from '@/components/users/TransferActivitiesTab';
+import { UserChangeLog } from '@/components/users/UserChangeLog';
 import { UserEditModal } from '@/components/users/UserEditModal';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -523,9 +524,7 @@ export default function UserDetailPage() {
             </TabsContent>
 
             <TabsContent value="changelog" className="mt-0">
-              <div className="text-sm text-slate-500">
-                No change log entries.
-              </div>
+              <UserChangeLog userId={userDetail.id} />
             </TabsContent>
           </Tabs>
 
