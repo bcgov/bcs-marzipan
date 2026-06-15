@@ -12,15 +12,21 @@ import {
   DEFAULT_COMPLETION_BUFFER_MINUTES,
   DEFAULT_COMPLETION_SCHEDULE,
   DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
+  deriveLookAheadResetCronMode,
   invalidStoredLookAheadResetWindowDays,
+  LOOK_AHEAD_RESET_CRON_ENABLED_KEY,
+  LOOK_AHEAD_RESET_CRON_PAUSED_FOR_DATE_KEY,
   LOOK_AHEAD_RESET_WINDOW_DAYS_KEY,
   MAX_LOOK_AHEAD_RESET_WINDOW_DAYS,
   MIN_LOOK_AHEAD_RESET_WINDOW_DAYS,
   normalizeLookAheadResetWindowDays,
+  pacificCalendarDateFromUtcMs,
+  parseLookAheadResetCronEnabled,
   REPORT_LOOK_AHEAD_COVER_CONTACT_EMAIL_KEY,
   REPORT_LOOK_AHEAD_COVER_CONTACT_PHONE_KEY,
   type CompletionBufferMinutes,
   type CompletionSchedule,
+  type LookAheadResetCronMode,
 } from '@corpcal/shared';
 
 import type { DrizzleDbExecutor } from '../database/database.provider';
@@ -188,6 +194,92 @@ export class ApplicationSettingsService {
           value: String(windowDaysAfterToday),
           updatedAt: now,
         },
+      });
+  }
+
+  async getLookAheadResetCronSettings(
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<{ cronEnabled: boolean; pausedForDate: string | null }> {
+    const rows = await executor
+      .select()
+      .from(applicationSettings)
+      .where(
+        inArray(applicationSettings.key, [
+          LOOK_AHEAD_RESET_CRON_ENABLED_KEY,
+          LOOK_AHEAD_RESET_CRON_PAUSED_FOR_DATE_KEY,
+        ])
+      );
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+    const pausedRaw = map.get(LOOK_AHEAD_RESET_CRON_PAUSED_FOR_DATE_KEY);
+    const pausedForDate =
+      pausedRaw != null && pausedRaw.trim() !== '' ? pausedRaw.trim() : null;
+    return {
+      cronEnabled: parseLookAheadResetCronEnabled(
+        map.get(LOOK_AHEAD_RESET_CRON_ENABLED_KEY)
+      ),
+      pausedForDate,
+    };
+  }
+
+  async getLookAheadResetCronMode(
+    executor: DrizzleDbExecutor = this.databaseService.db,
+    utcMs: number = Date.now()
+  ): Promise<LookAheadResetCronMode> {
+    const settings = await this.getLookAheadResetCronSettings(executor);
+    return deriveLookAheadResetCronMode(settings, utcMs);
+  }
+
+  async setLookAheadResetCronMode(
+    cronMode: LookAheadResetCronMode,
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<void> {
+    const now = new Date();
+    const upsert = (key: string, value: string) =>
+      executor
+        .insert(applicationSettings)
+        .values({ key, value, updatedAt: now })
+        .onConflictDoUpdate({
+          target: applicationSettings.key,
+          set: { value, updatedAt: now },
+        });
+
+    if (cronMode === 'stopped') {
+      await Promise.all([
+        upsert(LOOK_AHEAD_RESET_CRON_ENABLED_KEY, 'false'),
+        upsert(LOOK_AHEAD_RESET_CRON_PAUSED_FOR_DATE_KEY, ''),
+      ]);
+      return;
+    }
+
+    if (cronMode === 'paused_today') {
+      const today = pacificCalendarDateFromUtcMs(Date.now());
+      await Promise.all([
+        upsert(LOOK_AHEAD_RESET_CRON_ENABLED_KEY, 'true'),
+        upsert(LOOK_AHEAD_RESET_CRON_PAUSED_FOR_DATE_KEY, today),
+      ]);
+      return;
+    }
+
+    await Promise.all([
+      upsert(LOOK_AHEAD_RESET_CRON_ENABLED_KEY, 'true'),
+      upsert(LOOK_AHEAD_RESET_CRON_PAUSED_FOR_DATE_KEY, ''),
+    ]);
+  }
+
+  async clearLookAheadResetPausedForDate(
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<void> {
+    const now = new Date();
+    await executor
+      .insert(applicationSettings)
+      .values({
+        key: LOOK_AHEAD_RESET_CRON_PAUSED_FOR_DATE_KEY,
+        value: '',
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: applicationSettings.key,
+        set: { value: '', updatedAt: now },
       });
   }
 
