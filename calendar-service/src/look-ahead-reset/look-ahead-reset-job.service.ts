@@ -27,8 +27,10 @@ import { ApplicationSettingsService } from '../locks/application-settings.servic
 const PREVIEW_LIST_LIMIT = 500;
 
 export type LookAheadResetManualRunParams = {
+  /** Defaults to `window`. `all_future` is supported by the API but not exposed in admin UI. */
   scope?: LookAheadManualClearScope;
   days?: number;
+  /** Only valid when scope is `all_future`. */
   includePast?: boolean;
 };
 

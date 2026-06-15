@@ -164,7 +164,23 @@ export class LookAheadResetSettingsController {
     if (result.skipReason === 'error') {
       throw new InternalServerErrorException('Look Ahead reset job failed');
     }
-    return { success: true, data: result };
+
+    let scheduledRunPausedTonight = false;
+    if (parsed.data.pauseScheduledTonight && !result.skipped) {
+      const currentMode =
+        await this.applicationSettings.getLookAheadResetCronMode();
+      if (currentMode === 'running') {
+        await this.applicationSettings.setLookAheadResetCronMode(
+          'paused_today'
+        );
+        scheduledRunPausedTonight = true;
+      }
+    }
+
+    return {
+      success: true,
+      data: { ...result, scheduledRunPausedTonight },
+    };
   }
 
   @Post('rollback')

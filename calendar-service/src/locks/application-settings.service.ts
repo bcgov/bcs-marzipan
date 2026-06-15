@@ -252,6 +252,7 @@ export class ApplicationSettingsService {
     }
 
     if (cronMode === 'paused_today') {
+      // One-night skip; set only via manual reset (not admin settings UI).
       const today = pacificCalendarDateFromUtcMs(Date.now());
       await Promise.all([
         upsert(LOOK_AHEAD_RESET_CRON_ENABLED_KEY, 'true'),

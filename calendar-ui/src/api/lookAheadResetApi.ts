@@ -25,6 +25,7 @@ export type LookAheadResetManualRunBody = {
   scope?: LookAheadManualClearScope;
   days?: number;
   includePast?: boolean;
+  pauseScheduledTonight?: boolean;
 };
 
 export async function fetchLookAheadResetSettings(): Promise<LookAheadResetSettings> {

@@ -36,16 +36,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 import { usePermission } from '@/hooks/usePermissions';
 
 const SETTINGS_FIELD_LABEL_ROW_CLASS = 'flex min-h-[18px] items-center gap-2';
-
-const CRON_MODE_LABELS: Record<LookAheadResetCronMode, string> = {
-  running: 'Running',
-  paused_today: 'Pause tonight',
-  stopped: 'Stopped',
-};
 
 function WindowDaysInfoTrigger(): ReactElement {
   return (
@@ -82,6 +76,12 @@ function formatLastClearTrigger(trigger: 'schedule' | 'manual'): string {
   return trigger === 'schedule' ? 'scheduled job' : 'manual clear';
 }
 
+function isAutomatedLookAheadResetEnabled(
+  cronMode: LookAheadResetCronMode
+): boolean {
+  return cronMode !== 'stopped';
+}
+
 export function LookAheadResetSettingsAdmin(): ReactElement | null {
   const queryClient = useQueryClient();
   const canManage = usePermission(PERMISSIONS.SETTINGS.MANAGE_LOOK_AHEAD_RESET);
@@ -92,8 +92,7 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
   const [manualDaysInput, setManualDaysInput] = useState(
     String(DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS)
   );
-  const [clearAllFuture, setClearAllFuture] = useState(false);
-  const [includePast, setIncludePast] = useState(false);
+  const [pauseScheduledTonight, setPauseScheduledTonight] = useState(true);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['settings', 'look-ahead-reset'],
@@ -103,22 +102,19 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
   });
 
   const manualDays = clampWindowDays(Number.parseInt(manualDaysInput, 10));
-  const manualScope = clearAllFuture ? 'all_future' : 'window';
 
   const previewQuery = useQuery({
     queryKey: [
       'settings',
       'look-ahead-reset',
       'run-preview',
-      manualScope,
-      clearAllFuture ? null : manualDays,
-      includePast,
+      'window',
+      manualDays,
     ],
     queryFn: () =>
       fetchLookAheadResetRunPreview({
-        scope: manualScope,
-        days: clearAllFuture ? undefined : manualDays,
-        includePast: clearAllFuture ? includePast : false,
+        scope: 'window',
+        days: manualDays,
       }),
     enabled: canManage && runConfirmOpen,
     staleTime: 15_000,
@@ -137,8 +133,7 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
   useEffect(() => {
     if (!runConfirmOpen) {
       setShowPreviewList(false);
-      setClearAllFuture(false);
-      setIncludePast(false);
+      setPauseScheduledTonight(true);
     }
   }, [runConfirmOpen]);
 
@@ -147,12 +142,6 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
       setManualDaysInput(String(data.windowDaysAfterToday));
     }
   }, [runConfirmOpen, data]);
-
-  useEffect(() => {
-    if (!clearAllFuture) {
-      setIncludePast(false);
-    }
-  }, [clearAllFuture]);
 
   const hasWindowChanges = useMemo(() => {
     if (!data) return false;
@@ -177,15 +166,21 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
     },
   });
 
-  const cronModeMutation = useMutation({
-    mutationFn: (cronMode: LookAheadResetCronMode) =>
-      patchLookAheadResetSettings({ cronMode }),
-    onSuccess: (_result, cronMode) => {
+  const automatedResetMutation = useMutation({
+    mutationFn: (enabled: boolean) =>
+      patchLookAheadResetSettings({
+        cronMode: enabled ? 'running' : 'stopped',
+      }),
+    onSuccess: (_result, enabled) => {
       invalidateSettings();
-      toast.success(`Scheduled job set to ${CRON_MODE_LABELS[cronMode]}`);
+      toast.success(
+        enabled
+          ? 'Automated Look Ahead reset turned on'
+          : 'Automated Look Ahead reset turned off'
+      );
     },
     onError: () => {
-      toast.error('Failed to update scheduled job state');
+      toast.error('Failed to update automated Look Ahead reset');
     },
   });
 
@@ -208,8 +203,11 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
           toast.info('Look Ahead reset did not run.');
         }
       } else {
+        const pauseNote = result.scheduledRunPausedTonight
+          ? " Tonight's scheduled run is paused."
+          : '';
         toast.success(
-          `Look Ahead reset completed: ${result.updated} activity(s) updated`
+          `Look Ahead reset completed: ${result.updated} activity(s) updated.${pauseNote}`
         );
       }
     },
@@ -250,18 +248,16 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
   const previewItems = previewQuery.data?.items ?? [];
   const listTruncated = previewQuery.data?.listTruncated ?? false;
   const cronMode = data?.cronMode ?? 'running';
+  const automatedResetEnabled = isAutomatedLookAheadResetEnabled(cronMode);
+  const canSkipTonight = automatedResetEnabled;
 
-  const previewScopeLabel = clearAllFuture
-    ? includePast
-      ? 'all activities with a Look Ahead status'
-      : 'today and all following dates'
-    : `today through today + ${manualDays} days`;
+  const previewScopeLabel = `today through today + ${manualDays} days`;
 
   return (
     <>
       <AdminSection
         title="Look Ahead status reset"
-        description="Automatically clear Look Ahead status for activities in the configured forward window. You can pause or stop the nightly job, run a manual clear, or restore the previous state after the last clear."
+        description="Automatically clear Look Ahead status for activities in the configured forward window. You can turn off the nightly job, run a manual clear, or restore the previous state after the last clear."
         isLoading={isLoading}
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
@@ -306,6 +302,27 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
         )}
         {!isLoading && !error && (
           <div className="max-w-4xl space-y-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="la-reset-automated"
+                  checked={automatedResetEnabled}
+                  onCheckedChange={(checked) =>
+                    automatedResetMutation.mutate(Boolean(checked))
+                  }
+                  disabled={automatedResetMutation.isPending}
+                />
+                <Label htmlFor="la-reset-automated" className="font-normal">
+                  Daily automated Look Ahead status reset
+                </Label>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Runs daily at 23:45 Pacific Time (UTC-7). <br /> When off, Look
+                Ahead status must be cleared manually with the &quot;Clear LA
+                status&quot; button
+              </p>
+            </div>
+
             <div className="space-y-2">
               <div className={SETTINGS_FIELD_LABEL_ROW_CLASS}>
                 <Label htmlFor="la-reset-window-days">
@@ -331,37 +348,6 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
                 {DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS} days).
               </p>
             </div>
-
-            <div className="space-y-3">
-              <Label>Scheduled job</Label>
-              <RadioGroup
-                value={cronMode}
-                onValueChange={(value) =>
-                  cronModeMutation.mutate(value as LookAheadResetCronMode)
-                }
-                disabled={cronModeMutation.isPending}
-                className="flex flex-col gap-2 sm:flex-row sm:gap-4"
-              >
-                {(
-                  Object.keys(CRON_MODE_LABELS) as LookAheadResetCronMode[]
-                ).map((mode) => (
-                  <div key={mode} className="flex items-center gap-2">
-                    <RadioGroupItem value={mode} id={`la-cron-${mode}`} />
-                    <Label
-                      htmlFor={`la-cron-${mode}`}
-                      className="cursor-pointer font-normal"
-                    >
-                      {CRON_MODE_LABELS[mode]}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-              <p className="text-muted-foreground text-xs">
-                Pause tonight skips one run at 23:45 Pacific (UTC-7) and resumes
-                automatically the next day. Stopped skips all scheduled runs
-                until you set Running again. Manual clears are always available.
-              </p>
-            </div>
           </div>
         )}
       </AdminSection>
@@ -381,7 +367,7 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
                 </p>
                 <div className="space-y-2">
                   <Label htmlFor="la-reset-manual-days">
-                    Days after today for this run
+                    Days after today (inclusive end)
                   </Label>
                   <Input
                     id="la-reset-manual-days"
@@ -390,57 +376,52 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
                     max={MAX_LOOK_AHEAD_RESET_WINDOW_DAYS}
                     value={manualDaysInput}
                     onChange={(e) => setManualDaysInput(e.target.value)}
-                    disabled={runNowMutation.isPending || clearAllFuture}
+                    disabled={runNowMutation.isPending}
                     className="max-w-xs"
                   />
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="la-reset-clear-all-future"
-                      checked={clearAllFuture}
-                      onCheckedChange={(checked) =>
-                        setClearAllFuture(checked === true)
-                      }
-                      disabled={runNowMutation.isPending}
-                    />
-                    <div className="space-y-1">
-                      <Label
-                        htmlFor="la-reset-clear-all-future"
-                        className="cursor-pointer font-normal"
-                      >
-                        Clear all future activities
-                      </Label>
-                      <p className="text-muted-foreground text-xs">
-                        Use today and all following dates instead of the day
-                        window above.
-                      </p>
+                {canSkipTonight ? (
+                  cronMode === 'paused_today' ? (
+                    <div className="flex items-start gap-2">
+                      <Checkbox id="la-reset-pause-tonight" checked disabled />
+                      <div className="space-y-1">
+                        <Label
+                          htmlFor="la-reset-pause-tonight"
+                          className="text-muted-foreground font-normal"
+                        >
+                          Skip tonight&apos;s scheduled Look Ahead status reset
+                        </Label>
+                        <p className="text-muted-foreground text-xs">
+                          Tonight&apos;s scheduled run is already skipped.
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  {clearAllFuture ? (
-                    <div className="flex items-start gap-2 pl-6">
+                  ) : (
+                    <div className="flex items-start gap-2">
                       <Checkbox
-                        id="la-reset-include-past"
-                        checked={includePast}
+                        id="la-reset-pause-tonight"
+                        checked={pauseScheduledTonight}
                         onCheckedChange={(checked) =>
-                          setIncludePast(checked === true)
+                          setPauseScheduledTonight(checked === true)
                         }
                         disabled={runNowMutation.isPending}
                       />
                       <div className="space-y-1">
                         <Label
-                          htmlFor="la-reset-include-past"
+                          htmlFor="la-reset-pause-tonight"
                           className="cursor-pointer font-normal"
                         >
-                          Include past activities
+                          Skip tonight&apos;s scheduled Look Ahead status reset
                         </Label>
                         <p className="text-muted-foreground text-xs">
-                          Also clear activities that ended before today.
+                          Select if you intend to set &quot;New&quot; or
+                          &quot;Changed&quot; statuses before 11:45 pm when the
+                          next automated reset schedule runs.
                         </p>
                       </div>
                     </div>
-                  ) : null}
-                </div>
+                  )
+                ) : null}
                 {previewQuery.isLoading ? (
                   <p className="text-muted-foreground flex items-center gap-2 text-sm">
                     <Loader2
@@ -520,9 +501,12 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
               type="button"
               onClick={() =>
                 runNowMutation.mutate({
-                  scope: manualScope,
-                  days: clearAllFuture ? undefined : manualDays,
-                  includePast: clearAllFuture ? includePast : false,
+                  scope: 'window',
+                  days: manualDays,
+                  pauseScheduledTonight:
+                    canSkipTonight && cronMode === 'running'
+                      ? pauseScheduledTonight
+                      : false,
                 })
               }
               disabled={runNowMutation.isPending || previewQuery.isPending}

@@ -96,6 +96,8 @@ export type LookAheadResetBatchRunResult = {
   updated: number;
   skipped: boolean;
   skipReason?: LookAheadResetBatchSkipReason;
+  /** Set on manual run when pauseScheduledTonight was applied. */
+  scheduledRunPausedTonight?: boolean;
 };
 
 // ============================================================================

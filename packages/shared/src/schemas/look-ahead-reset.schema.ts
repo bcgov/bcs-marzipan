@@ -21,6 +21,7 @@ const windowDaysSchema = z.coerce
   .max(MAX_LOOK_AHEAD_RESET_WINDOW_DAYS);
 
 const cronModeSchema = z.enum(['running', 'paused_today', 'stopped']);
+// `paused_today` is set only via manual reset (skip tonight); admin UI uses running/stopped.
 
 export const lookAheadResetSettingsPatchSchema = z
   .object({
@@ -37,9 +38,11 @@ export const lookAheadResetSettingsPatchSchema = z
 
 export const lookAheadResetManualRunBodySchema = z
   .object({
+    // `all_future` is supported for API/manual use but not exposed in admin UI.
     scope: z.enum(['window', 'all_future']).optional().default('window'),
     days: windowDaysSchema.optional(),
     includePast: z.boolean().optional().default(false),
+    pauseScheduledTonight: z.boolean().optional().default(false),
   })
   .superRefine((body, ctx) => {
     if (body.scope === 'window' && body.includePast) {
