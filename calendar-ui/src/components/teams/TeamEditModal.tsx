@@ -259,10 +259,9 @@ export function TeamEditModal({
               <Combobox
                 items={ministryOptions}
                 value={selectedMinistry}
-                onValueChange={(option: OptionItem | null) => {
-                  console.log('TeamEditModal Combobox onValueChange', option);
-                  setMinistryId(option ? option.value : null);
-                }}
+                onValueChange={(option: OptionItem | null) =>
+                  setMinistryId(option ? option.value : null)
+                }
                 itemToStringValue={(o: OptionItem) => o.label}
               >
                 <ComboboxInput placeholder="Select ministry..." />
