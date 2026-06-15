@@ -61,7 +61,13 @@ export type LookAheadResetManualRunBody = z.infer<
 export const lookAheadResetRunPreviewQuerySchema = z.object({
   scope: z.enum(['window', 'all_future']).optional().default('window'),
   days: windowDaysSchema.optional(),
-  includePast: z.coerce.boolean().optional().default(false),
+  includePast: z
+    .string()
+    .optional()
+    .transform((val): boolean | undefined =>
+      val === undefined ? undefined : val === 'true'
+    )
+    .default(false),
 });
 
 export type LookAheadResetRunPreviewQuery = z.infer<

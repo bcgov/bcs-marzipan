@@ -274,6 +274,22 @@ describe('LookAheadResetJobService', () => {
     expect(serialized).toMatch(/7881904/);
   });
 
+  it('does not delete rollback snapshot when no activities are eligible', async () => {
+    const mockTx = mockTxLock(true, []);
+    databaseService.db.transaction.mockImplementation(
+      (fn: (tx: unknown) => unknown) => Promise.resolve(fn(mockTx))
+    );
+
+    const result = await service.runBatch({
+      actorUserId: 999,
+      trigger: 'schedule',
+    });
+
+    expect(result).toEqual({ updated: 0, skipped: false });
+    expect(mockTx.delete).not.toHaveBeenCalled();
+    expect(mockTx.insert).not.toHaveBeenCalled();
+  });
+
   it('pauses tonight inside the transaction when manual run requests it', async () => {
     const mockTx = mockTxLock(true, [{ id: 10, lookAheadStatus: 'new' }]);
     databaseService.db.transaction.mockImplementation(

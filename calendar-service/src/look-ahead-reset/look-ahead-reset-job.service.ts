@@ -482,11 +482,11 @@ export class LookAheadResetJobService {
       .from(activities)
       .where(whereClause);
 
-    await tx.delete(lookAheadResetSnapshots);
-
     if (candidates.length === 0) {
       return 0;
     }
+
+    await tx.delete(lookAheadResetSnapshots);
 
     await tx.insert(lookAheadResetSnapshots).values({
       id: 1,
