@@ -41,7 +41,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { TransferActivitiesTab } from '@/components/users/TransferActivitiesTab';
 import { UserEditModal } from '@/components/users/UserEditModal';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -68,6 +70,9 @@ export default function UserDetailPage() {
 
   const [localNotes, setLocalNotes] = useState<string>('');
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    'account' | 'transfer' | 'changelog'
+  >('account');
 
   // Seed the editable fields only once per user. React Query refetches the
   // user (e.g. on window focus, reconnect, or cache invalidation) and returns
@@ -363,132 +368,166 @@ export default function UserDetailPage() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <Label>Role</Label>
-                <Select
-                  value={selectedRoleId ? String(selectedRoleId) : ''}
-                  onValueChange={(v) => setSelectedRoleId(Number(v) || null)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableRoles.map((r) => (
-                      <SelectItem key={r.id} value={String(r.id)}>
-                        {r.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {visibleRows.length > 0 && (
-                  <div className="mt-2 grid grid-cols-1 gap-2 p-2 text-sm text-slate-700 sm:grid-cols-2">
-                    {renderedPermissionItems}
-                  </div>
-                )}
-              </div>
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) =>
+              setActiveTab(v as 'account' | 'transfer' | 'changelog')
+            }
+          >
+            <TabsList className="mb-4" variant="line" size="med">
+              <TabsTrigger value="account">Account</TabsTrigger>
+              <TabsTrigger value="transfer">Transfer activities</TabsTrigger>
+              <TabsTrigger value="changelog">Change log</TabsTrigger>
+            </TabsList>
 
-              <div>
-                <Label>Notes</Label>
-                <Textarea
-                  value={localNotes}
-                  onChange={(e) => setLocalNotes(e.target.value)}
-                  readOnly={!canEdit}
-                  className="h-40"
-                />
-              </div>
-            </div>
-
-            {/* role permissions moved directly under Role select */}
-
-            <div className="max-w-2xl bg-transparent p-0">
-              <div className="font-semibold">Direct login</div>
-
-              <div className="mt-2 flex items-center gap-3">
-                <div>
-                  <Switch
-                    checked={directLoginEnabled}
-                    onCheckedChange={(v) => setDirectLoginEnabled(Boolean(v))}
-                    disabled={!canEdit}
-                  />
-                </div>
-                <div className="text-sm text-slate-500">
-                  Enable direct login
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (!canEdit) return;
-                    setResetCodeResult({ code: '', expiresInHours: 0 });
-                    resetMutation.mutate();
-                  }}
-                  disabled={!canEdit || resetMutation.status === 'pending'}
-                  className="flex items-center gap-2 text-slate-500"
-                >
-                  <Key className="h-4 w-4" aria-hidden />
-                  Generate temporary password
-                </Button>
-
-                {resetCodeResult?.code && (
-                  <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-2">
-                    <code className="font-mono text-sm break-all select-all">
-                      {resetCodeResult.code}
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        void (async () => {
-                          try {
-                            if (
-                              resetCodeResult?.code &&
-                              navigator?.clipboard?.writeText
-                            ) {
-                              await navigator.clipboard.writeText(
-                                resetCodeResult.code
-                              );
-                              toast.success('Copied to clipboard');
-                            } else {
-                              toast.error('Clipboard not available');
-                            }
-                          } catch {
-                            toast.error('Failed to copy to clipboard');
-                          }
-                        })();
-                      }}
-                      aria-label="Copy reset code"
+            <TabsContent value="account" className="mt-0">
+              <div className="space-y-6">
+                <h3 className="font-semibold">Account</h3>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Role</Label>
+                    <Select
+                      value={selectedRoleId ? String(selectedRoleId) : ''}
+                      onValueChange={(v) =>
+                        setSelectedRoleId(Number(v) || null)
+                      }
                     >
-                      Copy
-                    </Button>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableRoles.map((r) => (
+                          <SelectItem key={r.id} value={String(r.id)}>
+                            {r.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {visibleRows.length > 0 && (
+                      <div className="mt-2 grid grid-cols-1 gap-2 p-2 text-sm text-slate-700 sm:grid-cols-2">
+                        {renderedPermissionItems}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
 
-          {/* Bottom action bar */}
-          <div className="pt-4">
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => void navigate('/users')}
-              >
-                Cancel
-              </Button>
-              {canEdit && (
-                <Button
-                  onClick={() => void handleSave()}
-                  disabled={mutation.status === 'pending'}
-                >
-                  Save
-                </Button>
-              )}
-            </div>
-          </div>
+                  <div>
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={localNotes}
+                      onChange={(e) => setLocalNotes(e.target.value)}
+                      readOnly={!canEdit}
+                      className="h-40"
+                    />
+                  </div>
+                </div>
+
+                {/* role permissions moved directly under Role select */}
+
+                <div className="max-w-2xl bg-transparent p-0">
+                  <div className="font-semibold">Direct login</div>
+
+                  <div className="mt-2 flex items-center gap-3">
+                    <div>
+                      <Switch
+                        checked={directLoginEnabled}
+                        onCheckedChange={(v) =>
+                          setDirectLoginEnabled(Boolean(v))
+                        }
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      Enable direct login
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (!canEdit) return;
+                        setResetCodeResult({ code: '', expiresInHours: 0 });
+                        resetMutation.mutate();
+                      }}
+                      disabled={!canEdit || resetMutation.status === 'pending'}
+                      className="flex items-center gap-2 text-slate-500"
+                    >
+                      <Key className="h-4 w-4" aria-hidden />
+                      Generate temporary password
+                    </Button>
+
+                    {resetCodeResult?.code && (
+                      <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-2">
+                        <code className="font-mono text-sm break-all select-all">
+                          {resetCodeResult.code}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            void (async () => {
+                              try {
+                                if (
+                                  resetCodeResult?.code &&
+                                  navigator?.clipboard?.writeText
+                                ) {
+                                  await navigator.clipboard.writeText(
+                                    resetCodeResult.code
+                                  );
+                                  toast.success('Copied to clipboard');
+                                } else {
+                                  toast.error('Clipboard not available');
+                                }
+                              } catch {
+                                toast.error('Failed to copy to clipboard');
+                              }
+                            })();
+                          }}
+                          aria-label="Copy reset code"
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom action bar */}
+              <div className="pt-4">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => void navigate('/users')}
+                  >
+                    Cancel
+                  </Button>
+                  {canEdit && (
+                    <Button
+                      onClick={() => void handleSave()}
+                      disabled={mutation.status === 'pending'}
+                    >
+                      Save
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="transfer" className="mt-0">
+              <TransferActivitiesTab
+                user={userDetail}
+                onCancel={() => void navigate('/users')}
+                onTransferred={() => void navigate('/users')}
+              />
+            </TabsContent>
+
+            <TabsContent value="changelog" className="mt-0">
+              <div className="text-sm text-slate-500">
+                No change log entries.
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {showEditModal && (
             <UserEditModal
