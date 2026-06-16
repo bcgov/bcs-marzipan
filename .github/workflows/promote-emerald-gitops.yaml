@@ -41,13 +41,13 @@ jobs:
     steps:
       - name: Validate required configuration
         env:
-          GITOPS_REPO_TOKEN: ${{ secrets.GITOPS_REPO_TOKEN }}
+          GITOPS_REPO_KEY: ${{ secrets.GITOPS_REPO_KEY }}
         run: |
           : "${GITOPS_REPO:?Set repo variable GITOPS_REPO (owner/repo)}"
           : "${GITOPS_EMERALD_DEV_KUSTOMIZE_PATH:?Set repo variable GITOPS_EMERALD_DEV_KUSTOMIZE_PATH}"
           : "${GITOPS_EMERALD_TEST_KUSTOMIZE_PATH:?Set repo variable GITOPS_EMERALD_TEST_KUSTOMIZE_PATH}"
           : "${GITOPS_EMERALD_PROD_KUSTOMIZE_PATH:?Set repo variable GITOPS_EMERALD_PROD_KUSTOMIZE_PATH}"
-          : "${GITOPS_REPO_TOKEN:?Set secret GITOPS_REPO_TOKEN with access to your GitOps repo}"
+          : "${GITOPS_REPO_KEY:?Set secret GITOPS_REPO_KEY with access to your GitOps repo}"
 
       - name: Resolve promotion inputs
         id: resolve_promotion_inputs
@@ -93,9 +93,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.GITOPS_REPO }}
-          token: ${{ secrets.GITOPS_REPO_TOKEN }}
+          ssh-key: ${{ secrets.GITOPS_REPO_KEY }}
           ref: ${{ steps.resolve_promotion_inputs.outputs.base_branch }}
           path: gitops
+
+      - name: Debug GitOps checkout
+        run: |
+          pwd
+          ls -la
+          echo "==== gitops directory ===="
+          ls -la gitops || true
+          echo "==== find kustomization files ===="
+          find gitops -name "kustomization.yaml" -o -name "kustomization.yml"
 
       - name: Install yq
         shell: bash
@@ -134,28 +143,29 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create pull request in GitOps repository
-        if: steps.update_overlay.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.GITOPS_REPO_TOKEN }}
-          path: gitops
-          commit-message: 'chore(gitops): promote emerald ${{ inputs.target_environment }} to ${{ steps.resolve_promotion_inputs.outputs.image_tag }}'
-          branch: ${{ steps.resolve_promotion_inputs.outputs.branch_name }}
-          base: ${{ steps.resolve_promotion_inputs.outputs.base_branch }}
-          title: 'Promote Emerald ${{ inputs.target_environment }} to ${{ steps.resolve_promotion_inputs.outputs.image_tag }}'
-          body: |
-            This PR updates the Emerald `${{ inputs.target_environment }}` overlay image tags for ArgoCD sync.
+      # - name: Create pull request in GitOps repository
+      #   if: steps.update_overlay.outputs.changed == 'true'
+      #   uses: peter-evans/create-pull-request@v7
+      #   peter-evans create-pull-request@v7 needs Token to create PR, currently using Deploy key so Create Pull Requets step does not work properly.
+      #   with:
+      #     ssh-key: ${{ secrets.GITOPS_REPO_KEY }}
+      #     path: gitops
+      #     commit-message: 'chore(gitops): promote emerald ${{ inputs.target_environment }} to ${{ steps.resolve_promotion_inputs.outputs.image_tag }}'
+      #     branch: ${{ steps.resolve_promotion_inputs.outputs.branch_name }}
+      #     base: ${{ steps.resolve_promotion_inputs.outputs.base_branch }}
+      #     title: 'Promote Emerald ${{ inputs.target_environment }} to ${{ steps.resolve_promotion_inputs.outputs.image_tag }}'
+      #     body: |
+      #       This PR updates the Emerald `${{ inputs.target_environment }}` overlay image tags for ArgoCD sync.
 
-            - App repo: `${{ github.repository }}`
-            - Source commit: `${{ github.sha }}`
-            - Promoted tag: `${{ steps.resolve_promotion_inputs.outputs.image_tag }}`
-            - Updated file: `${{ steps.resolve_promotion_inputs.outputs.kustomization_path }}`
-          draft: ${{ inputs.create_as_draft }}
-          labels: |
-            gitops
-            emerald
-            argocd
+      #       - App repo: `${{ github.repository }}`
+      #       - Source commit: `${{ github.sha }}`
+      #       - Promoted tag: `${{ steps.resolve_promotion_inputs.outputs.image_tag }}`
+      #       - Updated file: `${{ steps.resolve_promotion_inputs.outputs.kustomization_path }}`
+      #     draft: ${{ inputs.create_as_draft }}
+      #     labels: |
+      #       gitops
+      #       emerald
+      #       argocd
 
       - name: Summary
         run: |

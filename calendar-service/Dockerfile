@@ -1,4 +1,4 @@
-FROM node:24-alpine AS build
+FROM artifacts.developer.gov.bc.ca/docker-remote/node:24-alpine AS build
 WORKDIR /app
 
 # Copy workspace configuration
@@ -20,7 +20,7 @@ RUN npm run build --workspace=packages/database && \
     npm run build --workspace=calendar-service
 
 
-FROM node:24-alpine
+FROM artifacts.developer.gov.bc.ca/docker-remote/node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production \
     HOME=/tmp \
