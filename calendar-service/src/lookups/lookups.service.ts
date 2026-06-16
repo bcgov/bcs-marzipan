@@ -24,10 +24,13 @@ import {
   newsReleaseDistributions,
   newsReleaseOrigins,
   organizations,
+  permissions,
+  permissionVisibilityAudit,
   pitchRequiredStatuses,
   pitchStatuses,
   premierRequested,
   reports,
+  rolePermissions,
   roles,
   tags,
   teams,
@@ -161,6 +164,230 @@ export class LookupsService {
       .where(eq(roles.isActive, true))
       .orderBy(roles.name);
     return results;
+  }
+
+  /**
+   * Get active permissions for a given role id (key + description)
+   */
+  async getRolePermissions(roleId: number): Promise<
+    {
+      key: string;
+      displayName: string | null;
+      description: string | null;
+      hasPermission: boolean;
+    }[]
+  > {
+    // Build query: include only permissions flagged `show_in_user_management`
+    const base = this.databaseService.db
+      .select({
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+        permissionId: permissions.id,
+        rolePermissionActive: rolePermissions.isActive,
+      })
+      .from(permissions)
+      .leftJoin(
+        rolePermissions,
+        and(
+          eq(rolePermissions.permissionId, permissions.id),
+          eq(rolePermissions.roleId, roleId)
+        )
+      );
+
+    const rows = await base
+      .where(eq(permissions.showInUserManagement, true))
+      .orderBy(permissions.sortOrder);
+
+    return rows.map((r) => ({
+      key: r.key,
+      displayName: r.displayName,
+      description: r.description,
+      hasPermission: Boolean(r.rolePermissionActive),
+    }));
+  }
+
+  /**
+   * Get permissions for all roles in a single query.
+   * Returns a map of roleId -> permission rows (only permissions flagged showInUserManagement)
+   */
+  async getRolesPermissionsMap(): Promise<
+    Record<
+      number,
+      {
+        key: string;
+        displayName?: string | null;
+        description?: string | null;
+        hasPermission: boolean;
+      }[]
+    >
+  > {
+    const { db } = this.databaseService;
+
+    const rows = await db
+      .select({
+        roleId: roles.id,
+        permissionId: permissions.id,
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+        rolePermissionActive: rolePermissions.isActive,
+      })
+      .from(roles)
+      .crossJoin(permissions)
+      .leftJoin(
+        rolePermissions,
+        and(
+          eq(rolePermissions.roleId, roles.id),
+          eq(rolePermissions.permissionId, permissions.id)
+        )
+      )
+      .where(eq(permissions.showInUserManagement, true))
+      .orderBy(permissions.sortOrder);
+
+    const map: Record<number, any[]> = {};
+    for (const r of rows) {
+      const rid = r.roleId;
+      if (!map[rid]) map[rid] = [];
+      map[rid].push({
+        key: r.key,
+        displayName: r.displayName,
+        description: r.description,
+        hasPermission: Boolean(r.rolePermissionActive),
+      });
+    }
+    return map;
+  }
+
+  /**
+   * Update whether a permission should be shown in user management UI.
+   */
+  async updatePermissionVisibility(
+    permissionId: number,
+    show: boolean,
+    updatedBy?: number
+  ): Promise<{ id: number; key: string; showInUserManagement: boolean }> {
+    const { db } = this.databaseService;
+
+    const existing = await db
+      .select({ id: permissions.id, show: permissions.showInUserManagement })
+      .from(permissions)
+      .where(eq(permissions.id, permissionId))
+      .limit(1);
+
+    if (existing.length === 0) {
+      throw new NotFoundException('Permission not found');
+    }
+
+    await db
+      .update(permissions)
+      .set({
+        showInUserManagement: show,
+        updatedAt: sql`now()`,
+        updatedBy: updatedBy ?? null,
+      })
+      .where(eq(permissions.id, permissionId));
+
+    // Record audit entry for this change
+    try {
+      await db.insert(permissionVisibilityAudit).values({
+        permissionId,
+        changedBy: updatedBy ?? null,
+        oldValue: Boolean(existing[0].show),
+        newValue: Boolean(show),
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to write permission visibility audit for permission ${permissionId}: ${String(err)}`
+      );
+    }
+
+    const row = await db
+      .select({
+        id: permissions.id,
+        key: permissions.key,
+        showInUserManagement: permissions.showInUserManagement,
+      })
+      .from(permissions)
+      .where(eq(permissions.id, permissionId))
+      .limit(1);
+
+    return {
+      id: row[0].id,
+      key: row[0].key,
+      showInUserManagement: Boolean(row[0].showInUserManagement),
+    };
+  }
+
+  /**
+   * Bulk update permission visibility inside a single DB transaction.
+   * Returns the updated permission rows.
+   */
+  async bulkUpdatePermissionVisibility(
+    items: { id: number; showInUserManagement: boolean }[],
+    updatedBy?: number
+  ): Promise<{ id: number; key: string; showInUserManagement: boolean }[]> {
+    return this.databaseService.db.transaction(async (tx) => {
+      const results: {
+        id: number;
+        key: string;
+        showInUserManagement: boolean;
+      }[] = [];
+      for (const item of items) {
+        const pid = Number(item.id);
+        if (!Number.isInteger(pid)) continue;
+
+        const existing = await tx
+          .select({
+            id: permissions.id,
+            show: permissions.showInUserManagement,
+          })
+          .from(permissions)
+          .where(eq(permissions.id, pid))
+          .limit(1);
+
+        if (!existing || existing.length === 0) continue;
+
+        await tx
+          .update(permissions)
+          .set({
+            showInUserManagement: item.showInUserManagement,
+            updatedAt: sql`now()`,
+            updatedBy: updatedBy ?? null,
+          })
+          .where(eq(permissions.id, pid));
+
+        const [row] = await tx
+          .select({
+            id: permissions.id,
+            key: permissions.key,
+            showInUserManagement: permissions.showInUserManagement,
+          })
+          .from(permissions)
+          .where(eq(permissions.id, pid))
+          .limit(1);
+
+        results.push({
+          id: row.id,
+          key: row.key,
+          showInUserManagement: Boolean(row.showInUserManagement),
+        });
+
+        try {
+          await tx.insert(permissionVisibilityAudit).values({
+            permissionId: pid,
+            changedBy: updatedBy ?? null,
+            oldValue: Boolean(existing[0].show),
+            newValue: Boolean(item.showInUserManagement),
+          });
+        } catch (err) {
+          this.logger.warn(
+            `Failed to write permission visibility audit for permission ${pid} (bulk): ${String(err)}`
+          );
+        }
+      }
+      return results;
+    });
   }
 
   /**
@@ -325,6 +552,38 @@ export class LookupsService {
       value: status.id,
       name: status.name,
       displayName: status.displayName,
+    }));
+  }
+
+  /**
+   * Return all permissions (for admin management)
+   */
+  async getAllPermissions(): Promise<
+    {
+      id: number;
+      key: string;
+      displayName: string;
+      description: string | null;
+      showInUserManagement: boolean;
+    }[]
+  > {
+    const rows = await this.databaseService.db
+      .select({
+        id: permissions.id,
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+        showInUserManagement: permissions.showInUserManagement,
+      })
+      .from(permissions)
+      .orderBy(permissions.sortOrder);
+
+    return rows.map((r) => ({
+      id: r.id,
+      key: r.key,
+      displayName: r.displayName,
+      description: r.description,
+      showInUserManagement: Boolean(r.showInUserManagement),
     }));
   }
 

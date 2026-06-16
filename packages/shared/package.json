@@ -28,6 +28,12 @@
       "require": "./dist/cjs/utils/index.js",
       "default": "./dist/esm/utils/index.js"
     },
+    "./validation": {
+      "types": "./dist/esm/validation/index.d.ts",
+      "import": "./dist/esm/validation/index.js",
+      "require": "./dist/cjs/validation/index.js",
+      "default": "./dist/esm/validation/index.js"
+    },
     "./api": {
       "types": "./dist/esm/api/index.d.ts",
       "import": "./dist/esm/api/index.js",

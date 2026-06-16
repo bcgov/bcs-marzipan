@@ -1,0 +1,70 @@
+name: Update calendar-ui runtime config
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      enable_snowplow:
+        description: 'Enable Snowplow runtime tracking'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+        required: false
+        default: 'true'
+jobs:
+  update-config:
+    name: Create/update config.js ConfigMap and rollout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install oc CLI
+        run: |
+          curl -L https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz | tar xz
+          sudo mv oc /usr/local/bin/
+      - name: Create config.js
+        run: |
+          cat > config.js <<'EOF'
+          window.__APP_CONFIG__ = { ENABLE_SNOWPLOW: '${{ github.event.inputs.enable_snowplow }}' }
+          EOF
+
+      - name: Login to OpenShift
+        uses: redhat-actions/oc-login@v2
+        with:
+          openshift_server: ${{ secrets.OPENSHIFT_SERVER }}
+          token: ${{ secrets.OPENSHIFT_TOKEN }}
+          insecure_skip_tls_verify: false
+
+      - name: Set project / namespace
+        env:
+          NAMESPACE: ${{ secrets.NAMESPACE }}
+        run: |
+          oc project "$NAMESPACE"
+
+      - name: Apply ConfigMap (update config.js key only)
+        run: |
+          oc get configmap/calendar-ui-config >/dev/null 2>&1 || { echo "ERROR: ConfigMap calendar-ui-config not found in the current namespace. Deploy calendar-ui (and its ConfigMap) before running this workflow." >&2; exit 1; }
+          CONFIG_JS_JSON=$(python3 -c 'import json; print(json.dumps(open("config.js", "r", encoding="utf-8").read()))')
+          oc patch configmap/calendar-ui-config --type merge -p "{\"data\":{\"config.js\":${CONFIG_JS_JSON}}}"
+      - name: Restart calendar-ui deployment
+        run: |
+          oc rollout restart deployment/calendar-ui
+          oc rollout status deployment/calendar-ui -w
+
+      - name: Smoke-check config.js served (optional)
+        env:
+          CALENDAR_UI_URL: ${{ secrets.CALENDAR_UI_URL }}
+        run: |
+          if [ -z "$CALENDAR_UI_URL" ]; then
+            echo "Skipping smoke check (CALENDAR_UI_URL secret not set)"
+            exit 0
+          fi
+          echo "Checking $CALENDAR_UI_URL/config.js"
+          curl -fsS "$CALENDAR_UI_URL/config.js" | head -n 5
+
+      - name: Clean up artifact
+        run: |
+          rm -f config.js

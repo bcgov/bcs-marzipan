@@ -6,6 +6,10 @@ import {
   isActivityRichTextStorageRefine,
   plainTextFromActivityRichField,
 } from '../utils/activity-rich-text';
+import {
+  zodConstraintIssueParams,
+  zodRequiredIssueParams,
+} from '../validation/zod-issue-kind';
 
 /**
  * Activity Zod Schemas
@@ -13,6 +17,8 @@ import {
  * These schemas are source of truth for and define API request/response contracts.
  * The database schema (Drizzle) is the source of truth for DB types.
  * Compile-time checks in schema-helpers.ts ensure alignment.
+ *
+ * When adding required create/edit fields, see `src/validation/REQUIRED_FIELDS.md`.
  */
 
 // ============================================================================
@@ -64,6 +70,7 @@ const activityRichTextStoredStringSchema = z
   .max(ACTIVITY_RICH_TEXT_MAX_BYTES)
   .refine(isActivityRichTextStorageRefine, {
     message: ACTIVITY_RICH_TEXT_INVALID_STORAGE,
+    ...zodConstraintIssueParams(),
   });
 
 // ============================================================================
@@ -74,10 +81,23 @@ const activityRichTextStoredStringSchema = z
  * Core activity fields schema
  * These fields exist in the database activities table
  */
+const TITLE_REQUIRED_MESSAGE = 'An activity title is required';
+const SUMMARY_REQUIRED_MESSAGE = 'A summary is required';
+const MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE = 'Maximum character limit exceeded';
+
 const activityCoreFieldsSchema = z.object({
   // Required fields
-  title: z.string().min(1).max(255),
-  summary: activityRichTextStoredStringSchema,
+  title: z.preprocess(
+    (val) => (val === undefined || val === null ? '' : val),
+    z
+      .string()
+      .min(1, { message: TITLE_REQUIRED_MESSAGE })
+      .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+  ),
+  summary: z.preprocess(
+    (val) => (val === undefined || val === null ? '' : val),
+    activityRichTextStoredStringSchema
+  ),
   significance: z.preprocess(
     emptyStringToNull,
     z
@@ -87,12 +107,17 @@ const activityCoreFieldsSchema = z.object({
           .max(ACTIVITY_RICH_TEXT_MAX_BYTES)
           .refine(isActivityRichTextStorageRefine, {
             message: ACTIVITY_RICH_TEXT_INVALID_STORAGE,
+            ...zodConstraintIssueParams(),
           }),
         z.null(),
       ])
       .optional()
   ),
-  schedulingNotes: z.string().max(500).optional().nullable(),
+  schedulingNotes: z
+    .string()
+    .max(500, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .optional()
+    .nullable(),
   strategy: z.string().nullable().optional(),
 
   // Status IDs (numbers for database; venue optional when activity has no venue)
@@ -130,6 +155,7 @@ const activityCoreFieldsSchema = z.object({
           .max(ACTIVITY_RICH_TEXT_MAX_BYTES)
           .refine(isActivityRichTextStorageRefine, {
             message: ACTIVITY_RICH_TEXT_INVALID_STORAGE,
+            ...zodConstraintIssueParams(),
           }),
         z.null(),
       ])
@@ -153,7 +179,11 @@ const activityCoreFieldsSchema = z.object({
     emptyStringToNull,
     z.number().int().nullable().optional()
   ),
-  leadOrgName: z.string().max(255).nullable().optional(),
+  leadOrgName: z
+    .string()
+    .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .nullable()
+    .optional(),
   newsReleaseId: z.preprocess(
     emptyStringToNull,
     z.string().uuid().nullable().optional()
@@ -186,7 +216,10 @@ const activityCoreFieldsSchema = z.object({
 const representativeSchema = z
   .object({
     representativeId: z.number().int().optional(),
-    representativeName: z.string().max(255).optional(),
+    representativeName: z
+      .string()
+      .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+      .optional(),
   })
   .refine(
     (data) => {
@@ -200,6 +233,7 @@ const representativeSchema = z
     {
       message:
         'Each representative must have a representativeId or a non-empty representativeName',
+      ...zodConstraintIssueParams(),
     }
   );
 
@@ -210,7 +244,10 @@ const representativeSchema = z
  */
 const eventPlannerSchema = z.object({
   eventPlannerId: z.number().int().optional(),
-  eventPlannerName: z.string().max(255).optional(),
+  eventPlannerName: z
+    .string()
+    .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .optional(),
   isLead: z.boolean().default(false),
 });
 
@@ -261,7 +298,9 @@ const junctionTableIdsSchema = z.object({
   reportSettings: z.array(reportSettingSchema).optional(), // Report settings for the activity
 });
 
-const CATEGORY_IDS_MIN_MESSAGE = 'At least one category is required.';
+const CATEGORY_IDS_MIN_MESSAGE = 'At least one category is required';
+const LEAD_CONTACT_REFINE_MESSAGE = 'A lead contact is required';
+const LEAD_CONTACT_REFINE_PATH = ['commsContacts'] as const;
 
 /** Create requests require at least one category ID. */
 const createJunctionTableIdsSchema = junctionTableIdsSchema.extend({
@@ -270,15 +309,25 @@ const createJunctionTableIdsSchema = junctionTableIdsSchema.extend({
     .min(1, { message: CATEGORY_IDS_MIN_MESSAGE }),
 });
 
-const LEAD_CONTACT_REFINE_MESSAGE = 'A lead contact is required.';
-const LEAD_CONTACT_REFINE_PATH = ['commsContacts'] as const;
+/** Field-level create validation so RHF trigger('commsContacts') catches empty arrays. */
+const createCommsContactsFieldSchema = z
+  .array(commsContactSchema)
+  .min(1, { message: LEAD_CONTACT_REFINE_MESSAGE })
+  .refine(
+    (contacts) =>
+      contacts.length === 0 || contacts.filter((c) => c.isLead).length === 1,
+    {
+      message: LEAD_CONTACT_REFINE_MESSAGE,
+      ...zodConstraintIssueParams(),
+    }
+  )
+  .optional();
 
-/** Create: commsContacts must have at least one contact and exactly one lead. */
-function createLeadContactRefine(data: {
+/** Create: commsContacts must include at least one entry. */
+function createLeadContactPresenceRefine(data: {
   commsContacts?: Array<{ userId: number; isLead: boolean }>;
 }): boolean {
-  const contacts = data.commsContacts ?? [];
-  return contacts.length >= 1 && contacts.filter((c) => c.isLead).length === 1;
+  return (data.commsContacts ?? []).length >= 1;
 }
 
 /** Update: when commsContacts is provided and non-empty, exactly one must be lead. */
@@ -291,7 +340,7 @@ function updateLeadContactRefine(data: {
 }
 
 const EVENT_PLANNER_LEAD_REFINE_MESSAGE =
-  'When event planners are provided, exactly one must be marked as lead.';
+  'When event planners are provided, exactly one must be marked as lead';
 const EVENT_PLANNER_LEAD_REFINE_PATH = ['eventPlanners'] as const;
 
 /** When eventPlanners is provided and non-empty, exactly one must have isLead true. */
@@ -329,22 +378,26 @@ const createBaseSchema = activityCoreFieldsSchema
  * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
  * Requires at least one Comms contact with exactly one marked as lead.
  */
-const SUMMARY_REQUIRED_MESSAGE = 'Summary is required.';
-
 export const createActivityRequestSchema = createBaseSchema
-  .refine(createLeadContactRefine, {
+  .extend({
+    commsContacts: createCommsContactsFieldSchema,
+  })
+  .refine(createLeadContactPresenceRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,
     path: [...LEAD_CONTACT_REFINE_PATH],
+    ...zodRequiredIssueParams(),
   })
   .refine(eventPlannerLeadRefine, {
     message: EVENT_PLANNER_LEAD_REFINE_MESSAGE,
     path: [...EVENT_PLANNER_LEAD_REFINE_PATH],
+    ...zodConstraintIssueParams(),
   })
   .refine(
     (data) => plainTextFromActivityRichField(data.summary).trim().length > 0,
     {
       message: SUMMARY_REQUIRED_MESSAGE,
       path: ['summary'],
+      ...zodRequiredIssueParams(),
     }
   );
 
@@ -363,17 +416,20 @@ export const updateActivityRequestSchema = createBaseSchema
   .refine(updateLeadContactRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,
     path: [...LEAD_CONTACT_REFINE_PATH],
+    ...zodConstraintIssueParams(),
   })
   .refine(eventPlannerLeadRefine, {
     message: EVENT_PLANNER_LEAD_REFINE_MESSAGE,
     path: [...EVENT_PLANNER_LEAD_REFINE_PATH],
+    ...zodConstraintIssueParams(),
   })
   .refine(
     (data) => !(data.markAsReviewed === true && data.markAsCompleted === true),
     {
       message:
-        'markAsReviewed and markAsCompleted are mutually exclusive; set at most one.',
+        'markAsReviewed and markAsCompleted are mutually exclusive; set at most one',
       path: ['markAsCompleted'],
+      ...zodConstraintIssueParams(),
     }
   );
 

@@ -55,6 +55,9 @@ export const permissions = pgTable('permissions', {
   category: varchar('category', { length: 100 }).notNull(),
   subcategory: varchar('subcategory', { length: 100 }),
   description: text('description'),
+  showInUserManagement: boolean('show_in_user_management')
+    .notNull()
+    .default(false),
   resource: varchar('resource', { length: 100 }), // Optional: extracted from key for querying
   action: varchar('action', { length: 50 }), // Optional: extracted from key for querying
   scope: varchar('scope', { length: 100 }), // Optional: scope/context (e.g. field, filter, report, etc.)

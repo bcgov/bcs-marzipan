@@ -34,6 +34,7 @@ import {
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
 import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
 import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
+import analytics from '@/lib/analytics';
 import {
   buildReportBaselineDateFilterPatch,
   buildReportClearFilterState,
@@ -281,6 +282,59 @@ export function ReportFiltersBar({
   const dateConfirmedActive = filterState.dateConfirmedFilter !== 'any';
   const timeConfirmedActive = filterState.timeConfirmedFilter !== 'any';
   const dateRangeActive = isDateRangeActive(filterState.dateRange);
+
+  const handleSearchEnter = useCallback(() => {
+    // Send a calendar_action event with some filter context when the user submits a search
+    try {
+      const sanitizeFilters = (
+        fs: typeof filterState,
+        keyword: string | undefined
+      ) => {
+        return {
+          // Date filters: indicate whether a date range or confirmations are active
+          dateRangeActive: isDateRangeActive(fs.dateRange),
+          dateConfirmedFilter: fs.dateConfirmedFilter || 'any',
+          timeConfirmedFilter: fs.timeConfirmedFilter || 'any',
+          // Counts instead of raw IDs or lists
+          categoryCount: (fs.categoryNames || []).length,
+          statusCount: (fs.activityStatusIds || []).length,
+          tagCount: (fs.tagIds || []).length,
+          leadMinistryCount: (fs.leadMinistryIds || []).length,
+          leadOrgCount: (fs.leadOrgIds || []).length,
+          commsContactCount: (fs.commsContactLeadUserIds || []).length,
+          eventPlannerCount: (fs.eventPlannerLeadIds || []).length,
+          translationStatusCount: (fs.translationRequiredStatusIds || [])
+            .length,
+          translationLanguageCount: (fs.translationLanguageIds || []).length,
+          // Search presence only — do not send raw search text
+          search_present: Boolean(keyword && keyword.length > 0),
+          search_length_bucket: keyword
+            ? keyword.length < 20
+              ? '<20'
+              : keyword.length < 100
+                ? '<100'
+                : '>=100'
+            : null,
+        };
+      };
+
+      analytics.trackCalendarAction({
+        action: 'Search',
+        filters: sanitizeFilters(filterState, searchKeyword),
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [filterState, searchKeyword]);
+
+  const handleClearSearchClick = useCallback(() => {
+    try {
+      analytics.trackCalendarClick('clear_search');
+    } catch {
+      /* ignore */
+    }
+    setPreferences({ searchKeyword: '' });
+  }, [setPreferences]);
 
   const categorySelectedValues = filterState.categoryNames;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
@@ -569,6 +623,12 @@ export function ReportFiltersBar({
             placeholder="Search activities..."
             value={searchKeyword}
             onChange={(e) => setPreferences({ searchKeyword: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSearchEnter();
+              }
+            }}
             className="pr-8 pl-8 shadow-none"
             aria-label="Search activities"
           />
@@ -576,7 +636,7 @@ export function ReportFiltersBar({
             <button
               type="button"
               className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
-              onClick={() => setPreferences({ searchKeyword: '' })}
+              onClick={handleClearSearchClick}
               aria-label="Clear search"
             >
               <X className="h-3.5 w-3.5" />

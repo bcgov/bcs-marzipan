@@ -7,13 +7,12 @@
  *
  * Same flag semantics as AssignActivityModal but inline, no note field.
  */
-import { Flag } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { fetchTeamById } from '@/api/teamsApi';
+import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
 import { FilterSearchableList } from '@/components/activity/ActivityTable/FilterSearchableList';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -23,7 +22,6 @@ import {
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
-import { cn } from '@/lib/utils';
 
 interface TeamMemberOption {
   userId: number;
@@ -132,27 +130,12 @@ export function ActivityFlagPopover({
     if (!isFlagged || !existingFlag) return null;
     return (
       <span
-        className="relative inline-flex size-6 shrink-0 items-center justify-center"
         title={`Assigned to ${existingFlag.assigneeName}`}
         aria-label={`Assigned to ${existingFlag.assigneeName}`}
       >
-        <Avatar size="sm" className="size-full">
-          <AvatarFallback className="text-[8px] font-medium">
-            {existingFlag.assigneeName
-              .split(' ')
-              .slice(0, 2)
-              .map((n) => n[0])
-              .join('')
-              .toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <Flag
-          className="absolute -right-0.5 -bottom-0.5 size-2.5"
-          style={{
-            fill: existingFlag.assigneeFlagColour ?? 'var(--flag-button-icon)',
-            color: existingFlag.assigneeFlagColour ?? 'var(--flag-button-icon)',
-          }}
-          aria-hidden
+        <ActivityFlagIcon
+          assigneeName={existingFlag.assigneeName}
+          assigneeFlagColour={existingFlag.assigneeFlagColour}
         />
       </span>
     );
@@ -176,36 +159,12 @@ export function ActivityFlagPopover({
           disabled={isPending || !primaryTeamId}
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
-          className="relative size-6 shrink-0"
+          className="size-6 shrink-0"
         >
-          {isFlagged ? (
-            <>
-              <Avatar size="sm" className="size-full">
-                <AvatarFallback className="text-[8px] font-medium">
-                  {existingFlag.assigneeName
-                    .split(' ')
-                    .slice(0, 2)
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <Flag
-                className="absolute -right-0.5 -bottom-0.5 size-2.5"
-                style={{
-                  fill:
-                    existingFlag.assigneeFlagColour ??
-                    'var(--flag-button-icon)',
-                  color:
-                    existingFlag.assigneeFlagColour ??
-                    'var(--flag-button-icon)',
-                }}
-                aria-hidden
-              />
-            </>
-          ) : (
-            <Flag className={cn('text-muted-foreground size-4')} aria-hidden />
-          )}
+          <ActivityFlagIcon
+            assigneeName={isFlagged ? existingFlag.assigneeName : null}
+            assigneeFlagColour={existingFlag?.assigneeFlagColour}
+          />
         </Button>
       </PopoverTrigger>
       <PopoverContent
