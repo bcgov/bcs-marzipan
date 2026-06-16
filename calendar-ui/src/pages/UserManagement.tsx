@@ -135,19 +135,27 @@ export function Users() {
     [resetMutation]
   );
 
+  const headerAction =
+    activeTab === 'teams'
+      ? canCreateTeam && (
+          <Button onClick={() => setShowCreateTeam(true)}>
+            <Plus className="h-4 w-4" />
+            Add team
+          </Button>
+        )
+      : canCreateUser && (
+          <Button onClick={() => setShowCreateUser(true)}>
+            <Plus className="h-4 w-4" />
+            Add user
+          </Button>
+        );
+
   return (
     <>
       <PageHeader
         title="User & Team Management"
         description="Manage user accounts, teams, and roles"
-        action={
-          canCreateUser && (
-            <Button onClick={() => setShowCreateUser(true)}>
-              <Plus className="h-4 w-4" />
-              Add user
-            </Button>
-          )
-        }
+        action={headerAction}
       />
 
       <Tabs
