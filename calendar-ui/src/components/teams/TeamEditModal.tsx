@@ -208,8 +208,26 @@ export function TeamEditModal({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="team-name">
+                Name{' '}
+                <span
+                  className="text-required-field-indicator font-semibold"
+                  aria-hidden
+                >
+                  *
+                </span>
+              </Label>
+              <Input
+                id="team-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Programmatic name (hidden in create flow)"
+                className={isCreate ? 'sr-only' : undefined}
+                aria-hidden={isCreate}
+                required
+              />
               <Label htmlFor="team-display-name">
-                Display name{' '}
+                Display{' '}
                 <span
                   className="text-required-field-indicator font-semibold"
                   aria-hidden
