@@ -332,7 +332,7 @@ export function TeamEditModal({
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {isCreate ? 'Create' : 'Save'}
+                {isCreate ? 'Create' : 'Update'}
               </Button>
             </DialogFooter>
           </form>
