@@ -49,6 +49,7 @@ export function TeamEditModal({
   const [name, setName] = useState('');
   const [abbreviation, setAbbreviation] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [abbrevManuallyEdited, setAbbrevManuallyEdited] = useState(false);
   const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [ministryId, setMinistryId] = useState<string | null>(null);
@@ -84,6 +85,7 @@ export function TeamEditModal({
       setDescription('');
       setIsActive(true);
       setMinistryId(null);
+      setAbbrevManuallyEdited(false);
     } else if (detail) {
       setName(detail.name);
       setAbbreviation(detail.abbreviation);
@@ -93,6 +95,7 @@ export function TeamEditModal({
       setMinistryId(
         detail.ministryId != null ? String(detail.ministryId) : null
       );
+      setAbbrevManuallyEdited(false);
     }
   }, [open, isCreate, detail]);
 
@@ -134,34 +137,36 @@ export function TeamEditModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedName = name.trim();
+    const trimmedDisplay = displayName.trim();
     const trimmedAbbrev = abbreviation.trim().replace(/\s+/g, '');
-    if (!trimmedName) {
-      toast.error('Name is required', { id: 'team-edit-validation-name' });
-      return;
-    }
-    if (!trimmedAbbrev) {
-      toast.error('Abbreviation is required', {
-        id: 'team-edit-validation-abbrev',
-      });
+    const missingFields: string[] = [];
+    if (!trimmedDisplay) missingFields.push('Display name');
+    if (!trimmedAbbrev) missingFields.push('Abbreviation');
+    if (!ministryId) missingFields.push('Ministry');
+
+    if (missingFields.length > 0) {
+      const detail = `Required fields missing: ${missingFields.join(', ')}`;
+      toast.error('Submission failed', { description: detail, duration: 6000 });
       return;
     }
     if (isCreate) {
+      const nameForCreate = trimmedDisplay;
       createMutation.mutate({
-        name: trimmedName,
+        name: nameForCreate,
         abbreviation: trimmedAbbrev,
-        displayName: displayName.trim() || undefined,
+        displayName: trimmedDisplay || undefined,
         description: description.trim() || undefined,
         isActive,
         ministryId: ministryId != null ? parseInt(ministryId, 10) : undefined,
       });
     } else if (team) {
+      const nameForUpdate = name && name.trim() ? name.trim() : trimmedDisplay;
       updateMutation.mutate({
         id: team.id,
         body: {
-          name: trimmedName,
+          name: nameForUpdate,
           abbreviation: trimmedAbbrev,
-          displayName: displayName.trim() || undefined,
+          displayName: trimmedDisplay || undefined,
           description: description.trim() || undefined,
           isActive,
           ministryId: ministryId != null ? parseInt(ministryId, 10) : null,
@@ -176,6 +181,10 @@ export function TeamEditModal({
 
   const isLoading = !isCreate && isLoadingDetail;
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const displayValid = displayName.trim().length > 0;
+  const abbreviationValid = abbreviation.trim().replace(/\s+/g, '').length > 0;
+  const ministryValid = Boolean(ministryId);
+  const isFormValid = displayValid && abbreviationValid && ministryValid;
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
 
   return (
@@ -199,21 +208,83 @@ export function TeamEditModal({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="team-name">Name *</Label>
+              <Label htmlFor="team-display-name">
+                Display name{' '}
+                <span
+                  className="text-required-field-indicator font-semibold"
+                  aria-hidden
+                >
+                  *
+                </span>
+              </Label>
               <Input
-                id="team-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Team name"
+                id="team-display-name"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Short or display name"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="team-abbreviation">Abbreviation *</Label>
+              <Label>
+                Ministry{' '}
+                <span
+                  className="text-required-field-indicator font-semibold"
+                  aria-hidden
+                >
+                  *
+                </span>
+              </Label>
+              <Combobox
+                items={ministryOptions}
+                value={selectedMinistry}
+                onValueChange={(option: OptionItem | null) => {
+                  const newId = option ? option.value : null;
+                  setMinistryId(newId);
+                  // auto-fill abbreviation from ministry unless user edited it
+                  if (newId) {
+                    const m = ministries.find((mm) => String(mm.id) === newId);
+                    const abb =
+                      m && (m as any).abbreviation
+                        ? String((m as any).abbreviation)
+                        : '';
+                    if (!abbrevManuallyEdited || !abbreviation) {
+                      setAbbreviation(abb);
+                    }
+                  }
+                }}
+                itemToStringValue={(o: OptionItem) => o.label}
+              >
+                <ComboboxInput placeholder="Select ministry..." />
+                <ComboboxContent container={dialogContentRef}>
+                  <ComboboxEmpty>No ministries found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(option: OptionItem) => (
+                      <ComboboxItem key={option.value} value={option}>
+                        {option.label}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="team-abbreviation">
+                Abbreviation{' '}
+                <span
+                  className="text-required-field-indicator font-semibold"
+                  aria-hidden
+                >
+                  *
+                </span>
+              </Label>
               <Input
                 id="team-abbreviation"
                 value={abbreviation}
-                onChange={(e) => setAbbreviation(e.target.value)}
+                onChange={(e) => {
+                  setAbbreviation(e.target.value);
+                  setAbbrevManuallyEdited(true);
+                }}
                 placeholder="e.g. MR"
                 maxLength={5}
                 required
@@ -226,15 +297,6 @@ export function TeamEditModal({
                 Short code (max 5 characters) used in activity IDs for
                 non-ministry teams.
               </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="team-display-name">Display name</Label>
-              <Input
-                id="team-display-name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Short or display name"
-              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="team-description">Description</Label>
@@ -254,34 +316,15 @@ export function TeamEditModal({
               />
               <Label htmlFor="team-active">Active</Label>
             </div>
-            <div className="space-y-2">
-              <Label>Ministry</Label>
-              <Combobox
-                items={ministryOptions}
-                value={selectedMinistry}
-                onValueChange={(option: OptionItem | null) =>
-                  setMinistryId(option ? option.value : null)
-                }
-                itemToStringValue={(o: OptionItem) => o.label}
-              >
-                <ComboboxInput placeholder="Select ministry..." />
-                <ComboboxContent container={dialogContentRef}>
-                  <ComboboxEmpty>No ministries found.</ComboboxEmpty>
-                  <ComboboxList>
-                    {(option: OptionItem) => (
-                      <ComboboxItem key={option.value} value={option}>
-                        {option.label}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                disabled={!isFormValid || isSubmitting}
+                className={!isFormValid ? 'cursor-not-allowed' : undefined}
+              >
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
