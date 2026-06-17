@@ -1,16 +1,24 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Edit, Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import { fetchTeamById } from '@/api/teamsApi';
+import { fetchUserActivities } from '@/api/usersApi';
 import { PageContainer } from '@/components/layout';
 import AddTeamMemberModal from '@/components/teams/AddTeamMemberModal';
+import RemoveTeamMemberModal from '@/components/teams/RemoveTeamMemberModal';
 import { TeamEditModal } from '@/components/teams/TeamEditModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+
+interface RemovableTeamMember {
+  userId: number;
+  userName: string;
+  adEmail?: string | null;
+}
 
 export function TeamDetails() {
   const params = useParams();
@@ -23,9 +31,37 @@ export function TeamDetails() {
     enabled: !Number.isNaN(id),
   });
 
+  const teamMembers = team?.members ?? [];
+  const memberActivityQueries = useQueries({
+    queries: teamMembers.map((member) => ({
+      queryKey: ['users', member.userId, 'activities', 'count'],
+      queryFn: () => fetchUserActivities(member.userId),
+      enabled: !Number.isNaN(id),
+      staleTime: 30_000,
+    })),
+  });
+  const memberActivityCounts = useMemo(() => {
+    const counts = new Map<number, number | null>();
+    teamMembers.forEach((member, index) => {
+      const query = memberActivityQueries[index];
+      if (query?.isError) {
+        counts.set(member.userId, -1);
+        return;
+      }
+      if (query?.isLoading || query?.isFetching) {
+        counts.set(member.userId, null);
+        return;
+      }
+      counts.set(member.userId, query?.data?.length ?? 0);
+    });
+    return counts;
+  }, [memberActivityQueries, teamMembers]);
+
   const queryClient = useQueryClient();
   const [showEditTeam, setShowEditTeam] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [memberToRemove, setMemberToRemove] =
+    useState<RemovableTeamMember | null>(null);
   const [memberSearch, setMemberSearch] = useState('');
   const { hasPermission } = useAuth();
 
@@ -178,7 +214,16 @@ export function TeamDetails() {
                             <td className="px-3 py-2 text-slate-500">
                               {team.displayName ?? team.name}
                             </td>
-                            <td className="px-3 py-2 text-slate-500">-</td>
+                            <td className="px-3 py-2 text-slate-500">
+                              {(() => {
+                                const count = memberActivityCounts.get(
+                                  m.userId
+                                );
+                                if (count == null) return '...';
+                                if (count < 0) return '-';
+                                return String(count);
+                              })()}
+                            </td>
                             <td className="px-3 py-2">
                               <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-sm text-green-800">
                                 Active
@@ -186,7 +231,17 @@ export function TeamDetails() {
                             </td>
                             <td className="px-3 py-2 text-slate-500">-</td>
                             <td className="px-3 py-2">
-                              <Button variant="ghost" size="sm">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setMemberToRemove({
+                                    userId: m.userId,
+                                    userName: m.userName ?? `User ${m.userId}`,
+                                    adEmail: (m as any).adEmail ?? null,
+                                  })
+                                }
+                              >
                                 Remove
                               </Button>
                             </td>
@@ -245,6 +300,17 @@ export function TeamDetails() {
         onClose={() => setShowAddMember(false)}
         onAdded={() => {
           setShowAddMember(false);
+          void queryClient.invalidateQueries({ queryKey: ['team', id] });
+        }}
+      />
+      <RemoveTeamMemberModal
+        open={!!memberToRemove}
+        teamId={team.id}
+        teamName={team.displayName ?? team.name}
+        member={memberToRemove}
+        onClose={() => setMemberToRemove(null)}
+        onRemoved={() => {
+          setMemberToRemove(null);
           void queryClient.invalidateQueries({ queryKey: ['team', id] });
         }}
       />

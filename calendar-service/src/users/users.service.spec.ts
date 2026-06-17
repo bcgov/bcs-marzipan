@@ -322,7 +322,9 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain([userRow], 'limit'))
         .mockReturnValueOnce(createChain([{ name: 'Editor' }], 'limit'))
         .mockReturnValueOnce(createChain([], 'where'))
-        .mockReturnValueOnce(createChain([{ userId: 1, teamId: 1 }], 'limit'));
+        .mockReturnValueOnce(
+          createChain([{ userId: 1, teamId: 1, isActive: true }], 'limit')
+        );
 
       await expect(
         service.addUserToTeam(1, createMockAddUserToTeamBody({ teamId: 1 }), 1)
@@ -354,6 +356,39 @@ describe('UsersService', () => {
         service.addUserToTeam(1, createMockAddUserToTeamBody({ teamId: 2 }), 1)
       ).resolves.toBeUndefined();
       expect(mockDatabaseService.db.insert).toHaveBeenCalled();
+    });
+
+    it('should reactivate existing inactive membership', async () => {
+      const userRow = {
+        id: 1,
+        adUsername: 'u1',
+        adDisplayName: 'User One',
+        adEmail: 'u1@test.com',
+        roleId: 2,
+        isActive: true,
+        notes: null,
+      };
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain([{ name: 'Editor' }], 'limit'))
+        .mockReturnValueOnce(createChain([], 'where'))
+        .mockReturnValueOnce(
+          createChain([{ userId: 1, teamId: 2, isActive: false }], 'limit')
+        );
+
+      mockDatabaseService.db.update = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+
+      await expect(
+        service.addUserToTeam(1, createMockAddUserToTeamBody({ teamId: 2 }), 1)
+      ).resolves.toBeUndefined();
+
+      expect(mockDatabaseService.db.update).toHaveBeenCalled();
+      expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
     });
   });
 

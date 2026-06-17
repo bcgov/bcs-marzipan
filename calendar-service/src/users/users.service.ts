@@ -485,21 +485,28 @@ export class UsersService {
       .select()
       .from(userTeams)
       .where(
-        and(
-          eq(userTeams.userId, userId),
-          eq(userTeams.teamId, dto.teamId),
-          eq(userTeams.isActive, true)
-        )
+        and(eq(userTeams.userId, userId), eq(userTeams.teamId, dto.teamId))
       )
       .limit(1);
 
-    if (existing) throw new ConflictException('User is already in this team');
+    if (existing?.isActive) {
+      throw new ConflictException('User is already in this team');
+    }
 
-    await this.databaseService.db.insert(userTeams).values({
-      userId,
-      teamId: dto.teamId,
-      role: dto.role,
-    });
+    if (existing && !existing.isActive) {
+      await this.databaseService.db
+        .update(userTeams)
+        .set({ isActive: true, role: dto.role, timestamp: new Date() })
+        .where(
+          and(eq(userTeams.userId, userId), eq(userTeams.teamId, dto.teamId))
+        );
+    } else {
+      await this.databaseService.db.insert(userTeams).values({
+        userId,
+        teamId: dto.teamId,
+        role: dto.role,
+      });
+    }
 
     await this.recordUserHistory(
       userId,
