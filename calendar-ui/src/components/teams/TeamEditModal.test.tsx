@@ -111,7 +111,7 @@ describe('TeamEditModal', () => {
       const user = userEvent.setup();
       renderModal();
 
-      await user.type(screen.getByLabelText(/display \*/i), 'Test Team');
+      await user.type(screen.getByLabelText(/name \*/i), 'Test Team');
       await user.type(screen.getByLabelText(/^abbreviation \*/i), 'TT');
       await selectMinistry(user);
 
@@ -135,7 +135,7 @@ describe('TeamEditModal', () => {
       const user = userEvent.setup();
       renderModal();
 
-      await user.type(screen.getByLabelText(/display \*/i), 'Test Team');
+      await user.type(screen.getByLabelText(/name \*/i), 'Test Team');
       await user.type(screen.getByLabelText(/^abbreviation \*/i), 'TT');
       await selectMinistry(user);
 

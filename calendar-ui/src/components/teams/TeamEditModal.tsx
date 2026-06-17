@@ -26,7 +26,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
@@ -50,7 +49,6 @@ export function TeamEditModal({
   const [abbreviation, setAbbreviation] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [abbrevManuallyEdited, setAbbrevManuallyEdited] = useState(false);
-  const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [ministryId, setMinistryId] = useState<string | null>(null);
 
@@ -82,7 +80,6 @@ export function TeamEditModal({
       setName('');
       setAbbreviation('');
       setDisplayName('');
-      setDescription('');
       setIsActive(true);
       setMinistryId(null);
       setAbbrevManuallyEdited(false);
@@ -90,7 +87,6 @@ export function TeamEditModal({
       setName(detail.name);
       setAbbreviation(detail.abbreviation);
       setDisplayName(detail.displayName ?? '');
-      setDescription(detail.description ?? '');
       setIsActive(detail.isActive);
       setMinistryId(
         detail.ministryId != null ? String(detail.ministryId) : null
@@ -155,7 +151,6 @@ export function TeamEditModal({
         name: nameForCreate,
         abbreviation: trimmedAbbrev,
         displayName: trimmedDisplay || undefined,
-        description: description.trim() || undefined,
         isActive,
         ministryId: ministryId != null ? parseInt(ministryId, 10) : undefined,
       });
@@ -167,7 +162,6 @@ export function TeamEditModal({
           name: nameForUpdate,
           abbreviation: trimmedAbbrev,
           displayName: trimmedDisplay || undefined,
-          description: description.trim() || undefined,
           isActive,
           ministryId: ministryId != null ? parseInt(ministryId, 10) : null,
         },
@@ -191,14 +185,14 @@ export function TeamEditModal({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
         ref={dialogContentRef}
-        className="max-h-[90vh] max-w-lg overflow-y-auto"
+        className="max-h-[90vh] max-w-lg overflow-x-hidden overflow-y-auto"
       >
         <DialogHeader>
-          <DialogTitle>{isCreate ? 'Create team' : 'Edit team'}</DialogTitle>
+          <DialogTitle>{isCreate ? 'Add team' : 'Edit team'}</DialogTitle>
           <DialogDescription className="sr-only">
             {isCreate
               ? 'Enter details to create a new team.'
-              : 'Edit team name, display name, description, and settings.'}
+              : 'Edit team name, display name, and settings.'}
           </DialogDescription>
         </DialogHeader>
         {isLoading ? (
@@ -208,15 +202,17 @@ export function TeamEditModal({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="team-name">
-                Name{' '}
-                <span
-                  className="text-required-field-indicator font-semibold"
-                  aria-hidden
-                >
-                  *
-                </span>
-              </Label>
+              {!isCreate && (
+                <Label htmlFor="team-name">
+                  Name{' '}
+                  <span
+                    className="text-required-field-indicator font-semibold"
+                    aria-hidden
+                  >
+                    *
+                  </span>
+                </Label>
+              )}
               <Input
                 id="team-name"
                 value={name}
@@ -227,7 +223,7 @@ export function TeamEditModal({
                 required
               />
               <Label htmlFor="team-display-name">
-                Display{' '}
+                {isCreate ? 'Name' : 'Display'}{' '}
                 <span
                   className="text-required-field-indicator font-semibold"
                   aria-hidden
@@ -304,7 +300,7 @@ export function TeamEditModal({
                   setAbbrevManuallyEdited(true);
                 }}
                 placeholder="e.g. MR"
-                maxLength={5}
+                maxLength={6}
                 required
                 aria-describedby="team-abbreviation-hint"
               />
@@ -312,19 +308,9 @@ export function TeamEditModal({
                 id="team-abbreviation-hint"
                 className="text-muted-foreground text-xs"
               >
-                Short code (max 5 characters) used in activity IDs for
+                Short code (max 6 characters) used in activity IDs for
                 non-ministry teams.
               </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="team-description">Description</Label>
-              <Textarea
-                id="team-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Optional description"
-                rows={3}
-              />
             </div>
             <div className="flex items-center gap-2">
               <Switch
