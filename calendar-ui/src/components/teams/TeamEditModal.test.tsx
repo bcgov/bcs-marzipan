@@ -174,7 +174,7 @@ describe('TeamEditModal', () => {
 
       await user.clear(screen.getByLabelText(/name \*/i));
       await user.type(screen.getByLabelText(/name \*/i), 'Updated Name');
-      await user.click(screen.getByRole('button', { name: /save/i }));
+      await user.click(screen.getByRole('button', { name: /update/i }));
 
       await waitFor(() => {
         expect(mockToast.success).toHaveBeenCalledWith('Team updated', {
@@ -199,7 +199,7 @@ describe('TeamEditModal', () => {
         expect(screen.getByLabelText(/name \*/i)).toHaveValue('Existing Team');
       });
 
-      await user.click(screen.getByRole('button', { name: /save/i }));
+      await user.click(screen.getByRole('button', { name: /update/i }));
 
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('Server error', {
