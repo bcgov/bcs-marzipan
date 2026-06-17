@@ -220,7 +220,7 @@ export function TeamEditModal({
                 placeholder="Programmatic name (hidden in create flow)"
                 className={isCreate ? 'sr-only' : undefined}
                 aria-hidden={isCreate}
-                required
+                required={!isCreate}
               />
               <Label htmlFor="team-display-name">
                 {isCreate ? 'Name' : 'Display'}{' '}
