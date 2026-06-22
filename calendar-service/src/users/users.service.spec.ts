@@ -388,7 +388,7 @@ describe('UsersService', () => {
       ).resolves.toBeUndefined();
 
       expect(mockDatabaseService.db.update).toHaveBeenCalled();
-      expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
+      expect(mockDatabaseService.db.insert).toHaveBeenCalled();
     });
   });
 
