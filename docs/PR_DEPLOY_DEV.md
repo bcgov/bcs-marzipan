@@ -26,6 +26,7 @@ Notes:
 - The workflow uses GitHub secrets for OpenShift access and namespaces: `OPENSHIFT_TOKEN`, `OPENSHIFT_SERVER`, `OPENSHIFT_TOOLS_NAMESPACE`, and `OPENSHIFT_DEV_NAMESPACE`.
 - The workflow is scoped to the GitHub Environment `dev-silver` (so it pulls environment-scoped secrets/vars).
 - DB migrations are not run automatically in this workflow.
+- Snowplow analytics are enabled by default in the OpenShift base ConfigMap, so report search analytics will send browser-side events from all hosted environments if the cluster can reach the Snowplow collector at `spm.apps.gov.bc.ca`. To disable for a specific environment, add a kustomize patch that sets `ENABLE_SNOWPLOW: 'false'` in `config.js`.
 
 ---
 

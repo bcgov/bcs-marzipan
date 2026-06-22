@@ -15,5 +15,5 @@ data:
   # Runtime config JS served as /config.js - can be replaced per environment via ConfigMap
   config.js: |-
     window.__APP_CONFIG__ = {
-      ENABLE_SNOWPLOW: 'false'
+      ENABLE_SNOWPLOW: 'true'
     };
