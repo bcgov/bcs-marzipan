@@ -21,12 +21,12 @@ The workflow `.github/workflows/pr-deploy-dev.yaml` is triggered on pushes to th
 6. **Rolls out** the updated deployments.
 
 ### Image versioning (APP_VERSION)
-
+ 
 Builds and deployments use a versioned image tag instead of `latest` so the cluster pulls the correct image and avoids stale deploys (updated March 3, 2026). The tag is controlled by the GitHub repository variable **`APP_VERSION`** (e.g. `0.0.1`).
-
+ 
 - **BuildConfigs** output to `calendar-service:${APP_VERSION}`, `calendar-ui:${APP_VERSION}`, and `calendar-db-seed:${APP_VERSION}`.
 - **Workflows** pass `vars.APP_VERSION` into the job env and use it when tagging images and applying kustomize; `envsubst` substitutes `${APP_VERSION}` (and namespace vars) in the manifests before `oc apply`.
-
+ 
 In GitHub set `APP_VERSION` under **Settings → Secrets and variables → Actions → Variables**. Bump it (e.g. `0.0.1` → `0.0.2`) for each release or deploy so each deployment has a distinct tag; this improves traceability and avoids registry caching issues.
 
 ### Required GitHub Secrets
@@ -116,12 +116,6 @@ Three overlays are available for different environments:
 Each overlay can customize namespaces, replicas, resource limits, and image tags. To use a different overlay, replace `dev` in the deploy command with your target environment (e.g., `openshift/deploy/overlays/staging`).
 
 Each overlay can customize namespaces, replicas, resource limits, and image tags. To use a different overlay, replace `dev` in the deploy command with your target environment (e.g., `openshift/deploy/overlays/staging`).
-
-### Snowplow analytics in hosted environments
-
-Snowplow is enabled by default in both OpenShift base ConfigMaps (`openshift/deploy/base/calendar-ui/configmap.yaml` and `openshift/emerald/deploy/base/calendar-ui/configmap.yaml`) so all hosted environments send analytics without needing an overlay patch. To disable it for a specific environment, add a kustomize patch for that overlay that sets `ENABLE_SNOWPLOW: 'false'` in `config.js`.
-
-Note that the local development default (`calendar-ui/public/config.js`) keeps Snowplow disabled so developer machines do not send analytics events. Hosted clusters also need outbound access from the browser to the Snowplow collector at `spm.apps.gov.bc.ca`, otherwise the client-side tracking calls will be dropped.
 
 Notes & Troubleshooting
 

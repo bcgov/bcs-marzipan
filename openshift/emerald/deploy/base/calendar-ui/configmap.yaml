@@ -12,7 +12,3 @@ data:
   NODE_ENV: development
   VITE_API_BASE_URL: /api
   API_PROXY_UPSTREAM: http://calendar-service:3001
-  config.js: |-
-    window.__APP_CONFIG__ = {
-      ENABLE_SNOWPLOW: 'true'
-    };
