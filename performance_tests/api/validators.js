@@ -111,7 +111,9 @@ export function lookAheadResetSettingsEnvelope(parsed) {
     parsed &&
     parsed.success === true &&
     d &&
-    typeof d.windowDaysAfterToday === 'number'
+    typeof d.windowDaysAfterToday === 'number' &&
+    typeof d.cronMode === 'string' &&
+    typeof d.rollbackAvailable === 'boolean'
   );
 }
 

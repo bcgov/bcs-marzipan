@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   addCalendarDaysToIsoDate,
   computeLookAheadResetWindow,
+  computeManualLookAheadClearWindow,
+  deriveLookAheadResetCronMode,
   invalidStoredLookAheadResetWindowDays,
   normalizeLookAheadResetWindowDays,
   pacificCalendarDateFromUtcMs,
+  parseLookAheadResetCronEnabled,
 } from './look-ahead-reset';
 
 describe('pacificCalendarDateFromUtcMs', () => {
@@ -65,5 +68,78 @@ describe('invalidStoredLookAheadResetWindowDays', () => {
     expect(invalidStoredLookAheadResetWindowDays('0')).toBe(false);
     expect(invalidStoredLookAheadResetWindowDays('7')).toBe(false);
     expect(invalidStoredLookAheadResetWindowDays('364')).toBe(false);
+  });
+});
+
+describe('computeManualLookAheadClearWindow', () => {
+  const utcMs = Date.UTC(2026, 3, 18, 6, 45, 0);
+
+  it('returns bounded window for scope window', () => {
+    expect(
+      computeManualLookAheadClearWindow(utcMs, { scope: 'window', days: 7 })
+    ).toEqual({
+      rangeStart: '2026-04-17',
+      rangeEnd: '2026-04-24',
+    });
+  });
+
+  it('returns today+ unbounded for all_future without includePast', () => {
+    expect(
+      computeManualLookAheadClearWindow(utcMs, { scope: 'all_future' })
+    ).toEqual({
+      rangeStart: '2026-04-17',
+    });
+  });
+
+  it('returns null for all_future with includePast', () => {
+    expect(
+      computeManualLookAheadClearWindow(utcMs, {
+        scope: 'all_future',
+        includePast: true,
+      })
+    ).toBeNull();
+  });
+});
+
+describe('deriveLookAheadResetCronMode', () => {
+  const utcMs = Date.UTC(2026, 3, 18, 6, 45, 0);
+
+  it('returns stopped when cron disabled', () => {
+    expect(
+      deriveLookAheadResetCronMode(
+        { cronEnabled: false, pausedForDate: null },
+        utcMs
+      )
+    ).toBe('stopped');
+  });
+
+  it('returns paused_today when paused date matches today Pacific', () => {
+    expect(
+      deriveLookAheadResetCronMode(
+        { cronEnabled: true, pausedForDate: '2026-04-17' },
+        utcMs
+      )
+    ).toBe('paused_today');
+  });
+
+  it('returns running when paused date is in the past', () => {
+    expect(
+      deriveLookAheadResetCronMode(
+        { cronEnabled: true, pausedForDate: '2026-04-16' },
+        utcMs
+      )
+    ).toBe('running');
+  });
+});
+
+describe('parseLookAheadResetCronEnabled', () => {
+  it('defaults to true', () => {
+    expect(parseLookAheadResetCronEnabled(undefined)).toBe(true);
+    expect(parseLookAheadResetCronEnabled('')).toBe(true);
+  });
+
+  it('returns false only for explicit false', () => {
+    expect(parseLookAheadResetCronEnabled('false')).toBe(false);
+    expect(parseLookAheadResetCronEnabled('true')).toBe(true);
   });
 });
