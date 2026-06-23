@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+import {
+  ACTIVITY_FORM_SECTION_FIELDS,
+  ACTIVITY_FORM_SECTION_IDS,
+} from '../activity-form-sections';
 import type { ActivityFormData } from './activity.schema';
 
 /**
@@ -102,69 +106,6 @@ export const CLONE_SYSTEM_FIELD_KEYS = [
 export type CloneSystemFieldKey = (typeof CLONE_SYSTEM_FIELD_KEYS)[number];
 
 /**
- * Section identifiers used to group the advanced field list in the clone
- * modal. These match the form section labels used elsewhere in the UI.
- */
-export const CLONE_ADVANCED_SECTIONS = [
-  'overview',
-  'comms',
-  'reports',
-  'schedule',
-  'event',
-  'sharing',
-] as const;
-
-export type CloneAdvancedSection = (typeof CLONE_ADVANCED_SECTIONS)[number];
-
-/**
- * Advanced field inventory for the clone modal, grouped by form section.
- * Each entry is a top-level `ActivityFormData` key (or dotted path) that
- * the user can toggle on/off before confirming the clone.
- *
- * Keys are excluded when they:
- * - appear in `CLONE_MODAL_SCHEDULE_FIELD_KEYS` (handled in the modal)
- * - appear in `CLONE_NEVER_COPIED_FIELD_KEYS` (never carried over)
- * - appear in `CLONE_SYSTEM_FIELD_KEYS` (owned by the server)
- * - are required on create (title, categoryIds, leadTeamId, summary,
- *   commsContacts) — always copied or re-entered, never optional
- */
-export const CLONE_ADVANCED_FIELD_GROUPS: Record<
-  CloneAdvancedSection,
-  readonly string[]
-> = {
-  overview: [
-    'leadOrgId',
-    'isConfidential',
-    'isIssue',
-    'significance',
-    'notes',
-    'tagIds',
-  ],
-  comms: [
-    'strategy',
-    'commsMaterialIds',
-    'newsReleaseOriginId',
-    'newsReleaseDistributionId',
-  ],
-  reports: ['reportSettings'],
-  schedule: ['schedulingNotes'],
-  event: [
-    'premierRequestedId',
-    'representatives',
-    'venueStatusId',
-    'venueAddress',
-    'eventPlanners',
-  ],
-  sharing: ['visibility', 'sharedWithTeamIds'],
-} as const;
-
-/** Flat list of all advanced field paths a user may toggle. */
-export const CLONE_ADVANCED_FIELD_PATHS: readonly string[] =
-  CLONE_ADVANCED_SECTIONS.flatMap(
-    (section) => CLONE_ADVANCED_FIELD_GROUPS[section]
-  );
-
-/**
  * Fields that are always copied on clone (required on create, and not in the
  * modal). The server applies these regardless of `includeFieldPaths`.
  */
@@ -177,6 +118,53 @@ export const CLONE_ALWAYS_COPIED_FIELD_KEYS = [
 
 export type CloneAlwaysCopiedFieldKey =
   (typeof CLONE_ALWAYS_COPIED_FIELD_KEYS)[number];
+
+/**
+ * Top-level keys excluded from the clone modal advanced field list.
+ * Section membership comes from {@link ACTIVITY_FORM_SECTION_FIELDS}; see
+ * `docs/ACTIVITY_FORM_SECTIONS.md`.
+ */
+const CLONE_ADVANCED_FIELD_EXCLUSIONS = new Set<string>([
+  ...CLONE_MODAL_SCHEDULE_FIELD_KEYS,
+  ...CLONE_NEVER_COPIED_FIELD_KEYS,
+  ...CLONE_ALWAYS_COPIED_FIELD_KEYS,
+  ...CLONE_SYSTEM_FIELD_KEYS,
+  'title',
+  'newsReleaseId', // on schema only; not rendered or cloneable in UI
+]);
+
+function isCloneAdvancedField(key: keyof ActivityFormData): boolean {
+  return !CLONE_ADVANCED_FIELD_EXCLUSIONS.has(String(key));
+}
+
+/** Sections that have at least one clone-advanced field after exclusions. */
+export const CLONE_ADVANCED_SECTIONS = ACTIVITY_FORM_SECTION_IDS.filter((id) =>
+  ACTIVITY_FORM_SECTION_FIELDS[id].some(isCloneAdvancedField)
+);
+
+export type CloneAdvancedSection = (typeof CLONE_ADVANCED_SECTIONS)[number];
+
+function buildCloneAdvancedFieldGroups(): Record<
+  CloneAdvancedSection,
+  readonly string[]
+> {
+  const groups = {} as Record<CloneAdvancedSection, readonly string[]>;
+  for (const id of CLONE_ADVANCED_SECTIONS) {
+    groups[id] = ACTIVITY_FORM_SECTION_FIELDS[id]
+      .filter(isCloneAdvancedField)
+      .map(String);
+  }
+  return groups;
+}
+
+/** Advanced field inventory for the clone modal, grouped by form section. */
+export const CLONE_ADVANCED_FIELD_GROUPS = buildCloneAdvancedFieldGroups();
+
+/** Flat list of all advanced field paths a user may toggle. */
+export const CLONE_ADVANCED_FIELD_PATHS: readonly string[] =
+  CLONE_ADVANCED_SECTIONS.flatMap(
+    (section) => CLONE_ADVANCED_FIELD_GROUPS[section]
+  );
 
 /**
  * Allowed values the server will accept in `includeFieldPaths`. Anything
