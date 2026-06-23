@@ -150,9 +150,11 @@ export function TeamDetails() {
                   Team members
                 </h3>
                 <div>
-                  <Button size="sm" onClick={() => setShowAddMember(true)}>
-                    + Add member
-                  </Button>
+                  {hasPermission(PERMISSIONS.USERS.EDIT) ? (
+                    <Button size="sm" onClick={() => setShowAddMember(true)}>
+                      + Add member
+                    </Button>
+                  ) : null}
                 </div>
               </div>
 
@@ -228,19 +230,21 @@ export function TeamDetails() {
                             </td>
                             <td className="px-3 py-2 text-slate-500">-</td>
                             <td className="px-3 py-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  setMemberToRemove({
-                                    userId: m.userId,
-                                    userName: m.userName ?? `User ${m.userId}`,
-                                    adEmail: (m as any).adEmail ?? null,
-                                  })
-                                }
-                              >
-                                Remove
-                              </Button>
+                              {hasPermission(PERMISSIONS.USERS.EDIT) ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    setMemberToRemove({
+                                      userId: m.userId,
+                                      userName:
+                                        m.userName ?? `User ${m.userId}`,
+                                    })
+                                  }
+                                >
+                                  Remove
+                                </Button>
+                              ) : null}
                             </td>
                           </tr>
                         ))
@@ -270,8 +274,8 @@ export function TeamDetails() {
                 displayName: team.displayName ?? null,
                 abbreviation: team.abbreviation ?? '',
                 description: team.description ?? null,
-                sortOrder: (team as any).sortOrder ?? 0,
-                isActive: (team as any).isActive ?? true,
+                sortOrder: team.sortOrder,
+                isActive: team.isActive,
                 roleId: null,
                 memberCount: team.members ? team.members.length : 0,
                 ministryId: team.ministryId ?? null,

@@ -136,7 +136,7 @@ export function TeamEditModal({
     const trimmedDisplay = displayName.trim();
     const trimmedAbbrev = abbreviation.trim().replace(/\s+/g, '');
     const missingFields: string[] = [];
-    if (!trimmedDisplay) missingFields.push('Display name');
+    if (!trimmedDisplay) missingFields.push(isCreate ? 'Name' : 'Display');
     if (!trimmedAbbrev) missingFields.push('Abbreviation');
     if (!ministryId) missingFields.push('Ministry');
 
@@ -258,10 +258,7 @@ export function TeamEditModal({
                   // auto-fill abbreviation from ministry unless user edited it
                   if (newId) {
                     const m = ministries.find((mm) => String(mm.id) === newId);
-                    const abb =
-                      m && (m as any).abbreviation
-                        ? String((m as any).abbreviation)
-                        : '';
+                    const abb = m?.abbreviation ? String(m.abbreviation) : '';
                     if (!abbrevManuallyEdited || !abbreviation) {
                       setAbbreviation(abb);
                     }

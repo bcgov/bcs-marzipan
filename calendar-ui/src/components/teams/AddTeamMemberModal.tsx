@@ -51,7 +51,14 @@ export function AddTeamMemberModal({
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSearch('');
+      setUsers([]);
+      setSelectedUsers([]);
+      setNotes('');
+      setIsSubmitting(false);
+      return;
+    }
     let active = true;
     void fetchUsers({ search })
       .then((res) => {
@@ -66,7 +73,7 @@ export function AddTeamMemberModal({
   }, [open, search]);
 
   const available = useMemo(
-    () => users.filter((u) => !existingMemberIds.includes(u.id)),
+    () => users.filter((u) => u.isActive && !existingMemberIds.includes(u.id)),
     [users, existingMemberIds]
   );
 
