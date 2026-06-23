@@ -20,6 +20,44 @@ export const DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS = 7;
 export const MIN_LOOK_AHEAD_RESET_WINDOW_DAYS = 0;
 export const MAX_LOOK_AHEAD_RESET_WINDOW_DAYS = 364;
 
+/** `application_settings.key` — `'true'` (default) or `'false'` when cron is stopped. */
+export const LOOK_AHEAD_RESET_CRON_ENABLED_KEY =
+  'look_ahead_reset_cron_enabled' as const;
+
+/**
+ * `application_settings.key` — Pacific YYYY-MM-DD for one-shot pause (skip tonight's run).
+ * Empty when not paused.
+ */
+export const LOOK_AHEAD_RESET_CRON_PAUSED_FOR_DATE_KEY =
+  'look_ahead_reset_cron_paused_for_date' as const;
+
+export type LookAheadResetCronMode = 'running' | 'paused_today' | 'stopped';
+
+export type LookAheadManualClearScope = 'window' | 'all_future';
+
+export type LookAheadResetDateWindow = {
+  rangeStart: string;
+  rangeEnd?: string;
+};
+
+export type LookAheadResetLastClearSummary = {
+  at: string;
+  updated: number;
+  trigger: 'schedule' | 'manual';
+};
+
+export type LookAheadResetRollbackSkipReason = 'in_flight' | 'advisory_lock';
+
+export type LookAheadResetRollbackResult = {
+  restored: number;
+  /** Activities missing or deleted since the clear. */
+  skipped: number;
+  rollbackAvailable: boolean;
+  /** Entire rollback did not run (contention), distinct from per-activity skips. */
+  skippedRollback?: boolean;
+  skipReason?: LookAheadResetRollbackSkipReason;
+};
+
 // ============================================================================
 // Cron (use @Cron(..., { timeZone: LOOK_AHEAD_RESET_CRON_TIMEZONE }) in calendar-service)
 // ============================================================================
@@ -56,12 +94,16 @@ export const LOOK_AHEAD_RESET_JOB_ADVISORY_KEY = 1;
 export type LookAheadResetBatchSkipReason =
   | 'in_flight'
   | 'advisory_lock'
-  | 'error';
+  | 'error'
+  | 'cron_stopped'
+  | 'paused_today';
 
 export type LookAheadResetBatchRunResult = {
   updated: number;
   skipped: boolean;
   skipReason?: LookAheadResetBatchSkipReason;
+  /** Set on manual run when pauseScheduledTonight was applied. */
+  scheduledRunPausedTonight?: boolean;
 };
 
 // ============================================================================
@@ -105,6 +147,51 @@ export function computeLookAheadResetWindow(
   const rangeStart = pacificCalendarDateFromUtcMs(utcMs);
   const rangeEnd = addCalendarDaysToIsoDate(rangeStart, n);
   return { rangeStart, rangeEnd };
+}
+
+/**
+ * Date window for a manual clear run.
+ * Window mode uses the same bounded overlap as cron; all-future mode has no upper bound.
+ */
+export function computeManualLookAheadClearWindow(
+  utcMs: number,
+  params: {
+    scope: LookAheadManualClearScope;
+    days?: number;
+    includePast?: boolean;
+  }
+): LookAheadResetDateWindow | null {
+  if (params.scope === 'all_future' && params.includePast) {
+    return null;
+  }
+  if (params.scope === 'window') {
+    const n = params.days ?? DEFAULT_LOOK_AHEAD_RESET_WINDOW_DAYS;
+    return computeLookAheadResetWindow(utcMs, n);
+  }
+  return { rangeStart: pacificCalendarDateFromUtcMs(utcMs) };
+}
+
+/**
+ * Derive effective cron mode from persisted settings and current Pacific date.
+ */
+export function deriveLookAheadResetCronMode(
+  settings: {
+    cronEnabled: boolean;
+    pausedForDate: string | null;
+  },
+  utcMs: number = Date.now()
+): LookAheadResetCronMode {
+  if (!settings.cronEnabled) return 'stopped';
+  const today = pacificCalendarDateFromUtcMs(utcMs);
+  if (settings.pausedForDate === today) return 'paused_today';
+  return 'running';
+}
+
+export function parseLookAheadResetCronEnabled(
+  raw: string | undefined
+): boolean {
+  if (raw == null || raw === '') return true;
+  return raw !== 'false';
 }
 
 /**

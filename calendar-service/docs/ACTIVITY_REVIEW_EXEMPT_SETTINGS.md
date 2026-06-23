@@ -23,19 +23,20 @@ It complements [ACTIVITY_REVIEW_SNAPSHOT.md](./ACTIVITY_REVIEW_SNAPSHOT.md) (sna
 
 ## UI
 
-- **Settings** page, section “Review-exempt fields”: `ReviewExemptFieldsSettingsAdmin` in `calendar-ui` renders `ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS` as grouped checkboxes; labels use `getActivityFieldLabel` / `ACTIVITY_FIELD_LABELS` from shared.
+- **Settings** page, section “Review-exempt fields”: `ReviewExemptFieldsSettingsAdmin` in `calendar-ui` renders `ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS` (derived from `activity-form-sections.ts`) in a grouped combobox; labels use `getActivityFieldLabel` / `ACTIVITY_FIELD_LABELS` from shared.
 
 ## When you change the activity form or schema
 
-Adding, removing, or renaming a **top-level** `ActivityFormData` field that should be **available** in the admin “review-exempt” list (or that must be **code**-exempt) requires **manual** updates in shared—there is no codegen from the Zod form schema today. Follow the [Field-Add Playbook in ACTIVITY.md](./ACTIVITY.md#field-add-playbook-activity-form), including the review-exempt step.
+Adding, removing, or renaming a **top-level** `ActivityFormData` field that should be **available** in the admin “review-exempt” list (or that must be **code**-exempt) requires updates in shared—there is no codegen from the Zod form schema today. Follow the [Field-Add Playbook in ACTIVITY.md](./ACTIVITY.md#field-add-playbook-activity-form), including the section registry and review-exempt steps. See also [ACTIVITY_FORM_SECTIONS.md](../../packages/shared/docs/ACTIVITY_FORM_SECTIONS.md).
 
 **Files to touch (review-exempt-specific):**
 
-| File                                                             | What to do                                                                                                                                                                                                                                                                                                                                                                  |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/shared/src/review-exempt-settings.ts`                  | For a new **configurable** field: add the key to the correct entry in `ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS` (and ensure it is not in `ACTIVITY_REVIEW_EXEMPT_CODE_KEYS` unless it should be fixed in code). For a new **code-only** exempt field: add to `ACTIVITY_REVIEW_EXEMPT_CODE_KEYS` and **remove** it from the configurable section list if it was listed. |
-| `packages/shared/src/schemas/review-exempt-field-keys.schema.ts` | The allowlist is derived from the same configurable keys; ensure the `z.enum` input stays consistent after edits to `ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_KEYS` (rebuild shared).                                                                                                                                                                                            |
-| `packages/shared/src/utils/activity-review-diff.ts`              | If the field affects `getEmptyReviewBaseline` or comparison rules, follow the main playbook.                                                                                                                                                                                                                                                                                |
+| File                                                             | What to do                                                                                                                                                              |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/shared/src/activity-form-sections.ts`                  | Add or move the field under the correct section. This drives admin UI grouping and clone modal sections.                                                                |
+| `packages/shared/src/review-exempt-settings.ts`                  | For a new **code-only** exempt field: add to `ACTIVITY_REVIEW_EXEMPT_CODE_KEYS`. Configurable keys are derived from the section registry (filtered by code-exempt set). |
+| `packages/shared/src/schemas/review-exempt-field-keys.schema.ts` | The allowlist is derived from the same configurable keys; rebuild `@corpcal/shared` after registry changes.                                                             |
+| `packages/shared/src/utils/activity-review-diff.ts`              | If the field affects `getEmptyReviewBaseline` or comparison rules, follow the main playbook.                                                                            |
 
 **Deployment:** no extra migration for the setting row beyond seed; if you add new allowed keys, existing DB values remain valid; unknown keys in stored JSON are stripped on read/save.
 
