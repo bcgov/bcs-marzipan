@@ -539,6 +539,38 @@ describe('UsersService', () => {
     });
   });
 
+  describe('getActivityCountsForUsers', () => {
+    it('should return empty array for empty userIds', async () => {
+      const result = await service.getActivityCountsForUsers([]);
+
+      expect(result).toEqual([]);
+      expect(mockDatabaseService.db.select).not.toHaveBeenCalled();
+    });
+
+    it('should return counts per requested user and fill missing with zero', async () => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([{ id: 99 }], 'limit'))
+        .mockReturnValueOnce(
+          createChain(
+            [
+              { userId: 1, activityCount: 2 },
+              { userId: 3, activityCount: 5 },
+            ],
+            'groupBy'
+          )
+        );
+
+      const result = await service.getActivityCountsForUsers([1, 2, 3, 3]);
+
+      expect(result).toEqual([
+        { userId: 1, activityCount: 2 },
+        { userId: 2, activityCount: 0 },
+        { userId: 3, activityCount: 5 },
+      ]);
+    });
+  });
+
   describe('transferActivities', () => {
     it('should throw BadRequestException when source and target are same', async () => {
       await expect(

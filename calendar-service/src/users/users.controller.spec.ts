@@ -35,6 +35,7 @@ describe('UsersController', () => {
     update: vi.fn(),
     create: vi.fn(),
     getActivitiesForUser: vi.fn(),
+    getActivityCountsForUsers: vi.fn(),
     addUserToTeam: vi.fn(),
     removeUserFromTeam: vi.fn(),
     updateUserTeamRole: vi.fn(),
@@ -142,6 +143,26 @@ describe('UsersController', () => {
       expect(result).toEqual({ success: true, data: activities });
       expect(mockUsersService.getActivitiesForUser).toHaveBeenCalledWith(1);
       expect(mockUsersService.getActivitiesForUser).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getActivityCounts', () => {
+    it('should return activity counts for requested users', async () => {
+      const counts = [
+        { userId: 1, activityCount: 3 },
+        { userId: 2, activityCount: 0 },
+      ];
+      mockUsersService.getActivityCountsForUsers.mockResolvedValue(counts);
+
+      const result = await controller.getActivityCounts('1,2');
+
+      expect(result).toEqual({ success: true, data: counts });
+      expect(mockUsersService.getActivityCountsForUsers).toHaveBeenCalledWith([
+        1, 2,
+      ]);
+      expect(mockUsersService.getActivityCountsForUsers).toHaveBeenCalledTimes(
+        1
+      );
     });
   });
 

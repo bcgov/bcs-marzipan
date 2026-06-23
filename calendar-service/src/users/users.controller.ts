@@ -50,6 +50,7 @@ import {
   UpdateUserSettingsDto,
   UpdateUserTeamRoleDto,
   UserActivitiesResponseWrapperDto,
+  UserActivityCountsResponseWrapperDto,
   UserDetailResponseWrapperDto,
   UserHistoryResponseWrapperDto,
   UserListResponseWrapperDto,
@@ -126,6 +127,31 @@ export class UsersController {
     @CurrentUser() currentUser: AuthUser
   ): Promise<{ success: boolean; data: UserDetail }> {
     const data = await this.usersService.create(dto, currentUser.id);
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Get activity counts associated with users',
+    description:
+      'Returns activity counts for one or more users where they are a comms lead or contact. Excludes deleted activities.',
+  })
+  @ApiQuery({
+    name: 'userIds',
+    required: true,
+    description: 'Comma-separated user IDs',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of per-user activity counts',
+    type: UserActivityCountsResponseWrapperDto,
+  })
+  @Get('activity-counts')
+  async getActivityCounts(@Query('userIds') userIdsParam: string): Promise<{
+    success: boolean;
+    data: { userId: number; activityCount: number }[];
+  }> {
+    const userIds = parseCommaSeparatedIds(userIdsParam);
+    const data = await this.usersService.getActivityCountsForUsers(userIds);
     return { success: true, data };
   }
 

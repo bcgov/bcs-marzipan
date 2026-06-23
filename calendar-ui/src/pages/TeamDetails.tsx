@@ -1,11 +1,11 @@
-import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Edit, Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import { fetchTeamById } from '@/api/teamsApi';
-import { fetchUserActivities } from '@/api/usersApi';
+import { fetchUserActivityCounts } from '@/api/usersApi';
 import { PageContainer } from '@/components/layout';
 import AddTeamMemberModal from '@/components/teams/AddTeamMemberModal';
 import RemoveTeamMemberModal from '@/components/teams/RemoveTeamMemberModal';
@@ -32,30 +32,23 @@ export function TeamDetails() {
   });
 
   const teamMembers = team?.members ?? [];
-  const memberActivityQueries = useQueries({
-    queries: teamMembers.map((member) => ({
-      queryKey: ['users', member.userId, 'activities', 'count'],
-      queryFn: () => fetchUserActivities(member.userId),
-      enabled: !Number.isNaN(id),
-      staleTime: 30_000,
-    })),
+  const memberIds = teamMembers.map((member) => member.userId);
+  const {
+    data: memberActivityCounts,
+    isLoading: isMemberActivityCountsLoading,
+    isFetching: isMemberActivityCountsFetching,
+    isError: isMemberActivityCountsError,
+  } = useQuery({
+    queryKey: ['users', 'activity-counts', memberIds],
+    queryFn: async () => {
+      const rows = await fetchUserActivityCounts(memberIds);
+      return new Map<number, number>(
+        rows.map((row) => [row.userId, Number(row.activityCount) || 0])
+      );
+    },
+    enabled: !Number.isNaN(id) && memberIds.length > 0,
+    staleTime: 30_000,
   });
-  const memberActivityCounts = useMemo(() => {
-    const counts = new Map<number, number | null>();
-    teamMembers.forEach((member, index) => {
-      const query = memberActivityQueries[index];
-      if (query?.isError) {
-        counts.set(member.userId, -1);
-        return;
-      }
-      if (query?.isLoading || query?.isFetching) {
-        counts.set(member.userId, null);
-        return;
-      }
-      counts.set(member.userId, query?.data?.length ?? 0);
-    });
-    return counts;
-  }, [memberActivityQueries, teamMembers]);
 
   const queryClient = useQueryClient();
   const [showEditTeam, setShowEditTeam] = useState(false);
@@ -216,12 +209,16 @@ export function TeamDetails() {
                             </td>
                             <td className="px-3 py-2 text-slate-500">
                               {(() => {
-                                const count = memberActivityCounts.get(
-                                  m.userId
+                                if (
+                                  isMemberActivityCountsLoading ||
+                                  isMemberActivityCountsFetching
+                                ) {
+                                  return '...';
+                                }
+                                if (isMemberActivityCountsError) return '-';
+                                return String(
+                                  memberActivityCounts?.get(m.userId) ?? 0
                                 );
-                                if (count == null) return '...';
-                                if (count < 0) return '-';
-                                return String(count);
                               })()}
                             </td>
                             <td className="px-3 py-2">

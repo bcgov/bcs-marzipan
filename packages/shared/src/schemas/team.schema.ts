@@ -8,7 +8,7 @@ import { z } from 'zod';
  * See history.schema.ts for TeamHistoryEntry.
  */
 
-/** Matches `teams.abbreviation` in DB: trim, strip spaces, 1–5 chars. */
+/** Matches `teams.abbreviation` in DB: trim, strip spaces, 1–6 chars. */
 const teamAbbreviationValueSchema = z
   .string()
   .transform((s) => s.trim().replace(/\s+/g, ''))
@@ -16,7 +16,7 @@ const teamAbbreviationValueSchema = z
     z
       .string()
       .min(1, 'Abbreviation is required')
-      .max(5, 'Abbreviation must be at most 5 characters')
+      .max(6, 'Abbreviation must be at most 6 characters')
   );
 
 // ============================================
@@ -31,7 +31,7 @@ export const teamListItemSchema = z.object({
   name: z.string(),
   displayName: z.string().nullable(),
   /** Short code for activity displayId when the team has no lead ministry */
-  abbreviation: z.string().min(1).max(5),
+  abbreviation: z.string().min(1).max(6),
   description: z.string().nullable(),
   sortOrder: z.number().int(),
   isActive: z.boolean(),

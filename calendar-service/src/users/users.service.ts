@@ -671,6 +671,52 @@ export class UsersService {
     }));
   }
 
+  /**
+   * Returns per-user activity counts for the supplied user IDs.
+   * Excludes deleted activities to match getActivitiesForUser behavior.
+   */
+  async getActivityCountsForUsers(
+    userIds: number[]
+  ): Promise<{ userId: number; activityCount: number }[]> {
+    const uniqueUserIds = Array.from(
+      new Set(userIds.filter((id) => Number.isInteger(id) && id > 0))
+    );
+    if (uniqueUserIds.length === 0) return [];
+
+    const [deletedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
+      .limit(1);
+
+    const conditions = [inArray(activityCommsContacts.userId, uniqueUserIds)];
+    if (deletedStatus?.id != null) {
+      conditions.push(ne(activities.activityStatusId, deletedStatus.id));
+    }
+
+    const rows = await this.databaseService.db
+      .select({
+        userId: activityCommsContacts.userId,
+        activityCount: sql<number>`cast(count(distinct ${activityCommsContacts.activityId}) as int)`,
+      })
+      .from(activityCommsContacts)
+      .innerJoin(
+        activities,
+        eq(activityCommsContacts.activityId, activities.id)
+      )
+      .where(and(...conditions))
+      .groupBy(activityCommsContacts.userId);
+
+    const countByUserId = new Map<number, number>(
+      rows.map((row) => [row.userId, Number(row.activityCount) || 0])
+    );
+
+    return uniqueUserIds.map((userId) => ({
+      userId,
+      activityCount: countByUserId.get(userId) ?? 0,
+    }));
+  }
+
   async transferActivities(
     sourceUserId: number,
     dto: TransferActivitiesBody,

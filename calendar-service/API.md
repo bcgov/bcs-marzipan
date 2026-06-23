@@ -288,6 +288,40 @@ Permanently deletes an activity from the database.
 
 ---
 
+## Users Endpoints
+
+### Get Activity Counts by User
+
+**GET** `/users/activity-counts`
+
+Returns per-user activity counts for one or more users where they are a comms lead or contact.
+Deleted activities are excluded.
+
+This endpoint is intended for team/user-management views that only need counts, to avoid N+1 calls to `/users/:id/activities` and avoid downloading full activity lists.
+
+**Query Parameters:**
+
+| Parameter | Type                     | Description                                         |
+| --------- | ------------------------ | --------------------------------------------------- |
+| `userIds` | comma-separated integers | Required list of user IDs (e.g. `userIds=12,34,56`) |
+
+**Example:** `GET /users/activity-counts?userIds=12,34,56`
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": [
+    { "userId": 12, "activityCount": 8 },
+    { "userId": 34, "activityCount": 0 },
+    { "userId": 56, "activityCount": 3 }
+  ]
+}
+```
+
+---
+
 ## Lookups Endpoints
 
 Reference data for dropdowns and filters. All responses follow the format: `{ "success": true, "data": [...] }`
