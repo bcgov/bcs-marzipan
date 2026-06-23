@@ -387,7 +387,7 @@ describe('UsersService', () => {
         service.addUserToTeam(1, createMockAddUserToTeamBody({ teamId: 2 }), 1)
       ).resolves.toBeUndefined();
       expect(mockDatabaseService.db.update).toHaveBeenCalled();
-      expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
+      expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(1);
     });
   });
 
