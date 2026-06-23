@@ -418,7 +418,7 @@ describe('LookupsController', () => {
       await expect(
         controller.updatePermissionVisibility(
           '10',
-          { showInUserManagement: true } as any,
+          { showInUserManagement: true },
           mockUser
         )
       ).rejects.toThrow(

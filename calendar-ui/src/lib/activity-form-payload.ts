@@ -9,7 +9,12 @@ function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
   return arr;
 }
 
-export type CreatePayloadOptions = {
+export type ActivityFormPayloadOptions = {
+  /** Lookup ID for translation_required_statuses.name === 'required'. */
+  requiredTranslationStatusId?: number;
+};
+
+export type CreatePayloadOptions = ActivityFormPayloadOptions & {
   markAsReviewed?: boolean;
 };
 
@@ -26,6 +31,7 @@ function buildPayloadFromPrepared(
     endDate: prepared.endDate ?? null,
     startTime: prepared.startTime ?? null,
     endTime: prepared.endTime ?? null,
+    lookAheadSection: prepared.lookAheadSection ?? null,
     categoryIds: toUndefinedIfEmpty(preparedFormValues.categoryIds),
     tagIds: toUndefinedIfEmpty(preparedFormValues.tagIds),
     commsMaterialIds: toUndefinedIfEmpty(preparedFormValues.commsMaterialIds),
@@ -51,17 +57,27 @@ export function buildPayloadForCreate(
   formValues: ActivityFormData,
   options?: CreatePayloadOptions
 ): Record<string, unknown> {
+  const { requiredTranslationStatusId, ...createOptions } = options ?? {};
   return buildPayloadFromPrepared(
-    prepareActivityFormDataForSubmit(data),
-    prepareActivityFormDataForSubmit(formValues),
-    options
+    prepareForSubmit(data, requiredTranslationStatusId),
+    prepareForSubmit(formValues, requiredTranslationStatusId),
+    createOptions
   );
 }
 
-export type UpdatePayloadOptions = {
+export type UpdatePayloadOptions = ActivityFormPayloadOptions & {
   markAsReviewed?: boolean;
   markAsCompleted?: boolean;
 };
+
+function prepareForSubmit(
+  data: ActivityFormData,
+  requiredTranslationStatusId: number | undefined
+): ActivityFormData {
+  return prepareActivityFormDataForSubmit(data, {
+    requiredTranslationStatusId,
+  });
+}
 
 /**
  * Builds the request payload for updating an activity from form values.
@@ -73,12 +89,16 @@ export function buildPayloadForUpdate(
   formValues: ActivityFormData,
   options?: UpdatePayloadOptions
 ): Record<string, unknown> {
-  const prepared = prepareActivityFormDataForSubmit(data);
-  const preparedFormValues = prepareActivityFormDataForSubmit(formValues);
+  const { requiredTranslationStatusId, markAsReviewed, markAsCompleted } =
+    options ?? {};
+  const prepared = prepareForSubmit(data, requiredTranslationStatusId);
+  const preparedFormValues = prepareForSubmit(
+    formValues,
+    requiredTranslationStatusId
+  );
   const normalizedReportSettings = normalizeReportSettings(
     preparedFormValues.reportSettings
   );
-  const { markAsReviewed, markAsCompleted } = options ?? {};
   const payload: Record<string, unknown> = {
     ...buildPayloadFromPrepared(prepared, preparedFormValues),
     reportSettings: normalizedReportSettings,

@@ -24,6 +24,18 @@ export const lookAheadStatusOptions = LOOK_AHEAD_STATUS.map((value) => ({
   label: getLookAheadStatusLabel(value),
 }));
 
+/** RadioGroup value when no look-ahead section is selected (clears DB column). */
+export const LOOK_AHEAD_SECTION_NONE_RADIO_VALUE = '';
+
+/** Clear option label for look-ahead section radios (no LA/Exec bucket). */
+export const LOOK_AHEAD_SECTION_NONE_LABEL = 'None';
+
+/** First option for look-ahead section radios — excludes activity from LA/Exec buckets. */
+export const lookAheadSectionNoneOption = {
+  value: LOOK_AHEAD_SECTION_NONE_RADIO_VALUE,
+  label: LOOK_AHEAD_SECTION_NONE_LABEL,
+} as const;
+
 /**
  * Look Ahead Section options now live in `useLookAheadSectionRows` (config-driven).
  * Use that hook (and `rowsToSectionOptions` / `getLookAheadSectionLabelFromRows`)

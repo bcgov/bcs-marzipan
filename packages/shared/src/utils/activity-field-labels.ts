@@ -68,7 +68,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   commsMaterialIds: 'Comms materials',
   translationLanguageIds: 'Translation languages',
   sharedWithTeamIds: 'Share with',
-  visibility: 'Visibility',
+  visibility: 'Restrict access',
   notes: 'Notes',
   strategy: 'Strategy',
   isIssue: 'Issue',
