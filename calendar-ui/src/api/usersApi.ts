@@ -130,6 +130,23 @@ export async function fetchUserActivities(
   return response.data.data;
 }
 
+export interface UserActivityCountItem {
+  userId: number;
+  activityCount: number;
+}
+
+export async function fetchUserActivityCounts(
+  userIds: number[]
+): Promise<UserActivityCountItem[]> {
+  const unique = [...new Set(userIds)];
+  if (unique.length === 0) return [];
+  const response = await api.get<{
+    success: boolean;
+    data: UserActivityCountItem[];
+  }>('/users/activity-counts', { params: { userIds: unique.join(',') } });
+  return response.data.data;
+}
+
 export async function transferActivities(
   sourceUserId: number,
   body: TransferActivitiesBody

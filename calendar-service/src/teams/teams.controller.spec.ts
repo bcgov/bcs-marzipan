@@ -91,12 +91,23 @@ describe('TeamsController', () => {
 
   describe('findOne', () => {
     it('should return team detail by ID', async () => {
-      const team = createMockTeamDetail({ id: 5 });
+      const team = createMockTeamDetail({
+        id: 5,
+        members: [
+          {
+            userId: 10,
+            userName: 'User Ten',
+            role: 'owner',
+            adEmail: 'user10@example.com',
+          },
+        ],
+      });
       mockTeamsService.findOne.mockResolvedValue(team);
 
       const result = await controller.findOne(5);
 
       expect(result).toEqual({ success: true, data: team });
+      expect(result.data?.members[0]?.adEmail).toBe('user10@example.com');
       expect(mockTeamsService.findOne).toHaveBeenCalledWith(5);
       expect(mockTeamsService.findOne).toHaveBeenCalledTimes(1);
     });

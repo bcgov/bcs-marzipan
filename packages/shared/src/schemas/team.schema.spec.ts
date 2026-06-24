@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createTeamBodySchema,
   teamListItemSchema,
+  teamMemberSchema,
   updateTeamBodySchema,
 } from './team.schema';
 
@@ -45,6 +46,37 @@ describe('teamListItemSchema', () => {
     expect(result.displayName).toBeNull();
     expect(result.description).toBeNull();
     expect(result.ministryId).toBeNull();
+  });
+});
+
+describe('teamMemberSchema', () => {
+  it('accepts member with email', () => {
+    const result = teamMemberSchema.parse({
+      userId: 1,
+      userName: 'User One',
+      role: 'owner',
+      adEmail: 'user@example.com',
+    });
+    expect(result.adEmail).toBe('user@example.com');
+  });
+
+  it('accepts member with null email', () => {
+    const result = teamMemberSchema.parse({
+      userId: 2,
+      userName: 'User Two',
+      role: 'member',
+      adEmail: null,
+    });
+    expect(result.adEmail).toBeNull();
+  });
+
+  it('rejects member missing adEmail', () => {
+    const result = teamMemberSchema.safeParse({
+      userId: 3,
+      userName: 'User Three',
+      role: 'member',
+    });
+    expect(result.success).toBe(false);
   });
 });
 

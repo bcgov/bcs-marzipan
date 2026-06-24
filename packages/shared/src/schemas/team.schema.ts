@@ -50,6 +50,7 @@ export const teamMemberSchema = z.object({
   userId: z.number().int(),
   userName: z.string(),
   role: z.string(),
+  adEmail: z.string().nullable(),
 });
 
 export type TeamMember = z.infer<typeof teamMemberSchema>;

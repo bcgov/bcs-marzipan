@@ -133,8 +133,8 @@ export const createMockTeamDetail = (
 ): TeamDetail => ({
   ...createMockTeamListItem(),
   members: [
-    { userId: 1, userName: 'User One', role: 'owner' },
-    { userId: 2, userName: 'User Two', role: 'member' },
+    { userId: 1, userName: 'User One', role: 'owner', adEmail: null },
+    { userId: 2, userName: 'User Two', role: 'member', adEmail: null },
   ],
   ...overrides,
 });

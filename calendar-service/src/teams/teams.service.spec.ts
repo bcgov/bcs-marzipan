@@ -226,7 +226,12 @@ describe('TeamsService', () => {
       };
       const memberRows = [{ userId: 10, role: 'owner' }];
       const userRows = [
-        { id: 10, adDisplayName: 'User Ten', adUsername: 'user10' },
+        {
+          id: 10,
+          adDisplayName: 'User Ten',
+          adUsername: 'user10',
+          adEmail: 'user10@example.com',
+        },
       ];
       const ministryNameRows = [{ displayName: 'Premier' }];
 
@@ -252,6 +257,7 @@ describe('TeamsService', () => {
         userId: 10,
         userName: 'User Ten',
         role: 'owner',
+        adEmail: 'user10@example.com',
       });
     });
   });

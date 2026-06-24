@@ -288,6 +288,47 @@ Permanently deletes an activity from the database.
 
 ---
 
+## Teams Endpoints
+
+### Get Team By ID
+
+**GET** `/teams/:id`
+
+Returns a team detail object including active members.
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 5,
+    "name": "Team One",
+    "displayName": "Team One",
+    "abbreviation": "T1",
+    "description": null,
+    "sortOrder": 0,
+    "isActive": true,
+    "roleId": null,
+    "memberCount": 1,
+    "ministryId": 1,
+    "ministryName": "Premier",
+    "members": [
+      {
+        "userId": 10,
+        "userName": "User Ten",
+        "role": "owner",
+        "adEmail": "user10@example.com"
+      }
+    ]
+  }
+}
+```
+
+**Member fields:** `adEmail` is nullable and may be `null` when no email is present.
+
+---
+
 ## Lookups Endpoints
 
 Reference data for dropdowns and filters. All responses follow the format: `{ "success": true, "data": [...] }`

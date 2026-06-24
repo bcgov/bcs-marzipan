@@ -316,16 +316,12 @@ export class TeamsService {
               id: users.id,
               adDisplayName: users.adDisplayName,
               adUsername: users.adUsername,
+              adEmail: users.adEmail,
             })
             .from(users)
             .where(inArray(users.id, userIds))
         : [];
-    const userMap = new Map(
-      userRows.map((u) => [
-        u.id,
-        u.adDisplayName || u.adUsername || `User ${u.id}`,
-      ])
-    );
+    const userMap = new Map(userRows.map((u) => [u.id, u]));
 
     let ministryName: string | null = null;
     if (t.ministryId != null) {
@@ -341,11 +337,15 @@ export class TeamsService {
       ...t,
       ministryName,
       memberCount: memberRows.length,
-      members: memberRows.map((m) => ({
-        userId: m.userId,
-        userName: userMap.get(m.userId) ?? `User ${m.userId}`,
-        role: m.role,
-      })),
+      members: memberRows.map((m) => {
+        const u = userMap.get(m.userId);
+        return {
+          userId: m.userId,
+          userName: u?.adDisplayName || u?.adUsername || `User ${m.userId}`,
+          role: m.role,
+          adEmail: u?.adEmail ?? null,
+        };
+      }),
     };
   }
 
