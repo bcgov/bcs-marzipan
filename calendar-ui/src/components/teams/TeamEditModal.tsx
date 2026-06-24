@@ -138,7 +138,6 @@ export function TeamEditModal({
     const missingFields: string[] = [];
     if (!trimmedDisplay) missingFields.push(isCreate ? 'Name' : 'Display');
     if (!trimmedAbbrev) missingFields.push('Abbreviation');
-    if (!ministryId) missingFields.push('Ministry');
 
     if (missingFields.length > 0) {
       const detail = `Required fields missing: ${missingFields.join(', ')}`;
@@ -177,8 +176,7 @@ export function TeamEditModal({
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
   const displayValid = displayName.trim().length > 0;
   const abbreviationValid = abbreviation.trim().replace(/\s+/g, '').length > 0;
-  const ministryValid = Boolean(ministryId);
-  const isFormValid = displayValid && abbreviationValid && ministryValid;
+  const isFormValid = displayValid && abbreviationValid;
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
 
   return (
@@ -240,15 +238,7 @@ export function TeamEditModal({
               />
             </div>
             <div className="space-y-2">
-              <Label>
-                Ministry{' '}
-                <span
-                  className="text-required-field-indicator font-semibold"
-                  aria-hidden
-                >
-                  *
-                </span>
-              </Label>
+              <Label>Ministry (optional)</Label>
               <Combobox
                 items={ministryOptions}
                 value={selectedMinistry}

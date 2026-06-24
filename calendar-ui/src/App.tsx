@@ -168,7 +168,7 @@ function App() {
                 <Route
                   path="teams/:id"
                   element={
-                    <ProtectedRoute requiredPermission={PERMISSIONS.TEAMS.VIEW}>
+                    <ProtectedRoute requiredPermission={PERMISSIONS.USERS.VIEW}>
                       <TeamDetails />
                     </ProtectedRoute>
                   }
