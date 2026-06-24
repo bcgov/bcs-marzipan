@@ -362,7 +362,7 @@ describe('ReportsPage placeholder data handling', () => {
 
   it('shows large-range warnings from current filters while fetch is in flight', async () => {
     mockFetchReportData.mockResolvedValueOnce(
-      makeReportData('Initial activity', {
+      makeReportData('Initial activity', 'custom', 'Custom Report', {
         largeResultWarning: false,
         wasClamped: false,
       })
