@@ -197,7 +197,13 @@ export function UserCreateModal({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel showDirtyIndicator={false}>
-                    Email <span className="text-destructive">*</span>
+                    Email{' '}
+                    <span
+                      className="text-required-field-indicator font-semibold"
+                      aria-hidden
+                    >
+                      *
+                    </span>
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -235,7 +241,13 @@ export function UserCreateModal({
                 return (
                   <FormItem>
                     <FormLabel showDirtyIndicator={false}>
-                      Role <span className="text-destructive">*</span>
+                      Role{' '}
+                      <span
+                        className="text-required-field-indicator font-semibold"
+                        aria-hidden
+                      >
+                        *
+                      </span>
                     </FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl data-field={field.name}>

@@ -71,6 +71,13 @@
       "when": 1781507388130,
       "tag": "0009_20260616_look_ahead_restore",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782172800000,
+      "tag": "0010_20260623_teams_abbreviation_varchar6",
+      "breakpoints": true
     }
   ]
 }

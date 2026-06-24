@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
@@ -284,6 +288,7 @@ describe('TeamsService', () => {
       const ministryNameRows = [{ displayName: 'Ministry One' }];
       mockDatabaseService.db.select = vi
         .fn()
+        .mockReturnValueOnce(createChain([], 'limit'))
         .mockReturnValueOnce(createChain([insertedTeam], 'limit'))
         .mockReturnValueOnce(createChain([], 'where'))
         .mockReturnValueOnce(createChain(ministryNameRows, 'limit'));
@@ -299,6 +304,17 @@ describe('TeamsService', () => {
       expect(insertValues).toHaveBeenCalledWith(
         expect.objectContaining({ ministryId: 1, abbreviation: 'NEW' })
       );
+    });
+
+    it('should throw ConflictException when a team with the same name exists', async () => {
+      const dto = createMockCreateTeamBody({ name: 'Existing Team' });
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([{ id: 7 }], 'limit'));
+
+      await expect(service.create(dto, 1)).rejects.toThrow(ConflictException);
+      expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
     });
   });
 
@@ -332,6 +348,7 @@ describe('TeamsService', () => {
         .fn()
         .mockReturnValueOnce(createChain([teamRow], 'limit'))
         .mockReturnValueOnce(createChain(memberRows, 'where'))
+        .mockReturnValueOnce(createChain([], 'limit'))
         .mockReturnValueOnce(createChain([updatedTeamRow], 'limit'))
         .mockReturnValueOnce(createChain(memberRows, 'where'));
 
@@ -353,6 +370,37 @@ describe('TeamsService', () => {
       ).not.toHaveBeenCalled();
     });
 
+    it('should throw ConflictException when renaming to an existing team name', async () => {
+      const teamRow = {
+        id: 1,
+        name: 'Old Name',
+        displayName: 'Old',
+        abbreviation: 'OLD',
+        description: null,
+        sortOrder: 0,
+        isActive: true,
+        roleId: null,
+        ministryId: null,
+      };
+      const memberRows: { userId: number; role: string }[] = [];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([teamRow], 'limit'))
+        .mockReturnValueOnce(createChain(memberRows, 'where'))
+        .mockReturnValueOnce(createChain([{ id: 2 }], 'limit'));
+
+      mockDatabaseService.db.update = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+
+      await expect(
+        service.update(1, createMockUpdateTeamBody({ name: 'Taken Name' }), 1)
+      ).rejects.toThrow(ConflictException);
+      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+    });
+
     it('cascades displayId refresh when the team abbreviation changes', async () => {
       const teamRow = {
         id: 1,
@@ -372,6 +420,7 @@ describe('TeamsService', () => {
         .fn()
         .mockReturnValueOnce(createChain([teamRow], 'limit'))
         .mockReturnValueOnce(createChain(memberRows, 'where'))
+        .mockReturnValueOnce(createChain([], 'limit'))
         .mockReturnValueOnce(createChain([updatedTeamRow], 'limit'))
         .mockReturnValueOnce(createChain(memberRows, 'where'));
 
