@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -34,6 +35,7 @@ import { useActivityStatuses, useReports } from '@/hooks/useLookups';
 import { useReportDataFreshness } from '@/hooks/useReportDataFreshness';
 import { useReportsSavedFilters } from '@/hooks/useReportsSavedFilters';
 import { useReportsTablePreferences } from '@/hooks/useReportsTablePreferences';
+import analytics from '@/lib/analytics';
 import {
   loadCustomReportConfig,
   saveCustomReportConfig,
@@ -210,6 +212,12 @@ export function ReportsPage() {
   const [previewSheetWidthMode, setPreviewSheetWidthMode] =
     useState<ReportPreviewSheetWidthMode>(readStoredPreviewSheetWidth);
   const reportPreviewScrollRef = useRef<HTMLDivElement | null>(null);
+  const reportLoadStartedAtRef = useRef<number | null>(null);
+  const prevFilterStateSignatureRef = useRef<string>('');
+  const lastSearchInteractionAtRef = useRef<number | null>(null);
+  const lastNoResultsEventKeyRef = useRef<string>('');
+  const lastResultsEventKeyRef = useRef<string>('');
+  const [searchInteractionVersion, setSearchInteractionVersion] = useState(0);
 
   const initialTabAppliedRef = useRef(false);
 
@@ -259,6 +267,22 @@ export function ReportsPage() {
     [displayData, isWrongReport]
   );
 
+  const activeFilterCount = useMemo(
+    () =>
+      activeReport
+        ? analytics.countActiveReportFilterCriteria(
+            preferences.filterState,
+            activeReport
+          )
+        : 0,
+    [activeReport, preferences.filterState]
+  );
+
+  const filterStateSignature = useMemo(
+    () => JSON.stringify(preferences.filterState),
+    [preferences.filterState]
+  );
+
   const resolvedReportDateRange = useMemo(() => {
     if (!activeReport) return null;
     return resolveReportQueryDateRange(activeReport, preferences.filterState);
@@ -291,6 +315,158 @@ export function ReportsPage() {
       /* private mode */
     }
   }, [previewSheetWidthMode]);
+
+  useEffect(() => {
+    if (!activeReport) {
+      prevFilterStateSignatureRef.current = '';
+      reportLoadStartedAtRef.current = null;
+      lastNoResultsEventKeyRef.current = '';
+      lastResultsEventKeyRef.current = '';
+      return;
+    }
+    reportLoadStartedAtRef.current = performance.now();
+  }, [activeReport, reportFetchParamsKey]);
+
+  useEffect(() => {
+    if (!activeReport) return;
+
+    const previousSignature = prevFilterStateSignatureRef.current;
+    prevFilterStateSignatureRef.current = filterStateSignature;
+
+    if (
+      previousSignature === '' ||
+      previousSignature === filterStateSignature
+    ) {
+      return;
+    }
+
+    const filterKeysUsed = analytics.getActiveReportFilterKeys(
+      preferences.filterState,
+      activeReport
+    );
+
+    if (filterKeysUsed.length === 0) {
+      return;
+    }
+
+    analytics.trackReportFiltersApplied({
+      report_name: activeReport,
+      filter_keys_used: filterKeysUsed,
+      active_filter_count: activeFilterCount,
+      category_count: preferences.filterState.categoryNames.length,
+      status_count: preferences.filterState.activityStatusIds.length,
+      tag_count: preferences.filterState.tagIds.length,
+      ministry_count: preferences.filterState.leadMinistryIds.length,
+      org_count: preferences.filterState.leadOrgIds.length,
+    });
+  }, [
+    activeFilterCount,
+    activeReport,
+    filterStateSignature,
+    preferences.filterState,
+  ]);
+
+  useEffect(() => {
+    if (!activeReport || !isFresh || isWrongReport || !displayData) {
+      return;
+    }
+
+    const eventKey = JSON.stringify([
+      activeReport,
+      reportFetchParamsKey,
+      preferences.searchKeyword.trim(),
+      displayActivityCount,
+      searchInteractionVersion,
+    ]);
+
+    if (eventKey === lastResultsEventKeyRef.current) {
+      return;
+    }
+
+    const startedAt =
+      lastSearchInteractionAtRef.current ?? reportLoadStartedAtRef.current;
+    const latencyMs =
+      startedAt == null
+        ? 0
+        : Math.max(0, Math.round(performance.now() - startedAt));
+    const filterKeysUsed = analytics.getActiveReportFilterKeys(
+      preferences.filterState,
+      activeReport
+    );
+
+    analytics.trackReportSearchResultsLoaded({
+      report_name: activeReport,
+      results_count: displayActivityCount,
+      latency_ms: latencyMs,
+      search_present: preferences.searchKeyword.trim().length > 0,
+      active_filter_count: activeFilterCount,
+    });
+
+    if (
+      displayActivityCount === 0 &&
+      eventKey !== lastNoResultsEventKeyRef.current
+    ) {
+      analytics.trackReportNoResultsShown({
+        report_name: activeReport,
+        active_filter_count: activeFilterCount,
+        search_present: preferences.searchKeyword.trim().length > 0,
+        date_range_active: filterKeysUsed.includes('dateRange'),
+        filter_keys_used: filterKeysUsed,
+      });
+      lastNoResultsEventKeyRef.current = eventKey;
+    }
+
+    if (displayActivityCount > 0) {
+      lastNoResultsEventKeyRef.current = '';
+    }
+
+    lastResultsEventKeyRef.current = eventKey;
+    reportLoadStartedAtRef.current = null;
+    lastSearchInteractionAtRef.current = null;
+  }, [
+    activeFilterCount,
+    activeReport,
+    displayActivityCount,
+    displayData,
+    isFresh,
+    isWrongReport,
+    preferences.filterState,
+    preferences.searchKeyword,
+    reportFetchParamsKey,
+    searchInteractionVersion,
+  ]);
+
+  const markSearchInteraction = useCallback(() => {
+    lastSearchInteractionAtRef.current = performance.now();
+    setSearchInteractionVersion((current) => current + 1);
+  }, []);
+
+  const handleReportPreviewClickCapture = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!activeReport) return;
+      const target = event.target as HTMLElement | null;
+      const link = target?.closest('a[href*="/activity/"]');
+      if (!(link instanceof HTMLAnchorElement)) return;
+
+      const links = Array.from(
+        event.currentTarget.querySelectorAll<HTMLAnchorElement>(
+          'a[href*="/activity/"]'
+        )
+      );
+      const positionInResults =
+        links.findIndex((candidate) => candidate === link) + 1;
+
+      analytics.trackReportResultOpened({
+        report_name: activeReport,
+        item_type: 'activity',
+        position_in_results: positionInResults > 0 ? positionInResults : 1,
+        results_count: displayActivityCount,
+        open_method: 'link',
+        active_filter_count: activeFilterCount,
+      });
+    },
+    [activeFilterCount, activeReport, displayActivityCount]
+  );
 
   const handleTabChange = (reportName: string) => {
     setActiveReport(reportName);
@@ -429,6 +605,8 @@ export function ReportsPage() {
               reportName={activeReport}
               preferences={preferences}
               setPreferences={setReportPreferences}
+              onSearchSubmitted={markSearchInteraction}
+              onSearchCleared={markSearchInteraction}
               savedFilters={savedFiltersState.savedFiltersHook}
               onApplySavedFilter={savedFiltersState.onApplySavedFilter}
               activeSavedFilterId={
@@ -527,7 +705,10 @@ export function ReportsPage() {
                       scrollClassName="flex flex-col"
                       className={reportPreviewScrollClassName}
                     >
-                      <div className="flex w-full flex-1 flex-col px-6 pt-0 pb-6">
+                      <div
+                        className="flex w-full flex-1 flex-col px-6 pt-0 pb-6"
+                        onClickCapture={handleReportPreviewClickCapture}
+                      >
                         <div
                           className={
                             previewSheetWidthMode === 'full'
