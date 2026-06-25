@@ -64,7 +64,6 @@ jobs:
           export TOOLS_NAMESPACE="${{ vars.TOOLS_NAMESPACE }}"
           export APP_VERSION="${{ vars.APP_VERSION }}"
           export GIT_BRANCH="${{ inputs.git-branch }}"
-          export GITHUB_ENV="${{ inputs.github-environment }}"
 
           oc kustomize openshift/build | envsubst > rendered-build.yaml
           oc apply -n "${{ vars.TOOLS_NAMESPACE }}" -f rendered-build.yaml
@@ -93,14 +92,17 @@ jobs:
           if  [ "${{ vars.NAMESPACE }}" == "" ] || [ "${{ vars.TOOLS_NAMESPACE }}" == "" ]; then
             echo "namespace is not set. aborting..."
             gh run cancel ${{ github.run_id }}
+            exit 1
           fi
           if [ "${{ inputs.github-environment }}" == "" ]; then
             echo "github environment is not set. aborting..."
             gh run cancel ${{ github.run_id }}
+            exit 1
           fi
           if [ "${{ inputs.openshift-environment }}" == "" ]; then
             echo "openshift environment is not set. aborting..."
             gh run cancel ${{ github.run_id }}
+            exit 1
           fi
 
           # Delete existing image tags if they exist
@@ -127,14 +129,17 @@ jobs:
           if  [ "${{ vars.NAMESPACE }}" == "" ]; then
             echo "namespace is not set. aborting..."
             gh run cancel ${{ github.run_id }}
+            exit 1
           fi
           if [ "${{ inputs.github-environment }}" == "" ]; then
             echo "github environment is not set. aborting..."
             gh run cancel ${{ github.run_id }}
+            exit 1
           fi
           if [ "${{ inputs.openshift-environment }}" == "" ]; then
             echo "openshift environment is not set. aborting..."
             gh run cancel ${{ github.run_id }}
+            exit 1
           fi
 
           echo "Deploying to ${{ inputs.openshift-environment }}"

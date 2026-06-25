@@ -8,7 +8,7 @@ on:
       git-branch:
         description: 'GitHub branch for deployment'
         required: true
-        type: string
+        type: choice
         default: develop
         options:
           - main
@@ -17,7 +17,7 @@ on:
         description: 'Rebuild Docker image'
         required: false
         type: boolean
-        default: 'true'
+        default: true
 
 jobs:
   deploy:
@@ -41,6 +41,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git-branch }}
 
       - name: Install oc CLI
         run: |
@@ -88,6 +90,6 @@ jobs:
           : "${JWT_SECRET:?JWT_SECRET must be set as a GitHub Actions secret before deploying}"
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${TEST_NAMESPACE}
-          oc kustomize openshift/deploy/overlays/test | envsubst | oc apply -f -
+          oc kustomize openshift/deploy/overlays/staging | envsubst | oc apply -f -
           oc rollout restart deployment/calendar-service
           oc rollout restart deployment/calendar-ui
