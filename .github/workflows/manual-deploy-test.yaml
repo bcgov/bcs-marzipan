@@ -1,0 +1,93 @@
+name: Deploy to OpenShift Silver Testing Environment
+
+permissions:
+  contents: read
+on:
+  workflow_dispatch:
+    inputs:
+      git-branch:
+        description: 'GitHub branch for deployment'
+        required: true
+        type: string
+        default: develop
+        options:
+          - main
+          - develop
+      rebuild-image:
+        description: 'Rebuild Docker image'
+        required: false
+        type: boolean
+        default: 'true'
+
+jobs:
+  deploy:
+    name: Deploy to OpenShift Silver Testing Environment
+    runs-on: ubuntu-latest
+    environment: test-silver
+    env:
+      OPENSHIFT_SERVER: ${{ secrets.OPENSHIFT_SERVER }}
+      OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
+      TOOLS_NAMESPACE: ${{ secrets.OPENSHIFT_TOOLS_NAMESPACE }}
+      TEST_NAMESPACE: ${{ secrets.OPENSHIFT_TEST_NAMESPACE }}
+      APP_VERSION: ${{ vars.APP_VERSION }}
+      AUTH_COOKIE_DOMAIN: ${{ vars.AUTH_COOKIE_DOMAIN }}
+      POST_LOGIN_REDIRECT_URL: ${{ vars.POST_LOGIN_REDIRECT_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_REDIRECT_URI: ${{ secrets.AZURE_REDIRECT_URI }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install oc CLI
+        run: |
+          curl -L https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz | tar xz
+          sudo mv oc /usr/local/bin/
+
+      - name: Install envsubst
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext-base
+
+      - name: Login to OpenShift
+        run: |
+          oc login \
+            --token=${OPENSHIFT_TOKEN} \
+            --server=${OPENSHIFT_SERVER} \
+            --insecure-skip-tls-verify=true
+
+      - name: Apply build resources in tools namespace
+        run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+          oc project ${TOOLS_NAMESPACE}
+          oc kustomize openshift/build | envsubst | oc apply -f -
+
+      - name: Start binary build (calendar-service)
+        run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+          oc start-build calendar-service-build \
+            --from-dir=. \
+            --follow \
+            --commit=$(git rev-parse HEAD)
+          oc tag ${TOOLS_NAMESPACE}/calendar-service:${APP_VERSION} ${TEST_NAMESPACE}/calendar-service:${APP_VERSION}
+
+      - name: Start binary build (calendar-ui)
+        run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+          oc start-build calendar-ui-build \
+            --from-dir=. \
+            --follow \
+            --commit=$(git rev-parse HEAD)
+          oc tag ${TOOLS_NAMESPACE}/calendar-ui:${APP_VERSION} ${TEST_NAMESPACE}/calendar-ui:${APP_VERSION}
+
+      - name: Deploy to Test environment
+        run: |
+          : "${JWT_SECRET:?JWT_SECRET must be set as a GitHub Actions secret before deploying}"
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+          oc project ${TEST_NAMESPACE}
+          oc kustomize openshift/deploy/overlays/test | envsubst | oc apply -f -
+          oc rollout restart deployment/calendar-service
+          oc rollout restart deployment/calendar-ui
