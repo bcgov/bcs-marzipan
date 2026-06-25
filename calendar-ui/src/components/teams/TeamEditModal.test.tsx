@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,7 +24,14 @@ vi.mock('@/api/teamsApi', () => ({
 }));
 
 vi.mock('@/api/lookupsApi', () => ({
-  fetchMinistries: vi.fn().mockResolvedValue([]),
+  fetchMinistries: vi.fn().mockResolvedValue([
+    {
+      id: 1,
+      name: 'Ministry 1',
+      displayName: 'Ministry 1',
+      abbreviation: 'M1',
+    },
+  ]),
 }));
 
 function renderModal() {
@@ -57,6 +64,17 @@ function renderEditModal(team: TeamListItem) {
       />
     </QueryClientProvider>
   );
+}
+
+/** Opens the ministry combobox and selects the only option. */
+async function selectMinistry(user: ReturnType<typeof userEvent.setup>) {
+  const input = screen.getByPlaceholderText(/select ministry/i);
+  await user.click(input);
+  await user.type(input, 'Ministry');
+  const option = await screen.findByText('Ministry 1', undefined, {
+    timeout: 5000,
+  });
+  await user.click(option);
 }
 
 const mockTeamListItem: TeamListItem = {
@@ -95,7 +113,13 @@ describe('TeamEditModal', () => {
 
       await user.type(screen.getByLabelText(/name \*/i), 'Test Team');
       await user.type(screen.getByLabelText(/^abbreviation \*/i), 'TT');
-      await user.click(screen.getByRole('button', { name: /create/i }));
+      await selectMinistry(user);
+
+      const createButton = screen.getByRole('button', { name: /create/i });
+      await waitFor(() => expect(createButton).toBeEnabled(), {
+        timeout: 5000,
+      });
+      fireEvent.submit(createButton.closest('form') as HTMLFormElement);
 
       await waitFor(() => {
         expect(mockToast.success).toHaveBeenCalledWith('Team created', {
@@ -113,7 +137,13 @@ describe('TeamEditModal', () => {
 
       await user.type(screen.getByLabelText(/name \*/i), 'Test Team');
       await user.type(screen.getByLabelText(/^abbreviation \*/i), 'TT');
-      await user.click(screen.getByRole('button', { name: /create/i }));
+      await selectMinistry(user);
+
+      const createButton = screen.getByRole('button', { name: /create/i });
+      await waitFor(() => expect(createButton).toBeEnabled(), {
+        timeout: 5000,
+      });
+      fireEvent.submit(createButton.closest('form') as HTMLFormElement);
 
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('Failed to create', {
@@ -125,7 +155,11 @@ describe('TeamEditModal', () => {
 
   describe('update success toast', () => {
     it('calls toast.success with id team-updated-{id} when update succeeds', async () => {
-      mockFetchTeamById.mockResolvedValue(mockTeamDetail);
+      mockFetchTeamById.mockResolvedValue({
+        ...mockTeamDetail,
+        ministryId: 1,
+        ministryName: 'Ministry 1',
+      });
       mockUpdateTeam.mockResolvedValue({
         ...mockTeamListItem,
         name: 'Updated',
@@ -140,7 +174,7 @@ describe('TeamEditModal', () => {
 
       await user.clear(screen.getByLabelText(/name \*/i));
       await user.type(screen.getByLabelText(/name \*/i), 'Updated Name');
-      await user.click(screen.getByRole('button', { name: /save/i }));
+      await user.click(screen.getByRole('button', { name: /update/i }));
 
       await waitFor(() => {
         expect(mockToast.success).toHaveBeenCalledWith('Team updated', {
@@ -152,7 +186,11 @@ describe('TeamEditModal', () => {
 
   describe('update error toast', () => {
     it('calls toast.error with id team-updated-{id} when update fails', async () => {
-      mockFetchTeamById.mockResolvedValue(mockTeamDetail);
+      mockFetchTeamById.mockResolvedValue({
+        ...mockTeamDetail,
+        ministryId: 1,
+        ministryName: 'Ministry 1',
+      });
       mockUpdateTeam.mockRejectedValue(new Error('Server error'));
       const user = userEvent.setup();
       renderEditModal(mockTeamListItem);
@@ -161,7 +199,7 @@ describe('TeamEditModal', () => {
         expect(screen.getByLabelText(/name \*/i)).toHaveValue('Existing Team');
       });
 
-      await user.click(screen.getByRole('button', { name: /save/i }));
+      await user.click(screen.getByRole('button', { name: /update/i }));
 
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('Server error', {

@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   forwardRef,
   Inject,
@@ -349,7 +350,36 @@ export class TeamsService {
     };
   }
 
+  /**
+   * Ensures no other team already uses the given name (case-insensitive).
+   * @param excludeId When updating, the id of the team being updated, so it
+   *   does not conflict with itself.
+   */
+  private async assertNameIsUnique(
+    name: string,
+    excludeId?: number
+  ): Promise<void> {
+    const normalizedName = name.trim().toLowerCase();
+    const [existing] = await this.databaseService.db
+      .select({ id: teams.id })
+      .from(teams)
+      .where(
+        excludeId != null
+          ? and(
+              sql`lower(${teams.name}) = ${normalizedName}`,
+              sql`${teams.id} <> ${excludeId}`
+            )
+          : sql`lower(${teams.name}) = ${normalizedName}`
+      )
+      .limit(1);
+
+    if (existing) {
+      throw new ConflictException('A team with this name already exists.');
+    }
+  }
+
   async create(dto: CreateTeamBody, createdBy: number): Promise<TeamDetail> {
+    await this.assertNameIsUnique(dto.name);
     const [inserted] = await this.databaseService.db
       .insert(teams)
       .values({
@@ -394,6 +424,10 @@ export class TeamsService {
   ): Promise<TeamDetail> {
     const existing = await this.findOne(id);
     if (!existing) throw new NotFoundException('Team not found');
+
+    if (dto.name !== undefined && dto.name !== existing.name) {
+      await this.assertNameIsUnique(dto.name, id);
+    }
 
     const updates: Partial<typeof teams.$inferInsert> = {};
     if (dto.name !== undefined) updates.name = dto.name;

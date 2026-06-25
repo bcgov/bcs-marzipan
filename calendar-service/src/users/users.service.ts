@@ -485,21 +485,28 @@ export class UsersService {
       .select()
       .from(userTeams)
       .where(
-        and(
-          eq(userTeams.userId, userId),
-          eq(userTeams.teamId, dto.teamId),
-          eq(userTeams.isActive, true)
-        )
+        and(eq(userTeams.userId, userId), eq(userTeams.teamId, dto.teamId))
       )
       .limit(1);
 
-    if (existing) throw new ConflictException('User is already in this team');
+    if (existing?.isActive) {
+      throw new ConflictException('User is already in this team');
+    }
 
-    await this.databaseService.db.insert(userTeams).values({
-      userId,
-      teamId: dto.teamId,
-      role: dto.role,
-    });
+    if (existing && !existing.isActive) {
+      await this.databaseService.db
+        .update(userTeams)
+        .set({ isActive: true, role: dto.role, timestamp: new Date() })
+        .where(
+          and(eq(userTeams.userId, userId), eq(userTeams.teamId, dto.teamId))
+        );
+    } else {
+      await this.databaseService.db.insert(userTeams).values({
+        userId,
+        teamId: dto.teamId,
+        role: dto.role,
+      });
+    }
 
     await this.recordUserHistory(
       userId,
@@ -661,6 +668,52 @@ export class UsersService {
       id: r.id,
       label: r.title ?? `Activity ${r.id}`,
       value: r.id,
+    }));
+  }
+
+  /**
+   * Returns per-user activity counts for the supplied user IDs.
+   * Excludes deleted activities to match getActivitiesForUser behavior.
+   */
+  async getActivityCountsForUsers(
+    userIds: number[]
+  ): Promise<{ userId: number; activityCount: number }[]> {
+    const uniqueUserIds = Array.from(
+      new Set(userIds.filter((id) => Number.isInteger(id) && id > 0))
+    );
+    if (uniqueUserIds.length === 0) return [];
+
+    const [deletedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
+      .limit(1);
+
+    const conditions = [inArray(activityCommsContacts.userId, uniqueUserIds)];
+    if (deletedStatus?.id != null) {
+      conditions.push(ne(activities.activityStatusId, deletedStatus.id));
+    }
+
+    const rows = await this.databaseService.db
+      .select({
+        userId: activityCommsContacts.userId,
+        activityCount: sql<number>`cast(count(distinct ${activityCommsContacts.activityId}) as int)`,
+      })
+      .from(activityCommsContacts)
+      .innerJoin(
+        activities,
+        eq(activityCommsContacts.activityId, activities.id)
+      )
+      .where(and(...conditions))
+      .groupBy(activityCommsContacts.userId);
+
+    const countByUserId = new Map<number, number>(
+      rows.map((row) => [row.userId, Number(row.activityCount) || 0])
+    );
+
+    return uniqueUserIds.map((userId) => ({
+      userId,
+      activityCount: countByUserId.get(userId) ?? 0,
     }));
   }
 
