@@ -1,5 +1,8 @@
 name: Push to dev branch and deploy to OpenShift dev (Draft)
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:

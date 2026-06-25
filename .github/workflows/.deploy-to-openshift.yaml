@@ -1,5 +1,8 @@
 name: Deploy to OpenShift
 
+permissions:
+  contents: read
+  packages: read
 on:
   workflow_call:
     inputs:
