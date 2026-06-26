@@ -131,6 +131,33 @@ Or run the seed SQL files manually from `packages/database/seeds/`.
 
 Production deployments require a different approach than development. Instead of consolidating migrations, we apply incremental migrations to preserve existing data.
 
+### Key takeaways
+
+- **Drizzle compares snapshots, not intent.** `db:generate` emits a structural diff between schema files and the last snapshot. It does not know whether you meant to rename a column, backfill data, or preserve existing rows. Always review generated SQL before applying.
+- **Hand-editing generated `.sql` is expected** for non-trivial changes (renames, NOT NULL backfills, type changes, data moves). Simple additive changes (new nullable column, new table) are often fine as generated. Edits change _how_ you reach the target schema, not _where_ you end up—the migration’s final DDL must still match `src/schema/` and the snapshot for that step.
+- **Use `db:migrate`, never `db:push`.** Migrations are tracked in `drizzle.__drizzle_migrations`; only pending files run, so re-running a completed migrate is safe. `db:push` bypasses history and is for local development only.
+- **Do not squash** migration history on branches that deploy to shared or production environments. Squash-and-wipe is for disposable dev databases (see Development workflow above).
+- **Seeds vs migrations.** Seeds load reference data idempotently (`ON CONFLICT`, `WHERE NOT EXISTS`). Transforming existing rows when schema changes (e.g. copying values before dropping a column) belongs in the **migration**, not a seed.
+
+### Migration file rules
+
+Drizzle Kit owns `migrations/meta/` (`_journal.json` and `*_snapshot.json`). That metadata drives the next diff—do not edit it by hand (agents included). The only exception is existing repo tooling such as `db:add-extensions` after a dev squash, which updates meta programmatically and runs `drizzle-kit check`.
+
+| Do                                                                                                                                           | Don’t                                                                |
+| -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Change schema in `src/schema/*.ts`                                                                                                           | Create numbered `.sql` files from scratch                            |
+| Run `db:generate` after schema changes                                                                                                       | Edit `_journal.json` or `meta/*_snapshot.json`                       |
+| Hand-edit generated `.sql` when review finds unsafe DDL                                                                                      | Add DDL in SQL that isn’t reflected in Drizzle schema (causes drift) |
+| Use `npx drizzle-kit generate --custom --name YYYYMMDD_description` for SQL Drizzle cannot derive (backfills, triggers, RLS, new extensions) | Invent ad-hoc meta fixes                                             |
+
+For **custom** migrations (rare), run from `packages/database`:
+
+```bash
+npx drizzle-kit generate --custom --name YYYYMMDD_description
+```
+
+That creates an empty migration wired into journal/snapshots correctly; add your SQL, then review as usual. Extensions on the incremental path are usually already in `0000_*_postgresql_extensions.sql`; add new instance-level setup via `--custom` or update the committed `0000` if appropriate.
+
 ### Prerequisites
 
 - Schema changes have been tested in development and staging
@@ -156,14 +183,29 @@ Do **not** run `db:add-extensions` here; that script is only for a **fresh squas
 **Always inspect the generated migration** before applying to production:
 
 ```bash
-cat packages/database/migrations/0001_*.sql
+ls -1 packages/database/migrations/*.sql | tail -1 | xargs cat
 ```
 
-Verify:
+Drizzle output is a starting point. Use the checklist below; hand-edit the migration file when the generated SQL would lose data, fail on existing rows, or be unsafe on large tables.
 
-- No unexpected `DROP TABLE` or `DROP COLUMN` statements
-- Data transformations are correct
-- Indexes are created appropriately
+| Check                                      | Why                                                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Any `DROP COLUMN` or `DROP TABLE`          | Confirms intentional data loss; may need archival or a multi-step deploy (stop writing the column → deploy app → drop column).                                      |
+| “Remove + add” on the same table           | Often a **rename** or **type change** in disguise. Replace with `RENAME COLUMN` and/or `ALTER COLUMN … TYPE … USING (…)`.                                           |
+| New `NOT NULL` without default or backfill | Fails on existing rows or leaves incorrect NULLs. Use add nullable → `UPDATE` backfill → `SET NOT NULL` (see archived `0006_20260604_show_in_user_management.sql`). |
+| Type changes                               | May need an explicit `USING` expression; Drizzle may emit drop/add instead.                                                                                         |
+| Refactors across tables                    | May need `INSERT … SELECT` to move data (e.g. denormalized columns → junction table) before dropping old columns.                                                   |
+| New indexes on large tables                | Plain `CREATE INDEX` can lock tables. Consider `CREATE INDEX CONCURRENTLY` (often a separate, hand-edited migration).                                               |
+| Extension-dependent DDL                    | Ensure `0000_*_postgresql_extensions.sql` has already been applied (`pg_trgm`, etc.).                                                                               |
+
+**Common cases that need hand edits**
+
+- **Column rename** — Drizzle typically generates `DROP COLUMN` + `ADD COLUMN`, which destroys data. Use `ALTER TABLE … RENAME COLUMN … TO …` instead.
+- **Add NOT NULL to existing column** — Add as nullable, backfill with `UPDATE`, then set default and `NOT NULL`.
+- **Table/column split or merge** — Add data migration SQL before dropping old structures.
+- **DDL Drizzle cannot express** — Extensions, triggers, RLS, grants: use `drizzle-kit generate --custom` (extensions baseline lives in `0000`; see `scripts/templates/postgresql_extensions.sql`).
+
+Simple additive changes (nullable column with default, new table, new nullable FK) are usually safe to apply as generated. Data steps (`UPDATE`, `INSERT … SELECT`) in an edited migration are fine; snapshots track DDL end state, not row data.
 
 #### 3. Test on staging
 
