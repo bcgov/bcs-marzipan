@@ -71,7 +71,7 @@ export function TeamEditModal({
     const status = err.response?.status;
     const rawMessage =
       `${err.message ?? ''} ${err.response?.data?.message ?? ''} ${err.response?.data?.error ?? ''}`.toLowerCase();
-    return status === 409 || rawMessage.includes('abbreviation');
+    return status === 409 && rawMessage.includes('abbreviation');
   };
 
   const { data: detail, isLoading: isLoadingDetail } =

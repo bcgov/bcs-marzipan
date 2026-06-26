@@ -51,7 +51,7 @@ export function TeamDetails() {
   });
 
   const { data: teamUsers = [] } = useQuery({
-    queryKey: ['users', { teamIds: [id] }],
+    queryKey: ['users', 'team-members', id, memberIds],
     queryFn: () => fetchUsers({ teamIds: [id] }),
     enabled: !Number.isNaN(id),
     staleTime: 30_000,
@@ -60,11 +60,7 @@ export function TeamDetails() {
   const userLastUpdatedById = useMemo(
     () =>
       new Map<number, string | null>(
-        teamUsers.map((u) => [
-          u.id,
-          (u as { lastUpdatedDateTime?: string | null }).lastUpdatedDateTime ??
-            null,
-        ])
+        teamUsers.map((u) => [u.id, u.lastUpdatedDateTime ?? null])
       ),
     [teamUsers]
   );
@@ -152,7 +148,7 @@ export function TeamDetails() {
                 {team.displayName ?? team.name}
               </h2>
               {hasPermission(PERMISSIONS.TEAMS.EDIT) ? (
-                <div className="absolute top-1 right-80">
+                <div className="absolute top-1 right-0">
                   <Button
                     size="sm"
                     onClick={() => setShowEditTeam(true)}
