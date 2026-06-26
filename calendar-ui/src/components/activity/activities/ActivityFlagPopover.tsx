@@ -168,7 +168,7 @@ export function ActivityFlagPopover({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-52 p-0"
+        className="w-76 overflow-x-hidden p-0"
         align="start"
         data-no-row-nav
         onClick={(e) => e.stopPropagation()}
@@ -203,7 +203,7 @@ export function ActivityFlagPopover({
                       className="pointer-events-none size-4 shrink-0"
                       aria-hidden
                     />
-                    <span className="truncate">{opt.label}</span>
+                    <span className="min-w-0 truncate">{opt.label}</span>
                   </button>
                   {isMe && hasTeammates && <Separator />}
                 </>
