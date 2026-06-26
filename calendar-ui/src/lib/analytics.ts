@@ -75,6 +75,49 @@ type ReportNoResultsShownEvent = {
   filter_keys_used?: string[];
 };
 
+type ReportExportStartedEvent = {
+  report_name: string;
+  export_type: 'pdf' | 'csv' | 'xlsx';
+  rows_bucket: '0' | '1' | '2to10' | '11to50' | 'gt50';
+  active_filter_count?: number;
+  search_present?: boolean;
+};
+
+type ReportExportCompletedEvent = {
+  report_name: string;
+  export_type: 'pdf' | 'csv' | 'xlsx';
+  status: 'success' | 'failure';
+  duration_bucket_ms: 'lt250' | 'lt1000' | 'lt3000' | 'gte3000';
+  error_category?: string;
+  retry_count?: number;
+};
+
+type SavedFilterActionEvent = {
+  report_name: string;
+  action:
+    | 'apply'
+    | 'create'
+    | 'update'
+    | 'delete'
+    | 'duplicate'
+    | 'set_default'
+    | 'clear_default'
+    | 'auto_apply_default';
+  filter_complexity_bucket: 'low' | 'medium' | 'high';
+  reuse_count_bucket?: '0' | '1' | '2to10' | '11to50' | 'gt50';
+  age_bucket_days?: 'lt1' | '1to7' | '8to30' | 'gt30';
+};
+
+type ReportPaginationChangedEvent = {
+  report_name: string;
+  action: 'page_change' | 'page_size_change';
+  page_number: number;
+  page_size: number;
+  total_pages: number;
+  active_filter_count?: number;
+  search_present?: boolean;
+};
+
 function hasSnowplow(): boolean {
   return typeof window !== 'undefined' && typeof window.snowplow === 'function';
 }
@@ -121,6 +164,14 @@ export function bucketDurationMs(
   if (durationMs < 1000) return 'lt1000';
   if (durationMs < 3000) return 'lt3000';
   return 'gte3000';
+}
+
+export function bucketFilterComplexity(
+  activeCriteriaCount: number
+): 'low' | 'medium' | 'high' {
+  if (activeCriteriaCount <= 2) return 'low';
+  if (activeCriteriaCount <= 6) return 'medium';
+  return 'high';
 }
 
 export function countActiveReportFilterCriteria(
@@ -248,18 +299,69 @@ export function trackReportNoResultsShown(payload: ReportNoResultsShownEvent) {
   );
 }
 
+export function trackReportExportStarted(
+  payload: Omit<ReportExportStartedEvent, 'rows_bucket'> & {
+    rows_count: number;
+  }
+) {
+  const { rows_count, ...rest } = payload;
+  trackSelfDescribingEvent(
+    'iglu:ca.bc.gov.bcs/report_export_started/jsonschema/1-0-0',
+    {
+      ...rest,
+      rows_bucket: bucketResultsCount(rows_count),
+    }
+  );
+}
+
+export function trackReportExportCompleted(
+  payload: Omit<ReportExportCompletedEvent, 'duration_bucket_ms'> & {
+    duration_ms: number;
+  }
+) {
+  const { duration_ms, ...rest } = payload;
+  trackSelfDescribingEvent(
+    'iglu:ca.bc.gov.bcs/report_export_completed/jsonschema/1-0-0',
+    {
+      ...rest,
+      duration_bucket_ms: bucketDurationMs(duration_ms),
+    }
+  );
+}
+
+export function trackSavedFilterAction(payload: SavedFilterActionEvent) {
+  trackSelfDescribingEvent(
+    'iglu:ca.bc.gov.bcs/saved_filter_action/jsonschema/1-0-0',
+    payload
+  );
+}
+
+export function trackReportPaginationChanged(
+  payload: ReportPaginationChangedEvent
+) {
+  trackSelfDescribingEvent(
+    'iglu:ca.bc.gov.bcs/report_pagination_changed/jsonschema/1-0-0',
+    payload
+  );
+}
+
 export default {
   bucketDurationMs,
+  bucketFilterComplexity,
   bucketResultsCount,
   bucketSearchLength,
   countActiveReportFilterCriteria,
   getActiveReportFilterKeys,
   trackCalendarClick,
   trackCalendarAction,
+  trackReportExportCompleted,
+  trackReportExportStarted,
   trackReportFiltersApplied,
   trackReportNoResultsShown,
+  trackReportPaginationChanged,
   trackReportResultOpened,
   trackReportSearchCleared,
   trackReportSearchResultsLoaded,
   trackReportSearchSubmitted,
+  trackSavedFilterAction,
 };

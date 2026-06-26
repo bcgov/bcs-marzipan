@@ -160,6 +160,7 @@ export function ReportsPage() {
   );
 
   const savedFiltersState = useReportsSavedFilters({
+    reportName: activeReport,
     preferences,
     setPreferences,
     canSeeDeleted,
@@ -468,6 +469,30 @@ export function ReportsPage() {
     [activeFilterCount, activeReport, displayActivityCount]
   );
 
+  const handleCustomReportPaginationChange = useCallback(
+    (change: {
+      action: 'page_change' | 'page_size_change';
+      page: number;
+      pageSize: number;
+      totalItems: number;
+    }) => {
+      if (!activeReport) return;
+      analytics.trackReportPaginationChanged({
+        report_name: activeReport,
+        action: change.action,
+        page_number: change.page,
+        page_size: change.pageSize,
+        total_pages: Math.max(
+          1,
+          Math.ceil(change.totalItems / change.pageSize)
+        ),
+        active_filter_count: activeFilterCount,
+        search_present: preferences.searchKeyword.trim().length > 0,
+      });
+    },
+    [activeFilterCount, activeReport, preferences.searchKeyword]
+  );
+
   const handleTabChange = (reportName: string) => {
     setActiveReport(reportName);
     setStoredReportTabName(reportName);
@@ -476,6 +501,14 @@ export function ReportsPage() {
 
   const runExport = async (format: ReportExportFormat) => {
     if (!activeReport) return;
+    const startedAt = performance.now();
+    analytics.trackReportExportStarted({
+      report_name: activeReport,
+      export_type: format,
+      rows_count: displayActivityCount,
+      active_filter_count: activeFilterCount,
+      search_present: preferences.searchKeyword.trim().length > 0,
+    });
     setIsExporting(true);
     try {
       let exportData = displayData;
@@ -501,7 +534,20 @@ export function ReportsPage() {
         customReportFields:
           activeReport === 'custom' ? customReportFields : undefined,
       });
+      analytics.trackReportExportCompleted({
+        report_name: activeReport,
+        export_type: format,
+        status: 'success',
+        duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
+      });
     } catch (err) {
+      analytics.trackReportExportCompleted({
+        report_name: activeReport,
+        export_type: format,
+        status: 'failure',
+        duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
+        error_category: err instanceof Error ? err.name : 'unknown',
+      });
       const label =
         format === 'pdf' ? 'PDF' : format === 'csv' ? 'CSV' : 'spreadsheet';
       showErrorToast(err, `Failed to export ${label}. Please try again.`);
@@ -687,6 +733,7 @@ export function ReportsPage() {
                         section={displayData.sections[0]}
                         config={customReportFields}
                         onFieldsChange={setCustomReportFields}
+                        onPaginationChange={handleCustomReportPaginationChange}
                         highlightedActivityIds={reportHighlightSet}
                         scrollContainerRef={reportPreviewScrollRef}
                       />

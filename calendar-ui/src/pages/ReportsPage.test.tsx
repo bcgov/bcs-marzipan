@@ -13,6 +13,9 @@ const mockHandleReportExport = vi.hoisted(() => vi.fn());
 const mockFetchReportData = vi.hoisted(() => vi.fn());
 const mockTrackReportFiltersApplied = vi.hoisted(() => vi.fn());
 const mockTrackReportNoResultsShown = vi.hoisted(() => vi.fn());
+const mockTrackReportExportCompleted = vi.hoisted(() => vi.fn());
+const mockTrackReportExportStarted = vi.hoisted(() => vi.fn());
+const mockTrackReportPaginationChanged = vi.hoisted(() => vi.fn());
 const mockTrackReportResultOpened = vi.hoisted(() => vi.fn());
 const mockTrackReportSearchResultsLoaded = vi.hoisted(() => vi.fn());
 const mockReports = vi.hoisted(() => [
@@ -47,10 +50,16 @@ vi.mock('@/lib/analytics', () => ({
       filterState?.dateRange?.startDate === '2020-01-01' ? 1 : 0,
     getActiveReportFilterKeys: (filterState: any) =>
       filterState?.dateRange?.startDate === '2020-01-01' ? ['dateRange'] : [],
+    trackReportExportCompleted: (...args: any[]) =>
+      mockTrackReportExportCompleted(...args),
+    trackReportExportStarted: (...args: any[]) =>
+      mockTrackReportExportStarted(...args),
     trackReportFiltersApplied: (...args: any[]) =>
       mockTrackReportFiltersApplied(...args),
     trackReportNoResultsShown: (...args: any[]) =>
       mockTrackReportNoResultsShown(...args),
+    trackReportPaginationChanged: (...args: any[]) =>
+      mockTrackReportPaginationChanged(...args),
     trackReportResultOpened: (...args: any[]) =>
       mockTrackReportResultOpened(...args),
     trackReportSearchResultsLoaded: (...args: any[]) =>
@@ -358,6 +367,21 @@ describe('ReportsPage placeholder data handling', () => {
         }),
       })
     );
+
+    expect(mockTrackReportExportStarted).toHaveBeenCalledWith({
+      report_name: 'custom',
+      export_type: 'xlsx',
+      rows_count: 1,
+      active_filter_count: 1,
+      search_present: false,
+    });
+
+    expect(mockTrackReportExportCompleted).toHaveBeenCalledWith({
+      report_name: 'custom',
+      export_type: 'xlsx',
+      status: 'success',
+      duration_ms: expect.any(Number),
+    });
   });
 
   it('shows large-range warnings from current filters while fetch is in flight', async () => {

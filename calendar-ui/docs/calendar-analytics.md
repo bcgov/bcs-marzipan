@@ -36,6 +36,52 @@ Phase 1 QA Checklist (dev/test)
 - Confirm bucket fields are used (`search_length_bucket`, `results_count_bucket`, `latency_bucket_ms`) and no PII is sent.
 - Confirm `report_name` is included on every report event.
 
+Phase 2 QA Event Matrix (reports)
+
+| Event                     | Trigger in UI                                  | Required fields to verify                                                  | Notes                                                    |
+| ------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `report_filters_applied`  | User changes report filters and data refreshes | `report_name`, `filter_keys_used`, `active_filter_count`                   | Should not emit when no effective filters are applied.   |
+| `report_no_results_shown` | Fresh load resolves with zero matching rows    | `report_name`, `active_filter_count`, `search_present`, `filter_keys_used` | Should emit once per unique fresh zero-results response. |
+
+Phase 3 QA Event Matrix (reports)
+
+| Event                       | Trigger in UI                                           | Required fields to verify                                                            | Notes                                                               |
+| --------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `report_export_started`     | User clicks export button and export begins             | `report_name`, `export_type`, `rows_bucket`, `active_filter_count`, `search_present` | Should fire before export completes/fails.                          |
+| `report_export_completed`   | Export succeeds or fails                                | `report_name`, `export_type`, `status`, `duration_bucket_ms`                         | On failure also verify `error_category` is populated.               |
+| `saved_filter_action`       | Saved filter apply/create/update/delete/default actions | `report_name`, `action`, `filter_complexity_bucket`                                  | Includes auto-default apply via `action=auto_apply_default`.        |
+| `report_pagination_changed` | User changes preview page or page size (custom report)  | `report_name`, `action`, `page_number`, `page_size`, `total_pages`                   | Currently emitted from custom preview pagination interactions only. |
+
+Localhost QA Runbook
+
+1. Start the app:
+
+```bash
+npm run dev --workspace calendar-ui
+```
+
+2. Ensure runtime config enables Snowplow (`ENABLE_SNOWPLOW: 'true'` in the served `config.js`).
+3. Open browser DevTools Network tab and filter by collector host (`spm.apps.gov.bc.ca`) or event endpoint path.
+4. In Reports page, execute this sequence and confirm one matching event per action:
+
+- Enter search text and press Enter (`report_search_submitted`).
+- Change one or more filters (`report_filters_applied`).
+- Wait for data load (`report_search_results_loaded`).
+- If zero rows, confirm (`report_no_results_shown`).
+- Click an activity row link (`report_result_opened`).
+- Click export (`report_export_started`, then `report_export_completed`).
+- Apply/create/update/delete a saved filter (`saved_filter_action`).
+- In custom report preview, change page/page size (`report_pagination_changed`).
+
+5. Validate privacy/bucketing:
+
+- No raw free-text search payload should be sent.
+- Bucket fields should be present where expected (`search_length_bucket`, `rows_bucket`, `duration_bucket_ms`).
+
+6. Negative-path check:
+
+- Trigger an export failure (for example via temporary network blocking) and verify `report_export_completed` is emitted with `status: failure`.
+
 Implementation notes:
 
 - The helper safely no-ops if `window.snowplow` is not present (production builds without the snippet are unaffected).
