@@ -14,7 +14,10 @@ import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { RichTextField } from '@/components/ui/rich-text-field';
-import { lookAheadStatusOptions } from '@/constants/form-options';
+import {
+  lookAheadSectionNoneOption,
+  lookAheadStatusOptions,
+} from '@/constants/form-options';
 import {
   rowsToSectionOptions,
   useLookAheadSectionRows,
@@ -152,6 +155,18 @@ export const ActivityReportsSection: React.FC = () => {
                       value={optionalRadioDisplayValue(field.value)}
                       className="flex flex-row flex-wrap gap-x-4 gap-y-2"
                     >
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem
+                          value={lookAheadSectionNoneOption.value}
+                          id="lookAhead-section-none"
+                        />
+                        <Label
+                          htmlFor="lookAhead-section-none"
+                          className="cursor-pointer font-normal"
+                        >
+                          {lookAheadSectionNoneOption.label}
+                        </Label>
+                      </div>
                       {lookAheadSectionOptions.map((option) => (
                         <div
                           key={option.value}

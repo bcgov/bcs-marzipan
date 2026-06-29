@@ -1,4 +1,16 @@
+import {
+  ACTIVITY_FORM_SECTION_FIELDS,
+  ACTIVITY_FORM_SECTION_IDS,
+  ACTIVITY_FORM_SECTION_LABELS,
+  type ActivityFormSectionId,
+} from './activity-form-sections';
 import type { ActivityFormData } from './schemas/activity.schema';
+
+export type ReviewExemptConfigurableSection = {
+  readonly id: ActivityFormSectionId;
+  readonly title: string;
+  readonly keys: readonly (keyof ActivityFormData)[];
+};
 
 /**
  * `application_settings.key` for JSON array of admin-configurable review-exempt
@@ -34,76 +46,17 @@ export const ACTIVITY_REVIEW_EXEMPT_CODE_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Admin UI + server allowlist, grouped to mirror {@link ActivityFormBody} section
- * order (left: Overview, Comms; right: Reports, Schedule, Event, Sharing).
- * Keep in sync when form sections or top-level field sets change.
+ * Admin UI + server allowlist, grouped from {@link ACTIVITY_FORM_SECTION_FIELDS}.
+ * Omits {@link ACTIVITY_REVIEW_EXEMPT_CODE_KEYS}. See `docs/ACTIVITY_FORM_SECTIONS.md`.
  */
-export const ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS = [
-  {
-    id: 'overview' as const,
-    title: 'Overview',
-    keys: [
-      'title',
-      'categoryIds',
-      'tagIds',
-      'leadTeamId',
-      'leadOrgId',
-      'significance',
-      'isIssue',
-      'isConfidential',
-      'notes',
-      'pitchRequiredStatusId',
-    ] as const satisfies ReadonlyArray<keyof ActivityFormData>,
-  },
-  {
-    id: 'comms' as const,
-    title: 'Comms',
-    keys: [
-      'commsContacts',
-      'strategy',
-      'commsMaterialIds',
-      'newsReleaseId',
-      'newsReleaseOriginId',
-      'newsReleaseDistributionId',
-      'translationsRequiredStatusId',
-      'translationLanguageIds',
-    ] as const satisfies ReadonlyArray<keyof ActivityFormData>,
-  },
-  {
-    id: 'reports' as const,
-    title: 'Reports',
-    keys: [
-      'reportSettings',
-      'executiveSummary',
-      'lookAheadStatus',
-      'lookAheadSection',
-    ] as const satisfies ReadonlyArray<keyof ActivityFormData>,
-  },
-  {
-    id: 'schedule' as const,
-    title: 'Schedule',
-    keys: ['schedulingNotes'] as const satisfies ReadonlyArray<
-      keyof ActivityFormData
-    >,
-  },
-  {
-    id: 'event' as const,
-    title: 'Event',
-    keys: [
-      'venueAddress',
-      'premierRequestedId',
-      'representatives',
-      'eventPlanners',
-    ] as const satisfies ReadonlyArray<keyof ActivityFormData>,
-  },
-  {
-    id: 'sharing' as const,
-    title: 'Sharing',
-    keys: ['visibility', 'sharedWithTeamIds'] as const satisfies ReadonlyArray<
-      keyof ActivityFormData
-    >,
-  },
-] as const;
+export const ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS: readonly ReviewExemptConfigurableSection[] =
+  ACTIVITY_FORM_SECTION_IDS.map((id) => ({
+    id,
+    title: ACTIVITY_FORM_SECTION_LABELS[id],
+    keys: ACTIVITY_FORM_SECTION_FIELDS[id].filter(
+      (key) => !ACTIVITY_REVIEW_EXEMPT_CODE_KEYS.has(String(key))
+    ),
+  })).filter((section) => section.keys.length > 0);
 
 const CONFIGURABLE_FLAT: string[] = [];
 for (const s of ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS) {
@@ -118,11 +71,6 @@ export const ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_KEY_SET: ReadonlySet<string> =
 /** Flat allowlist in stable order (section order) for zod/validation. */
 export const ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_KEYS: readonly string[] =
   CONFIGURABLE_FLAT;
-
-const ZOD_ENUM = ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_KEYS as [
-  string,
-  ...string[],
-];
 
 /**
  * Merges code-exempt keys with allowlisted configurable keys (typically from DB).

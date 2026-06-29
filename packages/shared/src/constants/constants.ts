@@ -198,6 +198,11 @@ export const DEFAULT_VISIBILITY = 'global' as const;
  */
 export const PITCH_TRANSLATION_PENDING_LOOKUP_NAME = 'pending' as const;
 
+/**
+ * Lookup `name` for translation_required_statuses when translations are mandatory.
+ */
+export const TRANSLATION_REQUIRED_LOOKUP_NAME = 'required' as const;
+
 // ============================================================================
 // Auth Constants
 // ============================================================================

@@ -75,6 +75,7 @@ import {
   buildPayloadForUpdate,
   type UpdatePayloadOptions,
 } from '../lib/activity-form-payload';
+import { resolveTranslationRequiredStatusId } from '../lib/activity-form-translation-required';
 import { computeFormChanges } from '../lib/activity-history-format';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
@@ -135,6 +136,11 @@ export function ActivityPage({
       getFieldLabel: getActivityFieldLabel,
       schema: createActivityRequestSchema,
     });
+  const requiredTranslationStatusId = useMemo(
+    () =>
+      resolveTranslationRequiredStatusId(lookups.translationRequiredStatuses),
+    [lookups.translationRequiredStatuses]
+  );
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const reviewerChangedPaths = useMemo<ReadonlySet<string>>(() => {
     const paths = canReviewActivities
@@ -551,10 +557,10 @@ export function ActivityPage({
         } else {
           const opts: UpdatePayloadOptions =
             mode.kind === 'reviewWithSave'
-              ? { markAsReviewed: true }
+              ? { markAsReviewed: true, requiredTranslationStatusId }
               : mode.kind === 'completeWithSave'
-                ? { markAsCompleted: true }
-                : {};
+                ? { markAsCompleted: true, requiredTranslationStatusId }
+                : { requiredTranslationStatusId };
           submitData = {
             ...buildPayloadForUpdate(
               mode.validatedData,
@@ -618,6 +624,7 @@ export function ActivityPage({
       canViewActivity,
       applyExternalLockReleased,
       navigate,
+      requiredTranslationStatusId,
     ]
   );
 

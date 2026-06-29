@@ -120,6 +120,11 @@ export interface UserActivityItem {
   value: number;
 }
 
+export interface UserActivityCountItem {
+  userId: number;
+  activityCount: number;
+}
+
 export async function fetchUserActivities(
   userId: number
 ): Promise<UserActivityItem[]> {
@@ -127,6 +132,24 @@ export async function fetchUserActivities(
     success: boolean;
     data: UserActivityItem[];
   }>(`/users/${userId}/activities`);
+  return response.data.data;
+}
+
+export async function fetchUserActivityCounts(
+  userIds: number[]
+): Promise<UserActivityCountItem[]> {
+  const normalizedIds = Array.from(
+    new Set(userIds.filter((id) => Number.isInteger(id) && id > 0))
+  );
+  if (normalizedIds.length === 0) return [];
+
+  const response = await api.get<{
+    success: boolean;
+    data: UserActivityCountItem[];
+  }>('/users/activity-counts', {
+    params: { userIds: normalizedIds.join(',') },
+  });
+
   return response.data.data;
 }
 

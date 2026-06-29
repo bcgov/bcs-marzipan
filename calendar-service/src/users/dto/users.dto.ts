@@ -84,6 +84,14 @@ const userActivityOptionSchema = z.object({
 });
 
 /**
+ * Schema for one count item in GET /users/activity-counts response.
+ */
+const userActivityCountSchema = z.object({
+  userId: z.number().int(),
+  activityCount: z.number().int().nonnegative(),
+});
+
+/**
  * Wrapped response: { success: true, data: UserListItem[] }
  */
 export class UserListResponseWrapperDto extends createZodDto(
@@ -111,4 +119,12 @@ export class UserHistoryResponseWrapperDto extends createZodDto(
  */
 export class UserActivitiesResponseWrapperDto extends createZodDto(
   createArrayResponseWrapperSchema(userActivityOptionSchema)
+) {}
+
+/**
+ * Wrapped response: { success: true, data: { userId, activityCount }[] }
+ * For GET /users/activity-counts.
+ */
+export class UserActivityCountsResponseWrapperDto extends createZodDto(
+  createArrayResponseWrapperSchema(userActivityCountSchema)
 ) {}

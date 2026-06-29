@@ -1,0 +1,20 @@
+name: Push to dev branch and deploy to OpenShift dev (Draft)
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy-dev:
+    name: Deploy to OpenShift dev (Draft)
+    uses: ./.github/workflows/.deploy-to-openshift.yaml
+    secrets: inherit
+    with:
+      github-environment: development
+      openshift-environment: dev
+      git-branch: develop
+      rebuild-image: true

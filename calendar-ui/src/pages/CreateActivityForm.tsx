@@ -1,7 +1,7 @@
 import { ErrorBoundary } from 'react-error-boundary';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useState, type FC } from 'react';
+import { useMemo, useState, type FC } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import {
@@ -27,6 +27,7 @@ import { useCreateActivity } from '../hooks/useCalendar';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import { buildPayloadForCreate } from '../lib/activity-form-payload';
+import { resolveTranslationRequiredStatusId } from '../lib/activity-form-translation-required';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import {
@@ -79,6 +80,12 @@ export const CreateActivityForm: FC = () => {
       schema: createActivityRequestSchema,
     });
 
+  const requiredTranslationStatusId = useMemo(
+    () =>
+      resolveTranslationRequiredStatusId(lookups.translationRequiredStatuses),
+    [lookups.translationRequiredStatuses]
+  );
+
   const handleCancel = () => {
     void form.reset();
     void navigate(listOrBackPath);
@@ -100,6 +107,7 @@ export const CreateActivityForm: FC = () => {
       const formValues = form.getValues();
       const submitData = buildPayloadForCreate(validatedData, formValues, {
         markAsReviewed: canReviewActivities ? markAsReviewed : undefined,
+        requiredTranslationStatusId,
       });
       const payload = {
         ...submitData,

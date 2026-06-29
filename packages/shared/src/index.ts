@@ -1,6 +1,7 @@
 export * from './activities';
 export * from './activity-filter-state';
 export * from './activity-completion';
+export * from './activity-form-sections';
 export * from './datetime';
 export * from './filters/activityFilterStateToQueryParams';
 export * from './filters/activity-filter-active';

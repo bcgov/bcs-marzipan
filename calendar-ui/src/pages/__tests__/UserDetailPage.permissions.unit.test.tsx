@@ -60,5 +60,5 @@ describe('UserDetailPage permissions (unit)', () => {
       { timeout: 10000 }
     );
     expect(perm).toBeTruthy();
-  });
+  }, 15000);
 });
