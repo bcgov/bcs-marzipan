@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+  index,
   integer,
   pgTable,
   serial,
@@ -15,7 +16,8 @@ import { users } from './user';
 /**
  * ActivityFlags table - Tracks which user is assigned ("flagged") per activity per team.
  * Rules:
- *   - At most one flag per (activity, team) pair.
+ *   - Multiple assignees are allowed per (activity, team) pair.
+ *   - At most one row per (activity, team, assignee) tuple.
  *   - Any team member with activities.flag permission can set or replace the flag.
  *   - Any active team member can remove the flag (no flag permission required).
  *   - Removing is done by deleting the row.
@@ -44,7 +46,13 @@ export const activityFlags = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [unique().on(table.activityId, table.teamId)]
+  (table) => [
+    unique().on(table.activityId, table.teamId, table.assigneeId),
+    index('activity_flags_activity_id_team_id_idx').on(
+      table.activityId,
+      table.teamId
+    ),
+  ]
 );
 
 export const activityFlagsRelations = relations(activityFlags, ({ one }) => ({

@@ -13,14 +13,18 @@ describe('ActivityFlagsService', () => {
   };
 
   /**
-   * Build a chainable Drizzle-like mock where each method returns `this`
-   * except `limit`, which resolves to `resolveValue`.
+   * Build a chainable Drizzle-like mock.
+   *
+   * mode='limit': terminal call is limit().
+   * mode='where': terminal call is where().
    */
-  const makeChain = (resolveValue: unknown) => {
+  const makeChain = (
+    resolveValue: unknown,
+    mode: 'limit' | 'where' = 'limit'
+  ) => {
     const chain: Record<string, unknown> = {};
     const methods = [
       'from',
-      'where',
       'innerJoin',
       'leftJoin',
       'orderBy',
@@ -30,15 +34,19 @@ describe('ActivityFlagsService', () => {
     for (const m of methods) {
       chain[m] = vi.fn().mockReturnValue(chain);
     }
+    chain['where'] =
+      mode === 'where'
+        ? vi.fn().mockResolvedValue(resolveValue)
+        : vi.fn().mockReturnValue(chain);
     chain['limit'] = vi.fn().mockResolvedValue(resolveValue);
     return chain;
   };
 
-  /** Builds a mock db.insert() chain that resolves onConflictDoUpdate to undefined. */
+  /** Builds a mock db.insert() chain for syncFlags insert path. */
   const makeInsertChain = () => {
     const chain: Record<string, unknown> = {};
     chain['values'] = vi.fn().mockReturnValue(chain);
-    chain['onConflictDoUpdate'] = vi.fn().mockResolvedValue(undefined);
+    chain['onConflictDoNothing'] = vi.fn().mockResolvedValue(undefined);
     return chain;
   };
 
@@ -75,12 +83,12 @@ describe('ActivityFlagsService', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // upsertFlag
+  // upsertFlag / syncFlags
   // ---------------------------------------------------------------------------
   describe('upsertFlag', () => {
     it('throws NotFoundException when activity does not exist', async () => {
       // select() is called multiple times; first call (activity lookup) returns []
-      mockDb.select.mockReturnValue(makeChain([]));
+      mockDb.select.mockReturnValue(makeChain([], 'limit'));
 
       await expect(service.upsertFlag(999, 1, 2, 3)).rejects.toThrow(
         NotFoundException
@@ -92,9 +100,9 @@ describe('ActivityFlagsService', () => {
       mockDb.select.mockImplementation(() => {
         callCount++;
         // 1st call: activity exists
-        if (callCount === 1) return makeChain([{ id: 1 }]);
+        if (callCount === 1) return makeChain([{ id: 1 }], 'limit');
         // 2nd call: membership check → not found
-        return makeChain([]);
+        return makeChain([], 'where');
       });
 
       await expect(service.upsertFlag(1, 1, 99, 3)).rejects.toThrow(
@@ -102,14 +110,14 @@ describe('ActivityFlagsService', () => {
       );
     });
 
-    it('records flag_assigned with names for a fresh assignment', async () => {
+    it('records flag_assigned for a fresh assignment', async () => {
       let callCount = 0;
       mockDb.select.mockImplementation(() => {
         callCount++;
-        if (callCount === 1) return makeChain([{ id: 1 }]); // activity exists
-        if (callCount === 2) return makeChain([{ userId: 2 }]); // membership ok
-        if (callCount === 3) return makeChain([]); // no existing flag
-        return makeChain([{ name: 'Jane Smith' }]); // assignee name
+        if (callCount === 1) return makeChain([{ id: 1 }], 'limit'); // activity exists
+        if (callCount === 2)
+          return makeChain([{ userId: 2, name: 'Jane Smith' }], 'where'); // membership + name
+        return makeChain([], 'where'); // no existing flags
       });
       mockDb.insert.mockReturnValue(makeInsertChain());
 
@@ -123,16 +131,17 @@ describe('ActivityFlagsService', () => {
       );
     });
 
-    it('records flag_assigned with previous name for a reassignment', async () => {
+    it('records flag_assigned and flag_removed when replacing one assignee with another', async () => {
       let callCount = 0;
       mockDb.select.mockImplementation(() => {
         callCount++;
-        if (callCount === 1) return makeChain([{ id: 1 }]);
-        if (callCount === 2) return makeChain([{ userId: 2 }]);
-        if (callCount === 3) return makeChain([{ existingName: 'Old Person' }]); // existing flag
-        return makeChain([{ name: 'Jane Smith' }]); // new assignee name
+        if (callCount === 1) return makeChain([{ id: 1 }], 'limit');
+        if (callCount === 2)
+          return makeChain([{ userId: 2, name: 'Jane Smith' }], 'where');
+        return makeChain([{ assigneeId: 4, name: 'Old Person' }], 'where');
       });
       mockDb.insert.mockReturnValue(makeInsertChain());
+      mockDb.delete.mockReturnValue(makeDeleteChain());
 
       await service.upsertFlag(1, 1, 2, 3);
 
@@ -140,13 +149,13 @@ describe('ActivityFlagsService', () => {
         1,
         3,
         'flag_assigned',
-        [
-          {
-            field: 'flag.assigneeName',
-            oldValue: 'Old Person',
-            newValue: 'Jane Smith',
-          },
-        ]
+        [{ field: 'flag.assigneeName', oldValue: null, newValue: 'Jane Smith' }]
+      );
+      expect(mockHistoryService.recordChange).toHaveBeenCalledWith(
+        1,
+        3,
+        'flag_removed',
+        [{ field: 'flag.assigneeName', oldValue: 'Old Person', newValue: null }]
       );
     });
   });
@@ -155,13 +164,19 @@ describe('ActivityFlagsService', () => {
   // removeFlag
   // ---------------------------------------------------------------------------
   describe('removeFlag', () => {
-    it('records flag_removed with the assignee name', async () => {
+    it('records flag_removed for each assignee removed', async () => {
       let callCount = 0;
       mockDb.select.mockImplementation(() => {
         callCount++;
-        // 1st call: existing flag with assignee name
-        if (callCount === 1) return makeChain([{ name: 'Jane Smith' }]);
-        return makeChain([]);
+        if (callCount === 1)
+          return makeChain(
+            [
+              { assigneeId: 2, name: 'Jane Smith' },
+              { assigneeId: 4, name: 'John Doe' },
+            ],
+            'where'
+          );
+        return makeChain([], 'where');
       });
       mockDb.delete.mockReturnValue(makeDeleteChain());
 
@@ -173,15 +188,42 @@ describe('ActivityFlagsService', () => {
         'flag_removed',
         [{ field: 'flag.assigneeName', oldValue: 'Jane Smith', newValue: null }]
       );
+      expect(mockHistoryService.recordChange).toHaveBeenCalledWith(
+        1,
+        3,
+        'flag_removed',
+        [{ field: 'flag.assigneeName', oldValue: 'John Doe', newValue: null }]
+      );
     });
 
     it('is a no-op (no delete, no history) when no flag existed', async () => {
-      mockDb.select.mockReturnValue(makeChain([]));
+      mockDb.select.mockReturnValue(makeChain([], 'where'));
 
       await service.removeFlag(1, 1, 3);
 
       expect(mockDb.delete).not.toHaveBeenCalled();
       expect(mockHistoryService.recordChange).not.toHaveBeenCalled();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // removeAssigneeFlag
+  // ---------------------------------------------------------------------------
+  describe('removeAssigneeFlag', () => {
+    it('removes one assignee and writes history entry', async () => {
+      mockDb.select.mockReturnValue(
+        makeChain([{ name: 'Jane Smith' }], 'limit')
+      );
+      mockDb.delete.mockReturnValue(makeDeleteChain());
+
+      await service.removeAssigneeFlag(1, 1, 2, 3);
+
+      expect(mockHistoryService.recordChange).toHaveBeenCalledWith(
+        1,
+        3,
+        'flag_removed',
+        [{ field: 'flag.assigneeName', oldValue: 'Jane Smith', newValue: null }]
+      );
     });
   });
 
