@@ -55,7 +55,7 @@ export class ActivityFlagsService {
     assigneeIds: number[],
     assignedById: number,
     note?: string
-  ): Promise<void> {
+  ): Promise<{ addedAssigneeIds: number[]; removedAssigneeIds: number[] }> {
     const db = this.databaseService.db;
     const desiredAssigneeIds = Array.from(new Set(assigneeIds));
 
@@ -200,6 +200,11 @@ export class ActivityFlagsService {
         ]
       );
     }
+
+    return {
+      addedAssigneeIds: toAdd,
+      removedAssigneeIds: toRemove,
+    };
   }
 
   /**

@@ -13,6 +13,7 @@ import type {
   SoftDeleteRequest,
   UpdateActivityRequest,
   UpsertActivityFlagRequest,
+  UpsertActivityFlagsRequest,
 } from '@corpcal/shared/schemas';
 
 import {
@@ -26,7 +27,11 @@ import {
   softDeleteActivity,
   updateActivity,
 } from '../api/activitiesApi';
-import { removeActivityFlag, upsertActivityFlag } from '../api/flagsApi';
+import {
+  removeActivityFlag,
+  syncActivityFlags,
+  upsertActivityFlag,
+} from '../api/flagsApi';
 import {
   buildOptimisticActivity,
   normalizeListParams,
@@ -263,6 +268,38 @@ export function useUpsertActivityFlag(options?: { onSuccess?: () => void }) {
     },
     onError: (error) => {
       showErrorToast(error, 'Failed to assign activity');
+    },
+  });
+}
+
+/** Sync (set) all assignees for an activity/team pair. */
+export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      activityId,
+      body,
+    }: {
+      activityId: number;
+      body: UpsertActivityFlagsRequest;
+      assigneeNames?: string[];
+    }) => syncActivityFlags(activityId, body),
+    onSuccess: (_, vars) => {
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
+      scheduleLiveActivityRefresh(qc, {
+        source: 'local',
+        activityId: vars.activityId,
+      });
+      if ((vars.assigneeNames?.length ?? 0) > 0) {
+        toast.success(`Activity assigned to ${vars.assigneeNames!.join(', ')}`);
+      } else {
+        toast.success('Activity assignments updated');
+      }
+      options?.onSuccess?.();
+    },
+    onError: (error) => {
+      showErrorToast(error, 'Failed to update activity assignments');
     },
   });
 }

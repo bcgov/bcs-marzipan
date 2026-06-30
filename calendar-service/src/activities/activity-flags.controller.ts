@@ -117,14 +117,18 @@ export class ActivityFlagsController {
     @Body(new ZodValidationPipe(upsertActivityFlagsRequestSchema))
     body: UpsertActivityFlagsRequest,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean }> {
+  ): Promise<{
+    success: boolean;
+    addedAssigneeIds: number[];
+    removedAssigneeIds: number[];
+  }> {
     if (!user.teamIds.includes(body.teamId)) {
       throw new ForbiddenException(
         'You are not a member of the specified team'
       );
     }
 
-    await this.flagsService.syncFlags(
+    const delta = await this.flagsService.syncFlags(
       activityId,
       body.teamId,
       body.assigneeIds,
@@ -132,7 +136,7 @@ export class ActivityFlagsController {
       body.note
     );
     this.gateway.broadcastActivityUpdated(activityId);
-    return { success: true };
+    return { success: true, ...delta };
   }
 
   @ApiOperation({
