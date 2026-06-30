@@ -18,6 +18,7 @@ import { CustomReportPreviewSection } from '@/components/reports/CustomReportPre
 import { EditReportModal } from '@/components/reports/EditReportModal';
 import { LookAheadDayRangeTabs } from '@/components/reports/LookAheadDayRangeTabs';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
+import { ReportAppliedDateRange } from '@/components/reports/ReportAppliedDateRange';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
 import { ReportLargeRangeWarning } from '@/components/reports/ReportLargeRangeWarning';
 import { ReportMonthRangeTabs } from '@/components/reports/ReportMonthRangeTabs';
@@ -478,24 +479,31 @@ export function ReportsPage() {
               {activeReport === report.name &&
               usesReportPreviewShell(report.name) ? (
                 <div className="flex min-h-0 flex-col">
-                  <div className="border-border flex h-9 shrink-0 items-center justify-end gap-4 border-t">
-                    <ReportLargeRangeWarning
-                      showLargeRangeWarning={showLargeRangeWarning}
-                      wasClamped={wasDateRangeClamped}
+                  <div className="border-border flex h-9 shrink-0 items-center justify-between gap-4 border-t">
+                    <ReportAppliedDateRange
+                      dateRange={resolvedReportDateRange}
                     />
-                    {isFullscreenPrintPreview(report.name) ? (
-                      <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={previewSheetWidthMode === 'print'}
-                          onCheckedChange={(checked) =>
-                            setPreviewSheetWidthMode(checked ? 'print' : 'full')
-                          }
-                          aria-label="Print width"
-                          className="border-input"
-                        />
-                        Print width
-                      </label>
-                    ) : null}
+                    <div className="flex shrink-0 items-center gap-4">
+                      <ReportLargeRangeWarning
+                        showLargeRangeWarning={showLargeRangeWarning}
+                        wasClamped={wasDateRangeClamped}
+                      />
+                      {isFullscreenPrintPreview(report.name) ? (
+                        <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={previewSheetWidthMode === 'print'}
+                            onCheckedChange={(checked) =>
+                              setPreviewSheetWidthMode(
+                                checked ? 'print' : 'full'
+                              )
+                            }
+                            aria-label="Print width"
+                            className="border-input"
+                          />
+                          Print width
+                        </label>
+                      ) : null}
+                    </div>
                   </div>
                   {isPreviewLoading ? (
                     <ReportPreviewEmptyState
