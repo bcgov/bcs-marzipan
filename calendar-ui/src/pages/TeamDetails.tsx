@@ -65,6 +65,16 @@ export function TeamDetails() {
     [teamUsers]
   );
 
+  const userIsActiveById = useMemo(
+    () => new Map<number, boolean>(teamUsers.map((u) => [u.id, u.isActive])),
+    [teamUsers]
+  );
+
+  const userById = useMemo(
+    () => new Map(teamUsers.map((u) => [u.id, u])),
+    [teamUsers]
+  );
+
   const queryClient = useQueryClient();
   const [showEditTeam, setShowEditTeam] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
@@ -112,7 +122,7 @@ export function TeamDetails() {
     if (!memberSearch) return true;
     const q = memberSearch.toLowerCase();
     const name = (m.userName ?? '').toLowerCase();
-    const email = ((m as any).adEmail ?? '').toLowerCase();
+    const email = (userById.get(m.userId)?.adEmail ?? '').toLowerCase();
     return name.includes(q) || email.includes(q);
   });
 
@@ -283,7 +293,7 @@ export function TeamDetails() {
                           {m.userName ?? `User ${m.userId}`}
                         </td>
                         <td className="px-3 py-2 text-slate-700">
-                          {(m as any).adEmail ?? ''}
+                          {userById.get(m.userId)?.adEmail ?? '-'}
                         </td>
                         <td className="px-3 py-2">
                           <span className="rounded-md border px-2 py-1 text-sm text-slate-700">
@@ -310,8 +320,16 @@ export function TeamDetails() {
                           })()}
                         </td>
                         <td className="px-3 py-2">
-                          <span className="rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">
-                            Active
+                          <span
+                            className={`rounded px-2 py-0.5 text-xs font-medium ${
+                              userIsActiveById.get(m.userId)
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {userIsActiveById.get(m.userId)
+                              ? 'Active'
+                              : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-3 py-2 text-slate-700">

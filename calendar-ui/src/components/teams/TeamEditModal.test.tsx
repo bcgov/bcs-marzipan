@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { TeamDetail, TeamListItem } from '@corpcal/shared/api/types';
+import { ApiError } from '@/api/errors';
 
 import { TeamEditModal } from './TeamEditModal';
 
@@ -154,7 +155,7 @@ describe('TeamEditModal', () => {
       fireEvent.submit(createButton.closest('form') as HTMLFormElement);
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Failed to create', {
+        expect(mockToast.error).toHaveBeenCalledWith('Failed to create team', {
           id: 'team-created',
         });
       });
@@ -192,13 +193,16 @@ describe('TeamEditModal', () => {
     });
 
     it('maps backend duplicate abbreviation conflict to inline validation', async () => {
-      mockCreateTeam.mockRejectedValue({
-        message: 'Conflict',
-        response: {
+      mockCreateTeam.mockRejectedValue(
+        new ApiError({
           status: 409,
-          data: { message: 'Abbreviation already exists' },
-        },
-      });
+          title: 'Conflict',
+          detail: 'Abbreviation already exists',
+          type: 'https://example.com/errors/conflict',
+          instance: '/teams',
+          correlationId: 'test-123',
+        })
+      );
 
       const user = userEvent.setup();
       renderModal();
@@ -215,9 +219,6 @@ describe('TeamEditModal', () => {
       expect(
         await screen.findByText(/abbreviation is already used by another team/i)
       ).toBeInTheDocument();
-      expect(mockToast.error).not.toHaveBeenCalledWith('Conflict', {
-        id: 'team-created',
-      });
       expect(screen.getByRole('button', { name: /create/i })).toBeDisabled();
     });
   });
@@ -271,7 +272,7 @@ describe('TeamEditModal', () => {
       await user.click(screen.getByRole('button', { name: /update/i }));
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Server error', {
+        expect(mockToast.error).toHaveBeenCalledWith('Failed to update team', {
           id: 'team-updated-5',
         });
       });

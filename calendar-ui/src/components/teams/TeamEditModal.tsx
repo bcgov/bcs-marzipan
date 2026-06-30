@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TeamDetail, TeamListItem } from '@corpcal/shared/api/types';
+import { ApiError } from '@/api/errors';
 import { fetchMinistries } from '@/api/lookupsApi';
 import {
   createTeam,
@@ -60,18 +61,12 @@ export function TeamEditModal({
   const [isActive, setIsActive] = useState(true);
   const [ministryId, setMinistryId] = useState<string | null>(null);
 
-  const isDuplicateAbbreviationError = (
-    err: Error & {
-      response?: {
-        status?: number;
-        data?: { message?: string; error?: string };
-      };
-    }
-  ) => {
-    const status = err.response?.status;
-    const rawMessage =
-      `${err.message ?? ''} ${err.response?.data?.message ?? ''} ${err.response?.data?.error ?? ''}`.toLowerCase();
-    return status === 409 && rawMessage.includes('abbreviation');
+  const isDuplicateAbbreviationError = (error: unknown): boolean => {
+    return (
+      error instanceof ApiError &&
+      error.status === 409 &&
+      error.detail.toLowerCase().includes('abbreviation')
+    );
   };
 
   const { data: detail, isLoading: isLoadingDetail } =
@@ -134,21 +129,14 @@ export function TeamEditModal({
       onSaved();
       onClose();
     },
-    onError: (
-      err: Error & {
-        response?: {
-          status?: number;
-          data?: { message?: string; error?: string };
-        };
-      }
-    ) => {
+    onError: (err: unknown) => {
       if (isDuplicateAbbreviationError(err)) {
         setHasServerAbbreviationConflict(true);
         return;
       }
-      toast.error(err.message || 'Failed to create team', {
-        id: 'team-created',
-      });
+      const message =
+        err instanceof ApiError ? err.detail : 'Failed to create team';
+      toast.error(message, { id: 'team-created' });
     },
   });
 
@@ -166,20 +154,14 @@ export function TeamEditModal({
       onSaved();
       onClose();
     },
-    onError: (
-      err: Error & {
-        response?: {
-          status?: number;
-          data?: { message?: string; error?: string };
-        };
-      },
-      variables
-    ) => {
+    onError: (err: unknown, variables) => {
       if (isDuplicateAbbreviationError(err)) {
         setHasServerAbbreviationConflict(true);
         return;
       }
-      toast.error(err.message || 'Failed to update team', {
+      const message =
+        err instanceof ApiError ? err.detail : 'Failed to update team';
+      toast.error(message, {
         id: variables ? `team-updated-${variables.id}` : undefined,
       });
     },
