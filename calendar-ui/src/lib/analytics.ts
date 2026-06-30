@@ -191,8 +191,12 @@ export function getActiveReportFilterKeys(
     activeKeys.push('dateRange');
   }
 
+  if (filterState.pitchDateFilter.kind !== 'any') {
+    activeKeys.push('pitchDateFilter');
+  }
+
   for (const [key, value] of Object.entries(filterState)) {
-    if (key === 'dateRange') continue;
+    if (key === 'dateRange' || key === 'pitchDateFilter') continue;
     if (Array.isArray(value)) {
       if (value.length > 0) activeKeys.push(key);
       continue;
