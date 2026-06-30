@@ -4,8 +4,14 @@ import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TeamDetail, TeamListItem } from '@corpcal/shared/api/types';
+import { ApiError } from '@/api/errors';
 import { fetchMinistries } from '@/api/lookupsApi';
-import { createTeam, fetchTeamById, updateTeam } from '@/api/teamsApi';
+import {
+  createTeam,
+  fetchTeamById,
+  fetchTeamsList,
+  updateTeam,
+} from '@/api/teamsApi';
 import { Button } from '@/components/ui/button';
 import {
   Combobox,
@@ -23,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { InfoIconButton } from '@/components/ui/info-icon-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -45,12 +52,22 @@ export function TeamEditModal({
 }: TeamEditModalProps) {
   const isCreate = team === null;
   const queryClient = useQueryClient();
-  const [name, setName] = useState('');
   const [abbreviation, setAbbreviation] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [description, setDescription] = useState('');
   const [abbrevManuallyEdited, setAbbrevManuallyEdited] = useState(false);
+  const [hasServerAbbreviationConflict, setHasServerAbbreviationConflict] =
+    useState(false);
   const [isActive, setIsActive] = useState(true);
   const [ministryId, setMinistryId] = useState<string | null>(null);
+
+  const isDuplicateAbbreviationError = (error: unknown): boolean => {
+    return (
+      error instanceof ApiError &&
+      error.status === 409 &&
+      error.detail.toLowerCase().includes('abbreviation')
+    );
+  };
 
   const { data: detail, isLoading: isLoadingDetail } =
     useQuery<TeamDetail | null>({
@@ -65,6 +82,13 @@ export function TeamEditModal({
     enabled: open,
   });
 
+  const { data: allTeams = [] } = useQuery<TeamListItem[]>({
+    queryKey: lookupQueryKeys.teamsList(true),
+    queryFn: () => fetchTeamsList(false),
+    enabled: open,
+    staleTime: 30_000,
+  });
+
   const ministryOptions = useMemo(
     () =>
       ministries.map((m) => ({
@@ -77,16 +101,18 @@ export function TeamEditModal({
   useEffect(() => {
     if (!open) return;
     if (isCreate) {
-      setName('');
       setAbbreviation('');
       setDisplayName('');
+      setDescription('');
+      setHasServerAbbreviationConflict(false);
       setIsActive(true);
       setMinistryId(null);
       setAbbrevManuallyEdited(false);
     } else if (detail) {
-      setName(detail.name);
       setAbbreviation(detail.abbreviation);
       setDisplayName(detail.displayName ?? '');
+      setDescription(detail.description ?? '');
+      setHasServerAbbreviationConflict(false);
       setIsActive(detail.isActive);
       setMinistryId(
         detail.ministryId != null ? String(detail.ministryId) : null
@@ -103,10 +129,14 @@ export function TeamEditModal({
       onSaved();
       onClose();
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to create team', {
-        id: 'team-created',
-      });
+    onError: (err: unknown) => {
+      if (isDuplicateAbbreviationError(err)) {
+        setHasServerAbbreviationConflict(true);
+        return;
+      }
+      const message =
+        err instanceof ApiError ? err.detail : 'Failed to create team';
+      toast.error(message, { id: 'team-created' });
     },
   });
 
@@ -124,8 +154,14 @@ export function TeamEditModal({
       onSaved();
       onClose();
     },
-    onError: (err: Error, variables) => {
-      toast.error(err.message || 'Failed to update team', {
+    onError: (err: unknown, variables) => {
+      if (isDuplicateAbbreviationError(err)) {
+        setHasServerAbbreviationConflict(true);
+        return;
+      }
+      const message =
+        err instanceof ApiError ? err.detail : 'Failed to update team';
+      toast.error(message, {
         id: variables ? `team-updated-${variables.id}` : undefined,
       });
     },
@@ -136,12 +172,19 @@ export function TeamEditModal({
     const trimmedDisplay = displayName.trim();
     const trimmedAbbrev = abbreviation.trim().replace(/\s+/g, '');
     const missingFields: string[] = [];
-    if (!trimmedDisplay) missingFields.push(isCreate ? 'Name' : 'Display');
+    if (!trimmedDisplay) missingFields.push('Name');
     if (!trimmedAbbrev) missingFields.push('Abbreviation');
 
     if (missingFields.length > 0) {
       const detail = `Required fields missing: ${missingFields.join(', ')}`;
       toast.error('Submission failed', { description: detail, duration: 6000 });
+      return;
+    }
+    if (hasAbbreviationConflict) {
+      toast.error('Submission failed', {
+        description: 'Abbreviation must be unique across all teams.',
+        duration: 6000,
+      });
       return;
     }
     if (isCreate) {
@@ -150,17 +193,19 @@ export function TeamEditModal({
         name: nameForCreate,
         abbreviation: trimmedAbbrev,
         displayName: trimmedDisplay || undefined,
+        description: description.trim() || undefined,
         isActive,
         ministryId: ministryId != null ? parseInt(ministryId, 10) : undefined,
       });
     } else if (team) {
-      const nameForUpdate = name && name.trim() ? name.trim() : trimmedDisplay;
+      const nameForUpdate = trimmedDisplay;
       updateMutation.mutate({
         id: team.id,
         body: {
           name: nameForUpdate,
           abbreviation: trimmedAbbrev,
           displayName: trimmedDisplay || undefined,
+          description: description.trim() || undefined,
           isActive,
           ministryId: ministryId != null ? parseInt(ministryId, 10) : null,
         },
@@ -175,8 +220,24 @@ export function TeamEditModal({
   const isLoading = !isCreate && isLoadingDetail;
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
   const displayValid = displayName.trim().length > 0;
-  const abbreviationValid = abbreviation.trim().replace(/\s+/g, '').length > 0;
-  const isFormValid = displayValid && abbreviationValid;
+  const normalizedAbbreviation = abbreviation
+    .trim()
+    .replace(/\s+/g, '')
+    .toLowerCase();
+  const abbreviationValid = normalizedAbbreviation.length > 0;
+  const abbreviationConflict =
+    abbreviationValid &&
+    allTeams.some((existingTeam) => {
+      const existingAbbreviation =
+        existingTeam.abbreviation?.trim().toLowerCase() ?? '';
+      if (!existingAbbreviation) return false;
+      if (team && existingTeam.id === team.id) return false;
+      return existingAbbreviation === normalizedAbbreviation;
+    });
+  const hasAbbreviationConflict =
+    abbreviationConflict || hasServerAbbreviationConflict;
+  const isFormValid =
+    displayValid && abbreviationValid && !hasAbbreviationConflict;
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
 
   return (
@@ -200,28 +261,8 @@ export function TeamEditModal({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              {!isCreate && (
-                <Label htmlFor="team-name">
-                  Name{' '}
-                  <span
-                    className="text-required-field-indicator font-semibold"
-                    aria-hidden
-                  >
-                    *
-                  </span>
-                </Label>
-              )}
-              <Input
-                id="team-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Programmatic name (hidden in create flow)"
-                className={isCreate ? 'sr-only' : undefined}
-                aria-hidden={isCreate}
-                required={!isCreate}
-              />
               <Label htmlFor="team-display-name">
-                {isCreate ? 'Name' : 'Display'}{' '}
+                Name{' '}
                 <span
                   className="text-required-field-indicator font-semibold"
                   aria-hidden
@@ -238,7 +279,10 @@ export function TeamEditModal({
               />
             </div>
             <div className="space-y-2">
-              <Label>Ministry (optional)</Label>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="team-ministry">Ministry</Label>
+                <InfoIconButton aria-label="Ministry is optional" />
+              </div>
               <Combobox
                 items={ministryOptions}
                 value={selectedMinistry}
@@ -250,13 +294,17 @@ export function TeamEditModal({
                     const m = ministries.find((mm) => String(mm.id) === newId);
                     const abb = m?.abbreviation ? String(m.abbreviation) : '';
                     if (!abbrevManuallyEdited || !abbreviation) {
+                      setHasServerAbbreviationConflict(false);
                       setAbbreviation(abb);
                     }
                   }
                 }}
                 itemToStringValue={(o: OptionItem) => o.label}
               >
-                <ComboboxInput placeholder="Select ministry..." />
+                <ComboboxInput
+                  id="team-ministry"
+                  placeholder="Select ministry..."
+                />
                 <ComboboxContent container={dialogContentRef}>
                   <ComboboxEmpty>No ministries found.</ComboboxEmpty>
                   <ComboboxList>
@@ -283,6 +331,7 @@ export function TeamEditModal({
                 id="team-abbreviation"
                 value={abbreviation}
                 onChange={(e) => {
+                  setHasServerAbbreviationConflict(false);
                   setAbbreviation(e.target.value);
                   setAbbrevManuallyEdited(true);
                 }}
@@ -298,6 +347,20 @@ export function TeamEditModal({
                 Short code (max 6 characters) used in activity IDs for
                 non-ministry teams.
               </p>
+              {hasAbbreviationConflict ? (
+                <p className="text-destructive text-xs">
+                  Abbreviation is already used by another team.
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="team-description">Description</Label>
+              <Input
+                id="team-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description"
+              />
             </div>
             <div className="flex items-center gap-2">
               <Switch
