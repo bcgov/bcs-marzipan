@@ -85,7 +85,7 @@ npm run dev --workspace calendar-ui
 Implementation notes:
 
 - The helper safely no-ops if `window.snowplow` is not present (production builds without the snippet are unaffected).
-- `trackCalendarAction` includes `filters` populated from the current `filterState` and `searchKeyword`; optional fields are omitted when empty.
+- Reports instrumentation uses dedicated `report_*` schemas and bucket fields (no raw free-text search is sent).
 - Adjust schema fields and event contents to match updates to the analytics schemas as needed.
 
 ## Runtime configuration (per-environment)
