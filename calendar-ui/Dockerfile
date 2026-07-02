@@ -1,4 +1,4 @@
-FROM node:24-alpine AS build
+FROM artifacts.developer.gov.bc.ca/docker-remote/node:24-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
@@ -15,7 +15,7 @@ RUN NODE_OPTIONS=--max-old-space-size=4096 \
 
 
 # Runtime: OpenShift-friendly, non-root nginx
-FROM nginxinc/nginx-unprivileged:alpine
+FROM artifacts.developer.gov.bc.ca/docker-remote/nginxinc/nginx-unprivileged:alpine
 
 # Static UI build output
 COPY --from=build /app/calendar-ui/dist /usr/share/nginx/html

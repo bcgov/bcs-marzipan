@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Get,
   HttpCode,
@@ -14,15 +15,11 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { ZodIssue } from 'zod';
 
-import {
-  MAX_LOOK_AHEAD_RESET_WINDOW_DAYS,
-  MIN_LOOK_AHEAD_RESET_WINDOW_DAYS,
-  PERMISSIONS,
-  type AuthUser,
-} from '@corpcal/shared';
+import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 import {
   lookAheadResetManualRunBodySchema,
-  lookAheadResetSettingsSchema,
+  lookAheadResetRunPreviewQuerySchema,
+  lookAheadResetSettingsPatchSchema,
 } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -42,58 +39,97 @@ export class LookAheadResetSettingsController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get Look Ahead reset window settings' })
+  @ApiOperation({ summary: 'Get Look Ahead reset settings' })
   @ApiResponse({ status: 200, description: 'Current settings' })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_LOOK_AHEAD_RESET)
   async getSettings() {
-    const windowDaysAfterToday =
-      await this.applicationSettings.getLookAheadResetWindowDays();
+    const [windowDaysAfterToday, cronMode, rollbackAvailable, lastClear] =
+      await Promise.all([
+        this.applicationSettings.getLookAheadResetWindowDays(),
+        this.applicationSettings.getLookAheadResetCronMode(),
+        this.lookAheadResetJob.isRollbackAvailable(),
+        this.lookAheadResetJob.getLastClearSummary(),
+      ]);
+
     return {
       success: true,
-      data: { windowDaysAfterToday },
+      data: {
+        windowDaysAfterToday,
+        cronMode,
+        rollbackAvailable,
+        ...(lastClear ? { lastClear } : {}),
+      },
     };
   }
 
   @Patch()
   @ApiOperation({
-    summary: 'Update Look Ahead reset window (days after today)',
+    summary: 'Update Look Ahead reset window and/or scheduled job state',
   })
   @ApiResponse({ status: 200, description: 'Settings updated' })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_LOOK_AHEAD_RESET)
   async patchSettings(
-    @Body(new ZodValidationPipe(lookAheadResetSettingsSchema))
+    @Body(new ZodValidationPipe(lookAheadResetSettingsPatchSchema))
     body: {
-      windowDaysAfterToday: number;
+      windowDaysAfterToday?: number;
+      cronMode?: 'running' | 'paused_today' | 'stopped';
     }
   ) {
-    await this.applicationSettings.setLookAheadResetWindowDays(
-      body.windowDaysAfterToday
-    );
+    if (body.windowDaysAfterToday !== undefined) {
+      await this.applicationSettings.setLookAheadResetWindowDays(
+        body.windowDaysAfterToday
+      );
+    }
+    if (body.cronMode !== undefined) {
+      await this.applicationSettings.setLookAheadResetCronMode(body.cronMode);
+    }
+
+    const [windowDaysAfterToday, cronMode, rollbackAvailable, lastClear] =
+      await Promise.all([
+        this.applicationSettings.getLookAheadResetWindowDays(),
+        this.applicationSettings.getLookAheadResetCronMode(),
+        this.lookAheadResetJob.isRollbackAvailable(),
+        this.lookAheadResetJob.getLastClearSummary(),
+      ]);
+
     return {
       success: true,
-      data: { windowDaysAfterToday: body.windowDaysAfterToday },
+      data: {
+        windowDaysAfterToday,
+        cronMode,
+        rollbackAvailable,
+        ...(lastClear ? { lastClear } : {}),
+      },
     };
   }
 
   @Get('run-preview')
   @ApiOperation({
     summary:
-      'Preview activities that would be cleared on the next run (optional days query overrides saved window)',
+      'Preview activities that would be cleared on the next manual run (scope, days, includePast)',
   })
   @ApiResponse({ status: 200, description: 'Eligibility preview' })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_LOOK_AHEAD_RESET)
-  async previewRun(@Query('days') daysRaw?: string) {
-    let days = await this.applicationSettings.getLookAheadResetWindowDays();
-    if (daysRaw !== undefined && daysRaw !== '') {
-      const parsed = Number.parseInt(daysRaw, 10);
-      if (Number.isFinite(parsed)) {
-        days = Math.min(
-          MAX_LOOK_AHEAD_RESET_WINDOW_DAYS,
-          Math.max(MIN_LOOK_AHEAD_RESET_WINDOW_DAYS, parsed)
-        );
-      }
+  async previewRun(@Query() rawQuery: Record<string, string | undefined>) {
+    const parsed = lookAheadResetRunPreviewQuerySchema.safeParse(rawQuery);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        message: 'Validation failed',
+        errors: parsed.error.issues.map((issue: ZodIssue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
     }
-    const data = await this.lookAheadResetJob.previewEligibleActivities(days);
+
+    const persistedWindowDays =
+      await this.applicationSettings.getLookAheadResetWindowDays();
+    const data = await this.lookAheadResetJob.previewEligibleActivities({
+      scope: parsed.data.scope,
+      days: parsed.data.days,
+      includePast: parsed.data.includePast,
+      persistedWindowDays,
+    });
     return { success: true, data };
   }
 
@@ -115,16 +151,60 @@ export class LookAheadResetSettingsController {
         })),
       });
     }
-    const body = parsed.data;
-    const daysOverride = body.days;
+
     const result = await this.lookAheadResetJob.runBatch({
       actorUserId: user.id,
       trigger: 'manual',
-      daysOverride,
+      pauseScheduledTonight: parsed.data.pauseScheduledTonight,
+      manual: {
+        scope: parsed.data.scope,
+        days: parsed.data.days,
+        includePast: parsed.data.includePast,
+      },
     });
     if (result.skipReason === 'error') {
       throw new InternalServerErrorException('Look Ahead reset job failed');
     }
+
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @Post('rollback')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Restore Look Ahead statuses from before the last clear',
+  })
+  @ApiResponse({ status: 200, description: 'Rollback executed' })
+  @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_LOOK_AHEAD_RESET)
+  async rollback(@CurrentUser() user: AuthUser) {
+    const available = await this.lookAheadResetJob.isRollbackAvailable();
+    if (!available) {
+      throw new ConflictException(
+        'No Look Ahead clear is available to roll back'
+      );
+    }
+
+    const result = await this.lookAheadResetJob.rollbackLastClear(user.id);
+    if (result.skippedRollback) {
+      throw new ConflictException(
+        result.skipReason === 'in_flight'
+          ? 'Look Ahead restore is already running on this server'
+          : 'Another instance is running the Look Ahead restore. Try again shortly.'
+      );
+    }
+    if (
+      !result.rollbackAvailable &&
+      result.restored === 0 &&
+      result.skipped === 0
+    ) {
+      throw new ConflictException(
+        'No Look Ahead clear is available to roll back'
+      );
+    }
+
     return { success: true, data: result };
   }
 }

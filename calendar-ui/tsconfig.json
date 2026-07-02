@@ -19,6 +19,6 @@
       "@corpcal/database/*": ["../packages/database/dist/esm/*"]
     }
   },
-  "include": ["src", "vite-chunk-groups.ts"],
+  "include": ["src", "vite-chunk-groups.ts", "custom.d.ts"],
   "exclude": ["node_modules"]
 }

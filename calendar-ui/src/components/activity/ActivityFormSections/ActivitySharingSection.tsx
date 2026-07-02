@@ -1,14 +1,9 @@
-import { CheckIcon } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
+import { CheckIcon, Globe, Lock } from 'lucide-react';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { useMemo, type FC } from 'react';
 
-import {
-  DEFAULT_VISIBILITY,
-  VISIBILITY,
-  type Visibility,
-} from '@corpcal/shared/constants/constants';
+import { DEFAULT_VISIBILITY } from '@corpcal/shared/constants/constants';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { FormSelect, FormSelectTrigger } from '@/components/app/form-select';
 import {
   Combobox,
   ComboboxChip,
@@ -36,7 +31,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
@@ -126,6 +122,8 @@ type ActivitySharingSectionProps = {
   quickShareGroups: QuickShareGroupLookup[];
 };
 
+const RESTRICT_ACCESS_SWITCH_ID = 'activity-visibility-restrict-access';
+
 export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
   sharedWithTeams,
   quickShareGroups,
@@ -133,6 +131,14 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
   const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
   const sharedWithAnchorRef = useComboboxAnchor();
+  const leadTeamId = useWatch({ control: form.control, name: 'leadTeamId' });
+  const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
+
+  const leadTeamName = useMemo(() => {
+    if (leadTeamId == null) return 'lead team';
+    const team = leadTeamOptions.find((t) => t.id === leadTeamId);
+    return team?.displayName ?? team?.name ?? 'lead team';
+  }, [leadTeamId, leadTeamOptions]);
 
   const sharedWithTeamOptions = useMemo<OptionItem[]>(
     () =>
@@ -162,69 +168,86 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
       <FormField
         control={form.control}
         name="visibility"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              <>
-                {getActivityFieldLabel(field.name)}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <InfoIconButton aria-label="About visibility" />
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                    align="start"
-                  >
-                    <p className="mb-2">
-                      Sets who can see and view the activity details in
-                      Corporate Calendar:
-                    </p>
-                    <ul className="list-disc space-y-1 pl-4">
-                      <li>
-                        restrict to only your team (and those you share with)
-                      </li>
-                      <li>leave unchecked to make visible for everyone</li>
-                    </ul>
-                    <p className="mt-2">
-                      GCPE executive, Strategic Communications and Cabinet
-                      Priorities staff, and Calendar admin can always view
-                      and/or edit all activities.
-                    </p>
-                    <p className="mt-2">
-                      Does not affect inclusion in the Look Ahead report.
-                    </p>
-                  </PopoverContent>
-                </Popover>
-              </>
-            </FormLabel>
-            <FormSelect
-              readOnly={readOnly}
-              onValueChange={(value) => {
-                const visibility: Visibility = (
-                  VISIBILITY as readonly string[]
-                ).includes(value)
-                  ? (value as Visibility)
-                  : DEFAULT_VISIBILITY;
-                setActivityFormFieldValue(form, field.name, visibility);
-              }}
-              value={field.value || DEFAULT_VISIBILITY}
-            >
-              <FormControl data-field={field.name}>
-                <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select visibility" />
-                </FormSelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="global">Everyone</SelectItem>
-                <SelectItem value="team">My team only</SelectItem>
-              </SelectContent>
-            </FormSelect>
-            <FormDescription>
-              Activities are always visible to exec and admins.
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
+        render={({ field }) => {
+          const isRestricted = (field.value ?? DEFAULT_VISIBILITY) === 'team';
+
+          return (
+            <FormItem className="space-y-2">
+              <div className="flex flex-row items-start space-y-0 space-x-3">
+                <FormControl data-field={field.name}>
+                  <Switch
+                    id={RESTRICT_ACCESS_SWITCH_ID}
+                    checked={isRestricted}
+                    readOnly={readOnly}
+                    onCheckedChange={(checked) => {
+                      setActivityFormFieldValue(
+                        form,
+                        field.name,
+                        checked === true ? 'team' : 'global'
+                      );
+                    }}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel htmlFor={RESTRICT_ACCESS_SWITCH_ID}>
+                    <>
+                      {getActivityFieldLabel(field.name)}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <InfoIconButton aria-label="About access restriction" />
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-80 max-w-[calc(100vw-2rem)] text-sm"
+                          align="start"
+                        >
+                          <p className="mb-2">
+                            Controls who can view this activity in Corporate
+                            Calendar:
+                          </p>
+                          <ul className="list-disc space-y-1 pl-4">
+                            <li>
+                              <strong>On:</strong> only the lead team and teams
+                              selected in Share with can view the activity (plus
+                              roles below).
+                            </li>
+                            <li>
+                              <strong>Off:</strong> visible to everyone.
+                            </li>
+                          </ul>
+                          <p className="mt-2">
+                            GCPE executive, Strategic Communications, Cabinet
+                            Priorities, and Calendar admin roles can always view
+                            all activities regardless of this setting.
+                          </p>
+                          <p className="mt-2">
+                            Does not affect inclusion in the Look Ahead report.
+                          </p>
+                        </PopoverContent>
+                      </Popover>
+                    </>
+                  </FormLabel>
+                </div>
+              </div>
+              <p className="text-muted-foreground flex items-start gap-2 text-sm">
+                {isRestricted ? (
+                  <>
+                    <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <span>
+                      This activity is visible only to {leadTeamName}, shares,
+                      and exec.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Globe className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <span>This activity is visible to all calendar users.</span>
+                  </>
+                )}
+              </p>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
 
       <FormField

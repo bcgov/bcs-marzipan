@@ -59,15 +59,6 @@ function resolveNotConfirmedStatusId<
   return firstByDisplay?.id;
 }
 
-const SECTION_LABELS: Record<CloneAdvancedSection, string> = {
-  overview: ACTIVITY_FORM_SECTION_LABELS.overview,
-  comms: ACTIVITY_FORM_SECTION_LABELS.comms,
-  reports: ACTIVITY_FORM_SECTION_LABELS.reports,
-  schedule: ACTIVITY_FORM_SECTION_LABELS.schedule,
-  event: ACTIVITY_FORM_SECTION_LABELS.event,
-  sharing: ACTIVITY_FORM_SECTION_LABELS.sharing,
-};
-
 /**
  * Map each clone advanced field path to the field-level scope that governs
  * edit permission. Unlisted paths are always allowed (no scope gating).
@@ -570,7 +561,7 @@ export function CloneActivityModal({
                     return (
                       <div key={section} className="space-y-2">
                         <p className="text-xs font-semibold tracking-wide uppercase">
-                          {SECTION_LABELS[section]}
+                          {ACTIVITY_FORM_SECTION_LABELS[section]}
                         </p>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {paths.map((path) => {

@@ -6,6 +6,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import { History, MoreHorizontal, Pencil } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
@@ -314,7 +315,12 @@ export function TeamsTabContent({
               pageRows.map((team) => (
                 <tr key={team.id} className={tableBodyRow}>
                   <td className={`${tableTd} font-medium text-slate-900`}>
-                    {team.displayName ?? team.name ?? '-'}
+                    <Link
+                      to={`/teams/${team.id}`}
+                      className="text-slate-900 hover:underline"
+                    >
+                      {team.displayName ?? team.name ?? '-'}
+                    </Link>
                   </td>
                   <td className={`${tableTd} text-slate-600`}>
                     {team.abbreviation}

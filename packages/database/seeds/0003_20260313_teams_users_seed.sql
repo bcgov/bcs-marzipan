@@ -11,7 +11,7 @@
 -- ----------------------------------------------------------------------------
 
 -- abbreviation: stable short code for activity displayId when the team has no lead ministry
--- (and fallback when a ministry record lacks an abbreviation), max 5 chars per schema
+-- (and fallback when a ministry record lacks an abbreviation), max 6 chars per schema
 INSERT INTO teams (id, name, display_name, abbreviation, description, sort_order, is_active, created_by, last_updated_by) VALUES
   -- GCPE teams (sort_order 1-7)
   (1, 'MR', 'Media Relations', 'MR', 'Media Relations', 1, true, 1, 1),

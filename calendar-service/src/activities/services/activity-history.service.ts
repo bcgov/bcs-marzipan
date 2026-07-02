@@ -193,6 +193,29 @@ export class ActivityHistoryService {
       notes: string;
     }
   ): Promise<void> {
+    await this.recordLookAheadStatusChangeBatch(tx, {
+      actorUserId: params.actorUserId,
+      notes: params.notes,
+      entries: params.entries.map((entry) => ({
+        activityId: entry.activityId,
+        oldLookAheadStatus: entry.oldLookAheadStatus,
+        newLookAheadStatus: 'none',
+      })),
+    });
+  }
+
+  async recordLookAheadStatusChangeBatch(
+    tx: DrizzleDbExecutor,
+    params: {
+      actorUserId: number;
+      entries: Array<{
+        activityId: number;
+        oldLookAheadStatus: string | null;
+        newLookAheadStatus: string | null;
+      }>;
+      notes: string;
+    }
+  ): Promise<void> {
     const { actorUserId, entries, notes } = params;
     if (entries.length === 0) return;
 
@@ -263,7 +286,7 @@ export class ActivityHistoryService {
         {
           field: 'lookAheadStatus',
           oldValue: entry.oldLookAheadStatus,
-          newValue: 'none',
+          newValue: entry.newLookAheadStatus,
         },
       ];
       return {

@@ -104,14 +104,14 @@ describe('updateTeamBodySchema', () => {
   });
 
   it('accepts optional abbreviation', () => {
-    const result = updateTeamBodySchema.parse({ abbreviation: 'ABBR' });
-    expect(result.abbreviation).toBe('ABBR');
+    const result = updateTeamBodySchema.parse({ abbreviation: 'ABCDEF' });
+    expect(result.abbreviation).toBe('ABCDEF');
   });
 
-  it('rejects abbreviation longer than 5 characters', () => {
+  it('rejects abbreviation longer than 6 characters', () => {
     const result = createTeamBodySchema.safeParse({
       name: 'T',
-      abbreviation: 'ABCDEF',
+      abbreviation: 'ABCDEFG',
     });
     expect(result.success).toBe(false);
   });

@@ -1,30 +1,45 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { TeamDetail, TeamListItem } from '@corpcal/shared/api/types';
+import { ApiError } from '@/api/errors';
 
 import { TeamEditModal } from './TeamEditModal';
 
-const { mockToast, mockCreateTeam, mockUpdateTeam, mockFetchTeamById } =
-  vi.hoisted(() => ({
-    mockToast: { success: vi.fn(), error: vi.fn() },
-    mockCreateTeam: vi.fn(),
-    mockUpdateTeam: vi.fn(),
-    mockFetchTeamById: vi.fn(),
-  }));
+const {
+  mockToast,
+  mockCreateTeam,
+  mockUpdateTeam,
+  mockFetchTeamById,
+  mockFetchTeamsList,
+} = vi.hoisted(() => ({
+  mockToast: { success: vi.fn(), error: vi.fn() },
+  mockCreateTeam: vi.fn(),
+  mockUpdateTeam: vi.fn(),
+  mockFetchTeamById: vi.fn(),
+  mockFetchTeamsList: vi.fn(),
+}));
 
 vi.mock('sonner', () => ({ toast: mockToast }));
 
 vi.mock('@/api/teamsApi', () => ({
   createTeam: (...args: unknown[]) => mockCreateTeam(...args),
   fetchTeamById: (id: number) => mockFetchTeamById(id),
+  fetchTeamsList: (...args: unknown[]) => mockFetchTeamsList(...args),
   updateTeam: (...args: unknown[]) => mockUpdateTeam(...args),
 }));
 
 vi.mock('@/api/lookupsApi', () => ({
-  fetchMinistries: vi.fn().mockResolvedValue([]),
+  fetchMinistries: vi.fn().mockResolvedValue([
+    {
+      id: 1,
+      name: 'Ministry 1',
+      displayName: 'Ministry 1',
+      abbreviation: 'M1',
+    },
+  ]),
 }));
 
 function renderModal() {
@@ -59,6 +74,17 @@ function renderEditModal(team: TeamListItem) {
   );
 }
 
+/** Opens the ministry combobox and selects the only option. */
+async function selectMinistry(user: ReturnType<typeof userEvent.setup>) {
+  const input = screen.getByPlaceholderText(/select ministry/i);
+  await user.click(input);
+  await user.type(input, 'Ministry');
+  const option = await screen.findByText('Ministry 1', undefined, {
+    timeout: 5000,
+  });
+  await user.click(option);
+}
+
 const mockTeamListItem: TeamListItem = {
   id: 5,
   name: 'Existing Team',
@@ -81,6 +107,7 @@ const mockTeamDetail: TeamDetail = {
 describe('TeamEditModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetchTeamsList.mockResolvedValue([]);
     mockCreateTeam.mockResolvedValue({
       id: 1,
       name: 'New Team',
@@ -95,7 +122,13 @@ describe('TeamEditModal', () => {
 
       await user.type(screen.getByLabelText(/name \*/i), 'Test Team');
       await user.type(screen.getByLabelText(/^abbreviation \*/i), 'TT');
-      await user.click(screen.getByRole('button', { name: /create/i }));
+      await selectMinistry(user);
+
+      const createButton = screen.getByRole('button', { name: /create/i });
+      await waitFor(() => expect(createButton).toBeEnabled(), {
+        timeout: 5000,
+      });
+      fireEvent.submit(createButton.closest('form') as HTMLFormElement);
 
       await waitFor(() => {
         expect(mockToast.success).toHaveBeenCalledWith('Team created', {
@@ -113,19 +146,90 @@ describe('TeamEditModal', () => {
 
       await user.type(screen.getByLabelText(/name \*/i), 'Test Team');
       await user.type(screen.getByLabelText(/^abbreviation \*/i), 'TT');
-      await user.click(screen.getByRole('button', { name: /create/i }));
+      await selectMinistry(user);
+
+      const createButton = screen.getByRole('button', { name: /create/i });
+      await waitFor(() => expect(createButton).toBeEnabled(), {
+        timeout: 5000,
+      });
+      fireEvent.submit(createButton.closest('form') as HTMLFormElement);
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Failed to create', {
+        expect(mockToast.error).toHaveBeenCalledWith('Failed to create team', {
           id: 'team-created',
         });
       });
     });
   });
 
+  describe('abbreviation uniqueness', () => {
+    it('shows validation and blocks submit when abbreviation matches another team', async () => {
+      mockFetchTeamsList.mockResolvedValue([
+        {
+          id: 99,
+          name: 'Another Team',
+          displayName: 'Another Team',
+          abbreviation: 'TT',
+          description: null,
+          sortOrder: 0,
+          isActive: true,
+          roleId: null,
+          memberCount: 0,
+          ministryId: null,
+          ministryName: null,
+        },
+      ]);
+
+      const user = userEvent.setup();
+      renderModal();
+
+      await user.type(screen.getByLabelText(/name \*/i), 'Test Team');
+      await user.type(screen.getByLabelText(/^abbreviation \*/i), 'TT');
+
+      expect(
+        await screen.findByText(/abbreviation is already used by another team/i)
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /create/i })).toBeDisabled();
+    });
+
+    it('maps backend duplicate abbreviation conflict to inline validation', async () => {
+      mockCreateTeam.mockRejectedValue(
+        new ApiError({
+          status: 409,
+          title: 'Conflict',
+          detail: 'Abbreviation already exists',
+          type: 'https://example.com/errors/conflict',
+          instance: '/teams',
+          correlationId: 'test-123',
+        })
+      );
+
+      const user = userEvent.setup();
+      renderModal();
+
+      await user.type(screen.getByLabelText(/name \*/i), 'Test Team');
+      await user.type(screen.getByLabelText(/^abbreviation \*/i), 'TT');
+
+      const createButton = screen.getByRole('button', { name: /create/i });
+      await waitFor(() => expect(createButton).toBeEnabled(), {
+        timeout: 5000,
+      });
+      fireEvent.submit(createButton.closest('form') as HTMLFormElement);
+
+      expect(
+        await screen.findByText(/abbreviation is already used by another team/i)
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /create/i })).toBeDisabled();
+    });
+  });
+
   describe('update success toast', () => {
     it('calls toast.success with id team-updated-{id} when update succeeds', async () => {
-      mockFetchTeamById.mockResolvedValue(mockTeamDetail);
+      mockFetchTeamById.mockResolvedValue({
+        ...mockTeamDetail,
+        ministryId: 1,
+        ministryName: 'Ministry 1',
+      });
       mockUpdateTeam.mockResolvedValue({
         ...mockTeamListItem,
         name: 'Updated',
@@ -135,12 +239,12 @@ describe('TeamEditModal', () => {
       renderEditModal(mockTeamListItem);
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/name \*/i)).toHaveValue('Existing Team');
+        expect(screen.getByLabelText(/name \*/i)).toHaveValue('Existing');
       });
 
       await user.clear(screen.getByLabelText(/name \*/i));
       await user.type(screen.getByLabelText(/name \*/i), 'Updated Name');
-      await user.click(screen.getByRole('button', { name: /save/i }));
+      await user.click(screen.getByRole('button', { name: /update/i }));
 
       await waitFor(() => {
         expect(mockToast.success).toHaveBeenCalledWith('Team updated', {
@@ -152,19 +256,23 @@ describe('TeamEditModal', () => {
 
   describe('update error toast', () => {
     it('calls toast.error with id team-updated-{id} when update fails', async () => {
-      mockFetchTeamById.mockResolvedValue(mockTeamDetail);
+      mockFetchTeamById.mockResolvedValue({
+        ...mockTeamDetail,
+        ministryId: 1,
+        ministryName: 'Ministry 1',
+      });
       mockUpdateTeam.mockRejectedValue(new Error('Server error'));
       const user = userEvent.setup();
       renderEditModal(mockTeamListItem);
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/name \*/i)).toHaveValue('Existing Team');
+        expect(screen.getByLabelText(/name \*/i)).toHaveValue('Existing');
       });
 
-      await user.click(screen.getByRole('button', { name: /save/i }));
+      await user.click(screen.getByRole('button', { name: /update/i }));
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Server error', {
+        expect(mockToast.error).toHaveBeenCalledWith('Failed to update team', {
           id: 'team-updated-5',
         });
       });

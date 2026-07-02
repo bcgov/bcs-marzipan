@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Copy, Plus } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem, UserListItem } from '@corpcal/shared/api/types';
@@ -30,6 +31,13 @@ import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 export function Users() {
   const [activeTab, setActiveTab] = useState<'users' | 'teams'>('users');
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'teams' || tab === 'users') setActiveTab(tab);
+  }, [location.search]);
   const [editUser, setEditUser] = useState<UserListItem | null>(null);
   const [transferSourceUser, setTransferSourceUser] =
     useState<UserListItem | null>(null);
@@ -127,19 +135,27 @@ export function Users() {
     [resetMutation]
   );
 
+  const headerAction =
+    activeTab === 'teams'
+      ? canCreateTeam && (
+          <Button onClick={() => setShowCreateTeam(true)}>
+            <Plus className="h-4 w-4" />
+            Add team
+          </Button>
+        )
+      : canCreateUser && (
+          <Button onClick={() => setShowCreateUser(true)}>
+            <Plus className="h-4 w-4" />
+            Add user
+          </Button>
+        );
+
   return (
     <>
       <PageHeader
         title="User & Team Management"
         description="Manage user accounts, teams, and roles"
-        action={
-          canCreateUser && (
-            <Button onClick={() => setShowCreateUser(true)}>
-              <Plus className="h-4 w-4" />
-              Add user
-            </Button>
-          )
-        }
+        action={headerAction}
       />
 
       <Tabs

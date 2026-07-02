@@ -112,6 +112,34 @@ export function canonicalizeActivityFormData(
   };
 }
 
+export type PrepareActivityFormDataOptions = {
+  /**
+   * Lookup ID for `translation_required_statuses.name === 'required'`.
+   * When set, {@link translationLanguageIds} are cleared unless status matches.
+   */
+  requiredTranslationStatusId?: number;
+};
+
+/**
+ * Removes translation language IDs when translations are not required for the
+ * current status (hidden in the release section UI).
+ */
+export function stripTranslationLanguagesWhenNotRequired(
+  data: ActivityFormData,
+  requiredTranslationStatusId: number | undefined
+): ActivityFormData {
+  if (requiredTranslationStatusId == null) {
+    return data;
+  }
+  if (data.translationsRequiredStatusId === requiredTranslationStatusId) {
+    return data;
+  }
+  if (!data.translationLanguageIds?.length) {
+    return data;
+  }
+  return { ...data, translationLanguageIds: [] };
+}
+
 /**
  * Normalizes hydrated form values for create/update API payloads.
  *
@@ -121,9 +149,14 @@ export function canonicalizeActivityFormData(
  * fields to `null` for the request body.
  */
 export function prepareActivityFormDataForSubmit(
-  data: ActivityFormData
+  data: ActivityFormData,
+  options?: PrepareActivityFormDataOptions
 ): ActivityFormData {
-  const c = canonicalizeActivityFormData(data);
+  const stripped = stripTranslationLanguagesWhenNotRequired(
+    data,
+    options?.requiredTranslationStatusId
+  );
+  const c = canonicalizeActivityFormData(stripped);
   return {
     ...c,
     notes: c.notes ?? null,
@@ -131,5 +164,6 @@ export function prepareActivityFormDataForSubmit(
     strategy: c.strategy ?? null,
     significance: c.significance ?? null,
     executiveSummary: c.executiveSummary ?? null,
+    lookAheadSection: c.lookAheadSection ?? null,
   };
 }

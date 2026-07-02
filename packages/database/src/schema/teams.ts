@@ -58,7 +58,7 @@ export const teams = pgTable('teams', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   displayName: varchar('display_name', { length: 255 }),
-  abbreviation: varchar('abbreviation', { length: 5 }).notNull(),
+  abbreviation: varchar('abbreviation', { length: 6 }).notNull(),
   description: text('description'),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
