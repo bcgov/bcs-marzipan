@@ -28,13 +28,13 @@ type ActivityPageHeaderProps = {
   /** Flags for activities assigned to the current user's teams. */
   flags?: ActivityFlagResponse[];
   canFlag?: boolean;
-  onFlagAssign?: (
+  onFlagSync?: (
     teamId: number,
-    assigneeId: number,
+    assigneeIds: number[],
     note?: string,
-    assigneeName?: string
+    assigneeNames?: string[]
   ) => void;
-  /** Called when the user removes the assignment. Available to all users, not just admins. */
+  /** Called when a non-flagging user removes their own assignment. */
   onFlagUnassign?: (teamId: number, assigneeName?: string) => void;
   isFlagPending?: boolean;
   isFavourite?: boolean;
@@ -56,7 +56,7 @@ export function ActivityPageHeader({
   onHistoryClick,
   flags,
   canFlag,
-  onFlagAssign,
+  onFlagSync,
   onFlagUnassign,
   isFlagPending,
   isFavourite,
@@ -80,11 +80,13 @@ export function ActivityPageHeader({
 
   const sortedFlags =
     flags == null ? [] : [...flags].sort((a, b) => a.teamId - b.teamId);
+  const stackedFlags = [...sortedFlags].reverse();
   const isFlagged = sortedFlags.length > 0;
-  const hasSingleFlag = sortedFlags.length === 1;
-  const currentFlag = hasSingleFlag ? sortedFlags[0] : null;
+  const iconFlag = sortedFlags[0] ?? null;
+  const flaggedLabel = sortedFlags.map((f) => f.assigneeName).join(', ');
 
-  const iconButtonClassName = 'shrink-0 shadow-none';
+  const iconButtonClassName = 'shrink-0';
+  const multiFlagButtonClassName = 'mr-3 h-10 shrink-0 px-2 pr-4';
   const headerActionIconClassName = 'text-muted-foreground size-4';
   const timestampClassName = 'text-muted-foreground text-xs sm:text-sm';
   const showActionButtons =
@@ -152,54 +154,72 @@ export function ActivityPageHeader({
 
       {showActionButtons && (
         <div className="col-start-2 row-start-4 flex items-center gap-2 self-center sm:col-start-2 sm:row-start-3 sm:mt-auto sm:self-end sm:justify-self-end">
-          {canFlag && onFlagAssign && onFlagUnassign && (
+          {canFlag && onFlagSync && (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="icon"
               title={
                 isFlagged
-                  ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
+                  ? `Assigned to ${flaggedLabel} — click to edit`
                   : 'Assign activity'
               }
               aria-label={
                 isFlagged
-                  ? `Assigned to ${currentFlag?.assigneeName ?? 'teammate'} — click to reassign`
+                  ? `Assigned to ${flaggedLabel} — click to edit`
                   : 'Assign activity'
               }
               onClick={() => setAssignModalOpen(true)}
               disabled={isFlagPending}
-              className={iconButtonClassName}
+              className={
+                isFlagged ? multiFlagButtonClassName : iconButtonClassName
+              }
             >
-              <ActivityFlagIcon
-                assigneeName={isFlagged ? currentFlag?.assigneeName : null}
-                assigneeFlagColour={currentFlag?.assigneeFlagColour}
-              />
+              {isFlagged ? (
+                <span className="flex items-center pr-1.5">
+                  {stackedFlags.map((flag, index) => (
+                    <span
+                      key={`${flag.teamId}:${flag.assigneeId}`}
+                      className={index > 0 ? '-ml-1' : undefined}
+                    >
+                      <ActivityFlagIcon
+                        assigneeName={flag.assigneeName}
+                        assigneeFlagColour={flag.assigneeFlagColour}
+                      />
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <ActivityFlagIcon
+                  assigneeName={null}
+                  assigneeFlagColour={null}
+                />
+              )}
             </Button>
           )}
-          {!canFlag && isFlagged && currentFlag && onFlagUnassign && (
+          {!canFlag && isFlagged && iconFlag && onFlagUnassign && (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="icon"
-              title={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
-              aria-label={`Assigned to ${currentFlag.assigneeName} — click to unassign`}
+              title={`Assigned to ${flaggedLabel} — click to unassign`}
+              aria-label={`Assigned to ${flaggedLabel} — click to unassign`}
               onClick={() =>
-                onFlagUnassign(currentFlag.teamId, currentFlag.assigneeName)
+                onFlagUnassign(iconFlag.teamId, iconFlag.assigneeName)
               }
               disabled={isFlagPending}
               className={iconButtonClassName}
             >
               <ActivityFlagIcon
-                assigneeName={currentFlag.assigneeName}
-                assigneeFlagColour={currentFlag.assigneeFlagColour}
+                assigneeName={iconFlag.assigneeName}
+                assigneeFlagColour={iconFlag.assigneeFlagColour}
               />
             </Button>
           )}
           {onFavouriteToggle && (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="icon"
               title={isFavourite ? 'Remove from watchlist' : 'Add to watchlist'}
               onClick={onFavouriteToggle}
@@ -215,7 +235,7 @@ export function ActivityPageHeader({
           {onHistoryClick && (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="icon"
               title="View history"
               onClick={onHistoryClick}
@@ -227,18 +247,14 @@ export function ActivityPageHeader({
         </div>
       )}
 
-      {canFlag && onFlagAssign && onFlagUnassign && (
+      {canFlag && onFlagSync && (
         <AssignActivityModal
           open={assignModalOpen}
           onOpenChange={setAssignModalOpen}
           flags={flags ?? []}
           isSubmitting={isFlagPending ?? false}
-          onAssign={(teamId, assigneeId, note, assigneeName) => {
-            onFlagAssign(teamId, assigneeId, note, assigneeName);
-            setAssignModalOpen(false);
-          }}
-          onUnassign={(teamId, assigneeName) => {
-            onFlagUnassign(teamId, assigneeName);
+          onSync={(teamId, assigneeIds, note, assigneeNames) => {
+            onFlagSync(teamId, assigneeIds, note, assigneeNames);
             setAssignModalOpen(false);
           }}
           displayId={displayId}

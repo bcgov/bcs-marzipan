@@ -859,13 +859,13 @@ export function ActivityPage({
         onHistoryClick={() => setHistoryOpen(true)}
         flags={activity.flags ?? []}
         canFlag={canFlag}
-        onFlagAssign={
+        onFlagSync={
           canFlag
-            ? (teamId, assigneeId, note, assigneeName) =>
+            ? (teamId, assigneeIds, note, assigneeNames) =>
                 syncFlagsMutation.mutate({
                   activityId: id,
-                  body: { teamId, assigneeIds: [assigneeId], note },
-                  assigneeNames: assigneeName ? [assigneeName] : undefined,
+                  body: { teamId, assigneeIds, note },
+                  assigneeNames,
                 })
             : undefined
         }

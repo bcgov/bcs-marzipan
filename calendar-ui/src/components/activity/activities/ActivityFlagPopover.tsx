@@ -7,7 +7,7 @@
  *
  * Same flag semantics as AssignActivityModal but inline, no note field.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { fetchTeamById } from '@/api/teamsApi';
@@ -42,6 +42,8 @@ interface ActivityFlagPopoverProps {
   isPending?: boolean;
   /** When true, shows assignment state without any interactive controls. */
   readOnly?: boolean;
+  /** Optional custom trigger content (e.g., assigned avatar stack). */
+  triggerContent?: ReactNode;
 }
 
 export function ActivityFlagPopover({
@@ -50,11 +52,13 @@ export function ActivityFlagPopover({
   onSync,
   isPending = false,
   readOnly = false,
+  triggerContent,
 }: ActivityFlagPopoverProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [draftAssigneeIds, setDraftAssigneeIds] = useState<number[]>([]);
 
   const teamIds = useMemo(
     () =>
@@ -131,19 +135,27 @@ export function ActivityFlagPopover({
     }));
   }, [members, user]);
 
+  // Seed draft selection from server state when opening so users can multi-select before saving.
+  useEffect(() => {
+    if (!open) return;
+    setDraftAssigneeIds(selectedAssigneeIds);
+  }, [open, selectedAssigneeIds]);
+
   const handleToggle = (memberId: number) => {
+    setDraftAssigneeIds((prev) =>
+      prev.includes(memberId)
+        ? prev.filter((id) => id !== memberId)
+        : [...prev, memberId]
+    );
+  };
+
+  const handleSave = () => {
     if (!primaryTeamId) return;
-    const selectedSet = new Set(selectedAssigneeIds);
-    if (selectedSet.has(memberId)) {
-      selectedSet.delete(memberId);
-    } else {
-      selectedSet.add(memberId);
-    }
-    const nextAssigneeIds = Array.from(selectedSet);
+    const selectedSet = new Set(draftAssigneeIds);
     const nextAssigneeNames = members
       .filter((m) => selectedSet.has(m.userId))
       .map((m) => m.label);
-    onSync(primaryTeamId, nextAssigneeIds, nextAssigneeNames);
+    onSync(primaryTeamId, draftAssigneeIds, nextAssigneeNames);
     setOpen(false);
   };
 
@@ -168,7 +180,7 @@ export function ActivityFlagPopover({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size={triggerContent ? 'sm' : 'icon'}
           aria-label={
             isFlagged
               ? 'Assigned — click to edit assignments'
@@ -178,12 +190,14 @@ export function ActivityFlagPopover({
           disabled={isPending || !primaryTeamId}
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
-          className="size-6 shrink-0"
+          className={triggerContent ? 'h-6 shrink-0 px-1.5' : 'size-6 shrink-0'}
         >
-          <ActivityFlagIcon
-            assigneeName={isFlagged ? (iconFlag?.assigneeName ?? null) : null}
-            assigneeFlagColour={iconFlag?.assigneeFlagColour}
-          />
+          {triggerContent ?? (
+            <ActivityFlagIcon
+              assigneeName={isFlagged ? (iconFlag?.assigneeName ?? null) : null}
+              assigneeFlagColour={iconFlag?.assigneeFlagColour}
+            />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -207,7 +221,7 @@ export function ActivityFlagPopover({
             renderOption={(opt) => {
               const memberId = parseInt(opt.value, 10);
               const isMe = memberId === user?.id;
-              const isSelected = selectedAssigneeIds.includes(memberId);
+              const isSelected = draftAssigneeIds.includes(memberId);
               const hasTeammates = options.length > 1;
               return (
                 <>
@@ -229,6 +243,18 @@ export function ActivityFlagPopover({
               );
             }}
           />
+        )}
+        {!loadingMembers && (
+          <div className="flex justify-end border-t px-3 py-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSave}
+              disabled={isPending || !primaryTeamId}
+            >
+              Save assignments
+            </Button>
+          </div>
         )}
       </PopoverContent>
     </Popover>

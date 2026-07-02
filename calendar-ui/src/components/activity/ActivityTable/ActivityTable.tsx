@@ -15,6 +15,7 @@ import {
   Loader2,
   MapPin,
   NotebookText,
+  Star,
   Users,
 } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -32,6 +33,7 @@ import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { sanitizeLegendSwatchHexColor } from '@corpcal/shared/schemas';
 import { contrastingBlackOrWhiteForegroundHex } from '@corpcal/shared/utils';
+import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
 import { ErrorState } from '@/components/shared';
 import {
@@ -230,12 +232,14 @@ function OverviewCell({
   row,
   canViewPitchStatus,
   canFlag,
+  isFavourite,
   onFlagSync,
   flagPending,
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
   canFlag?: boolean;
+  isFavourite?: boolean;
   onFlagSync?: (
     teamId: number,
     assigneeIds: number[],
@@ -248,19 +252,23 @@ function OverviewCell({
     row.pitchDate ??
     null;
   const displayIdText = row.displayId ?? String(row.id);
+  const assignedFlags = useMemo(() => {
+    const uniqueFlags = new Map<number, ActivityTableRow['flags'][number]>();
+    row.flags.forEach((flag) => {
+      if (!uniqueFlags.has(flag.assigneeId)) {
+        uniqueFlags.set(flag.assigneeId, flag);
+      }
+    });
+    return Array.from(uniqueFlags.values());
+  }, [row.flags]);
+  const hasAssignedUsers = assignedFlags.length > 0;
+  const assignedTooltip = assignedFlags
+    .map((flag) => flag.assigneeName)
+    .join(', ');
 
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs font-semibold text-slate-900">
-        {(canFlag || row.flags.length > 0) && onFlagSync && (
-          <ActivityFlagPopover
-            activityId={row.id}
-            flags={row.flags}
-            readOnly={!canFlag}
-            onSync={onFlagSync}
-            isPending={flagPending}
-          />
-        )}
         <span
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
@@ -275,6 +283,71 @@ function OverviewCell({
             {displayIdText}
           </CopyableText>
         </span>
+        {isFavourite && (
+          <span
+            title="Added to watch list"
+            aria-label="Added to watch list"
+            className="inline-flex"
+          >
+            <Star
+              className="size-5 text-amber-500"
+              fill="currentColor"
+              aria-hidden
+            />
+          </span>
+        )}
+        {hasAssignedUsers && canFlag && onFlagSync ? (
+          <ActivityFlagPopover
+            activityId={row.id}
+            flags={row.flags}
+            readOnly={!canFlag}
+            onSync={onFlagSync}
+            isPending={flagPending}
+            triggerContent={
+              <span
+                title={assignedTooltip}
+                aria-label={assignedTooltip}
+                className="inline-flex"
+              >
+                <div className="flex items-center -space-x-1">
+                  {assignedFlags.map((flag) => (
+                    <ActivityFlagIcon
+                      key={`${flag.teamId}:${flag.assigneeId}`}
+                      assigneeName={flag.assigneeName}
+                      assigneeFlagColour={flag.assigneeFlagColour}
+                    />
+                  ))}
+                </div>
+              </span>
+            }
+          />
+        ) : hasAssignedUsers ? (
+          <span
+            data-no-row-nav
+            onClick={(e) => e.stopPropagation()}
+            title={assignedTooltip}
+            aria-label={assignedTooltip}
+            className="inline-flex"
+          >
+            <div className="flex items-center -space-x-1">
+              {assignedFlags.map((flag) => (
+                <ActivityFlagIcon
+                  key={`${flag.teamId}:${flag.assigneeId}`}
+                  assigneeName={flag.assigneeName}
+                  assigneeFlagColour={flag.assigneeFlagColour}
+                />
+              ))}
+            </div>
+          </span>
+        ) : canFlag && onFlagSync ? (
+          <ActivityFlagPopover
+            activityId={row.id}
+            flags={row.flags}
+            readOnly={!canFlag}
+            onSync={onFlagSync}
+            isPending={flagPending}
+          />
+        ) : null}
       </div>
       {(row.isConfidential || row.isIssue) && (
         <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-sm font-semibold">
