@@ -10,6 +10,11 @@ type ActivityFlagIconProps = {
   className?: string;
 };
 
+type ActivityFlagOverflowIconProps = {
+  extraCount: number;
+  className?: string;
+};
+
 function getAssigneeInitials(assigneeName: string): string {
   return assigneeName
     .split(' ')
@@ -44,7 +49,7 @@ export function ActivityFlagIcon({
 
   return (
     <span className={cn(iconContainerClassName, className)}>
-      <Avatar size="sm" className="size-full">
+      <Avatar size="sm" className="size-full border border-white/70">
         <AvatarFallback className="text-[8px] font-medium">
           {getAssigneeInitials(assigneeName)}
         </AvatarFallback>
@@ -54,6 +59,21 @@ export function ActivityFlagIcon({
         style={{ fill: flagColour, color: flagColour }}
         aria-hidden
       />
+    </span>
+  );
+}
+
+export function ActivityFlagOverflowIcon({
+  extraCount,
+  className,
+}: ActivityFlagOverflowIconProps): ReactElement {
+  return (
+    <span className={cn(iconContainerClassName, className)}>
+      <Avatar size="sm" className="size-full border border-white/70">
+        <AvatarFallback className="text-[7px] font-semibold">
+          +{extraCount}
+        </AvatarFallback>
+      </Avatar>
     </span>
   );
 }

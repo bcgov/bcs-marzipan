@@ -2,7 +2,10 @@ import { History, Star } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
-import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
+import {
+  ActivityFlagIcon,
+  ActivityFlagOverflowIcon,
+} from '@/components/activity/activities/ActivityFlagIcon';
 import { AssignActivityModal } from '@/components/activity/activities/AssignActivityModal';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -81,6 +84,8 @@ export function ActivityPageHeader({
   const sortedFlags =
     flags == null ? [] : [...flags].sort((a, b) => a.teamId - b.teamId);
   const stackedFlags = [...sortedFlags].reverse();
+  const visibleStackedFlags = stackedFlags.slice(0, 3);
+  const overflowFlagCount = Math.max(stackedFlags.length - 3, 0);
   const isFlagged = sortedFlags.length > 0;
   const iconFlag = sortedFlags[0] ?? null;
   const flaggedLabel = sortedFlags.map((f) => f.assigneeName).join(', ');
@@ -177,10 +182,11 @@ export function ActivityPageHeader({
             >
               {isFlagged ? (
                 <span className="flex items-center pr-1.5">
-                  {stackedFlags.map((flag, index) => (
+                  {visibleStackedFlags.map((flag, index) => (
                     <span
                       key={`${flag.teamId}:${flag.assigneeId}`}
-                      className={index > 0 ? '-ml-1' : undefined}
+                      className={index > 0 ? '-ml-0.5' : undefined}
+                      style={{ zIndex: index + 1 }}
                     >
                       <ActivityFlagIcon
                         assigneeName={flag.assigneeName}
@@ -188,6 +194,18 @@ export function ActivityPageHeader({
                       />
                     </span>
                   ))}
+                  {overflowFlagCount > 0 ? (
+                    <span
+                      className={
+                        visibleStackedFlags.length > 0 ? '-ml-0.5' : undefined
+                      }
+                      style={{ zIndex: visibleStackedFlags.length + 1 }}
+                    >
+                      <ActivityFlagOverflowIcon
+                        extraCount={overflowFlagCount}
+                      />
+                    </span>
+                  ) : null}
                 </span>
               ) : (
                 <ActivityFlagIcon

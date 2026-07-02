@@ -33,7 +33,10 @@ import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { sanitizeLegendSwatchHexColor } from '@corpcal/shared/schemas';
 import { contrastingBlackOrWhiteForegroundHex } from '@corpcal/shared/utils';
-import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
+import {
+  ActivityFlagIcon,
+  ActivityFlagOverflowIcon,
+} from '@/components/activity/activities/ActivityFlagIcon';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
 import { ErrorState } from '@/components/shared';
 import {
@@ -262,6 +265,8 @@ function OverviewCell({
     return Array.from(uniqueFlags.values());
   }, [row.flags]);
   const hasAssignedUsers = assignedFlags.length > 0;
+  const visibleAssignedFlags = assignedFlags.slice(0, 3);
+  const overflowAssignedCount = Math.max(assignedFlags.length - 3, 0);
   const assignedTooltip = assignedFlags
     .map((flag) => flag.assigneeName)
     .join(', ');
@@ -309,14 +314,31 @@ function OverviewCell({
                 aria-label={assignedTooltip}
                 className="inline-flex"
               >
-                <div className="flex items-center -space-x-1">
-                  {assignedFlags.map((flag) => (
-                    <ActivityFlagIcon
+                <div className="flex items-center">
+                  {visibleAssignedFlags.map((flag, index) => (
+                    <span
                       key={`${flag.teamId}:${flag.assigneeId}`}
-                      assigneeName={flag.assigneeName}
-                      assigneeFlagColour={flag.assigneeFlagColour}
-                    />
+                      className={index > 0 ? '-ml-0.5' : undefined}
+                      style={{ zIndex: index + 1 }}
+                    >
+                      <ActivityFlagIcon
+                        assigneeName={flag.assigneeName}
+                        assigneeFlagColour={flag.assigneeFlagColour}
+                      />
+                    </span>
                   ))}
+                  {overflowAssignedCount > 0 ? (
+                    <span
+                      className={
+                        visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined
+                      }
+                      style={{ zIndex: visibleAssignedFlags.length + 1 }}
+                    >
+                      <ActivityFlagOverflowIcon
+                        extraCount={overflowAssignedCount}
+                      />
+                    </span>
+                  ) : null}
                 </div>
               </span>
             }
@@ -329,14 +351,31 @@ function OverviewCell({
             aria-label={assignedTooltip}
             className="inline-flex"
           >
-            <div className="flex items-center -space-x-1">
-              {assignedFlags.map((flag) => (
-                <ActivityFlagIcon
+            <div className="flex items-center">
+              {visibleAssignedFlags.map((flag, index) => (
+                <span
                   key={`${flag.teamId}:${flag.assigneeId}`}
-                  assigneeName={flag.assigneeName}
-                  assigneeFlagColour={flag.assigneeFlagColour}
-                />
+                  className={index > 0 ? '-ml-0.5' : undefined}
+                  style={{ zIndex: index + 1 }}
+                >
+                  <ActivityFlagIcon
+                    assigneeName={flag.assigneeName}
+                    assigneeFlagColour={flag.assigneeFlagColour}
+                  />
+                </span>
               ))}
+              {overflowAssignedCount > 0 ? (
+                <span
+                  className={
+                    visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined
+                  }
+                  style={{ zIndex: visibleAssignedFlags.length + 1 }}
+                >
+                  <ActivityFlagOverflowIcon
+                    extraCount={overflowAssignedCount}
+                  />
+                </span>
+              ) : null}
             </div>
           </span>
         ) : canFlag && onFlagSync ? (
