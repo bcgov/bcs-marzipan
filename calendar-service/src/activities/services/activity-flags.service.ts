@@ -122,12 +122,13 @@ export class ActivityFlagsService {
 
     const existingAssigneeIds = existingFlags.map((row) => row.assigneeId);
     const existingAssigneeSet = new Set(existingAssigneeIds);
+    const desiredAssigneeSet = new Set(desiredAssigneeIds);
 
     const toAdd = desiredAssigneeIds.filter(
       (id) => !existingAssigneeSet.has(id)
     );
     const toRemove = existingAssigneeIds.filter(
-      (id) => !desiredAssigneeIds.includes(id)
+      (id) => !desiredAssigneeSet.has(id)
     );
 
     if (toAdd.length > 0) {
