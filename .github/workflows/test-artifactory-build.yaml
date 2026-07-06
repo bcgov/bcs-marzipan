@@ -16,7 +16,7 @@ on:
           - full
         default: login-only
       image_repo:
-        description: "Artifactory docker repo path (only needed for 'full' stage, e.g. dc4c90-docker-local)"
+        description: 'Optional Artifactory docker repo override'
         required: false
         type: string
       image_tag:
@@ -28,7 +28,8 @@ permissions:
   contents: read
 
 env:
-  REGISTRY: artifacts.developer.gov.bc.ca
+  REGISTRY: ${{ vars.ARTIFACTORY_REGISTRY }}
+  ARTIFACTORY_DEV_IMAGE_REPO: ${{ vars.ARTIFACTORY_DEV_IMAGE_REPO }}
 
 jobs:
   test-artifactory:
@@ -50,10 +51,25 @@ jobs:
       - name: Resolve image repo
         id: repo
         run: |
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "value=gdc4-corpcal-dev" >> "$GITHUB_OUTPUT"
-          else
+          if [[ -n "${{ inputs.image_repo }}" ]]; then
             echo "value=${{ inputs.image_repo }}" >> "$GITHUB_OUTPUT"
+            echo "environment=override" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "value=$ARTIFACTORY_DEV_IMAGE_REPO" >> "$GITHUB_OUTPUT"
+          echo "environment=dev" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Artifactory configuration
+        run: |
+          if [[ -z "$REGISTRY" ]]; then
+            echo "::error::Set repo variable ARTIFACTORY_REGISTRY"
+            exit 1
+          fi
+
+          if [[ "${{ steps.stage.outputs.value }}" == "full" && -z "${{ steps.repo.outputs.value }}" ]]; then
+            echo "::error::Set repo variable ARTIFACTORY_DEV_IMAGE_REPO or use image_repo override"
+            exit 1
           fi
 
       - name: Resolve image tag
@@ -94,7 +110,7 @@ jobs:
         if: steps.stage.outputs.value == 'full'
         run: |
           if [[ -z "${{ steps.repo.outputs.value }}" ]]; then
-            echo "::error::'image_repo' is required for full stage (e.g. dc4c90-docker-local)"
+            echo "::error::Set repo variable ARTIFACTORY_DEV_IMAGE_REPO or use image_repo override"
             exit 1
           fi
 
@@ -116,6 +132,7 @@ jobs:
         run: |
           echo "## Test Results" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Stage:** ${{ steps.stage.outputs.value }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Environment:** ${{ steps.repo.outputs.environment }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Registry:** ${{ env.REGISTRY }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag:** ${{ steps.tag.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Branch:** ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
