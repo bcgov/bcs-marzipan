@@ -655,7 +655,7 @@ export function ActivityPage({
         (flag) => flag.assigneeId === user.id
       );
 
-      await Promise.all(
+      await Promise.allSettled(
         myFlags.map((flag) =>
           removeAssigneeFlagMutation.mutateAsync({
             activityId: id,
