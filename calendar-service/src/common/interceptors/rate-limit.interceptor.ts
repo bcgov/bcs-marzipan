@@ -9,20 +9,47 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
 
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+
 interface RateLimitStore {
-  [key: string]: {
-    count: number;
-    resetTime: number;
-  };
+  get(key: string): RateLimitEntry | undefined;
+  set(key: string, value: RateLimitEntry): void;
+  delete(key: string): void;
+  keys(): string[];
+}
+
+class InMemoryRateLimitStore implements RateLimitStore {
+  private readonly store: Record<string, RateLimitEntry> = {};
+
+  get(key: string): RateLimitEntry | undefined {
+    return this.store[key];
+  }
+
+  set(key: string, value: RateLimitEntry): void {
+    this.store[key] = value;
+  }
+
+  delete(key: string): void {
+    delete this.store[key];
+  }
+
+  keys(): string[] {
+    return Object.keys(this.store);
+  }
 }
 
 @Injectable()
 export class RateLimitInterceptor implements NestInterceptor {
-  private readonly store: RateLimitStore = {};
+  private readonly store: RateLimitStore;
   private readonly maxRequests: number;
   private readonly windowMs: number = 60000; // 1 minute
 
   constructor(private readonly configService: ConfigService) {
+    this.store = new InMemoryRateLimitStore();
+
     // Get max requests from config, default to 100 per minute
     this.maxRequests =
       parseInt(this.configService.get<string>('RATE_LIMIT_MAX') || '100', 10) ||
@@ -50,7 +77,7 @@ export class RateLimitInterceptor implements NestInterceptor {
     this.cleanup(now);
 
     // Get or create rate limit entry for this IP
-    const entry = this.store[ip] || {
+    const entry = this.store.get(ip) || {
       count: 0,
       resetTime: now + this.windowMs,
     };
@@ -65,7 +92,7 @@ export class RateLimitInterceptor implements NestInterceptor {
     entry.count++;
 
     // Store updated entry
-    this.store[ip] = entry;
+    this.store.set(ip, entry);
 
     // Check if limit exceeded
     if (entry.count > this.maxRequests) {
@@ -121,9 +148,10 @@ export class RateLimitInterceptor implements NestInterceptor {
   private cleanup(now: number): void {
     // Remove entries that have expired (older than 2 minutes to be safe)
     const expireTime = now - this.windowMs * 2;
-    Object.keys(this.store).forEach((ip) => {
-      if (this.store[ip].resetTime < expireTime) {
-        delete this.store[ip];
+    this.store.keys().forEach((ip) => {
+      const entry = this.store.get(ip);
+      if (entry && entry.resetTime < expireTime) {
+        this.store.delete(ip);
       }
     });
   }
