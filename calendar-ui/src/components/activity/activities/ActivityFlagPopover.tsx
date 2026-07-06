@@ -92,6 +92,17 @@ export function ActivityFlagPopover({
     .map((f) => f.assigneeName)
     .join(', ');
   const iconFlag = existingFlagsForPrimaryTeam[0] ?? null;
+  const primaryTeamMembers = useMemo(
+    () =>
+      primaryTeamId == null
+        ? []
+        : members.filter((member) => member.teamId === primaryTeamId),
+    [members, primaryTeamId]
+  );
+  const primaryTeamMemberIdSet = useMemo(
+    () => new Set(primaryTeamMembers.map((member) => member.userId)),
+    [primaryTeamMembers]
+  );
 
   // Fetch team members when popover opens (once per mount)
   useEffect(() => {
@@ -125,15 +136,15 @@ export function ActivityFlagPopover({
 
   // Build sorted options: current user first, then alphabetically
   const options = useMemo(() => {
-    const me = members.find((m) => m.userId === user?.id);
-    const rest = members
+    const me = primaryTeamMembers.find((m) => m.userId === user?.id);
+    const rest = primaryTeamMembers
       .filter((m) => m.userId !== user?.id)
       .sort((a, b) => a.label.localeCompare(b.label));
     return [...(me ? [me] : []), ...rest].map((m) => ({
       value: String(m.userId),
       label: m.userId === user?.id ? `${m.label} (you)` : m.label,
     }));
-  }, [members, user]);
+  }, [primaryTeamMembers, user]);
 
   // Seed draft selection from server state when opening so users can multi-select before saving.
   useEffect(() => {
@@ -151,11 +162,14 @@ export function ActivityFlagPopover({
 
   const handleSave = () => {
     if (!primaryTeamId) return;
-    const selectedSet = new Set(draftAssigneeIds);
-    const nextAssigneeNames = members
+    const nextAssigneeIds = draftAssigneeIds.filter((assigneeId) =>
+      primaryTeamMemberIdSet.has(assigneeId)
+    );
+    const selectedSet = new Set(nextAssigneeIds);
+    const nextAssigneeNames = primaryTeamMembers
       .filter((m) => selectedSet.has(m.userId))
       .map((m) => m.label);
-    onSync(primaryTeamId, draftAssigneeIds, nextAssigneeNames);
+    onSync(primaryTeamId, nextAssigneeIds, nextAssigneeNames);
     setOpen(false);
   };
 

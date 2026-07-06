@@ -38,7 +38,11 @@ type ActivityPageHeaderProps = {
     assigneeNames?: string[]
   ) => void;
   /** Called when a non-flagging user removes their own assignment. */
-  onFlagUnassign?: (teamId: number, assigneeName?: string) => void;
+  onFlagUnassign?: (
+    teamId: number,
+    assigneeId: number,
+    assigneeName?: string
+  ) => void;
   isFlagPending?: boolean;
   isFavourite?: boolean;
   onFavouriteToggle?: () => void;
@@ -223,7 +227,11 @@ export function ActivityPageHeader({
               title={`Assigned to ${flaggedLabel} — click to unassign`}
               aria-label={`Assigned to ${flaggedLabel} — click to unassign`}
               onClick={() =>
-                onFlagUnassign(iconFlag.teamId, iconFlag.assigneeName)
+                onFlagUnassign(
+                  iconFlag.teamId,
+                  iconFlag.assigneeId,
+                  iconFlag.assigneeName
+                )
               }
               disabled={isFlagPending}
               className={iconButtonClassName}

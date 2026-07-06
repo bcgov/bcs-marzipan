@@ -54,6 +54,7 @@ import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
 import {
   useDeleteActivity,
+  useRemoveAssigneeActivityFlag,
   useRequestDeleteActivity,
   useRestoreActivity,
   useSoftDeleteActivity,
@@ -264,6 +265,9 @@ export function ActivityPage({
   const softDeleteMutation = useSoftDeleteActivity();
   const requestDeleteMutation = useRequestDeleteActivity();
   const syncFlagsMutation = useSyncActivityFlags({
+    onSuccess: () => void refreshActivity(),
+  });
+  const removeAssigneeFlagMutation = useRemoveAssigneeActivityFlag({
     onSuccess: () => void refreshActivity(),
   });
 
@@ -646,20 +650,21 @@ export function ActivityPage({
     markAsCompleted?: boolean,
     unassignMe?: boolean
   ) => {
-    if (unassignMe) {
-      const flagsByTeam = new Map<number, number[]>();
-      (activity.flags ?? []).forEach((flag) => {
-        const next = flagsByTeam.get(flag.teamId) ?? [];
-        next.push(flag.assigneeId);
-        flagsByTeam.set(flag.teamId, next);
-      });
-      flagsByTeam.forEach((assigneeIds, teamId) => {
-        const nextAssigneeIds = assigneeIds.filter((aId) => aId !== user?.id);
-        syncFlagsMutation.mutate({
-          activityId: id,
-          body: { teamId, assigneeIds: nextAssigneeIds },
-        });
-      });
+    if (unassignMe && user?.id != null) {
+      const myFlags = (activity.flags ?? []).filter(
+        (flag) => flag.assigneeId === user.id
+      );
+
+      await Promise.all(
+        myFlags.map((flag) =>
+          removeAssigneeFlagMutation.mutateAsync({
+            activityId: id,
+            teamId: flag.teamId,
+            assigneeId: flag.assigneeId,
+            assigneeName: flag.assigneeName,
+          })
+        )
+      );
     }
     if (markAsCompleted) {
       if (isDirty) {
@@ -869,14 +874,17 @@ export function ActivityPage({
                 })
             : undefined
         }
-        onFlagUnassign={(teamId, assigneeName) =>
-          syncFlagsMutation.mutate({
+        onFlagUnassign={(teamId, assigneeId, assigneeName) =>
+          removeAssigneeFlagMutation.mutate({
             activityId: id,
-            body: { teamId, assigneeIds: [] },
-            assigneeNames: assigneeName ? [assigneeName] : undefined,
+            teamId,
+            assigneeId,
+            assigneeName,
           })
         }
-        isFlagPending={syncFlagsMutation.isPending}
+        isFlagPending={
+          syncFlagsMutation.isPending || removeAssigneeFlagMutation.isPending
+        }
         isFavourite={isFavourite(id)}
         onFavouriteToggle={() => toggleFavourite(id)}
         isFavouriteToggling={isFavouriteToggling}
