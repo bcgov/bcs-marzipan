@@ -40,6 +40,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve test stage
+        id: stage
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "value=build-only" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${{ inputs.stage }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Resolve image tag
         id: tag
         run: |
@@ -58,7 +67,7 @@ jobs:
 
       # ── Stage 2: Build ──
       - name: Build calendar-service
-        if: inputs.stage == 'build-only' || inputs.stage == 'full'
+        if: steps.stage.outputs.value == 'build-only' || steps.stage.outputs.value == 'full'
         run: |
           docker build \
             -f calendar-service/Dockerfile \
@@ -66,7 +75,7 @@ jobs:
             .
 
       - name: Build calendar-ui
-        if: inputs.stage == 'build-only' || inputs.stage == 'full'
+        if: steps.stage.outputs.value == 'build-only' || steps.stage.outputs.value == 'full'
         run: |
           docker build \
             -f calendar-ui/Dockerfile \
@@ -75,7 +84,7 @@ jobs:
 
       # ── Stage 3: Push ──
       - name: Validate push inputs
-        if: inputs.stage == 'full'
+        if: steps.stage.outputs.value == 'full'
         run: |
           if [[ -z "${{ inputs.image_repo }}" ]]; then
             echo "::error::'image_repo' is required for full stage (e.g. dc4c90-docker-local)"
@@ -83,14 +92,14 @@ jobs:
           fi
 
       - name: Tag and push calendar-service
-        if: inputs.stage == 'full'
+        if: steps.stage.outputs.value == 'full'
         run: |
           PUSH_TAG="$REGISTRY/${{ inputs.image_repo }}/calendar-service:${{ steps.tag.outputs.tag }}"
           docker tag "$REGISTRY/calendar-service:${{ steps.tag.outputs.tag }}" "$PUSH_TAG"
           docker push "$PUSH_TAG"
 
       - name: Tag and push calendar-ui
-        if: inputs.stage == 'full'
+        if: steps.stage.outputs.value == 'full'
         run: |
           PUSH_TAG="$REGISTRY/${{ inputs.image_repo }}/calendar-ui:${{ steps.tag.outputs.tag }}"
           docker tag "$REGISTRY/calendar-ui:${{ steps.tag.outputs.tag }}" "$PUSH_TAG"
@@ -99,7 +108,7 @@ jobs:
       - name: Summary
         run: |
           echo "## Test Results" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Stage:** ${{ inputs.stage }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Stage:** ${{ steps.stage.outputs.value }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Registry:** ${{ env.REGISTRY }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag:** ${{ steps.tag.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Branch:** ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
