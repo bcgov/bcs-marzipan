@@ -1,6 +1,11 @@
 name: Test Artifactory Build & Push
 
 on:
+  push:
+    branches:
+      - 'build/enable-github-actions-artifacts'
+    paths:
+      - '.github/workflows/test-artifactory-build.yaml'
   workflow_dispatch:
     inputs:
       stage:
