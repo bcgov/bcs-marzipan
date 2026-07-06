@@ -655,16 +655,28 @@ export function ActivityPage({
         (flag) => flag.assigneeId === user.id
       );
 
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         myFlags.map((flag) =>
           removeAssigneeFlagMutation.mutateAsync({
             activityId: id,
             teamId: flag.teamId,
             assigneeId: flag.assigneeId,
             assigneeName: flag.assigneeName,
+            suppressSuccessToast: true,
           })
         )
       );
+
+      const removedCount = results.filter(
+        (result) => result.status === 'fulfilled'
+      ).length;
+      if (removedCount > 0) {
+        toast.success(
+          removedCount === 1
+            ? 'Activity unassigned'
+            : `Activity unassigned from ${removedCount} teams`
+        );
+      }
     }
     if (markAsCompleted) {
       if (isDirty) {

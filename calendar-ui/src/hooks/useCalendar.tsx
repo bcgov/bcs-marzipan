@@ -352,6 +352,7 @@ export function useRemoveAssigneeActivityFlag(options?: {
       teamId: number;
       assigneeId: number;
       assigneeName?: string;
+      suppressSuccessToast?: boolean;
     }) => removeAssigneeActivityFlag(activityId, teamId, assigneeId),
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
@@ -360,11 +361,13 @@ export function useRemoveAssigneeActivityFlag(options?: {
         source: 'local',
         activityId: vars.activityId,
       });
-      toast.success(
-        vars.assigneeName
-          ? `Activity unassigned from ${vars.assigneeName}`
-          : 'Activity unassigned'
-      );
+      if (!vars.suppressSuccessToast) {
+        toast.success(
+          vars.assigneeName
+            ? `Activity unassigned from ${vars.assigneeName}`
+            : 'Activity unassigned'
+        );
+      }
       options?.onSuccess?.();
     },
     onError: (error) => {

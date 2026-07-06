@@ -54,9 +54,10 @@ export class ActivityFlagsController {
   @ApiOperation({
     summary: 'Assign (flag) an activity',
     description:
-      'Assigns a team member to an activity for follow-up. ' +
-      'At most one assignee per (activity, team) pair. ' +
-      'Replaces the existing flag if one exists. ' +
+      'Legacy single-assignee endpoint. Assigns one team member to an activity for follow-up. ' +
+      'Internally syncs the full assignee set for the given (activity, team) pair to exactly one assignee, ' +
+      'so calling this route will remove any other existing assignees for that team. ' +
+      'Prefer PUT /activities/:id/flags for multi-assignee updates. ' +
       "Requires activities.flag permission. The caller's teamId must be provided in the body.",
   })
   @ApiParam({ name: 'id', type: Number, description: 'Activity ID' })
@@ -99,6 +100,8 @@ export class ActivityFlagsController {
     description:
       'Sets the full assignee list for the given (activity, team) pair. ' +
       'Adds missing assignees and removes assignees not present in the provided list. ' +
+      'This is the preferred multi-assignee endpoint. ' +
+      'By contrast, the legacy PUT /activities/:id/flag route overwrites the full set to a single assignee and can remove other assignees for that team. ' +
       'Requires activities.flag permission and a teamId the caller belongs to.',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Activity ID' })
