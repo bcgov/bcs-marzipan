@@ -844,6 +844,8 @@ export interface ActivityTableProps {
   sharedWithTeamIds?: number[];
   /** When set, only activities whose IDs are in this list are shown (favourites tab). */
   favouriteActivityIds?: number[];
+  /** IDs currently in the user's watchlist; used to show the watchlist star indicator. */
+  watchlistActivityIds?: number[];
   /** When set, only activities flag-assigned to any of these users are shown. */
   flagAssigneeUserIds?: number[];
   /**
@@ -861,6 +863,7 @@ export function ActivityTable({
   commsContactLeadUserIds,
   sharedWithTeamIds,
   favouriteActivityIds,
+  watchlistActivityIds,
   flagAssigneeUserIds,
   activeSavedFilter: activeSavedFilterFromParent,
   onActiveSavedFilterChange,
@@ -1253,6 +1256,11 @@ export function ActivityTable({
     );
   }, [filteredData, effectiveSortKey, effectiveSortDirection]);
 
+  const watchlistActivityIdSet = useMemo(
+    () => new Set(watchlistActivityIds ?? []),
+    [watchlistActivityIds]
+  );
+
   // Track which row ids we have seen so we can animate only newly arrived rows on refetch
   const seenIdsRef = useRef<Set<number>>(new Set());
   const [newRowIds, setNewRowIds] = useState<Set<number>>(new Set());
@@ -1327,6 +1335,7 @@ export function ActivityTable({
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
             canFlag={canFlag}
+            isFavourite={watchlistActivityIdSet.has(row.original.id)}
             onFlagSync={(teamId, assigneeIds, assigneeNames) =>
               syncFlagsMutation.mutate({
                 activityId: row.original.id,
@@ -1440,6 +1449,7 @@ export function ActivityTable({
       handleSortChange,
       pitchFieldVisibility.canViewPitchStatus,
       canFlag,
+      watchlistActivityIdSet,
       syncFlagsMutation,
     ]
   );

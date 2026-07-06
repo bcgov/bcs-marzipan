@@ -855,6 +855,7 @@ export function ActivityPage({
       />
       <ActivityPageHeader
         displayId={displayId}
+        currentUserId={user?.id ?? null}
         title={activity.title ?? ''}
         categories={categories}
         leadMinistry={activity.leadMinistry ?? null}

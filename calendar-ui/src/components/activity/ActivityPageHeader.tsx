@@ -21,6 +21,7 @@ import { formatDisplayValue } from '@/lib/formatDisplayValue';
 
 type ActivityPageHeaderProps = {
   displayId: string;
+  currentUserId?: number | null;
   title: string;
   categories: string[];
   leadMinistry?: string | null;
@@ -54,6 +55,7 @@ type ActivityPageHeaderProps = {
  */
 export function ActivityPageHeader({
   displayId,
+  currentUserId,
   title,
   categories,
   leadMinistry,
@@ -91,7 +93,10 @@ export function ActivityPageHeader({
   const visibleStackedFlags = stackedFlags.slice(0, 3);
   const overflowFlagCount = Math.max(stackedFlags.length - 3, 0);
   const isFlagged = sortedFlags.length > 0;
-  const iconFlag = sortedFlags[0] ?? null;
+  const currentUserFlag =
+    currentUserId == null
+      ? null
+      : (sortedFlags.find((flag) => flag.assigneeId === currentUserId) ?? null);
   const flaggedLabel = sortedFlags.map((f) => f.assigneeName).join(', ');
 
   const iconButtonClassName = 'shrink-0';
@@ -219,26 +224,26 @@ export function ActivityPageHeader({
               )}
             </Button>
           )}
-          {!canFlag && isFlagged && iconFlag && onFlagUnassign && (
+          {!canFlag && currentUserFlag && onFlagUnassign && (
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              title={`Assigned to ${flaggedLabel} — click to unassign`}
-              aria-label={`Assigned to ${flaggedLabel} — click to unassign`}
+              title={`Assigned to ${currentUserFlag.assigneeName} — click to unassign`}
+              aria-label={`Assigned to ${currentUserFlag.assigneeName} — click to unassign`}
               onClick={() =>
                 onFlagUnassign(
-                  iconFlag.teamId,
-                  iconFlag.assigneeId,
-                  iconFlag.assigneeName
+                  currentUserFlag.teamId,
+                  currentUserFlag.assigneeId,
+                  currentUserFlag.assigneeName
                 )
               }
               disabled={isFlagPending}
               className={iconButtonClassName}
             >
               <ActivityFlagIcon
-                assigneeName={iconFlag.assigneeName}
-                assigneeFlagColour={iconFlag.assigneeFlagColour}
+                assigneeName={currentUserFlag.assigneeName}
+                assigneeFlagColour={currentUserFlag.assigneeFlagColour}
               />
             </Button>
           )}
