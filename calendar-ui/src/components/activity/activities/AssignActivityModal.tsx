@@ -14,6 +14,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -21,6 +28,11 @@ interface TeamMemberOption {
   userId: number;
   label: string;
   teamId: number;
+}
+
+interface TeamOption {
+  id: number;
+  label: string;
 }
 
 interface AssignActivityModalProps {
@@ -52,6 +64,7 @@ export function AssignActivityModal({
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
+  const [teamOptions, setTeamOptions] = useState<TeamOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const seededTeamIdRef = useRef<number | null>(null);
 
@@ -82,8 +95,13 @@ export function AssignActivityModal({
             teamId: team.id,
           }))
         );
+        const nextTeamOptions: TeamOption[] = availableTeams.map((team) => ({
+          id: team.id,
+          label: team.displayName ?? team.name,
+        }));
 
         setMembers(opts);
+        setTeamOptions(nextTeamOptions);
         setSelectedTeamId((currentTeamId) => {
           if (
             currentTeamId !== null &&
@@ -103,6 +121,7 @@ export function AssignActivityModal({
       .catch(() => {
         if (isCancelled) return;
         setMembers([]);
+        setTeamOptions([]);
         setSelectedTeamId(null);
       })
       .finally(() => {
@@ -208,6 +227,38 @@ export function AssignActivityModal({
         )}
 
         <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="assign-team">Team</Label>
+            {teamOptions.length > 1 ? (
+              <Select
+                value={selectedTeamId != null ? String(selectedTeamId) : ''}
+                onValueChange={(value) => {
+                  const parsed = Number(value);
+                  setSelectedTeamId(Number.isNaN(parsed) ? null : parsed);
+                }}
+                disabled={isSubmitting || loadingMembers}
+              >
+                <SelectTrigger id="assign-team" className="w-full">
+                  <SelectValue placeholder="Select team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamOptions.map((team) => (
+                    <SelectItem key={team.id} value={String(team.id)}>
+                      {team.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div
+                id="assign-team"
+                className="text-muted-foreground bg-muted rounded-md border px-3 py-2 text-sm"
+              >
+                {teamOptions[0]?.label ?? 'No team available'}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-1.5">
             <Label>Assignees</Label>
             {loadingMembers ? (
