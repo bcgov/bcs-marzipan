@@ -1,0 +1,103 @@
+name: Test Artifactory Build & Push
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Test stage: login-only, build-only, or full (build+push)'
+        required: true
+        type: choice
+        options:
+          - login-only
+          - build-only
+          - full
+        default: login-only
+      image_repo:
+        description: "Artifactory docker repo path (only needed for 'full' stage, e.g. dc4c90-docker-local)"
+        required: false
+        type: string
+      image_tag:
+        description: 'Image tag for push (defaults to short SHA)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: artifacts.developer.gov.bc.ca
+
+jobs:
+  test-artifactory:
+    name: 'Test Artifactory (${{ inputs.stage }})'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [[ -n "${{ inputs.image_tag }}" ]]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Stage 1: Login ──
+      - name: Login to Artifactory
+        run: |
+          echo "${{ secrets.ARTIFACTORY_PASSWORD }}" | \
+            docker login "$REGISTRY" \
+              -u "${{ secrets.ARTIFACTORY_USERNAME }}" --password-stdin
+
+      # ── Stage 2: Build ──
+      - name: Build calendar-service
+        if: inputs.stage == 'build-only' || inputs.stage == 'full'
+        run: |
+          docker build \
+            -f calendar-service/Dockerfile \
+            -t "$REGISTRY/calendar-service:${{ steps.tag.outputs.tag }}" \
+            .
+
+      - name: Build calendar-ui
+        if: inputs.stage == 'build-only' || inputs.stage == 'full'
+        run: |
+          docker build \
+            -f calendar-ui/Dockerfile \
+            -t "$REGISTRY/calendar-ui:${{ steps.tag.outputs.tag }}" \
+            .
+
+      # ── Stage 3: Push ──
+      - name: Validate push inputs
+        if: inputs.stage == 'full'
+        run: |
+          if [[ -z "${{ inputs.image_repo }}" ]]; then
+            echo "::error::'image_repo' is required for full stage (e.g. dc4c90-docker-local)"
+            exit 1
+          fi
+
+      - name: Tag and push calendar-service
+        if: inputs.stage == 'full'
+        run: |
+          PUSH_TAG="$REGISTRY/${{ inputs.image_repo }}/calendar-service:${{ steps.tag.outputs.tag }}"
+          docker tag "$REGISTRY/calendar-service:${{ steps.tag.outputs.tag }}" "$PUSH_TAG"
+          docker push "$PUSH_TAG"
+
+      - name: Tag and push calendar-ui
+        if: inputs.stage == 'full'
+        run: |
+          PUSH_TAG="$REGISTRY/${{ inputs.image_repo }}/calendar-ui:${{ steps.tag.outputs.tag }}"
+          docker tag "$REGISTRY/calendar-ui:${{ steps.tag.outputs.tag }}" "$PUSH_TAG"
+          docker push "$PUSH_TAG"
+
+      - name: Summary
+        run: |
+          echo "## Test Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Stage:** ${{ inputs.stage }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Registry:** ${{ env.REGISTRY }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tag:** ${{ steps.tag.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Branch:** ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -n "${{ inputs.image_repo }}" ]]; then
+            echo "- **Push repo:** ${{ inputs.image_repo }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
