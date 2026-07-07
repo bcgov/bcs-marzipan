@@ -50,6 +50,7 @@
     "puppeteer-core": "24.43.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "redis": "^6.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",

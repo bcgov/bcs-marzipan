@@ -21,12 +21,12 @@ The workflow `.github/workflows/pr-deploy-dev.yaml` is triggered on pushes to th
 6. **Rolls out** the updated deployments.
 
 ### Image versioning (APP_VERSION)
- 
+
 Builds and deployments use a versioned image tag instead of `latest` so the cluster pulls the correct image and avoids stale deploys (updated March 3, 2026). The tag is controlled by the GitHub repository variable **`APP_VERSION`** (e.g. `0.0.1`).
- 
+
 - **BuildConfigs** output to `calendar-service:${APP_VERSION}`, `calendar-ui:${APP_VERSION}`, and `calendar-db-seed:${APP_VERSION}`.
 - **Workflows** pass `vars.APP_VERSION` into the job env and use it when tagging images and applying kustomize; `envsubst` substitutes `${APP_VERSION}` (and namespace vars) in the manifests before `oc apply`.
- 
+
 In GitHub set `APP_VERSION` under **Settings → Secrets and variables → Actions → Variables**. Bump it (e.g. `0.0.1` → `0.0.2`) for each release or deploy so each deployment has a distinct tag; this improves traceability and avoids registry caching issues.
 
 ### Required GitHub Secrets
@@ -122,3 +122,36 @@ Notes & Troubleshooting
 - The overlay contains placeholder `REPLACE_NAMESPACE` that must be replaced before applying. Use `sed` as shown, or edit the file directly.
 - If your OpenShift registry prefix or image paths differ, update `openshift/overlays/dev/kustomization.yaml` images section accordingly.
 - If you prefer to avoid editing files, you can run `kustomize edit set namespace <ns>` and `kustomize edit set image <old>=<new>` within the overlay directory.
+
+## Rate-Limit Store Rollout (Memory -> Redis)
+
+The calendar-service supports two rate-limit storage modes:
+
+- `RATE_LIMIT_STORE=memory` (default): in-process counters, simplest and safest baseline.
+- `RATE_LIMIT_STORE=redis`: shared counters across replicas using Redis.
+
+Related variables are wired in both base trees:
+
+- `openshift/deploy/base/calendar-service/configmap.yaml`
+- `openshift/deploy/base/calendar-service/secret.yaml`
+- `openshift/emerald/deploy/base/calendar-service/configmap.yaml`
+- `openshift/emerald/deploy/base/calendar-service/secret.yaml`
+
+### Variables
+
+- `RATE_LIMIT_MAX` (ConfigMap): max requests per minute per IP for general endpoints.
+- `RATE_LIMIT_AUTH_MAX` (ConfigMap): max requests per minute per IP for sensitive auth endpoints.
+- `RATE_LIMIT_STORE` (ConfigMap): `memory` or `redis`.
+- `RATE_LIMIT_REDIS_URL` (Secret): Redis connection URL used when store mode is `redis`.
+
+### Recommended rollout sequence
+
+1. Deploy with `RATE_LIMIT_STORE=memory` (no behavior change from current default).
+2. Set `RATE_LIMIT_REDIS_URL` in the target namespace secret.
+3. Flip `RATE_LIMIT_STORE` to `redis` in a lower environment first.
+4. Monitor 429 rate, request latency, and Redis connectivity errors.
+5. Promote the same change to staging/prod after validation.
+
+### Fallback behavior
+
+If Redis is enabled but unavailable at runtime, calendar-service logs a warning and falls back to in-memory counting. This keeps the API available while signaling misconfiguration or Redis outage.
