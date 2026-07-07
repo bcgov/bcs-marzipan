@@ -1,9 +1,6 @@
 name: Artifactory Build
 
 on:
-  push:
-    branches:
-      - 'build/enable-github-actions-artifacts'
   workflow_dispatch:
     inputs:
       stage:
@@ -130,7 +127,7 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Test Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Build Results" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Stage:** ${{ steps.stage.outputs.value }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Environment:** ${{ steps.repo.outputs.environment }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Registry:** ${{ env.REGISTRY }}" >> "$GITHUB_STEP_SUMMARY"
