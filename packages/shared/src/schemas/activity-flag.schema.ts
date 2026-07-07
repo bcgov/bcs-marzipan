@@ -39,3 +39,22 @@ export const upsertActivityFlagRequestSchema = z.object({
 export type UpsertActivityFlagRequest = z.infer<
   typeof upsertActivityFlagRequestSchema
 >;
+
+/** Request body for PUT /activities/:id/flags — syncs the full assignee set for the caller's team. */
+export const upsertActivityFlagsRequestSchema = z.object({
+  /** Team ID scoping this flag set (must be one of the caller's teams). */
+  teamId: z.number().int(),
+  /** Full desired assignee set for this activity/team (duplicates are rejected). */
+  assigneeIds: z
+    .array(z.number().int())
+    .max(1000)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'assigneeIds must not contain duplicates',
+    }),
+  /** Optional contextual note stored with newly-created flags in this request. */
+  note: z.string().max(1000).optional(),
+});
+
+export type UpsertActivityFlagsRequest = z.infer<
+  typeof upsertActivityFlagsRequestSchema
+>;

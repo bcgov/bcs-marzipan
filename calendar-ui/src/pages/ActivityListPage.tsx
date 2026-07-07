@@ -149,7 +149,7 @@ export const ActivityListPage = () => {
   const hasMultipleTeamsWithMinistry = teamsWithMinistry.length > 1;
 
   const tableProps = useMemo(() => {
-    const base = {};
+    const base = { watchlistActivityIds: favouriteActivityIds };
     switch (activeTab) {
       case 'all':
         return base;

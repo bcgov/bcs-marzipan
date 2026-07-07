@@ -13,6 +13,7 @@ import type {
   SoftDeleteRequest,
   UpdateActivityRequest,
   UpsertActivityFlagRequest,
+  UpsertActivityFlagsRequest,
 } from '@corpcal/shared/schemas';
 
 import {
@@ -26,7 +27,12 @@ import {
   softDeleteActivity,
   updateActivity,
 } from '../api/activitiesApi';
-import { removeActivityFlag, upsertActivityFlag } from '../api/flagsApi';
+import {
+  removeActivityFlag,
+  removeAssigneeActivityFlag,
+  syncActivityFlags,
+  upsertActivityFlag,
+} from '../api/flagsApi';
 import {
   buildOptimisticActivity,
   normalizeListParams,
@@ -267,6 +273,38 @@ export function useUpsertActivityFlag(options?: { onSuccess?: () => void }) {
   });
 }
 
+/** Sync (set) all assignees for an activity/team pair. */
+export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      activityId,
+      body,
+    }: {
+      activityId: number;
+      body: UpsertActivityFlagsRequest;
+      assigneeNames?: string[];
+    }) => syncActivityFlags(activityId, body),
+    onSuccess: (_, vars) => {
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
+      scheduleLiveActivityRefresh(qc, {
+        source: 'local',
+        activityId: vars.activityId,
+      });
+      if ((vars.assigneeNames?.length ?? 0) > 0) {
+        toast.success(`Activity assigned to ${vars.assigneeNames!.join(', ')}`);
+      } else {
+        toast.success('Activity assignments updated');
+      }
+      options?.onSuccess?.();
+    },
+    onError: (error) => {
+      showErrorToast(error, 'Failed to update activity assignments');
+    },
+  });
+}
+
 /** Remove the flag for an activity on a given team. */
 export function useRemoveActivityFlag(options?: { onSuccess?: () => void }) {
   const qc = useQueryClient();
@@ -291,6 +329,45 @@ export function useRemoveActivityFlag(options?: { onSuccess?: () => void }) {
           ? `Activity unassigned from ${vars.assigneeName}`
           : 'Activity unassigned'
       );
+      options?.onSuccess?.();
+    },
+    onError: (error) => {
+      showErrorToast(error, 'Failed to unassign activity');
+    },
+  });
+}
+
+/** Remove a single assignee flag for an activity/team pair. */
+export function useRemoveAssigneeActivityFlag(options?: {
+  onSuccess?: () => void;
+}) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      activityId,
+      teamId,
+      assigneeId,
+    }: {
+      activityId: number;
+      teamId: number;
+      assigneeId: number;
+      assigneeName?: string;
+      suppressSuccessToast?: boolean;
+    }) => removeAssigneeActivityFlag(activityId, teamId, assigneeId),
+    onSuccess: (_, vars) => {
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
+      scheduleLiveActivityRefresh(qc, {
+        source: 'local',
+        activityId: vars.activityId,
+      });
+      if (!vars.suppressSuccessToast) {
+        toast.success(
+          vars.assigneeName
+            ? `Activity unassigned from ${vars.assigneeName}`
+            : 'Activity unassigned'
+        );
+      }
       options?.onSuccess?.();
     },
     onError: (error) => {

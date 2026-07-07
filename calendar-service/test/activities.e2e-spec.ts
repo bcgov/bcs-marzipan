@@ -359,6 +359,112 @@ describe('ActivitiesController (API integration)', () => {
     });
   });
 
+  describe('/activities/:id/flags and /activities/:id/flag/*', () => {
+    let flagTargetId: number;
+    let flagTeamId: number;
+    let assigneeIds: number[] = [];
+
+    beforeAll(async () => {
+      const meRes = await createAuthRequest(app, accessToken)
+        .get('/auth/me')
+        .expect(200);
+      const myTeamIds = (meRes.body?.teamIds as number[] | undefined) ?? [];
+      expect(myTeamIds.length).toBeGreaterThan(0);
+      flagTeamId = myTeamIds[0]!;
+
+      const teamRes = await createAuthRequest(app, accessToken)
+        .get(`/teams/${flagTeamId}`)
+        .expect(200);
+      const members = Array.isArray(teamRes.body?.data?.members)
+        ? teamRes.body.data.members
+        : [];
+      const teamMemberIds = Array.from(
+        new Set(
+          members
+            .map((m: any) => Number(m.userId))
+            .filter((id: number) => Number.isFinite(id))
+        )
+      );
+      expect(teamMemberIds.length).toBeGreaterThan(0);
+      assigneeIds = teamMemberIds.slice(0, 2);
+
+      const createRes = await createAuthRequest(app, accessToken)
+        .post('/activities')
+        .send(
+          createMockActivityRequest({
+            title: 'E2E Flags Multi Assignee',
+            leadTeamId: flagTeamId,
+            commsContacts: [{ userId: assigneeIds[0], isLead: true }],
+          })
+        )
+        .expect(201);
+      flagTargetId = createRes.body.data.id;
+    });
+
+    it('should sync assignees and return delta metadata', async () => {
+      const syncRes = await createAuthRequest(app, accessToken)
+        .put(`/activities/${flagTargetId}/flags`)
+        .send({ teamId: flagTeamId, assigneeIds })
+        .expect(200);
+
+      expect(syncRes.body).toHaveProperty('success', true);
+      expect(Array.isArray(syncRes.body.addedAssigneeIds)).toBe(true);
+      expect(syncRes.body.addedAssigneeIds).toEqual(
+        expect.arrayContaining(assigneeIds)
+      );
+      expect(syncRes.body.addedAssigneeIds).toHaveLength(assigneeIds.length);
+      expect(syncRes.body.removedAssigneeIds).toEqual([]);
+
+      const getRes = await createAuthRequest(app, accessToken)
+        .get(`/activities/${flagTargetId}`)
+        .expect(200);
+      const currentTeamAssignees = (getRes.body.data.flags ?? [])
+        .filter((f: any) => f.teamId === flagTeamId)
+        .map((f: any) => f.assigneeId);
+
+      expect(currentTeamAssignees).toEqual(expect.arrayContaining(assigneeIds));
+      expect(currentTeamAssignees).toHaveLength(assigneeIds.length);
+    });
+
+    it('should remove a single assignee via targeted delete route', async () => {
+      const assigneeIdToRemove = assigneeIds[0];
+
+      const deleteRes = await createAuthRequest(app, accessToken)
+        .delete(
+          `/activities/${flagTargetId}/flag/${flagTeamId}/${assigneeIdToRemove}`
+        )
+        .expect(200);
+      expect(deleteRes.body).toHaveProperty('success', true);
+
+      const getRes = await createAuthRequest(app, accessToken)
+        .get(`/activities/${flagTargetId}`)
+        .expect(200);
+      const currentTeamAssignees = (getRes.body.data.flags ?? [])
+        .filter((f: any) => f.teamId === flagTeamId)
+        .map((f: any) => f.assigneeId);
+
+      expect(currentTeamAssignees).not.toContain(assigneeIdToRemove);
+      expect(currentTeamAssignees.length).toBe(
+        Math.max(assigneeIds.length - 1, 0)
+      );
+    });
+
+    it('should remove all assignees for a team', async () => {
+      const deleteRes = await createAuthRequest(app, accessToken)
+        .delete(`/activities/${flagTargetId}/flag/${flagTeamId}`)
+        .expect(200);
+      expect(deleteRes.body).toHaveProperty('success', true);
+
+      const getRes = await createAuthRequest(app, accessToken)
+        .get(`/activities/${flagTargetId}`)
+        .expect(200);
+      const currentTeamAssignees = (getRes.body.data.flags ?? []).filter(
+        (f: any) => f.teamId === flagTeamId
+      );
+      expect(currentTeamAssignees).toHaveLength(0);
+    });
+  });
+
   describe('/activities/:id/soft-delete (DELETE)', () => {
     let softDeleteTargetId: number;
 
