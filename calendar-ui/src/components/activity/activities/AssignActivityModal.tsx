@@ -163,12 +163,17 @@ export function AssignActivityModal({
   const handleConfirm = () => {
     if (!selectedTeamId) return;
     const teamMembers = members.filter((m) => m.teamId === selectedTeamId);
+    // Filter assignee IDs to the selected team to prevent stale selections
+    const teamMemberIds = new Set(teamMembers.map((m) => m.userId));
+    const filteredMemberIds = selectedMemberIds.filter((id) =>
+      teamMemberIds.has(id)
+    );
     const selectedNames = teamMembers
-      .filter((m) => selectedMemberIds.includes(m.userId))
+      .filter((m) => filteredMemberIds.includes(m.userId))
       .map((m) => m.label);
     onSync(
       selectedTeamId,
-      selectedMemberIds,
+      filteredMemberIds,
       note.trim() || undefined,
       selectedNames
     );

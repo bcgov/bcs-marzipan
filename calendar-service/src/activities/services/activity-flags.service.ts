@@ -131,76 +131,95 @@ export class ActivityFlagsService {
       (id) => !desiredAssigneeSet.has(id)
     );
 
-    if (toAdd.length > 0) {
-      await db
-        .insert(activityFlags)
-        .values(
-          toAdd.map((assigneeId) => ({
-            activityId,
-            teamId,
-            assigneeId,
-            assignedById,
-            note: note ?? null,
+    // Wrap insert/delete/history in a transaction for atomicity
+    await db.transaction(async (tx) => {
+      // Update note on all existing flags for this (activityId, teamId) pair if note is provided
+      if (note !== undefined && note !== null) {
+        await tx
+          .update(activityFlags)
+          .set({
+            note,
             updatedAt: new Date(),
-          }))
-        )
-        .onConflictDoNothing({
-          target: [
-            activityFlags.activityId,
-            activityFlags.teamId,
-            activityFlags.assigneeId,
-          ],
-        });
-    }
+          })
+          .where(
+            and(
+              eq(activityFlags.activityId, activityId),
+              eq(activityFlags.teamId, teamId)
+            )
+          );
+      }
 
-    if (toRemove.length > 0) {
-      await db
-        .delete(activityFlags)
-        .where(
-          and(
-            eq(activityFlags.activityId, activityId),
-            eq(activityFlags.teamId, teamId),
-            inArray(activityFlags.assigneeId, toRemove)
+      if (toAdd.length > 0) {
+        await tx
+          .insert(activityFlags)
+          .values(
+            toAdd.map((assigneeId) => ({
+              activityId,
+              teamId,
+              assigneeId,
+              assignedById,
+              note: note ?? null,
+              updatedAt: new Date(),
+            }))
           )
+          .onConflictDoNothing({
+            target: [
+              activityFlags.activityId,
+              activityFlags.teamId,
+              activityFlags.assigneeId,
+            ],
+          });
+      }
+
+      if (toRemove.length > 0) {
+        await tx
+          .delete(activityFlags)
+          .where(
+            and(
+              eq(activityFlags.activityId, activityId),
+              eq(activityFlags.teamId, teamId),
+              inArray(activityFlags.assigneeId, toRemove)
+            )
+          );
+      }
+
+      for (const assigneeId of toAdd) {
+        const assigneeName =
+          assigneeNameById.get(assigneeId) ?? String(assigneeId);
+        await this.activityHistoryService.recordChange(
+          activityId,
+          assignedById,
+          'flag_assigned',
+          [
+            {
+              field: 'flag.assigneeName',
+              oldValue: null,
+              newValue: assigneeName,
+            },
+          ]
         );
-    }
+      }
 
-    for (const assigneeId of toAdd) {
-      const assigneeName =
-        assigneeNameById.get(assigneeId) ?? String(assigneeId);
-      await this.activityHistoryService.recordChange(
-        activityId,
-        assignedById,
-        'flag_assigned',
-        [
-          {
-            field: 'flag.assigneeName',
-            oldValue: null,
-            newValue: assigneeName,
-          },
-        ]
+      const existingNameById = new Map(
+        existingFlags.map((row) => [row.assigneeId, row.name] as const)
       );
-    }
-
-    const existingNameById = new Map(
-      existingFlags.map((row) => [row.assigneeId, row.name] as const)
-    );
-    for (const assigneeId of toRemove) {
-      const assigneeName =
-        existingNameById.get(assigneeId) ?? String(assigneeId);
-      await this.activityHistoryService.recordChange(
-        activityId,
-        assignedById,
-        'flag_removed',
-        [
-          {
-            field: 'flag.assigneeName',
-            oldValue: assigneeName,
-            newValue: null,
-          },
-        ]
-      );
-    }
+      for (const assigneeId of toRemove) {
+        const assigneeName =
+          existingNameById.get(assigneeId) ?? String(assigneeId);
+        await this.activityHistoryService.recordChange(
+          activityId,
+          assignedById,
+          'flag_removed',
+          [
+            {
+              field: 'flag.assigneeName',
+              oldValue: assigneeName,
+              newValue: null,
+            },
+          ]
+        );
+      }
+    });
 
     return {
       addedAssigneeIds: toAdd,
