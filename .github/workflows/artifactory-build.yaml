@@ -1,4 +1,4 @@
-name: Test Artifactory Build & Push
+name: Artifactory Build
 
 on:
   push:
@@ -7,14 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       stage:
-        description: 'Test stage: login-only, build-only, or full (build+push)'
+        description: 'Build stage: login-only, build-only, or full (build+push)'
         required: true
         type: choice
         options:
           - login-only
           - build-only
           - full
-        default: login-only
+        default: full
       image_repo:
         description: 'Optional Artifactory docker repo override'
         required: false
@@ -32,14 +32,14 @@ env:
   ARTIFACTORY_DEV_IMAGE_REPO: ${{ vars.ARTIFACTORY_DEV_IMAGE_REPO }}
 
 jobs:
-  test-artifactory:
-    name: Test Artifactory
+  artifactory-build:
+    name: Artifactory Build
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve test stage
+      - name: Resolve build stage
         id: stage
         run: |
           if [[ "${{ github.event_name }}" == "push" ]]; then
