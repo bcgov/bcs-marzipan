@@ -57,10 +57,20 @@ describe('ActivityFlagsService', () => {
     return chain;
   };
 
+  /** Builds a mock db.update() chain that resolves where() to undefined. */
+  const makeUpdateChain = () => {
+    const chain: Record<string, unknown> = {};
+    chain['set'] = vi.fn().mockReturnValue(chain);
+    chain['where'] = vi.fn().mockResolvedValue(undefined);
+    return chain;
+  };
+
   let mockDb: {
     select: ReturnType<typeof vi.fn>;
     insert: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    transaction: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -68,7 +78,19 @@ describe('ActivityFlagsService', () => {
       select: vi.fn(),
       insert: vi.fn(),
       delete: vi.fn(),
+      update: vi.fn(),
+      transaction: vi.fn(),
     };
+
+    // Set up transaction to delegate to the same insert/delete/update/select methods
+    mockDb.transaction.mockImplementation((callback) => {
+      return callback({
+        select: mockDb.select,
+        insert: mockDb.insert,
+        delete: mockDb.delete,
+        update: mockDb.update,
+      });
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
