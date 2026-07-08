@@ -1,10 +1,11 @@
-import { Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
-import { fetchTeamById } from '@/api/teamsApi';
+import { fetchUsers } from '@/api/usersApi';
 import { FilterSearchableList } from '@/components/activity/ActivityTable/FilterSearchableList';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -28,6 +34,7 @@ interface TeamMemberOption {
   userId: number;
   label: string;
   teamId: number;
+  teamName: string;
 }
 
 interface TeamOption {
@@ -46,7 +53,8 @@ interface AssignActivityModalProps {
     teamId: number,
     assigneeIds: number[],
     note?: string,
-    assigneeNames?: string[]
+    assigneeNames?: string[],
+    displayTeamPerAssignee?: Record<number, number | null>
   ) => void;
   displayId?: string;
 }
@@ -63,6 +71,12 @@ export function AssignActivityModal({
   const [note, setNote] = useState('');
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [selectedTeamPerUser, setSelectedTeamPerUser] = useState<
+    Record<number, number>
+  >({});
+  const [openTeamSubmenuForUser, setOpenTeamSubmenuForUser] = useState<
+    number | null
+  >(null);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [teamOptions, setTeamOptions] = useState<TeamOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -73,6 +87,7 @@ export function AssignActivityModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [user?.teamIds?.join(',')]
   );
+  const teamIdSet = useMemo(() => new Set(userTeamIds), [userTeamIds]);
 
   // Fetch members for all of the user's teams when the dialog opens.
   useEffect(() => {
@@ -81,41 +96,78 @@ export function AssignActivityModal({
     let isCancelled = false;
     setLoadingMembers(true);
 
-    Promise.all(userTeamIds.map((teamId) => fetchTeamById(teamId)))
-      .then((teams) => {
+    fetchUsers({ teamIds: userTeamIds })
+      .then((userList) => {
         if (isCancelled) return;
 
-        const availableTeams = teams.filter(
-          (team): team is NonNullable<typeof team> => Boolean(team)
-        );
-        const opts: TeamMemberOption[] = availableTeams.flatMap((team) =>
-          team.members.map((m) => ({
-            userId: m.userId,
-            label: m.userName,
-            teamId: team.id,
-          }))
-        );
-        const nextTeamOptions: TeamOption[] = availableTeams.map((team) => ({
-          id: team.id,
-          label: team.displayName ?? team.name,
-        }));
+        // Expand each user into one TeamMemberOption per team that overlaps with
+        // the current user's teams
+        const nextMembers: TeamMemberOption[] = [];
+        const seenTeamIds = new Set<number>();
+        for (const u of userList) {
+          const name = u.adDisplayName ?? u.adUsername ?? `User ${u.id}`;
+          for (const t of u.teams) {
+            if (teamIdSet.has(t.teamId)) {
+              nextMembers.push({
+                userId: u.id,
+                label: name,
+                teamId: t.teamId,
+                teamName: t.teamName,
+              });
+              seenTeamIds.add(t.teamId);
+            }
+          }
+        }
 
-        setMembers(opts);
+        setMembers(nextMembers);
+
+        // Build team options from unique teams
+        const nextTeamOptions: TeamOption[] = Array.from(seenTeamIds)
+          .map((teamId) => {
+            const sample = nextMembers.find((m) => m.teamId === teamId);
+            return {
+              id: teamId,
+              label: sample?.teamName ?? `Team ${teamId}`,
+            };
+          })
+          .sort((a, b) => a.label.localeCompare(b.label));
+
         setTeamOptions(nextTeamOptions);
+
+        // Initialise the per-user team selection based on displayTeamId from existing flags,
+        // falling back to the selected team
+        const initialSelectedTeam: Record<number, number> = {};
+
+        // First, load any saved displayTeamId from existing flags
+        flags.forEach((flag) => {
+          if (flag.displayTeamId != null) {
+            initialSelectedTeam[flag.assigneeId] = flag.displayTeamId;
+          }
+        });
+
+        // Then fill in any missing users with selected team
+        nextMembers.forEach((member) => {
+          if (!initialSelectedTeam[member.userId]) {
+            initialSelectedTeam[member.userId] =
+              selectedTeamId ?? member.teamId;
+          }
+        });
+        setSelectedTeamPerUser(initialSelectedTeam);
+
         setSelectedTeamId((currentTeamId) => {
           if (
             currentTeamId !== null &&
-            availableTeams.some((team) => team.id === currentTeamId)
+            nextTeamOptions.some((t) => t.id === currentTeamId)
           ) {
             return currentTeamId;
           }
 
           const teamWithFlags = flags.find((f) =>
-            availableTeams.some((t) => t.id === f.teamId)
+            nextTeamOptions.some((t) => t.id === f.teamId)
           );
           if (teamWithFlags) return teamWithFlags.teamId;
 
-          return availableTeams[0]?.id ?? null;
+          return nextTeamOptions[0]?.id ?? null;
         });
       })
       .catch(() => {
@@ -123,6 +175,7 @@ export function AssignActivityModal({
         setMembers([]);
         setTeamOptions([]);
         setSelectedTeamId(null);
+        setSelectedTeamPerUser({});
       })
       .finally(() => {
         if (!isCancelled) {
@@ -133,7 +186,7 @@ export function AssignActivityModal({
     return () => {
       isCancelled = true;
     };
-  }, [open, userTeamIds, flags]);
+  }, [open, userTeamIds, teamIdSet, selectedTeamId, flags]);
 
   // Seed selections from existing flags once per team when dialog opens.
   useEffect(() => {
@@ -175,7 +228,8 @@ export function AssignActivityModal({
       selectedTeamId,
       filteredMemberIds,
       note.trim() || undefined,
-      selectedNames
+      selectedNames,
+      selectedTeamPerUser
     );
   };
 
@@ -183,9 +237,23 @@ export function AssignActivityModal({
     if (!value) {
       setSelectedMemberIds([]);
       setNote('');
+      setSelectedTeamPerUser({});
+      setOpenTeamSubmenuForUser(null);
     }
     onOpenChange(value);
   };
+
+  // Build mapping of userId -> teams they're on
+  const userTeamsMap = useMemo(() => {
+    const map = new Map<number, TeamMemberOption[]>();
+    members.forEach((member) => {
+      if (!map.has(member.userId)) {
+        map.set(member.userId, []);
+      }
+      map.get(member.userId)!.push(member);
+    });
+    return map;
+  }, [members]);
 
   // Members for the selected team, current user first then alphabetical
   const me = useMemo(
@@ -274,11 +342,96 @@ export function AssignActivityModal({
             ) : (
               <FilterSearchableList
                 options={options}
-                selectedIds={selectedMemberIds}
-                onToggle={handleToggle}
                 searchPlaceholder="Search teammates…"
                 emptyMessage="No teammates found."
                 maxHeight="200px"
+                renderOption={(opt) => {
+                  const memberId = parseInt(opt.value, 10);
+                  const isSelected = selectedMemberIds.includes(memberId);
+                  const userTeams = userTeamsMap.get(memberId) ?? [];
+                  const hasMultipleTeams = userTeams.length > 1;
+                  const selectedTeam = selectedTeamPerUser[memberId];
+                  const selectedTeamInfo = userTeams.find(
+                    (m) => m.teamId === selectedTeam
+                  );
+                  const teamSubmenuOpen = openTeamSubmenuForUser === memberId;
+
+                  return (
+                    <div className="flex w-full items-center gap-2 px-3 py-1.5">
+                      <div
+                        onClick={() => handleToggle(memberId)}
+                        className="hover:bg-accent hover:text-accent-foreground flex cursor-pointer items-center gap-2"
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          tabIndex={-1}
+                          className="pointer-events-none size-4 shrink-0"
+                          aria-hidden
+                        />
+                        <span className="min-w-0 truncate text-sm">
+                          {opt.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {hasMultipleTeams ? (
+                          <Popover open={teamSubmenuOpen}>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenTeamSubmenuForUser(
+                                    teamSubmenuOpen ? null : memberId
+                                  );
+                                }}
+                                className="hover:bg-muted ml-auto rounded px-1.5 py-1"
+                                title="Select team"
+                              >
+                                <span className="text-primary inline-flex items-center gap-0.5 rounded-full bg-[#d8eafd] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
+                                  {selectedTeamInfo?.teamName ?? 'N/A'}
+                                  <ChevronDown className="size-2.5 shrink-0" />
+                                </span>
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-48 p-0"
+                              align="end"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="space-y-1 p-1">
+                                {userTeams.map((team) => (
+                                  <button
+                                    key={team.teamId}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedTeamPerUser((prev) => ({
+                                        ...prev,
+                                        [memberId]: team.teamId,
+                                      }));
+                                      setOpenTeamSubmenuForUser(null);
+                                    }}
+                                    className={`hover:bg-accent w-full rounded px-2 py-1.5 text-left text-sm ${
+                                      selectedTeam === team.teamId
+                                        ? 'bg-accent font-medium'
+                                        : ''
+                                    }`}
+                                  >
+                                    {team.teamName}
+                                  </button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <span className="text-primary inline-flex items-center rounded-full bg-[#d8eafd] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
+                            {selectedTeamInfo?.teamName ?? 'N/A'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }}
               />
             )}
           </div>

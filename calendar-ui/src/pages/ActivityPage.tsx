@@ -893,10 +893,16 @@ export function ActivityPage({
         canFlag={canFlag}
         onFlagSync={
           canFlag
-            ? (teamId, assigneeIds, note, assigneeNames) =>
+            ? (
+                teamId,
+                assigneeIds,
+                note,
+                assigneeNames,
+                displayTeamPerAssignee
+              ) =>
                 syncFlagsMutation.mutate({
                   activityId: id,
-                  body: { teamId, assigneeIds, note },
+                  body: { teamId, assigneeIds, note, displayTeamPerAssignee },
                   assigneeNames,
                 })
             : undefined

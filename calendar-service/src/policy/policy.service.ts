@@ -76,13 +76,15 @@ export class PolicyService {
   }
 
   /**
-   * Load team IDs for a user (from user_teams)
+   * Load team IDs for a user (from user_teams).
+   * Includes both active and inactive memberships so users can assign activities
+   * across all their teams, even if some memberships are temporarily disabled.
    */
   async getTeamIdsForUser(userId: number): Promise<number[]> {
     const rows = await this.databaseService.db
       .select({ teamId: userTeams.teamId })
       .from(userTeams)
-      .where(and(eq(userTeams.userId, userId), eq(userTeams.isActive, true)));
+      .where(eq(userTeams.userId, userId));
 
     return rows.map((r) => r.teamId);
   }

@@ -139,17 +139,28 @@ export class TeamsController {
 
   @ApiOperation({ summary: 'Get team by ID' })
   @ApiParam({ name: 'id', description: 'Team ID' })
+  @ApiQuery({
+    name: 'includeInactiveMembers',
+    required: false,
+    type: 'boolean',
+    description:
+      'When true, includes team members with isActive=false (useful for assignment UI). Defaults to false.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Team details. Data is null when team is not found.',
+    description: 'Team detail',
     type: TeamDetailResponseWrapperDto,
   })
   @ApiResponse({ status: 404, description: 'Team not found' })
   @Get(':id')
   async findOne(
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
+    @Query('includeInactiveMembers') includeInactiveMembers?: string
   ): Promise<{ success: boolean; data: TeamDetail | null }> {
-    const data = await this.teamsService.findOne(id);
+    const data = await this.teamsService.findOne(
+      id,
+      includeInactiveMembers === 'true'
+    );
     return { success: true, data };
   }
 

@@ -54,7 +54,8 @@ export class ActivityFlagsService {
     teamId: number,
     assigneeIds: number[],
     assignedById: number,
-    note?: string
+    note?: string,
+    displayTeamPerAssignee?: Record<number, number | null>
   ): Promise<{ addedAssigneeIds: number[]; removedAssigneeIds: number[] }> {
     const db = this.databaseService.db;
     const desiredAssigneeIds = Array.from(new Set(assigneeIds));
@@ -149,6 +150,28 @@ export class ActivityFlagsService {
           );
       }
 
+      // Update displayTeamId on existing flags individually (per-assignee cosmetic badge choice)
+      if (displayTeamPerAssignee) {
+        const existingToUpdate = existingAssigneeIds.filter(
+          (id) => desiredAssigneeSet.has(id) && id in displayTeamPerAssignee
+        );
+        for (const assigneeId of existingToUpdate) {
+          await tx
+            .update(activityFlags)
+            .set({
+              displayTeamId: displayTeamPerAssignee[assigneeId] ?? null,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(activityFlags.activityId, activityId),
+                eq(activityFlags.teamId, teamId),
+                eq(activityFlags.assigneeId, assigneeId)
+              )
+            );
+        }
+      }
+
       if (toAdd.length > 0) {
         await tx
           .insert(activityFlags)
@@ -158,6 +181,7 @@ export class ActivityFlagsService {
               teamId,
               assigneeId,
               assignedById,
+              displayTeamId: displayTeamPerAssignee?.[assigneeId] ?? null,
               note: note ?? null,
               updatedAt: new Date(),
             }))
@@ -344,6 +368,10 @@ export class ActivityFlagsService {
         activityId: activityFlags.activityId,
         teamId: activityFlags.teamId,
         teamName: teams.name,
+        displayTeamId: activityFlags.displayTeamId,
+        displayTeamName: sql<
+          string | null
+        >`(SELECT name FROM teams WHERE id = ${activityFlags.displayTeamId})`,
         assigneeId: activityFlags.assigneeId,
         assigneeName: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
         assignedById: activityFlags.assignedById,
@@ -368,6 +396,8 @@ export class ActivityFlagsService {
       const flag: ActivityFlagResponse = {
         teamId: row.teamId,
         teamName: row.teamName,
+        displayTeamId: row.displayTeamId,
+        displayTeamName: row.displayTeamName,
         assigneeId: row.assigneeId,
         assigneeName: row.assigneeName,
         assignedById: row.assignedById,
