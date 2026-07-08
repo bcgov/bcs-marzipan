@@ -264,7 +264,9 @@ export function ActivityFlagPopover({
               type="button"
               size="sm"
               onClick={handleSave}
-              disabled={isPending || !primaryTeamId || primaryTeamMembers.length === 0}
+              disabled={
+                isPending || !primaryTeamId || primaryTeamMembers.length === 0
+              }
             >
               Save assignments
             </Button>
