@@ -367,15 +367,13 @@ export class ActivityFlagsService {
 
     const db = this.databaseService.db;
 
-    const rows = await db
+    // First, fetch all flag rows with team and user data
+    const flagRows = await db
       .select({
         activityId: activityFlags.activityId,
         teamId: activityFlags.teamId,
         teamName: teams.name,
         displayTeamId: activityFlags.displayTeamId,
-        displayTeamName: sql<
-          string | null
-        >`(SELECT name FROM teams WHERE id = ${activityFlags.displayTeamId})`,
         assigneeId: activityFlags.assigneeId,
         assigneeName: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
         assignedById: activityFlags.assignedById,
@@ -395,13 +393,36 @@ export class ActivityFlagsService {
         )
       );
 
+    // Fetch display team names separately to avoid per-row scalar subqueries
+    const displayTeamIds = Array.from(
+      new Set(flagRows.map((r) => r.displayTeamId).filter((id) => id != null))
+    );
+
+    const displayTeamNames = new Map<number, string>();
+    if (displayTeamIds.length > 0) {
+      const displayTeamRows = await db
+        .select({
+          id: teams.id,
+          name: teams.name,
+        })
+        .from(teams)
+        .where(inArray(teams.id, displayTeamIds));
+
+      for (const row of displayTeamRows) {
+        displayTeamNames.set(row.id, row.name);
+      }
+    }
+
     const map = new Map<number, ActivityFlagResponse[]>();
-    for (const row of rows) {
+    for (const row of flagRows) {
       const flag: ActivityFlagResponse = {
         teamId: row.teamId,
         teamName: row.teamName,
         displayTeamId: row.displayTeamId,
-        displayTeamName: row.displayTeamName,
+        displayTeamName:
+          row.displayTeamId != null
+            ? (displayTeamNames.get(row.displayTeamId) ?? null)
+            : null,
         assigneeId: row.assigneeId,
         assigneeName: row.assigneeName,
         assignedById: row.assignedById,

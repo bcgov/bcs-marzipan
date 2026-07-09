@@ -207,6 +207,91 @@ describe('ActivityFlagsService', () => {
   });
 
   // ---------------------------------------------------------------------------
+  // syncFlags (update path)
+  // ---------------------------------------------------------------------------
+  describe('syncFlags', () => {
+    it('updates displayTeamId on existing flags when displayTeamPerAssignee provided', async () => {
+      let callCount = 0;
+      mockDb.select.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return makeChain([{ id: 1 }], 'limit'); // activity exists
+        if (callCount === 2)
+          return makeChain(
+            [
+              { userId: 2, name: 'Jane Smith' },
+              { userId: 3, name: 'Bob Jones' },
+            ],
+            'where'
+          ); // members
+        // Existing flags for syncFlags (same set as desired)
+        return makeChain(
+          [
+            { assigneeId: 2, name: 'Jane Smith' },
+            { assigneeId: 3, name: 'Bob Jones' },
+          ],
+          'where'
+        );
+      });
+      mockDb.update.mockReturnValue(makeUpdateChain());
+
+      await service.syncFlags(1, 1, [2, 3], 5, undefined, { 2: 10, 3: null });
+
+      // Verify update is called for each assignee with displayTeamPerAssignee entry
+      expect(mockDb.update).toHaveBeenCalled();
+      const updateCalls = mockDb.update.mock.calls;
+      expect(updateCalls.length).toBeGreaterThan(0);
+    });
+
+    it('updates note on existing flags when note provided', async () => {
+      let callCount = 0;
+      mockDb.select.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return makeChain([{ id: 1 }], 'limit'); // activity exists
+        if (callCount === 2)
+          return makeChain([{ userId: 2, name: 'Jane Smith' }], 'where'); // members
+        // Existing flags
+        return makeChain([{ assigneeId: 2, name: 'Jane Smith' }], 'where');
+      });
+      mockDb.update.mockReturnValue(makeUpdateChain());
+
+      await service.syncFlags(1, 1, [2], 5, 'Important note');
+
+      // Verify update is called to set the note
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('passes transaction handle to recordChange for new and removed flags', async () => {
+      let callCount = 0;
+      mockDb.select.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return makeChain([{ id: 1 }], 'limit'); // activity exists
+        if (callCount === 2)
+          return makeChain(
+            [
+              { userId: 2, name: 'Jane Smith' },
+              { userId: 3, name: 'Bob Jones' },
+            ],
+            'where'
+          ); // members
+        if (callCount === 3) return makeChain([], 'where'); // existing flags (none)
+        return makeChain([], 'where');
+      });
+      mockDb.insert.mockReturnValue(makeInsertChain());
+
+      await service.syncFlags(1, 1, [2, 3], 5);
+
+      // Verify recordChange is called with transaction object for each new assignment
+      expect(mockHistoryService.recordChange).toHaveBeenCalled();
+      const calls = mockHistoryService.recordChange.mock.calls;
+      // Each call should include the transaction object as the last parameter
+      for (const call of calls) {
+        expect(call.length).toBe(6); // 5 params + tx object
+        expect(call[5]).toBeDefined(); // tx object should be defined
+      }
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // removeFlag
   // ---------------------------------------------------------------------------
   describe('removeFlag', () => {
