@@ -382,7 +382,7 @@ export function AssignActivityModal({
                               {chipLabel}
                             </span>
                             {displayTeam && (
-                              <span className="text-primary inline-flex items-center rounded-full bg-[#d8eafd] px-1.5 py-0 text-[10px] leading-[14px] font-normal">
+                              <span className="text-primary inline-flex items-center rounded-full bg-[var(--fluent-brand-background-2)] px-1.5 py-0 text-[10px] leading-[14px] font-normal">
                                 {displayTeam.teamName}
                               </span>
                             )}
