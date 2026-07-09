@@ -430,13 +430,15 @@ export function AssignActivityModal({
                         openTeamSubmenuForUser === memberId;
 
                       return (
-                        <div
-                          className="hover:bg-accent flex w-full cursor-pointer items-center gap-2 px-3 py-1.5"
-                          onClick={() => handleToggle(memberId)}
-                        >
-                          <span className="min-w-0 truncate text-sm">
-                            {opt.label}
-                          </span>
+                        <div className="flex w-full items-center gap-2 px-3 py-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleToggle(memberId)}
+                            aria-pressed={isSelected}
+                            className="hover:bg-accent flex min-w-0 flex-1 items-center rounded px-1.5 py-1 text-left"
+                          >
+                            <span className="min-w-0 truncate text-sm">{opt.label}</span>
+                          </button>
                           <div className="ml-auto flex items-center gap-1.5">
                             {hasMultipleTeams ? (
                               <Popover open={teamSubmenuOpen}>
