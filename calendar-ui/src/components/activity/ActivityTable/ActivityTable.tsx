@@ -37,7 +37,7 @@ import {
   ActivityFlagIcon,
   ActivityFlagOverflowIcon,
 } from '@/components/activity/activities/ActivityFlagIcon';
-import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
+import { AssignActivityModal } from '@/components/activity/activities/AssignActivityModal';
 import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
@@ -238,6 +238,7 @@ function OverviewCell({
   isFavourite,
   onFlagSync,
   flagPending,
+  onOpenAssignModal,
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
@@ -250,6 +251,7 @@ function OverviewCell({
     displayTeamPerAssignee?: Record<number, number | null>
   ) => void;
   flagPending?: boolean;
+  onOpenAssignModal?: (activityId: number) => void;
 }) {
   const pitchLabel =
     (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
@@ -303,47 +305,45 @@ function OverviewCell({
           </span>
         )}
         {hasAssignedUsers && canFlag && onFlagSync ? (
-          <ActivityFlagPopover
-            activityId={row.id}
-            flags={row.flags}
-            readOnly={!canFlag}
-            onSync={onFlagSync}
-            isPending={flagPending}
-            triggerContent={
-              <span
-                title={assignedTooltip}
-                aria-label={assignedTooltip}
-                className="inline-flex"
-              >
-                <div className="flex items-center">
-                  {visibleAssignedFlags.map((flag, index) => (
-                    <span
-                      key={`${flag.teamId}:${flag.assigneeId}`}
-                      className={index > 0 ? '-ml-0.5' : undefined}
-                      style={{ zIndex: index + 1 }}
-                    >
-                      <ActivityFlagIcon
-                        assigneeName={flag.assigneeName}
-                        assigneeFlagColour={flag.assigneeFlagColour}
-                      />
-                    </span>
-                  ))}
-                  {overflowAssignedCount > 0 ? (
-                    <span
-                      className={
-                        visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined
-                      }
-                      style={{ zIndex: visibleAssignedFlags.length + 1 }}
-                    >
-                      <ActivityFlagOverflowIcon
-                        extraCount={overflowAssignedCount}
-                      />
-                    </span>
-                  ) : null}
-                </div>
-              </span>
-            }
-          />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenAssignModal?.(row.id);
+            }}
+            disabled={flagPending}
+            data-no-row-nav
+            title={assignedTooltip}
+            aria-label={`Assigned to ${assignedTooltip}. Click to edit.`}
+            className="hover:bg-accent inline-flex items-center gap-1 rounded transition-colors"
+          >
+            <div className="flex items-center">
+              {visibleAssignedFlags.map((flag, index) => (
+                <span
+                  key={`${flag.teamId}:${flag.assigneeId}`}
+                  className={index > 0 ? '-ml-0.5' : undefined}
+                  style={{ zIndex: index + 1 }}
+                >
+                  <ActivityFlagIcon
+                    assigneeName={flag.assigneeName}
+                    assigneeFlagColour={flag.assigneeFlagColour}
+                  />
+                </span>
+              ))}
+              {overflowAssignedCount > 0 ? (
+                <span
+                  className={
+                    visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined
+                  }
+                  style={{ zIndex: visibleAssignedFlags.length + 1 }}
+                >
+                  <ActivityFlagOverflowIcon
+                    extraCount={overflowAssignedCount}
+                  />
+                </span>
+              ) : null}
+            </div>
+          </button>
         ) : hasAssignedUsers ? (
           <span
             data-no-row-nav
@@ -380,13 +380,18 @@ function OverviewCell({
             </div>
           </span>
         ) : canFlag && onFlagSync ? (
-          <ActivityFlagPopover
-            activityId={row.id}
-            flags={row.flags}
-            readOnly={!canFlag}
-            onSync={onFlagSync}
-            isPending={flagPending}
-          />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenAssignModal?.(row.id);
+            }}
+            disabled={flagPending}
+            aria-label="Assign activity"
+            className="hover:bg-accent size-6 shrink-0 rounded-md p-1"
+          >
+            <Users className="size-4" />
+          </button>
         ) : null}
       </div>
       {(row.isConfidential || row.isIssue) && (
@@ -933,6 +938,9 @@ export function ActivityTable({
   const searchKeyword = preferences.searchKeyword;
   const filterState = preferences.filterState;
   const [pageIndex, setPageIndex] = useState(0);
+  const [assignModalActivityId, setAssignModalActivityId] = useState<
+    number | null
+  >(null);
 
   const { data: categoriesForFilter = [] } = useCategories();
   const {
@@ -1196,6 +1204,14 @@ export function ActivityTable({
     [activitiesQuery.data]
   );
 
+  const assignModalActivity = useMemo(
+    () =>
+      assignModalActivityId == null
+        ? null
+        : (data.find((r) => r.id === assignModalActivityId) ?? null),
+    [assignModalActivityId, data]
+  );
+
   const filterContext = useMemo((): FilterActivityRowsContext | undefined => {
     const hasTranslationStatus = translationStatusOptions.length > 0;
     const hasTranslationLanguages =
@@ -1350,6 +1366,7 @@ export function ActivityTable({
               })
             }
             flagPending={syncFlagsMutation.isPending}
+            onOpenAssignModal={setAssignModalActivityId}
           />
         ),
       }),
@@ -1834,6 +1851,32 @@ export function ActivityTable({
               setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
             }
             scrollContainerRef={tableScrollRef}
+          />
+        )}
+
+        {assignModalActivity && (
+          <AssignActivityModal
+            open={assignModalActivityId !== null}
+            onOpenChange={(open) => {
+              if (!open) setAssignModalActivityId(null);
+            }}
+            flags={assignModalActivity.flags}
+            isSubmitting={syncFlagsMutation.isPending}
+            onSync={(
+              teamId,
+              assigneeIds,
+              note,
+              assigneeNames,
+              displayTeamPerAssignee
+            ) => {
+              syncFlagsMutation.mutate({
+                activityId: assignModalActivity.id,
+                body: { teamId, assigneeIds, displayTeamPerAssignee },
+                assigneeNames,
+              });
+              setAssignModalActivityId(null);
+            }}
+            displayId={assignModalActivity.displayId ?? undefined}
           />
         )}
       </div>
