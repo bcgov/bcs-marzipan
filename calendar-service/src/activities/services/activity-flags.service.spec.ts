@@ -149,7 +149,15 @@ describe('ActivityFlagsService', () => {
         1,
         3,
         'flag_assigned',
-        [{ field: 'flag.assigneeName', oldValue: null, newValue: 'Jane Smith' }]
+        [
+          {
+            field: 'flag.assigneeName',
+            oldValue: null,
+            newValue: 'Jane Smith',
+          },
+        ],
+        undefined,
+        expect.any(Object)
       );
     });
 
@@ -171,13 +179,29 @@ describe('ActivityFlagsService', () => {
         1,
         3,
         'flag_assigned',
-        [{ field: 'flag.assigneeName', oldValue: null, newValue: 'Jane Smith' }]
+        [
+          {
+            field: 'flag.assigneeName',
+            oldValue: null,
+            newValue: 'Jane Smith',
+          },
+        ],
+        undefined,
+        expect.any(Object)
       );
       expect(mockHistoryService.recordChange).toHaveBeenCalledWith(
         1,
         3,
         'flag_removed',
-        [{ field: 'flag.assigneeName', oldValue: 'Old Person', newValue: null }]
+        [
+          {
+            field: 'flag.assigneeName',
+            oldValue: 'Old Person',
+            newValue: null,
+          },
+        ],
+        undefined,
+        expect.any(Object)
       );
     });
   });
