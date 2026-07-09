@@ -9,6 +9,8 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import type { TeamDetail } from '@corpcal/shared/api/types';
+
 import { AppModule } from '../src/app.module';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import {
@@ -375,18 +377,9 @@ describe('ActivitiesController (API integration)', () => {
       const teamRes = await createAuthRequest(app, accessToken)
         .get(`/teams/${flagTeamId}`)
         .expect(200);
-      const members = Array.isArray(teamRes.body?.data?.members)
-        ? teamRes.body.data.members
-        : [];
-      const teamMemberIds = Array.from(
-        new Set(
-          members
-            .map((m: any) => Number(m.userId))
-            .filter((id: number) => Number.isFinite(id))
-        )
-      );
-      expect(teamMemberIds.length).toBeGreaterThan(0);
-      assigneeIds = teamMemberIds.slice(0, 2);
+      const team = teamRes.body.data as TeamDetail;
+      expect(team.members.length).toBeGreaterThan(0);
+      assigneeIds = [...new Set(team.members.map((m) => m.userId))].slice(0, 2);
 
       const createRes = await createAuthRequest(app, accessToken)
         .post('/activities')
