@@ -160,7 +160,7 @@ export function ActivityFlagPopover({
         setSelectedTeamPerUser({});
       })
       .finally(() => setLoadingMembers(false));
-  }, [open, teamIds, teamIdSet]);
+  }, [open, teamIds, teamIdSet, existingFlags, primaryTeamId]);
 
   // Build mapping of userId -> teams they're on (for display only)
   const userTeamsMap = useMemo(() => {
