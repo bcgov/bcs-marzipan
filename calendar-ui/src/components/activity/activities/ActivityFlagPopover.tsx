@@ -345,7 +345,7 @@ export function ActivityFlagPopover({
                               className="hover:bg-muted ml-auto rounded px-1.5 py-1"
                               title="Select team"
                             >
-                              <span className="text-primary inline-flex items-center gap-0.5 rounded-full bg-[#d8eafd] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
+                              <span className="text-primary inline-flex items-center gap-0.5 rounded-full bg-[var(--fluent-brand-background-2)] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
                                 {selectedTeamInfo?.teamName ?? 'N/A'}
                                 <ChevronDown className="size-2.5 shrink-0" />
                               </span>
