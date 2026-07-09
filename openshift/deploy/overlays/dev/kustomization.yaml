@@ -14,3 +14,6 @@ images:
   - name: calendar-ui
     newName: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-ui
     newTag: ${APP_VERSION}
+
+patches:
+  - path: patches/calendar-ui-configmap.patch.yaml

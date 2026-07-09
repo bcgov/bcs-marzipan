@@ -15,6 +15,7 @@ import {
   Loader2,
   MapPin,
   NotebookText,
+  Star,
   Users,
 } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -32,6 +33,10 @@ import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { sanitizeLegendSwatchHexColor } from '@corpcal/shared/schemas';
 import { contrastingBlackOrWhiteForegroundHex } from '@corpcal/shared/utils';
+import {
+  ActivityFlagIcon,
+  ActivityFlagOverflowIcon,
+} from '@/components/activity/activities/ActivityFlagIcon';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
 import { ErrorState } from '@/components/shared';
 import {
@@ -68,11 +73,7 @@ import { getLookAheadStatusLabel } from '@/constants/form-options';
 import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  useActivityList,
-  useRemoveActivityFlag,
-  useUpsertActivityFlag,
-} from '@/hooks/useCalendar';
+import { useActivityList, useSyncActivityFlags } from '@/hooks/useCalendar';
 import {
   useLiveActivityRowHighlights,
   useLiveActivitySyncContext,
@@ -234,19 +235,19 @@ function OverviewCell({
   row,
   canViewPitchStatus,
   canFlag,
-  onFlagAssign,
-  onFlagUnassign,
+  isFavourite,
+  onFlagSync,
   flagPending,
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
   canFlag?: boolean;
-  onFlagAssign?: (
+  isFavourite?: boolean;
+  onFlagSync?: (
     teamId: number,
-    assigneeId: number,
-    assigneeName?: string
+    assigneeIds: number[],
+    assigneeNames?: string[]
   ) => void;
-  onFlagUnassign?: (teamId: number, assigneeName?: string) => void;
   flagPending?: boolean;
 }) {
   const pitchLabel =
@@ -254,22 +255,25 @@ function OverviewCell({
     row.pitchDate ??
     null;
   const displayIdText = row.displayId ?? String(row.id);
+  const assignedFlags = useMemo(() => {
+    const uniqueFlags = new Map<number, ActivityTableRow['flags'][number]>();
+    row.flags.forEach((flag) => {
+      if (!uniqueFlags.has(flag.assigneeId)) {
+        uniqueFlags.set(flag.assigneeId, flag);
+      }
+    });
+    return Array.from(uniqueFlags.values());
+  }, [row.flags]);
+  const hasAssignedUsers = assignedFlags.length > 0;
+  const visibleAssignedFlags = assignedFlags.slice(0, 3);
+  const overflowAssignedCount = Math.max(assignedFlags.length - 3, 0);
+  const assignedTooltip = assignedFlags
+    .map((flag) => flag.assigneeName)
+    .join(', ');
 
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs font-semibold text-slate-900">
-        {(canFlag || row.flags.length > 0) &&
-          onFlagAssign &&
-          onFlagUnassign && (
-            <ActivityFlagPopover
-              activityId={row.id}
-              flags={row.flags}
-              readOnly={!canFlag}
-              onAssign={onFlagAssign}
-              onUnassign={onFlagUnassign}
-              isPending={flagPending}
-            />
-          )}
         <span
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
@@ -284,6 +288,105 @@ function OverviewCell({
             {displayIdText}
           </CopyableText>
         </span>
+        {isFavourite && (
+          <span
+            title="Added to watch list"
+            aria-label="Added to watch list"
+            className="inline-flex"
+          >
+            <Star
+              className="size-5 text-amber-500"
+              fill="currentColor"
+              aria-hidden
+            />
+          </span>
+        )}
+        {hasAssignedUsers && canFlag && onFlagSync ? (
+          <ActivityFlagPopover
+            activityId={row.id}
+            flags={row.flags}
+            readOnly={!canFlag}
+            onSync={onFlagSync}
+            isPending={flagPending}
+            triggerContent={
+              <span
+                title={assignedTooltip}
+                aria-label={assignedTooltip}
+                className="inline-flex"
+              >
+                <div className="flex items-center">
+                  {visibleAssignedFlags.map((flag, index) => (
+                    <span
+                      key={`${flag.teamId}:${flag.assigneeId}`}
+                      className={index > 0 ? '-ml-0.5' : undefined}
+                      style={{ zIndex: index + 1 }}
+                    >
+                      <ActivityFlagIcon
+                        assigneeName={flag.assigneeName}
+                        assigneeFlagColour={flag.assigneeFlagColour}
+                      />
+                    </span>
+                  ))}
+                  {overflowAssignedCount > 0 ? (
+                    <span
+                      className={
+                        visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined
+                      }
+                      style={{ zIndex: visibleAssignedFlags.length + 1 }}
+                    >
+                      <ActivityFlagOverflowIcon
+                        extraCount={overflowAssignedCount}
+                      />
+                    </span>
+                  ) : null}
+                </div>
+              </span>
+            }
+          />
+        ) : hasAssignedUsers ? (
+          <span
+            data-no-row-nav
+            onClick={(e) => e.stopPropagation()}
+            title={assignedTooltip}
+            aria-label={assignedTooltip}
+            className="inline-flex"
+          >
+            <div className="flex items-center">
+              {visibleAssignedFlags.map((flag, index) => (
+                <span
+                  key={`${flag.teamId}:${flag.assigneeId}`}
+                  className={index > 0 ? '-ml-0.5' : undefined}
+                  style={{ zIndex: index + 1 }}
+                >
+                  <ActivityFlagIcon
+                    assigneeName={flag.assigneeName}
+                    assigneeFlagColour={flag.assigneeFlagColour}
+                  />
+                </span>
+              ))}
+              {overflowAssignedCount > 0 ? (
+                <span
+                  className={
+                    visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined
+                  }
+                  style={{ zIndex: visibleAssignedFlags.length + 1 }}
+                >
+                  <ActivityFlagOverflowIcon
+                    extraCount={overflowAssignedCount}
+                  />
+                </span>
+              ) : null}
+            </div>
+          </span>
+        ) : canFlag && onFlagSync ? (
+          <ActivityFlagPopover
+            activityId={row.id}
+            flags={row.flags}
+            readOnly={!canFlag}
+            onSync={onFlagSync}
+            isPending={flagPending}
+          />
+        ) : null}
       </div>
       {(row.isConfidential || row.isIssue) && (
         <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-sm font-semibold">
@@ -741,6 +844,8 @@ export interface ActivityTableProps {
   sharedWithTeamIds?: number[];
   /** When set, only activities whose IDs are in this list are shown (favourites tab). */
   favouriteActivityIds?: number[];
+  /** IDs currently in the user's watchlist; used to show the watchlist star indicator. */
+  watchlistActivityIds?: number[];
   /** When set, only activities flag-assigned to any of these users are shown. */
   flagAssigneeUserIds?: number[];
   /**
@@ -758,6 +863,7 @@ export function ActivityTable({
   commsContactLeadUserIds,
   sharedWithTeamIds,
   favouriteActivityIds,
+  watchlistActivityIds,
   flagAssigneeUserIds,
   activeSavedFilter: activeSavedFilterFromParent,
   onActiveSavedFilterChange,
@@ -1047,8 +1153,7 @@ export function ActivityTable({
   const error = activitiesQuery.isError ? activitiesQuery.error : null;
 
   const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
-  const upsertFlagMutation = useUpsertActivityFlag();
-  const removeFlagMutation = useRemoveActivityFlag();
+  const syncFlagsMutation = useSyncActivityFlags();
 
   const onPaginationChangeStable = useCallback(
     (
@@ -1151,6 +1256,11 @@ export function ActivityTable({
     );
   }, [filteredData, effectiveSortKey, effectiveSortDirection]);
 
+  const watchlistActivityIdSet = useMemo(
+    () => new Set(watchlistActivityIds ?? []),
+    [watchlistActivityIds]
+  );
+
   // Track which row ids we have seen so we can animate only newly arrived rows on refetch
   const seenIdsRef = useRef<Set<number>>(new Set());
   const [newRowIds, setNewRowIds] = useState<Set<number>>(new Set());
@@ -1225,23 +1335,15 @@ export function ActivityTable({
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
             canFlag={canFlag}
-            onFlagAssign={(teamId, assigneeId, assigneeName) =>
-              upsertFlagMutation.mutate({
+            isFavourite={watchlistActivityIdSet.has(row.original.id)}
+            onFlagSync={(teamId, assigneeIds, assigneeNames) =>
+              syncFlagsMutation.mutate({
                 activityId: row.original.id,
-                body: { teamId, assigneeId },
-                assigneeName,
+                body: { teamId, assigneeIds },
+                assigneeNames,
               })
             }
-            onFlagUnassign={(teamId, assigneeName) =>
-              removeFlagMutation.mutate({
-                activityId: row.original.id,
-                teamId,
-                assigneeName,
-              })
-            }
-            flagPending={
-              upsertFlagMutation.isPending || removeFlagMutation.isPending
-            }
+            flagPending={syncFlagsMutation.isPending}
           />
         ),
       }),
@@ -1347,8 +1449,8 @@ export function ActivityTable({
       handleSortChange,
       pitchFieldVisibility.canViewPitchStatus,
       canFlag,
-      upsertFlagMutation,
-      removeFlagMutation,
+      watchlistActivityIdSet,
+      syncFlagsMutation,
     ]
   );
 
