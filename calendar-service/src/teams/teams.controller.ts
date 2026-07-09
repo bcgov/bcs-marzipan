@@ -148,7 +148,7 @@ export class TeamsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Team detail',
+    description: 'Team details. Returns data: null when team is not found.',
     type: TeamDetailResponseWrapperDto,
   })
   @Get(':id')
