@@ -145,11 +145,10 @@ export function AssignActivityModal({
           }
         });
 
-        // Then fill in any missing users with selected team
+        // Then fill in any missing users with their own team as default
         nextMembers.forEach((member) => {
           if (!initialSelectedTeam[member.userId]) {
-            initialSelectedTeam[member.userId] =
-              selectedTeamId ?? member.teamId;
+            initialSelectedTeam[member.userId] = member.teamId;
           }
         });
         setSelectedTeamPerUser(initialSelectedTeam);
@@ -437,14 +436,18 @@ export function AssignActivityModal({
                             aria-pressed={isSelected}
                             className="hover:bg-accent flex min-w-0 flex-1 items-center rounded px-1.5 py-1 text-left"
                           >
-                            <span className="min-w-0 truncate text-sm">{opt.label}</span>
+                            <span className="min-w-0 truncate text-sm">
+                              {opt.label}
+                            </span>
                           </button>
                           <div className="ml-auto flex items-center gap-1.5">
                             {hasMultipleTeams ? (
                               <Popover
                                 open={teamSubmenuOpen}
                                 onOpenChange={(open) =>
-                                  setOpenTeamSubmenuForUser(open ? memberId : null)
+                                  setOpenTeamSubmenuForUser(
+                                    open ? memberId : null
+                                  )
                                 }
                               >
                                 <PopoverTrigger asChild>
