@@ -1,11 +1,10 @@
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { Check, ChevronDown, Loader2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { fetchUsers } from '@/api/usersApi';
 import { FilterSearchableList } from '@/components/activity/ActivityTable/FilterSearchableList';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -77,6 +76,7 @@ export function AssignActivityModal({
   const [openTeamSubmenuForUser, setOpenTeamSubmenuForUser] = useState<
     number | null
   >(null);
+  const [comboOpen, setComboOpen] = useState(false);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [teamOptions, setTeamOptions] = useState<TeamOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -340,99 +340,162 @@ export function AssignActivityModal({
                 Loading teammates…
               </div>
             ) : (
-              <FilterSearchableList
-                options={options}
-                searchPlaceholder="Search teammates…"
-                emptyMessage="No teammates found."
-                maxHeight="200px"
-                renderOption={(opt) => {
-                  const memberId = parseInt(opt.value, 10);
-                  const isSelected = selectedMemberIds.includes(memberId);
-                  const userTeams = userTeamsMap.get(memberId) ?? [];
-                  const hasMultipleTeams = userTeams.length > 1;
-                  const selectedTeam = selectedTeamPerUser[memberId];
-                  const selectedTeamInfo = userTeams.find(
-                    (m) => m.teamId === selectedTeam
-                  );
-                  const teamSubmenuOpen = openTeamSubmenuForUser === memberId;
-
-                  return (
-                    <div className="flex w-full items-center gap-2 px-3 py-1.5">
-                      <div
-                        onClick={() => handleToggle(memberId)}
-                        className="hover:bg-accent hover:text-accent-foreground flex cursor-pointer items-center gap-2"
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          tabIndex={-1}
-                          className="pointer-events-none size-4 shrink-0"
-                          aria-hidden
-                        />
-                        <span className="min-w-0 truncate text-sm">
-                          {opt.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {hasMultipleTeams ? (
-                          <Popover open={teamSubmenuOpen}>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenTeamSubmenuForUser(
-                                    teamSubmenuOpen ? null : memberId
-                                  );
-                                }}
-                                className="hover:bg-muted ml-auto rounded px-1.5 py-1"
-                                title="Select team"
-                              >
-                                <span className="text-primary inline-flex items-center gap-0.5 rounded-full bg-[#d8eafd] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
-                                  {selectedTeamInfo?.teamName ?? 'N/A'}
-                                  <ChevronDown className="size-2.5 shrink-0" />
-                                </span>
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-48 p-0"
-                              align="end"
-                              onClick={(e) => e.stopPropagation()}
+              <Popover open={comboOpen} onOpenChange={setComboOpen}>
+                <PopoverTrigger asChild>
+                  <div
+                    role="combobox"
+                    aria-expanded={comboOpen}
+                    className="border-input bg-background focus-visible:ring-ring flex min-h-10 w-full cursor-pointer flex-wrap items-center gap-1 rounded-md border px-2 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    {selectedMemberIds.length === 0 ? (
+                      <span className="text-muted-foreground px-1">
+                        Select assignees…
+                      </span>
+                    ) : (
+                      selectedMemberIds.map((memberId) => {
+                        const member = members.find(
+                          (m) =>
+                            m.teamId === selectedTeamId && m.userId === memberId
+                        );
+                        if (!member) return null;
+                        const displayTeamId = selectedTeamPerUser[memberId];
+                        const displayTeam = userTeamsMap
+                          .get(memberId)
+                          ?.find((m) => m.teamId === displayTeamId);
+                        const chipLabel =
+                          memberId === user?.id
+                            ? `${member.label} (you)`
+                            : member.label;
+                        return (
+                          <span
+                            key={memberId}
+                            className="bg-accent flex items-center gap-1 rounded-md px-1.5 py-0.5 text-sm"
+                          >
+                            <span className="max-w-[120px] truncate">
+                              {chipLabel}
+                            </span>
+                            {displayTeam && (
+                              <span className="text-primary inline-flex items-center rounded-full bg-[#d8eafd] px-1.5 py-0 text-[10px] leading-[14px] font-normal">
+                                {displayTeam.teamName}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              aria-label={`Remove ${chipLabel}`}
+                              className="text-muted-foreground hover:text-foreground ml-0.5"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggle(memberId);
+                              }}
                             >
-                              <div className="space-y-1 p-1">
-                                {userTeams.map((team) => (
+                              <X className="size-3" />
+                            </button>
+                          </span>
+                        );
+                      })
+                    )}
+                    <ChevronDown className="text-muted-foreground ml-auto size-4 shrink-0" />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="p-0"
+                  align="start"
+                  style={{
+                    width: 'var(--radix-popover-trigger-width)',
+                  }}
+                >
+                  <FilterSearchableList
+                    options={options}
+                    searchPlaceholder="Search teammates…"
+                    emptyMessage="No teammates found."
+                    maxHeight="200px"
+                    renderOption={(opt) => {
+                      const memberId = parseInt(opt.value, 10);
+                      const isSelected = selectedMemberIds.includes(memberId);
+                      const userTeams = userTeamsMap.get(memberId) ?? [];
+                      const hasMultipleTeams = userTeams.length > 1;
+                      const selectedTeam = selectedTeamPerUser[memberId];
+                      const selectedTeamInfo = userTeams.find(
+                        (m) => m.teamId === selectedTeam
+                      );
+                      const teamSubmenuOpen =
+                        openTeamSubmenuForUser === memberId;
+
+                      return (
+                        <div
+                          className="hover:bg-accent flex w-full cursor-pointer items-center gap-2 px-3 py-1.5"
+                          onClick={() => handleToggle(memberId)}
+                        >
+                          <span className="min-w-0 truncate text-sm">
+                            {opt.label}
+                          </span>
+                          <div className="ml-auto flex items-center gap-1.5">
+                            {hasMultipleTeams ? (
+                              <Popover open={teamSubmenuOpen}>
+                                <PopoverTrigger asChild>
                                   <button
-                                    key={team.teamId}
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setSelectedTeamPerUser((prev) => ({
-                                        ...prev,
-                                        [memberId]: team.teamId,
-                                      }));
-                                      setOpenTeamSubmenuForUser(null);
+                                      setOpenTeamSubmenuForUser(
+                                        teamSubmenuOpen ? null : memberId
+                                      );
                                     }}
-                                    className={`hover:bg-accent w-full rounded px-2 py-1.5 text-left text-sm ${
-                                      selectedTeam === team.teamId
-                                        ? 'bg-accent font-medium'
-                                        : ''
-                                    }`}
+                                    className="hover:bg-muted rounded px-1 py-0.5"
+                                    title="Select team"
                                   >
-                                    {team.teamName}
+                                    <span className="text-primary inline-flex items-center gap-0.5 rounded-full bg-[#d8eafd] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
+                                      {selectedTeamInfo?.teamName ?? 'N/A'}
+                                      <ChevronDown className="size-2.5 shrink-0" />
+                                    </span>
                                   </button>
-                                ))}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        ) : (
-                          <span className="text-primary inline-flex items-center rounded-full bg-[#d8eafd] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
-                            {selectedTeamInfo?.teamName ?? 'N/A'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }}
-              />
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-48 p-0"
+                                  align="end"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="space-y-1 p-1">
+                                    {userTeams.map((team) => (
+                                      <button
+                                        key={team.teamId}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedTeamPerUser((prev) => ({
+                                            ...prev,
+                                            [memberId]: team.teamId,
+                                          }));
+                                          setOpenTeamSubmenuForUser(null);
+                                        }}
+                                        className={`hover:bg-accent w-full rounded px-2 py-1.5 text-left text-sm ${
+                                          selectedTeam === team.teamId
+                                            ? 'bg-accent font-medium'
+                                            : ''
+                                        }`}
+                                      >
+                                        {team.teamName}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <span className="text-primary inline-flex items-center rounded-full bg-[#d8eafd] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
+                                {selectedTeamInfo?.teamName ?? 'N/A'}
+                              </span>
+                            )}
+                            {isSelected && (
+                              <Check className="text-primary size-4 shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
             )}
           </div>
 
