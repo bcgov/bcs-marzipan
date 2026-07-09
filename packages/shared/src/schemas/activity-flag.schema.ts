@@ -53,7 +53,7 @@ export const upsertActivityFlagsRequestSchema = z.object({
     .refine((ids) => new Set(ids).size === ids.length, {
       message: 'assigneeIds must not contain duplicates',
     }),
-  /** Optional display team for each assignee, indexed by userId. If not provided, defaults to teamId. */
+  /** Optional display team for each assignee, indexed by userId. When omitted (or when a value is null), consumers should treat this as "use teamId". */
   displayTeamPerAssignee: z
     .record(z.coerce.number(), z.number().int().nullable())
     .optional(),

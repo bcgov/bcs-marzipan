@@ -316,9 +316,11 @@ export function ActivityFlagPopover({
               return (
                 <>
                   <div className="flex w-full items-center gap-2 px-3 py-1.5">
-                    <div
+                    <button
+                      type="button"
                       onClick={() => handleToggle(memberId)}
-                      className="hover:bg-accent hover:text-accent-foreground flex cursor-pointer items-center gap-2"
+                      aria-pressed={isSelected}
+                      className="hover:bg-accent hover:text-accent-foreground flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1 text-left"
                     >
                       <Checkbox
                         checked={isSelected}
@@ -326,10 +328,8 @@ export function ActivityFlagPopover({
                         className="pointer-events-none size-4 shrink-0"
                         aria-hidden
                       />
-                      <span className="min-w-0 truncate text-sm">
-                        {opt.label}
-                      </span>
-                    </div>
+                      <span className="min-w-0 truncate text-sm">{opt.label}</span>
+                    </button>
                     <div className="flex items-center gap-1">
                       {hasMultipleTeams ? (
                         <Popover open={teamSubmenuOpen}>
