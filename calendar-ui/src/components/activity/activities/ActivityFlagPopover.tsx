@@ -332,7 +332,12 @@ export function ActivityFlagPopover({
                     </button>
                     <div className="flex items-center gap-1">
                       {hasMultipleTeams ? (
-                        <Popover open={teamSubmenuOpen}>
+                        <Popover
+                          open={teamSubmenuOpen}
+                          onOpenChange={(open) =>
+                            setOpenTeamSubmenuForUser(open ? memberId : null)
+                          }
+                        >
                           <PopoverTrigger asChild>
                             <button
                               type="button"
