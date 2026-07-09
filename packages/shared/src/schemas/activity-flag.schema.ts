@@ -57,7 +57,7 @@ export const upsertActivityFlagsRequestSchema = z.object({
   displayTeamPerAssignee: z
     .record(z.coerce.number(), z.number().int().nullable())
     .optional(),
-  /** Optional contextual note stored with newly-created flags in this request. */
+  /** Optional contextual note stored with flags updated/created in this request. */
   note: z.string().max(1000).optional(),
 });
 

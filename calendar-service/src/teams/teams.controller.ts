@@ -151,7 +151,6 @@ export class TeamsController {
     description: 'Team detail',
     type: TeamDetailResponseWrapperDto,
   })
-  @ApiResponse({ status: 404, description: 'Team not found' })
   @Get(':id')
   async findOne(
     @Param('id', ParseIntPipe) id: number,

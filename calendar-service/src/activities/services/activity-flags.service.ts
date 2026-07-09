@@ -220,7 +220,9 @@ export class ActivityFlagsService {
               oldValue: null,
               newValue: assigneeName,
             },
-          ]
+          ],
+          undefined,
+          tx
         );
       }
 
@@ -240,7 +242,9 @@ export class ActivityFlagsService {
               oldValue: assigneeName,
               newValue: null,
             },
-          ]
+          ],
+          undefined,
+          tx
         );
       }
     });
