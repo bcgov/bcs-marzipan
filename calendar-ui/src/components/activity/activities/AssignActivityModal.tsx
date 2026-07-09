@@ -441,7 +441,12 @@ export function AssignActivityModal({
                           </button>
                           <div className="ml-auto flex items-center gap-1.5">
                             {hasMultipleTeams ? (
-                              <Popover open={teamSubmenuOpen}>
+                              <Popover
+                                open={teamSubmenuOpen}
+                                onOpenChange={(open) =>
+                                  setOpenTeamSubmenuForUser(open ? memberId : null)
+                                }
+                              >
                                 <PopoverTrigger asChild>
                                   <button
                                     type="button"
