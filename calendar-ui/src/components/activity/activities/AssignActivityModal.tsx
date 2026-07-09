@@ -345,6 +345,13 @@ export function AssignActivityModal({
                   <div
                     role="combobox"
                     aria-expanded={comboOpen}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setComboOpen(true);
+                      }
+                    }}
                     className="border-input bg-background focus-visible:ring-ring flex min-h-10 w-full cursor-pointer flex-wrap items-center gap-1 rounded-md border px-2 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none"
                   >
                     {selectedMemberIds.length === 0 ? (
