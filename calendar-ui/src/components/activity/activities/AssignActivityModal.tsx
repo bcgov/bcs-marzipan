@@ -496,7 +496,7 @@ export function AssignActivityModal({
                                 </PopoverContent>
                               </Popover>
                             ) : (
-                              <span className="text-primary inline-flex items-center rounded-full bg-[#d8eafd] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
+                              <span className="text-primary inline-flex items-center rounded-full bg-[var(--fluent-brand-background-2)] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
                                 {selectedTeamInfo?.teamName ?? 'N/A'}
                               </span>
                             )}
