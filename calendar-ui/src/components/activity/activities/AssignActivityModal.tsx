@@ -186,7 +186,7 @@ export function AssignActivityModal({
     return () => {
       isCancelled = true;
     };
-  }, [open, userTeamIds, teamIdSet, selectedTeamId, flags]);
+  }, [open, userTeamIds, teamIdSet, flags]);
 
   // Seed selections from existing flags once per team when dialog opens.
   useEffect(() => {
