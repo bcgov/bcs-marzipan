@@ -328,7 +328,9 @@ export function ActivityFlagPopover({
                         className="pointer-events-none size-4 shrink-0"
                         aria-hidden
                       />
-                      <span className="min-w-0 truncate text-sm">{opt.label}</span>
+                      <span className="min-w-0 truncate text-sm">
+                        {opt.label}
+                      </span>
                     </button>
                     <div className="flex items-center gap-1">
                       {hasMultipleTeams ? (

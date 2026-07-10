@@ -89,22 +89,6 @@ export class PolicyService {
   }
 
   /**
-   * Load all team IDs for a user, including inactive memberships.
-   * Used only for assignment/display purposes where users should see all their teams,
-   * even temporarily disabled ones. NOT for authorization decisions.
-   */
-  async getAllTeamIdsForUserIncludingInactive(
-    userId: number
-  ): Promise<number[]> {
-    const rows = await this.databaseService.db
-      .select({ teamId: userTeams.teamId })
-      .from(userTeams)
-      .where(eq(userTeams.userId, userId));
-
-    return rows.map((r) => r.teamId);
-  }
-
-  /**
    * Get role name by role id
    */
   async getRoleName(roleId: number): Promise<string | null> {

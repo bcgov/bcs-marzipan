@@ -223,6 +223,14 @@ describe('ActivityFlagsService', () => {
             ],
             'where'
           ); // members
+        if (callCount === 3)
+          return makeChain(
+            [
+              { userId: 2, teamId: 10 },
+              { userId: 3, teamId: 5 },
+            ],
+            'where'
+          ); // userTeams for displayTeamPerAssignee validation
         // Existing flags for syncFlags (same set as desired)
         return makeChain(
           [

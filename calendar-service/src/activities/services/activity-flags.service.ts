@@ -106,6 +106,49 @@ export class ActivityFlagsService {
       assigneeMembershipRows.map((row) => [row.userId, row.name] as const)
     );
 
+    // Validate displayTeamPerAssignee: each assignee can only display a team they're actually a member of
+    if (
+      displayTeamPerAssignee &&
+      Object.keys(displayTeamPerAssignee).length > 0
+    ) {
+      const assigneeTeamMemberships = await db
+        .select({
+          userId: userTeams.userId,
+          teamId: userTeams.teamId,
+        })
+        .from(userTeams)
+        .where(
+          and(
+            eq(userTeams.isActive, true),
+            inArray(userTeams.userId, desiredAssigneeIds)
+          )
+        );
+
+      const assigneeTeamSet = new Map<number, Set<number>>();
+      for (const row of assigneeTeamMemberships) {
+        if (!assigneeTeamSet.has(row.userId)) {
+          assigneeTeamSet.set(row.userId, new Set());
+        }
+        assigneeTeamSet.get(row.userId)!.add(row.teamId);
+      }
+
+      for (const [assigneeIdStr, displayTeamId] of Object.entries(
+        displayTeamPerAssignee
+      )) {
+        if (displayTeamId === null || displayTeamId === undefined) continue;
+
+        const assigneeId = Number(assigneeIdStr);
+        const assigneeTeams = assigneeTeamSet.get(assigneeId);
+        if (!assigneeTeams?.has(displayTeamId)) {
+          const assigneeName =
+            assigneeNameById.get(assigneeId) ?? String(assigneeId);
+          throw new ForbiddenException(
+            `Assignee ${assigneeName} (${assigneeId}) is not a member of display team ${displayTeamId}`
+          );
+        }
+      }
+    }
+
     // Existing flags for this (activity, team) pair
     const existingFlags = await db
       .select({
