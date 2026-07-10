@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Loader2, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { fetchUsers } from '@/api/usersApi';
@@ -19,13 +19,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -34,11 +27,6 @@ interface TeamMemberOption {
   label: string;
   teamId: number;
   teamName: string;
-}
-
-interface TeamOption {
-  id: number;
-  label: string;
 }
 
 interface AssignActivityModalProps {
@@ -69,7 +57,6 @@ export function AssignActivityModal({
   const { user } = useAuth();
   const [note, setNote] = useState('');
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
-  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [selectedTeamPerUser, setSelectedTeamPerUser] = useState<
     Record<number, number>
   >({});
@@ -78,9 +65,7 @@ export function AssignActivityModal({
   >(null);
   const [comboOpen, setComboOpen] = useState(false);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
-  const [teamOptions, setTeamOptions] = useState<TeamOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
-  const seededTeamIdRef = useRef<number | null>(null);
 
   const userTeamIds = useMemo(
     () => user?.teamIds ?? [],
@@ -121,59 +106,27 @@ export function AssignActivityModal({
 
         setMembers(nextMembers);
 
-        // Build team options from unique teams
-        const nextTeamOptions: TeamOption[] = Array.from(seenTeamIds)
-          .map((teamId) => {
-            const sample = nextMembers.find((m) => m.teamId === teamId);
-            return {
-              id: teamId,
-              label: sample?.teamName ?? `Team ${teamId}`,
-            };
-          })
-          .sort((a, b) => a.label.localeCompare(b.label));
-
-        setTeamOptions(nextTeamOptions);
-
-        // Initialise the per-user team selection based on displayTeamId from existing flags,
-        // falling back to the selected team
+        // Initialize per-user team selection from existing flags
         const initialSelectedTeam: Record<number, number> = {};
 
-        // First, load any saved displayTeamId from existing flags
+        // Load any saved displayTeamId from existing flags
         flags.forEach((flag) => {
           if (flag.displayTeamId != null) {
             initialSelectedTeam[flag.assigneeId] = flag.displayTeamId;
           }
         });
 
-        // Then fill in any missing users with their own team as default
+        // Fill in any missing users with their own team as default
         nextMembers.forEach((member) => {
           if (!initialSelectedTeam[member.userId]) {
             initialSelectedTeam[member.userId] = member.teamId;
           }
         });
         setSelectedTeamPerUser(initialSelectedTeam);
-
-        setSelectedTeamId((currentTeamId) => {
-          if (
-            currentTeamId !== null &&
-            nextTeamOptions.some((t) => t.id === currentTeamId)
-          ) {
-            return currentTeamId;
-          }
-
-          const teamWithFlags = flags.find((f) =>
-            nextTeamOptions.some((t) => t.id === f.teamId)
-          );
-          if (teamWithFlags) return teamWithFlags.teamId;
-
-          return nextTeamOptions[0]?.id ?? null;
-        });
       })
       .catch(() => {
         if (isCancelled) return;
         setMembers([]);
-        setTeamOptions([]);
-        setSelectedTeamId(null);
         setSelectedTeamPerUser({});
       })
       .finally(() => {
@@ -187,22 +140,17 @@ export function AssignActivityModal({
     };
   }, [open, userTeamIds, teamIdSet, flags]);
 
-  // Seed selections from existing flags once per team when dialog opens.
+  // Seed selections from existing flags when dialog opens.
   useEffect(() => {
     if (!open) {
       setSelectedMemberIds([]);
       setNote('');
-      seededTeamIdRef.current = null;
       return;
     }
-    if (selectedTeamId === null || selectedTeamId === seededTeamIdRef.current) {
-      return;
-    }
-    seededTeamIdRef.current = selectedTeamId;
-    const flagsForTeam = flags.filter((f) => f.teamId === selectedTeamId);
-    setSelectedMemberIds(flagsForTeam.map((f) => f.assigneeId));
-    setNote(flagsForTeam[0]?.note ?? '');
-  }, [open, selectedTeamId, flags]);
+    // Load all assigned members and their note from flags
+    setSelectedMemberIds(flags.map((f) => f.assigneeId));
+    setNote(flags[0]?.note ?? '');
+  }, [open, flags]);
 
   const handleToggle = (memberId: number) => {
     setSelectedMemberIds((prev) =>
@@ -213,19 +161,20 @@ export function AssignActivityModal({
   };
 
   const handleConfirm = () => {
-    if (!selectedTeamId) return;
-    const teamMembers = members.filter((m) => m.teamId === selectedTeamId);
-    // Filter assignee IDs to the selected team to prevent stale selections
-    const teamMemberIds = new Set(teamMembers.map((m) => m.userId));
-    const filteredMemberIds = selectedMemberIds.filter((id) =>
-      teamMemberIds.has(id)
-    );
-    const selectedNames = teamMembers
-      .filter((m) => filteredMemberIds.includes(m.userId))
-      .map((m) => m.label);
+    if (selectedMemberIds.length === 0) return;
+    // Use the first selected member's assigned team as the primary team context
+    const firstMemberId = selectedMemberIds[0];
+    const primaryTeamId = selectedTeamPerUser[firstMemberId];
+    if (!primaryTeamId) return;
+
+    // Get names of selected members
+    const selectedNames = selectedMemberIds
+      .map((memberId) => members.find((m) => m.userId === memberId)?.label)
+      .filter((name): name is string => !!name);
+
     onSync(
-      selectedTeamId,
-      filteredMemberIds,
+      primaryTeamId,
+      selectedMemberIds,
       note.trim() || undefined,
       selectedNames,
       selectedTeamPerUser
@@ -254,22 +203,30 @@ export function AssignActivityModal({
     return map;
   }, [members]);
 
-  // Members for the selected team, current user first then alphabetical
+  // All members across all teams, with current user first then alphabetical by label
+  const uniqueMembers = useMemo(() => {
+    const seen = new Set<number>();
+    const result: TeamMemberOption[] = [];
+    // Group by userId, keeping first occurrence of each user
+    members.forEach((m) => {
+      if (!seen.has(m.userId)) {
+        seen.add(m.userId);
+        result.push(m);
+      }
+    });
+    return result;
+  }, [members]);
+
   const me = useMemo(
-    () =>
-      user
-        ? members.find(
-            (m) => m.userId === user.id && m.teamId === selectedTeamId
-          )
-        : undefined,
-    [members, user, selectedTeamId]
+    () => uniqueMembers.find((m) => m.userId === user?.id),
+    [uniqueMembers, user?.id]
   );
   const restMembers = useMemo(
     () =>
-      members
-        .filter((m) => m.teamId === selectedTeamId && m.userId !== user?.id)
+      uniqueMembers
+        .filter((m) => m.userId !== user?.id)
         .sort((a, b) => a.label.localeCompare(b.label)),
-    [members, user, selectedTeamId]
+    [uniqueMembers, user?.id]
   );
   const options = useMemo(
     () =>
@@ -300,39 +257,10 @@ export function AssignActivityModal({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="assign-team">Team</Label>
-            {teamOptions.length > 1 ? (
-              <Select
-                value={selectedTeamId != null ? String(selectedTeamId) : ''}
-                onValueChange={(value) => {
-                  const parsed = Number(value);
-                  setSelectedTeamId(Number.isNaN(parsed) ? null : parsed);
-                }}
-                disabled={isSubmitting || loadingMembers}
-              >
-                <SelectTrigger id="assign-team" className="w-full">
-                  <SelectValue placeholder="Select team" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teamOptions.map((team) => (
-                    <SelectItem key={team.id} value={String(team.id)}>
-                      {team.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div
-                id="assign-team"
-                className="text-muted-foreground bg-muted rounded-md border px-3 py-2 text-sm"
-              >
-                {teamOptions[0]?.label ?? 'No team available'}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
             <Label>Assignees</Label>
+            <p className="text-muted-foreground text-xs">
+              Select assignees and choose their team below
+            </p>
             {loadingMembers ? (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
                 <Loader2 className="size-4 animate-spin" />
@@ -360,8 +288,7 @@ export function AssignActivityModal({
                     ) : (
                       selectedMemberIds.map((memberId) => {
                         const member = members.find(
-                          (m) =>
-                            m.teamId === selectedTeamId && m.userId === memberId
+                          (m) => m.userId === memberId
                         );
                         if (!member) return null;
                         const displayTeamId = selectedTeamPerUser[memberId];
@@ -542,7 +469,9 @@ export function AssignActivityModal({
             <Button
               type="button"
               onClick={handleConfirm}
-              disabled={isSubmitting || !selectedTeamId}
+              disabled={
+                isSubmitting || loadingMembers || selectedMemberIds.length === 0
+              }
             >
               {isSubmitting ? (
                 <>
