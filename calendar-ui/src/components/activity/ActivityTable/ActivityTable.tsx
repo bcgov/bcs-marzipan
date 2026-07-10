@@ -390,7 +390,7 @@ function OverviewCell({
             aria-label="Assign activity"
             className="hover:bg-accent size-6 shrink-0 rounded-md p-1"
           >
-            <Users className="size-4" />
+            <ActivityFlagIcon assigneeName={null} />
           </button>
         ) : null}
       </div>
