@@ -111,6 +111,7 @@ export class ActivityFlagsService {
       displayTeamPerAssignee &&
       Object.keys(displayTeamPerAssignee).length > 0
     ) {
+      const desiredAssigneeSet = new Set(desiredAssigneeIds);
       const assigneeTeamMemberships = await db
         .select({
           userId: userTeams.userId,
