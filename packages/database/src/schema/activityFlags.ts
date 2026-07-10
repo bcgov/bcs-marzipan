@@ -55,6 +55,7 @@ export const activityFlags = pgTable(
       table.activityId,
       table.teamId
     ),
+    index('activity_flags_display_team_id_idx').on(table.displayTeamId),
   ]
 );
 

@@ -172,12 +172,28 @@ export function AssignActivityModal({
       .map((memberId) => members.find((m) => m.userId === memberId)?.label)
       .filter((name): name is string => !!name);
 
+    // Build displayTeamPerAssignee map only for selected members
+    // Send null when the member's team matches the primary team (to preserve semantics)
+    const displayTeamPerAssignee = selectedMemberIds.reduce(
+      (acc, memberId) => {
+        const memberTeamId = selectedTeamPerUser[memberId];
+        // Only include entries that differ from the primary team
+        if (memberTeamId !== primaryTeamId) {
+          acc[memberId] = memberTeamId ?? null;
+        }
+        return acc;
+      },
+      {} as Record<number, number | null>
+    );
+
     onSync(
       primaryTeamId,
       selectedMemberIds,
       note.trim() || undefined,
       selectedNames,
-      selectedTeamPerUser
+      Object.keys(displayTeamPerAssignee).length > 0
+        ? displayTeamPerAssignee
+        : undefined
     );
   };
 
