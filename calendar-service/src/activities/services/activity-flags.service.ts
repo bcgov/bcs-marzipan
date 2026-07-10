@@ -138,6 +138,8 @@ export class ActivityFlagsService {
         if (displayTeamId === null || displayTeamId === undefined) continue;
 
         const assigneeId = Number(assigneeIdStr);
+        if (!desiredAssigneeSet.has(assigneeId)) continue;
+
         const assigneeTeams = assigneeTeamSet.get(assigneeId);
         if (!assigneeTeams?.has(displayTeamId)) {
           const assigneeName =
