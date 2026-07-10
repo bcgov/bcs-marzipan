@@ -12,7 +12,6 @@ import type {
   RestoreRequest,
   SoftDeleteRequest,
   UpdateActivityRequest,
-  UpsertActivityFlagRequest,
   UpsertActivityFlagsRequest,
 } from '@corpcal/shared/schemas';
 
@@ -27,12 +26,7 @@ import {
   softDeleteActivity,
   updateActivity,
 } from '../api/activitiesApi';
-import {
-  removeActivityFlag,
-  removeAssigneeActivityFlag,
-  syncActivityFlags,
-  upsertActivityFlag,
-} from '../api/flagsApi';
+import { removeAssigneeActivityFlag, syncActivityFlags } from '../api/flagsApi';
 import {
   buildOptimisticActivity,
   normalizeListParams,
@@ -241,38 +235,6 @@ export function useAddActivityHistoryNote() {
   });
 }
 
-/** Upsert (set or replace) the flag for an activity on a given team. */
-export function useUpsertActivityFlag(options?: { onSuccess?: () => void }) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      activityId,
-      body,
-    }: {
-      activityId: number;
-      body: UpsertActivityFlagRequest;
-      assigneeName?: string;
-    }) => upsertActivityFlag(activityId, body),
-    onSuccess: (_, vars) => {
-      void qc.invalidateQueries({ queryKey: ['activities'] });
-      void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
-      scheduleLiveActivityRefresh(qc, {
-        source: 'local',
-        activityId: vars.activityId,
-      });
-      toast.success(
-        vars.assigneeName
-          ? `Activity assigned to ${vars.assigneeName}`
-          : 'Activity assigned'
-      );
-      options?.onSuccess?.();
-    },
-    onError: (error) => {
-      showErrorToast(error, 'Failed to assign activity');
-    },
-  });
-}
-
 /** Sync (set) all assignees for an activity/team pair. */
 export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
   const qc = useQueryClient();
@@ -301,38 +263,6 @@ export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
     },
     onError: (error) => {
       showErrorToast(error, 'Failed to update activity assignments');
-    },
-  });
-}
-
-/** Remove the flag for an activity on a given team. */
-export function useRemoveActivityFlag(options?: { onSuccess?: () => void }) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      activityId,
-      teamId,
-    }: {
-      activityId: number;
-      teamId: number;
-      assigneeName?: string;
-    }) => removeActivityFlag(activityId, teamId),
-    onSuccess: (_, vars) => {
-      void qc.invalidateQueries({ queryKey: ['activities'] });
-      void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
-      scheduleLiveActivityRefresh(qc, {
-        source: 'local',
-        activityId: vars.activityId,
-      });
-      toast.success(
-        vars.assigneeName
-          ? `Activity unassigned from ${vars.assigneeName}`
-          : 'Activity unassigned'
-      );
-      options?.onSuccess?.();
-    },
-    onError: (error) => {
-      showErrorToast(error, 'Failed to unassign activity');
     },
   });
 }

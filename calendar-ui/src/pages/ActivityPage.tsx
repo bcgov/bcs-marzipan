@@ -667,15 +667,29 @@ export function ActivityPage({
         )
       );
 
-      const removedCount = results.filter(
+      const fulfilled = results.filter(
         (result) => result.status === 'fulfilled'
-      ).length;
-      if (removedCount > 0) {
+      );
+      const rejected = results.filter((result) => result.status === 'rejected');
+
+      if (fulfilled.length > 0) {
         toast.success(
-          removedCount === 1
+          fulfilled.length === 1
             ? 'Activity unassigned'
-            : `Activity unassigned from ${removedCount} teams`
+            : `Activity unassigned from ${fulfilled.length} teams`
         );
+      }
+
+      if (rejected.length > 0) {
+        if (fulfilled.length > 0) {
+          toast.error(
+            rejected.length === 1
+              ? 'Failed to unassign from 1 team'
+              : `Failed to unassign from ${rejected.length} teams`
+          );
+        } else {
+          toast.error('Failed to unassign activity');
+        }
       }
     }
     if (markAsCompleted) {
@@ -879,10 +893,16 @@ export function ActivityPage({
         canFlag={canFlag}
         onFlagSync={
           canFlag
-            ? (teamId, assigneeIds, note, assigneeNames) =>
+            ? (
+                teamId,
+                assigneeIds,
+                note,
+                assigneeNames,
+                displayTeamPerAssignee
+              ) =>
                 syncFlagsMutation.mutate({
                   activityId: id,
-                  body: { teamId, assigneeIds, note },
+                  body: { teamId, assigneeIds, note, displayTeamPerAssignee },
                   assigneeNames,
                 })
             : undefined

@@ -246,7 +246,8 @@ function OverviewCell({
   onFlagSync?: (
     teamId: number,
     assigneeIds: number[],
-    assigneeNames?: string[]
+    assigneeNames?: string[],
+    displayTeamPerAssignee?: Record<number, number | null>
   ) => void;
   flagPending?: boolean;
 }) {
@@ -1336,10 +1337,15 @@ export function ActivityTable({
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
             canFlag={canFlag}
             isFavourite={watchlistActivityIdSet.has(row.original.id)}
-            onFlagSync={(teamId, assigneeIds, assigneeNames) =>
+            onFlagSync={(
+              teamId,
+              assigneeIds,
+              assigneeNames,
+              displayTeamPerAssignee
+            ) =>
               syncFlagsMutation.mutate({
                 activityId: row.original.id,
-                body: { teamId, assigneeIds },
+                body: { teamId, assigneeIds, displayTeamPerAssignee },
                 assigneeNames,
               })
             }

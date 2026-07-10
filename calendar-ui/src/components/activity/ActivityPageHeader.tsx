@@ -36,7 +36,8 @@ type ActivityPageHeaderProps = {
     teamId: number,
     assigneeIds: number[],
     note?: string,
-    assigneeNames?: string[]
+    assigneeNames?: string[],
+    displayTeamPerAssignee?: Record<number, number | null>
   ) => void;
   /** Called when a non-flagging user removes their own assignment. */
   onFlagUnassign?: (
@@ -284,8 +285,20 @@ export function ActivityPageHeader({
           onOpenChange={setAssignModalOpen}
           flags={flags ?? []}
           isSubmitting={isFlagPending ?? false}
-          onSync={(teamId, assigneeIds, note, assigneeNames) => {
-            onFlagSync(teamId, assigneeIds, note, assigneeNames);
+          onSync={(
+            teamId,
+            assigneeIds,
+            note,
+            assigneeNames,
+            displayTeamPerAssignee
+          ) => {
+            onFlagSync(
+              teamId,
+              assigneeIds,
+              note,
+              assigneeNames,
+              displayTeamPerAssignee
+            );
             setAssignModalOpen(false);
           }}
           displayId={displayId}

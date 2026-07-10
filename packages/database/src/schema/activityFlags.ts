@@ -38,6 +38,9 @@ export const activityFlags = pgTable(
     assignedById: integer('assigned_by_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    displayTeamId: integer('display_team_id').references(() => teams.id, {
+      onDelete: 'set null',
+    }),
     note: text('note'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -52,6 +55,7 @@ export const activityFlags = pgTable(
       table.activityId,
       table.teamId
     ),
+    index('activity_flags_display_team_id_idx').on(table.displayTeamId),
   ]
 );
 
@@ -63,6 +67,11 @@ export const activityFlagsRelations = relations(activityFlags, ({ one }) => ({
   team: one(teams, {
     fields: [activityFlags.teamId],
     references: [teams.id],
+  }),
+  displayTeam: one(teams, {
+    fields: [activityFlags.displayTeamId],
+    references: [teams.id],
+    relationName: 'displayTeam',
   }),
   assignee: one(users, {
     fields: [activityFlags.assigneeId],

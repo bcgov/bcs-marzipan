@@ -281,7 +281,10 @@ export class TeamsService {
     }));
   }
 
-  async findOne(id: number): Promise<TeamDetail | null> {
+  async findOne(
+    id: number,
+    includeInactiveMembers = false
+  ): Promise<TeamDetail | null> {
     const [t] = await this.databaseService.db
       .select({
         id: teams.id,
@@ -300,13 +303,18 @@ export class TeamsService {
 
     if (!t) return null;
 
+    const memberConditions = [eq(userTeams.teamId, id)];
+    if (!includeInactiveMembers) {
+      memberConditions.push(eq(userTeams.isActive, true));
+    }
+
     const memberRows = await this.databaseService.db
       .select({
         userId: userTeams.userId,
         role: userTeams.role,
       })
       .from(userTeams)
-      .where(and(eq(userTeams.teamId, id), eq(userTeams.isActive, true)));
+      .where(and(...memberConditions));
 
     const userIds = memberRows.map((m) => m.userId);
 
