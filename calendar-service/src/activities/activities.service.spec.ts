@@ -3243,6 +3243,19 @@ describe('ActivitiesService', () => {
       expect(paths).toContain('title');
     });
 
+    it('returns empty array when activity status is Deleted (soft-deleted)', () => {
+      const response = createMockActivityResponse({
+        activityStatus: 'Deleted',
+        title: 'Filled title',
+      });
+      const paths = service.computeChangedFieldsSinceReview(
+        response,
+        null,
+        REVIEW_SNAPSHOT_VERSION
+      );
+      expect(paths).toEqual([]);
+    });
+
     it('returns undefined when snapshot version mismatches', () => {
       const response = createMockActivityResponse({
         activityStatus: 'Changed',

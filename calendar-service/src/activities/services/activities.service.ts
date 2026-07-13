@@ -315,8 +315,9 @@ export class ActivitiesService {
 
   /**
    * Compute changedFieldsSinceReview from the stored snapshot vs current response.
-   * Returns undefined when snapshot version mismatches; [] when status is New (not yet reviewed);
-   * otherwise the diff paths vs last Reviewed snapshot (empty baseline when snapshot is null).
+   * Returns undefined when snapshot version mismatches; [] when status is New (not yet reviewed)
+   * or Deleted (soft-deleted activities have no meaningful field diff); otherwise the diff paths
+   * vs last Reviewed snapshot (empty baseline when snapshot is null).
    */
   computeChangedFieldsSinceReview(
     response: ActivityResponse,
@@ -330,7 +331,10 @@ export class ActivitiesService {
     if (snapshotVersion !== REVIEW_SNAPSHOT_VERSION) {
       return undefined;
     }
-    if (normalizeActivityStatusLabel(response.activityStatus) === 'new') {
+    const normalizedStatus = normalizeActivityStatusLabel(
+      response.activityStatus
+    );
+    if (normalizedStatus === 'new' || normalizedStatus === 'deleted') {
       return [];
     }
     const currentFormData = mapResponseToFormData(response, lookups);
