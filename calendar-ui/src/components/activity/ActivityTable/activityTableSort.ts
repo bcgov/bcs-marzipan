@@ -55,9 +55,14 @@ const byActivityStatus: RowComparator = (a, b) =>
 const byLookAheadStatus: RowComparator = (a, b) =>
   compareByOrder(LOOK_AHEAD_SORT_ORDER, a.lookAheadStatus, b.lookAheadStatus);
 
+/** Compare by start date (earliest first); nulls sort last. */
 const byStartDate: RowComparator = (a, b) => {
-  const ta = a.startDate ? parseDateOnlyString(a.startDate).getTime() : 0;
-  const tb = b.startDate ? parseDateOnlyString(b.startDate).getTime() : 0;
+  const ta = a.startDate
+    ? parseDateOnlyString(a.startDate).getTime()
+    : Number.MAX_SAFE_INTEGER;
+  const tb = b.startDate
+    ? parseDateOnlyString(b.startDate).getTime()
+    : Number.MAX_SAFE_INTEGER;
   return ta - tb;
 };
 
