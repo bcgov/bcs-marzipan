@@ -55,14 +55,10 @@ const byActivityStatus: RowComparator = (a, b) =>
 const byLookAheadStatus: RowComparator = (a, b) =>
   compareByOrder(LOOK_AHEAD_SORT_ORDER, a.lookAheadStatus, b.lookAheadStatus);
 
-/** Compare by start date (earliest first); nulls sort last. */
+/** Compare by start date (earliest first). Null date comparison is handled separately. */
 const byStartDate: RowComparator = (a, b) => {
-  const ta = a.startDate
-    ? parseDateOnlyString(a.startDate).getTime()
-    : Number.MAX_SAFE_INTEGER;
-  const tb = b.startDate
-    ? parseDateOnlyString(b.startDate).getTime()
-    : Number.MAX_SAFE_INTEGER;
+  const ta = a.startDate ? parseDateOnlyString(a.startDate).getTime() : 0;
+  const tb = b.startDate ? parseDateOnlyString(b.startDate).getTime() : 0;
   return ta - tb;
 };
 
@@ -92,6 +88,7 @@ const ACTIVITY_SORT_COMPARATORS: Record<string, RowComparator> = {
 
 /**
  * Compare two activity table rows for a single sort level (key + direction).
+ * Handles startDate nulls specially to ensure they always sort last, regardless of direction.
  */
 function compareActivityRowsOneLevel(
   a: ActivityTableRow,
@@ -99,6 +96,22 @@ function compareActivityRowsOneLevel(
   sortKey: string,
   direction: 'asc' | 'desc'
 ): number {
+  // Special handling for startDate: nulls should always sort last, regardless of direction
+  if (sortKey === 'startDate') {
+    const aHasDate = a.startDate != null;
+    const bHasDate = b.startDate != null;
+
+    // If one or both are null, handle before applying direction
+    if (!aHasDate || !bHasDate) {
+      // Both null: equal
+      if (!aHasDate && !bHasDate) return 0;
+      // Only a is null: a comes after (positive result)
+      if (!aHasDate) return 1;
+      // Only b is null: a comes before (negative result)
+      return -1;
+    }
+  }
+
   const comparator = ACTIVITY_SORT_COMPARATORS[sortKey];
   if (!comparator) return 0;
   const mult = direction === 'asc' ? 1 : -1;
