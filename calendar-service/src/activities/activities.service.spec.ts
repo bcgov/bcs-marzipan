@@ -11,9 +11,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { Activity } from '@corpcal/database/types';
 import {
   buildActivityDisplayId,
+  HYDRATION_PROFILES,
   normalizeTeamAbbreviationForActivityDisplayId,
   PERMISSIONS,
   REVIEW_SNAPSHOT_VERSION,
+  SYSTEM_ROLES,
 } from '@corpcal/shared';
 import {
   activityResponseSchema,
@@ -3266,6 +3268,110 @@ describe('ActivitiesService', () => {
         REVIEW_SNAPSHOT_VERSION + 1
       );
       expect(paths).toBeUndefined();
+    });
+  });
+
+  describe('findAll list output review diff', () => {
+    it('attaches changedFieldsSinceReview only for admin users and uses the parse-free mapper builder', async () => {
+      const activity = createMockActivity({
+        reviewedFieldSnapshot: null,
+        reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
+      });
+
+      mockDatabaseService.db.select = vi.fn((selection?: unknown) => {
+        if (selection === undefined) {
+          return {
+            from: vi.fn().mockResolvedValue([activity]),
+          };
+        }
+
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        };
+      });
+
+      vi.spyOn(
+        service as unknown as {
+          getReviewDiffLookups: () => Promise<unknown>;
+        },
+        'getReviewDiffLookups'
+      ).mockResolvedValue({});
+      vi.spyOn(
+        service as unknown as {
+          getEffectiveReviewExemptFieldKeys: () => Promise<Set<string>>;
+        },
+        'getEffectiveReviewExemptFieldKeys'
+      ).mockResolvedValue(new Set<string>());
+
+      mockDataFetcherService.fetchActivityStatusesForActivities.mockResolvedValue(
+        new Map([[activity.id, 'Reviewed']])
+      );
+
+      const mapperService = (
+        service as unknown as { mapperService: ActivityMapperService }
+      ).mapperService;
+      const buildResponseSpy = vi.spyOn(mapperService, 'buildResponseDto');
+      const mapToResponseSpy = vi.spyOn(mapperService, 'mapToResponseDto');
+
+      const adminResult = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: SYSTEM_ROLES.ADMIN,
+            permissions: [],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: {
+            ...HYDRATION_PROFILES.detail,
+            includeReviewDiff: true,
+          },
+        }
+      );
+
+      expect(adminResult[0]).toMatchObject({
+        id: activity.id,
+        changedFieldsSinceReview: expect.arrayContaining([
+          'title',
+          'dateStatusId',
+          'timeStatusId',
+        ]),
+      });
+      expect(buildResponseSpy).toHaveBeenCalledTimes(1);
+      expect(mapToResponseSpy).not.toHaveBeenCalled();
+
+      buildResponseSpy.mockClear();
+      mapToResponseSpy.mockClear();
+
+      const nonAdminResult = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: 'User',
+            permissions: [],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: {
+            ...HYDRATION_PROFILES.detail,
+            includeReviewDiff: true,
+          },
+        }
+      );
+
+      expect(nonAdminResult[0]).not.toHaveProperty('changedFieldsSinceReview');
+      expect(buildResponseSpy).not.toHaveBeenCalled();
+      expect(mapToResponseSpy).not.toHaveBeenCalled();
     });
   });
 

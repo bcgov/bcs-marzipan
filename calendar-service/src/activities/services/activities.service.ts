@@ -1676,10 +1676,8 @@ export class ActivitiesService {
           dataScope,
         });
         if (canReview && reviewLookups && reviewExemptFieldKeys) {
-          const responseForDiff = this.mapperService.mapToResponseDto(
-            activity,
-            relatedData
-          );
+          const responseForDiff: ActivityResponse =
+            this.mapperService.buildResponseDto(activity, relatedData);
           // List-view admin highlighting should reflect all changed fields,
           // including review-exempt scheduling fields (date/time status).
           relatedData.changedFieldsSinceReview =
