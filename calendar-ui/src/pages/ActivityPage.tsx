@@ -142,15 +142,15 @@ export function ActivityPage({
     [lookups.translationRequiredStatuses]
   );
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
-  const reviewerChangedPaths = useMemo<ReadonlySet<string>>(() => {
-    const paths = canReviewActivities
-      ? activity.changedFieldsSinceReview
-      : undefined;
-    return paths ? new Set(paths) : new Set<string>();
-  }, [canReviewActivities, activity.changedFieldsSinceReview]);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const reviewerChangedPaths = useMemo<ReadonlySet<string>>(() => {
+    const paths = isAdminOrSysAdmin
+      ? activity.changedFieldsSinceReview
+      : undefined;
+    return paths ? new Set(paths) : new Set<string>();
+  }, [isAdminOrSysAdmin, activity.changedFieldsSinceReview]);
   const isCommsContact =
     activity.commsContacts?.some((c) => c.userId === user?.id) ?? false;
   const leadTeamId = activity.leadTeamId ?? null;

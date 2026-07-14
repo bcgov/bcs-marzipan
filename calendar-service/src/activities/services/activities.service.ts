@@ -1643,11 +1643,10 @@ export class ActivitiesService {
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
     const isListOutput = outputShape === 'list';
-    const canReview =
-      !isListOutput &&
-      profile.includeReviewDiff === true &&
-      (ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ??
-        false);
+    const isAdminOrSysAdmin =
+      ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
+      ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+    const canReview = profile.includeReviewDiff === true && isAdminOrSysAdmin;
     const userTeamIds = ctx?.user?.teamIds ?? [];
     const fetchFlags = profile.includeFlags === true && userTeamIds.length > 0;
     const [related, reviewLookups, reviewExemptFieldKeys, flagsMap] =
@@ -1676,6 +1675,22 @@ export class ActivitiesService {
           hasEditPermission,
           dataScope,
         });
+        if (canReview && reviewLookups && reviewExemptFieldKeys) {
+          const responseForDiff = this.mapperService.mapToResponseDto(
+            activity,
+            relatedData
+          );
+          // List-view admin highlighting should reflect all changed fields,
+          // including review-exempt scheduling fields (date/time status).
+          relatedData.changedFieldsSinceReview =
+            this.computeChangedFieldsSinceReview(
+              responseForDiff,
+              activity.reviewedFieldSnapshot,
+              activity.reviewedFieldSnapshotVersion,
+              reviewLookups,
+              new Set<string>()
+            );
+        }
         return this.mapperService.mapToListItemDto(activity, relatedData);
       });
     }

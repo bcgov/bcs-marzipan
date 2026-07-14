@@ -325,6 +325,9 @@ export class ActivityMapperService {
       ...(relatedData?.canEdit !== undefined && {
         canEdit: relatedData.canEdit,
       }),
+      ...(relatedData?.changedFieldsSinceReview !== undefined && {
+        changedFieldsSinceReview: relatedData.changedFieldsSinceReview,
+      }),
       flags: relatedData?.flags ?? [],
     };
 

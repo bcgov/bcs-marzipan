@@ -181,6 +181,27 @@ const STATUS_COLUMN_SORT_KEYS = [
   'createdDateTime',
 ] as const;
 
+const LIST_REVIEW_HIGHLIGHT_BG = 'bg-[#FFDDB3]';
+
+function rowHasChangedPath(row: ActivityTableRow, path: string): boolean {
+  const changed = row.changedFieldsSinceReview ?? [];
+  return changed.some((changedPath) => {
+    if (changedPath === path) {
+      return true;
+    }
+    return (
+      changedPath.startsWith(`${path}.`) || path.startsWith(`${changedPath}.`)
+    );
+  });
+}
+
+function rowHasAnyChangedPath(
+  row: ActivityTableRow,
+  paths: readonly string[]
+): boolean {
+  return paths.some((path) => rowHasChangedPath(row, path));
+}
+
 function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
   const isPinned = column.getIsPinned();
 
@@ -238,6 +259,7 @@ function OverviewCell({
   isFavourite,
   onFlagSync,
   flagPending,
+  showReviewHighlights,
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
@@ -250,12 +272,19 @@ function OverviewCell({
     displayTeamPerAssignee?: Record<number, number | null>
   ) => void;
   flagPending?: boolean;
+  showReviewHighlights: boolean;
 }) {
   const pitchLabel =
     (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
     row.pitchDate ??
     null;
   const displayIdText = row.displayId ?? String(row.id);
+  const titleChanged = showReviewHighlights && rowHasChangedPath(row, 'title');
+  const pitchChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['pitchDate', 'pitchRequiredStatusId']);
+  const categoriesChanged =
+    showReviewHighlights && rowHasChangedPath(row, 'categoryIds');
   const assignedFlags = useMemo(() => {
     const uniqueFlags = new Map<number, ActivityTableRow['flags'][number]>();
     row.flags.forEach((flag) => {
@@ -404,13 +433,23 @@ function OverviewCell({
         </div>
       )}
       <div
-        className="mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900"
+        className={cn(
+          'mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900',
+          titleChanged && 'rounded-sm px-1',
+          titleChanged && LIST_REVIEW_HIGHLIGHT_BG
+        )}
         title={row.title}
       >
         {row.title}
       </div>
       {pitchLabel && (
-        <div className="mb-2 text-[13px] text-slate-600">
+        <div
+          className={cn(
+            'mb-2 text-[13px] text-slate-600',
+            pitchChanged && 'inline-block rounded-sm px-1',
+            pitchChanged && LIST_REVIEW_HIGHLIGHT_BG
+          )}
+        >
           Pitch: {toSentenceCase(pitchLabel)}
         </div>
       )}
@@ -421,8 +460,11 @@ function OverviewCell({
               key: cat,
               label: cat,
               variant: 'outline',
-              className:
+              className: cn(
                 'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
+                categoriesChanged && 'border-transparent',
+                categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
+              ),
             })
           )}
           maxLines={1}
@@ -444,7 +486,13 @@ function summaryContentNeedsTruncation(el: HTMLDivElement): boolean {
   return el.scrollHeight > maxHeight + 1 || el.scrollWidth > el.clientWidth + 1;
 }
 
-function SummaryCell({ row }: { row: ActivityTableRow }) {
+function SummaryCell({
+  row,
+  showReviewHighlights,
+}: {
+  row: ActivityTableRow;
+  showReviewHighlights: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [needsTruncation, setNeedsTruncation] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -506,6 +554,8 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
   }, [lookAheadLabel, lookAheadSectionRows, row.tags, section]);
 
   const isCollapsedWithTruncation = needsTruncation && !expanded;
+  const summaryChanged =
+    showReviewHighlights && rowHasChangedPath(row, 'summary');
 
   const showMoreLessButton = (
     <button
@@ -534,6 +584,8 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
           ref={contentRef}
           className={cn(
             'text-[14px] leading-[1.4] wrap-anywhere',
+            summaryChanged && 'rounded-sm px-1',
+            summaryChanged && LIST_REVIEW_HIGHLIGHT_BG,
             !expanded && 'line-clamp-5'
           )}
         >
@@ -570,7 +622,22 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
   );
 }
 
-function SchedulingCell({ row }: { row: ActivityTableRow }) {
+function SchedulingCell({
+  row,
+  showReviewHighlights,
+}: {
+  row: ActivityTableRow;
+  showReviewHighlights: boolean;
+}) {
+  const dateStatusChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['dateStatusId', 'dateStatus']);
+  const timeStatusChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['timeStatusId', 'timeStatus']);
+  const premierChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['premierRequestedId', 'premierRequested']);
   const representativeBadgeItems = useMemo(
     () =>
       row.activityRepresentatives.map(
@@ -590,13 +657,17 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           key: 'premier',
           label: `Premier: ${row.premierRequested}`,
           variant: 'primary' as const,
-          className: 'h-auto min-h-5 text-xs text-white',
+          className: cn(
+            'h-auto min-h-5 text-xs text-white',
+            premierChanged && LIST_REVIEW_HIGHLIGHT_BG,
+            premierChanged && 'border-transparent text-slate-900'
+          ),
         },
         ...representativeBadgeItems,
       ];
     }
     return representativeBadgeItems;
-  }, [row.premierRequested, representativeBadgeItems]);
+  }, [premierChanged, row.premierRequested, representativeBadgeItems]);
   const dateRangeText =
     row.startDate && row.endDate && row.endDate !== row.startDate
       ? formatDateRange(row.startDate, row.endDate)
@@ -614,7 +685,11 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           <span>{dateRangeText}</span>
           <Badge
             variant="outline"
-            className="h-auto min-h-5 border-slate-200 text-xs text-slate-600"
+            className={cn(
+              'h-auto min-h-5 border-slate-200 text-xs text-slate-600',
+              dateStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
+              dateStatusChanged && 'border-transparent'
+            )}
           >
             {toSentenceCase(row.dateStatus)}
           </Badge>
@@ -633,7 +708,11 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           </span>
           <Badge
             variant="outline"
-            className="h-5 border-slate-200 text-xs text-slate-600"
+            className={cn(
+              'h-5 border-slate-200 text-xs text-slate-600',
+              timeStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
+              timeStatusChanged && 'border-transparent'
+            )}
           >
             {toSentenceCase(row.timeStatus)}
           </Badge>
@@ -875,6 +954,7 @@ export function ActivityTable({
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const showReviewHighlights = canSeeDeleted;
 
   const {
     pitchFieldVisibility,
@@ -1336,6 +1416,7 @@ export function ActivityTable({
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
             canFlag={canFlag}
+            showReviewHighlights={showReviewHighlights}
             isFavourite={watchlistActivityIdSet.has(row.original.id)}
             onFlagSync={(
               teamId,
@@ -1366,7 +1447,12 @@ export function ActivityTable({
         ),
         meta: { sortKey: 'lookAheadStatus' as const },
         ...getActivityColumnSizes('summary'),
-        cell: ({ row }) => <SummaryCell row={row.original} />,
+        cell: ({ row }) => (
+          <SummaryCell
+            row={row.original}
+            showReviewHighlights={showReviewHighlights}
+          />
+        ),
       }),
 
       columnHelper.accessor('startDate', {
@@ -1381,7 +1467,12 @@ export function ActivityTable({
         ),
         meta: { sortKey: 'startDate' as const },
         ...getActivityColumnSizes('scheduling'),
-        cell: ({ row }) => <SchedulingCell row={row.original} />,
+        cell: ({ row }) => (
+          <SchedulingCell
+            row={row.original}
+            showReviewHighlights={showReviewHighlights}
+          />
+        ),
       }),
 
       columnHelper.display({
@@ -1454,6 +1545,7 @@ export function ActivityTable({
       effectiveSortDirection,
       handleSortChange,
       pitchFieldVisibility.canViewPitchStatus,
+      showReviewHighlights,
       canFlag,
       watchlistActivityIdSet,
       syncFlagsMutation,
