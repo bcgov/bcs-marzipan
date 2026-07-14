@@ -1675,7 +1675,7 @@ export class ActivitiesService {
           hasEditPermission,
           dataScope,
         });
-        if (canReview && reviewLookups && reviewExemptFieldKeys) {
+if (canReview && reviewLookups) {
           const responseForDiff = this.mapperService.mapToResponseDto(
             activity,
             relatedData
