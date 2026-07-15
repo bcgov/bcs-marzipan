@@ -17,7 +17,7 @@ on:
         required: false
         type: string
       image_tag:
-        description: 'Image tag for push (defaults to short SHA)'
+        description: 'Optional image tag override (defaults to APP_VERSION)'
         required: false
         type: string
 
@@ -27,6 +27,7 @@ permissions:
 env:
   REGISTRY: ${{ vars.ARTIFACTORY_REGISTRY }}
   ARTIFACTORY_DEV_IMAGE_REPO: ${{ vars.ARTIFACTORY_DEV_IMAGE_REPO }}
+  APP_VERSION: ${{ vars.APP_VERSION }}
 
 jobs:
   artifactory-build:
@@ -74,8 +75,13 @@ jobs:
         run: |
           if [[ -n "${{ inputs.image_tag }}" ]]; then
             echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$APP_VERSION" ]]; then
+            echo "tag=$APP_VERSION" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ steps.stage.outputs.value }}" == "login-only" ]]; then
+            echo "tag=not-applicable" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+            echo "::error::Set repo variable APP_VERSION or use the image_tag override"
+            exit 1
           fi
 
       # ── Stage 1: Login ──
