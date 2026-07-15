@@ -1647,13 +1647,14 @@ export class ActivitiesService {
       ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
       ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
     const canReview = profile.includeReviewDiff === true && isAdminOrSysAdmin;
+    const shouldFetchReviewExemptFieldKeys = canReview && !isListOutput;
     const userTeamIds = ctx?.user?.teamIds ?? [];
     const fetchFlags = profile.includeFlags === true && userTeamIds.length > 0;
     const [related, reviewLookups, reviewExemptFieldKeys, flagsMap] =
       await Promise.all([
         this.fetchRelatedForActivityIds(activityIds, activityResults, profile),
         canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
-        canReview
+        shouldFetchReviewExemptFieldKeys
           ? this.getEffectiveReviewExemptFieldKeys()
           : Promise.resolve(undefined),
         fetchFlags
@@ -1675,7 +1676,7 @@ export class ActivitiesService {
           hasEditPermission,
           dataScope,
         });
-        if (canReview && reviewLookups && reviewExemptFieldKeys) {
+        if (canReview && reviewLookups) {
           const responseForDiff: ActivityResponse =
             this.mapperService.buildResponseDto(activity, relatedData);
           // List-view admin highlighting should reflect all changed fields,

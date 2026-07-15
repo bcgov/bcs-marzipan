@@ -3300,12 +3300,14 @@ describe('ActivitiesService', () => {
         },
         'getReviewDiffLookups'
       ).mockResolvedValue({});
-      vi.spyOn(
-        service as unknown as {
-          getEffectiveReviewExemptFieldKeys: () => Promise<Set<string>>;
-        },
-        'getEffectiveReviewExemptFieldKeys'
-      ).mockResolvedValue(new Set<string>());
+      const getEffectiveReviewExemptFieldKeysSpy = vi
+        .spyOn(
+          service as unknown as {
+            getEffectiveReviewExemptFieldKeys: () => Promise<Set<string>>;
+          },
+          'getEffectiveReviewExemptFieldKeys'
+        )
+        .mockResolvedValue(new Set<string>());
 
       mockDataFetcherService.fetchActivityStatusesForActivities.mockResolvedValue(
         new Map([[activity.id, 'Reviewed']])
@@ -3344,6 +3346,7 @@ describe('ActivitiesService', () => {
           'timeStatusId',
         ]),
       });
+      expect(getEffectiveReviewExemptFieldKeysSpy).not.toHaveBeenCalled();
       expect(buildResponseSpy).toHaveBeenCalledTimes(1);
       expect(mapToResponseSpy).not.toHaveBeenCalled();
 
