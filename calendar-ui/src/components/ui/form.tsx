@@ -136,22 +136,10 @@ const FormItem = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     const id = useId();
     const [ariaRequired, setAriaRequired] = useState(false);
-    const { name } = useContext(FormFieldContext);
-    const { reviewerChangedPaths } = useFormDisplayOptions();
-    const showReviewChangedHighlight =
-      typeof name === 'string' && reviewerChangedPaths.has(name);
 
     return (
       <FormItemContext.Provider value={{ id, ariaRequired, setAriaRequired }}>
-        <div
-          ref={ref}
-          className={cn(
-            'space-y-2',
-            showReviewChangedHighlight && 'rounded-sm bg-[#FFDDB3]',
-            className
-          )}
-          {...props}
-        />
+        <div ref={ref} className={cn('space-y-2', className)} {...props} />
       </FormItemContext.Provider>
     );
   }

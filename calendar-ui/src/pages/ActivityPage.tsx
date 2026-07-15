@@ -142,6 +142,12 @@ export function ActivityPage({
     [lookups.translationRequiredStatuses]
   );
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
+  const reviewerChangedPaths = useMemo<ReadonlySet<string>>(() => {
+    const paths = canReviewActivities
+      ? activity.changedFieldsSinceReview
+      : undefined;
+    return paths ? new Set(paths) : new Set<string>();
+  }, [canReviewActivities, activity.changedFieldsSinceReview]);
   const isAdminOrSysAdmin =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
@@ -975,6 +981,7 @@ export function ActivityPage({
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
             readOnly={readOnly}
+            reviewerChangedPaths={reviewerChangedPaths}
             leadTeamField={{
               options: leadTeamOptions,
               displayLabel:
