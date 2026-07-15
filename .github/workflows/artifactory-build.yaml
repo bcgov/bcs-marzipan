@@ -2,24 +2,6 @@ name: Artifactory Build
 
 on:
   workflow_dispatch:
-    inputs:
-      stage:
-        description: 'Build stage: login-only, build-only, or full (build+push)'
-        required: true
-        type: choice
-        options:
-          - login-only
-          - build-only
-          - full
-        default: full
-      image_repo:
-        description: 'Optional Artifactory docker repo override'
-        required: false
-        type: string
-      image_tag:
-        description: 'Optional image tag override (defaults to APP_VERSION)'
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -37,27 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve build stage
-        id: stage
-        run: |
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "value=full" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=${{ inputs.stage }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Resolve image repo
-        id: repo
-        run: |
-          if [[ -n "${{ inputs.image_repo }}" ]]; then
-            echo "value=${{ inputs.image_repo }}" >> "$GITHUB_OUTPUT"
-            echo "environment=override" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "value=$ARTIFACTORY_DEV_IMAGE_REPO" >> "$GITHUB_OUTPUT"
-          echo "environment=dev" >> "$GITHUB_OUTPUT"
-
       - name: Validate Artifactory configuration
         run: |
           if [[ -z "$REGISTRY" ]]; then
@@ -65,80 +26,46 @@ jobs:
             exit 1
           fi
 
-          if [[ "${{ steps.stage.outputs.value }}" == "full" && -z "${{ steps.repo.outputs.value }}" ]]; then
-            echo "::error::Set repo variable ARTIFACTORY_DEV_IMAGE_REPO or use image_repo override"
+          if [[ -z "$ARTIFACTORY_DEV_IMAGE_REPO" ]]; then
+            echo "::error::Set repo variable ARTIFACTORY_DEV_IMAGE_REPO"
             exit 1
           fi
 
-      - name: Resolve image tag
-        id: tag
-        run: |
-          if [[ -n "${{ inputs.image_tag }}" ]]; then
-            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
-          elif [[ -n "$APP_VERSION" ]]; then
-            echo "tag=$APP_VERSION" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ steps.stage.outputs.value }}" == "login-only" ]]; then
-            echo "tag=not-applicable" >> "$GITHUB_OUTPUT"
-          else
-            echo "::error::Set repo variable APP_VERSION or use the image_tag override"
+          if [[ -z "$APP_VERSION" ]]; then
+            echo "::error::Set repo variable APP_VERSION"
             exit 1
           fi
 
-      # ── Stage 1: Login ──
       - name: Login to Artifactory
         run: |
           echo "${{ secrets.ARTIFACTORY_PASSWORD }}" | \
             docker login "$REGISTRY" \
               -u "${{ secrets.ARTIFACTORY_USERNAME }}" --password-stdin
 
-      # ── Stage 2: Build ──
       - name: Build calendar-service
-        if: steps.stage.outputs.value == 'build-only' || steps.stage.outputs.value == 'full'
         run: |
           docker build \
             -f calendar-service/Dockerfile \
-            -t "$REGISTRY/calendar-service:${{ steps.tag.outputs.tag }}" \
+            -t "$REGISTRY/$ARTIFACTORY_DEV_IMAGE_REPO/calendar-service:$APP_VERSION" \
             .
 
       - name: Build calendar-ui
-        if: steps.stage.outputs.value == 'build-only' || steps.stage.outputs.value == 'full'
         run: |
           docker build \
             -f calendar-ui/Dockerfile \
-            -t "$REGISTRY/calendar-ui:${{ steps.tag.outputs.tag }}" \
+            -t "$REGISTRY/$ARTIFACTORY_DEV_IMAGE_REPO/calendar-ui:$APP_VERSION" \
             .
 
-      # ── Stage 3: Push ──
-      - name: Validate push inputs
-        if: steps.stage.outputs.value == 'full'
-        run: |
-          if [[ -z "${{ steps.repo.outputs.value }}" ]]; then
-            echo "::error::Set repo variable ARTIFACTORY_DEV_IMAGE_REPO or use image_repo override"
-            exit 1
-          fi
+      - name: Push calendar-service
+        run: docker push "$REGISTRY/$ARTIFACTORY_DEV_IMAGE_REPO/calendar-service:$APP_VERSION"
 
-      - name: Tag and push calendar-service
-        if: steps.stage.outputs.value == 'full'
-        run: |
-          PUSH_TAG="$REGISTRY/${{ steps.repo.outputs.value }}/calendar-service:${{ steps.tag.outputs.tag }}"
-          docker tag "$REGISTRY/calendar-service:${{ steps.tag.outputs.tag }}" "$PUSH_TAG"
-          docker push "$PUSH_TAG"
-
-      - name: Tag and push calendar-ui
-        if: steps.stage.outputs.value == 'full'
-        run: |
-          PUSH_TAG="$REGISTRY/${{ steps.repo.outputs.value }}/calendar-ui:${{ steps.tag.outputs.tag }}"
-          docker tag "$REGISTRY/calendar-ui:${{ steps.tag.outputs.tag }}" "$PUSH_TAG"
-          docker push "$PUSH_TAG"
+      - name: Push calendar-ui
+        run: docker push "$REGISTRY/$ARTIFACTORY_DEV_IMAGE_REPO/calendar-ui:$APP_VERSION"
 
       - name: Summary
         run: |
           echo "## Build Results" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Stage:** ${{ steps.stage.outputs.value }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Environment:** ${{ steps.repo.outputs.environment }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Registry:** ${{ env.REGISTRY }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Tag:** ${{ steps.tag.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Image repo:** ${{ env.ARTIFACTORY_DEV_IMAGE_REPO }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tag:** ${{ env.APP_VERSION }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Branch:** ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
-          if [[ -n "${{ steps.repo.outputs.value }}" ]]; then
-            echo "- **Push repo:** ${{ steps.repo.outputs.value }}" >> "$GITHUB_STEP_SUMMARY"
-          fi
