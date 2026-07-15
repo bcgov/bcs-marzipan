@@ -1,4 +1,4 @@
-name: DB Migrations to Openshift
+name: DB Migrations to Openshift Dev Silver
 
 permissions:
   contents: read
@@ -54,12 +54,13 @@ jobs:
 
       - name: Run DB migrations
         run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
           oc delete job calendar-db-migrate \
             -n ${DEV_NAMESPACE} \
             --ignore-not-found
 
-          oc apply -f openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml \
-            -n ${DEV_NAMESPACE}
+          envsubst < openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml \
+            | oc apply -n ${DEV_NAMESPACE} -f -
 
           oc wait --for=condition=complete job/calendar-db-migrate \
             -n ${DEV_NAMESPACE} \
