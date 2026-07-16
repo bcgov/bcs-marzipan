@@ -331,12 +331,14 @@ export function ReportsPage() {
   useEffect(() => {
     if (!activeReport) return;
 
+    const nextSignature = `${activeReport}|${filterStateSignature}`;
     const previousSignature = prevFilterStateSignatureRef.current;
-    prevFilterStateSignatureRef.current = filterStateSignature;
+    prevFilterStateSignatureRef.current = nextSignature;
 
     if (
       previousSignature === '' ||
-      previousSignature === filterStateSignature
+      previousSignature === nextSignature ||
+      !previousSignature.startsWith(`${activeReport}|`)
     ) {
       return;
     }
