@@ -19,7 +19,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: image-registry.openshift-image-registry.svc:5000/d8b00f-dev/calendar-db-migrate:0.0.1
+          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-db-migrate:${APP_VERSION}
           env:
             - name: DATABASE_URL
               valueFrom:
@@ -32,6 +32,10 @@ spec:
             - |
               set -e
 
+              echo "Waiting for database..."
+              until pg_isready -d "$DATABASE_URL"; do
+                sleep 2
+              done
               echo "Running tracked Drizzle migrations..."
               npm run db:migrate --workspace=packages/database
 

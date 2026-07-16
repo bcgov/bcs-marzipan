@@ -22,6 +22,6 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: calendar-db-migrate:0.0.1
+      name: calendar-db-migrate:${APP_VERSION}
   triggers:
     - type: ConfigChange
