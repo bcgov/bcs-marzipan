@@ -388,10 +388,12 @@ export function ReportsPage() {
 
     const startedAt =
       lastSearchInteractionAtRef.current ?? reportLoadStartedAtRef.current;
-    const latencyMs =
-      startedAt == null
-        ? 0
-        : Math.max(0, Math.round(performance.now() - startedAt));
+
+    // Avoid firing "results loaded" events for purely client-side re-renders
+    // (e.g. each keystroke) when no load/interaction was initiated.
+    if (startedAt == null) return;
+
+    const latencyMs = Math.max(0, Math.round(performance.now() - startedAt));
     const filterKeysUsed = analytics.getActiveReportFilterKeys(
       preferences.filterState,
       activeReport
