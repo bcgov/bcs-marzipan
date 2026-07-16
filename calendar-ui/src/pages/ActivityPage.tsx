@@ -183,7 +183,9 @@ export function ActivityPage({
           (isAdminOrSysAdmin || isCommsContact || isLeadTeamMember)
         : false;
   const showDeleteButton =
-    canDelete && (canDeleteAny || isCommsContact || isLeadTeamMember);
+    normalizedStatus !== 'deleted' &&
+    canDelete &&
+    (canDeleteAny || isCommsContact || isLeadTeamMember);
   const showRequestDeleteButton =
     !isBlockedStatus &&
     (isCommsContact || isLeadTeamMember) &&
