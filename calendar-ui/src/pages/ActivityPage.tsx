@@ -557,10 +557,24 @@ export function ActivityPage({
         } else {
           const opts: UpdatePayloadOptions =
             mode.kind === 'reviewWithSave'
-              ? { markAsReviewed: true, requiredTranslationStatusId }
+              ? {
+                  markAsReviewed: true,
+                  requiredTranslationStatusId,
+                  includeRepresentatives:
+                    !!form.formState.dirtyFields.representatives,
+                }
               : mode.kind === 'completeWithSave'
-                ? { markAsCompleted: true, requiredTranslationStatusId }
-                : { requiredTranslationStatusId };
+                ? {
+                    markAsCompleted: true,
+                    requiredTranslationStatusId,
+                    includeRepresentatives:
+                      !!form.formState.dirtyFields.representatives,
+                  }
+                : {
+                    requiredTranslationStatusId,
+                    includeRepresentatives:
+                      !!form.formState.dirtyFields.representatives,
+                  };
           submitData = {
             ...buildPayloadForUpdate(
               mode.validatedData,
