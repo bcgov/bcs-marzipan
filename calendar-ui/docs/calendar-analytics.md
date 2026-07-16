@@ -131,6 +131,16 @@ Schema references:
 
 - calendar_click: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/calendar_click/jsonschema/1-0-0
 - calendar_action (draft): https://github.com/bcgov/GDX-Analytics/blob/bcs-schemas/examples/schemas/ca.bc.gov.bcs/calendar_action/jsonschema/1-0-0
+- report_search_submitted: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/report_search_submitted/jsonschema/1-0-0
+- report_search_results_loaded: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/report_search_results_loaded/jsonschema/1-0-0
+- report_result_opened: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/report_result_opened/jsonschema/1-0-0
+- report_search_cleared: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/report_search_cleared/jsonschema/1-0-0
+- report_filters_applied: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/report_filters_applied/jsonschema/1-0-0
+- report_no_results_shown: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/report_no_results_shown/jsonschema/1-0-0
+- report_export_started: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/report_export_started/jsonschema/1-0-0
+- report_export_completed: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/report_export_completed/jsonschema/1-0-0
+- saved_filter_action: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/saved_filter_action/jsonschema/1-0-0
+- report_pagination_changed: https://github.com/bcgov/GDX-Analytics/blob/master/examples/schemas/ca.bc.gov.bcs/report_pagination_changed/jsonschema/1-0-0
 
 Possible next steps:
 
