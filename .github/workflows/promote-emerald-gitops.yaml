@@ -132,7 +132,8 @@ jobs:
 
           IMAGE_TAG="$IMAGE_TAG" yq -i '
             (.images[] | select(.name == "calendar-service" or .name == "calendar-service:latest").newTag) = strenv(IMAGE_TAG) |
-            (.images[] | select(.name == "calendar-ui" or .name == "calendar-ui:latest").newTag) = strenv(IMAGE_TAG)
+            (.images[] | select(.name == "calendar-ui" or .name == "calendar-ui:latest").newTag) = strenv(IMAGE_TAG) |
+            (.images[] | select(.name == "calendar-db-migrate" or .name == "calendar-db-migrate:latest").newTag) = strenv(IMAGE_TAG)
           ' "$KUSTOMIZATION_FILE_ABS"
 
           if git -C gitops diff --quiet -- "$KUSTOMIZATION_FILE"; then
