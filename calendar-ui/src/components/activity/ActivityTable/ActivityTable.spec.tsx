@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
@@ -7,6 +7,57 @@ import { ActivityTable } from './ActivityTable';
 
 const mockNavigate = vi.fn();
 const mockSetPreferences = vi.fn();
+let mockLocationState: unknown = null;
+
+function makeActivity(id: number) {
+  return {
+    id,
+    displayId: `INF-${String(id).padStart(6, '0')}`,
+    title: `Test Activity ${id}`,
+    category: ['Release'],
+    pitchDate: null,
+    pitchRequiredStatus: null,
+    isConfidential: false,
+    isIssue: false,
+    summary: `Summary ${id}`,
+    executiveSummary: '',
+    tags: [],
+    lookAheadStatus: null,
+    lookAheadSection: null,
+    isAllDay: false,
+    startDate: '2026-07-20',
+    endDate: '2026-07-20',
+    dateStatus: 'confirmed',
+    startTime: '10:00:00',
+    endTime: '11:00:00',
+    timeStatus: 'confirmed',
+    venueAddress: null,
+    premierRequested: 'No',
+    representativesAttending: [],
+    leadOrg: null,
+    leadMinistry: null,
+    leadMinistryAbbreviation: null,
+    commsContacts: [],
+    eventPlanners: [],
+    eventPlannerLeadIds: [],
+    leadMinistryId: null,
+    leadOrgId: null,
+    translationsRequired: [],
+    translationsRequiredStatus: null,
+    translationsRequiredStatusId: null,
+    commsMaterials: [],
+    activityStatus: 'Draft',
+    activityStatusId: 1,
+    lastUpdatedDateTime: '2026-07-20T10:00:00.000Z',
+    lastUpdatedBy: 1,
+    createdDateTime: '2026-07-19T10:00:00.000Z',
+    flags: [],
+  };
+}
+
+const mockActivities = Array.from({ length: 12 }, (_, i) =>
+  makeActivity(i + 1)
+);
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
@@ -17,7 +68,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
       pathname: '/',
       search: '?tab=all',
       hash: '#list',
-      state: null,
+      state: mockLocationState,
     }),
     useSearchParams: () => [new URLSearchParams(), vi.fn()],
   };
@@ -93,51 +144,7 @@ vi.mock('@/hooks/useLookups', () => ({
 vi.mock('@/hooks/useCalendar', () => ({
   useActivityList: () => ({
     isPending: false,
-    data: [
-      {
-        id: 1,
-        displayId: 'INF-000001',
-        title: 'Test Activity',
-        category: ['Release'],
-        pitchDate: null,
-        pitchRequiredStatus: null,
-        isConfidential: false,
-        isIssue: false,
-        summary: 'Summary',
-        executiveSummary: '',
-        tags: [],
-        lookAheadStatus: null,
-        lookAheadSection: null,
-        isAllDay: false,
-        startDate: '2026-07-20',
-        endDate: '2026-07-20',
-        dateStatus: 'confirmed',
-        startTime: '10:00:00',
-        endTime: '11:00:00',
-        timeStatus: 'confirmed',
-        venueAddress: null,
-        premierRequested: 'No',
-        representativesAttending: [],
-        leadOrg: null,
-        leadMinistry: null,
-        leadMinistryAbbreviation: null,
-        commsContacts: [],
-        eventPlanners: [],
-        eventPlannerLeadIds: [],
-        leadMinistryId: null,
-        leadOrgId: null,
-        translationsRequired: [],
-        translationsRequiredStatus: null,
-        translationsRequiredStatusId: null,
-        commsMaterials: [],
-        activityStatus: 'Draft',
-        activityStatusId: 1,
-        lastUpdatedDateTime: '2026-07-20T10:00:00.000Z',
-        lastUpdatedBy: 1,
-        createdDateTime: '2026-07-19T10:00:00.000Z',
-        flags: [],
-      },
-    ],
+    data: mockActivities,
     isError: false,
     isFetching: false,
     refetch: vi.fn(),
@@ -167,13 +174,14 @@ vi.mock('./ActivityTableFilters', () => ({
 describe('ActivityTable scroll state capture', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLocationState = null;
     window.sessionStorage.clear();
   });
 
   it('captures page and focus activity when opening details', () => {
     render(<ActivityTable />);
 
-    const title = screen.getByText('Test Activity');
+    const title = screen.getByText('Test Activity 1');
     const row = title.closest('tr');
     expect(row).toBeTruthy();
 
@@ -199,5 +207,48 @@ describe('ActivityTable scroll state capture', () => {
     };
     expect(stored.activityListPageIndex).toBe(0);
     expect(stored.activityListFocusActivityId).toBe(1);
+  });
+
+  it('restores from location state and clears persisted state after restore', async () => {
+    mockLocationState = {
+      activityListPageIndex: 1,
+      activityListScrollTop: 180,
+    };
+    window.sessionStorage.setItem(
+      'activityListScrollState',
+      JSON.stringify({
+        activityListPageIndex: 1,
+        activityListScrollTop: 180,
+        activityListFocusActivityId: 12,
+      })
+    );
+
+    const rafSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((cb: FrameRequestCallback) => {
+        cb(0);
+        return 1;
+      });
+    const cancelSpy = vi
+      .spyOn(window, 'cancelAnimationFrame')
+      .mockImplementation(() => {});
+
+    render(<ActivityTable />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Page 2' })).toHaveAttribute(
+        'aria-current',
+        'page'
+      );
+    });
+
+    const table = screen.getByRole('grid');
+    const scroller = table.closest('div.overflow-auto');
+    expect(scroller).toBeTruthy();
+    expect(scroller?.scrollTop).toBe(180);
+    expect(window.sessionStorage.getItem('activityListScrollState')).toBeNull();
+
+    rafSpy.mockRestore();
+    cancelSpy.mockRestore();
   });
 });

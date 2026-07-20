@@ -415,7 +415,7 @@ export function FreeformCombobox({
         const isLead = 'isLead' in v && v.isLead === true;
         return (
           <span
-            key={`${v.type}:${v.value}:${i}`}
+            key={v.type === 'option' ? v.value : `freeform-${v.value}`}
             data-slot="chip"
             className={CHIP_VISUAL_CLASSES}
           >
@@ -617,7 +617,13 @@ export function FreeformCombobox({
                   }
                   return (
                     <li
-                      key={`${entry.kind}:${entry.kind === 'clear' ? 'clear' : entry.value}:${index}`}
+                      key={
+                        entry.kind === 'option'
+                          ? entry.value
+                          : entry.kind === 'freeform'
+                            ? `freeform-${entry.value}`
+                            : 'clear'
+                      }
                       id={`freeform-combobox-option-${index}`}
                       role="option"
                       aria-selected={selected}

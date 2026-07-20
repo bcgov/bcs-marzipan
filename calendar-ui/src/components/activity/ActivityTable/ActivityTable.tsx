@@ -1863,9 +1863,18 @@ export function ActivityTable({
     if (loading || sortedData.length === 0) return;
     if (typeof window === 'undefined') return;
 
+    const previousScrollRestoration =
+      'scrollRestoration' in window.history
+        ? window.history.scrollRestoration
+        : null;
+    const restoreScrollRestoration = () => {
+      if (previousScrollRestoration == null) return;
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+
     // Prevent the browser's native scroll restoration from resetting window
     // scroll to 0 on SPA back-navigation and fighting the restore below.
-    if ('scrollRestoration' in window.history) {
+    if (previousScrollRestoration != null) {
       window.history.scrollRestoration = 'manual';
     }
 
@@ -1951,6 +1960,7 @@ export function ActivityTable({
           pageIndex,
           finalScrollTop: scrollContainer?.scrollTop,
         });
+        restoreScrollRestoration();
         pendingFocusActivityIdRef.current = null;
         pendingPageIndexRef.current = null;
         pendingScrollTopRef.current = null;
@@ -1971,6 +1981,7 @@ export function ActivityTable({
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(rafId);
+      restoreScrollRestoration();
     };
   }, [
     isActivityListRoute,
