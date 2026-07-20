@@ -293,6 +293,13 @@ export function FreeformCombobox({
           value: entry.value,
         };
         if (multiple) {
+          const alreadySelected = selectedList.some(
+            (item) => item.type === newItem.type && item.value === newItem.value
+          );
+          if (alreadySelected) {
+            setInputValue('');
+            return;
+          }
           const next = [...selectedList, newItem];
           onChange(next);
         } else {
@@ -307,6 +314,13 @@ export function FreeformCombobox({
         value: entry.value,
       };
       if (multiple) {
+        const alreadySelected = selectedList.some(
+          (item) => item.type === newItem.type && item.value === newItem.value
+        );
+        if (alreadySelected) {
+          setInputValue('');
+          return;
+        }
         const next = [...selectedList, newItem];
         onChange(next);
       } else {
@@ -401,7 +415,7 @@ export function FreeformCombobox({
         const isLead = 'isLead' in v && v.isLead === true;
         return (
           <span
-            key={v.type === 'option' ? v.value : `freeform-${v.value}`}
+            key={`${v.type}:${v.value}:${i}`}
             data-slot="chip"
             className={CHIP_VISUAL_CLASSES}
           >
@@ -603,13 +617,7 @@ export function FreeformCombobox({
                   }
                   return (
                     <li
-                      key={
-                        entry.kind === 'option'
-                          ? entry.value
-                          : entry.kind === 'freeform'
-                            ? `freeform-${entry.value}`
-                            : 'clear'
-                      }
+                      key={`${entry.kind}:${entry.kind === 'clear' ? 'clear' : entry.value}:${index}`}
                       id={`freeform-combobox-option-${index}`}
                       role="option"
                       aria-selected={selected}

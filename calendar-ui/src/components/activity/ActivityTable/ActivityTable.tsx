@@ -89,7 +89,12 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
-import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
+import {
+  activityFormLinkState,
+  getActivityListPageIndex,
+  getActivityListScrollTop,
+  getActivityListWindowScrollTop,
+} from '@/lib/activity-form-navigation-state';
 import {
   canResolveTranslationLanguageFilter,
   filterActivityRowsByFilters,
@@ -181,6 +186,117 @@ const STATUS_COLUMN_SORT_KEYS = [
   'createdDateTime',
 ] as const;
 
+const LIST_REVIEW_HIGHLIGHT_BG = 'bg-[#FFDDB3]';
+
+const ACTIVITY_LIST_SCROLL_STATE_KEY = 'activityListScrollState';
+const ACTIVITY_LIST_SCROLL_DEBUG_KEY = 'activityListScrollDebug';
+
+type StoredActivityListScrollState = {
+  activityListPageIndex?: number;
+  activityListScrollTop?: number;
+  activityListWindowScrollTop?: number;
+  activityListFocusActivityId?: number;
+};
+
+function writeStoredActivityListScrollState(
+  state: StoredActivityListScrollState
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(
+      ACTIVITY_LIST_SCROLL_STATE_KEY,
+      JSON.stringify(state)
+    );
+  } catch {
+    // ignore
+  }
+}
+
+function parseStoredActivityListScrollState(
+  raw: string | null
+): StoredActivityListScrollState | null {
+  if (raw == null) return null;
+  try {
+    const parsed = JSON.parse(raw) as StoredActivityListScrollState;
+    const pageIndex = parsed.activityListPageIndex;
+    const containerScrollTop = parsed.activityListScrollTop;
+    const windowScrollTop = parsed.activityListWindowScrollTop;
+    const focusActivityId = parsed.activityListFocusActivityId;
+    return {
+      activityListPageIndex:
+        typeof pageIndex === 'number' &&
+        Number.isInteger(pageIndex) &&
+        pageIndex >= 0
+          ? pageIndex
+          : undefined,
+      activityListScrollTop:
+        typeof containerScrollTop === 'number' &&
+        Number.isFinite(containerScrollTop)
+          ? containerScrollTop
+          : undefined,
+      activityListWindowScrollTop:
+        typeof windowScrollTop === 'number' && Number.isFinite(windowScrollTop)
+          ? windowScrollTop
+          : undefined,
+      activityListFocusActivityId:
+        typeof focusActivityId === 'number' &&
+        Number.isInteger(focusActivityId) &&
+        focusActivityId > 0
+          ? focusActivityId
+          : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function recordScrollRestoreDebug(
+  event: string,
+  payload: Record<string, unknown>
+) {
+  if (typeof window === 'undefined') return;
+  if (!import.meta.env.DEV) return;
+  const entry = {
+    event,
+    at: new Date().toISOString(),
+    ...payload,
+  };
+  console.debug('[scroll-restore]', entry);
+  try {
+    const existingRaw = window.sessionStorage.getItem(
+      ACTIVITY_LIST_SCROLL_DEBUG_KEY
+    );
+    const parsed = JSON.parse(existingRaw ?? '[]') as unknown;
+    const existing = Array.isArray(parsed) ? parsed : [];
+    const next = [...existing, entry].slice(-40);
+    window.sessionStorage.setItem(
+      ACTIVITY_LIST_SCROLL_DEBUG_KEY,
+      JSON.stringify(next)
+    );
+  } catch {
+    // ignore
+  }
+}
+
+function rowHasChangedPath(row: ActivityTableRow, path: string): boolean {
+  const changed = row.changedFieldsSinceReview ?? [];
+  return changed.some((changedPath: string) => {
+    if (changedPath === path) {
+      return true;
+    }
+    return (
+      changedPath.startsWith(`${path}.`) || path.startsWith(`${changedPath}.`)
+    );
+  });
+}
+
+function rowHasAnyChangedPath(
+  row: ActivityTableRow,
+  paths: readonly string[]
+): boolean {
+  return paths.some((path) => rowHasChangedPath(row, path));
+}
+
 function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
   const isPinned = column.getIsPinned();
 
@@ -238,6 +354,7 @@ function OverviewCell({
   isFavourite,
   onFlagSync,
   flagPending,
+  showReviewHighlights,
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
@@ -250,12 +367,19 @@ function OverviewCell({
     displayTeamPerAssignee?: Record<number, number | null>
   ) => void;
   flagPending?: boolean;
+  showReviewHighlights: boolean;
 }) {
   const pitchLabel =
     (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
     row.pitchDate ??
     null;
   const displayIdText = row.displayId ?? String(row.id);
+  const titleChanged = showReviewHighlights && rowHasChangedPath(row, 'title');
+  const pitchChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['pitchDate', 'pitchRequiredStatusId']);
+  const categoriesChanged =
+    showReviewHighlights && rowHasChangedPath(row, 'categoryIds');
   const assignedFlags = useMemo(() => {
     const uniqueFlags = new Map<number, ActivityTableRow['flags'][number]>();
     row.flags.forEach((flag) => {
@@ -404,25 +528,38 @@ function OverviewCell({
         </div>
       )}
       <div
-        className="mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900"
+        className={cn(
+          'mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900',
+          titleChanged && 'rounded-sm px-1',
+          titleChanged && LIST_REVIEW_HIGHLIGHT_BG
+        )}
         title={row.title}
       >
         {row.title}
       </div>
       {pitchLabel && (
-        <div className="mb-2 text-[13px] text-slate-600">
+        <div
+          className={cn(
+            'mb-2 text-[13px] text-slate-600',
+            pitchChanged && 'inline-block rounded-sm px-1',
+            pitchChanged && LIST_REVIEW_HIGHLIGHT_BG
+          )}
+        >
           Pitch: {toSentenceCase(pitchLabel)}
         </div>
       )}
       {row.activityCategories.length > 0 && (
         <BadgeGroup
           items={row.activityCategories.map(
-            (cat): BadgeGroupItem => ({
-              key: cat,
+            (cat, index): BadgeGroupItem => ({
+              key: `${cat}:${index}`,
               label: cat,
               variant: 'outline',
-              className:
+              className: cn(
                 'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
+                categoriesChanged && 'border-transparent',
+                categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
+              ),
             })
           )}
           maxLines={1}
@@ -444,7 +581,13 @@ function summaryContentNeedsTruncation(el: HTMLDivElement): boolean {
   return el.scrollHeight > maxHeight + 1 || el.scrollWidth > el.clientWidth + 1;
 }
 
-function SummaryCell({ row }: { row: ActivityTableRow }) {
+function SummaryCell({
+  row,
+  showReviewHighlights,
+}: {
+  row: ActivityTableRow;
+  showReviewHighlights: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [needsTruncation, setNeedsTruncation] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -496,8 +639,8 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
             : undefined,
         }
       : null;
-    const tagItems: BadgeGroupItem[] = row.tags.map((tag) => ({
-      key: tag.id,
+    const tagItems: BadgeGroupItem[] = row.tags.map((tag, index) => ({
+      key: `${tag.id}:${index}`,
       label: tag.text,
       variant: 'outline',
       className: 'h-auto min-h-5 text-xs whitespace-normal text-slate-600',
@@ -506,6 +649,8 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
   }, [lookAheadLabel, lookAheadSectionRows, row.tags, section]);
 
   const isCollapsedWithTruncation = needsTruncation && !expanded;
+  const summaryChanged =
+    showReviewHighlights && rowHasChangedPath(row, 'summary');
 
   const showMoreLessButton = (
     <button
@@ -534,6 +679,8 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
           ref={contentRef}
           className={cn(
             'text-[14px] leading-[1.4] wrap-anywhere',
+            summaryChanged && 'rounded-sm px-1',
+            summaryChanged && LIST_REVIEW_HIGHLIGHT_BG,
             !expanded && 'line-clamp-5'
           )}
         >
@@ -570,12 +717,27 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
   );
 }
 
-function SchedulingCell({ row }: { row: ActivityTableRow }) {
+function SchedulingCell({
+  row,
+  showReviewHighlights,
+}: {
+  row: ActivityTableRow;
+  showReviewHighlights: boolean;
+}) {
+  const dateStatusChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['dateStatusId', 'dateStatus']);
+  const timeStatusChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['timeStatusId', 'timeStatus']);
+  const premierChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['premierRequestedId', 'premierRequested']);
   const representativeBadgeItems = useMemo(
     () =>
       row.activityRepresentatives.map(
-        (name): BadgeGroupItem => ({
-          key: name,
+        (name, index): BadgeGroupItem => ({
+          key: `${name}:${index}`,
           label: formatRepresentativeBadgeText(name),
         })
       ),
@@ -590,13 +752,17 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           key: 'premier',
           label: `Premier: ${row.premierRequested}`,
           variant: 'primary' as const,
-          className: 'h-auto min-h-5 text-xs text-white',
+          className: cn(
+            'h-auto min-h-5 text-xs text-white',
+            premierChanged && LIST_REVIEW_HIGHLIGHT_BG,
+            premierChanged && 'border-transparent text-slate-900'
+          ),
         },
         ...representativeBadgeItems,
       ];
     }
     return representativeBadgeItems;
-  }, [row.premierRequested, representativeBadgeItems]);
+  }, [premierChanged, row.premierRequested, representativeBadgeItems]);
   const dateRangeText =
     row.startDate && row.endDate && row.endDate !== row.startDate
       ? formatDateRange(row.startDate, row.endDate)
@@ -614,7 +780,11 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           <span>{dateRangeText}</span>
           <Badge
             variant="outline"
-            className="h-auto min-h-5 border-slate-200 text-xs text-slate-600"
+            className={cn(
+              'h-auto min-h-5 border-slate-200 text-xs text-slate-600',
+              dateStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
+              dateStatusChanged && 'border-transparent'
+            )}
           >
             {toSentenceCase(row.dateStatus)}
           </Badge>
@@ -633,7 +803,11 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           </span>
           <Badge
             variant="outline"
-            className="h-5 border-slate-200 text-xs text-slate-600"
+            className={cn(
+              'h-5 border-slate-200 text-xs text-slate-600',
+              timeStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
+              timeStatusChanged && 'border-transparent'
+            )}
           >
             {toSentenceCase(row.timeStatus)}
           </Badge>
@@ -871,10 +1045,12 @@ export function ActivityTable({
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isActivityListRoute = location.pathname === '/';
   const { user, hasPermission } = useAuth();
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const showReviewHighlights = canSeeDeleted;
 
   const {
     pitchFieldVisibility,
@@ -893,8 +1069,13 @@ export function ActivityTable({
   } = useActivityTableFilterLookups(canSeeDeleted);
 
   const tableScrollRef = useRef<HTMLDivElement>(null);
+  const latestContainerScrollTopRef = useRef(0);
   const { preferences, setPreferences } =
     useActivityTablePreferences(canSeeDeleted);
+  const pendingFocusActivityIdRef = useRef<number | null>(null);
+  const pendingPageIndexRef = useRef<number | null>(null);
+  const pendingScrollTopRef = useRef<number | null>(null);
+  const pendingWindowScrollTopRef = useRef<number | null>(null);
   const savedFiltersHook = useSavedFilters();
   const [currentSearchParams] = useSearchParams();
   const defaultAppliedRef = useRef(false);
@@ -1178,6 +1359,52 @@ export function ActivityTable({
   );
   const setPagination = onPaginationChangeStable;
 
+  useEffect(() => {
+    if (!isActivityListRoute) return;
+    const scrollContainer = tableScrollRef.current;
+    if (scrollContainer == null) return;
+
+    let rafId = 0;
+    let pending = false;
+
+    const persistScroll = () => {
+      pending = false;
+      const scrollTop = scrollContainer.scrollTop;
+      latestContainerScrollTopRef.current = scrollTop;
+      writeStoredActivityListScrollState({
+        activityListPageIndex: pageIndex,
+        activityListScrollTop: scrollTop,
+        activityListFocusActivityId:
+          pendingFocusActivityIdRef.current ?? undefined,
+      });
+    };
+
+    const onScroll = () => {
+      if (pending) return;
+      pending = true;
+      rafId = window.requestAnimationFrame(persistScroll);
+    };
+
+    scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      scrollContainer.removeEventListener('scroll', onScroll);
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [isActivityListRoute, pageIndex]);
+
+  useEffect(() => {
+    if (!isActivityListRoute) return;
+    const scrollTop = tableScrollRef.current?.scrollTop ?? 0;
+    latestContainerScrollTopRef.current = scrollTop;
+    writeStoredActivityListScrollState({
+      activityListPageIndex: pageIndex,
+      activityListScrollTop: scrollTop,
+      activityListFocusActivityId:
+        pendingFocusActivityIdRef.current ?? undefined,
+    });
+  }, [isActivityListRoute, pageIndex]);
+
   const userMap = useMemo(() => {
     const map = new Map<string, { name: string; jobTitle?: string | null }>();
     const users = usersQuery.data ?? [];
@@ -1336,6 +1563,7 @@ export function ActivityTable({
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
             canFlag={canFlag}
+            showReviewHighlights={showReviewHighlights}
             isFavourite={watchlistActivityIdSet.has(row.original.id)}
             onFlagSync={(
               teamId,
@@ -1366,7 +1594,12 @@ export function ActivityTable({
         ),
         meta: { sortKey: 'lookAheadStatus' as const },
         ...getActivityColumnSizes('summary'),
-        cell: ({ row }) => <SummaryCell row={row.original} />,
+        cell: ({ row }) => (
+          <SummaryCell
+            row={row.original}
+            showReviewHighlights={showReviewHighlights}
+          />
+        ),
       }),
 
       columnHelper.accessor('startDate', {
@@ -1381,7 +1614,12 @@ export function ActivityTable({
         ),
         meta: { sortKey: 'startDate' as const },
         ...getActivityColumnSizes('scheduling'),
-        cell: ({ row }) => <SchedulingCell row={row.original} />,
+        cell: ({ row }) => (
+          <SchedulingCell
+            row={row.original}
+            showReviewHighlights={showReviewHighlights}
+          />
+        ),
       }),
 
       columnHelper.display({
@@ -1454,6 +1692,7 @@ export function ActivityTable({
       effectiveSortDirection,
       handleSortChange,
       pitchFieldVisibility.canViewPitchStatus,
+      showReviewHighlights,
       canFlag,
       watchlistActivityIdSet,
       syncFlagsMutation,
@@ -1535,6 +1774,246 @@ export function ActivityTable({
         pitchFieldVisibility,
       ]
     );
+
+  useEffect(() => {
+    if (!isActivityListRoute) return;
+
+    const statePageIndex = getActivityListPageIndex(location.state);
+    const stateScrollTop = getActivityListScrollTop(location.state);
+    const stateWindowScrollTop = getActivityListWindowScrollTop(location.state);
+    let source = 'none';
+    if (
+      statePageIndex != null ||
+      stateScrollTop != null ||
+      stateWindowScrollTop != null
+    ) {
+      pendingPageIndexRef.current = statePageIndex;
+      pendingScrollTopRef.current = stateScrollTop;
+      pendingWindowScrollTopRef.current = stateWindowScrollTop;
+      source = 'location.state';
+    } else if (typeof window !== 'undefined') {
+      try {
+        const stored = parseStoredActivityListScrollState(
+          window.sessionStorage.getItem(ACTIVITY_LIST_SCROLL_STATE_KEY)
+        );
+        if (stored != null) {
+          pendingFocusActivityIdRef.current =
+            stored.activityListFocusActivityId ?? null;
+          pendingPageIndexRef.current = stored.activityListPageIndex ?? null;
+          pendingScrollTopRef.current = stored.activityListScrollTop ?? null;
+          pendingWindowScrollTopRef.current =
+            stored.activityListWindowScrollTop ?? null;
+          source = 'sessionStorage';
+        }
+      } catch {
+        // ignore
+      }
+    }
+    recordScrollRestoreDebug('pending set', {
+      source,
+      focusActivityId: pendingFocusActivityIdRef.current,
+      pageIndex: pendingPageIndexRef.current,
+      container: pendingScrollTopRef.current,
+      window: pendingWindowScrollTopRef.current,
+      hasState: location.state != null,
+      pathname: location.pathname,
+    });
+  }, [isActivityListRoute, location]);
+
+  useEffect(() => {
+    if (!isActivityListRoute) return;
+
+    const targetActivityId = pendingFocusActivityIdRef.current;
+    const targetPageIndex = pendingPageIndexRef.current;
+    const targetContainer = pendingScrollTopRef.current;
+    const targetWindow = pendingWindowScrollTopRef.current;
+    if (
+      targetActivityId == null &&
+      targetPageIndex == null &&
+      targetContainer == null &&
+      targetWindow == null
+    ) {
+      return;
+    }
+
+    if (
+      targetPageIndex == null &&
+      targetActivityId != null &&
+      pagination.pageSize > 0
+    ) {
+      const targetSortedIndex = sortedData.findIndex(
+        (activity) => activity.id === targetActivityId
+      );
+      if (targetSortedIndex >= 0) {
+        const derivedPageIndex = Math.floor(
+          targetSortedIndex / pagination.pageSize
+        );
+        if (pageIndex !== derivedPageIndex) {
+          setPageIndex(derivedPageIndex);
+          return;
+        }
+      }
+    }
+
+    if (targetPageIndex != null && pageIndex !== targetPageIndex) {
+      setPageIndex(targetPageIndex);
+      return;
+    }
+
+    if (loading || sortedData.length === 0) return;
+    if (typeof window === 'undefined') return;
+
+    // Prevent the browser's native scroll restoration from resetting window
+    // scroll to 0 on SPA back-navigation and fighting the restore below.
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
+    recordScrollRestoreDebug('begin restore', {
+      targetActivityId,
+      targetPageIndex,
+      pageIndex,
+      targetContainer,
+      targetWindow,
+      rows: sortedData.length,
+    });
+
+    let cancelled = false;
+    let rafId = 0;
+    let attempts = 0;
+    // The table's scroll container height only becomes tall enough to accept
+    // the saved scrollTop once its rows have laid out, which can take several
+    // frames (async rows, lazy chunk, refetch). Retry until the position is
+    // actually applied rather than assuming it stuck on the first frame.
+    const maxAttempts = 90;
+
+    const step = () => {
+      if (cancelled) return;
+      const scrollContainer = tableScrollRef.current;
+      const rowTargetFromActivity = (() => {
+        if (scrollContainer == null || targetActivityId == null) return null;
+        const rowElement = scrollContainer.querySelector<HTMLElement>(
+          `[data-activity-id="${targetActivityId}"]`
+        );
+        if (rowElement == null) return null;
+        return Math.max(
+          0,
+          rowElement.offsetTop - Math.floor(scrollContainer.clientHeight * 0.35)
+        );
+      })();
+      const effectiveContainerTarget =
+        targetContainer ?? rowTargetFromActivity ?? null;
+
+      if (
+        scrollContainer != null &&
+        effectiveContainerTarget != null &&
+        scrollContainer.scrollTop !== effectiveContainerTarget
+      ) {
+        scrollContainer.scrollTop = effectiveContainerTarget;
+      }
+      if (targetWindow != null && window.scrollY !== targetWindow) {
+        window.scrollTo(0, targetWindow);
+      }
+
+      attempts += 1;
+
+      // Only consider the inner table restored when its scrollTop actually
+      // reaches the saved value. Do NOT treat "container can't scroll further"
+      // as reached: before the rows render, scrollHeight ≈ clientHeight makes
+      // that heuristic falsely true and leaves the table pinned to the top.
+      const containerReached =
+        effectiveContainerTarget == null ||
+        (scrollContainer != null &&
+          Math.abs(scrollContainer.scrollTop - effectiveContainerTarget) <= 1);
+
+      const windowReached =
+        targetWindow == null || Math.abs(window.scrollY - targetWindow) <= 1;
+
+      if (attempts === 1 || attempts % 20 === 0) {
+        recordScrollRestoreDebug('attempt', {
+          attempts,
+          target: effectiveContainerTarget,
+          rowTargetFromActivity,
+          targetActivityId,
+          actual: scrollContainer?.scrollTop,
+          scrollHeight: scrollContainer?.scrollHeight,
+          clientHeight: scrollContainer?.clientHeight,
+          hasContainer: scrollContainer != null,
+        });
+      }
+
+      if ((containerReached && windowReached) || attempts >= maxAttempts) {
+        recordScrollRestoreDebug('done', {
+          attempts,
+          containerReached,
+          windowReached,
+          targetActivityId,
+          pageIndex,
+          finalScrollTop: scrollContainer?.scrollTop,
+        });
+        pendingFocusActivityIdRef.current = null;
+        pendingPageIndexRef.current = null;
+        pendingScrollTopRef.current = null;
+        pendingWindowScrollTopRef.current = null;
+        try {
+          window.sessionStorage.removeItem(ACTIVITY_LIST_SCROLL_STATE_KEY);
+        } catch {
+          // ignore
+        }
+        return;
+      }
+
+      rafId = window.requestAnimationFrame(step);
+    };
+
+    rafId = window.requestAnimationFrame(step);
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [
+    isActivityListRoute,
+    loading,
+    pageIndex,
+    pagination.pageSize,
+    setPageIndex,
+    sortedData,
+    sortedData.length,
+  ]);
+
+  const openActivityWithScroll = useCallback(
+    (activityId: number) => {
+      const containerScrollTop = tableScrollRef.current?.scrollTop ?? 0;
+      latestContainerScrollTopRef.current = containerScrollTop;
+      const windowScrollTop =
+        typeof window !== 'undefined' ? window.scrollY : 0;
+      try {
+        const scrollState = {
+          activityListPageIndex: pageIndex,
+          activityListScrollTop:
+            latestContainerScrollTopRef.current ?? containerScrollTop,
+          activityListWindowScrollTop: windowScrollTop,
+          activityListFocusActivityId: activityId,
+        } satisfies StoredActivityListScrollState;
+        pendingFocusActivityIdRef.current = activityId;
+        writeStoredActivityListScrollState(scrollState);
+        recordScrollRestoreDebug('capture', scrollState);
+      } catch {
+        // ignore
+      }
+      void navigate(
+        `/activity/${activityId}`,
+        activityFormLinkState(
+          location,
+          containerScrollTop,
+          windowScrollTop,
+          pageIndex
+        )
+      );
+    },
+    [navigate, location, pageIndex]
+  );
 
   const handleClearAllCriteria = useCallback(() => {
     defaultSuppressedByClearRef.current = true;
@@ -1755,6 +2234,7 @@ export function ActivityTable({
                   return (
                     <tr
                       key={row.id}
+                      data-activity-id={row.original.id}
                       className={cn(
                         `group/row ${tableBodyRow} cursor-pointer`,
                         isNewRow && 'animate-in fade-in-0 duration-300',
@@ -1767,10 +2247,7 @@ export function ActivityTable({
                         )
                           return;
                         if (window.getSelection()?.toString().trim()) return;
-                        void navigate(
-                          `/activity/${row.original.id}`,
-                          activityFormLinkState(location)
-                        );
+                        openActivityWithScroll(row.original.id);
                       }}
                       onKeyDown={(e) => {
                         if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1779,10 +2256,7 @@ export function ActivityTable({
                         )
                           return;
                         e.preventDefault();
-                        void navigate(
-                          `/activity/${row.original.id}`,
-                          activityFormLinkState(location)
-                        );
+                        openActivityWithScroll(row.original.id);
                       }}
                     >
                       {row.getVisibleCells().map((cell) => {

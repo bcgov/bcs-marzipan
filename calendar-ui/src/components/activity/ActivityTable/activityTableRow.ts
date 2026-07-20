@@ -72,6 +72,8 @@ export interface ActivityTableRow {
   lastUpdatedBy: number;
   createdDateTime: string;
 
+  changedFieldsSinceReview?: string[];
+
   // Flags (team-scoped assignments)
   flags: ActivityFlagResponse[];
 }
@@ -163,6 +165,11 @@ export function mapActivityToTableRow(
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
     createdDateTime: activity.createdDateTime,
+    changedFieldsSinceReview:
+      'changedFieldsSinceReview' in activity &&
+      Array.isArray(activity.changedFieldsSinceReview)
+        ? activity.changedFieldsSinceReview
+        : undefined,
 
     // Flags
     flags: activity.flags ?? [],
