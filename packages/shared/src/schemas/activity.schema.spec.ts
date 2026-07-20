@@ -125,6 +125,27 @@ describe('createActivityRequestSchema', () => {
     ).toThrow();
   });
 
+  it('enforces strategy and notes max length (1000)', () => {
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        strategy: 'a'.repeat(1000),
+        notes: 'b'.repeat(1000),
+      })
+    );
+
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ strategy: 'a'.repeat(1001) })
+      )
+    ).toThrow();
+
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ notes: 'b'.repeat(1001) })
+      )
+    ).toThrow();
+  });
+
   it('accepts create with empty-doc significance (optional rich field)', () => {
     const result = createActivityRequestSchema.parse(
       minimalCreateRequest({ significance: EMPTY_RICH_TEXT_DOC })
@@ -546,6 +567,25 @@ describe('venueAddressFieldsSchema', () => {
       country: 'Canada',
     };
     expect(venueAddressFieldsSchema.parse(v)).toEqual(v);
+  });
+
+  it('enforces venue address text max length (255)', () => {
+    const valid = {
+      venueName: 'v'.repeat(255),
+      addressLine1: 'a'.repeat(255),
+      addressLine2: 'b'.repeat(255),
+      city: 'c'.repeat(255),
+      provinceOrState: 'p'.repeat(255),
+      country: 'n'.repeat(255),
+    };
+    expect(venueAddressFieldsSchema.parse(valid)).toEqual(valid);
+
+    expect(() =>
+      venueAddressFieldsSchema.parse({
+        ...valid,
+        addressLine2: 'b'.repeat(256),
+      })
+    ).toThrow();
   });
 
   it('accepts partial venue object (independent fields)', () => {

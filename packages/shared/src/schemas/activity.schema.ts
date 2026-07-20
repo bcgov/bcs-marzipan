@@ -11,6 +11,10 @@ import {
   zodRequiredIssueParams,
 } from '../validation/zod-issue-kind';
 
+const CHARACTER_LIMIT_EXCEEDED_MESSAGE = 'Maximum character limit exceeded';
+const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
+const ACTIVITY_VENUE_TEXT_MAX_LENGTH = 255;
+
 /**
  * Activity Zod Schemas
  *
@@ -31,12 +35,36 @@ import {
  * Use with appropriate modifiers (.nullable(), .optional()) as needed.
  */
 export const venueAddressSchema = z.object({
-  venueName: z.string().nullable().optional(),
-  addressLine1: z.string().nullable().optional(),
-  addressLine2: z.string().nullable().optional(),
-  city: z.string().nullable().optional(),
-  provinceOrState: z.string().nullable().optional(),
-  country: z.string().nullable().optional(),
+  venueName: z
+    .string()
+    .max(ACTIVITY_VENUE_TEXT_MAX_LENGTH, CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .nullable()
+    .optional(),
+  addressLine1: z
+    .string()
+    .max(ACTIVITY_VENUE_TEXT_MAX_LENGTH, CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .nullable()
+    .optional(),
+  addressLine2: z
+    .string()
+    .max(ACTIVITY_VENUE_TEXT_MAX_LENGTH, CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .nullable()
+    .optional(),
+  city: z
+    .string()
+    .max(ACTIVITY_VENUE_TEXT_MAX_LENGTH, CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .nullable()
+    .optional(),
+  provinceOrState: z
+    .string()
+    .max(ACTIVITY_VENUE_TEXT_MAX_LENGTH, CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .nullable()
+    .optional(),
+  country: z
+    .string()
+    .max(ACTIVITY_VENUE_TEXT_MAX_LENGTH, CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .nullable()
+    .optional(),
 });
 
 /**
@@ -83,7 +111,7 @@ const activityRichTextStoredStringSchema = z
  */
 const TITLE_REQUIRED_MESSAGE = 'An activity title is required';
 const SUMMARY_REQUIRED_MESSAGE = 'A summary is required';
-const MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE = 'Maximum character limit exceeded';
+const MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE = CHARACTER_LIMIT_EXCEEDED_MESSAGE;
 
 const activityCoreFieldsSchema = z.object({
   // Required fields
@@ -118,7 +146,14 @@ const activityCoreFieldsSchema = z.object({
     .max(500, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
     .optional()
     .nullable(),
-  strategy: z.string().nullable().optional(),
+  strategy: z
+    .string()
+    .max(
+      ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
+      MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
+    )
+    .nullable()
+    .optional(),
 
   // Status IDs (numbers for database; venue optional when activity has no venue)
   // Note: These are numbers in requests (matching database schema) but converted to strings
@@ -145,7 +180,14 @@ const activityCoreFieldsSchema = z.object({
   pitchDate: z.string().date().nullable().optional(), // Date when activity was or will be pitched
 
   // Optional text fields
-  notes: z.string().nullable().optional(), // Maps to legacy Comments
+  notes: z
+    .string()
+    .max(
+      ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
+      MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
+    )
+    .nullable()
+    .optional(), // Maps to legacy Comments
   executiveSummary: z.preprocess(
     emptyStringToNull,
     z

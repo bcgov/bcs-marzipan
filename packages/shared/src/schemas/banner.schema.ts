@@ -5,6 +5,7 @@ const hexColorSchema = z
   .regex(/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/, 'Must be a valid hex color');
 
 const nullableDateTimeSchema = z.string().datetime().nullable();
+export const BANNER_CONTENT_MAX_LENGTH = 10000;
 
 export const bannerSettingsSchema = z.object({
   id: z.number().int(),
@@ -24,7 +25,14 @@ export const bannerSettingsSchema = z.object({
 export const upsertBannerSettingsRequestSchema = z
   .object({
     isActive: z.boolean(),
-    content: z.string().trim().min(1, 'Banner content is required'),
+    content: z
+      .string()
+      .trim()
+      .min(1, 'Banner content is required')
+      .max(
+        BANNER_CONTENT_MAX_LENGTH,
+        `Banner content must be ${BANNER_CONTENT_MAX_LENGTH} characters or fewer`
+      ),
     backgroundColor: hexColorSchema,
     textColor: hexColorSchema,
     variant: z.enum(['info', 'warning', 'success']).default('info'),

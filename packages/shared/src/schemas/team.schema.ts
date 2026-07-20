@@ -19,6 +19,8 @@ const teamAbbreviationValueSchema = z
       .max(6, 'Abbreviation must be at most 6 characters')
   );
 
+const TEAM_DESCRIPTION_MAX_LENGTH = 1000;
+
 // ============================================
 // Response Schemas
 // ============================================
@@ -88,7 +90,7 @@ export const createTeamBodySchema = z.object({
   /** Stable short code (e.g. MR); used in activity displayId when there is no lead ministry. */
   abbreviation: teamAbbreviationValueSchema,
   displayName: z.string().max(255).optional(),
-  description: z.string().optional(),
+  description: z.string().max(TEAM_DESCRIPTION_MAX_LENGTH).optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
   roleId: z.number().int().nullable().optional(),
@@ -105,7 +107,7 @@ export const updateTeamBodySchema = z.object({
   name: z.string().min(1).max(255).optional(),
   abbreviation: teamAbbreviationValueSchema.optional(),
   displayName: z.string().max(255).optional(),
-  description: z.string().optional(),
+  description: z.string().max(TEAM_DESCRIPTION_MAX_LENGTH).optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
   roleId: z.number().int().nullable().optional(),
