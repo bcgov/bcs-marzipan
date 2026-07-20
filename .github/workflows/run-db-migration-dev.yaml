@@ -44,13 +44,18 @@ jobs:
             --server=${OPENSHIFT_SERVER} \
             --insecure-skip-tls-verify=true
 
-      - name: Apply DB migration ConfigMap
+      - name: Build DB migration image
         run: |
-          oc project ${DEV_NAMESPACE}
-          ls packages/database/migrations/*.sql
-          oc create configmap calendar-db-migrations \
-            --from-file=packages/database/migrations \
-            --dry-run=client -o yaml | oc apply -f -
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+          oc project ${TOOLS_NAMESPACE}
+          oc start-build calendar-db-migrate-build \
+            --from-dir=. \
+            --follow
+
+      - name: Tag DB migration image to dev namespace
+        run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+          oc tag ${TOOLS_NAMESPACE}/calendar-db-migrate:${APP_VERSION} ${DEV_NAMESPACE}/calendar-db-migrate:${APP_VERSION}
 
       - name: Run DB migrations
         run: |

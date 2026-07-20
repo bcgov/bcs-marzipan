@@ -50,7 +50,7 @@ $dbUrl = oc get secret -n <namespace> calendar-service-secrets -o jsonpath="{.da
 $tmpUrl = $dbUrl -replace '/calendar(\?|$)', '/calendar_migrate_baseline$1'
 
 oc run -n <namespace> migrate-baseline-hash --rm -i --restart=Never \
-  --image=image-registry.openshift-image-registry.svc:5000/<namespace>/calendar-db-migrate:0.0.1 \
+  --image=image-registry.openshift-image-registry.svc:5000/<namespace>/calendar-db-migrate:<app_version> \
   --env="DATABASE_URL=$tmpUrl" \
   --command -- sh -lc "cd /app/packages/database; npx drizzle-kit migrate --config drizzle.config.ts"
 ```
@@ -91,7 +91,7 @@ oc exec -n <namespace> calendar-postgres-0 -- \
   psql -U postgres -d calendar -tAc "select count(1) from drizzle.__drizzle_migrations"
 
 oc delete job -n <namespace> calendar-db-migrate --ignore-not-found=true
-oc apply -n <namespace> -f openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml
+APP_VERSION=<app_version> DEV_NAMESPACE=<namespace> envsubst < openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml | oc apply -n <namespace> -f -
 oc wait -n <namespace> --for=condition=complete job/calendar-db-migrate --timeout=300s
 oc logs -n <namespace> job/calendar-db-migrate --tail=200
 ```

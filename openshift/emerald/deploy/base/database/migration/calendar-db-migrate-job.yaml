@@ -35,7 +35,10 @@ spec:
             - -c
             - |
               set -e
-
+              echo "Waiting for database..."
+              until pg_isready -d "$DATABASE_URL"; do
+                sleep 2
+              done
               echo "Running tracked Drizzle migrations..."
               npm run db:migrate --workspace=packages/database
 
