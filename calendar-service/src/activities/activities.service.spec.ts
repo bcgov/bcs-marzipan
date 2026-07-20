@@ -1906,6 +1906,83 @@ describe('ActivitiesService', () => {
         expect(result.activityStatusId).toBe(reviewedStatusId);
       });
 
+      it('treats representatives as the non-exempt field in full save payloads', async () => {
+        const existingActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+        });
+
+        vi.spyOn(
+          service as unknown as {
+            getReviewDiffLookups: () => Promise<unknown>;
+          },
+          'getReviewDiffLookups'
+        ).mockResolvedValue({});
+
+        vi.spyOn(
+          service as unknown as {
+            getEffectiveReviewExemptFieldKeys: () => Promise<
+              ReadonlySet<string>
+            >;
+          },
+          'getEffectiveReviewExemptFieldKeys'
+        ).mockResolvedValue(new Set(['visibility', 'sharedWithTeamIds']));
+
+        vi.spyOn(
+          service as unknown as {
+            fetchRelatedForActivityIds: (
+              ...args: unknown[]
+            ) => Promise<unknown>;
+          },
+          'fetchRelatedForActivityIds'
+        ).mockResolvedValue({});
+
+        vi.spyOn(
+          service as unknown as {
+            mapFetchedActivityToResponseDto: (
+              ...args: unknown[]
+            ) => ReturnType<typeof createMockActivityResponse>;
+          },
+          'mapFetchedActivityToResponseDto'
+        ).mockReturnValue(
+          createMockActivityResponse({
+            id: 1,
+            activityStatus: 'Reviewed',
+            visibility: 'global',
+            sharedWith: [],
+            representativesAttending: ['Minister Smith'],
+          })
+        );
+
+        const preserveWhenOnlySharedWithChanges = await (
+          service as unknown as {
+            shouldPreserveReviewedStatus: (
+              activityId: number,
+              oldActivity: Activity,
+              dto: UpdateActivityRequest
+            ) => Promise<boolean>;
+          }
+        ).shouldPreserveReviewedStatus(1, existingActivity, {
+          sharedWithTeamIds: [42],
+        });
+
+        const preserveWhenUiPayloadAlsoSendsRepresentatives = await (
+          service as unknown as {
+            shouldPreserveReviewedStatus: (
+              activityId: number,
+              oldActivity: Activity,
+              dto: UpdateActivityRequest
+            ) => Promise<boolean>;
+          }
+        ).shouldPreserveReviewedStatus(1, existingActivity, {
+          sharedWithTeamIds: [42],
+          representatives: [],
+        });
+
+        expect(preserveWhenOnlySharedWithChanges).toBe(true);
+        expect(preserveWhenUiPayloadAlsoSendsRepresentatives).toBe(false);
+      });
+
       it('falls back to Changed when a non-exempt field changes', async () => {
         const existingActivity = createMockActivity({
           id: 1,
