@@ -112,12 +112,11 @@ export function buildPayloadForUpdate(
     ...buildPayloadFromPrepared(prepared, preparedFormValues),
     reportSettings: normalizedReportSettings,
   };
-if (includeRepresentatives) {
+  if (includeRepresentatives) {
     // Include representatives when this update should persist representative edits,
     // including intentional clear-all (`[]`). Callers should set
     // `includeRepresentatives: false` for share/visibility-only saves to avoid implicit clears.
     payload.representatives = preparedFormValues.representatives ?? [];
-  }
   } else {
     delete payload.representatives;
   }
