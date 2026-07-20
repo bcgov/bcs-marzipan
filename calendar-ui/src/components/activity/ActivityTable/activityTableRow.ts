@@ -171,7 +171,9 @@ export function mapActivityToTableRow(
     changedFieldsSinceReview:
       'changedFieldsSinceReview' in activity &&
       Array.isArray(activity.changedFieldsSinceReview)
-        ? activity.changedFieldsSinceReview
+        ? activity.changedFieldsSinceReview.filter(
+            (v): v is string => typeof v === 'string'
+          )
         : undefined,
 
     // Flags
