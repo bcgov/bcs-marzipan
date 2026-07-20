@@ -68,6 +68,8 @@ export interface ActivityTableRow {
   // Status column
   activityStatus: string;
   activityStatusId: number;
+  /** Dotted field paths changed since last review (admin/system admin reviewers). */
+  changedFieldsSinceReview?: string[];
   lastUpdatedDateTime: string;
   lastUpdatedBy: number;
   createdDateTime: string;
@@ -162,6 +164,7 @@ export function mapActivityToTableRow(
     // Status
     activityStatus: activity.activityStatus,
     activityStatusId: activity.activityStatusId ?? 0,
+    changedFieldsSinceReview: activity.changedFieldsSinceReview ?? [],
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
     createdDateTime: activity.createdDateTime,

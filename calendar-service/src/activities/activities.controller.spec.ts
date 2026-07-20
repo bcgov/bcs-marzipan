@@ -22,7 +22,10 @@ const mockRequestContext: RequestContextType = {
 };
 
 const findAllListOptions = {
-  profile: HYDRATION_PROFILES.list,
+  profile: {
+    ...HYDRATION_PROFILES.list,
+    includeReviewDiff: true,
+  },
   outputShape: 'list' as const,
 };
 

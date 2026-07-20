@@ -85,6 +85,35 @@ export class ActivityMapperService {
     activity: Activity,
     relatedData?: ActivityMapperRelatedData
   ): ActivityResponse {
+    const dto = this.buildResponseDto(activity, relatedData);
+
+    // Runtime validation to ensure response matches schema contract
+    try {
+      return activityResponseSchema.parse(dto);
+    } catch (error) {
+      // Log validation errors with context for debugging
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown validation error';
+      this.logger.error(
+        `Response validation failed for activity ${activity.id}: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined
+      );
+      // Fail-fast in all environments to prevent invalid responses
+      throw new Error(
+        `Response validation failed: ${errorMessage}. This indicates a mismatch between the mapping logic and the ActivityResponse schema.`
+      );
+    }
+  }
+
+  /**
+   * Build the ActivityResponse DTO without schema validation.
+   * Used by performance-sensitive callers that need the mapped shape for
+   * internal comparison work before the public validated DTO is emitted.
+   */
+  buildResponseDto(
+    activity: Activity,
+    relatedData?: ActivityMapperRelatedData
+  ): ActivityResponse {
     // Calendar dates and civil times come from `@corpcal/database` as strings
     // (Drizzle's `date()` and `time()` default to mode `'string'`). The
     // helpers below pass them through verbatim, and only fall back to UTC
@@ -224,22 +253,7 @@ export class ActivityMapperService {
       lastUpdatedBy: activity.lastUpdatedBy ?? 0,
     };
 
-    // Runtime validation to ensure response matches schema contract
-    try {
-      return activityResponseSchema.parse(dto);
-    } catch (error) {
-      // Log validation errors with context for debugging
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown validation error';
-      this.logger.error(
-        `Response validation failed for activity ${activity.id}: ${errorMessage}`,
-        error instanceof Error ? error.stack : undefined
-      );
-      // Fail-fast in all environments to prevent invalid responses
-      throw new Error(
-        `Response validation failed: ${errorMessage}. This indicates a mismatch between the mapping logic and the ActivityResponse schema.`
-      );
-    }
+    return dto;
   }
 
   /**
@@ -324,6 +338,9 @@ export class ActivityMapperService {
         activity.createdDateTime?.toISOString() ?? new Date().toISOString(),
       ...(relatedData?.canEdit !== undefined && {
         canEdit: relatedData.canEdit,
+      }),
+      ...(relatedData?.changedFieldsSinceReview !== undefined && {
+        changedFieldsSinceReview: relatedData.changedFieldsSinceReview,
       }),
       flags: relatedData?.flags ?? [],
     };
