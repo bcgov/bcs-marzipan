@@ -11,6 +11,16 @@ import { ReportsPage } from './ReportsPage';
 
 const mockHandleReportExport = vi.hoisted(() => vi.fn());
 const mockFetchReportData = vi.hoisted(() => vi.fn());
+const mockTrackReportFiltersApplied = vi.hoisted(() => vi.fn());
+const mockTrackReportNoResultsShown = vi.hoisted(() => vi.fn());
+const mockTrackReportExportCompleted = vi.hoisted(() => vi.fn());
+const mockTrackReportExportStarted = vi.hoisted(() => vi.fn());
+const mockTrackReportPaginationChanged = vi.hoisted(() => vi.fn());
+const mockTrackReportResultOpened = vi.hoisted(() => vi.fn());
+const mockTrackReportSearchResultsLoaded = vi.hoisted(() => vi.fn());
+const mockReports = vi.hoisted(() => [
+  { id: 1, name: 'custom', displayName: 'Custom Report' },
+]);
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
@@ -20,7 +30,7 @@ vi.mock('@/hooks/useAuth', () => ({
 
 vi.mock('@/hooks/useLookups', () => ({
   useReports: () => ({
-    data: [{ id: 1, name: 'custom', displayName: 'Custom Report' }],
+    data: mockReports,
   }),
   useActivityStatuses: () => ({ data: [] }),
   useCategories: () => ({ data: [] }),
@@ -32,6 +42,29 @@ vi.mock('@/hooks/useLookups', () => ({
   useTranslationLanguages: () => ({ data: [] }),
   useTranslationRequiredStatuses: () => ({ data: [] }),
   useUsers: () => ({ data: [] }),
+}));
+
+vi.mock('@/lib/analytics', () => ({
+  default: {
+    countActiveReportFilterCriteria: (filterState: any) =>
+      filterState?.dateRange?.startDate === '2020-01-01' ? 1 : 0,
+    getActiveReportFilterKeys: (filterState: any) =>
+      filterState?.dateRange?.startDate === '2020-01-01' ? ['dateRange'] : [],
+    trackReportExportCompleted: (...args: any[]) =>
+      mockTrackReportExportCompleted(...args),
+    trackReportExportStarted: (...args: any[]) =>
+      mockTrackReportExportStarted(...args),
+    trackReportFiltersApplied: (...args: any[]) =>
+      mockTrackReportFiltersApplied(...args),
+    trackReportNoResultsShown: (...args: any[]) =>
+      mockTrackReportNoResultsShown(...args),
+    trackReportPaginationChanged: (...args: any[]) =>
+      mockTrackReportPaginationChanged(...args),
+    trackReportResultOpened: (...args: any[]) =>
+      mockTrackReportResultOpened(...args),
+    trackReportSearchResultsLoaded: (...args: any[]) =>
+      mockTrackReportSearchResultsLoaded(...args),
+  },
 }));
 
 vi.mock('@/hooks/useLiveActivitySyncContext', () => ({
@@ -153,15 +186,25 @@ vi.mock('@/components/reports/CustomReportPreviewSection', () => ({
   CustomReportPreviewSection: () => <div>Custom preview</div>,
 }));
 
+vi.mock('@/components/reports/PrintReportPreview', () => ({
+  PrintReportPreview: () => (
+    <a href="/activity/1" target="_blank" rel="noreferrer">
+      Open activity
+    </a>
+  ),
+}));
+
 function makeReportData(
   activityTitle: string,
+  reportName = 'custom',
+  displayName = 'Custom Report',
   metaOverrides: Partial<NonNullable<ReportDataResponse['meta']>> = {}
 ): ReportDataResponse {
   return {
     report: {
       id: 1,
-      name: 'custom',
-      displayName: 'Custom Report',
+      name: reportName,
+      displayName,
       sortOrder: 0,
       isActive: true,
       visibility: 'global',
@@ -192,6 +235,33 @@ function makeReportData(
   };
 }
 
+function makeEmptyReportData(
+  reportName = 'custom',
+  displayName = 'Custom Report'
+): ReportDataResponse {
+  return {
+    ...makeReportData('No activity placeholder', reportName, displayName),
+    sections: [
+      {
+        id: 'section-1',
+        name: 'Activities',
+        order: 0,
+        activities: [],
+      },
+    ],
+    meta: {
+      resolvedDateRange: {
+        start: toCalendarDateString('2024-01-01'),
+        end: toCalendarDateString('2024-03-31'),
+      },
+      wasClamped: false,
+      inferredBound: null,
+      activityCount: 0,
+      largeResultWarning: false,
+    },
+  };
+}
+
 function renderReportsPage() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -217,6 +287,11 @@ describe('ReportsPage placeholder data handling', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockReports.splice(0, mockReports.length, {
+      id: 1,
+      name: 'custom',
+      displayName: 'Custom Report',
+    });
     fetchCount = 0;
     resolvePendingFetch = undefined;
     settledReportData = makeReportData('Initial activity');
@@ -292,11 +367,26 @@ describe('ReportsPage placeholder data handling', () => {
         }),
       })
     );
+
+    expect(mockTrackReportExportStarted).toHaveBeenCalledWith({
+      report_name: 'custom',
+      export_type: 'xlsx',
+      rows_count: 1,
+      active_filter_count: 1,
+      search_present: false,
+    });
+
+    expect(mockTrackReportExportCompleted).toHaveBeenCalledWith({
+      report_name: 'custom',
+      export_type: 'xlsx',
+      status: 'success',
+      duration_ms: expect.any(Number),
+    });
   });
 
   it('shows large-range warnings from current filters while fetch is in flight', async () => {
     mockFetchReportData.mockResolvedValueOnce(
-      makeReportData('Initial activity', {
+      makeReportData('Initial activity', 'custom', 'Custom Report', {
         largeResultWarning: false,
         wasClamped: false,
       })
@@ -304,7 +394,6 @@ describe('ReportsPage placeholder data handling', () => {
 
     renderReportsPage();
 
-    await screen.findByText('Custom preview');
     expect(
       screen.queryByText(/large date range — report may load slowly/i)
     ).toBeNull();
@@ -319,5 +408,90 @@ describe('ReportsPage placeholder data handling', () => {
     expect(
       screen.getByText(/date range adjusted to 2-year maximum/i)
     ).toBeTruthy();
+  });
+
+  it('tracks report_search_results_loaded after fresh report data renders', async () => {
+    renderReportsPage();
+
+    await screen.findByText('Custom preview');
+
+    await waitFor(() =>
+      expect(mockTrackReportSearchResultsLoaded).toHaveBeenCalledWith({
+        report_name: 'custom',
+        results_count: 1,
+        latency_ms: expect.any(Number),
+        search_present: false,
+        active_filter_count: 0,
+      })
+    );
+  });
+
+  it('tracks report_filters_applied when report filters change', async () => {
+    renderReportsPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: /apply wide date range/i })
+    );
+
+    await waitFor(() =>
+      expect(mockTrackReportFiltersApplied).toHaveBeenCalledWith({
+        report_name: 'custom',
+        filter_keys_used: ['dateRange'],
+        active_filter_count: 1,
+        category_count: 0,
+        status_count: 0,
+        tag_count: 0,
+        ministry_count: 0,
+        org_count: 0,
+      })
+    );
+  });
+
+  it('tracks report_no_results_shown when a fresh report has no matching rows', async () => {
+    mockFetchReportData.mockReset();
+    mockFetchReportData.mockResolvedValue(makeEmptyReportData());
+
+    renderReportsPage();
+
+    await waitFor(() =>
+      expect(mockTrackReportNoResultsShown).toHaveBeenCalledWith({
+        report_name: 'custom',
+        active_filter_count: 0,
+        search_present: false,
+        date_range_active: false,
+        filter_keys_used: [],
+      })
+    );
+  });
+
+  it('tracks report_result_opened when a report preview activity link is clicked', async () => {
+    mockReports.splice(0, mockReports.length, {
+      id: 1,
+      name: 'look-ahead',
+      displayName: 'Look-ahead Report',
+    });
+    settledReportData = makeReportData(
+      'Initial activity',
+      'look-ahead',
+      'Look-ahead Report'
+    );
+    mockFetchReportData.mockReset();
+    mockFetchReportData.mockResolvedValue(settledReportData);
+
+    renderReportsPage();
+
+    const previewLink = await screen.findByRole('link', {
+      name: /open activity/i,
+    });
+    fireEvent.click(previewLink);
+
+    expect(mockTrackReportResultOpened).toHaveBeenCalledWith({
+      report_name: 'look-ahead',
+      item_type: 'activity',
+      position_in_results: 1,
+      results_count: 1,
+      open_method: 'link',
+      active_filter_count: 0,
+    });
   });
 });

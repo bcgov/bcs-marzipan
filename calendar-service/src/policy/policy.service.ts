@@ -76,7 +76,8 @@ export class PolicyService {
   }
 
   /**
-   * Load team IDs for a user (from user_teams)
+   * Load active team IDs for a user (from user_teams where isActive = true).
+   * Used for authorization/scoping decisions. Only active memberships grant access.
    */
   async getTeamIdsForUser(userId: number): Promise<number[]> {
     const rows = await this.databaseService.db

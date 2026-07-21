@@ -125,4 +125,24 @@ describe('buildPayloadForUpdate', () => {
 
     expect(payload.translationLanguageIds).toBeUndefined();
   });
+
+  it('omits representatives when includeRepresentatives is false', () => {
+    const formValues = minimalForm({ representatives: undefined });
+
+    const payload = buildPayloadForUpdate(formValues, formValues, {
+      includeRepresentatives: false,
+    });
+
+    expect(payload).not.toHaveProperty('representatives');
+  });
+
+  it('includes representatives as empty array when includeRepresentatives is true', () => {
+    const formValues = minimalForm({ representatives: [] });
+
+    const payload = buildPayloadForUpdate(formValues, formValues, {
+      includeRepresentatives: true,
+    });
+
+    expect(payload.representatives).toEqual([]);
+  });
 });

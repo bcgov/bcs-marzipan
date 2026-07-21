@@ -24,11 +24,18 @@ export async function fetchTeamsList(
   return response.data.data;
 }
 
-export async function fetchTeamById(id: number): Promise<TeamDetail | null> {
+export async function fetchTeamById(
+  id: number,
+  includeInactiveMembers = false
+): Promise<TeamDetail | null> {
   const response = await api.get<{
     success: boolean;
     data: TeamDetail | null;
-  }>(`/teams/${id}`);
+  }>(`/teams/${id}`, {
+    params: {
+      ...(includeInactiveMembers && { includeInactiveMembers: 'true' }),
+    },
+  });
   return response.data.data;
 }
 

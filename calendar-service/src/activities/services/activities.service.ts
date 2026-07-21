@@ -315,8 +315,9 @@ export class ActivitiesService {
 
   /**
    * Compute changedFieldsSinceReview from the stored snapshot vs current response.
-   * Returns undefined when snapshot version mismatches; [] when status is New (not yet reviewed);
-   * otherwise the diff paths vs last Reviewed snapshot (empty baseline when snapshot is null).
+   * Returns undefined when snapshot version mismatches; [] when status is New (not yet reviewed)
+   * or Deleted (soft-deleted activities have no meaningful field diff); otherwise the diff paths
+   * vs last Reviewed snapshot (empty baseline when snapshot is null).
    */
   computeChangedFieldsSinceReview(
     response: ActivityResponse,
@@ -330,7 +331,10 @@ export class ActivitiesService {
     if (snapshotVersion !== REVIEW_SNAPSHOT_VERSION) {
       return undefined;
     }
-    if (normalizeActivityStatusLabel(response.activityStatus) === 'new') {
+    const normalizedStatus = normalizeActivityStatusLabel(
+      response.activityStatus
+    );
+    if (normalizedStatus === 'new' || normalizedStatus === 'deleted') {
       return [];
     }
     const currentFormData = mapResponseToFormData(response, lookups);
@@ -1639,18 +1643,18 @@ export class ActivitiesService {
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
     const isListOutput = outputShape === 'list';
-    const canReview =
-      !isListOutput &&
-      profile.includeReviewDiff === true &&
-      (ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ??
-        false);
+    const isAdminOrSysAdmin =
+      ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
+      ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+    const canReview = profile.includeReviewDiff === true && isAdminOrSysAdmin;
+    const shouldFetchReviewExemptFieldKeys = canReview && !isListOutput;
     const userTeamIds = ctx?.user?.teamIds ?? [];
     const fetchFlags = profile.includeFlags === true && userTeamIds.length > 0;
     const [related, reviewLookups, reviewExemptFieldKeys, flagsMap] =
       await Promise.all([
         this.fetchRelatedForActivityIds(activityIds, activityResults, profile),
         canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
-        canReview
+        shouldFetchReviewExemptFieldKeys
           ? this.getEffectiveReviewExemptFieldKeys()
           : Promise.resolve(undefined),
         fetchFlags
@@ -1672,6 +1676,20 @@ export class ActivitiesService {
           hasEditPermission,
           dataScope,
         });
+        if (canReview && reviewLookups) {
+          const responseForDiff: ActivityResponse =
+            this.mapperService.buildResponseDto(activity, relatedData);
+          // List-view admin highlighting should reflect all changed fields,
+          // including review-exempt scheduling fields (date/time status).
+          relatedData.changedFieldsSinceReview =
+            this.computeChangedFieldsSinceReview(
+              responseForDiff,
+              activity.reviewedFieldSnapshot,
+              activity.reviewedFieldSnapshotVersion,
+              reviewLookups,
+              new Set<string>()
+            );
+        }
         return this.mapperService.mapToListItemDto(activity, relatedData);
       });
     }

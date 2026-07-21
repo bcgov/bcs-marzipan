@@ -51,6 +51,7 @@
 
     /* Fluent primative colours */
     --fluent-primary: #0f6cbd;
+    --fluent-brand-background-2: var(--bcsds-bc-blue-20);
     /* BCSDS semantic tokens */
     --sidebar-foreground-active: var(--fluent-primary);
     --bcsds-button-primary-background: var(--fluent-primary);

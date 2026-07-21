@@ -7,12 +7,19 @@ import { render } from '@/test/test-utils';
 import { ReportFiltersBar } from '../ReportFiltersBar';
 
 // Mock analytics module
-const mockTrackCalendarAction = vi.fn();
-const mockTrackCalendarClick = vi.fn();
+const mockBucketSearchLength = vi.fn();
+const mockCountActiveReportFilterCriteria = vi.fn();
+const mockTrackReportSearchCleared = vi.fn();
+const mockTrackReportSearchSubmitted = vi.fn();
 vi.mock('@/lib/analytics', () => ({
   default: {
-    trackCalendarAction: (...args: any[]) => mockTrackCalendarAction(...args),
-    trackCalendarClick: (...args: any[]) => mockTrackCalendarClick(...args),
+    bucketSearchLength: (...args: any[]) => mockBucketSearchLength(...args),
+    countActiveReportFilterCriteria: (...args: any[]) =>
+      mockCountActiveReportFilterCriteria(...args),
+    trackReportSearchCleared: (...args: any[]) =>
+      mockTrackReportSearchCleared(...args),
+    trackReportSearchSubmitted: (...args: any[]) =>
+      mockTrackReportSearchSubmitted(...args),
   },
 }));
 
@@ -48,15 +55,19 @@ vi.mock('@/hooks/useLookups', () => ({
 
 describe('ReportFiltersBar analytics', () => {
   beforeEach(() => {
-    mockTrackCalendarAction.mockReset();
-    mockTrackCalendarClick.mockReset();
+    mockBucketSearchLength.mockReset();
+    mockBucketSearchLength.mockReturnValue('lt20');
+    mockCountActiveReportFilterCriteria.mockReset();
+    mockCountActiveReportFilterCriteria.mockReturnValue(0);
+    mockTrackReportSearchCleared.mockReset();
+    mockTrackReportSearchSubmitted.mockReset();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('sends calendar_action on Enter key when searchKeyword is present', () => {
+  it('sends report_search_submitted on Enter key when searchKeyword is present', () => {
     const preferences = {
       sortKey: 'startDate',
       sortDirection: 'desc',
@@ -80,16 +91,22 @@ describe('ReportFiltersBar analytics', () => {
     const input = getByLabelText('Search activities');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
-    expect(mockTrackCalendarAction).toHaveBeenCalledWith({
-      action: 'Search',
-      filters: expect.objectContaining({
-        search_present: true,
-        search_length_bucket: '<20',
-      }),
+    expect(mockTrackReportSearchSubmitted).toHaveBeenCalledWith({
+      report_name: 'Activity Report',
+      search_present: true,
+      search_length_bucket: 'lt20',
+      active_filter_count: 0,
+      timestamp_client: expect.any(String),
+      category_count: 0,
+      status_count: 0,
+      tag_count: 0,
+      date_range_active: false,
+      date_confirmed_filter: 'any',
+      time_confirmed_filter: 'any',
     });
   });
 
-  it('sends calendar_click on clear search click and clears search', () => {
+  it('sends report_search_cleared on clear search click and clears search', () => {
     const preferences = {
       sortKey: 'startDate',
       sortDirection: 'desc',
@@ -114,7 +131,12 @@ describe('ReportFiltersBar analytics', () => {
     const btn = getByRole('button', { name: /Clear search/i });
     fireEvent.click(btn);
 
-    expect(mockTrackCalendarClick).toHaveBeenCalledWith('clear_search');
+    expect(mockTrackReportSearchCleared).toHaveBeenCalledWith({
+      report_name: 'Activity Report',
+      had_search_text: true,
+      had_filters: false,
+      active_filter_count_before_clear: 0,
+    });
     expect(setPreferences).toHaveBeenCalledWith({ searchKeyword: '' });
   });
 });
