@@ -6,7 +6,11 @@ import type {
   PitchRequiredStatusLookupItem,
   TeamListItem,
 } from '@corpcal/shared/api/types';
-import type { ActivityFormData } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH,
+  ACTIVITY_SUMMARY_MAX_LENGTH,
+  type ActivityFormData,
+} from '@corpcal/shared/schemas';
 import {
   isActivityRichTextEffectivelyEmpty,
   tipTapDocJsonFromPlainText,
@@ -79,8 +83,6 @@ import { useActivityFieldScopeControl } from '../use-activity-field-scope-contro
 import { ActivityFormSection } from './ActivityFormSection';
 
 const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
-const ACTIVITY_SUMMARY_MAX_LENGTH = 2000;
-const ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH = 200;
 
 type LeadOrganizationOption = {
   value: number;

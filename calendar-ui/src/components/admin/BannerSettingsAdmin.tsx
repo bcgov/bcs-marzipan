@@ -254,12 +254,14 @@ export function BannerSettingsAdmin() {
   };
 
   const handleSave = () => {
-    if (!formData.content.trim()) {
+    const trimmedContent = formData.content.trim();
+
+    if (!trimmedContent) {
       toast.error('Banner content cannot be empty');
       return;
     }
 
-    if (formData.content.length > BANNER_CONTENT_MAX_LENGTH) {
+    if (trimmedContent.length > BANNER_CONTENT_MAX_LENGTH) {
       toast.error(
         `Banner content must be ${BANNER_CONTENT_MAX_LENGTH} characters or fewer`
       );
@@ -275,7 +277,10 @@ export function BannerSettingsAdmin() {
       return;
     }
 
-    saveMutation.mutate(formData);
+    saveMutation.mutate({
+      ...formData,
+      content: trimmedContent,
+    });
   };
 
   // Hide the entire admin section for non-System-Admin users

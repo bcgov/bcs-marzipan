@@ -119,7 +119,12 @@ export const updateUserBodySchema = z.object({
    * Profile fields. Editing these is restricted to admins / sys-admins
    * (enforced server-side in the users controller).
    */
-  displayName: z.string().trim().max(255).nullable().optional(),
+  displayName: z
+    .string()
+    .trim()
+    .max(USER_DISPLAY_NAME_MAX_LENGTH)
+    .nullable()
+    .optional(),
   email: z
     .string()
     .trim()

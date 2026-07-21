@@ -1,7 +1,10 @@
 import { useFormContext } from 'react-hook-form';
 import { useMemo } from 'react';
 
-import type { ActivityFormData } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH,
+  type ActivityFormData,
+} from '@corpcal/shared/schemas';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   FormControl,
@@ -37,8 +40,6 @@ import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-per
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
-
-const ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH = 200;
 
 export const ActivityReportsSection: React.FC = () => {
   const { readOnly, canViewFieldScope } = useActivityEdit();
