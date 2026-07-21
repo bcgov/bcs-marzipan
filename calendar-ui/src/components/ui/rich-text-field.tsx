@@ -69,6 +69,25 @@ export function shouldIgnoreStaleEmptyRichTextUpdate({
   );
 }
 
+export function shouldRejectRichTextLengthIncrease({
+  currentValue,
+  nextValue,
+  maxLength,
+}: {
+  currentValue: string;
+  nextValue: string;
+  maxLength?: number;
+}): boolean {
+  if (typeof maxLength !== 'number') {
+    return false;
+  }
+
+  const nextLength = plainTextFromActivityRichField(nextValue).length;
+  const currentLength = plainTextFromActivityRichField(currentValue).length;
+
+  return nextLength > maxLength && nextLength > currentLength;
+}
+
 /** TipTap `getJSON()` output is already valid JSON; only empty variants need coalescing. */
 export function coalesceEditorRichTextUpdate(json: string): string {
   return isActivityRichTextEffectivelyEmpty(json) ? EMPTY_RICH_TEXT_DOC : json;
@@ -141,25 +160,27 @@ export function RichTextField({
       const propValue = valueRef.current;
       if (json === propValue) return;
 
-      if (typeof maxLength === 'number') {
-        const nextLength = plainTextFromActivityRichField(json).length;
-        const currentLength = plainTextFromActivityRichField(propValue).length;
-        if (nextLength > maxLength && nextLength > currentLength) {
-          const args = getSetContentArgs(propValue);
-          isSyncingFromPropRef.current = true;
-          if (args.contentType === 'json') {
-            ed.commands.setContent(args.content, { emitUpdate: false });
-          } else {
-            ed.commands.setContent(args.content, {
-              contentType: 'markdown',
-              emitUpdate: false,
-            });
-          }
-          queueMicrotask(() => {
-            isSyncingFromPropRef.current = false;
+      if (
+        shouldRejectRichTextLengthIncrease({
+          currentValue: propValue,
+          nextValue: json,
+          maxLength,
+        })
+      ) {
+        const args = getSetContentArgs(propValue);
+        isSyncingFromPropRef.current = true;
+        if (args.contentType === 'json') {
+          ed.commands.setContent(args.content, { emitUpdate: false });
+        } else {
+          ed.commands.setContent(args.content, {
+            contentType: 'markdown',
+            emitUpdate: false,
           });
-          return;
         }
+        queueMicrotask(() => {
+          isSyncingFromPropRef.current = false;
+        });
+        return;
       }
 
       const nextValue = coalesceEditorRichTextUpdate(json);
