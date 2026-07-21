@@ -12,7 +12,7 @@ import {
 } from '../validation/zod-issue-kind';
 
 const CHARACTER_LIMIT_EXCEEDED_MESSAGE = 'Maximum character limit exceeded';
-export const ACTIVITY_SUMMARY_MAX_LENGTH = 1000;
+export const ACTIVITY_SUMMARY_MAX_LENGTH = 2000;
 const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
 const ACTIVITY_VENUE_TEXT_MAX_LENGTH = 255;
 

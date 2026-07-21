@@ -79,7 +79,7 @@ import { useActivityFieldScopeControl } from '../use-activity-field-scope-contro
 import { ActivityFormSection } from './ActivityFormSection';
 
 const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
-const ACTIVITY_SUMMARY_MAX_LENGTH = 1000;
+const ACTIVITY_SUMMARY_MAX_LENGTH = 2000;
 
 type LeadOrganizationOption = {
   value: number;

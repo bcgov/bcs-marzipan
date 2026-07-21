@@ -95,7 +95,7 @@ describe('createActivityRequestSchema', () => {
     ).toBe('A summary is required');
   });
 
-  it('enforces summary max plain-text length (1000)', () => {
+  it('enforces summary max plain-text length (2000)', () => {
     createActivityRequestSchema.parse(
       minimalCreateRequest({
         summary: 'a'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH),
