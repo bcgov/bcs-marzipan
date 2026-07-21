@@ -132,7 +132,8 @@ jobs:
 
           IMAGE_TAG="$IMAGE_TAG" yq -i '
             (.images[] | select(.name == "calendar-service" or .name == "calendar-service:latest").newTag) = strenv(IMAGE_TAG) |
-            (.images[] | select(.name == "calendar-ui" or .name == "calendar-ui:latest").newTag) = strenv(IMAGE_TAG)
+            (.images[] | select(.name == "calendar-ui" or .name == "calendar-ui:latest").newTag) = strenv(IMAGE_TAG) |
+            (.images[] | select(.name == "calendar-db-migrate" or .name == "calendar-db-migrate:latest").newTag) = strenv(IMAGE_TAG)
           ' "$KUSTOMIZATION_FILE_ABS"
 
           if git -C gitops diff --quiet -- "$KUSTOMIZATION_FILE"; then
@@ -143,32 +144,25 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # - name: Create pull request in GitOps repository
-      #   if: steps.update_overlay.outputs.changed == 'true'
-      #   uses: peter-evans/create-pull-request@v7
-      #   peter-evans create-pull-request@v7 needs Token to create PR, currently using Deploy key so Create Pull Requets step does not work properly.
-      #   with:
-      #     ssh-key: ${{ secrets.GITOPS_REPO_KEY }}
-      #     path: gitops
-      #     commit-message: 'chore(gitops): promote emerald ${{ inputs.target_environment }} to ${{ steps.resolve_promotion_inputs.outputs.image_tag }}'
-      #     branch: ${{ steps.resolve_promotion_inputs.outputs.branch_name }}
-      #     base: ${{ steps.resolve_promotion_inputs.outputs.base_branch }}
-      #     title: 'Promote Emerald ${{ inputs.target_environment }} to ${{ steps.resolve_promotion_inputs.outputs.image_tag }}'
-      #     body: |
-      #       This PR updates the Emerald `${{ inputs.target_environment }}` overlay image tags for ArgoCD sync.
+      - name: Configure git
+        # Bot identity required so the commit has an author; see
+        # https://github.com/orgs/community/discussions/26560#discussioncomment-3531273
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/gitops"
 
-      #       - App repo: `${{ github.repository }}`
-      #       - Source commit: `${{ github.sha }}`
-      #       - Promoted tag: `${{ steps.resolve_promotion_inputs.outputs.image_tag }}`
-      #       - Updated file: `${{ steps.resolve_promotion_inputs.outputs.kustomization_path }}`
-      #     draft: ${{ inputs.create_as_draft }}
-      #     labels: |
-      #       gitops
-      #       emerald
-      #       argocd
+      - name: Commit and push to GitOps repository
+        if: steps.update_overlay.outputs.changed == 'true'
+        run: |
+          cd gitops
+          git add ${{ steps.resolve_promotion_inputs.outputs.kustomization_path }}
+          git commit -m "chore(gitops): promote emerald ${{ inputs.target_environment }} to ${{ steps.resolve_promotion_inputs.outputs.image_tag }}"
+          git push origin ${{ steps.resolve_promotion_inputs.outputs.base_branch }}
 
       - name: Summary
         run: |
-          echo "Target environment: ${{ inputs.target_environment }}"
-          echo "Image tag: ${{ steps.resolve_promotion_inputs.outputs.image_tag }}"
-          echo "Overlay file: ${{ steps.resolve_promotion_inputs.outputs.kustomization_path }}"
+          echo "Target environment : ${{ inputs.target_environment }}"
+          echo "Image tag          : ${{ steps.resolve_promotion_inputs.outputs.image_tag }}"
+          echo "Overlay file       : ${{ steps.resolve_promotion_inputs.outputs.kustomization_path }}"
+          echo "Changes pushed     : ${{ steps.update_overlay.outputs.changed }}"
