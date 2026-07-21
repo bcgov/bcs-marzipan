@@ -78,6 +78,8 @@ import {
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
 
+const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
+
 type LeadOrganizationOption = {
   value: number;
   label: string;
@@ -834,6 +836,7 @@ export const ActivityOverviewSection: React.FC<
                       readOnly={notesScope.readOnly}
                       disabled={notesScope.fieldScopeDisabled}
                       rows={4}
+                      maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
                       {...field}
                       value={field.value ?? ''}
                     />

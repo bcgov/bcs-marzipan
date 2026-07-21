@@ -67,6 +67,8 @@ import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
+const ACTIVITY_VENUE_TEXT_MAX_LENGTH = 255;
+
 const PINNED_BADGE_MAX_TOTAL = 4;
 
 const VENUE_OPTION_STATUS_PREFIX = 'vs:' as const;
@@ -602,6 +604,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   defaultValue={field.value || ''}
                   value={field.value ?? ''}
                   onAddressSelect={handleVenueAddressAutofill}
+                  maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   onInputValueChange={(value) =>
                     setActivityFormFieldValue(
                       form,
@@ -630,6 +633,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 <Input
                   {...field}
                   value={field.value ?? ''}
+                  maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   readOnly={readOnly}
                   onChange={(e) => {
                     const raw = e.target.value;
@@ -660,6 +664,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   readOnly={readOnly}
                   multiple={false}
                   useChips={false}
+                  maxInputLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   options={cityComboboxOptions}
                   value={cityComboboxValueFromVenue(currentVenue, citiesList)}
                   onChange={handleCityComboboxChange}
@@ -683,6 +688,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 <Input
                   {...field}
                   value={field.value ?? ''}
+                  maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   readOnly={readOnly}
                   onChange={(e) => {
                     const raw = e.target.value;
@@ -710,6 +716,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               <Input
                 {...field}
                 value={field.value ?? ''}
+                maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                 readOnly={readOnly}
                 onChange={(e) => {
                   const raw = e.target.value;

@@ -8,6 +8,7 @@ import type {
   BannerSettings,
   UpsertBannerSettingsBody,
 } from '@corpcal/shared/api/types';
+import { BANNER_CONTENT_MAX_LENGTH } from '@corpcal/shared/schemas';
 import { fetchBannerSettings, upsertBannerSettings } from '@/api/bannerApi';
 import { AdminSection } from '@/components/admin';
 import { Button } from '@/components/ui/button';
@@ -258,6 +259,13 @@ export function BannerSettingsAdmin() {
       return;
     }
 
+    if (formData.content.length > BANNER_CONTENT_MAX_LENGTH) {
+      toast.error(
+        `Banner content must be ${BANNER_CONTENT_MAX_LENGTH} characters or fewer`
+      );
+      return;
+    }
+
     if (
       formData.startDateTime &&
       formData.endDateTime &&
@@ -410,6 +418,7 @@ export function BannerSettingsAdmin() {
                 id="banner-content"
                 rows={8}
                 value={formData.content}
+                maxLength={BANNER_CONTENT_MAX_LENGTH}
                 onChange={(event) =>
                   handleFieldChange('content', event.target.value)
                 }

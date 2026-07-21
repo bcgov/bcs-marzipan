@@ -187,6 +187,7 @@ export function AddTeamMemberModal({
               placeholder="Add notes (optional)"
               rows={4}
               value={notes}
+              maxLength={1000}
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>

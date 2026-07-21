@@ -55,7 +55,7 @@ const createUserFormSchema = z.object({
     .min(1, 'Email is required')
     .email('Invalid email format'),
   roleId: z.string().min(1, 'Role is required'),
-  displayName: z.string().trim().default(''),
+  displayName: z.string().trim().max(255).default(''),
   teamIds: z.array(z.number().int()).default([]),
 });
 
@@ -224,7 +224,7 @@ export function UserCreateModal({
                 <FormItem>
                   <FormLabel showDirtyIndicator={false}>Display name</FormLabel>
                   <FormControl>
-                    <Input type="text" {...field} />
+                    <Input type="text" maxLength={255} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

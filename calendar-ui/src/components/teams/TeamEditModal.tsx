@@ -360,6 +360,7 @@ export function TeamEditModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Description"
+                maxLength={1000}
               />
             </div>
             <div className="flex items-center gap-2">
