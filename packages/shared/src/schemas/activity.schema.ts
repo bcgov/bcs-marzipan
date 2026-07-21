@@ -13,6 +13,7 @@ import {
 
 const CHARACTER_LIMIT_EXCEEDED_MESSAGE = 'Maximum character limit exceeded';
 export const ACTIVITY_SUMMARY_MAX_LENGTH = 2000;
+export const ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH = 200;
 const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
 const ACTIVITY_VENUE_TEXT_MAX_LENGTH = 255;
 
@@ -113,6 +114,17 @@ const activitySummaryStoredStringSchema =
     }
   );
 
+const activityBriefRichTextStoredStringSchema =
+  activityRichTextStoredStringSchema.refine(
+    (value) =>
+      plainTextFromActivityRichField(value).length <=
+      ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH,
+    {
+      message: CHARACTER_LIMIT_EXCEEDED_MESSAGE,
+      ...zodConstraintIssueParams(),
+    }
+  );
+
 // ============================================================================
 // Database Field Schemas (for request validation)
 // ============================================================================
@@ -140,18 +152,7 @@ const activityCoreFieldsSchema = z.object({
   ),
   significance: z.preprocess(
     emptyStringToNull,
-    z
-      .union([
-        z
-          .string()
-          .max(ACTIVITY_RICH_TEXT_MAX_BYTES)
-          .refine(isActivityRichTextStorageRefine, {
-            message: ACTIVITY_RICH_TEXT_INVALID_STORAGE,
-            ...zodConstraintIssueParams(),
-          }),
-        z.null(),
-      ])
-      .optional()
+    z.union([activityBriefRichTextStoredStringSchema, z.null()]).optional()
   ),
   schedulingNotes: z
     .string()
@@ -202,18 +203,7 @@ const activityCoreFieldsSchema = z.object({
     .optional(), // Maps to legacy Comments
   executiveSummary: z.preprocess(
     emptyStringToNull,
-    z
-      .union([
-        z
-          .string()
-          .max(ACTIVITY_RICH_TEXT_MAX_BYTES)
-          .refine(isActivityRichTextStorageRefine, {
-            message: ACTIVITY_RICH_TEXT_INVALID_STORAGE,
-            ...zodConstraintIssueParams(),
-          }),
-        z.null(),
-      ])
-      .optional()
+    z.union([activityBriefRichTextStoredStringSchema, z.null()]).optional()
   ),
   pitchRequiredStatusId: z.number().int().nullable().optional(), // pending, required, not_required
   translationsRequiredStatusId: z.number().int().nullable().optional(), // pending, required, not_required

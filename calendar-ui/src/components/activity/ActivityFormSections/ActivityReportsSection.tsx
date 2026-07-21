@@ -38,6 +38,8 @@ import { useActivityFieldScopeControl } from '../use-activity-field-scope-contro
 import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
+const ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH = 200;
+
 export const ActivityReportsSection: React.FC = () => {
   const { readOnly, canViewFieldScope } = useActivityEdit();
   const canViewLookAhead = canViewFieldScope?.('lookAhead') ?? false;
@@ -77,6 +79,7 @@ export const ActivityReportsSection: React.FC = () => {
                       }
                       onBlur={field.onBlur}
                       placeholder="Enter executive summary"
+                      maxLength={ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH}
                       readOnly={lookAheadScope.readOnly}
                       disabled={lookAheadScope.fieldScopeDisabled}
                       data-field={field.name}

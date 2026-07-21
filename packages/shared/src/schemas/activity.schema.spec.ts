@@ -7,6 +7,7 @@ import {
   tipTapDocJsonFromPlainText,
 } from '../utils/activity-rich-text';
 import {
+  ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH,
   ACTIVITY_SUMMARY_MAX_LENGTH,
   createActivityRequestSchema,
   updateActivityRequestSchema,
@@ -127,18 +128,11 @@ describe('createActivityRequestSchema', () => {
     ).toThrow();
   });
 
-  it('enforces summary and significance max rich-text bytes and valid storage', () => {
+  it('enforces summary max rich-text bytes and valid storage', () => {
     expect(() =>
       createActivityRequestSchema.parse(
         minimalCreateRequest({
           summary: 'a'.repeat(ACTIVITY_RICH_TEXT_MAX_BYTES + 1),
-        })
-      )
-    ).toThrow();
-    expect(() =>
-      createActivityRequestSchema.parse(
-        minimalCreateRequest({
-          significance: 'a'.repeat(ACTIVITY_RICH_TEXT_MAX_BYTES + 1),
         })
       )
     ).toThrow();
@@ -155,6 +149,47 @@ describe('createActivityRequestSchema', () => {
     expect(() =>
       createActivityRequestSchema.parse(
         minimalCreateRequest({ summary: EMPTY_RICH_TEXT_DOC })
+      )
+    ).toThrow();
+  });
+
+  it('enforces significance and executiveSummary max plain-text length (200)', () => {
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        significance: 's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH),
+        executiveSummary: 'e'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH),
+      })
+    );
+
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          significance: 's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH + 1),
+        })
+      )
+    ).toThrow();
+
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          executiveSummary: 'e'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH + 1),
+        })
+      )
+    ).toThrow();
+
+    const validRichSignificance = tipTapDocJsonFromPlainText(
+      's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH)
+    );
+    const tooLongRichExecutiveSummary = tipTapDocJsonFromPlainText(
+      'e'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH + 1)
+    );
+
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({ significance: validRichSignificance })
+    );
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ executiveSummary: tooLongRichExecutiveSummary })
       )
     ).toThrow();
   });
@@ -496,6 +531,25 @@ describe('updateActivityRequestSchema', () => {
     expect(() =>
       updateActivityRequestSchema.parse({
         summary: 'a'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH + 1),
+      })
+    ).toThrow();
+  });
+
+  it('enforces significance and executiveSummary max length when provided on update', () => {
+    updateActivityRequestSchema.parse({
+      significance: 's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH),
+      executiveSummary: 'e'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH),
+    });
+
+    expect(() =>
+      updateActivityRequestSchema.parse({
+        significance: 's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH + 1),
+      })
+    ).toThrow();
+
+    expect(() =>
+      updateActivityRequestSchema.parse({
+        executiveSummary: 'e'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH + 1),
       })
     ).toThrow();
   });

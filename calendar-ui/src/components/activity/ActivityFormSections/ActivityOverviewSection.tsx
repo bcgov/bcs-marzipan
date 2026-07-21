@@ -80,6 +80,7 @@ import { ActivityFormSection } from './ActivityFormSection';
 
 const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
 const ACTIVITY_SUMMARY_MAX_LENGTH = 2000;
+const ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH = 200;
 
 type LeadOrganizationOption = {
   value: number;
@@ -690,6 +691,7 @@ export const ActivityOverviewSection: React.FC<
                 }
                 onBlur={field.onBlur}
                 placeholder="Enter significance"
+                maxLength={ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH}
                 readOnly={readOnly}
                 data-field={field.name}
               />
