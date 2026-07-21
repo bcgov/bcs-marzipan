@@ -12,6 +12,7 @@ import {
 } from '../validation/zod-issue-kind';
 
 const CHARACTER_LIMIT_EXCEEDED_MESSAGE = 'Maximum character limit exceeded';
+export const ACTIVITY_SUMMARY_MAX_LENGTH = 1000;
 const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
 const ACTIVITY_VENUE_TEXT_MAX_LENGTH = 255;
 
@@ -101,6 +102,17 @@ const activityRichTextStoredStringSchema = z
     ...zodConstraintIssueParams(),
   });
 
+const activitySummaryStoredStringSchema =
+  activityRichTextStoredStringSchema.refine(
+    (value) =>
+      plainTextFromActivityRichField(value).length <=
+      ACTIVITY_SUMMARY_MAX_LENGTH,
+    {
+      message: CHARACTER_LIMIT_EXCEEDED_MESSAGE,
+      ...zodConstraintIssueParams(),
+    }
+  );
+
 // ============================================================================
 // Database Field Schemas (for request validation)
 // ============================================================================
@@ -124,7 +136,7 @@ const activityCoreFieldsSchema = z.object({
   ),
   summary: z.preprocess(
     (val) => (val === undefined || val === null ? '' : val),
-    activityRichTextStoredStringSchema
+    activitySummaryStoredStringSchema
   ),
   significance: z.preprocess(
     emptyStringToNull,

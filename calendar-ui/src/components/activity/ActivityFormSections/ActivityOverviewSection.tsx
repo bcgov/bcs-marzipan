@@ -79,6 +79,7 @@ import { useActivityFieldScopeControl } from '../use-activity-field-scope-contro
 import { ActivityFormSection } from './ActivityFormSection';
 
 const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
+const ACTIVITY_SUMMARY_MAX_LENGTH = 1000;
 
 type LeadOrganizationOption = {
   value: number;
@@ -540,6 +541,7 @@ export const ActivityOverviewSection: React.FC<
                 }
                 onBlur={field.onBlur}
                 placeholder="Enter activity summary"
+                maxLength={ACTIVITY_SUMMARY_MAX_LENGTH}
                 readOnly={readOnly}
                 data-field={field.name}
               />

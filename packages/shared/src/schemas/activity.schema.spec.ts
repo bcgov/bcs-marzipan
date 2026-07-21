@@ -4,8 +4,10 @@ import { DEFAULT_LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
 import {
   ACTIVITY_RICH_TEXT_MAX_BYTES,
   EMPTY_RICH_TEXT_DOC,
+  tipTapDocJsonFromPlainText,
 } from '../utils/activity-rich-text';
 import {
+  ACTIVITY_SUMMARY_MAX_LENGTH,
   createActivityRequestSchema,
   updateActivityRequestSchema,
   venueAddressFieldsSchema,
@@ -91,6 +93,38 @@ describe('createActivityRequestSchema', () => {
       undefinedSummary.error.issues.find((i) => i.path[0] === 'summary')
         ?.message
     ).toBe('A summary is required');
+  });
+
+  it('enforces summary max plain-text length (1000)', () => {
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        summary: 'a'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH),
+      })
+    );
+
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          summary: 'a'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH + 1),
+        })
+      )
+    ).toThrow();
+
+    const richSummary = tipTapDocJsonFromPlainText(
+      'b'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH)
+    );
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({ summary: richSummary })
+    );
+
+    const tooLongRichSummary = tipTapDocJsonFromPlainText(
+      'b'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH + 1)
+    );
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ summary: tooLongRichSummary })
+      )
+    ).toThrow();
   });
 
   it('enforces summary and significance max rich-text bytes and valid storage', () => {
@@ -452,6 +486,18 @@ describe('updateActivityRequestSchema', () => {
   it('accepts update with only title (no commsContacts)', () => {
     const result = updateActivityRequestSchema.parse({ title: 'Only title' });
     expect(result.title).toBe('Only title');
+  });
+
+  it('enforces summary max plain-text length when provided on update', () => {
+    updateActivityRequestSchema.parse({
+      summary: 'a'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH),
+    });
+
+    expect(() =>
+      updateActivityRequestSchema.parse({
+        summary: 'a'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH + 1),
+      })
+    ).toThrow();
   });
 
   it('accepts update when commsContacts has exactly one lead', () => {

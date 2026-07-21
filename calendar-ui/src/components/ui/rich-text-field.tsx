@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   EMPTY_RICH_TEXT_DOC,
   isActivityRichTextEffectivelyEmpty,
+  plainTextFromActivityRichField,
 } from '@corpcal/shared/utils';
 import { Button } from '@/components/ui/button';
 import { RichTextLinkDialog } from '@/components/ui/rich-text-field-link-dialog';
@@ -31,6 +32,7 @@ export type RichTextFieldProps = {
   onChange: (json: string) => void;
   onBlur: () => void;
   placeholder?: string;
+  maxLength?: number;
   readOnly?: boolean;
   disabled?: boolean;
   className?: string;
@@ -79,6 +81,7 @@ export function RichTextField({
   onChange,
   onBlur,
   placeholder = '',
+  maxLength,
   readOnly = false,
   disabled = false,
   className,
@@ -137,6 +140,27 @@ export function RichTextField({
       const json = JSON.stringify(ed.getJSON());
       const propValue = valueRef.current;
       if (json === propValue) return;
+
+      if (typeof maxLength === 'number') {
+        const nextLength = plainTextFromActivityRichField(json).length;
+        const currentLength = plainTextFromActivityRichField(propValue).length;
+        if (nextLength > maxLength && nextLength > currentLength) {
+          const args = getSetContentArgs(propValue);
+          isSyncingFromPropRef.current = true;
+          if (args.contentType === 'json') {
+            ed.commands.setContent(args.content, { emitUpdate: false });
+          } else {
+            ed.commands.setContent(args.content, {
+              contentType: 'markdown',
+              emitUpdate: false,
+            });
+          }
+          queueMicrotask(() => {
+            isSyncingFromPropRef.current = false;
+          });
+          return;
+        }
+      }
 
       const nextValue = coalesceEditorRichTextUpdate(json);
       const currentValue = coalescedValueRef.current;

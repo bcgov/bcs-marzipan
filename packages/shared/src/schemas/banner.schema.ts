@@ -5,7 +5,7 @@ const hexColorSchema = z
   .regex(/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/, 'Must be a valid hex color');
 
 const nullableDateTimeSchema = z.string().datetime().nullable();
-export const BANNER_CONTENT_MAX_LENGTH = 10000;
+export const BANNER_CONTENT_MAX_LENGTH = 1000;
 
 export const bannerSettingsSchema = z.object({
   id: z.number().int(),
