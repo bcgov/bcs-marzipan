@@ -352,6 +352,55 @@ describe('ActivityPage restore button visibility', () => {
       screen.findByRole('button', { name: /Restore/i })
     ).resolves.toBeInTheDocument();
   });
+
+  it('does not show Delete when status is deleted', async () => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) =>
+        key === PERMISSIONS.ACTIVITIES.DELETE ||
+        key === PERMISSIONS.ACTIVITIES.DELETE_ANY,
+      user: {
+        id: 1,
+        roleName: 'Admin',
+        teamIds: [5],
+        permissions: mockEditorFieldPermissions,
+      },
+    });
+
+    renderActivityPage({
+      activity: {
+        ...mockActivityWithLeadTeam,
+        activityStatus: 'Deleted',
+      },
+    });
+
+    await screen.findByText(/Lead team/);
+    expect(
+      screen.queryByRole('button', { name: /^Delete$/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows Delete when status is active and user can delete', async () => {
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) => key === PERMISSIONS.ACTIVITIES.DELETE,
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: mockEditorFieldPermissions,
+      },
+    });
+
+    renderActivityPage({
+      activity: {
+        ...mockActivityWithLeadTeam,
+        activityStatus: 'Draft',
+      },
+    });
+
+    await expect(
+      screen.findByRole('button', { name: /^Delete$/i })
+    ).resolves.toBeInTheDocument();
+  });
 });
 
 describe('ActivityPage optimistic inline edit', () => {

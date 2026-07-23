@@ -3,6 +3,6 @@ kind: ConfigMap
 metadata:
   name: calendar-service-config
 data:
-  AUTH_COOKIE_DOMAIN: apps.emerald.devops.gov.bc.ca
+  AUTH_COOKIE_DOMAIN: calendar-ui-dc4c90-dev.apps.emerald.devops.gov.bc.ca
   POST_LOGIN_REDIRECT_URL: https://calendar-ui-dc4c90-dev.apps.emerald.devops.gov.bc.ca
   CORS_ALLOWED_ORIGINS: https://calendar-ui-dc4c90-dev.apps.emerald.devops.gov.bc.ca,http://localhost:3000,http://localhost:4173,http://localhost:8080

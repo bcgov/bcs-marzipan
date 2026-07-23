@@ -14,6 +14,8 @@ import { z } from 'zod';
 export const activityFlagResponseSchema = z.object({
   teamId: z.number().int(),
   teamName: z.string(),
+  displayTeamId: z.number().int().nullable(),
+  displayTeamName: z.string().nullable(),
   assigneeId: z.number().int(),
   assigneeName: z.string(),
   assignedById: z.number().int(),
@@ -38,4 +40,27 @@ export const upsertActivityFlagRequestSchema = z.object({
 
 export type UpsertActivityFlagRequest = z.infer<
   typeof upsertActivityFlagRequestSchema
+>;
+
+/** Request body for PUT /activities/:id/flags — syncs the full assignee set for the caller's team. */
+export const upsertActivityFlagsRequestSchema = z.object({
+  /** Team ID scoping this flag set (must be one of the caller's teams). */
+  teamId: z.number().int(),
+  /** Full desired assignee set for this activity/team (duplicates are rejected). */
+  assigneeIds: z
+    .array(z.number().int())
+    .max(1000)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'assigneeIds must not contain duplicates',
+    }),
+  /** Optional display team for each assignee, indexed by userId. When omitted (or when a value is null), consumers should treat this as "use teamId". */
+  displayTeamPerAssignee: z
+    .record(z.coerce.number(), z.number().int().nullable())
+    .optional(),
+  /** Optional contextual note stored with flags updated/created in this request. */
+  note: z.string().max(1000).optional(),
+});
+
+export type UpsertActivityFlagsRequest = z.infer<
+  typeof upsertActivityFlagsRequestSchema
 >;

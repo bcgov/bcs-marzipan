@@ -18,6 +18,7 @@ export type {
 export type {
   ActivityFlagResponse,
   UpsertActivityFlagRequest,
+  UpsertActivityFlagsRequest,
 } from '../schemas/activity-flag.schema';
 export type {
   BannerSettings,

@@ -8,10 +8,10 @@ namespace: dc4c90-dev
 # Replace images built into the OpenShift internal registry.
 images:
   - name: calendar-service:latest
-    newName: image-registry.openshift-image-registry.svc:5000/dc4c90-dev/calendar-service
+    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/calendar-service
     newTag: 0.0.1
   - name: calendar-ui:latest
-    newName: image-registry.openshift-image-registry.svc:5000/dc4c90-dev/calendar-ui
+    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/calendar-ui
     newTag: 0.0.1
 
 patches:

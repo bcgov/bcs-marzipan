@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -18,6 +19,7 @@ import { CustomReportPreviewSection } from '@/components/reports/CustomReportPre
 import { EditReportModal } from '@/components/reports/EditReportModal';
 import { LookAheadDayRangeTabs } from '@/components/reports/LookAheadDayRangeTabs';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
+import { ReportAppliedDateRange } from '@/components/reports/ReportAppliedDateRange';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
 import { ReportLargeRangeWarning } from '@/components/reports/ReportLargeRangeWarning';
 import { ReportMonthRangeTabs } from '@/components/reports/ReportMonthRangeTabs';
@@ -34,6 +36,7 @@ import { useActivityStatuses, useReports } from '@/hooks/useLookups';
 import { useReportDataFreshness } from '@/hooks/useReportDataFreshness';
 import { useReportsSavedFilters } from '@/hooks/useReportsSavedFilters';
 import { useReportsTablePreferences } from '@/hooks/useReportsTablePreferences';
+import analytics from '@/lib/analytics';
 import {
   loadCustomReportConfig,
   saveCustomReportConfig,
@@ -158,6 +161,7 @@ export function ReportsPage() {
   );
 
   const savedFiltersState = useReportsSavedFilters({
+    reportName: activeReport,
     preferences,
     setPreferences,
     canSeeDeleted,
@@ -210,6 +214,12 @@ export function ReportsPage() {
   const [previewSheetWidthMode, setPreviewSheetWidthMode] =
     useState<ReportPreviewSheetWidthMode>(readStoredPreviewSheetWidth);
   const reportPreviewScrollRef = useRef<HTMLDivElement | null>(null);
+  const reportLoadStartedAtRef = useRef<number | null>(null);
+  const prevFilterStateSignatureRef = useRef<string>('');
+  const lastSearchInteractionAtRef = useRef<number | null>(null);
+  const lastNoResultsEventKeyRef = useRef<string>('');
+  const lastResultsEventKeyRef = useRef<string>('');
+  const [searchInteractionVersion, setSearchInteractionVersion] = useState(0);
 
   const initialTabAppliedRef = useRef(false);
 
@@ -259,6 +269,22 @@ export function ReportsPage() {
     [displayData, isWrongReport]
   );
 
+  const activeFilterCount = useMemo(
+    () =>
+      activeReport
+        ? analytics.countActiveReportFilterCriteria(
+            preferences.filterState,
+            activeReport
+          )
+        : 0,
+    [activeReport, preferences.filterState]
+  );
+
+  const filterStateSignature = useMemo(
+    () => JSON.stringify(preferences.filterState),
+    [preferences.filterState]
+  );
+
   const resolvedReportDateRange = useMemo(() => {
     if (!activeReport) return null;
     return resolveReportQueryDateRange(activeReport, preferences.filterState);
@@ -292,6 +318,186 @@ export function ReportsPage() {
     }
   }, [previewSheetWidthMode]);
 
+  useEffect(() => {
+    if (!activeReport) {
+      prevFilterStateSignatureRef.current = '';
+      reportLoadStartedAtRef.current = null;
+      lastNoResultsEventKeyRef.current = '';
+      lastResultsEventKeyRef.current = '';
+      return;
+    }
+    reportLoadStartedAtRef.current = performance.now();
+  }, [activeReport, reportFetchParamsKey]);
+
+  useEffect(() => {
+    if (!activeReport) return;
+
+    const nextSignature = `${activeReport}|${filterStateSignature}`;
+    const previousSignature = prevFilterStateSignatureRef.current;
+    prevFilterStateSignatureRef.current = nextSignature;
+
+    if (
+      previousSignature === '' ||
+      previousSignature === nextSignature ||
+      !previousSignature.startsWith(`${activeReport}|`)
+    ) {
+      return;
+    }
+
+    const filterKeysUsed = analytics.getActiveReportFilterKeys(
+      preferences.filterState,
+      activeReport
+    );
+
+    if (filterKeysUsed.length === 0) {
+      return;
+    }
+
+    analytics.trackReportFiltersApplied({
+      report_name: activeReport,
+      filter_keys_used: filterKeysUsed,
+      active_filter_count: activeFilterCount,
+      category_count: preferences.filterState.categoryNames.length,
+      status_count: preferences.filterState.activityStatusIds.length,
+      tag_count: preferences.filterState.tagIds.length,
+      ministry_count: preferences.filterState.leadMinistryIds.length,
+      org_count: preferences.filterState.leadOrgIds.length,
+    });
+  }, [
+    activeFilterCount,
+    activeReport,
+    filterStateSignature,
+    preferences.filterState,
+  ]);
+
+  useEffect(() => {
+    if (!activeReport || !isFresh || isWrongReport || !displayData) {
+      return;
+    }
+
+    const eventKey = JSON.stringify([
+      activeReport,
+      reportFetchParamsKey,
+      preferences.searchKeyword.trim(),
+      displayActivityCount,
+      searchInteractionVersion,
+    ]);
+
+    if (eventKey === lastResultsEventKeyRef.current) {
+      return;
+    }
+
+    const startedAt =
+      lastSearchInteractionAtRef.current ?? reportLoadStartedAtRef.current;
+
+    // Avoid firing "results loaded" events for purely client-side re-renders
+    // (e.g. each keystroke) when no load/interaction was initiated.
+    if (startedAt == null) return;
+
+    const latencyMs = Math.max(0, Math.round(performance.now() - startedAt));
+    const filterKeysUsed = analytics.getActiveReportFilterKeys(
+      preferences.filterState,
+      activeReport
+    );
+
+    analytics.trackReportSearchResultsLoaded({
+      report_name: activeReport,
+      results_count: displayActivityCount,
+      latency_ms: latencyMs,
+      search_present: preferences.searchKeyword.trim().length > 0,
+      active_filter_count: activeFilterCount,
+    });
+
+    if (
+      displayActivityCount === 0 &&
+      eventKey !== lastNoResultsEventKeyRef.current
+    ) {
+      analytics.trackReportNoResultsShown({
+        report_name: activeReport,
+        active_filter_count: activeFilterCount,
+        search_present: preferences.searchKeyword.trim().length > 0,
+        date_range_active: filterKeysUsed.includes('dateRange'),
+        filter_keys_used: filterKeysUsed,
+      });
+      lastNoResultsEventKeyRef.current = eventKey;
+    }
+
+    if (displayActivityCount > 0) {
+      lastNoResultsEventKeyRef.current = '';
+    }
+
+    lastResultsEventKeyRef.current = eventKey;
+    reportLoadStartedAtRef.current = null;
+    lastSearchInteractionAtRef.current = null;
+  }, [
+    activeFilterCount,
+    activeReport,
+    displayActivityCount,
+    displayData,
+    isFresh,
+    isWrongReport,
+    preferences.filterState,
+    preferences.searchKeyword,
+    reportFetchParamsKey,
+    searchInteractionVersion,
+  ]);
+
+  const markSearchInteraction = useCallback(() => {
+    lastSearchInteractionAtRef.current = performance.now();
+    setSearchInteractionVersion((current) => current + 1);
+  }, []);
+
+  const handleReportPreviewClickCapture = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!activeReport) return;
+      const target = event.target as HTMLElement | null;
+      const link = target?.closest('a[href*="/activity/"]');
+      if (!(link instanceof HTMLAnchorElement)) return;
+
+      const links = Array.from(
+        event.currentTarget.querySelectorAll<HTMLAnchorElement>(
+          'a[href*="/activity/"]'
+        )
+      );
+      const positionInResults =
+        links.findIndex((candidate) => candidate === link) + 1;
+
+      analytics.trackReportResultOpened({
+        report_name: activeReport,
+        item_type: 'activity',
+        position_in_results: positionInResults > 0 ? positionInResults : 1,
+        results_count: displayActivityCount,
+        open_method: 'link',
+        active_filter_count: activeFilterCount,
+      });
+    },
+    [activeFilterCount, activeReport, displayActivityCount]
+  );
+
+  const handleCustomReportPaginationChange = useCallback(
+    (change: {
+      action: 'page_change' | 'page_size_change';
+      page: number;
+      pageSize: number;
+      totalItems: number;
+    }) => {
+      if (!activeReport) return;
+      analytics.trackReportPaginationChanged({
+        report_name: activeReport,
+        action: change.action,
+        page_number: change.page,
+        page_size: change.pageSize,
+        total_pages: Math.max(
+          1,
+          Math.ceil(change.totalItems / change.pageSize)
+        ),
+        active_filter_count: activeFilterCount,
+        search_present: preferences.searchKeyword.trim().length > 0,
+      });
+    },
+    [activeFilterCount, activeReport, preferences.searchKeyword]
+  );
+
   const handleTabChange = (reportName: string) => {
     setActiveReport(reportName);
     setStoredReportTabName(reportName);
@@ -300,6 +506,14 @@ export function ReportsPage() {
 
   const runExport = async (format: ReportExportFormat) => {
     if (!activeReport) return;
+    const startedAt = performance.now();
+    analytics.trackReportExportStarted({
+      report_name: activeReport,
+      export_type: format,
+      rows_count: displayActivityCount,
+      active_filter_count: activeFilterCount,
+      search_present: preferences.searchKeyword.trim().length > 0,
+    });
     setIsExporting(true);
     try {
       let exportData = displayData;
@@ -325,7 +539,20 @@ export function ReportsPage() {
         customReportFields:
           activeReport === 'custom' ? customReportFields : undefined,
       });
+      analytics.trackReportExportCompleted({
+        report_name: activeReport,
+        export_type: format,
+        status: 'success',
+        duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
+      });
     } catch (err) {
+      analytics.trackReportExportCompleted({
+        report_name: activeReport,
+        export_type: format,
+        status: 'failure',
+        duration_ms: Math.max(0, Math.round(performance.now() - startedAt)),
+        error_category: err instanceof Error ? err.name : 'unknown',
+      });
       const label =
         format === 'pdf' ? 'PDF' : format === 'csv' ? 'CSV' : 'spreadsheet';
       showErrorToast(err, `Failed to export ${label}. Please try again.`);
@@ -429,6 +656,8 @@ export function ReportsPage() {
               reportName={activeReport}
               preferences={preferences}
               setPreferences={setReportPreferences}
+              onSearchSubmitted={markSearchInteraction}
+              onSearchCleared={markSearchInteraction}
               savedFilters={savedFiltersState.savedFiltersHook}
               onApplySavedFilter={savedFiltersState.onApplySavedFilter}
               activeSavedFilterId={
@@ -478,24 +707,31 @@ export function ReportsPage() {
               {activeReport === report.name &&
               usesReportPreviewShell(report.name) ? (
                 <div className="flex min-h-0 flex-col">
-                  <div className="border-border flex h-9 shrink-0 items-center justify-end gap-4 border-t">
-                    <ReportLargeRangeWarning
-                      showLargeRangeWarning={showLargeRangeWarning}
-                      wasClamped={wasDateRangeClamped}
+                  <div className="border-border flex h-9 shrink-0 items-center justify-between gap-4 border-t">
+                    <ReportAppliedDateRange
+                      dateRange={resolvedReportDateRange}
                     />
-                    {isFullscreenPrintPreview(report.name) ? (
-                      <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={previewSheetWidthMode === 'print'}
-                          onCheckedChange={(checked) =>
-                            setPreviewSheetWidthMode(checked ? 'print' : 'full')
-                          }
-                          aria-label="Print width"
-                          className="border-input"
-                        />
-                        Print width
-                      </label>
-                    ) : null}
+                    <div className="flex shrink-0 items-center gap-4">
+                      <ReportLargeRangeWarning
+                        showLargeRangeWarning={showLargeRangeWarning}
+                        wasClamped={wasDateRangeClamped}
+                      />
+                      {isFullscreenPrintPreview(report.name) ? (
+                        <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={previewSheetWidthMode === 'print'}
+                            onCheckedChange={(checked) =>
+                              setPreviewSheetWidthMode(
+                                checked ? 'print' : 'full'
+                              )
+                            }
+                            aria-label="Print width"
+                            className="border-input"
+                          />
+                          Print width
+                        </label>
+                      ) : null}
+                    </div>
                   </div>
                   {isPreviewLoading ? (
                     <ReportPreviewEmptyState
@@ -509,6 +745,7 @@ export function ReportsPage() {
                         section={displayData.sections[0]}
                         config={customReportFields}
                         onFieldsChange={setCustomReportFields}
+                        onPaginationChange={handleCustomReportPaginationChange}
                         highlightedActivityIds={reportHighlightSet}
                         scrollContainerRef={reportPreviewScrollRef}
                       />
@@ -527,7 +764,10 @@ export function ReportsPage() {
                       scrollClassName="flex flex-col"
                       className={reportPreviewScrollClassName}
                     >
-                      <div className="flex w-full flex-1 flex-col px-6 pt-0 pb-6">
+                      <div
+                        className="flex w-full flex-1 flex-col px-6 pt-0 pb-6"
+                        onClickCapture={handleReportPreviewClickCapture}
+                      >
                         <div
                           className={
                             previewSheetWidthMode === 'full'

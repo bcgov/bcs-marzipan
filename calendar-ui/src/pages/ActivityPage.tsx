@@ -54,12 +54,12 @@ import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
 import {
   useDeleteActivity,
-  useRemoveActivityFlag,
+  useRemoveAssigneeActivityFlag,
   useRequestDeleteActivity,
   useRestoreActivity,
   useSoftDeleteActivity,
+  useSyncActivityFlags,
   useUpdateActivity,
-  useUpsertActivityFlag,
 } from '../hooks/useCalendar';
 import {
   EDIT_LOCK_CONFLICT_TOAST,
@@ -183,7 +183,9 @@ export function ActivityPage({
           (isAdminOrSysAdmin || isCommsContact || isLeadTeamMember)
         : false;
   const showDeleteButton =
-    canDelete && (canDeleteAny || isCommsContact || isLeadTeamMember);
+    normalizedStatus !== 'deleted' &&
+    canDelete &&
+    (canDeleteAny || isCommsContact || isLeadTeamMember);
   const showRequestDeleteButton =
     !isBlockedStatus &&
     (isCommsContact || isLeadTeamMember) &&
@@ -264,10 +266,10 @@ export function ActivityPage({
   const restoreMutation = useRestoreActivity();
   const softDeleteMutation = useSoftDeleteActivity();
   const requestDeleteMutation = useRequestDeleteActivity();
-  const upsertFlagMutation = useUpsertActivityFlag({
+  const syncFlagsMutation = useSyncActivityFlags({
     onSuccess: () => void refreshActivity(),
   });
-  const removeFlagMutation = useRemoveActivityFlag({
+  const removeAssigneeFlagMutation = useRemoveAssigneeActivityFlag({
     onSuccess: () => void refreshActivity(),
   });
 
@@ -557,10 +559,24 @@ export function ActivityPage({
         } else {
           const opts: UpdatePayloadOptions =
             mode.kind === 'reviewWithSave'
-              ? { markAsReviewed: true, requiredTranslationStatusId }
+              ? {
+                  markAsReviewed: true,
+                  requiredTranslationStatusId,
+                  includeRepresentatives:
+                    !!form.formState.dirtyFields.representatives,
+                }
               : mode.kind === 'completeWithSave'
-                ? { markAsCompleted: true, requiredTranslationStatusId }
-                : { requiredTranslationStatusId };
+                ? {
+                    markAsCompleted: true,
+                    requiredTranslationStatusId,
+                    includeRepresentatives:
+                      !!form.formState.dirtyFields.representatives,
+                  }
+                : {
+                    requiredTranslationStatusId,
+                    includeRepresentatives:
+                      !!form.formState.dirtyFields.representatives,
+                  };
           submitData = {
             ...buildPayloadForUpdate(
               mode.validatedData,
@@ -650,16 +666,47 @@ export function ActivityPage({
     markAsCompleted?: boolean,
     unassignMe?: boolean
   ) => {
-    if (unassignMe) {
-      const myFlags =
-        activity.flags?.filter((f) => f.assigneeId === user?.id) ?? [];
-      myFlags.forEach((flag) => {
-        removeFlagMutation.mutate({
-          activityId: id,
-          teamId: flag.teamId,
-          assigneeName: flag.assigneeName,
-        });
-      });
+    if (unassignMe && user?.id != null) {
+      const myFlags = (activity.flags ?? []).filter(
+        (flag) => flag.assigneeId === user.id
+      );
+
+      const results = await Promise.allSettled(
+        myFlags.map((flag) =>
+          removeAssigneeFlagMutation.mutateAsync({
+            activityId: id,
+            teamId: flag.teamId,
+            assigneeId: flag.assigneeId,
+            assigneeName: flag.assigneeName,
+            suppressSuccessToast: true,
+          })
+        )
+      );
+
+      const fulfilled = results.filter(
+        (result) => result.status === 'fulfilled'
+      );
+      const rejected = results.filter((result) => result.status === 'rejected');
+
+      if (fulfilled.length > 0) {
+        toast.success(
+          fulfilled.length === 1
+            ? 'Activity unassigned'
+            : `Activity unassigned from ${fulfilled.length} teams`
+        );
+      }
+
+      if (rejected.length > 0) {
+        if (fulfilled.length > 0) {
+          toast.error(
+            rejected.length === 1
+              ? 'Failed to unassign from 1 team'
+              : `Failed to unassign from ${rejected.length} teams`
+          );
+        } else {
+          toast.error('Failed to unassign activity');
+        }
+      }
     }
     if (markAsCompleted) {
       if (isDirty) {
@@ -850,6 +897,7 @@ export function ActivityPage({
       />
       <ActivityPageHeader
         displayId={displayId}
+        currentUserId={user?.id ?? null}
         title={activity.title ?? ''}
         categories={categories}
         leadMinistry={activity.leadMinistry ?? null}
@@ -859,21 +907,32 @@ export function ActivityPage({
         onHistoryClick={() => setHistoryOpen(true)}
         flags={activity.flags ?? []}
         canFlag={canFlag}
-        onFlagAssign={
+        onFlagSync={
           canFlag
-            ? (teamId, assigneeId, note, assigneeName) =>
-                upsertFlagMutation.mutate({
+            ? (
+                teamId,
+                assigneeIds,
+                note,
+                assigneeNames,
+                displayTeamPerAssignee
+              ) =>
+                syncFlagsMutation.mutate({
                   activityId: id,
-                  body: { teamId, assigneeId, note },
-                  assigneeName,
+                  body: { teamId, assigneeIds, note, displayTeamPerAssignee },
+                  assigneeNames,
                 })
             : undefined
         }
-        onFlagUnassign={(teamId, assigneeName) =>
-          removeFlagMutation.mutate({ activityId: id, teamId, assigneeName })
+        onFlagUnassign={(teamId, assigneeId, assigneeName) =>
+          removeAssigneeFlagMutation.mutate({
+            activityId: id,
+            teamId,
+            assigneeId,
+            assigneeName,
+          })
         }
         isFlagPending={
-          upsertFlagMutation.isPending || removeFlagMutation.isPending
+          syncFlagsMutation.isPending || removeAssigneeFlagMutation.isPending
         }
         isFavourite={isFavourite(id)}
         onFavouriteToggle={() => toggleFavourite(id)}

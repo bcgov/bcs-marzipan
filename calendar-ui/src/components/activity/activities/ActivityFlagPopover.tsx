@@ -3,14 +3,15 @@
  *
  * A quick-assign popover shown from the Activity List row (no modal, no notes).
  * Opens when the Flag button is clicked; shows a searchable list of teammates
- * with a single-select checkbox pattern.
+ * with a multi-select checkbox pattern.
  *
  * Same flag semantics as AssignActivityModal but inline, no note field.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
-import { fetchTeamById } from '@/api/teamsApi';
+import { fetchUsers } from '@/api/usersApi';
 import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
 import { FilterSearchableList } from '@/components/activity/ActivityTable/FilterSearchableList';
 import { Button } from '@/components/ui/button';
@@ -27,33 +28,46 @@ interface TeamMemberOption {
   userId: number;
   label: string;
   teamId: number;
+  teamName: string;
 }
 
 interface ActivityFlagPopoverProps {
   activityId: number;
   /** Existing flags for the current user's teams. */
   flags: ActivityFlagResponse[];
-  /** Called to set or replace the flag for a team. */
-  onAssign: (teamId: number, assigneeId: number, assigneeName?: string) => void;
-  /** Called to remove the flag for a team. */
-  onUnassign: (teamId: number, assigneeName?: string) => void;
+  /** Called to sync the full assignee set for a team. */
+  onSync: (
+    teamId: number,
+    assigneeIds: number[],
+    assigneeNames?: string[],
+    displayTeamPerAssignee?: Record<number, number | null>
+  ) => void;
   isPending?: boolean;
   /** When true, shows assignment state without any interactive controls. */
   readOnly?: boolean;
+  /** Optional custom trigger content (e.g., assigned avatar stack). */
+  triggerContent?: ReactNode;
 }
 
 export function ActivityFlagPopover({
   activityId: _activityId,
   flags,
-  onAssign,
-  onUnassign,
+  onSync,
   isPending = false,
   readOnly = false,
+  triggerContent,
 }: ActivityFlagPopoverProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [draftAssigneeIds, setDraftAssigneeIds] = useState<number[]>([]);
+  const [selectedTeamPerUser, setSelectedTeamPerUser] = useState<
+    Record<number, number>
+  >({});
+  const [openTeamSubmenuForUser, setOpenTeamSubmenuForUser] = useState<
+    number | null
+  >(null);
 
   const teamIds = useMemo(
     () =>
@@ -66,76 +80,177 @@ export function ActivityFlagPopover({
     [user?.teamIds]
   );
   const teamIdSet = useMemo(() => new Set(teamIds), [teamIds]);
-  const existingFlag = useMemo(
-    () => flags.find((f) => teamIdSet.has(f.teamId)) ?? null,
+  const existingFlags = useMemo(
+    () => flags.filter((f) => teamIdSet.has(f.teamId)),
     [flags, teamIdSet]
   );
-  const isFlagged = existingFlag !== null;
-  const primaryTeamId = existingFlag?.teamId ?? teamIds[0] ?? null;
+  const primaryTeamId = existingFlags[0]?.teamId ?? teamIds[0] ?? null;
+  const existingFlagsForPrimaryTeam = useMemo(
+    () =>
+      primaryTeamId == null
+        ? []
+        : existingFlags.filter((f) => f.teamId === primaryTeamId),
+    [existingFlags, primaryTeamId]
+  );
+  const selectedAssigneeIds = useMemo(
+    () => existingFlagsForPrimaryTeam.map((f) => f.assigneeId),
+    [existingFlagsForPrimaryTeam]
+  );
+  const isFlagged = selectedAssigneeIds.length > 0;
+  const flaggedLabel = existingFlagsForPrimaryTeam
+    .map((f) => f.assigneeName)
+    .join(', ');
+  const iconFlag = existingFlagsForPrimaryTeam[0] ?? null;
+  const primaryTeamMembers = useMemo(
+    () =>
+      primaryTeamId == null
+        ? []
+        : members.filter((member) => member.teamId === primaryTeamId),
+    [members, primaryTeamId]
+  );
 
-  // Fetch team members when popover opens (once per mount)
+  // Fetch team members each time the popover opens.
+  // Uses GET /users?teamIds=... which returns each user with their full teams array,
+  // so we can show the correct team badge (cosmetic only).
   useEffect(() => {
-    if (!open || teamIds.length === 0 || members.length > 0) return;
+    if (!open || teamIds.length === 0) return;
     setLoadingMembers(true);
-    Promise.all(teamIds.map((teamId) => fetchTeamById(teamId)))
-      .then((teams) => {
-        const nextMembers = teams
-          .filter((team): team is NonNullable<typeof team> => Boolean(team))
-          .flatMap((team) =>
-            team.members.map((m) => ({
-              userId: m.userId,
-              label: m.userName,
-              teamId: team.id,
-            }))
-          );
+    fetchUsers({ teamIds })
+      .then((userList) => {
+        // Expand each user into one TeamMemberOption per team that overlaps with
+        // the current user's teams (we can only assign within our own teams).
+        const nextMembers: TeamMemberOption[] = [];
+        for (const u of userList) {
+          const name = u.adDisplayName ?? u.adUsername ?? `User ${u.id}`;
+          for (const t of u.teams) {
+            if (teamIdSet.has(t.teamId)) {
+              nextMembers.push({
+                userId: u.id,
+                label: name,
+                teamId: t.teamId,
+                teamName: t.teamName,
+              });
+            }
+          }
+        }
 
-        const uniqueMembers = Array.from(
-          new Map(
-            nextMembers.map(
-              (member) => [`${member.teamId}:${member.userId}`, member] as const
-            )
-          ).values()
-        );
+        setMembers(nextMembers);
 
-        setMembers(uniqueMembers);
+        // Initialise the per-user team selection based on displayTeamId from existing flags,
+        // falling back to primary team
+        const initialSelectedTeam: Record<number, number> = {};
+
+        // First, load any saved displayTeamId from existing flags
+        existingFlags.forEach((flag) => {
+          if (flag.displayTeamId != null) {
+            initialSelectedTeam[flag.assigneeId] = flag.displayTeamId;
+          }
+        });
+
+        // Then fill in any missing users with primary team
+        nextMembers.forEach((member) => {
+          if (!initialSelectedTeam[member.userId]) {
+            initialSelectedTeam[member.userId] = primaryTeamId ?? member.teamId;
+          }
+        });
+        setSelectedTeamPerUser(initialSelectedTeam);
       })
-      .catch(() => setMembers([]))
+      .catch(() => {
+        setMembers([]);
+        setSelectedTeamPerUser({});
+      })
       .finally(() => setLoadingMembers(false));
-  }, [open, teamIds, members.length]);
+  }, [open, teamIds, teamIdSet, existingFlags, primaryTeamId]);
 
-  // Build sorted options: current user first, then alphabetically
+  // Build mapping of userId -> teams they're on (for display only)
+  const userTeamsMap = useMemo(() => {
+    const map = new Map<number, TeamMemberOption[]>();
+    members.forEach((member) => {
+      if (!map.has(member.userId)) {
+        map.set(member.userId, []);
+      }
+      map.get(member.userId)!.push(member);
+    });
+    return map;
+  }, [members]);
+
+  // Build sorted options from primary team members, current user first then alphabetically
   const options = useMemo(() => {
-    const me = members.find((m) => m.userId === user?.id);
-    const rest = members
-      .filter((m) => m.userId !== user?.id)
-      .sort((a, b) => a.label.localeCompare(b.label));
-    return [...(me ? [me] : []), ...rest].map((m) => ({
-      value: String(m.userId),
-      label: m.userId === user?.id ? `${m.label} (you)` : m.label,
-    }));
-  }, [members, user]);
+    const primaryMembers = primaryTeamId
+      ? members.filter((m) => m.teamId === primaryTeamId)
+      : [];
 
-  const handleSelect = (memberId: number) => {
-    if (!primaryTeamId) return;
-    const name = members.find((m) => m.userId === memberId)?.label;
-    if (existingFlag?.assigneeId === memberId) {
-      onUnassign(primaryTeamId, existingFlag.assigneeName);
-    } else {
-      onAssign(primaryTeamId, memberId, name);
+    // Get unique users and sort
+    const uniqueUserIds = Array.from(
+      new Set(primaryMembers.map((m) => m.userId))
+    );
+    const me = uniqueUserIds.find((id) => id === user?.id);
+    const rest = uniqueUserIds
+      .filter((id) => id !== user?.id)
+      .sort((a, b) => {
+        const aName = primaryMembers.find((m) => m.userId === a)?.label ?? '';
+        const bName = primaryMembers.find((m) => m.userId === b)?.label ?? '';
+        return aName.localeCompare(bName);
+      });
+
+    return [...(me ? [me] : []), ...rest].map((userId) => {
+      const firstMember = primaryMembers.find((m) => m.userId === userId)!;
+      const label =
+        userId === user?.id ? `${firstMember.label} (you)` : firstMember.label;
+      return {
+        value: String(userId),
+        label,
+      };
+    });
+  }, [members, primaryTeamId, user]);
+
+  // Seed draft selection from server state when opening so users can multi-select before saving.
+  useEffect(() => {
+    if (!open) {
+      setOpenTeamSubmenuForUser(null);
+      setMembers([]);
+      setSelectedTeamPerUser({});
+      return;
     }
+    setDraftAssigneeIds(selectedAssigneeIds);
+  }, [open, selectedAssigneeIds]);
+
+  const handleToggle = (memberId: number) => {
+    setDraftAssigneeIds((prev) =>
+      prev.includes(memberId)
+        ? prev.filter((id) => id !== memberId)
+        : [...prev, memberId]
+    );
+  };
+
+  const handleSave = () => {
+    if (!primaryTeamId) return;
+    const nextAssigneeIds = draftAssigneeIds.filter((assigneeId) => {
+      const userTeams = userTeamsMap.get(assigneeId) ?? [];
+      // Assign to the primary team only
+      return userTeams.some((m) => m.teamId === primaryTeamId);
+    });
+
+    const selectedNames = members
+      .filter(
+        (m) => m.teamId === primaryTeamId && nextAssigneeIds.includes(m.userId)
+      )
+      .map((m) => m.label);
+    onSync(primaryTeamId, nextAssigneeIds, selectedNames, selectedTeamPerUser);
+
     setOpen(false);
   };
 
   if (readOnly) {
-    if (!isFlagged || !existingFlag) return null;
+    if (!isFlagged || !iconFlag) return null;
     return (
       <span
-        title={`Assigned to ${existingFlag.assigneeName}`}
-        aria-label={`Assigned to ${existingFlag.assigneeName}`}
+        title={`Assigned to ${flaggedLabel}`}
+        aria-label={`Assigned to ${flaggedLabel}`}
       >
         <ActivityFlagIcon
-          assigneeName={existingFlag.assigneeName}
-          assigneeFlagColour={existingFlag.assigneeFlagColour}
+          assigneeName={iconFlag.assigneeName}
+          assigneeFlagColour={iconFlag.assigneeFlagColour}
         />
       </span>
     );
@@ -147,24 +262,24 @@ export function ActivityFlagPopover({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size={triggerContent ? 'sm' : 'icon'}
           aria-label={
-            isFlagged ? 'Assigned — click to reassign' : 'Assign activity'
-          }
-          title={
             isFlagged
-              ? `Assigned to ${existingFlag.assigneeName}`
+              ? 'Assigned — click to edit assignments'
               : 'Assign activity'
           }
+          title={isFlagged ? `Assigned to ${flaggedLabel}` : 'Assign activity'}
           disabled={isPending || !primaryTeamId}
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
-          className="size-6 shrink-0"
+          className={triggerContent ? 'h-6 shrink-0 px-1.5' : 'size-6 shrink-0'}
         >
-          <ActivityFlagIcon
-            assigneeName={isFlagged ? existingFlag.assigneeName : null}
-            assigneeFlagColour={existingFlag?.assigneeFlagColour}
-          />
+          {triggerContent ?? (
+            <ActivityFlagIcon
+              assigneeName={isFlagged ? (iconFlag?.assigneeName ?? null) : null}
+              assigneeFlagColour={iconFlag?.assigneeFlagColour}
+            />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -188,28 +303,117 @@ export function ActivityFlagPopover({
             renderOption={(opt) => {
               const memberId = parseInt(opt.value, 10);
               const isMe = memberId === user?.id;
-              const isSelected = existingFlag?.assigneeId === memberId;
+              const isSelected = draftAssigneeIds.includes(memberId);
               const hasTeammates = options.length > 1;
+              const userTeams = userTeamsMap.get(memberId) ?? [];
+              const hasMultipleTeams = userTeams.length > 1;
+              const selectedTeam = selectedTeamPerUser[memberId];
+              const selectedTeamInfo = userTeams.find(
+                (m) => m.teamId === selectedTeam
+              );
+              const teamSubmenuOpen = openTeamSubmenuForUser === memberId;
+
               return (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => handleSelect(memberId)}
-                    className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm"
-                  >
-                    <Checkbox
-                      checked={isSelected}
-                      tabIndex={-1}
-                      className="pointer-events-none size-4 shrink-0"
-                      aria-hidden
-                    />
-                    <span className="min-w-0 truncate">{opt.label}</span>
-                  </button>
+                  <div className="flex w-full items-center gap-2 px-3 py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleToggle(memberId)}
+                      aria-pressed={isSelected}
+                      className="hover:bg-accent hover:text-accent-foreground flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1 text-left"
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        tabIndex={-1}
+                        className="pointer-events-none size-4 shrink-0"
+                        aria-hidden
+                      />
+                      <span className="min-w-0 truncate text-sm">
+                        {opt.label}
+                      </span>
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {hasMultipleTeams ? (
+                        <Popover
+                          open={teamSubmenuOpen}
+                          onOpenChange={(open) =>
+                            setOpenTeamSubmenuForUser(open ? memberId : null)
+                          }
+                        >
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenTeamSubmenuForUser(
+                                  teamSubmenuOpen ? null : memberId
+                                );
+                              }}
+                              className="hover:bg-muted ml-auto rounded px-1.5 py-1"
+                              title="Select team"
+                            >
+                              <span className="text-primary inline-flex items-center gap-0.5 rounded-full bg-[var(--fluent-brand-background-2)] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
+                                {selectedTeamInfo?.teamName ?? 'N/A'}
+                                <ChevronDown className="size-2.5 shrink-0" />
+                              </span>
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="w-48 p-0"
+                            align="end"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="space-y-1 p-1">
+                              {userTeams.map((team) => (
+                                <button
+                                  key={team.teamId}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTeamPerUser((prev) => ({
+                                      ...prev,
+                                      [memberId]: team.teamId,
+                                    }));
+                                    setOpenTeamSubmenuForUser(null);
+                                  }}
+                                  className={`hover:bg-accent w-full rounded px-2 py-1.5 text-left text-sm ${
+                                    selectedTeam === team.teamId
+                                      ? 'bg-accent font-medium'
+                                      : ''
+                                  }`}
+                                >
+                                  {team.teamName}
+                                </button>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <span className="text-primary inline-flex items-center rounded-full bg-[var(--fluent-brand-background-2)] px-2 py-0.5 text-[10px] leading-[14px] font-normal">
+                          {selectedTeamInfo?.teamName ?? 'N/A'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   {isMe && hasTeammates && <Separator />}
                 </>
               );
             }}
           />
+        )}
+        {!loadingMembers && (
+          <div className="flex justify-end border-t px-3 py-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSave}
+              disabled={
+                isPending || !primaryTeamId || primaryTeamMembers.length === 0
+              }
+            >
+              Save assignments
+            </Button>
+          </div>
         )}
       </PopoverContent>
     </Popover>

@@ -78,6 +78,20 @@
       "when": 1782172800000,
       "tag": "0010_20260623_teams_abbreviation_varchar6",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1782691200000,
+      "tag": "0011_20260629_activity_flags_multi_assignee",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783468800000,
+      "tag": "0012_20260708_activity_flags_display_team",
+      "breakpoints": true
     }
   ]
 }
