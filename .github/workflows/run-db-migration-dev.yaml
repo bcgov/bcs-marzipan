@@ -1,4 +1,4 @@
-name: DB Migrations to Openshift
+name: DB Migrations to Openshift Dev Silver
 
 permissions:
   contents: read
@@ -44,22 +44,28 @@ jobs:
             --server=${OPENSHIFT_SERVER} \
             --insecure-skip-tls-verify=true
 
-      - name: Apply DB migration ConfigMap
+      - name: Build DB migration image
         run: |
-          oc project ${DEV_NAMESPACE}
-          ls packages/database/migrations/*.sql
-          oc create configmap calendar-db-migrations \
-            --from-file=packages/database/migrations \
-            --dry-run=client -o yaml | oc apply -f -
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+          oc project ${TOOLS_NAMESPACE}
+          oc start-build calendar-db-migrate-build \
+            --from-dir=. \
+            --follow
+
+      - name: Tag DB migration image to dev namespace
+        run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+          oc tag ${TOOLS_NAMESPACE}/calendar-db-migrate:${APP_VERSION} ${DEV_NAMESPACE}/calendar-db-migrate:${APP_VERSION}
 
       - name: Run DB migrations
         run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
           oc delete job calendar-db-migrate \
             -n ${DEV_NAMESPACE} \
             --ignore-not-found
 
-          oc apply -f openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml \
-            -n ${DEV_NAMESPACE}
+          envsubst < openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml \
+            | oc apply -n ${DEV_NAMESPACE} -f -
 
           oc wait --for=condition=complete job/calendar-db-migrate \
             -n ${DEV_NAMESPACE} \
