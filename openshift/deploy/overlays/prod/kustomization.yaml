@@ -8,9 +8,9 @@ namespace: ${PROD_NAMESPACE}
 
 # Replace images built into the OpenShift internal registry.
 images:
-  - name: image-registry.openshift-image-registry.svc:5000/${TOOLS_NAMESPACE}/calendar-service
+  - name: calendar-service:latest
     newName: image-registry.openshift-image-registry.svc:5000/${PROD_NAMESPACE}/calendar-service
     newTag: ${APP_VERSION}
-  - name: image-registry.openshift-image-registry.svc:5000/${TOOLS_NAMESPACE}/calendar-ui
+  - name: calendar-ui:latest
     newName: image-registry.openshift-image-registry.svc:5000/${PROD_NAMESPACE}/calendar-ui
     newTag: ${APP_VERSION}
