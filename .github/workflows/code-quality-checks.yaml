@@ -1,4 +1,4 @@
-name: CI/CD
+name: Code quality checks
 permissions:
   contents: read
 on:
@@ -44,22 +44,3 @@ jobs:
 
       - name: Validate k6 performance scripts
         run: npm run perf:k6:inspect
-
-  # build-and-push:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Build calendar-service
-  #       run: |
-  #         docker build -f calendar-service/Dockerfile -t ${{ secrets.REGISTRY }}/calendar-service:${{ github.sha }} .
-  #         docker push ${{ secrets.REGISTRY }}/calendar-service:${{ github.sha }}
-  #     - name: Build calendar-ui
-  #       run: |
-  #         docker build -f calendar-ui/Dockerfile -t ${{ secrets.REGISTRY }}/calendar-ui:${{ github.sha }} .
-  #         docker push ${{ secrets.REGISTRY }}/calendar-ui:${{ github.sha }}
-  #     - name: Deploy to OpenShift (optional)
-  #       env:
-  #         KUBECONFIG: ${{ secrets.KUBECONFIG }}
-  #       run: |
-  #         # use kubectl / oc to apply kustomize overlay
-  #         oc apply -k openshift/overlays/dev

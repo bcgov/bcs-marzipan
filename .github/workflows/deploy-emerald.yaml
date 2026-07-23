@@ -1,0 +1,78 @@
+name: Deploy to Emerald
+
+# Triggered automatically when a PR is merged into develop, test, or prod.
+#
+# Flow:
+#   develop → build images → push to Artifactory dev repo → update dev GitOps overlay
+#   test    → build images → push to Artifactory test repo → update test GitOps overlay
+#   prod    → retag test images to prod (no rebuild) → update prod GitOps overlay
+#
+# ArgoCD picks up the GitOps overlay change and deploys to the target Emerald environment.
+
+on:
+  push:
+    branches:
+      - develop
+      - test
+      - prod
+
+permissions:
+  contents: read
+
+jobs:
+  # Resolve the branch name to an environment name and the matching Artifactory repo path.
+  resolve-env:
+    name: Resolve Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.map.outputs.environment }}
+      artifactory_repo: ${{ steps.map.outputs.artifactory_repo }}
+    steps:
+      - name: Map branch to environment and Artifactory repo
+        id: map
+        env:
+          ARTIFACTORY_DEV_IMAGE_REPO: ${{ vars.ARTIFACTORY_DEV_IMAGE_REPO }}
+          ARTIFACTORY_TEST_IMAGE_REPO: ${{ vars.ARTIFACTORY_TEST_IMAGE_REPO }}
+          ARTIFACTORY_PROD_IMAGE_REPO: ${{ vars.ARTIFACTORY_PROD_IMAGE_REPO }}
+        run: |
+          set -euo pipefail
+          case "${{ github.ref_name }}" in
+            develop)
+              : "${ARTIFACTORY_DEV_IMAGE_REPO:?Set repo variable ARTIFACTORY_DEV_IMAGE_REPO}"
+              echo "environment=dev"                             >> "$GITHUB_OUTPUT"
+              echo "artifactory_repo=${ARTIFACTORY_DEV_IMAGE_REPO}" >> "$GITHUB_OUTPUT"
+              ;;
+            test)
+              : "${ARTIFACTORY_TEST_IMAGE_REPO:?Set repo variable ARTIFACTORY_TEST_IMAGE_REPO}"
+              echo "environment=test"                              >> "$GITHUB_OUTPUT"
+              echo "artifactory_repo=${ARTIFACTORY_TEST_IMAGE_REPO}" >> "$GITHUB_OUTPUT"
+              ;;
+            prod)
+              : "${ARTIFACTORY_PROD_IMAGE_REPO:?Set repo variable ARTIFACTORY_PROD_IMAGE_REPO}"
+              echo "environment=prod"                              >> "$GITHUB_OUTPUT"
+              echo "artifactory_repo=${ARTIFACTORY_PROD_IMAGE_REPO}" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unrecognised branch: ${{ github.ref_name }}" >&2
+              exit 1
+              ;;
+          esac
+
+  # Build (dev/test) or promote via retag (prod), then push to Artifactory.
+  build-and-push:
+    name: Build / Promote Images
+    needs: resolve-env
+    uses: ./.github/workflows/artifactory-build.yaml
+    with:
+      artifactory_image_repo: ${{ needs.resolve-env.outputs.artifactory_repo }}
+      target_environment: ${{ needs.resolve-env.outputs.environment }}
+    secrets: inherit
+
+  # Update the kustomize image tag in the GitOps repo so ArgoCD syncs the new image.
+  update-gitops:
+    name: Update GitOps Overlay
+    needs: [resolve-env, build-and-push]
+    uses: ./.github/workflows/promote-emerald-gitops.yaml
+    with:
+      target_environment: ${{ needs.resolve-env.outputs.environment }}
+    secrets: inherit
