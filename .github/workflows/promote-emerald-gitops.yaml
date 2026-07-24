@@ -18,16 +18,14 @@ on:
         description: Image tag to promote (defaults to APP_VERSION variable, else short SHA)
         required: false
         type: string
-      create_as_draft:
-        description: Open the GitOps pull request as draft
-        required: false
-        default: false
-        type: boolean
 
 jobs:
   update-gitops-overlay:
     name: Update GitOps Overlay Tag
     runs-on: ubuntu-latest
+    concurrency:
+      group: promote-emerald-gitops-${{ inputs.target_environment }}
+      cancel-in-progress: false
     env:
       # Required repo variable, format: owner/repo
       GITOPS_REPO: ${{ vars.GITOPS_REPO }}
@@ -156,10 +154,9 @@ jobs:
         if: steps.update_overlay.outputs.changed == 'true'
         run: |
           cd gitops
-          git add ${{ steps.resolve_promotion_inputs.outputs.kustomization_path }}
+          git add -- "${{ steps.resolve_promotion_inputs.outputs.kustomization_path }}"
           git commit -m "chore(gitops): promote emerald ${{ inputs.target_environment }} to ${{ steps.resolve_promotion_inputs.outputs.image_tag }}"
-          git push origin ${{ steps.resolve_promotion_inputs.outputs.base_branch }}
-
+          git push --force-with-lease origin ${{ steps.resolve_promotion_inputs.outputs.base_branch }}
       - name: Summary
         run: |
           echo "Target environment : ${{ inputs.target_environment }}"
