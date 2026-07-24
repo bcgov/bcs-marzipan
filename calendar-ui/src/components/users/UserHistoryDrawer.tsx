@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { buildUserHistoryChangeMessage } from '@/components/users/userHistoryFormatting';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 interface UserHistoryDrawerProps {
   user: UserListItem;
@@ -56,7 +57,7 @@ export function UserHistoryDrawer({
   });
 
   const { data: teams = [] } = useQuery({
-    queryKey: ['teams', 'history-lookups'],
+    queryKey: lookupQueryKeys.teams(),
     queryFn: fetchTeams,
     enabled: open,
   });
