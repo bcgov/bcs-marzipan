@@ -194,24 +194,22 @@ describe('createActivityRequestSchema', () => {
     ).toThrow();
   });
 
-  it('enforces strategy and notes max length (1000)', () => {
+  it('enforces strategy and notes max length (2000)', () => {
     createActivityRequestSchema.parse(
       minimalCreateRequest({
-        strategy: 'a'.repeat(1000),
-        notes: 'b'.repeat(1000),
+        strategy: 'a'.repeat(2000),
+        notes: 'b'.repeat(2000),
       })
     );
 
     expect(() =>
       createActivityRequestSchema.parse(
-        minimalCreateRequest({ strategy: 'a'.repeat(1001) })
+        minimalCreateRequest({ strategy: 'a'.repeat(2001) })
       )
     ).toThrow();
 
     expect(() =>
-      createActivityRequestSchema.parse(
-        minimalCreateRequest({ notes: 'b'.repeat(1001) })
-      )
+      createActivityRequestSchema.parse(minimalCreateRequest({ notes: 'b'.repeat(2001) }))
     ).toThrow();
   });
 
