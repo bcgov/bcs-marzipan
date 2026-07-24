@@ -8,7 +8,10 @@ import type {
   VenuePresetItem,
   VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
-import type { ActivityFormData } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_VENUE_TEXT_MAX_LENGTH,
+  type ActivityFormData,
+} from '@corpcal/shared/schemas';
 import { normalizeEventPlannerFormEntries } from '@corpcal/shared/utils';
 import { fetchCities, fetchVenuePresets } from '@/api/lookupsApi';
 import {
@@ -66,8 +69,6 @@ import type { OptionItem } from '@/schemas/types';
 import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
-
-const ACTIVITY_VENUE_TEXT_MAX_LENGTH = 255;
 
 const PINNED_BADGE_MAX_TOTAL = 4;
 

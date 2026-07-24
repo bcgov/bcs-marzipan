@@ -8,6 +8,7 @@ import type {
 } from '@corpcal/shared/api/types';
 import {
   ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH,
+  ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
   ACTIVITY_SUMMARY_MAX_LENGTH,
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
@@ -81,8 +82,6 @@ import {
 } from '../activity-lead-team-field-config';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
-
-const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
 
 type LeadOrganizationOption = {
   value: number;

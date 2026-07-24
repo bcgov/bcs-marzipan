@@ -12,10 +12,11 @@ import {
 } from '../validation/zod-issue-kind';
 
 const CHARACTER_LIMIT_EXCEEDED_MESSAGE = 'Maximum character limit exceeded';
-export const ACTIVITY_SUMMARY_MAX_LENGTH = 2000;
-export const ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH = 200;
-const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 1000;
-const ACTIVITY_VENUE_TEXT_MAX_LENGTH = 255;
+export const ACTIVITY_SUMMARY_MAX_LENGTH = 4000;
+export const ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH = 2000;
+export const ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH = 2000;
+export const ACTIVITY_SCHEDULING_NOTES_MAX_LENGTH = 500;
+export const ACTIVITY_VENUE_TEXT_MAX_LENGTH = 255;
 
 /**
  * Activity Zod Schemas
@@ -156,7 +157,10 @@ const activityCoreFieldsSchema = z.object({
   ),
   schedulingNotes: z
     .string()
-    .max(500, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+    .max(
+      ACTIVITY_SCHEDULING_NOTES_MAX_LENGTH,
+      MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
+    )
     .optional()
     .nullable(),
   strategy: z

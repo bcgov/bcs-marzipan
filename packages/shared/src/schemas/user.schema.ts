@@ -17,8 +17,8 @@ import { z } from 'zod';
 
 export const TEAM_ROLES = ['owner', 'member'] as const;
 
-const USER_DISPLAY_NAME_MAX_LENGTH = 255;
-const USER_NOTES_MAX_LENGTH = 1000;
+export const USER_DISPLAY_NAME_MAX_LENGTH = 255;
+export const USER_NOTES_MAX_LENGTH = 1000;
 
 // ============================================
 // Response Schemas

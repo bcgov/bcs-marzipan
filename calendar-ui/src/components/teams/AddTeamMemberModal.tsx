@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
+import { USER_NOTES_MAX_LENGTH } from '@corpcal/shared/schemas';
 import { addUserToTeam, fetchUsers } from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
 import {
@@ -187,7 +188,7 @@ export function AddTeamMemberModal({
               placeholder="Add notes (optional)"
               rows={4}
               value={notes}
-              maxLength={1000}
+              maxLength={USER_NOTES_MAX_LENGTH}
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>

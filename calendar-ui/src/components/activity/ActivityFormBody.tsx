@@ -157,6 +157,10 @@ export function ActivityFormBody({
             <ActivityCommsSection
               commsMaterialOptions={lookups.commsMaterials}
               commsLeadOptions={commsLeadOptions}
+              translationLanguageOptions={lookups.translationLanguages}
+              newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
+              newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+              translationRequiredStatuses={lookups.translationRequiredStatuses}
             />
           </div>
 

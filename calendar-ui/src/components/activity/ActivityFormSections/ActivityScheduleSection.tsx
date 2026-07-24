@@ -7,7 +7,10 @@ import type {
   DateStatusLookupItem,
   TimeStatusLookupItem,
 } from '@corpcal/shared/api/types';
-import type { ActivityFormData } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_SCHEDULING_NOTES_MAX_LENGTH,
+  type ActivityFormData,
+} from '@corpcal/shared/schemas';
 import {
   FormSelectSafe,
   FormSelectTrigger,
@@ -561,6 +564,7 @@ export function ActivityScheduleSection({
                 placeholder="Enter scheduling considerations"
                 readOnly={readOnly}
                 rows={4}
+                maxLength={ACTIVITY_SCHEDULING_NOTES_MAX_LENGTH}
                 {...field}
                 value={field.value ?? ''}
               />

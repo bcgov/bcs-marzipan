@@ -8,6 +8,7 @@ import {
   RemoveFormatting,
 } from 'lucide-react';
 import sanitizeHtml from 'sanitize-html';
+import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -123,6 +124,7 @@ export function RichTextField({
   );
   const coalescedValueRef = useRef(coalescedValue);
   coalescedValueRef.current = coalescedValue;
+  const lastRejectedLengthToastAtRef = useRef(0);
 
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -167,6 +169,17 @@ export function RichTextField({
           maxLength,
         })
       ) {
+        const now = Date.now();
+        if (now - lastRejectedLengthToastAtRef.current > 1200) {
+          toast.error(
+            `Maximum character limit reached (${maxLength} characters).`,
+            {
+              id: `rich-text-max-length-${name}`,
+            }
+          );
+          lastRejectedLengthToastAtRef.current = now;
+        }
+
         const args = getSetContentArgs(propValue);
         isSyncingFromPropRef.current = true;
         if (args.contentType === 'json') {

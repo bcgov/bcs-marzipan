@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
+import { USER_NOTES_MAX_LENGTH } from '@corpcal/shared/schemas';
 import {
   fetchUserActivities,
   fetchUsers,
@@ -361,7 +362,7 @@ export function TransferActivitiesDialog({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              maxLength={1000}
+              maxLength={USER_NOTES_MAX_LENGTH}
               placeholder="Reason for transfer..."
               className="min-h-[60px] rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:outline-none"
               rows={2}

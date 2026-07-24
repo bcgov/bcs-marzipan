@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useEffect, useRef, useState } from 'react';
 
 import type { CreateUserBody } from '@corpcal/shared/api/types';
+import { USER_DISPLAY_NAME_MAX_LENGTH } from '@corpcal/shared/schemas';
 import { createUser, fetchRoles, fetchTeams } from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,7 +56,7 @@ const createUserFormSchema = z.object({
     .min(1, 'Email is required')
     .email('Invalid email format'),
   roleId: z.string().min(1, 'Role is required'),
-  displayName: z.string().trim().max(255).default(''),
+  displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).default(''),
   teamIds: z.array(z.number().int()).default([]),
 });
 
@@ -224,7 +225,11 @@ export function UserCreateModal({
                 <FormItem>
                   <FormLabel showDirtyIndicator={false}>Display name</FormLabel>
                   <FormControl>
-                    <Input type="text" maxLength={255} {...field} />
+                    <Input
+                      type="text"
+                      maxLength={USER_DISPLAY_NAME_MAX_LENGTH}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
