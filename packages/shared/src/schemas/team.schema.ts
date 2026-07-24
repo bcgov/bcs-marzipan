@@ -19,7 +19,7 @@ const teamAbbreviationValueSchema = z
       .max(6, 'Abbreviation must be at most 6 characters')
   );
 
-const TEAM_DESCRIPTION_MAX_LENGTH = 1000;
+export const TEAM_DESCRIPTION_MAX_LENGTH = 1000;
 
 // ============================================
 // Response Schemas
