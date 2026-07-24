@@ -153,7 +153,9 @@ describe('createActivityRequestSchema', () => {
     ).toThrow();
   });
 
-  it('enforces significance and executiveSummary max plain-text length (200)', () => {
+  it(
+    `enforces significance and executiveSummary max plain-text length (${ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH})`,
+    () => {
     createActivityRequestSchema.parse(
       minimalCreateRequest({
         significance: 's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH),
