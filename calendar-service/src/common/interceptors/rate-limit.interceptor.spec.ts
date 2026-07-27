@@ -352,7 +352,7 @@ describe('RateLimitInterceptor', () => {
       });
     });
 
-    it('resets rate limit after window expiry', async () => {
+    it('blocks requests when RATE_LIMIT_MAX is 1', async () => {
       vi.spyOn(ConfigService.prototype, 'get').mockImplementation((key) => {
         if (key === 'RATE_LIMIT_MAX') return '1';
         if (key === 'RATE_LIMIT_STORE') return 'memory';
