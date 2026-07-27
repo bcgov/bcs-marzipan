@@ -14,4 +14,4 @@ FROM roles r
 CROSS JOIN permissions p
 WHERE r.name IN ('Advanced Editor', 'Admin', 'System Admin')
   AND p.key = 'activities.pitchStatus.edit'
-ON CONFLICT (role_id, permission_id) DO NOTHING;
+ON CONFLICT (role_id, permission_id) DO UPDATE SET is_active = true, updated_at = now();
