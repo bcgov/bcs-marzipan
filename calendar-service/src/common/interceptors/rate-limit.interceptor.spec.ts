@@ -149,14 +149,12 @@ describe('RateLimitInterceptor', () => {
 
       // Make 3 successful requests
       for (let i = 0; i < 3; i++) {
-        await new Promise<void>((resolve) => {
+        await new Promise<void>((resolve, reject) => {
           interceptor
             .intercept(mockContext as ExecutionContext, mockNext)
             .subscribe({
               next: () => resolve(),
-              error: (err) => {
-                throw err;
-              },
+              error: (err) => reject(err),
             });
         });
       }
