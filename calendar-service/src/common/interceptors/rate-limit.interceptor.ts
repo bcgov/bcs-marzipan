@@ -151,7 +151,13 @@ class RedisRateLimitStore implements RateLimitStore {
     }
 
     if (this.connectPromise) {
-      await this.connectPromise;
+      try {
+        await this.connectPromise;
+      } catch (error) {
+        this.client = null;
+        this.connectPromise = null;
+        throw error;
+      }
     }
 
     return this.client;
