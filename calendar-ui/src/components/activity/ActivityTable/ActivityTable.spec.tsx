@@ -2,12 +2,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
+import { clearStrictModeScrollRestoreFallback } from '@/lib/activity-list-scroll-restore';
 
 import { ActivityTable } from './ActivityTable';
 
 const mockNavigate = vi.fn();
 const mockSetPreferences = vi.fn();
 let mockLocationState: unknown = null;
+let mockNavigationType: 'POP' | 'PUSH' | 'REPLACE' = 'PUSH';
 
 function makeActivity(id: number) {
   return {
@@ -71,6 +73,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
       state: mockLocationState,
     }),
     useSearchParams: () => [new URLSearchParams(), vi.fn()],
+    useNavigationType: () => mockNavigationType,
   };
 });
 
@@ -175,7 +178,9 @@ describe('ActivityTable scroll state capture', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockLocationState = null;
+    mockNavigationType = 'PUSH';
     window.sessionStorage.clear();
+    clearStrictModeScrollRestoreFallback();
   });
 
   it('captures page and focus activity when opening details', () => {
@@ -253,6 +258,7 @@ describe('ActivityTable scroll state capture', () => {
   });
 
   it('restores from sessionStorage when location state has no scroll fields (browser back)', async () => {
+    mockNavigationType = 'POP';
     mockLocationState = null;
     window.sessionStorage.setItem(
       'activityListScrollState',
@@ -290,5 +296,30 @@ describe('ActivityTable scroll state capture', () => {
 
     rafSpy.mockRestore();
     cancelSpy.mockRestore();
+  });
+
+  it('does not restore from sessionStorage on direct navigation (non-POP)', async () => {
+    mockNavigationType = 'PUSH';
+    mockLocationState = null;
+    window.sessionStorage.setItem(
+      'activityListScrollState',
+      JSON.stringify({
+        activityListPageIndex: 1,
+        activityListScrollTop: 180,
+        activityListFocusActivityId: 12,
+      })
+    );
+
+    render(<ActivityTable />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Page 1' })).toHaveAttribute(
+        'aria-current',
+        'page'
+      );
+    });
+
+    expect(screen.getByText('Test Activity 1')).toBeInTheDocument();
+    expect(window.sessionStorage.getItem('activityListScrollState')).toBeNull();
   });
 });

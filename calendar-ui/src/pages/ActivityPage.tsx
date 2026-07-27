@@ -70,10 +70,8 @@ import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { useFavourites } from '../hooks/useFavourites';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
+  buildActivityListScrollRestoreReturnState,
   getActivityFormBackTarget,
-  getActivityListPageIndex,
-  getActivityListScrollTop,
-  getActivityListWindowScrollTop,
 } from '../lib/activity-form-navigation-state';
 import {
   buildMarkReviewedOnlyPayload,
@@ -404,21 +402,10 @@ export function ActivityPage({
 
   const handleGoBack = useCallback(() => {
     const fromState = getActivityFormBackTarget(location.state);
-    const activityListPageIndex = getActivityListPageIndex(location.state);
-    const activityListScrollTop = getActivityListScrollTop(location.state);
-    const activityListWindowScrollTop = getActivityListWindowScrollTop(
-      location.state
-    );
     if (fromState != null) {
       void navigate(fromState, {
         replace: true,
-        state: {
-          ...(activityListPageIndex != null && { activityListPageIndex }),
-          ...(activityListScrollTop != null && { activityListScrollTop }),
-          ...(activityListWindowScrollTop != null && {
-            activityListWindowScrollTop,
-          }),
-        },
+        state: buildActivityListScrollRestoreReturnState(location.state, id),
       });
       return;
     }
@@ -427,7 +414,7 @@ export function ActivityPage({
     } else {
       void navigate('/');
     }
-  }, [navigate, location.state]);
+  }, [navigate, location.state, id]);
 
   const mayEditFormFields =
     canEditActivity && (!isBlockedStatus || canEditWhenBlocked);
