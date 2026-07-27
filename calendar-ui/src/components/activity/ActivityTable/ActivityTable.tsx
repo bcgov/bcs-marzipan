@@ -23,10 +23,12 @@ import { toast } from 'sonner';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type MutableRefObject,
 } from 'react';
 
 import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
@@ -203,13 +205,44 @@ function writeStoredActivityListScrollState(
 ): void {
   if (typeof window === 'undefined') return;
   try {
+    const existing =
+      parseStoredActivityListScrollState(
+        window.sessionStorage.getItem(ACTIVITY_LIST_SCROLL_STATE_KEY)
+      ) ?? {};
+    const merged: StoredActivityListScrollState = { ...existing };
+    if (state.activityListPageIndex !== undefined) {
+      merged.activityListPageIndex = state.activityListPageIndex;
+    }
+    if (state.activityListScrollTop !== undefined) {
+      merged.activityListScrollTop = state.activityListScrollTop;
+    }
+    if (state.activityListWindowScrollTop !== undefined) {
+      merged.activityListWindowScrollTop = state.activityListWindowScrollTop;
+    }
+    if (state.activityListFocusActivityId !== undefined) {
+      merged.activityListFocusActivityId = state.activityListFocusActivityId;
+    }
     window.sessionStorage.setItem(
       ACTIVITY_LIST_SCROLL_STATE_KEY,
-      JSON.stringify(state)
+      JSON.stringify(merged)
     );
   } catch {
     // ignore
   }
+}
+
+function hasPendingActivityListScrollRestore(refs: {
+  pendingFocusActivityIdRef: MutableRefObject<number | null>;
+  pendingPageIndexRef: MutableRefObject<number | null>;
+  pendingScrollTopRef: MutableRefObject<number | null>;
+  pendingWindowScrollTopRef: MutableRefObject<number | null>;
+}): boolean {
+  return (
+    refs.pendingFocusActivityIdRef.current != null ||
+    refs.pendingPageIndexRef.current != null ||
+    refs.pendingScrollTopRef.current != null ||
+    refs.pendingWindowScrollTopRef.current != null
+  );
 }
 
 function parseStoredActivityListScrollState(
@@ -1395,6 +1428,16 @@ export function ActivityTable({
 
   useEffect(() => {
     if (!isActivityListRoute) return;
+    if (
+      hasPendingActivityListScrollRestore({
+        pendingFocusActivityIdRef,
+        pendingPageIndexRef,
+        pendingScrollTopRef,
+        pendingWindowScrollTopRef,
+      })
+    ) {
+      return;
+    }
     const scrollTop = tableScrollRef.current?.scrollTop ?? 0;
     latestContainerScrollTopRef.current = scrollTop;
     writeStoredActivityListScrollState({
@@ -1775,7 +1818,7 @@ export function ActivityTable({
       ]
     );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isActivityListRoute) return;
 
     const statePageIndex = getActivityListPageIndex(location.state);

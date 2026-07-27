@@ -251,4 +251,44 @@ describe('ActivityTable scroll state capture', () => {
     rafSpy.mockRestore();
     cancelSpy.mockRestore();
   });
+
+  it('restores from sessionStorage when location state has no scroll fields (browser back)', async () => {
+    mockLocationState = null;
+    window.sessionStorage.setItem(
+      'activityListScrollState',
+      JSON.stringify({
+        activityListPageIndex: 1,
+        activityListScrollTop: 180,
+        activityListFocusActivityId: 12,
+      })
+    );
+
+    const rafSpy = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((cb: FrameRequestCallback) => {
+        cb(0);
+        return 1;
+      });
+    const cancelSpy = vi
+      .spyOn(window, 'cancelAnimationFrame')
+      .mockImplementation(() => {});
+
+    render(<ActivityTable />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Page 2' })).toHaveAttribute(
+        'aria-current',
+        'page'
+      );
+    });
+
+    const table = screen.getByRole('grid');
+    const scroller = table.closest('div.overflow-auto');
+    expect(scroller).toBeTruthy();
+    expect(scroller?.scrollTop).toBe(180);
+    expect(window.sessionStorage.getItem('activityListScrollState')).toBeNull();
+
+    rafSpy.mockRestore();
+    cancelSpy.mockRestore();
+  });
 });
