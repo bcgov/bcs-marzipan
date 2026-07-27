@@ -110,9 +110,12 @@ class RedisRateLimitStore implements RateLimitStore {
         await client.pExpire(key, windowMs);
       }
 
-      const ttl = await client.pTTL(key);
-      const effectiveTtl = ttl > 0 ? ttl : windowMs;
-
+      let ttl = await client.pTTL(key);
+      if (ttl < 0) {
+        await client.pExpire(key, windowMs);
+        ttl = windowMs;
+      }
+      const effectiveTtl = ttl;
       return {
         count,
         resetTime: now + effectiveTtl,
