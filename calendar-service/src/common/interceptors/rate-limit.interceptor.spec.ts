@@ -410,14 +410,12 @@ describe('RateLimitInterceptor', () => {
       };
 
       // First request succeeds
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
         limitedInterceptor
           .intercept(mockContext as ExecutionContext, mockNext)
           .subscribe({
             next: () => resolve(),
-            error: (err) => {
-              throw err;
-            },
+            error: (err) => reject(err),
           });
       });
 
