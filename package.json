@@ -28,9 +28,15 @@
       "multer": "2.2.0"
     },
     "@nestjs/swagger": {
-      "js-yaml": "4.2.0"
+      "js-yaml": "5.2.2"
     },
-    "js-yaml": "4.2.0",
+    "fork-ts-checker-webpack-plugin": {
+      "js-yaml": "5.2.2"
+    },
+    "cosmiconfig": {
+      "js-yaml": "5.2.2"
+    },
+    "js-yaml": "5.2.2",
     "multer": "2.2.0",
     "lodash": ">=4.17.22",
     "tmp": "0.2.7",
