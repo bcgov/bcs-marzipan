@@ -293,6 +293,13 @@ export function FreeformCombobox({
           value: entry.value,
         };
         if (multiple) {
+          const alreadySelected = selectedList.some(
+            (item) => item.type === newItem.type && item.value === newItem.value
+          );
+          if (alreadySelected) {
+            setInputValue('');
+            return;
+          }
           const next = [...selectedList, newItem];
           onChange(next);
         } else {
@@ -307,6 +314,13 @@ export function FreeformCombobox({
         value: entry.value,
       };
       if (multiple) {
+        const alreadySelected = selectedList.some(
+          (item) => item.type === newItem.type && item.value === newItem.value
+        );
+        if (alreadySelected) {
+          setInputValue('');
+          return;
+        }
         const next = [...selectedList, newItem];
         onChange(next);
       } else {
