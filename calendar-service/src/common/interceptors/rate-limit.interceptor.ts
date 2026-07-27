@@ -278,18 +278,15 @@ export class RateLimitInterceptor implements NestInterceptor {
   }
 
   private getMaxRequestsForUrl(url: string): number {
-    const strictAuthPaths = new Set([
-      '/auth/login',
-      '/auth/check-email',
-      '/auth/set-password',
-      '/auth/verify-reset-code',
-      '/auth/change-password',
-    ]);
-
-    if (strictAuthPaths.has(url)) {
-      return this.authMaxRequests;
+    switch (url) {
+      case '/auth/login':
+      case '/auth/check-email':
+      case '/auth/set-password':
+      case '/auth/verify-reset-code':
+      case '/auth/change-password':
+        return this.authMaxRequests;
+      default:
+        return this.maxRequests;
     }
-
-    return this.maxRequests;
   }
 }
