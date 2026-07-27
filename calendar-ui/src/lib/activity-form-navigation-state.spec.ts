@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   activityFormLinkState,
+  buildActivityListScrollRestoreReturnState,
   getActivityFormBackTarget,
+  getActivityListFocusActivityId,
   getActivityListPageIndex,
   getActivityListScrollTop,
   getActivityListWindowScrollTop,
@@ -14,7 +16,8 @@ describe('activity-form-navigation-state', () => {
       { pathname: '/activities', search: '?page=2', hash: '#top' },
       384,
       96,
-      2
+      2,
+      42
     ).state;
 
     expect(state).toEqual({
@@ -22,6 +25,7 @@ describe('activity-form-navigation-state', () => {
       activityListScrollTop: 384,
       activityListWindowScrollTop: 96,
       activityListPageIndex: 2,
+      activityListFocusActivityId: 42,
     });
   });
 
@@ -48,5 +52,31 @@ describe('activity-form-navigation-state', () => {
       getActivityListWindowScrollTop({ activityListWindowScrollTop: 'bad' })
     ).toBeNull();
     expect(getActivityListPageIndex({ activityListPageIndex: -1 })).toBeNull();
+  });
+
+  it('builds scroll-restore return state with focus id fallback', () => {
+    expect(
+      buildActivityListScrollRestoreReturnState(
+        {
+          from: '/?tab=all',
+          activityListPageIndex: 1,
+          activityListScrollTop: 180,
+        },
+        99
+      )
+    ).toEqual({
+      activityListPageIndex: 1,
+      activityListScrollTop: 180,
+      activityListFocusActivityId: 99,
+    });
+  });
+
+  it('reads focus activity id from state', () => {
+    expect(
+      getActivityListFocusActivityId({ activityListFocusActivityId: 12 })
+    ).toBe(12);
+    expect(
+      getActivityListFocusActivityId({ activityListFocusActivityId: 0 })
+    ).toBeNull();
   });
 });

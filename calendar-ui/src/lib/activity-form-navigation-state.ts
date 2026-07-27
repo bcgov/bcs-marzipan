@@ -9,6 +9,7 @@ export type ActivityFormNavigationState = {
   activityListScrollTop?: number;
   activityListWindowScrollTop?: number;
   activityListPageIndex?: number;
+  activityListFocusActivityId?: number;
 };
 
 /**
@@ -22,13 +23,15 @@ export function activityFormLinkState(
   location: Pick<Location, 'pathname' | 'search' | 'hash'>,
   activityListScrollTop: number | null | undefined,
   activityListWindowScrollTop?: number | null,
-  activityListPageIndex?: number | null
+  activityListPageIndex?: number | null,
+  activityListFocusActivityId?: number | null
 ): { state: ActivityFormNavigationState };
 export function activityFormLinkState(
   location: Pick<Location, 'pathname' | 'search' | 'hash'>,
   activityListScrollTop?: number | null,
   activityListWindowScrollTop?: number | null,
-  activityListPageIndex?: number | null
+  activityListPageIndex?: number | null,
+  activityListFocusActivityId?: number | null
 ): { state: ActivityFormNavigationState } {
   const state: ActivityFormNavigationState = {
     from: `${location.pathname}${location.search}${location.hash}`,
@@ -54,6 +57,14 @@ export function activityFormLinkState(
     activityListPageIndex >= 0
   ) {
     state.activityListPageIndex = activityListPageIndex;
+  }
+
+  if (
+    typeof activityListFocusActivityId === 'number' &&
+    Number.isInteger(activityListFocusActivityId) &&
+    activityListFocusActivityId > 0
+  ) {
+    state.activityListFocusActivityId = activityListFocusActivityId;
   }
 
   return { state };
@@ -103,4 +114,44 @@ export function getActivityListPageIndex(state: unknown): number | null {
     return null;
   }
   return pageIndex;
+}
+
+export function getActivityListFocusActivityId(state: unknown): number | null {
+  if (state === null || typeof state !== 'object') return null;
+  const focusActivityId = (state as { activityListFocusActivityId?: unknown })
+    .activityListFocusActivityId;
+  if (
+    typeof focusActivityId !== 'number' ||
+    !Number.isInteger(focusActivityId) ||
+    focusActivityId <= 0
+  ) {
+    return null;
+  }
+  return focusActivityId;
+}
+
+/**
+ * Scroll-restore fields forwarded when returning to the activity list.
+ * Omits `from` so stale restore state is not re-applied on later navigations.
+ */
+export function buildActivityListScrollRestoreReturnState(
+  state: unknown,
+  focusActivityId?: number | null
+): Record<string, number> {
+  const activityListPageIndex = getActivityListPageIndex(state);
+  const activityListScrollTop = getActivityListScrollTop(state);
+  const activityListWindowScrollTop = getActivityListWindowScrollTop(state);
+  const activityListFocusActivityId =
+    focusActivityId ?? getActivityListFocusActivityId(state);
+
+  return {
+    ...(activityListPageIndex != null && { activityListPageIndex }),
+    ...(activityListScrollTop != null && { activityListScrollTop }),
+    ...(activityListWindowScrollTop != null && {
+      activityListWindowScrollTop,
+    }),
+    ...(activityListFocusActivityId != null && {
+      activityListFocusActivityId,
+    }),
+  };
 }
