@@ -297,16 +297,12 @@ describe('RateLimitInterceptor', () => {
         switchToHttp: () => createHttpArgumentsHost(request),
       };
 
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
         interceptor
           .intercept(mockContext as ExecutionContext, mockNext)
           .subscribe({
-            next: () => {
-              resolve();
-            },
-            error: (err) => {
-              throw err;
-            },
+            next: () => resolve(),
+            error: (err) => reject(err),
           });
       });
     });
