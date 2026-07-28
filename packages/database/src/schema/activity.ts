@@ -42,7 +42,6 @@ import {
   activityTags,
   activityThemes,
   activityTranslationsRequired,
-  favoriteActivities,
 } from './relations';
 import { teams } from './teams';
 import { users } from './user';
@@ -252,7 +251,6 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
   activityTags: many(activityTags),
   activitySubscriptions: many(activitySubscriptions),
   activitySectors: many(activitySectors),
-  favoriteActivities: many(favoriteActivities),
   reportSettings: many(activityReportSettings),
   venueAddress: one(venueAddresses, {
     fields: [activities.id],

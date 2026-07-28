@@ -30,7 +30,6 @@ import {
   commsMaterials,
   dateStatuses,
   deletionAudit,
-  favoriteActivities,
   ministries,
   pitchRequiredStatuses,
   teams,
@@ -2824,9 +2823,6 @@ export class ActivitiesService {
       await tx
         .delete(activityTranslationsRequired)
         .where(eq(activityTranslationsRequired.activityId, id));
-      await tx
-        .delete(favoriteActivities)
-        .where(eq(favoriteActivities.activityId, id));
       await tx
         .delete(activitySubscriptions)
         .where(eq(activitySubscriptions.activityId, id));

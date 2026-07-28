@@ -52,7 +52,12 @@ CREATE TABLE "activity_history" (
 	"action_type" varchar(50) NOT NULL,
 	"changes" jsonb,
 	"notes" text,
-	"timestamp" timestamp with time zone DEFAULT now() NOT NULL
+	"timestamp" timestamp with time zone DEFAULT now() NOT NULL,
+	"activity_title" text,
+	"activity_display_id" text,
+	"actor_display_name" text,
+	"actor_username" text,
+	"category_tags_text" text
 );
 --> statement-breakpoint
 CREATE TABLE "deletion_audit" (
@@ -76,6 +81,9 @@ CREATE TABLE "users" (
 	"ad_division" varchar(255),
 	"ad_department" varchar(255),
 	"ad_job_title" varchar(255),
+	"password_hash" varchar(255),
+	"status" varchar(30) DEFAULT 'active' NOT NULL,
+	"password_changed_at" timestamp with time zone,
 	"phone" varchar(50),
 	"notes" text,
 	"last_login_date_time" timestamp with time zone,
@@ -112,10 +120,11 @@ CREATE TABLE "ministries" (
 	"is_active" boolean DEFAULT true NOT NULL,
 	"name" varchar(255) NOT NULL,
 	"display_name" varchar(255) NOT NULL,
-	"abbreviation" varchar(10) NOT NULL,
-	"minister_name" varchar(255),
+	"abbreviation" varchar(5) NOT NULL,
+	"minister_government_rep_id" integer,
 	"contact_user_id" integer,
 	"second_contact_user_id" integer,
+	"ministry_group_id" integer,
 	"created_date_time" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_by" integer NOT NULL,
 	"last_updated_date_time" timestamp with time zone DEFAULT now() NOT NULL,
@@ -148,6 +157,16 @@ CREATE TABLE "pods" (
 	"created_by" integer NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_date_time" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_updated_date_time" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_updated_by" integer NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "ministry_groups" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" varchar(200) NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"created_date_time" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_by" integer NOT NULL,
 	"last_updated_date_time" timestamp with time zone DEFAULT now() NOT NULL,
 	"last_updated_by" integer NOT NULL
 );
@@ -221,20 +240,6 @@ CREATE TABLE "cities" (
 	"last_updated_by" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "comms_contacts" (
-	"id" serial PRIMARY KEY NOT NULL,
-	"name" varchar(255) NOT NULL,
-	"display_name" varchar(255) NOT NULL,
-	"sort_order" integer DEFAULT 0 NOT NULL,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"email" varchar(255),
-	"phone" varchar(50),
-	"created_date_time" timestamp with time zone DEFAULT now() NOT NULL,
-	"created_by" integer NOT NULL,
-	"last_updated_date_time" timestamp with time zone DEFAULT now() NOT NULL,
-	"last_updated_by" integer NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "comms_materials" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
@@ -282,7 +287,6 @@ CREATE TABLE "government_representatives" (
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"title" varchar(255),
-	"ministry_id" integer,
 	"representative_type" varchar(50),
 	"created_date_time" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_by" integer NOT NULL,
@@ -565,12 +569,6 @@ CREATE TABLE "activity_translation_languages" (
 	CONSTRAINT "activity_translation_languages_activity_id_language_id_pk" PRIMARY KEY("activity_id","language_id")
 );
 --> statement-breakpoint
-CREATE TABLE "favorite_activities" (
-	"user_id" integer NOT NULL,
-	"activity_id" integer NOT NULL,
-	CONSTRAINT "favorite_activities_user_id_activity_id_pk" PRIMARY KEY("user_id","activity_id")
-);
---> statement-breakpoint
 CREATE TABLE "ministry_users" (
 	"ministry_id" integer NOT NULL,
 	"user_id" integer NOT NULL,
@@ -585,6 +583,14 @@ CREATE TABLE "team_categories" (
 	"is_active" boolean DEFAULT true NOT NULL,
 	"timestamp" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "team_categories_category_id_team_id_pk" PRIMARY KEY("category_id","team_id")
+);
+--> statement-breakpoint
+CREATE TABLE "team_tags" (
+	"tag_id" integer NOT NULL,
+	"team_id" integer NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"timestamp" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "team_tags_tag_id_team_id_pk" PRIMARY KEY("tag_id","team_id")
 );
 --> statement-breakpoint
 CREATE TABLE "user_teams" (
@@ -619,6 +625,7 @@ CREATE TABLE "teams" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
 	"display_name" varchar(255),
+	"abbreviation" varchar(5) NOT NULL,
 	"description" text,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
@@ -667,6 +674,7 @@ CREATE TABLE "permissions" (
 	"category" varchar(100) NOT NULL,
 	"subcategory" varchar(100),
 	"description" text,
+	"show_in_user_management" boolean DEFAULT false NOT NULL,
 	"resource" varchar(100),
 	"action" varchar(50),
 	"scope" varchar(100),
@@ -711,7 +719,25 @@ CREATE TABLE "edit_locks" (
 	"session_id" varchar(100),
 	"acquired_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"expires_at" timestamp with time zone NOT NULL,
-	"last_renewed_at" timestamp with time zone DEFAULT now() NOT NULL
+	"last_renewed_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_activity_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"idle_expires_at" timestamp with time zone NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "edit_lock_pending_handoffs" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"activity_id" integer NOT NULL,
+	"from_user_id" integer NOT NULL,
+	"to_user_id" integer NOT NULL,
+	"grace_ends_at" timestamp with time zone NOT NULL,
+	"status" varchar(20) DEFAULT 'pending' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "application_settings" (
+	"key" varchar(100) PRIMARY KEY NOT NULL,
+	"value" text NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "sessions" (
@@ -722,6 +748,46 @@ CREATE TABLE "sessions" (
 	"last_accessed_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "sessions_token_unique" UNIQUE("token")
+);
+--> statement-breakpoint
+CREATE TABLE "password_reset_tokens" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"token_hash" varchar(64) NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"used_at" timestamp with time zone,
+	CONSTRAINT "password_reset_tokens_token_hash_unique" UNIQUE("token_hash")
+);
+--> statement-breakpoint
+CREATE TABLE "banner_settings" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"is_active" boolean DEFAULT false NOT NULL,
+	"content" text NOT NULL,
+	"background_color" varchar(20) DEFAULT '#E6A635' NOT NULL,
+	"text_color" varchar(20) DEFAULT '#000000' NOT NULL,
+	"variant" varchar(20) DEFAULT 'info' NOT NULL,
+	"is_dismissible" boolean DEFAULT true NOT NULL,
+	"dismiss_scope" varchar(20) DEFAULT 'persistent' NOT NULL,
+	"start_date_time" timestamp with time zone,
+	"end_date_time" timestamp with time zone,
+	"created_date_time" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_by" integer NOT NULL,
+	"last_updated_date_time" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_updated_by" integer NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "login_modal_settings" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"is_active" boolean DEFAULT false NOT NULL,
+	"title" varchar(200) DEFAULT 'Notice' NOT NULL,
+	"content" text NOT NULL,
+	"start_date_time" timestamp with time zone,
+	"end_date_time" timestamp with time zone,
+	"created_date_time" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_by" integer NOT NULL,
+	"last_updated_date_time" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_updated_by" integer NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "activity_saved_filters" (
@@ -752,6 +818,45 @@ CREATE TABLE "user_activity_saved_filter_defaults" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "activity_flags" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"activity_id" integer NOT NULL,
+	"team_id" integer NOT NULL,
+	"assignee_id" integer NOT NULL,
+	"assigned_by_id" integer NOT NULL,
+	"note" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "activity_flags_activity_id_team_id_unique" UNIQUE("activity_id","team_id")
+);
+--> statement-breakpoint
+CREATE TABLE "user_activity_favourites" (
+	"user_id" integer NOT NULL,
+	"activity_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "user_activity_favourites_user_id_activity_id_pk" PRIMARY KEY("user_id","activity_id")
+);
+--> statement-breakpoint
+CREATE TABLE "user_settings" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"flag_colour" varchar(7),
+	"direct_login_enabled" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "user_settings_user_id_unique" UNIQUE("user_id")
+);
+--> statement-breakpoint
+CREATE TABLE "permission_visibility_audit" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"permission_id" integer NOT NULL,
+	"changed_by" integer,
+	"old_value" boolean NOT NULL,
+	"new_value" boolean NOT NULL,
+	"note" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_lead_org_id_organizations_id_fk" FOREIGN KEY ("lead_org_id") REFERENCES "public"."organizations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_date_status_id_date_statuses_id_fk" FOREIGN KEY ("date_status_id") REFERENCES "public"."date_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activities" ADD CONSTRAINT "activities_time_status_id_time_statuses_id_fk" FOREIGN KEY ("time_status_id") REFERENCES "public"."time_statuses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -776,6 +881,7 @@ ALTER TABLE "team_history" ADD CONSTRAINT "team_history_team_id_teams_id_fk" FOR
 ALTER TABLE "team_history" ADD CONSTRAINT "team_history_changed_by_user_id_users_id_fk" FOREIGN KEY ("changed_by_user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ministries" ADD CONSTRAINT "ministries_contact_user_id_users_id_fk" FOREIGN KEY ("contact_user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ministries" ADD CONSTRAINT "ministries_second_contact_user_id_users_id_fk" FOREIGN KEY ("second_contact_user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ministries" ADD CONSTRAINT "ministries_ministry_group_id_ministry_groups_id_fk" FOREIGN KEY ("ministry_group_id") REFERENCES "public"."ministry_groups"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ministries" ADD CONSTRAINT "ministries_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ministries" ADD CONSTRAINT "ministries_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "pod_ministries" ADD CONSTRAINT "pod_ministries_pod_id_pods_id_fk" FOREIGN KEY ("pod_id") REFERENCES "public"."pods"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -784,6 +890,8 @@ ALTER TABLE "pod_shared_with_teams" ADD CONSTRAINT "pod_shared_with_teams_pod_id
 ALTER TABLE "pod_shared_with_teams" ADD CONSTRAINT "pod_shared_with_teams_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "pods" ADD CONSTRAINT "pods_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "pods" ADD CONSTRAINT "pods_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ministry_groups" ADD CONSTRAINT "ministry_groups_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ministry_groups" ADD CONSTRAINT "ministry_groups_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organizations" ADD CONSTRAINT "organizations_ministry_id_ministries_id_fk" FOREIGN KEY ("ministry_id") REFERENCES "public"."ministries"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organizations" ADD CONSTRAINT "organizations_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "organizations" ADD CONSTRAINT "organizations_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -795,15 +903,12 @@ ALTER TABLE "categories" ADD CONSTRAINT "categories_created_by_users_id_fk" FORE
 ALTER TABLE "categories" ADD CONSTRAINT "categories_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "cities" ADD CONSTRAINT "cities_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "cities" ADD CONSTRAINT "cities_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "comms_contacts" ADD CONSTRAINT "comms_contacts_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "comms_contacts" ADD CONSTRAINT "comms_contacts_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comms_materials" ADD CONSTRAINT "comms_materials_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comms_materials" ADD CONSTRAINT "comms_materials_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "date_statuses" ADD CONSTRAINT "date_statuses_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "date_statuses" ADD CONSTRAINT "date_statuses_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "event_planners" ADD CONSTRAINT "event_planners_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "event_planners" ADD CONSTRAINT "event_planners_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "government_representatives" ADD CONSTRAINT "government_representatives_ministry_id_ministries_id_fk" FOREIGN KEY ("ministry_id") REFERENCES "public"."ministries"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "government_representatives" ADD CONSTRAINT "government_representatives_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "government_representatives" ADD CONSTRAINT "government_representatives_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "news_release_distributions" ADD CONSTRAINT "news_release_distributions_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -855,12 +960,12 @@ ALTER TABLE "activity_themes" ADD CONSTRAINT "activity_themes_activity_id_activi
 ALTER TABLE "activity_themes" ADD CONSTRAINT "activity_themes_theme_id_themes_id_fk" FOREIGN KEY ("theme_id") REFERENCES "public"."themes"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_translation_languages" ADD CONSTRAINT "activity_translation_languages_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_translation_languages" ADD CONSTRAINT "activity_translation_languages_language_id_translated_languages_id_fk" FOREIGN KEY ("language_id") REFERENCES "public"."translated_languages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "favorite_activities" ADD CONSTRAINT "favorite_activities_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "favorite_activities" ADD CONSTRAINT "favorite_activities_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ministry_users" ADD CONSTRAINT "ministry_users_ministry_id_ministries_id_fk" FOREIGN KEY ("ministry_id") REFERENCES "public"."ministries"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ministry_users" ADD CONSTRAINT "ministry_users_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "team_categories" ADD CONSTRAINT "team_categories_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "team_categories" ADD CONSTRAINT "team_categories_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "team_tags" ADD CONSTRAINT "team_tags_tag_id_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "team_tags" ADD CONSTRAINT "team_tags_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_teams" ADD CONSTRAINT "user_teams_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_teams" ADD CONSTRAINT "user_teams_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "form_drafts" ADD CONSTRAINT "form_drafts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -882,14 +987,37 @@ ALTER TABLE "role_permissions" ADD CONSTRAINT "role_permissions_updated_by_users
 ALTER TABLE "roles" ADD CONSTRAINT "roles_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "roles" ADD CONSTRAINT "roles_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "edit_locks" ADD CONSTRAINT "edit_locks_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "edit_lock_pending_handoffs" ADD CONSTRAINT "edit_lock_pending_handoffs_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "edit_lock_pending_handoffs" ADD CONSTRAINT "edit_lock_pending_handoffs_from_user_id_users_id_fk" FOREIGN KEY ("from_user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "edit_lock_pending_handoffs" ADD CONSTRAINT "edit_lock_pending_handoffs_to_user_id_users_id_fk" FOREIGN KEY ("to_user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "banner_settings" ADD CONSTRAINT "banner_settings_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "banner_settings" ADD CONSTRAINT "banner_settings_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "login_modal_settings" ADD CONSTRAINT "login_modal_settings_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "login_modal_settings" ADD CONSTRAINT "login_modal_settings_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "activity_saved_filters" ADD CONSTRAINT "activity_saved_filters_owner_user_id_users_id_fk" FOREIGN KEY ("owner_user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_activity_saved_filter_defaults" ADD CONSTRAINT "user_activity_saved_filter_defaults_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_activity_saved_filter_defaults" ADD CONSTRAINT "user_activity_saved_filter_defaults_saved_filter_id_activity_saved_filters_id_fk" FOREIGN KEY ("saved_filter_id") REFERENCES "public"."activity_saved_filters"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_flags" ADD CONSTRAINT "activity_flags_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_flags" ADD CONSTRAINT "activity_flags_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_flags" ADD CONSTRAINT "activity_flags_assignee_id_users_id_fk" FOREIGN KEY ("assignee_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_flags" ADD CONSTRAINT "activity_flags_assigned_by_id_users_id_fk" FOREIGN KEY ("assigned_by_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_activity_favourites" ADD CONSTRAINT "user_activity_favourites_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_activity_favourites" ADD CONSTRAINT "user_activity_favourites_activity_id_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."activities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "permission_visibility_audit" ADD CONSTRAINT "permission_visibility_audit_permission_id_permissions_id_fk" FOREIGN KEY ("permission_id") REFERENCES "public"."permissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "permission_visibility_audit" ADD CONSTRAINT "permission_visibility_audit_changed_by_users_id_fk" FOREIGN KEY ("changed_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "idx_activities_title_trgm" ON "activities" USING gin (lower("title") gin_trgm_ops);--> statement-breakpoint
+CREATE INDEX "idx_activities_display_id_trgm" ON "activities" USING gin (lower("display_id") gin_trgm_ops);--> statement-breakpoint
 CREATE INDEX "activity_history_activity_id_idx" ON "activity_history" USING btree ("activity_id");--> statement-breakpoint
 CREATE INDEX "activity_history_user_id_idx" ON "activity_history" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "activity_history_timestamp_idx" ON "activity_history" USING btree ("timestamp");--> statement-breakpoint
 CREATE INDEX "activity_history_activity_id_timestamp_idx" ON "activity_history" USING btree ("activity_id","timestamp");--> statement-breakpoint
+CREATE INDEX "idx_activity_history_ts_id" ON "activity_history" USING btree ("timestamp","id");--> statement-breakpoint
+CREATE INDEX "idx_activity_history_notes_trgm" ON "activity_history" USING gin (lower("notes") gin_trgm_ops);--> statement-breakpoint
+CREATE INDEX "idx_users_ad_display_name_trgm" ON "users" USING gin (lower("ad_display_name") gin_trgm_ops);--> statement-breakpoint
+CREATE INDEX "idx_users_ad_username_trgm" ON "users" USING gin (lower("ad_username") gin_trgm_ops);--> statement-breakpoint
 CREATE INDEX "user_history_user_id_idx" ON "user_history" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "user_history_changed_by_user_id_idx" ON "user_history" USING btree ("changed_by_user_id");--> statement-breakpoint
 CREATE INDEX "user_history_timestamp_idx" ON "user_history" USING btree ("timestamp");--> statement-breakpoint
@@ -898,6 +1026,9 @@ CREATE INDEX "team_history_team_id_idx" ON "team_history" USING btree ("team_id"
 CREATE INDEX "team_history_changed_by_user_id_idx" ON "team_history" USING btree ("changed_by_user_id");--> statement-breakpoint
 CREATE INDEX "team_history_timestamp_idx" ON "team_history" USING btree ("timestamp");--> statement-breakpoint
 CREATE INDEX "team_history_team_id_timestamp_idx" ON "team_history" USING btree ("team_id","timestamp");--> statement-breakpoint
+CREATE UNIQUE INDEX "ministry_groups_name_lower_unique" ON "ministry_groups" USING btree (lower("name"));--> statement-breakpoint
+CREATE INDEX "idx_categories_display_name_trgm" ON "categories" USING gin (lower("display_name") gin_trgm_ops);--> statement-breakpoint
+CREATE INDEX "idx_tags_display_name_trgm" ON "tags" USING gin (lower("display_name") gin_trgm_ops);--> statement-breakpoint
 CREATE INDEX "idx_activity_report_settings_activity_id" ON "activity_report_settings" USING btree ("activity_id");--> statement-breakpoint
 CREATE INDEX "idx_activity_report_settings_report_id" ON "activity_report_settings" USING btree ("report_id");--> statement-breakpoint
 CREATE INDEX "idx_activity_report_settings_activity_report" ON "activity_report_settings" USING btree ("activity_id","report_id");--> statement-breakpoint
@@ -910,6 +1041,10 @@ CREATE INDEX "form_drafts_expires_at_idx" ON "form_drafts" USING btree ("expires
 CREATE UNIQUE INDEX "edit_locks_entity_type_entity_id_unique" ON "edit_locks" USING btree ("entity_type","entity_id");--> statement-breakpoint
 CREATE INDEX "edit_locks_expires_at_idx" ON "edit_locks" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "edit_locks_user_id_idx" ON "edit_locks" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "edit_locks_idle_expires_at_idx" ON "edit_locks" USING btree ("idle_expires_at");--> statement-breakpoint
+CREATE INDEX "edit_lock_pending_handoffs_activity_id_idx" ON "edit_lock_pending_handoffs" USING btree ("activity_id");--> statement-breakpoint
+CREATE INDEX "edit_lock_pending_handoffs_due_idx" ON "edit_lock_pending_handoffs" USING btree ("grace_ends_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "edit_lock_pending_handoffs_one_pending_per_activity" ON "edit_lock_pending_handoffs" USING btree ("activity_id") WHERE "edit_lock_pending_handoffs"."status" = 'pending';--> statement-breakpoint
 CREATE INDEX "idx_sessions_user_id" ON "sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "idx_sessions_expires_at" ON "sessions" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "asf_owner_user_id_idx" ON "activity_saved_filters" USING btree ("owner_user_id");--> statement-breakpoint
@@ -920,4 +1055,6 @@ CREATE UNIQUE INDEX "asf_unique_team_scope_name" ON "activity_saved_filters" USI
 CREATE UNIQUE INDEX "asf_unique_global_scope_name" ON "activity_saved_filters" USING btree (lower("name")) WHERE is_active = true AND scope_type = 'global';--> statement-breakpoint
 CREATE UNIQUE INDEX "uasfd_user_unique" ON "user_activity_saved_filter_defaults" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "uasfd_user_id_idx" ON "user_activity_saved_filter_defaults" USING btree ("user_id");--> statement-breakpoint
-CREATE INDEX "uasfd_saved_filter_id_idx" ON "user_activity_saved_filter_defaults" USING btree ("saved_filter_id");
+CREATE INDEX "uasfd_saved_filter_id_idx" ON "user_activity_saved_filter_defaults" USING btree ("saved_filter_id");--> statement-breakpoint
+CREATE INDEX "uaf_user_id_idx" ON "user_activity_favourites" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "uaf_activity_id_idx" ON "user_activity_favourites" USING btree ("activity_id");
