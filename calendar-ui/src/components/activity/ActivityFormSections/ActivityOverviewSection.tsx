@@ -50,12 +50,6 @@ import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
-import { InfoIconButton } from '@/components/ui/info-icon-button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { RichTextField } from '@/components/ui/rich-text-field';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
@@ -435,26 +429,6 @@ export const ActivityOverviewSection: React.FC<
                     fieldKey="categoryIds"
                     ariaLabel="About categories"
                   />
-                  {categories.some((c) => c.description) ? (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <InfoIconButton aria-label="About categories" />
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-80 max-w-[calc(100vw-2rem)] space-y-1 text-sm"
-                        align="start"
-                      >
-                        {categories
-                          .filter((c) => c.description)
-                          .map((c) => (
-                            <p key={c.id}>
-                              <strong>{c.displayName ?? c.name}</strong>:{' '}
-                              {c.description}
-                            </p>
-                          ))}
-                      </PopoverContent>
-                    </Popover>
-                  ) : null}
                 </>
               </FormLabel>
               <FormControl data-field={field.name}>

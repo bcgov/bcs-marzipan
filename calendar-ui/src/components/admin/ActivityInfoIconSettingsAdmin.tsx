@@ -40,8 +40,7 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { showErrorToast, showSuccessToast } from '@/lib/error-toast';
 import type { OptionItem } from '@/schemas/types';
 
-const DESCRIPTION =
-  'Choose which activity form fields show an information icon, then edit the text shown in the popover. Each message is limited to 250 characters.';
+const DESCRIPTION = `Choose which activity form fields show an information icon, then edit the text shown in the popover. Each message is limited to ${ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH} characters.`;
 
 type InfoIconFieldState = {
   selectedFieldKeys: ActivityInfoIconFieldKey[];

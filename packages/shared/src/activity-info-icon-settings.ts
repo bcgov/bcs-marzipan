@@ -1,7 +1,7 @@
 export const ACTIVITY_INFO_ICON_SETTINGS_KEY =
   'activity_info_icon_settings' as const;
 
-export const ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH = 250 as const;
+export const ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH = 500 as const;
 
 export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
   'categoryIds',
@@ -68,6 +68,10 @@ export type ActivityInfoIconSettings = {
 
 export const DEFAULT_ACTIVITY_INFO_ICON_SETTINGS: ActivityInfoIconSettings = {
   items: [
+    {
+      fieldKey: 'categoryIds',
+      text: '**Event**: Event category\n\n**Release**: Release category\n\n**Awareness date**: Awareness category\n\n**Conference / AGM / Forum**: Conference / AGM / Forum category\n\n**FYI**: FYI category (use for internal awareness)\n\n**Social media**: Social media category\n\n**Speech**: Speech category\n\n**TV/Radio**: TV/Radio category',
+    },
     {
       fieldKey: 'visibility',
       text: 'On: only the lead team and Share with teams can view this activity, plus the roles below. Off: visible to everyone. GCPE executive, Strategic Communications, Cabinet Priorities, and Calendar admin roles can always view all activities.',
