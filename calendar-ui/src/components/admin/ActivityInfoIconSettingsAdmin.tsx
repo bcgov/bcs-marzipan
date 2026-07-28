@@ -81,7 +81,7 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
   const isUsingDefaultFallback = Boolean(error) && !cachedInitialData;
 
   const [draft, setDraft] = useState<InfoIconFieldState>(() =>
-    toFieldState(DEFAULT_ACTIVITY_INFO_ICON_SETTINGS)
+    toFieldState(data ?? DEFAULT_ACTIVITY_INFO_ICON_SETTINGS)
   );
 
   useEffect(() => {
