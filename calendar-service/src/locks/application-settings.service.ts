@@ -426,7 +426,7 @@ export class ApplicationSettingsService {
     try {
       const parsed: unknown = JSON.parse(row.value);
       const result = activityInfoIconSettingsSchema.safeParse(parsed);
-      if (!result.success || result.data.items.length === 0) {
+      if (!result.success) {
         this.logger.warn(
           `Invalid ${ACTIVITY_INFO_ICON_SETTINGS_KEY}, using default`
         );
