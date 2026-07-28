@@ -128,7 +128,7 @@ See [Production Migration Process](#production-migration-process) for detailed s
    npm run db:generate --workspace=packages/database -- YYYYMMDD_description
    ```
 
-3. **Review the generated SQL** and hand-edit when needed (renames, backfills, `DROP`s, extension-dependent DDL).
+3. **Review the generated SQL** and hand-edit if needed (renames, backfills, `DROP`s, extension-dependent DDL).
    See [Production Migration Process](#production-migration-process) for the checklist.
 
 4. **Apply on staging** and verify the application:
