@@ -76,6 +76,7 @@ import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
+import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import {
   defaultActivityLeadTeamFieldConfig,
   type ActivityLeadTeamFieldConfig,
@@ -595,24 +596,10 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel>
                 <>
                   {getActivityFieldLabel(field.name)}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <InfoIconButton aria-label="About confidential" />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                      align="start"
-                    >
-                      <p>
-                        Select if the activity is highly confidential or
-                        sensitive. By default viewing the activity will be
-                        restricted to your team. For Corporate Look Ahead, enter
-                        placeholder executive-summary copy; other reports may
-                        include summary fields as configured.
-                      </p>
-                      <p className="mt-2">Contact admin@email.com</p>
-                    </PopoverContent>
-                  </Popover>
+                  <ActivityFieldInfoIcon
+                    fieldKey="isConfidential"
+                    ariaLabel="About confidential"
+                  />
                 </>
               </FormLabel>
             </div>
@@ -638,21 +625,10 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel>
                 <>
                   {getActivityFieldLabel(field.name)}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <InfoIconButton aria-label="About issue" />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                      align="start"
-                    >
-                      <p>
-                        Select if this activity is a current or potential media
-                        issue, or an issue for government in any way based on
-                        topic.
-                      </p>
-                    </PopoverContent>
-                  </Popover>
+                  <ActivityFieldInfoIcon
+                    fieldKey="isIssue"
+                    ariaLabel="About issue"
+                  />
                 </>
               </FormLabel>
             </div>
@@ -667,20 +643,10 @@ export const ActivityOverviewSection: React.FC<
             <FormLabel>
               <>
                 {getActivityFieldLabel(field.name)}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <InfoIconButton aria-label="About significance" />
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                    align="start"
-                  >
-                    <p>
-                      Describe how this will impact people and why it is
-                      important.
-                    </p>
-                  </PopoverContent>
-                </Popover>
+                <ActivityFieldInfoIcon
+                  fieldKey="significance"
+                  ariaLabel="About significance"
+                />
               </>
             </FormLabel>
             <FormControl>

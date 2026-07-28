@@ -11,6 +11,14 @@ export * from './filters/activity-filter-match-input';
 export * from './filters/activity-searchable-text';
 export * from './filters/confirmed-status-names';
 export * from './look-ahead-reset';
+export {
+  ACTIVITY_INFO_ICON_FIELD_KEYS,
+  ACTIVITY_INFO_ICON_FIELD_KEY_SET,
+  ACTIVITY_INFO_ICON_SETTINGS_KEY,
+  ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH,
+  DEFAULT_ACTIVITY_INFO_ICON_SETTINGS,
+  buildActivityInfoIconSettingsMap,
+} from './activity-info-icon-settings';
 export * from './report-cover-contact';
 export * from './review-exempt-settings';
 export * from './schemas';

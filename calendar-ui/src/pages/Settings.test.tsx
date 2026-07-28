@@ -4,6 +4,9 @@ import { render, screen } from '@/test/test-utils';
 
 // Mock every child admin section so the test only exercises Settings itself.
 vi.mock('@/components/admin', () => ({
+  ActivityInfoIconSettingsAdmin: () => (
+    <div data-testid="activity-info-icons-section">ActivityInfoIcons</div>
+  ),
   BannerSettingsAdmin: () => <div data-testid="banner-section">Banner</div>,
 }));
 vi.mock('@/components/admin/ActivityCompletionSettingsAdmin', () => ({
@@ -64,6 +67,7 @@ const SYSTEM_ADMIN_ONLY_LINKS = [
   'Edit lock idle',
   'Activity completion',
   'Look Ahead reset',
+  'Activity info icons',
   'Review-exempt fields',
   'Permission visibility',
 ];

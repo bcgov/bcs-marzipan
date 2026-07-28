@@ -5,10 +5,13 @@ import { applicationSettings } from '@corpcal/database/schema';
 import {
   ACTIVITY_COMPLETION_BUFFER_KEY,
   ACTIVITY_COMPLETION_SCHEDULE_KEY,
+  ACTIVITY_INFO_ICON_SETTINGS_KEY,
   ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_KEY_SET,
   ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS_SETTING,
+  activityInfoIconSettingsSchema,
   COMPLETION_BUFFER_OPTIONS,
   COMPLETION_SCHEDULES,
+  DEFAULT_ACTIVITY_INFO_ICON_SETTINGS,
   DEFAULT_COMPLETION_BUFFER_MINUTES,
   DEFAULT_COMPLETION_SCHEDULE,
   DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
@@ -24,6 +27,7 @@ import {
   parseLookAheadResetCronEnabled,
   REPORT_LOOK_AHEAD_COVER_CONTACT_EMAIL_KEY,
   REPORT_LOOK_AHEAD_COVER_CONTACT_PHONE_KEY,
+  type ActivityInfoIconSettings,
   type CompletionBufferMinutes,
   type CompletionSchedule,
   type LookAheadResetCronMode,
@@ -395,6 +399,68 @@ export class ApplicationSettingsService {
         target: applicationSettings.key,
         set: {
           value: JSON.stringify(unique),
+          updatedAt: now,
+        },
+      });
+  }
+
+  // --------------------------------------------------------------------------
+  // Activity form info icons (admin-configurable, JSON object in value)
+  // --------------------------------------------------------------------------
+
+  async getActivityInfoIconSettings(
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<ActivityInfoIconSettings> {
+    const [row] = await executor
+      .select()
+      .from(applicationSettings)
+      .where(eq(applicationSettings.key, ACTIVITY_INFO_ICON_SETTINGS_KEY))
+      .limit(1);
+
+    if (!row?.value) {
+      return {
+        items: [...DEFAULT_ACTIVITY_INFO_ICON_SETTINGS.items],
+      };
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(row.value);
+      const result = activityInfoIconSettingsSchema.safeParse(parsed);
+      if (!result.success || result.data.items.length === 0) {
+        this.logger.warn(
+          `Invalid ${ACTIVITY_INFO_ICON_SETTINGS_KEY}, using default`
+        );
+        return {
+          items: [...DEFAULT_ACTIVITY_INFO_ICON_SETTINGS.items],
+        };
+      }
+      return result.data;
+    } catch {
+      this.logger.warn(
+        `Invalid JSON for ${ACTIVITY_INFO_ICON_SETTINGS_KEY}, using default`
+      );
+      return {
+        items: [...DEFAULT_ACTIVITY_INFO_ICON_SETTINGS.items],
+      };
+    }
+  }
+
+  async setActivityInfoIconSettings(
+    settings: ActivityInfoIconSettings
+  ): Promise<void> {
+    const normalized = activityInfoIconSettingsSchema.parse(settings);
+    const now = new Date();
+    await this.databaseService.db
+      .insert(applicationSettings)
+      .values({
+        key: ACTIVITY_INFO_ICON_SETTINGS_KEY,
+        value: JSON.stringify(normalized),
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: applicationSettings.key,
+        set: {
+          value: JSON.stringify(normalized),
           updatedAt: now,
         },
       });

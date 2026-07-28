@@ -25,13 +25,7 @@ import {
   FormMessage,
   useFormDisplayOptions,
 } from '@/components/ui/form';
-import { InfoIconButton } from '@/components/ui/info-icon-button';
 import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -52,6 +46,7 @@ import {
 import { cn } from '@/lib/utils';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
 const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
@@ -537,26 +532,10 @@ export function ActivityScheduleSection({
             <FormLabel>
               <>
                 {getActivityFieldLabel(field.name)}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <InfoIconButton aria-label="About scheduling notes" />
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                    align="start"
-                  >
-                    <p className="mb-2">
-                      Communicate any details and statuses related to
-                      scheduling:
-                    </p>
-                    <ul className="list-disc space-y-1 pl-4">
-                      <li>date or timeframe being requested</li>
-                      <li>approvals received or still outstanding</li>
-                      <li>criteria holding up the activity</li>
-                      <li>date or time confirmed by a joint third-party</li>
-                    </ul>
-                  </PopoverContent>
-                </Popover>
+                <ActivityFieldInfoIcon
+                  fieldKey="schedulingNotes"
+                  ariaLabel="About scheduling notes"
+                />
               </>
             </FormLabel>
             <FormControl data-field={field.name}>

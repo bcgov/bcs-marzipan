@@ -18,6 +18,7 @@ import {
   ActivityEditProvider,
   type ActivityEditContextValue,
 } from './activity-edit-context';
+import { ActivityInfoIconSettingsProvider } from './activity-info-icon-settings-context';
 import {
   defaultActivityLeadTeamFieldConfig,
   type ActivityLeadTeamFieldConfig,
@@ -135,60 +136,66 @@ export function ActivityFormBody({
 
   return (
     <ActivityEditProvider value={editContextValue}>
-      <FormDisplayOptionsProvider
-        showChangedBadges={showChangedBadges}
-        reviewerChangedPaths={reviewerChangedPaths}
-      >
-        <div
-          className={cn(
-            'grid grid-cols-1 gap-12 lg:grid-cols-2',
-            ACTIVITY_FORM_FIELD_SHADOW_RESET
-          )}
+      <ActivityInfoIconSettingsProvider>
+        <FormDisplayOptionsProvider
+          showChangedBadges={showChangedBadges}
+          reviewerChangedPaths={reviewerChangedPaths}
         >
-          <div className="space-y-12">
-            <ActivityOverviewSection
-              categories={lookups.categories}
-              organizations={lookups.organizations}
-              tags={lookups.tags}
-              pitchRequiredStatuses={lookups.pitchRequiredStatuses}
-              leadTeamField={leadTeamField}
-            />
+          <div
+            className={cn(
+              'grid grid-cols-1 gap-12 lg:grid-cols-2',
+              ACTIVITY_FORM_FIELD_SHADOW_RESET
+            )}
+          >
+            <div className="space-y-12">
+              <ActivityOverviewSection
+                categories={lookups.categories}
+                organizations={lookups.organizations}
+                tags={lookups.tags}
+                pitchRequiredStatuses={lookups.pitchRequiredStatuses}
+                leadTeamField={leadTeamField}
+              />
 
-            <ActivityCommsSection
-              commsMaterialOptions={lookups.commsMaterials}
-              commsLeadOptions={commsLeadOptions}
-            />
+              <ActivityCommsSection
+                commsMaterialOptions={lookups.commsMaterials}
+                commsLeadOptions={commsLeadOptions}
+              />
+            </div>
+
+            <div className="space-y-12">
+              <ActivityReportsSection />
+
+              <ActivityScheduleSection
+                dateStatuses={lookups.dateStatuses}
+                timeStatuses={lookups.timeStatuses}
+              />
+
+              <ActivityReleaseSection
+                newsReleaseDistributionOptions={
+                  lookups.newsReleaseDistributions
+                }
+                newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                translationRequiredStatuses={
+                  lookups.translationRequiredStatuses
+                }
+                translationLanguageOptions={lookups.translationLanguages}
+              />
+
+              <ActivityEventSection
+                venueStatuses={lookups.venueStatuses}
+                representativeOptions={lookups.governmentRepresentatives}
+                premierRequestedOptions={lookups.premierRequested}
+                eventPlannerOptions={lookups.eventPlanners}
+              />
+
+              <ActivitySharingSection
+                sharedWithTeams={lookups.sharedWithTeams}
+                quickShareGroups={lookups.quickShareGroups}
+              />
+            </div>
           </div>
-
-          <div className="space-y-12">
-            <ActivityReportsSection />
-
-            <ActivityScheduleSection
-              dateStatuses={lookups.dateStatuses}
-              timeStatuses={lookups.timeStatuses}
-            />
-
-            <ActivityReleaseSection
-              newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
-              newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-              translationRequiredStatuses={lookups.translationRequiredStatuses}
-              translationLanguageOptions={lookups.translationLanguages}
-            />
-
-            <ActivityEventSection
-              venueStatuses={lookups.venueStatuses}
-              representativeOptions={lookups.governmentRepresentatives}
-              premierRequestedOptions={lookups.premierRequested}
-              eventPlannerOptions={lookups.eventPlanners}
-            />
-
-            <ActivitySharingSection
-              sharedWithTeams={lookups.sharedWithTeams}
-              quickShareGroups={lookups.quickShareGroups}
-            />
-          </div>
-        </div>
-      </FormDisplayOptionsProvider>
+        </FormDisplayOptionsProvider>
+      </ActivityInfoIconSettingsProvider>
     </ActivityEditProvider>
   );
 }
