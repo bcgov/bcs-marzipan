@@ -1,6 +1,9 @@
 import { useFormContext } from 'react-hook-form';
 
-import type { ActivityFormData } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
+  type ActivityFormData,
+} from '@corpcal/shared/schemas';
 import {
   Combobox,
   ComboboxChip,
@@ -227,6 +230,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                 placeholder="Enter strategy"
                 readOnly={readOnly}
                 rows={4}
+                maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
                 {...field}
                 value={field.value ?? ''}
               />

@@ -162,10 +162,16 @@ export function mapActivityToTableRow(
     // Status
     activityStatus: activity.activityStatus,
     activityStatusId: activity.activityStatusId ?? 0,
-    changedFieldsSinceReview: activity.changedFieldsSinceReview ?? [],
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
     createdDateTime: activity.createdDateTime,
+    changedFieldsSinceReview:
+      'changedFieldsSinceReview' in activity &&
+      Array.isArray(activity.changedFieldsSinceReview)
+        ? activity.changedFieldsSinceReview.filter(
+            (v): v is string => typeof v === 'string'
+          )
+        : undefined,
 
     // Flags
     flags: activity.flags ?? [],

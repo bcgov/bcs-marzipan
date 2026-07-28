@@ -6,7 +6,12 @@ import type {
   PitchRequiredStatusLookupItem,
   TeamListItem,
 } from '@corpcal/shared/api/types';
-import type { ActivityFormData } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH,
+  ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
+  ACTIVITY_SUMMARY_MAX_LENGTH,
+  type ActivityFormData,
+} from '@corpcal/shared/schemas';
 import {
   isActivityRichTextEffectivelyEmpty,
   tipTapDocJsonFromPlainText,
@@ -538,6 +543,7 @@ export const ActivityOverviewSection: React.FC<
                 }
                 onBlur={field.onBlur}
                 placeholder="Enter activity summary"
+                maxLength={ACTIVITY_SUMMARY_MAX_LENGTH}
                 readOnly={readOnly}
                 data-field={field.name}
               />
@@ -686,6 +692,7 @@ export const ActivityOverviewSection: React.FC<
                 }
                 onBlur={field.onBlur}
                 placeholder="Enter significance"
+                maxLength={ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH}
                 readOnly={readOnly}
                 data-field={field.name}
               />
@@ -834,6 +841,7 @@ export const ActivityOverviewSection: React.FC<
                       readOnly={notesScope.readOnly}
                       disabled={notesScope.fieldScopeDisabled}
                       rows={4}
+                      maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
                       {...field}
                       value={field.value ?? ''}
                     />

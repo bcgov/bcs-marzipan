@@ -88,6 +88,8 @@ export interface FreeformComboboxProps {
   readOnly?: boolean;
   /** Allow multiple selections. When true, value/onChange use arrays. */
   multiple?: boolean;
+  /** Max characters allowed in the search/freeform input. */
+  maxInputLength?: number;
   /** When multiple, show selected values as chips (default true when multiple) */
   useChips?: boolean;
   /**
@@ -126,6 +128,7 @@ export function FreeformCombobox({
   disabled = false,
   readOnly = false,
   multiple = false,
+  maxInputLength,
   useChips = true,
   onSetLead,
 }: FreeformComboboxProps) {
@@ -293,6 +296,13 @@ export function FreeformCombobox({
           value: entry.value,
         };
         if (multiple) {
+          const alreadySelected = selectedList.some(
+            (item) => item.type === newItem.type && item.value === newItem.value
+          );
+          if (alreadySelected) {
+            setInputValue('');
+            return;
+          }
           const next = [...selectedList, newItem];
           onChange(next);
         } else {
@@ -307,6 +317,13 @@ export function FreeformCombobox({
         value: entry.value,
       };
       if (multiple) {
+        const alreadySelected = selectedList.some(
+          (item) => item.type === newItem.type && item.value === newItem.value
+        );
+        if (alreadySelected) {
+          setInputValue('');
+          return;
+        }
         const next = [...selectedList, newItem];
         onChange(next);
       } else {
@@ -461,6 +478,7 @@ export function FreeformCombobox({
         onKeyDown={handleKeyDown}
         disabled={disabled}
         readOnly={readOnly}
+        maxLength={maxInputLength}
         autoComplete="off"
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -502,6 +520,7 @@ export function FreeformCombobox({
         }}
         onKeyDown={handleKeyDown}
         disabled={disabled}
+        maxLength={maxInputLength}
         autoComplete="off"
         readOnly={readOnly || (!open && selectedList.length > 0)}
         className={cn(

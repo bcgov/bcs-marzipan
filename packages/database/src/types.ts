@@ -7,7 +7,6 @@ import {
   activityStatuses,
   categories,
   cities,
-  commsContacts,
   dateStatuses,
   governmentRepresentatives,
   pitchRequiredStatuses,
@@ -73,9 +72,6 @@ export type GovernmentRepresentative = InferSelectModel<
 export type NewGovernmentRepresentative = InferInsertModel<
   typeof governmentRepresentatives
 >;
-
-export type CommsContact = InferSelectModel<typeof commsContacts>;
-export type NewCommsContact = InferInsertModel<typeof commsContacts>;
 
 // Content Classification
 export type Category = InferSelectModel<typeof categories>;

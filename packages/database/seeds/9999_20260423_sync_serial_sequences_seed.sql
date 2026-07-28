@@ -14,7 +14,6 @@ SELECT setval('activity_representatives_id_seq', COALESCE((SELECT MAX(id) FROM a
 SELECT setval('activity_statuses_id_seq', COALESCE((SELECT MAX(id) FROM activity_statuses), 1), true);
 SELECT setval('categories_id_seq', COALESCE((SELECT MAX(id) FROM categories), 1), true);
 SELECT setval('cities_id_seq', COALESCE((SELECT MAX(id) FROM cities), 1), true);
-SELECT setval('comms_contacts_id_seq', COALESCE((SELECT MAX(id) FROM comms_contacts), 1), true);
 SELECT setval('comms_materials_id_seq', COALESCE((SELECT MAX(id) FROM comms_materials), 1), true);
 SELECT setval('date_statuses_id_seq', COALESCE((SELECT MAX(id) FROM date_statuses), 1), true);
 SELECT setval('event_planners_id_seq', COALESCE((SELECT MAX(id) FROM event_planners), 1), true);

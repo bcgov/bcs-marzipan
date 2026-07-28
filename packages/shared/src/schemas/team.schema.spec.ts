@@ -72,6 +72,22 @@ describe('createTeamBodySchema', () => {
     expect(result.ministryId).toBe(1);
   });
 
+  it('enforces description max length (1000)', () => {
+    createTeamBodySchema.parse({
+      name: 'Team with description',
+      abbreviation: 'TWD',
+      description: 'd'.repeat(1000),
+    });
+
+    expect(() =>
+      createTeamBodySchema.parse({
+        name: 'Team with long description',
+        abbreviation: 'TWL',
+        description: 'd'.repeat(1001),
+      })
+    ).toThrow();
+  });
+
   it('rejects empty name', () => {
     expect(() =>
       createTeamBodySchema.parse({
@@ -106,6 +122,13 @@ describe('updateTeamBodySchema', () => {
   it('accepts optional abbreviation', () => {
     const result = updateTeamBodySchema.parse({ abbreviation: 'ABCDEF' });
     expect(result.abbreviation).toBe('ABCDEF');
+  });
+
+  it('enforces description max length on update (1000)', () => {
+    updateTeamBodySchema.parse({ description: 'd'.repeat(1000) });
+    expect(() =>
+      updateTeamBodySchema.parse({ description: 'd'.repeat(1001) })
+    ).toThrow();
   });
 
   it('rejects abbreviation longer than 6 characters', () => {
