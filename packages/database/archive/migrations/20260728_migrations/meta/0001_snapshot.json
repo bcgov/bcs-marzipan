@@ -1,6 +1,6 @@
 {
-  "id": "371fad95-60ca-45bd-84cf-57fbc7e7cbff",
-  "prevId": "d94f061f-f27c-41b0-b67d-0e12782de2bc",
+  "id": "c2134a23-0463-4a15-90f1-e122392eec5d",
+  "prevId": "eac503f4-5993-40b0-99e1-28381dbb12f1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -5239,7 +5239,7 @@
         },
         "abbreviation": {
           "name": "abbreviation",
-          "type": "varchar(6)",
+          "type": "varchar(5)",
           "primaryKey": false,
           "notNull": true
         },
@@ -6940,12 +6940,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "display_team_id": {
-          "name": "display_team_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "note": {
           "name": "note",
           "type": "text",
@@ -6967,44 +6961,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "activity_flags_activity_id_team_id_idx": {
-          "name": "activity_flags_activity_id_team_id_idx",
-          "columns": [
-            {
-              "expression": "activity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "team_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "activity_flags_display_team_id_idx": {
-          "name": "activity_flags_display_team_id_idx",
-          "columns": [
-            {
-              "expression": "display_team_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "activity_flags_activity_id_activities_id_fk": {
           "name": "activity_flags_activity_id_activities_id_fk",
@@ -7041,23 +6998,14 @@
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "activity_flags_display_team_id_teams_id_fk": {
-          "name": "activity_flags_display_team_id_teams_id_fk",
-          "tableFrom": "activity_flags",
-          "tableTo": "teams",
-          "columnsFrom": ["display_team_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "activity_flags_activity_id_team_id_assignee_id_unique": {
-          "name": "activity_flags_activity_id_team_id_assignee_id_unique",
+        "activity_flags_activity_id_team_id_unique": {
+          "name": "activity_flags_activity_id_team_id_unique",
           "nullsNotDistinct": false,
-          "columns": ["activity_id", "team_id", "assignee_id"]
+          "columns": ["activity_id", "team_id"]
         }
       },
       "policies": {},
@@ -7285,67 +7233,6 @@
           "columnsFrom": ["changed_by"],
           "columnsTo": ["id"],
           "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.look_ahead_reset_snapshots": {
-      "name": "look_ahead_reset_snapshots",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "default": 1
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "actor_user_id": {
-          "name": "actor_user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "trigger": {
-          "name": "trigger",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_count": {
-          "name": "updated_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entries": {
-          "name": "entries",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "look_ahead_reset_snapshots_actor_user_id_users_id_fk": {
-          "name": "look_ahead_reset_snapshots_actor_user_id_users_id_fk",
-          "tableFrom": "look_ahead_reset_snapshots",
-          "tableTo": "users",
-          "columnsFrom": ["actor_user_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
