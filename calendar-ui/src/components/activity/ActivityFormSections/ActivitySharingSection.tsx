@@ -252,7 +252,15 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
 
           return (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="sharedWithTeamIds"
+                    ariaLabel="About share with teams"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={sharedWithTeamOptions}

@@ -1,12 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { toast } from 'sonner';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from 'react';
 
 import {
   buildActivityInfoIconSettingsMap,
   DEFAULT_ACTIVITY_INFO_ICON_SETTINGS,
   type ActivityInfoIconFieldKey,
 } from '@corpcal/shared';
-import { fetchActivityInfoIconSettings } from '@/api/activityInfoIconSettingsApi';
+import {
+  activityInfoIconSettingsRetryDelay,
+  fetchActivityInfoIconSettings,
+  readCachedActivityInfoIconSettings,
+  shouldRetryActivityInfoIconSettings,
+} from '@/api/activityInfoIconSettingsApi';
 import { InfoIconButton } from '@/components/ui/info-icon-button';
 import {
   Popover,
@@ -26,13 +39,40 @@ export function ActivityInfoIconSettingsProvider({
 }: {
   children: ReactNode;
 }) {
-  const { data } = useQuery({
+  const warnedRef = useRef(false);
+  const cachedInitialData = useMemo(
+    () => readCachedActivityInfoIconSettings(),
+    []
+  );
+
+  const { data, error } = useQuery({
     queryKey: ['settings', 'activity-info-icons'],
     queryFn: fetchActivityInfoIconSettings,
-    retry: false,
+    retry: shouldRetryActivityInfoIconSettings,
+    retryDelay: activityInfoIconSettingsRetryDelay,
     staleTime: 60_000,
-    initialData: DEFAULT_ACTIVITY_INFO_ICON_SETTINGS,
+    initialData: cachedInitialData ?? DEFAULT_ACTIVITY_INFO_ICON_SETTINGS,
   });
+
+  useEffect(() => {
+    if (!error || warnedRef.current) return;
+    warnedRef.current = true;
+    if (cachedInitialData) {
+      toast.warning('Showing cached info icon settings', {
+        id: 'activity-info-icons-cached-fallback',
+        description:
+          'Latest settings could not be fetched right now. Using last saved local copy.',
+        duration: 5000,
+      });
+      return;
+    }
+    toast.warning('Showing default info icon settings', {
+      id: 'activity-info-icons-default-fallback',
+      description:
+        'Latest settings could not be fetched right now. Some configured icons may be temporarily unavailable.',
+      duration: 5000,
+    });
+  }, [cachedInitialData, error]);
 
   const value = useMemo<ActivityInfoIconSettingsContextValue>(() => {
     const textMap = buildActivityInfoIconSettingsMap(data);

@@ -154,6 +154,18 @@ export function ActivityScheduleSection({
           )}
         >
           <span>Date</span>
+          <ActivityFieldInfoIcon
+            fieldKey="startDate"
+            ariaLabel="About start date"
+          />
+          <ActivityFieldInfoIcon
+            fieldKey="endDate"
+            ariaLabel="About end date"
+          />
+          <ActivityFieldInfoIcon
+            fieldKey="dateStatusId"
+            ariaLabel="About date status"
+          />
           <FormAggregateDirtyIndicator names={DATE_GROUP_FIELDS} />
         </Label>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
@@ -345,6 +357,22 @@ export function ActivityScheduleSection({
           )}
         >
           <span>Time</span>
+          <ActivityFieldInfoIcon
+            fieldKey="startTime"
+            ariaLabel="About start time"
+          />
+          <ActivityFieldInfoIcon
+            fieldKey="endTime"
+            ariaLabel="About end time"
+          />
+          <ActivityFieldInfoIcon
+            fieldKey="isAllDay"
+            ariaLabel="About all day"
+          />
+          <ActivityFieldInfoIcon
+            fieldKey="timeStatusId"
+            ariaLabel="About time status"
+          />
           <FormAggregateDirtyIndicator names={TIME_GROUP_FIELDS} />
         </Label>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>

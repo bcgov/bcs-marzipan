@@ -119,7 +119,13 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           return (
             <FormItem>
               <FormLabel showRequired>
-                {getActivityFieldLabel(field.name)}
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="commsContacts"
+                    ariaLabel="About communications contacts"
+                  />
+                </>
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
@@ -234,7 +240,15 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           );
           return (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="commsMaterialIds"
+                    ariaLabel="About communications materials"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={commsMaterialComboboxOptions}

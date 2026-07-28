@@ -1,18 +1,58 @@
-import type { ActivityFormData } from './schemas/activity.schema';
-
 export const ACTIVITY_INFO_ICON_SETTINGS_KEY =
   'activity_info_icon_settings' as const;
 
 export const ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH = 250 as const;
 
 export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
+  'categoryIds',
+  'title',
+  'summary',
   'visibility',
+  'sharedWithTeamIds',
   'isConfidential',
   'isIssue',
+  'leadTeamId',
+  'leadOrgId',
   'significance',
+  'pitchRequiredStatusId',
+  'pitchDate',
+  'notes',
+  'tagIds',
+
+  'commsContacts',
   'strategy',
+  'commsMaterialIds',
+
+  'startDate',
+  'endDate',
+  'dateStatusId',
+  'startTime',
+  'endTime',
+  'isAllDay',
+  'timeStatusId',
   'schedulingNotes',
-] as const satisfies readonly (keyof ActivityFormData)[];
+
+  'newsReleaseOriginId',
+  'newsReleaseDistributionId',
+  'translationsRequiredStatusId',
+  'translationLanguageIds',
+
+  'premierRequestedId',
+  'representatives',
+  'venueName',
+  'venueStatusId',
+  'addressLine1',
+  'addressLine2',
+  'city',
+  'provinceOrState',
+  'country',
+  'eventPlanners',
+
+  'executiveSummary',
+  'lookAheadStatus',
+  'lookAheadSection',
+  'reportSettings',
+] as const;
 
 export type ActivityInfoIconFieldKey =
   (typeof ACTIVITY_INFO_ICON_FIELD_KEYS)[number];

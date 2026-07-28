@@ -145,7 +145,15 @@ function LeadOrganizationField({
 
         return (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="leadOrgId"
+                  ariaLabel="About lead organization"
+                />
+              </>
+            </FormLabel>
             <FormControl data-field={field.name}>
               <FreeformCombobox
                 readOnly={readOnly}
@@ -299,7 +307,13 @@ function LeadTeamField({
         return (
           <FormItem>
             <FormLabel showRequired>
-              {getActivityFieldLabel(field.name)}
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="leadTeamId"
+                  ariaLabel="About lead team"
+                />
+              </>
             </FormLabel>
             <FormControl data-field={field.name}>
               <Combobox
@@ -417,6 +431,10 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel showRequired>
                 <>
                   {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="categoryIds"
+                    ariaLabel="About categories"
+                  />
                   {categories.some((c) => c.description) ? (
                     <Popover>
                       <PopoverTrigger asChild>
@@ -510,7 +528,13 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel showRequired>
-              {getActivityFieldLabel(field.name)}
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="title"
+                  ariaLabel="About title"
+                />
+              </>
             </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
@@ -533,7 +557,13 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel showRequired>
-              {getActivityFieldLabel(field.name)}
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="summary"
+                  ariaLabel="About summary"
+                />
+              </>
             </FormLabel>
             <FormControl>
               <RichTextField
@@ -690,7 +720,15 @@ export const ActivityOverviewSection: React.FC<
           name="pitchRequiredStatusId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="pitchRequiredStatusId"
+                    ariaLabel="About pitch required"
+                  />
+                </>
+              </FormLabel>
               <FormSelectSafe
                 readOnly={pitchStatusScope.readOnly}
                 disabled={pitchStatusScope.fieldScopeDisabled}
@@ -741,7 +779,15 @@ export const ActivityOverviewSection: React.FC<
               : 'Select pitch date';
             return (
               <FormItem>
-                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormLabel>
+                  <>
+                    {getActivityFieldLabel(field.name)}
+                    <ActivityFieldInfoIcon
+                      fieldKey="pitchDate"
+                      ariaLabel="About pitch date"
+                    />
+                  </>
+                </FormLabel>
                 <ActivityFieldScopePermissionTooltip scope="pitchDate">
                   <FormControl className="w-full" data-field={field.name}>
                     <ScheduledDatePopoverField
@@ -799,7 +845,15 @@ export const ActivityOverviewSection: React.FC<
             name="notes"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormLabel>
+                  <>
+                    {getActivityFieldLabel(field.name)}
+                    <ActivityFieldInfoIcon
+                      fieldKey="notes"
+                      ariaLabel="About notes"
+                    />
+                  </>
+                </FormLabel>
                 <ActivityFieldScopePermissionTooltip scope="notes">
                   <FormControl data-field={field.name}>
                     <Textarea
@@ -829,7 +883,15 @@ export const ActivityOverviewSection: React.FC<
           );
           return (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="tagIds"
+                    ariaLabel="About tags"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={tagOptions}

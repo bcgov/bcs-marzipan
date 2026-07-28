@@ -10,8 +10,11 @@ import {
   type ActivityInfoIconSettings,
 } from '@corpcal/shared';
 import {
+  activityInfoIconSettingsRetryDelay,
   fetchActivityInfoIconSettings,
   patchActivityInfoIconSettings,
+  readCachedActivityInfoIconSettings,
+  shouldRetryActivityInfoIconSettings,
 } from '@/api/activityInfoIconSettingsApi';
 import { AdminSection } from '@/components/admin';
 import { Button } from '@/components/ui/button';
@@ -57,6 +60,10 @@ function toFieldState(settings: ActivityInfoIconSettings): InfoIconFieldState {
 export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
   const queryClient = useQueryClient();
   const comboboxAnchorRef = useComboboxAnchor();
+  const cachedInitialData = useMemo(
+    () => readCachedActivityInfoIconSettings(),
+    []
+  );
   const canManage = usePermission(
     PERMISSIONS.SETTINGS.MANAGE_ACTIVITY_INFO_ICONS
   );
@@ -64,10 +71,14 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
   const { data, isLoading, error } = useQuery({
     queryKey: ['settings', 'activity-info-icons'],
     queryFn: fetchActivityInfoIconSettings,
-    retry: false,
+    retry: shouldRetryActivityInfoIconSettings,
+    retryDelay: activityInfoIconSettingsRetryDelay,
     enabled: canManage,
-    initialData: DEFAULT_ACTIVITY_INFO_ICON_SETTINGS,
+    initialData: cachedInitialData ?? DEFAULT_ACTIVITY_INFO_ICON_SETTINGS,
   });
+
+  const isUsingCachedFallback = Boolean(error) && Boolean(cachedInitialData);
+  const isUsingDefaultFallback = Boolean(error) && !cachedInitialData;
 
   const [draft, setDraft] = useState<InfoIconFieldState>(() =>
     toFieldState(DEFAULT_ACTIVITY_INFO_ICON_SETTINGS)
@@ -184,10 +195,20 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
         <p className="text-sm text-slate-600">
           You do not have permission to manage activity info icons.
         </p>
-      ) : error ? (
-        <p className="text-destructive text-sm">Could not load settings.</p>
       ) : !isLoading && data ? (
         <div className="space-y-6">
+          {isUsingCachedFallback ? (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              Could not refresh from the server. Showing the last saved local
+              copy of settings.
+            </p>
+          ) : null}
+          {isUsingDefaultFallback ? (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              Could not refresh from the server. Showing default settings
+              temporarily.
+            </p>
+          ) : null}
           <div className="max-w-4xl">
             <Combobox
               items={allFieldOptions}
@@ -252,6 +273,14 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
             <div className="grid gap-4 xl:grid-cols-2">
               {draft.selectedFieldKeys.map((fieldKey) => {
                 const value = draft.textsByFieldKey[fieldKey] ?? '';
+                const currentText = value.trim();
+                const initialText = (
+                  initial.textsByFieldKey[fieldKey] ?? ''
+                ).trim();
+                const isPersistedField =
+                  initial.selectedFieldKeys.includes(fieldKey);
+                const isPersisted =
+                  isPersistedField && currentText === initialText;
                 return (
                   <div
                     key={fieldKey}
@@ -277,9 +306,11 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
                     />
                     <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                       <span>
-                        {value.trim().length === 0
+                        {currentText.length === 0
                           ? 'Required'
-                          : 'Saved as tooltip text'}
+                          : isPersisted
+                            ? 'Saved as tooltip text'
+                            : 'Unsaved changes'}
                       </span>
                       <span>
                         {value.length}/{ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH}
@@ -295,6 +326,8 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
             </p>
           )}
         </div>
+      ) : error ? (
+        <p className="text-destructive text-sm">Could not load settings.</p>
       ) : null}
     </AdminSection>
   );
