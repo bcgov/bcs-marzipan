@@ -8,6 +8,7 @@ import { ApiError } from './errors';
 
 const ACTIVITY_INFO_ICON_SETTINGS_CACHE_KEY =
   'corpcal.activityInfoIconSettings.v1';
+const AUTH_USER_ID_SESSION_KEY = 'corpcal_auth_user_id';
 
 function canUseLocalStorage(): boolean {
   return (
@@ -15,11 +16,28 @@ function canUseLocalStorage(): boolean {
   );
 }
 
+function canUseSessionStorage(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.sessionStorage !== 'undefined'
+  );
+}
+
+function getActivityInfoIconSettingsCacheKey(): string {
+  const origin =
+    typeof window !== 'undefined' ? window.location.origin : 'server';
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
+  const userScope = canUseSessionStorage()
+    ? (window.sessionStorage.getItem(AUTH_USER_ID_SESSION_KEY) ?? 'anonymous')
+    : 'anonymous';
+  return `${ACTIVITY_INFO_ICON_SETTINGS_CACHE_KEY}:${origin}:${apiBase}:${userScope}`;
+}
+
 export function readCachedActivityInfoIconSettings(): ActivityInfoIconSettings | null {
   if (!canUseLocalStorage()) return null;
   try {
     const raw = window.localStorage.getItem(
-      ACTIVITY_INFO_ICON_SETTINGS_CACHE_KEY
+      getActivityInfoIconSettingsCacheKey()
     );
     if (!raw) return null;
     const parsed = JSON.parse(raw);
@@ -36,7 +54,7 @@ export function writeCachedActivityInfoIconSettings(
   if (!canUseLocalStorage()) return;
   try {
     window.localStorage.setItem(
-      ACTIVITY_INFO_ICON_SETTINGS_CACHE_KEY,
+      getActivityInfoIconSettingsCacheKey(),
       JSON.stringify(settings)
     );
   } catch {
