@@ -94,6 +94,8 @@ export class UsersService {
         roleId: dto.roleId,
         adEmail: normalizedEmail,
         adDisplayName: dto.displayName?.trim() || null,
+        adJobTitle: dto.adJobTitle?.trim() || null,
+        adPhone: dto.adPhone?.trim() || null,
         isActive: true,
         status: 'pending',
         createdBy: createdByUserId,

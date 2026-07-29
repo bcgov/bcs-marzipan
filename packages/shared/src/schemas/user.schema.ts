@@ -19,6 +19,8 @@ export const TEAM_ROLES = ['owner', 'member'] as const;
 
 export const USER_DISPLAY_NAME_MAX_LENGTH = 255;
 export const USER_NOTES_MAX_LENGTH = 1000;
+export const USER_JOB_TITLE_MAX_LENGTH = 255;
+export const USER_PHONE_MAX_LENGTH = 50;
 
 // ============================================
 // Response Schemas
@@ -96,6 +98,13 @@ export const createUserBodySchema = z.object({
     .email('Invalid email format'),
   roleId: z.number().int(),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).optional(),
+  adJobTitle: z
+    .string()
+    .trim()
+    .max(USER_JOB_TITLE_MAX_LENGTH)
+    .nullable()
+    .optional(),
+  adPhone: z.string().trim().max(USER_PHONE_MAX_LENGTH).nullable().optional(),
   teams: z
     .array(
       z.object({

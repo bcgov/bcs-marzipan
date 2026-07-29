@@ -7,7 +7,11 @@ import { z } from 'zod';
 import { useEffect, useRef, useState } from 'react';
 
 import type { CreateUserBody } from '@corpcal/shared/api/types';
-import { USER_DISPLAY_NAME_MAX_LENGTH } from '@corpcal/shared/schemas';
+import {
+  USER_DISPLAY_NAME_MAX_LENGTH,
+  USER_JOB_TITLE_MAX_LENGTH,
+  USER_PHONE_MAX_LENGTH,
+} from '@corpcal/shared/schemas';
 import { createUser, fetchRoles, fetchTeams } from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
 import {
@@ -57,6 +61,8 @@ const createUserFormSchema = z.object({
     .email('Invalid email format'),
   roleId: z.string().min(1, 'Role is required'),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).default(''),
+  adJobTitle: z.string().trim().max(USER_JOB_TITLE_MAX_LENGTH).default(''),
+  adPhone: z.string().trim().max(USER_PHONE_MAX_LENGTH).default(''),
   teamIds: z.array(z.number().int()).default([]),
 });
 
@@ -66,6 +72,8 @@ const defaultValues: CreateUserFormData = {
   email: '',
   roleId: '',
   displayName: '',
+  adJobTitle: '',
+  adPhone: '',
   teamIds: [],
 };
 
@@ -161,6 +169,12 @@ export function UserCreateModal({
       ...(data.displayName?.trim() && {
         displayName: data.displayName.trim(),
       }),
+      ...(data.adJobTitle?.trim() && {
+        adJobTitle: data.adJobTitle.trim(),
+      }),
+      ...(data.adPhone?.trim() && {
+        adPhone: data.adPhone.trim(),
+      }),
       ...(data.teamIds &&
         data.teamIds.length > 0 && {
           teams: data.teamIds.map((teamId) => ({
@@ -228,6 +242,42 @@ export function UserCreateModal({
                     <Input
                       type="text"
                       maxLength={USER_DISPLAY_NAME_MAX_LENGTH}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="adJobTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel showDirtyIndicator={false}>Job title</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="e.g. Senior Analyst"
+                      maxLength={USER_JOB_TITLE_MAX_LENGTH}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="adPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel showDirtyIndicator={false}>Phone</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="e.g. 250-555-0123"
+                      maxLength={USER_PHONE_MAX_LENGTH}
                       {...field}
                     />
                   </FormControl>
