@@ -80,6 +80,7 @@ import {
   buildReviewSnapshot,
   diffReviewFields,
   getEmptyReviewBaseline,
+  getForbiddenLookupIds,
   isDeepEqual,
   mapResponseToFormData,
   normalizeVenueAddressForForm,
@@ -93,13 +94,15 @@ import { DatabaseService } from '../../database/database.service';
 import { ApplicationSettingsService } from '../../locks/application-settings.service';
 import { LocksService } from '../../locks/locks.service';
 import { LookAheadPolicyService } from '../../look-ahead/look-ahead-policy.service';
-import { getSelectableCategoryIds } from '../../policy/category-scoping.helper';
 import {
   resolveDataScope,
   type RequestContext as RequestContextType,
 } from '../../policy/dto/user-context.dto';
+import {
+  getCategoryScopeById,
+  getTagScopeById,
+} from '../../policy/lookup-scope.helper';
 import { PolicyService } from '../../policy/policy.service';
-import { getSelectableTagIds } from '../../policy/tag-scoping.helper';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
@@ -200,14 +203,14 @@ export class ActivitiesService {
       permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ?? false;
     if (canUseAny) return;
 
-    const selectableIds = await getSelectableTagIds(
-      this.databaseService.db,
-      teamIds
-    );
-    const selectableSet = new Set(selectableIds);
-    const existingSet = new Set(existingTagIds ?? []);
-    const forbidden = tagIds.filter(
-      (id) => !selectableSet.has(id) && !existingSet.has(id)
+    const scopeById = await getTagScopeById(this.databaseService.db, [
+      ...new Set([...tagIds, ...(existingTagIds ?? [])]),
+    ]);
+    const forbidden = getForbiddenLookupIds(
+      tagIds,
+      existingTagIds,
+      teamIds,
+      scopeById
     );
     if (forbidden.length > 0) {
       throw new BadRequestException(
@@ -231,14 +234,14 @@ export class ActivitiesService {
       permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ?? false;
     if (canUseAny) return;
 
-    const selectableIds = await getSelectableCategoryIds(
-      this.databaseService.db,
-      teamIds
-    );
-    const selectableSet = new Set(selectableIds);
-    const existingSet = new Set(existingCategoryIds ?? []);
-    const forbidden = categoryIds.filter(
-      (id) => !selectableSet.has(id) && !existingSet.has(id)
+    const scopeById = await getCategoryScopeById(this.databaseService.db, [
+      ...new Set([...categoryIds, ...(existingCategoryIds ?? [])]),
+    ]);
+    const forbidden = getForbiddenLookupIds(
+      categoryIds,
+      existingCategoryIds,
+      teamIds,
+      scopeById
     );
     if (forbidden.length > 0) {
       throw new BadRequestException(

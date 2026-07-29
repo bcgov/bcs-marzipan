@@ -5,6 +5,10 @@ import type { ActivityFilterState } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import { CategoriesFilterPanel } from '@/components/activity/ActivityTable/CategoriesFilter';
+import {
+  categoryIdsToNames,
+  categoryNamesToIds,
+} from '@/components/activity/ActivityTable/categoryFilterUtils';
 import { LeadsFilterPanel } from '@/components/activity/ActivityTable/LeadsFilter';
 import { LookAheadFilterPanel } from '@/components/activity/ActivityTable/LookAheadFilter';
 import { PitchFilterPanel } from '@/components/activity/ActivityTable/PitchFilter';
@@ -232,10 +236,12 @@ export function ReportFiltersBar({
   );
 
   const handleCategoryChange = useCallback(
-    (values: string[]) => {
-      mergeFilterState({ categoryNames: values });
+    (ids: number[]) => {
+      mergeFilterState({
+        categoryNames: categoryIdsToNames(ids, categoryOptions),
+      });
     },
-    [mergeFilterState]
+    [categoryOptions, mergeFilterState]
   );
 
   const handleStatusChange = useCallback(
@@ -332,7 +338,10 @@ export function ReportFiltersBar({
     setPreferences({ searchKeyword: '' });
   }, [filterState, onSearchCleared, reportName, searchKeyword, setPreferences]);
 
-  const categorySelectedValues = filterState.categoryNames;
+  const categorySelectedIds = useMemo(
+    () => categoryNamesToIds(filterState.categoryNames, categoryOptions),
+    [categoryOptions, filterState.categoryNames]
+  );
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
   const filterSlots = useMemo<ResponsiveFilterSlot[]>(
@@ -368,13 +377,13 @@ export function ReportFiltersBar({
         panel: (
           <CategoriesFilterPanel
             categoryOptions={categoryOptions}
-            selectedCategoryNames={categorySelectedValues}
-            onCategoryNamesChange={handleCategoryChange}
+            selectedCategoryIds={categorySelectedIds}
+            onCategoryIdsChange={handleCategoryChange}
           />
         ),
         triggerProps: {
-          active: categorySelectedValues.length > 0,
-          count: categorySelectedValues.length,
+          active: categorySelectedIds.length > 0,
+          count: categorySelectedIds.length,
           onClear: () => handleCategoryChange([]),
           clearAriaLabel: 'Clear Category filter',
         },
@@ -561,7 +570,7 @@ export function ReportFiltersBar({
     [
       filterState,
       categoryOptions,
-      categorySelectedValues,
+      categorySelectedIds,
       handleCategoryChange,
       handleDateRangeChange,
       handleStatusChange,

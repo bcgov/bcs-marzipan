@@ -1,75 +1,49 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
+import type { CategoryFilterOption } from './categoryFilterUtils';
 import { FilterSearchableList } from './FilterSearchableList';
 
-export interface CategoryFilterOption {
-  value: string;
-  label: string;
-}
+export type { CategoryFilterOption };
 
 export interface CategoriesFilterPanelProps {
   categoryOptions: CategoryFilterOption[];
-  selectedCategoryNames: string[];
-  onCategoryNamesChange: (names: string[]) => void;
+  selectedCategoryIds: number[];
+  onCategoryIdsChange: (ids: number[]) => void;
 }
 
 export type CategoriesFilterProps = CategoriesFilterPanelProps;
 
 /**
- * Panel content only (no trigger). Category filter state stores display names;
- * options use numeric ids for FilterSearchableList compatibility.
+ * Panel content only (no trigger). Category filter state is stored as numeric ids.
  */
 export function CategoriesFilterPanel({
   categoryOptions,
-  selectedCategoryNames,
-  onCategoryNamesChange,
+  selectedCategoryIds,
+  onCategoryIdsChange,
 }: CategoriesFilterPanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const labelById = useMemo(
-    () =>
-      new Map(
-        categoryOptions.map(
-          (option) => [Number(option.value), option.label] as const
-        )
-      ),
-    [categoryOptions]
-  );
-
-  const selectedIds = useMemo(
-    () =>
-      selectedCategoryNames
-        .map((name) => {
-          const option = categoryOptions.find((o) => o.label === name);
-          return option ? Number(option.value) : NaN;
-        })
-        .filter((id) => Number.isFinite(id)),
-    [categoryOptions, selectedCategoryNames]
-  );
-
   const handleToggle = useCallback(
     (id: number) => {
-      const label = labelById.get(id);
-      if (!label) return;
-      if (selectedCategoryNames.includes(label)) {
-        onCategoryNamesChange(
-          selectedCategoryNames.filter((name) => name !== label)
+      if (selectedCategoryIds.includes(id)) {
+        onCategoryIdsChange(
+          selectedCategoryIds.filter((value) => value !== id)
         );
       } else {
-        onCategoryNamesChange([...selectedCategoryNames, label]);
+        onCategoryIdsChange([...selectedCategoryIds, id]);
       }
     },
-    [labelById, selectedCategoryNames, onCategoryNamesChange]
+    [onCategoryIdsChange, selectedCategoryIds]
   );
 
   const handleClear = useCallback(() => {
-    onCategoryNamesChange([]);
-  }, [onCategoryNamesChange]);
+    onCategoryIdsChange([]);
+  }, [onCategoryIdsChange]);
 
   return (
     <FilterSearchableList
       options={categoryOptions}
-      selectedIds={selectedIds}
+      selectedIds={selectedCategoryIds}
       onToggle={handleToggle}
       searchPlaceholder="Search categories..."
       searchAriaLabel="Search categories"

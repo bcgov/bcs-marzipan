@@ -35,6 +35,7 @@ import {
   CategoriesFilterPanel,
   type CategoryFilterOption,
 } from './CategoriesFilter';
+import { categoryIdsToNames, categoryNamesToIds } from './categoryFilterUtils';
 import { LeadsFilterPanel, type LeadFilterOption } from './LeadsFilter';
 import { LookAheadFilterPanel } from './LookAheadFilter';
 import { PitchFilterPanel } from './PitchFilter';
@@ -223,13 +224,13 @@ export function ActivityTableFilters({
   );
 
   const handleCategoryChange = useCallback(
-    (values: string[]) => {
+    (ids: number[]) => {
       onFilterStateChange({
         ...filterState,
-        categoryNames: values,
+        categoryNames: categoryIdsToNames(ids, categoryOptions),
       });
     },
-    [filterState, onFilterStateChange]
+    [categoryOptions, filterState, onFilterStateChange]
   );
 
   const handleStatusChange = useCallback(
@@ -301,7 +302,10 @@ export function ActivityTableFilters({
     [filterState, onFilterStateChange]
   );
 
-  const categorySelectedValues = filterState.categoryNames;
+  const categorySelectedIds = useMemo(
+    () => categoryNamesToIds(filterState.categoryNames, categoryOptions),
+    [categoryOptions, filterState.categoryNames]
+  );
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
   const canViewPitchStatus = pitchFieldVisibility.canViewPitchStatus;
@@ -351,13 +355,13 @@ export function ActivityTableFilters({
         panel: (
           <CategoriesFilterPanel
             categoryOptions={categoryOptions}
-            selectedCategoryNames={categorySelectedValues}
-            onCategoryNamesChange={handleCategoryChange}
+            selectedCategoryIds={categorySelectedIds}
+            onCategoryIdsChange={handleCategoryChange}
           />
         ),
         triggerProps: {
-          active: categorySelectedValues.length > 0,
-          count: categorySelectedValues.length,
+          active: categorySelectedIds.length > 0,
+          count: categorySelectedIds.length,
           onClear: () => handleCategoryChange([]),
           clearAriaLabel: 'Clear Category filter',
         },
@@ -545,7 +549,7 @@ export function ActivityTableFilters({
       filterState,
       onFilterStateChange,
       categoryOptions,
-      categorySelectedValues,
+      categorySelectedIds,
       handleCategoryChange,
       handleDateRangeChange,
       handleStatusChange,

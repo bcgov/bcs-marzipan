@@ -10,15 +10,15 @@ describe('CategoriesFilterPanel', () => {
     { value: '2', label: 'FYI' },
   ];
 
-  it('filters options by search and toggles category names', async () => {
+  it('filters options by search and toggles category ids', async () => {
     const user = userEvent.setup();
-    const onCategoryNamesChange = vi.fn();
+    const onCategoryIdsChange = vi.fn();
 
     render(
       <CategoriesFilterPanel
         categoryOptions={categoryOptions}
-        selectedCategoryNames={['Event']}
-        onCategoryNamesChange={onCategoryNamesChange}
+        selectedCategoryIds={[1]}
+        onCategoryIdsChange={onCategoryIdsChange}
       />
     );
 
@@ -30,6 +30,6 @@ describe('CategoriesFilterPanel', () => {
     expect(screen.getByText('FYI')).toBeInTheDocument();
 
     await user.click(screen.getByRole('checkbox', { name: 'FYI' }));
-    expect(onCategoryNamesChange).toHaveBeenCalledWith(['Event', 'FYI']);
+    expect(onCategoryIdsChange).toHaveBeenCalledWith([1, 2]);
   });
 });

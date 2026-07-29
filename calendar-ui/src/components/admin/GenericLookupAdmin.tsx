@@ -25,6 +25,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '@/lib/error-toast';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 const EMPTY_INITIAL: Record<string, unknown> = {};
 
@@ -135,6 +136,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   });
 
   const invalidateListCaches = () => {
+    void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.root });
     void queryClient.invalidateQueries({ queryKey });
     for (const key of additionalInvalidateKeys ?? []) {
       void queryClient.invalidateQueries({ queryKey: key });

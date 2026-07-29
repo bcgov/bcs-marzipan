@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { useFormContext, useWatch, type FieldPathValue } from 'react-hook-form';
+import { toast } from 'sonner';
 import { useMemo } from 'react';
 
 import { TEAM_PREFIX_FALLBACK } from '@corpcal/shared';
@@ -134,6 +135,25 @@ function mergeComboboxItems(
     (option) => !pickableValues.has(option.value)
   );
   return [...pickable, ...grandfathered];
+}
+
+function applyAllowedLookupSelection(
+  submittedIds: number[],
+  existingIds: number[] | undefined,
+  userTeamIds: number[],
+  scopeById: Map<number, LookupTeamScope>,
+  onApply: (allowedIds: number[]) => void
+): void {
+  const allowedIds = filterAllowedLookupIds(
+    submittedIds,
+    existingIds,
+    userTeamIds,
+    scopeById
+  );
+  if (allowedIds.length !== submittedIds.length) {
+    toast.warning('That category or tag is not available to your teams.');
+  }
+  onApply(allowedIds);
 }
 
 type LeadOrganizationOption = {
@@ -557,13 +577,15 @@ export const ActivityOverviewSection: React.FC<
                   value={selectedOptions}
                   onValueChange={(selected) => {
                     const submittedIds = selected.map((o) => Number(o.value));
-                    const allowedIds = filterAllowedLookupIds(
+                    applyAllowedLookupSelection(
                       submittedIds,
                       field.value ?? [],
                       userTeamIds,
-                      categoryScopeById
+                      categoryScopeById,
+                      (allowedIds) => {
+                        setActivityFormFieldValue(form, field.name, allowedIds);
+                      }
                     );
-                    setActivityFormFieldValue(form, field.name, allowedIds);
                   }}
                   itemToStringValue={(o) => o.label}
                   readOnly={readOnly}
@@ -1000,13 +1022,15 @@ export const ActivityOverviewSection: React.FC<
                   value={selectedOptions}
                   onValueChange={(selected) => {
                     const submittedIds = selected.map((o) => Number(o.value));
-                    const allowedIds = filterAllowedLookupIds(
+                    applyAllowedLookupSelection(
                       submittedIds,
                       field.value ?? [],
                       userTeamIds,
-                      tagScopeById
+                      tagScopeById,
+                      (allowedIds) => {
+                        setActivityFormFieldValue(form, field.name, allowedIds);
+                      }
                     );
-                    setActivityFormFieldValue(form, field.name, allowedIds);
                   }}
                   itemToStringValue={(o) => o.label}
                   readOnly={readOnly}

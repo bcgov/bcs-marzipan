@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
+import {
+  DYNAMIC_LOOKUP_CACHE_SECONDS,
+  SYSTEM_ROLE_IDS,
+  type AuthUser,
+} from '@corpcal/shared';
 import type { LookupItem, VenuePresetItem } from '@corpcal/shared/api/types';
 import type { TeamListItem } from '@corpcal/shared/schemas';
 
@@ -165,6 +169,33 @@ describe('LookupsController', () => {
         data: mockLookupItems,
       });
       expect(mockLookupsService.getCategories).toHaveBeenCalledWith(false);
+    });
+
+    it('passes includeAll to the service when caller has lookups.manage', async () => {
+      mockLookupsService.getCategories.mockResolvedValue(mockLookupItems);
+      const res = { setHeader: vi.fn() };
+
+      await controller.getCategories(mockUser, 'true', res as never);
+
+      expect(mockLookupsService.getCategories).toHaveBeenCalledWith(true);
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
+    });
+
+    it('ignores includeAll without lookups.manage permission', async () => {
+      const editorUser: AuthUser = {
+        ...mockUser,
+        permissions: ['activities.create'],
+      };
+      mockLookupsService.getCategories.mockResolvedValue(mockLookupItems);
+      const res = { setHeader: vi.fn() };
+
+      await controller.getCategories(editorUser, 'true', res as never);
+
+      expect(mockLookupsService.getCategories).toHaveBeenCalledWith(false);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Cache-Control',
+        `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      );
     });
   });
 

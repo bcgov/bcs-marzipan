@@ -39,7 +39,6 @@ import {
   roles,
   tags,
   teamCategories,
-  teams,
   teamTags,
   themes,
   timeStatuses,
@@ -73,6 +72,10 @@ import { reportConfigSchema } from '@corpcal/shared/schemas';
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
+import {
+  loadTeamMetadataForLookupIds,
+  teamMetadataForLookup,
+} from './lookups-team-metadata.helper';
 import {
   loadActiveCategoryTeamIds,
   loadActiveTagTeamIds,
@@ -112,55 +115,36 @@ export class LookupsService {
     const teamScopedIds = results
       .filter((c) => c.visibility === 'team')
       .map((c) => c.id);
-
-    const teamNamesByCategoryId = new Map<number, string[]>();
-    const teamIdsByCategoryId = new Map<number, number[]>();
-    if (teamScopedIds.length > 0) {
-      const rows = await this.databaseService.db
-        .select({
-          categoryId: teamCategories.categoryId,
-          teamId: teamCategories.teamId,
-          teamName: teams.displayName,
-        })
-        .from(teamCategories)
-        .innerJoin(teams, eq(teamCategories.teamId, teams.id))
-        .where(
-          and(
-            inArray(teamCategories.categoryId, teamScopedIds),
-            eq(teamCategories.isActive, true)
-          )
-        );
-
-      for (const row of rows) {
-        const name = row.teamName ?? '';
-        if (!teamNamesByCategoryId.has(row.categoryId)) {
-          teamNamesByCategoryId.set(row.categoryId, []);
-          teamIdsByCategoryId.set(row.categoryId, []);
-        }
-        teamNamesByCategoryId.get(row.categoryId)!.push(name);
-        teamIdsByCategoryId.get(row.categoryId)!.push(row.teamId);
+    const teamMetadata = await loadTeamMetadataForLookupIds(
+      this.databaseService.db,
+      teamScopedIds,
+      {
+        lookupIdColumn: teamCategories.categoryId,
+        teamIdColumn: teamCategories.teamId,
+        junctionTable: teamCategories,
       }
-    }
+    );
 
-    return results.map((cat) => ({
-      id: cat.id,
-      label: cat.displayName,
-      value: cat.id,
-      name: cat.name,
-      displayName: cat.displayName,
-      sortOrder: cat.sortOrder,
-      isActive: cat.isActive,
-      visibility: cat.visibility as 'global' | 'team',
-      description: cat.description,
-      teamNames:
-        cat.visibility === 'team'
-          ? (teamNamesByCategoryId.get(cat.id) ?? [])
-          : undefined,
-      teamIds:
-        cat.visibility === 'team'
-          ? (teamIdsByCategoryId.get(cat.id) ?? [])
-          : undefined,
-    }));
+    return results.map((cat) => {
+      const { teamNames, teamIds } = teamMetadataForLookup(
+        cat.id,
+        cat.visibility,
+        teamMetadata
+      );
+      return {
+        id: cat.id,
+        label: cat.displayName,
+        value: cat.id,
+        name: cat.name,
+        displayName: cat.displayName,
+        sortOrder: cat.sortOrder,
+        isActive: cat.isActive,
+        visibility: cat.visibility as 'global' | 'team',
+        description: cat.description,
+        teamNames,
+        teamIds,
+      };
+    });
   }
 
   /**
@@ -502,54 +486,35 @@ export class LookupsService {
     const teamScopedIds = results
       .filter((t) => t.visibility === 'team')
       .map((t) => t.id);
-
-    const teamNamesByTagId = new Map<number, string[]>();
-    const teamIdsByTagId = new Map<number, number[]>();
-    if (teamScopedIds.length > 0) {
-      const rows = await this.databaseService.db
-        .select({
-          tagId: teamTags.tagId,
-          teamId: teamTags.teamId,
-          teamName: teams.displayName,
-        })
-        .from(teamTags)
-        .innerJoin(teams, eq(teamTags.teamId, teams.id))
-        .where(
-          and(
-            inArray(teamTags.tagId, teamScopedIds),
-            eq(teamTags.isActive, true)
-          )
-        );
-
-      for (const row of rows) {
-        const name = row.teamName ?? '';
-        if (!teamNamesByTagId.has(row.tagId)) {
-          teamNamesByTagId.set(row.tagId, []);
-          teamIdsByTagId.set(row.tagId, []);
-        }
-        teamNamesByTagId.get(row.tagId)!.push(name);
-        teamIdsByTagId.get(row.tagId)!.push(row.teamId);
+    const teamMetadata = await loadTeamMetadataForLookupIds(
+      this.databaseService.db,
+      teamScopedIds,
+      {
+        lookupIdColumn: teamTags.tagId,
+        teamIdColumn: teamTags.teamId,
+        junctionTable: teamTags,
       }
-    }
+    );
 
-    return results.map((tag) => ({
-      id: tag.id,
-      label: tag.displayName,
-      value: tag.id,
-      name: tag.name,
-      displayName: tag.displayName,
-      sortOrder: tag.sortOrder,
-      isActive: tag.isActive,
-      visibility: tag.visibility as 'global' | 'team',
-      teamNames:
-        tag.visibility === 'team'
-          ? (teamNamesByTagId.get(tag.id) ?? [])
-          : undefined,
-      teamIds:
-        tag.visibility === 'team'
-          ? (teamIdsByTagId.get(tag.id) ?? [])
-          : undefined,
-    }));
+    return results.map((tag) => {
+      const { teamNames, teamIds } = teamMetadataForLookup(
+        tag.id,
+        tag.visibility,
+        teamMetadata
+      );
+      return {
+        id: tag.id,
+        label: tag.displayName,
+        value: tag.id,
+        name: tag.name,
+        displayName: tag.displayName,
+        sortOrder: tag.sortOrder,
+        isActive: tag.isActive,
+        visibility: tag.visibility as 'global' | 'team',
+        teamNames,
+        teamIds,
+      };
+    });
   }
 
   /**
@@ -1877,7 +1842,7 @@ export class LookupsService {
       const shouldSyncTeams =
         data.visibility !== undefined || data.teamIds !== undefined;
       if (shouldSyncTeams) {
-        const visibility = this.resolveCategoryUpdateVisibility(
+        const visibility = this.resolveLookupUpdateVisibility(
           existing.visibility as 'global' | 'team',
           data.visibility,
           data.teamIds
@@ -1898,8 +1863,6 @@ export class LookupsService {
           updateData.visibility = 'global';
           await syncCategoryTeams(tx, id, 'global', []);
         }
-      } else if (data.visibility !== undefined) {
-        updateData.visibility = data.visibility;
       }
 
       const [result] = await tx
@@ -2054,7 +2017,7 @@ export class LookupsService {
       const shouldSyncTeams =
         data.visibility !== undefined || data.teamIds !== undefined;
       if (shouldSyncTeams) {
-        const visibility = this.resolveCategoryUpdateVisibility(
+        const visibility = this.resolveLookupUpdateVisibility(
           existing.visibility as 'global' | 'team',
           data.visibility,
           data.teamIds
@@ -2075,8 +2038,6 @@ export class LookupsService {
           updateData.visibility = 'global';
           await syncTagTeams(tx, id, 'global', []);
         }
-      } else if (data.visibility !== undefined) {
-        updateData.visibility = data.visibility;
       }
 
       const [result] = await tx
@@ -2262,7 +2223,7 @@ export class LookupsService {
     return 'global';
   }
 
-  private resolveCategoryUpdateVisibility(
+  private resolveLookupUpdateVisibility(
     existingVisibility: 'global' | 'team',
     visibility: 'global' | 'team' | undefined,
     teamIds: number[] | undefined
@@ -2271,7 +2232,15 @@ export class LookupsService {
       return visibility;
     }
     if (teamIds !== undefined) {
-      return teamIds.length > 0 ? 'team' : 'global';
+      if (teamIds.length > 0) {
+        return 'team';
+      }
+      if (existingVisibility === 'team') {
+        throw new BadRequestException(
+          'Set visibility to "global" to remove team restrictions, or provide at least one teamId'
+        );
+      }
+      return 'global';
     }
     return existingVisibility;
   }
