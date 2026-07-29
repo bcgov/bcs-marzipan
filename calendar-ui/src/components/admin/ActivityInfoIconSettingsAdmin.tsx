@@ -9,6 +9,7 @@ import {
   type ActivityInfoIconFieldKey,
   type ActivityInfoIconSettings,
 } from '@corpcal/shared';
+import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
 import {
   activityInfoIconSettingsRetryDelay,
   fetchActivityInfoIconSettings,
@@ -34,7 +35,7 @@ import {
   useComboboxAnchor,
 } from '@/components/ui/combobox';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextField } from '@/components/ui/rich-text-field';
 import { usePermission } from '@/hooks/usePermissions';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { showErrorToast, showSuccessToast } from '@/lib/error-toast';
@@ -146,9 +147,11 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
     () =>
       draft.selectedFieldKeys.filter(
         (fieldKey) =>
-          (draft.textsByFieldKey[fieldKey] ?? '').trim().length === 0 ||
-          (draft.textsByFieldKey[fieldKey] ?? '').length >
-            ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH
+          plainTextFromActivityRichField(
+            draft.textsByFieldKey[fieldKey] ?? ''
+          ).trim().length === 0 ||
+          plainTextFromActivityRichField(draft.textsByFieldKey[fieldKey] ?? '')
+            .length > ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH
       ),
     [draft.selectedFieldKeys, draft.textsByFieldKey]
   );
@@ -272,14 +275,17 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
             <div className="grid gap-4 xl:grid-cols-2">
               {draft.selectedFieldKeys.map((fieldKey) => {
                 const value = draft.textsByFieldKey[fieldKey] ?? '';
-                const currentText = value.trim();
-                const initialText = (
+                const currentText =
+                  plainTextFromActivityRichField(value).trim();
+                const initialText = plainTextFromActivityRichField(
                   initial.textsByFieldKey[fieldKey] ?? ''
                 ).trim();
                 const isPersistedField =
                   initial.selectedFieldKeys.includes(fieldKey);
                 const isPersisted =
                   isPersistedField && currentText === initialText;
+                const plainTextLength =
+                  plainTextFromActivityRichField(value).length;
                 return (
                   <div
                     key={fieldKey}
@@ -288,19 +294,20 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
                     <Label className="mb-2 block text-sm font-semibold text-slate-900">
                       {getActivityFieldLabel(fieldKey)}
                     </Label>
-                    <Textarea
+                    <RichTextField
+                      name={`activity-info-icon-${fieldKey}`}
                       value={value}
-                      onChange={(event) =>
+                      onChange={(nextValue) =>
                         setDraft((current) => ({
                           ...current,
                           textsByFieldKey: {
                             ...current.textsByFieldKey,
-                            [fieldKey]: event.target.value,
+                            [fieldKey]: nextValue,
                           },
                         }))
                       }
+                      onBlur={() => {}}
                       placeholder="Enter info icon text"
-                      rows={5}
                       maxLength={ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH}
                     />
                     <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
@@ -312,7 +319,7 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
                             : 'Unsaved changes'}
                       </span>
                       <span>
-                        {value.length}/{ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH}
+                        {plainTextLength}/{ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH}
                       </span>
                     </div>
                   </div>

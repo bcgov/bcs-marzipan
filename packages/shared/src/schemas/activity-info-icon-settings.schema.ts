@@ -6,6 +6,7 @@ import {
   type ActivityInfoIconFieldKey,
   type ActivityInfoIconSettings,
 } from '../activity-info-icon-settings';
+import { plainTextFromActivityRichField } from '../utils';
 
 export type {
   ActivityInfoIconFieldKey,
@@ -21,7 +22,12 @@ const FIELD_KEY_ENUM = ACTIVITY_INFO_ICON_FIELD_KEYS as unknown as [
 const activityInfoIconSettingSchema = z
   .object({
     fieldKey: z.enum(FIELD_KEY_ENUM),
-    text: z.string().trim().min(1).max(ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH),
+    text: z.string().refine((value) => {
+      const plain = plainTextFromActivityRichField(value).trim();
+      return (
+        plain.length > 0 && plain.length <= ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH
+      );
+    }),
   })
   .strict();
 

@@ -46,8 +46,13 @@ vi.mock('@/components/ui/label', () => ({
   Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
 }));
 
-vi.mock('@/components/ui/textarea', () => ({
-  Textarea: (props: any) => <textarea {...props} />,
+vi.mock('@/components/ui/rich-text-field', () => ({
+  RichTextField: ({ value, onChange }: any) => (
+    <textarea
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  ),
 }));
 
 vi.mock('@/components/ui/combobox', () => {

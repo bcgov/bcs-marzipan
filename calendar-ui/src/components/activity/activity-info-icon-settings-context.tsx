@@ -20,6 +20,7 @@ import {
   readCachedActivityInfoIconSettings,
   shouldRetryActivityInfoIconSettings,
 } from '@/api/activityInfoIconSettingsApi';
+import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { InfoIconButton } from '@/components/ui/info-icon-button';
 import {
   Popover,
@@ -117,10 +118,10 @@ export function ActivityFieldInfoIcon({
         <InfoIconButton aria-label={ariaLabel} />
       </PopoverTrigger>
       <PopoverContent
-        className="w-80 max-w-[calc(100vw-2rem)] text-sm whitespace-pre-line"
+        className="w-80 max-w-[calc(100vw-2rem)] text-sm"
         align="start"
       >
-        {text}
+        <ActivityRichTextContent value={text} />
       </PopoverContent>
     </Popover>
   );
