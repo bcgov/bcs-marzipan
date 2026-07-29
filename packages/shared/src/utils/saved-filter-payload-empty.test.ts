@@ -12,7 +12,7 @@ describe('savedFilterPayloadIsEmpty', () => {
     expect(savedFilterPayloadIsEmpty({}, '  hello  ')).toBe(false);
   });
 
-  it('returns false when category names present', () => {
+  it('returns false when category IDs present', () => {
     expect(savedFilterPayloadIsEmpty({ categoryIds: [1] }, '')).toBe(false);
   });
 

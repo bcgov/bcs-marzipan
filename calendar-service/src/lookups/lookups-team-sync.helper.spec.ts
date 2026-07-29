@@ -56,17 +56,11 @@ describe('lookups-team-sync.helper', () => {
     expect(spies.update).toHaveBeenCalledWith(teamCategories);
     expect(spies.updateSet).toHaveBeenCalledWith({ isActive: false });
     expect(spies.updateWhere).toHaveBeenCalledTimes(1);
-    expect(spies.insert).toHaveBeenCalledTimes(2);
-    expect(spies.insertValues).toHaveBeenNthCalledWith(1, {
-      categoryId: 10,
-      teamId: 1,
-      isActive: true,
-    });
-    expect(spies.insertValues).toHaveBeenNthCalledWith(2, {
-      categoryId: 10,
-      teamId: 2,
-      isActive: true,
-    });
+    expect(spies.insert).toHaveBeenCalledTimes(1);
+    expect(spies.insertValues).toHaveBeenCalledWith([
+      { categoryId: 10, teamId: 1, isActive: true },
+      { categoryId: 10, teamId: 2, isActive: true },
+    ]);
   });
 
   it('syncCategoryTeams skips upserts when visibility is global', async () => {
@@ -84,11 +78,9 @@ describe('lookups-team-sync.helper', () => {
     await syncTagTeams(tx, 20, 'team', [3]);
 
     expect(spies.update).toHaveBeenCalledWith(teamTags);
-    expect(spies.insertValues).toHaveBeenCalledWith({
-      tagId: 20,
-      teamId: 3,
-      isActive: true,
-    });
+    expect(spies.insertValues).toHaveBeenCalledWith([
+      { tagId: 20, teamId: 3, isActive: true },
+    ]);
   });
 
   it('loadActiveCategoryTeamIds returns active team ids', async () => {

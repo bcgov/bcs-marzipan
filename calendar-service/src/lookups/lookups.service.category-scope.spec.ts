@@ -43,14 +43,26 @@ describe('LookupsService category team scope', () => {
       .fn()
       .mockResolvedValue([{ id: 42, name: 'cat', visibility: 'team' }]);
     const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
-    mockTx.insert.mockImplementation(() => ({
-      values: vi.fn().mockImplementation((payload) => {
-        if ('name' in payload) {
-          return { returning: categoryReturning };
-        }
-        return { onConflictDoUpdate };
-      }),
-    }));
+    const categoryValues = vi
+      .fn()
+      .mockReturnValue({ returning: categoryReturning });
+    const teamValues = vi.fn().mockReturnValue({ onConflictDoUpdate });
+    mockTx.insert.mockImplementation((table: unknown) => {
+      void table;
+      return {
+        values: vi.fn().mockImplementation((payload: unknown) => {
+          if (
+            payload &&
+            typeof payload === 'object' &&
+            !Array.isArray(payload) &&
+            'name' in payload
+          ) {
+            return categoryValues(payload);
+          }
+          return teamValues(payload);
+        }),
+      };
+    });
     mockTx.update.mockReturnValue({
       set: vi
         .fn()
@@ -67,7 +79,13 @@ describe('LookupsService category team scope', () => {
       99
     );
 
-    expect(mockTx.insert).toHaveBeenCalledTimes(3);
+    expect(mockTx.insert).toHaveBeenCalledTimes(2);
+    expect(mockTx.update).toHaveBeenCalledTimes(1);
+    expect(teamValues).toHaveBeenCalledWith([
+      { categoryId: 42, teamId: 1, isActive: true },
+      { categoryId: 42, teamId: 2, isActive: true },
+    ]);
+    expect(onConflictDoUpdate).toHaveBeenCalledTimes(1);
   });
 
   it('updateCategory rejects empty teamIds without explicit global visibility', async () => {

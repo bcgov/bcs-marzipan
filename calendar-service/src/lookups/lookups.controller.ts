@@ -514,7 +514,7 @@ export class LookupsController {
     summary: 'Create a new tag',
     description:
       'Creates a new tag. Requires the `lookups.manage` permission. ' +
-      'When `visibility` is `"team"`, at least one `teamId` in `teamIds` is required; associations are written ' +
+      'When `visibility` is `"team"`, at least one team ID in `teamIds` is required; associations are written ' +
       'atomically in the same transaction. ' +
       'When `visibility` is `"global"` (the default), `teamIds` is ignored.',
   })

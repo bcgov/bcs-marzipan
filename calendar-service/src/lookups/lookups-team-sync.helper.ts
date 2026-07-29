@@ -19,15 +19,13 @@ export async function syncCategoryTeams(
     return;
   }
 
-  for (const teamId of teamIds) {
-    await tx
-      .insert(teamCategories)
-      .values({ categoryId, teamId, isActive: true })
-      .onConflictDoUpdate({
-        target: [teamCategories.categoryId, teamCategories.teamId],
-        set: { isActive: true },
-      });
-  }
+  await tx
+    .insert(teamCategories)
+    .values(teamIds.map((teamId) => ({ categoryId, teamId, isActive: true })))
+    .onConflictDoUpdate({
+      target: [teamCategories.categoryId, teamCategories.teamId],
+      set: { isActive: true },
+    });
 }
 
 export async function syncTagTeams(
@@ -45,15 +43,13 @@ export async function syncTagTeams(
     return;
   }
 
-  for (const teamId of teamIds) {
-    await tx
-      .insert(teamTags)
-      .values({ tagId, teamId, isActive: true })
-      .onConflictDoUpdate({
-        target: [teamTags.tagId, teamTags.teamId],
-        set: { isActive: true },
-      });
-  }
+  await tx
+    .insert(teamTags)
+    .values(teamIds.map((teamId) => ({ tagId, teamId, isActive: true })))
+    .onConflictDoUpdate({
+      target: [teamTags.tagId, teamTags.teamId],
+      set: { isActive: true },
+    });
 }
 
 export async function loadActiveCategoryTeamIds(
