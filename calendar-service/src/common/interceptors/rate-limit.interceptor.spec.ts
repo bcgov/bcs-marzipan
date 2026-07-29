@@ -14,6 +14,10 @@ describe('RateLimitInterceptor', () => {
     mockNext = { handle: () => of({}) };
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   function createHttpArgumentsHost(request: unknown): HttpArgumentsHost {
     return {
       getRequest: () => request,
