@@ -22,14 +22,14 @@ describe('fetchReportData', () => {
     await fetchReportData('exec', {
       includeCompleted: false,
       activityStatusIds: [1, 2],
-      categoryNames: ['Event', 'FYI'],
+      categoryIds: [1, 2],
     });
 
     expect(mockGet).toHaveBeenCalledWith('/reports/data/exec', {
       params: {
         includeCompleted: false,
         activityStatusIds: '1,2',
-        categoryNames: 'Event,FYI',
+        categoryIds: '1,2',
       },
     });
   });

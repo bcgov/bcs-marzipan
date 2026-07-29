@@ -5,10 +5,6 @@ import type { ActivityFilterState } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import { CategoriesFilterPanel } from '@/components/activity/ActivityTable/CategoriesFilter';
-import {
-  categoryIdsToNames,
-  categoryNamesToIds,
-} from '@/components/activity/ActivityTable/categoryFilterUtils';
 import { LeadsFilterPanel } from '@/components/activity/ActivityTable/LeadsFilter';
 import { LookAheadFilterPanel } from '@/components/activity/ActivityTable/LookAheadFilter';
 import { PitchFilterPanel } from '@/components/activity/ActivityTable/PitchFilter';
@@ -236,12 +232,10 @@ export function ReportFiltersBar({
   );
 
   const handleCategoryChange = useCallback(
-    (ids: number[]) => {
-      mergeFilterState({
-        categoryNames: categoryIdsToNames(ids, categoryOptions),
-      });
+    (categoryIds: number[]) => {
+      mergeFilterState({ categoryIds });
     },
-    [categoryOptions, mergeFilterState]
+    [mergeFilterState]
   );
 
   const handleStatusChange = useCallback(
@@ -308,7 +302,7 @@ export function ReportFiltersBar({
           reportName
         ),
         timestamp_client: new Date().toISOString(),
-        category_count: (filterState.categoryNames || []).length,
+        category_count: (filterState.categoryIds || []).length,
         status_count: (filterState.activityStatusIds || []).length,
         tag_count: (filterState.tagIds || []).length,
         date_range_active: isDateRangeActive(filterState.dateRange),
@@ -338,10 +332,7 @@ export function ReportFiltersBar({
     setPreferences({ searchKeyword: '' });
   }, [filterState, onSearchCleared, reportName, searchKeyword, setPreferences]);
 
-  const categorySelectedIds = useMemo(
-    () => categoryNamesToIds(filterState.categoryNames, categoryOptions),
-    [categoryOptions, filterState.categoryNames]
-  );
+  const categorySelectedIds = filterState.categoryIds;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
   const filterSlots = useMemo<ResponsiveFilterSlot[]>(

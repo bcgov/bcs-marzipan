@@ -35,6 +35,7 @@ export function useReportsSavedFilters(options: {
     () =>
       buildValidFilterLookupsFromOptions({
         statusOptions: lookups.statusOptions,
+        categoryOptions: lookups.categoryOptions,
         tagOptions: lookups.tagOptions,
         ministryOptions: lookups.ministryOptions,
         organizationOptions: lookups.organizationOptions,
@@ -45,6 +46,7 @@ export function useReportsSavedFilters(options: {
       }),
     [
       lookups.statusOptions,
+      lookups.categoryOptions,
       lookups.tagOptions,
       lookups.ministryOptions,
       lookups.organizationOptions,

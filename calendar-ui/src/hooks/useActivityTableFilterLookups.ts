@@ -4,6 +4,7 @@ import { canViewActivityFieldScope } from '@corpcal/shared/auth';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useActivityStatuses,
+  useCategories,
   useEventPlanners,
   useMinistries,
   useOrganizations,
@@ -42,7 +43,7 @@ export function useActivityPitchFieldVisibility(): ActivityPitchFieldVisibility 
 
 /**
  * Shared lookup labels for activity table filters and summary bar chips.
- * Category options are omitted (Activity List filter bar only).
+ * Category options are included for saved-filter sanitization and summary chips.
  */
 export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
   pitchFieldVisibility: ActivityPitchFieldVisibility;
@@ -56,12 +57,14 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
   eventPlannerOptions: { value: string; label: string }[];
   translationOptions: { value: string; label: string }[];
   translationStatusOptions: { value: string; label: string }[];
+  categoryOptions: { value: string; label: string }[];
   filterSummaryContext: ActivityFilterSummaryContext;
   hasActivityStatuses: boolean;
 } {
   const pitchFieldVisibility = useActivityPitchFieldVisibility();
 
   const { data: activityStatusesForFilter = [] } = useActivityStatuses();
+  const { data: categoriesForFilter = [] } = useCategories();
   const { data: pitchRequiredStatusesForFilter = [] } =
     usePitchRequiredStatuses();
   const { data: tagsForFilter = [] } = useTags();
@@ -112,6 +115,17 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
         label: t.displayName ?? t.label ?? String(t.id),
       })),
     [tagsForFilter]
+  );
+
+  const categoryOptions = useMemo(
+    () =>
+      categoriesForFilter
+        .filter((c) => c.isActive)
+        .map((c) => ({
+          value: String(c.id),
+          label: c.displayName ?? c.name,
+        })),
+    [categoriesForFilter]
   );
 
   const ministryOptions = useMemo(
@@ -173,6 +187,7 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
   const filterSummaryContext = useMemo(
     (): ActivityFilterSummaryContext => ({
       statusOptions,
+      categoryOptions,
       pitchRequiredStatusOptions,
       tagOptions,
       ministryOptions,
@@ -184,6 +199,7 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
     }),
     [
       statusOptions,
+      categoryOptions,
       pitchRequiredStatusOptions,
       tagOptions,
       ministryOptions,
@@ -201,6 +217,7 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
     statusOptions,
     pitchRequiredStatusOptions,
     tagOptions,
+    categoryOptions,
     ministryOptions,
     organizationOptions,
     commsContactOptions,

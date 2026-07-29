@@ -6,11 +6,11 @@ describe('stableSerializeReportQueryParams', () => {
   it('produces the same key regardless of array element order', () => {
     const a = stableSerializeReportQueryParams({
       tagIds: [3, 1, 2],
-      categoryNames: ['FYI', 'Event'],
+      categoryIds: [3, 1],
     });
     const b = stableSerializeReportQueryParams({
       tagIds: [1, 2, 3],
-      categoryNames: ['Event', 'FYI'],
+      categoryIds: [1, 3],
     });
     expect(a).toBe(b);
   });

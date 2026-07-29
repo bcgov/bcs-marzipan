@@ -35,7 +35,6 @@ import {
   CategoriesFilterPanel,
   type CategoryFilterOption,
 } from './CategoriesFilter';
-import { categoryIdsToNames, categoryNamesToIds } from './categoryFilterUtils';
 import { LeadsFilterPanel, type LeadFilterOption } from './LeadsFilter';
 import { LookAheadFilterPanel } from './LookAheadFilter';
 import { PitchFilterPanel } from './PitchFilter';
@@ -151,6 +150,7 @@ export function ActivityTableFilters({
   const summaryContext = useMemo((): ActivityFilterSummaryContext => {
     return {
       statusOptions,
+      categoryOptions,
       pitchRequiredStatusOptions,
       tagOptions,
       ministryOptions,
@@ -163,6 +163,7 @@ export function ActivityTableFilters({
     };
   }, [
     statusOptions,
+    categoryOptions,
     pitchRequiredStatusOptions,
     tagOptions,
     ministryOptions,
@@ -178,6 +179,7 @@ export function ActivityTableFilters({
     (): ValidFilterLookups =>
       buildValidFilterLookupsFromOptions({
         statusOptions,
+        categoryOptions,
         tagOptions,
         ministryOptions,
         organizationOptions,
@@ -188,6 +190,7 @@ export function ActivityTableFilters({
       }),
     [
       statusOptions,
+      categoryOptions,
       tagOptions,
       ministryOptions,
       organizationOptions,
@@ -224,13 +227,13 @@ export function ActivityTableFilters({
   );
 
   const handleCategoryChange = useCallback(
-    (ids: number[]) => {
+    (categoryIds: number[]) => {
       onFilterStateChange({
         ...filterState,
-        categoryNames: categoryIdsToNames(ids, categoryOptions),
+        categoryIds,
       });
     },
-    [categoryOptions, filterState, onFilterStateChange]
+    [filterState, onFilterStateChange]
   );
 
   const handleStatusChange = useCallback(
@@ -254,7 +257,7 @@ export function ActivityTableFilters({
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: [],
+      categoryIds: [],
       activityStatusIds: [],
       pitchRequiredStatusNames: [],
       pitchDateFilter: { kind: 'any' },
@@ -302,10 +305,7 @@ export function ActivityTableFilters({
     [filterState, onFilterStateChange]
   );
 
-  const categorySelectedIds = useMemo(
-    () => categoryNamesToIds(filterState.categoryNames, categoryOptions),
-    [categoryOptions, filterState.categoryNames]
-  );
+  const categorySelectedIds = filterState.categoryIds;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
   const canViewPitchStatus = pitchFieldVisibility.canViewPitchStatus;

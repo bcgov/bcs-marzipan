@@ -1049,6 +1049,7 @@ export function ActivityTable({
       );
     return {
       statusIds: nums(statusOptions),
+      categoryIds: nums(categoryOptions),
       tagIds: nums(tagOptions),
       ministryIds: nums(ministryOptions),
       orgIds: nums(organizationOptions),
@@ -1059,6 +1060,7 @@ export function ActivityTable({
     };
   }, [
     statusOptions,
+    categoryOptions,
     tagOptions,
     ministryOptions,
     organizationOptions,

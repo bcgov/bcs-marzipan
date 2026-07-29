@@ -107,7 +107,7 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | `sharedWithTeamIds`            | int[]                          | Shared-with team IDs (OR)                                                                                                       |
 | `eventPlannerLeadIds`          | int[]                          | Lead event planner IDs (OR)                                                                                                     |
 | `tagIds`                       | int[]                          | Tag IDs (OR)                                                                                                                    |
-| `categoryNames`                | string[]                       | Category display or internal names (OR, case-insensitive)                                                                       |
+| `categoryIds`                  | number[]                       | Category lookup IDs (OR)                                                                                                        |
 | `translationRequiredStatusIds` | int[]                          | Translations-required status IDs (OR)                                                                                           |
 | `translationLanguageIds`       | int[]                          | Required translation language IDs (OR)                                                                                          |
 | `pitchRequiredStatusNames`     | string[]                       | Pitch-required status names (OR, case-insensitive)                                                                              |

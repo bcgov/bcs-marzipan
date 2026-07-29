@@ -1,9 +1,11 @@
 import { useCallback, useState } from 'react';
 
-import type { CategoryFilterOption } from './categoryFilterUtils';
 import { FilterSearchableList } from './FilterSearchableList';
 
-export type { CategoryFilterOption };
+export interface CategoryFilterOption {
+  value: string;
+  label: string;
+}
 
 export interface CategoriesFilterPanelProps {
   categoryOptions: CategoryFilterOption[];

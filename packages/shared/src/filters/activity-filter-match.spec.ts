@@ -17,7 +17,7 @@ function makeInput(
     id: 1,
     startDate: null,
     endDate: null,
-    categoryNames: [],
+    categoryIds: [],
     activityStatusId: 0,
     pitchRequiredStatusName: null,
     pitchDate: null,
@@ -50,7 +50,7 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     id: 1,
     startDate: '2025-01-10',
     endDate: '2025-01-12',
-    categoryNames: ['Event', 'Release'],
+    categoryIds: [1, 2],
     activityStatusId: 1,
     pitchRequiredStatusName: 'Required',
     pitchDate: '2025-02-15',
@@ -70,7 +70,7 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     id: 2,
     startDate: '2025-01-15',
     endDate: '2025-02-05', // end outside Jan window
-    categoryNames: ['FYI'],
+    categoryIds: [3],
     activityStatusId: 2,
     pitchRequiredStatusName: 'Not required',
     pitchDate: null, // not scheduled
@@ -90,7 +90,7 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     id: 3,
     startDate: null, // missing start
     endDate: '2025-01-20',
-    categoryNames: [],
+    categoryIds: [],
     activityStatusId: 3,
     pitchRequiredStatusName: null,
     pitchDate: '2025-01-05',
@@ -110,7 +110,7 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     id: 4,
     startDate: '2025-01-01',
     endDate: '2025-01-31',
-    categoryNames: ['event'], // lowercase variant
+    categoryIds: [1],
     activityStatusId: 1,
     pitchRequiredStatusName: 'required', // lowercase variant
     pitchDate: '2025-03-20',
@@ -174,11 +174,9 @@ describe('activityMatchesFilterState', () => {
     });
   });
 
-  describe('category (case-insensitive, OR within)', () => {
+  describe('category (OR within)', () => {
     it('matches any selected category', () => {
-      expect(matchIds(state({ categoryNames: ['Event', 'FYI'] }))).toEqual([
-        1, 2, 4,
-      ]);
+      expect(matchIds(state({ categoryIds: [1, 3] }))).toEqual([1, 2, 4]);
     });
   });
 
@@ -341,7 +339,7 @@ describe('activityMatchesFilterState', () => {
     expect(
       matchIds(
         state({
-          categoryNames: ['Event'],
+          categoryIds: [1],
           activityStatusIds: [1],
           lookAheadStatusValues: ['new'],
         })
