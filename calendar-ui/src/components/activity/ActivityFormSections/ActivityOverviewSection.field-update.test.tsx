@@ -126,6 +126,7 @@ function ActivityOverviewSectionHarness({
           organizations={[]}
           tags={[]}
           pitchRequiredStatuses={mockLookups.pitchRequiredStatuses}
+          userTeamIds={[5]}
           leadTeamField={{
             options: [
               createMockTeamListItem({

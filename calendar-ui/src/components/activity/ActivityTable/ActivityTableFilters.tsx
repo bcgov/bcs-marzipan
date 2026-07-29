@@ -31,6 +31,10 @@ import {
 } from '@/lib/savedFilterSanitize';
 import type { OptionItem } from '@/schemas/types';
 
+import {
+  CategoriesFilterPanel,
+  type CategoryFilterOption,
+} from './CategoriesFilter';
 import { LeadsFilterPanel, type LeadFilterOption } from './LeadsFilter';
 import { LookAheadFilterPanel } from './LookAheadFilter';
 import { PitchFilterPanel } from './PitchFilter';
@@ -54,7 +58,7 @@ export interface ActivityTableFiltersProps {
   defaultSortKey: string;
   defaultSortDirection: 'asc' | 'desc';
   sortColumns: SortColumnConfig[];
-  categoryOptions: OptionItem[];
+  categoryOptions: CategoryFilterOption[];
   pitchRequiredStatusOptions: OptionItem[];
   statusOptions: OptionItem[];
   tagOptions: TagFilterOption[];
@@ -345,11 +349,10 @@ export function ActivityTableFilters({
         key: 'category',
         label: 'Category',
         panel: (
-          <FilterCheckboxDropdownPanel
-            options={categoryOptions}
-            selectedValues={categorySelectedValues}
-            onChange={handleCategoryChange}
-            emptyMessage="No results"
+          <CategoriesFilterPanel
+            categoryOptions={categoryOptions}
+            selectedCategoryNames={categorySelectedValues}
+            onCategoryNamesChange={handleCategoryChange}
           />
         ),
         triggerProps: {

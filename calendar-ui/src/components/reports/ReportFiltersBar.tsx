@@ -4,6 +4,7 @@ import { useCallback, useMemo, type ReactNode } from 'react';
 import type { ActivityFilterState } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
+import { CategoriesFilterPanel } from '@/components/activity/ActivityTable/CategoriesFilter';
 import { LeadsFilterPanel } from '@/components/activity/ActivityTable/LeadsFilter';
 import { LookAheadFilterPanel } from '@/components/activity/ActivityTable/LookAheadFilter';
 import { PitchFilterPanel } from '@/components/activity/ActivityTable/PitchFilter';
@@ -136,7 +137,10 @@ export function ReportFiltersBar({
     () =>
       categoriesForFilter
         .filter((c) => c.isActive)
-        .map((c) => ({ value: c.displayName, label: c.displayName })),
+        .map((c) => ({
+          value: String(c.id),
+          label: c.displayName ?? c.name,
+        })),
     [categoriesForFilter]
   );
 
@@ -362,11 +366,10 @@ export function ReportFiltersBar({
         key: 'category',
         label: 'Category',
         panel: (
-          <FilterCheckboxDropdownPanel
-            options={categoryOptions}
-            selectedValues={categorySelectedValues}
-            onChange={handleCategoryChange}
-            emptyMessage="No results"
+          <CategoriesFilterPanel
+            categoryOptions={categoryOptions}
+            selectedCategoryNames={categorySelectedValues}
+            onCategoryNamesChange={handleCategoryChange}
           />
         ),
         triggerProps: {

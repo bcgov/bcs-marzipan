@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { useFormContext, useWatch, type FieldPathValue } from 'react-hook-form';
+import { useMemo } from 'react';
 
 import { TEAM_PREFIX_FALLBACK } from '@corpcal/shared';
 import type {
@@ -13,8 +14,11 @@ import {
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
 import {
+  filterAllowedLookupIds,
   isActivityRichTextEffectivelyEmpty,
+  isLookupSelectable,
   tipTapDocJsonFromPlainText,
+  type LookupTeamScope,
 } from '@corpcal/shared/utils';
 import {
   FormSelectSafe,
@@ -77,6 +81,60 @@ import {
 } from '../activity-lead-team-field-config';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
+
+type LookupScopeItem = {
+  id: number;
+  visibility?: string;
+  teamIds?: number[];
+};
+
+function toLookupScope(
+  visibility: string | undefined,
+  teamIds?: number[]
+): LookupTeamScope {
+  return {
+    visibility: visibility === 'team' ? 'team' : 'global',
+    teamIds,
+  };
+}
+
+function isLookupPickable(
+  item: LookupScopeItem,
+  userTeamIds: number[],
+  hasCreateAny: boolean
+): boolean {
+  return (
+    hasCreateAny ||
+    isLookupSelectable(
+      toLookupScope(item.visibility, item.teamIds),
+      userTeamIds
+    )
+  );
+}
+
+function toLookupOption(id: number, label: string): OptionItem {
+  return { value: String(id), label };
+}
+
+function buildSelectedLookupOptions(
+  selectedIds: number[] | undefined,
+  labelById: Map<number, string>
+): OptionItem[] {
+  return (selectedIds ?? []).map((id) =>
+    toLookupOption(id, labelById.get(id) ?? `Unknown (${id})`)
+  );
+}
+
+function mergeComboboxItems(
+  pickable: OptionItem[],
+  selected: OptionItem[]
+): OptionItem[] {
+  const pickableValues = new Set(pickable.map((option) => option.value));
+  const grandfathered = selected.filter(
+    (option) => !pickableValues.has(option.value)
+  );
+  return [...pickable, ...grandfathered];
+}
 
 type LeadOrganizationOption = {
   value: number;
@@ -351,12 +409,20 @@ type ActivityOverviewSectionProps = {
     name: string;
     displayName?: string;
     visibility?: string;
+    teamIds?: number[];
     description?: string | null;
   }>;
   organizations: LeadOrganizationOption[];
-  tags: Array<{ id: number; text: string; visibility?: string }>;
+  tags: Array<{
+    id: number;
+    text: string;
+    visibility?: string;
+    teamIds?: number[];
+  }>;
   pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
   leadTeamField?: ActivityLeadTeamFieldConfig;
+  userTeamIds: number[];
+  hasCreateAny?: boolean;
 };
 
 export const ActivityOverviewSection: React.FC<
@@ -367,6 +433,8 @@ export const ActivityOverviewSection: React.FC<
   tags,
   pitchRequiredStatuses,
   leadTeamField: leadTeamFieldProp,
+  userTeamIds,
+  hasCreateAny = false,
 }) => {
   const {
     options: leadTeamOptions,
@@ -387,29 +455,75 @@ export const ActivityOverviewSection: React.FC<
   const categoriesAnchorRef = useComboboxAnchor();
   const tagsAnchorRef = useComboboxAnchor();
 
-  const teamCategoryOptions = categories
-    .filter((c) => c.visibility === 'team')
-    .map((c) => ({
-      value: String(c.id),
-      label: c.displayName ?? c.name,
-    }));
-  const globalCategoryOptions = categories
-    .filter((c) => c.visibility !== 'team')
-    .map((c) => ({
-      value: String(c.id),
-      label: c.displayName ?? c.name,
-    }));
-  const categoryOptions = [...teamCategoryOptions, ...globalCategoryOptions];
-  const tagOptions = tags.map((t) => ({
-    value: String(t.id),
-    label: t.text,
-  }));
-  const teamTagOptions = tags
-    .filter((t) => t.visibility === 'team')
-    .map((t) => ({ value: String(t.id), label: t.text }));
-  const globalTagOptions = tags
-    .filter((t) => t.visibility !== 'team')
-    .map((t) => ({ value: String(t.id), label: t.text }));
+  const categoryScopeById = useMemo(
+    () =>
+      new Map<number, LookupTeamScope>(
+        categories.map((c) => [c.id, toLookupScope(c.visibility, c.teamIds)])
+      ),
+    [categories]
+  );
+  const categoryLabelById = useMemo(
+    () =>
+      new Map(categories.map((c) => [c.id, c.displayName ?? c.name] as const)),
+    [categories]
+  );
+  const pickableCategories = useMemo(
+    () =>
+      categories.filter((c) => isLookupPickable(c, userTeamIds, hasCreateAny)),
+    [categories, userTeamIds, hasCreateAny]
+  );
+  const pickableTeamCategoryOptions = useMemo(
+    () =>
+      pickableCategories
+        .filter((c) => c.visibility === 'team')
+        .map((c) => toLookupOption(c.id, c.displayName ?? c.name)),
+    [pickableCategories]
+  );
+  const pickableGlobalCategoryOptions = useMemo(
+    () =>
+      pickableCategories
+        .filter((c) => c.visibility !== 'team')
+        .map((c) => toLookupOption(c.id, c.displayName ?? c.name)),
+    [pickableCategories]
+  );
+  const pickableCategoryOptions = useMemo(
+    () => [...pickableTeamCategoryOptions, ...pickableGlobalCategoryOptions],
+    [pickableTeamCategoryOptions, pickableGlobalCategoryOptions]
+  );
+
+  const tagScopeById = useMemo(
+    () =>
+      new Map<number, LookupTeamScope>(
+        tags.map((t) => [t.id, toLookupScope(t.visibility, t.teamIds)])
+      ),
+    [tags]
+  );
+  const tagLabelById = useMemo(
+    () => new Map(tags.map((t) => [t.id, t.text] as const)),
+    [tags]
+  );
+  const pickableTags = useMemo(
+    () => tags.filter((t) => isLookupPickable(t, userTeamIds, hasCreateAny)),
+    [tags, userTeamIds, hasCreateAny]
+  );
+  const pickableTeamTagOptions = useMemo(
+    () =>
+      pickableTags
+        .filter((t) => t.visibility === 'team')
+        .map((t) => toLookupOption(t.id, t.text)),
+    [pickableTags]
+  );
+  const pickableGlobalTagOptions = useMemo(
+    () =>
+      pickableTags
+        .filter((t) => t.visibility !== 'team')
+        .map((t) => toLookupOption(t.id, t.text)),
+    [pickableTags]
+  );
+  const pickableTagOptions = useMemo(
+    () => [...pickableTeamTagOptions, ...pickableGlobalTagOptions],
+    [pickableTeamTagOptions, pickableGlobalTagOptions]
+  );
 
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.overview}>
@@ -417,8 +531,13 @@ export const ActivityOverviewSection: React.FC<
         control={form.control}
         name="categoryIds"
         render={({ field }) => {
-          const selectedOptions = categoryOptions.filter((o) =>
-            (field.value ?? []).includes(Number(o.value))
+          const selectedOptions = buildSelectedLookupOptions(
+            field.value,
+            categoryLabelById
+          );
+          const categoryComboboxItems = mergeComboboxItems(
+            pickableCategoryOptions,
+            selectedOptions
           );
           return (
             <FormItem>
@@ -433,16 +552,19 @@ export const ActivityOverviewSection: React.FC<
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
-                  items={categoryOptions}
+                  items={categoryComboboxItems}
                   multiple
                   value={selectedOptions}
-                  onValueChange={(selected) =>
-                    setActivityFormFieldValue(
-                      form,
-                      field.name,
-                      selected.map((o) => Number(o.value))
-                    )
-                  }
+                  onValueChange={(selected) => {
+                    const submittedIds = selected.map((o) => Number(o.value));
+                    const allowedIds = filterAllowedLookupIds(
+                      submittedIds,
+                      field.value ?? [],
+                      userTeamIds,
+                      categoryScopeById
+                    );
+                    setActivityFormFieldValue(form, field.name, allowedIds);
+                  }}
                   itemToStringValue={(o) => o.label}
                   readOnly={readOnly}
                 >
@@ -463,9 +585,9 @@ export const ActivityOverviewSection: React.FC<
                   <ComboboxContent anchor={categoriesAnchorRef}>
                     <ComboboxEmpty>No categories found.</ComboboxEmpty>
                     <ComboboxList>
-                      {teamCategoryOptions.length > 0 && (
+                      {pickableTeamCategoryOptions.length > 0 && (
                         <>
-                          <ComboboxGroup items={teamCategoryOptions}>
+                          <ComboboxGroup items={pickableTeamCategoryOptions}>
                             <ComboboxCollection>
                               {(option: OptionItem) => (
                                 <ComboboxItem key={option.value} value={option}>
@@ -477,7 +599,7 @@ export const ActivityOverviewSection: React.FC<
                           <ComboboxSeparator />
                         </>
                       )}
-                      <ComboboxGroup items={globalCategoryOptions}>
+                      <ComboboxGroup items={pickableGlobalCategoryOptions}>
                         <ComboboxCollection>
                           {(option: OptionItem) => (
                             <ComboboxItem key={option.value} value={option}>
@@ -852,8 +974,13 @@ export const ActivityOverviewSection: React.FC<
         control={form.control}
         name="tagIds"
         render={({ field }) => {
-          const selectedOptions = tagOptions.filter((o) =>
-            (field.value ?? []).includes(Number(o.value))
+          const selectedOptions = buildSelectedLookupOptions(
+            field.value,
+            tagLabelById
+          );
+          const tagComboboxItems = mergeComboboxItems(
+            pickableTagOptions,
+            selectedOptions
           );
           return (
             <FormItem>
@@ -868,16 +995,19 @@ export const ActivityOverviewSection: React.FC<
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
-                  items={tagOptions}
+                  items={tagComboboxItems}
                   multiple
                   value={selectedOptions}
-                  onValueChange={(selected) =>
-                    setActivityFormFieldValue(
-                      form,
-                      field.name,
-                      selected.map((o) => Number(o.value))
-                    )
-                  }
+                  onValueChange={(selected) => {
+                    const submittedIds = selected.map((o) => Number(o.value));
+                    const allowedIds = filterAllowedLookupIds(
+                      submittedIds,
+                      field.value ?? [],
+                      userTeamIds,
+                      tagScopeById
+                    );
+                    setActivityFormFieldValue(form, field.name, allowedIds);
+                  }}
                   itemToStringValue={(o) => o.label}
                   readOnly={readOnly}
                 >
@@ -898,9 +1028,9 @@ export const ActivityOverviewSection: React.FC<
                   <ComboboxContent anchor={tagsAnchorRef}>
                     <ComboboxEmpty>No tags found.</ComboboxEmpty>
                     <ComboboxList>
-                      {teamTagOptions.length > 0 && (
+                      {pickableTeamTagOptions.length > 0 && (
                         <>
-                          <ComboboxGroup items={teamTagOptions}>
+                          <ComboboxGroup items={pickableTeamTagOptions}>
                             <ComboboxCollection>
                               {(option: OptionItem) => (
                                 <ComboboxItem key={option.value} value={option}>
@@ -912,7 +1042,7 @@ export const ActivityOverviewSection: React.FC<
                           <ComboboxSeparator />
                         </>
                       )}
-                      <ComboboxGroup items={globalTagOptions}>
+                      <ComboboxGroup items={pickableGlobalTagOptions}>
                         <ComboboxCollection>
                           {(option: OptionItem) => (
                             <ComboboxItem key={option.value} value={option}>

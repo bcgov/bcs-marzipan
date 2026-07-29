@@ -41,6 +41,7 @@ export interface RenderModalContentProps {
   initialData: Record<string, unknown>;
   onChange: (data: Record<string, unknown>) => void;
   isSubmitting: boolean;
+  resetKey: string;
 }
 
 interface GenericLookupAdminProps<T extends BaseLookupItem> {
@@ -410,12 +411,16 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       >
         {renderModalContent ? (
           renderModalContent({
-            initialData: editingItem ?? EMPTY_INITIAL,
+            initialData: resolvedInitialData,
             onChange: setFormData,
             isSubmitting:
               createMutation.isPending ||
               updateMutation.isPending ||
               submitOverridePending,
+            resetKey:
+              editingItem != null
+                ? String(editingItem.id)
+                : `create-${createFormSession}`,
           })
         ) : (
           <LookupForm

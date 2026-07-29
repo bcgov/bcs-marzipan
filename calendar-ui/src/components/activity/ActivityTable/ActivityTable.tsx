@@ -1024,7 +1024,10 @@ export function ActivityTable({
     () =>
       categoriesForFilter
         .filter((c) => c.isActive)
-        .map((c) => ({ value: c.displayName, label: c.displayName })),
+        .map((c) => ({
+          value: String(c.id),
+          label: c.displayName ?? c.name,
+        })),
     [categoriesForFilter]
   );
 
