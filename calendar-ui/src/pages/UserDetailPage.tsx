@@ -32,6 +32,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 // removed PageHeader to use a compact header with a Go back link
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -86,6 +87,7 @@ export default function UserDetailPage() {
     setLocalNotes(userDetail.notes ?? '');
     setSelectedRoleId(userDetail.roleId ?? null);
     setDirectLoginEnabled(Boolean(userDetail.directLoginEnabled));
+    setFlagColour(userDetail.flagColour ?? null);
   }, [userDetail, userId]);
 
   const mutation = useMutation({
@@ -102,6 +104,7 @@ export default function UserDetailPage() {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [directLoginEnabled, setDirectLoginEnabled] = useState(false);
+  const [flagColour, setFlagColour] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
     'account' | 'transfer' | 'change-log'
   >('account');
@@ -125,9 +128,12 @@ export default function UserDetailPage() {
   });
 
   const settingsMutation = useMutation({
-    mutationFn: (body: { directLoginEnabled?: boolean }) =>
+    mutationFn: (body: {
+      directLoginEnabled?: boolean;
+      flagColour?: string | null;
+    }) =>
       updateUserSettings(userId, {
-        flagColour: userDetail?.flagColour ?? null,
+        flagColour: body.flagColour ?? flagColour,
         directLoginEnabled: body.directLoginEnabled,
       }),
     onSuccess: () => {
@@ -421,6 +427,28 @@ export default function UserDetailPage() {
                     readOnly={!canEdit}
                     className="h-40"
                   />
+                </div>
+              </div>
+
+              <div className="max-w-2xl bg-transparent p-0">
+                <div className="font-semibold">User colour</div>
+
+                <div className="mt-2 flex items-center gap-3">
+                  <Input
+                    type="color"
+                    value={flagColour || '#0F6CBD'}
+                    onChange={(e) => setFlagColour(e.target.value)}
+                    onBlur={() => {
+                      if (canEdit) {
+                        settingsMutation.mutate({ flagColour });
+                      }
+                    }}
+                    disabled={!canEdit}
+                    className="h-10 w-16 cursor-pointer p-1"
+                  />
+                  <div className="text-sm text-slate-500">
+                    Flag colour for this user
+                  </div>
                 </div>
               </div>
 
