@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { createRef } from 'react';
 
 import {
   LookupVisibilityAdminForm,
@@ -11,6 +12,8 @@ const baseFields = [
   { name: 'name', label: 'Name', type: 'text' as const },
   { name: 'sortOrder', label: 'Sort order', type: 'number' as const },
 ];
+
+const dialogContentRef = createRef<HTMLDivElement>();
 
 describe('LookupVisibilityAdminForm', () => {
   it('transformLookupVisibilitySubmitData rejects team visibility without teams', () => {
@@ -38,6 +41,7 @@ describe('LookupVisibilityAdminForm', () => {
         isSubmitting={false}
         fields={baseFields}
         teamOptions={[{ value: '10', label: 'Team A' }]}
+        dialogContentRef={dialogContentRef}
       />
     );
 
@@ -54,6 +58,7 @@ describe('LookupVisibilityAdminForm', () => {
         isSubmitting={false}
         fields={baseFields}
         teamOptions={[{ value: '10', label: 'Team A' }]}
+        dialogContentRef={dialogContentRef}
       />
     );
 

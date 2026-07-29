@@ -47,6 +47,8 @@ export function LookupVisibilityAdminForm({
   onChange,
   isSubmitting: _isSubmitting,
   teamOptions,
+  dialogContentRef,
+  onNestedOverlayOpenChange,
 }: LookupVisibilityAdminFormProps) {
   const teamsAnchorRef = useComboboxAnchor();
   const [coreData, setCoreData] = useState<Record<string, unknown>>(() => ({
@@ -130,6 +132,7 @@ export function LookupVisibilityAdminForm({
               setTeamIds(selected.map((o) => Number(o.value)));
             }}
             itemToStringValue={(o) => o.label}
+            onOpenChange={(open: boolean) => onNestedOverlayOpenChange?.(open)}
           >
             <ComboboxChips ref={teamsAnchorRef} className="w-full">
               <ComboboxValue>
@@ -145,7 +148,11 @@ export function LookupVisibilityAdminForm({
                 )}
               </ComboboxValue>
             </ComboboxChips>
-            <ComboboxContent anchor={teamsAnchorRef} className="max-h-72">
+            <ComboboxContent
+              anchor={teamsAnchorRef}
+              container={dialogContentRef}
+              className="max-h-72"
+            >
               <ComboboxEmpty>No teams found.</ComboboxEmpty>
               <ComboboxList>
                 {(option: OptionItem) => (
