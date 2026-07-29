@@ -163,6 +163,10 @@ class RedisRateLimitStore implements RateLimitStore {
       }
     }
 
+    if (!this.client) {
+      throw new Error('Redis client was not initialized');
+    }
+
     return this.client;
   }
 }
