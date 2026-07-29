@@ -27,6 +27,8 @@ describe('activityInfoIconSettingsApi cache', () => {
   it('scopes cache by authenticated user id', () => {
     window.sessionStorage.setItem('corpcal_auth_user_id', '101');
     writeCachedActivityInfoIconSettings(SAMPLE_SETTINGS);
+    const scopedKey = Object.keys(window.localStorage)[0] ?? '';
+    expect(scopedKey).toContain('corpcal.activityInfoIconSettings.v2');
 
     window.sessionStorage.setItem('corpcal_auth_user_id', '202');
     expect(readCachedActivityInfoIconSettings()).toBeNull();

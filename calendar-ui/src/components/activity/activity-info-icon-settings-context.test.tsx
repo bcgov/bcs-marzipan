@@ -1,15 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_ACTIVITY_INFO_ICON_SETTINGS } from '@corpcal/shared';
-import { render } from '@/test/test-utils';
+import { render, screen } from '@/test/test-utils';
 
-import { ActivityInfoIconSettingsProvider } from './activity-info-icon-settings-context';
+import {
+  ActivityFieldInfoIcon,
+  ActivityInfoIconSettingsProvider,
+} from './activity-info-icon-settings-context';
 
-const { mockUseQuery, mockReadCached, mockToastWarning } = vi.hoisted(() => ({
-  mockUseQuery: vi.fn(),
-  mockReadCached: vi.fn(),
-  mockToastWarning: vi.fn(),
-}));
+const { mockUseQuery, mockReadCached, mockToastWarning, mockRichTextValue } =
+  vi.hoisted(() => ({
+    mockUseQuery: vi.fn(),
+    mockReadCached: vi.fn(),
+    mockToastWarning: vi.fn(),
+    mockRichTextValue: vi.fn(),
+  }));
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
@@ -30,6 +35,25 @@ vi.mock('@/api/activityInfoIconSettingsApi', () => ({
   fetchActivityInfoIconSettings: vi.fn(),
   readCachedActivityInfoIconSettings: () => mockReadCached(),
   shouldRetryActivityInfoIconSettings: vi.fn(() => false),
+}));
+
+vi.mock('@/components/ui/info-icon-button', () => ({
+  InfoIconButton: ({ 'aria-label': ariaLabel }: any) => (
+    <button aria-label={ariaLabel}>i</button>
+  ),
+}));
+
+vi.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: any) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: any) => <>{children}</>,
+  PopoverContent: ({ children }: any) => <div>{children}</div>,
+}));
+
+vi.mock('@/components/ui/activity-rich-text-content', () => ({
+  ActivityRichTextContent: ({ value }: any) => {
+    mockRichTextValue(value);
+    return <div data-testid="activity-rich-text">{value}</div>;
+  },
 }));
 
 describe('ActivityInfoIconSettingsProvider fallback warnings', () => {
@@ -94,5 +118,35 @@ describe('ActivityInfoIconSettingsProvider fallback warnings', () => {
     );
 
     expect(mockToastWarning).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders field tooltip content through ActivityRichTextContent', () => {
+    vi.clearAllMocks();
+    mockReadCached.mockReturnValue(null);
+    mockUseQuery.mockReturnValue({
+      data: {
+        items: [
+          {
+            fieldKey: 'categoryIds',
+            text: '**Event**: Event category',
+          },
+        ],
+      },
+      error: null,
+    });
+
+    render(
+      <ActivityInfoIconSettingsProvider>
+        <ActivityFieldInfoIcon
+          fieldKey="categoryIds"
+          ariaLabel="About categories"
+        />
+      </ActivityInfoIconSettingsProvider>
+    );
+
+    expect(screen.getByTestId('activity-rich-text')).toHaveTextContent(
+      '**Event**: Event category'
+    );
+    expect(mockRichTextValue).toHaveBeenCalledWith('**Event**: Event category');
   });
 });

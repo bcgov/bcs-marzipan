@@ -7,7 +7,7 @@ import api from './axios';
 import { ApiError } from './errors';
 
 const ACTIVITY_INFO_ICON_SETTINGS_CACHE_KEY =
-  'corpcal.activityInfoIconSettings.v1';
+  'corpcal.activityInfoIconSettings.v2';
 const AUTH_USER_ID_SESSION_KEY = 'corpcal_auth_user_id';
 
 function canUseLocalStorage(): boolean {

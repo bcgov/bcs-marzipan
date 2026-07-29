@@ -294,6 +294,9 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
                     <Label className="mb-2 block text-sm font-semibold text-slate-900">
                       {getActivityFieldLabel(fieldKey)}
                     </Label>
+                    <p className="mb-2 text-xs text-slate-500">
+                      Supports bold, italic, links, and lists.
+                    </p>
                     <RichTextField
                       name={`activity-info-icon-${fieldKey}`}
                       value={value}
