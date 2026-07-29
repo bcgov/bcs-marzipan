@@ -32,8 +32,9 @@ import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { LocksService } from '../locks/locks.service';
 import { LookAheadPolicyService } from '../look-ahead/look-ahead-policy.service';
+import { getSelectableCategoryIds } from '../policy/category-scoping.helper';
 import { PolicyService } from '../policy/policy.service';
-import { getVisibleTagIds } from '../policy/tag-scoping.helper';
+import { getSelectableTagIds } from '../policy/tag-scoping.helper';
 import { TeamsService } from '../teams/teams.service';
 import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
@@ -45,7 +46,13 @@ import { ActivityJunctionService } from './services/activity-junction.service';
 import { ActivityMapperService } from './services/activity-mapper.service';
 import { ActivityUtilsService } from './services/activity-utils.service';
 
+vi.mock('../policy/category-scoping.helper', () => ({
+  getSelectableCategoryIds: vi.fn(),
+  getVisibleCategoryIds: vi.fn(),
+}));
+
 vi.mock('../policy/tag-scoping.helper', () => ({
+  getSelectableTagIds: vi.fn(),
   getVisibleTagIds: vi.fn(),
 }));
 
@@ -309,6 +316,8 @@ describe('ActivitiesService', () => {
 
     // Reset all mocks
     vi.clearAllMocks();
+    vi.mocked(getSelectableCategoryIds).mockResolvedValue([1, 2, 3, 4, 5, 99]);
+    vi.mocked(getSelectableTagIds).mockResolvedValue([1, 2, 3, 4, 5]);
   });
 
   describe('mapToResponseDto validation', () => {
@@ -1016,7 +1025,7 @@ describe('ActivitiesService', () => {
     });
 
     it('throws BadRequestException when a submitted tagId is not in the visible set', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      vi.mocked(getSelectableTagIds).mockResolvedValue([1, 2]);
       const createDto = createMockActivityRequest({ tagIds: [99] });
 
       mockDatabaseService.db.select = vi.fn((...args) => {
@@ -1049,11 +1058,11 @@ describe('ActivitiesService', () => {
           teamIds: [1],
         })
       ).rejects.toThrow(BadRequestException);
-      expect(getVisibleTagIds).toHaveBeenCalledWith(expect.anything(), [1]);
+      expect(getSelectableTagIds).toHaveBeenCalledWith(expect.anything(), [1]);
     });
 
     it('includes the forbidden tag IDs in the error message', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      vi.mocked(getSelectableTagIds).mockResolvedValue([1, 2]);
       const createDto = createMockActivityRequest({ tagIds: [99] });
 
       mockDatabaseService.db.select = vi.fn((...args) => {
@@ -1089,7 +1098,7 @@ describe('ActivitiesService', () => {
     });
 
     it('bypasses tag visibility check when user has CREATE_ANY permission', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      vi.mocked(getSelectableTagIds).mockResolvedValue([1, 2]);
       const createDto = createMockActivityRequest({
         tagIds: [99],
         leadTeamId: 5,
@@ -1157,7 +1166,7 @@ describe('ActivitiesService', () => {
         teamIds: [],
       });
 
-      expect(getVisibleTagIds).not.toHaveBeenCalled();
+      expect(getSelectableTagIds).not.toHaveBeenCalled();
     });
   });
 
@@ -2347,7 +2356,7 @@ describe('ActivitiesService', () => {
     });
 
     it('throws BadRequestException when a submitted tagId is not in the visible set', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      vi.mocked(getSelectableTagIds).mockResolvedValue([1, 2]);
       const updateDto = createMockUpdateRequest({ tagIds: [99] });
 
       setupUpdateSelectMock();
@@ -2358,11 +2367,11 @@ describe('ActivitiesService', () => {
           teamIds: [1],
         })
       ).rejects.toThrow(BadRequestException);
-      expect(getVisibleTagIds).toHaveBeenCalledWith(expect.anything(), [1]);
+      expect(getSelectableTagIds).toHaveBeenCalledWith(expect.anything(), [1]);
     });
 
     it('includes the forbidden tag IDs in the error message on update', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      vi.mocked(getSelectableTagIds).mockResolvedValue([1, 2]);
       const updateDto = createMockUpdateRequest({ tagIds: [99] });
 
       setupUpdateSelectMock();
@@ -2376,7 +2385,7 @@ describe('ActivitiesService', () => {
     });
 
     it('bypasses tag visibility check when user has CREATE_ANY permission on update', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      vi.mocked(getSelectableTagIds).mockResolvedValue([1, 2]);
       const existingActivity = createMockActivity({ id: 1 });
       const updatedActivity = createMockActivity({ id: 1, title: 'Updated' });
       const updateDto = createMockUpdateRequest({ tagIds: [99] });
@@ -2448,7 +2457,7 @@ describe('ActivitiesService', () => {
         teamIds: [],
       });
 
-      expect(getVisibleTagIds).not.toHaveBeenCalled();
+      expect(getSelectableTagIds).not.toHaveBeenCalled();
     });
   });
 

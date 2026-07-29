@@ -6,11 +6,11 @@ import type { Visibility } from '@corpcal/shared';
 import type { Database } from '../database/database.provider';
 
 /**
- * Returns category IDs visible to the given team IDs: global categories plus
- * team-scoped categories for those teams. Deduplicated.
+ * Returns category IDs selectable by the given team IDs: global categories plus
+ * team-scoped categories for those teams. Used for activity save validation only.
  * If teamIds is empty or undefined, returns only global category IDs.
  */
-export async function getVisibleCategoryIds(
+export async function getSelectableCategoryIds(
   db: Database,
   teamIds?: number[]
 ): Promise<number[]> {
@@ -61,3 +61,6 @@ export async function getVisibleCategoryIds(
   for (const r of teamScopedRows) ids.add(r.id);
   return Array.from(ids);
 }
+
+/** @deprecated Use getSelectableCategoryIds */
+export const getVisibleCategoryIds = getSelectableCategoryIds;

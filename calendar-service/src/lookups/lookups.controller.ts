@@ -136,7 +136,17 @@ export class LookupsController {
   @ApiOperation({
     summary: 'Get all categories',
     description:
-      'Retrieves all activity categories. Results are cached for 1 hour.',
+      'Retrieves all active activity categories with team metadata for team-scoped rows. ' +
+      'Admins with the `lookups.manage` permission can pass `includeAll=true` to retrieve all categories ' +
+      'including inactive; this path sets `Cache-Control: no-store`.',
+  })
+  @ApiQuery({
+    name: 'includeAll',
+    required: false,
+    type: String,
+    enum: ['true'],
+    description:
+      'When set to `"true"` and the caller has the `lookups.manage` permission, returns all categories including inactive.',
   })
   @ApiResponse({
     status: 200,
@@ -144,12 +154,23 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('categories')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getCategories(@CurrentUser() user: AuthUser): Promise<{
+  async getCategories(
+    @CurrentUser() user: AuthUser,
+    @Query('includeAll') includeAll?: string,
+    @Res({ passthrough: true }) res?: Response
+  ): Promise<{
     success: boolean;
     data: CategoryLookupItem[];
   }> {
-    const data = await this.lookupsService.getCategories(user.teamIds);
+    const shouldIncludeAll =
+      includeAll === 'true' && user.permissions.includes('lookups.manage');
+    res?.setHeader(
+      'Cache-Control',
+      shouldIncludeAll
+        ? 'no-store'
+        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+    );
+    const data = await this.lookupsService.getCategories(shouldIncludeAll);
     return { success: true, data };
   }
 
@@ -447,12 +468,9 @@ export class LookupsController {
   @ApiOperation({
     summary: 'Get all tags',
     description:
-      'Retrieves tags visible to the current user. ' +
-      'Global tags are visible to everyone. Team-scoped tags are only visible to members of the associated team. ' +
-      'Admins with the `lookups.manage` permission can pass `includeAll=true` to retrieve all tags regardless of ' +
-      'visibility or team scoping; this path also returns `teamIds` and `teamNames` for each tag and sets ' +
-      '`Cache-Control: no-store` to prevent stale data after mutations. ' +
-      'Non-admin responses are privately cached for a short period to reduce server load.',
+      'Retrieves all active tags with team metadata for team-scoped rows. ' +
+      'Admins with the `lookups.manage` permission can pass `includeAll=true` to retrieve all tags ' +
+      'including inactive; this path sets `Cache-Control: no-store`.',
   })
   @ApiQuery({
     name: 'includeAll',
@@ -488,10 +506,7 @@ export class LookupsController {
         ? 'no-store'
         : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
     );
-    const data = await this.lookupsService.getTags(
-      shouldIncludeAll ? undefined : user.teamIds,
-      shouldIncludeAll
-    );
+    const data = await this.lookupsService.getTags(shouldIncludeAll);
     return { success: true, data };
   }
 
@@ -499,9 +514,9 @@ export class LookupsController {
     summary: 'Create a new tag',
     description:
       'Creates a new tag. Requires the `lookups.manage` permission. ' +
-      'When `visibility` is `"team"`, a `teamId` must be provided; the tag is associated with that team ' +
+      'When `visibility` is `"team"`, at least one `teamId` in `teamIds` is required; associations are written ' +
       'atomically in the same transaction. ' +
-      'When `visibility` is `"global"` (the default), `teamId` is ignored.',
+      'When `visibility` is `"global"` (the default), `teamIds` is ignored.',
   })
   @ApiResponse({
     status: 201,
@@ -520,7 +535,7 @@ export class LookupsController {
     type: CreateTagDto,
     description:
       'Tag creation payload. `name` is required (1–255 chars). `visibility` defaults to `"global"`. ' +
-      'Supply `teamId` when `visibility` is `"team"`.',
+      'Supply `teamIds` when `visibility` is `"team"`.',
   })
   @RequirePermission('lookups.manage')
   @Post('tags')
@@ -537,9 +552,9 @@ export class LookupsController {
     summary: 'Update a tag',
     description:
       'Partially updates an existing tag. Requires the `lookups.manage` permission. All fields are optional. ' +
-      'When `visibility` or `teamId` is changed, the `team_tags` association table is updated atomically in the ' +
-      'same transaction: existing associations are deactivated and the new one (if any) is upserted. ' +
-      'To change a tag from team-scoped to global, set `visibility` to `"global"` (or omit `teamId`).',
+      'When `visibility` or `teamIds` is changed, the `team_tags` association table is updated atomically in the ' +
+      'same transaction: existing associations are deactivated and the new set is upserted. ' +
+      'To change a tag from team-scoped to global, set `visibility` to `"global"`.',
   })
   @ApiParam({
     name: 'id',

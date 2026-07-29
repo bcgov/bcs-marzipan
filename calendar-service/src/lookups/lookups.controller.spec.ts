@@ -164,9 +164,7 @@ describe('LookupsController', () => {
         success: true,
         data: mockLookupItems,
       });
-      expect(mockLookupsService.getCategories).toHaveBeenCalledWith(
-        mockUser.teamIds
-      );
+      expect(mockLookupsService.getCategories).toHaveBeenCalledWith(false);
     });
   });
 
