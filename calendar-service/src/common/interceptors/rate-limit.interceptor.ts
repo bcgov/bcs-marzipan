@@ -250,6 +250,8 @@ export class RateLimitInterceptor implements NestInterceptor {
     return 'unknown';
   }
 
+  private lastCleanupAt = 0;
+
   private async enforceRateLimit(request: RequestLike): Promise<void> {
     const rawUrl = request.url;
     const url = rawUrl?.split('?')[0] ?? '';
@@ -262,7 +264,11 @@ export class RateLimitInterceptor implements NestInterceptor {
     const now = Date.now();
     const key = `ip:${ip}:limit:${maxRequests}`;
 
-    await this.store.cleanup(now, this.windowMs);
+    if (now - this.lastCleanupAt > this.windowMs) {
+      await this.store.cleanup(now, this.windowMs);
+      this.lastCleanupAt = now;
+    }
+
     const entry = await this.store.increment(key, this.windowMs, now);
 
     if (entry.count > maxRequests) {
