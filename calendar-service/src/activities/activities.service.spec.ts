@@ -11,9 +11,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { Activity } from '@corpcal/database/types';
 import {
   buildActivityDisplayId,
+  HYDRATION_PROFILES,
   normalizeTeamAbbreviationForActivityDisplayId,
   PERMISSIONS,
   REVIEW_SNAPSHOT_VERSION,
+  SYSTEM_ROLES,
 } from '@corpcal/shared';
 import {
   activityResponseSchema,
@@ -1904,6 +1906,83 @@ describe('ActivitiesService', () => {
         expect(result.activityStatusId).toBe(reviewedStatusId);
       });
 
+      it('treats representatives as the non-exempt field in full save payloads', async () => {
+        const existingActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+        });
+
+        vi.spyOn(
+          service as unknown as {
+            getReviewDiffLookups: () => Promise<unknown>;
+          },
+          'getReviewDiffLookups'
+        ).mockResolvedValue({});
+
+        vi.spyOn(
+          service as unknown as {
+            getEffectiveReviewExemptFieldKeys: () => Promise<
+              ReadonlySet<string>
+            >;
+          },
+          'getEffectiveReviewExemptFieldKeys'
+        ).mockResolvedValue(new Set(['visibility', 'sharedWithTeamIds']));
+
+        vi.spyOn(
+          service as unknown as {
+            fetchRelatedForActivityIds: (
+              ...args: unknown[]
+            ) => Promise<unknown>;
+          },
+          'fetchRelatedForActivityIds'
+        ).mockResolvedValue({});
+
+        vi.spyOn(
+          service as unknown as {
+            mapFetchedActivityToResponseDto: (
+              ...args: unknown[]
+            ) => ReturnType<typeof createMockActivityResponse>;
+          },
+          'mapFetchedActivityToResponseDto'
+        ).mockReturnValue(
+          createMockActivityResponse({
+            id: 1,
+            activityStatus: 'Reviewed',
+            visibility: 'global',
+            sharedWith: [],
+            representativesAttending: ['Minister Smith'],
+          })
+        );
+
+        const preserveWhenOnlySharedWithChanges = await (
+          service as unknown as {
+            shouldPreserveReviewedStatus: (
+              activityId: number,
+              oldActivity: Activity,
+              dto: UpdateActivityRequest
+            ) => Promise<boolean>;
+          }
+        ).shouldPreserveReviewedStatus(1, existingActivity, {
+          sharedWithTeamIds: [42],
+        });
+
+        const preserveWhenUiPayloadAlsoSendsRepresentatives = await (
+          service as unknown as {
+            shouldPreserveReviewedStatus: (
+              activityId: number,
+              oldActivity: Activity,
+              dto: UpdateActivityRequest
+            ) => Promise<boolean>;
+          }
+        ).shouldPreserveReviewedStatus(1, existingActivity, {
+          sharedWithTeamIds: [42],
+          representatives: [],
+        });
+
+        expect(preserveWhenOnlySharedWithChanges).toBe(true);
+        expect(preserveWhenUiPayloadAlsoSendsRepresentatives).toBe(false);
+      });
+
       it('falls back to Changed when a non-exempt field changes', async () => {
         const existingActivity = createMockActivity({
           id: 1,
@@ -3243,6 +3322,19 @@ describe('ActivitiesService', () => {
       expect(paths).toContain('title');
     });
 
+    it('returns empty array when activity status is Deleted (soft-deleted)', () => {
+      const response = createMockActivityResponse({
+        activityStatus: 'Deleted',
+        title: 'Filled title',
+      });
+      const paths = service.computeChangedFieldsSinceReview(
+        response,
+        null,
+        REVIEW_SNAPSHOT_VERSION
+      );
+      expect(paths).toEqual([]);
+    });
+
     it('returns undefined when snapshot version mismatches', () => {
       const response = createMockActivityResponse({
         activityStatus: 'Changed',
@@ -3253,6 +3345,113 @@ describe('ActivitiesService', () => {
         REVIEW_SNAPSHOT_VERSION + 1
       );
       expect(paths).toBeUndefined();
+    });
+  });
+
+  describe('findAll list output review diff', () => {
+    it('attaches changedFieldsSinceReview only for admin users and uses the parse-free mapper builder', async () => {
+      const activity = createMockActivity({
+        reviewedFieldSnapshot: null,
+        reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
+      });
+
+      mockDatabaseService.db.select = vi.fn((selection?: unknown) => {
+        if (selection === undefined) {
+          return {
+            from: vi.fn().mockResolvedValue([activity]),
+          };
+        }
+
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        };
+      });
+
+      vi.spyOn(
+        service as unknown as {
+          getReviewDiffLookups: () => Promise<unknown>;
+        },
+        'getReviewDiffLookups'
+      ).mockResolvedValue({});
+      const getEffectiveReviewExemptFieldKeysSpy = vi
+        .spyOn(
+          service as unknown as {
+            getEffectiveReviewExemptFieldKeys: () => Promise<Set<string>>;
+          },
+          'getEffectiveReviewExemptFieldKeys'
+        )
+        .mockResolvedValue(new Set<string>());
+
+      mockDataFetcherService.fetchActivityStatusesForActivities.mockResolvedValue(
+        new Map([[activity.id, 'Reviewed']])
+      );
+
+      const mapperService = (
+        service as unknown as { mapperService: ActivityMapperService }
+      ).mapperService;
+      const buildResponseSpy = vi.spyOn(mapperService, 'buildResponseDto');
+      const mapToResponseSpy = vi.spyOn(mapperService, 'mapToResponseDto');
+
+      const adminResult = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: SYSTEM_ROLES.ADMIN,
+            permissions: [],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: {
+            ...HYDRATION_PROFILES.detail,
+            includeReviewDiff: true,
+          },
+        }
+      );
+
+      expect(adminResult[0]).toMatchObject({
+        id: activity.id,
+        changedFieldsSinceReview: expect.arrayContaining([
+          'title',
+          'dateStatusId',
+          'timeStatusId',
+        ]),
+      });
+      expect(getEffectiveReviewExemptFieldKeysSpy).not.toHaveBeenCalled();
+      expect(buildResponseSpy).toHaveBeenCalledTimes(1);
+      expect(mapToResponseSpy).not.toHaveBeenCalled();
+
+      buildResponseSpy.mockClear();
+      mapToResponseSpy.mockClear();
+
+      const nonAdminResult = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: 'User',
+            permissions: [],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: {
+            ...HYDRATION_PROFILES.detail,
+            includeReviewDiff: true,
+          },
+        }
+      );
+
+      expect(nonAdminResult[0]).not.toHaveProperty('changedFieldsSinceReview');
+      expect(buildResponseSpy).not.toHaveBeenCalled();
+      expect(mapToResponseSpy).not.toHaveBeenCalled();
     });
   });
 

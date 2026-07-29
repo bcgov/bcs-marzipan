@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+  index,
   integer,
   pgTable,
   serial,
@@ -15,7 +16,8 @@ import { users } from './user';
 /**
  * ActivityFlags table - Tracks which user is assigned ("flagged") per activity per team.
  * Rules:
- *   - At most one flag per (activity, team) pair.
+ *   - Multiple assignees are allowed per (activity, team) pair.
+ *   - At most one row per (activity, team, assignee) tuple.
  *   - Any team member with activities.flag permission can set or replace the flag.
  *   - Any active team member can remove the flag (no flag permission required).
  *   - Removing is done by deleting the row.
@@ -36,6 +38,9 @@ export const activityFlags = pgTable(
     assignedById: integer('assigned_by_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    displayTeamId: integer('display_team_id').references(() => teams.id, {
+      onDelete: 'set null',
+    }),
     note: text('note'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -44,7 +49,14 @@ export const activityFlags = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [unique().on(table.activityId, table.teamId)]
+  (table) => [
+    unique().on(table.activityId, table.teamId, table.assigneeId),
+    index('activity_flags_activity_id_team_id_idx').on(
+      table.activityId,
+      table.teamId
+    ),
+    index('activity_flags_display_team_id_idx').on(table.displayTeamId),
+  ]
 );
 
 export const activityFlagsRelations = relations(activityFlags, ({ one }) => ({
@@ -55,6 +67,11 @@ export const activityFlagsRelations = relations(activityFlags, ({ one }) => ({
   team: one(teams, {
     fields: [activityFlags.teamId],
     references: [teams.id],
+  }),
+  displayTeam: one(teams, {
+    fields: [activityFlags.displayTeamId],
+    references: [teams.id],
+    relationName: 'displayTeam',
   }),
   assignee: one(users, {
     fields: [activityFlags.assigneeId],

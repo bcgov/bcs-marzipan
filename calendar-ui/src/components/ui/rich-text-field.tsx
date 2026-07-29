@@ -8,11 +8,13 @@ import {
   RemoveFormatting,
 } from 'lucide-react';
 import sanitizeHtml from 'sanitize-html';
+import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   EMPTY_RICH_TEXT_DOC,
   isActivityRichTextEffectivelyEmpty,
+  plainTextFromActivityRichField,
 } from '@corpcal/shared/utils';
 import { Button } from '@/components/ui/button';
 import { RichTextLinkDialog } from '@/components/ui/rich-text-field-link-dialog';
@@ -31,6 +33,7 @@ export type RichTextFieldProps = {
   onChange: (json: string) => void;
   onBlur: () => void;
   placeholder?: string;
+  maxLength?: number;
   readOnly?: boolean;
   disabled?: boolean;
   className?: string;
@@ -67,6 +70,25 @@ export function shouldIgnoreStaleEmptyRichTextUpdate({
   );
 }
 
+export function shouldRejectRichTextLengthIncrease({
+  currentValue,
+  nextValue,
+  maxLength,
+}: {
+  currentValue: string;
+  nextValue: string;
+  maxLength?: number;
+}): boolean {
+  if (typeof maxLength !== 'number') {
+    return false;
+  }
+
+  const nextLength = plainTextFromActivityRichField(nextValue).length;
+  const currentLength = plainTextFromActivityRichField(currentValue).length;
+
+  return nextLength > maxLength && nextLength > currentLength;
+}
+
 /** TipTap `getJSON()` output is already valid JSON; only empty variants need coalescing. */
 export function coalesceEditorRichTextUpdate(json: string): string {
   return isActivityRichTextEffectivelyEmpty(json) ? EMPTY_RICH_TEXT_DOC : json;
@@ -79,6 +101,7 @@ export function RichTextField({
   onChange,
   onBlur,
   placeholder = '',
+  maxLength,
   readOnly = false,
   disabled = false,
   className,
@@ -101,6 +124,7 @@ export function RichTextField({
   );
   const coalescedValueRef = useRef(coalescedValue);
   coalescedValueRef.current = coalescedValue;
+  const lastRejectedLengthToastAtRef = useRef(0);
 
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -137,6 +161,40 @@ export function RichTextField({
       const json = JSON.stringify(ed.getJSON());
       const propValue = valueRef.current;
       if (json === propValue) return;
+
+      if (
+        shouldRejectRichTextLengthIncrease({
+          currentValue: propValue,
+          nextValue: json,
+          maxLength,
+        })
+      ) {
+        const now = Date.now();
+        if (now - lastRejectedLengthToastAtRef.current > 1200) {
+          toast.error(
+            `Maximum character limit reached (${maxLength} characters).`,
+            {
+              id: `rich-text-max-length-${name}`,
+            }
+          );
+          lastRejectedLengthToastAtRef.current = now;
+        }
+
+        const args = getSetContentArgs(propValue);
+        isSyncingFromPropRef.current = true;
+        if (args.contentType === 'json') {
+          ed.commands.setContent(args.content, { emitUpdate: false });
+        } else {
+          ed.commands.setContent(args.content, {
+            contentType: 'markdown',
+            emitUpdate: false,
+          });
+        }
+        queueMicrotask(() => {
+          isSyncingFromPropRef.current = false;
+        });
+        return;
+      }
 
       const nextValue = coalesceEditorRichTextUpdate(json);
       const currentValue = coalescedValueRef.current;

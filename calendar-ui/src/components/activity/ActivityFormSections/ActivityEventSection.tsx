@@ -8,7 +8,10 @@ import type {
   VenuePresetItem,
   VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
-import type { ActivityFormData } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_VENUE_TEXT_MAX_LENGTH,
+  type ActivityFormData,
+} from '@corpcal/shared/schemas';
 import { normalizeEventPlannerFormEntries } from '@corpcal/shared/utils';
 import { fetchCities, fetchVenuePresets } from '@/api/lookupsApi';
 import {
@@ -602,6 +605,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   defaultValue={field.value || ''}
                   value={field.value ?? ''}
                   onAddressSelect={handleVenueAddressAutofill}
+                  maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   onInputValueChange={(value) =>
                     setActivityFormFieldValue(
                       form,
@@ -630,6 +634,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 <Input
                   {...field}
                   value={field.value ?? ''}
+                  maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   readOnly={readOnly}
                   onChange={(e) => {
                     const raw = e.target.value;
@@ -660,6 +665,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   readOnly={readOnly}
                   multiple={false}
                   useChips={false}
+                  maxInputLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   options={cityComboboxOptions}
                   value={cityComboboxValueFromVenue(currentVenue, citiesList)}
                   onChange={handleCityComboboxChange}
@@ -683,6 +689,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 <Input
                   {...field}
                   value={field.value ?? ''}
+                  maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   readOnly={readOnly}
                   onChange={(e) => {
                     const raw = e.target.value;
@@ -710,6 +717,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               <Input
                 {...field}
                 value={field.value ?? ''}
+                maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                 readOnly={readOnly}
                 onChange={(e) => {
                   const raw = e.target.value;

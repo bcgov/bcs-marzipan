@@ -30,9 +30,10 @@ export class ActivityFlagsService {
   ) {}
 
   /**
-   * Upsert the flag for the calling user's team on a given activity.
-   * Replaces any existing flag for that (activity, team) pair.
-   * The assignee must be a member of the same team.
+   * Legacy single-assignee API.
+   *
+   * Preserves prior behaviour by syncing the full assignee set to exactly one
+   * assignee for the provided (activity, team).
    */
   async upsertFlag(
     activityId: number,
@@ -41,7 +42,23 @@ export class ActivityFlagsService {
     assignedById: number,
     note?: string
   ): Promise<void> {
+    await this.syncFlags(activityId, teamId, [assigneeId], assignedById, note);
+  }
+
+  /**
+   * Syncs assignees for a given (activity, team) pair to exactly match
+   * the provided assignee list.
+   */
+  async syncFlags(
+    activityId: number,
+    teamId: number,
+    assigneeIds: number[],
+    assignedById: number,
+    note?: string,
+    displayTeamPerAssignee?: Record<number, number | null>
+  ): Promise<{ addedAssigneeIds: number[]; removedAssigneeIds: number[] }> {
     const db = this.databaseService.db;
+    const desiredAssigneeIds = Array.from(new Set(assigneeIds));
 
     // Validate activity exists
     const [activity] = await db
@@ -53,29 +70,93 @@ export class ActivityFlagsService {
       throw new NotFoundException(`Activity ${activityId} not found`);
     }
 
-    // Validate assignee is a member of the team
-    const [membership] = await db
-      .select({ userId: userTeams.userId })
-      .from(userTeams)
-      .where(
-        and(
-          eq(userTeams.userId, assigneeId),
-          eq(userTeams.teamId, teamId),
-          eq(userTeams.isActive, true)
-        )
-      )
-      .limit(1);
+    // Validate all assignees are active members of the team
+    const assigneeMembershipRows =
+      desiredAssigneeIds.length === 0
+        ? []
+        : await db
+            .select({
+              userId: userTeams.userId,
+              name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+            })
+            .from(userTeams)
+            .innerJoin(users, eq(users.id, userTeams.userId))
+            .where(
+              and(
+                eq(userTeams.teamId, teamId),
+                eq(userTeams.isActive, true),
+                inArray(userTeams.userId, desiredAssigneeIds)
+              )
+            );
 
-    if (!membership) {
+    const membershipUserIdSet = new Set(
+      assigneeMembershipRows.map((m) => m.userId)
+    );
+    const invalidAssigneeIds = desiredAssigneeIds.filter(
+      (id) => !membershipUserIdSet.has(id)
+    );
+
+    if (invalidAssigneeIds.length > 0) {
       throw new ForbiddenException(
-        'Assignee is not an active member of this team'
+        'One or more assignees are not active members of this team'
       );
     }
 
-    // Look up existing assignee name before upsert
-    const [existingFlag] = await db
+    const assigneeNameById = new Map(
+      assigneeMembershipRows.map((row) => [row.userId, row.name] as const)
+    );
+
+    // Validate displayTeamPerAssignee: each assignee can only display a team they're actually a member of
+    if (
+      displayTeamPerAssignee &&
+      Object.keys(displayTeamPerAssignee).length > 0
+    ) {
+      const desiredAssigneeSet = new Set(desiredAssigneeIds);
+      const assigneeTeamMemberships = await db
+        .select({
+          userId: userTeams.userId,
+          teamId: userTeams.teamId,
+        })
+        .from(userTeams)
+        .where(
+          and(
+            eq(userTeams.isActive, true),
+            inArray(userTeams.userId, desiredAssigneeIds)
+          )
+        );
+
+      const assigneeTeamSet = new Map<number, Set<number>>();
+      for (const row of assigneeTeamMemberships) {
+        if (!assigneeTeamSet.has(row.userId)) {
+          assigneeTeamSet.set(row.userId, new Set());
+        }
+        assigneeTeamSet.get(row.userId)!.add(row.teamId);
+      }
+
+      for (const [assigneeIdStr, displayTeamId] of Object.entries(
+        displayTeamPerAssignee
+      )) {
+        if (displayTeamId === null || displayTeamId === undefined) continue;
+
+        const assigneeId = Number(assigneeIdStr);
+        if (!desiredAssigneeSet.has(assigneeId)) continue;
+
+        const assigneeTeams = assigneeTeamSet.get(assigneeId);
+        if (!assigneeTeams?.has(displayTeamId)) {
+          const assigneeName =
+            assigneeNameById.get(assigneeId) ?? String(assigneeId);
+          throw new ForbiddenException(
+            `Assignee ${assigneeName} (${assigneeId}) is not a member of display team ${displayTeamId}`
+          );
+        }
+      }
+    }
+
+    // Existing flags for this (activity, team) pair
+    const existingFlags = await db
       .select({
-        existingName: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+        assigneeId: activityFlags.assigneeId,
+        name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
       })
       .from(activityFlags)
       .innerJoin(users, eq(users.id, activityFlags.assigneeId))
@@ -84,52 +165,140 @@ export class ActivityFlagsService {
           eq(activityFlags.activityId, activityId),
           eq(activityFlags.teamId, teamId)
         )
-      )
-      .limit(1);
-    const previousAssigneeName = existingFlag?.existingName ?? null;
+      );
 
-    await db
-      .insert(activityFlags)
-      .values({
-        activityId,
-        teamId,
-        assigneeId,
-        assignedById,
-        note: note ?? null,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [activityFlags.activityId, activityFlags.teamId],
-        set: {
-          assigneeId,
-          assignedById,
-          note: note ?? null,
-          updatedAt: new Date(),
-        },
-      });
+    const existingAssigneeIds = existingFlags.map((row) => row.assigneeId);
+    const existingAssigneeSet = new Set(existingAssigneeIds);
+    const desiredAssigneeSet = new Set(desiredAssigneeIds);
 
-    // Look up new assignee display name for history
-    const [assigneeUser] = await db
-      .select({
-        name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
-      })
-      .from(users)
-      .where(eq(users.id, assigneeId))
-      .limit(1);
-    const assigneeName = assigneeUser?.name ?? String(assigneeId);
-
-    await this.activityHistoryService.recordChange(
-      activityId,
-      assignedById,
-      'flag_assigned',
-      [
-        {
-          field: 'flag.assigneeName',
-          oldValue: previousAssigneeName,
-          newValue: assigneeName,
-        },
-      ]
+    const toAdd = desiredAssigneeIds.filter(
+      (id) => !existingAssigneeSet.has(id)
     );
+    const toRemove = existingAssigneeIds.filter(
+      (id) => !desiredAssigneeSet.has(id)
+    );
+
+    // Wrap insert/delete/history in a transaction for atomicity
+    await db.transaction(async (tx) => {
+      // Update note on all existing flags for this (activityId, teamId) pair if note is provided
+      if (note !== undefined && note !== null) {
+        await tx
+          .update(activityFlags)
+          .set({
+            note,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(activityFlags.activityId, activityId),
+              eq(activityFlags.teamId, teamId)
+            )
+          );
+      }
+
+      // Update displayTeamId on existing flags individually (per-assignee cosmetic badge choice)
+      if (displayTeamPerAssignee) {
+        const existingToUpdate = existingAssigneeIds.filter(
+          (id) => desiredAssigneeSet.has(id) && id in displayTeamPerAssignee
+        );
+        for (const assigneeId of existingToUpdate) {
+          await tx
+            .update(activityFlags)
+            .set({
+              displayTeamId: displayTeamPerAssignee[assigneeId] ?? null,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(activityFlags.activityId, activityId),
+                eq(activityFlags.teamId, teamId),
+                eq(activityFlags.assigneeId, assigneeId)
+              )
+            );
+        }
+      }
+
+      if (toAdd.length > 0) {
+        await tx
+          .insert(activityFlags)
+          .values(
+            toAdd.map((assigneeId) => ({
+              activityId,
+              teamId,
+              assigneeId,
+              assignedById,
+              displayTeamId: displayTeamPerAssignee?.[assigneeId] ?? null,
+              note: note ?? null,
+              updatedAt: new Date(),
+            }))
+          )
+          .onConflictDoNothing({
+            target: [
+              activityFlags.activityId,
+              activityFlags.teamId,
+              activityFlags.assigneeId,
+            ],
+          });
+      }
+
+      if (toRemove.length > 0) {
+        await tx
+          .delete(activityFlags)
+          .where(
+            and(
+              eq(activityFlags.activityId, activityId),
+              eq(activityFlags.teamId, teamId),
+              inArray(activityFlags.assigneeId, toRemove)
+            )
+          );
+      }
+
+      for (const assigneeId of toAdd) {
+        const assigneeName =
+          assigneeNameById.get(assigneeId) ?? String(assigneeId);
+        await this.activityHistoryService.recordChange(
+          activityId,
+          assignedById,
+          'flag_assigned',
+          [
+            {
+              field: 'flag.assigneeName',
+              oldValue: null,
+              newValue: assigneeName,
+            },
+          ],
+          undefined,
+          tx
+        );
+      }
+
+      const existingNameById = new Map(
+        existingFlags.map((row) => [row.assigneeId, row.name] as const)
+      );
+      for (const assigneeId of toRemove) {
+        const assigneeName =
+          existingNameById.get(assigneeId) ?? String(assigneeId);
+        await this.activityHistoryService.recordChange(
+          activityId,
+          assignedById,
+          'flag_removed',
+          [
+            {
+              field: 'flag.assigneeName',
+              oldValue: assigneeName,
+              newValue: null,
+            },
+          ],
+          undefined,
+          tx
+        );
+      }
+    });
+
+    return {
+      addedAssigneeIds: toAdd,
+      removedAssigneeIds: toRemove,
+    };
   }
 
   /**
@@ -143,7 +312,55 @@ export class ActivityFlagsService {
   ): Promise<void> {
     const db = this.databaseService.db;
 
-    // Look up existing assignee name before deleting
+    const existing = await db
+      .select({
+        assigneeId: activityFlags.assigneeId,
+        name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+      })
+      .from(activityFlags)
+      .innerJoin(users, eq(users.id, activityFlags.assigneeId))
+      .where(
+        and(
+          eq(activityFlags.activityId, activityId),
+          eq(activityFlags.teamId, teamId)
+        )
+      );
+
+    if (existing.length === 0) {
+      return;
+    }
+
+    await db
+      .delete(activityFlags)
+      .where(
+        and(
+          eq(activityFlags.activityId, activityId),
+          eq(activityFlags.teamId, teamId)
+        )
+      );
+
+    for (const row of existing) {
+      await this.activityHistoryService.recordChange(
+        activityId,
+        removedById,
+        'flag_removed',
+        [{ field: 'flag.assigneeName', oldValue: row.name, newValue: null }]
+      );
+    }
+  }
+
+  /**
+   * Remove a single assignee flag for a given (activity, team, assignee) tuple.
+   * No-op if the row does not exist.
+   */
+  async removeAssigneeFlag(
+    activityId: number,
+    teamId: number,
+    assigneeId: number,
+    removedById: number
+  ): Promise<void> {
+    const db = this.databaseService.db;
+
     const [existing] = await db
       .select({
         name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
@@ -153,7 +370,8 @@ export class ActivityFlagsService {
       .where(
         and(
           eq(activityFlags.activityId, activityId),
-          eq(activityFlags.teamId, teamId)
+          eq(activityFlags.teamId, teamId),
+          eq(activityFlags.assigneeId, assigneeId)
         )
       )
       .limit(1);
@@ -168,7 +386,8 @@ export class ActivityFlagsService {
       .where(
         and(
           eq(activityFlags.activityId, activityId),
-          eq(activityFlags.teamId, teamId)
+          eq(activityFlags.teamId, teamId),
+          eq(activityFlags.assigneeId, assigneeId)
         )
       );
 
@@ -194,11 +413,13 @@ export class ActivityFlagsService {
 
     const db = this.databaseService.db;
 
-    const rows = await db
+    // First, fetch all flag rows with team and user data
+    const flagRows = await db
       .select({
         activityId: activityFlags.activityId,
         teamId: activityFlags.teamId,
         teamName: teams.name,
+        displayTeamId: activityFlags.displayTeamId,
         assigneeId: activityFlags.assigneeId,
         assigneeName: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
         assignedById: activityFlags.assignedById,
@@ -218,11 +439,36 @@ export class ActivityFlagsService {
         )
       );
 
+    // Fetch display team names separately to avoid per-row scalar subqueries
+    const displayTeamIds = Array.from(
+      new Set(flagRows.map((r) => r.displayTeamId).filter((id) => id != null))
+    );
+
+    const displayTeamNames = new Map<number, string>();
+    if (displayTeamIds.length > 0) {
+      const displayTeamRows = await db
+        .select({
+          id: teams.id,
+          name: teams.name,
+        })
+        .from(teams)
+        .where(inArray(teams.id, displayTeamIds));
+
+      for (const row of displayTeamRows) {
+        displayTeamNames.set(row.id, row.name);
+      }
+    }
+
     const map = new Map<number, ActivityFlagResponse[]>();
-    for (const row of rows) {
+    for (const row of flagRows) {
       const flag: ActivityFlagResponse = {
         teamId: row.teamId,
         teamName: row.teamName,
+        displayTeamId: row.displayTeamId,
+        displayTeamName:
+          row.displayTeamId != null
+            ? (displayTeamNames.get(row.displayTeamId) ?? null)
+            : null,
         assigneeId: row.assigneeId,
         assigneeName: row.assigneeName,
         assignedById: row.assignedById,

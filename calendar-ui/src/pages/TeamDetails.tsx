@@ -101,15 +101,10 @@ export function TeamDetails() {
     void navigate('/users?tab=teams');
   };
 
-  const formatMemberLastUpdated = (member: any) => {
-    const raw =
-      userLastUpdatedById.get(member.userId) ??
-      member.updatedAt ??
-      member.lastUpdatedAt ??
-      member.modifiedAt ??
-      member.userUpdatedAt;
+  const formatMemberLastUpdated = (member: { userId: number }) => {
+    const raw = userLastUpdatedById.get(member.userId);
     if (!raw) return '-';
-    const parsed = new Date(String(raw));
+    const parsed = new Date(raw);
     if (Number.isNaN(parsed.getTime())) return '-';
     return parsed.toLocaleDateString('en-CA', {
       month: 'long',

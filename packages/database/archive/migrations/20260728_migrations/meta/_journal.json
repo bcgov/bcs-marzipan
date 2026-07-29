@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1781420370104,
+      "tag": "0000_20260613_postgresql_extensions",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781420370105,
+      "tag": "0001_20260613_regenerate_migration_meta",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781507388130,
+      "tag": "0009_20260616_look_ahead_restore",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782172800000,
+      "tag": "0010_20260623_teams_abbreviation_varchar6",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1782691200000,
+      "tag": "0011_20260629_activity_flags_multi_assignee",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783468800000,
+      "tag": "0012_20260708_activity_flags_display_team",
+      "breakpoints": true
+    }
+  ]
+}

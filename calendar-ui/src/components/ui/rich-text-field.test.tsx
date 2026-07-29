@@ -12,6 +12,7 @@ import {
   coalesceEditorRichTextUpdate,
   RichTextField,
   shouldIgnoreStaleEmptyRichTextUpdate,
+  shouldRejectRichTextLengthIncrease,
 } from './rich-text-field';
 
 function renderRichTextField(
@@ -93,6 +94,46 @@ describe('shouldIgnoreStaleEmptyRichTextUpdate', () => {
         currentValue: savedValue,
       })
     ).toBe(false);
+  });
+});
+
+describe('shouldRejectRichTextLengthIncrease', () => {
+  it('rejects updates that grow plain text beyond maxLength', () => {
+    expect(
+      shouldRejectRichTextLengthIncrease({
+        currentValue: tipTapDocJsonFromPlainText('12345'),
+        nextValue: tipTapDocJsonFromPlainText('123456'),
+        maxLength: 5,
+      })
+    ).toBe(true);
+  });
+
+  it('allows updates at the limit and reductions from already-over-limit content', () => {
+    expect(
+      shouldRejectRichTextLengthIncrease({
+        currentValue: tipTapDocJsonFromPlainText('1234'),
+        nextValue: tipTapDocJsonFromPlainText('12345'),
+        maxLength: 5,
+      })
+    ).toBe(false);
+
+    expect(
+      shouldRejectRichTextLengthIncrease({
+        currentValue: tipTapDocJsonFromPlainText('123456'),
+        nextValue: tipTapDocJsonFromPlainText('12345'),
+        maxLength: 5,
+      })
+    ).toBe(false);
+  });
+
+  it('counts plain text rather than JSON string length', () => {
+    expect(
+      shouldRejectRichTextLengthIncrease({
+        currentValue: tipTapDocJsonFromPlainText('abcd'),
+        nextValue: tipTapDocJsonFromPlainText('abcde'),
+        maxLength: 4,
+      })
+    ).toBe(true);
   });
 });
 

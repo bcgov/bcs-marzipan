@@ -5,6 +5,7 @@ import {
   createUserBodySchema,
   TEAM_ROLES,
   transferActivitiesBodySchema,
+  updateUserBodySchema,
   updateUserSettingsBodySchema,
   updateUserTeamRoleBodySchema,
   userDetailSchema,
@@ -73,6 +74,23 @@ describe('createUserBodySchema', () => {
     expect(result.teams?.[1].role).toBe('owner');
   });
 
+  it('enforces displayName max length (255)', () => {
+    const valid = createUserBodySchema.parse({
+      email: 'user@example.com',
+      roleId: 2,
+      displayName: 'd'.repeat(255),
+    });
+    expect(valid.displayName).toBe('d'.repeat(255));
+
+    expect(() =>
+      createUserBodySchema.parse({
+        email: 'user@example.com',
+        roleId: 2,
+        displayName: 'd'.repeat(256),
+      })
+    ).toThrow();
+  });
+
   it('rejects missing email', () => {
     expect(() => createUserBodySchema.parse({ roleId: 1 })).toThrow();
   });
@@ -116,6 +134,22 @@ describe('addUserToTeamBodySchema', () => {
     }
   });
 
+  it('enforces notes max length (1000)', () => {
+    addUserToTeamBodySchema.parse({
+      teamId: 1,
+      role: 'member',
+      notes: 'n'.repeat(1000),
+    });
+
+    expect(() =>
+      addUserToTeamBodySchema.parse({
+        teamId: 1,
+        role: 'member',
+        notes: 'n'.repeat(1001),
+      })
+    ).toThrow();
+  });
+
   it('rejects invalid role', () => {
     expect(() =>
       addUserToTeamBodySchema.parse({
@@ -130,6 +164,30 @@ describe('updateUserTeamRoleBodySchema', () => {
   it('accepts valid update role body', () => {
     const result = updateUserTeamRoleBodySchema.parse({ role: 'owner' });
     expect(result.role).toBe('owner');
+  });
+
+  it('enforces notes max length (1000)', () => {
+    updateUserTeamRoleBodySchema.parse({
+      role: 'owner',
+      notes: 'n'.repeat(1000),
+    });
+
+    expect(() =>
+      updateUserTeamRoleBodySchema.parse({
+        role: 'owner',
+        notes: 'n'.repeat(1001),
+      })
+    ).toThrow();
+  });
+});
+
+describe('updateUserBodySchema', () => {
+  it('enforces notes max length (1000)', () => {
+    updateUserBodySchema.parse({ notes: 'n'.repeat(1000) });
+
+    expect(() =>
+      updateUserBodySchema.parse({ notes: 'n'.repeat(1001) })
+    ).toThrow();
   });
 });
 
@@ -152,6 +210,24 @@ describe('transferActivitiesBodySchema', () => {
       activityIds: [1, 2, 3],
     });
     expect(result.activityIds).toEqual([1, 2, 3]);
+  });
+
+  it('enforces notes max length (1000)', () => {
+    transferActivitiesBodySchema.parse({
+      targetUserId: 2,
+      transferCommsLead: true,
+      transferCommsContact: true,
+      notes: 'n'.repeat(1000),
+    });
+
+    expect(() =>
+      transferActivitiesBodySchema.parse({
+        targetUserId: 2,
+        transferCommsLead: true,
+        transferCommsContact: true,
+        notes: 'n'.repeat(1001),
+      })
+    ).toThrow();
   });
 });
 

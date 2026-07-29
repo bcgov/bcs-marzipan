@@ -97,7 +97,7 @@ describe('TeamsController', () => {
       const result = await controller.findOne(5);
 
       expect(result).toEqual({ success: true, data: team });
-      expect(mockTeamsService.findOne).toHaveBeenCalledWith(5);
+      expect(mockTeamsService.findOne).toHaveBeenCalledWith(5, false);
       expect(mockTeamsService.findOne).toHaveBeenCalledTimes(1);
     });
 
@@ -107,7 +107,7 @@ describe('TeamsController', () => {
       const result = await controller.findOne(999);
 
       expect(result).toEqual({ success: true, data: null });
-      expect(mockTeamsService.findOne).toHaveBeenCalledWith(999);
+      expect(mockTeamsService.findOne).toHaveBeenCalledWith(999, false);
     });
   });
 

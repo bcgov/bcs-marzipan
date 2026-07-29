@@ -1,7 +1,10 @@
 import { useFormContext } from 'react-hook-form';
 import { useMemo } from 'react';
 
-import type { ActivityFormData } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH,
+  type ActivityFormData,
+} from '@corpcal/shared/schemas';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   FormControl,
@@ -77,6 +80,7 @@ export const ActivityReportsSection: React.FC = () => {
                       }
                       onBlur={field.onBlur}
                       placeholder="Enter executive summary"
+                      maxLength={ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH}
                       readOnly={lookAheadScope.readOnly}
                       disabled={lookAheadScope.fieldScopeDisabled}
                       data-field={field.name}
