@@ -81,6 +81,7 @@ function activityTableRowToFilterMatchInput(
     dateStatusName: row.dateStatus,
     timeStatusName: row.timeStatus,
     tagIds: row.tags.map((t) => t.id),
+    leadTeamId: row.leadTeamId,
     leadMinistryId: row.leadMinistryId,
     leadOrgId: row.leadOrgId,
     commsContactLeadUserId: row.commsContactLeadUserId,

@@ -196,6 +196,7 @@ function parseFromSearchParams(
     dateConfirmedFilter,
     timeConfirmedFilter,
     tagIds,
+    leadTeamIds: [],
     leadMinistryIds: [],
     leadOrgIds: [],
     commsContactLeadUserIds: [],
@@ -352,6 +353,11 @@ function parseFromStorage(
               (n): n is number => typeof n === 'number' && Number.isFinite(n)
             )
           : [];
+        const leadTeamIds = Array.isArray(rawFilter.leadTeamIds)
+          ? (rawFilter.leadTeamIds as number[]).filter(
+              (n): n is number => typeof n === 'number' && Number.isFinite(n)
+            )
+          : [];
         const translationLanguageIds = Array.isArray(
           rawFilter.translationLanguageIds
         )
@@ -390,6 +396,7 @@ function parseFromStorage(
           dateConfirmedFilter,
           timeConfirmedFilter,
           tagIds,
+          leadTeamIds,
           leadMinistryIds,
           leadOrgIds,
           commsContactLeadUserIds,

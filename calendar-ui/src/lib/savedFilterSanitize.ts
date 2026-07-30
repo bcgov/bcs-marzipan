@@ -45,6 +45,7 @@ export interface ValidFilterLookups {
   orgIds?: ReadonlySet<number>;
   commsContactUserIds?: ReadonlySet<number>;
   eventPlannerIds?: ReadonlySet<number>;
+  teamIds?: ReadonlySet<number>;
   translationStatusIds?: ReadonlySet<number>;
   translationLanguageIds?: ReadonlySet<number>;
 }
@@ -108,6 +109,9 @@ export function sanitizeSavedFilterPayload(
   );
   if (plannerResult.removed) hadInvalid = true;
 
+  const teamResult = sanitizeIdArray(record.leadTeamIds, lookups?.teamIds);
+  if (teamResult.removed) hadInvalid = true;
+
   const translationStatusResult = sanitizeIdArray(
     record.translationRequiredStatusIds,
     lookups?.translationStatusIds
@@ -130,6 +134,7 @@ export function sanitizeSavedFilterPayload(
       leadOrgIds: orgResult.ids,
       commsContactLeadUserIds: commsResult.ids,
       eventPlannerLeadIds: plannerResult.ids,
+      leadTeamIds: teamResult.ids,
       translationRequiredStatusIds: translationStatusResult.ids,
       translationLanguageIds: translationLangResult.ids,
     },

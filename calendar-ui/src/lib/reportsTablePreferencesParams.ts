@@ -35,6 +35,7 @@ const URL_PARAM_TIME_CONFIRMED = 'timeConfirmed';
 const URL_PARAM_TAG = 'tag';
 const URL_PARAM_LEAD_MINISTRY = 'leadMinistry';
 const URL_PARAM_LEAD_ORG = 'leadOrg';
+const URL_PARAM_LEAD_TEAM = 'leadTeam';
 const URL_PARAM_COMMS_LEAD = 'commsLead';
 const URL_PARAM_EVENT_PLANNER = 'eventPlanner';
 const URL_PARAM_TRANSLATION = 'translation';
@@ -191,6 +192,9 @@ function parseFromSearchParams(
   const leadOrgIds = parseIdListFromQueryParam(
     searchParams.get(URL_PARAM_LEAD_ORG)
   );
+  const leadTeamIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_LEAD_TEAM)
+  );
   const commsContactLeadUserIds = parseIdListFromQueryParam(
     searchParams.get(URL_PARAM_COMMS_LEAD)
   );
@@ -220,6 +224,7 @@ function parseFromSearchParams(
     dateConfirmedFilter,
     timeConfirmedFilter,
     tagIds,
+    leadTeamIds,
     leadMinistryIds,
     leadOrgIds,
     commsContactLeadUserIds,
@@ -360,6 +365,11 @@ function parseSinglePreferencesFromRaw(
             (n): n is number => typeof n === 'number' && Number.isFinite(n)
           )
         : [];
+      const leadTeamIds = Array.isArray(rawFilter.leadTeamIds)
+        ? (rawFilter.leadTeamIds as number[]).filter(
+            (n): n is number => typeof n === 'number' && Number.isFinite(n)
+          )
+        : [];
       const commsContactLeadUserIds = Array.isArray(
         rawFilter.commsContactLeadUserIds
       )
@@ -410,6 +420,7 @@ function parseSinglePreferencesFromRaw(
         dateConfirmedFilter,
         timeConfirmedFilter,
         tagIds,
+        leadTeamIds,
         leadMinistryIds,
         leadOrgIds,
         commsContactLeadUserIds,
@@ -558,6 +569,7 @@ export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
     searchParams.has(URL_PARAM_TAG) ||
     searchParams.has(URL_PARAM_LEAD_MINISTRY) ||
     searchParams.has(URL_PARAM_LEAD_ORG) ||
+    searchParams.has(URL_PARAM_LEAD_TEAM) ||
     searchParams.has(URL_PARAM_COMMS_LEAD) ||
     searchParams.has(URL_PARAM_EVENT_PLANNER) ||
     searchParams.has(URL_PARAM_TRANSLATION) ||
@@ -600,6 +612,7 @@ export function preferencesToParams(
     [URL_PARAM_TAG]: f.tagIds.join(','),
     [URL_PARAM_LEAD_MINISTRY]: f.leadMinistryIds.join(','),
     [URL_PARAM_LEAD_ORG]: f.leadOrgIds.join(','),
+    [URL_PARAM_LEAD_TEAM]: f.leadTeamIds.join(','),
     [URL_PARAM_COMMS_LEAD]: f.commsContactLeadUserIds.join(','),
     [URL_PARAM_EVENT_PLANNER]: f.eventPlannerLeadIds.join(','),
     [URL_PARAM_TRANSLATION]: f.translationLanguageIds.join(','),

@@ -33,6 +33,7 @@ export type ActivityFilterSummaryContext = {
   organizationOptions: OptionItem[];
   commsContactOptions: OptionItem[];
   eventPlannerOptions: OptionItem[];
+  teamOptions: OptionItem[];
   translationStatusOptions: OptionItem[];
   translationOptions: OptionItem[];
   /**
@@ -134,6 +135,28 @@ export function buildActivityFilterChipRows(
       chips: filterState.categoryIds.map((id) => ({
         chipKey: `category:${id}`,
         displayLabel: labelForNumericId(id, ctx.categoryOptions ?? []),
+      })),
+    });
+  }
+
+  if (filterState.leadMinistryIds.length > 0) {
+    rows.push({
+      rowKey: 'leadMinistry',
+      label: 'Ministry',
+      chips: filterState.leadMinistryIds.map((id) => ({
+        chipKey: `leadMinistry:${id}`,
+        displayLabel: labelForNumericId(id, ctx.ministryOptions),
+      })),
+    });
+  }
+
+  if (filterState.commsContactLeadUserIds.length > 0) {
+    rows.push({
+      rowKey: 'commsContact',
+      label: 'Comms contact',
+      chips: filterState.commsContactLeadUserIds.map((id) => ({
+        chipKey: `comms:${id}`,
+        displayLabel: labelForNumericId(id, ctx.commsContactOptions),
       })),
     });
   }
@@ -251,13 +274,13 @@ export function buildActivityFilterChipRows(
     });
   }
 
-  if (filterState.leadMinistryIds.length > 0) {
+  if ((filterState.leadTeamIds ?? []).length > 0) {
     rows.push({
-      rowKey: 'leadMinistry',
-      label: 'Ministry',
-      chips: filterState.leadMinistryIds.map((id) => ({
-        chipKey: `leadMinistry:${id}`,
-        displayLabel: labelForNumericId(id, ctx.ministryOptions),
+      rowKey: 'team',
+      label: 'Team',
+      chips: (filterState.leadTeamIds ?? []).map((id) => ({
+        chipKey: `team:${id}`,
+        displayLabel: labelForNumericId(id, ctx.teamOptions),
       })),
     });
   }
@@ -269,17 +292,6 @@ export function buildActivityFilterChipRows(
       chips: filterState.leadOrgIds.map((id) => ({
         chipKey: `leadOrg:${id}`,
         displayLabel: labelForNumericId(id, ctx.organizationOptions),
-      })),
-    });
-  }
-
-  if (filterState.commsContactLeadUserIds.length > 0) {
-    rows.push({
-      rowKey: 'commsContact',
-      label: 'Comms contact',
-      chips: filterState.commsContactLeadUserIds.map((id) => ({
-        chipKey: `comms:${id}`,
-        displayLabel: labelForNumericId(id, ctx.commsContactOptions),
       })),
     });
   }
@@ -555,6 +567,18 @@ export function clearSavedFilterChip(
           eventPlannerLeadIds: state.eventPlannerLeadIds.filter(
             (x) => x !== id
           ),
+        },
+        searchKeyword: kw,
+      };
+    }
+    case 'team': {
+      const id = parseInt(raw, 10);
+      if (!Number.isFinite(id))
+        return { filterState: state, searchKeyword: kw };
+      return {
+        filterState: {
+          ...state,
+          leadTeamIds: (state.leadTeamIds ?? []).filter((x) => x !== id),
         },
         searchKeyword: kw,
       };

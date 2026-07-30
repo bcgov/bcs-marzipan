@@ -42,6 +42,7 @@ function makeActivity(id: number) {
     commsContacts: [],
     eventPlanners: [],
     eventPlannerLeadIds: [],
+    leadTeamId: null,
     leadMinistryId: null,
     leadOrgId: null,
     translationsRequired: [],

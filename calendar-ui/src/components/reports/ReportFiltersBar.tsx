@@ -4,8 +4,8 @@ import { useCallback, useMemo, type ReactNode } from 'react';
 import type { ActivityFilterState } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
+import { buildIdArrayFilterSlot } from '@/components/activity/ActivityTable/ActivityTableFilters';
 import { CategoriesFilterPanel } from '@/components/activity/ActivityTable/CategoriesFilter';
-import { LeadsFilterPanel } from '@/components/activity/ActivityTable/LeadsFilter';
 import { LookAheadFilterPanel } from '@/components/activity/ActivityTable/LookAheadFilter';
 import { PitchFilterPanel } from '@/components/activity/ActivityTable/PitchFilter';
 import { ScheduledDateFilterPanel } from '@/components/activity/ActivityTable/ScheduledDateFilter';
@@ -28,6 +28,7 @@ import {
   useOrganizations,
   usePitchRequiredStatuses,
   useTags,
+  useTeams,
   useTranslationLanguages,
   useTranslationRequiredStatuses,
   useUsers,
@@ -128,6 +129,7 @@ export function ReportFiltersBar({
   const { data: organizationsForFilter = [] } = useOrganizations();
   const { data: usersForFilter = [] } = useUsers();
   const { data: eventPlannersForFilter = [] } = useEventPlanners();
+  const { data: teamsForFilter = [] } = useTeams();
   const { data: translationLanguagesForFilter = [] } =
     useTranslationLanguages();
   const { data: translationRequiredStatusesForFilter = [] } =
@@ -204,6 +206,14 @@ export function ReportFiltersBar({
         label: ep.label ?? String(ep.id),
       })),
     [eventPlannersForFilter]
+  );
+  const teamOptions = useMemo(
+    () =>
+      teamsForFilter.map((t) => ({
+        value: String(t.id),
+        label: t.displayName ?? t.name ?? String(t.id),
+      })),
+    [teamsForFilter]
   );
   const translationOptions = useMemo(
     () =>
@@ -379,6 +389,44 @@ export function ReportFiltersBar({
           clearAriaLabel: 'Clear Category filter',
         },
       },
+      buildIdArrayFilterSlot(
+        'ministry',
+        'Ministry',
+        'leadMinistryIds',
+        ministryOptions,
+        filterState,
+        onFilterStateChange,
+        'Search ministries...',
+        'Search ministries'
+      ),
+      buildIdArrayFilterSlot(
+        'commsContact',
+        'Comms contact',
+        'commsContactLeadUserIds',
+        commsContactOptions,
+        filterState,
+        onFilterStateChange,
+        'Search comms contacts...',
+        'Search comms contacts'
+      ),
+      {
+        key: 'status',
+        label: 'Status',
+        panel: (
+          <FilterCheckboxDropdownPanel
+            options={statusOptions}
+            selectedValues={statusSelectedValues}
+            onChange={handleStatusChange}
+            emptyMessage="No results"
+          />
+        ),
+        triggerProps: {
+          active: statusSelectedValues.length > 0,
+          count: statusSelectedValues.length,
+          onClear: () => handleStatusChange([]),
+          clearAriaLabel: 'Clear Status filter',
+        },
+      },
       {
         key: 'lookAhead',
         label: 'Look Ahead',
@@ -405,56 +453,20 @@ export function ReportFiltersBar({
         },
       },
       {
-        key: 'status',
-        label: 'Status',
+        key: 'tags',
+        label: 'Tags',
         panel: (
-          <FilterCheckboxDropdownPanel
-            options={statusOptions}
-            selectedValues={statusSelectedValues}
-            onChange={handleStatusChange}
-            emptyMessage="No results"
+          <TagsFilterPanel
+            tagOptions={tagOptions}
+            selectedTagIds={filterState.tagIds}
+            onTagIdsChange={handleTagIdsChange}
           />
         ),
         triggerProps: {
-          active: statusSelectedValues.length > 0,
-          count: statusSelectedValues.length,
-          onClear: () => handleStatusChange([]),
-          clearAriaLabel: 'Clear Status filter',
-        },
-      },
-      {
-        key: 'leads',
-        label: 'Leads',
-        panel: (
-          <LeadsFilterPanel
-            filterState={filterState}
-            onFilterStateChange={onFilterStateChange}
-            ministryOptions={ministryOptions}
-            organizationOptions={organizationOptions}
-            commsContactOptions={commsContactOptions}
-            eventPlannerOptions={eventPlannerOptions}
-          />
-        ),
-        triggerProps: {
-          active:
-            filterState.leadMinistryIds.length > 0 ||
-            filterState.leadOrgIds.length > 0 ||
-            filterState.commsContactLeadUserIds.length > 0 ||
-            filterState.eventPlannerLeadIds.length > 0,
-          count:
-            filterState.leadMinistryIds.length +
-            filterState.leadOrgIds.length +
-            filterState.commsContactLeadUserIds.length +
-            filterState.eventPlannerLeadIds.length,
-          onClear: () =>
-            onFilterStateChange({
-              ...filterState,
-              leadMinistryIds: [],
-              leadOrgIds: [],
-              commsContactLeadUserIds: [],
-              eventPlannerLeadIds: [],
-            }),
-          clearAriaLabel: 'Clear Leads filter',
+          active: filterState.tagIds.length > 0,
+          count: filterState.tagIds.length,
+          onClear: () => handleTagIdsChange([]),
+          clearAriaLabel: 'Clear Tags filter',
         },
       },
       {
@@ -484,23 +496,6 @@ export function ReportFiltersBar({
               translationLanguageIds: [],
             }),
           clearAriaLabel: 'Clear Translations filter',
-        },
-      },
-      {
-        key: 'tags',
-        label: 'Tags',
-        panel: (
-          <TagsFilterPanel
-            tagOptions={tagOptions}
-            selectedTagIds={filterState.tagIds}
-            onTagIdsChange={handleTagIdsChange}
-          />
-        ),
-        triggerProps: {
-          active: filterState.tagIds.length > 0,
-          count: filterState.tagIds.length,
-          onClear: () => handleTagIdsChange([]),
-          clearAriaLabel: 'Clear Tags filter',
         },
       },
       ...(showPitchFilter
@@ -557,6 +552,36 @@ export function ReportFiltersBar({
             } satisfies ResponsiveFilterSlot,
           ]
         : []),
+      buildIdArrayFilterSlot(
+        'team',
+        'Team',
+        'leadTeamIds',
+        teamOptions,
+        filterState,
+        onFilterStateChange,
+        'Search teams...',
+        'Search teams'
+      ),
+      buildIdArrayFilterSlot(
+        'organization',
+        'Organization',
+        'leadOrgIds',
+        organizationOptions,
+        filterState,
+        onFilterStateChange,
+        'Search organizations...',
+        'Search organizations'
+      ),
+      buildIdArrayFilterSlot(
+        'eventPlanner',
+        'Event planner',
+        'eventPlannerLeadIds',
+        eventPlannerOptions,
+        filterState,
+        onFilterStateChange,
+        'Search event planners...',
+        'Search event planners'
+      ),
     ],
     [
       filterState,
@@ -578,6 +603,7 @@ export function ReportFiltersBar({
       organizationOptions,
       commsContactOptions,
       eventPlannerOptions,
+      teamOptions,
       baselineDatePatch,
       dateConfirmedActive,
       dateRangeActive,

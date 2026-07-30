@@ -9,6 +9,7 @@ export function buildValidFilterLookupsFromOptions(options: {
   organizationOptions: OptionItem[];
   commsContactOptions: OptionItem[];
   eventPlannerOptions: OptionItem[];
+  teamOptions: OptionItem[];
   translationStatusOptions: OptionItem[];
   translationOptions: OptionItem[];
 }): ValidFilterLookups {
@@ -26,6 +27,7 @@ export function buildValidFilterLookupsFromOptions(options: {
     orgIds: nums(options.organizationOptions),
     commsContactUserIds: nums(options.commsContactOptions),
     eventPlannerIds: nums(options.eventPlannerOptions),
+    teamIds: nums(options.teamOptions),
     translationStatusIds: nums(options.translationStatusOptions),
     translationLanguageIds: nums(options.translationOptions),
   };

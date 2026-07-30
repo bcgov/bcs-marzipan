@@ -10,6 +10,7 @@ import {
   useOrganizations,
   usePitchRequiredStatuses,
   useTags,
+  useTeams,
   useTranslationLanguages,
   useTranslationRequiredStatuses,
   useUsers,
@@ -55,6 +56,7 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
   organizationOptions: { value: string; label: string }[];
   commsContactOptions: { value: string; label: string }[];
   eventPlannerOptions: { value: string; label: string }[];
+  teamOptions: { value: string; label: string }[];
   translationOptions: { value: string; label: string }[];
   translationStatusOptions: { value: string; label: string }[];
   categoryOptions: { value: string; label: string }[];
@@ -72,6 +74,7 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
   const { data: organizationsForFilter = [] } = useOrganizations();
   const { data: usersForFilter = [] } = useUsers();
   const { data: eventPlannersForFilter = [] } = useEventPlanners();
+  const { data: teamsForFilter = [] } = useTeams();
   const { data: translationLanguagesForFilter = [] } =
     useTranslationLanguages();
   const { data: translationRequiredStatusesForFilter = [] } =
@@ -164,6 +167,15 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
     [eventPlannersForFilter]
   );
 
+  const teamOptions = useMemo(
+    () =>
+      teamsForFilter.map((t) => ({
+        value: String(t.id),
+        label: t.displayName ?? t.name ?? String(t.id),
+      })),
+    [teamsForFilter]
+  );
+
   const translationOptions = useMemo(
     () =>
       translationLanguagesForFilter.map((l) => {
@@ -194,6 +206,7 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
       organizationOptions,
       commsContactOptions,
       eventPlannerOptions,
+      teamOptions,
       translationStatusOptions,
       translationOptions,
     }),
@@ -206,6 +219,7 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
       organizationOptions,
       commsContactOptions,
       eventPlannerOptions,
+      teamOptions,
       translationStatusOptions,
       translationOptions,
     ]
@@ -222,6 +236,7 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
     organizationOptions,
     commsContactOptions,
     eventPlannerOptions,
+    teamOptions,
     translationOptions,
     translationStatusOptions,
     filterSummaryContext,

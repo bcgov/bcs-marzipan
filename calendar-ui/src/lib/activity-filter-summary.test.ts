@@ -19,6 +19,7 @@ const emptyCtx: ActivityFilterSummaryContext = {
   organizationOptions: [],
   commsContactOptions: [],
   eventPlannerOptions: [],
+  teamOptions: [],
   translationStatusOptions: [],
   translationOptions: [],
 };

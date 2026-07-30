@@ -41,6 +41,7 @@ export function useReportsSavedFilters(options: {
         organizationOptions: lookups.organizationOptions,
         commsContactOptions: lookups.commsContactOptions,
         eventPlannerOptions: lookups.eventPlannerOptions,
+        teamOptions: lookups.teamOptions,
         translationStatusOptions: lookups.translationStatusOptions,
         translationOptions: lookups.translationOptions,
       }),
@@ -52,6 +53,7 @@ export function useReportsSavedFilters(options: {
       lookups.organizationOptions,
       lookups.commsContactOptions,
       lookups.eventPlannerOptions,
+      lookups.teamOptions,
       lookups.translationStatusOptions,
       lookups.translationOptions,
     ]

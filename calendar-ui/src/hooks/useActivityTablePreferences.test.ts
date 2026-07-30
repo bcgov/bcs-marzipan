@@ -204,6 +204,7 @@ describe('useActivityTablePreferences', () => {
           dateConfirmedFilter: 'any',
           timeConfirmedFilter: 'any',
           tagIds: [],
+          leadTeamIds: [],
           leadMinistryIds: [],
           leadOrgIds: [],
           commsContactLeadUserIds: [],

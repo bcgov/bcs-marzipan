@@ -45,6 +45,7 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     commsContactsCount: 0,
     eventPlanners: [],
     eventPlannerLeadIds: [],
+    leadTeamId: null,
     leadMinistryId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,

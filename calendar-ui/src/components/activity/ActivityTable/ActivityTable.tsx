@@ -971,6 +971,7 @@ export function ActivityTable({
     organizationOptions,
     commsContactOptions,
     eventPlannerOptions,
+    teamOptions,
     translationOptions,
     translationStatusOptions,
     filterSummaryContext: filterSummaryContextForBar,
@@ -1059,6 +1060,7 @@ export function ActivityTable({
       orgIds: nums(organizationOptions),
       commsContactUserIds: nums(commsContactOptions),
       eventPlannerIds: nums(eventPlannerOptions),
+      teamIds: nums(teamOptions),
       translationStatusIds: nums(translationStatusOptions),
       translationLanguageIds: nums(translationOptions),
     };
@@ -1070,6 +1072,7 @@ export function ActivityTable({
     organizationOptions,
     commsContactOptions,
     eventPlannerOptions,
+    teamOptions,
     translationStatusOptions,
     translationOptions,
   ]);
@@ -1694,6 +1697,7 @@ export function ActivityTable({
       organizationOptions={organizationOptions}
       commsContactOptions={commsContactOptions}
       eventPlannerOptions={eventPlannerOptions}
+      teamOptions={teamOptions}
       pitchFieldVisibility={pitchFieldVisibility}
       savedFilters={savedFiltersHook}
       activeSavedFilterId={activeSavedFilter?.id ?? null}
