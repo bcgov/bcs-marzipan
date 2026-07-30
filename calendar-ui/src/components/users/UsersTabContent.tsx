@@ -5,6 +5,14 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
+import {
+  ArrowLeftRight,
+  History,
+  KeyRound,
+  MoreHorizontal,
+  Pencil,
+  UsersRound,
+} from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -21,6 +29,13 @@ import {
 import { TablePagination } from '@/components/table/TablePagination';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import { TableSummaryBar } from '@/components/table/TableSummaryBar';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserManagementFilters } from '@/components/users/UserManagementFilters';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
@@ -28,7 +43,7 @@ import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 const IDIR_PLACEHOLDER = 'MYIDIR';
 const SKELETON_ROW_COUNT = 8;
 const SKELETON_DELAY_MS = 300;
-const TABLE_COLUMN_COUNT = 7;
+const TABLE_COLUMN_COUNT = 8;
 const DEFAULT_SORT_KEY = 'name';
 const DEFAULT_SORT_DIRECTION = 'asc' as const;
 const DEFAULT_PAGE_SIZE = 10;
@@ -101,7 +116,27 @@ function compareUsers(
   }
 }
 
-export function UsersTabContent() {
+export interface UsersTabContentProps {
+  canEdit: boolean;
+  canTransfer: boolean;
+  onEditUser: (user: UserListItem) => void;
+  onTransfer: (user: UserListItem) => void;
+  onViewHistory: (user: UserListItem) => void;
+  onDeactivate: (user: UserListItem) => void;
+  onReactivate: (user: UserListItem) => void;
+  onInitiateReset: (user: UserListItem) => void;
+}
+
+export function UsersTabContent({
+  canEdit,
+  canTransfer,
+  onEditUser,
+  onTransfer,
+  onViewHistory,
+  onDeactivate,
+  onReactivate,
+  onInitiateReset,
+}: UsersTabContentProps) {
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [teamIds, setTeamIds] = useState<number[]>([]);
@@ -187,7 +222,8 @@ export function UsersTabContent() {
   const onPaginationChangeStable = useCallback(
     (
       updaterOrValue:
-        ((prev: typeof pagination) => typeof pagination) | typeof pagination
+        | ((prev: typeof pagination) => typeof pagination)
+        | typeof pagination
     ) => {
       setPagination((prev) => {
         const next =
@@ -263,13 +299,14 @@ export function UsersTabContent() {
           aria-colcount={TABLE_COLUMN_COUNT}
         >
           <colgroup>
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '22%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '14%' }} />
+            <col style={{ width: '16%' }} />
             <col style={{ width: '20%' }} />
             <col style={{ width: '8%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '8%' }} />
             <col style={{ width: '10%' }} />
+            <col style={{ width: '8%' }} />
           </colgroup>
           <thead className={tableThead}>
             <tr>
@@ -316,6 +353,7 @@ export function UsersTabContent() {
                   />
                 </span>
               </th>
+              <th className={tableTh}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -343,6 +381,9 @@ export function UsersTabContent() {
                   <td className={tableTd}>
                     <Skeleton className="h-5 w-20" />
                   </td>
+                  <td className={tableTd}>
+                    <Skeleton className="h-8 w-8 rounded" />
+                  </td>
                 </tr>
               ))
             ) : displayedUsers.length === 0 ? (
@@ -358,36 +399,15 @@ export function UsersTabContent() {
               </tr>
             ) : (
               pageRows.map((user) => (
-                <tr
-                  key={user.id}
-                  className={`${tableBodyRow} group cursor-pointer`}
-                  tabIndex={0}
-                  onClick={(e) => {
-                    if (
-                      (e.target as HTMLElement).closest(
-                        'a,button,[data-no-row-nav]'
-                      )
-                    )
-                      return;
-                    if (window.getSelection()?.toString().trim()) return;
-                    void navigate(`/users/${user.id}`);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                    if (
-                      (e.target as HTMLElement).closest(
-                        'a,button,[data-no-row-nav]'
-                      )
-                    )
-                      return;
-                    e.preventDefault();
-                    void navigate(`/users/${user.id}`);
-                  }}
-                >
+                <tr key={user.id} className={tableBodyRow}>
                   <td className={`${tableTd} font-medium text-slate-900`}>
-                    <span className="underline-offset-2 group-hover:underline">
+                    <button
+                      type="button"
+                      className="text-left hover:underline"
+                      onClick={() => void navigate(`/users/${user.id}`)}
+                    >
                       {displayName(user)}
-                    </span>
+                    </button>
                   </td>
                   <td className={`${tableTd} text-slate-600`}>
                     {user.adEmail ?? '-'}
@@ -424,6 +444,65 @@ export function UsersTabContent() {
                       (user as { lastUpdatedDateTime?: string | null })
                         .lastUpdatedDateTime
                     )}
+                  </td>
+                  <td className={tableTd}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label="Actions"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {canEdit && (
+                          <DropdownMenuItem onClick={() => onEditUser(user)}>
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {canEdit && (
+                          <DropdownMenuItem onClick={() => onEditUser(user)}>
+                            <UsersRound className="h-4 w-4" />
+                            Add to team / Edit teams
+                          </DropdownMenuItem>
+                        )}
+                        {canTransfer && (
+                          <DropdownMenuItem onClick={() => onTransfer(user)}>
+                            <ArrowLeftRight className="h-4 w-4" />
+                            Transfer activities
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => onViewHistory(user)}>
+                          <History className="h-4 w-4" />
+                          View history
+                        </DropdownMenuItem>
+                        {canEdit && user.isActive && (
+                          <DropdownMenuItem
+                            onClick={() => onInitiateReset(user)}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                            Reset password
+                          </DropdownMenuItem>
+                        )}
+                        {canEdit && user.isActive && (
+                          <DropdownMenuItem
+                            onClick={() => onDeactivate(user)}
+                            variant="destructive"
+                          >
+                            Deactivate
+                          </DropdownMenuItem>
+                        )}
+                        {canEdit && !user.isActive && (
+                          <DropdownMenuItem onClick={() => onReactivate(user)}>
+                            Reactivate
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </td>
                 </tr>
               ))
