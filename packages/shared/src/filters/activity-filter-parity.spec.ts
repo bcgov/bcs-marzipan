@@ -24,6 +24,7 @@ function makeMatchInput(
     dateStatusName: '',
     timeStatusName: '',
     tagIds: [],
+    leadTeamId: null,
     leadMinistryId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,

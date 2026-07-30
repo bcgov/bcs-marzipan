@@ -146,6 +146,16 @@ export function activityMatchesFilterState(
     if (!input.tagIds.some((id) => tagSet.has(id))) return false;
   }
 
+  // Lead team (OR within).
+  if (filterState.leadTeamIds.length > 0) {
+    if (
+      input.leadTeamId == null ||
+      !filterState.leadTeamIds.includes(input.leadTeamId)
+    ) {
+      return false;
+    }
+  }
+
   // Leads (AND across types; OR within each type).
   if (filterState.leadMinistryIds.length > 0) {
     if (

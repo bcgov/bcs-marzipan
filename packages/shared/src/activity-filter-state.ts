@@ -25,6 +25,8 @@ export interface ActivityFilterState {
   dateConfirmedFilter: 'any' | 'confirmed' | 'not_confirmed';
   timeConfirmedFilter: 'any' | 'confirmed' | 'not_confirmed';
   tagIds: number[];
+  /** Activity lead team IDs (OR within; AND with other dimensions). */
+  leadTeamIds: number[];
   leadMinistryIds: number[];
   leadOrgIds: number[];
   commsContactLeadUserIds: number[];
@@ -47,6 +49,7 @@ export const ACTIVITY_FILTER_STATE_KEYS = [
   'dateConfirmedFilter',
   'timeConfirmedFilter',
   'tagIds',
+  'leadTeamIds',
   'leadMinistryIds',
   'leadOrgIds',
   'commsContactLeadUserIds',
@@ -100,6 +103,7 @@ export const DEFAULT_ACTIVITY_FILTER_STATE: ActivityFilterState = {
   dateConfirmedFilter: 'any',
   timeConfirmedFilter: 'any',
   tagIds: [],
+  leadTeamIds: [],
   leadMinistryIds: [],
   leadOrgIds: [],
   commsContactLeadUserIds: [],
@@ -216,6 +220,7 @@ export function coerceActivityFilterStateFromRecord(
     dateConfirmedFilter,
     timeConfirmedFilter,
     tagIds: sanitizeIdArrayNoLookup(raw.tagIds),
+    leadTeamIds: sanitizeIdArrayNoLookup(raw.leadTeamIds),
     leadMinistryIds: sanitizeIdArrayNoLookup(raw.leadMinistryIds),
     leadOrgIds: sanitizeIdArrayNoLookup(raw.leadOrgIds),
     commsContactLeadUserIds: sanitizeIdArrayNoLookup(
