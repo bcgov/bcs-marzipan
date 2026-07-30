@@ -347,7 +347,7 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain(roleRow, 'limit'))
         .mockReturnValueOnce(createChain(teamRows, 'where'));
 
-      await expect(service.update(1, { email: null }, 1)).rejects.toThrow(
+      await expect(service.update(1, { email: null } as any, 1)).rejects.toThrow(
         BadRequestException
       );
       expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
