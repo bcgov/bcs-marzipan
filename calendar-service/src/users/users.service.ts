@@ -61,11 +61,11 @@ export class UsersService {
   }
 
   async create(
-    dto: CreateUserBody & { idirUsername?: string },
+    dto: CreateUserBody,
     createdByUserId: number
   ): Promise<UserDetail> {
     const normalizedEmail = dto.email.trim().toLowerCase();
-    const idirUsername = dto.idirUsername?.trim();
+    const idirUsername = dto.idirUsername.trim();
 
     if (!normalizedEmail.endsWith(GOV_BC_EMAIL_SUFFIX)) {
       throw new BadRequestException('Email must be a @gov.bc.ca address');
