@@ -405,6 +405,19 @@ describe('AuthService — local auth methods', () => {
         'active'
       );
     });
+
+    it('rejects active IDIR user with no passwordHash when directLoginEnabled is false', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: false,
+        })
+      );
+      await expect(
+        service.setPassword('test@example.com', 'ValidPass1!')
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   // -------------------------------------------------------------------------
