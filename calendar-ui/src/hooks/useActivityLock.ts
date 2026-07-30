@@ -13,11 +13,7 @@ import {
 } from '../api/locksApi';
 
 export type LockState =
-  | 'idle'
-  | 'checking'
-  | 'acquiring'
-  | 'owned'
-  | 'locked-by-other';
+  'idle' | 'checking' | 'acquiring' | 'owned' | 'locked-by-other';
 
 type UseActivityLockResult = {
   lock: LockInfo | null;
@@ -188,8 +184,7 @@ export function useActivityLock(
         }>;
         if (axiosError.response?.status === LOCKED_STATUS) {
           const data = axiosError.response?.data as
-            | { lockedBy?: { userId?: number; username: string } }
-            | undefined;
+            { lockedBy?: { userId?: number; username: string } } | undefined;
           setLockedByUsername(data?.lockedBy?.username ?? null);
           setLockState('locked-by-other');
           return false;
