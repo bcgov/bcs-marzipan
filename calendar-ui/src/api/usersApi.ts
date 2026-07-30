@@ -52,9 +52,7 @@ export async function fetchUser(id: number): Promise<UserDetail | null> {
   return response.data.data;
 }
 
-export async function createUser(
-  body: CreateUserBody & { idirUsername: string }
-): Promise<UserDetail> {
+export async function createUser(body: CreateUserBody): Promise<UserDetail> {
   const response = await api.post<{ success: boolean; data: UserDetail }>(
     '/users',
     body
