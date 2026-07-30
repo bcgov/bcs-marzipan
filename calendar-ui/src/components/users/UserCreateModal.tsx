@@ -57,6 +57,7 @@ const createUserFormSchema = z.object({
     .trim()
     .min(1, 'Email is required')
     .email('Invalid email format')
+    .max(255)
     .refine(
       (value) => value.toLowerCase().endsWith(GOV_BC_EMAIL_DOMAIN),
       'Email must be a @gov.bc.ca address'
