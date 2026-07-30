@@ -37,6 +37,7 @@ import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 
 import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
+import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
@@ -69,7 +70,15 @@ export const ActivityReportsSection: React.FC = () => {
             name="executiveSummary"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormLabel>
+                  <>
+                    {getActivityFieldLabel(field.name)}
+                    <ActivityFieldInfoIcon
+                      fieldKey="executiveSummary"
+                      ariaLabel="About executive summary"
+                    />
+                  </>
+                </FormLabel>
                 <ActivityFieldScopePermissionTooltip scope="lookAhead">
                   <FormControl>
                     <RichTextField
@@ -97,7 +106,15 @@ export const ActivityReportsSection: React.FC = () => {
             name="lookAheadStatus"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormLabel>
+                  <>
+                    {getActivityFieldLabel(field.name)}
+                    <ActivityFieldInfoIcon
+                      fieldKey="lookAheadStatus"
+                      ariaLabel="About look ahead status"
+                    />
+                  </>
+                </FormLabel>
                 <ActivityFieldScopePermissionTooltip scope="lookAhead">
                   <FormControl data-field={field.name}>
                     <RadioGroup
@@ -143,7 +160,15 @@ export const ActivityReportsSection: React.FC = () => {
             name="lookAheadSection"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormLabel>
+                  <>
+                    {getActivityFieldLabel(field.name)}
+                    <ActivityFieldInfoIcon
+                      fieldKey="lookAheadSection"
+                      ariaLabel="About look ahead section"
+                    />
+                  </>
+                </FormLabel>
                 <ActivityFieldScopePermissionTooltip scope="lookAhead">
                   <FormControl data-field={field.name}>
                     <RadioGroup
@@ -240,6 +265,15 @@ export const ActivityReportsSection: React.FC = () => {
               {/* 30-60-90 Checkbox */}
               {thirtySixtyNinetyReport && (
                 <FormItem>
+                  <FormLabel>
+                    <>
+                      {getActivityFieldLabel('reportSettings')}
+                      <ActivityFieldInfoIcon
+                        fieldKey="reportSettings"
+                        ariaLabel="About report settings"
+                      />
+                    </>
+                  </FormLabel>
                   <div className="flex items-center space-x-2">
                     <FormControl data-field={field.name}>
                       <Checkbox

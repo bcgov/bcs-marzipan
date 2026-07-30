@@ -50,12 +50,6 @@ import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
-import { InfoIconButton } from '@/components/ui/info-icon-button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { RichTextField } from '@/components/ui/rich-text-field';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
@@ -76,6 +70,7 @@ import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
+import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import {
   defaultActivityLeadTeamFieldConfig,
   type ActivityLeadTeamFieldConfig,
@@ -144,7 +139,15 @@ function LeadOrganizationField({
 
         return (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="leadOrgId"
+                  ariaLabel="About lead organization"
+                />
+              </>
+            </FormLabel>
             <FormControl data-field={field.name}>
               <FreeformCombobox
                 readOnly={readOnly}
@@ -298,7 +301,13 @@ function LeadTeamField({
         return (
           <FormItem>
             <FormLabel showRequired>
-              {getActivityFieldLabel(field.name)}
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="leadTeamId"
+                  ariaLabel="About lead team"
+                />
+              </>
             </FormLabel>
             <FormControl data-field={field.name}>
               <Combobox
@@ -416,26 +425,10 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel showRequired>
                 <>
                   {getActivityFieldLabel(field.name)}
-                  {categories.some((c) => c.description) ? (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <InfoIconButton aria-label="About categories" />
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-80 max-w-[calc(100vw-2rem)] space-y-1 text-sm"
-                        align="start"
-                      >
-                        {categories
-                          .filter((c) => c.description)
-                          .map((c) => (
-                            <p key={c.id}>
-                              <strong>{c.displayName ?? c.name}</strong>:{' '}
-                              {c.description}
-                            </p>
-                          ))}
-                      </PopoverContent>
-                    </Popover>
-                  ) : null}
+                  <ActivityFieldInfoIcon
+                    fieldKey="categoryIds"
+                    ariaLabel="About categories"
+                  />
                 </>
               </FormLabel>
               <FormControl data-field={field.name}>
@@ -509,7 +502,13 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel showRequired>
-              {getActivityFieldLabel(field.name)}
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="title"
+                  ariaLabel="About title"
+                />
+              </>
             </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
@@ -532,7 +531,13 @@ export const ActivityOverviewSection: React.FC<
         render={({ field }) => (
           <FormItem>
             <FormLabel showRequired>
-              {getActivityFieldLabel(field.name)}
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="summary"
+                  ariaLabel="About summary"
+                />
+              </>
             </FormLabel>
             <FormControl>
               <RichTextField
@@ -595,24 +600,10 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel>
                 <>
                   {getActivityFieldLabel(field.name)}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <InfoIconButton aria-label="About confidential" />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                      align="start"
-                    >
-                      <p>
-                        Select if the activity is highly confidential or
-                        sensitive. By default viewing the activity will be
-                        restricted to your team. For Corporate Look Ahead, enter
-                        placeholder executive-summary copy; other reports may
-                        include summary fields as configured.
-                      </p>
-                      <p className="mt-2">Contact admin@email.com</p>
-                    </PopoverContent>
-                  </Popover>
+                  <ActivityFieldInfoIcon
+                    fieldKey="isConfidential"
+                    ariaLabel="About confidential"
+                  />
                 </>
               </FormLabel>
             </div>
@@ -638,21 +629,10 @@ export const ActivityOverviewSection: React.FC<
               <FormLabel>
                 <>
                   {getActivityFieldLabel(field.name)}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <InfoIconButton aria-label="About issue" />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                      align="start"
-                    >
-                      <p>
-                        Select if this activity is a current or potential media
-                        issue, or an issue for government in any way based on
-                        topic.
-                      </p>
-                    </PopoverContent>
-                  </Popover>
+                  <ActivityFieldInfoIcon
+                    fieldKey="isIssue"
+                    ariaLabel="About issue"
+                  />
                 </>
               </FormLabel>
             </div>
@@ -667,20 +647,10 @@ export const ActivityOverviewSection: React.FC<
             <FormLabel>
               <>
                 {getActivityFieldLabel(field.name)}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <InfoIconButton aria-label="About significance" />
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                    align="start"
-                  >
-                    <p>
-                      Describe how this will impact people and why it is
-                      important.
-                    </p>
-                  </PopoverContent>
-                </Popover>
+                <ActivityFieldInfoIcon
+                  fieldKey="significance"
+                  ariaLabel="About significance"
+                />
               </>
             </FormLabel>
             <FormControl>
@@ -724,7 +694,15 @@ export const ActivityOverviewSection: React.FC<
           name="pitchRequiredStatusId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="pitchRequiredStatusId"
+                    ariaLabel="About pitch required"
+                  />
+                </>
+              </FormLabel>
               <FormSelectSafe
                 readOnly={pitchStatusScope.readOnly}
                 disabled={pitchStatusScope.fieldScopeDisabled}
@@ -775,7 +753,15 @@ export const ActivityOverviewSection: React.FC<
               : 'Select pitch date';
             return (
               <FormItem>
-                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormLabel>
+                  <>
+                    {getActivityFieldLabel(field.name)}
+                    <ActivityFieldInfoIcon
+                      fieldKey="pitchDate"
+                      ariaLabel="About pitch date"
+                    />
+                  </>
+                </FormLabel>
                 <ActivityFieldScopePermissionTooltip scope="pitchDate">
                   <FormControl className="w-full" data-field={field.name}>
                     <ScheduledDatePopoverField
@@ -833,7 +819,15 @@ export const ActivityOverviewSection: React.FC<
             name="notes"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+                <FormLabel>
+                  <>
+                    {getActivityFieldLabel(field.name)}
+                    <ActivityFieldInfoIcon
+                      fieldKey="notes"
+                      ariaLabel="About notes"
+                    />
+                  </>
+                </FormLabel>
                 <ActivityFieldScopePermissionTooltip scope="notes">
                   <FormControl data-field={field.name}>
                     <Textarea
@@ -863,7 +857,15 @@ export const ActivityOverviewSection: React.FC<
           );
           return (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="tagIds"
+                    ariaLabel="About tags"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={tagOptions}

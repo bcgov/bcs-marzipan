@@ -5,6 +5,7 @@ import {
   Eraser,
   FileText,
   FolderTree,
+  Info,
   ListChecks,
   Lock,
   LogIn,
@@ -18,7 +19,10 @@ import {
 } from 'lucide-react';
 
 import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
-import { BannerSettingsAdmin } from '@/components/admin';
+import {
+  ActivityInfoIconSettingsAdmin,
+  BannerSettingsAdmin,
+} from '@/components/admin';
 import { ActivityCompletionSettingsAdmin } from '@/components/admin/ActivityCompletionSettingsAdmin';
 import { EditLockIdleSettingsAdmin } from '@/components/admin/EditLockIdleSettingsAdmin';
 import { LoginModalSettingsAdmin } from '@/components/admin/LoginModalSettingsAdmin';
@@ -46,6 +50,7 @@ type Section =
   | 'edit-lock-idle'
   | 'activity-completion'
   | 'look-ahead-reset'
+  | 'activity-info-icons'
   | 'report-cover-contact'
   | 'review-exempt-fields'
   | 'ministry-groups'
@@ -103,6 +108,12 @@ export function Settings() {
       id: 'look-ahead-reset' as Section,
       label: 'Look Ahead reset',
       icon: Eraser,
+      show: isSystemAdmin,
+    },
+    {
+      id: 'activity-info-icons' as Section,
+      label: 'Activity info icons',
+      icon: Info,
       show: isSystemAdmin,
     },
     {
@@ -221,6 +232,10 @@ export function Settings() {
 
           <div id="section-look-ahead-reset">
             <LookAheadResetSettingsAdmin />
+          </div>
+
+          <div id="section-activity-info-icons">
+            <ActivityInfoIconSettingsAdmin />
           </div>
 
           <div id="section-review-exempt-fields">
