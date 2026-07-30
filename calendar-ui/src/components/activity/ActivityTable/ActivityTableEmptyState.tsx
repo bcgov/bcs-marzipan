@@ -45,7 +45,7 @@ export function ActivityTableEmptyState({
           onClick={onClearFilters}
           className="mt-4 text-sm font-medium text-slate-700 underline hover:text-slate-900"
         >
-          Clear all filters
+          Reset all filters
         </button>
       ) : null}
     </div>

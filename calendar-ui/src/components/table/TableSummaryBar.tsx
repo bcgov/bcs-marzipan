@@ -153,7 +153,7 @@ interface TableSummaryBarProps {
   appliedFilterTypeLabels?: string[];
   /** Defaults to 3; remainder summarized as “+n more”. */
   maxVisibleFilterTypes?: number;
-  /** When set, renders a compact “Clear filters” control for all breakpoints. */
+  /** When set, renders a compact “Reset all filters” control for all breakpoints. */
   onClearFilters?: () => void;
   /**
    * When non-empty, an info control before the summary opens a read-only popover with one row
@@ -261,10 +261,10 @@ export function TableSummaryBar({
             type="button"
             onClick={onClearFilters}
             className="text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-sm font-normal transition-colors outline-none focus-visible:ring-[3px]"
-            aria-label="Clear all filters"
+            aria-label="Reset all filters"
           >
             <X className="size-3 shrink-0" aria-hidden />
-            Clear all filters
+            Reset all filters
           </button>
         ) : null}
       </span>
