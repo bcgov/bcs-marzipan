@@ -185,7 +185,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
                 className={canEditProfile ? undefined : 'bg-slate-50'}
               />
               {emailError ? (
-                <p className="text-sm text-red-600">{emailError}</p>
+                <p className="text-destructive text-sm font-medium">{emailError}</p>
               ) : null}
             </div>
 
