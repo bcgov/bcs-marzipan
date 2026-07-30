@@ -111,6 +111,10 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
         setEmailError('Email is required');
         return;
       }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        setEmailError('Invalid email format');
+        return;
+      }
       if (!normalizedEmail.endsWith(GOV_BC_EMAIL_DOMAIN)) {
         setEmailError('Email must be a @gov.bc.ca address');
         return;
