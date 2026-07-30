@@ -179,6 +179,15 @@ export class AuthService {
       };
     }
 
+    // Active user with no password hash: only show the set-password flow when
+    // the admin has explicitly enabled direct login for them.
+    if (!dbUser.passwordHash) {
+      if (dbUser.directLoginEnabled) {
+        return { status: 'pending', email: dbUser.adEmail ?? undefined };
+      }
+      return { status: 'inactive' };
+    }
+
     return { status: 'active', email: dbUser.adEmail ?? undefined };
   }
 
@@ -256,7 +265,12 @@ export class AuthService {
       throw new BadRequestException('Account not found');
     }
 
-    if (dbUser.status !== 'pending') {
+    const canSetPassword =
+      dbUser.status === 'pending' ||
+      (dbUser.status === 'active' &&
+        dbUser.directLoginEnabled &&
+        !dbUser.passwordHash);
+    if (!canSetPassword) {
       throw new BadRequestException(
         'Account has already been activated. Please use the login page.'
       );
@@ -436,14 +450,6 @@ export class AuthService {
 
     if (!dbUser) {
       throw new BadRequestException('User not found');
-    }
-
-    // Reject SSO-only users: active account with no password hash means they
-    // have never used local auth and are not expected to.
-    if (dbUser.isActive && dbUser.status === 'active' && !dbUser.passwordHash) {
-      throw new BadRequestException(
-        'This user signs in via Microsoft (SSO) and is not eligible for a local password reset.'
-      );
     }
 
     // Inactive users cannot be given a reset token.

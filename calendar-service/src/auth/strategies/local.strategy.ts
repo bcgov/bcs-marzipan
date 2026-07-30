@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 
-import { users } from '@corpcal/database/schema';
+import { users, userSettings } from '@corpcal/database/schema';
 
 import type { Database } from '../../database/database.provider';
 import type { AuthDbUser } from './ad.strategy';
@@ -9,11 +9,24 @@ export interface LocalAuthDbUser extends AuthDbUser {
   passwordHash: string | null;
   status: string;
   isActive: boolean;
+  directLoginEnabled: boolean;
 }
+
+const LOCAL_AUTH_COLUMNS = {
+  id: users.id,
+  roleId: users.roleId,
+  adUsername: users.adUsername,
+  adDisplayName: users.adDisplayName,
+  adEmail: users.adEmail,
+  passwordHash: users.passwordHash,
+  status: users.status,
+  isActive: users.isActive,
+  directLoginEnabled: userSettings.directLoginEnabled,
+} as const;
 
 /**
  * Local auth strategy: find user by email (case-insensitive).
- * Returns password hash and status along with standard auth fields.
+ * Returns password hash, status, and directLoginEnabled along with standard auth fields.
  */
 export async function findUserByEmailLocal(
   db: Database,
@@ -22,21 +35,14 @@ export async function findUserByEmailLocal(
   const normalized = email.trim().toLowerCase();
 
   const [row] = await db
-    .select({
-      id: users.id,
-      roleId: users.roleId,
-      adUsername: users.adUsername,
-      adDisplayName: users.adDisplayName,
-      adEmail: users.adEmail,
-      passwordHash: users.passwordHash,
-      status: users.status,
-      isActive: users.isActive,
-    })
+    .select(LOCAL_AUTH_COLUMNS)
     .from(users)
+    .leftJoin(userSettings, eq(userSettings.userId, users.id))
     .where(sql`lower(${users.adEmail}) = ${normalized}`)
     .limit(1);
 
-  return row ?? null;
+  if (!row) return null;
+  return { ...row, directLoginEnabled: row.directLoginEnabled ?? false };
 }
 
 /**
@@ -47,21 +53,14 @@ export async function findUserByIdLocal(
   userId: number
 ): Promise<LocalAuthDbUser | null> {
   const [row] = await db
-    .select({
-      id: users.id,
-      roleId: users.roleId,
-      adUsername: users.adUsername,
-      adDisplayName: users.adDisplayName,
-      adEmail: users.adEmail,
-      passwordHash: users.passwordHash,
-      status: users.status,
-      isActive: users.isActive,
-    })
+    .select(LOCAL_AUTH_COLUMNS)
     .from(users)
+    .leftJoin(userSettings, eq(userSettings.userId, users.id))
     .where(eq(users.id, userId))
     .limit(1);
 
-  return row ?? null;
+  if (!row) return null;
+  return { ...row, directLoginEnabled: row.directLoginEnabled ?? false };
 }
 
 /**

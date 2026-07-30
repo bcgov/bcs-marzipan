@@ -213,6 +213,7 @@ describe('AuthService — local auth methods', () => {
       passwordHash: string | null;
       status: string;
       isActive: boolean;
+      directLoginEnabled: boolean;
     }> = {}
   ) {
     return {
@@ -224,6 +225,7 @@ describe('AuthService — local auth methods', () => {
       passwordHash: 'existing-hash',
       status: 'active',
       isActive: true,
+      directLoginEnabled: false,
       ...overrides,
     };
   }
@@ -325,6 +327,30 @@ describe('AuthService — local auth methods', () => {
       expect(result.status).toBe('active');
       expect((result as { email?: string }).email).toBe('test@example.com');
     });
+
+    it('returns inactive for an IDIR-only account (active, no passwordHash, directLogin disabled)', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: false,
+        })
+      );
+      const result = await service.checkEmail('test@example.com');
+      expect(result.status).toBe('inactive');
+    });
+
+    it('returns pending for an IDIR account with direct login enabled but no password set', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: true,
+        })
+      );
+      const result = await service.checkEmail('test@example.com');
+      expect(result.status).toBe('pending');
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -351,6 +377,24 @@ describe('AuthService — local auth methods', () => {
     it('hashes the password and marks the account active on success', async () => {
       vi.mocked(findUserByEmailLocal).mockResolvedValue(
         makeLocalUser({ status: 'pending' })
+      );
+      await service.setPassword('test@example.com', 'ValidPass1!');
+      expect(bcrypt.hash).toHaveBeenCalledWith('ValidPass1!', 12);
+      expect(updateUserPassword).toHaveBeenCalledWith(
+        localMockDb,
+        1,
+        'hashed-value',
+        'active'
+      );
+    });
+
+    it('allows active IDIR user with directLoginEnabled and no password to set a password', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: true,
+        })
       );
       await service.setPassword('test@example.com', 'ValidPass1!');
       expect(bcrypt.hash).toHaveBeenCalledWith('ValidPass1!', 12);
@@ -487,13 +531,12 @@ describe('AuthService — local auth methods', () => {
       );
     });
 
-    it('throws BadRequestException for an SSO-only user (active, no passwordHash)', async () => {
+    it('generates a token for an IDIR user (active, no passwordHash) — direct login can be set up', async () => {
       vi.mocked(findUserByIdLocal).mockResolvedValue(
         makeLocalUser({ isActive: true, status: 'active', passwordHash: null })
       );
-      await expect(service.createPasswordResetToken(1)).rejects.toThrow(
-        BadRequestException
-      );
+      const token = await service.createPasswordResetToken(1);
+      expect(token).toMatch(/^[0-9a-f]{32}$/);
     });
 
     it('throws BadRequestException for an inactive user', async () => {
