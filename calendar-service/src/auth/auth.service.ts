@@ -440,10 +440,10 @@ export class AuthService {
    * Create a temporary reset token for an admin-triggered password reset.
    * Sets the user's status to password_reset_required and returns the plaintext code.
    *
-   * Only allowed for users who are local-auth eligible: accounts that are
-   * pending, active with a password hash, or already in password_reset_required.
-   * Pure Azure-SSO accounts (no password_hash, status=active) are rejected to
-   * avoid silently forcing them down the local password path.
+   * Allowed for any active user, including IDIR-only accounts that have no
+   * password yet. Issuing a token sets status to password_reset_required so
+   * the user is routed through the reset flow to establish their direct-login
+   * credentials. Inactive users are still rejected.
    */
   async createPasswordResetToken(userId: number): Promise<string> {
     const dbUser = await findUserByIdLocal(this.databaseService.db, userId);
