@@ -19,6 +19,7 @@ export const TEAM_ROLES = ['owner', 'member'] as const;
 
 export const USER_DISPLAY_NAME_MAX_LENGTH = 255;
 export const USER_NOTES_MAX_LENGTH = 1000;
+export const GOV_BC_EMAIL_DOMAIN = '@gov.bc.ca';
 
 // ============================================
 // Response Schemas
@@ -93,7 +94,17 @@ export const createUserBodySchema = z.object({
     .string()
     .trim()
     .min(1, 'Email is required')
-    .email('Invalid email format'),
+    .email('Invalid email format')
+    .refine(
+      (value) => value.toLowerCase().endsWith(GOV_BC_EMAIL_DOMAIN),
+      'Email must be a @gov.bc.ca address'
+    ),
+  idirUsername: z
+    .string()
+    .trim()
+    .min(1, 'IDIR username is required')
+    .max(255)
+    .regex(/^[^\s@]+$/, 'IDIR username must not contain spaces or @'),
   roleId: z.number().int(),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).optional(),
   teams: z
@@ -128,9 +139,13 @@ export const updateUserBodySchema = z.object({
   email: z
     .string()
     .trim()
+    .min(1, 'Email is required')
     .email('Invalid email format')
     .max(255)
-    .nullable()
+    .refine(
+      (value) => value.toLowerCase().endsWith(GOV_BC_EMAIL_DOMAIN),
+      'Email must be a @gov.bc.ca address'
+    )
     .optional(),
   phone: z.string().trim().max(50).nullable().optional(),
   jobTitle: z.string().trim().max(255).nullable().optional(),

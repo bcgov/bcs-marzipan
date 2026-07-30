@@ -34,6 +34,9 @@ import type {
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
 import { DatabaseService } from '../database/database.service';
 
+const GOV_BC_EMAIL_SUFFIX = '@gov.bc.ca';
+const IDIR_USERNAME_PATTERN = /^[^\s@]+$/;
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -58,10 +61,27 @@ export class UsersService {
   }
 
   async create(
-    dto: CreateUserBody,
+    dto: CreateUserBody & { idirUsername?: string },
     createdByUserId: number
   ): Promise<UserDetail> {
     const normalizedEmail = dto.email.trim().toLowerCase();
+    const idirUsername = dto.idirUsername?.trim();
+
+    if (!normalizedEmail.endsWith(GOV_BC_EMAIL_SUFFIX)) {
+      throw new BadRequestException('Email must be a @gov.bc.ca address');
+    }
+
+    if (!idirUsername) {
+      throw new BadRequestException('IDIR username is required');
+    }
+
+    if (!IDIR_USERNAME_PATTERN.test(idirUsername)) {
+      throw new BadRequestException(
+        'IDIR username must not contain spaces or @'
+      );
+    }
+
+    const normalizedIdirUsername = idirUsername.toUpperCase();
 
     const [existingByEmail] = await this.databaseService.db
       .select({ id: users.id })
@@ -92,6 +112,7 @@ export class UsersService {
       .insert(users)
       .values({
         roleId: dto.roleId,
+        adUsername: normalizedIdirUsername,
         adEmail: normalizedEmail,
         adDisplayName: dto.displayName?.trim() || null,
         isActive: true,
@@ -418,13 +439,28 @@ export class UsersService {
         newValue: dto.displayName,
       });
     }
-    if (dto.email !== undefined && dto.email !== existing.adEmail) {
-      updates.adEmail = dto.email;
-      changes.push({
-        field: 'adEmail',
-        oldValue: existing.adEmail,
-        newValue: dto.email,
-      });
+    let normalizedUpdateEmail: string | null | undefined;
+    if (dto.email !== undefined) {
+      normalizedUpdateEmail = dto.email?.trim().toLowerCase() ?? null;
+
+      if (!normalizedUpdateEmail) {
+        throw new BadRequestException('Email is required');
+      }
+
+      if (!normalizedUpdateEmail.endsWith(GOV_BC_EMAIL_SUFFIX)) {
+        throw new BadRequestException('Email must be a @gov.bc.ca address');
+      }
+    }
+
+    if (dto.email !== undefined) {
+      if (normalizedUpdateEmail !== existing.adEmail) {
+        updates.adEmail = normalizedUpdateEmail;
+        changes.push({
+          field: 'adEmail',
+          oldValue: existing.adEmail,
+          newValue: normalizedUpdateEmail,
+        });
+      }
     }
     if (dto.phone !== undefined && dto.phone !== existing.phone) {
       updates.adPhone = dto.phone;
