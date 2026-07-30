@@ -609,7 +609,6 @@ export function ReportsPage() {
     <>
       <PageHeader
         title="Reports"
-        description="Generate and export various activity reports"
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Button

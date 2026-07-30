@@ -8,7 +8,8 @@
  * (page padding, pagination, filters/header/tabs/summary, borders) so {@link SidebarInset}
  * does not scroll. Tune this single offset if parent scroll appears after layout changes.
  */
-const TABLE_SCROLL_PAGE_OFFSET = '24.25rem';
+/** Compact {@link PageHeader} (mb-4, title only); reduce if parent scroll appears. */
+const TABLE_SCROLL_PAGE_OFFSET = '22.5rem';
 
 /** Upper bound for the scroll area on very tall viewports. */
 const TABLE_SCROLL_VIEWPORT_MAX = '1200px';
