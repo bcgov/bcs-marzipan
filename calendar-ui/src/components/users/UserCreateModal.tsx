@@ -89,7 +89,7 @@ interface UserCreateModalProps {
   onSaved?: () => void;
 }
 
-type CreateUserRequest = CreateUserBody & { idirUsername: string };
+type CreateUserRequest = CreateUserBody;
 
 /**
  * Modal for the "Add user" flow. Creates a local user (email + role required)
