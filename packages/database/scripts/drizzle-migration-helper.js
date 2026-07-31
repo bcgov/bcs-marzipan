@@ -70,10 +70,19 @@ try {
     cwd: packageDir,
     shell: true,
   });
+} catch (error) {
+  console.error('');
+  console.error('Failed to generate migration');
+  if (error.message) {
+    console.error(`Error: ${error.message}`);
+  }
+  process.exit(1);
+}
 
-  console.log('');
-  console.log(`Migration "${migrationName}" generated`);
+console.log('');
+console.log(`Migration "${migrationName}" generated`);
 
+try {
   const journalPath = path.join(packageDir, 'migrations/meta/_journal.json');
   if (fs.existsSync(journalPath)) {
     const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8'));
@@ -92,7 +101,9 @@ try {
   }
 } catch (error) {
   console.error('');
-  console.error('Failed to generate migration');
+  console.error(
+    'Migration was generated, but inserting PostgreSQL extensions migration failed'
+  );
   if (error.message) {
     console.error(`Error: ${error.message}`);
   }
