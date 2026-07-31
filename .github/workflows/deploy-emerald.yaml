@@ -1,6 +1,6 @@
 name: Deploy to Emerald
 
-# Triggered automatically when a PR is merged into develop, test, or prod.
+# Triggered automatically when there is a push into develop, test, or prod.
 #
 # Flow:
 #   develop → build images → push to Artifactory dev repo → update dev GitOps overlay

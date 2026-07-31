@@ -50,6 +50,11 @@ jobs:
             exit 1
           fi
 
+          if [[ "${{ inputs.target_environment }}" == "prod" && -z "${{ inputs.artifactory_image_repo }}" ]]; then
+            echo "::error::artifactory_image_repo must be explicitly provided when target_environment is 'prod' to avoid accidentally pushing to the dev repo"
+            exit 1
+          fi
+
           if [[ -z "$ARTIFACTORY_IMAGE_REPO" ]]; then
             echo "::error::Provide input artifactory_image_repo or set repo variable ARTIFACTORY_DEV_IMAGE_REPO"
             exit 1
@@ -120,7 +125,5 @@ jobs:
           fi
           echo "- **Registry:** ${{ env.REGISTRY }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Target image repo:** ${{ env.ARTIFACTORY_IMAGE_REPO }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Tag:** ${{ env.APP_VERSION }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Branch:** ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag:** ${{ env.APP_VERSION }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Branch:** ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
