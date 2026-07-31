@@ -5,8 +5,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 type ActivityFlagIconProps = {
-  assigneeName?: string | null;
-  assigneeFlagColour?: string | null;
+  flaggedUserName?: string | null;
+  flaggedUserColour?: string | null;
   className?: string;
 };
 
@@ -15,8 +15,8 @@ type ActivityFlagOverflowIconProps = {
   className?: string;
 };
 
-function getAssigneeInitials(assigneeName: string): string {
-  return assigneeName
+function getFlaggedUserInitials(flaggedUserName: string): string {
+  return flaggedUserName
     .split(' ')
     .slice(0, 2)
     .map((namePart) => namePart[0])
@@ -33,11 +33,11 @@ const iconContainerClassName =
  * stays consistent regardless of the outer button size.
  */
 export function ActivityFlagIcon({
-  assigneeName,
-  assigneeFlagColour,
+  flaggedUserName,
+  flaggedUserColour,
   className,
 }: ActivityFlagIconProps): ReactElement {
-  if (!assigneeName) {
+  if (!flaggedUserName) {
     return (
       <span className={cn(iconContainerClassName, className)}>
         <Flag className="text-muted-foreground size-4" aria-hidden />
@@ -45,13 +45,13 @@ export function ActivityFlagIcon({
     );
   }
 
-  const flagColour = assigneeFlagColour ?? 'var(--flag-button-icon)';
+  const flagColour = flaggedUserColour ?? 'var(--flag-button-icon)';
 
   return (
     <span className={cn(iconContainerClassName, className)}>
       <Avatar size="sm" className="size-full border border-white/70">
         <AvatarFallback className="text-[8px] font-medium">
-          {getAssigneeInitials(assigneeName)}
+          {getFlaggedUserInitials(flaggedUserName)}
         </AvatarFallback>
       </Avatar>
       <Flag

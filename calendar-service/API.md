@@ -103,7 +103,7 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | `leadOrgIds`                   | int[]                          | Lead organization IDs (OR)                                                                                                      |
 | `leadTeamIds`                  | int[]                          | Lead team IDs (OR)                                                                                                              |
 | `commsContactLeadUserIds`      | int[]                          | Lead comms contact user IDs (OR)                                                                                                |
-| `flagAssigneeUserIds`          | int[]                          | Flag assignee user IDs (OR)                                                                                                     |
+| `flaggedUserIds`               | int[]                          | Flagged user IDs (OR)                                                                                                           |
 | `sharedWithTeamIds`            | int[]                          | Shared-with team IDs (OR)                                                                                                       |
 | `eventPlannerLeadIds`          | int[]                          | Lead event planner IDs (OR)                                                                                                     |
 | `tagIds`                       | int[]                          | Tag IDs (OR)                                                                                                                    |

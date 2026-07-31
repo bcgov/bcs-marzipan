@@ -126,11 +126,11 @@ describe('normalizeListParams', () => {
     expect(
       normalizeListParams({
         commsContactLeadUserIds: [10],
-        flagAssigneeUserIds: [3],
+        flaggedUserIds: [3],
       })
     ).toEqual({
       commsContactLeadUserIds: [10],
-      flagAssigneeUserIds: [3],
+      flaggedUserIds: [3],
     });
     expect(
       normalizeListParams({

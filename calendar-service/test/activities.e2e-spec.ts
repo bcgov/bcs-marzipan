@@ -364,7 +364,7 @@ describe('ActivitiesController (API integration)', () => {
   describe('/activities/:id/flags and /activities/:id/flag/*', () => {
     let flagTargetId: number;
     let flagTeamId: number;
-    let assigneeIds: number[] = [];
+    let flaggedUserIds: number[] = [];
 
     beforeAll(async () => {
       const meRes = await createAuthRequest(app, accessToken)
@@ -379,52 +379,59 @@ describe('ActivitiesController (API integration)', () => {
         .expect(200);
       const team = teamRes.body.data as TeamDetail;
       expect(team.members.length).toBeGreaterThan(0);
-      assigneeIds = [...new Set(team.members.map((m) => m.userId))].slice(0, 2);
+      flaggedUserIds = [...new Set(team.members.map((m) => m.userId))].slice(
+        0,
+        2
+      );
 
       const createRes = await createAuthRequest(app, accessToken)
         .post('/activities')
         .send(
           createMockActivityRequest({
-            title: 'E2E Flags Multi Assignee',
+            title: 'E2E Flags Multi Flag',
             leadTeamId: flagTeamId,
-            commsContacts: [{ userId: assigneeIds[0], isLead: true }],
+            commsContacts: [{ userId: flaggedUserIds[0], isLead: true }],
           })
         )
         .expect(201);
       flagTargetId = createRes.body.data.id;
     });
 
-    it('should sync assignees and return delta metadata', async () => {
+    it('should sync flagged users and return delta metadata', async () => {
       const syncRes = await createAuthRequest(app, accessToken)
         .put(`/activities/${flagTargetId}/flags`)
-        .send({ teamId: flagTeamId, assigneeIds })
+        .send({ teamId: flagTeamId, flaggedUserIds })
         .expect(200);
 
       expect(syncRes.body).toHaveProperty('success', true);
-      expect(Array.isArray(syncRes.body.addedAssigneeIds)).toBe(true);
-      expect(syncRes.body.addedAssigneeIds).toEqual(
-        expect.arrayContaining(assigneeIds)
+      expect(Array.isArray(syncRes.body.addedFlaggedUserIds)).toBe(true);
+      expect(syncRes.body.addedFlaggedUserIds).toEqual(
+        expect.arrayContaining(flaggedUserIds)
       );
-      expect(syncRes.body.addedAssigneeIds).toHaveLength(assigneeIds.length);
-      expect(syncRes.body.removedAssigneeIds).toEqual([]);
+      expect(syncRes.body.addedFlaggedUserIds).toHaveLength(
+        flaggedUserIds.length
+      );
+      expect(syncRes.body.removedFlaggedUserIds).toEqual([]);
 
       const getRes = await createAuthRequest(app, accessToken)
         .get(`/activities/${flagTargetId}`)
         .expect(200);
-      const currentTeamAssignees = (getRes.body.data.flags ?? [])
+      const currentTeamFlaggedUsers = (getRes.body.data.flags ?? [])
         .filter((f: any) => f.teamId === flagTeamId)
-        .map((f: any) => f.assigneeId);
+        .map((f: any) => f.flaggedUserId);
 
-      expect(currentTeamAssignees).toEqual(expect.arrayContaining(assigneeIds));
-      expect(currentTeamAssignees).toHaveLength(assigneeIds.length);
+      expect(currentTeamFlaggedUsers).toEqual(
+        expect.arrayContaining(flaggedUserIds)
+      );
+      expect(currentTeamFlaggedUsers).toHaveLength(flaggedUserIds.length);
     });
 
-    it('should remove a single assignee via targeted delete route', async () => {
-      const assigneeIdToRemove = assigneeIds[0];
+    it('should remove a single flagged user via targeted delete route', async () => {
+      const flaggedUserIdToRemove = flaggedUserIds[0];
 
       const deleteRes = await createAuthRequest(app, accessToken)
         .delete(
-          `/activities/${flagTargetId}/flag/${flagTeamId}/${assigneeIdToRemove}`
+          `/activities/${flagTargetId}/flag/${flagTeamId}/${flaggedUserIdToRemove}`
         )
         .expect(200);
       expect(deleteRes.body).toHaveProperty('success', true);
@@ -432,17 +439,17 @@ describe('ActivitiesController (API integration)', () => {
       const getRes = await createAuthRequest(app, accessToken)
         .get(`/activities/${flagTargetId}`)
         .expect(200);
-      const currentTeamAssignees = (getRes.body.data.flags ?? [])
+      const currentTeamFlaggedUsers = (getRes.body.data.flags ?? [])
         .filter((f: any) => f.teamId === flagTeamId)
-        .map((f: any) => f.assigneeId);
+        .map((f: any) => f.flaggedUserId);
 
-      expect(currentTeamAssignees).not.toContain(assigneeIdToRemove);
-      expect(currentTeamAssignees.length).toBe(
-        Math.max(assigneeIds.length - 1, 0)
+      expect(currentTeamFlaggedUsers).not.toContain(flaggedUserIdToRemove);
+      expect(currentTeamFlaggedUsers.length).toBe(
+        Math.max(flaggedUserIds.length - 1, 0)
       );
     });
 
-    it('should remove all assignees for a team', async () => {
+    it('should remove all flagged users for a team', async () => {
       const deleteRes = await createAuthRequest(app, accessToken)
         .delete(`/activities/${flagTargetId}/flag/${flagTeamId}`)
         .expect(200);
@@ -451,10 +458,10 @@ describe('ActivitiesController (API integration)', () => {
       const getRes = await createAuthRequest(app, accessToken)
         .get(`/activities/${flagTargetId}`)
         .expect(200);
-      const currentTeamAssignees = (getRes.body.data.flags ?? []).filter(
+      const currentTeamFlaggedUsers = (getRes.body.data.flags ?? []).filter(
         (f: any) => f.teamId === flagTeamId
       );
-      expect(currentTeamAssignees).toHaveLength(0);
+      expect(currentTeamFlaggedUsers).toHaveLength(0);
     });
   });
 

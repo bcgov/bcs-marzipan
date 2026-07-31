@@ -239,7 +239,7 @@ export class ActivityMapperService {
         changedFieldsSinceReview: relatedData.changedFieldsSinceReview,
       }),
 
-      // Flags: team-scoped activity assignments
+      // Flags: team-scoped activity flags
       flags: relatedData?.flags ?? [],
 
       // Meta

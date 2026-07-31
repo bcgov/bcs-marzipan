@@ -209,7 +209,7 @@ export const activityComputedFieldsSchema = z.object({
   // Only included for users with activities.complete; omitted otherwise.
   markCompleteEligible: z.boolean().optional(),
 
-  // Flags: team-scoped activity assignments visible to all team members.
+  // Flags: team-scoped activity flags visible to all team members.
   // Only flags for teams the current user belongs to are included.
   // Empty array when the user has no teams or no flags exist for their teams.
   flags: z.array(activityFlagResponseSchema).default([]),

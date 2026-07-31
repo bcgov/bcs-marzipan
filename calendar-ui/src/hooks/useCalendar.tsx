@@ -26,7 +26,7 @@ import {
   softDeleteActivity,
   updateActivity,
 } from '../api/activitiesApi';
-import { removeAssigneeActivityFlag, syncActivityFlags } from '../api/flagsApi';
+import { removeActivityFlagForUser, syncActivityFlags } from '../api/flagsApi';
 import {
   buildOptimisticActivity,
   normalizeListParams,
@@ -235,7 +235,7 @@ export function useAddActivityHistoryNote() {
   });
 }
 
-/** Sync (set) all assignees for an activity/team pair. */
+/** Sync flagged users for an activity/team pair. */
 export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
   const qc = useQueryClient();
   return useMutation({
@@ -245,7 +245,7 @@ export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
     }: {
       activityId: number;
       body: UpsertActivityFlagsRequest;
-      assigneeNames?: string[];
+      flaggedUserNames?: string[];
     }) => syncActivityFlags(activityId, body),
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
@@ -254,21 +254,23 @@ export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
         source: 'local',
         activityId: vars.activityId,
       });
-      if ((vars.assigneeNames?.length ?? 0) > 0) {
-        toast.success(`Activity assigned to ${vars.assigneeNames!.join(', ')}`);
+      if ((vars.flaggedUserNames?.length ?? 0) > 0) {
+        toast.success(
+          `Activity flagged for ${vars.flaggedUserNames!.join(', ')}`
+        );
       } else {
-        toast.success('Activity assignments updated');
+        toast.success('Flags updated');
       }
       options?.onSuccess?.();
     },
     onError: (error) => {
-      showErrorToast(error, 'Failed to update activity assignments');
+      showErrorToast(error, 'Failed to update flags');
     },
   });
 }
 
-/** Remove a single assignee flag for an activity/team pair. */
-export function useRemoveAssigneeActivityFlag(options?: {
+/** Remove a single user's flag for an activity/team pair. */
+export function useRemoveActivityFlagForUser(options?: {
   onSuccess?: () => void;
 }) {
   const qc = useQueryClient();
@@ -276,14 +278,14 @@ export function useRemoveAssigneeActivityFlag(options?: {
     mutationFn: ({
       activityId,
       teamId,
-      assigneeId,
+      flaggedUserId,
     }: {
       activityId: number;
       teamId: number;
-      assigneeId: number;
-      assigneeName?: string;
+      flaggedUserId: number;
+      flaggedUserName?: string;
       suppressSuccessToast?: boolean;
-    }) => removeAssigneeActivityFlag(activityId, teamId, assigneeId),
+    }) => removeActivityFlagForUser(activityId, teamId, flaggedUserId),
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
@@ -293,15 +295,15 @@ export function useRemoveAssigneeActivityFlag(options?: {
       });
       if (!vars.suppressSuccessToast) {
         toast.success(
-          vars.assigneeName
-            ? `Activity unassigned from ${vars.assigneeName}`
-            : 'Activity unassigned'
+          vars.flaggedUserName
+            ? `Flag removed for ${vars.flaggedUserName}`
+            : 'Flag removed'
         );
       }
       options?.onSuccess?.();
     },
     onError: (error) => {
-      showErrorToast(error, 'Failed to unassign activity');
+      showErrorToast(error, 'Failed to remove flag');
     },
   });
 }

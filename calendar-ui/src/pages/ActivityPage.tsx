@@ -54,7 +54,7 @@ import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
 import {
   useDeleteActivity,
-  useRemoveAssigneeActivityFlag,
+  useRemoveActivityFlagForUser,
   useRequestDeleteActivity,
   useRestoreActivity,
   useSoftDeleteActivity,
@@ -272,7 +272,7 @@ export function ActivityPage({
   const syncFlagsMutation = useSyncActivityFlags({
     onSuccess: () => void refreshActivity(),
   });
-  const removeAssigneeFlagMutation = useRemoveAssigneeActivityFlag({
+  const removeFlagForUserMutation = useRemoveActivityFlagForUser({
     onSuccess: () => void refreshActivity(),
   });
 
@@ -670,20 +670,20 @@ export function ActivityPage({
   const handleReviewConfirm = async (
     notes?: string,
     markAsCompleted?: boolean,
-    unassignMe?: boolean
+    removeMyFlag?: boolean
   ) => {
-    if (unassignMe && user?.id != null) {
+    if (removeMyFlag && user?.id != null) {
       const myFlags = (activity.flags ?? []).filter(
-        (flag) => flag.assigneeId === user.id
+        (flag) => flag.flaggedUserId === user.id
       );
 
       const results = await Promise.allSettled(
         myFlags.map((flag) =>
-          removeAssigneeFlagMutation.mutateAsync({
+          removeFlagForUserMutation.mutateAsync({
             activityId: id,
             teamId: flag.teamId,
-            assigneeId: flag.assigneeId,
-            assigneeName: flag.assigneeName,
+            flaggedUserId: flag.flaggedUserId,
+            flaggedUserName: flag.flaggedUserName,
             suppressSuccessToast: true,
           })
         )
@@ -697,8 +697,8 @@ export function ActivityPage({
       if (fulfilled.length > 0) {
         toast.success(
           fulfilled.length === 1
-            ? 'Activity unassigned'
-            : `Activity unassigned from ${fulfilled.length} teams`
+            ? 'Flag removed'
+            : `Flag removed from ${fulfilled.length} teams`
         );
       }
 
@@ -706,11 +706,11 @@ export function ActivityPage({
         if (fulfilled.length > 0) {
           toast.error(
             rejected.length === 1
-              ? 'Failed to unassign from 1 team'
-              : `Failed to unassign from ${rejected.length} teams`
+              ? 'Failed to remove flag from 1 team'
+              : `Failed to remove flag from ${rejected.length} teams`
           );
         } else {
-          toast.error('Failed to unassign activity');
+          toast.error('Failed to remove flag');
         }
       }
     }
@@ -917,28 +917,33 @@ export function ActivityPage({
           canFlag
             ? (
                 teamId,
-                assigneeIds,
+                flaggedUserIds,
                 note,
-                assigneeNames,
-                displayTeamPerAssignee
+                flaggedUserNames,
+                displayTeamPerFlaggedUser
               ) =>
                 syncFlagsMutation.mutate({
                   activityId: id,
-                  body: { teamId, assigneeIds, note, displayTeamPerAssignee },
-                  assigneeNames,
+                  body: {
+                    teamId,
+                    flaggedUserIds,
+                    note,
+                    displayTeamPerFlaggedUser,
+                  },
+                  flaggedUserNames,
                 })
             : undefined
         }
-        onFlagUnassign={(teamId, assigneeId, assigneeName) =>
-          removeAssigneeFlagMutation.mutate({
+        onRemoveSelfFlag={(teamId, flaggedUserId, flaggedUserName) =>
+          removeFlagForUserMutation.mutate({
             activityId: id,
             teamId,
-            assigneeId,
-            assigneeName,
+            flaggedUserId,
+            flaggedUserName,
           })
         }
         isFlagPending={
-          syncFlagsMutation.isPending || removeAssigneeFlagMutation.isPending
+          syncFlagsMutation.isPending || removeFlagForUserMutation.isPending
         }
         isFavourite={isFavourite(id)}
         onFavouriteToggle={() => toggleFavourite(id)}
@@ -1154,14 +1159,14 @@ export function ActivityPage({
         onOpenChange={setShowReviewModal}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes, markAsCompleted, unassignMe) =>
-          void handleReviewConfirm(notes, markAsCompleted, unassignMe)
+        onConfirm={(notes, markAsCompleted, removeMyFlag) =>
+          void handleReviewConfirm(notes, markAsCompleted, removeMyFlag)
         }
         displayId={displayId}
         showMarkAsCompletedOption={actionFlags.showCompleteAction}
         activityEndedAtLabel={reviewModalActivityEndedAtLabel}
-        showUnassignMeOption={(activity.flags ?? []).some(
-          (f) => f.assigneeId === user?.id
+        showRemoveMyFlagOption={(activity.flags ?? []).some(
+          (f) => f.flaggedUserId === user?.id
         )}
       />
       <CompleteActivityModal

@@ -29,31 +29,31 @@ interface TeamMemberOption {
   teamName: string;
 }
 
-interface AssignActivityModalProps {
+interface FlagActivityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Existing flags for the current user's teams. */
   flags: ActivityFlagResponse[];
   isSubmitting: boolean;
-  /** Sync the full assignee set for an activity/team pair. */
+  /** Sync the full flagged-user set for an activity/team pair. */
   onSync: (
     teamId: number,
-    assigneeIds: number[],
+    flaggedUserIds: number[],
     note?: string,
-    assigneeNames?: string[],
-    displayTeamPerAssignee?: Record<number, number | null>
+    flaggedUserNames?: string[],
+    displayTeamPerFlaggedUser?: Record<number, number | null>
   ) => void;
   displayId?: string;
 }
 
-export function AssignActivityModal({
+export function FlagActivityModal({
   open,
   onOpenChange,
   flags,
   isSubmitting,
   onSync,
   displayId,
-}: AssignActivityModalProps) {
+}: FlagActivityModalProps) {
   const { user } = useAuth();
   const [note, setNote] = useState('');
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
@@ -112,7 +112,7 @@ export function AssignActivityModal({
         // Load any saved displayTeamId from existing flags
         flags.forEach((flag) => {
           if (flag.displayTeamId != null) {
-            initialSelectedTeam[flag.assigneeId] = flag.displayTeamId;
+            initialSelectedTeam[flag.flaggedUserId] = flag.displayTeamId;
           }
         });
 
@@ -147,8 +147,8 @@ export function AssignActivityModal({
       setNote('');
       return;
     }
-    // Load all assigned members and their note from flags
-    setSelectedMemberIds(flags.map((f) => f.assigneeId));
+    // Load all flagged members and their note from flags
+    setSelectedMemberIds(flags.map((f) => f.flaggedUserId));
     setNote(flags[0]?.note ?? '');
   }, [open, flags]);
 
@@ -162,7 +162,7 @@ export function AssignActivityModal({
 
   const handleConfirm = () => {
     if (selectedMemberIds.length === 0) return;
-    // Use the first selected member's assigned team as the primary team context
+    // Use the first selected member's display team as the primary team context
     const firstMemberId = selectedMemberIds[0];
     const primaryTeamId = selectedTeamPerUser[firstMemberId];
     if (!primaryTeamId) return;
@@ -172,9 +172,9 @@ export function AssignActivityModal({
       .map((memberId) => members.find((m) => m.userId === memberId)?.label)
       .filter((name): name is string => !!name);
 
-    // Build displayTeamPerAssignee map only for selected members
+    // Build displayTeamPerFlaggedUser map only for selected members
     // Send null when the member's team matches the primary team (to preserve semantics)
-    const displayTeamPerAssignee = selectedMemberIds.reduce(
+    const displayTeamPerFlaggedUser = selectedMemberIds.reduce(
       (acc, memberId) => {
         const memberTeamId = selectedTeamPerUser[memberId];
         // Only include entries that differ from the primary team
@@ -191,8 +191,8 @@ export function AssignActivityModal({
       selectedMemberIds,
       note.trim() || undefined,
       selectedNames,
-      Object.keys(displayTeamPerAssignee).length > 0
-        ? displayTeamPerAssignee
+      Object.keys(displayTeamPerFlaggedUser).length > 0
+        ? displayTeamPerFlaggedUser
         : undefined
     );
   };
@@ -257,10 +257,10 @@ export function AssignActivityModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Assign activity</DialogTitle>
+          <DialogTitle>Flag activity</DialogTitle>
           <DialogDescription>
-            Select teammates to assign for follow-up. Assignments are visible to
-            all teammates in the activities list.
+            Select teammates to flag for follow-up. Flags are visible to all
+            teammates in the activities list.
           </DialogDescription>
         </DialogHeader>
 
@@ -273,9 +273,9 @@ export function AssignActivityModal({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Assignees</Label>
+            <Label>Flag for</Label>
             <p className="text-muted-foreground text-xs">
-              Select assignees and choose their team below
+              Select teammates and choose their team below
             </p>
             {loadingMembers ? (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
@@ -299,7 +299,7 @@ export function AssignActivityModal({
                   >
                     {selectedMemberIds.length === 0 ? (
                       <span className="text-muted-foreground px-1">
-                        Select assignees…
+                        Select teammates…
                       </span>
                     ) : (
                       selectedMemberIds.map((memberId) => {
@@ -495,7 +495,7 @@ export function AssignActivityModal({
                   Saving…
                 </>
               ) : (
-                'Save assignments'
+                'Save flags'
               )}
             </Button>
           </div>

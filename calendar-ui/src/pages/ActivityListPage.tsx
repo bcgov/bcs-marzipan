@@ -32,7 +32,7 @@ type ActivityListTabValue =
   | 'recent'
   | 'shared-with-me'
   | 'favourites'
-  | 'assigned-to-me';
+  | 'flagged-for-me';
 
 const ACTIVITY_LIST_TAB_VALUES: readonly ActivityListTabValue[] = [
   'all',
@@ -41,7 +41,7 @@ const ACTIVITY_LIST_TAB_VALUES: readonly ActivityListTabValue[] = [
   'recent',
   'shared-with-me',
   'favourites',
-  'assigned-to-me',
+  'flagged-for-me',
 ];
 
 function getStoredActivityListTab(): ActivityListTabValue | null {
@@ -169,10 +169,8 @@ export const ActivityListPage = () => {
           : base;
       case 'favourites':
         return { ...base, favouriteActivityIds };
-      case 'assigned-to-me':
-        return user?.id != null
-          ? { ...base, flagAssigneeUserIds: [user.id] }
-          : base;
+      case 'flagged-for-me':
+        return user?.id != null ? { ...base, flaggedUserIds: [user.id] } : base;
       default:
         return base;
     }
@@ -270,7 +268,7 @@ export const ActivityListPage = () => {
             )}
             <TabsTrigger value="my-activities">My activities</TabsTrigger>
             <TabsTrigger value="shared-with-me">Shared with me</TabsTrigger>
-            <TabsTrigger value="assigned-to-me">Assigned to me</TabsTrigger>
+            <TabsTrigger value="flagged-for-me">Flagged for me</TabsTrigger>
             <TabsTrigger value="favourites">My watchlist</TabsTrigger>
           </TabsList>
         </div>

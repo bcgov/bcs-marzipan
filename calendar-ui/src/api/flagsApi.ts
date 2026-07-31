@@ -6,7 +6,7 @@ import type {
 import api from './axios';
 
 /**
- * Assign (flag) an activity for a team member.
+ * Flag an activity for a team member.
  * PUT /activities/:id/flag
  */
 export async function upsertActivityFlag(
@@ -18,12 +18,12 @@ export async function upsertActivityFlag(
 
 export interface SyncActivityFlagsResponse {
   success: boolean;
-  addedAssigneeIds: number[];
-  removedAssigneeIds: number[];
+  addedFlaggedUserIds: number[];
+  removedFlaggedUserIds: number[];
 }
 
 /**
- * Sync the full assignee set for an activity/team pair.
+ * Sync the full flagged-user set for an activity/team pair.
  * PUT /activities/:id/flags
  */
 export async function syncActivityFlags(
@@ -49,13 +49,13 @@ export async function removeActivityFlag(
 }
 
 /**
- * Remove a single assignee flag for an activity/team pair.
- * DELETE /activities/:id/flag/:teamId/:assigneeId
+ * Remove one user's flag for an activity/team pair.
+ * DELETE /activities/:id/flag/:teamId/:flaggedUserId
  */
-export async function removeAssigneeActivityFlag(
+export async function removeActivityFlagForUser(
   activityId: number,
   teamId: number,
-  assigneeId: number
+  flaggedUserId: number
 ): Promise<void> {
-  await api.delete(`/activities/${activityId}/flag/${teamId}/${assigneeId}`);
+  await api.delete(`/activities/${activityId}/flag/${teamId}/${flaggedUserId}`);
 }

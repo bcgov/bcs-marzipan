@@ -23,15 +23,15 @@ interface ReviewActivityModalProps {
   onConfirm: (
     notes?: string,
     markAsCompleted?: boolean,
-    unassignMe?: boolean
+    removeMyFlag?: boolean
   ) => void;
   displayId?: string;
   /** When true, show optional "Mark as completed" (activities.complete + eligibility). */
   showMarkAsCompletedOption?: boolean;
   /** Formatted end from saved activity; woven into description when completion is offered. */
   activityEndedAtLabel?: string | null;
-  /** When true, show "Unassign me" checkbox (current user is an assignee on this activity). */
-  showUnassignMeOption?: boolean;
+  /** When true, show "Remove my flag" checkbox (current user is flagged on this activity). */
+  showRemoveMyFlagOption?: boolean;
 }
 
 export function ReviewActivityModal({
@@ -43,21 +43,21 @@ export function ReviewActivityModal({
   displayId,
   showMarkAsCompletedOption = false,
   activityEndedAtLabel = null,
-  showUnassignMeOption = false,
+  showRemoveMyFlagOption = false,
 }: ReviewActivityModalProps) {
   const [notes, setNotes] = useState('');
   const [markAsCompleted, setMarkAsCompleted] = useState(false);
-  const [unassignMe, setUnassignMe] = useState(false);
+  const [removeMyFlag, setRemoveMyFlag] = useState(false);
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined, markAsCompleted, unassignMe);
+    onConfirm(notes.trim() || undefined, markAsCompleted, removeMyFlag);
   };
 
   const handleOpenChange = (value: boolean) => {
     if (!value) {
       setNotes('');
       setMarkAsCompleted(false);
-      setUnassignMe(false);
+      setRemoveMyFlag(false);
     }
     onOpenChange(value);
   };
@@ -127,18 +127,18 @@ export function ReviewActivityModal({
           </div>
         )}
 
-        {showUnassignMeOption && (
+        {showRemoveMyFlagOption && (
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="review-confirm-unassign-me"
-              checked={unassignMe}
-              onCheckedChange={(checked) => setUnassignMe(checked === true)}
+              id="review-confirm-remove-my-flag"
+              checked={removeMyFlag}
+              onCheckedChange={(checked) => setRemoveMyFlag(checked === true)}
             />
             <Label
-              htmlFor="review-confirm-unassign-me"
+              htmlFor="review-confirm-remove-my-flag"
               className="cursor-pointer text-sm font-normal"
             >
-              Unassign me
+              Remove my flag
             </Label>
           </div>
         )}
