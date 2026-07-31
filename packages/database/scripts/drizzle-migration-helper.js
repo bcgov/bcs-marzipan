@@ -3,6 +3,9 @@
 /**
  * Wrapper script for drizzle-kit generate that enforces a migration name.
  *
+ * After a dev squash (exactly one journal entry), runs ensure-postgresql-extensions-first
+ * so the extensions template (public schema + pg_trgm) is inserted as migration 0000.
+ *
  * Usage:
  *   node scripts/generate-migration.js <migration_name>
  *
@@ -11,6 +14,7 @@
  */
 
 const { execSync } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
 // Get the migration name from command line arguments
@@ -69,6 +73,23 @@ try {
 
   console.log('');
   console.log(`Migration "${migrationName}" generated`);
+
+  const journalPath = path.join(packageDir, 'migrations/meta/_journal.json');
+  if (fs.existsSync(journalPath)) {
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8'));
+    const entryCount = journal.entries?.length ?? 0;
+    if (entryCount === 1) {
+      console.log('');
+      console.log(
+        'Single migration detected (dev squash). Inserting PostgreSQL extensions migration...'
+      );
+      execSync('node scripts/ensure-postgresql-extensions-first.js', {
+        stdio: 'inherit',
+        cwd: packageDir,
+        shell: true,
+      });
+    }
+  }
 } catch (error) {
   console.error('');
   console.error('Failed to generate migration');
