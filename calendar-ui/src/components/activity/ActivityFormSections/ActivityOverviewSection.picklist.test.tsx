@@ -24,6 +24,10 @@ vi.mock('@/components/ui/rich-text-field', () =>
   }))
 );
 
+vi.mock('../activity-info-icon-settings-context', () => ({
+  ActivityFieldInfoIcon: () => null,
+}));
+
 const globalCategory = {
   id: 1,
   name: 'global_category',
