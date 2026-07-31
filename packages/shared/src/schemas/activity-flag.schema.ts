@@ -3,11 +3,12 @@ import { z } from 'zod';
 /**
  * Activity Flag schemas
  *
- * An activity flag marks one team member per activity per team for follow-up.
+ * An activity flag marks a team member for follow-up on an activity within a team.
  * Rules:
- *   - At most one flag per (activity_id, team_id).
- *   - Any team member with activities.flag permission can set or replace the flag.
- *   - Any active team member can remove the flag (no flag permission required).
+ *   - Multiple flagged users are allowed per (activity_id, team_id).
+ *   - At most one row per (activity_id, team_id, flagged_user_id).
+ *   - Any team member with activities.flag permission can set or sync flags for their team.
+ *   - Any active team member can remove flags (no flag permission required).
  */
 
 /** Flag as returned in the activity response. */
