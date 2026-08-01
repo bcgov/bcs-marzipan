@@ -63,8 +63,7 @@ type ReportFiltersAppliedEvent = {
   category_count?: number;
   status_count?: number;
   tag_count?: number;
-  ministry_count?: number;
-  org_count?: number;
+  lead_team_count?: number;
 };
 
 type ReportNoResultsShownEvent = {

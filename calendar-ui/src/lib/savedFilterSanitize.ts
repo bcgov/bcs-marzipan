@@ -33,6 +33,26 @@ function sanitizeIdArray(
   return { ids: filtered, removed: filtered.length < nums.length };
 }
 
+function hasLegacyLeadDimensionKeys(record: Record<string, unknown>): boolean {
+  return 'leadMinistryIds' in record || 'leadOrgIds' in record;
+}
+
+function teamIdsFromLegacyMinistryFilter(
+  record: Record<string, unknown>,
+  teamIdsByMinistryId?: ReadonlyMap<number, readonly number[]>
+): number[] {
+  if (!teamIdsByMinistryId) return [];
+  const legacyMinistries = sanitizeIdArray(record.leadMinistryIds, undefined);
+  const ids = new Set<number>();
+  for (const ministryId of legacyMinistries.ids) {
+    const teams = teamIdsByMinistryId.get(ministryId);
+    if (teams) {
+      for (const teamId of teams) ids.add(teamId);
+    }
+  }
+  return [...ids];
+}
+
 /**
  * Valid lookup ID sets that can be provided for sanitization.
  * If a set is undefined, no validation is performed for that field.
@@ -41,11 +61,11 @@ export interface ValidFilterLookups {
   statusIds?: ReadonlySet<number>;
   categoryIds?: ReadonlySet<number>;
   tagIds?: ReadonlySet<number>;
-  ministryIds?: ReadonlySet<number>;
-  orgIds?: ReadonlySet<number>;
   commsContactUserIds?: ReadonlySet<number>;
   eventPlannerIds?: ReadonlySet<number>;
   teamIds?: ReadonlySet<number>;
+  /** Legacy `leadMinistryIds` saved filters expand to teams by ministry. */
+  teamIdsByMinistryId?: ReadonlyMap<number, readonly number[]>;
   translationStatusIds?: ReadonlySet<number>;
   translationLanguageIds?: ReadonlySet<number>;
 }
@@ -69,7 +89,9 @@ export function sanitizeSavedFilterPayload(
   }
 
   const record = raw;
-  let hadInvalid = hasDisallowedActivityFilterStateKeys(record);
+  let hadInvalid =
+    hasDisallowedActivityFilterStateKeys(record) ||
+    hasLegacyLeadDimensionKeys(record);
 
   const base = coerceActivityFilterStateFromRecord(record);
 
@@ -88,15 +110,6 @@ export function sanitizeSavedFilterPayload(
   );
   if (categoryResult.removed) hadInvalid = true;
 
-  const ministryResult = sanitizeIdArray(
-    record.leadMinistryIds,
-    lookups?.ministryIds
-  );
-  if (ministryResult.removed) hadInvalid = true;
-
-  const orgResult = sanitizeIdArray(record.leadOrgIds, lookups?.orgIds);
-  if (orgResult.removed) hadInvalid = true;
-
   const commsResult = sanitizeIdArray(
     record.commsContactLeadUserIds,
     lookups?.commsContactUserIds
@@ -109,8 +122,16 @@ export function sanitizeSavedFilterPayload(
   );
   if (plannerResult.removed) hadInvalid = true;
 
-  const teamResult = sanitizeIdArray(record.leadTeamIds, lookups?.teamIds);
-  if (teamResult.removed) hadInvalid = true;
+  const legacyTeamIds = teamIdsFromLegacyMinistryFilter(
+    record,
+    lookups?.teamIdsByMinistryId
+  );
+  const mergedTeamRaw = [
+    ...(Array.isArray(record.leadTeamIds) ? record.leadTeamIds : []),
+    ...legacyTeamIds,
+  ];
+  const teamResult = sanitizeIdArray(mergedTeamRaw, lookups?.teamIds);
+  if (teamResult.removed || legacyTeamIds.length > 0) hadInvalid = true;
 
   const translationStatusResult = sanitizeIdArray(
     record.translationRequiredStatusIds,
@@ -130,8 +151,6 @@ export function sanitizeSavedFilterPayload(
       activityStatusIds: statusResult.ids,
       categoryIds: categoryResult.ids,
       tagIds: tagResult.ids,
-      leadMinistryIds: ministryResult.ids,
-      leadOrgIds: orgResult.ids,
       commsContactLeadUserIds: commsResult.ids,
       eventPlannerLeadIds: plannerResult.ids,
       leadTeamIds: teamResult.ids,

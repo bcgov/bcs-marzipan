@@ -20,7 +20,7 @@ describe('stableSerializeReportQueryParams', () => {
       stableSerializeReportQueryParams({
         includeCompleted: true,
         tagIds: [2, 1],
-        leadMinistryIds: undefined,
+        leadTeamIds: undefined,
       })
     ).toBe('{"includeCompleted":true,"tagIds":[1,2]}');
   });

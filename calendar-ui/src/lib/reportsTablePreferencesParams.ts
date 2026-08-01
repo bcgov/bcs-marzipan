@@ -186,12 +186,6 @@ function parseFromSearchParams(
       : 'any';
 
   const tagIds = parseIdListFromQueryParam(searchParams.get(URL_PARAM_TAG));
-  const leadMinistryIds = parseIdListFromQueryParam(
-    searchParams.get(URL_PARAM_LEAD_MINISTRY)
-  );
-  const leadOrgIds = parseIdListFromQueryParam(
-    searchParams.get(URL_PARAM_LEAD_ORG)
-  );
   const leadTeamIds = parseIdListFromQueryParam(
     searchParams.get(URL_PARAM_LEAD_TEAM)
   );
@@ -225,8 +219,6 @@ function parseFromSearchParams(
     timeConfirmedFilter,
     tagIds,
     leadTeamIds,
-    leadMinistryIds,
-    leadOrgIds,
     commsContactLeadUserIds,
     eventPlannerLeadIds,
     translationRequiredStatusIds,
@@ -355,16 +347,6 @@ function parseSinglePreferencesFromRaw(
             (n): n is number => typeof n === 'number' && Number.isFinite(n)
           )
         : [];
-      const leadMinistryIds = Array.isArray(rawFilter.leadMinistryIds)
-        ? (rawFilter.leadMinistryIds as number[]).filter(
-            (n): n is number => typeof n === 'number' && Number.isFinite(n)
-          )
-        : [];
-      const leadOrgIds = Array.isArray(rawFilter.leadOrgIds)
-        ? (rawFilter.leadOrgIds as number[]).filter(
-            (n): n is number => typeof n === 'number' && Number.isFinite(n)
-          )
-        : [];
       const leadTeamIds = Array.isArray(rawFilter.leadTeamIds)
         ? (rawFilter.leadTeamIds as number[]).filter(
             (n): n is number => typeof n === 'number' && Number.isFinite(n)
@@ -421,8 +403,6 @@ function parseSinglePreferencesFromRaw(
         timeConfirmedFilter,
         tagIds,
         leadTeamIds,
-        leadMinistryIds,
-        leadOrgIds,
         commsContactLeadUserIds,
         eventPlannerLeadIds,
         translationRequiredStatusIds,
@@ -567,8 +547,6 @@ export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
     searchParams.has(URL_PARAM_DATE_CONFIRMED) ||
     searchParams.has(URL_PARAM_TIME_CONFIRMED) ||
     searchParams.has(URL_PARAM_TAG) ||
-    searchParams.has(URL_PARAM_LEAD_MINISTRY) ||
-    searchParams.has(URL_PARAM_LEAD_ORG) ||
     searchParams.has(URL_PARAM_LEAD_TEAM) ||
     searchParams.has(URL_PARAM_COMMS_LEAD) ||
     searchParams.has(URL_PARAM_EVENT_PLANNER) ||
@@ -610,8 +588,6 @@ export function preferencesToParams(
     [URL_PARAM_TIME_CONFIRMED]:
       f.timeConfirmedFilter === 'any' ? '' : f.timeConfirmedFilter,
     [URL_PARAM_TAG]: f.tagIds.join(','),
-    [URL_PARAM_LEAD_MINISTRY]: f.leadMinistryIds.join(','),
-    [URL_PARAM_LEAD_ORG]: f.leadOrgIds.join(','),
     [URL_PARAM_LEAD_TEAM]: f.leadTeamIds.join(','),
     [URL_PARAM_COMMS_LEAD]: f.commsContactLeadUserIds.join(','),
     [URL_PARAM_EVENT_PLANNER]: f.eventPlannerLeadIds.join(','),

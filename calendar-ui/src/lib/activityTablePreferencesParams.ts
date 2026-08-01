@@ -197,8 +197,6 @@ function parseFromSearchParams(
     timeConfirmedFilter,
     tagIds,
     leadTeamIds: [],
-    leadMinistryIds: [],
-    leadOrgIds: [],
     commsContactLeadUserIds: [],
     eventPlannerLeadIds: [],
     translationRequiredStatusIds,
@@ -331,13 +329,8 @@ function parseFromStorage(
               (n): n is number => typeof n === 'number' && Number.isFinite(n)
             )
           : [];
-        const leadMinistryIds = Array.isArray(rawFilter.leadMinistryIds)
-          ? (rawFilter.leadMinistryIds as number[]).filter(
-              (n): n is number => typeof n === 'number' && Number.isFinite(n)
-            )
-          : [];
-        const leadOrgIds = Array.isArray(rawFilter.leadOrgIds)
-          ? (rawFilter.leadOrgIds as number[]).filter(
+        const leadTeamIds = Array.isArray(rawFilter.leadTeamIds)
+          ? (rawFilter.leadTeamIds as number[]).filter(
               (n): n is number => typeof n === 'number' && Number.isFinite(n)
             )
           : [];
@@ -350,11 +343,6 @@ function parseFromStorage(
           : [];
         const eventPlannerLeadIds = Array.isArray(rawFilter.eventPlannerLeadIds)
           ? (rawFilter.eventPlannerLeadIds as number[]).filter(
-              (n): n is number => typeof n === 'number' && Number.isFinite(n)
-            )
-          : [];
-        const leadTeamIds = Array.isArray(rawFilter.leadTeamIds)
-          ? (rawFilter.leadTeamIds as number[]).filter(
               (n): n is number => typeof n === 'number' && Number.isFinite(n)
             )
           : [];
@@ -397,8 +385,6 @@ function parseFromStorage(
           timeConfirmedFilter,
           tagIds,
           leadTeamIds,
-          leadMinistryIds,
-          leadOrgIds,
           commsContactLeadUserIds,
           eventPlannerLeadIds,
           translationRequiredStatusIds,

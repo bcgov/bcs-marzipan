@@ -15,11 +15,9 @@ const emptyCtx: ActivityFilterSummaryContext = {
   statusOptions: [],
   pitchRequiredStatusOptions: [],
   tagOptions: [],
-  ministryOptions: [],
-  organizationOptions: [],
+  leadTeamOptions: [],
   commsContactOptions: [],
   eventPlannerOptions: [],
-  teamOptions: [],
   translationStatusOptions: [],
   translationOptions: [],
 };

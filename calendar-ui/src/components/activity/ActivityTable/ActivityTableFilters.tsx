@@ -39,6 +39,10 @@ import {
   IdSearchableFilterPanel,
   type IdSearchableFilterOption,
 } from './IdSearchableFilterPanel';
+import {
+  LeadTeamFilterPanel,
+  type LeadTeamFilterOption,
+} from './LeadTeamFilterPanel';
 import { LookAheadFilterPanel } from './LookAheadFilter';
 import { PitchFilterPanel } from './PitchFilter';
 import { ScheduledDateFilterPanel } from './ScheduledDateFilter';
@@ -52,12 +56,7 @@ import {
 
 export type LeadFilterOption = IdSearchableFilterOption;
 
-type IdArrayFilterStateKey =
-  | 'leadMinistryIds'
-  | 'leadOrgIds'
-  | 'commsContactLeadUserIds'
-  | 'eventPlannerLeadIds'
-  | 'leadTeamIds';
+type IdArrayFilterStateKey = 'commsContactLeadUserIds' | 'eventPlannerLeadIds';
 
 export function buildIdArrayFilterSlot(
   key: string,
@@ -108,11 +107,9 @@ export interface ActivityTableFiltersProps {
   pitchRequiredStatusOptions: OptionItem[];
   statusOptions: OptionItem[];
   tagOptions: TagFilterOption[];
-  ministryOptions: LeadFilterOption[];
-  organizationOptions: LeadFilterOption[];
+  leadTeamOptions: LeadTeamFilterOption[];
   commsContactOptions: LeadFilterOption[];
   eventPlannerOptions: LeadFilterOption[];
-  teamOptions: LeadFilterOption[];
   translationStatusOptions: TranslationStatusFilterOption[];
   translationOptions: TranslationFilterOption[];
   savedFilters?: UseSavedFiltersReturn;
@@ -163,11 +160,9 @@ export function ActivityTableFilters({
   pitchRequiredStatusOptions,
   statusOptions,
   tagOptions,
-  ministryOptions,
-  organizationOptions,
+  leadTeamOptions,
   commsContactOptions,
   eventPlannerOptions,
-  teamOptions,
   translationStatusOptions,
   translationOptions,
   savedFilters,
@@ -201,11 +196,9 @@ export function ActivityTableFilters({
       categoryOptions,
       pitchRequiredStatusOptions,
       tagOptions,
-      ministryOptions,
-      organizationOptions,
+      leadTeamOptions,
       commsContactOptions,
       eventPlannerOptions,
-      teamOptions,
       translationStatusOptions,
       translationOptions,
       getLookAheadSectionLabel,
@@ -215,11 +208,9 @@ export function ActivityTableFilters({
     categoryOptions,
     pitchRequiredStatusOptions,
     tagOptions,
-    ministryOptions,
-    organizationOptions,
+    leadTeamOptions,
     commsContactOptions,
     eventPlannerOptions,
-    teamOptions,
     translationStatusOptions,
     translationOptions,
     getLookAheadSectionLabel,
@@ -231,25 +222,21 @@ export function ActivityTableFilters({
         statusOptions,
         categoryOptions,
         tagOptions,
-        ministryOptions,
-        organizationOptions,
         commsContactOptions,
         eventPlannerOptions,
+        leadTeamOptions,
         translationStatusOptions,
         translationOptions,
-        teamOptions,
       }),
     [
       statusOptions,
       categoryOptions,
       tagOptions,
-      ministryOptions,
-      organizationOptions,
       commsContactOptions,
       eventPlannerOptions,
+      leadTeamOptions,
       translationStatusOptions,
       translationOptions,
-      teamOptions,
     ]
   );
 
@@ -319,8 +306,6 @@ export function ActivityTableFilters({
       timeConfirmedFilter: 'any',
       tagIds: [],
       leadTeamIds: [],
-      leadMinistryIds: [],
-      leadOrgIds: [],
       commsContactLeadUserIds: [],
       eventPlannerLeadIds: [],
       translationRequiredStatusIds: [],
@@ -419,16 +404,26 @@ export function ActivityTableFilters({
           clearAriaLabel: 'Clear Category filter',
         },
       },
-      buildIdArrayFilterSlot(
-        'ministry',
-        'Ministry',
-        'leadMinistryIds',
-        ministryOptions,
-        filterState,
-        onFilterStateChange,
-        'Search ministries...',
-        'Search ministries'
-      ),
+      {
+        key: 'lead',
+        label: 'Lead',
+        panel: (
+          <LeadTeamFilterPanel
+            teamOptions={leadTeamOptions}
+            selectedTeamIds={filterState.leadTeamIds}
+            onSelectedTeamIdsChange={(leadTeamIds) =>
+              onFilterStateChange({ ...filterState, leadTeamIds })
+            }
+          />
+        ),
+        triggerProps: {
+          active: filterState.leadTeamIds.length > 0,
+          count: filterState.leadTeamIds.length,
+          onClear: () =>
+            onFilterStateChange({ ...filterState, leadTeamIds: [] }),
+          clearAriaLabel: 'Clear Lead filter',
+        },
+      },
       buildIdArrayFilterSlot(
         'commsContact',
         'Comms contact',
@@ -583,26 +578,6 @@ export function ActivityTableFilters({
           ]
         : []),
       buildIdArrayFilterSlot(
-        'team',
-        'Team',
-        'leadTeamIds',
-        teamOptions,
-        filterState,
-        onFilterStateChange,
-        'Search teams...',
-        'Search teams'
-      ),
-      buildIdArrayFilterSlot(
-        'organization',
-        'Organization',
-        'leadOrgIds',
-        organizationOptions,
-        filterState,
-        onFilterStateChange,
-        'Search organizations...',
-        'Search organizations'
-      ),
-      buildIdArrayFilterSlot(
         'eventPlanner',
         'Event planner',
         'eventPlannerLeadIds',
@@ -630,11 +605,9 @@ export function ActivityTableFilters({
       tagOptions,
       translationStatusOptions,
       translationOptions,
-      ministryOptions,
-      organizationOptions,
+      leadTeamOptions,
       commsContactOptions,
       eventPlannerOptions,
-      teamOptions,
       showPitchFilter,
       canViewPitchStatus,
       canViewPitchDate,
@@ -645,7 +618,7 @@ export function ActivityTableFilters({
     <div
       className="mb-4 flex flex-nowrap items-center justify-between gap-8"
       role="search"
-      aria-label="Filter activities by date, category, ministry, comms contact, status, look ahead, tags, translations, pitch, team, organization, event planner, and keyword"
+      aria-label="Filter activities by date, category, lead team, comms contact, status, look ahead, tags, translations, pitch, event planner, and keyword"
     >
       <div className="flex min-w-0 flex-1 items-center">
         <ResponsiveFilterRow

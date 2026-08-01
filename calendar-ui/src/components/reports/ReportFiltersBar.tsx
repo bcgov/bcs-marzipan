@@ -6,6 +6,7 @@ import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import { buildIdArrayFilterSlot } from '@/components/activity/ActivityTable/ActivityTableFilters';
 import { CategoriesFilterPanel } from '@/components/activity/ActivityTable/CategoriesFilter';
+import { LeadTeamFilterPanel } from '@/components/activity/ActivityTable/LeadTeamFilterPanel';
 import { LookAheadFilterPanel } from '@/components/activity/ActivityTable/LookAheadFilter';
 import { PitchFilterPanel } from '@/components/activity/ActivityTable/PitchFilter';
 import { ScheduledDateFilterPanel } from '@/components/activity/ActivityTable/ScheduledDateFilter';
@@ -24,8 +25,6 @@ import {
   useActivityStatuses,
   useCategories,
   useEventPlanners,
-  useMinistries,
-  useOrganizations,
   usePitchRequiredStatuses,
   useTags,
   useTeams,
@@ -37,6 +36,7 @@ import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreference
 import type { UseSavedFiltersReturn } from '@/hooks/useSavedFilters';
 import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
 import analytics from '@/lib/analytics';
+import { formatLeadTeamSelectLabel } from '@/lib/lead-team-display-label';
 import {
   buildReportBaselineDateFilterPatch,
   buildReportClearFilterState,
@@ -125,8 +125,6 @@ export function ReportFiltersBar({
   const { data: pitchRequiredStatusesForFilter = [] } =
     usePitchRequiredStatuses();
   const { data: tagsForFilter = [] } = useTags();
-  const { data: ministriesForFilter = [] } = useMinistries();
-  const { data: organizationsForFilter = [] } = useOrganizations();
   const { data: usersForFilter = [] } = useUsers();
   const { data: eventPlannersForFilter = [] } = useEventPlanners();
   const { data: teamsForFilter = [] } = useTeams();
@@ -175,21 +173,17 @@ export function ReportFiltersBar({
     [tagsForFilter]
   );
 
-  const ministryOptions = useMemo(
+  const leadTeamOptions = useMemo(
     () =>
-      ministriesForFilter.map((m) => ({
-        value: String(m.id),
-        label: m.displayName ?? m.name ?? m.label ?? String(m.id),
+      teamsForFilter.map((t) => ({
+        value: String(t.id),
+        label:
+          t.ministryId != null
+            ? formatLeadTeamSelectLabel(t)
+            : (t.displayName ?? t.name ?? String(t.id)),
+        ministryId: t.ministryId ?? null,
       })),
-    [ministriesForFilter]
-  );
-  const organizationOptions = useMemo(
-    () =>
-      organizationsForFilter.map((o) => ({
-        value: String(o.id),
-        label: o.displayName ?? o.name ?? o.label ?? String(o.id),
-      })),
-    [organizationsForFilter]
+    [teamsForFilter]
   );
   const commsContactOptions = useMemo(
     () =>
@@ -206,14 +200,6 @@ export function ReportFiltersBar({
         label: ep.label ?? String(ep.id),
       })),
     [eventPlannersForFilter]
-  );
-  const teamOptions = useMemo(
-    () =>
-      teamsForFilter.map((t) => ({
-        value: String(t.id),
-        label: t.displayName ?? t.name ?? String(t.id),
-      })),
-    [teamsForFilter]
   );
   const translationOptions = useMemo(
     () =>
@@ -389,16 +375,26 @@ export function ReportFiltersBar({
           clearAriaLabel: 'Clear Category filter',
         },
       },
-      buildIdArrayFilterSlot(
-        'ministry',
-        'Ministry',
-        'leadMinistryIds',
-        ministryOptions,
-        filterState,
-        onFilterStateChange,
-        'Search ministries...',
-        'Search ministries'
-      ),
+      {
+        key: 'lead',
+        label: 'Lead',
+        panel: (
+          <LeadTeamFilterPanel
+            teamOptions={leadTeamOptions}
+            selectedTeamIds={filterState.leadTeamIds}
+            onSelectedTeamIdsChange={(leadTeamIds) =>
+              onFilterStateChange({ ...filterState, leadTeamIds })
+            }
+          />
+        ),
+        triggerProps: {
+          active: filterState.leadTeamIds.length > 0,
+          count: filterState.leadTeamIds.length,
+          onClear: () =>
+            onFilterStateChange({ ...filterState, leadTeamIds: [] }),
+          clearAriaLabel: 'Clear Lead filter',
+        },
+      },
       buildIdArrayFilterSlot(
         'commsContact',
         'Comms contact',
@@ -553,26 +549,6 @@ export function ReportFiltersBar({
           ]
         : []),
       buildIdArrayFilterSlot(
-        'team',
-        'Team',
-        'leadTeamIds',
-        teamOptions,
-        filterState,
-        onFilterStateChange,
-        'Search teams...',
-        'Search teams'
-      ),
-      buildIdArrayFilterSlot(
-        'organization',
-        'Organization',
-        'leadOrgIds',
-        organizationOptions,
-        filterState,
-        onFilterStateChange,
-        'Search organizations...',
-        'Search organizations'
-      ),
-      buildIdArrayFilterSlot(
         'eventPlanner',
         'Event planner',
         'eventPlannerLeadIds',
@@ -599,11 +575,9 @@ export function ReportFiltersBar({
       tagOptions,
       translationOptions,
       translationStatusOptions,
-      ministryOptions,
-      organizationOptions,
+      leadTeamOptions,
       commsContactOptions,
       eventPlannerOptions,
-      teamOptions,
       baselineDatePatch,
       dateConfirmedActive,
       dateRangeActive,

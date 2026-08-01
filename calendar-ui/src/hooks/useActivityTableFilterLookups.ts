@@ -1,13 +1,12 @@
 import { useMemo } from 'react';
 
 import { canViewActivityFieldScope } from '@corpcal/shared/auth';
+import type { LeadTeamFilterOption } from '@/components/activity/ActivityTable/LeadTeamFilterPanel';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useActivityStatuses,
   useCategories,
   useEventPlanners,
-  useMinistries,
-  useOrganizations,
   usePitchRequiredStatuses,
   useTags,
   useTeams,
@@ -16,6 +15,7 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
+import { formatLeadTeamSelectLabel } from '@/lib/lead-team-display-label';
 
 export interface ActivityStatusArchiveIds {
   completedStatusId?: number;
@@ -52,11 +52,9 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
   statusOptions: { value: string; label: string }[];
   pitchRequiredStatusOptions: { value: string; label: string }[];
   tagOptions: { value: string; label: string }[];
-  ministryOptions: { value: string; label: string }[];
-  organizationOptions: { value: string; label: string }[];
+  leadTeamOptions: LeadTeamFilterOption[];
   commsContactOptions: { value: string; label: string }[];
   eventPlannerOptions: { value: string; label: string }[];
-  teamOptions: { value: string; label: string }[];
   translationOptions: { value: string; label: string }[];
   translationStatusOptions: { value: string; label: string }[];
   categoryOptions: { value: string; label: string }[];
@@ -70,8 +68,6 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
   const { data: pitchRequiredStatusesForFilter = [] } =
     usePitchRequiredStatuses();
   const { data: tagsForFilter = [] } = useTags();
-  const { data: ministriesForFilter = [] } = useMinistries();
-  const { data: organizationsForFilter = [] } = useOrganizations();
   const { data: usersForFilter = [] } = useUsers();
   const { data: eventPlannersForFilter = [] } = useEventPlanners();
   const { data: teamsForFilter = [] } = useTeams();
@@ -131,23 +127,16 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
     [categoriesForFilter]
   );
 
-  const ministryOptions = useMemo(
-    () =>
-      ministriesForFilter.map((m) => ({
-        value: String(m.id),
-        label: m.displayName ?? m.name ?? m.label ?? String(m.id),
-      })),
-    [ministriesForFilter]
-  );
-
-  const organizationOptions = useMemo(
-    () =>
-      organizationsForFilter.map((o) => ({
-        value: String(o.id),
-        label: o.displayName ?? o.name ?? o.label ?? String(o.id),
-      })),
-    [organizationsForFilter]
-  );
+  const leadTeamOptions = useMemo((): LeadTeamFilterOption[] => {
+    return teamsForFilter.map((t) => ({
+      value: String(t.id),
+      label:
+        t.ministryId != null
+          ? formatLeadTeamSelectLabel(t)
+          : (t.displayName ?? t.name ?? String(t.id)),
+      ministryId: t.ministryId ?? null,
+    }));
+  }, [teamsForFilter]);
 
   const commsContactOptions = useMemo(
     () =>
@@ -165,15 +154,6 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
         label: ep.label ?? String(ep.id),
       })),
     [eventPlannersForFilter]
-  );
-
-  const teamOptions = useMemo(
-    () =>
-      teamsForFilter.map((t) => ({
-        value: String(t.id),
-        label: t.displayName ?? t.name ?? String(t.id),
-      })),
-    [teamsForFilter]
   );
 
   const translationOptions = useMemo(
@@ -202,11 +182,9 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
       categoryOptions,
       pitchRequiredStatusOptions,
       tagOptions,
-      ministryOptions,
-      organizationOptions,
+      leadTeamOptions,
       commsContactOptions,
       eventPlannerOptions,
-      teamOptions,
       translationStatusOptions,
       translationOptions,
     }),
@@ -215,11 +193,9 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
       categoryOptions,
       pitchRequiredStatusOptions,
       tagOptions,
-      ministryOptions,
-      organizationOptions,
+      leadTeamOptions,
       commsContactOptions,
       eventPlannerOptions,
-      teamOptions,
       translationStatusOptions,
       translationOptions,
     ]
@@ -232,11 +208,9 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
     pitchRequiredStatusOptions,
     tagOptions,
     categoryOptions,
-    ministryOptions,
-    organizationOptions,
+    leadTeamOptions,
     commsContactOptions,
     eventPlannerOptions,
-    teamOptions,
     translationOptions,
     translationStatusOptions,
     filterSummaryContext,
