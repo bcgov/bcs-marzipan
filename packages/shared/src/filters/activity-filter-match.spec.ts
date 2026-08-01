@@ -284,18 +284,14 @@ describe('activityMatchesFilterState', () => {
       expect(matchIds(state({ tagIds: [20, 40] }))).toEqual([1, 2]);
     });
 
-    it('filters by lead ministry', () => {
-      expect(matchIds(state({ leadMinistryIds: [100] }))).toEqual([1, 4]);
-    });
-
     it('filters by lead team', () => {
       expect(matchIds(state({ leadTeamIds: [9] }))).toEqual([1]);
     });
 
     it('ANDs across lead types', () => {
       expect(
-        matchIds(state({ leadMinistryIds: [100], eventPlannerLeadIds: [52] }))
-      ).toEqual([4]);
+        matchIds(state({ leadTeamIds: [9], eventPlannerLeadIds: [52] }))
+      ).toEqual([]);
     });
   });
 

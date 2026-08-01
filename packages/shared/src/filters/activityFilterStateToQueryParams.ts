@@ -74,12 +74,6 @@ export function activityFilterStateToQueryParams(
   const leadTeamIds = nonEmptyArray(fs.leadTeamIds);
   if (leadTeamIds) params.leadTeamIds = leadTeamIds;
 
-  const ministryIds = nonEmptyArray(fs.leadMinistryIds);
-  if (ministryIds) params.leadMinistryIds = ministryIds;
-
-  const orgIds = nonEmptyArray(fs.leadOrgIds);
-  if (orgIds) params.leadOrgIds = orgIds;
-
   const commsIds = nonEmptyArray(fs.commsContactLeadUserIds);
   if (commsIds) params.commsContactLeadUserIds = commsIds;
 

@@ -63,10 +63,10 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
     expect(params.includeDeleted).toBe(false);
   });
 
-  it('maps comms and ministry multi-selects', () => {
+  it('maps comms and lead team multi-selects', () => {
     const filterState: ActivityFilterState = {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
-      leadMinistryIds: [10, 20],
+      leadTeamIds: [10, 20],
       commsContactLeadUserIds: [100],
       eventPlannerLeadIds: [5, 6],
     };
@@ -79,7 +79,7 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
       {},
       true
     );
-    expect(params.leadMinistryIds).toEqual([10, 20]);
+    expect(params.leadTeamIds).toEqual([10, 20]);
     expect(params.commsContactLeadUserIds).toEqual([100]);
     expect(params.eventPlannerLeadIds).toEqual([5, 6]);
     expect(params.search).toBeUndefined();
