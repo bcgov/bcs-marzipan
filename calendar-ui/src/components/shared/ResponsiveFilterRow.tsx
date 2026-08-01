@@ -1060,7 +1060,7 @@ export function ResponsiveFilterRow({
                           onPointerDown={handleClearAllPointerDown}
                           onClick={handleClearAllClick}
                           className={filterTriggerStyles.clearIcon}
-                          aria-label="Clear all filters"
+                          aria-label="Reset all filters"
                         >
                           <X className="h-3.5 w-3.5" />
                         </span>
