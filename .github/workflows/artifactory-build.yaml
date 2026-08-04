@@ -25,6 +25,15 @@ on:
         description: "Target environment (dev, test, prod). When 'prod', retagging existing test images instead of rebuilding."
         required: false
         type: string
+      ref:
+        description: >
+          Git ref (branch, tag, or SHA) to check out before building.
+          When blank, defaults to the ref that triggered the calling workflow.
+          Used by deploy-emerald.yaml to check out the correct source branch
+          when triggered by workflow_dispatch with a branch input.
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -42,6 +51,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          # When the ref input is blank (e.g. direct workflow_dispatch run),
+          # actions/checkout defaults to github.sha — identical to before.
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Validate Artifactory configuration
         run: |

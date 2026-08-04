@@ -105,15 +105,6 @@ jobs:
           ref: ${{ steps.resolve_promotion_inputs.outputs.base_branch }}
           path: gitops
 
-      - name: Debug GitOps checkout
-        run: |
-          pwd
-          ls -la
-          echo "==== gitops directory ===="
-          ls -la gitops || true
-          echo "==== find kustomization files ===="
-          find gitops -name "kustomization.yaml" -o -name "kustomization.yml"
-
       - name: Install yq
         shell: bash
         run: |

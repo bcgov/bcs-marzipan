@@ -1,78 +1,228 @@
 name: Deploy to Emerald
 
-# Triggered automatically when there is a push into develop, test, or prod.
+# ─────────────────────────────────────────────────────────────────────────────
+# USER-FACING ENTRY POINT — the only workflow operators interact with for all
+# Emerald deployments: dev, test, and prod.
 #
-# Flow:
-#   develop → build images → push to Artifactory dev repo → update dev GitOps overlay
-#   test    → build images → push to Artifactory test repo → update test GitOps overlay
-#   prod    → retag test images to prod (no rebuild) → update prod GitOps overlay
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │  HOW IT WORKS                                                           │
+# │                                                                         │
+# │  push to develop  →  build images → Artifactory dev  → GitOps dev      │
+# │  push to test     →  build images → Artifactory test → GitOps test      │
+# │  push to prod     →  retag test   → Artifactory prod → GitOps prod      │
+# │  workflow_dispatch →  choose environment + branch manually               │
+# │  workflow_call     →  programmatic use (e.g. release gates)              │
+# │                                                                         │
+# │  After the GitOps push, ArgoCD picks up the change and synchronises     │
+# │  the target Emerald namespace. The argocd-sync job waits for that sync  │
+# │  to complete and verifies the application is Healthy before succeeding. │
+# └─────────────────────────────────────────────────────────────────────────┘
 #
-# ArgoCD picks up the GitOps overlay change and deploys to the target Emerald environment.
+# Internal call chain:
+#   resolve-env → build-and-push → update-gitops → argocd-sync
+#
+# Prod promotion (no rebuild):
+#   The prod environment never rebuilds from source. Instead, the image that
+#   was already pushed to the Artifactory test repo is re-tagged to the prod
+#   repo. This ensures prod always runs an image that was tested first.
+# ─────────────────────────────────────────────────────────────────────────────
 
 on:
+  # ── Automatic: branch push triggers the matching environment ──────────────
   push:
     branches:
       - develop
       - test
       - prod
 
+  # ── Manual: choose target environment and branch ───────────────────────────
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target Emerald environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+      branch:
+        description: >
+          Branch to check out and build.
+          Leave blank to use the environment's default branch
+          (dev → develop, test → test, prod → prod).
+        required: false
+        type: string
+      image_tag:
+        description: >
+          Image tag to deploy. Defaults to the APP_VERSION repository variable.
+          Use this to roll back to a previously-built tag.
+        required: false
+        type: string
+
+  # ── Programmatic: called by other workflows ────────────────────────────────
+  workflow_call:
+    inputs:
+      environment:
+        description: Target Emerald environment (dev | test | prod).
+        required: false
+        type: string
+      branch:
+        description: Branch to check out and build.
+        required: false
+        type: string
+      image_tag:
+        description: Image tag to deploy (defaults to APP_VERSION).
+        required: false
+        type: string
+
 permissions:
   contents: read
 
 jobs:
-  # Resolve the branch name to an environment name and the matching Artifactory repo path.
+  # ── 1. Map every trigger type into concrete deployment parameters ───────────
   resolve-env:
     name: Resolve Environment
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.map.outputs.environment }}
       artifactory_repo: ${{ steps.map.outputs.artifactory_repo }}
+      branch: ${{ steps.map.outputs.branch }}
+      image_tag: ${{ steps.map.outputs.image_tag }}
+      argocd_app_name: ${{ steps.map.outputs.argocd_app_name }}
     steps:
-      - name: Map branch to environment and Artifactory repo
+      - name: Map trigger to deployment parameters
         id: map
         env:
           ARTIFACTORY_DEV_IMAGE_REPO: ${{ vars.ARTIFACTORY_DEV_IMAGE_REPO }}
           ARTIFACTORY_TEST_IMAGE_REPO: ${{ vars.ARTIFACTORY_TEST_IMAGE_REPO }}
           ARTIFACTORY_PROD_IMAGE_REPO: ${{ vars.ARTIFACTORY_PROD_IMAGE_REPO }}
+          ARGOCD_APP_DEV: ${{ vars.ARGOCD_APP_DEV }}
+          ARGOCD_APP_TEST: ${{ vars.ARGOCD_APP_TEST }}
+          ARGOCD_APP_PROD: ${{ vars.ARGOCD_APP_PROD }}
         run: |
           set -euo pipefail
-          case "${{ github.ref_name }}" in
-            develop)
+
+          # ── Resolve target environment ─────────────────────────────────────
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            case "${{ github.ref_name }}" in
+              develop) ENV="dev"  ;;
+              test)    ENV="test" ;;
+              prod)    ENV="prod" ;;
+              *)
+                echo "::error::Auto-deploy is not configured for branch '${{ github.ref_name }}'"
+                exit 1
+                ;;
+            esac
+          else
+            ENV="${{ inputs.environment }}"
+            : "${ENV:?The 'environment' input is required for workflow_dispatch / workflow_call triggers}"
+          fi
+
+          # ── Map to Artifactory repo + default branch ───────────────────────
+          case "$ENV" in
+            dev)
               : "${ARTIFACTORY_DEV_IMAGE_REPO:?Set repo variable ARTIFACTORY_DEV_IMAGE_REPO}"
-              echo "environment=dev"                             >> "$GITHUB_OUTPUT"
-              echo "artifactory_repo=${ARTIFACTORY_DEV_IMAGE_REPO}" >> "$GITHUB_OUTPUT"
+              ARTIFACTORY_REPO="$ARTIFACTORY_DEV_IMAGE_REPO"
+              DEFAULT_BRANCH="develop"
               ;;
             test)
               : "${ARTIFACTORY_TEST_IMAGE_REPO:?Set repo variable ARTIFACTORY_TEST_IMAGE_REPO}"
-              echo "environment=test"                              >> "$GITHUB_OUTPUT"
-              echo "artifactory_repo=${ARTIFACTORY_TEST_IMAGE_REPO}" >> "$GITHUB_OUTPUT"
+              ARTIFACTORY_REPO="$ARTIFACTORY_TEST_IMAGE_REPO"
+              DEFAULT_BRANCH="test"
               ;;
             prod)
               : "${ARTIFACTORY_PROD_IMAGE_REPO:?Set repo variable ARTIFACTORY_PROD_IMAGE_REPO}"
-              echo "environment=prod"                              >> "$GITHUB_OUTPUT"
-              echo "artifactory_repo=${ARTIFACTORY_PROD_IMAGE_REPO}" >> "$GITHUB_OUTPUT"
+              ARTIFACTORY_REPO="$ARTIFACTORY_PROD_IMAGE_REPO"
+              # prod never rebuilds; the branch is used only for the checkout
+              # in artifactory-build.yaml — it is largely irrelevant for retag.
+              DEFAULT_BRANCH="prod"
               ;;
             *)
-              echo "Unrecognised branch: ${{ github.ref_name }}" >&2
+              echo "::error::Unknown environment: '${ENV}'. Must be dev, test, or prod."
               exit 1
               ;;
           esac
 
-  # Build (dev/test) or promote via retag (prod), then push to Artifactory.
+          # ── Resolve branch ─────────────────────────────────────────────────
+          INPUT_BRANCH="${{ inputs.branch }}"
+          if [[ -n "$INPUT_BRANCH" ]]; then
+            BRANCH="$INPUT_BRANCH"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            BRANCH="${{ github.ref_name }}"
+          else
+            BRANCH="$DEFAULT_BRANCH"
+          fi
+
+          # ── Resolve image tag ──────────────────────────────────────────────
+          # Priority: explicit input → APP_VERSION variable → short commit SHA.
+          INPUT_TAG="${{ inputs.image_tag }}"
+          APP_VER="${{ vars.APP_VERSION }}"
+          if [[ -n "$INPUT_TAG" ]]; then
+            IMAGE_TAG="$INPUT_TAG"
+          elif [[ -n "$APP_VER" ]]; then
+            IMAGE_TAG="$APP_VER"
+          else
+            IMAGE_TAG="${GITHUB_SHA::7}"
+          fi
+
+          # ── Resolve ArgoCD application name ───────────────────────────────
+          # Falls back to a predictable default naming convention if the
+          # per-environment variable is not set.
+          case "$ENV" in
+            dev)  ARGOCD_APP="${ARGOCD_APP_DEV:-corpcal-emerald-dev}"   ;;
+            test) ARGOCD_APP="${ARGOCD_APP_TEST:-corpcal-emerald-test}"  ;;
+            prod) ARGOCD_APP="${ARGOCD_APP_PROD:-corpcal-emerald-prod}"  ;;
+          esac
+
+          {
+            echo "environment=${ENV}"
+            echo "artifactory_repo=${ARTIFACTORY_REPO}"
+            echo "branch=${BRANCH}"
+            echo "image_tag=${IMAGE_TAG}"
+            echo "argocd_app_name=${ARGOCD_APP}"
+          } >> "$GITHUB_OUTPUT"
+
+  # ── 2. Build application images + push to Artifactory ──────────────────────
+  # For dev/test: docker build from source, tag, push.
+  # For prod:     docker pull from test repo, retag, push — no rebuild.
+  # Application compilation (npm build etc.) happens inside the Dockerfile.
   build-and-push:
-    name: Build / Promote Images
+    name: Build / Promote Images — ${{ needs.resolve-env.outputs.environment }}
     needs: resolve-env
     uses: ./.github/workflows/artifactory-build.yaml
     with:
+      ref: ${{ needs.resolve-env.outputs.branch }}
       artifactory_image_repo: ${{ needs.resolve-env.outputs.artifactory_repo }}
       target_environment: ${{ needs.resolve-env.outputs.environment }}
     secrets: inherit
 
-  # Update the kustomize image tag in the GitOps repo so ArgoCD syncs the new image.
+  # ── 3. Update kustomization.yaml in the GitOps repo ────────────────────────
+  # Patches the image newTag for calendar-service, calendar-ui and
+  # calendar-db-migrate, commits with a standard message, and force-pushes
+  # to the GitOps base branch. ArgoCD detects the change and begins syncing.
   update-gitops:
-    name: Update GitOps Overlay
+    name: Update GitOps Overlay — ${{ needs.resolve-env.outputs.environment }}
     needs: [resolve-env, build-and-push]
     uses: ./.github/workflows/promote-emerald-gitops.yaml
     with:
       target_environment: ${{ needs.resolve-env.outputs.environment }}
+      image_tag: ${{ needs.resolve-env.outputs.image_tag }}
+    secrets: inherit
+
+  # ── 4. Wait for ArgoCD sync, verify health, produce summary ────────────────
+  # Triggers an immediate ArgoCD refresh so the GitOps change is picked up
+  # without waiting for the polling interval. Then blocks until the application
+  # reports Synced + Healthy (or times out). Writes a Markdown step summary.
+  #
+  # This step is skipped gracefully if vars.ARGOCD_SERVER or
+  # secrets.ARGOCD_AUTH_TOKEN are not configured.
+  argocd-sync:
+    name: ArgoCD Sync & Verify — ${{ needs.resolve-env.outputs.environment }}
+    needs: [resolve-env, update-gitops]
+    uses: ./.github/workflows/_emerald-argocd-sync.yaml
+    with:
+      target_environment: ${{ needs.resolve-env.outputs.environment }}
+      app_name: ${{ needs.resolve-env.outputs.argocd_app_name }}
+      image_tag: ${{ needs.resolve-env.outputs.image_tag }}
     secrets: inherit
