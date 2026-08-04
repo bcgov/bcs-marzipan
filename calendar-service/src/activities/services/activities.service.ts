@@ -226,11 +226,6 @@ export class ActivitiesService {
           .filter((value) => Number.isInteger(value) && value > 0)
       : [...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS];
 
-    const effectiveExemptRoleIds =
-      exemptRoleIds.length > 0
-        ? exemptRoleIds
-        : [...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS];
-
     const [user] = await this.databaseService.db
       .select({ roleId: users.roleId })
       .from(users)
@@ -241,7 +236,7 @@ export class ActivitiesService {
       throw new ForbiddenException('User not found for edit lockout check.');
     }
 
-    if (effectiveExemptRoleIds.includes(user.roleId)) {
+    if (exemptRoleIds.includes(user.roleId)) {
       return;
     }
 

@@ -199,6 +199,7 @@ export function ActivityPage({
     lock,
     lockState,
     lockedByUsername,
+    acquireFailureReason,
     acquire,
     release,
     refreshLockFromServer,
@@ -456,9 +457,16 @@ export function ActivityPage({
     [activity.endDate, activity.endTime, activity.isAllDay]
   );
 
+  const getEditLockAcquireToastMessage = useCallback((): string => {
+    if (acquireFailureReason === 'time-lockout') {
+      return 'Cannot edit right now. Editing is locked during the scheduled lockout window.';
+    }
+    return EDIT_LOCK_CONFLICT_TOAST;
+  }, [acquireFailureReason]);
+
   const onEditLockAcquireConflict = useCallback(() => {
-    toast.error(EDIT_LOCK_CONFLICT_TOAST);
-  }, []);
+    toast.error(getEditLockAcquireToastMessage());
+  }, [getEditLockAcquireToastMessage]);
 
   useEditLockIntent({
     formHydrated: isFormHydrated,
@@ -508,11 +516,11 @@ export function ActivityPage({
           action();
         } else {
           setIsEditing(false);
-          toast.error(EDIT_LOCK_CONFLICT_TOAST);
+          toast.error(getEditLockAcquireToastMessage());
         }
       });
     },
-    [isEditing, acquire]
+    [isEditing, acquire, getEditLockAcquireToastMessage]
   );
 
   const handleConfirmLeave = async () => {
