@@ -1,4 +1,10 @@
-import { AlertTriangle, CheckCircle, Info, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle,
+  Info,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 
 import type { BannerSettings } from '@corpcal/shared/api/types';
 import { sanitizeBannerHtml } from '@/lib/banner-html';
@@ -8,20 +14,23 @@ interface SystemBannerProps {
   banner: BannerSettings;
   onDismiss?: () => void;
   className?: string;
+  icon?: LucideIcon;
 }
 
 export function SystemBanner({
   banner,
   onDismiss,
   className,
+  icon: IconOverride,
 }: SystemBannerProps) {
   const showDismiss = banner.isDismissible && typeof onDismiss === 'function';
   const Icon =
-    banner.variant === 'warning'
+    IconOverride ??
+    (banner.variant === 'warning'
       ? AlertTriangle
       : banner.variant === 'success'
         ? CheckCircle
-        : Info;
+        : Info);
   const sanitizedContent = sanitizeBannerHtml(banner.content);
 
   return (

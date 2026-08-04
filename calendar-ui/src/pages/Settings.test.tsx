@@ -8,6 +8,9 @@ vi.mock('@/components/admin', () => ({
     <div data-testid="activity-info-icons-section">ActivityInfoIcons</div>
   ),
   BannerSettingsAdmin: () => <div data-testid="banner-section">Banner</div>,
+  RecurringLockoutBannerSettingsAdmin: () => (
+    <div data-testid="recurring-lockout-banner-section">RecurringLockout</div>
+  ),
 }));
 vi.mock('@/components/admin/ActivityCompletionSettingsAdmin', () => ({
   ActivityCompletionSettingsAdmin: () => (
@@ -63,6 +66,7 @@ const ADMIN_ROLE_ID = 5;
 
 const SYSTEM_ADMIN_ONLY_LINKS = [
   'System banner',
+  'Recurring edit lockout',
   'Login modal',
   'Edit lock idle',
   'Activity completion',

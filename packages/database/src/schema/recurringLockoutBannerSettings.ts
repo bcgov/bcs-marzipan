@@ -1,6 +1,7 @@
 import {
   boolean,
   integer,
+  jsonb,
   pgTable,
   serial,
   text,
@@ -15,6 +16,10 @@ export const recurringLockoutBannerSettings = pgTable(
   {
     id: serial('id').primaryKey(),
     isActive: boolean('is_active').notNull().default(false),
+    exemptRoleIds: jsonb('exempt_role_ids')
+      .$type<number[]>()
+      .notNull()
+      .default([5, 6]),
     content: text('content').notNull(),
     backgroundColor: varchar('background_color', { length: 20 })
       .notNull()
@@ -29,6 +34,7 @@ export const recurringLockoutBannerSettings = pgTable(
     endTimeOfDay: varchar('end_time_of_day', { length: 5 })
       .notNull()
       .default('23:59'),
+    bannerLeadMinutes: integer('banner_lead_minutes').notNull().default(30),
     createdDateTime: timestamp('created_date_time', { withTimezone: true })
       .notNull()
       .defaultNow(),

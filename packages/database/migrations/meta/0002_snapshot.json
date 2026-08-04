@@ -1,5 +1,5 @@
 {
-  "id": "efac4429-c4b3-4bb6-969a-8db21d70136d",
+  "id": "3ca2a1a8-e38f-42b5-9543-3b6e5ffc70e5",
   "prevId": "371fad95-60ca-45bd-84cf-57fbc7e7cbff",
   "version": "7",
   "dialect": "postgresql",
@@ -6507,6 +6507,13 @@
           "notNull": true,
           "default": false
         },
+        "exempt_role_ids": {
+          "name": "exempt_role_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[5,6]'::jsonb"
+        },
         "content": {
           "name": "content",
           "type": "text",
@@ -6547,6 +6554,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'23:59'"
+        },
+        "banner_lead_minutes": {
+          "name": "banner_lead_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 30
         },
         "created_date_time": {
           "name": "created_date_time",
