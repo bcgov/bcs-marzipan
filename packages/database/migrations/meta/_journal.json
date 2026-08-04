@@ -15,6 +15,13 @@
       "when": 1785254375134,
       "tag": "0001_20260728_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785875205451,
+      "tag": "0002_YYYYMMDD_add_recurring_lockout_banner_settings",
+      "breakpoints": true
     }
   ]
 }
