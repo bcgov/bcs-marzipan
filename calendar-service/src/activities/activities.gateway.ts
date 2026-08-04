@@ -40,9 +40,7 @@ export type LockHandoffPendingPayload = {
 
 /** Terminal force-handoff outcome (includes explicit cancel and server-aborted cases). */
 export type LockHandoffResolvedOutcome =
-  | 'completed'
-  | 'cancelled'
-  | 'aborted_no_holder_lock';
+  'completed' | 'cancelled' | 'aborted_no_holder_lock';
 
 export type LockHandoffResolvedPayload = {
   activityId: number;
@@ -325,5 +323,15 @@ export class ActivitiesGateway
   broadcastLoginModalSettingsUpdated(): void {
     this.logger.log('Broadcasting login modal settings updated');
     this.server.emit('loginModalSettingsUpdated');
+  }
+
+  broadcastSystemBannerSettingsUpdated(): void {
+    this.logger.log('Broadcasting system banner settings updated');
+    this.server.emit('systemBannerSettingsUpdated');
+  }
+
+  broadcastRecurringLockoutBannerSettingsUpdated(): void {
+    this.logger.log('Broadcasting recurring lockout banner settings updated');
+    this.server.emit('recurringLockoutBannerSettingsUpdated');
   }
 }
