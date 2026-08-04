@@ -13,11 +13,10 @@ import {
 } from '../api/locksApi';
 
 export type LockState =
-  | 'idle'
-  | 'checking'
-  | 'acquiring'
-  | 'owned'
-  | 'locked-by-other';
+  'idle' | 'checking' | 'acquiring' | 'owned' | 'locked-by-other';
+
+export type LockAcquireFailureReason =
+  'locked-by-other' | 'time-lockout' | 'other' | null;
 
 type UseActivityLockResult = {
   lock: LockInfo | null;
@@ -36,6 +35,7 @@ type UseActivityLockResult = {
   /** Update lock state from an external source (e.g. WebSocket). */
   setLockedByOther: (username: string | null) => void;
   clearLockedByOther: () => void;
+  acquireFailureReason: LockAcquireFailureReason;
 };
 
 function buildLockInfoFromStatus(
@@ -76,6 +76,8 @@ export function useActivityLock(
   const [lock, setLock] = useState<LockInfo | null>(null);
   const [lockState, setLockState] = useState<LockState>('checking');
   const [lockedByUsername, setLockedByUsername] = useState<string | null>(null);
+  const [acquireFailureReason, setAcquireFailureReason] =
+    useState<LockAcquireFailureReason>(null);
   const lockRef = useRef<LockInfo | null>(null);
   const acquireInFlightRef = useRef<Promise<boolean> | null>(null);
 
@@ -84,6 +86,7 @@ export function useActivityLock(
     setLockState('checking');
     setLock(null);
     setLockedByUsername(null);
+    setAcquireFailureReason(null);
     lockRef.current = null;
 
     getLockStatus(activityId)
@@ -175,26 +178,49 @@ export function useActivityLock(
 
     const promise = (async (): Promise<boolean> => {
       setLockState('acquiring');
+      setAcquireFailureReason(null);
       try {
         const acquired = await acquireLock(activityId);
         lockRef.current = acquired;
         setLock(acquired);
         setLockState('owned');
         setLockedByUsername(null);
+        setAcquireFailureReason(null);
         return true;
       } catch (err) {
+        const apiError = err instanceof ApiError ? err : null;
         const axiosError = err as AxiosError<{
           lockedBy?: { username: string };
+          message?: string;
         }>;
-        if (axiosError.response?.status === LOCKED_STATUS) {
-          const data = axiosError.response?.data as
-            | { lockedBy?: { userId?: number; username: string } }
-            | undefined;
+        const status = apiError?.status ?? axiosError.response?.status;
+        const detail =
+          apiError?.detail ??
+          (typeof axiosError.response?.data?.message === 'string'
+            ? axiosError.response.data.message
+            : undefined);
+
+        if (status === LOCKED_STATUS) {
+          const data = axiosError.response?.data;
           setLockedByUsername(data?.lockedBy?.username ?? null);
           setLockState('locked-by-other');
+          setAcquireFailureReason('locked-by-other');
           return false;
         }
+
+        if (
+          status === 403 &&
+          typeof detail === 'string' &&
+          detail.toLowerCase().includes('lockout window')
+        ) {
+          setLockedByUsername(null);
+          setLockState('idle');
+          setAcquireFailureReason('time-lockout');
+          return false;
+        }
+
         setLockState('idle');
+        setAcquireFailureReason('other');
         return false;
       } finally {
         acquireInFlightRef.current = null;
@@ -267,5 +293,6 @@ export function useActivityLock(
     applyExternalLockReleased,
     setLockedByOther,
     clearLockedByOther,
+    acquireFailureReason,
   };
 }
