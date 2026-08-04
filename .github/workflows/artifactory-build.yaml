@@ -15,6 +15,14 @@ on:
           - dev
           - test
           - prod
+      image_tag:
+        description: >
+          Docker image tag to build or promote.
+          Defaults to the APP_VERSION repository variable when blank.
+          Provide an explicit value to roll back to a previously-built tag
+          or to build with a tag that differs from APP_VERSION.
+        required: false
+        type: string
   workflow_call:
     inputs:
       artifactory_image_repo:
@@ -34,6 +42,15 @@ on:
         required: false
         type: string
         default: ''
+      image_tag:
+        description: >
+          Docker image tag to build or promote.
+          Defaults to the APP_VERSION repository variable when blank.
+          Must match the image_tag resolved by deploy-emerald.yaml so that
+          the built image and the GitOps kustomization update are consistent.
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -42,7 +59,10 @@ env:
   REGISTRY: ${{ vars.ARTIFACTORY_REGISTRY }}
   ARTIFACTORY_IMAGE_REPO: ${{ inputs.artifactory_image_repo || vars.ARTIFACTORY_DEV_IMAGE_REPO }}
   ARTIFACTORY_TEST_IMAGE_REPO: ${{ vars.ARTIFACTORY_TEST_IMAGE_REPO }}
-  APP_VERSION: ${{ vars.APP_VERSION }}
+  # image_tag input takes precedence over the APP_VERSION repo variable.
+  # This ensures the built/promoted image and the GitOps kustomization update
+  # always reference the same tag — critical for rollback correctness.
+  APP_VERSION: ${{ inputs.image_tag || vars.APP_VERSION }}
 
 jobs:
   artifactory-build:
@@ -79,7 +99,7 @@ jobs:
           fi
 
           if [[ -z "$APP_VERSION" ]]; then
-            echo "::error::Set repo variable APP_VERSION"
+            echo "::error::Provide input image_tag or set repo variable APP_VERSION"
             exit 1
           fi
 

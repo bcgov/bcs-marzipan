@@ -4,15 +4,15 @@ resources:
   - ../../base
 
 # Namespace is injected at deploy time by GitHub Actions.
-namespace: ${STAGING_NAMESPACE}
+namespace: ${TEST_NAMESPACE}
 
 # Replace images built into the OpenShift internal registry.
 images:
   - name: image-registry.openshift-image-registry.svc:5000/${TOOLS_NAMESPACE}/calendar-service
-    newName: image-registry.openshift-image-registry.svc:5000/${STAGING_NAMESPACE}/calendar-service
+    newName: image-registry.openshift-image-registry.svc:5000/${TEST_NAMESPACE}/calendar-service
     newTag: ${APP_VERSION}
   - name: image-registry.openshift-image-registry.svc:5000/${TOOLS_NAMESPACE}/calendar-ui
-    newName: image-registry.openshift-image-registry.svc:5000/${STAGING_NAMESPACE}/calendar-ui
+    newName: image-registry.openshift-image-registry.svc:5000/${TEST_NAMESPACE}/calendar-ui
     newTag: ${APP_VERSION}
 
 patches:

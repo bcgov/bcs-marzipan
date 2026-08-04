@@ -111,8 +111,6 @@ jobs:
             --insecure-skip-tls-verify=true
 
       # ── 5. Resolve kustomize overlay path ───────────────────────────────────
-      # Silver overlays use directory names that do not match the environment
-      # key one-to-one (test → staging).
       - name: Resolve overlay path
         id: overlay
         run: |

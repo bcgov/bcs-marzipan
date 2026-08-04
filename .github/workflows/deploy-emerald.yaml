@@ -195,6 +195,11 @@ jobs:
       ref: ${{ needs.resolve-env.outputs.branch }}
       artifactory_image_repo: ${{ needs.resolve-env.outputs.artifactory_repo }}
       target_environment: ${{ needs.resolve-env.outputs.environment }}
+      # Pass the resolved image_tag so that the tag built/promoted in Artifactory
+      # is always identical to the tag written into the GitOps kustomization.
+      # Without this, a custom image_tag (e.g. rollback) would diverge: Artifactory
+      # would receive APP_VERSION while GitOps would receive image_tag.
+      image_tag: ${{ needs.resolve-env.outputs.image_tag }}
     secrets: inherit
 
   # ── 3. Update kustomization.yaml in the GitOps repo ────────────────────────
