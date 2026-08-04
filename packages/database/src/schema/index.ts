@@ -20,6 +20,7 @@ export * from './applicationSettings';
 export * from './sessions';
 export * from './passwordResetTokens';
 export * from './bannerSettings';
+export * from './recurringLockoutBannerSettings';
 export * from './loginModalSettings';
 export * from './activitySavedFilters';
 export * from './userActivitySavedFilterDefaults';
