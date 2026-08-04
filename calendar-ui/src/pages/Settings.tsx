@@ -12,6 +12,7 @@ import {
   MapPin,
   Megaphone,
   Palette,
+  PencilOff,
   Share2,
   Tag,
   Timer,
@@ -22,6 +23,7 @@ import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import {
   ActivityInfoIconSettingsAdmin,
   BannerSettingsAdmin,
+  RecurringLockoutBannerSettingsAdmin,
 } from '@/components/admin';
 import { ActivityCompletionSettingsAdmin } from '@/components/admin/ActivityCompletionSettingsAdmin';
 import { EditLockIdleSettingsAdmin } from '@/components/admin/EditLockIdleSettingsAdmin';
@@ -47,6 +49,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 type Section =
   | 'banner'
+  | 'recurring-lockout-banner'
   | 'login-modal'
   | 'edit-lock-idle'
   | 'activity-completion'
@@ -80,6 +83,12 @@ export function Settings() {
       id: 'banner' as Section,
       label: 'System banner',
       icon: Megaphone,
+      show: isSystemAdmin,
+    },
+    {
+      id: 'recurring-lockout-banner' as Section,
+      label: 'Recurring edit lockout',
+      icon: PencilOff,
       show: isSystemAdmin,
     },
     {
@@ -209,6 +218,10 @@ export function Settings() {
         <div className="space-y-8">
           <div id="section-banner">
             <BannerSettingsAdmin />
+          </div>
+
+          <div id="section-recurring-lockout-banner">
+            <RecurringLockoutBannerSettingsAdmin />
           </div>
 
           <div id="section-login-modal">

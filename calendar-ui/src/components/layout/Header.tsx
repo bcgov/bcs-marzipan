@@ -1,10 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
-import { Bell, ChevronDown, LogOut, User } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Bell, ChevronDown, LogOut, PencilOff, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { BannerSettings } from '@corpcal/shared/api/types';
-import { fetchActiveBanner } from '@/api/bannerApi';
+import {
+  fetchActiveBanner,
+  fetchActiveRecurringLockoutBanner,
+} from '@/api/bannerApi';
 import logo from '@/assets/Logo.svg';
 import { MOCK_USERS } from '@/components/shared/UserSwitcher';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -22,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
+import { useBannerSettingsWebSocket } from '@/hooks/useBannerSettingsWebSocket';
 
 import { SystemBanner } from './SystemBanner';
 
@@ -43,6 +47,7 @@ function getBannerDismissKey(banner: BannerSettings): string {
 
 const Header = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, logout, login, isAuthenticated } = useAuth();
   const [isDismissed, setIsDismissed] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -50,6 +55,13 @@ const Header = () => {
   const { data: banner } = useQuery({
     queryKey: ['banner', 'active'],
     queryFn: fetchActiveBanner,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  const { data: recurringLockoutBanner } = useQuery({
+    queryKey: ['banner', 'recurring-lockout', 'active'],
+    queryFn: fetchActiveRecurringLockoutBanner,
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -65,6 +77,38 @@ const Header = () => {
 
     return banner;
   }, [banner, isDismissed]);
+
+  const visibleRecurringLockoutBanner = useMemo(() => {
+    if (!recurringLockoutBanner) {
+      return null;
+    }
+
+    return {
+      id: recurringLockoutBanner.id,
+      isActive: recurringLockoutBanner.isActive,
+      content: recurringLockoutBanner.content,
+      backgroundColor: recurringLockoutBanner.backgroundColor,
+      textColor: recurringLockoutBanner.textColor,
+      variant: recurringLockoutBanner.variant,
+      isDismissible: false,
+      dismissScope: 'persistent',
+      startDateTime: null,
+      endDateTime: null,
+      createdDateTime: recurringLockoutBanner.createdDateTime,
+      lastUpdatedDateTime: recurringLockoutBanner.lastUpdatedDateTime,
+    } satisfies BannerSettings;
+  }, [recurringLockoutBanner]);
+
+  useBannerSettingsWebSocket({
+    onSystemBannerSettingsUpdated: () => {
+      void queryClient.invalidateQueries({ queryKey: ['banner', 'active'] });
+    },
+    onRecurringLockoutBannerSettingsUpdated: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['banner', 'recurring-lockout', 'active'],
+      });
+    },
+  });
 
   useEffect(() => {
     if (!banner || !banner.isDismissible) {
@@ -109,7 +153,7 @@ const Header = () => {
       observer?.disconnect();
       window.removeEventListener('resize', updateHeaderHeight);
     };
-  }, [visibleBanner]);
+  }, [visibleBanner, visibleRecurringLockoutBanner]);
 
   const handleLogout = () => {
     void logout().then(() => {
@@ -144,6 +188,14 @@ const Header = () => {
           onDismiss={
             visibleBanner.isDismissible ? handleDismissBanner : undefined
           }
+          className="border-b border-black/10"
+        />
+      )}
+
+      {visibleRecurringLockoutBanner && (
+        <SystemBanner
+          banner={visibleRecurringLockoutBanner}
+          icon={PencilOff}
           className="border-b border-black/10"
         />
       )}

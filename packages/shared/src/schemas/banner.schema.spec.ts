@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   BANNER_CONTENT_MAX_LENGTH,
+  DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
+  DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS,
   upsertBannerSettingsRequestSchema,
+  upsertRecurringLockoutBannerSettingsRequestSchema,
 } from './banner.schema';
 
 function validBannerBody(overrides: Record<string, unknown> = {}) {
@@ -51,5 +54,100 @@ describe('upsertBannerSettingsRequestSchema', () => {
       throw new Error('Expected validation failure for invalid date range');
     }
     expect(result.error.issues[0]?.path).toEqual(['endDateTime']);
+  });
+});
+
+function validRecurringBannerBody(overrides: Record<string, unknown> = {}) {
+  return {
+    isActive: true,
+    exemptRoleIds: [...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS],
+    content: '<p>Editing is now locked for the day.</p>',
+    backgroundColor: '#E6A635',
+    textColor: '#000000',
+    variant: 'warning',
+    startTimeOfDay: '15:00',
+    endTimeOfDay: '23:59',
+    bannerLeadMinutes: 30,
+    ...overrides,
+  };
+}
+
+describe('upsertRecurringLockoutBannerSettingsRequestSchema', () => {
+  it('accepts valid request', () => {
+    const result = upsertRecurringLockoutBannerSettingsRequestSchema.parse(
+      validRecurringBannerBody()
+    );
+    expect(result.startTimeOfDay).toBe('15:00');
+    expect(result.exemptRoleIds).toEqual([
+      ...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS,
+    ]);
+    expect(result.bannerLeadMinutes).toBe(30);
+  });
+
+  it('defaults exempt roles and banner lead time when not provided', () => {
+    const {
+      exemptRoleIds: _unused,
+      bannerLeadMinutes: _unusedLead,
+      ...body
+    } = validRecurringBannerBody();
+    const result =
+      upsertRecurringLockoutBannerSettingsRequestSchema.parse(body);
+
+    expect(result.exemptRoleIds).toEqual([
+      ...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS,
+    ]);
+    expect(result.bannerLeadMinutes).toBe(
+      DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES
+    );
+  });
+
+  it('rejects negative banner lead time', () => {
+    const result = upsertRecurringLockoutBannerSettingsRequestSchema.safeParse(
+      validRecurringBannerBody({ bannerLeadMinutes: -1 })
+    );
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error('Expected validation failure for negative lead time');
+    }
+    expect(result.error.issues[0]?.path).toEqual(['bannerLeadMinutes']);
+  });
+
+  it('rejects invalid time format', () => {
+    const result = upsertRecurringLockoutBannerSettingsRequestSchema.safeParse(
+      validRecurringBannerBody({ startTimeOfDay: '3:00 PM' })
+    );
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects endTimeOfDay earlier than startTimeOfDay', () => {
+    const result = upsertRecurringLockoutBannerSettingsRequestSchema.safeParse(
+      validRecurringBannerBody({
+        startTimeOfDay: '21:00',
+        endTimeOfDay: '20:59',
+      })
+    );
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error('Expected validation failure for invalid time range');
+    }
+    expect(result.error.issues[0]?.path).toEqual(['endTimeOfDay']);
+  });
+
+  it('rejects duplicate exempt roles', () => {
+    const duplicateRoleId = DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS[0];
+    const result = upsertRecurringLockoutBannerSettingsRequestSchema.safeParse(
+      validRecurringBannerBody({
+        exemptRoleIds: [duplicateRoleId, duplicateRoleId],
+      })
+    );
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error('Expected validation failure for duplicate exempt roles');
+    }
+    expect(result.error.issues[0]?.path).toEqual(['exemptRoleIds']);
   });
 });
