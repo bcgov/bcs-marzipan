@@ -93,12 +93,7 @@ export class LocksController {
           .filter((value) => Number.isInteger(value) && value > 0)
       : [...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS];
 
-    const effectiveExemptRoleIds =
-      exemptRoleIds.length > 0
-        ? exemptRoleIds
-        : [...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS];
-
-    if (effectiveExemptRoleIds.includes(user.roleId)) {
+    if (exemptRoleIds.includes(user.roleId)) {
       return;
     }
 
