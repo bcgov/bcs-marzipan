@@ -140,6 +140,11 @@ describe('ActivitiesService', () => {
   // Mock database service
   const mockDatabaseService = {
     db: {
+      query: {
+        recurringLockoutBannerSettings: {
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+      },
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
