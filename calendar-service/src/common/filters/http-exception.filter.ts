@@ -95,8 +95,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
           instance: path,
           correlationId,
           errors: (exceptionResponse as { errors?: unknown[] }).errors as
-            | Array<{ path: string; message: string; code?: string }>
-            | undefined,
+            Array<{ path: string; message: string; code?: string }> | undefined,
           timestamp: new Date().toISOString(),
         };
       }

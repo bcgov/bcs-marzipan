@@ -601,6 +601,68 @@ describe('ActivitiesService', () => {
     });
   });
 
+  describe('recurring lockout guard boundaries', () => {
+    it('blocks at start boundary and respects explicit empty exempt-role list', async () => {
+      mockDatabaseService.db.query.recurringLockoutBannerSettings.findFirst.mockResolvedValue(
+        {
+          isActive: true,
+          startTimeOfDay: '09:00',
+          endTimeOfDay: '10:00',
+          exemptRoleIds: [],
+        }
+      );
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
+
+      mockDatabaseService.db.select = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi
+          .fn()
+          .mockResolvedValue([{ roleId: SYSTEM_ROLES.SYSTEM_ADMIN }]),
+      });
+
+      await expect(
+        (
+          service as unknown as {
+            ensureUserCanEditDuringRecurringLockout: (
+              userId: number
+            ) => Promise<void>;
+          }
+        ).ensureUserCanEditDuringRecurringLockout(1)
+      ).rejects.toThrow(ForbiddenException);
+
+      vi.useRealTimers();
+    });
+
+    it('allows edits at end boundary because end time is exclusive', async () => {
+      mockDatabaseService.db.query.recurringLockoutBannerSettings.findFirst.mockResolvedValue(
+        {
+          isActive: true,
+          startTimeOfDay: '09:00',
+          endTimeOfDay: '10:00',
+          exemptRoleIds: [],
+        }
+      );
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-08-05T17:00:00.000Z'));
+
+      await expect(
+        (
+          service as unknown as {
+            ensureUserCanEditDuringRecurringLockout: (
+              userId: number
+            ) => Promise<void>;
+          }
+        ).ensureUserCanEditDuringRecurringLockout(1)
+      ).resolves.toBeUndefined();
+
+      vi.useRealTimers();
+    });
+  });
+
   describe('create', () => {
     it('should create an activity and return a valid ActivityResponse', async () => {
       const createDto = createMockActivityRequest({
