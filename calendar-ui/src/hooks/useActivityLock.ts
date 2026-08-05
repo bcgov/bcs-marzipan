@@ -192,6 +192,7 @@ export function useActivityLock(
         const axiosError = err as AxiosError<{
           lockedBy?: { username: string };
           message?: string;
+          reason?: string;
         }>;
         const status = apiError?.status ?? axiosError.response?.status;
         const detail =
@@ -199,8 +200,13 @@ export function useActivityLock(
           (typeof axiosError.response?.data?.message === 'string'
             ? axiosError.response.data.message
             : undefined);
+        const reason =
+          apiError?.reason ??
+          (typeof axiosError.response?.data?.reason === 'string'
+            ? axiosError.response.data.reason
+            : undefined);
 
-        if (status === LOCKED_STATUS) {
+        if (reason === 'locked_by_other' || status === LOCKED_STATUS) {
           const data = axiosError.response?.data;
           setLockedByUsername(data?.lockedBy?.username ?? null);
           setLockState('locked-by-other');
@@ -209,9 +215,10 @@ export function useActivityLock(
         }
 
         if (
-          status === 403 &&
-          typeof detail === 'string' &&
-          detail.toLowerCase().includes('lockout window')
+          reason === 'time_lockout' ||
+          (status === 403 &&
+            typeof detail === 'string' &&
+            detail.toLowerCase().includes('lockout window'))
         ) {
           setLockedByUsername(null);
           setLockState('idle');

@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Get,
   HttpCode,
+  HttpException,
   HttpStatus,
   Param,
   ParseIntPipe,
@@ -97,8 +98,13 @@ export class LocksController {
       return;
     }
 
-    throw new ForbiddenException(
-      'Editing activities is locked for the current lockout window.'
+    throw new HttpException(
+      {
+        statusCode: HttpStatus.FORBIDDEN,
+        message: 'Editing activities is locked for the current lockout window.',
+        reason: 'time_lockout',
+      },
+      HttpStatus.FORBIDDEN
     );
   }
 
@@ -114,6 +120,11 @@ export class LocksController {
   @ApiOperation({ summary: 'Acquire a lock on an entity (e.g. activity)' })
   @ApiResponse({ status: 200, description: 'Lock acquired' })
   @ApiResponse({ status: 423, description: 'Already locked by another user' })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Editing is blocked by the recurring lockout window for non-exempt users',
+  })
   async acquire(
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(acquireLockBodySchema)) body: AcquireLockBody
