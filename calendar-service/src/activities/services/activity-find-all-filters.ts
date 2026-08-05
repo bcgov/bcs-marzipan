@@ -40,8 +40,7 @@ function lowerTrimMatch(column: unknown, value: string): SQL {
 function buildConfirmedStatusMatch(
   db: DatabaseService['db'],
   statusIdColumn:
-    | typeof activities.dateStatusId
-    | typeof activities.timeStatusId,
+    typeof activities.dateStatusId | typeof activities.timeStatusId,
   statusTable: typeof dateStatuses | typeof timeStatuses,
   wantConfirmed: boolean
 ): SQL {

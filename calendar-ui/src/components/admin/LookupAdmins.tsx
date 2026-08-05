@@ -300,8 +300,7 @@ async function persistMinistryWithMinister({
   }
 
   const ministerPick = (formData._ministerSelection as
-    | MinisterFormSelection
-    | undefined) ?? {
+    MinisterFormSelection | undefined) ?? {
     mode: 'none',
   };
 
