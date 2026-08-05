@@ -17,3 +17,4 @@ export { isActivityListItemPayload } from '../schemas/activity-list-item.schema'
 export * from './apply-field-level-write-policy';
 export * from './activity-rich-text';
 export * from './wcagContrast';
+export * from './lookup-selectability';

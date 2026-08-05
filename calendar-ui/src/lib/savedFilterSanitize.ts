@@ -39,6 +39,7 @@ function sanitizeIdArray(
  */
 export interface ValidFilterLookups {
   statusIds?: ReadonlySet<number>;
+  categoryIds?: ReadonlySet<number>;
   tagIds?: ReadonlySet<number>;
   ministryIds?: ReadonlySet<number>;
   orgIds?: ReadonlySet<number>;
@@ -80,6 +81,12 @@ export function sanitizeSavedFilterPayload(
   const tagResult = sanitizeIdArray(record.tagIds, lookups?.tagIds);
   if (tagResult.removed) hadInvalid = true;
 
+  const categoryResult = sanitizeIdArray(
+    record.categoryIds,
+    lookups?.categoryIds
+  );
+  if (categoryResult.removed) hadInvalid = true;
+
   const ministryResult = sanitizeIdArray(
     record.leadMinistryIds,
     lookups?.ministryIds
@@ -117,6 +124,7 @@ export function sanitizeSavedFilterPayload(
     filterState: {
       ...base,
       activityStatusIds: statusResult.ids,
+      categoryIds: categoryResult.ids,
       tagIds: tagResult.ids,
       leadMinistryIds: ministryResult.ids,
       leadOrgIds: orgResult.ids,

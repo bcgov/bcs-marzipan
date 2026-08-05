@@ -80,7 +80,7 @@ export const filterActivitiesQuerySchema = z.object({
   sharedWithTeamIds: commaSeparatedIntArray(),
   eventPlannerLeadIds: commaSeparatedIntArray(),
   tagIds: commaSeparatedIntArray(),
-  categoryNames: commaSeparatedStringArray(),
+  categoryIds: commaSeparatedIntArray(),
   translationRequiredStatusIds: commaSeparatedIntArray(),
   translationLanguageIds: commaSeparatedIntArray(),
   pitchRequiredStatusNames: commaSeparatedStringArray(),
@@ -160,13 +160,13 @@ export const FILTER_ACTIVITIES_INT_ARRAY_KEYS = [
   'sharedWithTeamIds',
   'eventPlannerLeadIds',
   'tagIds',
+  'categoryIds',
   'translationRequiredStatusIds',
   'translationLanguageIds',
 ] as const satisfies readonly (keyof FilterActivitiesQueryParams)[];
 
 /** String-array query fields serialized as comma-separated strings in HTTP. */
 export const FILTER_ACTIVITIES_STRING_ARRAY_KEYS = [
-  'categoryNames',
   'pitchRequiredStatusNames',
   'lookAheadStatusValues',
   'lookAheadSectionValues',

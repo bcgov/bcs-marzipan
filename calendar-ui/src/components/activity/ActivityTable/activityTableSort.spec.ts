@@ -8,6 +8,7 @@ const mockRow = (overrides: Partial<ActivityTableRow>): ActivityTableRow => ({
   displayId: 'TEST-001',
   title: 'Test Activity',
   activityCategories: [],
+  categoryIds: [],
   pitchDate: null,
   pitchRequiredStatus: null,
   isConfidential: false,

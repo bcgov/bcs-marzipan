@@ -12,10 +12,8 @@ describe('savedFilterPayloadIsEmpty', () => {
     expect(savedFilterPayloadIsEmpty({}, '  hello  ')).toBe(false);
   });
 
-  it('returns false when category names present', () => {
-    expect(savedFilterPayloadIsEmpty({ categoryNames: ['Event'] }, '')).toBe(
-      false
-    );
+  it('returns false when category IDs present', () => {
+    expect(savedFilterPayloadIsEmpty({ categoryIds: [1] }, '')).toBe(false);
   });
 
   it('returns false for pitch not_scheduled', () => {
@@ -65,7 +63,7 @@ describe('savedFilterPayloadIsEmpty', () => {
             noStartDate: false,
             noEndDate: false,
           },
-          categoryNames: [],
+          categoryIds: [],
           activityStatusIds: [],
           pitchRequiredStatusNames: [],
           pitchDateFilter: { kind: 'any' },
@@ -96,7 +94,7 @@ describe('savedFilterPayloadIsEmpty', () => {
             noStartDate: false,
             noEndDate: false,
           },
-          categoryNames: [],
+          categoryIds: [],
           activityStatusIds: [],
           pitchRequiredStatusNames: [],
           pitchDateFilter: { kind: 'any' },
@@ -112,7 +110,7 @@ describe('savedFilterPayloadIsEmpty', () => {
           translationRequiredStatusIds: [],
           translationLanguageIds: [],
           extraKey: true,
-        } as Record<string, unknown>,
+        },
         ''
       )
     ).toBe(false);

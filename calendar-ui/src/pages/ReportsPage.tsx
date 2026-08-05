@@ -357,7 +357,7 @@ export function ReportsPage() {
       report_name: activeReport,
       filter_keys_used: filterKeysUsed,
       active_filter_count: activeFilterCount,
-      category_count: preferences.filterState.categoryNames.length,
+      category_count: preferences.filterState.categoryIds.length,
       status_count: preferences.filterState.activityStatusIds.length,
       tag_count: preferences.filterState.tagIds.length,
       ministry_count: preferences.filterState.leadMinistryIds.length,

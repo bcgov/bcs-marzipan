@@ -88,7 +88,7 @@ describe('SavedFiltersService', () => {
     id: 1,
     ownerUserId: 10,
     name: 'My filter',
-    filterState: { categoryNames: ['Event'] },
+    filterState: { categoryIds: [1] },
     searchKeyword: 'test',
     sortOrder: 0,
     isActive: true,
@@ -180,7 +180,7 @@ describe('SavedFiltersService', () => {
 
       const result = await service.create(10, {
         name: 'My filter',
-        filterState: { categoryNames: ['Event'] },
+        filterState: { categoryIds: [1] },
         searchKeyword: 'test',
       });
 
@@ -261,7 +261,7 @@ describe('SavedFiltersService', () => {
     it('should create team-scoped filter when scopeTeamId is in user team ids', async () => {
       const row = makeSavedFilterRow({
         name: 'Team scoped ok',
-        filterState: { categoryNames: ['Event'] },
+        filterState: { categoryIds: [1] },
         searchKeyword: '',
         scopeType: 'team',
         scopeTeamId: 5,
@@ -288,7 +288,7 @@ describe('SavedFiltersService', () => {
         10,
         {
           name: 'Team scoped ok',
-          filterState: { categoryNames: ['Event'] },
+          filterState: { categoryIds: [1] },
           searchKeyword: '',
           scopeType: 'team',
           scopeTeamId: 5,

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { Edit, Trash2, XCircle } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import api from '@/api/axios';
 import {
@@ -25,6 +25,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '@/lib/error-toast';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 const EMPTY_INITIAL: Record<string, unknown> = {};
 
@@ -41,6 +42,11 @@ export interface RenderModalContentProps {
   initialData: Record<string, unknown>;
   onChange: (data: Record<string, unknown>) => void;
   isSubmitting: boolean;
+  resetKey: string;
+  /** Portal target for combobox/select popups rendered inside AdminModal */
+  dialogContentRef: React.RefObject<HTMLDivElement | null>;
+  /** Notify parent when a nested overlay (e.g. combobox) opens or closes */
+  onNestedOverlayOpenChange?: (open: boolean) => void;
 }
 
 interface GenericLookupAdminProps<T extends BaseLookupItem> {
@@ -114,6 +120,8 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   const [editingItem, setEditingItem] = useState<T | null>(null);
   /** Bumps on each "Add" open so `resetKey` changes every create session. */
   const [createFormSession, setCreateFormSession] = useState(0);
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+  const [isNestedOverlayOpen, setIsNestedOverlayOpen] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
 
   // Memoized only on editingItem to avoid re-creating the object every render,
@@ -125,6 +133,12 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingItem]);
 
+  useEffect(() => {
+    if (!showModal) {
+      setIsNestedOverlayOpen(false);
+    }
+  }, [showModal]);
+
   const { data, isLoading, error } = useQuery({
     queryKey,
     queryFn: queryFn,
@@ -134,6 +148,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   });
 
   const invalidateListCaches = () => {
+    void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.root });
     void queryClient.invalidateQueries({ queryKey });
     for (const key of additionalInvalidateKeys ?? []) {
       void queryClient.invalidateQueries({ queryKey: key });
@@ -392,6 +407,10 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       <AdminModal
         open={showModal}
         onOpenChange={setShowModal}
+        contentRef={dialogContentRef}
+        onEscapeKeyDown={(e) => {
+          if (isNestedOverlayOpen) e.preventDefault();
+        }}
         title={editingItem ? `Edit ${entityType}` : `Add ${entityType}`}
         description={
           editingItem
@@ -410,12 +429,18 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       >
         {renderModalContent ? (
           renderModalContent({
-            initialData: editingItem ?? EMPTY_INITIAL,
+            initialData: resolvedInitialData,
             onChange: setFormData,
             isSubmitting:
               createMutation.isPending ||
               updateMutation.isPending ||
               submitOverridePending,
+            resetKey:
+              editingItem != null
+                ? String(editingItem.id)
+                : `create-${createFormSession}`,
+            dialogContentRef,
+            onNestedOverlayOpenChange: setIsNestedOverlayOpen,
           })
         ) : (
           <LookupForm

@@ -7,6 +7,7 @@ import {
   type ActivityFieldScope,
 } from '@corpcal/shared';
 import type { CommsContactCandidate } from '@corpcal/shared/api/types';
+import { PERMISSIONS } from '@corpcal/shared/auth';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { FormDisplayOptionsProvider } from '@/components/ui/form';
 import { useAuth } from '@/hooks/useAuth';
@@ -101,7 +102,8 @@ export function ActivityFormBody({
     return [...candidateOptions, ...fallbacks];
   }, [commsContactCandidates, commsContacts, lookups.users]);
 
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const hasCreateAny = hasPermission(PERMISSIONS.ACTIVITIES.CREATE_ANY);
 
   const canViewScope = useCallback(
     (scope: ActivityFieldScope) =>
@@ -154,6 +156,8 @@ export function ActivityFormBody({
                 tags={lookups.tags}
                 pitchRequiredStatuses={lookups.pitchRequiredStatuses}
                 leadTeamField={leadTeamField}
+                userTeamIds={user?.teamIds ?? []}
+                hasCreateAny={hasCreateAny}
               />
 
               <ActivityCommsSection
