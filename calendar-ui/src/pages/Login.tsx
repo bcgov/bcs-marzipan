@@ -7,8 +7,9 @@
  *                             → set-password     (pending account)
  *                             → enter-reset-code → reset-password  (password_reset_required)
  *
- * When Azure AD is also configured the IDIR button is shown as the primary
- * action, with local login accessible via a toggle link.
+ * When Azure AD is also configured the Microsoft button is shown first.
+ * Users with Microsoft-linked accounts can sign in directly without a local
+ * password; local login remains available for password-based accounts.
  */
 import {
   CheckCircle,
@@ -653,7 +654,9 @@ export function Login() {
                   />
                   <button
                     type="button"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      showPassword ? 'Hide password' : 'Show password'
+                    }
                     aria-pressed={showPassword}
                     data-testid="login-password-toggle"
                     onClick={() => setShowPassword(!showPassword)}

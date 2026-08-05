@@ -29,6 +29,7 @@ import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
 import {
   findUserByEmail,
+  findUserByEmailAnyStatus,
   findUserByExternalId,
   findUserByExternalIdAnyStatus,
   syncAzureIdentity,
@@ -96,6 +97,26 @@ export class AuthService {
 
     if (!dbUser && claims.email?.trim()) {
       dbUser = await findUserByEmail(this.databaseService.db, claims.email);
+    }
+
+    if (!dbUser && claims.email?.trim()) {
+      const anyStatusByEmail = await findUserByEmailAnyStatus(
+        this.databaseService.db,
+        claims.email
+      );
+
+      if (anyStatusByEmail) {
+        if (
+          !anyStatusByEmail.isActive ||
+          anyStatusByEmail.status === 'inactive'
+        ) {
+          throw new UnauthorizedException(
+            'This account is deactivated. Please contact your administrator.'
+          );
+        }
+
+        dbUser = anyStatusByEmail;
+      }
     }
 
     if (!dbUser) {

@@ -13,6 +13,7 @@ import type { Mock } from 'vitest';
 import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
 import { AuthService } from './auth.service';
+import * as adStrategy from './strategies/ad.strategy';
 import {
   findUserByEmailLocal,
   findUserByIdLocal,
@@ -70,6 +71,14 @@ vi.mock('./strategies/local.strategy', () => ({
   updateLastLogin: vi.fn(),
   updateUserPassword: vi.fn(),
   updateUserStatus: vi.fn(),
+}));
+
+vi.mock('./strategies/ad.strategy', () => ({
+  findUserByEmailAnyStatus: vi.fn(),
+  findUserByEmail: vi.fn(),
+  findUserByExternalId: vi.fn(),
+  findUserByExternalIdAnyStatus: vi.fn(),
+  syncAzureIdentity: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -565,6 +574,47 @@ describe('AuthService — local auth methods', () => {
       vi.mocked(findUserByIdLocal).mockResolvedValue(makeLocalUser());
       const token = await service.createPasswordResetToken(1);
       expect(token).toMatch(/^[0-9a-f]{32}$/);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // loginWithAzureClaims()
+  // -------------------------------------------------------------------------
+
+  describe('loginWithAzureClaims()', () => {
+    it('allows a pending user to sign in with Microsoft using email match', async () => {
+      vi.mocked(adStrategy.findUserByExternalId)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(
+          makeLocalUser({
+            id: 42,
+            status: 'active',
+            isActive: true,
+            passwordHash: null,
+            adEmail: 'new.user@example.com',
+          })
+        );
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(null);
+      vi.mocked(adStrategy.findUserByEmailAnyStatus).mockResolvedValue(
+        makeLocalUser({
+          id: 42,
+          status: 'pending',
+          isActive: true,
+          passwordHash: null,
+        })
+      );
+
+      const result = await service.loginWithAzureClaims({
+        externalId: 'azure-123',
+        email: 'new.user@example.com',
+        username: 'new.user@example.com',
+        displayName: 'New User',
+      });
+
+      expect(adStrategy.findUserByEmailAnyStatus).toHaveBeenCalledTimes(1);
+      expect(adStrategy.syncAzureIdentity).toHaveBeenCalledTimes(1);
+      expect(result.user.id).toBe(42);
+      expect(result.user.email).toBe('new.user@example.com');
     });
   });
 });

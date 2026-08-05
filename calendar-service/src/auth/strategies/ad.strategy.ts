@@ -62,6 +62,25 @@ export async function findUserByEmail(
   return row ?? null;
 }
 
+export interface AuthDbUserWithActivity extends AuthDbUser {
+  isActive: boolean;
+}
+
+export async function findUserByEmailAnyStatus(
+  db: Database,
+  email: string
+): Promise<AuthDbUserWithActivity | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const [row] = await db
+    .select({ ...authUserSelection, isActive: users.isActive })
+    .from(users)
+    .where(sql`lower(${users.adEmail}) = ${normalizedEmail}`)
+    .limit(1);
+
+  return row ?? null;
+}
+
 /**
  * Looks up a user by externalId regardless of status — used to produce a
  * more informative error when the account exists but is pending/reset-required.
@@ -96,6 +115,7 @@ export async function syncAzureIdentity(
       adUsername: identity.username?.trim() || null,
       adDisplayName: identity.displayName?.trim() || null,
       adEmail: identity.email?.trim().toLowerCase() || null,
+      status: 'active',
       lastLoginDateTime: new Date(),
       lastUpdatedDateTime: new Date(),
     })
