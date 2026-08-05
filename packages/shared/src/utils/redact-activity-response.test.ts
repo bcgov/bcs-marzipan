@@ -109,7 +109,7 @@ describe('redactActivityResponse', () => {
     expect(result.pitchDate).toBe('2025-03-01');
   });
 
-  it('strips pitch status but keeps pitch date when pitch status is not viewable', () => {
+  it('keeps pitch status and pitch date when pitch status is globally viewable', () => {
     const viewerNoPitchStatus = {
       permissions: [
         'activities.view',
@@ -119,12 +119,12 @@ describe('redactActivityResponse', () => {
       roleName: SYSTEM_ROLES.EDITOR,
     };
     const result = redactActivityResponse(activity, viewerNoPitchStatus);
-    expect(result.pitchRequiredStatusId).toBeUndefined();
-    expect(result.pitchRequiredStatus).toBeUndefined();
+    expect(result.pitchRequiredStatusId).toBe(2);
+    expect(result.pitchRequiredStatus).toBe('Required');
     expect(result.pitchDate).toBe('2025-03-01');
   });
 
-  it('strips view-restricted fields for Viewer without grants; keeps date/time status, translations, and pitch date', () => {
+  it('strips view-restricted fields for Viewer without grants; keeps date/time status, translations, pitch status, and pitch date', () => {
     const result = redactActivityResponse(activity, viewerNoGrants);
     expect(result.notes).toBeUndefined();
     expect(result.dateStatusId).toBe(2);
@@ -136,8 +136,8 @@ describe('redactActivityResponse', () => {
     expect(result.translationsRequired).toEqual(['French']);
     expect(result.translationsRequiredStatusId).toBe(1);
     expect(result.translationsRequiredStatus).toBe('Pending');
-    expect(result.pitchRequiredStatusId).toBeUndefined();
-    expect(result.pitchRequiredStatus).toBeUndefined();
+    expect(result.pitchRequiredStatusId).toBe(2);
+    expect(result.pitchRequiredStatus).toBe('Required');
     expect(result.pitchDate).toBe('2025-03-01');
   });
 

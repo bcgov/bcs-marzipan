@@ -325,7 +325,7 @@ The schema is defined in `src/schema/`:
 
 ## Field-level activity permissions
 
-Seed `seeds/0006_20260331_field_level_permissions_seed.sql` defines granular `activities.<scope>.view` / `activities.<scope>.edit` rows. **View** permissions exist for `notes`, `lookAhead`, and `pitchStatus` (API may omit those fields when the user lacks view access). **Pitch date** and **translations** use **edit-only** field permissions where applicable (no separate view permission for pitch date; anyone who can view the activity sees those values).
+Seed `seeds/0006_20260331_field_level_permissions_seed.sql` defines granular `activities.<scope>.view` / `activities.<scope>.edit` rows. **View** permissions are enforced for `notes` and `lookAhead` (API may omit those fields when the user lacks view access). **Pitch required status**, **pitch date**, and **translations** are visible to all users who can view the activity; editing still requires the corresponding `activities.<scope>.edit` grants.
 
 Seeds are tracked in `_seed_history` by **filename**. If you renumber or merge seed files on a database that was seeded with older names, run seeds with `force: true` (where the CLI or API exposes it), truncate `_seed_history`, or wipe the database so every file runs again in order.
 
