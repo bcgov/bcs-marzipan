@@ -115,19 +115,13 @@ export class AuthService {
           );
         }
 
-        if (anyStatusByEmail.status === 'pending') {
-          throw new UnauthorizedException(
-            'Your account has not been activated yet. Please sign in with your email and password to complete account setup.'
-          );
-        }
-
         if (anyStatusByEmail.status === 'password_reset_required') {
           throw new UnauthorizedException(
             'A password reset is required before you can sign in. Please use the email/password flow and follow the reset instructions.'
           );
         }
 
-        // At this point the account is active; proceed.
+        // Pending users are promoted to active explicitly below.
         dbUser = anyStatusByEmail;
       }
     }
