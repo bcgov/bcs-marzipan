@@ -115,7 +115,6 @@ export async function syncAzureIdentity(
       adUsername: identity.username?.trim() || null,
       adDisplayName: identity.displayName?.trim() || null,
       adEmail: identity.email?.trim().toLowerCase() || null,
-      status: 'active',
       lastLoginDateTime: new Date(),
       lastUpdatedDateTime: new Date(),
     })

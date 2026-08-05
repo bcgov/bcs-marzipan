@@ -612,6 +612,11 @@ describe('AuthService — local auth methods', () => {
       });
 
       expect(adStrategy.findUserByEmailAnyStatus).toHaveBeenCalledTimes(1);
+      expect(updateUserStatus).toHaveBeenCalledWith(
+        expect.anything(),
+        42,
+        'active'
+      );
       expect(adStrategy.syncAzureIdentity).toHaveBeenCalledTimes(1);
       expect(result.user.id).toBe(42);
       expect(result.user.email).toBe('new.user@example.com');

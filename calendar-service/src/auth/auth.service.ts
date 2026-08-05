@@ -106,7 +106,10 @@ export class AuthService {
       );
 
       if (anyStatusByEmail) {
-        if (!anyStatusByEmail.isActive || anyStatusByEmail.status === 'inactive') {
+        if (
+          !anyStatusByEmail.isActive ||
+          anyStatusByEmail.status === 'inactive'
+        ) {
           throw new UnauthorizedException(
             'This account is deactivated. Please contact your administrator.'
           );
@@ -152,6 +155,10 @@ export class AuthService {
       throw new UnauthorizedException(
         'No active local account found for this Azure AD user.'
       );
+    }
+
+    if (dbUser.status !== 'active') {
+      await updateUserStatus(this.databaseService.db, dbUser.id, 'active');
     }
 
     await syncAzureIdentity(this.databaseService.db, dbUser.id, claims);
