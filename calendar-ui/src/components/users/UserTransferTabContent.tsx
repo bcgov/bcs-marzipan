@@ -26,6 +26,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
+import { invalidateUserCaches } from '@/lib/userQueryKeys';
 import { cn } from '@/lib/utils';
 
 interface UserTransferTabContentProps {
@@ -147,8 +148,7 @@ export function UserTransferTabContent({
         notes: notes || undefined,
       }),
     onSuccess: (data) => {
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
-      void queryClient.invalidateQueries({ queryKey: ['user', sourceUser.id] });
+      invalidateUserCaches(queryClient, sourceUser.id);
       const toastId =
         targetUserId != null
           ? `activities-transferred-${sourceUser.id}-${targetUserId}`

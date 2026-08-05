@@ -51,6 +51,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import { userQueryKeys } from '@/lib/userQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
 const createUserFormSchema = z.object({
@@ -123,7 +124,7 @@ export function UserCreateModal({
   const createMutation = useMutation({
     mutationFn: (body: CreateUserBody) => createUser(body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      void queryClient.invalidateQueries({ queryKey: userQueryKeys.list() });
       toast.success('User created');
       form.reset(defaultValues);
       onSaved?.();

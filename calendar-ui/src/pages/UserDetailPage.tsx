@@ -48,6 +48,7 @@ import { UserChangeLogTabContent } from '@/components/users/UserChangeLogTabCont
 import { UserEditModal } from '@/components/users/UserEditModal';
 import { UserTransferTabContent } from '@/components/users/UserTransferTabContent';
 import { useAuth } from '@/hooks/useAuth';
+import { invalidateUserCaches, userQueryKeys } from '@/lib/userQueryKeys';
 
 // Permissions are authoritative from the backend; no frontend fallback maintained.
 
@@ -58,7 +59,7 @@ export default function UserDetailPage() {
   const { hasPermission, user: currentUser } = useAuth();
 
   const { data: userDetail, isLoading } = useQuery<UserDetail | null>({
-    queryKey: ['user', userId],
+    queryKey: userQueryKeys.detail(userId),
     queryFn: () => fetchUser(userId),
     enabled: !!userId,
   });
@@ -94,8 +95,7 @@ export default function UserDetailPage() {
     mutationFn: (payload: { roleId?: number; notes?: string | null }) =>
       updateUser(userId, payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['user', userId] });
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateUserCaches(queryClient, userId);
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to update user');
@@ -137,8 +137,7 @@ export default function UserDetailPage() {
         directLoginEnabled: body.directLoginEnabled,
       }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['user', userId] });
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateUserCaches(queryClient, userId);
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to update user settings');
@@ -555,13 +554,7 @@ export default function UserDetailPage() {
             <UserEditModal
               user={userDetail}
               onClose={() => setShowEditModal(false)}
-              onSaved={() => {
-                void queryClient.invalidateQueries({
-                  queryKey: ['user', userId],
-                });
-                void queryClient.invalidateQueries({ queryKey: ['users'] });
-                setShowEditModal(false);
-              }}
+              onSaved={() => setShowEditModal(false)}
             />
           )}
         </div>

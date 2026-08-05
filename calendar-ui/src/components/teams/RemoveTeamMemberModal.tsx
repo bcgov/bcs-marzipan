@@ -33,6 +33,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { invalidateUserCaches } from '@/lib/userQueryKeys';
 import { cn } from '@/lib/utils';
 
 interface RemoveTeamMemberTarget {
@@ -185,7 +186,9 @@ export function RemoveTeamMemberModal({
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', teamId] });
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      if (sourceUserId != null) {
+        invalidateUserCaches(queryClient, sourceUserId);
+      }
       toast.success('Team member removed');
       onRemoved();
     },

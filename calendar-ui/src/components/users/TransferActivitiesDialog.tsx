@@ -33,6 +33,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { invalidateUserCaches } from '@/lib/userQueryKeys';
 import { cn } from '@/lib/utils';
 
 interface TransferActivitiesDialogProps {
@@ -139,7 +140,7 @@ export function TransferActivitiesDialog({
         notes: notes || undefined,
       }),
     onSuccess: (data) => {
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateUserCaches(queryClient, sourceUser.id);
       const toastId =
         targetUserId != null
           ? `activities-transferred-${sourceUser.id}-${targetUserId}`
