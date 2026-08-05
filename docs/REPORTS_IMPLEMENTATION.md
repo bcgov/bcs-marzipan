@@ -77,7 +77,7 @@ Core Methods:
 
 Matches Activity List View pattern:
 
-1. **PageHeader** with title, description, and Export button (top right)
+1. **PageHeader** with title and Export button (top right)
 2. **Tabs** - Report type selection at top (matches Activity List tabs)
    - Initially loads from stored sessionStorage preference
    - Auto-initializes to first report if none stored

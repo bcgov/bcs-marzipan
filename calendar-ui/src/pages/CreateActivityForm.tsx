@@ -208,10 +208,7 @@ export const CreateActivityForm: FC = () => {
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
       <ActivityFormStickyHeader />
-      <PageHeader
-        title="Create New Activity"
-        description="Fill in the activity details below"
-      />
+      <PageHeader title="Create New Activity" />
 
       <Form {...form}>
         <form
