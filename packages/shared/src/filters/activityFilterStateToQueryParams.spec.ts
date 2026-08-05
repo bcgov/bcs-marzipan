@@ -80,7 +80,7 @@ describe('activityFilterStateToQueryParams', () => {
     const filterState: ActivityFilterState = {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
       tagIds: [1, 2],
-      categoryNames: ['Event', 'FYI'],
+      categoryIds: [1, 2],
       leadMinistryIds: [10],
     };
     const result = activityFilterStateToQueryParams(
@@ -93,7 +93,7 @@ describe('activityFilterStateToQueryParams', () => {
       false
     );
     expect(result.tagIds).toEqual([1, 2]);
-    expect(result.categoryNames).toEqual(['Event', 'FYI']);
+    expect(result.categoryIds).toEqual([1, 2]);
     expect(result.leadMinistryIds).toEqual([10]);
   });
 

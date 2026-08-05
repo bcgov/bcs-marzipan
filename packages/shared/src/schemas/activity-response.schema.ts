@@ -147,6 +147,7 @@ export const activityComputedFieldsSchema = z.object({
   // These arrays contain names or display names from lookups.
   // Using .default([]) ensures clients always receive arrays instead of undefined.
   category: z.array(z.string()).default([]),
+  categoryIds: z.array(z.number().int()).default([]),
   tags: z.array(tagSchema).default([]),
   commsMaterials: z.array(z.string()).default([]),
   translationsRequired: z.array(z.string()).default([]).optional(),

@@ -402,10 +402,9 @@ export const userTeamsRelations = relations(userTeams, ({ one }) => ({
 }));
 
 /**
- * TeamCategories junction table - Many-to-many relationship between Categories and Teams
- * Controls which teams can view specific categories.
- * If a category has no entries in this table, it is viewable by all teams.
- * If a category has entries, only those teams can view it.
+ * TeamCategories junction table - Many-to-many relationship between Categories and Teams.
+ * Used when categories.visibility = 'team': only listed teams may select the category
+ * in the activity form. When visibility = 'global', junction rows are soft-deactivated.
  */
 export const teamCategories = pgTable(
   'team_categories',
@@ -514,23 +513,6 @@ export const activitySectors = pgTable(
 );
 
 /**
- * FavoriteActivity junction table - Many-to-many relationship between Users and Activities (Watch Lists/Favorites)
- * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/FavoriteActivity.cs
- */
-export const favoriteActivities = pgTable(
-  'favorite_activities',
-  {
-    userId: integer('user_id')
-      .notNull()
-      .references(() => users.id),
-    activityId: integer('activity_id')
-      .notNull()
-      .references(() => activities.id),
-  },
-  (table) => [primaryKey({ columns: [table.userId, table.activityId] })]
-);
-
-/**
  * activityReportSettings junction table - Per-activity report settings
  * Stores whether an activity is omitted from a specific report.
  *
@@ -602,20 +584,6 @@ export const activitySectorsRelations = relations(
     sector: one(sectors, {
       fields: [activitySectors.sectorId],
       references: [sectors.id],
-    }),
-  })
-);
-
-export const favoriteActivitiesRelations = relations(
-  favoriteActivities,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [favoriteActivities.userId],
-      references: [users.id],
-    }),
-    activity: one(activities, {
-      fields: [favoriteActivities.activityId],
-      references: [activities.id],
     }),
   })
 );

@@ -148,6 +148,11 @@ export const PERMISSIONS = {
      * to product-defined code-exempt fields). System Admin only.
      */
     MANAGE_REVIEW_EXEMPT_FIELDS: 'settings.manage.review_exempt_fields',
+    /**
+     * Configure which activity form fields show information icons and their text.
+     * System Admin only.
+     */
+    MANAGE_ACTIVITY_INFO_ICONS: 'settings.manage.activity_info_icons',
   },
   SYSTEM: {
     VIEW_LOGS: 'system.view_logs',

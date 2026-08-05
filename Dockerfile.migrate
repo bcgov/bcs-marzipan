@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
@@ -12,13 +12,12 @@ COPY calendar-service ./calendar-service
 
 # Install deps (including dev – this is OK for a Job)
 ENV NODE_ENV=development
+RUN apk add --no-cache postgresql-client
 RUN npm ci
 
 # Build database package
 RUN npm run build --workspace=packages/database
 
-# Default command = migrate + seed
-CMD sh -c "\
-  npm run db:migrate --workspace=packages/database && \
-  npm run seed --workspace=calendar-service \
-"
+# Default command = tracked incremental migrations only.
+# Keep data-seeding separate so migrations are safe to re-run.
+ENTRYPOINT ["npm", "run", "db:migrate", "--workspace=packages/database"]

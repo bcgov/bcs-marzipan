@@ -34,6 +34,10 @@ vi.mock('@/components/ui/rich-text-field', () =>
   }))
 );
 
+vi.mock('../activity-info-icon-settings-context', () => ({
+  ActivityFieldInfoIcon: () => null,
+}));
+
 const mockLookups: FormLookupData = {
   isLoading: false,
   hasError: false,
@@ -122,6 +126,7 @@ function ActivityOverviewSectionHarness({
           organizations={[]}
           tags={[]}
           pitchRequiredStatuses={mockLookups.pitchRequiredStatuses}
+          userTeamIds={[5]}
           leadTeamField={{
             options: [
               createMockTeamListItem({

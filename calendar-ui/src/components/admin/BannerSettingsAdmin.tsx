@@ -8,6 +8,7 @@ import type {
   BannerSettings,
   UpsertBannerSettingsBody,
 } from '@corpcal/shared/api/types';
+import { BANNER_CONTENT_MAX_LENGTH } from '@corpcal/shared/schemas';
 import { fetchBannerSettings, upsertBannerSettings } from '@/api/bannerApi';
 import { AdminSection } from '@/components/admin';
 import { Button } from '@/components/ui/button';
@@ -37,13 +38,11 @@ type BannerFormData = {
  * Default banner content including an action button (matches media-hub-app)
  */
 const DEFAULT_BANNER_CONTENT = `<div class="flex items-center justify-between">
-  <div class="flex items-center space-x-2">
-    <span class="text-sm font-medium whitespace-nowrap">Notice</span>
-  </div>
-  <div class="flex-1 text-sm px-4 hidden md:block">
+  <span class="text-sm font-medium whitespace-nowrap">Notice</span>
+  <div class="flex-1 px-4 text-sm hidden md:block">
     Default banner content.
   </div>
-  <a href="#" onclick="window.open('#', '_blank')" class="inline-flex items-center justify-center bg-white text-slate-900 border border-slate-200 px-2 py-0.5 rounded-sm text-sm font-semibold hover:bg-slate-100 no-underline align-middle leading-none">Link</a>
+  <a href="#" class="inline-flex items-center justify-center rounded-sm border border-slate-200 bg-white px-2 py-0.5 text-sm font-semibold leading-none text-slate-900 no-underline hover:bg-slate-100">Link</a>
 </div>`;
 
 const DEFAULT_FORM_DATA: BannerFormData = {
@@ -163,6 +162,21 @@ export function BannerSettingsAdmin() {
   const [formData, setFormData] = useState<BannerFormData>(DEFAULT_FORM_DATA);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('html');
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const lastContentLimitToastAtRef = useRef(0);
+
+  const isWithinContentLimit = (content: string) =>
+    content.trim().length <= BANNER_CONTENT_MAX_LENGTH;
+
+  const notifyContentLimitExceeded = () => {
+    const now = Date.now();
+    if (now - lastContentLimitToastAtRef.current > 1200) {
+      toast.error(
+        `Banner content must be ${BANNER_CONTENT_MAX_LENGTH} characters or fewer`,
+        { id: 'banner-content-max-length' }
+      );
+      lastContentLimitToastAtRef.current = now;
+    }
+  };
 
   // Keep the uncontrolled contentEditable in sync when switching modes
   useEffect(() => {
@@ -242,6 +256,14 @@ export function BannerSettingsAdmin() {
     key: K,
     value: BannerFormData[K]
   ) => {
+    if (key === 'content') {
+      const nextContent = String(value ?? '');
+      if (!isWithinContentLimit(nextContent)) {
+        notifyContentLimitExceeded();
+        return;
+      }
+    }
+
     setFormData((current) => ({
       ...current,
       [key]: value,
@@ -253,8 +275,17 @@ export function BannerSettingsAdmin() {
   };
 
   const handleSave = () => {
-    if (!formData.content.trim()) {
+    const trimmedContent = formData.content.trim();
+
+    if (!trimmedContent) {
       toast.error('Banner content cannot be empty');
+      return;
+    }
+
+    if (trimmedContent.length > BANNER_CONTENT_MAX_LENGTH) {
+      toast.error(
+        `Banner content must be ${BANNER_CONTENT_MAX_LENGTH} characters or fewer`
+      );
       return;
     }
 
@@ -267,7 +298,10 @@ export function BannerSettingsAdmin() {
       return;
     }
 
-    saveMutation.mutate(formData);
+    saveMutation.mutate({
+      ...formData,
+      content: trimmedContent,
+    });
   };
 
   // Hide the entire admin section for non-System-Admin users
@@ -374,10 +408,14 @@ export function BannerSettingsAdmin() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setFormData((current) => ({
-                          ...current,
-                          content: insertActionIntoContent(current.content),
-                        }));
+                        const nextContent = insertActionIntoContent(
+                          formData.content
+                        );
+                        if (!isWithinContentLimit(nextContent)) {
+                          notifyContentLimitExceeded();
+                          return;
+                        }
+                        handleFieldChange('content', nextContent);
                         // If switching to Visual mode, reflect change immediately
                         if (editorMode === 'wysiwyg') {
                           setEditorMode('wysiwyg');
@@ -397,12 +435,17 @@ export function BannerSettingsAdmin() {
                 ref={contentRef}
                 contentEditable={canManage}
                 suppressContentEditableWarning
-                onInput={() =>
-                  handleFieldChange(
-                    'content',
-                    contentRef.current?.innerHTML ?? ''
-                  )
-                }
+                onInput={() => {
+                  const nextContent = contentRef.current?.innerHTML ?? '';
+                  if (!isWithinContentLimit(nextContent)) {
+                    notifyContentLimitExceeded();
+                    if (contentRef.current) {
+                      contentRef.current.innerHTML = formData.content;
+                    }
+                    return;
+                  }
+                  handleFieldChange('content', nextContent);
+                }}
                 className={`min-h-[120px] rounded border p-2 ${!canManage ? 'pointer-events-none bg-slate-50' : ''}`}
               />
             ) : (
@@ -410,6 +453,7 @@ export function BannerSettingsAdmin() {
                 id="banner-content"
                 rows={8}
                 value={formData.content}
+                maxLength={BANNER_CONTENT_MAX_LENGTH}
                 onChange={(event) =>
                   handleFieldChange('content', event.target.value)
                 }

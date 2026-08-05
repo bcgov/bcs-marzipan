@@ -18,7 +18,7 @@ describe('activityFilterStateIsDefault', () => {
     expect(
       activityFilterStateIsDefault({
         ...DEFAULT_ACTIVITY_FILTER_STATE,
-        categoryNames: ['Event'],
+        categoryIds: [1],
       })
     ).toBe(false);
   });
@@ -34,7 +34,7 @@ describe('hasDisallowedActivityFilterStateKeys', () => {
       hasDisallowedActivityFilterStateKeys({
         ...DEFAULT_ACTIVITY_FILTER_STATE,
         futureField: [1],
-      } as Record<string, unknown>)
+      })
     ).toBe(true);
   });
 });

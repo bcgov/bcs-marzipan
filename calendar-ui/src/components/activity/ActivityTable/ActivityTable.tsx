@@ -70,6 +70,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getLookAheadStatusLabel } from '@/constants/form-options';
+import { useActivityListScrollRestore } from '@/hooks/useActivityListScrollRestore';
 import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
@@ -89,7 +90,6 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
-import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import {
   canResolveTranslationLanguageFilter,
   filterActivityRowsByFilters,
@@ -185,7 +185,7 @@ const LIST_REVIEW_HIGHLIGHT_BG = 'bg-[#FFDDB3]';
 
 function rowHasChangedPath(row: ActivityTableRow, path: string): boolean {
   const changed = row.changedFieldsSinceReview ?? [];
-  return changed.some((changedPath) => {
+  return changed.some((changedPath: string) => {
     if (changedPath === path) {
       return true;
     }
@@ -456,8 +456,8 @@ function OverviewCell({
       {row.activityCategories.length > 0 && (
         <BadgeGroup
           items={row.activityCategories.map(
-            (cat): BadgeGroupItem => ({
-              key: cat,
+            (cat, index): BadgeGroupItem => ({
+              key: `${cat}:${index}`,
               label: cat,
               variant: 'outline',
               className: cn(
@@ -544,8 +544,8 @@ function SummaryCell({
             : undefined,
         }
       : null;
-    const tagItems: BadgeGroupItem[] = row.tags.map((tag) => ({
-      key: tag.id,
+    const tagItems: BadgeGroupItem[] = row.tags.map((tag, index) => ({
+      key: `${tag.id}:${index}`,
       label: tag.text,
       variant: 'outline',
       className: 'h-auto min-h-5 text-xs whitespace-normal text-slate-600',
@@ -641,8 +641,8 @@ function SchedulingCell({
   const representativeBadgeItems = useMemo(
     () =>
       row.activityRepresentatives.map(
-        (name): BadgeGroupItem => ({
-          key: name,
+        (name, index): BadgeGroupItem => ({
+          key: `${name}:${index}`,
           label: formatRepresentativeBadgeText(name),
         })
       ),
@@ -950,6 +950,7 @@ export function ActivityTable({
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isActivityListRoute = location.pathname === '/';
   const { user, hasPermission } = useAuth();
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
@@ -1023,7 +1024,10 @@ export function ActivityTable({
     () =>
       categoriesForFilter
         .filter((c) => c.isActive)
-        .map((c) => ({ value: c.displayName, label: c.displayName })),
+        .map((c) => ({
+          value: String(c.id),
+          label: c.displayName ?? c.name,
+        })),
     [categoriesForFilter]
   );
 
@@ -1045,6 +1049,7 @@ export function ActivityTable({
       );
     return {
       statusIds: nums(statusOptions),
+      categoryIds: nums(categoryOptions),
       tagIds: nums(tagOptions),
       ministryIds: nums(ministryOptions),
       orgIds: nums(organizationOptions),
@@ -1055,6 +1060,7 @@ export function ActivityTable({
     };
   }, [
     statusOptions,
+    categoryOptions,
     tagOptions,
     ministryOptions,
     organizationOptions,
@@ -1336,6 +1342,23 @@ export function ActivityTable({
       compareActivityRowsByLevels(a, b, sortLevels)
     );
   }, [filteredData, effectiveSortKey, effectiveSortDirection]);
+
+  const sortedActivityIds = useMemo(
+    () => sortedData.map((row) => row.id),
+    [sortedData]
+  );
+
+  const { openActivityWithScroll } = useActivityListScrollRestore({
+    enabled: isActivityListRoute,
+    location,
+    navigate,
+    scrollRef: tableScrollRef,
+    pageIndex,
+    setPageIndex,
+    pageSize: pagination.pageSize,
+    loading,
+    sortedActivityIds,
+  });
 
   const watchlistActivityIdSet = useMemo(
     () => new Set(watchlistActivityIds ?? []),
@@ -1847,6 +1870,7 @@ export function ActivityTable({
                   return (
                     <tr
                       key={row.id}
+                      data-activity-id={row.original.id}
                       className={cn(
                         `group/row ${tableBodyRow} cursor-pointer`,
                         isNewRow && 'animate-in fade-in-0 duration-300',
@@ -1859,10 +1883,7 @@ export function ActivityTable({
                         )
                           return;
                         if (window.getSelection()?.toString().trim()) return;
-                        void navigate(
-                          `/activity/${row.original.id}`,
-                          activityFormLinkState(location)
-                        );
+                        openActivityWithScroll(row.original.id);
                       }}
                       onKeyDown={(e) => {
                         if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1871,10 +1892,7 @@ export function ActivityTable({
                         )
                           return;
                         e.preventDefault();
-                        void navigate(
-                          `/activity/${row.original.id}`,
-                          activityFormLinkState(location)
-                        );
+                        openActivityWithScroll(row.original.id);
                       }}
                     >
                       {row.getVisibleCells().map((cell) => {

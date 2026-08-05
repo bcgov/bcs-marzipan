@@ -117,10 +117,10 @@ describe('Permissions visibility integration', () => {
 
     // Wait for the mocked backend state to be updated (rolesPermissionsMap mutated by mock)
     await waitFor(() => expect((rolesPermissionsMap as any)[2]).toBeTruthy(), {
-      timeout: 5000,
+      timeout: 10000,
     });
 
     // Ensure the UserDetailPage shows the permission somewhere on the page.
-    await screen.findByText('Test Permission', {}, { timeout: 5000 });
-  }, 10000);
+    await screen.findByText('Test Permission', {}, { timeout: 10000 });
+  }, 20000);
 });

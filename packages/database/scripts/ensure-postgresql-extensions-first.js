@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 /**
+ * WARNING: Use in development only.
  * After a fresh squash, `drizzle-kit generate` produces a single `0000_*.sql` migration
  * and one snapshot. PostgreSQL extensions (e.g. pg_trgm) cannot live in Drizzle schema,
  * so this script inserts `scripts/templates/postgresql_extensions.sql` as the real `0000`
@@ -71,7 +72,9 @@ function extractYyyyMmDdFromTag(tag) {
 
 function main() {
   if (!fs.existsSync(journalPath)) {
-    fail(`Missing ${path.relative(packageDir, journalPath)}. Run drizzle-kit generate first.`);
+    fail(
+      `Missing ${path.relative(packageDir, journalPath)}. Run drizzle-kit generate first.`
+    );
   }
 
   if (!fs.existsSync(templatePath)) {
@@ -123,13 +126,17 @@ function main() {
   const newSquashTag = `0001_${originalTag.replace(/^0000_/, '')}`;
 
   if (extensionsTag === originalTag) {
-    fail(`Resolved extensions tag equals squash tag (${extensionsTag}); rename squash migration and retry.`);
+    fail(
+      `Resolved extensions tag equals squash tag (${extensionsTag}); rename squash migration and retry.`
+    );
   }
 
   const extensionsSqlPath = path.join(migrationsDir, `${extensionsTag}.sql`);
   const newSquashSqlPath = path.join(migrationsDir, `${newSquashTag}.sql`);
   if (fs.existsSync(extensionsSqlPath)) {
-    fail(`Refusing to overwrite existing ${path.relative(packageDir, extensionsSqlPath)}`);
+    fail(
+      `Refusing to overwrite existing ${path.relative(packageDir, extensionsSqlPath)}`
+    );
   }
 
   const baselineId = crypto.randomUUID();
@@ -140,7 +147,10 @@ function main() {
   const snapshot1Path = path.join(metaDir, '0001_snapshot.json');
 
   fs.writeFileSync(snapshot1Path, `${JSON.stringify(fullSnapshot, null, 2)}\n`);
-  fs.writeFileSync(snapshot0Path, `${JSON.stringify(baselineSnapshot, null, 2)}\n`);
+  fs.writeFileSync(
+    snapshot0Path,
+    `${JSON.stringify(baselineSnapshot, null, 2)}\n`
+  );
 
   fs.renameSync(originalSqlPath, newSquashSqlPath);
   fs.copyFileSync(templatePath, extensionsSqlPath);
@@ -167,7 +177,9 @@ function main() {
 
   console.log('Inserted first migration:', extensionsTag);
   console.log('Renumbered squash migration:', newSquashTag);
-  console.log('Updated meta snapshot chain (0000 empty baseline, 0001 full schema).');
+  console.log(
+    'Updated meta snapshot chain (0000 empty baseline, 0001 full schema).'
+  );
   console.log('');
   console.log('Running drizzle-kit check...');
 

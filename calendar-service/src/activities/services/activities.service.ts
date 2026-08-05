@@ -30,14 +30,12 @@ import {
   commsMaterials,
   dateStatuses,
   deletionAudit,
-  favoriteActivities,
   ministries,
   pitchRequiredStatuses,
   teams,
   timeStatuses,
   translatedLanguages,
   translationRequiredStatuses,
-  userTeams,
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
@@ -82,6 +80,7 @@ import {
   buildReviewSnapshot,
   diffReviewFields,
   getEmptyReviewBaseline,
+  getForbiddenLookupIds,
   isDeepEqual,
   mapResponseToFormData,
   normalizeVenueAddressForForm,
@@ -95,13 +94,15 @@ import { DatabaseService } from '../../database/database.service';
 import { ApplicationSettingsService } from '../../locks/application-settings.service';
 import { LocksService } from '../../locks/locks.service';
 import { LookAheadPolicyService } from '../../look-ahead/look-ahead-policy.service';
-import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
 import {
   resolveDataScope,
   type RequestContext as RequestContextType,
 } from '../../policy/dto/user-context.dto';
+import {
+  getCategoryScopeById,
+  getTagScopeById,
+} from '../../policy/lookup-scope.helper';
 import { PolicyService } from '../../policy/policy.service';
-import { getVisibleTagIds } from '../../policy/tag-scoping.helper';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
@@ -188,27 +189,63 @@ export class ActivitiesService {
   }
 
   /**
-   * Validates that all submitted tag IDs are within the set of tags visible
-   * to the user's teams (global tags + team-scoped tags for those teams).
-   * Users with ACTIVITIES.CREATE_ANY bypass this check — they act on behalf
-   * of any team and may legitimately use any tag.
+   * Validates submitted tag IDs are selectable for the user's teams, allowing
+   * grandfathered tags already on the activity on update.
    */
   private async validateTagIds(
     tagIds: number[],
     teamIds: number[] | undefined,
-    permissions: string[] | undefined
+    permissions: string[] | undefined,
+    existingTagIds?: number[]
   ): Promise<void> {
     if (!tagIds.length) return;
     const canUseAny =
       permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ?? false;
     if (canUseAny) return;
 
-    const visibleIds = await getVisibleTagIds(this.databaseService.db, teamIds);
-    const visibleSet = new Set(visibleIds);
-    const forbidden = tagIds.filter((id) => !visibleSet.has(id));
+    const scopeById = await getTagScopeById(this.databaseService.db, [
+      ...new Set([...tagIds, ...(existingTagIds ?? [])]),
+    ]);
+    const forbidden = getForbiddenLookupIds(
+      tagIds,
+      existingTagIds,
+      teamIds,
+      scopeById
+    );
     if (forbidden.length > 0) {
       throw new BadRequestException(
         `Tag IDs not available to your teams: ${forbidden.join(', ')}`
+      );
+    }
+  }
+
+  /**
+   * Validates submitted category IDs are selectable for the user's teams,
+   * allowing grandfathered categories already on the activity on update.
+   */
+  private async validateCategoryIdsForUser(
+    categoryIds: number[],
+    teamIds: number[] | undefined,
+    permissions: string[] | undefined,
+    existingCategoryIds?: number[]
+  ): Promise<void> {
+    if (!categoryIds.length) return;
+    const canUseAny =
+      permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ?? false;
+    if (canUseAny) return;
+
+    const scopeById = await getCategoryScopeById(this.databaseService.db, [
+      ...new Set([...categoryIds, ...(existingCategoryIds ?? [])]),
+    ]);
+    const forbidden = getForbiddenLookupIds(
+      categoryIds,
+      existingCategoryIds,
+      teamIds,
+      scopeById
+    );
+    if (forbidden.length > 0) {
+      throw new BadRequestException(
+        `Category IDs not available to your teams: ${forbidden.join(', ')}`
       );
     }
   }
@@ -1226,6 +1263,11 @@ export class ActivitiesService {
       throw new BadRequestException('At least one category is required.');
     }
     await this.utilsService.validateCategoryIds(categoryIds);
+    await this.validateCategoryIdsForUser(
+      categoryIds,
+      context?.teamIds,
+      context?.permissions
+    );
     if (tagIds?.length) {
       await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
     }
@@ -2167,9 +2209,32 @@ export class ActivitiesService {
     // connection while borrowing another from the pool (pool starvation under load).
     if (categoryIds !== undefined) {
       await this.utilsService.validateCategoryIds(categoryIds);
+      const existingCategoryRows = await this.databaseService.db
+        .select({ categoryId: activityCategories.categoryId })
+        .from(activityCategories)
+        .where(eq(activityCategories.activityId, id));
+      const existingCategoryIds = existingCategoryRows.map((c) => c.categoryId);
+      await this.validateCategoryIdsForUser(
+        categoryIds,
+        context?.teamIds,
+        context?.permissions,
+        existingCategoryIds
+      );
     }
-    if (tagIds?.length) {
-      await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
+    if (tagIds !== undefined) {
+      const existingTagRows = await this.databaseService.db
+        .select({ tagId: activityTags.tagId })
+        .from(activityTags)
+        .where(eq(activityTags.activityId, id));
+      const existingTagIds = existingTagRows.map((t) => t.tagId);
+      if (tagIds.length > 0) {
+        await this.validateTagIds(
+          tagIds,
+          context?.teamIds,
+          context?.permissions,
+          existingTagIds
+        );
+      }
     }
     if (Object.prototype.hasOwnProperty.call(dto, 'lookAheadSection')) {
       await this.lookAheadPolicy.assertAllowedLookAheadSection(
@@ -2824,9 +2889,6 @@ export class ActivitiesService {
       await tx
         .delete(activityTranslationsRequired)
         .where(eq(activityTranslationsRequired.activityId, id));
-      await tx
-        .delete(favoriteActivities)
-        .where(eq(favoriteActivities.activityId, id));
       await tx
         .delete(activitySubscriptions)
         .where(eq(activitySubscriptions.activityId, id));
@@ -3516,19 +3578,13 @@ export class ActivitiesService {
   }
 
   /**
-   * Fetch categories available to the user based on their team memberships
-   * @param userTeams - Optional array of team IDs the user belongs to
-   * @returns Categories that are either global or team-scoped for the user's teams
+   * Fetch all active categories for legacy activity categories endpoint.
    */
-  public async fetchCategories(userTeams?: number[]): Promise<Category[]> {
-    const ids = await getVisibleCategoryIds(this.databaseService.db, userTeams);
-    if (ids.length === 0) {
-      return [];
-    }
+  public async fetchCategories(_userTeams?: number[]): Promise<Category[]> {
     const rows = await this.databaseService.db
       .select()
       .from(categories)
-      .where(and(eq(categories.isActive, true), inArray(categories.id, ids)))
+      .where(eq(categories.isActive, true))
       .orderBy(categories.name);
     return rows;
   }

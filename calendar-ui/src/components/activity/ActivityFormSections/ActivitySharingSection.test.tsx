@@ -23,6 +23,10 @@ vi.mock('@/hooks/useLeadTeamOptions', () => ({
   }),
 }));
 
+vi.mock('../activity-info-icon-settings-context', () => ({
+  ActivityFieldInfoIcon: () => null,
+}));
+
 function ActivitySharingSectionHarness({
   readOnly = false,
   defaultValues,

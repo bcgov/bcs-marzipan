@@ -7,7 +7,10 @@ import type {
   DateStatusLookupItem,
   TimeStatusLookupItem,
 } from '@corpcal/shared/api/types';
-import type { ActivityFormData } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_SCHEDULING_NOTES_MAX_LENGTH,
+  type ActivityFormData,
+} from '@corpcal/shared/schemas';
 import {
   FormSelectSafe,
   FormSelectTrigger,
@@ -22,13 +25,7 @@ import {
   FormMessage,
   useFormDisplayOptions,
 } from '@/components/ui/form';
-import { InfoIconButton } from '@/components/ui/info-icon-button';
 import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -49,6 +46,7 @@ import {
 import { cn } from '@/lib/utils';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
 const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
@@ -156,6 +154,18 @@ export function ActivityScheduleSection({
           )}
         >
           <span>Date</span>
+          <ActivityFieldInfoIcon
+            fieldKey="startDate"
+            ariaLabel="About start date"
+          />
+          <ActivityFieldInfoIcon
+            fieldKey="endDate"
+            ariaLabel="About end date"
+          />
+          <ActivityFieldInfoIcon
+            fieldKey="dateStatusId"
+            ariaLabel="About date status"
+          />
           <FormAggregateDirtyIndicator names={DATE_GROUP_FIELDS} />
         </Label>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
@@ -347,6 +357,22 @@ export function ActivityScheduleSection({
           )}
         >
           <span>Time</span>
+          <ActivityFieldInfoIcon
+            fieldKey="startTime"
+            ariaLabel="About start time"
+          />
+          <ActivityFieldInfoIcon
+            fieldKey="endTime"
+            ariaLabel="About end time"
+          />
+          <ActivityFieldInfoIcon
+            fieldKey="isAllDay"
+            ariaLabel="About all day"
+          />
+          <ActivityFieldInfoIcon
+            fieldKey="timeStatusId"
+            ariaLabel="About time status"
+          />
           <FormAggregateDirtyIndicator names={TIME_GROUP_FIELDS} />
         </Label>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
@@ -534,26 +560,10 @@ export function ActivityScheduleSection({
             <FormLabel>
               <>
                 {getActivityFieldLabel(field.name)}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <InfoIconButton aria-label="About scheduling notes" />
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                    align="start"
-                  >
-                    <p className="mb-2">
-                      Communicate any details and statuses related to
-                      scheduling:
-                    </p>
-                    <ul className="list-disc space-y-1 pl-4">
-                      <li>date or timeframe being requested</li>
-                      <li>approvals received or still outstanding</li>
-                      <li>criteria holding up the activity</li>
-                      <li>date or time confirmed by a joint third-party</li>
-                    </ul>
-                  </PopoverContent>
-                </Popover>
+                <ActivityFieldInfoIcon
+                  fieldKey="schedulingNotes"
+                  ariaLabel="About scheduling notes"
+                />
               </>
             </FormLabel>
             <FormControl data-field={field.name}>
@@ -561,6 +571,7 @@ export function ActivityScheduleSection({
                 placeholder="Enter scheduling considerations"
                 readOnly={readOnly}
                 rows={4}
+                maxLength={ACTIVITY_SCHEDULING_NOTES_MAX_LENGTH}
                 {...field}
                 value={field.value ?? ''}
               />

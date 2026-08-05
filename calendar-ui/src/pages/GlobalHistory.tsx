@@ -17,6 +17,7 @@ import {
   fetchTimeStatuses,
   fetchTranslationRequiredStatuses,
 } from '@/api/lookupsApi';
+import { FilterCheckboxItem } from '@/components/activity/ActivityTable/FilterCheckboxItem';
 import {
   isDateRangeActive,
   ScheduledDateRangeFields,
@@ -253,18 +254,13 @@ function SearchableMultiSelectFilter({
               </div>
             ) : (
               filteredOptions.map((option) => (
-                <label
+                <FilterCheckboxItem
                   key={option.value}
-                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50"
+                  checked={selectedValues.includes(option.value)}
+                  onCheckedChange={() => toggleValue(option.value)}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedValues.includes(option.value)}
-                    onChange={() => toggleValue(option.value)}
-                    className="h-4 w-4 rounded border-slate-300"
-                  />
-                  <span>{option.label}</span>
-                </label>
+                  {option.label}
+                </FilterCheckboxItem>
               ))
             )}
           </div>
@@ -798,7 +794,7 @@ export function GlobalHistory() {
       </Tabs>
 
       <div className="mb-2 flex flex-wrap items-center gap-3">
-        <div className="relative w-[240px] max-w-[240px] min-w-[240px]">
+        <div className="relative w-60 max-w-60 min-w-60">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
           <Input
             type="text"

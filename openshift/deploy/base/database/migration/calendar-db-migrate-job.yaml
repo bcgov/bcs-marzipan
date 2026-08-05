@@ -19,16 +19,13 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: postgres:16-alpine
+          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-db-migrate:${APP_VERSION}
           env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: calendar-service-secrets
                   key: DATABASE_URL
-          volumeMounts:
-            - name: migrations
-              mountPath: /migrations
           command:
             - sh
             - -c
@@ -39,35 +36,7 @@ spec:
               until pg_isready -d "$DATABASE_URL"; do
                 sleep 2
               done
-
-              echo "Checking for migration files..."
-
-              found=false
-              for f in /migrations/*.sql; do
-                if [ ! -e "$f" ]; then
-                  continue
-                fi
-                found=true
-                break
-              done
-              if [ "$found" = false ]; then
-                echo "No migration files found. Nothing to apply."
-                exit 0
-              fi
-
-              pg_dump -d "$DATABASE_URL" -Fc -f /tmp/pre_migration_backup.dump
-              echo "Database backup created at /tmp/pre_migration_backup.dump"
-
-              psql "$DATABASE_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
-
-              echo "Running DB migrations..."
-              for f in /migrations/*.sql; do
-                echo "Applying $f"
-                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
-              done
+              echo "Running tracked Drizzle migrations..."
+              npm run db:migrate --workspace=packages/database
 
               echo "DB migrations completed successfully."
-      volumes:
-        - name: migrations
-          configMap:
-            name: calendar-db-migrations

@@ -18,6 +18,7 @@ export interface ActivityTableRow {
   // Overview column
   title: string;
   activityCategories: string[];
+  categoryIds: number[];
   pitchDate: string | null;
   pitchRequiredStatus: string | null;
   isConfidential: boolean;
@@ -117,6 +118,7 @@ export function mapActivityToTableRow(
     // Overview
     title: activity.title,
     activityCategories: activity.category,
+    categoryIds: activity.categoryIds ?? [],
     pitchDate: activity.pitchDate ?? null,
     pitchRequiredStatus: activity.pitchRequiredStatus ?? null,
     isConfidential: activity.isConfidential,
@@ -162,10 +164,16 @@ export function mapActivityToTableRow(
     // Status
     activityStatus: activity.activityStatus,
     activityStatusId: activity.activityStatusId ?? 0,
-    changedFieldsSinceReview: activity.changedFieldsSinceReview ?? [],
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
     createdDateTime: activity.createdDateTime,
+    changedFieldsSinceReview:
+      'changedFieldsSinceReview' in activity &&
+      Array.isArray(activity.changedFieldsSinceReview)
+        ? activity.changedFieldsSinceReview.filter(
+            (v): v is string => typeof v === 'string'
+          )
+        : undefined,
 
     // Flags
     flags: activity.flags ?? [],

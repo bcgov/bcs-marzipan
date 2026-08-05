@@ -3,13 +3,27 @@
  * Use these to keep table layout and styling consistent and avoid drift.
  */
 
-/** Scroll area height for data tables. Used by TableScrollContainer so Users table and EventTable (Calendar Entries) share the same height and behavior. */
-export const TABLE_SCROLL_HEIGHT =
-  'max(240px, min(720px, 60vh, 100vh - 400px))';
+/**
+ * Viewport-based table height: reserve space for everything except the scroll container
+ * (page padding, pagination, filters/header/tabs/summary, borders) so {@link SidebarInset}
+ * does not scroll. Tune this single offset if parent scroll appears after layout changes.
+ */
+/** Compact {@link PageHeader} (mb-4, title only); reduce if parent scroll appears. */
+const TABLE_SCROLL_PAGE_OFFSET = '22.5rem';
 
-/** Print preview scroll height; same as {@link TABLE_SCROLL_HEIGHT} minus the preview toolbar row (h-9). */
-export const REPORT_PRINT_PREVIEW_SCROLL_HEIGHT =
-  'max(240px, min(720px, 60vh, 100vh - 436px))';
+/** Upper bound for the scroll area on very tall viewports. */
+const TABLE_SCROLL_VIEWPORT_MAX = '1200px';
+
+/** Print preview toolbar (h-9) below the same chrome as data tables. */
+const REPORT_PRINT_PREVIEW_TOOLBAR = '2.25rem';
+
+const TABLE_SCROLL_VIEWPORT_HEIGHT = `calc(100svh - var(--header-height, 3.5rem) - ${TABLE_SCROLL_PAGE_OFFSET})`;
+
+/** Scroll area height for data tables. Used by TableScrollContainer so Users table and EventTable (Calendar Entries) share the same height and behavior. */
+export const TABLE_SCROLL_HEIGHT = `max(240px, min(${TABLE_SCROLL_VIEWPORT_MAX}, ${TABLE_SCROLL_VIEWPORT_HEIGHT}))`;
+
+/** Print preview scroll height; same viewport reserve as {@link TABLE_SCROLL_HEIGHT} minus the preview toolbar row (h-9). */
+export const REPORT_PRINT_PREVIEW_SCROLL_HEIGHT = `max(240px, min(${TABLE_SCROLL_VIEWPORT_MAX}, calc(${TABLE_SCROLL_VIEWPORT_HEIGHT} - ${REPORT_PRINT_PREVIEW_TOOLBAR})))`;
 
 /** Min-width for filter/sort dropdown and popover panels. Use as className (e.g. with cn()) so base components stay flexible. */
 export const FILTER_PANEL_MIN_WIDTH = 'min-w-[180px]';

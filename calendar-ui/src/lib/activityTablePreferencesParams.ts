@@ -104,13 +104,7 @@ function parseFromSearchParams(
   const noStart = parseBool(searchParams.get(URL_PARAM_NO_START));
   const noEnd = parseBool(searchParams.get(URL_PARAM_NO_END));
   const categoryParam = searchParams.get(URL_PARAM_CATEGORY);
-  const categoryNames =
-    typeof categoryParam === 'string' && categoryParam.trim()
-      ? categoryParam
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : [];
+  const categoryIds = parseIdListFromQueryParam(categoryParam);
   const activityStatusIds = parseIdListFromQueryParam(
     searchParams.get(URL_PARAM_STATUS)
   );
@@ -193,7 +187,7 @@ function parseFromSearchParams(
       noStartDate: noStart === true,
       noEndDate: noEnd === true,
     },
-    categoryNames,
+    categoryIds,
     activityStatusIds,
     pitchRequiredStatusNames,
     pitchDateFilter,
@@ -379,9 +373,9 @@ function parseFromStorage(
             noStartDate: dr.noStartDate === true,
             noEndDate: dr.noEndDate === true,
           },
-          categoryNames: Array.isArray(rawFilter.categoryNames)
-            ? (rawFilter.categoryNames as string[]).filter(
-                (s): s is string => typeof s === 'string'
+          categoryIds: Array.isArray(rawFilter.categoryIds)
+            ? (rawFilter.categoryIds as number[]).filter(
+                (n): n is number => typeof n === 'number' && Number.isFinite(n)
               )
             : [],
           activityStatusIds: Array.isArray(rawFilter.activityStatusIds)
@@ -487,7 +481,7 @@ export function preferencesToParams(
     [URL_PARAM_DATE_TO]: f.dateRange.endDate,
     [URL_PARAM_NO_START]: String(f.dateRange.noStartDate),
     [URL_PARAM_NO_END]: String(f.dateRange.noEndDate),
-    [URL_PARAM_CATEGORY]: f.categoryNames.join(','),
+    [URL_PARAM_CATEGORY]: f.categoryIds.join(','),
     [URL_PARAM_STATUS]: f.activityStatusIds.join(','),
     [URL_PARAM_PITCH_STATUS]: f.pitchRequiredStatusNames.join(','),
     [URL_PARAM_PITCH_DATE_KIND]: f.pitchDateFilter.kind,

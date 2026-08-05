@@ -185,7 +185,7 @@ export function relationsForQueryFilters(
   if (query.tagIds != null && query.tagIds.length > 0) {
     addRelations(result, ['tags']);
   }
-  if (query.categoryNames != null && query.categoryNames.length > 0) {
+  if (query.categoryIds != null && query.categoryIds.length > 0) {
     addRelations(result, ['categories']);
   }
   if (

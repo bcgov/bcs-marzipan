@@ -17,6 +17,7 @@ export * from './report-config.schema';
 export * from './query-param-helpers';
 export * from './query-params.schema';
 export * from './report-cover-contact-settings.schema';
+export * from './activity-info-icon-settings.schema';
 export * from './review-exempt-field-keys.schema';
 export * from './saved-filter.schema';
 export * from './user.schema';

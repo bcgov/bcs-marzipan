@@ -136,6 +136,7 @@ export class ActivityMapperService {
       timeStatusId: activity.timeStatusId ?? 0,
       venueStatusId: activity.venueStatusId ?? null,
       category: relatedData?.categories ?? [],
+      categoryIds: relatedData?.categoryIds ?? [],
 
       // Basic info
       title: activity.title ?? '',
@@ -290,6 +291,7 @@ export class ActivityMapperService {
       isIssue: activity.isIssue ?? false,
       isConfidential: activity.isConfidential ?? false,
       category: relatedData?.categories ?? [],
+      categoryIds: relatedData?.categoryIds ?? [],
       tags: relatedData?.tags ?? [],
       pitchDate: formatDate(activity.pitchDate),
       pitchRequiredStatus: relatedData?.pitchRequiredStatus ?? null,

@@ -54,7 +54,7 @@ describe('SavedFiltersController', () => {
       id: 1,
       ownerUserId: 10,
       name: 'Src',
-      filterState: { categoryNames: ['A'] },
+      filterState: { categoryIds: [1] },
       searchKeyword: '',
       isDefault: false,
       sortOrder: 0,

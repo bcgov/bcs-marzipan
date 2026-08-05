@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TeamDetail, TeamListItem } from '@corpcal/shared/api/types';
+import { TEAM_DESCRIPTION_MAX_LENGTH } from '@corpcal/shared/schemas';
 import { ApiError } from '@/api/errors';
 import { fetchMinistries } from '@/api/lookupsApi';
 import {
@@ -360,6 +361,7 @@ export function TeamEditModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Description"
+                maxLength={TEAM_DESCRIPTION_MAX_LENGTH}
               />
             </div>
             <div className="flex items-center gap-2">

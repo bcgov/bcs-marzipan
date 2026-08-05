@@ -69,7 +69,10 @@ import { useEditLockSession } from '../hooks/useEditLockSession';
 import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { useFavourites } from '../hooks/useFavourites';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
-import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
+import {
+  buildActivityListScrollRestoreReturnState,
+  getActivityFormBackTarget,
+} from '../lib/activity-form-navigation-state';
 import {
   buildMarkReviewedOnlyPayload,
   buildPayloadForUpdate,
@@ -400,7 +403,10 @@ export function ActivityPage({
   const handleGoBack = useCallback(() => {
     const fromState = getActivityFormBackTarget(location.state);
     if (fromState != null) {
-      void navigate(fromState);
+      void navigate(fromState, {
+        replace: true,
+        state: buildActivityListScrollRestoreReturnState(location.state, id),
+      });
       return;
     }
     if (window.history.length > 1) {
@@ -408,7 +414,7 @@ export function ActivityPage({
     } else {
       void navigate('/');
     }
-  }, [navigate, location.state]);
+  }, [navigate, location.state, id]);
 
   const mayEditFormFields =
     canEditActivity && (!isBlockedStatus || canEditWhenBlocked);

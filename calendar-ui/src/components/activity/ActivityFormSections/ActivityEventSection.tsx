@@ -8,7 +8,10 @@ import type {
   VenuePresetItem,
   VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
-import type { ActivityFormData } from '@corpcal/shared/schemas';
+import {
+  ACTIVITY_VENUE_TEXT_MAX_LENGTH,
+  type ActivityFormData,
+} from '@corpcal/shared/schemas';
 import { normalizeEventPlannerFormEntries } from '@corpcal/shared/utils';
 import { fetchCities, fetchVenuePresets } from '@/api/lookupsApi';
 import {
@@ -64,6 +67,7 @@ import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -414,7 +418,15 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
         name="premierRequestedId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="premierRequestedId"
+                  ariaLabel="About premier requested"
+                />
+              </>
+            </FormLabel>
             <FormSelectSafe
               readOnly={readOnly}
               optionValues={premierRequestedOptions.map((o) => o.value)}
@@ -459,7 +471,15 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
 
           return (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="representatives"
+                    ariaLabel="About representatives"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={representativeComboboxOptions}
@@ -529,6 +549,14 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 )}
               >
                 {getActivityFieldLabel('venueName')}
+                <ActivityFieldInfoIcon
+                  fieldKey="venueName"
+                  ariaLabel="About venue"
+                />
+                <ActivityFieldInfoIcon
+                  fieldKey="venueStatusId"
+                  ariaLabel="About venue status"
+                />
                 <FormAggregateDirtyIndicator
                   names={['venueAddress.venueName', 'venueStatusId']}
                 />
@@ -596,12 +624,21 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
           name="venueAddress.addressLine1"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel('addressLine1')}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel('addressLine1')}
+                  <ActivityFieldInfoIcon
+                    fieldKey="addressLine1"
+                    ariaLabel="About address line 1"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <AddressAutocomplete
                   defaultValue={field.value || ''}
                   value={field.value ?? ''}
                   onAddressSelect={handleVenueAddressAutofill}
+                  maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   onInputValueChange={(value) =>
                     setActivityFormFieldValue(
                       form,
@@ -625,11 +662,20 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
           name="venueAddress.addressLine2"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel('addressLine2')}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel('addressLine2')}
+                  <ActivityFieldInfoIcon
+                    fieldKey="addressLine2"
+                    ariaLabel="About address line 2"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <Input
                   {...field}
                   value={field.value ?? ''}
+                  maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   readOnly={readOnly}
                   onChange={(e) => {
                     const raw = e.target.value;
@@ -654,12 +700,21 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
           name="venueAddress.city"
           render={({ field: _field }) => (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel('city')}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel('city')}
+                  <ActivityFieldInfoIcon
+                    fieldKey="city"
+                    ariaLabel="About city"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={_field.name}>
                 <FreeformCombobox
                   readOnly={readOnly}
                   multiple={false}
                   useChips={false}
+                  maxInputLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   options={cityComboboxOptions}
                   value={cityComboboxValueFromVenue(currentVenue, citiesList)}
                   onChange={handleCityComboboxChange}
@@ -678,11 +733,20 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
           name="venueAddress.provinceOrState"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel('provinceOrState')}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel('provinceOrState')}
+                  <ActivityFieldInfoIcon
+                    fieldKey="provinceOrState"
+                    ariaLabel="About province or state"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <Input
                   {...field}
                   value={field.value ?? ''}
+                  maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                   readOnly={readOnly}
                   onChange={(e) => {
                     const raw = e.target.value;
@@ -705,11 +769,20 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
         name="venueAddress.country"
         render={({ field }) => (
           <FormItem className="mt-6">
-            <FormLabel>{getActivityFieldLabel('country')}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel('country')}
+                <ActivityFieldInfoIcon
+                  fieldKey="country"
+                  ariaLabel="About country"
+                />
+              </>
+            </FormLabel>
             <FormControl data-field={field.name}>
               <Input
                 {...field}
                 value={field.value ?? ''}
+                maxLength={ACTIVITY_VENUE_TEXT_MAX_LENGTH}
                 readOnly={readOnly}
                 onChange={(e) => {
                   const raw = e.target.value;
@@ -804,7 +877,15 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
 
           return (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="eventPlanners"
+                    ariaLabel="About event planners"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <FreeformCombobox
                   readOnly={readOnly}
