@@ -213,7 +213,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       reportDataQuerySchema.parse({
         tagIds: '1,2',
         activityStatusIds: '3',
-        categoryNames: 'Event,FYI',
+        categoryIds: '1,2',
       }),
       ctx
     );
@@ -222,7 +222,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
       tagIds: [1, 2],
       activityStatusIds: [3],
-      categoryNames: ['Event', 'FYI'],
+      categoryIds: [1, 2],
     });
   });
 });

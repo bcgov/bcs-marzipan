@@ -6,11 +6,11 @@ import type { Visibility } from '@corpcal/shared';
 import type { Database } from '../database/database.provider';
 
 /**
- * Returns tag IDs visible to the given team IDs: global tags plus
- * team-scoped tags for those teams. Deduplicated.
+ * Returns tag IDs selectable by the given team IDs: global tags plus
+ * team-scoped tags for those teams. Used for activity save validation only.
  * If teamIds is empty or undefined, returns only global tag IDs.
  */
-export async function getVisibleTagIds(
+export async function getSelectableTagIds(
   db: Database,
   teamIds?: number[]
 ): Promise<number[]> {
@@ -61,3 +61,6 @@ export async function getVisibleTagIds(
   for (const r of teamScopedRows) ids.add(r.id);
   return Array.from(ids);
 }
+
+/** @deprecated Use getSelectableTagIds */
+export const getVisibleTagIds = getSelectableTagIds;

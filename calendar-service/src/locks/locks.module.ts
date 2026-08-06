@@ -3,6 +3,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { ActivitiesModule } from '../activities/activities.module';
 import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
+import { ActivityInfoIconsController } from './activity-info-icons.controller';
 import { ApplicationSettingsService } from './application-settings.service';
 import { LockHandoffDeadlineKickService } from './lock-handoff-deadline-kick.service';
 import { LockHandoffPoller } from './lock-handoff-poller.service';
@@ -22,6 +23,7 @@ import { ReviewExemptFieldsController } from './review-exempt-fields.controller'
   controllers: [
     LocksController,
     ReportCoverContactSettingsController,
+    ActivityInfoIconsController,
     ReviewExemptFieldsController,
   ],
   exports: [LocksService, ApplicationSettingsService],

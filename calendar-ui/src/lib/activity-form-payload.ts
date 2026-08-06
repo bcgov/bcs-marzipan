@@ -68,6 +68,11 @@ export function buildPayloadForCreate(
 export type UpdatePayloadOptions = ActivityFormPayloadOptions & {
   markAsReviewed?: boolean;
   markAsCompleted?: boolean;
+  /**
+   * Include representatives in PATCH payload. When false, representatives are
+   * omitted so unrelated saves do not send implicit clears.
+   */
+  includeRepresentatives?: boolean;
 };
 
 function prepareForSubmit(
@@ -89,8 +94,12 @@ export function buildPayloadForUpdate(
   formValues: ActivityFormData,
   options?: UpdatePayloadOptions
 ): Record<string, unknown> {
-  const { requiredTranslationStatusId, markAsReviewed, markAsCompleted } =
-    options ?? {};
+  const {
+    requiredTranslationStatusId,
+    markAsReviewed,
+    markAsCompleted,
+    includeRepresentatives = true,
+  } = options ?? {};
   const prepared = prepareForSubmit(data, requiredTranslationStatusId);
   const preparedFormValues = prepareForSubmit(
     formValues,
@@ -102,11 +111,15 @@ export function buildPayloadForUpdate(
   const payload: Record<string, unknown> = {
     ...buildPayloadFromPrepared(prepared, preparedFormValues),
     reportSettings: normalizedReportSettings,
-    // For updates, always send the representatives array (even if empty) so the server
-    // can detect when all representatives have been removed. buildPayloadForCreate uses
-    // toUndefinedIfEmpty which converts [] to undefined, hiding removals from history.
-    representatives: formValues.representatives ?? [],
   };
+  if (includeRepresentatives) {
+    // Include representatives when this update should persist representative edits,
+    // including intentional clear-all (`[]`). Callers should set
+    // `includeRepresentatives: false` for share/visibility-only saves to avoid implicit clears.
+    payload.representatives = preparedFormValues.representatives ?? [];
+  } else {
+    delete payload.representatives;
+  }
   if (markAsReviewed !== undefined) {
     payload.markAsReviewed = markAsReviewed;
   }

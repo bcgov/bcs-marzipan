@@ -53,7 +53,7 @@ describe('filterActivitiesQuerySchema', () => {
       flagAssigneeUserIds: '20',
       sharedWithTeamIds: '1,2',
       tagIds: '99',
-      categoryNames: 'Event,FYI',
+      categoryIds: '1,2',
       lookAheadSectionValues: 'events,issues',
     });
     expect(result.activityStatusIds).toEqual([1, 2, 3]);
@@ -63,7 +63,7 @@ describe('filterActivitiesQuerySchema', () => {
     expect(result.flagAssigneeUserIds).toEqual([20]);
     expect(result.sharedWithTeamIds).toEqual([1, 2]);
     expect(result.tagIds).toEqual([99]);
-    expect(result.categoryNames).toEqual(['Event', 'FYI']);
+    expect(result.categoryIds).toEqual([1, 2]);
     expect(result.lookAheadSectionValues).toEqual(['events', 'issues']);
   });
 

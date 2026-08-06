@@ -57,10 +57,20 @@ describe('ActivityFlagsService', () => {
     return chain;
   };
 
+  /** Builds a mock db.update() chain that resolves where() to undefined. */
+  const makeUpdateChain = () => {
+    const chain: Record<string, unknown> = {};
+    chain['set'] = vi.fn().mockReturnValue(chain);
+    chain['where'] = vi.fn().mockResolvedValue(undefined);
+    return chain;
+  };
+
   let mockDb: {
     select: ReturnType<typeof vi.fn>;
     insert: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    transaction: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -68,7 +78,19 @@ describe('ActivityFlagsService', () => {
       select: vi.fn(),
       insert: vi.fn(),
       delete: vi.fn(),
+      update: vi.fn(),
+      transaction: vi.fn(),
     };
+
+    // Set up transaction to delegate to the same insert/delete/update/select methods
+    mockDb.transaction.mockImplementation((callback) => {
+      return callback({
+        select: mockDb.select,
+        insert: mockDb.insert,
+        delete: mockDb.delete,
+        update: mockDb.update,
+      });
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -127,7 +149,15 @@ describe('ActivityFlagsService', () => {
         1,
         3,
         'flag_assigned',
-        [{ field: 'flag.assigneeName', oldValue: null, newValue: 'Jane Smith' }]
+        [
+          {
+            field: 'flag.assigneeName',
+            oldValue: null,
+            newValue: 'Jane Smith',
+          },
+        ],
+        undefined,
+        expect.any(Object)
       );
     });
 
@@ -149,14 +179,123 @@ describe('ActivityFlagsService', () => {
         1,
         3,
         'flag_assigned',
-        [{ field: 'flag.assigneeName', oldValue: null, newValue: 'Jane Smith' }]
+        [
+          {
+            field: 'flag.assigneeName',
+            oldValue: null,
+            newValue: 'Jane Smith',
+          },
+        ],
+        undefined,
+        expect.any(Object)
       );
       expect(mockHistoryService.recordChange).toHaveBeenCalledWith(
         1,
         3,
         'flag_removed',
-        [{ field: 'flag.assigneeName', oldValue: 'Old Person', newValue: null }]
+        [
+          {
+            field: 'flag.assigneeName',
+            oldValue: 'Old Person',
+            newValue: null,
+          },
+        ],
+        undefined,
+        expect.any(Object)
       );
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // syncFlags (update path)
+  // ---------------------------------------------------------------------------
+  describe('syncFlags', () => {
+    it('updates displayTeamId on existing flags when displayTeamPerAssignee provided', async () => {
+      let callCount = 0;
+      mockDb.select.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return makeChain([{ id: 1 }], 'limit'); // activity exists
+        if (callCount === 2)
+          return makeChain(
+            [
+              { userId: 2, name: 'Jane Smith' },
+              { userId: 3, name: 'Bob Jones' },
+            ],
+            'where'
+          ); // members
+        if (callCount === 3)
+          return makeChain(
+            [
+              { userId: 2, teamId: 10 },
+              { userId: 3, teamId: 5 },
+            ],
+            'where'
+          ); // userTeams for displayTeamPerAssignee validation
+        // Existing flags for syncFlags (same set as desired)
+        return makeChain(
+          [
+            { assigneeId: 2, name: 'Jane Smith' },
+            { assigneeId: 3, name: 'Bob Jones' },
+          ],
+          'where'
+        );
+      });
+      mockDb.update.mockReturnValue(makeUpdateChain());
+
+      await service.syncFlags(1, 1, [2, 3], 5, undefined, { 2: 10, 3: null });
+
+      // Verify update is called for each assignee with displayTeamPerAssignee entry
+      expect(mockDb.update).toHaveBeenCalled();
+      const updateCalls = mockDb.update.mock.calls;
+      expect(updateCalls.length).toBeGreaterThan(0);
+    });
+
+    it('updates note on existing flags when note provided', async () => {
+      let callCount = 0;
+      mockDb.select.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return makeChain([{ id: 1 }], 'limit'); // activity exists
+        if (callCount === 2)
+          return makeChain([{ userId: 2, name: 'Jane Smith' }], 'where'); // members
+        // Existing flags
+        return makeChain([{ assigneeId: 2, name: 'Jane Smith' }], 'where');
+      });
+      mockDb.update.mockReturnValue(makeUpdateChain());
+
+      await service.syncFlags(1, 1, [2], 5, 'Important note');
+
+      // Verify update is called to set the note
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('passes transaction handle to recordChange for new and removed flags', async () => {
+      let callCount = 0;
+      mockDb.select.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return makeChain([{ id: 1 }], 'limit'); // activity exists
+        if (callCount === 2)
+          return makeChain(
+            [
+              { userId: 2, name: 'Jane Smith' },
+              { userId: 3, name: 'Bob Jones' },
+            ],
+            'where'
+          ); // members
+        if (callCount === 3) return makeChain([], 'where'); // existing flags (none)
+        return makeChain([], 'where');
+      });
+      mockDb.insert.mockReturnValue(makeInsertChain());
+
+      await service.syncFlags(1, 1, [2, 3], 5);
+
+      // Verify recordChange is called with transaction object for each new assignment
+      expect(mockHistoryService.recordChange).toHaveBeenCalled();
+      const calls = mockHistoryService.recordChange.mock.calls;
+      // Each call should include the transaction object as the last parameter
+      for (const call of calls) {
+        expect(call.length).toBe(6); // 5 params + tx object
+        expect(call[5]).toBeDefined(); // tx object should be defined
+      }
     });
   });
 

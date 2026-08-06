@@ -4,8 +4,11 @@ import { DEFAULT_LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
 import {
   ACTIVITY_RICH_TEXT_MAX_BYTES,
   EMPTY_RICH_TEXT_DOC,
+  tipTapDocJsonFromPlainText,
 } from '../utils/activity-rich-text';
 import {
+  ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH,
+  ACTIVITY_SUMMARY_MAX_LENGTH,
   createActivityRequestSchema,
   updateActivityRequestSchema,
   venueAddressFieldsSchema,
@@ -93,18 +96,43 @@ describe('createActivityRequestSchema', () => {
     ).toBe('A summary is required');
   });
 
-  it('enforces summary and significance max rich-text bytes and valid storage', () => {
+  it(`enforces summary max plain-text length (${ACTIVITY_SUMMARY_MAX_LENGTH})`, () => {
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        summary: 'a'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH),
+      })
+    );
+
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          summary: 'a'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH + 1),
+        })
+      )
+    ).toThrow();
+
+    const richSummary = tipTapDocJsonFromPlainText(
+      'b'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH)
+    );
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({ summary: richSummary })
+    );
+
+    const tooLongRichSummary = tipTapDocJsonFromPlainText(
+      'b'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH + 1)
+    );
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ summary: tooLongRichSummary })
+      )
+    ).toThrow();
+  });
+
+  it('enforces summary max rich-text bytes and valid storage', () => {
     expect(() =>
       createActivityRequestSchema.parse(
         minimalCreateRequest({
           summary: 'a'.repeat(ACTIVITY_RICH_TEXT_MAX_BYTES + 1),
-        })
-      )
-    ).toThrow();
-    expect(() =>
-      createActivityRequestSchema.parse(
-        minimalCreateRequest({
-          significance: 'a'.repeat(ACTIVITY_RICH_TEXT_MAX_BYTES + 1),
         })
       )
     ).toThrow();
@@ -121,6 +149,68 @@ describe('createActivityRequestSchema', () => {
     expect(() =>
       createActivityRequestSchema.parse(
         minimalCreateRequest({ summary: EMPTY_RICH_TEXT_DOC })
+      )
+    ).toThrow();
+  });
+
+  it(`enforces significance and executiveSummary max plain-text length (${ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH})`, () => {
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        significance: 's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH),
+        executiveSummary: 'e'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH),
+      })
+    );
+
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          significance: 's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH + 1),
+        })
+      )
+    ).toThrow();
+
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({
+          executiveSummary: 'e'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH + 1),
+        })
+      )
+    ).toThrow();
+
+    const validRichSignificance = tipTapDocJsonFromPlainText(
+      's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH)
+    );
+    const tooLongRichExecutiveSummary = tipTapDocJsonFromPlainText(
+      'e'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH + 1)
+    );
+
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({ significance: validRichSignificance })
+    );
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ executiveSummary: tooLongRichExecutiveSummary })
+      )
+    ).toThrow();
+  });
+
+  it('enforces strategy and notes max length (2000)', () => {
+    createActivityRequestSchema.parse(
+      minimalCreateRequest({
+        strategy: 'a'.repeat(2000),
+        notes: 'b'.repeat(2000),
+      })
+    );
+
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ strategy: 'a'.repeat(2001) })
+      )
+    ).toThrow();
+
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ notes: 'b'.repeat(2001) })
       )
     ).toThrow();
   });
@@ -433,6 +523,37 @@ describe('updateActivityRequestSchema', () => {
     expect(result.title).toBe('Only title');
   });
 
+  it('enforces summary max plain-text length when provided on update', () => {
+    updateActivityRequestSchema.parse({
+      summary: 'a'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH),
+    });
+
+    expect(() =>
+      updateActivityRequestSchema.parse({
+        summary: 'a'.repeat(ACTIVITY_SUMMARY_MAX_LENGTH + 1),
+      })
+    ).toThrow();
+  });
+
+  it('enforces significance and executiveSummary max length when provided on update', () => {
+    updateActivityRequestSchema.parse({
+      significance: 's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH),
+      executiveSummary: 'e'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH),
+    });
+
+    expect(() =>
+      updateActivityRequestSchema.parse({
+        significance: 's'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH + 1),
+      })
+    ).toThrow();
+
+    expect(() =>
+      updateActivityRequestSchema.parse({
+        executiveSummary: 'e'.repeat(ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH + 1),
+      })
+    ).toThrow();
+  });
+
   it('accepts update when commsContacts has exactly one lead', () => {
     const result = updateActivityRequestSchema.parse({
       commsContacts: [{ userId: 1, isLead: true }],
@@ -546,6 +667,25 @@ describe('venueAddressFieldsSchema', () => {
       country: 'Canada',
     };
     expect(venueAddressFieldsSchema.parse(v)).toEqual(v);
+  });
+
+  it('enforces venue address text max length (255)', () => {
+    const valid = {
+      venueName: 'v'.repeat(255),
+      addressLine1: 'a'.repeat(255),
+      addressLine2: 'b'.repeat(255),
+      city: 'c'.repeat(255),
+      provinceOrState: 'p'.repeat(255),
+      country: 'n'.repeat(255),
+    };
+    expect(venueAddressFieldsSchema.parse(valid)).toEqual(valid);
+
+    expect(() =>
+      venueAddressFieldsSchema.parse({
+        ...valid,
+        addressLine2: 'b'.repeat(256),
+      })
+    ).toThrow();
   });
 
   it('accepts partial venue object (independent fields)', () => {

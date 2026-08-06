@@ -288,35 +288,6 @@ export const governmentRepresentatives = pgTable('government_representatives', {
 });
 
 /**
- * CommsContact lookup table - Comms contacts for activities
- * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/CommunicationContact.cs
- * TODO: this might be related to user accounts in the future and replaced by AD integration
- */
-export const commsContacts = pgTable('comms_contacts', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }).notNull(),
-  sortOrder: integer('sort_order').notNull().default(0),
-  isActive: boolean('is_active').notNull().default(true),
-  email: varchar('email', { length: 255 }),
-  phone: varchar('phone', { length: 50 }),
-  createdDateTime: timestamp('created_date_time', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdBy: integer('created_by')
-    .notNull()
-    .references(() => users.id),
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
-  })
-    .notNull()
-    .defaultNow(),
-  lastUpdatedBy: integer('last_updated_by')
-    .notNull()
-    .references(() => users.id),
-});
-
-/**
  * Event Planner lookup table - Event planners for activities
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/EventPlanner.cs
  */

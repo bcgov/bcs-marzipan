@@ -60,6 +60,14 @@ export async function fetchCategories(): Promise<CategoryLookupItem[]> {
   return res.data.data;
 }
 
+export async function fetchAllCategories(): Promise<CategoryLookupItem[]> {
+  const res = await api.get<{ success: boolean; data: CategoryLookupItem[] }>(
+    '/lookups/categories',
+    { params: { includeAll: 'true' } }
+  );
+  return res.data.data;
+}
+
 export async function fetchOrganizations(
   params?: LookupQueryParams
 ): Promise<OrganizationLookupItem[]> {

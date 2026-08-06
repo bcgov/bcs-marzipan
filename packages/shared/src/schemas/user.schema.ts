@@ -17,6 +17,9 @@ import { z } from 'zod';
 
 export const TEAM_ROLES = ['owner', 'member'] as const;
 
+export const USER_DISPLAY_NAME_MAX_LENGTH = 255;
+export const USER_NOTES_MAX_LENGTH = 1000;
+
 // ============================================
 // Response Schemas
 // ============================================
@@ -92,7 +95,7 @@ export const createUserBodySchema = z.object({
     .min(1, 'Email is required')
     .email('Invalid email format'),
   roleId: z.number().int(),
-  displayName: z.string().trim().optional(),
+  displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).optional(),
   teams: z
     .array(
       z.object({
@@ -111,12 +114,17 @@ export type CreateUserBody = z.infer<typeof createUserBodySchema>;
 export const updateUserBodySchema = z.object({
   roleId: z.number().int().optional(),
   isActive: z.boolean().optional(),
-  notes: z.string().nullable().optional(),
+  notes: z.string().max(USER_NOTES_MAX_LENGTH).nullable().optional(),
   /**
    * Profile fields. Editing these is restricted to admins / sys-admins
    * (enforced server-side in the users controller).
    */
-  displayName: z.string().trim().max(255).nullable().optional(),
+  displayName: z
+    .string()
+    .trim()
+    .max(USER_DISPLAY_NAME_MAX_LENGTH)
+    .nullable()
+    .optional(),
   email: z
     .string()
     .trim()
@@ -157,7 +165,7 @@ export type UpdateUserSettingsBody = z.infer<
 export const addUserToTeamBodySchema = z.object({
   teamId: z.number().int(),
   role: z.enum(TEAM_ROLES),
-  notes: z.string().optional(),
+  notes: z.string().max(USER_NOTES_MAX_LENGTH).optional(),
 });
 
 export type AddUserToTeamBody = z.infer<typeof addUserToTeamBodySchema>;
@@ -167,7 +175,7 @@ export type AddUserToTeamBody = z.infer<typeof addUserToTeamBodySchema>;
  */
 export const updateUserTeamRoleBodySchema = z.object({
   role: z.enum(TEAM_ROLES),
-  notes: z.string().optional(),
+  notes: z.string().max(USER_NOTES_MAX_LENGTH).optional(),
 });
 
 export type UpdateUserTeamRoleBody = z.infer<
@@ -182,7 +190,7 @@ export const transferActivitiesBodySchema = z.object({
   activityIds: z.array(z.number().int()).optional(),
   transferCommsLead: z.boolean(),
   transferCommsContact: z.boolean(),
-  notes: z.string().optional(),
+  notes: z.string().max(USER_NOTES_MAX_LENGTH).optional(),
 });
 
 export type TransferActivitiesBody = z.infer<

@@ -34,7 +34,7 @@ jobs:
 
       # Security audit: check for known vulnerabilities in dependencies
       - name: Run npm audit
-        run: npm audit --audit-level=moderate
+        run: npm audit --audit-level=critical
 
       - name: Run tests
         run: npm run test

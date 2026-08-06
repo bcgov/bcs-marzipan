@@ -136,7 +136,8 @@ export class ActivityFlagsController {
       body.teamId,
       body.assigneeIds,
       user.id,
-      body.note
+      body.note,
+      body.displayTeamPerAssignee
     );
     this.gateway.broadcastActivityUpdated(activityId);
     return { success: true, ...delta };

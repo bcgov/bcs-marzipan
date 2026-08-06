@@ -18,6 +18,7 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     displayId: null,
     title: '',
     activityCategories: [],
+    categoryIds: [],
     pitchDate: null,
     pitchRequiredStatus: null,
     isConfidential: false,
@@ -165,17 +166,21 @@ describe('filterActivityRowsByFilters', () => {
           noStartDate: false,
           noEndDate: false,
         },
-        categoryNames: [],
+        categoryIds: [],
         activityStatusIds: [],
       })
     ).toEqual(rows);
   });
 
-  it('filters by category names', () => {
+  it('filters by category ids', () => {
     const rows = [
-      makeRow({ id: 1, activityCategories: ['Event', 'Release'] }),
-      makeRow({ id: 2, activityCategories: ['FYI'] }),
-      makeRow({ id: 3, activityCategories: [] }),
+      makeRow({
+        id: 1,
+        activityCategories: ['Event', 'Release'],
+        categoryIds: [1, 2],
+      }),
+      makeRow({ id: 2, activityCategories: ['FYI'], categoryIds: [3] }),
+      makeRow({ id: 3, activityCategories: [], categoryIds: [] }),
     ];
     const result = filterActivityRowsByFilters(rows, {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
@@ -185,7 +190,7 @@ describe('filterActivityRowsByFilters', () => {
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: ['Event', 'FYI'],
+      categoryIds: [1, 3],
       activityStatusIds: [],
     });
     expect(result.map((r) => r.id)).toEqual([1, 2]);
@@ -205,7 +210,7 @@ describe('filterActivityRowsByFilters', () => {
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: [],
+      categoryIds: [],
       activityStatusIds: [1, 3],
     });
     expect(result.map((r) => r.id)).toEqual([1, 3]);
@@ -324,7 +329,7 @@ describe('filterActivityRowsByFilters', () => {
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: [],
+      categoryIds: [],
       activityStatusIds: [],
     });
     expect(result.map((r) => r.id)).toEqual([1, 2, 4]);

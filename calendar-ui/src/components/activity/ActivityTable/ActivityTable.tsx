@@ -70,6 +70,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getLookAheadStatusLabel } from '@/constants/form-options';
+import { useActivityListScrollRestore } from '@/hooks/useActivityListScrollRestore';
 import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
@@ -89,7 +90,6 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
-import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import {
   canResolveTranslationLanguageFilter,
   filterActivityRowsByFilters,
@@ -181,6 +181,27 @@ const STATUS_COLUMN_SORT_KEYS = [
   'createdDateTime',
 ] as const;
 
+const LIST_REVIEW_HIGHLIGHT_BG = 'bg-[#FFDDB3]';
+
+function rowHasChangedPath(row: ActivityTableRow, path: string): boolean {
+  const changed = row.changedFieldsSinceReview ?? [];
+  return changed.some((changedPath: string) => {
+    if (changedPath === path) {
+      return true;
+    }
+    return (
+      changedPath.startsWith(`${path}.`) || path.startsWith(`${changedPath}.`)
+    );
+  });
+}
+
+function rowHasAnyChangedPath(
+  row: ActivityTableRow,
+  paths: readonly string[]
+): boolean {
+  return paths.some((path) => rowHasChangedPath(row, path));
+}
+
 function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
   const isPinned = column.getIsPinned();
 
@@ -238,6 +259,7 @@ function OverviewCell({
   isFavourite,
   onFlagSync,
   flagPending,
+  showReviewHighlights,
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
@@ -246,15 +268,23 @@ function OverviewCell({
   onFlagSync?: (
     teamId: number,
     assigneeIds: number[],
-    assigneeNames?: string[]
+    assigneeNames?: string[],
+    displayTeamPerAssignee?: Record<number, number | null>
   ) => void;
   flagPending?: boolean;
+  showReviewHighlights: boolean;
 }) {
   const pitchLabel =
     (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
     row.pitchDate ??
     null;
   const displayIdText = row.displayId ?? String(row.id);
+  const titleChanged = showReviewHighlights && rowHasChangedPath(row, 'title');
+  const pitchChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['pitchDate', 'pitchRequiredStatusId']);
+  const categoriesChanged =
+    showReviewHighlights && rowHasChangedPath(row, 'categoryIds');
   const assignedFlags = useMemo(() => {
     const uniqueFlags = new Map<number, ActivityTableRow['flags'][number]>();
     row.flags.forEach((flag) => {
@@ -403,25 +433,38 @@ function OverviewCell({
         </div>
       )}
       <div
-        className="mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900"
+        className={cn(
+          'mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900',
+          titleChanged && 'rounded-sm px-1',
+          titleChanged && LIST_REVIEW_HIGHLIGHT_BG
+        )}
         title={row.title}
       >
         {row.title}
       </div>
       {pitchLabel && (
-        <div className="mb-2 text-[13px] text-slate-600">
+        <div
+          className={cn(
+            'mb-2 text-[13px] text-slate-600',
+            pitchChanged && 'inline-block rounded-sm px-1',
+            pitchChanged && LIST_REVIEW_HIGHLIGHT_BG
+          )}
+        >
           Pitch: {toSentenceCase(pitchLabel)}
         </div>
       )}
       {row.activityCategories.length > 0 && (
         <BadgeGroup
           items={row.activityCategories.map(
-            (cat): BadgeGroupItem => ({
-              key: cat,
+            (cat, index): BadgeGroupItem => ({
+              key: `${cat}:${index}`,
               label: cat,
               variant: 'outline',
-              className:
+              className: cn(
                 'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
+                categoriesChanged && 'border-transparent',
+                categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
+              ),
             })
           )}
           maxLines={1}
@@ -443,7 +486,13 @@ function summaryContentNeedsTruncation(el: HTMLDivElement): boolean {
   return el.scrollHeight > maxHeight + 1 || el.scrollWidth > el.clientWidth + 1;
 }
 
-function SummaryCell({ row }: { row: ActivityTableRow }) {
+function SummaryCell({
+  row,
+  showReviewHighlights,
+}: {
+  row: ActivityTableRow;
+  showReviewHighlights: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [needsTruncation, setNeedsTruncation] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -495,8 +544,8 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
             : undefined,
         }
       : null;
-    const tagItems: BadgeGroupItem[] = row.tags.map((tag) => ({
-      key: tag.id,
+    const tagItems: BadgeGroupItem[] = row.tags.map((tag, index) => ({
+      key: `${tag.id}:${index}`,
       label: tag.text,
       variant: 'outline',
       className: 'h-auto min-h-5 text-xs whitespace-normal text-slate-600',
@@ -505,6 +554,8 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
   }, [lookAheadLabel, lookAheadSectionRows, row.tags, section]);
 
   const isCollapsedWithTruncation = needsTruncation && !expanded;
+  const summaryChanged =
+    showReviewHighlights && rowHasChangedPath(row, 'summary');
 
   const showMoreLessButton = (
     <button
@@ -533,6 +584,8 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
           ref={contentRef}
           className={cn(
             'text-[14px] leading-[1.4] wrap-anywhere',
+            summaryChanged && 'rounded-sm px-1',
+            summaryChanged && LIST_REVIEW_HIGHLIGHT_BG,
             !expanded && 'line-clamp-5'
           )}
         >
@@ -569,12 +622,27 @@ function SummaryCell({ row }: { row: ActivityTableRow }) {
   );
 }
 
-function SchedulingCell({ row }: { row: ActivityTableRow }) {
+function SchedulingCell({
+  row,
+  showReviewHighlights,
+}: {
+  row: ActivityTableRow;
+  showReviewHighlights: boolean;
+}) {
+  const dateStatusChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['dateStatusId', 'dateStatus']);
+  const timeStatusChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['timeStatusId', 'timeStatus']);
+  const premierChanged =
+    showReviewHighlights &&
+    rowHasAnyChangedPath(row, ['premierRequestedId', 'premierRequested']);
   const representativeBadgeItems = useMemo(
     () =>
       row.activityRepresentatives.map(
-        (name): BadgeGroupItem => ({
-          key: name,
+        (name, index): BadgeGroupItem => ({
+          key: `${name}:${index}`,
           label: formatRepresentativeBadgeText(name),
         })
       ),
@@ -589,13 +657,17 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           key: 'premier',
           label: `Premier: ${row.premierRequested}`,
           variant: 'primary' as const,
-          className: 'h-auto min-h-5 text-xs text-white',
+          className: cn(
+            'h-auto min-h-5 text-xs text-white',
+            premierChanged && LIST_REVIEW_HIGHLIGHT_BG,
+            premierChanged && 'border-transparent text-slate-900'
+          ),
         },
         ...representativeBadgeItems,
       ];
     }
     return representativeBadgeItems;
-  }, [row.premierRequested, representativeBadgeItems]);
+  }, [premierChanged, row.premierRequested, representativeBadgeItems]);
   const dateRangeText =
     row.startDate && row.endDate && row.endDate !== row.startDate
       ? formatDateRange(row.startDate, row.endDate)
@@ -613,7 +685,11 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           <span>{dateRangeText}</span>
           <Badge
             variant="outline"
-            className="h-auto min-h-5 border-slate-200 text-xs text-slate-600"
+            className={cn(
+              'h-auto min-h-5 border-slate-200 text-xs text-slate-600',
+              dateStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
+              dateStatusChanged && 'border-transparent'
+            )}
           >
             {toSentenceCase(row.dateStatus)}
           </Badge>
@@ -632,7 +708,11 @@ function SchedulingCell({ row }: { row: ActivityTableRow }) {
           </span>
           <Badge
             variant="outline"
-            className="h-5 border-slate-200 text-xs text-slate-600"
+            className={cn(
+              'h-5 border-slate-200 text-xs text-slate-600',
+              timeStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
+              timeStatusChanged && 'border-transparent'
+            )}
           >
             {toSentenceCase(row.timeStatus)}
           </Badge>
@@ -870,10 +950,12 @@ export function ActivityTable({
 }: ActivityTableProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isActivityListRoute = location.pathname === '/';
   const { user, hasPermission } = useAuth();
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const showReviewHighlights = canSeeDeleted;
 
   const {
     pitchFieldVisibility,
@@ -942,7 +1024,10 @@ export function ActivityTable({
     () =>
       categoriesForFilter
         .filter((c) => c.isActive)
-        .map((c) => ({ value: c.displayName, label: c.displayName })),
+        .map((c) => ({
+          value: String(c.id),
+          label: c.displayName ?? c.name,
+        })),
     [categoriesForFilter]
   );
 
@@ -964,6 +1049,7 @@ export function ActivityTable({
       );
     return {
       statusIds: nums(statusOptions),
+      categoryIds: nums(categoryOptions),
       tagIds: nums(tagOptions),
       ministryIds: nums(ministryOptions),
       orgIds: nums(organizationOptions),
@@ -974,6 +1060,7 @@ export function ActivityTable({
     };
   }, [
     statusOptions,
+    categoryOptions,
     tagOptions,
     ministryOptions,
     organizationOptions,
@@ -1256,6 +1343,23 @@ export function ActivityTable({
     );
   }, [filteredData, effectiveSortKey, effectiveSortDirection]);
 
+  const sortedActivityIds = useMemo(
+    () => sortedData.map((row) => row.id),
+    [sortedData]
+  );
+
+  const { openActivityWithScroll } = useActivityListScrollRestore({
+    enabled: isActivityListRoute,
+    location,
+    navigate,
+    scrollRef: tableScrollRef,
+    pageIndex,
+    setPageIndex,
+    pageSize: pagination.pageSize,
+    loading,
+    sortedActivityIds,
+  });
+
   const watchlistActivityIdSet = useMemo(
     () => new Set(watchlistActivityIds ?? []),
     [watchlistActivityIds]
@@ -1335,11 +1439,17 @@ export function ActivityTable({
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
             canFlag={canFlag}
+            showReviewHighlights={showReviewHighlights}
             isFavourite={watchlistActivityIdSet.has(row.original.id)}
-            onFlagSync={(teamId, assigneeIds, assigneeNames) =>
+            onFlagSync={(
+              teamId,
+              assigneeIds,
+              assigneeNames,
+              displayTeamPerAssignee
+            ) =>
               syncFlagsMutation.mutate({
                 activityId: row.original.id,
-                body: { teamId, assigneeIds },
+                body: { teamId, assigneeIds, displayTeamPerAssignee },
                 assigneeNames,
               })
             }
@@ -1360,7 +1470,12 @@ export function ActivityTable({
         ),
         meta: { sortKey: 'lookAheadStatus' as const },
         ...getActivityColumnSizes('summary'),
-        cell: ({ row }) => <SummaryCell row={row.original} />,
+        cell: ({ row }) => (
+          <SummaryCell
+            row={row.original}
+            showReviewHighlights={showReviewHighlights}
+          />
+        ),
       }),
 
       columnHelper.accessor('startDate', {
@@ -1375,7 +1490,12 @@ export function ActivityTable({
         ),
         meta: { sortKey: 'startDate' as const },
         ...getActivityColumnSizes('scheduling'),
-        cell: ({ row }) => <SchedulingCell row={row.original} />,
+        cell: ({ row }) => (
+          <SchedulingCell
+            row={row.original}
+            showReviewHighlights={showReviewHighlights}
+          />
+        ),
       }),
 
       columnHelper.display({
@@ -1448,6 +1568,7 @@ export function ActivityTable({
       effectiveSortDirection,
       handleSortChange,
       pitchFieldVisibility.canViewPitchStatus,
+      showReviewHighlights,
       canFlag,
       watchlistActivityIdSet,
       syncFlagsMutation,
@@ -1749,6 +1870,7 @@ export function ActivityTable({
                   return (
                     <tr
                       key={row.id}
+                      data-activity-id={row.original.id}
                       className={cn(
                         `group/row ${tableBodyRow} cursor-pointer`,
                         isNewRow && 'animate-in fade-in-0 duration-300',
@@ -1761,10 +1883,7 @@ export function ActivityTable({
                         )
                           return;
                         if (window.getSelection()?.toString().trim()) return;
-                        void navigate(
-                          `/activity/${row.original.id}`,
-                          activityFormLinkState(location)
-                        );
+                        openActivityWithScroll(row.original.id);
                       }}
                       onKeyDown={(e) => {
                         if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1773,10 +1892,7 @@ export function ActivityTable({
                         )
                           return;
                         e.preventDefault();
-                        void navigate(
-                          `/activity/${row.original.id}`,
-                          activityFormLinkState(location)
-                        );
+                        openActivityWithScroll(row.original.id);
                       }}
                     >
                       {row.getVisibleCells().map((cell) => {

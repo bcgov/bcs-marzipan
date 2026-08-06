@@ -59,6 +59,7 @@ const BASE_ACTIVITY: ActivityResponse = {
   createdDateTime: '2026-04-20T00:00:00.000Z',
   lastUpdatedDateTime: '2026-04-20T09:15:00.000Z',
   category: [],
+  categoryIds: [],
   tags: [],
   commsMaterials: [],
   translationsRequired: [],

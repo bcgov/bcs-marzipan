@@ -3,6 +3,7 @@ import type { OptionItem } from '@/schemas/types';
 
 export function buildValidFilterLookupsFromOptions(options: {
   statusOptions: OptionItem[];
+  categoryOptions?: OptionItem[];
   tagOptions: OptionItem[];
   ministryOptions: OptionItem[];
   organizationOptions: OptionItem[];
@@ -17,6 +18,9 @@ export function buildValidFilterLookupsFromOptions(options: {
     );
   return {
     statusIds: nums(options.statusOptions),
+    categoryIds: options.categoryOptions
+      ? nums(options.categoryOptions)
+      : undefined,
     tagIds: nums(options.tagOptions),
     ministryIds: nums(options.ministryOptions),
     orgIds: nums(options.organizationOptions),

@@ -69,7 +69,10 @@ import { useEditLockSession } from '../hooks/useEditLockSession';
 import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { useFavourites } from '../hooks/useFavourites';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
-import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
+import {
+  buildActivityListScrollRestoreReturnState,
+  getActivityFormBackTarget,
+} from '../lib/activity-form-navigation-state';
 import {
   buildMarkReviewedOnlyPayload,
   buildPayloadForUpdate,
@@ -183,7 +186,9 @@ export function ActivityPage({
           (isAdminOrSysAdmin || isCommsContact || isLeadTeamMember)
         : false;
   const showDeleteButton =
-    canDelete && (canDeleteAny || isCommsContact || isLeadTeamMember);
+    normalizedStatus !== 'deleted' &&
+    canDelete &&
+    (canDeleteAny || isCommsContact || isLeadTeamMember);
   const showRequestDeleteButton =
     !isBlockedStatus &&
     (isCommsContact || isLeadTeamMember) &&
@@ -398,7 +403,10 @@ export function ActivityPage({
   const handleGoBack = useCallback(() => {
     const fromState = getActivityFormBackTarget(location.state);
     if (fromState != null) {
-      void navigate(fromState);
+      void navigate(fromState, {
+        replace: true,
+        state: buildActivityListScrollRestoreReturnState(location.state, id),
+      });
       return;
     }
     if (window.history.length > 1) {
@@ -406,7 +414,7 @@ export function ActivityPage({
     } else {
       void navigate('/');
     }
-  }, [navigate, location.state]);
+  }, [navigate, location.state, id]);
 
   const mayEditFormFields =
     canEditActivity && (!isBlockedStatus || canEditWhenBlocked);
@@ -557,10 +565,24 @@ export function ActivityPage({
         } else {
           const opts: UpdatePayloadOptions =
             mode.kind === 'reviewWithSave'
-              ? { markAsReviewed: true, requiredTranslationStatusId }
+              ? {
+                  markAsReviewed: true,
+                  requiredTranslationStatusId,
+                  includeRepresentatives:
+                    !!form.formState.dirtyFields.representatives,
+                }
               : mode.kind === 'completeWithSave'
-                ? { markAsCompleted: true, requiredTranslationStatusId }
-                : { requiredTranslationStatusId };
+                ? {
+                    markAsCompleted: true,
+                    requiredTranslationStatusId,
+                    includeRepresentatives:
+                      !!form.formState.dirtyFields.representatives,
+                  }
+                : {
+                    requiredTranslationStatusId,
+                    includeRepresentatives:
+                      !!form.formState.dirtyFields.representatives,
+                  };
           submitData = {
             ...buildPayloadForUpdate(
               mode.validatedData,
@@ -667,15 +689,29 @@ export function ActivityPage({
         )
       );
 
-      const removedCount = results.filter(
+      const fulfilled = results.filter(
         (result) => result.status === 'fulfilled'
-      ).length;
-      if (removedCount > 0) {
+      );
+      const rejected = results.filter((result) => result.status === 'rejected');
+
+      if (fulfilled.length > 0) {
         toast.success(
-          removedCount === 1
+          fulfilled.length === 1
             ? 'Activity unassigned'
-            : `Activity unassigned from ${removedCount} teams`
+            : `Activity unassigned from ${fulfilled.length} teams`
         );
+      }
+
+      if (rejected.length > 0) {
+        if (fulfilled.length > 0) {
+          toast.error(
+            rejected.length === 1
+              ? 'Failed to unassign from 1 team'
+              : `Failed to unassign from ${rejected.length} teams`
+          );
+        } else {
+          toast.error('Failed to unassign activity');
+        }
       }
     }
     if (markAsCompleted) {
@@ -879,10 +915,16 @@ export function ActivityPage({
         canFlag={canFlag}
         onFlagSync={
           canFlag
-            ? (teamId, assigneeIds, note, assigneeNames) =>
+            ? (
+                teamId,
+                assigneeIds,
+                note,
+                assigneeNames,
+                displayTeamPerAssignee
+              ) =>
                 syncFlagsMutation.mutate({
                   activityId: id,
-                  body: { teamId, assigneeIds, note },
+                  body: { teamId, assigneeIds, note, displayTeamPerAssignee },
                   assigneeNames,
                 })
             : undefined

@@ -112,7 +112,7 @@ describe('hasActivityFindAllFilterFields', () => {
       hasActivityFindAllFilterFields({
         activityStatusIds: [],
         tagIds: [],
-        categoryNames: [],
+        categoryIds: [],
       })
     ).toBe(false);
   });
@@ -123,7 +123,7 @@ describe('hasActivityFindAllFilterFields', () => {
     ['scheduledDateRangeOverlaps', { scheduledDateRangeOverlaps: true }],
     ['activityStatusIds', { activityStatusIds: [1, 2] }],
     ['tagIds', { tagIds: [10] }],
-    ['categoryNames', { categoryNames: ['Event'] }],
+    ['categoryIds', { categoryIds: [1] }],
     ['lookAheadSectionValues', { lookAheadSectionValues: ['events'] }],
     ['dateConfirmedFilter', { dateConfirmedFilter: 'confirmed' }],
     ['pitchDateNotScheduled', { pitchDateNotScheduled: true }],
@@ -226,16 +226,14 @@ describe('buildActivityFindAllConditions', () => {
     expect(select).toHaveBeenCalledTimes(2);
   });
 
-  it('builds category exists with a join', () => {
+  it('builds category exists on junction table', () => {
     const { select, db } = createMockDb();
     const from = vi.fn(() => ({
-      innerJoin: vi.fn(() => ({
-        where: vi.fn(),
-      })),
+      where: vi.fn(),
     }));
     select.mockReturnValueOnce({ from } as never);
     buildActivityFindAllConditions({
-      filters: baseFilters({ categoryNames: ['Event', 'FYI'] }),
+      filters: baseFilters({ categoryIds: [1, 2] }),
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,

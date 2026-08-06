@@ -7,6 +7,8 @@ resources:
   - calendar-ui/imagestream.yaml
   - calendar-ui/buildconfig.yaml
   - calendar-ui/configmap.yaml
+  - database/migrate/imagestream.yaml
+  - database/migrate/buildconfig.yaml
   - database/seed/imagestream.yaml
   - database/seed/buildconfig.yaml
 namespace: ${TOOLS_NAMESPACE}

@@ -188,7 +188,6 @@ export const ActivityListPage = () => {
     <>
       <PageHeader
         title="Calendar activities"
-        description="View and manage calendar activities"
         action={
           canCreateActivity ? (
             <Button asChild>

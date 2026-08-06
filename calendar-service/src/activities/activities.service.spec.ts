@@ -11,9 +11,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { Activity } from '@corpcal/database/types';
 import {
   buildActivityDisplayId,
+  HYDRATION_PROFILES,
   normalizeTeamAbbreviationForActivityDisplayId,
   PERMISSIONS,
   REVIEW_SNAPSHOT_VERSION,
+  SYSTEM_ROLES,
 } from '@corpcal/shared';
 import {
   activityResponseSchema,
@@ -30,8 +32,11 @@ import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { LocksService } from '../locks/locks.service';
 import { LookAheadPolicyService } from '../look-ahead/look-ahead-policy.service';
+import {
+  getCategoryScopeById,
+  getTagScopeById,
+} from '../policy/lookup-scope.helper';
 import { PolicyService } from '../policy/policy.service';
-import { getVisibleTagIds } from '../policy/tag-scoping.helper';
 import { TeamsService } from '../teams/teams.service';
 import { ActivitiesGateway } from './activities.gateway';
 import { ActivitiesService } from './services/activities.service';
@@ -43,9 +48,40 @@ import { ActivityJunctionService } from './services/activity-junction.service';
 import { ActivityMapperService } from './services/activity-mapper.service';
 import { ActivityUtilsService } from './services/activity-utils.service';
 
-vi.mock('../policy/tag-scoping.helper', () => ({
-  getVisibleTagIds: vi.fn(),
+vi.mock('../policy/lookup-scope.helper', () => ({
+  getCategoryScopeById: vi.fn(),
+  getTagScopeById: vi.fn(),
 }));
+
+function mockLookupScopeMaps(
+  entries: Array<
+    [number, { visibility: 'global' | 'team'; teamIds?: number[] }]
+  >
+) {
+  const map = new Map(entries.map(([id, scope]) => [id, scope] as const));
+  vi.mocked(getCategoryScopeById).mockImplementation((_db, ids) => {
+    const scoped = new Map<
+      number,
+      { visibility: 'global' | 'team'; teamIds?: number[] }
+    >();
+    for (const id of ids) {
+      const entry = map.get(id);
+      if (entry) scoped.set(id, entry);
+    }
+    return Promise.resolve(scoped);
+  });
+  vi.mocked(getTagScopeById).mockImplementation((_db, ids) => {
+    const scoped = new Map<
+      number,
+      { visibility: 'global' | 'team'; teamIds?: number[] }
+    >();
+    for (const id of ids) {
+      const entry = map.get(id);
+      if (entry) scoped.set(id, entry);
+    }
+    return Promise.resolve(scoped);
+  });
+}
 
 /** mapToResponseDto tests exercise mapping only, not team visibility rules. */
 const BYPASS_FIND_ONE_CTX = { dataScope: { bypass: true, teamIds: [] } };
@@ -307,6 +343,14 @@ describe('ActivitiesService', () => {
 
     // Reset all mocks
     vi.clearAllMocks();
+    mockLookupScopeMaps([
+      [1, { visibility: 'global' }],
+      [2, { visibility: 'global' }],
+      [3, { visibility: 'global' }],
+      [4, { visibility: 'global' }],
+      [5, { visibility: 'global' }],
+      [99, { visibility: 'global' }],
+    ]);
   });
 
   describe('mapToResponseDto validation', () => {
@@ -1014,7 +1058,10 @@ describe('ActivitiesService', () => {
     });
 
     it('throws BadRequestException when a submitted tagId is not in the visible set', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [99, { visibility: 'team', teamIds: [5] }],
+      ]);
       const createDto = createMockActivityRequest({ tagIds: [99] });
 
       mockDatabaseService.db.select = vi.fn((...args) => {
@@ -1047,11 +1094,14 @@ describe('ActivitiesService', () => {
           teamIds: [1],
         })
       ).rejects.toThrow(BadRequestException);
-      expect(getVisibleTagIds).toHaveBeenCalledWith(expect.anything(), [1]);
+      expect(getTagScopeById).toHaveBeenCalledWith(expect.anything(), [99]);
     });
 
     it('includes the forbidden tag IDs in the error message', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [99, { visibility: 'team', teamIds: [5] }],
+      ]);
       const createDto = createMockActivityRequest({ tagIds: [99] });
 
       mockDatabaseService.db.select = vi.fn((...args) => {
@@ -1087,7 +1137,10 @@ describe('ActivitiesService', () => {
     });
 
     it('bypasses tag visibility check when user has CREATE_ANY permission', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [99, { visibility: 'team', teamIds: [5] }],
+      ]);
       const createDto = createMockActivityRequest({
         tagIds: [99],
         leadTeamId: 5,
@@ -1155,7 +1208,89 @@ describe('ActivitiesService', () => {
         teamIds: [],
       });
 
-      expect(getVisibleTagIds).not.toHaveBeenCalled();
+      expect(getTagScopeById).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when a submitted categoryId is not selectable', async () => {
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [99, { visibility: 'team', teamIds: [5] }],
+      ]);
+      const createDto = createMockActivityRequest({ categoryIds: [99] });
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [1],
+        })
+      ).rejects.toThrow(BadRequestException);
+      expect(getCategoryScopeById).toHaveBeenCalledWith(
+        expect.anything(),
+        [99]
+      );
+    });
+
+    it('includes forbidden category IDs in the create error message', async () => {
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [99, { visibility: 'team', teamIds: [5] }],
+      ]);
+      const createDto = createMockActivityRequest({ categoryIds: [99] });
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [1],
+        })
+      ).rejects.toThrow('Category IDs not available to your teams: 99');
     });
   });
 
@@ -1904,6 +2039,83 @@ describe('ActivitiesService', () => {
         expect(result.activityStatusId).toBe(reviewedStatusId);
       });
 
+      it('treats representatives as the non-exempt field in full save payloads', async () => {
+        const existingActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+        });
+
+        vi.spyOn(
+          service as unknown as {
+            getReviewDiffLookups: () => Promise<unknown>;
+          },
+          'getReviewDiffLookups'
+        ).mockResolvedValue({});
+
+        vi.spyOn(
+          service as unknown as {
+            getEffectiveReviewExemptFieldKeys: () => Promise<
+              ReadonlySet<string>
+            >;
+          },
+          'getEffectiveReviewExemptFieldKeys'
+        ).mockResolvedValue(new Set(['visibility', 'sharedWithTeamIds']));
+
+        vi.spyOn(
+          service as unknown as {
+            fetchRelatedForActivityIds: (
+              ...args: unknown[]
+            ) => Promise<unknown>;
+          },
+          'fetchRelatedForActivityIds'
+        ).mockResolvedValue({});
+
+        vi.spyOn(
+          service as unknown as {
+            mapFetchedActivityToResponseDto: (
+              ...args: unknown[]
+            ) => ReturnType<typeof createMockActivityResponse>;
+          },
+          'mapFetchedActivityToResponseDto'
+        ).mockReturnValue(
+          createMockActivityResponse({
+            id: 1,
+            activityStatus: 'Reviewed',
+            visibility: 'global',
+            sharedWith: [],
+            representativesAttending: ['Minister Smith'],
+          })
+        );
+
+        const preserveWhenOnlySharedWithChanges = await (
+          service as unknown as {
+            shouldPreserveReviewedStatus: (
+              activityId: number,
+              oldActivity: Activity,
+              dto: UpdateActivityRequest
+            ) => Promise<boolean>;
+          }
+        ).shouldPreserveReviewedStatus(1, existingActivity, {
+          sharedWithTeamIds: [42],
+        });
+
+        const preserveWhenUiPayloadAlsoSendsRepresentatives = await (
+          service as unknown as {
+            shouldPreserveReviewedStatus: (
+              activityId: number,
+              oldActivity: Activity,
+              dto: UpdateActivityRequest
+            ) => Promise<boolean>;
+          }
+        ).shouldPreserveReviewedStatus(1, existingActivity, {
+          sharedWithTeamIds: [42],
+          representatives: [],
+        });
+
+        expect(preserveWhenOnlySharedWithChanges).toBe(true);
+        expect(preserveWhenUiPayloadAlsoSendsRepresentatives).toBe(false);
+      });
+
       it('falls back to Changed when a non-exempt field changes', async () => {
         const existingActivity = createMockActivity({
           id: 1,
@@ -2268,7 +2480,10 @@ describe('ActivitiesService', () => {
     });
 
     it('throws BadRequestException when a submitted tagId is not in the visible set', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [99, { visibility: 'team', teamIds: [5] }],
+      ]);
       const updateDto = createMockUpdateRequest({ tagIds: [99] });
 
       setupUpdateSelectMock();
@@ -2279,11 +2494,14 @@ describe('ActivitiesService', () => {
           teamIds: [1],
         })
       ).rejects.toThrow(BadRequestException);
-      expect(getVisibleTagIds).toHaveBeenCalledWith(expect.anything(), [1]);
+      expect(getTagScopeById).toHaveBeenCalledWith(expect.anything(), [99]);
     });
 
     it('includes the forbidden tag IDs in the error message on update', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [99, { visibility: 'team', teamIds: [5] }],
+      ]);
       const updateDto = createMockUpdateRequest({ tagIds: [99] });
 
       setupUpdateSelectMock();
@@ -2297,7 +2515,10 @@ describe('ActivitiesService', () => {
     });
 
     it('bypasses tag visibility check when user has CREATE_ANY permission on update', async () => {
-      vi.mocked(getVisibleTagIds).mockResolvedValue([1, 2]);
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [99, { visibility: 'team', teamIds: [5] }],
+      ]);
       const existingActivity = createMockActivity({ id: 1 });
       const updatedActivity = createMockActivity({ id: 1, title: 'Updated' });
       const updateDto = createMockUpdateRequest({ tagIds: [99] });
@@ -2369,7 +2590,112 @@ describe('ActivitiesService', () => {
         teamIds: [],
       });
 
-      expect(getVisibleTagIds).not.toHaveBeenCalled();
+      expect(getTagScopeById).not.toHaveBeenCalled();
+    });
+
+    it('allows grandfathered tag IDs already on the activity', async () => {
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [99, { visibility: 'team', teamIds: [5] }],
+      ]);
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({ id: 1, title: 'Updated' });
+      const updateDto = createMockUpdateRequest({ tagIds: [99] });
+
+      mockDatabaseService.db.transaction = vi.fn((callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn((...args) => {
+            if (args.length === 0) return createMockQueryChain([]);
+            const fetchChain = {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
+            };
+            return fetchChain;
+          }),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return Promise.resolve(callback(tx));
+      });
+
+      let withArgsCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('tagId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([{ tagId: 99 }]),
+            };
+          }
+          if ('categoryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+            };
+          }
+        }
+        withArgsCount++;
+        if (withArgsCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'changed' }]),
+          };
+        }
+        if (withArgsCount === 2) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        return fetchChain;
+      });
+
+      await expect(
+        service.update(1, updateDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.edit'],
+          teamIds: [1],
+        })
+      ).resolves.toBeDefined();
+    });
+
+    it('rejects newly added non-selectable category IDs on update', async () => {
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [99, { visibility: 'team', teamIds: [5] }],
+      ]);
+      const updateDto = createMockUpdateRequest({ categoryIds: [1, 99] });
+
+      setupUpdateSelectMock();
+      await expect(
+        service.update(1, updateDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.edit'],
+          teamIds: [1],
+        })
+      ).rejects.toThrow('Category IDs not available to your teams: 99');
     });
   });
 
@@ -3243,6 +3569,19 @@ describe('ActivitiesService', () => {
       expect(paths).toContain('title');
     });
 
+    it('returns empty array when activity status is Deleted (soft-deleted)', () => {
+      const response = createMockActivityResponse({
+        activityStatus: 'Deleted',
+        title: 'Filled title',
+      });
+      const paths = service.computeChangedFieldsSinceReview(
+        response,
+        null,
+        REVIEW_SNAPSHOT_VERSION
+      );
+      expect(paths).toEqual([]);
+    });
+
     it('returns undefined when snapshot version mismatches', () => {
       const response = createMockActivityResponse({
         activityStatus: 'Changed',
@@ -3253,6 +3592,113 @@ describe('ActivitiesService', () => {
         REVIEW_SNAPSHOT_VERSION + 1
       );
       expect(paths).toBeUndefined();
+    });
+  });
+
+  describe('findAll list output review diff', () => {
+    it('attaches changedFieldsSinceReview only for admin users and uses the parse-free mapper builder', async () => {
+      const activity = createMockActivity({
+        reviewedFieldSnapshot: null,
+        reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
+      });
+
+      mockDatabaseService.db.select = vi.fn((selection?: unknown) => {
+        if (selection === undefined) {
+          return {
+            from: vi.fn().mockResolvedValue([activity]),
+          };
+        }
+
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        };
+      });
+
+      vi.spyOn(
+        service as unknown as {
+          getReviewDiffLookups: () => Promise<unknown>;
+        },
+        'getReviewDiffLookups'
+      ).mockResolvedValue({});
+      const getEffectiveReviewExemptFieldKeysSpy = vi
+        .spyOn(
+          service as unknown as {
+            getEffectiveReviewExemptFieldKeys: () => Promise<Set<string>>;
+          },
+          'getEffectiveReviewExemptFieldKeys'
+        )
+        .mockResolvedValue(new Set<string>());
+
+      mockDataFetcherService.fetchActivityStatusesForActivities.mockResolvedValue(
+        new Map([[activity.id, 'Reviewed']])
+      );
+
+      const mapperService = (
+        service as unknown as { mapperService: ActivityMapperService }
+      ).mapperService;
+      const buildResponseSpy = vi.spyOn(mapperService, 'buildResponseDto');
+      const mapToResponseSpy = vi.spyOn(mapperService, 'mapToResponseDto');
+
+      const adminResult = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: SYSTEM_ROLES.ADMIN,
+            permissions: [],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: {
+            ...HYDRATION_PROFILES.detail,
+            includeReviewDiff: true,
+          },
+        }
+      );
+
+      expect(adminResult[0]).toMatchObject({
+        id: activity.id,
+        changedFieldsSinceReview: expect.arrayContaining([
+          'title',
+          'dateStatusId',
+          'timeStatusId',
+        ]),
+      });
+      expect(getEffectiveReviewExemptFieldKeysSpy).not.toHaveBeenCalled();
+      expect(buildResponseSpy).toHaveBeenCalledTimes(1);
+      expect(mapToResponseSpy).not.toHaveBeenCalled();
+
+      buildResponseSpy.mockClear();
+      mapToResponseSpy.mockClear();
+
+      const nonAdminResult = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: 'User',
+            permissions: [],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: {
+            ...HYDRATION_PROFILES.detail,
+            includeReviewDiff: true,
+          },
+        }
+      );
+
+      expect(nonAdminResult[0]).not.toHaveProperty('changedFieldsSinceReview');
+      expect(buildResponseSpy).not.toHaveBeenCalled();
+      expect(mapToResponseSpy).not.toHaveBeenCalled();
     });
   });
 

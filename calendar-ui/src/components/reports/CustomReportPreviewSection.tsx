@@ -15,6 +15,12 @@ interface CustomReportPreviewSectionProps {
   section: ReportSectionData;
   config: CustomReportFieldConfig[];
   onFieldsChange?: (fields: CustomReportFieldConfig[]) => void;
+  onPaginationChange?: (change: {
+    action: 'page_change' | 'page_size_change';
+    page: number;
+    pageSize: number;
+    totalItems: number;
+  }) => void;
   /** In-app preview: flash matching activity rows briefly after remote updates. */
   highlightedActivityIds?: ReadonlySet<number>;
   /** Scroll parent for pagination. */
@@ -29,6 +35,7 @@ export function CustomReportPreviewSection({
   section,
   config,
   onFieldsChange,
+  onPaginationChange,
   highlightedActivityIds,
   scrollContainerRef,
 }: CustomReportPreviewSectionProps) {
@@ -67,10 +74,24 @@ export function CustomReportPreviewSection({
         totalItems={totalItems}
         page={safePageIndex + 1}
         pageSize={pageSize}
-        onPageChange={(p) => setPageIndex(p - 1)}
+        onPageChange={(p) => {
+          setPageIndex(p - 1);
+          onPaginationChange?.({
+            action: 'page_change',
+            page: p,
+            pageSize,
+            totalItems,
+          });
+        }}
         onPageSizeChange={(ps) => {
           setPageSize(ps);
           setPageIndex(0);
+          onPaginationChange?.({
+            action: 'page_size_change',
+            page: 1,
+            pageSize: ps,
+            totalItems,
+          });
         }}
         scrollContainerRef={tableScrollRef}
         aria-label="Custom report preview pagination"

@@ -214,7 +214,10 @@ export class ActivitiesController {
     const hasFilters = hasActivityFindAllFilterFields(query);
     const filters = hasFilters ? query : undefined;
     const results = await this.activitiesService.findAll(filters, ctx, {
-      profile: HYDRATION_PROFILES.list,
+      profile: {
+        ...HYDRATION_PROFILES.list,
+        includeReviewDiff: true,
+      },
       outputShape: 'list',
     });
     return {

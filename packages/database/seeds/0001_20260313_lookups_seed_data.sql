@@ -515,20 +515,6 @@ INSERT INTO themes (id, name, display_name, sort_order, is_active, created_by, l
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- COMMS CONTACTS
--- Communication contacts for activities
--- ============================================================================
-
-INSERT INTO comms_contacts (id, name, display_name, sort_order, is_active, email, phone, created_by, last_updated_by) VALUES
-  (1, 'Sarah Johnson', 'Sarah Johnson', 1, true, 'sarah.johnson@gov.bc.ca', '250-555-0101', 1, 1),
-  (2, 'Michael Chen', 'Michael Chen', 2, true, 'michael.chen@gov.bc.ca', '250-555-0102', 1, 1),
-  (3, 'Emily Rodriguez', 'Emily Rodriguez', 3, true, 'emily.rodriguez@gov.bc.ca', '250-555-0103', 1, 1),
-  (4, 'David Kim', 'David Kim', 4, true, 'david.kim@gov.bc.ca', '250-555-0104', 1, 1),
-  (5, 'Jennifer Taylor', 'Jennifer Taylor', 5, true, 'jennifer.taylor@gov.bc.ca', '250-555-0105', 1, 1),
-  (6, 'Robert Williams', 'Robert Williams', 6, true, 'robert.williams@gov.bc.ca', '250-555-0106', 1, 1)
-ON CONFLICT (id) DO NOTHING;
-
--- ============================================================================
 -- EVENT PLANNERS
 -- Event planners for activities
 -- ============================================================================

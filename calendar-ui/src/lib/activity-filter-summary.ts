@@ -26,6 +26,7 @@ export type ActivityFilterChipRow = {
 /** Options needed to resolve stored IDs to labels in filter summaries. */
 export type ActivityFilterSummaryContext = {
   statusOptions: OptionItem[];
+  categoryOptions?: OptionItem[];
   pitchRequiredStatusOptions: OptionItem[];
   tagOptions: OptionItem[];
   ministryOptions: OptionItem[];
@@ -126,13 +127,13 @@ export function buildActivityFilterChipRows(
     });
   }
 
-  if (filterState.categoryNames.length > 0) {
+  if (filterState.categoryIds.length > 0) {
     rows.push({
       rowKey: 'category',
       label: 'Category',
-      chips: filterState.categoryNames.map((name) => ({
-        chipKey: `category:${encodeURIComponent(name)}`,
-        displayLabel: name,
+      chips: filterState.categoryIds.map((id) => ({
+        chipKey: `category:${id}`,
+        displayLabel: labelForNumericId(id, ctx.categoryOptions ?? []),
       })),
     });
   }
@@ -408,11 +409,13 @@ export function clearSavedFilterChip(
 
   switch (prefix) {
     case 'category': {
-      const name = decodeURIComponent(raw);
+      const id = parseInt(raw, 10);
+      if (!Number.isFinite(id))
+        return { filterState: state, searchKeyword: kw };
       return {
         filterState: {
           ...state,
-          categoryNames: state.categoryNames.filter((n) => n !== name),
+          categoryIds: state.categoryIds.filter((x) => x !== id),
         },
         searchKeyword: kw,
       };

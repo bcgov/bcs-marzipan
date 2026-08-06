@@ -4,6 +4,7 @@ import { useCallback, useMemo, type ReactNode } from 'react';
 import type { ActivityFilterState } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
+import { CategoriesFilterPanel } from '@/components/activity/ActivityTable/CategoriesFilter';
 import { LeadsFilterPanel } from '@/components/activity/ActivityTable/LeadsFilter';
 import { LookAheadFilterPanel } from '@/components/activity/ActivityTable/LookAheadFilter';
 import { PitchFilterPanel } from '@/components/activity/ActivityTable/PitchFilter';
@@ -46,6 +47,8 @@ export interface ReportFiltersBarProps {
   reportName: string;
   preferences: ActivityTablePreferences;
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
+  onSearchSubmitted?: () => void;
+  onSearchCleared?: () => void;
   /** Optional controls on the row below the search field (e.g. 30/60/90 month tabs). */
   printPreviewRowLeading?: ReactNode;
   /** Optional trailing controls on the same row (e.g. Customize, print preview). */
@@ -73,6 +76,8 @@ export function ReportFiltersBar({
   reportName,
   preferences,
   setPreferences,
+  onSearchSubmitted,
+  onSearchCleared,
   printPreviewRowLeading,
   printPreviewRowTrailing,
   savedFilters,
@@ -132,7 +137,10 @@ export function ReportFiltersBar({
     () =>
       categoriesForFilter
         .filter((c) => c.isActive)
-        .map((c) => ({ value: c.displayName, label: c.displayName })),
+        .map((c) => ({
+          value: String(c.id),
+          label: c.displayName ?? c.name,
+        })),
     [categoriesForFilter]
   );
 
@@ -224,8 +232,8 @@ export function ReportFiltersBar({
   );
 
   const handleCategoryChange = useCallback(
-    (values: string[]) => {
-      mergeFilterState({ categoryNames: values });
+    (categoryIds: number[]) => {
+      mergeFilterState({ categoryIds });
     },
     [mergeFilterState]
   );
@@ -284,59 +292,47 @@ export function ReportFiltersBar({
   const dateRangeActive = isDateRangeActive(filterState.dateRange);
 
   const handleSearchEnter = useCallback(() => {
-    // Send a calendar_action event with some filter context when the user submits a search
     try {
-      const sanitizeFilters = (
-        fs: typeof filterState,
-        keyword: string | undefined
-      ) => {
-        return {
-          // Date filters: indicate whether a date range or confirmations are active
-          dateRangeActive: isDateRangeActive(fs.dateRange),
-          dateConfirmedFilter: fs.dateConfirmedFilter || 'any',
-          timeConfirmedFilter: fs.timeConfirmedFilter || 'any',
-          // Counts instead of raw IDs or lists
-          categoryCount: (fs.categoryNames || []).length,
-          statusCount: (fs.activityStatusIds || []).length,
-          tagCount: (fs.tagIds || []).length,
-          leadMinistryCount: (fs.leadMinistryIds || []).length,
-          leadOrgCount: (fs.leadOrgIds || []).length,
-          commsContactCount: (fs.commsContactLeadUserIds || []).length,
-          eventPlannerCount: (fs.eventPlannerLeadIds || []).length,
-          translationStatusCount: (fs.translationRequiredStatusIds || [])
-            .length,
-          translationLanguageCount: (fs.translationLanguageIds || []).length,
-          // Search presence only — do not send raw search text
-          search_present: Boolean(keyword && keyword.length > 0),
-          search_length_bucket: keyword
-            ? keyword.length < 20
-              ? '<20'
-              : keyword.length < 100
-                ? '<100'
-                : '>=100'
-            : null,
-        };
-      };
-
-      analytics.trackCalendarAction({
-        action: 'Search',
-        filters: sanitizeFilters(filterState, searchKeyword),
+      analytics.trackReportSearchSubmitted({
+        report_name: reportName,
+        search_present: searchKeyword.trim().length > 0,
+        search_length_bucket: analytics.bucketSearchLength(searchKeyword),
+        active_filter_count: analytics.countActiveReportFilterCriteria(
+          filterState,
+          reportName
+        ),
+        timestamp_client: new Date().toISOString(),
+        category_count: (filterState.categoryIds || []).length,
+        status_count: (filterState.activityStatusIds || []).length,
+        tag_count: (filterState.tagIds || []).length,
+        date_range_active: isDateRangeActive(filterState.dateRange),
+        date_confirmed_filter: filterState.dateConfirmedFilter || 'any',
+        time_confirmed_filter: filterState.timeConfirmedFilter || 'any',
       });
     } catch {
       /* ignore */
     }
-  }, [filterState, searchKeyword]);
+    onSearchSubmitted?.();
+  }, [filterState, onSearchSubmitted, reportName, searchKeyword]);
 
   const handleClearSearchClick = useCallback(() => {
+    const activeFilterCountBeforeClear =
+      analytics.countActiveReportFilterCriteria(filterState, reportName);
     try {
-      analytics.trackCalendarClick('clear_search');
+      analytics.trackReportSearchCleared({
+        report_name: reportName,
+        had_search_text: searchKeyword.trim().length > 0,
+        had_filters: activeFilterCountBeforeClear > 0,
+        active_filter_count_before_clear: activeFilterCountBeforeClear,
+      });
     } catch {
       /* ignore */
     }
+    onSearchCleared?.();
     setPreferences({ searchKeyword: '' });
-  }, [setPreferences]);
+  }, [filterState, onSearchCleared, reportName, searchKeyword, setPreferences]);
 
-  const categorySelectedValues = filterState.categoryNames;
+  const categorySelectedIds = filterState.categoryIds;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
   const filterSlots = useMemo<ResponsiveFilterSlot[]>(
@@ -370,16 +366,15 @@ export function ReportFiltersBar({
         key: 'category',
         label: 'Category',
         panel: (
-          <FilterCheckboxDropdownPanel
-            options={categoryOptions}
-            selectedValues={categorySelectedValues}
-            onChange={handleCategoryChange}
-            emptyMessage="No results"
+          <CategoriesFilterPanel
+            categoryOptions={categoryOptions}
+            selectedCategoryIds={categorySelectedIds}
+            onCategoryIdsChange={handleCategoryChange}
           />
         ),
         triggerProps: {
-          active: categorySelectedValues.length > 0,
-          count: categorySelectedValues.length,
+          active: categorySelectedIds.length > 0,
+          count: categorySelectedIds.length,
           onClear: () => handleCategoryChange([]),
           clearAriaLabel: 'Clear Category filter',
         },
@@ -566,7 +561,7 @@ export function ReportFiltersBar({
     [
       filterState,
       categoryOptions,
-      categorySelectedValues,
+      categorySelectedIds,
       handleCategoryChange,
       handleDateRangeChange,
       handleStatusChange,

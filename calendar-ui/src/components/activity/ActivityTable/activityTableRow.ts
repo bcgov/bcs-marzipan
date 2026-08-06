@@ -18,6 +18,7 @@ export interface ActivityTableRow {
   // Overview column
   title: string;
   activityCategories: string[];
+  categoryIds: number[];
   pitchDate: string | null;
   pitchRequiredStatus: string | null;
   isConfidential: boolean;
@@ -68,6 +69,8 @@ export interface ActivityTableRow {
   // Status column
   activityStatus: string;
   activityStatusId: number;
+  /** Dotted field paths changed since last review (admin/system admin reviewers). */
+  changedFieldsSinceReview?: string[];
   lastUpdatedDateTime: string;
   lastUpdatedBy: number;
   createdDateTime: string;
@@ -115,6 +118,7 @@ export function mapActivityToTableRow(
     // Overview
     title: activity.title,
     activityCategories: activity.category,
+    categoryIds: activity.categoryIds ?? [],
     pitchDate: activity.pitchDate ?? null,
     pitchRequiredStatus: activity.pitchRequiredStatus ?? null,
     isConfidential: activity.isConfidential,
@@ -163,6 +167,13 @@ export function mapActivityToTableRow(
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
     createdDateTime: activity.createdDateTime,
+    changedFieldsSinceReview:
+      'changedFieldsSinceReview' in activity &&
+      Array.isArray(activity.changedFieldsSinceReview)
+        ? activity.changedFieldsSinceReview.filter(
+            (v): v is string => typeof v === 'string'
+          )
+        : undefined,
 
     // Flags
     flags: activity.flags ?? [],
