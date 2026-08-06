@@ -23,6 +23,12 @@ const USER_HISTORY_FIELD_LABELS: Record<string, string> = {
   directLoginEnabled: 'Direct login enabled',
   notes: 'Notes',
   flagColour: 'Flag colour',
+  teamRole: 'Team role',
+  targetUserId: 'Transfer target',
+  fromTeamId: 'From team',
+  toTeamId: 'To team',
+  activityCount: 'Activities transferred',
+  activityIds: 'Activities',
 };
 
 function toLabelFromField(field: string): string {
@@ -80,6 +86,22 @@ function formatHistoryValue(
     if (teamId != null) {
       return lookups.teamNamesById[teamId] ?? `Team ${teamId}`;
     }
+  }
+
+  if (field === 'fromTeamId' || field === 'toTeamId') {
+    const teamId = parseNumericId(value);
+    if (teamId != null) {
+      return lookups.teamNamesById[teamId] ?? `Team ${teamId}`;
+    }
+  }
+
+  if (field === 'targetUserId') {
+    const id = parseNumericId(value);
+    if (id != null) return `User ${id}`;
+  }
+
+  if (field === 'activityIds' && Array.isArray(value)) {
+    return `${value.length} activit${value.length === 1 ? 'y' : 'ies'}`;
   }
 
   if (typeof value === 'boolean') return formatBooleanValue(field, value);

@@ -25,12 +25,14 @@ import {
   fetchRoles,
   fetchTeams,
   fetchUser,
+  fetchUserActivities,
   initiatePasswordReset,
   removeUserFromTeam,
   updateUser,
   updateUserSettings,
 } from '@/api/usersApi';
 import { PageContainer } from '@/components/layout/PageContainer';
+import RemoveTeamMemberModal from '@/components/teams/RemoveTeamMemberModal';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 // removed PageHeader to use a compact header with a Go back link
@@ -171,6 +173,13 @@ export default function UserDetailPage() {
     code: string;
     expiresInHours?: number;
   } | null>(null);
+
+  const [teamRemovalModal, setTeamRemovalModal] = useState<{
+    teamId: number;
+    teamName: string;
+    teamIdsBeforeRemove: number[];
+  } | null>(null);
+  const [isProcessingTeamRemove, setIsProcessingTeamRemove] = useState(false);
 
   const resetMutation = useMutation({
     mutationFn: () => initiatePasswordReset(userId),
@@ -323,20 +332,13 @@ export default function UserDetailPage() {
     if (!userDetail) return true;
 
     const serverTeamIds = new Set(userDetail.teams.map((t) => t.teamId));
-    const localIds = new Set(localTeamIds);
     const toAdd = localTeamIds.filter((id) => !serverTeamIds.has(id));
-    const toRemove = userDetail.teams
-      .filter((t) => !localIds.has(t.teamId))
-      .map((t) => t.teamId);
 
-    if (toAdd.length === 0 && toRemove.length === 0) return true;
+    if (toAdd.length === 0) return true;
 
-    const results = await Promise.allSettled([
-      ...toAdd.map((teamId) =>
-        addUserToTeam(userId, { teamId, role: 'member' })
-      ),
-      ...toRemove.map((teamId) => removeUserFromTeam(userId, teamId)),
-    ]);
+    const results = await Promise.allSettled(
+      toAdd.map((teamId) => addUserToTeam(userId, { teamId, role: 'member' }))
+    );
 
     const failed = results.filter((r) => r.status === 'rejected').length;
     invalidateUserCaches(queryClient, userId);
@@ -351,6 +353,55 @@ export default function UserDetailPage() {
     }
 
     return true;
+  };
+
+  const handleTeamSelectionChange = async (selected: OptionItem[]) => {
+    if (!canEdit || !userDetail || isProcessingTeamRemove) return;
+
+    const newIds = selected.map((o) => parseInt(o.value, 10));
+    const removed = localTeamIds.filter((id) => !newIds.includes(id));
+    const added = newIds.filter((id) => !localTeamIds.includes(id));
+
+    if (removed.length === 0) {
+      setLocalTeamIds(newIds);
+      return;
+    }
+
+    if (removed.length > 1 || added.length > 0) {
+      toast.error('Remove one team at a time using the team chips.');
+      return;
+    }
+
+    const teamId = removed[0];
+    const teamName =
+      teamOptions.find((o) => parseInt(o.value, 10) === teamId)?.label ??
+      `Team ${teamId}`;
+
+    const teamIdsBeforeRemove = localTeamIds;
+    setLocalTeamIds(newIds);
+    setIsProcessingTeamRemove(true);
+
+    try {
+      const activities = await fetchUserActivities(userId, teamId);
+      if (activities.length === 0) {
+        await removeUserFromTeam(userId, teamId);
+        invalidateUserCaches(queryClient, userId);
+        toast.success('Removed from team');
+      } else {
+        setTeamRemovalModal({
+          teamId,
+          teamName,
+          teamIdsBeforeRemove,
+        });
+      }
+    } catch (err) {
+      setLocalTeamIds(teamIdsBeforeRemove);
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to remove from team'
+      );
+    } finally {
+      setIsProcessingTeamRemove(false);
+    }
   };
 
   const handleSave = async () => {
@@ -555,13 +606,10 @@ export default function UserDetailPage() {
                     multiple
                     value={selectedTeamOptions}
                     onValueChange={(selected: OptionItem[]) => {
-                      if (!canEdit) return;
-                      setLocalTeamIds(
-                        selected.map((o) => parseInt(o.value, 10))
-                      );
+                      void handleTeamSelectionChange(selected);
                     }}
                     itemToStringValue={(o: OptionItem) => o.label}
-                    disabled={!canEdit}
+                    disabled={!canEdit || isProcessingTeamRemove}
                   >
                     <ComboboxChips
                       ref={teamsComboboxAnchorRef}
@@ -589,9 +637,13 @@ export default function UserDetailPage() {
                           allSelected={allTeamsSelected}
                           disabled={!canEdit || teamOptions.length === 0}
                           onToggleSelectAll={() => {
-                            setLocalTeamIds(
-                              allTeamsSelected ? [] : allSelectableTeamIds
-                            );
+                            if (allTeamsSelected) {
+                              toast.error(
+                                'Remove one team at a time using the team chips.'
+                              );
+                              return;
+                            }
+                            setLocalTeamIds(allSelectableTeamIds);
                           }}
                         />
                         {teamOptions.length > 0 ? (
@@ -715,6 +767,30 @@ export default function UserDetailPage() {
               user={userDetail}
               onClose={() => setShowEditModal(false)}
               onSaved={() => setShowEditModal(false)}
+            />
+          )}
+
+          {teamRemovalModal && userDetail && (
+            <RemoveTeamMemberModal
+              open
+              teamId={teamRemovalModal.teamId}
+              teamName={teamRemovalModal.teamName}
+              member={{
+                userId,
+                userName:
+                  userDetail.adDisplayName ||
+                  userDetail.adUsername ||
+                  `User ${userId}`,
+                adEmail: userDetail.adEmail,
+              }}
+              onClose={() => {
+                setLocalTeamIds(teamRemovalModal.teamIdsBeforeRemove);
+                setTeamRemovalModal(null);
+              }}
+              onRemoved={() => {
+                setTeamRemovalModal(null);
+                invalidateUserCaches(queryClient, userId);
+              }}
             />
           )}
         </div>
