@@ -92,6 +92,7 @@ export function createMockActivityResponse(
 
     // Computed fields (from joins/lookups)
     category: [],
+    categoryIds: [],
     tags: [],
     commsMaterials: [],
     translationsRequired: [],

@@ -27,7 +27,7 @@ describe('applySavedFilterSelection', () => {
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: [],
+      categoryIds: [],
       activityStatusIds: [],
       pitchRequiredStatusNames: [],
       pitchDateFilter: { kind: 'any' },

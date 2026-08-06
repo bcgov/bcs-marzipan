@@ -6,7 +6,7 @@
  *
  * View rule (scopes with a view permission): has <scope>.view OR <scope>.edit OR role is
  * Advanced Viewer / Advanced Editor / Admin / System Admin.
- * Scopes without a view permission (translations, pitchDate) are always visible; edit is still gated.
+ * Scopes without a view permission (translations, pitchStatus, pitchDate) are always visible; edit is still gated.
  * Edit rule: has <scope>.edit only (no role bypass).
  */
 
@@ -59,7 +59,7 @@ export const ACTIVITY_FIELD_SCOPE_CONFIG: Record<
     requestFields: ['translationsRequiredStatusId', 'translationLanguageIds'],
   },
   pitchStatus: {
-    viewKey: PERMISSIONS.ACTIVITIES.PITCH_STATUS_VIEW,
+    viewKey: null,
     editKey: PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
     responseFields: ['pitchRequiredStatusId', 'pitchRequiredStatus'],
     requestFields: ['pitchRequiredStatusId'],

@@ -13,8 +13,8 @@ import { useCallback, useMemo } from 'react';
 import api from '@/api/axios';
 import {
   fetchActivityStatuses,
+  fetchAllCategories,
   fetchAllTags,
-  fetchCategories,
   fetchCities,
   fetchCommsMaterials,
   fetchGovernmentRepresentatives,
@@ -32,9 +32,14 @@ import type { FreeformComboboxOption } from '@/components/ui/freeform-combobox';
 import { ClientValidationError } from '@/lib/error-toast';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
-import { NONE_SELECT_VALUE } from '.';
 import { GenericLookupAdmin } from './GenericLookupAdmin';
 import { FormField } from './LookupForm';
+import {
+  LookupVisibilityAdminForm,
+  lookupVisibilityInitialData,
+  renderLookupVisibilityColumn,
+  transformLookupVisibilitySubmitData,
+} from './LookupVisibilityAdminForm';
 import {
   filterMinisterPickerReps,
   MinistryAdminModalForm,
@@ -47,6 +52,9 @@ import { VenuePresetForm } from './VenuePresetForm';
 type Category = LookupItem & {
   name?: string;
   displayName?: string | null;
+  visibility?: 'global' | 'team';
+  teamNames?: string[];
+  teamIds?: number[];
 };
 
 type City = LookupItem & {
@@ -484,15 +492,53 @@ const venuePresetFields: FormField[] = [
 ];
 // Component exports
 export function CategoriesAdmin() {
+  const { data: teams = [] } = useQuery({
+    queryKey: lookupQueryKeys.teams(),
+    queryFn: fetchTeams,
+  });
+
+  const teamOptions = teams.map((t) => ({
+    value: String(t.id),
+    label: t.displayName ?? t.name ?? String(t.id),
+  }));
+
   return (
     <GenericLookupAdmin<Category>
       title="Categories"
       description="Manage activity categories"
       entityType="Category"
       apiEndpoint="/lookups/categories"
-      queryKey={lookupQueryKeys.categories()}
-      queryFn={fetchCategories}
+      queryKey={lookupQueryKeys.categoriesAdmin()}
+      queryFn={fetchAllCategories}
       formFields={categoryFields}
+      additionalInvalidateKeys={[lookupQueryKeys.categories()]}
+      getInitialData={(item) => lookupVisibilityInitialData(item)}
+      transformSubmitData={(data) => {
+        try {
+          return transformLookupVisibilitySubmitData(data);
+        } catch {
+          toast.error('At least one team is required when visibility is team.');
+          throw new ClientValidationError();
+        }
+      }}
+      additionalColumns={[
+        {
+          accessorKey: 'visibility',
+          header: 'Visibility',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {renderLookupVisibilityColumn(row.original)}
+            </span>
+          ),
+        },
+      ]}
+      renderModalContent={(props) => (
+        <LookupVisibilityAdminForm
+          {...props}
+          fields={categoryFields}
+          teamOptions={teamOptions}
+        />
+      )}
     />
   );
 }
@@ -574,24 +620,10 @@ export function TagsAdmin() {
     queryFn: fetchTeams,
   });
 
-  const teamOptions = [
-    { value: NONE_SELECT_VALUE, label: 'Global (no team restriction)' },
-    ...teams.map((t) => ({
-      value: String(t.id),
-      label: t.displayName ?? t.name ?? String(t.id),
-    })),
-  ];
-
-  const tagFormFields: FormField[] = [
-    ...tagFields,
-    {
-      name: 'teamId',
-      label: 'Visible to',
-      type: 'select' as const,
-      options: teamOptions,
-      placeholder: 'Global (no team restriction)',
-    },
-  ];
+  const teamOptions = teams.map((t) => ({
+    value: String(t.id),
+    label: t.displayName ?? t.name ?? String(t.id),
+  }));
 
   return (
     <GenericLookupAdmin<Tag>
@@ -603,39 +635,35 @@ export function TagsAdmin() {
       queryFn={fetchAllTags}
       softDelete
       additionalInvalidateKeys={[lookupQueryKeys.tags()]}
-      formFields={tagFormFields}
+      formFields={tagFields}
       getItemName={(item) => item.name ?? item.displayName ?? String(item.id)}
-      getInitialData={(item) => ({
-        ...item,
-        teamId:
-          item.teamIds?.[0] != null
-            ? String(item.teamIds[0])
-            : NONE_SELECT_VALUE,
-      })}
-      transformSubmitData={(data) => ({
-        ...data,
-        teamId:
-          data.teamId == null || data.teamId === NONE_SELECT_VALUE
-            ? null
-            : Number(data.teamId),
-      })}
+      getInitialData={(item) => lookupVisibilityInitialData(item)}
+      transformSubmitData={(data) => {
+        try {
+          return transformLookupVisibilitySubmitData(data);
+        } catch {
+          toast.error('At least one team is required when visibility is team.');
+          throw new ClientValidationError();
+        }
+      }}
       additionalColumns={[
         {
           accessorKey: 'visibility',
           header: 'Visibility',
-          cell: ({ row }) => {
-            const { visibility, teamNames } = row.original;
-            if (visibility === 'team') {
-              const label =
-                teamNames && teamNames.length > 0
-                  ? teamNames.join(', ')
-                  : 'Team (unassigned)';
-              return <span>{label}</span>;
-            }
-            return <span className="text-slate-500">Global</span>;
-          },
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {renderLookupVisibilityColumn(row.original)}
+            </span>
+          ),
         },
       ]}
+      renderModalContent={(props) => (
+        <LookupVisibilityAdminForm
+          {...props}
+          fields={tagFields}
+          teamOptions={teamOptions}
+        />
+      )}
     />
   );
 }

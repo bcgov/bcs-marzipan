@@ -402,10 +402,9 @@ export const userTeamsRelations = relations(userTeams, ({ one }) => ({
 }));
 
 /**
- * TeamCategories junction table - Many-to-many relationship between Categories and Teams
- * Controls which teams can view specific categories.
- * If a category has no entries in this table, it is viewable by all teams.
- * If a category has entries, only those teams can view it.
+ * TeamCategories junction table - Many-to-many relationship between Categories and Teams.
+ * Used when categories.visibility = 'team': only listed teams may select the category
+ * in the activity form. When visibility = 'global', junction rows are soft-deactivated.
  */
 export const teamCategories = pgTable(
   'team_categories',

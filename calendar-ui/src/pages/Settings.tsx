@@ -44,6 +44,7 @@ import {
 } from '@/components/admin/LookupAdmins';
 import { ReportCoverContactSettingsAdmin } from '@/components/admin/ReportCoverContactSettingsAdmin';
 import { ReviewExemptFieldsSettingsAdmin } from '@/components/admin/ReviewExemptFieldsSettingsAdmin';
+import { PageHeader } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 
 type Section =
@@ -175,17 +176,13 @@ export function Settings() {
 
   return (
     <>
-      <h1 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">
-        Settings and configuration
-      </h1>
-      <p className="mb-8 text-sm text-slate-600 sm:text-base">
-        Manage lookup data and system configuration
-      </p>
+      <PageHeader title="Settings and configuration" />
 
       <div>
         {/* Quick Navigation */}
-        <div
+        <nav
           id="quick-navigation"
+          aria-label="Settings quick navigation"
           className="mb-8 rounded-lg border border-slate-200 bg-white shadow-sm"
         >
           <div className="border-b border-slate-200 p-4 sm:p-6">
@@ -215,7 +212,7 @@ export function Settings() {
               })}
             </div>
           </div>
-        </div>
+        </nav>
 
         {/* Admin Sections */}
         <div className="space-y-8">

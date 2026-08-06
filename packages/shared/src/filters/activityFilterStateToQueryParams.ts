@@ -86,8 +86,8 @@ export function activityFilterStateToQueryParams(
   const tagIds = nonEmptyArray(fs.tagIds);
   if (tagIds) params.tagIds = tagIds;
 
-  const categoryNames = nonEmptyTrimmedStrings(fs.categoryNames);
-  if (categoryNames) params.categoryNames = categoryNames;
+  const categoryIds = nonEmptyArray(fs.categoryIds);
+  if (categoryIds) params.categoryIds = categoryIds;
 
   const translationStatusIds = nonEmptyArray(fs.translationRequiredStatusIds);
   if (translationStatusIds) {

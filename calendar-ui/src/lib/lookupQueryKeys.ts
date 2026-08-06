@@ -22,6 +22,8 @@ export const lookupQueryKeys = {
   root: ['lookups'] as const,
 
   categories: () => ['lookups', 'categories'] as const,
+  /** Admin categories list (`includeAll=true`). Shares the `['lookups', 'categories']` prefix. */
+  categoriesAdmin: () => ['lookups', 'categories', 'admin'] as const,
   cities: () => ['lookups', 'cities'] as const,
   commsMaterials: () => ['lookups', 'comms-materials'] as const,
   activityStatuses: () => ['lookups', 'activity-statuses'] as const,

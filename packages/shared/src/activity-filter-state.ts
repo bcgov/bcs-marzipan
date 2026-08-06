@@ -16,7 +16,7 @@ export type PitchDateFilter =
 
 export interface ActivityFilterState {
   dateRange: DateRangeValue;
-  categoryNames: string[];
+  categoryIds: number[];
   activityStatusIds: number[];
   pitchRequiredStatusNames: string[];
   pitchDateFilter: PitchDateFilter;
@@ -38,7 +38,7 @@ export type ConfirmedFilterValue = ActivityFilterState['dateConfirmedFilter'];
 /** Canonical keys for `ActivityFilterState` (used to reject unknown JSON keys). */
 export const ACTIVITY_FILTER_STATE_KEYS = [
   'dateRange',
-  'categoryNames',
+  'categoryIds',
   'activityStatusIds',
   'pitchRequiredStatusNames',
   'pitchDateFilter',
@@ -57,9 +57,9 @@ export const ACTIVITY_FILTER_STATE_KEYS = [
 
 /** Keys of {@link ActivityFilterState} whose values are multi-select arrays. */
 export type ActivityFilterArrayStateKey = {
-  [K in keyof ActivityFilterState]: ActivityFilterState[K] extends readonly unknown[]
-    ? K
-    : never;
+  [
+    K in keyof ActivityFilterState
+  ]: ActivityFilterState[K] extends readonly unknown[] ? K : never;
 }[keyof ActivityFilterState];
 
 const NON_ARRAY_ACTIVITY_FILTER_STATE_KEYS = new Set<keyof ActivityFilterState>(
@@ -91,7 +91,7 @@ export const DEFAULT_ACTIVITY_FILTER_STATE: ActivityFilterState = {
     noStartDate: false,
     noEndDate: false,
   },
-  categoryNames: [],
+  categoryIds: [],
   activityStatusIds: [],
   pitchRequiredStatusNames: [],
   pitchDateFilter: { kind: 'any' },
@@ -161,7 +161,7 @@ export function coerceActivityFilterStateFromRecord(
     noEndDate: dr?.noEndDate === true,
   };
 
-  const categoryNames = sanitizeStringArray(raw.categoryNames);
+  const categoryIds = sanitizeIdArrayNoLookup(raw.categoryIds);
   const activityStatusIds = sanitizeIdArrayNoLookup(raw.activityStatusIds);
   const pitchRequiredStatusNames = sanitizeStringArray(
     raw.pitchRequiredStatusNames
@@ -169,8 +169,7 @@ export function coerceActivityFilterStateFromRecord(
 
   let pitchDateFilter: PitchDateFilter = { kind: 'any' };
   const pdf = raw.pitchDateFilter as
-    | { kind?: string; dateRange?: Record<string, unknown> }
-    | undefined;
+    { kind?: string; dateRange?: Record<string, unknown> } | undefined;
   if (pdf && typeof pdf === 'object') {
     if (pdf.kind === 'not_scheduled') {
       pitchDateFilter = { kind: 'not_scheduled' };
@@ -207,7 +206,7 @@ export function coerceActivityFilterStateFromRecord(
 
   return {
     dateRange,
-    categoryNames,
+    categoryIds,
     activityStatusIds,
     pitchRequiredStatusNames,
     pitchDateFilter,

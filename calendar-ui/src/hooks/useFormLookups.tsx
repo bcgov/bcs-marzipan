@@ -39,6 +39,7 @@ export interface FormLookupData {
     name: string;
     displayName?: string;
     visibility?: string;
+    teamIds?: number[];
     description?: string | null;
   }>;
 
@@ -59,7 +60,12 @@ export interface FormLookupData {
   eventPlanners: OptionItem[];
 
   // Tags - for Badge components
-  tags: Array<{ id: number; text: string; visibility: 'global' | 'team' }>;
+  tags: Array<{
+    id: number;
+    text: string;
+    visibility: 'global' | 'team';
+    teamIds?: number[];
+  }>;
 
   // Pitch Statuses - for Select
   pitchStatuses: Array<{ id: number; name: string; displayName?: string }>;
@@ -209,6 +215,7 @@ export function useFormLookups(): FormLookupData {
         name: item.name || item.label,
         displayName: item.displayName || item.label,
         visibility: item.visibility,
+        teamIds: item.teamIds,
         description: item.description,
       })) || [];
 
@@ -248,6 +255,7 @@ export function useFormLookups(): FormLookupData {
         id: item.id,
         text: item.displayName || item.name || item.label,
         visibility: item.visibility,
+        teamIds: item.teamIds,
       })) || [];
 
     // Transform pitch statuses for Select

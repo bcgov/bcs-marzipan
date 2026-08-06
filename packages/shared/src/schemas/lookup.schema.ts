@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { REPRESENTATIVE_TYPE, VISIBILITY } from '../constants/constants';
 import { venueAddressSchema } from './activity.schema';
+import { refineLookupTeamVisibility } from './lookup-visibility-request';
 import { reportConfigSchema } from './report-config.schema';
 
 /**
@@ -66,6 +67,10 @@ export const categoryLookupItemSchema = lookupItemSchema.extend({
   isActive: z.boolean(),
   visibility: z.enum(VISIBILITY),
   description: z.string().nullable().optional(),
+  /** Team display names for team-scoped categories. */
+  teamNames: z.array(z.string()).optional(),
+  /** Team IDs for team-scoped categories. */
+  teamIds: z.array(z.number().int()).optional(),
 });
 
 // ============================================
@@ -75,8 +80,6 @@ export const categoryLookupItemSchema = lookupItemSchema.extend({
 /**
  * Tag Response Schema
  * Fields from the tags table exposed via API
- * Tags renamed from keywords table. All tags are currently global (visibility='global').
- * Team visibility is a future feature flag.
  */
 export const tagResponseSchema = z.object({
   id: z.number().int(),
@@ -92,9 +95,9 @@ export const tagLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string(),
   visibility: z.enum(['global', 'team']),
-  /** Team display names for team-scoped tags. Populated only on admin responses (includeAll=true). */
+  /** Team display names for team-scoped tags. */
   teamNames: z.array(z.string()).optional(),
-  /** Team IDs for team-scoped tags. Populated only on admin responses (includeAll=true). */
+  /** Team IDs for team-scoped tags. */
   teamIds: z.array(z.number().int()).optional(),
 });
 
@@ -603,26 +606,33 @@ export type VenuePresetItem = z.infer<typeof venuePresetItemSchema>;
  * Create Category Request Schema
  * Fields required for creating a new category
  */
-export const createCategoryRequestSchema = z.object({
+const createCategoryRequestBaseSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
   sortOrder: z.number().int(),
   isActive: z.boolean().default(true).optional(),
   visibility: z.enum(VISIBILITY).default('global').optional(),
   description: z.string().nullable().optional(),
+  /** When visibility='team', teams that can select this category. */
+  teamIds: z.array(z.number().int()).optional(),
 });
+
+export const createCategoryRequestSchema = refineLookupTeamVisibility(
+  createCategoryRequestBaseSchema
+);
 
 /**
  * Update Category Request Schema
  * All fields optional for partial updates
  */
-export const updateCategoryRequestSchema =
-  createCategoryRequestSchema.partial();
+export const updateCategoryRequestSchema = refineLookupTeamVisibility(
+  createCategoryRequestBaseSchema.partial()
+);
 
 /**
  * Create Tag Request Schema
  */
-export const createTagRequestSchema = z.object({
+const createTagRequestBaseSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.preprocess(
     (v) => (v === '' ? null : v),
@@ -635,14 +645,20 @@ export const createTagRequestSchema = z.object({
   isActive: z.boolean().default(true).optional(),
   visibility: z.enum(['global', 'team']).default('global').optional(),
   description: z.string().nullable().optional(),
-  /** When visibility='team', the team this tag is scoped to. Null/absent = global. */
-  teamId: z.number().int().nullable().optional(),
+  /** When visibility='team', teams that can select this tag. */
+  teamIds: z.array(z.number().int()).optional(),
 });
+
+export const createTagRequestSchema = refineLookupTeamVisibility(
+  createTagRequestBaseSchema
+);
 
 /**
  * Update Tag Request Schema
  */
-export const updateTagRequestSchema = createTagRequestSchema.partial();
+export const updateTagRequestSchema = refineLookupTeamVisibility(
+  createTagRequestBaseSchema.partial()
+);
 
 /**
  * Create City Request Schema
