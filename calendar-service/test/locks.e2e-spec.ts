@@ -24,6 +24,8 @@ const HOLDER_LOGIN = 'wei.zhang';
 const REQUESTER_LOGIN = 'thomas.garcia';
 /** Second admin for duplicate handoff conflict (seed: xiaoling.wang, id 19). */
 const SECOND_ADMIN_LOGIN = 'xiaoling.wang';
+/** System admin used to manage recurring lockout settings (seed: daniel.robinson, id 20). */
+const SYSTEM_ADMIN_LOGIN = 'daniel.robinson';
 
 describe('LocksController (API integration)', () => {
   let app: INestApplication;
@@ -32,6 +34,7 @@ describe('LocksController (API integration)', () => {
   let adminToken: string;
   let holderToken: string;
   let secondAdminToken: string;
+  let systemAdminToken: string;
   /** Shared activity from seeded DB (POST /activities may fail validation in some envs). */
   let activityId: number;
 
@@ -50,6 +53,7 @@ describe('LocksController (API integration)', () => {
     adminToken = await e2eLogin(app, REQUESTER_LOGIN);
     holderToken = await e2eLogin(app, HOLDER_LOGIN);
     secondAdminToken = await e2eLogin(app, SECOND_ADMIN_LOGIN);
+    systemAdminToken = await e2eLogin(app, SYSTEM_ADMIN_LOGIN);
 
     const listRes = await createAuthRequest(app, adminToken)
       .get('/activities')
@@ -114,6 +118,65 @@ describe('LocksController (API integration)', () => {
 
       expect(conflict.body).toMatchObject({ status: 423 });
       expect(conflict.body.detail).toContain('another user');
+    });
+
+    it('blocks non-exempt users during recurring lockout window but allows exempt users', async () => {
+      const existingSettingsRes = await createAuthRequest(app, systemAdminToken)
+        .get('/banner/recurring-lockout/settings')
+        .expect(200);
+
+      const previousSettings =
+        existingSettingsRes.body?.data != null
+          ? existingSettingsRes.body.data
+          : null;
+
+      const lockoutBody = {
+        isActive: true,
+        exemptRoleIds: [6],
+        content: '<p>Recurring lockout e2e test</p>',
+        backgroundColor: '#E6A635',
+        textColor: '#000000',
+        variant: 'warning',
+        startTimeOfDay: '00:00',
+        endTimeOfDay: '23:59',
+        bannerLeadMinutes: 30,
+      };
+
+      try {
+        await createAuthRequest(app, systemAdminToken)
+          .put('/banner/recurring-lockout/settings')
+          .send(lockoutBody)
+          .expect(200);
+
+        const blocked = await createAuthRequest(app, holderToken)
+          .post('/locks')
+          .send({ entityType: 'activity', entityId: activityId })
+          .expect(403);
+
+        expect(String(blocked.body.detail ?? '')).toContain('lockout window');
+
+        await createAuthRequest(app, systemAdminToken)
+          .post('/locks')
+          .send({ entityType: 'activity', entityId: activityId })
+          .expect(201);
+      } finally {
+        const restoreBody = previousSettings ?? {
+          isActive: false,
+          exemptRoleIds: [5, 6],
+          content: '<p>Recurring lockout banner</p>',
+          backgroundColor: '#E6A635',
+          textColor: '#000000',
+          variant: 'warning',
+          startTimeOfDay: '15:00',
+          endTimeOfDay: '23:59',
+          bannerLeadMinutes: 30,
+        };
+
+        await createAuthRequest(app, systemAdminToken)
+          .put('/banner/recurring-lockout/settings')
+          .send(restoreBody)
+          .expect(200);
+      }
     });
   });
 
