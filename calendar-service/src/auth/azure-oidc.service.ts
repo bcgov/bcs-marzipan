@@ -1,8 +1,9 @@
 import crypto from 'crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import * as oidc from 'openid-client';
+import { ProxyAgent, fetch as undiciFetch, type Dispatcher } from 'undici';
 
 const OIDC_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes — covers slow networks and MFA prompts
 const OIDC_BINDING_COOKIE_PREFIX = 'corpcal_az_';
@@ -15,7 +16,10 @@ interface OidcStatePayload {
 
 @Injectable()
 export class AzureOidcService {
+  private readonly logger = new Logger(AzureOidcService.name);
   private cachedConfig: oidc.Configuration | null = null;
+  private proxyAgent: Dispatcher | null = null;
+  private proxyAgentInitialized = false;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -55,12 +59,16 @@ export class AzureOidcService {
       `https://login.microsoftonline.com/${tenantId}/v2.0/.well-known/openid-configuration`
     );
 
+    const oidcHttpOptions = this.buildOidcHttpOptions();
+
     // Azure's well-known document is stable and reachable in OpenShift.
     // Using the exact metadata URL avoids issuer transformation edge cases.
     this.cachedConfig = await oidc.discovery(
       discoveryUrl,
       clientId,
-      clientSecret
+      clientSecret,
+      undefined,
+      oidcHttpOptions
     );
     return this.cachedConfig;
   }
@@ -203,5 +211,49 @@ export class AzureOidcService {
     } catch {
       return null;
     }
+  }
+
+  private buildOidcHttpOptions(): Record<PropertyKey, unknown> | undefined {
+    const proxyUrl = this.getProxyUrl();
+    if (!proxyUrl) return undefined;
+
+    const agent = this.getOrCreateProxyAgent(proxyUrl);
+
+    return {
+      [oidc.customFetch]: (
+        input: Parameters<typeof undiciFetch>[0],
+        init?: Parameters<typeof undiciFetch>[1]
+      ) =>
+        undiciFetch(input, {
+          ...(init ?? {}),
+          dispatcher: agent,
+        }),
+    };
+  }
+
+  private getProxyUrl(): string | null {
+    const httpsProxy = this.configService.get<string>('HTTPS_PROXY')?.trim();
+    const httpProxy = this.configService.get<string>('HTTP_PROXY')?.trim();
+    const proxyUrl = httpsProxy || httpProxy;
+
+    if (!proxyUrl) return null;
+    return proxyUrl;
+  }
+
+  private getOrCreateProxyAgent(proxyUrl: string): Dispatcher {
+    if (this.proxyAgent) {
+      return this.proxyAgent;
+    }
+
+    this.proxyAgent = new ProxyAgent(proxyUrl);
+
+    if (!this.proxyAgentInitialized) {
+      this.logger.log(
+        `Azure OIDC outbound requests configured to use proxy ${proxyUrl}`
+      );
+      this.proxyAgentInitialized = true;
+    }
+
+    return this.proxyAgent;
   }
 }
