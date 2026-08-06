@@ -133,16 +133,33 @@ describe('UsersController', () => {
   describe('getActivities', () => {
     it('should return activities for user', async () => {
       const activities = [
-        { id: 1, label: 'Activity One', value: 1 },
-        { id: 2, label: 'Activity Two', value: 2 },
+        { id: 1, label: 'Activity One', value: 1, isLead: true },
+        { id: 2, label: 'Activity Two', value: 2, isLead: false },
       ];
       mockUsersService.getActivitiesForUser.mockResolvedValue(activities);
 
       const result = await controller.getActivities(1);
 
       expect(result).toEqual({ success: true, data: activities });
-      expect(mockUsersService.getActivitiesForUser).toHaveBeenCalledWith(1);
+      expect(mockUsersService.getActivitiesForUser).toHaveBeenCalledWith(
+        1,
+        undefined
+      );
       expect(mockUsersService.getActivitiesForUser).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass fromTeamId scope when provided', async () => {
+      mockUsersService.getActivitiesForUser.mockResolvedValue([]);
+
+      await controller.getActivities(1, '5');
+
+      expect(mockUsersService.getActivitiesForUser).toHaveBeenCalledWith(1, 5);
+    });
+
+    it('should throw BadRequestException for a non-integer fromTeamId', async () => {
+      await expect(controller.getActivities(1, 'not-a-number')).rejects.toThrow(
+        'fromTeamId must be an integer'
+      );
     });
   });
 
@@ -220,18 +237,60 @@ describe('UsersController', () => {
   });
 
   describe('removeFromTeam', () => {
-    it('should remove user from team and return success', async () => {
-      mockUsersService.removeUserFromTeam.mockResolvedValue(undefined);
+    it('should remove user from team with no body (silent removal)', async () => {
+      mockUsersService.removeUserFromTeam.mockResolvedValue({
+        transferredCount: 0,
+      });
 
-      const result = await controller.removeFromTeam(1, 2, mockUser);
+      const result = await controller.removeFromTeam(
+        1,
+        2,
+        { includeNonLead: false },
+        mockUser
+      );
 
-      expect(result).toEqual({ success: true });
+      expect(result).toEqual({ success: true, transferredCount: 0 });
       expect(mockUsersService.removeUserFromTeam).toHaveBeenCalledWith(
         1,
         2,
-        mockUser.id
+        mockUser.id,
+        { includeNonLead: false }
       );
       expect(mockUsersService.removeUserFromTeam).toHaveBeenCalledTimes(1);
+    });
+
+    it('should remove user from team and transfer activities when targetUserId is provided', async () => {
+      mockUsersService.removeUserFromTeam.mockResolvedValue({
+        transferredCount: 3,
+      });
+
+      const dto = { targetUserId: 5, includeNonLead: true };
+      const result = await controller.removeFromTeam(1, 2, dto, mockUser);
+
+      expect(result).toEqual({ success: true, transferredCount: 3 });
+      expect(mockUsersService.removeUserFromTeam).toHaveBeenCalledWith(
+        1,
+        2,
+        mockUser.id,
+        dto
+      );
+    });
+
+    it('should throw ForbiddenException when transferring without transfer permission', async () => {
+      const userWithoutTransfer: AuthUser = {
+        ...mockUser,
+        permissions: ['users.view', 'users.edit'],
+      };
+
+      await expect(
+        controller.removeFromTeam(
+          1,
+          2,
+          { targetUserId: 5, includeNonLead: false },
+          userWithoutTransfer
+        )
+      ).rejects.toThrow('You do not have permission to transfer activities.');
+      expect(mockUsersService.removeUserFromTeam).not.toHaveBeenCalled();
     });
   });
 
@@ -277,8 +336,8 @@ describe('UsersController', () => {
 
       const dto = createMockTransferActivitiesBody({
         targetUserId: 2,
-        transferCommsLead: true,
-        transferCommsContact: true,
+        fromTeamId: 1,
+        includeNonLead: true,
       });
       const result = await controller.transferActivities(1, dto, mockUser);
 
