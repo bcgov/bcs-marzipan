@@ -2072,8 +2072,6 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
-
     // Resolve existence first so missing IDs return 404 instead of lock-required 423.
     const [oldActivity] = await this.databaseService.db
       .select()
@@ -2084,6 +2082,8 @@ export class ActivitiesService {
     if (!oldActivity) {
       throw new NotFoundException(`Activity with ID ${id} not found`);
     }
+
+    await this.ensureUserCanEditDuringRecurringLockout(userId);
 
     const existingLock = await this.locksService.getLockForEntity(
       'activity',
@@ -2945,9 +2945,9 @@ export class ActivitiesService {
     }
 
     // Verify activity exists so we return 404 for non-existent IDs (auth already enforced above)
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
-
     await this.findOne(id, { dataScope: { bypass: true, teamIds: [] } });
+
+    await this.ensureUserCanEditDuringRecurringLockout(userId);
 
     const reason = options?.reason ?? undefined;
 

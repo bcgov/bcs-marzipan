@@ -59,8 +59,10 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    esbuildOptions: {
-      target: buildTarget,
+    rolldownOptions: {
+      transform: {
+        target: buildTarget,
+      },
     },
   },
   build: {
