@@ -23,6 +23,7 @@ import {
   ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
+  ComboboxSeparator,
   ComboboxValue,
   useComboboxAnchor,
 } from '@/components/ui/combobox';
@@ -50,6 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { userQueryKeys } from '@/lib/userQueryKeys';
 import type { OptionItem } from '@/schemas/types';
@@ -339,6 +341,12 @@ export function UserCreateModal({
                 const selectedOptions = teamOptions.filter((o) =>
                   currentValues.includes(o.value)
                 );
+                const allTeamIds = teamOptions.map((o) =>
+                  parseInt(o.value, 10)
+                );
+                const allTeamsSelected =
+                  allTeamIds.length > 0 &&
+                  allTeamIds.every((id) => field.value.includes(id));
                 return (
                   <FormItem>
                     <FormLabel showDirtyIndicator={false}>Teams</FormLabel>
@@ -374,16 +382,30 @@ export function UserCreateModal({
                         <ComboboxContent
                           anchor={teamsAnchorRef}
                           container={dialogContentRef}
-                          className="max-h-72"
+                          className="popover-list-scroll flex max-h-[min(var(--popover-list-max-height),24rem)] flex-col overflow-x-hidden overflow-y-auto p-0"
                         >
-                          <ComboboxEmpty>No teams found.</ComboboxEmpty>
-                          <ComboboxList>
-                            {(option: OptionItem) => (
-                              <ComboboxItem key={option.value} value={option}>
-                                {option.label}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxList>
+                          <div className="bg-popover px-1 py-1">
+                            <TeamsComboboxSelectAllRow
+                              allSelected={allTeamsSelected}
+                              disabled={teamOptions.length === 0}
+                              onToggleSelectAll={() => {
+                                field.onChange(
+                                  allTeamsSelected ? [] : allTeamIds
+                                );
+                              }}
+                            />
+                            {teamOptions.length > 0 ? (
+                              <ComboboxSeparator className="my-1" />
+                            ) : null}
+                            <ComboboxEmpty>No teams found.</ComboboxEmpty>
+                            <ComboboxList className="max-h-none scroll-py-1 overflow-visible p-0 data-empty:p-0">
+                              {(option: OptionItem) => (
+                                <ComboboxItem key={option.value} value={option}>
+                                  {option.label}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxList>
+                          </div>
                         </ComboboxContent>
                       </Combobox>
                     </FormControl>
