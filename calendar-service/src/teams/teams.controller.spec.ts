@@ -160,7 +160,7 @@ describe('TeamsController', () => {
       );
     });
 
-    it('should pass hasCreateAny true when user has activities.create.any', async () => {
+    it('should allow candidates from any team with activities.create.any', async () => {
       mockTeamsService.findCommsContactCandidates.mockResolvedValue([]);
 
       const adminUser: AuthUser = {
@@ -174,6 +174,24 @@ describe('TeamsController', () => {
       };
 
       await controller.getCommsContactCandidates(99, adminUser);
+
+      expect(mockTeamsService.findCommsContactCandidates).toHaveBeenCalledWith(
+        99,
+        [2],
+        true
+      );
+    });
+
+    it('should allow candidates from any team with users.transfer_activities', async () => {
+      mockTeamsService.findCommsContactCandidates.mockResolvedValue([]);
+
+      const transferUser: AuthUser = {
+        ...mockUser,
+        permissions: ['users.transfer_activities'],
+        teamIds: [2],
+      };
+
+      await controller.getCommsContactCandidates(99, transferUser);
 
       expect(mockTeamsService.findCommsContactCandidates).toHaveBeenCalledWith(
         99,

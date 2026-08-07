@@ -2,6 +2,7 @@ import type { Activity } from '@corpcal/database/types';
 import type {
   AddUserToTeamBody,
   CreateTeamBody,
+  RemoveUserFromTeamBody,
   TeamDetail,
   TeamHistoryEntry,
   TransferActivitiesBody,
@@ -233,9 +234,16 @@ export const createMockTransferActivitiesBody = (
   overrides?: Partial<TransferActivitiesBody>
 ): TransferActivitiesBody => ({
   targetUserId: 2,
+  fromTeamId: 1,
   activityIds: [1, 2],
-  transferCommsLead: true,
-  transferCommsContact: true,
+  includeNonLead: true,
   notes: undefined,
+  ...overrides,
+});
+
+export const createMockRemoveUserFromTeamBody = (
+  overrides?: Partial<RemoveUserFromTeamBody>
+): RemoveUserFromTeamBody => ({
+  includeNonLead: false,
   ...overrides,
 });

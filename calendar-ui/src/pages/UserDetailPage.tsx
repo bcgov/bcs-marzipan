@@ -20,18 +20,36 @@ import {
 import type { UserDetail } from '@corpcal/shared/api/types';
 import { fetchRolesPermissionsMap } from '@/api/lookupsApi';
 import {
+  addUserToTeam,
   fetchRolePermissions,
   fetchRoles,
+  fetchTeams,
   fetchUser,
+  fetchUserActivities,
   initiatePasswordReset,
+  removeUserFromTeam,
   updateUser,
   updateUserSettings,
 } from '@/api/usersApi';
 import { PageContainer } from '@/components/layout/PageContainer';
+import RemoveTeamMemberModal from '@/components/teams/RemoveTeamMemberModal';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 // removed PageHeader to use a compact header with a Go back link
 import { Button } from '@/components/ui/button';
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxSeparator,
+  ComboboxValue,
+  useComboboxAnchor,
+} from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -44,10 +62,14 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { UserChangeLogTabContent } from '@/components/users/UserChangeLogTabContent';
 import { UserEditModal } from '@/components/users/UserEditModal';
 import { UserTransferTabContent } from '@/components/users/UserTransferTabContent';
 import { useAuth } from '@/hooks/useAuth';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import { invalidateUserCaches, userQueryKeys } from '@/lib/userQueryKeys';
+import type { OptionItem } from '@/schemas/types';
 
 // Permissions are authoritative from the backend; no frontend fallback maintained.
 
@@ -58,7 +80,7 @@ export default function UserDetailPage() {
   const { hasPermission, user: currentUser } = useAuth();
 
   const { data: userDetail, isLoading } = useQuery<UserDetail | null>({
-    queryKey: ['user', userId],
+    queryKey: userQueryKeys.detail(userId),
     queryFn: () => fetchUser(userId),
     enabled: !!userId,
   });
@@ -72,6 +94,8 @@ export default function UserDetailPage() {
 
   const [localNotes, setLocalNotes] = useState<string>('');
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [localTeamIds, setLocalTeamIds] = useState<number[]>([]);
+  const teamsComboboxAnchorRef = useComboboxAnchor();
 
   // Seed the editable fields only once per user. React Query refetches the
   // user (e.g. on window focus, reconnect, or cache invalidation) and returns
@@ -88,14 +112,51 @@ export default function UserDetailPage() {
     setSelectedRoleId(userDetail.roleId ?? null);
     setDirectLoginEnabled(Boolean(userDetail.directLoginEnabled));
     setFlagColour(userDetail.flagColour ?? null);
+    setLocalTeamIds(userDetail.teams.map((t) => t.teamId));
   }, [userDetail, userId]);
+
+  const { data: teams = [] } = useQuery({
+    queryKey: lookupQueryKeys.teams(),
+    queryFn: fetchTeams,
+    enabled: !!userId && !!userDetail,
+  });
+
+  const teamOptions = useMemo((): OptionItem[] => {
+    const fromLookup = teams.map((t) => ({
+      value: String(t.id),
+      label: t.displayName ?? t.name ?? `Team ${t.id}`,
+    }));
+    const knownValues = new Set(fromLookup.map((o) => o.value));
+    for (const membership of userDetail?.teams ?? []) {
+      const value = String(membership.teamId);
+      if (!knownValues.has(value)) {
+        fromLookup.push({ value, label: membership.teamName });
+        knownValues.add(value);
+      }
+    }
+    return fromLookup;
+  }, [teams, userDetail?.teams]);
+
+  const selectedTeamOptions = useMemo(
+    () =>
+      teamOptions.filter((o) => localTeamIds.includes(parseInt(o.value, 10))),
+    [teamOptions, localTeamIds]
+  );
+
+  const allSelectableTeamIds = useMemo(
+    () => teamOptions.map((o) => parseInt(o.value, 10)),
+    [teamOptions]
+  );
+
+  const allTeamsSelected =
+    allSelectableTeamIds.length > 0 &&
+    allSelectableTeamIds.every((id) => localTeamIds.includes(id));
 
   const mutation = useMutation({
     mutationFn: (payload: { roleId?: number; notes?: string | null }) =>
       updateUser(userId, payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['user', userId] });
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateUserCaches(queryClient, userId);
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to update user');
@@ -112,6 +173,13 @@ export default function UserDetailPage() {
     code: string;
     expiresInHours?: number;
   } | null>(null);
+
+  const [teamRemovalModal, setTeamRemovalModal] = useState<{
+    teamId: number;
+    teamName: string;
+    teamIdsBeforeRemove: number[];
+  } | null>(null);
+  const [isProcessingTeamRemove, setIsProcessingTeamRemove] = useState(false);
 
   const resetMutation = useMutation({
     mutationFn: () => initiatePasswordReset(userId),
@@ -137,8 +205,7 @@ export default function UserDetailPage() {
         directLoginEnabled: body.directLoginEnabled,
       }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['user', userId] });
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateUserCaches(queryClient, userId);
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to update user settings');
@@ -261,6 +328,89 @@ export default function UserDetailPage() {
     ));
   }, [visibleRows]);
 
+  const syncTeamMembership = async (): Promise<boolean> => {
+    if (!userDetail) return true;
+
+    const serverTeamIds = new Set(userDetail.teams.map((t) => t.teamId));
+    const toAdd = localTeamIds.filter((id) => !serverTeamIds.has(id));
+
+    if (toAdd.length === 0) return true;
+
+    const results = await Promise.allSettled(
+      toAdd.map((teamId) => addUserToTeam(userId, { teamId, role: 'member' }))
+    );
+
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    invalidateUserCaches(queryClient, userId);
+
+    if (failed > 0) {
+      toast.error(
+        failed === results.length
+          ? 'Failed to update team membership'
+          : `${failed} team change${failed > 1 ? 's' : ''} failed`
+      );
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleTeamSelectionChange = async (selected: OptionItem[]) => {
+    if (
+      !canEdit ||
+      !userDetail ||
+      isProcessingTeamRemove ||
+      teamRemovalModal != null
+    ) {
+      return;
+    }
+
+    const newIds = selected.map((o) => parseInt(o.value, 10));
+    const removed = localTeamIds.filter((id) => !newIds.includes(id));
+    const added = newIds.filter((id) => !localTeamIds.includes(id));
+
+    if (removed.length === 0) {
+      setLocalTeamIds(newIds);
+      return;
+    }
+
+    if (removed.length > 1 || added.length > 0) {
+      toast.error('Remove one team at a time using the team chips.');
+      return;
+    }
+
+    const teamId = removed[0];
+    const teamName =
+      teamOptions.find((o) => parseInt(o.value, 10) === teamId)?.label ??
+      `Team ${teamId}`;
+
+    const teamIdsBeforeRemove = localTeamIds;
+    setLocalTeamIds(newIds);
+    setIsProcessingTeamRemove(true);
+
+    try {
+      const activities = await fetchUserActivities(userId, teamId);
+      if (activities.length === 0) {
+        await removeUserFromTeam(userId, teamId);
+        invalidateUserCaches(queryClient, userId);
+        toast.success('Removed from team');
+      } else {
+        setTeamRemovalModal({
+          teamId,
+          teamName,
+          teamIdsBeforeRemove,
+        });
+      }
+    } catch (err) {
+      setLocalTeamIds(teamIdsBeforeRemove);
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to remove from team'
+      );
+    } finally {
+      setIsProcessingTeamRemove(false);
+    }
+  };
+
   const handleSave = async () => {
     const body: { roleId?: number; notes?: string | null } = {};
     if (selectedRoleId != null) body.roleId = selectedRoleId;
@@ -275,6 +425,9 @@ export default function UserDetailPage() {
       if (userDetail && serverDirectLoginEnabled !== directLoginEnabled) {
         await settingsMutation.mutateAsync({ directLoginEnabled });
       }
+
+      const teamsSaved = await syncTeamMembership();
+      if (!teamsSaved) return;
 
       void navigate('/users');
     } catch {
@@ -453,6 +606,75 @@ export default function UserDetailPage() {
               </div>
 
               <div className="max-w-2xl bg-transparent p-0">
+                <Label className="text-base font-semibold">Teams</Label>
+                <div className="mt-2">
+                  <Combobox
+                    items={teamOptions}
+                    multiple
+                    value={selectedTeamOptions}
+                    onValueChange={(selected: OptionItem[]) => {
+                      void handleTeamSelectionChange(selected);
+                    }}
+                    itemToStringValue={(o: OptionItem) => o.label}
+                    disabled={
+                      !canEdit ||
+                      isProcessingTeamRemove ||
+                      teamRemovalModal != null
+                    }
+                  >
+                    <ComboboxChips
+                      ref={teamsComboboxAnchorRef}
+                      className="w-full"
+                    >
+                      <ComboboxValue>
+                        {(values: OptionItem[]) => (
+                          <>
+                            {values.map((option) => (
+                              <ComboboxChip key={option.value}>
+                                {option.label}
+                              </ComboboxChip>
+                            ))}
+                            <ComboboxChipsInput placeholder="Select teams..." />
+                          </>
+                        )}
+                      </ComboboxValue>
+                    </ComboboxChips>
+                    <ComboboxContent
+                      anchor={teamsComboboxAnchorRef}
+                      className="popover-list-scroll flex max-h-[min(var(--popover-list-max-height),24rem)] flex-col overflow-x-hidden overflow-y-auto p-0"
+                    >
+                      <div className="bg-popover px-1 py-1">
+                        <TeamsComboboxSelectAllRow
+                          allSelected={allTeamsSelected}
+                          disabled={!canEdit || teamOptions.length === 0}
+                          onToggleSelectAll={() => {
+                            if (allTeamsSelected) {
+                              toast.error(
+                                'Remove one team at a time using the team chips.'
+                              );
+                              return;
+                            }
+                            setLocalTeamIds(allSelectableTeamIds);
+                          }}
+                        />
+                        {teamOptions.length > 0 ? (
+                          <ComboboxSeparator className="my-1" />
+                        ) : null}
+                        <ComboboxEmpty>No teams found.</ComboboxEmpty>
+                        <ComboboxList className="max-h-none scroll-py-1 overflow-visible p-0 data-empty:p-0">
+                          {(option: OptionItem) => (
+                            <ComboboxItem key={option.value} value={option}>
+                              {option.label}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                      </div>
+                    </ComboboxContent>
+                  </Combobox>
+                </div>
+              </div>
+
+              <div className="max-w-2xl bg-transparent p-0">
                 <div className="font-semibold">Direct login</div>
 
                 <div className="mt-2 flex items-center gap-3">
@@ -555,12 +777,30 @@ export default function UserDetailPage() {
             <UserEditModal
               user={userDetail}
               onClose={() => setShowEditModal(false)}
-              onSaved={() => {
-                void queryClient.invalidateQueries({
-                  queryKey: ['user', userId],
-                });
-                void queryClient.invalidateQueries({ queryKey: ['users'] });
-                setShowEditModal(false);
+              onSaved={() => setShowEditModal(false)}
+            />
+          )}
+
+          {teamRemovalModal && userDetail && (
+            <RemoveTeamMemberModal
+              open
+              teamId={teamRemovalModal.teamId}
+              teamName={teamRemovalModal.teamName}
+              member={{
+                userId,
+                userName:
+                  userDetail.adDisplayName ||
+                  userDetail.adUsername ||
+                  `User ${userId}`,
+                adEmail: userDetail.adEmail,
+              }}
+              onClose={() => {
+                setLocalTeamIds(teamRemovalModal.teamIdsBeforeRemove);
+                setTeamRemovalModal(null);
+              }}
+              onRemoved={() => {
+                setTeamRemovalModal(null);
+                invalidateUserCaches(queryClient, userId);
               }}
             />
           )}

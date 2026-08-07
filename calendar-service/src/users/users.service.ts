@@ -9,7 +9,9 @@ import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import {
   activities,
   activityCommsContacts,
+  activityFlags,
   activityStatuses,
+  ministries,
   roles,
   teams,
   userHistory,
@@ -22,6 +24,7 @@ import type {
   AddUserToTeamBody,
   CreateUserBody,
   HistoryChange,
+  RemoveUserFromTeamBody,
   TransferActivitiesBody,
   UpdateUserBody,
   UpdateUserSettingsBody,
@@ -32,13 +35,31 @@ import type {
 } from '@corpcal/shared/api/types';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
+import { ActivityUtilsService } from '../activities/services/activity-utils.service';
+import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
+import { TeamsService } from '../teams/teams.service';
+
+/** A single comms-contact row scoped to a user + lead team, used by transfer/removal flows. */
+interface ScopedCommsRow {
+  activityId: number;
+  isLead: boolean;
+}
+
+/** Resolved lead-team context (abbreviation, ministry) used to recompute displayId on cross-team moves. */
+interface CrossTeamContext {
+  teamAbbreviation: string | null;
+  leadMinistryId: number | null;
+  ministryAbbreviation: string | null;
+}
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly databaseService: DatabaseService,
-    private readonly activityHistoryService: ActivityHistoryService
+    private readonly activityHistoryService: ActivityHistoryService,
+    private readonly activityUtilsService: ActivityUtilsService,
+    private readonly teamsService: TeamsService
   ) {}
 
   private async recordUserHistory(
@@ -522,11 +543,25 @@ export class UsersService {
     );
   }
 
+  /**
+   * Removes a user from a team.
+   *
+   * Always deletes the user's `activity_flags` for this team (`assigneeId =
+   * userId`, `teamId`), regardless of comms — flags are per-team assignments
+   * that have no meaning once the user is no longer on the team.
+   *
+   * If the user has active comms-contact rows scoped to this team
+   * (`leadTeamId === teamId`), `dto.targetUserId` is required and those
+   * activities are transferred in `removal` mode (non-lead comms are always
+   * transferred-or-deleted, never left in place — see
+   * `applyActivityCommsChanges`). Everything runs in one transaction.
+   */
   async removeUserFromTeam(
     userId: number,
     teamId: number,
-    changedByUserId: number
-  ): Promise<void> {
+    changedByUserId: number,
+    dto?: RemoveUserFromTeamBody
+  ): Promise<{ transferredCount: number }> {
     const [row] = await this.databaseService.db
       .select({ role: userTeams.role })
       .from(userTeams)
@@ -541,15 +576,113 @@ export class UsersService {
 
     if (!row) throw new NotFoundException('User is not in this team');
 
-    await this.databaseService.db
-      .update(userTeams)
-      .set({ isActive: false })
-      .where(and(eq(userTeams.userId, userId), eq(userTeams.teamId, teamId)));
+    const includeNonLead = dto?.includeNonLead ?? false;
+    const toTeamId = dto?.toTeamId ?? teamId;
+    const targetUserId = dto?.targetUserId ?? null;
 
-    await this.recordUserHistory(userId, changedByUserId, 'team_removed', [
+    const scopedRows = await this.getScopedCommsRows(userId, teamId);
+
+    if (scopedRows.length > 0 && targetUserId == null) {
+      throw new BadRequestException(
+        'This user has comms assignments on activities led by this team. ' +
+          'Provide targetUserId to transfer them before removal.'
+      );
+    }
+
+    let sourceDisplayName = '';
+    let targetDisplayName: string | null = null;
+    let crossTeamContext: CrossTeamContext | null = null;
+    let eligibleSourceOnToTeam = new Set<number>();
+    const crossTeam = toTeamId !== teamId;
+
+    if (scopedRows.length > 0) {
+      const eligibleOnToTeam =
+        await this.teamsService.getEligibleCommsUserIds(toTeamId);
+      this.validateTransferTarget(
+        scopedRows,
+        targetUserId,
+        includeNonLead,
+        eligibleOnToTeam
+      );
+      eligibleSourceOnToTeam = eligibleOnToTeam;
+
+      const displayNameById = await this.getDisplayNamesById([
+        userId,
+        targetUserId!,
+      ]);
+      sourceDisplayName = displayNameById.get(userId) ?? `User ${userId}`;
+      targetDisplayName =
+        displayNameById.get(targetUserId!) ?? `User ${targetUserId}`;
+
+      if (crossTeam) {
+        crossTeamContext = await this.resolveCrossTeamContext(toTeamId);
+      }
+    }
+
+    const transferredCount = await this.databaseService.db.transaction(
+      async (tx) => {
+        let count = 0;
+        if (scopedRows.length > 0) {
+          count = await this.applyActivityCommsChanges(tx, {
+            sourceUserId: userId,
+            targetUserId,
+            fromTeamId: teamId,
+            toTeamId,
+            rows: scopedRows,
+            includeNonLead,
+            mode: 'removal',
+            changedByUserId,
+            notes: dto?.notes,
+            sourceDisplayName,
+            targetDisplayName,
+            crossTeamContext,
+            eligibleSourceOnToTeam,
+          });
+        }
+
+        // Flags are per-team assignments; always clear them on removal (Option A),
+        // independent of whether the user had any comms assignments to transfer.
+        await tx
+          .delete(activityFlags)
+          .where(
+            and(
+              eq(activityFlags.assigneeId, userId),
+              eq(activityFlags.teamId, teamId)
+            )
+          );
+
+        await tx
+          .update(userTeams)
+          .set({ isActive: false })
+          .where(
+            and(eq(userTeams.userId, userId), eq(userTeams.teamId, teamId))
+          );
+
+        return count;
+      }
+    );
+
+    const historyChanges: HistoryChange[] = [
       { field: 'teamId', oldValue: teamId, newValue: null },
       { field: 'teamRole', oldValue: row.role, newValue: null },
-    ]);
+    ];
+    if (transferredCount > 0) {
+      historyChanges.push({
+        field: 'activityCount',
+        oldValue: null,
+        newValue: transferredCount,
+      });
+    }
+
+    await this.recordUserHistory(
+      userId,
+      changedByUserId,
+      'team_removed',
+      historyChanges,
+      dto?.notes ?? null
+    );
+
+    return { transferredCount };
   }
 
   async updateUserTeamRole(
@@ -638,25 +771,38 @@ export class UsersService {
   /**
    * Returns activities associated with the user (comms lead or contact).
    * Excludes deleted activities. Used for transfer dialog and "my activities" filters.
+   *
+   * When `fromTeamId` is provided, the list is scoped to activities where
+   * `leadTeamId === fromTeamId` — the set used by the transfer-activities and
+   * team-removal flows. Each row includes `isLead` so callers can distinguish
+   * lead vs. non-lead (contact) comms assignments.
    */
   async getActivitiesForUser(
-    userId: number
-  ): Promise<{ id: number; label: string; value: number }[]> {
+    userId: number,
+    fromTeamId?: number
+  ): Promise<{ id: number; label: string; value: number; isLead: boolean }[]> {
     const [deletedStatus] = await this.databaseService.db
       .select({ id: activityStatuses.id })
       .from(activityStatuses)
       .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
       .limit(1);
 
-    const conditions = [eq(activityCommsContacts.userId, userId)];
+    const conditions = [
+      eq(activityCommsContacts.userId, userId),
+      eq(activityCommsContacts.isActive, true),
+    ];
+    if (fromTeamId != null) {
+      conditions.push(eq(activities.leadTeamId, fromTeamId));
+    }
     if (deletedStatus?.id != null) {
       conditions.push(ne(activities.activityStatusId, deletedStatus.id));
     }
 
     const rows = await this.databaseService.db
-      .selectDistinct({
+      .select({
         id: activities.id,
         title: activities.title,
+        isLead: activityCommsContacts.isLead,
       })
       .from(activityCommsContacts)
       .innerJoin(
@@ -670,12 +816,333 @@ export class UsersService {
       id: r.id,
       label: r.title ?? `Activity ${r.id}`,
       value: r.id,
+      isLead: r.isLead,
     }));
   }
 
   /**
+   * Returns the source user's active comms-contact rows scoped to activities
+   * whose `leadTeamId === leadTeamId`. This is the eligible set for both
+   * `transferActivities` (fromTeamId) and `removeUserFromTeam` (team being removed).
+   */
+  private async getScopedCommsRows(
+    userId: number,
+    leadTeamId: number
+  ): Promise<ScopedCommsRow[]> {
+    const [deletedStatus] = await this.databaseService.db
+      .select({ id: activityStatuses.id })
+      .from(activityStatuses)
+      .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
+      .limit(1);
+
+    const conditions = [
+      eq(activityCommsContacts.userId, userId),
+      eq(activityCommsContacts.isActive, true),
+      eq(activities.leadTeamId, leadTeamId),
+    ];
+    if (deletedStatus?.id != null) {
+      conditions.push(ne(activities.activityStatusId, deletedStatus.id));
+    }
+
+    return this.databaseService.db
+      .select({
+        activityId: activityCommsContacts.activityId,
+        isLead: activityCommsContacts.isLead,
+      })
+      .from(activityCommsContacts)
+      .innerJoin(
+        activities,
+        eq(activityCommsContacts.activityId, activities.id)
+      )
+      .where(and(...conditions));
+  }
+
+  /** Resolves display names for history entries in a single query. */
+  private async getDisplayNamesById(
+    userIds: number[]
+  ): Promise<Map<number, string>> {
+    const uniqueIds = Array.from(new Set(userIds));
+    const rows = await this.databaseService.db
+      .select({
+        id: users.id,
+        adDisplayName: users.adDisplayName,
+        adUsername: users.adUsername,
+      })
+      .from(users)
+      .where(inArray(users.id, uniqueIds));
+
+    return new Map(
+      rows.map((u) => [u.id, u.adDisplayName || u.adUsername || `User ${u.id}`])
+    );
+  }
+
+  /**
+   * Resolves the team abbreviation and ministry context for a target lead team,
+   * mirroring the lookup `ActivitiesService.update` performs when `leadTeamId`
+   * changes, so displayId/ministry inheritance stay consistent across both paths.
+   */
+  private async resolveCrossTeamContext(
+    toTeamId: number
+  ): Promise<CrossTeamContext> {
+    const [teamRow] = await this.databaseService.db
+      .select({
+        abbreviation: teams.abbreviation,
+        ministryId: teams.ministryId,
+      })
+      .from(teams)
+      .where(eq(teams.id, toTeamId))
+      .limit(1);
+
+    if (!teamRow) {
+      throw new BadRequestException(`Team with ID ${toTeamId} not found`);
+    }
+
+    let ministryAbbreviation: string | null = null;
+    if (teamRow.ministryId != null) {
+      const [ministry] = await this.databaseService.db
+        .select({ abbreviation: ministries.abbreviation })
+        .from(ministries)
+        .where(eq(ministries.id, teamRow.ministryId))
+        .limit(1);
+      ministryAbbreviation = ministry?.abbreviation ?? null;
+    }
+
+    return {
+      teamAbbreviation: teamRow.abbreviation ?? null,
+      leadMinistryId: teamRow.ministryId ?? null,
+      ministryAbbreviation,
+    };
+  }
+
+  /**
+   * Validates that the target user is an eligible comms contact for the
+   * effective lead team, but only when comms will actually move to them
+   * (lead comms always move; non-lead only when `includeNonLead` is true).
+   */
+  private validateTransferTarget(
+    rows: ScopedCommsRow[],
+    targetUserId: number | null,
+    includeNonLead: boolean,
+    eligibleOnToTeam: Set<number>
+  ): void {
+    const willReceiveComms = rows.some((r) => r.isLead || includeNonLead);
+    if (!willReceiveComms) return;
+
+    if (targetUserId == null) {
+      throw new BadRequestException(
+        'targetUserId is required to transfer comms assignments.'
+      );
+    }
+    if (!eligibleOnToTeam.has(targetUserId)) {
+      throw new BadRequestException(
+        `Target user ${targetUserId} is not an eligible comms contact for the destination team. ` +
+          'Target must be an active member of that team with activities.edit permission.'
+      );
+    }
+  }
+
+  /**
+   * Transfers a single comms-contact row from source to target user, merging
+   * with any existing target row (OR'ing `isLead`) to avoid unique-key conflicts.
+   */
+  private async transferSingleCommsRow(
+    tx: DrizzleDbExecutor,
+    activityId: number,
+    sourceUserId: number,
+    targetUserId: number,
+    isLead: boolean
+  ): Promise<void> {
+    const [targetRow] = await tx
+      .select({ isLead: activityCommsContacts.isLead })
+      .from(activityCommsContacts)
+      .where(
+        and(
+          eq(activityCommsContacts.activityId, activityId),
+          eq(activityCommsContacts.userId, targetUserId)
+        )
+      )
+      .limit(1);
+
+    if (targetRow) {
+      await tx
+        .delete(activityCommsContacts)
+        .where(
+          and(
+            eq(activityCommsContacts.activityId, activityId),
+            eq(activityCommsContacts.userId, sourceUserId)
+          )
+        );
+      await tx
+        .update(activityCommsContacts)
+        .set({ isLead: isLead || targetRow.isLead, isActive: true })
+        .where(
+          and(
+            eq(activityCommsContacts.activityId, activityId),
+            eq(activityCommsContacts.userId, targetUserId)
+          )
+        );
+    } else {
+      await tx
+        .update(activityCommsContacts)
+        .set({ userId: targetUserId, isActive: true })
+        .where(
+          and(
+            eq(activityCommsContacts.activityId, activityId),
+            eq(activityCommsContacts.userId, sourceUserId)
+          )
+        );
+    }
+  }
+
+  /**
+   * Core per-activity engine shared by `transferActivities` (mode: 'transfer')
+   * and `removeUserFromTeam` (mode: 'removal'). Must run inside a transaction.
+   *
+   * Rules (see docs/spec for full rationale):
+   * - Lead comms always transfer to `targetUserId` when in scope/selected.
+   * - Non-lead comms transfer when `includeNonLead` is true.
+   * - Non-lead comms when `includeNonLead` is false:
+   *   - mode 'removal': always deleted (the user is leaving the team, so
+   *     leaving them attached would violate lead-team comms eligibility).
+   *   - mode 'transfer', same team: left as-is (no action).
+   *   - mode 'transfer', cross-team: left as-is if the source user remains
+   *     comms-eligible on the new lead team, otherwise deleted.
+   * - When `toTeamId !== fromTeamId`, each affected activity's `leadTeamId`
+   *   (and derived `leadMinistryId`/`displayId`) moves with it, matching the
+   *   Activity Form's lead-team-change behavior.
+   */
+  private async applyActivityCommsChanges(
+    tx: DrizzleDbExecutor,
+    params: {
+      sourceUserId: number;
+      targetUserId: number | null;
+      fromTeamId: number;
+      toTeamId: number;
+      rows: ScopedCommsRow[];
+      includeNonLead: boolean;
+      mode: 'transfer' | 'removal';
+      changedByUserId: number;
+      notes?: string;
+      sourceDisplayName: string;
+      targetDisplayName: string | null;
+      crossTeamContext: CrossTeamContext | null;
+      eligibleSourceOnToTeam: Set<number>;
+    }
+  ): Promise<number> {
+    const {
+      sourceUserId,
+      targetUserId,
+      fromTeamId,
+      toTeamId,
+      rows,
+      includeNonLead,
+      mode,
+      changedByUserId,
+      notes,
+      sourceDisplayName,
+      targetDisplayName,
+      crossTeamContext,
+      eligibleSourceOnToTeam,
+    } = params;
+
+    const crossTeam = toTeamId !== fromTeamId;
+    const trimmedNotes = notes?.trim() || undefined;
+    let count = 0;
+
+    for (const row of rows) {
+      let actionTaken = false;
+
+      if (crossTeam && crossTeamContext) {
+        const displayId =
+          this.activityUtilsService.computeDisplayIdFromLeadContext({
+            activityId: row.activityId,
+            leadMinistryId: crossTeamContext.leadMinistryId,
+            ministryAbbreviation: crossTeamContext.ministryAbbreviation,
+            teamAbbreviation: crossTeamContext.teamAbbreviation,
+          });
+
+        await tx
+          .update(activities)
+          .set({
+            leadTeamId: toTeamId,
+            leadMinistryId: crossTeamContext.leadMinistryId,
+            displayId,
+            lastUpdatedDateTime: new Date(),
+            lastUpdatedBy: changedByUserId,
+          })
+          .where(eq(activities.id, row.activityId));
+
+        await this.activityHistoryService.recordChange(
+          row.activityId,
+          changedByUserId,
+          'lead_team_changed',
+          [{ field: 'leadTeamId', oldValue: fromTeamId, newValue: toTeamId }],
+          trimmedNotes,
+          tx
+        );
+
+        actionTaken = true;
+      }
+
+      if (row.isLead) {
+        // targetUserId presence guaranteed by validateTransferTarget when any row is lead.
+        await this.transferSingleCommsRow(
+          tx,
+          row.activityId,
+          sourceUserId,
+          targetUserId!,
+          row.isLead
+        );
+        await this.activityHistoryService.recordChange(
+          row.activityId,
+          changedByUserId,
+          'comms_lead_transferred',
+          [
+            {
+              field: 'commsContactLeadId',
+              oldValue: sourceDisplayName,
+              newValue: targetDisplayName,
+            },
+          ],
+          trimmedNotes,
+          tx
+        );
+        actionTaken = true;
+      } else if (includeNonLead) {
+        await this.transferSingleCommsRow(
+          tx,
+          row.activityId,
+          sourceUserId,
+          targetUserId!,
+          row.isLead
+        );
+        actionTaken = true;
+      } else if (
+        mode === 'removal' ||
+        (crossTeam && !eligibleSourceOnToTeam.has(sourceUserId))
+      ) {
+        await tx
+          .delete(activityCommsContacts)
+          .where(
+            and(
+              eq(activityCommsContacts.activityId, row.activityId),
+              eq(activityCommsContacts.userId, sourceUserId)
+            )
+          );
+        actionTaken = true;
+      }
+      // else: transfer mode, non-lead unchecked, source remains comms-eligible -> keep, no action.
+
+      if (actionTaken) count += 1;
+    }
+
+    return count;
+  }
+
+  /**
    * Returns per-user activity counts for the supplied user IDs.
-   * Excludes deleted activities to match getActivitiesForUser behavior.
+   * Excludes deleted activities and inactive comms contact rows (matches
+   * getActivitiesForUser behavior).
    */
   async getActivityCountsForUsers(
     userIds: number[]
@@ -691,7 +1158,10 @@ export class UsersService {
       .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
       .limit(1);
 
-    const conditions = [inArray(activityCommsContacts.userId, uniqueUserIds)];
+    const conditions = [
+      inArray(activityCommsContacts.userId, uniqueUserIds),
+      eq(activityCommsContacts.isActive, true),
+    ];
     if (deletedStatus?.id != null) {
       conditions.push(ne(activities.activityStatusId, deletedStatus.id));
     }
@@ -719,202 +1189,156 @@ export class UsersService {
     }));
   }
 
+  /** Ensures the source user is an active member of `teamId` before team-scoped transfer. */
+  private async assertSourceUserOnTeam(
+    userId: number,
+    teamId: number
+  ): Promise<void> {
+    const [row] = await this.databaseService.db
+      .select({ userId: userTeams.userId })
+      .from(userTeams)
+      .where(
+        and(
+          eq(userTeams.userId, userId),
+          eq(userTeams.teamId, teamId),
+          eq(userTeams.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (!row) {
+      throw new BadRequestException(
+        `User ${userId} is not an active member of team ${teamId}.`
+      );
+    }
+  }
+
+  /**
+   * Mirrors `applyActivityCommsChanges` to detect whether a scoped row would
+   * produce any side effect (comms move, delete, or cross-team lead update).
+   */
+  private commsChangeWouldApply(
+    row: ScopedCommsRow,
+    params: {
+      includeNonLead: boolean;
+      mode: 'transfer' | 'removal';
+      crossTeam: boolean;
+    }
+  ): boolean {
+    const { includeNonLead, mode, crossTeam } = params;
+
+    if (crossTeam) return true;
+    if (row.isLead) return true;
+    if (includeNonLead) return true;
+    if (mode === 'removal') return true;
+    return false;
+  }
+
+  /**
+   * Transfers activity comms assignments from `sourceUserId` to `dto.targetUserId`.
+   *
+   * Scope is every activity where the source user has an active comms row and
+   * `activities.leadTeamId === dto.fromTeamId`; `dto.activityIds`, if given,
+   * must be a subset of that scope. See `applyActivityCommsChanges` for the
+   * per-activity lead/non-lead and cross-team rules.
+   */
   async transferActivities(
     sourceUserId: number,
     dto: TransferActivitiesBody,
     changedByUserId: number
   ): Promise<{ transferredCount: number }> {
-    if (sourceUserId === dto.targetUserId)
+    if (sourceUserId === dto.targetUserId) {
       throw new BadRequestException('Source and target user must be different');
+    }
 
-    if (!dto.transferCommsLead && !dto.transferCommsContact)
+    const fromTeamId = dto.fromTeamId;
+    const toTeamId = dto.toTeamId ?? fromTeamId;
+
+    await this.assertSourceUserOnTeam(sourceUserId, fromTeamId);
+
+    const scopedRows = await this.getScopedCommsRows(sourceUserId, fromTeamId);
+    const scopedIds = new Set(scopedRows.map((r) => r.activityId));
+
+    if (scopedIds.size === 0) {
       throw new BadRequestException(
-        'At least one of transferCommsLead or transferCommsContact must be true'
+        'No comms assignments are in scope for this user and team.'
       );
-
-    const leadFilter = dto.transferCommsLead && !dto.transferCommsContact;
-    const contactFilter = dto.transferCommsContact && !dto.transferCommsLead;
-
-    let activityIds = dto.activityIds;
-    if (!activityIds || activityIds.length === 0) {
-      const conditions = [eq(activityCommsContacts.userId, sourceUserId)];
-      if (leadFilter) conditions.push(eq(activityCommsContacts.isLead, true));
-      if (contactFilter)
-        conditions.push(eq(activityCommsContacts.isLead, false));
-
-      const rows = await this.databaseService.db
-        .selectDistinct({ activityId: activityCommsContacts.activityId })
-        .from(activityCommsContacts)
-        .where(and(...conditions));
-      activityIds = rows.map((r) => r.activityId);
     }
 
-    if (activityIds.length === 0) {
-      await this.recordUserHistory(
-        sourceUserId,
-        changedByUserId,
-        'activities_transferred',
-        [
-          {
-            field: 'targetUserId',
-            oldValue: null,
-            newValue: dto.targetUserId,
-          },
-          { field: 'activityCount', oldValue: null, newValue: 0 },
-        ],
-        dto.notes ?? null
+    let activityIds: number[];
+    if (dto.activityIds === undefined) {
+      activityIds = Array.from(scopedIds);
+    } else if (dto.activityIds.length === 0) {
+      throw new BadRequestException(
+        'activityIds must include at least one activity when provided.'
       );
-      return { transferredCount: 0 };
+    } else {
+      const invalidIds = dto.activityIds.filter((id) => !scopedIds.has(id));
+      if (invalidIds.length > 0) {
+        throw new BadRequestException(
+          `Activities [${invalidIds.join(', ')}] are not eligible for transfer from team ${fromTeamId}.`
+        );
+      }
+      activityIds = dto.activityIds;
     }
 
-    const updateConditions = [
-      eq(activityCommsContacts.userId, sourceUserId),
-      inArray(activityCommsContacts.activityId, activityIds),
-    ];
-    if (leadFilter)
-      updateConditions.push(eq(activityCommsContacts.isLead, true));
-    if (contactFilter)
-      updateConditions.push(eq(activityCommsContacts.isLead, false));
-
-    const sourceRows = await this.databaseService.db
-      .select({
-        activityId: activityCommsContacts.activityId,
-        isLead: activityCommsContacts.isLead,
-      })
-      .from(activityCommsContacts)
-      .where(and(...updateConditions));
-
-    if (sourceRows.length === 0) {
-      await this.recordUserHistory(
-        sourceUserId,
-        changedByUserId,
-        'activities_transferred',
-        [
-          {
-            field: 'targetUserId',
-            oldValue: null,
-            newValue: dto.targetUserId,
-          },
-          { field: 'activityCount', oldValue: null, newValue: 0 },
-        ],
-        dto.notes ?? null
-      );
-      return { transferredCount: 0 };
-    }
-
-    const userRowsForHistory = await this.databaseService.db
-      .select({
-        id: users.id,
-        adDisplayName: users.adDisplayName,
-        adUsername: users.adUsername,
-      })
-      .from(users)
-      .where(inArray(users.id, [sourceUserId, dto.targetUserId]));
-
-    const displayNameById = new Map(
-      userRowsForHistory.map((u) => [
-        u.id,
-        u.adDisplayName || u.adUsername || `User ${u.id}`,
-      ])
+    const rowsToProcess = scopedRows.filter((r) =>
+      activityIds.includes(r.activityId)
     );
+
+    const crossTeam = toTeamId !== fromTeamId;
+    const eligibleOnToTeam =
+      await this.teamsService.getEligibleCommsUserIds(toTeamId);
+    this.validateTransferTarget(
+      rowsToProcess,
+      dto.targetUserId,
+      dto.includeNonLead,
+      eligibleOnToTeam
+    );
+
+    if (
+      !rowsToProcess.some((row) =>
+        this.commsChangeWouldApply(row, {
+          includeNonLead: dto.includeNonLead,
+          mode: 'transfer',
+          crossTeam,
+        })
+      )
+    ) {
+      throw new BadRequestException(
+        'No comms assignments would change for the selected activities and options.'
+      );
+    }
+
+    const displayNameById = await this.getDisplayNamesById([
+      sourceUserId,
+      dto.targetUserId,
+    ]);
     const sourceDisplayName =
       displayNameById.get(sourceUserId) ?? `User ${sourceUserId}`;
     const targetDisplayName =
       displayNameById.get(dto.targetUserId) ?? `User ${dto.targetUserId}`;
 
-    const trimmedTransferNote = dto.notes?.trim() ?? '';
-    const activityTitleById = new Map<number, string>();
-    if (trimmedTransferNote.length > 0) {
-      const leadActivityIds = [
-        ...new Set(sourceRows.filter((r) => r.isLead).map((r) => r.activityId)),
-      ];
-      if (leadActivityIds.length > 0) {
-        const titleRows = await this.databaseService.db
-          .select({ id: activities.id, title: activities.title })
-          .from(activities)
-          .where(inArray(activities.id, leadActivityIds));
-        for (const r of titleRows) {
-          const label = r.title?.trim() || `Activity ${r.id}`;
-          activityTitleById.set(r.id, label);
-        }
-      }
-    }
+    const crossTeamContext = crossTeam
+      ? await this.resolveCrossTeamContext(toTeamId)
+      : null;
 
-    const transferredCount = await this.databaseService.db.transaction(
-      async (tx) => {
-        let count = 0;
-        for (const row of sourceRows) {
-          const [targetRow] = await tx
-            .select({
-              isLead: activityCommsContacts.isLead,
-            })
-            .from(activityCommsContacts)
-            .where(
-              and(
-                eq(activityCommsContacts.activityId, row.activityId),
-                eq(activityCommsContacts.userId, dto.targetUserId)
-              )
-            )
-            .limit(1);
-
-          if (targetRow) {
-            await tx
-              .delete(activityCommsContacts)
-              .where(
-                and(
-                  eq(activityCommsContacts.activityId, row.activityId),
-                  eq(activityCommsContacts.userId, sourceUserId)
-                )
-              );
-            await tx
-              .update(activityCommsContacts)
-              .set({
-                isLead: row.isLead || targetRow.isLead,
-              })
-              .where(
-                and(
-                  eq(activityCommsContacts.activityId, row.activityId),
-                  eq(activityCommsContacts.userId, dto.targetUserId)
-                )
-              );
-          } else {
-            await tx
-              .update(activityCommsContacts)
-              .set({ userId: dto.targetUserId })
-              .where(
-                and(
-                  eq(activityCommsContacts.activityId, row.activityId),
-                  eq(activityCommsContacts.userId, sourceUserId)
-                )
-              );
-          }
-
-          if (row.isLead) {
-            let historyNotes: string | undefined;
-            if (trimmedTransferNote.length > 0) {
-              historyNotes = `${trimmedTransferNote}`;
-            }
-
-            await this.activityHistoryService.recordChange(
-              row.activityId,
-              changedByUserId,
-              'comms_lead_transferred',
-              [
-                {
-                  field: 'commsContactLeadId',
-                  oldValue: sourceDisplayName,
-                  newValue: targetDisplayName,
-                },
-              ],
-              historyNotes,
-              tx
-            );
-          }
-
-          count += 1;
-        }
-        return count;
-      }
+    const transferredCount = await this.databaseService.db.transaction((tx) =>
+      this.applyActivityCommsChanges(tx, {
+        sourceUserId,
+        targetUserId: dto.targetUserId,
+        fromTeamId,
+        toTeamId,
+        rows: rowsToProcess,
+        includeNonLead: dto.includeNonLead,
+        mode: 'transfer',
+        changedByUserId,
+        notes: dto.notes,
+        sourceDisplayName,
+        targetDisplayName,
+        crossTeamContext,
+        eligibleSourceOnToTeam: eligibleOnToTeam,
+      })
     );
 
     await this.recordUserHistory(
@@ -923,6 +1347,8 @@ export class UsersService {
       'activities_transferred',
       [
         { field: 'targetUserId', oldValue: null, newValue: dto.targetUserId },
+        { field: 'fromTeamId', oldValue: null, newValue: fromTeamId },
+        { field: 'toTeamId', oldValue: null, newValue: toTeamId },
         { field: 'activityCount', oldValue: null, newValue: transferredCount },
         { field: 'activityIds', oldValue: null, newValue: activityIds },
       ],

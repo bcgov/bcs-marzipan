@@ -47,6 +47,7 @@ import { ActivityUtilsService } from './services/activity-utils.service';
     ActivityFlagsService,
     ActivityHistoryService,
     ActivityDisplayIdSyncService,
+    ActivityUtilsService,
   ],
 })
 export class ActivitiesModule {}

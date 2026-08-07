@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { buildUserHistoryChangeMessage } from '@/components/users/userHistoryFormatting';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import { userQueryKeys } from '@/lib/userQueryKeys';
 
 interface UserHistoryDrawerProps {
   user: UserListItem;
@@ -63,7 +64,7 @@ export function UserHistoryDrawer({
   });
 
   const { data: history = [], isLoading } = useQuery({
-    queryKey: ['userHistory', user.id],
+    queryKey: userQueryKeys.history(user.id),
     queryFn: () => fetchUserHistory(user.id),
     enabled: open && !!user.id,
   });
