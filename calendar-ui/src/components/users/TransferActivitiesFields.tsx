@@ -78,6 +78,10 @@ export interface TransferActivitiesFieldsMeta {
   isError: boolean;
 }
 
+export type TransferActivitiesDraftUpdater =
+  | TransferActivitiesDraft
+  | ((prev: TransferActivitiesDraft) => TransferActivitiesDraft);
+
 interface TransferActivitiesFieldsProps {
   mode: TransferActivitiesMode;
   sourceUserId: number;
@@ -87,7 +91,7 @@ interface TransferActivitiesFieldsProps {
   fixedFromTeamId?: number;
   fixedFromTeamName?: string;
   value: TransferActivitiesDraft;
-  onChange: (next: TransferActivitiesDraft) => void;
+  onChange: (next: TransferActivitiesDraftUpdater) => void;
   /** Show the free-text notes field. Defaults to true for transfer mode, false for removal. */
   showNotes?: boolean;
   onMetaChange?: (meta: TransferActivitiesFieldsMeta) => void;
@@ -162,10 +166,10 @@ export function TransferActivitiesFields({
     const key = String(fromTeamId);
     if (!isRemoval && initializedForKey.current === key) return;
     initializedForKey.current = key;
-    onChange({
-      ...value,
+    onChange((prev) => ({
+      ...prev,
       selectedActivityIds: userActivities.map((a) => a.id),
-    });
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromTeamId, userActivities, isRemoval]);
 
@@ -544,6 +548,23 @@ export function isTransferActivitiesDraftValid(
   return draft.selectedActivityIds.length > 0;
 }
 
+/** True when the selected activities/options would change comms or lead team. */
+export function wouldTransferDraftHaveEffect(
+  draft: TransferActivitiesDraft,
+  scopedActivities: UserActivityItem[]
+): boolean {
+  if (draft.fromTeamId == null || draft.selectedActivityIds.length === 0) {
+    return false;
+  }
+  const toTeamId = draft.toTeamId ?? draft.fromTeamId;
+  const crossTeam = toTeamId !== draft.fromTeamId;
+  const selected = new Set(draft.selectedActivityIds);
+  const rows = scopedActivities.filter((a) => selected.has(a.id));
+  if (rows.length === 0) return false;
+  if (crossTeam) return true;
+  return rows.some((row) => row.isLead || draft.includeNonLead);
+}
+
 /** True when the draft matches the default state after load or reset for the current scope. */
 export function isTransferActivitiesDraftPristine(
   draft: TransferActivitiesDraft,
@@ -577,6 +598,12 @@ export function buildTransferActivitiesBody(
     throw new Error(
       'fromTeamId and targetUserId are required to transfer activities'
     );
+  }
+  if (
+    allScopedActivityIds.length > 0 &&
+    draft.selectedActivityIds.length === 0
+  ) {
+    throw new Error('At least one activity must be selected to transfer');
   }
   const toTeamId = draft.toTeamId ?? draft.fromTeamId;
   const allSelected =

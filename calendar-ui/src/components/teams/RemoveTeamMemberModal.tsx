@@ -150,7 +150,13 @@ export function RemoveTeamMemberModal({
               fixedFromTeamId={teamId}
               fixedFromTeamName={teamName}
               value={{ ...draft, fromTeamId: teamId }}
-              onChange={(next) => setDraft({ ...next, fromTeamId: teamId })}
+              onChange={(next) =>
+                setDraft((prev) => {
+                  const resolved =
+                    typeof next === 'function' ? next(prev) : next;
+                  return { ...resolved, fromTeamId: teamId };
+                })
+              }
               showNotes={false}
             />
           )}

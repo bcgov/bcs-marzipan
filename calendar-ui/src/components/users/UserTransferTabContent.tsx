@@ -9,12 +9,12 @@ import { Button } from '@/components/ui/button';
 import {
   buildTransferActivitiesBody,
   createInitialTransferDraft,
-  isTransferActivitiesDraftPristine,
-  isTransferActivitiesDraftValid,
   TransferActivitiesFields,
   type TransferActivitiesDraft,
   type TransferActivitiesFieldsMeta,
 } from '@/components/users/TransferActivitiesFields';
+import { useTransferActivitiesSubmit } from '@/hooks/useTransferActivitiesSubmit';
+import { formatTransferActivitiesSuccessMessage } from '@/lib/transfer-activities-messages';
 import { invalidateUserCaches } from '@/lib/userQueryKeys';
 
 interface UserTransferTabContentProps {
@@ -56,14 +56,20 @@ export function UserTransferTabContent({
     isError: false,
   });
 
-  const resetForm = () => {
-    setDraft(createInitialTransferDraft(draft.fromTeamId ?? initialFromTeamId));
-  };
-
   const sourceDisplayName =
     sourceUser.adDisplayName ||
     sourceUser.adUsername ||
     `User ${sourceUser.id}`;
+
+  const { canSubmit, isDraftPristine, resetForm } = useTransferActivitiesSubmit(
+    {
+      sourceUserId: sourceUser.id,
+      draft,
+      fieldsMeta,
+      initialFromTeamId,
+      canTransfer,
+    }
+  );
 
   const transferMutation = useMutation({
     mutationFn: () => {
@@ -79,10 +85,13 @@ export function UserTransferTabContent({
         draft.targetUserId != null
           ? `activities-transferred-${sourceUser.id}-${draft.targetUserId}`
           : 'activities-transferred';
-      toast.success(`Transferred ${data.transferredCount} assignment(s)`, {
-        id: toastId,
-      });
-      resetForm();
+      toast.success(
+        formatTransferActivitiesSuccessMessage(data.transferredCount),
+        {
+          id: toastId,
+        }
+      );
+      setDraft(resetForm());
     },
     onError: (err: Error) => {
       const toastId =
@@ -92,24 +101,6 @@ export function UserTransferTabContent({
       toast.error(err.message || 'Transfer failed', { id: toastId });
     },
   });
-
-  const hasActivities = fieldsMeta.activities.length > 0;
-  const scopedActivityIds = useMemo(
-    () => fieldsMeta.activities.map((a) => a.id),
-    [fieldsMeta.activities]
-  );
-  const isDraftPristine = isTransferActivitiesDraftPristine(
-    draft,
-    scopedActivityIds
-  );
-
-  const canSubmit =
-    canTransfer &&
-    draft.fromTeamId != null &&
-    hasActivities &&
-    !fieldsMeta.isLoading &&
-    isTransferActivitiesDraftValid(draft, sourceUser.id, hasActivities) &&
-    !fieldsMeta.isError;
 
   if (!canTransfer) {
     return (
@@ -143,7 +134,7 @@ export function UserTransferTabContent({
       <div className="flex justify-end gap-2 pt-2">
         <Button
           variant="secondary"
-          onClick={resetForm}
+          onClick={() => setDraft(resetForm())}
           disabled={
             transferMutation.isPending ||
             fieldsMeta.isLoading ||

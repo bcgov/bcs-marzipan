@@ -16,11 +16,12 @@ import {
 import {
   buildTransferActivitiesBody,
   createInitialTransferDraft,
-  isTransferActivitiesDraftValid,
   TransferActivitiesFields,
   type TransferActivitiesDraft,
   type TransferActivitiesFieldsMeta,
 } from '@/components/users/TransferActivitiesFields';
+import { useTransferActivitiesSubmit } from '@/hooks/useTransferActivitiesSubmit';
+import { formatTransferActivitiesSuccessMessage } from '@/lib/transfer-activities-messages';
 import { invalidateUserCaches } from '@/lib/userQueryKeys';
 
 interface TransferActivitiesDialogProps {
@@ -67,6 +68,17 @@ export function TransferActivitiesDialog({
     }
   }, [initialFromTeamId, draft.fromTeamId]);
 
+  const { canSubmit, isDraftPristine, resetForm } = useTransferActivitiesSubmit(
+    {
+      sourceUserId: sourceUser.id,
+      draft,
+      fieldsMeta,
+      initialFromTeamId,
+      requireFromTeamOptions: true,
+      fromTeamOptionCount: fromTeamOptions.length,
+    }
+  );
+
   const transferMutation = useMutation({
     mutationFn: () => {
       const body = buildTransferActivitiesBody(
@@ -81,9 +93,12 @@ export function TransferActivitiesDialog({
         draft.targetUserId != null
           ? `activities-transferred-${sourceUser.id}-${draft.targetUserId}`
           : 'activities-transferred';
-      toast.success(`Transferred ${data.transferredCount} assignment(s)`, {
-        id: toastId,
-      });
+      toast.success(
+        formatTransferActivitiesSuccessMessage(data.transferredCount),
+        {
+          id: toastId,
+        }
+      );
       onTransferred();
     },
     onError: (err: Error) => {
@@ -94,16 +109,6 @@ export function TransferActivitiesDialog({
       toast.error(err.message || 'Transfer failed', { id: toastId });
     },
   });
-
-  const hasActivities = fieldsMeta.activities.length > 0;
-
-  const canSubmit =
-    draft.fromTeamId != null &&
-    fromTeamOptions.length > 0 &&
-    hasActivities &&
-    !fieldsMeta.isLoading &&
-    isTransferActivitiesDraftValid(draft, sourceUser.id, hasActivities) &&
-    !fieldsMeta.isError;
 
   const sourceName =
     sourceUser.adDisplayName ||
@@ -144,6 +149,19 @@ export function TransferActivitiesDialog({
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>
             Cancel
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setDraft(resetForm())}
+            disabled={
+              transferMutation.isPending ||
+              fieldsMeta.isLoading ||
+              isDraftPristine ||
+              isLoadingUser ||
+              fromTeamOptions.length === 0
+            }
+          >
+            Reset
           </Button>
           <Button
             disabled={
