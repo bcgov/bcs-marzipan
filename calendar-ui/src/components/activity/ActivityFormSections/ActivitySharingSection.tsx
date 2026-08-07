@@ -25,12 +25,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { InfoIconButton } from '@/components/ui/info-icon-button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
@@ -40,6 +34,7 @@ import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
 export type SharingTeamLookup = {
@@ -192,38 +187,10 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                   <FormLabel htmlFor={RESTRICT_ACCESS_SWITCH_ID}>
                     <>
                       {getActivityFieldLabel(field.name)}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <InfoIconButton aria-label="About access restriction" />
-                        </PopoverTrigger>
-                        <PopoverContent
-                          className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                          align="start"
-                        >
-                          <p className="mb-2">
-                            Controls who can view this activity in Corporate
-                            Calendar:
-                          </p>
-                          <ul className="list-disc space-y-1 pl-4">
-                            <li>
-                              <strong>On:</strong> only the lead team and teams
-                              selected in Share with can view the activity (plus
-                              roles below).
-                            </li>
-                            <li>
-                              <strong>Off:</strong> visible to everyone.
-                            </li>
-                          </ul>
-                          <p className="mt-2">
-                            GCPE executive, Strategic Communications, Cabinet
-                            Priorities, and Calendar admin roles can always view
-                            all activities regardless of this setting.
-                          </p>
-                          <p className="mt-2">
-                            Does not affect inclusion in the Look Ahead report.
-                          </p>
-                        </PopoverContent>
-                      </Popover>
+                      <ActivityFieldInfoIcon
+                        fieldKey="visibility"
+                        ariaLabel="About access restriction"
+                      />
                     </>
                   </FormLabel>
                 </div>
@@ -285,7 +252,15 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
 
           return (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="sharedWithTeamIds"
+                    ariaLabel="About share with teams"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={sharedWithTeamOptions}

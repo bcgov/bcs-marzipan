@@ -31,6 +31,10 @@ import {
 } from '@/lib/savedFilterSanitize';
 import type { OptionItem } from '@/schemas/types';
 
+import {
+  CategoriesFilterPanel,
+  type CategoryFilterOption,
+} from './CategoriesFilter';
 import { LeadsFilterPanel, type LeadFilterOption } from './LeadsFilter';
 import { LookAheadFilterPanel } from './LookAheadFilter';
 import { PitchFilterPanel } from './PitchFilter';
@@ -54,7 +58,7 @@ export interface ActivityTableFiltersProps {
   defaultSortKey: string;
   defaultSortDirection: 'asc' | 'desc';
   sortColumns: SortColumnConfig[];
-  categoryOptions: OptionItem[];
+  categoryOptions: CategoryFilterOption[];
   pitchRequiredStatusOptions: OptionItem[];
   statusOptions: OptionItem[];
   tagOptions: TagFilterOption[];
@@ -146,6 +150,7 @@ export function ActivityTableFilters({
   const summaryContext = useMemo((): ActivityFilterSummaryContext => {
     return {
       statusOptions,
+      categoryOptions,
       pitchRequiredStatusOptions,
       tagOptions,
       ministryOptions,
@@ -158,6 +163,7 @@ export function ActivityTableFilters({
     };
   }, [
     statusOptions,
+    categoryOptions,
     pitchRequiredStatusOptions,
     tagOptions,
     ministryOptions,
@@ -173,6 +179,7 @@ export function ActivityTableFilters({
     (): ValidFilterLookups =>
       buildValidFilterLookupsFromOptions({
         statusOptions,
+        categoryOptions,
         tagOptions,
         ministryOptions,
         organizationOptions,
@@ -183,6 +190,7 @@ export function ActivityTableFilters({
       }),
     [
       statusOptions,
+      categoryOptions,
       tagOptions,
       ministryOptions,
       organizationOptions,
@@ -219,10 +227,10 @@ export function ActivityTableFilters({
   );
 
   const handleCategoryChange = useCallback(
-    (values: string[]) => {
+    (categoryIds: number[]) => {
       onFilterStateChange({
         ...filterState,
-        categoryNames: values,
+        categoryIds,
       });
     },
     [filterState, onFilterStateChange]
@@ -249,7 +257,7 @@ export function ActivityTableFilters({
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: [],
+      categoryIds: [],
       activityStatusIds: [],
       pitchRequiredStatusNames: [],
       pitchDateFilter: { kind: 'any' },
@@ -297,7 +305,7 @@ export function ActivityTableFilters({
     [filterState, onFilterStateChange]
   );
 
-  const categorySelectedValues = filterState.categoryNames;
+  const categorySelectedIds = filterState.categoryIds;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
   const canViewPitchStatus = pitchFieldVisibility.canViewPitchStatus;
@@ -345,16 +353,15 @@ export function ActivityTableFilters({
         key: 'category',
         label: 'Category',
         panel: (
-          <FilterCheckboxDropdownPanel
-            options={categoryOptions}
-            selectedValues={categorySelectedValues}
-            onChange={handleCategoryChange}
-            emptyMessage="No results"
+          <CategoriesFilterPanel
+            categoryOptions={categoryOptions}
+            selectedCategoryIds={categorySelectedIds}
+            onCategoryIdsChange={handleCategoryChange}
           />
         ),
         triggerProps: {
-          active: categorySelectedValues.length > 0,
-          count: categorySelectedValues.length,
+          active: categorySelectedIds.length > 0,
+          count: categorySelectedIds.length,
           onClear: () => handleCategoryChange([]),
           clearAriaLabel: 'Clear Category filter',
         },
@@ -542,7 +549,7 @@ export function ActivityTableFilters({
       filterState,
       onFilterStateChange,
       categoryOptions,
-      categorySelectedValues,
+      categorySelectedIds,
       handleCategoryChange,
       handleDateRangeChange,
       handleStatusChange,

@@ -107,7 +107,7 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | `sharedWithTeamIds`            | int[]                          | Shared-with team IDs (OR)                                                                                                       |
 | `eventPlannerLeadIds`          | int[]                          | Lead event planner IDs (OR)                                                                                                     |
 | `tagIds`                       | int[]                          | Tag IDs (OR)                                                                                                                    |
-| `categoryNames`                | string[]                       | Category display or internal names (OR, case-insensitive)                                                                       |
+| `categoryIds`                  | number[]                       | Category lookup IDs (OR)                                                                                                        |
 | `translationRequiredStatusIds` | int[]                          | Translations-required status IDs (OR)                                                                                           |
 | `translationLanguageIds`       | int[]                          | Required translation language IDs (OR)                                                                                          |
 | `pitchRequiredStatusNames`     | string[]                       | Pitch-required status names (OR, case-insensitive)                                                                              |
@@ -319,6 +319,62 @@ This endpoint is intended for team/user-management views that only need counts, 
   ]
 }
 ```
+
+---
+
+### Get User Activities (comms scope)
+
+**GET** `/users/:id/activities`
+
+Returns activities where the user has an active comms contact row. Deleted activities are excluded.
+
+**Query parameters**
+
+| Parameter    | Type    | Description                                                                                                 |
+| ------------ | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `fromTeamId` | integer | Optional. When set, only activities with `leadTeamId === fromTeamId` are returned (transfer/removal scope). |
+
+**Example:** `GET /users/12/activities?fromTeamId=3`
+
+**Response:** `200 OK` — `{ "success": true, "data": [{ "id", "label", "value", "isLead" }, ...] }`
+
+---
+
+### Transfer activities
+
+**POST** `/users/:id/transfer-activities`
+
+**Permission:** `users.transfer_activities`
+
+Transfers comms assignments from the source user to `targetUserId` for activities led by `fromTeamId`. The source user must be an active member of `fromTeamId`.
+
+**Body**
+
+| Field            | Type      | Required | Description                                                                                                      |
+| ---------------- | --------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `targetUserId`   | integer   | yes      | User receiving comms                                                                                             |
+| `fromTeamId`     | integer   | yes      | Lead team scope                                                                                                  |
+| `toTeamId`       | integer   | no       | Destination lead team; defaults to `fromTeamId`                                                                  |
+| `activityIds`    | integer[] | no       | Subset of scoped activities. **Omit** to include all scoped activities. An **explicit empty array is rejected**. |
+| `includeNonLead` | boolean   | yes      | When false, non-lead comms stay unless a cross-team move makes them ineligible                                   |
+| `notes`          | string    | no       | Optional audit note                                                                                              |
+
+**Responses**
+
+- `200 OK` — `{ "success": true, "transferredCount": number }` where `transferredCount` is the number of **activities affected** (comms change and/or cross-team lead update).
+- `400` — No scoped comms, invalid `activityIds`, source not on team, target ineligible, or no comms would change for the given options.
+
+---
+
+### Remove user from team
+
+**DELETE** `/users/:id/teams/:teamId`
+
+**Permission:** `users.edit`. When transferring scoped comms as part of removal, the caller also needs `users.transfer_activities`.
+
+Always clears the user's activity flags for that team. When the user has comms rows on activities led by this team, include a body with `targetUserId` (and optional `toTeamId`, `includeNonLead`, `notes`). When there are no scoped comms rows, the body may be omitted.
+
+**Response:** `200 OK` — `{ "success": true, "transferredCount": number }`
 
 ---
 

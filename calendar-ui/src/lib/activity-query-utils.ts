@@ -72,7 +72,7 @@ function activityTableRowToFilterMatchInput(
     id: row.id,
     startDate: row.startDate,
     endDate: row.endDate,
-    categoryNames: row.activityCategories,
+    categoryIds: row.categoryIds,
     activityStatusId: row.activityStatusId,
     pitchRequiredStatusName: row.pitchRequiredStatus,
     pitchDate: row.pitchDate,
@@ -120,7 +120,7 @@ export function canResolveTranslationLanguageFilter(
 }
 
 /**
- * Client-side filter by date range, category (names), status (IDs), pitch, tags, leads, translations, etc.
+ * Client-side filter by date range, category (IDs), status (IDs), pitch, tags, leads, translations, etc.
  * Delegates to the shared {@link activityMatchesFilterState} predicate so list and
  * Reports apply identical rules. Optional context resolves translation-language
  * IDs to labels (the only dimension that cannot be matched by ID on the client).

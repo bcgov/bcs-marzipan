@@ -491,7 +491,7 @@ Users who can see an activity only because it is **shared with** one of their te
 
 List and detail activity responses run `redactActivityResponse` in the activities controller. For scopes that have an `activities.<scope>.view` permission, the user must hold that permission, the matching `activities.<scope>.edit` permission (edit implies view), or a role that bypasses field view checks (Advanced Viewer, Advanced Editor, Admin, System Admin). Otherwise those response fields are omitted.
 
-Some scopes **do not** define a view permission: **translations** and **pitch date** are always included for users who can access the activity; editing them still requires the corresponding `activities.<scope>.edit` grants where applicable.
+Some scopes **do not** enforce a view permission: **translations**, **pitch required status**, and **pitch date** are always included for users who can access the activity; editing them still requires the corresponding `activities.<scope>.edit` grants where applicable.
 
 #### Using dataScope in controllers and services
 

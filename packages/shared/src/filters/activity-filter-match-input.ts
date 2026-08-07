@@ -17,8 +17,8 @@ export interface ActivityFilterMatchInput {
   /** Scheduled start/end as ISO strings (or null when unset). */
   startDate: string | null;
   endDate: string | null;
-  /** Category display names on the activity. */
-  categoryNames: string[];
+  /** Category lookup IDs on the activity. */
+  categoryIds: number[];
   activityStatusId: number;
   /** Pitch required status display name (or null). */
   pitchRequiredStatusName: string | null;
@@ -65,7 +65,7 @@ export function activityResponseToFilterMatchInput(
     id: activity.id,
     startDate: activity.startDate,
     endDate: activity.endDate,
-    categoryNames: activity.category,
+    categoryIds: activity.categoryIds ?? [],
     activityStatusId: activity.activityStatusId,
     pitchRequiredStatusName: activity.pitchRequiredStatus ?? null,
     pitchDate: activity.pitchDate ?? null,

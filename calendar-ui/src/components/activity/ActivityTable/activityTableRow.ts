@@ -18,6 +18,7 @@ export interface ActivityTableRow {
   // Overview column
   title: string;
   activityCategories: string[];
+  categoryIds: number[];
   pitchDate: string | null;
   pitchRequiredStatus: string | null;
   isConfidential: boolean;
@@ -117,6 +118,7 @@ export function mapActivityToTableRow(
     // Overview
     title: activity.title,
     activityCategories: activity.category,
+    categoryIds: activity.categoryIds ?? [],
     pitchDate: activity.pitchDate ?? null,
     pitchRequiredStatus: activity.pitchRequiredStatus ?? null,
     isConfidential: activity.isConfidential,

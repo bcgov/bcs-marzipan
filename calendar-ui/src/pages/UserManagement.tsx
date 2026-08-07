@@ -152,11 +152,7 @@ export function Users() {
 
   return (
     <>
-      <PageHeader
-        title="User & Team Management"
-        description="Manage user accounts, teams, and roles"
-        action={headerAction}
-      />
+      <PageHeader title="User & Team Management" action={headerAction} />
 
       <Tabs
         value={activeTab}

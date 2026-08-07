@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addUserToTeamBodySchema,
   createUserBodySchema,
+  removeUserFromTeamBodySchema,
   TEAM_ROLES,
   transferActivitiesBodySchema,
   updateUserBodySchema,
@@ -252,41 +253,99 @@ describe('updateUserBodySchema', () => {
 });
 
 describe('transferActivitiesBodySchema', () => {
-  it('accepts valid transfer body with at least one flag true', () => {
+  it('accepts a valid transfer body', () => {
     const result = transferActivitiesBodySchema.parse({
       targetUserId: 2,
-      transferCommsLead: true,
-      transferCommsContact: false,
+      fromTeamId: 1,
+      includeNonLead: false,
     });
     expect(result.targetUserId).toBe(2);
-    expect(result.transferCommsLead).toBe(true);
+    expect(result.fromTeamId).toBe(1);
+    expect(result.toTeamId).toBeUndefined();
+    expect(result.includeNonLead).toBe(false);
   });
 
-  it('accepts optional activityIds', () => {
+  it('accepts optional toTeamId and activityIds', () => {
     const result = transferActivitiesBodySchema.parse({
       targetUserId: 2,
-      transferCommsLead: true,
-      transferCommsContact: true,
+      fromTeamId: 1,
+      toTeamId: 3,
+      includeNonLead: true,
       activityIds: [1, 2, 3],
     });
+    expect(result.toTeamId).toBe(3);
     expect(result.activityIds).toEqual([1, 2, 3]);
+  });
+
+  it('rejects an explicit empty activityIds array', () => {
+    expect(() =>
+      transferActivitiesBodySchema.parse({
+        targetUserId: 2,
+        fromTeamId: 1,
+        includeNonLead: false,
+        activityIds: [],
+      })
+    ).toThrow();
+  });
+
+  it('requires fromTeamId', () => {
+    expect(() =>
+      transferActivitiesBodySchema.parse({
+        targetUserId: 2,
+        includeNonLead: true,
+      })
+    ).toThrow();
   });
 
   it('enforces notes max length (1000)', () => {
     transferActivitiesBodySchema.parse({
       targetUserId: 2,
-      transferCommsLead: true,
-      transferCommsContact: true,
+      fromTeamId: 1,
+      includeNonLead: true,
       notes: 'n'.repeat(1000),
     });
 
     expect(() =>
       transferActivitiesBodySchema.parse({
         targetUserId: 2,
-        transferCommsLead: true,
-        transferCommsContact: true,
+        fromTeamId: 1,
+        includeNonLead: true,
         notes: 'n'.repeat(1001),
       })
+    ).toThrow();
+  });
+});
+
+describe('removeUserFromTeamBodySchema', () => {
+  it('defaults to an empty, valid body when omitted', () => {
+    const result = removeUserFromTeamBodySchema.parse(undefined);
+    expect(result).toEqual({ includeNonLead: false });
+  });
+
+  it('accepts an empty object (silent removal, no comms to transfer)', () => {
+    const result = removeUserFromTeamBodySchema.parse({});
+    expect(result.targetUserId).toBeUndefined();
+    expect(result.includeNonLead).toBe(false);
+  });
+
+  it('accepts a full transfer payload', () => {
+    const result = removeUserFromTeamBodySchema.parse({
+      targetUserId: 2,
+      toTeamId: 3,
+      includeNonLead: true,
+      notes: 'reason',
+    });
+    expect(result).toEqual({
+      targetUserId: 2,
+      toTeamId: 3,
+      includeNonLead: true,
+      notes: 'reason',
+    });
+  });
+
+  it('enforces notes max length (1000)', () => {
+    expect(() =>
+      removeUserFromTeamBodySchema.parse({ notes: 'n'.repeat(1001) })
     ).toThrow();
   });
 });

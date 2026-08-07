@@ -5,6 +5,7 @@ import {
   Eraser,
   FileText,
   FolderTree,
+  Info,
   ListChecks,
   Lock,
   LogIn,
@@ -18,7 +19,10 @@ import {
 } from 'lucide-react';
 
 import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
-import { BannerSettingsAdmin } from '@/components/admin';
+import {
+  ActivityInfoIconSettingsAdmin,
+  BannerSettingsAdmin,
+} from '@/components/admin';
 import { ActivityCompletionSettingsAdmin } from '@/components/admin/ActivityCompletionSettingsAdmin';
 import { EditLockIdleSettingsAdmin } from '@/components/admin/EditLockIdleSettingsAdmin';
 import { LoginModalSettingsAdmin } from '@/components/admin/LoginModalSettingsAdmin';
@@ -38,6 +42,7 @@ import {
 } from '@/components/admin/LookupAdmins';
 import { ReportCoverContactSettingsAdmin } from '@/components/admin/ReportCoverContactSettingsAdmin';
 import { ReviewExemptFieldsSettingsAdmin } from '@/components/admin/ReviewExemptFieldsSettingsAdmin';
+import { PageHeader } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 
 type Section =
@@ -46,6 +51,7 @@ type Section =
   | 'edit-lock-idle'
   | 'activity-completion'
   | 'look-ahead-reset'
+  | 'activity-info-icons'
   | 'report-cover-contact'
   | 'review-exempt-fields'
   | 'ministry-groups'
@@ -106,6 +112,12 @@ export function Settings() {
       show: isSystemAdmin,
     },
     {
+      id: 'activity-info-icons' as Section,
+      label: 'Activity info icons',
+      icon: Info,
+      show: isSystemAdmin,
+    },
+    {
       id: 'review-exempt-fields' as Section,
       label: 'Review-exempt fields',
       icon: ListChecks,
@@ -155,17 +167,13 @@ export function Settings() {
 
   return (
     <>
-      <h1 className="mb-2 text-2xl font-bold text-slate-900 sm:text-3xl">
-        Settings and configuration
-      </h1>
-      <p className="mb-8 text-sm text-slate-600 sm:text-base">
-        Manage lookup data and system configuration
-      </p>
+      <PageHeader title="Settings and configuration" />
 
       <div>
         {/* Quick Navigation */}
-        <div
+        <nav
           id="quick-navigation"
+          aria-label="Settings quick navigation"
           className="mb-8 rounded-lg border border-slate-200 bg-white shadow-sm"
         >
           <div className="border-b border-slate-200 p-4 sm:p-6">
@@ -195,7 +203,7 @@ export function Settings() {
               })}
             </div>
           </div>
-        </div>
+        </nav>
 
         {/* Admin Sections */}
         <div className="space-y-8">
@@ -221,6 +229,10 @@ export function Settings() {
 
           <div id="section-look-ahead-reset">
             <LookAheadResetSettingsAdmin />
+          </div>
+
+          <div id="section-activity-info-icons">
+            <ActivityInfoIconSettingsAdmin />
           </div>
 
           <div id="section-review-exempt-fields">

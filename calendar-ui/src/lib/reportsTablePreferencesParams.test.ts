@@ -72,7 +72,7 @@ describe('getPreferencesForReport', () => {
       filterState: {
         ...buildDefaultPreferencesForReport('thirty-sixty-ninety', false)
           .filterState,
-        categoryNames: ['Media'],
+        categoryIds: [1],
       },
     };
     bundle.byReport['look-ahead'] = lookAheadPrefs;
@@ -87,8 +87,8 @@ describe('getPreferencesForReport', () => {
     ).toBe('planning-only');
     expect(
       getPreferencesForReport(bundle, 'thirty-sixty-ninety', false).filterState
-        .categoryNames
-    ).toEqual(['Media']);
+        .categoryIds
+    ).toEqual([1]);
   });
 
   it('falls back to report defaults when tab has no stored entry', () => {

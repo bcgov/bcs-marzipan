@@ -20,6 +20,8 @@ export const TEAM_ROLES = ['owner', 'member'] as const;
 export const USER_DISPLAY_NAME_MAX_LENGTH = 255;
 export const USER_NOTES_MAX_LENGTH = 1000;
 export const GOV_BC_EMAIL_DOMAIN = '@gov.bc.ca';
+export const USER_JOB_TITLE_MAX_LENGTH = 255;
+export const USER_PHONE_MAX_LENGTH = 50;
 
 // ============================================
 // Response Schemas
@@ -108,6 +110,13 @@ export const createUserBodySchema = z.object({
     .regex(/^[^\s@]+$/, 'IDIR username must not contain spaces or @'),
   roleId: z.number().int(),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).optional(),
+  adJobTitle: z
+    .string()
+    .trim()
+    .max(USER_JOB_TITLE_MAX_LENGTH)
+    .nullable()
+    .optional(),
+  adPhone: z.string().trim().max(USER_PHONE_MAX_LENGTH).nullable().optional(),
   teams: z
     .array(
       z.object({
@@ -200,17 +209,54 @@ export type UpdateUserTeamRoleBody = z.infer<
 
 /**
  * POST /users/:sourceUserId/transfer-activities - Transfer activities between users.
+ *
+ * Scope: activities where the source user has an active comms contact row AND
+ * `activities.leadTeamId === fromTeamId`. Lead comms are always transferred for
+ * every activity in scope/selected; `includeNonLead` controls whether non-lead
+ * (contact) comms move with them. When `toTeamId` differs from `fromTeamId`,
+ * each affected activity's lead team (and derived ministry/displayId) moves too.
  */
 export const transferActivitiesBodySchema = z.object({
   targetUserId: z.number().int(),
-  activityIds: z.array(z.number().int()).optional(),
-  transferCommsLead: z.boolean(),
-  transferCommsContact: z.boolean(),
+  fromTeamId: z.number().int(),
+  /** Defaults to `fromTeamId` (same-team transfer) when omitted. */
+  toTeamId: z.number().int().optional(),
+  /**
+   * Omit to operate on every scoped activity for `fromTeamId`.
+   * An explicit empty array is rejected (it does not mean "transfer none").
+   */
+  activityIds: z.array(z.number().int()).min(1).optional(),
+  /** When false, non-lead comms are left in place (or dropped if they become ineligible after a cross-team move). */
+  includeNonLead: z.boolean(),
   notes: z.string().max(USER_NOTES_MAX_LENGTH).optional(),
 });
 
 export type TransferActivitiesBody = z.infer<
   typeof transferActivitiesBodySchema
+>;
+
+/**
+ * DELETE /users/:id/teams/:teamId - Remove a user from a team.
+ *
+ * Optional body: when the user has comms contact rows scoped to this team
+ * (`leadTeamId === teamId`), `targetUserId` must be provided to transfer them;
+ * the server rejects the removal otherwise. When there are no scoped comms
+ * rows, the body may be omitted entirely (silent removal). Regardless of
+ * comms, all `activity_flags` for `(assigneeId = user, teamId)` are deleted.
+ */
+export const removeUserFromTeamBodySchema = z.preprocess(
+  (value) => value ?? {},
+  z.object({
+    targetUserId: z.number().int().optional(),
+    /** Defaults to the team being removed when omitted. */
+    toTeamId: z.number().int().optional(),
+    includeNonLead: z.boolean().optional().default(false),
+    notes: z.string().max(USER_NOTES_MAX_LENGTH).optional(),
+  })
+);
+
+export type RemoveUserFromTeamBody = z.infer<
+  typeof removeUserFromTeamBodySchema
 >;
 
 // ============================================
@@ -222,6 +268,7 @@ export type TransferActivitiesBody = z.infer<
  */
 export const transferActivitiesResponseSchema = z.object({
   success: z.literal(true),
+  /** Number of activities affected (comms change and/or cross-team lead move). */
   transferredCount: z.number().int(),
 });
 

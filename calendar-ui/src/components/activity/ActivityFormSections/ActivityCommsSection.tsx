@@ -23,12 +23,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { InfoIconButton } from '@/components/ui/info-icon-button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
@@ -36,6 +30,7 @@ import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
+import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { ActivityFormSection } from './ActivityFormSection';
 
 type ActivityCommsSectionProps = {
@@ -124,7 +119,13 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           return (
             <FormItem>
               <FormLabel showRequired>
-                {getActivityFieldLabel(field.name)}
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="commsContacts"
+                    ariaLabel="About communications contacts"
+                  />
+                </>
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
@@ -209,20 +210,10 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             <FormLabel>
               <>
                 {getActivityFieldLabel(field.name)}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <InfoIconButton aria-label="About strategy" />
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-80 max-w-[calc(100vw-2rem)] text-sm"
-                    align="start"
-                  >
-                    <p>
-                      Describe any promotion, digital content, or visuals
-                      planned as part of the announcement vision.
-                    </p>
-                  </PopoverContent>
-                </Popover>
+                <ActivityFieldInfoIcon
+                  fieldKey="strategy"
+                  ariaLabel="About strategy"
+                />
               </>
             </FormLabel>
             <FormControl data-field={field.name}>
@@ -249,7 +240,15 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           );
           return (
             <FormItem>
-              <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="commsMaterialIds"
+                    ariaLabel="About communications materials"
+                  />
+                </>
+              </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={commsMaterialComboboxOptions}

@@ -51,12 +51,10 @@ export function activityMatchesFilterState(
     }
   }
 
-  // Category (case-insensitive, trimmed; OR within).
-  if (filterState.categoryNames.length > 0) {
-    const set = new Set(
-      filterState.categoryNames.map((n) => n.toLowerCase().trim())
-    );
-    if (!input.categoryNames.some((c) => set.has(c.toLowerCase().trim()))) {
+  // Category (OR within).
+  if (filterState.categoryIds.length > 0) {
+    const set = new Set(filterState.categoryIds);
+    if (!input.categoryIds.some((id) => set.has(id))) {
       return false;
     }
   }

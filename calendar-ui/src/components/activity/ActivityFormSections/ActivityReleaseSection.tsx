@@ -39,6 +39,7 @@ import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
+import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -90,7 +91,15 @@ function TranslationLanguagesField({
         );
         return (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="translationLanguageIds"
+                  ariaLabel="About translation languages"
+                />
+              </>
+            </FormLabel>
             <ActivityFieldScopePermissionTooltip scope="translations">
               <FormControl data-field={field.name}>
                 <Combobox
@@ -176,7 +185,15 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
         name="newsReleaseOriginId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="newsReleaseOriginId"
+                  ariaLabel="About news release origin"
+                />
+              </>
+            </FormLabel>
             <FormSelectSafe
               readOnly={readOnly}
               optionValues={newsReleaseOriginOptions.map((o) => o.value)}
@@ -212,7 +229,15 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
         name="newsReleaseDistributionId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="newsReleaseDistributionId"
+                  ariaLabel="About news release distribution"
+                />
+              </>
+            </FormLabel>
             <FormSelectSafe
               readOnly={readOnly}
               optionValues={newsReleaseDistributionOptions.map((o) => o.value)}
@@ -248,7 +273,15 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
         name="translationsRequiredStatusId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{getActivityFieldLabel(field.name)}</FormLabel>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="translationsRequiredStatusId"
+                  ariaLabel="About translations required"
+                />
+              </>
+            </FormLabel>
             <FormSelectSafe
               readOnly={translationsScope.readOnly}
               disabled={translationsScope.fieldScopeDisabled}

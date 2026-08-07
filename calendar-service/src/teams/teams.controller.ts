@@ -106,7 +106,8 @@ export class TeamsController {
     summary: 'List eligible comms contact candidates for a team',
     description:
       'Returns active members of the given team whose role grants activities.edit. ' +
-      "Restricted to the caller's teams unless the caller has activities.create.any.",
+      "Restricted to the caller's teams unless the caller has activities.create.any " +
+      'or users.transfer_activities.',
   })
   @ApiParam({ name: 'teamId', description: 'Lead team ID' })
   @ApiResponse({
@@ -115,24 +116,26 @@ export class TeamsController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Caller is not a member of this team and lacks create.any',
+    description:
+      'Caller is not a member of this team and cannot access cross-team candidates',
   })
   @RequireAnyPermission(
     PERMISSIONS.ACTIVITIES.CREATE,
-    PERMISSIONS.ACTIVITIES.EDIT
+    PERMISSIONS.ACTIVITIES.EDIT,
+    PERMISSIONS.USERS.TRANSFER_ACTIVITIES
   )
   @Get(':teamId/comms-contact-candidates')
   async getCommsContactCandidates(
     @Param('teamId', ParseIntPipe) teamId: number,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: CommsContactCandidate[] }> {
-    const hasCreateAny = user.permissions?.includes(
-      PERMISSIONS.ACTIVITIES.CREATE_ANY
-    );
+    const canViewAnyTeam =
+      user.permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ||
+      user.permissions?.includes(PERMISSIONS.USERS.TRANSFER_ACTIVITIES);
     const data = await this.teamsService.findCommsContactCandidates(
       teamId,
       user.teamIds ?? [],
-      hasCreateAny ?? false
+      canViewAnyTeam ?? false
     );
     return { success: true, data };
   }

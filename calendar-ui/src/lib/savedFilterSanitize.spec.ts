@@ -17,7 +17,7 @@ describe('sanitizeSavedFilterPayload', () => {
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: ['Event', 'Issues'],
+      categoryIds: [1, 2],
       activityStatusIds: [1, 2, 3],
       pitchRequiredStatusNames: ['Required'],
       pitchDateFilter: { kind: 'not_scheduled' },
@@ -41,7 +41,7 @@ describe('sanitizeSavedFilterPayload', () => {
 
     expect(result.hadInvalidValues).toBe(false);
     expect(result.searchKeyword).toBe('test search');
-    expect(result.filterState.categoryNames).toEqual(['Event', 'Issues']);
+    expect(result.filterState.categoryIds).toEqual([1, 2]);
     expect(result.filterState.activityStatusIds).toEqual([1, 2, 3]);
     expect(result.filterState.dateRange.startDate).toBe('2025-01-01');
     expect(result.filterState.pitchDateFilter).toEqual({
@@ -81,7 +81,7 @@ describe('sanitizeSavedFilterPayload', () => {
     });
 
     expect(result.hadInvalidValues).toBe(false);
-    expect(result.filterState.categoryNames).toEqual([]);
+    expect(result.filterState.categoryIds).toEqual([]);
     expect(result.filterState.activityStatusIds).toEqual([]);
     expect(result.filterState.dateRange.startDate).toBe('2025-01-01');
     expect(result.filterState.dateRange.endDate).toBe('');
@@ -133,14 +133,14 @@ describe('sanitizeSavedFilterPayload', () => {
   it('should handle non-array values for array fields by returning empty arrays', () => {
     const result = sanitizeSavedFilterPayload({
       filterState: {
-        categoryNames: 'not an array',
+        categoryIds: 'not an array',
         activityStatusIds: 42,
         tagIds: null,
       },
       searchKeyword: '',
     });
 
-    expect(result.filterState.categoryNames).toEqual([]);
+    expect(result.filterState.categoryIds).toEqual([]);
     expect(result.filterState.activityStatusIds).toEqual([]);
     expect(result.filterState.tagIds).toEqual([]);
   });

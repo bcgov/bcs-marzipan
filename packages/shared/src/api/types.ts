@@ -25,6 +25,10 @@ export type {
   UpsertBannerSettingsBody,
 } from '../schemas/banner.schema';
 export type {
+  ActivityInfoIconSettings,
+  ActivityInfoIconSetting,
+} from '../schemas/activity-info-icon-settings.schema';
+export type {
   LoginModalSettings,
   UpsertLoginModalSettingsBody,
 } from '../schemas/login-modal.schema';
@@ -53,6 +57,7 @@ export type {
   AddUserToTeamBody,
   UpdateUserTeamRoleBody,
   TransferActivitiesBody,
+  RemoveUserFromTeamBody,
 } from '../schemas/user.schema';
 
 // Team CRUD API types
