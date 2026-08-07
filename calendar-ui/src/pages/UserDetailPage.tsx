@@ -591,11 +591,11 @@ export default function UserDetailPage() {
                     type="color"
                     value={flagColour || '#0F6CBD'}
                     onChange={(e) => setFlagColour(e.target.value)}
-                    onBlur={() => {
-                      if (canEdit) {
-                        settingsMutation.mutate({ flagColour });
-                      }
-                    }}
+onBlur={() => {
+  if (!canEdit || flagColour === null) return;
+  if (flagColour !== (userDetail?.flagColour ?? null))
+    settingsMutation.mutate({ flagColour });
+}}
                     disabled={!canEdit}
                     className="h-10 w-16 cursor-pointer p-1"
                   />
