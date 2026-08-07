@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import * as oidc from 'openid-client';
-import { ProxyAgent, fetch as undiciFetch, type Dispatcher } from 'undici';
+import { ProxyAgent, fetch as undiciFetch } from 'undici';
 
 const OIDC_STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes — covers slow networks and MFA prompts
 const OIDC_BINDING_COOKIE_PREFIX = 'corpcal_az_';
@@ -18,8 +18,6 @@ interface OidcStatePayload {
 export class AzureOidcService {
   private readonly logger = new Logger(AzureOidcService.name);
   private cachedConfig: oidc.Configuration | null = null;
-  private proxyAgent: Dispatcher | null = null;
-  private proxyAgentInitialized = false;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -217,7 +215,10 @@ export class AzureOidcService {
     const proxyUrl = this.getProxyUrl();
     if (!proxyUrl) return undefined;
 
-    const agent = this.getOrCreateProxyAgent(proxyUrl);
+    const agent = new ProxyAgent(proxyUrl);
+    this.logger.log(
+      `Azure OIDC outbound requests configured to use proxy ${proxyUrl}`
+    );
 
     return {
       [oidc.customFetch]: (
@@ -238,22 +239,5 @@ export class AzureOidcService {
 
     if (!proxyUrl) return null;
     return proxyUrl;
-  }
-
-  private getOrCreateProxyAgent(proxyUrl: string): Dispatcher {
-    if (this.proxyAgent) {
-      return this.proxyAgent;
-    }
-
-    this.proxyAgent = new ProxyAgent(proxyUrl);
-
-    if (!this.proxyAgentInitialized) {
-      this.logger.log(
-        `Azure OIDC outbound requests configured to use proxy ${proxyUrl}`
-      );
-      this.proxyAgentInitialized = true;
-    }
-
-    return this.proxyAgent;
   }
 }
