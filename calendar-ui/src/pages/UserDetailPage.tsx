@@ -588,7 +588,7 @@ export default function UserDetailPage() {
 
                 <div className="mt-2 flex items-center gap-3">
                   <Input
-                    type="color"
+type="color" aria-label="User colour"
                     value={flagColour || '#0F6CBD'}
                     onChange={(e) => setFlagColour(e.target.value)}
 onBlur={() => {
