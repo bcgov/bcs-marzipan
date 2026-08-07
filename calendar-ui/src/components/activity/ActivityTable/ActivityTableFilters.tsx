@@ -620,23 +620,8 @@ export function ActivityTableFilters({
       role="search"
       aria-label="Filter activities by date, category, lead team, comms contact, status, look ahead, tags, translations, pitch, event planner, and keyword"
     >
-      <div className="flex min-w-0 flex-1 items-center">
-        <ResponsiveFilterRow
-          slots={filterSlots}
-          overflowTriggerClassName="h-10"
-          onClearAll={handleClearAllFilters}
-          savedFilters={savedFilters}
-          filterState={filterState}
-          searchKeyword={searchKeyword}
-          onApplySavedFilter={onApplySavedFilter}
-          activeSavedFilterId={activeSavedFilterId}
-          filterSummaryContext={summaryContext}
-          parseSavedFilterForDraft={parseSavedFilterForDraft}
-          validFilterLookups={validFilterLookupsForPreview}
-        />
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="relative max-w-md min-w-[240px] flex-1">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="relative max-w-md min-w-[240px] shrink-0">
           <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
           <Input
             type="text"
@@ -657,6 +642,21 @@ export function ActivityTableFilters({
             </button>
           )}
         </div>
+        <ResponsiveFilterRow
+          slots={filterSlots}
+          overflowTriggerClassName="h-10"
+          onClearAll={handleClearAllFilters}
+          savedFilters={savedFilters}
+          filterState={filterState}
+          searchKeyword={searchKeyword}
+          onApplySavedFilter={onApplySavedFilter}
+          activeSavedFilterId={activeSavedFilterId}
+          filterSummaryContext={summaryContext}
+          parseSavedFilterForDraft={parseSavedFilterForDraft}
+          validFilterLookups={validFilterLookupsForPreview}
+        />
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
         <SortDropdown
           hideDirectionLabel
           columns={sortColumns}

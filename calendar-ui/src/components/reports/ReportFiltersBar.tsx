@@ -596,7 +596,36 @@ export function ReportFiltersBar({
       aria-label="Filter report activities by datetime, category, look ahead, status, leads, translations, tags, pitch, and keyword"
     >
       <div className="mb-4 flex flex-nowrap items-center justify-between gap-8">
-        <div className="flex min-w-0 flex-1 items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="relative max-w-md min-w-[240px] shrink-0">
+            <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+            <Input
+              type="text"
+              placeholder="Search activities..."
+              value={searchKeyword}
+              onChange={(e) =>
+                setPreferences({ searchKeyword: e.target.value })
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSearchEnter();
+                }
+              }}
+              className="pr-8 pl-8 shadow-none"
+              aria-label="Search activities"
+            />
+            {searchKeyword ? (
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
+                onClick={handleClearSearchClick}
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
           <ResponsiveFilterRow
             slots={filterSlots}
             overflowTriggerClassName="h-10"
@@ -610,33 +639,6 @@ export function ReportFiltersBar({
             parseSavedFilterForDraft={parseSavedFilterForDraft}
             validFilterLookups={validFilterLookups}
           />
-        </div>
-        <div className="relative max-w-md min-w-[240px] shrink-0">
-          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-          <Input
-            type="text"
-            placeholder="Search activities..."
-            value={searchKeyword}
-            onChange={(e) => setPreferences({ searchKeyword: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSearchEnter();
-              }
-            }}
-            className="pr-8 pl-8 shadow-none"
-            aria-label="Search activities"
-          />
-          {searchKeyword ? (
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
-              onClick={handleClearSearchClick}
-              aria-label="Clear search"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          ) : null}
         </div>
       </div>
       {printPreviewRowLeading || printPreviewRowTrailing ? (
