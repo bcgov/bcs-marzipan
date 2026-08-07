@@ -360,9 +360,8 @@ export function UsersTabContent() {
               pageRows.map((user) => (
                 <tr
                   key={user.id}
-                  className={`${tableBodyRow} group cursor-pointer`}
+                  className={`${tableBodyRow} group cursor-pointer focus-visible:bg-accent/30 focus-visible:outline-none`}
                   tabIndex={0}
-                  onClick={(e) => {
                     if (
                       (e.target as HTMLElement).closest(
                         'a,button,[data-no-row-nav]'
