@@ -217,6 +217,17 @@ describe('transferActivitiesBodySchema', () => {
     expect(result.activityIds).toEqual([1, 2, 3]);
   });
 
+  it('rejects an explicit empty activityIds array', () => {
+    expect(() =>
+      transferActivitiesBodySchema.parse({
+        targetUserId: 2,
+        fromTeamId: 1,
+        includeNonLead: false,
+        activityIds: [],
+      })
+    ).toThrow();
+  });
+
   it('requires fromTeamId', () => {
     expect(() =>
       transferActivitiesBodySchema.parse({

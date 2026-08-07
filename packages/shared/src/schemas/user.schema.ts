@@ -209,7 +209,7 @@ export const transferActivitiesBodySchema = z.object({
    * Omit to operate on every scoped activity for `fromTeamId`.
    * An explicit empty array is rejected (it does not mean "transfer none").
    */
-  activityIds: z.array(z.number().int()).optional(),
+  activityIds: z.array(z.number().int()).min(1).optional(),
   /** When false, non-lead comms are left in place (or dropped if they become ineligible after a cross-team move). */
   includeNonLead: z.boolean(),
   notes: z.string().max(USER_NOTES_MAX_LENGTH).optional(),
