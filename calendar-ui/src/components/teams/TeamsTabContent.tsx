@@ -6,7 +6,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import { History, MoreHorizontal, Pencil } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
@@ -20,6 +20,10 @@ import {
   tableThead,
 } from '@/components/table/tableConstants';
 import { TablePagination } from '@/components/table/TablePagination';
+import {
+  handleTableRowClick,
+  handleTableRowKeyDown,
+} from '@/components/table/tableRowNavigation';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import { TableSummaryBar } from '@/components/table/TableSummaryBar';
 import { TeamManagementFilters } from '@/components/teams/TeamManagementFilters';
@@ -96,6 +100,7 @@ export function TeamsTabContent({
   onViewHistory,
   onDeactivate,
 }: TeamsTabContentProps) {
+  const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [sortKey, setSortKey] = useState<TeamSortKey | null>(DEFAULT_SORT_KEY);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(
@@ -157,7 +162,8 @@ export function TeamsTabContent({
   const onPaginationChangeStable = useCallback(
     (
       updaterOrValue:
-        ((prev: typeof pagination) => typeof pagination) | typeof pagination
+        | ((prev: typeof pagination) => typeof pagination)
+        | typeof pagination
     ) => {
       setPagination((prev) => {
         const next =
@@ -311,68 +317,82 @@ export function TeamsTabContent({
                 </td>
               </tr>
             ) : (
-              pageRows.map((team) => (
-                <tr key={team.id} className={tableBodyRow}>
-                  <td className={`${tableTd} font-medium text-slate-900`}>
-                    <Link
-                      to={`/teams/${team.id}`}
-                      className="text-slate-900 hover:underline"
-                    >
-                      {team.displayName ?? team.name ?? '-'}
-                    </Link>
-                  </td>
-                  <td className={`${tableTd} text-slate-600`}>
-                    {team.abbreviation}
-                  </td>
-                  <td
-                    className={`${tableTd} max-w-[200px] truncate text-slate-600`}
+              pageRows.map((team) => {
+                const teamLabel = team.displayName ?? team.name ?? '-';
+                return (
+                  <tr
+                    key={team.id}
+                    role="button"
+                    aria-label={`View team ${teamLabel}`}
+                    className={`${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`}
+                    tabIndex={0}
+                    onClick={(e) => {
+                      handleTableRowClick(e, () => {
+                        void navigate(`/teams/${team.id}`);
+                      });
+                    }}
+                    onKeyDown={(e) => {
+                      handleTableRowKeyDown(e, () => {
+                        void navigate(`/teams/${team.id}`);
+                      });
+                    }}
                   >
-                    {team.description ?? '-'}
-                  </td>
-                  <td className={`${tableTd} text-slate-600`}>
-                    {team.memberCount}{' '}
-                    {team.memberCount === 1 ? 'member' : 'members'}
-                  </td>
-                  <td className={`${tableTd} text-slate-600`}>
-                    {team.ministryName ?? '-'}
-                  </td>
-                  <td className={tableTd}>{statusBadge(team.isActive)}</td>
-                  <td className={tableTd}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          aria-label="Actions"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {canEdit && (
-                          <DropdownMenuItem onClick={() => onEditTeam(team)}>
-                            <Pencil className="h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => onViewHistory(team)}>
-                          <History className="h-4 w-4" />
-                          View history
-                        </DropdownMenuItem>
-                        {canDelete && team.isActive && onDeactivate && (
-                          <DropdownMenuItem
-                            onClick={() => onDeactivate(team)}
-                            variant="destructive"
+                    <td className={`${tableTd} font-medium text-slate-900`}>
+                      {teamLabel}
+                    </td>
+                    <td className={`${tableTd} text-slate-600`}>
+                      {team.abbreviation}
+                    </td>
+                    <td
+                      className={`${tableTd} max-w-[200px] truncate text-slate-600`}
+                    >
+                      {team.description ?? '-'}
+                    </td>
+                    <td className={`${tableTd} text-slate-600`}>
+                      {team.memberCount}{' '}
+                      {team.memberCount === 1 ? 'member' : 'members'}
+                    </td>
+                    <td className={`${tableTd} text-slate-600`}>
+                      {team.ministryName ?? '-'}
+                    </td>
+                    <td className={tableTd}>{statusBadge(team.isActive)}</td>
+                    <td className={tableTd}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label="Actions"
                           >
-                            Deactivate
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {canEdit && (
+                            <DropdownMenuItem onClick={() => onEditTeam(team)}>
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => onViewHistory(team)}>
+                            <History className="h-4 w-4" />
+                            View history
                           </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))
+                          {canDelete && team.isActive && onDeactivate && (
+                            <DropdownMenuItem
+                              onClick={() => onDeactivate(team)}
+                              variant="destructive"
+                            >
+                              Deactivate
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

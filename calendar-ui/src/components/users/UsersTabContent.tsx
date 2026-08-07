@@ -19,6 +19,10 @@ import {
   tableThead,
 } from '@/components/table/tableConstants';
 import { TablePagination } from '@/components/table/TablePagination';
+import {
+  handleTableRowClick,
+  handleTableRowKeyDown,
+} from '@/components/table/tableRowNavigation';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import { TableSummaryBar } from '@/components/table/TableSummaryBar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -187,7 +191,8 @@ export function UsersTabContent() {
   const onPaginationChangeStable = useCallback(
     (
       updaterOrValue:
-        ((prev: typeof pagination) => typeof pagination) | typeof pagination
+        | ((prev: typeof pagination) => typeof pagination)
+        | typeof pagination
     ) => {
       setPagination((prev) => {
         const next =
@@ -360,33 +365,23 @@ export function UsersTabContent() {
               pageRows.map((user) => (
                 <tr
                   key={user.id}
-                  className={`${tableBodyRow} group cursor-pointer focus-visible:bg-accent/30 focus-visible:outline-none`}
+                  role="button"
+                  aria-label={`View user ${displayName(user)}`}
+                  className={`${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`}
                   tabIndex={0}
-                    if (
-                      (e.target as HTMLElement).closest(
-                        'a,button,[data-no-row-nav]'
-                      )
-                    )
-                      return;
-                    if (window.getSelection()?.toString().trim()) return;
-                    void navigate(`/users/${user.id}`);
+                  onClick={(e) => {
+                    handleTableRowClick(e, () => {
+                      void navigate(`/users/${user.id}`);
+                    });
                   }}
                   onKeyDown={(e) => {
-                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                    if (
-                      (e.target as HTMLElement).closest(
-                        'a,button,[data-no-row-nav]'
-                      )
-                    )
-                      return;
-                    e.preventDefault();
-                    void navigate(`/users/${user.id}`);
+                    handleTableRowKeyDown(e, () => {
+                      void navigate(`/users/${user.id}`);
+                    });
                   }}
                 >
                   <td className={`${tableTd} font-medium text-slate-900`}>
-                    <span className="underline-offset-2 group-hover:underline">
-                      {displayName(user)}
-                    </span>
+                    {displayName(user)}
                   </td>
                   <td className={`${tableTd} text-slate-600`}>
                     {user.adEmail ?? '-'}
@@ -408,6 +403,7 @@ export function UsersTabContent() {
                           <Link
                             key={t.teamId}
                             to={`/teams/${t.teamId}`}
+                            data-no-row-nav
                             className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
                           >
                             {t.teamName}

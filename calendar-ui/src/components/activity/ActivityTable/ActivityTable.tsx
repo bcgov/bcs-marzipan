@@ -58,6 +58,10 @@ import {
   tableThead,
 } from '@/components/table/tableConstants';
 import { TablePagination } from '@/components/table/TablePagination';
+import {
+  handleTableRowClick,
+  handleTableRowKeyDown,
+} from '@/components/table/tableRowNavigation';
 import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
@@ -455,16 +459,18 @@ function OverviewCell({
       )}
       {row.activityCategories.length > 0 && (
         <BadgeGroup
-          items={row.activityCategories.map((cat, index): BadgeGroupItem => ({
-            key: `${cat}:${index}`,
-            label: cat,
-            variant: 'outline',
-            className: cn(
-              'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
-              categoriesChanged && 'border-transparent',
-              categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
-            ),
-          }))}
+          items={row.activityCategories.map(
+            (cat, index): BadgeGroupItem => ({
+              key: `${cat}:${index}`,
+              label: cat,
+              variant: 'outline',
+              className: cn(
+                'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
+                categoriesChanged && 'border-transparent',
+                categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
+              ),
+            })
+          )}
           maxLines={1}
           lineHeight={28}
           badgeVariant="outline"
@@ -638,10 +644,12 @@ function SchedulingCell({
     rowHasAnyChangedPath(row, ['premierRequestedId', 'premierRequested']);
   const representativeBadgeItems = useMemo(
     () =>
-      row.activityRepresentatives.map((name, index): BadgeGroupItem => ({
-        key: `${name}:${index}`,
-        label: formatRepresentativeBadgeText(name),
-      })),
+      row.activityRepresentatives.map(
+        (name, index): BadgeGroupItem => ({
+          key: `${name}:${index}`,
+          label: formatRepresentativeBadgeText(name),
+        })
+      ),
     [row.activityRepresentatives]
   );
   const badgeGroupItems = useMemo((): BadgeGroupItem[] => {
@@ -1241,7 +1249,8 @@ export function ActivityTable({
   const onPaginationChangeStable = useCallback(
     (
       updaterOrValue:
-        ((prev: typeof pagination) => typeof pagination) | typeof pagination
+        | ((prev: typeof pagination) => typeof pagination)
+        | typeof pagination
     ) => {
       const prev = pagination;
       const next =
@@ -1866,28 +1875,23 @@ export function ActivityTable({
                     <tr
                       key={row.id}
                       data-activity-id={row.original.id}
+                      role="button"
+                      aria-label={`Open activity ${row.original.title}`}
                       className={cn(
-                        `group/row ${tableBodyRow} cursor-pointer`,
+                        `group/row ${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`,
                         isNewRow && 'animate-in fade-in-0 duration-300',
                         isHighlightRow && 'live-row-highlight'
                       )}
                       tabIndex={0}
                       onClick={(e) => {
-                        if (
-                          (e.target as HTMLElement).closest('[data-no-row-nav]')
-                        )
-                          return;
-                        if (window.getSelection()?.toString().trim()) return;
-                        openActivityWithScroll(row.original.id);
+                        handleTableRowClick(e, () => {
+                          openActivityWithScroll(row.original.id);
+                        });
                       }}
                       onKeyDown={(e) => {
-                        if (e.key !== 'Enter' && e.key !== ' ') return;
-                        if (
-                          (e.target as HTMLElement).closest('[data-no-row-nav]')
-                        )
-                          return;
-                        e.preventDefault();
-                        openActivityWithScroll(row.original.id);
+                        handleTableRowKeyDown(e, () => {
+                          openActivityWithScroll(row.original.id);
+                        });
                       }}
                     >
                       {row.getVisibleCells().map((cell) => {
