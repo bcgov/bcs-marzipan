@@ -588,14 +588,15 @@ export default function UserDetailPage() {
 
                 <div className="mt-2 flex items-center gap-3">
                   <Input
-type="color" aria-label="User colour"
+                    type="color"
+                    aria-label="User colour"
                     value={flagColour || '#0F6CBD'}
                     onChange={(e) => setFlagColour(e.target.value)}
-onBlur={() => {
-  if (!canEdit || flagColour === null) return;
-  if (flagColour !== (userDetail?.flagColour ?? null))
-    settingsMutation.mutate({ flagColour });
-}}
+                    onBlur={() => {
+                      if (!canEdit || flagColour === null) return;
+                      if (flagColour !== (userDetail?.flagColour ?? null))
+                        settingsMutation.mutate({ flagColour });
+                    }}
                     disabled={!canEdit}
                     className="h-10 w-16 cursor-pointer p-1"
                   />
