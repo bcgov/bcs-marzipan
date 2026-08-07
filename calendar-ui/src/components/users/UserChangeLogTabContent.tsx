@@ -7,6 +7,7 @@ import type { UserHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchRoles, fetchTeams, fetchUserHistory } from '@/api/usersApi';
 import { buildUserHistoryChangeMessage } from '@/components/users/userHistoryFormatting';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import { userQueryKeys } from '@/lib/userQueryKeys';
 
 interface UserChangeLogTabContentProps {
   userId: number;
@@ -52,7 +53,7 @@ export function UserChangeLogTabContent({
   });
 
   const { data: history = [], isLoading } = useQuery({
-    queryKey: ['userHistory', userId],
+    queryKey: userQueryKeys.history(userId),
     queryFn: () => fetchUserHistory(userId),
     enabled: userId > 0,
   });

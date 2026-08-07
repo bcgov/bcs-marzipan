@@ -3,6 +3,7 @@ import type { HistoryChange } from '@corpcal/shared/api/types';
 interface UserHistoryLookups {
   roleNamesById: Record<number, string>;
   teamNamesById: Record<number, string>;
+  activityTitlesById?: Record<number, string>;
 }
 
 const USER_HISTORY_FIELD_LABELS: Record<string, string> = {
@@ -23,6 +24,12 @@ const USER_HISTORY_FIELD_LABELS: Record<string, string> = {
   directLoginEnabled: 'Direct login enabled',
   notes: 'Notes',
   flagColour: 'Flag colour',
+  teamRole: 'Team role',
+  targetUserId: 'Transfer target',
+  fromTeamId: 'From team',
+  toTeamId: 'To team',
+  activityCount: 'Activities affected',
+  activityIds: 'Activities',
 };
 
 function toLabelFromField(field: string): string {
@@ -80,6 +87,34 @@ function formatHistoryValue(
     if (teamId != null) {
       return lookups.teamNamesById[teamId] ?? `Team ${teamId}`;
     }
+  }
+
+  if (field === 'fromTeamId' || field === 'toTeamId') {
+    const teamId = parseNumericId(value);
+    if (teamId != null) {
+      return lookups.teamNamesById[teamId] ?? `Team ${teamId}`;
+    }
+  }
+
+  if (field === 'targetUserId') {
+    const id = parseNumericId(value);
+    if (id != null) return `User ${id}`;
+  }
+
+  if (field === 'activityIds' && Array.isArray(value)) {
+    const ids = value
+      .map((entry) => parseNumericId(entry))
+      .filter((id): id is number => id != null);
+    if (ids.length === 0) return 'none';
+    const labels = ids.map(
+      (id) => lookups.activityTitlesById?.[id] ?? `#${id}`
+    );
+    const countLabel = `${ids.length} activit${ids.length === 1 ? 'y' : 'ies'}`;
+    const maxListed = 5;
+    if (labels.length <= maxListed) {
+      return `${countLabel}: ${labels.join(', ')}`;
+    }
+    return `${countLabel}: ${labels.slice(0, maxListed).join(', ')}, …`;
   }
 
   if (typeof value === 'boolean') return formatBooleanValue(field, value);

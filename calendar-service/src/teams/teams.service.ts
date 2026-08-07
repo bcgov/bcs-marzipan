@@ -129,11 +129,11 @@ export class TeamsService {
   async findCommsContactCandidates(
     teamId: number,
     callerTeamIds: number[],
-    hasCreateAny: boolean
+    canViewAnyTeam: boolean
   ): Promise<CommsContactCandidate[]> {
-    if (!hasCreateAny && !callerTeamIds.includes(teamId)) {
+    if (!canViewAnyTeam && !callerTeamIds.includes(teamId)) {
       throw new ForbiddenException(
-        'You may only view comms contact candidates for teams you belong to.'
+        'You may only view comms contact candidates for teams you belong to unless you can transfer activities across teams.'
       );
     }
 
