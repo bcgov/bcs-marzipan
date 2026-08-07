@@ -7,6 +7,7 @@ import type {
   TransferActivitiesBody,
   UserListItem,
 } from '@corpcal/shared/api/types';
+import { USER_NOTES_MAX_LENGTH } from '@corpcal/shared/schemas';
 import {
   fetchTeams,
   fetchUserActivities,
@@ -516,6 +517,7 @@ export function TransferActivitiesFields({
                 onChange={(e) => onChange({ ...value, notes: e.target.value })}
                 placeholder="Reason for transfer..."
                 className="min-h-[120px]"
+                maxLength={USER_NOTES_MAX_LENGTH}
               />
             </div>
           )}
