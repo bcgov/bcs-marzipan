@@ -174,8 +174,9 @@ const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   },
   {
     id: 'startDate',
-    label: 'Scheduled date',
+    label: 'Date',
     defaultDirection: 'asc',
+    directionLabels: { asc: 'Soonest', desc: 'Latest' },
     tieBreakers: [{ key: 'startTime', direction: 'asc' }],
   },
   { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
