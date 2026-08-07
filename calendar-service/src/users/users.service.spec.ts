@@ -902,6 +902,61 @@ describe('UsersService', () => {
       );
     });
 
+    it('should reactivate an existing inactive target comms row when merging', async () => {
+      const setMock = vi.fn().mockReturnThis();
+      mockDatabaseService.db.transaction = vi.fn(
+        async (cb: (tx: typeof mockDatabaseService.db) => Promise<number>) =>
+          cb(mockDatabaseService.db)
+      );
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(activeTeamMembership())
+        .mockReturnValueOnce(createChain([{ id: 99 }], 'limit'))
+        .mockReturnValueOnce(
+          createChain([{ activityId: 10, isLead: true }], 'where')
+        )
+        .mockReturnValueOnce(
+          createChain(
+            [
+              { id: 1, adDisplayName: 'Source User', adUsername: null },
+              { id: 2, adDisplayName: 'Target User', adUsername: null },
+            ],
+            'where'
+          )
+        )
+        .mockReturnValueOnce(createChain([{ isLead: false }], 'limit'));
+
+      mockTeamsService.getEligibleCommsUserIds.mockResolvedValue(new Set([2]));
+
+      mockDatabaseService.db.update = vi.fn().mockReturnValue({
+        set: setMock,
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+      mockDatabaseService.db.delete = vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+      mockDatabaseService.db.insert = vi.fn().mockReturnValue({
+        values: vi.fn().mockResolvedValue(undefined),
+      });
+
+      await service.transferActivities(
+        1,
+        createMockTransferActivitiesBody({
+          targetUserId: 2,
+          fromTeamId: 1,
+          activityIds: [10],
+          includeNonLead: false,
+        }),
+        1
+      );
+
+      expect(setMock).toHaveBeenCalledWith({
+        isLead: true,
+        isActive: true,
+      });
+    });
+
     it('should delete non-lead comms in removal-equivalent scenarios (includeNonLead false, cross-team, source ineligible)', async () => {
       mockDatabaseService.db.transaction = vi.fn(
         async (cb: (tx: typeof mockDatabaseService.db) => Promise<number>) =>

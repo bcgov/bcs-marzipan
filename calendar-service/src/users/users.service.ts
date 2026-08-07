@@ -974,7 +974,7 @@ export class UsersService {
         );
       await tx
         .update(activityCommsContacts)
-        .set({ isLead: isLead || targetRow.isLead })
+        .set({ isLead: isLead || targetRow.isLead, isActive: true })
         .where(
           and(
             eq(activityCommsContacts.activityId, activityId),
@@ -984,7 +984,7 @@ export class UsersService {
     } else {
       await tx
         .update(activityCommsContacts)
-        .set({ userId: targetUserId })
+        .set({ userId: targetUserId, isActive: true })
         .where(
           and(
             eq(activityCommsContacts.activityId, activityId),
@@ -1141,7 +1141,8 @@ export class UsersService {
 
   /**
    * Returns per-user activity counts for the supplied user IDs.
-   * Excludes deleted activities to match getActivitiesForUser behavior.
+   * Excludes deleted activities and inactive comms contact rows (matches
+   * getActivitiesForUser behavior).
    */
   async getActivityCountsForUsers(
     userIds: number[]
@@ -1157,7 +1158,10 @@ export class UsersService {
       .where(eq(activityStatuses.name, 'deleted' satisfies ActivityStatusName))
       .limit(1);
 
-    const conditions = [inArray(activityCommsContacts.userId, uniqueUserIds)];
+    const conditions = [
+      inArray(activityCommsContacts.userId, uniqueUserIds),
+      eq(activityCommsContacts.isActive, true),
+    ];
     if (deletedStatus?.id != null) {
       conditions.push(ne(activities.activityStatusId, deletedStatus.id));
     }
