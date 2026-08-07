@@ -356,7 +356,14 @@ export default function UserDetailPage() {
   };
 
   const handleTeamSelectionChange = async (selected: OptionItem[]) => {
-    if (!canEdit || !userDetail || isProcessingTeamRemove) return;
+    if (
+      !canEdit ||
+      !userDetail ||
+      isProcessingTeamRemove ||
+      teamRemovalModal != null
+    ) {
+      return;
+    }
 
     const newIds = selected.map((o) => parseInt(o.value, 10));
     const removed = localTeamIds.filter((id) => !newIds.includes(id));
@@ -609,7 +616,11 @@ export default function UserDetailPage() {
                       void handleTeamSelectionChange(selected);
                     }}
                     itemToStringValue={(o: OptionItem) => o.label}
-                    disabled={!canEdit || isProcessingTeamRemove}
+                    disabled={
+                      !canEdit ||
+                      isProcessingTeamRemove ||
+                      teamRemovalModal != null
+                    }
                   >
                     <ComboboxChips
                       ref={teamsComboboxAnchorRef}

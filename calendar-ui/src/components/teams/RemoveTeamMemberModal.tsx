@@ -70,11 +70,7 @@ export function RemoveTeamMemberModal({
   const hasActivities = scopedActivities.length > 0;
 
   useEffect(() => {
-    if (!open) {
-      setDraft(createInitialTransferDraft(teamId));
-    } else {
-      setDraft(createInitialTransferDraft(teamId));
-    }
+    setDraft(createInitialTransferDraft(teamId));
   }, [open, teamId]);
 
   const canSubmit =
