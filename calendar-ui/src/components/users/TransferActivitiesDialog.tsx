@@ -100,6 +100,7 @@ export function TransferActivitiesDialog({
   const canSubmit =
     draft.fromTeamId != null &&
     fromTeamOptions.length > 0 &&
+    hasActivities &&
     !fieldsMeta.isLoading &&
     isTransferActivitiesDraftValid(draft, sourceUser.id, hasActivities) &&
     !fieldsMeta.isError;
@@ -128,6 +129,7 @@ export function TransferActivitiesDialog({
             <TransferActivitiesFields
               mode="transfer"
               sourceUserId={sourceUser.id}
+              sourceDisplayName={sourceName}
               fromTeamOptions={fromTeamOptions}
               value={
                 draft.fromTeamId == null && initialFromTeamId != null

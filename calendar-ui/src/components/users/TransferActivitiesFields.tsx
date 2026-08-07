@@ -91,6 +91,8 @@ interface TransferActivitiesFieldsProps {
   /** Show the free-text notes field. Defaults to true for transfer mode, false for removal. */
   showNotes?: boolean;
   onMetaChange?: (meta: TransferActivitiesFieldsMeta) => void;
+  /** Used for empty-state copy when the user has no scoped comms assignments (transfer mode). */
+  sourceDisplayName?: string;
 }
 
 function userToOption(u: UserListItem) {
@@ -119,6 +121,7 @@ export function TransferActivitiesFields({
   onChange,
   showNotes = mode === 'transfer',
   onMetaChange,
+  sourceDisplayName,
 }: TransferActivitiesFieldsProps) {
   const isRemoval = mode === 'removal';
   const fromTeamId = fixedFromTeamId ?? value.fromTeamId;
@@ -209,6 +212,10 @@ export function TransferActivitiesFields({
         }))
       : fromTeamOptions;
 
+  const fromTeamName =
+    fixedFromTeamName ??
+    fromTeamOptions.find((t) => t.teamId === fromTeamId)?.teamName;
+
   if (fromTeamId == null) {
     return null;
   }
@@ -268,8 +275,8 @@ export function TransferActivitiesFields({
             <h3 className="text-base font-semibold">Transfer activities</h3>
             <p className="text-sm text-slate-700">
               {userActivities.length} active{' '}
-              {userActivities.length === 1 ? 'activity is' : 'activities are'}{' '}
-              led by this team.
+              {userActivities.length === 1 ? 'activity' : 'activities'} led by{' '}
+              {fromTeamName ?? 'this team'} where this user is a comms contact.
             </p>
           </div>
 
@@ -509,7 +516,16 @@ export function TransferActivitiesFields({
             </div>
           )}
         </>
-      ) : null}
+      ) : (
+        !isRemoval &&
+        sourceDisplayName &&
+        fromTeamName && (
+          <p className="text-muted-foreground py-4 text-center text-sm">
+            No activities to transfer. {sourceDisplayName} is not comms contact
+            on any {fromTeamName} activities.
+          </p>
+        )
+      )}
     </div>
   );
 }
@@ -526,6 +542,30 @@ export function isTransferActivitiesDraftValid(
     return false;
   }
   return draft.selectedActivityIds.length > 0;
+}
+
+/** True when the draft matches the default state after load or reset for the current scope. */
+export function isTransferActivitiesDraftPristine(
+  draft: TransferActivitiesDraft,
+  scopedActivityIds: number[]
+): boolean {
+  if (draft.fromTeamId == null) return true;
+
+  const effectiveToTeamId = draft.toTeamId ?? draft.fromTeamId;
+  if (effectiveToTeamId !== draft.fromTeamId) return false;
+  if (draft.targetUserId != null || draft.targetUserLabel !== '') return false;
+  if (draft.includeNonLead) return false;
+  if (draft.notes.trim() !== '') return false;
+
+  if (scopedActivityIds.length === 0) {
+    return draft.selectedActivityIds.length === 0;
+  }
+
+  if (draft.selectedActivityIds.length !== scopedActivityIds.length) {
+    return false;
+  }
+  const scopedSet = new Set(scopedActivityIds);
+  return draft.selectedActivityIds.every((id) => scopedSet.has(id));
 }
 
 /** Builds the POST /users/:id/transfer-activities request body from a draft. */

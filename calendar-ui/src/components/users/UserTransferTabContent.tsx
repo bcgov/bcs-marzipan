@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import {
   buildTransferActivitiesBody,
   createInitialTransferDraft,
+  isTransferActivitiesDraftPristine,
   isTransferActivitiesDraftValid,
   TransferActivitiesFields,
   type TransferActivitiesDraft,
@@ -56,8 +57,13 @@ export function UserTransferTabContent({
   });
 
   const resetForm = () => {
-    setDraft(createInitialTransferDraft(initialFromTeamId));
+    setDraft(createInitialTransferDraft(draft.fromTeamId ?? initialFromTeamId));
   };
+
+  const sourceDisplayName =
+    sourceUser.adDisplayName ||
+    sourceUser.adUsername ||
+    `User ${sourceUser.id}`;
 
   const transferMutation = useMutation({
     mutationFn: () => {
@@ -88,10 +94,19 @@ export function UserTransferTabContent({
   });
 
   const hasActivities = fieldsMeta.activities.length > 0;
+  const scopedActivityIds = useMemo(
+    () => fieldsMeta.activities.map((a) => a.id),
+    [fieldsMeta.activities]
+  );
+  const isDraftPristine = isTransferActivitiesDraftPristine(
+    draft,
+    scopedActivityIds
+  );
 
   const canSubmit =
     canTransfer &&
     draft.fromTeamId != null &&
+    hasActivities &&
     !fieldsMeta.isLoading &&
     isTransferActivitiesDraftValid(draft, sourceUser.id, hasActivities) &&
     !fieldsMeta.isError;
@@ -118,6 +133,7 @@ export function UserTransferTabContent({
       <TransferActivitiesFields
         mode="transfer"
         sourceUserId={sourceUser.id}
+        sourceDisplayName={sourceDisplayName}
         fromTeamOptions={fromTeamOptions}
         value={draft}
         onChange={setDraft}
@@ -128,9 +144,13 @@ export function UserTransferTabContent({
         <Button
           variant="secondary"
           onClick={resetForm}
-          disabled={transferMutation.isPending}
+          disabled={
+            transferMutation.isPending ||
+            fieldsMeta.isLoading ||
+            isDraftPristine
+          }
         >
-          Cancel
+          Reset
         </Button>
         <Button
           disabled={!canSubmit || transferMutation.isPending}
