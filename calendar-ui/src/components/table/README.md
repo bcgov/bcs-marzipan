@@ -4,8 +4,9 @@ This document describes the UX patterns used in the **Users** and **Teams** mana
 
 ## Exemplar reference
 
-- **Page:** `src/pages/UserManagement.tsx` – tabs (Users / Teams), modals, drawers.
-- **Tab content:** `src/components/users/UsersTabContent.tsx` – filters, summary bar, table, pagination.
+- **Page:** `src/pages/UserManagement.tsx` – tabs (Users / Teams), team modals/drawers, user create modal.
+- **User detail:** `src/pages/UserDetailPage.tsx` – edit, transfer, change log, account actions (replaces list-level user actions).
+- **Tab content:** `src/components/users/UsersTabContent.tsx` – filters, summary bar, clickable table rows, pagination.
 - **Filters:** `src/components/users/UserManagementFilters.tsx` – keyword, multi-select filters, sort dropdown.
 
 ## Key UX improvements
@@ -113,18 +114,53 @@ Set `TABLE_COLUMN_COUNT` to the number of columns and use it for empty-state `co
 - Use `SortIndicator` in sortable `<th>` cells; pass `sortKey`, `sortDirection`, and column id.
 - Drive sort state from the parent (e.g. `UsersTabContent`) and pass a single `onSortChange(key, direction)` to the filters component, which can use `SortDropdown` or equivalent.
 
-### 8. Accessibility
+### 8. Clickable rows (Users table, Activity table)
+
+Whole data rows navigate to a detail view on click or Enter/Space. Use the shared helpers in `tableRowNavigation.ts` so behavior stays consistent:
+
+- Ignore clicks on links, buttons, and anything marked `data-no-row-nav`.
+- Do not navigate when the user has selected text in the row (copy/paste).
+
+```tsx
+import {
+  handleTableRowClick,
+  handleTableRowKeyDown,
+} from '@/components/table/tableRowNavigation';
+
+<tr
+  role="button"
+  aria-label={`View user ${displayName(user)}`}
+  tabIndex={0}
+  className={`${tableBodyRow} group cursor-pointer focus-visible:bg-accent/30 focus-visible:outline-none`}
+  onClick={(e) => {
+    handleTableRowClick(e, () => {
+      void navigate(`/users/${user.id}`);
+    });
+  }}
+  onKeyDown={(e) => {
+    handleTableRowKeyDown(e, () => {
+      void navigate(`/users/${user.id}`);
+    });
+  }}
+>
+```
+
+Nested links (e.g. team chips in the Users table) should include **`data-no-row-nav`** even when they are `<a>` elements, so row navigation stays explicit and matches the Activity table convention.
+
+### 9. Accessibility
 
 - `role="grid"` and `aria-colcount` on the table.
+- Clickable rows: `role="button"`, `tabIndex={0}`, and a descriptive `aria-label` on the `<tr>`.
 - Pagination: `aria-label` (e.g. “Users table pagination”), `aria-current="page"` on the current page button.
 - Skeleton rows: `aria-hidden`.
 - Empty state: one cell with `colSpan={TABLE_COLUMN_COUNT}` and clear message.
 
 ## Related components
 
-| Component         | Purpose                                                                       |
-| ----------------- | ----------------------------------------------------------------------------- |
-| `TablePagination` | Page nav, page-size selector, optional `scrollContainerRef` for scroll-to-top |
-| `TableSummaryBar` | “Showing N items” + optional boolean filters                                  |
-| `SortIndicator`   | Arrow in header for active sort column                                        |
-| `SortDropdown`    | Used inside filter bars for sort selection                                    |
+| Component            | Purpose                                                                       |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `tableRowNavigation` | Shared click/keyboard handlers for navigable table rows                       |
+| `TablePagination`    | Page nav, page-size selector, optional `scrollContainerRef` for scroll-to-top |
+| `TableSummaryBar`    | “Showing N items” + optional boolean filters                                  |
+| `SortIndicator`      | Arrow in header for active sort column                                        |
+| `SortDropdown`       | Used inside filter bars for sort selection                                    |
