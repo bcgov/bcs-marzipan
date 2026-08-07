@@ -1185,6 +1185,51 @@ export class UsersService {
     }));
   }
 
+  /** Ensures the source user is an active member of `teamId` before team-scoped transfer. */
+  private async assertSourceUserOnTeam(
+    userId: number,
+    teamId: number
+  ): Promise<void> {
+    const [row] = await this.databaseService.db
+      .select({ userId: userTeams.userId })
+      .from(userTeams)
+      .where(
+        and(
+          eq(userTeams.userId, userId),
+          eq(userTeams.teamId, teamId),
+          eq(userTeams.isActive, true)
+        )
+      )
+      .limit(1);
+
+    if (!row) {
+      throw new BadRequestException(
+        `User ${userId} is not an active member of team ${teamId}.`
+      );
+    }
+  }
+
+  /**
+   * Mirrors `applyActivityCommsChanges` to detect whether a scoped row would
+   * produce any side effect (comms move, delete, or cross-team lead update).
+   */
+  private commsChangeWouldApply(
+    row: ScopedCommsRow,
+    params: {
+      includeNonLead: boolean;
+      mode: 'transfer' | 'removal';
+      crossTeam: boolean;
+    }
+  ): boolean {
+    const { includeNonLead, mode, crossTeam } = params;
+
+    if (crossTeam) return true;
+    if (row.isLead) return true;
+    if (includeNonLead) return true;
+    if (mode === 'removal') return true;
+    return false;
+  }
+
   /**
    * Transfers activity comms assignments from `sourceUserId` to `dto.targetUserId`.
    *
@@ -1205,39 +1250,39 @@ export class UsersService {
     const fromTeamId = dto.fromTeamId;
     const toTeamId = dto.toTeamId ?? fromTeamId;
 
+    await this.assertSourceUserOnTeam(sourceUserId, fromTeamId);
+
     const scopedRows = await this.getScopedCommsRows(sourceUserId, fromTeamId);
     const scopedIds = new Set(scopedRows.map((r) => r.activityId));
 
-    let activityIds = dto.activityIds;
-    if (activityIds && activityIds.length > 0) {
-      const invalidIds = activityIds.filter((id) => !scopedIds.has(id));
+    if (scopedIds.size === 0) {
+      throw new BadRequestException(
+        'No comms assignments are in scope for this user and team.'
+      );
+    }
+
+    let activityIds: number[];
+    if (dto.activityIds === undefined) {
+      activityIds = Array.from(scopedIds);
+    } else if (dto.activityIds.length === 0) {
+      throw new BadRequestException(
+        'activityIds must include at least one activity when provided.'
+      );
+    } else {
+      const invalidIds = dto.activityIds.filter((id) => !scopedIds.has(id));
       if (invalidIds.length > 0) {
         throw new BadRequestException(
           `Activities [${invalidIds.join(', ')}] are not eligible for transfer from team ${fromTeamId}.`
         );
       }
-    } else {
-      activityIds = Array.from(scopedIds);
-    }
-
-    if (activityIds.length === 0) {
-      await this.recordUserHistory(
-        sourceUserId,
-        changedByUserId,
-        'activities_transferred',
-        [
-          { field: 'targetUserId', oldValue: null, newValue: dto.targetUserId },
-          { field: 'activityCount', oldValue: null, newValue: 0 },
-        ],
-        dto.notes ?? null
-      );
-      return { transferredCount: 0 };
+      activityIds = dto.activityIds;
     }
 
     const rowsToProcess = scopedRows.filter((r) =>
       activityIds.includes(r.activityId)
     );
 
+    const crossTeam = toTeamId !== fromTeamId;
     const eligibleOnToTeam =
       await this.teamsService.getEligibleCommsUserIds(toTeamId);
     this.validateTransferTarget(
@@ -1246,6 +1291,20 @@ export class UsersService {
       dto.includeNonLead,
       eligibleOnToTeam
     );
+
+    if (
+      !rowsToProcess.some((row) =>
+        this.commsChangeWouldApply(row, {
+          includeNonLead: dto.includeNonLead,
+          mode: 'transfer',
+          crossTeam,
+        })
+      )
+    ) {
+      throw new BadRequestException(
+        'No comms assignments would change for the selected activities and options.'
+      );
+    }
 
     const displayNameById = await this.getDisplayNamesById([
       sourceUserId,
@@ -1256,7 +1315,6 @@ export class UsersService {
     const targetDisplayName =
       displayNameById.get(dto.targetUserId) ?? `User ${dto.targetUserId}`;
 
-    const crossTeam = toTeamId !== fromTeamId;
     const crossTeamContext = crossTeam
       ? await this.resolveCrossTeamContext(toTeamId)
       : null;

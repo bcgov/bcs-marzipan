@@ -692,6 +692,8 @@ describe('UsersService', () => {
   });
 
   describe('transferActivities', () => {
+    const activeTeamMembership = () => createChain([{ userId: 1 }], 'limit');
+
     it('should throw BadRequestException when source and target are same', async () => {
       await expect(
         service.transferActivities(
@@ -705,6 +707,7 @@ describe('UsersService', () => {
     it('should throw BadRequestException when activityIds are outside the fromTeamId scope', async () => {
       mockDatabaseService.db.select = vi
         .fn()
+        .mockReturnValueOnce(activeTeamMembership())
         .mockReturnValueOnce(createChain([{ id: 99 }], 'limit'))
         .mockReturnValueOnce(
           createChain([{ activityId: 10, isLead: true }], 'where')
@@ -726,6 +729,7 @@ describe('UsersService', () => {
     it('should throw BadRequestException when target user is not comms-eligible for the destination team', async () => {
       mockDatabaseService.db.select = vi
         .fn()
+        .mockReturnValueOnce(activeTeamMembership())
         .mockReturnValueOnce(createChain([{ id: 99 }], 'limit'))
         .mockReturnValueOnce(
           createChain([{ activityId: 10, isLead: true }], 'where')
@@ -747,27 +751,89 @@ describe('UsersService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should record 0 and return transferredCount 0 when no activities are in scope', async () => {
+    it('should throw BadRequestException when no activities are in scope', async () => {
       mockDatabaseService.db.select = vi
         .fn()
+        .mockReturnValueOnce(activeTeamMembership())
         .mockReturnValueOnce(createChain([{ id: 99 }], 'limit'))
         .mockReturnValueOnce(createChain([], 'where'));
 
-      mockDatabaseService.db.insert = vi.fn().mockReturnValue({
-        values: vi.fn().mockResolvedValue(undefined),
-      });
+      await expect(
+        service.transferActivities(
+          1,
+          createMockTransferActivitiesBody({
+            targetUserId: 2,
+            fromTeamId: 1,
+          }),
+          1
+        )
+      ).rejects.toThrow(BadRequestException);
 
-      const result = await service.transferActivities(
-        1,
-        createMockTransferActivitiesBody({
-          targetUserId: 2,
-          fromTeamId: 1,
-          activityIds: [],
-        }),
-        1
-      );
+      expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
+    });
 
-      expect(result).toEqual({ transferredCount: 0 });
+    it('should throw BadRequestException when activityIds is an explicit empty array', async () => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(activeTeamMembership())
+        .mockReturnValueOnce(createChain([{ id: 99 }], 'limit'))
+        .mockReturnValueOnce(
+          createChain([{ activityId: 10, isLead: true }], 'where')
+        );
+
+      await expect(
+        service.transferActivities(
+          1,
+          createMockTransferActivitiesBody({
+            targetUserId: 2,
+            fromTeamId: 1,
+            activityIds: [],
+          }),
+          1
+        )
+      ).rejects.toThrow(/activityIds must include at least one activity/i);
+    });
+
+    it('should throw BadRequestException when source user is not on fromTeamId', async () => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([], 'limit'));
+
+      await expect(
+        service.transferActivities(
+          1,
+          createMockTransferActivitiesBody({
+            targetUserId: 2,
+            fromTeamId: 1,
+          }),
+          1
+        )
+      ).rejects.toThrow(/not an active member of team/i);
+    });
+
+    it('should throw BadRequestException when selected options would not change comms', async () => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(activeTeamMembership())
+        .mockReturnValueOnce(createChain([{ id: 99 }], 'limit'))
+        .mockReturnValueOnce(
+          createChain([{ activityId: 11, isLead: false }], 'where')
+        );
+
+      mockTeamsService.getEligibleCommsUserIds.mockResolvedValue(new Set([2]));
+
+      await expect(
+        service.transferActivities(
+          1,
+          createMockTransferActivitiesBody({
+            targetUserId: 2,
+            fromTeamId: 1,
+            activityIds: [11],
+            includeNonLead: false,
+          }),
+          1
+        )
+      ).rejects.toThrow(/No comms assignments would change/i);
     });
 
     it('should transfer lead and non-lead comms and return transferredCount', async () => {
@@ -778,6 +844,7 @@ describe('UsersService', () => {
 
       mockDatabaseService.db.select = vi
         .fn()
+        .mockReturnValueOnce(activeTeamMembership())
         .mockReturnValueOnce(createChain([{ id: 99 }], 'limit')) // deleted status
         .mockReturnValueOnce(
           createChain(
@@ -843,6 +910,7 @@ describe('UsersService', () => {
 
       mockDatabaseService.db.select = vi
         .fn()
+        .mockReturnValueOnce(activeTeamMembership())
         .mockReturnValueOnce(createChain([{ id: 99 }], 'limit')) // deleted status
         .mockReturnValueOnce(
           createChain([{ activityId: 20, isLead: false }], 'where')

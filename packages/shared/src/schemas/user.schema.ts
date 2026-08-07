@@ -205,7 +205,10 @@ export const transferActivitiesBodySchema = z.object({
   fromTeamId: z.number().int(),
   /** Defaults to `fromTeamId` (same-team transfer) when omitted. */
   toTeamId: z.number().int().optional(),
-  /** Omit to operate on every scoped activity for `fromTeamId`. */
+  /**
+   * Omit to operate on every scoped activity for `fromTeamId`.
+   * An explicit empty array is rejected (it does not mean "transfer none").
+   */
   activityIds: z.array(z.number().int()).optional(),
   /** When false, non-lead comms are left in place (or dropped if they become ineligible after a cross-team move). */
   includeNonLead: z.boolean(),
@@ -249,6 +252,7 @@ export type RemoveUserFromTeamBody = z.infer<
  */
 export const transferActivitiesResponseSchema = z.object({
   success: z.literal(true),
+  /** Number of activities affected (comms change and/or cross-team lead move). */
   transferredCount: z.number().int(),
 });
 
