@@ -5,13 +5,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   RemoveUserFromTeamBody,
   TransferActivitiesBody,
-  UserListItem,
 } from '@corpcal/shared/api/types';
 import { USER_NOTES_MAX_LENGTH } from '@corpcal/shared/schemas';
 import {
   fetchTeams,
   fetchUserActivities,
-  fetchUsers,
   type UserActivityItem,
 } from '@/api/usersApi';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useCommsContactCandidates } from '@/hooks/useCommsContactCandidates';
 import { cn } from '@/lib/utils';
 
 export type TransferActivitiesMode = 'transfer' | 'removal';
@@ -98,14 +97,6 @@ interface TransferActivitiesFieldsProps {
   onMetaChange?: (meta: TransferActivitiesFieldsMeta) => void;
   /** Used for empty-state copy when the user has no scoped comms assignments (transfer mode). */
   sourceDisplayName?: string;
-}
-
-function userToOption(u: UserListItem) {
-  return {
-    id: u.id,
-    value: String(u.id),
-    label: u.adDisplayName || u.adUsername || `User ${u.id}`,
-  };
 }
 
 /**
@@ -179,23 +170,21 @@ export function TransferActivitiesFields({
     queryFn: fetchTeams,
   });
 
-  const { data: searchUsers = [], isFetching: isSearchingUsers } = useQuery({
-    queryKey: ['users', 'transfer-target', toTeamId, userSearch],
-    queryFn: () =>
-      fetchUsers({
-        search: userSearch.trim() || undefined,
-        teamIds: toTeamId != null ? [toTeamId] : undefined,
-      }),
-    enabled: comboboxOpen && toTeamId != null,
-  });
+  const {
+    data: eligibleCandidates = [],
+    isFetching: isSearchingUsers,
+    isError: isCandidatesError,
+  } = useCommsContactCandidates(toTeamId ?? undefined, comboboxOpen);
 
-  const targetOptions = useMemo(
-    () =>
-      searchUsers
-        .filter((u) => u.id !== sourceUserId && u.isActive)
-        .map(userToOption),
-    [searchUsers, sourceUserId]
-  );
+  const targetOptions = useMemo(() => {
+    const normalizedSearch = userSearch.trim().toLocaleLowerCase();
+    return eligibleCandidates.filter(
+      (candidate) =>
+        candidate.id !== sourceUserId &&
+        (normalizedSearch === '' ||
+          candidate.label.toLocaleLowerCase().includes(normalizedSearch))
+    );
+  }, [eligibleCandidates, sourceUserId, userSearch]);
 
   const hasActivities = userActivities.length > 0;
   const selectedCount = value.selectedActivityIds.length;
@@ -360,6 +349,10 @@ export function TransferActivitiesFields({
                       <div className="flex items-center justify-center py-6">
                         <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
                       </div>
+                    ) : isCandidatesError ? (
+                      <div className="text-destructive px-3 py-6 text-center text-sm">
+                        Could not load eligible users. Please try again.
+                      </div>
                     ) : (
                       <>
                         <CommandEmpty>No users found.</CommandEmpty>
@@ -368,8 +361,8 @@ export function TransferActivitiesFields({
                             const selected = value.targetUserId === option.id;
                             return (
                               <CommandItem
-                                key={option.value}
-                                value={option.value}
+                                key={option.id}
+                                value={String(option.value)}
                                 onSelect={() => {
                                   onChange({
                                     ...value,
