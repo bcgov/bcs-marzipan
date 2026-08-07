@@ -43,15 +43,15 @@ export function SystemBanner({
           <div
             className={
               'min-w-0 flex-1 text-sm leading-6 whitespace-pre-wrap ' +
-              '[&_strong]:font-semibold ' +
-              '[&_p]:m-0 [&_p]:inline ' +
+              '[_&strong]:font-semibold ' +
+              '[_&p]:m-0 [&_p]:inline ' +
               // default anchor styling (but don't override elements that already have a bg- utility)
-              '[&_a]:opacity-90 [&_a]:transition-opacity [&_a:hover]:opacity-100 ' +
+              '[_&a]:opacity-90 [&_a]:transition-opacity [&_a:hover]:opacity-100 ' +
               '[&_a:not([class*="bg-"])]:bg-[#ffffff] [&_a:not([class*="bg-"])]:text-current ' +
-              '[&_code]:rounded [&_code]:bg-black/10 [&_code]:px-1 [&_code]:py-0.5 ' +
-              '[&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 ' +
+              '[_&code]:rounded [&_code]:bg-black/10 [&_code]:px-1 [&_code]:py-0.5 ' +
+              '[_&ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 ' +
               // default button styling when no explicit bg utility provided
-              '[&_button]:ml-2 [&_button]:inline-block [&_button]:rounded [&_button]:border [&_button]:border-current [&_button]:bg-transparent [&_button]:px-2 [&_button]:py-1 [&_button]:text-xs [&_button]:font-medium [&_button]:transition-all [&_button:hover]:bg-current [&_button:hover]:text-white ' +
+              '[_&button]:inline-block [&_button]:ml-2 [&_button]:rounded [&_button]:border [&_button]:border-current [&_button]:bg-transparent [&_button]:px-2 [&_button]:py-1 [&_button]:text-xs [&_button]:font-medium [&_button]:transition-all [&_button:hover]:bg-current [&_button:hover]:text-white ' +
               '[&_button:not([class*="bg-"])]:bg-[#ffffff]'
             }
             dangerouslySetInnerHTML={{ __html: sanitizedContent }}
