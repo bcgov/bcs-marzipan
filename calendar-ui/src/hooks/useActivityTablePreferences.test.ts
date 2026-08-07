@@ -205,7 +205,6 @@ describe('useActivityTablePreferences', () => {
           timeConfirmedFilter: 'any',
           tagIds: [],
           leadTeamIds: [],
-          leadTeamIds: [],
           commsContactLeadUserIds: [],
           eventPlannerLeadIds: [],
           translationRequiredStatusIds: [],

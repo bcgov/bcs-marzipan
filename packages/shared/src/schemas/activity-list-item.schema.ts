@@ -139,6 +139,7 @@ export function activityResponseToListItem(
     leadMinistry: activity.leadMinistry,
     leadMinistryAbbreviation: activity.leadMinistryAbbreviation ?? null,
     leadTeamDisplayName: activity.leadTeamDisplayName ?? null,
+    leadTeamId: activity.leadTeamId,
     leadMinistryId: activity.leadMinistryId,
     commsContacts: activity.commsContacts,
     eventPlanners: activity.eventPlanners ?? [],

@@ -24,8 +24,8 @@ describe('hasMinistryTabLeadTeamFilterConflict', () => {
 });
 
 describe('MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE', () => {
-  it('mentions Ministry tab and Lead filter', () => {
-    expect(MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE).toMatch(/Ministry tab/i);
+  it('mentions lead team scope and Lead filter', () => {
+    expect(MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE).toMatch(/lead team/i);
     expect(MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE).toMatch(/Lead filter/i);
   });
 });
