@@ -7,7 +7,11 @@ import { z } from 'zod';
 import { useEffect, useRef, useState } from 'react';
 
 import type { CreateUserBody } from '@corpcal/shared/api/types';
-import { USER_DISPLAY_NAME_MAX_LENGTH } from '@corpcal/shared/schemas';
+import {
+  USER_DISPLAY_NAME_MAX_LENGTH,
+  USER_JOB_TITLE_MAX_LENGTH,
+  USER_PHONE_MAX_LENGTH,
+} from '@corpcal/shared/schemas';
 import { createUser, fetchRoles, fetchTeams } from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +23,7 @@ import {
   ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
+  ComboboxSeparator,
   ComboboxValue,
   useComboboxAnchor,
 } from '@/components/ui/combobox';
@@ -46,7 +51,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import { userQueryKeys } from '@/lib/userQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
 const createUserFormSchema = z.object({
@@ -57,6 +64,8 @@ const createUserFormSchema = z.object({
     .email('Invalid email format'),
   roleId: z.string().min(1, 'Role is required'),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).default(''),
+  adJobTitle: z.string().trim().max(USER_JOB_TITLE_MAX_LENGTH).default(''),
+  adPhone: z.string().trim().max(USER_PHONE_MAX_LENGTH).default(''),
   teamIds: z.array(z.number().int()).default([]),
 });
 
@@ -66,6 +75,8 @@ const defaultValues: CreateUserFormData = {
   email: '',
   roleId: '',
   displayName: '',
+  adJobTitle: '',
+  adPhone: '',
   teamIds: [],
 };
 
@@ -115,7 +126,7 @@ export function UserCreateModal({
   const createMutation = useMutation({
     mutationFn: (body: CreateUserBody) => createUser(body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      void queryClient.invalidateQueries({ queryKey: userQueryKeys.list() });
       toast.success('User created');
       form.reset(defaultValues);
       onSaved?.();
@@ -160,6 +171,12 @@ export function UserCreateModal({
       roleId: parsedRoleId,
       ...(data.displayName?.trim() && {
         displayName: data.displayName.trim(),
+      }),
+      ...(data.adJobTitle?.trim() && {
+        adJobTitle: data.adJobTitle.trim(),
+      }),
+      ...(data.adPhone?.trim() && {
+        adPhone: data.adPhone.trim(),
       }),
       ...(data.teamIds &&
         data.teamIds.length > 0 && {
@@ -237,6 +254,42 @@ export function UserCreateModal({
             />
             <FormField
               control={form.control}
+              name="adJobTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel showDirtyIndicator={false}>Job title</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="e.g. Senior Analyst"
+                      maxLength={USER_JOB_TITLE_MAX_LENGTH}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="adPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel showDirtyIndicator={false}>Phone</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="e.g. 250-555-0123"
+                      maxLength={USER_PHONE_MAX_LENGTH}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="roleId"
               render={({ field }) => {
                 const selectedRole = roles.find(
@@ -288,6 +341,12 @@ export function UserCreateModal({
                 const selectedOptions = teamOptions.filter((o) =>
                   currentValues.includes(o.value)
                 );
+                const allTeamIds = teamOptions.map((o) =>
+                  parseInt(o.value, 10)
+                );
+                const allTeamsSelected =
+                  allTeamIds.length > 0 &&
+                  allTeamIds.every((id) => field.value.includes(id));
                 return (
                   <FormItem>
                     <FormLabel showDirtyIndicator={false}>Teams</FormLabel>
@@ -323,16 +382,30 @@ export function UserCreateModal({
                         <ComboboxContent
                           anchor={teamsAnchorRef}
                           container={dialogContentRef}
-                          className="max-h-72"
+                          className="popover-list-scroll flex max-h-[min(var(--popover-list-max-height),24rem)] flex-col overflow-x-hidden overflow-y-auto p-0"
                         >
-                          <ComboboxEmpty>No teams found.</ComboboxEmpty>
-                          <ComboboxList>
-                            {(option: OptionItem) => (
-                              <ComboboxItem key={option.value} value={option}>
-                                {option.label}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxList>
+                          <div className="bg-popover px-1 py-1">
+                            <TeamsComboboxSelectAllRow
+                              allSelected={allTeamsSelected}
+                              disabled={teamOptions.length === 0}
+                              onToggleSelectAll={() => {
+                                field.onChange(
+                                  allTeamsSelected ? [] : allTeamIds
+                                );
+                              }}
+                            />
+                            {teamOptions.length > 0 ? (
+                              <ComboboxSeparator className="my-1" />
+                            ) : null}
+                            <ComboboxEmpty>No teams found.</ComboboxEmpty>
+                            <ComboboxList className="max-h-none scroll-py-1 overflow-visible p-0 data-empty:p-0">
+                              {(option: OptionItem) => (
+                                <ComboboxItem key={option.value} value={option}>
+                                  {option.label}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxList>
+                          </div>
                         </ComboboxContent>
                       </Combobox>
                     </FormControl>

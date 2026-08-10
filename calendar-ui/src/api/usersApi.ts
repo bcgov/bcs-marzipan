@@ -4,6 +4,7 @@
 import type {
   AddUserToTeamBody,
   CreateUserBody,
+  RemoveUserFromTeamBody,
   RoleOption,
   TeamListItem,
   TransferActivitiesBody,
@@ -89,11 +90,24 @@ export async function addUserToTeam(
   await api.post(`/users/${userId}/teams`, body);
 }
 
+/**
+ * Removes a user from a team.
+ *
+ * `body` is optional: omit it (or omit `targetUserId`) for a silent removal
+ * when the user has no comms assignments scoped to this team. If the user
+ * does have scoped comms assignments, the server rejects the request unless
+ * `targetUserId` is provided to transfer them.
+ */
 export async function removeUserFromTeam(
   userId: number,
-  teamId: number
-): Promise<void> {
-  await api.delete(`/users/${userId}/teams/${teamId}`);
+  teamId: number,
+  body?: RemoveUserFromTeamBody
+): Promise<{ transferredCount: number }> {
+  const response = await api.delete<{
+    success: boolean;
+    transferredCount: number;
+  }>(`/users/${userId}/teams/${teamId}`, { data: body });
+  return { transferredCount: response.data.transferredCount };
 }
 
 export async function updateUserTeamRole(
@@ -118,6 +132,7 @@ export interface UserActivityItem {
   id: number;
   label: string;
   value: number;
+  isLead: boolean;
 }
 
 export interface UserActivityCountItem {
@@ -125,13 +140,21 @@ export interface UserActivityCountItem {
   activityCount: number;
 }
 
+/**
+ * Fetches activities where the user has an active comms contact row.
+ * When `fromTeamId` is provided, scopes to activities where
+ * `leadTeamId === fromTeamId` (the set used by transfer/removal flows).
+ */
 export async function fetchUserActivities(
-  userId: number
+  userId: number,
+  fromTeamId?: number
 ): Promise<UserActivityItem[]> {
   const response = await api.get<{
     success: boolean;
     data: UserActivityItem[];
-  }>(`/users/${userId}/activities`);
+  }>(`/users/${userId}/activities`, {
+    params: fromTeamId != null ? { fromTeamId } : undefined,
+  });
   return response.data.data;
 }
 

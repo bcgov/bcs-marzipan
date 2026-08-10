@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
+import { invalidateUserCaches, userQueryKeys } from '@/lib/userQueryKeys';
 
 interface UserEditModalProps {
   user: UserListItem;
@@ -54,7 +55,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
     currentUser?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
 
   const { data: detail, isLoading } = useQuery<UserDetail | null>({
-    queryKey: ['user', user.id],
+    queryKey: userQueryKeys.detail(user.id),
     queryFn: () => fetchUser(user.id),
     enabled: !!user.id,
   });
@@ -78,8 +79,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
   const updateMutation = useMutation({
     mutationFn: (body: UpdateUserBody) => updateUser(user.id, body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['user', user.id] });
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateUserCaches(queryClient, user.id);
       toast.success('User updated', { id: `user-updated-${user.id}` });
       onSaved();
     },

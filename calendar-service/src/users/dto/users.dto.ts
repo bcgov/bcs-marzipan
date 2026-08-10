@@ -6,6 +6,7 @@ import {
   createArrayResponseWrapperSchema,
   createResponseWrapperSchema,
   createUserBodySchema,
+  removeUserFromTeamBodySchema,
   transferActivitiesBodySchema,
   transferActivitiesResponseSchema,
   updateUserBodySchema,
@@ -53,6 +54,14 @@ export class TransferActivitiesDto extends createZodDto(
 ) {}
 
 /**
+ * Request DTO for DELETE /users/:id/teams/:teamId - Remove user from team.
+ * Optional body; see `removeUserFromTeamBodySchema` for defaulting behavior.
+ */
+export class RemoveUserFromTeamDto extends createZodDto(
+  removeUserFromTeamBodySchema
+) {}
+
+/**
  * Response DTO for a single user list item.
  */
 export class UserListItemDto extends createZodDto(userListItemSchema) {}
@@ -81,6 +90,7 @@ const userActivityOptionSchema = z.object({
   id: z.number().int(),
   label: z.string(),
   value: z.number().int(),
+  isLead: z.boolean(),
 });
 
 /**

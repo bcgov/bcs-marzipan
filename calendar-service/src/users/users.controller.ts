@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -23,6 +24,7 @@ import {
 
 import { PERMISSIONS, SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 import type {
+  RemoveUserFromTeamBody,
   UserDetail,
   UserHistoryEntry,
   UserListItem,
@@ -30,6 +32,7 @@ import type {
 import {
   addUserToTeamBodySchema,
   createUserBodySchema,
+  removeUserFromTeamBodySchema,
   transferActivitiesBodySchema,
   updateUserBodySchema,
   updateUserSettingsBodySchema,
@@ -44,6 +47,7 @@ import { RequirePermission } from '../policy/decorators/require-permission.decor
 import {
   AddUserToTeamDto,
   CreateUserDto,
+  RemoveUserFromTeamDto,
   TransferActivitiesDto,
   TransferActivitiesResponseDto,
   UpdateUserDto,
@@ -158,20 +162,38 @@ export class UsersController {
   @ApiOperation({
     summary: 'Get activities associated with a user',
     description:
-      'Returns activities where the user is a comms lead or contact. Excludes deleted activities. Used for transfer dialog and "my activities" filters.',
+      'Returns activities where the user is a comms lead or contact. Excludes deleted activities. ' +
+      'When `fromTeamId` is provided, scopes to activities where `leadTeamId === fromTeamId` — ' +
+      'the set used by the transfer-activities and team-removal flows.',
   })
   @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiQuery({
+    name: 'fromTeamId',
+    required: false,
+    description: 'Scope to activities led by this team',
+  })
   @ApiResponse({
     status: 200,
-    description: 'List of activities (id, label, value)',
+    description: 'List of activities (id, label, value, isLead)',
     type: UserActivitiesResponseWrapperDto,
   })
   @Get(':id/activities')
-  async getActivities(@Param('id', ParseIntPipe) id: number): Promise<{
+  async getActivities(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('fromTeamId') fromTeamIdParam?: string
+  ): Promise<{
     success: boolean;
-    data: { id: number; label: string; value: number }[];
+    data: { id: number; label: string; value: number; isLead: boolean }[];
   }> {
-    const data = await this.usersService.getActivitiesForUser(id);
+    let fromTeamId: number | undefined;
+    if (fromTeamIdParam != null && fromTeamIdParam !== '') {
+      fromTeamId = Number(fromTeamIdParam);
+      if (!Number.isInteger(fromTeamId)) {
+        throw new BadRequestException('fromTeamId must be an integer');
+      }
+    }
+
+    const data = await this.usersService.getActivitiesForUser(id, fromTeamId);
     return { success: true, data };
   }
 
@@ -273,20 +295,53 @@ export class UsersController {
     return { success: true };
   }
 
-  @ApiOperation({ summary: 'Remove user from team' })
+  @ApiOperation({
+    summary: 'Remove user from team',
+    description:
+      'Always deletes the user\u2019s activity flags for this team. When the body ' +
+      'is omitted (or has no `targetUserId`) and the user has no comms assignments ' +
+      'scoped to this team, removal is silent. Otherwise `targetUserId` is required ' +
+      'to transfer those comms assignments; requires `users.transfer_activities` in ' +
+      'addition to `users.edit` in that case.',
+  })
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiParam({ name: 'teamId', description: 'Team ID' })
+  @ApiBody({
+    type: RemoveUserFromTeamDto,
+    description: 'Optional; required only when transferring comms assignments.',
+    required: false,
+  })
   @ApiResponse({ status: 200, description: 'User removed from team' })
+  @ApiResponse({
+    status: 400,
+    description: 'Comms assignments need a target user',
+  })
   @ApiResponse({ status: 404, description: 'User not in team' })
   @RequirePermission('users.edit')
   @Delete(':id/teams/:teamId')
   async removeFromTeam(
     @Param('id', ParseIntPipe) id: number,
     @Param('teamId', ParseIntPipe) teamId: number,
+    @Body(new ZodValidationPipe(removeUserFromTeamBodySchema))
+    dto: RemoveUserFromTeamBody,
     @CurrentUser() currentUser: AuthUser
-  ): Promise<{ success: boolean }> {
-    await this.usersService.removeUserFromTeam(id, teamId, currentUser.id);
-    return { success: true };
+  ): Promise<{ success: boolean; transferredCount: number }> {
+    if (
+      dto.targetUserId != null &&
+      !currentUser.permissions.includes(PERMISSIONS.USERS.TRANSFER_ACTIVITIES)
+    ) {
+      throw new ForbiddenException(
+        'You do not have permission to transfer activities.'
+      );
+    }
+
+    const { transferredCount } = await this.usersService.removeUserFromTeam(
+      id,
+      teamId,
+      currentUser.id,
+      dto
+    );
+    return { success: true, transferredCount };
   }
 
   @ApiOperation({ summary: 'Update user role in team' })

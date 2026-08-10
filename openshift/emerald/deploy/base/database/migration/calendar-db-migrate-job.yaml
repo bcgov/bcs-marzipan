@@ -19,6 +19,8 @@ spec:
     metadata:
       labels:
         app: calendar-db-migrate
+        DataClass: Low
+        Internet-Ingress: DENY
     spec:
       restartPolicy: Never
       containers:
