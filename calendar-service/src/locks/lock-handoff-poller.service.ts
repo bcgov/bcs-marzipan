@@ -1,14 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, Interval } from '@nestjs/schedule';
+import { Interval } from '@nestjs/schedule';
 
 import { LocksService } from './locks.service';
 
 /**
- * Backup handoff finalization every 180s and expired-lock cleanup every 6 hours.
+ * Backup handoff finalization every 180s and expired-lock cleanup every 5 minutes.
  * Primary completion at `graceEndsAt` is scheduled by {@link LockHandoffDeadlineKickService}.
- *
- * Long cleanup interval may delay WebSocket `lockReleased` for idle expiry for clients that rely
- * on WS; API paths still treat expired lease/idle rows as no lock.
  */
 @Injectable()
 export class LockHandoffPoller {
@@ -41,7 +38,7 @@ export class LockHandoffPoller {
     }
   }
 
-  @Cron('0 0 */6 * * *')
+  @Interval(300_000)
   async runExpiredLockCleanup(): Promise<void> {
     if (this.cleanupInFlight) {
       return;
