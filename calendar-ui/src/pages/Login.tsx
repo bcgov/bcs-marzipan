@@ -136,6 +136,14 @@ export function Login() {
         setError(
           'Your Microsoft account is not linked to an active Corporate Calendar user.'
         );
+      } else if (azureError === 'azure_deactivated') {
+        setError(
+          'This account has been deactivated. Please contact your administrator.'
+        );
+      } else if (azureError === 'azure_reset_required') {
+        setError(
+          'A password reset is required before you can sign in with Microsoft. Please use the email/password flow and follow the reset instructions.'
+        );
       } else {
         setError('Microsoft sign-in failed. Please try again.');
       }

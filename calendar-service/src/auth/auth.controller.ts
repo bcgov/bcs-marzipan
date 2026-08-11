@@ -370,6 +370,13 @@ export class AuthController {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Azure login failed during callback: ${message}`);
+
+      if (/deactivated/i.test(message)) {
+        return res.redirect('/login?error=azure_deactivated');
+      }
+      if (/password reset is required/i.test(message)) {
+        return res.redirect('/login?error=azure_reset_required');
+      }
       return res.redirect('/login?error=azure_no_account');
     }
   }

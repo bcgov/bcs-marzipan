@@ -29,13 +29,7 @@ export async function findUserByExternalId(
   const [row] = await db
     .select(authUserSelection)
     .from(users)
-    .where(
-      and(
-        eq(users.externalId, externalId),
-        eq(users.isActive, true),
-        eq(users.status, 'active')
-      )
-    )
+    .where(and(eq(users.externalId, externalId), eq(users.isActive, true)))
     .limit(1);
 
   return row ?? null;
@@ -53,8 +47,7 @@ export async function findUserByEmail(
     .where(
       and(
         sql`lower(${users.adEmail}) = ${normalizedEmail}`,
-        eq(users.isActive, true),
-        eq(users.status, 'active')
+        eq(users.isActive, true)
       )
     )
     .limit(1);

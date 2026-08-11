@@ -74,10 +74,8 @@ vi.mock('./strategies/local.strategy', () => ({
 }));
 
 vi.mock('./strategies/ad.strategy', () => ({
-  findUserByEmailAnyStatus: vi.fn(),
   findUserByEmail: vi.fn(),
   findUserByExternalId: vi.fn(),
-  findUserByExternalIdAnyStatus: vi.fn(),
   syncAzureIdentity: vi.fn(),
 }));
 
@@ -628,18 +626,14 @@ describe('AuthService — local auth methods', () => {
           makeLocalUser({
             id: 42,
             status: 'active',
-            isActive: true,
-            passwordHash: null,
             adEmail: 'new.user@example.com',
           })
         );
-      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(null);
-      vi.mocked(adStrategy.findUserByEmailAnyStatus).mockResolvedValue(
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(
         makeLocalUser({
           id: 42,
           status: 'pending',
-          isActive: true,
-          passwordHash: null,
+          adEmail: 'new.user@example.com',
         })
       );
 
@@ -650,7 +644,7 @@ describe('AuthService — local auth methods', () => {
         displayName: 'New User',
       });
 
-      expect(adStrategy.findUserByEmailAnyStatus).toHaveBeenCalledTimes(1);
+      expect(adStrategy.findUserByEmail).toHaveBeenCalledTimes(1);
       expect(updateUserStatus).toHaveBeenCalledWith(
         expect.anything(),
         42,
@@ -661,14 +655,55 @@ describe('AuthService — local auth methods', () => {
       expect(result.user.email).toBe('new.user@example.com');
     });
 
-    it('rejects inactive user matched by email', async () => {
+    it('allows a pending user matched by externalId without changing lookup path', async () => {
+      vi.mocked(adStrategy.findUserByExternalId)
+        .mockResolvedValueOnce(
+          makeLocalUser({
+            id: 43,
+            status: 'pending',
+            adEmail: 'linked@example.com',
+          })
+        )
+        .mockResolvedValueOnce(
+          makeLocalUser({
+            id: 43,
+            status: 'active',
+            adEmail: 'linked@example.com',
+          })
+        );
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(null);
+
+      await service.loginWithAzureClaims({
+        externalId: 'azure-pending',
+        email: 'linked@example.com',
+      });
+
+      expect(updateUserStatus).toHaveBeenCalledWith(
+        expect.anything(),
+        43,
+        'active'
+      );
+      expect(adStrategy.findUserByEmail).not.toHaveBeenCalled();
+    });
+
+    it('rejects when no active account matches externalId or email', async () => {
       vi.mocked(adStrategy.findUserByExternalId).mockResolvedValue(null);
       vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(null);
-      vi.mocked(adStrategy.findUserByEmailAnyStatus).mockResolvedValue(
+
+      await expect(
+        service.loginWithAzureClaims({
+          externalId: 'azure-456',
+          email: 'missing@example.com',
+        })
+      ).rejects.toThrow(/No active local account found/i);
+    });
+
+    it('rejects inactive-status user matched by email', async () => {
+      vi.mocked(adStrategy.findUserByExternalId).mockResolvedValue(null);
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(
         makeLocalUser({
           id: 5,
           status: 'inactive',
-          isActive: false,
         })
       );
 
@@ -677,17 +712,15 @@ describe('AuthService — local auth methods', () => {
           externalId: 'azure-456',
           email: 'inactive@example.com',
         })
-      ).rejects.toThrow(UnauthorizedException);
+      ).rejects.toThrow(/deactivated/i);
     });
 
     it('rejects password_reset_required user matched by email', async () => {
       vi.mocked(adStrategy.findUserByExternalId).mockResolvedValue(null);
-      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(null);
-      vi.mocked(adStrategy.findUserByEmailAnyStatus).mockResolvedValue(
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(
         makeLocalUser({
           id: 6,
           status: 'password_reset_required',
-          isActive: true,
         })
       );
 
@@ -709,12 +742,10 @@ describe('AuthService — local auth methods', () => {
             adEmail: 'linked@example.com',
           })
         );
-      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(null);
-      vi.mocked(adStrategy.findUserByEmailAnyStatus).mockResolvedValue(
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(
         makeLocalUser({
           id: 99,
           status: 'active',
-          isActive: true,
           adEmail: 'linked@example.com',
         })
       );

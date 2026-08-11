@@ -29,9 +29,7 @@ import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
 import {
   findUserByEmail,
-  findUserByEmailAnyStatus,
   findUserByExternalId,
-  findUserByExternalIdAnyStatus,
   syncAzureIdentity,
   type AuthDbUser,
 } from './strategies/ad.strategy';
@@ -99,58 +97,25 @@ export class AuthService {
       dbUser = await findUserByEmail(this.databaseService.db, claims.email);
     }
 
-    if (!dbUser && claims.email?.trim()) {
-      const anyStatusByEmail = await findUserByEmailAnyStatus(
-        this.databaseService.db,
-        claims.email
-      );
-
-      if (anyStatusByEmail) {
-        if (
-          !anyStatusByEmail.isActive ||
-          anyStatusByEmail.status === 'inactive'
-        ) {
-          throw new UnauthorizedException(
-            'This account is deactivated. Please contact your administrator.'
-          );
-        }
-
-        if (anyStatusByEmail.status === 'password_reset_required') {
-          throw new UnauthorizedException(
-            'A password reset is required before you can sign in. Please use the email/password flow and follow the reset instructions.'
-          );
-        }
-
-        // Pending users are promoted to active explicitly below.
-        dbUser = anyStatusByEmail;
-      }
-    }
-
     if (!dbUser) {
-      // Check whether the account exists but has a non-active status so we can
-      // return a meaningful error instead of the generic "no account" message.
-      const anyStatus = await findUserByExternalIdAnyStatus(
-        this.databaseService.db,
-        claims.externalId
-      );
-
-      if (anyStatus?.status === 'pending') {
-        throw new UnauthorizedException(
-          'Your account has not been activated yet. Sign in with Microsoft using the email on your account, or contact your administrator.'
-        );
-      }
-
-      if (anyStatus?.status === 'password_reset_required') {
-        throw new UnauthorizedException(
-          'A password reset is required before you can sign in. Please use the email/password flow and follow the reset instructions.'
-        );
-      }
-
       throw new UnauthorizedException(
         'No active local account found for this Azure AD user.'
       );
     }
 
+    if (dbUser.status === 'inactive') {
+      throw new UnauthorizedException(
+        'This account is deactivated. Please contact your administrator.'
+      );
+    }
+
+    if (dbUser.status === 'password_reset_required') {
+      throw new UnauthorizedException(
+        'A password reset is required before you can sign in. Please use the email/password flow and follow the reset instructions.'
+      );
+    }
+
+    // Admin-created users start as pending; promote on first successful SSO.
     if (dbUser.status !== 'active') {
       await updateUserStatus(this.databaseService.db, dbUser.id, 'active');
     }
