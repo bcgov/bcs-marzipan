@@ -203,17 +203,24 @@ export function Login() {
           setVerifiedEmail(data.email ?? emailInput.trim());
           setView('enter-reset-code');
           break;
-        case 'inactive':
-          if (azureEnabled && isBcGovEmail(emailInput)) {
+        case 'sso_recommended':
+          if (azureEnabled) {
             setError(
-              'This account cannot sign in with a password. If you are BC Government staff, try signing in with IDIR.'
+              isBcGovEmail(emailInput)
+                ? 'This account uses Microsoft sign-in (IDIR). Password login is not enabled.'
+                : 'This account uses Microsoft sign-in. Password login is not enabled.'
             );
             setErrorAction('azure');
           } else {
             setError(
-              'This account has been deactivated. Please contact your administrator.'
+              'This account cannot sign in with a password. Please contact your administrator.'
             );
           }
+          break;
+        case 'inactive':
+          setError(
+            'This account has been deactivated. Please contact your administrator.'
+          );
           break;
         default:
           setError('Unable to verify account status. Please try again.');

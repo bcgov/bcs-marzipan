@@ -2,7 +2,7 @@
  * Login page tests — Azure AD sign-in button visibility and error handling.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -347,15 +347,50 @@ describe('Login page — local email/password auth', () => {
       expect(await screen.findByText(/deactivated/i)).toBeInTheDocument();
     });
 
-    it('shows an error for a deactivated account', async () => {
+    it('shows an error for a deactivated account without Microsoft rescue', async () => {
+      setupBothMethods();
       mockCheckEmail.mockResolvedValue({ status: 'inactive' });
       renderLogin();
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: /sign in with a local account/i,
+        })
+      );
       await userEvent.type(
         await screen.findByLabelText('Email'),
-        'gone@example.com'
+        'gone@gov.bc.ca'
       );
       await userEvent.click(screen.getByRole('button', { name: /continue/i }));
       expect(await screen.findByText(/deactivated/i)).toBeInTheDocument();
+      const alert = screen.getByRole('alert');
+      expect(
+        within(alert).queryByRole('button', { name: /sign in with microsoft/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('offers Microsoft rescue for sso_recommended when Azure is enabled', async () => {
+      setupBothMethods();
+      mockCheckEmail.mockResolvedValue({
+        status: 'sso_recommended',
+        email: 'idir@gov.bc.ca',
+      });
+      renderLogin();
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: /sign in with a local account/i,
+        })
+      );
+      await userEvent.type(
+        await screen.findByLabelText('Email'),
+        'idir@gov.bc.ca'
+      );
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+      expect(await screen.findByText(/microsoft sign-in/i)).toBeInTheDocument();
+      expect(
+        within(screen.getByRole('alert')).getByRole('button', {
+          name: /sign in with microsoft/i,
+        })
+      ).toBeInTheDocument();
     });
   });
 
