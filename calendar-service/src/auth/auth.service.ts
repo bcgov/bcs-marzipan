@@ -136,7 +136,7 @@ export class AuthService {
 
       if (anyStatus?.status === 'pending') {
         throw new UnauthorizedException(
-          'Your account has not been activated yet. Please sign in with your email and password to complete account setup.'
+          'Your account has not been activated yet. Sign in with Microsoft using the email on your account, or contact your administrator.'
         );
       }
 
@@ -183,6 +183,8 @@ export class AuthService {
   /**
    * Step 1: Check the status of a local account by email.
    * Called before prompting for a password so the UI can branch on account state.
+   *
+   * See CheckEmailStatus in @corpcal/shared for the response contract (anti-enumeration).
    */
   async checkEmail(email: string): Promise<CheckEmailResponse> {
     const dbUser = await findUserByEmailLocal(
@@ -211,13 +213,15 @@ export class AuthService {
       };
     }
 
-    // Active user with no password hash: only show the set-password flow when
-    // the admin has explicitly enabled direct login for them.
+    // Active user with no password hash: direct-login setup vs SSO-only.
     if (!dbUser.passwordHash) {
       if (dbUser.directLoginEnabled) {
         return { status: 'pending', email: dbUser.adEmail ?? undefined };
       }
-      return { status: 'inactive' };
+      return {
+        status: 'sso_recommended',
+        email: dbUser.adEmail ?? undefined,
+      };
     }
 
     return { status: 'active', email: dbUser.adEmail ?? undefined };
@@ -263,6 +267,12 @@ export class AuthService {
     }
 
     if (!dbUser.passwordHash) {
+      if (dbUser.status === 'active' && dbUser.directLoginEnabled) {
+        return {
+          requiresPasswordSetup: true as const,
+          email: dbUser.adEmail ?? email.trim(),
+        };
+      }
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -472,10 +482,10 @@ export class AuthService {
    * Create a temporary reset token for an admin-triggered password reset.
    * Sets the user's status to password_reset_required and returns the plaintext code.
    *
-   * Allowed for any active user, including IDIR-only accounts that have no
-   * password yet. Issuing a token sets status to password_reset_required so
-   * the user is routed through the reset flow to establish their direct-login
-   * credentials. Inactive users are still rejected.
+   * Allowed for active users with an existing password or with direct login
+   * enabled (including IDIR accounts establishing a local password). SSO-only
+   * users (no password, directLogin disabled) are rejected to avoid blocking
+   * Microsoft sign-in via password_reset_required. Inactive users are rejected.
    */
   async createPasswordResetToken(userId: number): Promise<string> {
     const dbUser = await findUserByIdLocal(this.databaseService.db, userId);
@@ -488,6 +498,13 @@ export class AuthService {
     if (!dbUser.isActive || dbUser.status === 'inactive') {
       throw new BadRequestException(
         'Cannot initiate a password reset for an inactive user.'
+      );
+    }
+
+    const canReset = dbUser.passwordHash !== null || dbUser.directLoginEnabled;
+    if (!canReset) {
+      throw new BadRequestException(
+        'This user signs in via Microsoft (SSO) only. Enable direct login before issuing a password reset.'
       );
     }
 
