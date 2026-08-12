@@ -150,6 +150,32 @@ describe('Login page — Azure AD', () => {
       ).toBeInTheDocument();
     });
 
+    it('displays the correct message for azure_deactivated', async () => {
+      mockGetAzureConfig.mockResolvedValue({ enabled: false });
+      setLocationSearch('?error=azure_deactivated');
+      renderLogin();
+
+      await waitFor(() => expect(mockGetAzureConfig).toHaveBeenCalledOnce());
+
+      expect(
+        screen.getByText(/This account has been deactivated/i)
+      ).toBeInTheDocument();
+    });
+
+    it('displays the correct message for azure_reset_required', async () => {
+      mockGetAzureConfig.mockResolvedValue({ enabled: false });
+      setLocationSearch('?error=azure_reset_required');
+      renderLogin();
+
+      await waitFor(() => expect(mockGetAzureConfig).toHaveBeenCalledOnce());
+
+      expect(
+        screen.getByText(
+          /password reset is required before you can sign in with microsoft/i
+        )
+      ).toBeInTheDocument();
+    });
+
     it('displays a generic message for any other azure error', async () => {
       mockGetAzureConfig.mockResolvedValue({ enabled: false });
       setLocationSearch('?error=azure_auth_failed');
@@ -530,6 +556,29 @@ describe('Login page — local email/password auth', () => {
         screen.getByRole('button', { name: /set password/i })
       );
       expect(await screen.findByText(/server error/i)).toBeInTheDocument();
+    });
+
+    it('offers Microsoft sign-in on the set-password step when Azure is enabled', async () => {
+      setupBothMethods();
+      mockCheckEmail.mockResolvedValue({
+        status: 'pending',
+        email: 'new@example.com',
+      });
+      renderLogin();
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: /sign in with a local account/i,
+        })
+      );
+      await userEvent.type(
+        await screen.findByLabelText('Email'),
+        'new@example.com'
+      );
+      await userEvent.click(screen.getByRole('button', { name: /continue/i }));
+      await screen.findByText(/create your password/i);
+      expect(
+        screen.getByTestId('login-set-password-azure')
+      ).toBeInTheDocument();
     });
   });
 

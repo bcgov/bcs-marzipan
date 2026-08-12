@@ -184,7 +184,18 @@ export function Login() {
     setErrorAction(null);
     setSuccessMessage('');
     setVerifiedEmail('');
+    setEmailInput('');
+    setShowLocalForm(false);
   };
+
+  const handleAzureLogin = () => {
+    setIsAzureLoading(true);
+    startAzureLogin();
+  };
+
+  const showMicrosoftPrimary = azureEnabled === true && !showLocalForm;
+  const showEmailForm =
+    azureEnabled === false || (localEnabled && showLocalForm);
 
   // -------------------------------------------------------------------------
   // Step 1: Check email status
@@ -359,7 +370,8 @@ export function Login() {
   const renderNewPasswordForm = (
     title: string,
     description: string,
-    onSubmit: (e: React.FormEvent) => Promise<void>
+    onSubmit: (e: React.FormEvent) => Promise<void>,
+    options?: { showMicrosoftPrimary?: boolean }
   ) => (
     <div
       className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 p-4"
@@ -383,6 +395,33 @@ export function Login() {
         </CardHeader>
 
         <CardContent className="pt-6">
+          {options?.showMicrosoftPrimary && (
+            <div className="mb-6 space-y-4">
+              <Button
+                type="button"
+                className="h-11 w-full font-medium"
+                disabled={isLoading || isAzureLoading}
+                onClick={handleAzureLogin}
+                data-testid="login-set-password-azure"
+              >
+                {isAzureLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Redirecting to Microsoft...
+                  </>
+                ) : (
+                  <>
+                    <MicrosoftLogo />
+                    Sign in with Microsoft
+                  </>
+                )}
+              </Button>
+              <p className="text-center text-xs text-slate-500">
+                or set a password below
+              </p>
+            </div>
+          )}
+
           <form onSubmit={(e) => void onSubmit(e)} className="space-y-5">
             <div className="space-y-2">
               <Label
@@ -489,7 +528,8 @@ export function Login() {
     return renderNewPasswordForm(
       'Create your password',
       `Set a password to activate your account for ${verifiedEmail}`,
-      handleSetPassword
+      handleSetPassword,
+      { showMicrosoftPrimary: azureEnabled === true }
     );
   }
 
@@ -764,15 +804,12 @@ export function Login() {
           )}
 
           {/* Azure IDIR button — primary when available, hidden once local form is open */}
-          {azureEnabled === true && !showLocalForm && (
+          {showMicrosoftPrimary && (
             <Button
               type="button"
               className="h-11 w-full"
               disabled={isLoading || isAzureLoading}
-              onClick={() => {
-                setIsAzureLoading(true);
-                startAzureLogin();
-              }}
+              onClick={handleAzureLogin}
             >
               {isAzureLoading ? (
                 <>
@@ -789,7 +826,7 @@ export function Login() {
           )}
 
           {/* Email-first local login form */}
-          {azureEnabled !== null && localEnabled && showLocalForm && (
+          {azureEnabled !== null && showEmailForm && (
             <form
               onSubmit={(e) => void handleCheckEmail(e)}
               className="space-y-5"
@@ -830,10 +867,7 @@ export function Login() {
                       type="button"
                       variant="outline"
                       className="h-10 w-full border-red-200 bg-white font-medium text-slate-700 hover:bg-red-50"
-                      onClick={() => {
-                        setIsAzureLoading(true);
-                        startAzureLogin();
-                      }}
+                      onClick={handleAzureLogin}
                       disabled={isAzureLoading}
                     >
                       {isAzureLoading ? (
@@ -972,7 +1006,7 @@ export function Login() {
             </div>
           )}
 
-          {error && view === 'email-entry' && !showLocalForm && (
+          {error && view === 'email-entry' && !showEmailForm && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
@@ -980,7 +1014,7 @@ export function Login() {
 
           <div className="relative mt-4 border-t pt-6 text-center">
             {/* ChevronDown toggle — only shown when Azure is primary and local is available */}
-            {azureEnabled === true && localEnabled && !showLocalForm && (
+            {azureEnabled === true && localEnabled && showMicrosoftPrimary && (
               <button
                 type="button"
                 onClick={() => setShowLocalForm(true)}
