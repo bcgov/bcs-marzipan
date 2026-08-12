@@ -29,7 +29,9 @@ import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
 import {
   findUserByEmail,
+  findUserByEmailAnyStatus,
   findUserByExternalId,
+  findUserByExternalIdAnyStatus,
   syncAzureIdentity,
   type AuthDbUser,
 } from './strategies/ad.strategy';
@@ -88,6 +90,31 @@ export class AuthService {
     displayName?: string;
     email?: string;
   }): Promise<AuthResponseDto> {
+    const deactivatedByExternalId = await findUserByExternalIdAnyStatus(
+      this.databaseService.db,
+      claims.externalId
+    );
+    if (
+      deactivatedByExternalId &&
+      this.isAccountDeactivated(deactivatedByExternalId)
+    ) {
+      throw new UnauthorizedException(
+        'This account is deactivated. Please contact your administrator.'
+      );
+    }
+
+    if (claims.email?.trim()) {
+      const deactivatedByEmail = await findUserByEmailAnyStatus(
+        this.databaseService.db,
+        claims.email
+      );
+      if (deactivatedByEmail && this.isAccountDeactivated(deactivatedByEmail)) {
+        throw new UnauthorizedException(
+          'This account is deactivated. Please contact your administrator.'
+        );
+      }
+    }
+
     let dbUser = await findUserByExternalId(
       this.databaseService.db,
       claims.externalId
@@ -103,7 +130,7 @@ export class AuthService {
       );
     }
 
-    if (dbUser.status === 'inactive') {
+    if (this.isAccountDeactivated(dbUser)) {
       throw new UnauthorizedException(
         'This account is deactivated. Please contact your administrator.'
       );
@@ -130,6 +157,13 @@ export class AuthService {
       )) ?? dbUser;
 
     return this.buildAuthResponse(syncedUser);
+  }
+
+  private isAccountDeactivated(user: {
+    isActive?: boolean;
+    status: string;
+  }): boolean {
+    return user.isActive === false || user.status === 'inactive';
   }
 
   private async loginMock(username: string): Promise<AuthResponseDto> {

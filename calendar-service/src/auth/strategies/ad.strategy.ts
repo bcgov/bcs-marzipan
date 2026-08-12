@@ -16,6 +16,10 @@ export interface AuthDbUser {
   status: string;
 }
 
+export interface AuthDbUserWithActive extends AuthDbUser {
+  isActive: boolean;
+}
+
 const authUserSelection = {
   id: users.id,
   roleId: users.roleId,
@@ -23,6 +27,11 @@ const authUserSelection = {
   adDisplayName: users.adDisplayName,
   adEmail: users.adEmail,
   status: users.status,
+};
+
+const authUserWithActiveSelection = {
+  ...authUserSelection,
+  isActive: users.isActive,
 };
 
 export async function findUserByExternalId(
@@ -33,6 +42,19 @@ export async function findUserByExternalId(
     .select(authUserSelection)
     .from(users)
     .where(and(eq(users.externalId, externalId), eq(users.isActive, true)))
+    .limit(1);
+
+  return row ?? null;
+}
+
+export async function findUserByExternalIdAnyStatus(
+  db: Database,
+  externalId: string
+): Promise<AuthDbUserWithActive | null> {
+  const [row] = await db
+    .select(authUserWithActiveSelection)
+    .from(users)
+    .where(eq(users.externalId, externalId))
     .limit(1);
 
   return row ?? null;
@@ -53,6 +75,21 @@ export async function findUserByEmail(
         eq(users.isActive, true)
       )
     )
+    .limit(1);
+
+  return row ?? null;
+}
+
+export async function findUserByEmailAnyStatus(
+  db: Database,
+  email: string
+): Promise<AuthDbUserWithActive | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const [row] = await db
+    .select(authUserWithActiveSelection)
+    .from(users)
+    .where(sql`lower(${users.adEmail}) = ${normalizedEmail}`)
     .limit(1);
 
   return row ?? null;

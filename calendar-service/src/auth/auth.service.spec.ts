@@ -75,7 +75,9 @@ vi.mock('./strategies/local.strategy', () => ({
 
 vi.mock('./strategies/ad.strategy', () => ({
   findUserByEmail: vi.fn(),
+  findUserByEmailAnyStatus: vi.fn(),
   findUserByExternalId: vi.fn(),
+  findUserByExternalIdAnyStatus: vi.fn(),
   syncAzureIdentity: vi.fn(),
 }));
 
@@ -251,6 +253,8 @@ describe('AuthService — local auth methods', () => {
     vi.mocked(updateUserPassword).mockResolvedValue(undefined);
     vi.mocked(updateUserStatus).mockResolvedValue(undefined);
     vi.mocked(updateLastLogin).mockResolvedValue(undefined);
+    vi.mocked(adStrategy.findUserByExternalIdAnyStatus).mockResolvedValue(null);
+    vi.mocked(adStrategy.findUserByEmailAnyStatus).mockResolvedValue(null);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -691,6 +695,25 @@ describe('AuthService — local auth methods', () => {
       expect(adStrategy.findUserByEmail).not.toHaveBeenCalled();
     });
 
+    it('rejects deactivated user matched by externalId (isActive=false)', async () => {
+      vi.mocked(adStrategy.findUserByExternalIdAnyStatus).mockResolvedValue(
+        makeLocalUser({
+          id: 7,
+          isActive: false,
+          status: 'active',
+        })
+      );
+
+      await expect(
+        service.loginWithAzureClaims({
+          externalId: 'azure-deactivated',
+          email: 'deactivated@example.com',
+        })
+      ).rejects.toThrow(/deactivated/i);
+
+      expect(adStrategy.findUserByExternalId).not.toHaveBeenCalled();
+    });
+
     it('rejects when no active account matches externalId or email', async () => {
       vi.mocked(adStrategy.findUserByExternalId).mockResolvedValue(null);
       vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(null);
@@ -704,8 +727,10 @@ describe('AuthService — local auth methods', () => {
     });
 
     it('rejects inactive-status user matched by email', async () => {
-      vi.mocked(adStrategy.findUserByExternalId).mockResolvedValue(null);
-      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(
+      vi.mocked(adStrategy.findUserByExternalIdAnyStatus).mockResolvedValue(
+        null
+      );
+      vi.mocked(adStrategy.findUserByEmailAnyStatus).mockResolvedValue(
         makeLocalUser({
           id: 5,
           status: 'inactive',
@@ -718,6 +743,8 @@ describe('AuthService — local auth methods', () => {
           email: 'inactive@example.com',
         })
       ).rejects.toThrow(/deactivated/i);
+
+      expect(adStrategy.findUserByEmail).not.toHaveBeenCalled();
     });
 
     it('rejects password_reset_required user matched by email', async () => {

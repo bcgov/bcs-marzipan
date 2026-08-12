@@ -185,7 +185,6 @@ export function Login() {
     setSuccessMessage('');
     setVerifiedEmail('');
     setEmailInput('');
-    setShowLocalForm(false);
   };
 
   const handleAzureLogin = () => {
