@@ -2,14 +2,67 @@ name: Artifactory Build
 
 on:
   workflow_dispatch:
+    inputs:
+      artifactory_image_repo:
+        description: 'Artifactory image repo path (e.g. dev, test, prod repo)'
+        required: false
+        type: string
+      target_environment:
+        description: "Target environment (dev, test, prod). When 'prod', retagging existing test images instead of rebuilding."
+        required: false
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+      image_tag:
+        description: >
+          Docker image tag to build or promote.
+          Defaults to the APP_VERSION repository variable when blank.
+          Provide an explicit value to roll back to a previously-built tag
+          or to build with a tag that differs from APP_VERSION.
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      artifactory_image_repo:
+        description: 'Artifactory image repo path (e.g. dev, test, prod repo)'
+        required: false
+        type: string
+      target_environment:
+        description: "Target environment (dev, test, prod). When 'prod', retagging existing test images instead of rebuilding."
+        required: false
+        type: string
+      ref:
+        description: >
+          Git ref (branch, tag, or SHA) to check out before building.
+          When blank, defaults to the ref that triggered the calling workflow.
+          Used by deploy-emerald.yaml to check out the correct source branch
+          when triggered by workflow_dispatch with a branch input.
+        required: false
+        type: string
+        default: ''
+      image_tag:
+        description: >
+          Docker image tag to build or promote.
+          Defaults to the APP_VERSION repository variable when blank.
+          Must match the image_tag resolved by deploy-emerald.yaml so that
+          the built image and the GitOps kustomization update are consistent.
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
 
 env:
   REGISTRY: ${{ vars.ARTIFACTORY_REGISTRY }}
-  ARTIFACTORY_DEV_IMAGE_REPO: ${{ vars.ARTIFACTORY_DEV_IMAGE_REPO }}
-  APP_VERSION: ${{ vars.APP_VERSION }}
+  ARTIFACTORY_IMAGE_REPO: ${{ inputs.artifactory_image_repo || vars.ARTIFACTORY_DEV_IMAGE_REPO }}
+  ARTIFACTORY_TEST_IMAGE_REPO: ${{ vars.ARTIFACTORY_TEST_IMAGE_REPO }}
+  # image_tag input takes precedence over the APP_VERSION repo variable.
+  # This ensures the built/promoted image and the GitOps kustomization update
+  # always reference the same tag — critical for rollback correctness.
+  APP_VERSION: ${{ inputs.image_tag || vars.APP_VERSION }}
 
 jobs:
   artifactory-build:
@@ -18,6 +71,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          # When the ref input is blank (e.g. direct workflow_dispatch run),
+          # actions/checkout defaults to github.sha — identical to before.
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Validate Artifactory configuration
         run: |
@@ -26,13 +83,23 @@ jobs:
             exit 1
           fi
 
-          if [[ -z "$ARTIFACTORY_DEV_IMAGE_REPO" ]]; then
-            echo "::error::Set repo variable ARTIFACTORY_DEV_IMAGE_REPO"
+          if [[ "${{ inputs.target_environment }}" == "prod" && -z "${{ inputs.artifactory_image_repo }}" ]]; then
+            echo "::error::artifactory_image_repo must be explicitly provided when target_environment is 'prod' to avoid accidentally pushing to the dev repo"
+            exit 1
+          fi
+
+          if [[ -z "$ARTIFACTORY_IMAGE_REPO" ]]; then
+            echo "::error::Provide input artifactory_image_repo or set repo variable ARTIFACTORY_DEV_IMAGE_REPO"
+            exit 1
+          fi
+
+          if [[ "${{ inputs.target_environment }}" == "prod" && -z "$ARTIFACTORY_TEST_IMAGE_REPO" ]]; then
+            echo "::error::Set repo variable ARTIFACTORY_TEST_IMAGE_REPO (source for prod promotion)"
             exit 1
           fi
 
           if [[ -z "$APP_VERSION" ]]; then
-            echo "::error::Set repo variable APP_VERSION"
+            echo "::error::Provide input image_tag or set repo variable APP_VERSION"
             exit 1
           fi
 
@@ -43,29 +110,53 @@ jobs:
               -u "${{ secrets.ARTIFACTORY_USERNAME }}" --password-stdin
 
       - name: Build calendar-service
+        if: inputs.target_environment != 'prod'
         run: |
           docker build \
             -f calendar-service/Dockerfile \
-            -t "$REGISTRY/$ARTIFACTORY_DEV_IMAGE_REPO/calendar-service:$APP_VERSION" \
+            -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-service:$APP_VERSION" \
             .
 
       - name: Build calendar-ui
+        if: inputs.target_environment != 'prod'
         run: |
           docker build \
             -f calendar-ui/Dockerfile \
-            -t "$REGISTRY/$ARTIFACTORY_DEV_IMAGE_REPO/calendar-ui:$APP_VERSION" \
+            -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-ui:$APP_VERSION" \
             .
 
+      - name: Promote calendar-service (test -> prod)
+        if: inputs.target_environment == 'prod'
+        run: |
+          docker pull "$REGISTRY/$ARTIFACTORY_TEST_IMAGE_REPO/calendar-service:$APP_VERSION"
+          docker tag \
+            "$REGISTRY/$ARTIFACTORY_TEST_IMAGE_REPO/calendar-service:$APP_VERSION" \
+            "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-service:$APP_VERSION"
+
+      - name: Promote calendar-ui (test -> prod)
+        if: inputs.target_environment == 'prod'
+        run: |
+          docker pull "$REGISTRY/$ARTIFACTORY_TEST_IMAGE_REPO/calendar-ui:$APP_VERSION"
+          docker tag \
+            "$REGISTRY/$ARTIFACTORY_TEST_IMAGE_REPO/calendar-ui:$APP_VERSION" \
+            "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-ui:$APP_VERSION"
+
       - name: Push calendar-service
-        run: docker push "$REGISTRY/$ARTIFACTORY_DEV_IMAGE_REPO/calendar-service:$APP_VERSION"
+        run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-service:$APP_VERSION"
 
       - name: Push calendar-ui
-        run: docker push "$REGISTRY/$ARTIFACTORY_DEV_IMAGE_REPO/calendar-ui:$APP_VERSION"
+        run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-ui:$APP_VERSION"
 
       - name: Summary
         run: |
           echo "## Build Results" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "${{ inputs.target_environment }}" == "prod" ]]; then
+            echo "- **Mode:** Promote (retag from test — no rebuild)" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Source (test) repo:** ${{ env.ARTIFACTORY_TEST_IMAGE_REPO }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- **Mode:** Build and push" >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo "- **Registry:** ${{ env.REGISTRY }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Image repo:** ${{ env.ARTIFACTORY_DEV_IMAGE_REPO }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Target image repo:** ${{ env.ARTIFACTORY_IMAGE_REPO }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag:** ${{ env.APP_VERSION }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Branch:** ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"

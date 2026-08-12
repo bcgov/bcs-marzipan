@@ -1,0 +1,233 @@
+name: Silver — Rollout
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REUSABLE WORKFLOW — called exclusively by deploy-silver.yaml (and any future
+# workflow that needs to re-deploy an already-promoted image without rebuilding).
+#
+# Responsibility: render the Kustomize overlay for the target Silver environment,
+# apply it to the deployment namespace, restart affected Deployments, wait for
+# them to become healthy, verify pod state, and write a Job Summary.
+#
+# Steps performed:
+#   1.  Checkout the requested branch (needed for kustomize overlay files)
+#   2.  Install the oc CLI
+#   3.  Install envsubst
+#   4.  Login to OpenShift
+#   5.  Resolve the correct kustomize overlay directory
+#       dev  → openshift/deploy/overlays/dev
+#       test → openshift/deploy/overlays/test
+#       prod → openshift/deploy/overlays/prod
+#   6.  Render overlay + envsubst, then oc apply
+#   7.  rollout restart → rollout status (calendar-service)
+#   8.  rollout restart → rollout status (calendar-ui)
+#   9.  Verify all relevant pods are running
+#   10. Write GitHub Step Summary
+#
+# Inputs:
+#   github-environment    – GitHub environment name (silver-dev | silver-test | silver-prod)
+#   openshift-environment – Target env key (dev | test | prod)
+#   git-branch            – Branch to check out for kustomize files
+#   service-image         – (optional) Full image ref for envsubst ${SERVICE_IMAGE}
+#   ui-image              – (optional) Full image ref for envsubst ${UI_IMAGE}
+#
+# Required GitHub environment variables:
+#   NAMESPACE        – Deployment namespace for this environment
+#   TOOLS_NAMESPACE  – Tools namespace (used by test/prod overlays)
+#   APP_VERSION      – Image tag applied by kustomize images substitution
+#   APP_NAME         – Application name (forwarded to envsubst)
+#   APP_NAME_PREFIX  – Name prefix (forwarded to envsubst; optional)
+#
+# Required GitHub environment secrets:
+#   OPENSHIFT_SERVER, OPENSHIFT_TOKEN
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_call:
+    inputs:
+      github-environment:
+        description: >
+          GitHub environment that holds the scoped secrets and variables
+          (silver-dev | silver-test | silver-prod).
+        required: true
+        type: string
+      openshift-environment:
+        description: Target OpenShift environment key (dev | test | prod).
+        required: true
+        type: string
+      git-branch:
+        description: Branch to check out (needed for kustomize overlay files).
+        required: true
+        type: string
+      service-image:
+        description: >
+          Full image-registry reference for calendar-service.
+          Exported as $SERVICE_IMAGE for overlays that embed that variable.
+        required: false
+        type: string
+        default: ''
+      ui-image:
+        description: >
+          Full image-registry reference for calendar-ui.
+          Exported as $UI_IMAGE for overlays that embed that variable.
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  rollout:
+    name: Rollout — ${{ inputs.openshift-environment }}
+    runs-on: ubuntu-latest
+    # Bind to the GitHub environment so secrets/vars are scoped correctly.
+    environment: ${{ inputs.github-environment }}
+    timeout-minutes: 20
+
+    steps:
+      # ── 1. Source checkout (kustomize overlay files) ────────────────────────
+      - name: Checkout ${{ inputs.git-branch }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git-branch }}
+
+      # ── 2. OpenShift CLI ────────────────────────────────────────────────────
+      - name: Install oc
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          oc: latest
+
+      # ── 3. envsubst ─────────────────────────────────────────────────────────
+      - name: Install envsubst
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gettext-base
+
+      # ── 4. Cluster login ────────────────────────────────────────────────────
+      - name: Login to OpenShift
+        run: |
+          oc login "${{ secrets.OPENSHIFT_SERVER }}" \
+            --token="${{ secrets.OPENSHIFT_TOKEN }}" \
+            --insecure-skip-tls-verify=true
+
+      # ── 5. Resolve kustomize overlay path ───────────────────────────────────
+      - name: Resolve overlay path
+        id: overlay
+        run: |
+          case "${{ inputs.openshift-environment }}" in
+            dev)  echo "path=dev"     >> "$GITHUB_OUTPUT" ;;
+            test) echo "path=test"    >> "$GITHUB_OUTPUT" ;;
+            prod) echo "path=prod"    >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::Unknown openshift-environment value: ${{ inputs.openshift-environment }}"
+              exit 1
+              ;;
+          esac
+
+      # ── 6. Render overlay + apply ────────────────────────────────────────────
+      # Export every namespace alias used by any Silver overlay so that
+      # envsubst resolves regardless of which variable name the overlay uses.
+      - name: Render and apply kustomize overlay
+        run: |
+          NAMESPACE="${{ vars.NAMESPACE }}"
+          if [[ -z "$NAMESPACE" ]]; then
+            echo "::error::vars.NAMESPACE is not set for GitHub environment '${{ inputs.github-environment }}'"
+            exit 1
+          fi
+
+          # All namespace aliases – keeps every existing overlay working.
+          export NAMESPACE="$NAMESPACE"
+          export DEV_NAMESPACE="$NAMESPACE"
+          export TEST_NAMESPACE="$NAMESPACE"
+          export PROD_NAMESPACE="$NAMESPACE"
+
+          export TOOLS_NAMESPACE="${{ vars.TOOLS_NAMESPACE }}"
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+          export APP_NAME="${{ vars.APP_NAME }}"
+          export APP_NAME_PREFIX="${{ vars.APP_NAME_PREFIX }}"
+          export GIT_BRANCH="${{ inputs.git-branch }}"
+          export GIT_RUN_ID="${{ github.run_id }}"
+
+          # Explicit image references (used by overlays that embed ${SERVICE_IMAGE}).
+          export SERVICE_IMAGE="${{ inputs.service-image }}"
+          export UI_IMAGE="${{ inputs.ui-image }}"
+
+          oc kustomize "openshift/deploy/overlays/${{ steps.overlay.outputs.path }}" \
+            | envsubst \
+            > rendered.yaml
+
+          oc apply -n "$NAMESPACE" -f rendered.yaml
+
+      # ── 7. Rollout restart + status — calendar-service ──────────────────────
+      - name: Rollout restart — calendar-service
+        run: |
+          NAMESPACE="${{ vars.NAMESPACE }}"
+          # Deployment name is always "calendar-service" in the kustomize base.
+          oc -n "$NAMESPACE" rollout restart deployment/calendar-service
+          oc -n "$NAMESPACE" rollout status  deployment/calendar-service --timeout=300s
+
+      # ── 8. Rollout restart + status — calendar-ui ───────────────────────────
+      - name: Rollout restart — calendar-ui
+        run: |
+          NAMESPACE="${{ vars.NAMESPACE }}"
+          oc -n "$NAMESPACE" rollout restart deployment/calendar-ui
+          oc -n "$NAMESPACE" rollout status  deployment/calendar-ui --timeout=300s
+
+      # ── 9. Verify deployment ─────────────────────────────────────────────────
+      # Fail fast if any calendar pod is not in the Running phase after the
+      # rollout was reported as successful (catches crashloopbackoff etc.).
+      - name: Verify deployment health
+        run: |
+          NAMESPACE="${{ vars.NAMESPACE }}"
+
+          echo "=== Deployments ==="
+          oc get deployments -n "$NAMESPACE" \
+            -l "app.kubernetes.io/part-of=corporate-calendar" \
+            -o wide 2>/dev/null \
+            || oc get deployments -n "$NAMESPACE" --no-headers \
+                 | grep -E "^calendar-" || true
+
+          echo ""
+          echo "=== Pods ==="
+          oc get pods -n "$NAMESPACE" \
+            -l "app.kubernetes.io/part-of=corporate-calendar" \
+            --no-headers 2>/dev/null \
+            || oc get pods -n "$NAMESPACE" --no-headers \
+                 | grep -E "^calendar-" || true
+
+          # Collect pods that are NOT Running / Succeeded
+          NOT_READY=$(
+            oc get pods -n "$NAMESPACE" --no-headers 2>/dev/null \
+              | grep -E "^calendar-" \
+              | awk '{print $3}' \
+              | grep -v -E "^(Running|Succeeded|Completed)$" \
+              | wc -l
+          )
+          if [[ "$NOT_READY" -gt 0 ]]; then
+            echo "::error::${NOT_READY} calendar pod(s) are not in a healthy state"
+            exit 1
+          fi
+          echo "All calendar pods healthy."
+
+      # ── 10. Job summary ──────────────────────────────────────────────────────
+      - name: Write deployment summary
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          ICON="✅"
+          [[ "$STATUS" != "success" ]] && ICON="❌"
+
+          {
+            echo "## ${ICON} Silver Deployment — ${{ inputs.openshift-environment }}"
+            echo ""
+            echo "| Field            | Value |"
+            echo "| ---------------- | ----- |"
+            echo "| **Cluster**      | Silver |"
+            echo "| **Environment**  | \`${{ inputs.openshift-environment }}\` |"
+            echo "| **Namespace**    | \`${{ vars.NAMESPACE }}\` |"
+            echo "| **Branch**       | \`${{ inputs.git-branch }}\` |"
+            echo "| **App version**  | \`${{ vars.APP_VERSION }}\` |"
+            echo "| **Status**       | ${STATUS} |"
+            echo "| **Run**          | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |"
+            echo "| **Triggered by** | \`${{ github.actor }}\` via \`${{ github.event_name }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
