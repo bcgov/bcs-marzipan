@@ -7,8 +7,9 @@
  *                             → set-password     (pending account)
  *                             → enter-reset-code → reset-password  (password_reset_required)
  *
- * When Azure AD is also configured the IDIR button is shown as the primary
- * action, with local login accessible via a toggle link.
+ * When Azure AD is also configured the Microsoft button is shown first.
+ * Users with Microsoft-linked accounts can sign in directly without a local
+ * password; local login remains available for password-based accounts.
  */
 import {
   CheckCircle,
@@ -52,6 +53,9 @@ type LoginView =
   | 'enter-reset-code'
   | 'reset-password';
 
+const isBcGovEmail = (input: string) =>
+  input.trim().toLowerCase().endsWith('@gov.bc.ca');
+
 function validatePassword(pwd: string): string | null {
   if (pwd.length < 12) return 'Password must be at least 12 characters';
   if (!/[A-Z]/.test(pwd)) return 'Must contain at least one uppercase letter';
@@ -83,11 +87,10 @@ export function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  // Auth method availability
-  const [azureEnabled, setAzureEnabled] = useState(false);
+  // Auth method availability — null means config is still loading
+  const [azureEnabled, setAzureEnabled] = useState<boolean | null>(null);
   const [localEnabled, setLocalEnabled] = useState(false);
   const [mockEnabled, setMockEnabled] = useState(false);
-  const [configLoaded, setConfigLoaded] = useState(false);
   // When Azure is enabled, the local form is hidden by default and shown on request
   const [showLocalForm, setShowLocalForm] = useState(false);
 
@@ -96,6 +99,7 @@ export function Login() {
 
   // Shared state
   const [error, setError] = useState('');
+  const [errorAction, setErrorAction] = useState<'azure' | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAzureLoading, setIsAzureLoading] = useState(false);
@@ -132,6 +136,14 @@ export function Login() {
         setError(
           'Your Microsoft account is not linked to an active Corporate Calendar user.'
         );
+      } else if (azureError === 'azure_deactivated') {
+        setError(
+          'This account has been deactivated. Please contact your administrator.'
+        );
+      } else if (azureError === 'azure_reset_required') {
+        setError(
+          'A password reset is required before you can sign in with Microsoft. Please use the email/password flow and follow the reset instructions.'
+        );
       } else {
         setError('Microsoft sign-in failed. Please try again.');
       }
@@ -141,16 +153,15 @@ export function Login() {
     void Promise.all([
       getAzureConfig().catch(() => ({ enabled: false })),
       getLocalConfig().catch(() => ({ enabled: false, mockEnabled: false })),
-    ])
-      .then(([azure, local]) => {
-        setAzureEnabled(azure.enabled === true);
-        setLocalEnabled(local.enabled === true);
-        setMockEnabled(local.mockEnabled === true);
-        // If Azure is not the primary method, show the local form immediately
-        if (!azure.enabled && (local.enabled || local.mockEnabled))
-          setShowLocalForm(true);
-      })
-      .finally(() => setConfigLoaded(true));
+    ]).then(([azure, local]) => {
+      const azureOn = azure.enabled === true;
+      setAzureEnabled(azureOn);
+      setLocalEnabled(local.enabled === true);
+      setMockEnabled(local.mockEnabled === true);
+      // If Azure is not the primary method, show the local form immediately
+      if (!azureOn && (local.enabled || local.mockEnabled))
+        setShowLocalForm(true);
+    });
   }, []);
 
   // -------------------------------------------------------------------------
@@ -170,9 +181,20 @@ export function Login() {
     setResetCodeInput('');
     setResetToken('');
     setError('');
+    setErrorAction(null);
     setSuccessMessage('');
     setVerifiedEmail('');
+    setEmailInput('');
   };
+
+  const handleAzureLogin = () => {
+    setIsAzureLoading(true);
+    startAzureLogin();
+  };
+
+  const showMicrosoftPrimary = azureEnabled === true && !showLocalForm;
+  const showEmailForm =
+    azureEnabled === false || (localEnabled && showLocalForm);
 
   // -------------------------------------------------------------------------
   // Step 1: Check email status
@@ -180,6 +202,7 @@ export function Login() {
   const handleCheckEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setErrorAction(null);
     setSuccessMessage('');
     setIsLoading(true);
 
@@ -198,11 +221,23 @@ export function Login() {
           setVerifiedEmail(data.email ?? emailInput.trim());
           setView('enter-reset-code');
           break;
+        case 'sso_recommended':
+          if (azureEnabled) {
+            setError(
+              isBcGovEmail(emailInput)
+                ? 'This account uses Microsoft sign-in (IDIR). Password login is not enabled.'
+                : 'This account uses Microsoft sign-in. Password login is not enabled.'
+            );
+            setErrorAction('azure');
+          } else {
+            setError(
+              'This account cannot sign in with a password. Please contact your administrator.'
+            );
+          }
+          break;
         case 'inactive':
           setError(
-            azureEnabled
-              ? 'This account cannot sign in with a password. If you are BC Government staff, try signing in with IDIR.'
-              : 'This account has been deactivated. Please contact your administrator.'
+            'This account has been deactivated. Please contact your administrator.'
           );
           break;
         default:
@@ -334,7 +369,8 @@ export function Login() {
   const renderNewPasswordForm = (
     title: string,
     description: string,
-    onSubmit: (e: React.FormEvent) => Promise<void>
+    onSubmit: (e: React.FormEvent) => Promise<void>,
+    options?: { showMicrosoftPrimary?: boolean }
   ) => (
     <div
       className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 p-4"
@@ -358,6 +394,33 @@ export function Login() {
         </CardHeader>
 
         <CardContent className="pt-6">
+          {options?.showMicrosoftPrimary && (
+            <div className="mb-6 space-y-4">
+              <Button
+                type="button"
+                className="h-11 w-full font-medium"
+                disabled={isLoading || isAzureLoading}
+                onClick={handleAzureLogin}
+                data-testid="login-set-password-azure"
+              >
+                {isAzureLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Redirecting to Microsoft...
+                  </>
+                ) : (
+                  <>
+                    <MicrosoftLogo />
+                    Sign in with Microsoft
+                  </>
+                )}
+              </Button>
+              <p className="text-center text-xs text-slate-500">
+                or set a password below
+              </p>
+            </div>
+          )}
+
           <form onSubmit={(e) => void onSubmit(e)} className="space-y-5">
             <div className="space-y-2">
               <Label
@@ -411,7 +474,7 @@ export function Login() {
                 <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   id="confirm-password"
-                  type="password"
+                  type={showNewPassword ? 'text' : 'password'}
                   placeholder="Re-enter your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -464,7 +527,8 @@ export function Login() {
     return renderNewPasswordForm(
       'Create your password',
       `Set a password to activate your account for ${verifiedEmail}`,
-      handleSetPassword
+      handleSetPassword,
+      { showMicrosoftPrimary: azureEnabled === true }
     );
   }
 
@@ -497,6 +561,17 @@ export function Login() {
               onSubmit={(e) => void handleVerifyResetCode(e)}
               className="space-y-5"
             >
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                Account: <strong>{verifiedEmail}</strong>
+                <button
+                  type="button"
+                  onClick={resetToEmailEntry}
+                  className="ml-2 text-xs text-amber-600 underline-offset-2 hover:underline"
+                >
+                  Change
+                </button>
+              </div>
+
               <div className="space-y-2">
                 <Label
                   htmlFor="reset-code"
@@ -504,18 +579,24 @@ export function Login() {
                 >
                   Reset Code
                 </Label>
-                <Input
-                  id="reset-code"
-                  type="text"
-                  placeholder="Paste the code from your administrator"
-                  value={resetCodeInput}
-                  onChange={(e) => setResetCodeInput(e.target.value)}
-                  className="h-11"
-                  autoComplete="off"
-                  autoFocus
-                  disabled={isLoading}
-                  required
-                />
+                <div className="relative">
+                  <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="reset-code"
+                    type="text"
+                    placeholder="Paste the code from your administrator"
+                    value={resetCodeInput}
+                    onChange={(e) => setResetCodeInput(e.target.value)}
+                    className="h-11 pl-10 font-mono"
+                    autoComplete="off"
+                    autoFocus
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
+                <p className="text-xs text-slate-500">
+                  Contact your administrator if you don&apos;t have a reset code
+                </p>
               </div>
 
               {error && (
@@ -566,7 +647,129 @@ export function Login() {
   }
 
   // -------------------------------------------------------------------------
-  // Render: main login card (email-entry + password-entry)
+  // Render: password-entry view (separate card for better UX)
+  // -------------------------------------------------------------------------
+  if (view === 'password-entry') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 p-4">
+        <Card className="w-full max-w-md border-0 shadow-xl">
+          <CardHeader className="space-y-4 pb-2 text-center">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="bg-primary/10 flex h-16 w-16 items-center justify-center rounded-full">
+                <Lock className="text-primary h-8 w-8" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-bold text-slate-800">
+                  Welcome back
+                </CardTitle>
+                <CardDescription className="mt-2 text-slate-500">
+                  Enter your password to sign in
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="pt-6">
+            <form
+              onSubmit={(e) => void handlePasswordSubmit(e)}
+              className="space-y-5"
+            >
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                Signing in as: <strong>{verifiedEmail}</strong>
+                <button
+                  type="button"
+                  onClick={resetToEmailEntry}
+                  className="ml-2 text-xs text-blue-600 underline-offset-2 hover:underline"
+                >
+                  Change
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="password"
+                  className="text-sm font-medium text-slate-700"
+                >
+                  Password
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 pr-10 pl-10"
+                    autoComplete="current-password"
+                    autoFocus
+                    disabled={isLoading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    aria-label={
+                      showPassword ? 'Hide password' : 'Show password'
+                    }
+                    aria-pressed={showPassword}
+                    data-testid="login-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="h-11 w-full font-medium"
+                data-testid="login-submit-password"
+                disabled={isLoading || !password}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+
+              {azureEnabled && (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLocalForm(false);
+                      resetToEmailEntry();
+                    }}
+                    className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-800"
+                  >
+                    Use Microsoft instead
+                  </button>
+                </div>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Render: main login card (email-entry)
   // -------------------------------------------------------------------------
   return (
     <div
@@ -591,16 +794,21 @@ export function Login() {
         </CardHeader>
 
         <CardContent className="space-y-4 pt-6">
+          {/* Loading skeleton while auth config is being fetched */}
+          {azureEnabled === null && (
+            <div className="animate-pulse" aria-hidden="true">
+              <div className="mb-3 h-11 rounded bg-slate-200" />
+              <div className="mx-auto h-4 w-1/2 rounded bg-slate-200" />
+            </div>
+          )}
+
           {/* Azure IDIR button — primary when available, hidden once local form is open */}
-          {configLoaded && azureEnabled && !showLocalForm && (
+          {showMicrosoftPrimary && (
             <Button
               type="button"
               className="h-11 w-full"
               disabled={isLoading || isAzureLoading}
-              onClick={() => {
-                setIsAzureLoading(true);
-                startAzureLogin();
-              }}
+              onClick={handleAzureLogin}
             >
               {isAzureLoading ? (
                 <>
@@ -616,177 +824,103 @@ export function Login() {
             </Button>
           )}
 
-          {/* Local auth toggle link — removed; chevron on footer divider handles this */}
-
           {/* Email-first local login form */}
-          {configLoaded && localEnabled && showLocalForm && (
-            <>
-              {/* Step: email entry */}
-              {view === 'email-entry' && (
-                <form
-                  onSubmit={(e) => void handleCheckEmail(e)}
-                  className="space-y-5"
+          {azureEnabled !== null && showEmailForm && (
+            <form
+              onSubmit={(e) => void handleCheckEmail(e)}
+              className="space-y-5"
+            >
+              <div className="space-y-2">
+                <Label
+                  htmlFor="email"
+                  className="text-sm font-medium text-slate-700"
                 >
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="email"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      Email
-                    </Label>
-                    <div className="relative">
-                      <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        value={emailInput}
-                        onChange={(e) => setEmailInput(e.target.value)}
-                        className="h-11 pl-10"
-                        autoComplete="email"
-                        autoFocus={!azureEnabled}
-                        disabled={isLoading}
-                        required
-                      />
-                    </div>
-                  </div>
+                  Email
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    className="h-11 pl-10"
+                    autoComplete="email"
+                    autoFocus={!azureEnabled}
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
+              </div>
 
-                  {error && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                      {error}
-                    </div>
-                  )}
-
-                  <Button
-                    type="submit"
-                    className="h-11 w-full font-medium"
-                    data-testid="login-continue-email"
-                    disabled={isLoading || !emailInput.trim()}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Checking...
-                      </>
-                    ) : (
-                      'Continue'
-                    )}
-                  </Button>
-
-                  {azureEnabled && (
-                    <div className="text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowLocalForm(false);
-                          setError('');
-                        }}
-                        className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-800"
-                      >
-                        Use Microsoft instead
-                      </button>
-                    </div>
-                  )}
-                </form>
-              )}
-
-              {/* Step: password entry */}
-              {view === 'password-entry' && (
-                <form
-                  onSubmit={(e) => void handlePasswordSubmit(e)}
-                  className="space-y-5"
+              {error && (
+                <div
+                  role="alert"
+                  aria-live="polite"
+                  className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
                 >
-                  <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                    {verifiedEmail}
-                    <button
+                  <p>{error}</p>
+                  {errorAction === 'azure' && azureEnabled === true && (
+                    <Button
                       type="button"
-                      onClick={resetToEmailEntry}
-                      className="ml-2 text-xs text-slate-400 underline-offset-2 hover:underline"
+                      variant="outline"
+                      className="h-10 w-full border-red-200 bg-white font-medium text-slate-700 hover:bg-red-50"
+                      onClick={handleAzureLogin}
+                      disabled={isAzureLoading}
                     >
-                      Change
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="password"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      Password
-                    </Label>
-                    <div className="relative">
-                      <Lock className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <Input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="h-11 pr-10 pl-10"
-                        autoComplete="current-password"
-                        autoFocus
-                        disabled={isLoading}
-                        required
-                      />
-                      <button
-                        type="button"
-                        data-testid="login-password-toggle"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
-                        tabIndex={-1}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {error && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                      {error}
-                    </div>
+                      {isAzureLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Redirecting...
+                        </>
+                      ) : (
+                        <>
+                          <MicrosoftLogo />
+                          Sign in with Microsoft
+                        </>
+                      )}
+                    </Button>
                   )}
-
-                  <Button
-                    type="submit"
-                    className="h-11 w-full font-medium"
-                    data-testid="login-submit-password"
-                    disabled={isLoading || !password}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Signing in...
-                      </>
-                    ) : (
-                      'Sign In'
-                    )}
-                  </Button>
-
-                  {azureEnabled && (
-                    <div className="text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowLocalForm(false);
-                          resetToEmailEntry();
-                        }}
-                        className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-800"
-                      >
-                        Use Microsoft instead
-                      </button>
-                    </div>
-                  )}
-                </form>
+                </div>
               )}
-            </>
+
+              <Button
+                type="submit"
+                className="h-11 w-full font-medium"
+                data-testid="login-continue-email"
+                disabled={isLoading || !emailInput.trim()}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  'Continue'
+                )}
+              </Button>
+
+              {azureEnabled && (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLocalForm(false);
+                      setError('');
+                      setErrorAction(null);
+                    }}
+                    className="text-sm text-slate-500 underline underline-offset-2 hover:text-slate-800"
+                  >
+                    Use Microsoft instead
+                  </button>
+                </div>
+              )}
+            </form>
           )}
 
           {/* Mock mode (development only) — simple username form */}
-          {configLoaded && mockEnabled && (
+          {azureEnabled !== null && mockEnabled && (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -856,11 +990,14 @@ export function Login() {
           )}
 
           {/* Neither strategy is available yet */}
-          {configLoaded && !azureEnabled && !localEnabled && !mockEnabled && (
-            <p className="text-center text-sm text-slate-500">
-              No login method is configured. Contact your administrator.
-            </p>
-          )}
+          {azureEnabled !== null &&
+            !azureEnabled &&
+            !localEnabled &&
+            !mockEnabled && (
+              <p className="text-center text-sm text-slate-500">
+                No login method is configured. Contact your administrator.
+              </p>
+            )}
 
           {successMessage && view === 'email-entry' && (
             <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
@@ -868,7 +1005,7 @@ export function Login() {
             </div>
           )}
 
-          {error && view === 'email-entry' && !showLocalForm && (
+          {error && view === 'email-entry' && !showEmailForm && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
@@ -876,7 +1013,7 @@ export function Login() {
 
           <div className="relative mt-4 border-t pt-6 text-center">
             {/* ChevronDown toggle — only shown when Azure is primary and local is available */}
-            {configLoaded && azureEnabled && localEnabled && !showLocalForm && (
+            {azureEnabled === true && localEnabled && showMicrosoftPrimary && (
               <button
                 type="button"
                 onClick={() => setShowLocalForm(true)}

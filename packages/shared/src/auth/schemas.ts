@@ -21,10 +21,23 @@ export const checkEmailBodySchema = z.object({
 
 export type CheckEmailBody = z.infer<typeof checkEmailBodySchema>;
 
+/**
+ * POST /auth/check-email status contract.
+ *
+ * Anti-enumeration: unknown addresses return `inactive` (same as deactivated).
+ * UI must not suggest Microsoft for generic `inactive` — only for `sso_recommended`.
+ *
+ * - `active` — password login
+ * - `pending` — set initial password (includes active + directLoginEnabled, no hash)
+ * - `requires_reset` — admin reset code flow
+ * - `sso_recommended` — known active SSO-only user (no password, directLogin off)
+ * - `inactive` — deactivated, unknown email, or not eligible for local login
+ */
 export type CheckEmailStatus =
   | 'active'
   | 'pending'
   | 'requires_reset'
+  | 'sso_recommended'
   | 'inactive';
 
 export interface CheckEmailResponse {
