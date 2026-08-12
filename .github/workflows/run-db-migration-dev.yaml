@@ -64,7 +64,7 @@ jobs:
             -n ${DEV_NAMESPACE} \
             --ignore-not-found
 
-          envsubst < openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml \
+          envsubst '${DEV_NAMESPACE} ${APP_VERSION}' < openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml \
             | oc apply -n ${DEV_NAMESPACE} -f -
 
           oc wait --for=condition=complete job/calendar-db-migrate \
@@ -86,7 +86,7 @@ jobs:
             -n ${DEV_NAMESPACE} \
             --ignore-not-found
 
-          envsubst < openshift/deploy/base/database/migration/calendar-db-seed-job.yaml \
+          envsubst '${DEV_NAMESPACE} ${APP_VERSION}' < openshift/deploy/base/database/migration/calendar-db-seed-job.yaml \
             | oc apply -n ${DEV_NAMESPACE} -f -
 
           oc wait --for=condition=complete job/calendar-db-seed \

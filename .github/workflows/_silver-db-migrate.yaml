@@ -1,0 +1,241 @@
+name: Silver — DB Migrate
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REUSABLE WORKFLOW — called by deploy-silver.yaml (before the application
+# rollout) and available as a standalone call for targeted migration runs.
+#
+# Responsibility: build the calendar-db-migrate image via OpenShift BuildConfig,
+# promote it to the target namespace, delete any stale Job, apply the migration
+# Job manifest, and wait for it to reach Completed state. Optionally repeats
+# the same lifecycle for the seed Job.
+#
+# Steps performed:
+#   1.  Checkout the requested branch
+#   2.  Install oc CLI
+#   3.  Install envsubst
+#   4.  Login to OpenShift
+#   5.  Build calendar-db-migrate image (skipped if rebuild-image = false)
+#   6.  Promote migration image: tools namespace → target namespace
+#   7.  Delete existing calendar-db-migrate Job (idempotent clean slate)
+#   8.  Apply migration Job manifest (envsubst substitution)
+#   9.  Wait for calendar-db-migrate Job to complete (timeout: 5 min)
+#   10. Build calendar-db-seed image (only when run-seeds = true)
+#   11. Promote seed image: tools → target namespace
+#   12. Delete + apply + wait for calendar-db-seed Job
+#   13. Write GitHub Step Summary
+#
+# Inputs:
+#   github-environment    – GitHub env name (silver-dev | silver-test | silver-prod)
+#   openshift-environment – Target env key (dev | test | prod)
+#   git-branch            – Branch to check out for the binary build and manifests
+#   rebuild-image         – Rebuild the migration image (default: true)
+#   run-seeds             – Also build and run the seed Job (default: false)
+#
+# Required GitHub environment variables:
+#   TOOLS_NAMESPACE  – Namespace that owns the BuildConfigs
+#   NAMESPACE        – Deployment namespace for this environment
+#   APP_VERSION      – Image tag produced by the build
+#
+# Required GitHub environment secrets:
+#   OPENSHIFT_SERVER  – OpenShift API server URL
+#   OPENSHIFT_TOKEN   – Service-account token
+#
+# NOTE: Emerald database migrations do NOT require this workflow. The Emerald
+# migration Job carries argocd.argoproj.io/hook: Sync annotations so ArgoCD
+# runs it automatically on every sync as part of the standard deploy flow
+# managed by deploy-emerald.yaml → _emerald-argocd-sync.yaml.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_call:
+    inputs:
+      github-environment:
+        description: >
+          GitHub environment name that holds scoped secrets and variables
+          (silver-dev | silver-test | silver-prod).
+        required: true
+        type: string
+      openshift-environment:
+        description: Target OpenShift environment key (dev | test | prod).
+        required: true
+        type: string
+      git-branch:
+        description: >
+          Branch to check out. Used both as binary build source and to resolve
+          the migration Job manifest paths.
+        required: true
+        type: string
+      rebuild-image:
+        description: >
+          Build a new migration image via OpenShift BuildConfig.
+          Set to false to reuse the image that is already tagged in the tools
+          namespace (e.g. when re-running a failed migration without changing code).
+        required: false
+        type: boolean
+        default: true
+      run-seeds:
+        description: >
+          Also build and run the calendar-db-seed Job after migrations complete.
+          Only safe to run in non-production environments.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  db-migrate:
+    name: DB Migrate — ${{ inputs.openshift-environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.github-environment }}
+    timeout-minutes: 30
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout ${{ inputs.git-branch }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git-branch }}
+
+      # ── 2. OpenShift CLI ─────────────────────────────────────────────────────
+      - name: Install oc
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          oc: latest
+
+      # ── 3. envsubst ──────────────────────────────────────────────────────────
+      - name: Install envsubst
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gettext-base
+
+      # ── 4. Cluster login ─────────────────────────────────────────────────────
+      - name: Login to OpenShift
+        run: |
+          oc login "${{ secrets.OPENSHIFT_SERVER }}" \
+            --token="${{ secrets.OPENSHIFT_TOKEN }}" \
+            --insecure-skip-tls-verify=true
+
+      # ── 5. Build migration image ─────────────────────────────────────────────
+      # Binary build: runner's checked-out source is uploaded as build context.
+      - name: Build calendar-db-migrate image
+        if: ${{ inputs.rebuild-image }}
+        run: |
+          oc -n "${{ vars.TOOLS_NAMESPACE }}" start-build calendar-db-migrate-build \
+            --from-dir=. \
+            --follow \
+            --commit="$(git rev-parse HEAD)"
+
+      # ── 6. Promote migration image tools → target namespace ──────────────────
+      - name: Promote migration image to ${{ inputs.openshift-environment }} namespace
+        run: |
+          oc tag \
+            "${{ vars.TOOLS_NAMESPACE }}/calendar-db-migrate:${{ vars.APP_VERSION }}" \
+            "${{ vars.NAMESPACE }}/calendar-db-migrate:${{ vars.APP_VERSION }}"
+
+      # ── 7-9. Run migration Job ────────────────────────────────────────────────
+      - name: Delete existing migration Job
+        run: |
+          oc -n "${{ vars.NAMESPACE }}" delete job calendar-db-migrate \
+            --ignore-not-found=true
+
+      - name: Apply migration Job manifest
+        run: |
+          # Export all namespace aliases so every manifest variant resolves.
+          export NAMESPACE="${{ vars.NAMESPACE }}"
+          export DEV_NAMESPACE="${{ vars.NAMESPACE }}"
+          export TEST_NAMESPACE="${{ vars.NAMESPACE }}"
+          export PROD_NAMESPACE="${{ vars.NAMESPACE }}"
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+
+          envsubst \
+            < openshift/deploy/base/database/migration/calendar-db-migrate-job.yaml \
+            | oc apply -n "${{ vars.NAMESPACE }}" -f -
+
+      - name: Wait for migration Job to complete
+        run: |
+          oc wait \
+            --for=condition=complete \
+            job/calendar-db-migrate \
+            -n "${{ vars.NAMESPACE }}" \
+            --timeout=300s
+
+          # Stream logs from the completed pod for audit purposes.
+          oc logs \
+            -l job-name=calendar-db-migrate \
+            -n "${{ vars.NAMESPACE }}" \
+            --tail=100 || true
+
+      # ── 10-12. Run seed Job (optional) ───────────────────────────────────────
+      - name: Build calendar-db-seed image
+        if: ${{ inputs.run-seeds }}
+        run: |
+          oc -n "${{ vars.TOOLS_NAMESPACE }}" start-build calendar-db-seed-build \
+            --from-dir=. \
+            --follow \
+            --commit="$(git rev-parse HEAD)"
+
+      - name: Promote seed image to ${{ inputs.openshift-environment }} namespace
+        if: ${{ inputs.run-seeds }}
+        run: |
+          oc tag \
+            "${{ vars.TOOLS_NAMESPACE }}/calendar-db-seed:${{ vars.APP_VERSION }}" \
+            "${{ vars.NAMESPACE }}/calendar-db-seed:${{ vars.APP_VERSION }}"
+
+      - name: Delete existing seed Job
+        if: ${{ inputs.run-seeds }}
+        run: |
+          oc -n "${{ vars.NAMESPACE }}" delete job calendar-db-seed \
+            --ignore-not-found=true
+
+      - name: Apply seed Job manifest
+        if: ${{ inputs.run-seeds }}
+        run: |
+          export NAMESPACE="${{ vars.NAMESPACE }}"
+          export DEV_NAMESPACE="${{ vars.NAMESPACE }}"
+          export TEST_NAMESPACE="${{ vars.NAMESPACE }}"
+          export STAGING_NAMESPACE="${{ vars.NAMESPACE }}"
+          export PROD_NAMESPACE="${{ vars.NAMESPACE }}"
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+
+          envsubst \
+            < openshift/deploy/base/database/migration/calendar-db-seed-job.yaml \
+            | oc apply -n "${{ vars.NAMESPACE }}" -f -
+
+      - name: Wait for seed Job to complete
+        if: ${{ inputs.run-seeds }}
+        run: |
+          oc wait \
+            --for=condition=complete \
+            job/calendar-db-seed \
+            -n "${{ vars.NAMESPACE }}" \
+            --timeout=300s
+
+          oc logs \
+            -l job-name=calendar-db-seed \
+            -n "${{ vars.NAMESPACE }}" \
+            --tail=100 || true
+
+      # ── 13. Step summary ──────────────────────────────────────────────────────
+      - name: Write migration summary
+        if: always()
+        run: |
+          JOB_STATUS="${{ job.status }}"
+          ICON="✅"
+          [[ "$JOB_STATUS" != "success" ]] && ICON="❌"
+
+          {
+            echo "## ${ICON} Silver DB Migration — \`${{ inputs.openshift-environment }}\`"
+            echo ""
+            echo "| Field              | Value |"
+            echo "| ------------------ | ----- |"
+            echo "| **Cluster**        | Silver |"
+            echo "| **Environment**    | \`${{ inputs.openshift-environment }}\` |"
+            echo "| **Namespace**      | \`${{ vars.NAMESPACE }}\` |"
+            echo "| **App version**    | \`${{ vars.APP_VERSION }}\` |"
+            echo "| **Branch**         | \`${{ inputs.git-branch }}\` |"
+            echo "| **Seeds run**      | ${{ inputs.run-seeds }} |"
+            echo "| **Status**         | ${JOB_STATUS} |"
+            echo "| **Run**            | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |"
+          } >> "$GITHUB_STEP_SUMMARY"
