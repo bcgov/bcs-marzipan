@@ -2,7 +2,10 @@ import { and, eq, sql } from 'drizzle-orm';
 
 import { users, userSettings } from '@corpcal/database/schema';
 
-import type { Database } from '../../database/database.provider';
+import type {
+  Database,
+  DrizzleDbExecutor,
+} from '../../database/database.provider';
 import type { AuthDbUser } from './ad.strategy';
 
 export interface LocalAuthDbUser extends AuthDbUser {
@@ -87,7 +90,7 @@ export async function updateUserPassword(
  * Update only the status of a user (e.g. when admin triggers a reset).
  */
 export async function updateUserStatus(
-  db: Database,
+  db: DrizzleDbExecutor,
   userId: number,
   status: string
 ): Promise<void> {

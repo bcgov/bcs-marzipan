@@ -240,6 +240,11 @@ describe('AuthService — local auth methods', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     localMockDb = makeChain();
+    localMockDb.transaction = vi
+      .fn()
+      .mockImplementation(
+        async (fn: (tx: typeof localMockDb) => Promise<void>) => fn(localMockDb)
+      );
 
     vi.mocked(bcrypt.hash).mockResolvedValue('hashed-value' as never);
     vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
@@ -695,7 +700,7 @@ describe('AuthService — local auth methods', () => {
           externalId: 'azure-456',
           email: 'missing@example.com',
         })
-      ).rejects.toThrow(/No active local account found/i);
+      ).rejects.toThrow(/No Corporate Calendar account found/i);
     });
 
     it('rejects inactive-status user matched by email', async () => {

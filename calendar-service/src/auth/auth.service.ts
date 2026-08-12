@@ -99,7 +99,7 @@ export class AuthService {
 
     if (!dbUser) {
       throw new UnauthorizedException(
-        'No active local account found for this Azure AD user.'
+        'No Corporate Calendar account found for this Microsoft identity.'
       );
     }
 
@@ -116,11 +116,12 @@ export class AuthService {
     }
 
     // Admin-created users start as pending; promote on first successful SSO.
-    if (dbUser.status !== 'active') {
-      await updateUserStatus(this.databaseService.db, dbUser.id, 'active');
-    }
-
-    await syncAzureIdentity(this.databaseService.db, dbUser.id, claims);
+    await this.databaseService.db.transaction(async (tx) => {
+      if (dbUser.status !== 'active') {
+        await updateUserStatus(tx, dbUser.id, 'active');
+      }
+      await syncAzureIdentity(tx, dbUser.id, claims);
+    });
 
     const syncedUser =
       (await findUserByExternalId(
