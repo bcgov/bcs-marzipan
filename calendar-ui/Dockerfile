@@ -2,7 +2,6 @@ FROM artifacts.developer.gov.bc.ca/docker-remote/node:24-alpine AS build
 WORKDIR /app
 
 ARG APP_VERSION=dev
-ENV VITE_APP_VERSION=$APP_VERSION
 
 COPY package*.json ./
 COPY tsconfig.base.json ./
@@ -11,11 +10,12 @@ COPY calendar-ui/ ./calendar-ui/
 
 RUN npm ci --ignore-scripts
 
+ENV VITE_APP_VERSION=$APP_VERSION
+
 RUN NODE_OPTIONS=--max-old-space-size=4096 \
     npm run build --workspace=packages/database && \
     npm run build --workspace=packages/shared && \
     npm run build --workspace=calendar-ui
-
 
 # Runtime: OpenShift-friendly, non-root nginx
 FROM artifacts.developer.gov.bc.ca/docker-remote/nginxinc/nginx-unprivileged:alpine
