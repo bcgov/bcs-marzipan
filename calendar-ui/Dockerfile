@@ -1,6 +1,9 @@
 FROM artifacts.developer.gov.bc.ca/docker-remote/node:24-alpine AS build
 WORKDIR /app
 
+ARG APP_VERSION=dev
+ENV VITE_APP_VERSION=$APP_VERSION
+
 COPY package*.json ./
 COPY tsconfig.base.json ./
 COPY packages/ ./packages/
