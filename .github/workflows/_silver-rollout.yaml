@@ -78,18 +78,18 @@ permissions:
 
 jobs:
   rollout:
-    name: Rollout — ${{ inputs.openshift-environment }}
+    name: Rollout — ${{ inputs['openshift-environment'] }}
     runs-on: ubuntu-latest
     # Bind to the GitHub environment so secrets/vars are scoped correctly.
-    environment: ${{ inputs.github-environment }}
+    environment: ${{ inputs['github-environment'] }}
     timeout-minutes: 20
 
     steps:
       # ── 1. Source checkout (kustomize overlay files) ────────────────────────
-      - name: Checkout ${{ inputs.git-branch }}
+      - name: Checkout ${{ inputs['git-branch'] }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git-branch }}
+          ref: ${{ inputs['git-branch'] }}
 
       # ── 2. OpenShift CLI ────────────────────────────────────────────────────
       - name: Install oc
@@ -114,12 +114,12 @@ jobs:
       - name: Resolve overlay path
         id: overlay
         run: |
-          case "${{ inputs.openshift-environment }}" in
+          case "${{ inputs['openshift-environment'] }}" in
             dev)  echo "path=dev"     >> "$GITHUB_OUTPUT" ;;
             test) echo "path=test"    >> "$GITHUB_OUTPUT" ;;
             prod) echo "path=prod"    >> "$GITHUB_OUTPUT" ;;
             *)
-              echo "::error::Unknown openshift-environment value: ${{ inputs.openshift-environment }}"
+              echo "::error::Unknown openshift-environment value: ${{ inputs['openshift-environment'] }}"
               exit 1
               ;;
           esac
@@ -131,7 +131,7 @@ jobs:
         run: |
           NAMESPACE="${{ vars.NAMESPACE }}"
           if [[ -z "$NAMESPACE" ]]; then
-            echo "::error::vars.NAMESPACE is not set for GitHub environment '${{ inputs.github-environment }}'"
+            echo "::error::vars.NAMESPACE is not set for GitHub environment '${{ inputs['github-environment'] }}'"
             exit 1
           fi
 
@@ -145,12 +145,12 @@ jobs:
           export APP_VERSION="${{ vars.APP_VERSION }}"
           export APP_NAME="${{ vars.APP_NAME }}"
           export APP_NAME_PREFIX="${{ vars.APP_NAME_PREFIX }}"
-          export GIT_BRANCH="${{ inputs.git-branch }}"
+          export GIT_BRANCH="${{ inputs['git-branch'] }}"
           export GIT_RUN_ID="${{ github.run_id }}"
 
           # Explicit image references (used by overlays that embed ${SERVICE_IMAGE}).
-          export SERVICE_IMAGE="${{ inputs.service-image }}"
-          export UI_IMAGE="${{ inputs.ui-image }}"
+          export SERVICE_IMAGE="${{ inputs['service-image'] }}"
+          export UI_IMAGE="${{ inputs['ui-image'] }}"
 
           oc kustomize "openshift/deploy/overlays/${{ steps.overlay.outputs.path }}" \
             | envsubst \
@@ -218,14 +218,14 @@ jobs:
           [[ "$STATUS" != "success" ]] && ICON="❌"
 
           {
-            echo "## ${ICON} Silver Deployment — ${{ inputs.openshift-environment }}"
+            echo "## ${ICON} Silver Deployment — ${{ inputs['openshift-environment'] }}"
             echo ""
             echo "| Field            | Value |"
             echo "| ---------------- | ----- |"
             echo "| **Cluster**      | Silver |"
-            echo "| **Environment**  | \`${{ inputs.openshift-environment }}\` |"
+            echo "| **Environment**  | \`${{ inputs['openshift-environment'] }}\` |"
             echo "| **Namespace**    | \`${{ vars.NAMESPACE }}\` |"
-            echo "| **Branch**       | \`${{ inputs.git-branch }}\` |"
+            echo "| **Branch**       | \`${{ inputs['git-branch'] }}\` |"
             echo "| **App version**  | \`${{ vars.APP_VERSION }}\` |"
             echo "| **Status**       | ${STATUS} |"
             echo "| **Run**          | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |"

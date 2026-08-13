@@ -42,7 +42,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git-branch }}
+          ref: ${{ inputs['git-branch'] }}
 
       - name: Install oc CLI
         run: |

@@ -161,7 +161,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" ]]; then
             REBUILD="true"
           else
-            RAW_REBUILD="${{ inputs.rebuild-image }}"
+            RAW_REBUILD="${{ inputs['rebuild-image'] }}"
             # Boolean inputs arrive as the string "true" or "false".
             # An unset workflow_call boolean input arrives as "false".
             # Default to "true" only when the value is genuinely absent.
@@ -177,15 +177,15 @@ jobs:
 
   # ── 2. Build (or promote) Docker images via OpenShift BuildConfigs ─────────
   build:
-    name: Build Image — ${{ needs.resolve-env.outputs.environment }}
+    name: Build Image — ${{ needs['resolve-env'].outputs.environment }}
     needs: resolve-env
     uses: ./.github/workflows/_silver-build.yaml
     with:
-      github-environment: ${{ needs.resolve-env.outputs.github-environment }}
-      openshift-environment: ${{ needs.resolve-env.outputs.environment }}
-      git-branch: ${{ needs.resolve-env.outputs.branch }}
+      github-environment: ${{ needs['resolve-env'].outputs['github-environment'] }}
+      openshift-environment: ${{ needs['resolve-env'].outputs.environment }}
+      git-branch: ${{ needs['resolve-env'].outputs.branch }}
       # Convert the string output back to a boolean for the reusable workflow.
-      rebuild-image: ${{ needs.resolve-env.outputs.rebuild-image == 'true' }}
+      rebuild-image: ${{ needs['resolve-env'].outputs['rebuild-image'] == 'true' }}
     secrets: inherit
 
   # ── 3. Run DB migrations before rollout (optional) ─────────────────────────
@@ -194,23 +194,23 @@ jobs:
   # Push triggers never run migrations automatically — enable via the
   # run-migrations input on workflow_dispatch / workflow_call.
   db-migrate:
-    name: DB Migrate — ${{ needs.resolve-env.outputs.environment }}
+    name: DB Migrate — ${{ needs['resolve-env'].outputs.environment }}
     needs: [resolve-env, build]
-    if: ${{ inputs.run-migrations == true }}
+    if: ${{ inputs['run-migrations'] == true }}
     uses: ./.github/workflows/_silver-db-migrate.yaml
     with:
-      github-environment: ${{ needs.resolve-env.outputs.github-environment }}
-      openshift-environment: ${{ needs.resolve-env.outputs.environment }}
-      git-branch: ${{ needs.resolve-env.outputs.branch }}
-      rebuild-image: ${{ needs.resolve-env.outputs.rebuild-image == 'true' }}
-      run-seeds: ${{ inputs.run-seeds == true }}
+      github-environment: ${{ needs['resolve-env'].outputs['github-environment'] }}
+      openshift-environment: ${{ needs['resolve-env'].outputs.environment }}
+      git-branch: ${{ needs['resolve-env'].outputs.branch }}
+      rebuild-image: ${{ needs['resolve-env'].outputs['rebuild-image'] == 'true' }}
+      run-seeds: ${{ inputs['run-seeds'] == true }}
     secrets: inherit
 
   # ── 4. Deploy and verify ───────────────────────────────────────────────────
   # Depends on db-migrate, but db-migrate may be skipped when run-migrations
   # is false. The if: always() guard keeps rollout running in both cases.
   rollout:
-    name: Rollout — ${{ needs.resolve-env.outputs.environment }}
+    name: Rollout — ${{ needs['resolve-env'].outputs.environment }}
     needs: [resolve-env, build, db-migrate]
     if: |
       always() &&
@@ -218,9 +218,9 @@ jobs:
       (needs.db-migrate.result == 'success' || needs.db-migrate.result == 'skipped')
     uses: ./.github/workflows/_silver-rollout.yaml
     with:
-      github-environment: ${{ needs.resolve-env.outputs.github-environment }}
-      openshift-environment: ${{ needs.resolve-env.outputs.environment }}
-      git-branch: ${{ needs.resolve-env.outputs.branch }}
-      service-image: ${{ needs.build.outputs.service-image }}
-      ui-image: ${{ needs.build.outputs.ui-image }}
+      github-environment: ${{ needs['resolve-env'].outputs['github-environment'] }}
+      openshift-environment: ${{ needs['resolve-env'].outputs.environment }}
+      git-branch: ${{ needs['resolve-env'].outputs.branch }}
+      service-image: ${{ needs.build.outputs['service-image'] }}
+      ui-image: ${{ needs.build.outputs['ui-image'] }}
     secrets: inherit

@@ -86,17 +86,17 @@ permissions:
 
 jobs:
   db-migrate:
-    name: DB Migrate — ${{ inputs.openshift-environment }}
+    name: DB Migrate — ${{ inputs['openshift-environment'] }}
     runs-on: ubuntu-latest
-    environment: ${{ inputs.github-environment }}
+    environment: ${{ inputs['github-environment'] }}
     timeout-minutes: 30
 
     steps:
       # ── 1. Checkout ─────────────────────────────────────────────────────────
-      - name: Checkout ${{ inputs.git-branch }}
+      - name: Checkout ${{ inputs['git-branch'] }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git-branch }}
+          ref: ${{ inputs['git-branch'] }}
 
       # ── 2. OpenShift CLI ─────────────────────────────────────────────────────
       - name: Install oc
@@ -120,7 +120,7 @@ jobs:
       # ── 5. Build migration image ─────────────────────────────────────────────
       # Binary build: runner's checked-out source is uploaded as build context.
       - name: Build calendar-db-migrate image
-        if: ${{ inputs.rebuild-image }}
+        if: ${{ inputs['rebuild-image'] }}
         run: |
           oc -n "${{ vars.TOOLS_NAMESPACE }}" start-build calendar-db-migrate-build \
             --from-dir=. \
@@ -128,7 +128,7 @@ jobs:
             --commit="$(git rev-parse HEAD)"
 
       # ── 6. Promote migration image tools → target namespace ──────────────────
-      - name: Promote migration image to ${{ inputs.openshift-environment }} namespace
+      - name: Promote migration image to ${{ inputs['openshift-environment'] }} namespace
         run: |
           oc tag \
             "${{ vars.TOOLS_NAMESPACE }}/calendar-db-migrate:${{ vars.APP_VERSION }}" \
@@ -169,28 +169,28 @@ jobs:
 
       # ── 10-12. Run seed Job (optional) ───────────────────────────────────────
       - name: Build calendar-db-seed image
-        if: ${{ inputs.run-seeds }}
+        if: ${{ inputs['run-seeds'] }}
         run: |
           oc -n "${{ vars.TOOLS_NAMESPACE }}" start-build calendar-db-seed-build \
             --from-dir=. \
             --follow \
             --commit="$(git rev-parse HEAD)"
 
-      - name: Promote seed image to ${{ inputs.openshift-environment }} namespace
-        if: ${{ inputs.run-seeds }}
+      - name: Promote seed image to ${{ inputs['openshift-environment'] }} namespace
+        if: ${{ inputs['run-seeds'] }}
         run: |
           oc tag \
             "${{ vars.TOOLS_NAMESPACE }}/calendar-db-seed:${{ vars.APP_VERSION }}" \
             "${{ vars.NAMESPACE }}/calendar-db-seed:${{ vars.APP_VERSION }}"
 
       - name: Delete existing seed Job
-        if: ${{ inputs.run-seeds }}
+        if: ${{ inputs['run-seeds'] }}
         run: |
           oc -n "${{ vars.NAMESPACE }}" delete job calendar-db-seed \
             --ignore-not-found=true
 
       - name: Apply seed Job manifest
-        if: ${{ inputs.run-seeds }}
+        if: ${{ inputs['run-seeds'] }}
         run: |
           export NAMESPACE="${{ vars.NAMESPACE }}"
           export DEV_NAMESPACE="${{ vars.NAMESPACE }}"
@@ -203,7 +203,7 @@ jobs:
             | oc apply -n "${{ vars.NAMESPACE }}" -f -
 
       - name: Wait for seed Job to complete
-        if: ${{ inputs.run-seeds }}
+        if: ${{ inputs['run-seeds'] }}
         run: |
           oc wait \
             --for=condition=complete \
@@ -225,16 +225,16 @@ jobs:
           [[ "$JOB_STATUS" != "success" ]] && ICON="❌"
 
           {
-            echo "## ${ICON} Silver DB Migration — \`${{ inputs.openshift-environment }}\`"
+            echo "## ${ICON} Silver DB Migration — \`${{ inputs['openshift-environment'] }}\`"
             echo ""
             echo "| Field              | Value |"
             echo "| ------------------ | ----- |"
             echo "| **Cluster**        | Silver |"
-            echo "| **Environment**    | \`${{ inputs.openshift-environment }}\` |"
+            echo "| **Environment**    | \`${{ inputs['openshift-environment'] }}\` |"
             echo "| **Namespace**      | \`${{ vars.NAMESPACE }}\` |"
             echo "| **App version**    | \`${{ vars.APP_VERSION }}\` |"
-            echo "| **Branch**         | \`${{ inputs.git-branch }}\` |"
-            echo "| **Seeds run**      | ${{ inputs.run-seeds }} |"
+            echo "| **Branch**         | \`${{ inputs['git-branch'] }}\` |"
+            echo "| **Seeds run**      | ${{ inputs['run-seeds'] }} |"
             echo "| **Status**         | ${JOB_STATUS} |"
             echo "| **Run**            | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |"
           } >> "$GITHUB_STEP_SUMMARY"

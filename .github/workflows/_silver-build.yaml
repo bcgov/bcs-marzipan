@@ -71,22 +71,22 @@ on:
         description: >
           Full image-registry reference for the promoted calendar-service image.
           Format: image-registry.openshift-image-registry.svc:5000/<ns>/calendar-service:<tag>
-        value: ${{ jobs.build.outputs.service-image }}
+        value: ${{ jobs.build.outputs['service-image'] }}
       ui-image:
         description: >
           Full image-registry reference for the promoted calendar-ui image.
           Format: image-registry.openshift-image-registry.svc:5000/<ns>/calendar-ui:<tag>
-        value: ${{ jobs.build.outputs.ui-image }}
+        value: ${{ jobs.build.outputs['ui-image'] }}
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build / Promote — ${{ inputs.openshift-environment }}
+    name: Build / Promote — ${{ inputs['openshift-environment'] }}
     runs-on: ubuntu-latest
     # Bind to the GitHub environment so secrets/vars are scoped correctly.
-    environment: ${{ inputs.github-environment }}
+    environment: ${{ inputs['github-environment'] }}
     timeout-minutes: 45
 
     outputs:
@@ -95,10 +95,10 @@ jobs:
 
     steps:
       # ── 1. Source checkout ──────────────────────────────────────────────────
-      - name: Checkout ${{ inputs.git-branch }}
+      - name: Checkout ${{ inputs['git-branch'] }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.git-branch }}
+          ref: ${{ inputs['git-branch'] }}
 
       # ── 2. OpenShift CLI ────────────────────────────────────────────────────
       - name: Install oc
@@ -136,7 +136,7 @@ jobs:
       # runner's git checkout is used as build context regardless of the
       # BuildConfig's git source reference.
       - name: Build calendar-service
-        if: ${{ inputs.rebuild-image }}
+        if: ${{ inputs['rebuild-image'] }}
         run: |
           oc -n "${{ vars.TOOLS_NAMESPACE }}" start-build calendar-service-build \
             --from-dir=. \
@@ -145,7 +145,7 @@ jobs:
 
       # ── 7. Build calendar-ui ────────────────────────────────────────────────
       - name: Build calendar-ui
-        if: ${{ inputs.rebuild-image }}
+        if: ${{ inputs['rebuild-image'] }}
         run: |
           oc -n "${{ vars.TOOLS_NAMESPACE }}" start-build calendar-ui-build \
             --from-dir=. \
@@ -155,7 +155,7 @@ jobs:
       # ── 8. Promote ImageStreamTags tools → target namespace ─────────────────
       # `oc tag` copies the image manifest reference; ArgoCD / OpenShift image
       # triggers in the target namespace then see the new digest on the next pull.
-      - name: Promote images to ${{ inputs.openshift-environment }} namespace
+      - name: Promote images to ${{ inputs['openshift-environment'] }} namespace
         id: promote
         run: |
           TAG="${{ vars.APP_VERSION }}"
