@@ -90,6 +90,6 @@ jobs:
           : "${JWT_SECRET:?JWT_SECRET must be set as a GitHub Actions secret before deploying}"
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${TEST_NAMESPACE}
-          oc kustomize openshift/deploy/overlays/staging | envsubst | oc apply -f -
+          oc kustomize openshift/deploy/overlays/test | envsubst | oc apply -f -
           oc rollout restart deployment/calendar-service
           oc rollout restart deployment/calendar-ui

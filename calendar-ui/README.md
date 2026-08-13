@@ -87,7 +87,7 @@ The login page shows a **Sign in with Microsoft** button automatically when the 
    | ---------------------- | ------------------------------------------------- |
    | Local (backend direct) | `http://localhost:3001/api/auth/azure/callback`   |
    | Local (via UI proxy)   | `http://localhost:3000/api/auth/azure/callback`   |
-   | Dev / staging          | `https://<your-env-host>/api/auth/azure/callback` |
+   | Dev / Test             | `https://<your-env-host>/api/auth/azure/callback` |
 
 3. Start both services (`npm start` from the repo root). The **Sign in with Microsoft** button appears on the login page once `GET /api/auth/azure/config` responds `{ "enabled": true }`.
 

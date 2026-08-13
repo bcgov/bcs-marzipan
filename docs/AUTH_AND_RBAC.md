@@ -106,7 +106,7 @@ the backend redirects to `/` after successful sign-in.
 For OpenShift deployments, treat `AUTH_COOKIE_DOMAIN` and
 `POST_LOGIN_REDIRECT_URL` as environment-specific values. They should be
 supplied at deploy time rather than hardcoded into the base manifests so dev,
-staging, and prod can each use their own public UI hostname.
+test, and prod can each use their own public UI hostname.
 
 ### Token content and policy changes
 

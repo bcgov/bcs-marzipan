@@ -25,6 +25,7 @@ Inject `AppLogger` into your service or controller constructor:
 
 ```typescript
 import { Injectable } from '@nestjs/common';
+
 import { AppLogger } from '../common/logger/logger.service';
 
 @Injectable()
@@ -135,7 +136,7 @@ this.logger.verbose('Detailed execution trace', 'MyService');
 
 ## Environment Behavior
 
-- **Development/Staging**: All log levels are enabled
+- **Development/Test**: All log levels are enabled
 - **Production**: Only `log()`, `warn()`, and `error()` are enabled. `debug()` and `verbose()` are automatically disabled.
 
 The environment is determined by the `NODE_ENV` environment variable.

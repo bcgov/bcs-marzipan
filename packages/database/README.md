@@ -131,7 +131,7 @@ See [Production Migration Process](#production-migration-process) for detailed s
 3. **Review the generated SQL** and hand-edit if needed (renames, backfills, `DROP`s, extension-dependent DDL).
    See [Production Migration Process](#production-migration-process) for the checklist.
 
-4. **Apply on staging** and verify the application:
+4. **Apply on test** and verify the application:
 
    ```bash
    npm run db:migrate --workspace=packages/database
@@ -176,7 +176,7 @@ That creates an empty migration wired into journal/snapshots correctly; add your
 
 ### Prerequisites
 
-- Schema changes have been tested in development and staging
+- Schema changes have been tested in development and test
 - Database backup is available
 - Deployment window scheduled (if downtime is required)
 
@@ -219,9 +219,9 @@ Drizzle output is a starting point. Use the checklist below; hand-edit the migra
 
 Simple additive changes (nullable column with default, new table, new nullable FK) are usually safe to apply as generated. Data steps (`UPDATE`, `INSERT … SELECT`) in an edited migration are fine; snapshots track DDL end state, not row data.
 
-#### 3. Test on staging
+#### 3. Test on Test namespace
 
-Apply the migration to a staging environment first:
+Apply the migration to a Test environment first:
 
 ```bash
 npm run db:migrate --workspace=packages/database
@@ -294,7 +294,7 @@ When adding an extension, also update `scripts/templates/postgresql_extensions.s
 
 - **db:push**: Directly applies the current schema to the database. Use this in development when you want to sync your schema without tracking migration history. This is the recommended approach for local development.
 
-- **db:migrate**: Applies incremental migration files in order. Use this in production or staging environments where you need to preserve data and track migration history.
+- **db:migrate**: Applies incremental migration files in order. Use this in production or test environments where you need to preserve data and track migration history.
 
 ## File Structure
 

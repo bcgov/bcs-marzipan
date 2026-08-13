@@ -195,7 +195,6 @@ jobs:
           export NAMESPACE="${{ vars.NAMESPACE }}"
           export DEV_NAMESPACE="${{ vars.NAMESPACE }}"
           export TEST_NAMESPACE="${{ vars.NAMESPACE }}"
-          export STAGING_NAMESPACE="${{ vars.NAMESPACE }}"
           export PROD_NAMESPACE="${{ vars.NAMESPACE }}"
           export APP_VERSION="${{ vars.APP_VERSION }}"
 
