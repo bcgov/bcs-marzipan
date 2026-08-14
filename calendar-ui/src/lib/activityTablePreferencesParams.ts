@@ -285,7 +285,8 @@ function parseFromStorage(
             )
           : [];
         const pdf = rawFilter.pitchDateFilter as
-          { kind: string; dateRange?: Record<string, unknown> } | undefined;
+          | { kind: string; dateRange?: Record<string, unknown> }
+          | undefined;
         let pitchDateFilter: ActivityFilterState['pitchDateFilter'] = {
           kind: 'any',
         };
