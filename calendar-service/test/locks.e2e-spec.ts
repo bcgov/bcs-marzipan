@@ -59,7 +59,8 @@ describe('LocksController (API integration)', () => {
       .get('/activities')
       .expect(200);
     const data = listRes.body?.data as
-      Array<{ id: number; activityStatus?: string }> | undefined;
+      | Array<{ id: number; activityStatus?: string }>
+      | undefined;
     if (!Array.isArray(data) || data.length === 0) {
       throw new Error(
         'locks e2e: need at least one activity (seed DB / GET /activities)'

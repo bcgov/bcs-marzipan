@@ -57,9 +57,9 @@ export const ACTIVITY_FILTER_STATE_KEYS = [
 
 /** Keys of {@link ActivityFilterState} whose values are multi-select arrays. */
 export type ActivityFilterArrayStateKey = {
-  [
-    K in keyof ActivityFilterState
-  ]: ActivityFilterState[K] extends readonly unknown[] ? K : never;
+  [K in keyof ActivityFilterState]: ActivityFilterState[K] extends readonly unknown[]
+    ? K
+    : never;
 }[keyof ActivityFilterState];
 
 const NON_ARRAY_ACTIVITY_FILTER_STATE_KEYS = new Set<keyof ActivityFilterState>(
@@ -169,7 +169,8 @@ export function coerceActivityFilterStateFromRecord(
 
   let pitchDateFilter: PitchDateFilter = { kind: 'any' };
   const pdf = raw.pitchDateFilter as
-    { kind?: string; dateRange?: Record<string, unknown> } | undefined;
+    | { kind?: string; dateRange?: Record<string, unknown> }
+    | undefined;
   if (pdf && typeof pdf === 'object') {
     if (pdf.kind === 'not_scheduled') {
       pitchDateFilter = { kind: 'not_scheduled' };

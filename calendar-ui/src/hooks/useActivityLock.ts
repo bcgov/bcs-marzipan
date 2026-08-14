@@ -13,10 +13,17 @@ import {
 } from '../api/locksApi';
 
 export type LockState =
-  'idle' | 'checking' | 'acquiring' | 'owned' | 'locked-by-other';
+  | 'idle'
+  | 'checking'
+  | 'acquiring'
+  | 'owned'
+  | 'locked-by-other';
 
 export type LockAcquireFailureReason =
-  'locked-by-other' | 'time-lockout' | 'other' | null;
+  | 'locked-by-other'
+  | 'time-lockout'
+  | 'other'
+  | null;
 
 type UseActivityLockResult = {
   lock: LockInfo | null;
