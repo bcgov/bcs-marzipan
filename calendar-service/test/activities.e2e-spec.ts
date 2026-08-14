@@ -81,7 +81,8 @@ describe('ActivitiesController (API integration)', () => {
       .get('/activities')
       .expect(200);
     const data = listRes.body?.data as
-      Array<{ id: number; activityStatus?: string }> | undefined;
+      | Array<{ id: number; activityStatus?: string }>
+      | undefined;
     if (Array.isArray(data) && data.length > 0) {
       const patchable = data.find(
         (a) =>

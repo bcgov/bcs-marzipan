@@ -520,16 +520,18 @@ function OverviewCell({
       )}
       {row.activityCategories.length > 0 && (
         <BadgeGroup
-          items={row.activityCategories.map((cat, index): BadgeGroupItem => ({
-            key: `${cat}:${index}`,
-            label: cat,
-            variant: 'outline',
-            className: cn(
-              'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
-              categoriesChanged && 'border-transparent',
-              categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
-            ),
-          }))}
+          items={row.activityCategories.map(
+            (cat, index): BadgeGroupItem => ({
+              key: `${cat}:${index}`,
+              label: cat,
+              variant: 'outline',
+              className: cn(
+                'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
+                categoriesChanged && 'border-transparent',
+                categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
+              ),
+            })
+          )}
           maxLines={1}
           lineHeight={28}
           badgeVariant="outline"
@@ -703,10 +705,12 @@ function SchedulingCell({
     rowHasAnyChangedPath(row, ['premierRequestedId', 'premierRequested']);
   const representativeBadgeItems = useMemo(
     () =>
-      row.activityRepresentatives.map((name, index): BadgeGroupItem => ({
-        key: `${name}:${index}`,
-        label: formatRepresentativeBadgeText(name),
-      })),
+      row.activityRepresentatives.map(
+        (name, index): BadgeGroupItem => ({
+          key: `${name}:${index}`,
+          label: formatRepresentativeBadgeText(name),
+        })
+      ),
     [row.activityRepresentatives]
   );
   const badgeGroupItems = useMemo((): BadgeGroupItem[] => {
@@ -1341,7 +1345,8 @@ export function ActivityTable({
   const onPaginationChangeStable = useCallback(
     (
       updaterOrValue:
-        ((prev: typeof pagination) => typeof pagination) | typeof pagination
+        | ((prev: typeof pagination) => typeof pagination)
+        | typeof pagination
     ) => {
       const prev = pagination;
       const next =
