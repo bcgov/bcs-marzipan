@@ -114,7 +114,7 @@ function AppSidebarContent() {
         <SidebarMenu>
           <SidebarPinButton />
         </SidebarMenu>
-        <div className="text-muted-foreground px-2 pb-1 text-left text-xs group-data-[collapsible=icon]:hidden">
+        <div className="text-muted-foreground h-5 shrink-0 overflow-hidden px-2 pb-1 text-left text-xs whitespace-nowrap group-data-[collapsible=icon]:invisible">
           Version {APP_VERSION}
         </div>
       </SidebarFooter>
