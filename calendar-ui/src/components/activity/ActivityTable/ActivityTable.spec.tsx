@@ -140,6 +140,7 @@ vi.mock('@/hooks/useSavedFilters', () => ({
 
 vi.mock('@/hooks/useLookups', () => ({
   useCategories: () => ({ data: [] }),
+  usePitchRequiredStatuses: () => ({ data: [] }),
   useTranslationLanguages: () => ({ data: [], isLoading: false }),
   useUsers: () => ({ data: [] }),
 }));
@@ -151,6 +152,10 @@ vi.mock('@/hooks/useCalendar', () => ({
     isError: false,
     isFetching: false,
     refetch: vi.fn(),
+  }),
+  useBulkUpdateActivities: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
   }),
   useSyncActivityFlags: () => ({
     mutate: vi.fn(),
