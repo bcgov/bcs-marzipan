@@ -66,7 +66,24 @@ import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-cont
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { CopyableText } from '@/components/ui/copyable-text';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Tooltip,
   TooltipContent,
@@ -78,7 +95,11 @@ import { useActivityListScrollRestore } from '@/hooks/useActivityListScrollResto
 import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
-import { useActivityList, useSyncActivityFlags } from '@/hooks/useCalendar';
+import {
+  useActivityList,
+  useBulkUpdateActivities,
+  useSyncActivityFlags,
+} from '@/hooks/useCalendar';
 import {
   useLiveActivityRowHighlights,
   useLiveActivitySyncContext,
@@ -90,6 +111,7 @@ import {
 } from '@/hooks/useLookAheadSectionRows';
 import {
   useCategories,
+  usePitchRequiredStatuses,
   useTranslationLanguages,
   useUsers,
 } from '@/hooks/useLookups';
@@ -259,6 +281,9 @@ function toSentenceCase(s: string): string {
 function OverviewCell({
   row,
   canViewPitchStatus,
+  canSelect,
+  isSelected,
+  onSelectedChange,
   canFlag,
   isFavourite,
   onFlagSync,
@@ -267,6 +292,9 @@ function OverviewCell({
 }: {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
+  canSelect: boolean;
+  isSelected: boolean;
+  onSelectedChange: (selected: boolean) => void;
   canFlag?: boolean;
   isFavourite?: boolean;
   onFlagSync?: (
@@ -308,6 +336,18 @@ function OverviewCell({
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-xs font-semibold text-slate-900">
+        {canSelect && (
+          <span
+            data-no-row-nav
+            className="-m-1 inline-flex size-6 items-center justify-center"
+          >
+            <Checkbox
+              aria-label={`Select activity ${displayIdText}`}
+              checked={isSelected}
+              onCheckedChange={(checked) => onSelectedChange(checked === true)}
+            />
+          </span>
+        )}
         <span
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
@@ -956,6 +996,9 @@ export function ActivityTable({
   const location = useLocation();
   const isActivityListRoute = location.pathname === '/';
   const { user, hasPermission } = useAuth();
+  const canBulkUpdateActivities = hasPermission(
+    PERMISSIONS.ACTIVITIES.BULK_UPDATE
+  );
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
@@ -1018,8 +1061,15 @@ export function ActivityTable({
   const searchKeyword = preferences.searchKeyword;
   const filterState = preferences.filterState;
   const [pageIndex, setPageIndex] = useState(0);
+  const [selectedActivityIds, setSelectedActivityIds] = useState<Set<number>>(
+    new Set()
+  );
+  const [bulkDialog, setBulkDialog] = useState<'review' | 'pitch' | null>(null);
+  const [selectedPitchStatusId, setSelectedPitchStatusId] = useState('');
+  const bulkUpdateActivitiesMutation = useBulkUpdateActivities();
 
   const { data: categoriesForFilter = [] } = useCategories();
+  const { data: pitchRequiredStatuses = [] } = usePitchRequiredStatuses();
   const {
     data: translationLanguagesForFilter = [],
     isLoading: isTranslationLanguagesLoading,
@@ -1033,6 +1083,15 @@ export function ActivityTable({
           label: c.displayName ?? c.name,
         })),
     [categoriesForFilter]
+  );
+
+  const bulkPitchStatusOptions = useMemo(
+    () =>
+      pitchRequiredStatuses.map((status) => ({
+        value: String(status.id),
+        label: status.displayName,
+      })),
+    [pitchRequiredStatuses]
   );
 
   const translationLanguageOptionsForFilter = useMemo(
@@ -1352,6 +1411,75 @@ export function ActivityTable({
     [sortedData]
   );
 
+  useEffect(() => {
+    const visibleIds = new Set(sortedActivityIds);
+    setSelectedActivityIds((current) => {
+      const next = new Set(
+        [...current].filter((activityId) => visibleIds.has(activityId))
+      );
+      return next.size === current.size ? current : next;
+    });
+  }, [sortedActivityIds]);
+
+  const selectedActivityCount = selectedActivityIds.size;
+  const bulkActionPending = bulkUpdateActivitiesMutation.isPending;
+
+  const toggleActivitySelected = useCallback(
+    (activityId: number, selected: boolean) => {
+      setSelectedActivityIds((current) => {
+        const next = new Set(current);
+        if (selected) {
+          next.add(activityId);
+        } else {
+          next.delete(activityId);
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const handleBulkReview = useCallback(async () => {
+    const activityIds = [...selectedActivityIds];
+    try {
+      await bulkUpdateActivitiesMutation.mutateAsync({
+        activityIds,
+        markAsReviewed: true,
+      });
+      setSelectedActivityIds(new Set());
+      setBulkDialog(null);
+      toast.success(
+        `${activityIds.length} activit${activityIds.length === 1 ? 'y was' : 'ies were'} marked reviewed.`
+      );
+    } catch (error) {
+      toast.error(getFriendlyErrorMessage(error));
+    }
+  }, [selectedActivityIds, bulkUpdateActivitiesMutation]);
+
+  const handleBulkSetPitchStatus = useCallback(async () => {
+    const pitchRequiredStatusId = Number(selectedPitchStatusId);
+    if (!Number.isFinite(pitchRequiredStatusId)) return;
+    const activityIds = [...selectedActivityIds];
+    try {
+      await bulkUpdateActivitiesMutation.mutateAsync({
+        activityIds,
+        pitchRequiredStatusId,
+      });
+      setSelectedActivityIds(new Set());
+      setBulkDialog(null);
+      setSelectedPitchStatusId('');
+      toast.success(
+        `Pitch status updated for ${activityIds.length} activit${activityIds.length === 1 ? 'y' : 'ies'}.`
+      );
+    } catch (error) {
+      toast.error(getFriendlyErrorMessage(error));
+    }
+  }, [
+    selectedActivityIds,
+    selectedPitchStatusId,
+    bulkUpdateActivitiesMutation,
+  ]);
+
   const { openActivityWithScroll } = useActivityListScrollRestore({
     enabled: isActivityListRoute,
     location,
@@ -1442,6 +1570,11 @@ export function ActivityTable({
           <OverviewCell
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+            canSelect={canBulkUpdateActivities}
+            isSelected={selectedActivityIds.has(row.original.id)}
+            onSelectedChange={(selected) =>
+              toggleActivitySelected(row.original.id, selected)
+            }
             canFlag={canFlag}
             showReviewHighlights={showReviewHighlights}
             isFavourite={watchlistActivityIdSet.has(row.original.id)}
@@ -1576,6 +1709,9 @@ export function ActivityTable({
       canFlag,
       watchlistActivityIdSet,
       syncFlagsMutation,
+      selectedActivityIds,
+      toggleActivitySelected,
+      canBulkUpdateActivities,
     ]
   );
 
@@ -1704,6 +1840,45 @@ export function ActivityTable({
     />
   );
 
+  const bulkActions = (
+    <div className="border-border flex flex-wrap items-center gap-2 border-b pb-4">
+      <span className="text-muted-foreground text-sm">
+        {selectedActivityCount === 0
+          ? 'Select activities to use bulk actions.'
+          : `${selectedActivityCount} activit${selectedActivityCount === 1 ? 'y' : 'ies'} selected`}
+      </span>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={selectedActivityCount === 0 || bulkActionPending}
+        onClick={() => setBulkDialog('review')}
+      >
+        Mark reviewed
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={selectedActivityCount === 0 || bulkActionPending}
+        onClick={() => setBulkDialog('pitch')}
+      >
+        Set pitch status
+      </Button>
+      {selectedActivityCount > 0 && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={bulkActionPending}
+          onClick={() => setSelectedActivityIds(new Set())}
+        >
+          Clear selection
+        </Button>
+      )}
+    </div>
+  );
+
   // Loading state
   if (loading) {
     return (
@@ -1786,6 +1961,7 @@ export function ActivityTable({
     <TooltipProvider delayDuration={400}>
       <div className="min-w-0 space-y-4">
         {filterBar}
+        {canBulkUpdateActivities && bulkActions}
         <ActivityTableLayout
           scrollRef={tableScrollRef}
           count={sortedData.length}
@@ -1945,6 +2121,68 @@ export function ActivityTable({
             scrollContainerRef={tableScrollRef}
           />
         )}
+
+        <Dialog
+          open={bulkDialog !== null}
+          onOpenChange={(open) => !open && setBulkDialog(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {bulkDialog === 'review'
+                  ? 'Mark selected activities reviewed?'
+                  : 'Set pitch status'}
+              </DialogTitle>
+              <DialogDescription>
+                This updates {selectedActivityCount} selected activit
+                {selectedActivityCount === 1 ? 'y' : 'ies'}.
+              </DialogDescription>
+            </DialogHeader>
+            {bulkDialog === 'pitch' && (
+              <Select
+                value={selectedPitchStatusId}
+                onValueChange={setSelectedPitchStatusId}
+              >
+                <SelectTrigger aria-label="Pitch status">
+                  <SelectValue placeholder="Choose a pitch status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bulkPitchStatusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={bulkActionPending}
+                onClick={() => setBulkDialog(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={
+                  bulkActionPending ||
+                  (bulkDialog === 'pitch' && !selectedPitchStatusId)
+                }
+                onClick={() => {
+                  if (bulkDialog === 'review') {
+                    void handleBulkReview();
+                  } else {
+                    void handleBulkSetPitchStatus();
+                  }
+                }}
+              >
+                {bulkActionPending ? 'Updating...' : 'Confirm'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );

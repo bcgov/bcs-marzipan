@@ -482,6 +482,27 @@ export const updateActivityRequestSchema = createBaseSchema
   );
 
 /**
+ * Administrative bulk action request. This intentionally permits only the
+ * operations available from the activity list bulk-actions UI.
+ */
+export const bulkUpdateActivitiesRequestSchema = z
+  .object({
+    activityIds: z.array(z.number().int().positive()).min(1).max(100),
+    markAsReviewed: z.literal(true).optional(),
+    pitchRequiredStatusId: z.number().int().positive().optional(),
+  })
+  .refine(
+    (data) =>
+      (data.markAsReviewed === true) !==
+      (data.pitchRequiredStatusId !== undefined),
+    {
+      message: 'Provide exactly one bulk activity operation.',
+      path: ['markAsReviewed'],
+      ...zodConstraintIssueParams(),
+    }
+  );
+
+/**
  * Schema for soft deleting an activity
  * Requires a reason to be provided for audit and admin review purposes
  */
@@ -552,6 +573,9 @@ export const hardDeleteRequestBodySchema = hardDeleteRequestSchema.default({});
  */
 export type CreateActivityRequest = z.infer<typeof createActivityRequestSchema>;
 export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
+export type BulkUpdateActivitiesRequest = z.infer<
+  typeof bulkUpdateActivitiesRequestSchema
+>;
 export type SoftDeleteRequest = z.infer<typeof softDeleteRequestSchema>;
 export type RequestDeleteRequest = z.infer<typeof requestDeleteRequestSchema>;
 export type RestoreRequest = z.infer<typeof restoreRequestSchema>;

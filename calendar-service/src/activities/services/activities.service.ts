@@ -1966,6 +1966,45 @@ export class ActivitiesService {
   }
 
   /**
+   * Applies an admin-authorized list bulk action without taking or releasing
+   * individual edit locks. The public route is restricted to Admin/System Admin.
+   */
+  async bulkUpdate(
+    dto: import('@corpcal/shared/schemas').BulkUpdateActivitiesRequest,
+    userId: number,
+    context: {
+      roleName?: string;
+      permissions?: string[];
+      teamIds?: number[];
+    }
+  ): Promise<ActivityResponse[]> {
+    const requiredOperationPermission =
+      dto.markAsReviewed === true
+        ? PERMISSIONS.ACTIVITIES.REVIEW
+        : PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT;
+    if (!context.permissions?.includes(requiredOperationPermission)) {
+      throw new ForbiddenException(
+        `You do not have permission to perform this bulk activity operation.`
+      );
+    }
+
+    const updateDto: UpdateActivityRequest =
+      dto.markAsReviewed === true
+        ? { markAsReviewed: true }
+        : { pitchRequiredStatusId: dto.pitchRequiredStatusId! };
+
+    const results: ActivityResponse[] = [];
+    for (const activityId of dto.activityIds) {
+      results.push(
+        await this.update(activityId, updateDto, userId, context, {
+          bypassEditLock: true,
+        })
+      );
+    }
+    return results;
+  }
+
+  /**
    * Update an activity
    */
   async update(
@@ -1976,7 +2015,8 @@ export class ActivitiesService {
       roleName?: string;
       permissions?: string[];
       teamIds?: number[];
-    }
+    },
+    options?: { bypassEditLock?: boolean }
   ): Promise<ActivityResponse> {
     // Resolve existence first so missing IDs return 404 instead of lock-required 423.
     const [oldActivity] = await this.databaseService.db
@@ -1989,38 +2029,39 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
-    const existingLock = await this.locksService.getLockForEntity(
-      'activity',
-      id
-    );
-    if (!existingLock) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.LOCKED,
-          message:
-            'You must acquire an edit lock before updating this activity.',
-          locked: true,
-          lockRequired: true,
-        },
-        HttpStatus.LOCKED
-      );
-    }
-    if (existingLock.userId !== userId) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.LOCKED,
-          message: 'This activity is being edited by another user.',
-          locked: true,
-          lockedBy: {
-            userId: existingLock.userId,
-            username: existingLock.username,
-            acquiredAt: existingLock.acquiredAt,
-            expiresAt: existingLock.expiresAt,
-            idleExpiresAt: existingLock.idleExpiresAt,
+    const existingLock = options?.bypassEditLock
+      ? null
+      : await this.locksService.getLockForEntity('activity', id);
+    if (!options?.bypassEditLock) {
+      if (!existingLock) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.LOCKED,
+            message:
+              'You must acquire an edit lock before updating this activity.',
+            locked: true,
+            lockRequired: true,
           },
-        },
-        HttpStatus.LOCKED
-      );
+          HttpStatus.LOCKED
+        );
+      }
+      if (existingLock.userId !== userId) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.LOCKED,
+            message: 'This activity is being edited by another user.',
+            locked: true,
+            lockedBy: {
+              userId: existingLock.userId,
+              username: existingLock.username,
+              acquiredAt: existingLock.acquiredAt,
+              expiresAt: existingLock.expiresAt,
+              idleExpiresAt: existingLock.idleExpiresAt,
+            },
+          },
+          HttpStatus.LOCKED
+        );
+      }
     }
 
     // Reject update when activity is delete_requested or deleted

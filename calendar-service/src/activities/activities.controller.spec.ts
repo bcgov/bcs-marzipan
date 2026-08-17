@@ -61,6 +61,7 @@ describe('ActivitiesController', () => {
     findAll: vi.fn(),
     findOne: vi.fn(),
     update: vi.fn(),
+    bulkUpdate: vi.fn(),
     remove: vi.fn(),
     softDelete: vi.fn(),
     requestDelete: vi.fn(),
@@ -347,6 +348,27 @@ describe('ActivitiesController', () => {
       expect(mockActivitiesService.update).toHaveBeenCalledWith(
         999,
         updateDto,
+        mockUser.id,
+        {
+          roleName: mockUser.roleName,
+          permissions: mockUser.permissions,
+          teamIds: mockUser.teamIds,
+        }
+      );
+    });
+  });
+
+  describe('bulkUpdate', () => {
+    it('forwards an allowed bulk operation with the requesting user context', async () => {
+      const body = { activityIds: [1, 2], markAsReviewed: true as const };
+      const updatedActivities = [mockActivityResponse];
+      mockActivitiesService.bulkUpdate.mockResolvedValue(updatedActivities);
+
+      const result = await controller.bulkUpdate(body, mockUser);
+
+      expect(result).toEqual({ success: true, data: updatedActivities });
+      expect(mockActivitiesService.bulkUpdate).toHaveBeenCalledWith(
+        body,
         mockUser.id,
         {
           roleName: mockUser.roleName,
