@@ -1651,6 +1651,8 @@ const selectActivityIds = useCallback((activityIds: number[]) => {
                     aria-label="Select activities"
                   >
                     <Checkbox
+                      aria-hidden="true"
+                      readOnly
                       checked={
                         sortedData.length > 0 &&
                         selectedActivityCount === sortedData.length
