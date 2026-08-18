@@ -1,26 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: calendar-service
+  name: corpcal-service
   labels:
-    app: calendar-service
-    app.kubernetes.io/name: calendar
+    DataClass: Low #Does not affect directly as such
+    app: corpcal-service
+    app.kubernetes.io/name: corpcal
     app.kubernetes.io/component: service
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: ${APP_VERSION}
+    app.kubernetes.io/managed-by: github-actions
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: calendar-service
+      app: corpcal-service
   template:
     metadata:
       labels:
-        app: calendar-service
+        DataClass: Low
+        Internet-Egress: ALLOW
+        Internet-Ingress: ALLOW
+        app: corpcal-service
     spec:
       containers:
-        - name: calendar-service
-          image: calendar-service:latest
+        - name: corpcal-service
+          image: corpcal-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -30,58 +35,68 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: corpcal-service-secret
                   key: DATABASE_URL
             - name: CORS_ALLOWED_ORIGINS
               valueFrom:
                 configMapKeyRef:
-                  name: calendar-service-config
+                  name: corpcal-service-config
                   key: CORS_ALLOWED_ORIGINS
             - name: NODE_ENV
               valueFrom:
                 configMapKeyRef:
-                  name: calendar-service-config
+                  name: corpcal-service-config
                   key: NODE_ENV
             - name: AUTH_STRATEGY
               valueFrom:
                 configMapKeyRef:
-                  name: calendar-service-config
+                  name: corpcal-service-config
                   key: AUTH_STRATEGY
             - name: AUTH_COOKIE_DOMAIN
               valueFrom:
                 configMapKeyRef:
-                  name: calendar-service-config
+                  name: corpcal-service-config
                   key: AUTH_COOKIE_DOMAIN
             - name: POST_LOGIN_REDIRECT_URL
               valueFrom:
                 configMapKeyRef:
-                  name: calendar-service-config
+                  name: corpcal-service-config
                   key: POST_LOGIN_REDIRECT_URL
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: corpcal-service-secret
                   key: JWT_SECRET
             - name: AZURE_TENANT_ID
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: corpcal-service-secret
                   key: AZURE_TENANT_ID
             - name: AZURE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: corpcal-service-secret
                   key: AZURE_CLIENT_ID
             - name: AZURE_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: corpcal-service-secret
                   key: AZURE_CLIENT_SECRET
             - name: AZURE_REDIRECT_URI
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: corpcal-service-secret
                   key: AZURE_REDIRECT_URI
+            #Session_Secret not required (need to check)
+            - name: SESSION_SECRET
+              value: be7f200b-8324-46b2-8628-378dd8bc3d00
+            - name: HTTP_PROXY
+              value: 'http://swpxkam.gov.bc.ca:8080'
+            - name: HTTPS_PROXY
+              value: 'http://swpxkam.gov.bc.ca:8080'
+            - name: NO_PROXY
+              value: '.cluster.local,.svc,10.91.0.0/16,10.93.0.0/16,172.30.0.0/16,127.0.0.1,localhost,.gov.bc.ca'
+
           readinessProbe:
             httpGet:
               path: /ready
