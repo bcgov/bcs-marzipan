@@ -1686,9 +1686,7 @@ export function ActivityTable({
                       selectActivityIds(
                         sortedData
                           .filter((row) =>
-                            row.flags.some((flag) =>
-                              (user?.teamIds ?? []).includes(flag.teamId)
-                            )
+                            (user?.teamIds ?? []).includes(row.leadTeamId)
                           )
                           .map((row) => row.id)
                       )

@@ -316,6 +316,7 @@ export class ActivityMapperService {
       leadMinistry: relatedData?.leadMinistry ?? null,
       leadMinistryAbbreviation: relatedData?.leadMinistryAbbreviation ?? null,
       leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
+      leadTeamId: activity.leadTeamId,
       leadMinistryId: activity.leadMinistryId ?? null,
       commsContacts: relatedData?.commsContacts ?? [],
       eventPlanners: relatedData?.eventPlanners ?? [],

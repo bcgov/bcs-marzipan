@@ -55,6 +55,7 @@ export interface ActivityTableRow {
   eventPlanners: string[];
   /** Event planner lookup IDs for client-side filtering */
   eventPlannerLeadIds: number[];
+  leadTeamId: number;
   leadMinistryId: number | null;
   leadOrgId: number | null;
   commsContactLeadUserId: number | null;
@@ -151,6 +152,7 @@ export function mapActivityToTableRow(
     commsContactsCount: activity.commsContacts.length,
     eventPlanners: activity.eventPlanners ?? [],
     eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],
+    leadTeamId: activity.leadTeamId,
     leadMinistryId: activity.leadMinistryId ?? null,
     leadOrgId: activity.leadOrgId ?? null,
     commsContactLeadUserId: commsLead?.userId ?? null,
