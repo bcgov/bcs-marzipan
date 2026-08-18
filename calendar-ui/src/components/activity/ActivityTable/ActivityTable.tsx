@@ -1624,8 +1624,15 @@ export function ActivityTable({
 
   const columnHelper = createColumnHelper<ActivityTableRow>();
 
-  const selectActivityIds = useCallback((activityIds: number[]) => {
-    setSelectedActivityIds(new Set(activityIds));
+const selectActivityIds = useCallback((activityIds: number[]) => {
+    const maxSelection = 100;
+    const nextIds = activityIds.slice(0, maxSelection);
+    setSelectedActivityIds(new Set(nextIds));
+    if (activityIds.length > maxSelection) {
+      toast.warning(
+        `Bulk actions are limited to ${maxSelection} activities at a time.`
+      );
+    }
   }, []);
 
   const columns = useMemo(
