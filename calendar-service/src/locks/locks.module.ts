@@ -9,6 +9,7 @@ import { LockHandoffDeadlineKickService } from './lock-handoff-deadline-kick.ser
 import { LockHandoffPoller } from './lock-handoff-poller.service';
 import { LocksController } from './locks.controller';
 import { LocksService } from './locks.service';
+import { RecurringLockoutService } from './recurring-lockout.service';
 import { ReportCoverContactSettingsController } from './report-cover-contact-settings.controller';
 import { ReviewExemptFieldsController } from './review-exempt-fields.controller';
 
@@ -19,6 +20,7 @@ import { ReviewExemptFieldsController } from './review-exempt-fields.controller'
     LockHandoffDeadlineKickService,
     LocksService,
     LockHandoffPoller,
+    RecurringLockoutService,
   ],
   controllers: [
     LocksController,
@@ -26,6 +28,6 @@ import { ReviewExemptFieldsController } from './review-exempt-fields.controller'
     ActivityInfoIconsController,
     ReviewExemptFieldsController,
   ],
-  exports: [LocksService, ApplicationSettingsService],
+  exports: [LocksService, ApplicationSettingsService, RecurringLockoutService],
 })
 export class LocksModule {}

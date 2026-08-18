@@ -5,7 +5,6 @@ import {
   ForbiddenException,
   Get,
   HttpCode,
-  HttpException,
   HttpStatus,
   Param,
   ParseIntPipe,
@@ -14,22 +13,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { desc } from 'drizzle-orm';
 
-import { recurringLockoutBannerSettings } from '@corpcal/database/schema';
-import {
-  PERMISSIONS,
-  SYSTEM_ROLE_IDS,
-  toPacificHourMinute,
-  type AuthUser,
-} from '@corpcal/shared';
-import { DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS } from '@corpcal/shared/schemas';
+import { PERMISSIONS, SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 
 import { ActivitiesGateway } from '../activities/activities.gateway';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { DatabaseService } from '../database/database.service';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { ApplicationSettingsService } from './application-settings.service';
 import {
@@ -41,6 +31,7 @@ import {
   type PatchIdleTimeoutConfigBody,
 } from './dto/idle-timeout-config.dto';
 import { LocksService } from './locks.service';
+import { RecurringLockoutService } from './recurring-lockout.service';
 
 @ApiTags('locks')
 @Controller('locks')
@@ -48,65 +39,10 @@ import { LocksService } from './locks.service';
 export class LocksController {
   constructor(
     private readonly locksService: LocksService,
-    private readonly databaseService: DatabaseService,
+    private readonly recurringLockoutService: RecurringLockoutService,
     private readonly applicationSettings: ApplicationSettingsService,
     private readonly activitiesGateway: ActivitiesGateway
   ) {}
-
-  private timeToMinutes(timeOfDay: string): number {
-    const [hour, minute] = timeOfDay.split(':').map(Number);
-    return hour * 60 + minute;
-  }
-
-  private async ensureUserCanAcquireActivityLock(
-    user: AuthUser
-  ): Promise<void> {
-    const [settings] = await this.databaseService.db
-      .select({
-        isActive: recurringLockoutBannerSettings.isActive,
-        startTimeOfDay: recurringLockoutBannerSettings.startTimeOfDay,
-        endTimeOfDay: recurringLockoutBannerSettings.endTimeOfDay,
-        exemptRoleIds: recurringLockoutBannerSettings.exemptRoleIds,
-      })
-      .from(recurringLockoutBannerSettings)
-      .orderBy(
-        desc(recurringLockoutBannerSettings.lastUpdatedDateTime),
-        desc(recurringLockoutBannerSettings.id)
-      )
-      .limit(1);
-
-    if (!settings || !settings.isActive) {
-      return;
-    }
-
-    const { hour, minute } = toPacificHourMinute(Date.now());
-    const currentMinutes = hour * 60 + minute;
-    const startMinutes = this.timeToMinutes(settings.startTimeOfDay);
-    const endMinutes = this.timeToMinutes(settings.endTimeOfDay);
-
-    if (currentMinutes < startMinutes || currentMinutes >= endMinutes) {
-      return;
-    }
-
-    const exemptRoleIds = Array.isArray(settings.exemptRoleIds)
-      ? settings.exemptRoleIds
-          .map((value) => Number(value))
-          .filter((value) => Number.isInteger(value) && value > 0)
-      : [...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS];
-
-    if (exemptRoleIds.includes(user.roleId)) {
-      return;
-    }
-
-    throw new HttpException(
-      {
-        statusCode: HttpStatus.FORBIDDEN,
-        message: 'Editing activities is locked for the current lockout window.',
-        reason: 'time_lockout',
-      },
-      HttpStatus.FORBIDDEN
-    );
-  }
 
   private ensureSystemAdmin(user: AuthUser): void {
     if (user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN) {
@@ -133,7 +69,9 @@ export class LocksController {
       return { locked: false, message: 'Only activity locks are supported.' };
     }
 
-    await this.ensureUserCanAcquireActivityLock(user);
+    await this.recurringLockoutService.assertRoleCanEditDuringLockout(
+      user.roleId
+    );
 
     const lock = await this.locksService.tryAcquireLock(
       body.entityType,
