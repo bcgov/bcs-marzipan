@@ -488,19 +488,60 @@ export const updateActivityRequestSchema = createBaseSchema
 export const bulkUpdateActivitiesRequestSchema = z
   .object({
     activityIds: z.array(z.number().int().positive()).min(1).max(100),
-    markAsReviewed: z.literal(true).optional(),
+    operation: z.enum([
+      'review',
+      'pitchStatus',
+      'issue',
+      'tags',
+      'sharedWith',
+      'flag',
+      'delete',
+    ]),
     pitchRequiredStatusId: z.number().int().positive().optional(),
+    tagIds: z.array(z.number().int().positive()).max(100).optional(),
+    teamIds: z.array(z.number().int().positive()).max(100).optional(),
+    flagTeamId: z.number().int().positive().optional(),
+    assigneeIds: z
+      .array(z.number().int().positive())
+      .min(1)
+      .max(100)
+      .optional(),
+    deleteReason: z.string().min(10).max(1000).trim().optional(),
   })
-  .refine(
-    (data) =>
-      (data.markAsReviewed === true) !==
-      (data.pitchRequiredStatusId !== undefined),
-    {
-      message: 'Provide exactly one bulk activity operation.',
-      path: ['markAsReviewed'],
-      ...zodConstraintIssueParams(),
+  .superRefine((data, ctx) => {
+    const addRequiredIssue = (field: string) => {
+      ctx.addIssue({
+        code: 'custom',
+        message: `${field} is required for ${data.operation}.`,
+        path: [field],
+      });
+    };
+    if (
+      data.operation === 'pitchStatus' &&
+      data.pitchRequiredStatusId === undefined
+    ) {
+      addRequiredIssue('pitchRequiredStatusId');
     }
-  );
+    if (data.operation === 'tags' && data.tagIds === undefined) {
+      addRequiredIssue('tagIds');
+    }
+    if (data.operation === 'sharedWith' && data.teamIds === undefined) {
+      addRequiredIssue('teamIds');
+    }
+    if (data.operation === 'flag' && data.flagTeamId === undefined) {
+      addRequiredIssue('flagTeamId');
+    }
+    if (data.operation === 'delete' && data.deleteReason === undefined) {
+      addRequiredIssue('deleteReason');
+    }
+    if (data.operation === 'flag' && data.assigneeIds === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'assigneeIds is required for flag.',
+        path: ['assigneeIds'],
+      });
+    }
+  });
 
 /**
  * Schema for soft deleting an activity

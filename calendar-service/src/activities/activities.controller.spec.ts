@@ -360,7 +360,7 @@ describe('ActivitiesController', () => {
 
   describe('bulkUpdate', () => {
     it('forwards an allowed bulk operation with the requesting user context', async () => {
-      const body = { activityIds: [1, 2], markAsReviewed: true as const };
+      const body = { activityIds: [1, 2], operation: 'review' as const };
       const updatedActivities = [mockActivityResponse];
       mockActivitiesService.bulkUpdate.mockResolvedValue(updatedActivities);
 

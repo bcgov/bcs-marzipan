@@ -10,6 +10,7 @@ import {
 } from '@tanstack/react-table';
 import {
   Calendar,
+  ChevronDown,
   Clock,
   Languages,
   Loader2,
@@ -62,6 +63,7 @@ import {
   handleTableRowClick,
   handleTableRowKeyDown,
 } from '@/components/table/tableRowNavigation';
+import { TableSummaryBar } from '@/components/table/TableSummaryBar';
 import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
@@ -78,12 +80,23 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Tooltip,
   TooltipContent,
@@ -100,6 +113,7 @@ import {
   useBulkUpdateActivities,
   useSyncActivityFlags,
 } from '@/hooks/useCalendar';
+import { useFavourites } from '@/hooks/useFavourites';
 import {
   useLiveActivityRowHighlights,
   useLiveActivitySyncContext,
@@ -112,6 +126,8 @@ import {
 import {
   useCategories,
   usePitchRequiredStatuses,
+  useTags,
+  useTeams,
   useTranslationLanguages,
   useUsers,
 } from '@/hooks/useLookups';
@@ -1064,12 +1080,23 @@ export function ActivityTable({
   const [selectedActivityIds, setSelectedActivityIds] = useState<Set<number>>(
     new Set()
   );
-  const [bulkDialog, setBulkDialog] = useState<'review' | 'pitch' | null>(null);
+  const [bulkDialog, setBulkDialog] = useState<
+    'review' | 'pitch' | 'issue' | 'tags' | 'sharing' | 'flag' | 'delete' | null
+  >(null);
   const [selectedPitchStatusId, setSelectedPitchStatusId] = useState('');
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
+  const [selectedFlagTeamId, setSelectedFlagTeamId] = useState('');
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([]);
+  const [deleteReason, setDeleteReason] = useState('');
   const bulkUpdateActivitiesMutation = useBulkUpdateActivities();
+  const { favouriteActivityIds: watchlistIds, toggle: toggleFavourite } =
+    useFavourites();
 
   const { data: categoriesForFilter = [] } = useCategories();
   const { data: pitchRequiredStatuses = [] } = usePitchRequiredStatuses();
+  const { data: tags = [] } = useTags();
+  const { data: teams = [] } = useTeams();
   const {
     data: translationLanguagesForFilter = [],
     isLoading: isTranslationLanguagesLoading,
@@ -1444,7 +1471,7 @@ export function ActivityTable({
     try {
       await bulkUpdateActivitiesMutation.mutateAsync({
         activityIds,
-        markAsReviewed: true,
+        operation: 'review',
       });
       setSelectedActivityIds(new Set());
       setBulkDialog(null);
@@ -1463,6 +1490,7 @@ export function ActivityTable({
     try {
       await bulkUpdateActivitiesMutation.mutateAsync({
         activityIds,
+        operation: 'pitchStatus',
         pitchRequiredStatusId,
       });
       setSelectedActivityIds(new Set());
@@ -1478,6 +1506,51 @@ export function ActivityTable({
     selectedActivityIds,
     selectedPitchStatusId,
     bulkUpdateActivitiesMutation,
+  ]);
+
+  const handleBulkOperation = useCallback(async () => {
+    const activityIds = [...selectedActivityIds];
+    if (!bulkDialog || activityIds.length === 0) return;
+    if (bulkDialog === 'review') {
+      await handleBulkReview();
+      return;
+    }
+    if (bulkDialog === 'pitch') {
+      await handleBulkSetPitchStatus();
+      return;
+    }
+    const operation = bulkDialog === 'sharing' ? 'sharedWith' : bulkDialog;
+    try {
+      await bulkUpdateActivitiesMutation.mutateAsync({
+        activityIds,
+        operation,
+        ...(bulkDialog === 'tags' && { tagIds: selectedTagIds }),
+        ...(bulkDialog === 'sharing' && { teamIds: selectedTeamIds }),
+        ...(bulkDialog === 'flag' && {
+          flagTeamId: Number(selectedFlagTeamId),
+          assigneeIds: selectedAssigneeIds,
+        }),
+        ...(bulkDialog === 'delete' && { deleteReason }),
+      });
+      setSelectedActivityIds(new Set());
+      setBulkDialog(null);
+      toast.success(
+        `Updated ${activityIds.length} selected activit${activityIds.length === 1 ? 'y' : 'ies'}.`
+      );
+    } catch (error) {
+      toast.error(getFriendlyErrorMessage(error));
+    }
+  }, [
+    bulkDialog,
+    bulkUpdateActivitiesMutation,
+    deleteReason,
+    handleBulkReview,
+    handleBulkSetPitchStatus,
+    selectedActivityIds,
+    selectedAssigneeIds,
+    selectedFlagTeamId,
+    selectedTagIds,
+    selectedTeamIds,
   ]);
 
   const { openActivityWithScroll } = useActivityListScrollRestore({
@@ -1551,18 +1624,89 @@ export function ActivityTable({
 
   const columnHelper = createColumnHelper<ActivityTableRow>();
 
+  const selectActivityIds = useCallback((activityIds: number[]) => {
+    setSelectedActivityIds(new Set(activityIds));
+  }, []);
+
   const columns = useMemo(
     () => [
       columnHelper.display({
         id: 'overview',
         header: () => (
-          <SortableColumnHeader
-            title="Overview"
-            sortColumnId="activityId"
-            sortColumns={ACTIVITY_SORT_COLUMNS}
-            effectiveSortKey={effectiveSortKey}
-            effectiveSortDirection={effectiveSortDirection}
-          />
+          <div className="flex items-center gap-2">
+            {canBulkUpdateActivities && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    data-no-row-nav
+                    className="inline-flex size-6 items-center justify-center gap-0.5"
+                    aria-label="Select activities"
+                  >
+                    <Checkbox
+                      checked={
+                        sortedData.length > 0 &&
+                        selectedActivityCount === sortedData.length
+                      }
+                    />
+                    <ChevronDown className="size-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    onSelect={() => selectActivityIds(sortedActivityIds)}
+                  >
+                    All activities ({sortedData.length})
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      selectActivityIds(
+                        sortedData
+                          .slice(
+                            pagination.pageIndex * pagination.pageSize,
+                            (pagination.pageIndex + 1) * pagination.pageSize
+                          )
+                          .map((row) => row.id)
+                      )
+                    }
+                  >
+                    This page (
+                    {Math.min(
+                      pagination.pageSize,
+                      Math.max(
+                        sortedData.length -
+                          pagination.pageIndex * pagination.pageSize,
+                        0
+                      )
+                    )}
+                    )
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      selectActivityIds(
+                        sortedData
+                          .filter((row) =>
+                            row.flags.some((flag) =>
+                              (user?.teamIds ?? []).includes(flag.teamId)
+                            )
+                          )
+                          .map((row) => row.id)
+                      )
+                    }
+                  >
+                    My teams
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <SortableColumnHeader
+              title="Overview"
+              sortColumnId="activityId"
+              sortColumns={ACTIVITY_SORT_COLUMNS}
+              effectiveSortKey={effectiveSortKey}
+              effectiveSortDirection={effectiveSortDirection}
+            />
+          </div>
         ),
         meta: { sortKey: 'activityId' as const },
         ...getActivityColumnSizes('overview'),
@@ -1712,6 +1856,12 @@ export function ActivityTable({
       selectedActivityIds,
       toggleActivitySelected,
       canBulkUpdateActivities,
+      selectedActivityCount,
+      sortedData,
+      sortedActivityIds,
+      selectActivityIds,
+      pagination,
+      user?.teamIds,
     ]
   );
 
@@ -1840,37 +1990,83 @@ export function ActivityTable({
     />
   );
 
+  const filterSummary = (
+    <TableSummaryBar
+      count={sortedData.length}
+      singularLabel="activity"
+      pluralLabel="activities"
+      showCount={!canBulkUpdateActivities}
+      filters={eventTableFilters}
+      appliedSavedFilterName={appliedSavedFilterName}
+      appliedFilterTypeLabels={appliedFilterTypeLabels}
+      filterDetailLines={filterDetailLines}
+      onClearFilters={tableSummaryOnClearFilters}
+    />
+  );
+
   const bulkActions = (
-    <div className="border-border flex flex-wrap items-center gap-2 border-b pb-4">
-      <span className="text-muted-foreground text-sm">
-        {selectedActivityCount === 0
-          ? 'Select activities to use bulk actions.'
-          : `${selectedActivityCount} activit${selectedActivityCount === 1 ? 'y' : 'ies'} selected`}
+    <div className="flex items-center gap-5 pb-1 pl-4">
+      <span className="text-sm font-medium">
+        {selectedActivityCount} of {sortedData.length} activities selected
       </span>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled={selectedActivityCount === 0 || bulkActionPending}
-        onClick={() => setBulkDialog('review')}
-      >
-        Mark reviewed
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled={selectedActivityCount === 0 || bulkActionPending}
-        onClick={() => setBulkDialog('pitch')}
-      >
-        Set pitch status
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={selectedActivityCount === 0 || bulkActionPending}
+          >
+            Batch actions <ChevronDown />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-52">
+          <DropdownMenuItem
+            onSelect={() => {
+              [...selectedActivityIds]
+                .filter((id) => !watchlistIds.includes(id))
+                .forEach((id) => toggleFavourite(id));
+            }}
+          >
+            Add to watchlist
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
+            Flag
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
+            Issue
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
+                Update pitch status
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
+            Shared with
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
+            Tags
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
+            Review
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => setBulkDialog('delete')}
+          >
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       {selectedActivityCount > 0 && (
         <Button
           type="button"
           size="sm"
           variant="ghost"
-          disabled={bulkActionPending}
           onClick={() => setSelectedActivityIds(new Set())}
         >
           Clear selection
@@ -1884,6 +2080,7 @@ export function ActivityTable({
     return (
       <div className="min-w-0 space-y-4">
         {filterBar}
+        {filterSummary}
         <ActivityTableLayout
           scrollRef={tableScrollRef}
           count={0}
@@ -1894,6 +2091,7 @@ export function ActivityTable({
           appliedFilterTypeLabels={appliedFilterTypeLabels}
           filterDetailLines={filterDetailLines}
           onClearFilters={tableSummaryOnClearFilters}
+          showSummary={false}
         >
           <div className="flex flex-col items-center justify-center gap-3 py-12">
             <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
@@ -1924,6 +2122,7 @@ export function ActivityTable({
     return (
       <div className="min-w-0 space-y-4">
         {filterBar}
+        {filterSummary}
         <ActivityTableLayout
           scrollRef={tableScrollRef}
           count={0}
@@ -1934,6 +2133,7 @@ export function ActivityTable({
           appliedFilterTypeLabels={appliedFilterTypeLabels}
           filterDetailLines={filterDetailLines}
           onClearFilters={tableSummaryOnClearFilters}
+          showSummary={false}
         >
           <ActivityTableEmptyState
             variant={
@@ -1961,6 +2161,7 @@ export function ActivityTable({
     <TooltipProvider delayDuration={400}>
       <div className="min-w-0 space-y-4">
         {filterBar}
+        {filterSummary}
         {canBulkUpdateActivities && bulkActions}
         <ActivityTableLayout
           scrollRef={tableScrollRef}
@@ -1972,6 +2173,7 @@ export function ActivityTable({
           appliedFilterTypeLabels={appliedFilterTypeLabels}
           filterDetailLines={filterDetailLines}
           onClearFilters={tableSummaryOnClearFilters}
+          showSummary={false}
         >
           {filteredData.length === 0 ? (
             <ActivityTableEmptyState
@@ -2129,9 +2331,15 @@ export function ActivityTable({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {bulkDialog === 'review'
-                  ? 'Mark selected activities reviewed?'
-                  : 'Set pitch status'}
+                {bulkDialog === 'review' &&
+                  'Mark selected activities reviewed?'}
+                {bulkDialog === 'pitch' && 'Set pitch status'}
+                {bulkDialog === 'issue' &&
+                  'Mark selected activities as issues?'}
+                {bulkDialog === 'tags' && 'Replace tags'}
+                {bulkDialog === 'sharing' && 'Replace shared-with teams'}
+                {bulkDialog === 'flag' && 'Flag selected activities'}
+                {bulkDialog === 'delete' && 'Delete selected activities?'}
               </DialogTitle>
               <DialogDescription>
                 This updates {selectedActivityCount} selected activit
@@ -2155,6 +2363,97 @@ export function ActivityTable({
                 </SelectContent>
               </Select>
             )}
+            {bulkDialog === 'tags' && (
+              <div className="max-h-56 space-y-2 overflow-y-auto">
+                {tags.map((tag) => (
+                  <label
+                    key={tag.id}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <Checkbox
+                      checked={selectedTagIds.includes(tag.id)}
+                      onCheckedChange={(checked) =>
+                        setSelectedTagIds((current) =>
+                          checked === true
+                            ? [...current, tag.id]
+                            : current.filter((id) => id !== tag.id)
+                        )
+                      }
+                    />
+                    {tag.displayName ?? tag.label ?? String(tag.id)}
+                  </label>
+                ))}
+              </div>
+            )}
+            {bulkDialog === 'sharing' && (
+              <div className="max-h-56 space-y-2 overflow-y-auto">
+                {teams.map((team) => (
+                  <label
+                    key={team.id}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <Checkbox
+                      checked={selectedTeamIds.includes(team.id)}
+                      onCheckedChange={(checked) =>
+                        setSelectedTeamIds((current) =>
+                          checked === true
+                            ? [...current, team.id]
+                            : current.filter((id) => id !== team.id)
+                        )
+                      }
+                    />
+                    {team.name}
+                  </label>
+                ))}
+              </div>
+            )}
+            {bulkDialog === 'flag' && (
+              <div className="space-y-3">
+                <Select
+                  value={selectedFlagTeamId}
+                  onValueChange={(value) => {
+                    setSelectedFlagTeamId(value);
+                    setSelectedAssigneeIds([]);
+                  }}
+                >
+                  <SelectTrigger aria-label="Flag team">
+                    <SelectValue placeholder="Choose one of your teams" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams
+                      .filter((team) => (user?.teamIds ?? []).includes(team.id))
+                      .map((team) => (
+                        <SelectItem key={team.id} value={String(team.id)}>
+                          {team.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {selectedFlagTeamId && user && (
+                  <div className="max-h-48 space-y-2 overflow-y-auto">
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={selectedAssigneeIds.includes(user.id)}
+                        onCheckedChange={(checked) =>
+                          setSelectedAssigneeIds(
+                            checked === true ? [user.id] : []
+                          )
+                        }
+                      />
+                      Assign to me ({user.displayName})
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
+            {bulkDialog === 'delete' && (
+              <Textarea
+                value={deleteReason}
+                onChange={(event) => setDeleteReason(event.target.value)}
+                placeholder="Provide a reason for deleting these activities"
+                maxLength={1000}
+              />
+            )}
             <DialogFooter>
               <Button
                 type="button"
@@ -2168,15 +2467,13 @@ export function ActivityTable({
                 type="button"
                 disabled={
                   bulkActionPending ||
-                  (bulkDialog === 'pitch' && !selectedPitchStatusId)
+                  (bulkDialog === 'pitch' && !selectedPitchStatusId) ||
+                  (bulkDialog === 'flag' &&
+                    (!selectedFlagTeamId ||
+                      selectedAssigneeIds.length === 0)) ||
+                  (bulkDialog === 'delete' && deleteReason.trim().length < 10)
                 }
-                onClick={() => {
-                  if (bulkDialog === 'review') {
-                    void handleBulkReview();
-                  } else {
-                    void handleBulkSetPitchStatus();
-                  }
-                }}
+                onClick={() => void handleBulkOperation()}
               >
                 {bulkActionPending ? 'Updating...' : 'Confirm'}
               </Button>

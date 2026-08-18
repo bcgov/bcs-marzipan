@@ -141,8 +141,17 @@ vi.mock('@/hooks/useSavedFilters', () => ({
 vi.mock('@/hooks/useLookups', () => ({
   useCategories: () => ({ data: [] }),
   usePitchRequiredStatuses: () => ({ data: [] }),
+  useTags: () => ({ data: [] }),
+  useTeams: () => ({ data: [] }),
   useTranslationLanguages: () => ({ data: [], isLoading: false }),
   useUsers: () => ({ data: [] }),
+}));
+
+vi.mock('@/hooks/useFavourites', () => ({
+  useFavourites: () => ({
+    favouriteActivityIds: [],
+    toggle: vi.fn(),
+  }),
 }));
 
 vi.mock('@/hooks/useCalendar', () => ({

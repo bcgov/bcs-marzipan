@@ -1978,28 +1978,93 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse[]> {
+    const requiredOperationPermissionByOperation = {
+      review: PERMISSIONS.ACTIVITIES.REVIEW,
+      pitchStatus: PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
+      issue: PERMISSIONS.ACTIVITIES.EDIT,
+      tags: PERMISSIONS.ACTIVITIES.EDIT,
+      sharedWith: PERMISSIONS.ACTIVITIES.EDIT,
+      flag: PERMISSIONS.ACTIVITIES.FLAG,
+      delete: PERMISSIONS.ACTIVITIES.DELETE,
+    } as const;
     const requiredOperationPermission =
-      dto.markAsReviewed === true
-        ? PERMISSIONS.ACTIVITIES.REVIEW
-        : PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT;
+      requiredOperationPermissionByOperation[dto.operation];
     if (!context.permissions?.includes(requiredOperationPermission)) {
       throw new ForbiddenException(
         `You do not have permission to perform this bulk activity operation.`
       );
     }
 
-    const updateDto: UpdateActivityRequest =
-      dto.markAsReviewed === true
-        ? { markAsReviewed: true }
-        : { pitchRequiredStatusId: dto.pitchRequiredStatusId! };
+    if (
+      dto.operation === 'flag' &&
+      (dto.flagTeamId == null || !context.teamIds?.includes(dto.flagTeamId))
+    ) {
+      throw new ForbiddenException(
+        'You are not a member of the specified flag team.'
+      );
+    }
 
     const results: ActivityResponse[] = [];
     for (const activityId of dto.activityIds) {
-      results.push(
-        await this.update(activityId, updateDto, userId, context, {
-          bypassEditLock: true,
-        })
-      );
+      switch (dto.operation) {
+        case 'review':
+          results.push(
+            await this.update(
+              activityId,
+              { markAsReviewed: true },
+              userId,
+              context,
+              { bypassEditLock: true }
+            )
+          );
+          break;
+        case 'pitchStatus':
+          results.push(
+            await this.update(
+              activityId,
+              { pitchRequiredStatusId: dto.pitchRequiredStatusId! },
+              userId,
+              context,
+              { bypassEditLock: true }
+            )
+          );
+          break;
+        case 'issue':
+          results.push(
+            await this.update(activityId, { isIssue: true }, userId, context, {
+              bypassEditLock: true,
+            })
+          );
+          break;
+        case 'tags':
+          results.push(await this.updateTags(activityId, dto.tagIds!, userId));
+          break;
+        case 'sharedWith':
+          results.push(
+            await this.updateSharedWith(activityId, dto.teamIds!, userId)
+          );
+          break;
+        case 'flag':
+          await this.flagsService.syncFlags(
+            activityId,
+            dto.flagTeamId!,
+            dto.assigneeIds!,
+            userId
+          );
+          this.activitiesGateway.broadcastActivityUpdated(activityId);
+          results.push(await this.findOne(activityId));
+          break;
+        case 'delete':
+          results.push(
+            await this.softDelete(
+              activityId,
+              dto.deleteReason!,
+              userId,
+              context
+            )
+          );
+          break;
+      }
     }
     return results;
   }

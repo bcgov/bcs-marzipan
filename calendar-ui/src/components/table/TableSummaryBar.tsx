@@ -143,6 +143,8 @@ interface TableSummaryBarProps {
   count: number;
   singularLabel: string;
   pluralLabel?: string;
+  /** When false, renders filter/reset controls without the item-count label. */
+  showCount?: boolean;
   filters?: BooleanFilter[];
   /** Shown after the count when a saved filter is the active selection. */
   appliedSavedFilterName?: string | null;
@@ -167,6 +169,7 @@ export function TableSummaryBar({
   count,
   singularLabel,
   pluralLabel,
+  showCount = true,
   filters = [],
   appliedSavedFilterName = null,
   appliedFilterTypeLabels = [],
@@ -211,9 +214,11 @@ export function TableSummaryBar({
     >
       <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
         <span className="inline-flex min-h-9 min-w-0 flex-wrap items-center gap-x-1">
-          <span className="shrink-0 leading-normal">
-            Showing {count} {label}
-          </span>
+          {showCount && (
+            <span className="shrink-0 leading-normal">
+              Showing {count} {label}
+            </span>
+          )}
           {showSavedFilterSummary ? (
             hasFilterDetailPopover ? (
               <span
