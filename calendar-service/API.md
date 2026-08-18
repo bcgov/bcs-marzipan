@@ -99,9 +99,7 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | `endDateTo`                    | ISO date                       | Activity `endDate` on or before                                                                                                 |
 | `scheduledDateRangeOverlaps`   | boolean (`true`)               | Requires both activity dates and span overlap; UI/reports set this with date bounds (see below)                                 |
 | `activityStatusIds`            | int[]                          | Filter by status IDs (OR). When omitted, deleted activities are excluded; completed are excluded unless `includeCompleted=true` |
-| `leadMinistryIds`              | int[]                          | Lead ministry IDs (OR)                                                                                                          |
-| `leadOrgIds`                   | int[]                          | Lead organization IDs (OR)                                                                                                      |
-| `leadTeamIds`                  | int[]                          | Lead team IDs (OR)                                                                                                              |
+| `leadTeamIds`                  | int[]                          | Lead team IDs (OR). Replaces removed `leadMinistryIds` / `leadOrgIds` filter params                                             |
 | `commsContactLeadUserIds`      | int[]                          | Lead comms contact user IDs (OR)                                                                                                |
 | `flagAssigneeUserIds`          | int[]                          | Flag assignee user IDs (OR)                                                                                                     |
 | `sharedWithTeamIds`            | int[]                          | Shared-with team IDs (OR)                                                                                                       |
