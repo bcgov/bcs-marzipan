@@ -36,7 +36,6 @@ import {
   timeStatuses,
   translatedLanguages,
   translationRequiredStatuses,
-  users,
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
@@ -51,7 +50,6 @@ import {
   profileIncludesRelation,
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
-  toPacificHourMinute,
   type ActivityHydrationProfile,
   type ActivityListItem,
   type ActivityStatusName,
@@ -64,7 +62,6 @@ import {
   CLONE_MODAL_SCHEDULE_FIELD_KEYS,
   CLONE_NEVER_COPIED_FIELD_KEYS,
   CLONE_SYSTEM_FIELD_KEYS,
-  DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS,
   type ActivityFormData,
   type ActivityHistoryEntry,
   type ActivityResponse,
@@ -95,6 +92,7 @@ import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 import { ApplicationSettingsService } from '../../locks/application-settings.service';
 import { LocksService } from '../../locks/locks.service';
+import { RecurringLockoutService } from '../../locks/recurring-lockout.service';
 import { LookAheadPolicyService } from '../../look-ahead/look-ahead-policy.service';
 import {
   resolveDataScope,
@@ -137,7 +135,8 @@ export class ActivitiesService {
     private readonly policyService: PolicyService,
     private readonly teamsService: TeamsService,
     private readonly flagsService: ActivityFlagsService,
-    private readonly lookAheadPolicy: LookAheadPolicyService
+    private readonly lookAheadPolicy: LookAheadPolicyService,
+    private readonly recurringLockoutService: RecurringLockoutService
   ) {}
 
   private async getEffectiveReviewExemptFieldKeys(
@@ -188,62 +187,6 @@ export class ActivitiesService {
           ? venue.country.trim() || null
           : (venue.country ?? null),
     };
-  }
-
-  private timeToMinutes(timeOfDay: string): number {
-    const [hour, minute] = timeOfDay.split(':').map(Number);
-    return hour * 60 + minute;
-  }
-
-  private async ensureUserCanEditDuringRecurringLockout(
-    userId: number
-  ): Promise<void> {
-    const settings =
-      await this.databaseService.db.query.recurringLockoutBannerSettings.findFirst(
-        {
-          orderBy: (table, { desc }) => [
-            desc(table.lastUpdatedDateTime),
-            desc(table.id),
-          ],
-        }
-      );
-
-    if (!settings || !settings.isActive) {
-      return;
-    }
-
-    const { hour, minute } = toPacificHourMinute(Date.now());
-    const currentMinutes = hour * 60 + minute;
-    const startMinutes = this.timeToMinutes(String(settings.startTimeOfDay));
-    const endMinutes = this.timeToMinutes(String(settings.endTimeOfDay));
-
-    if (currentMinutes < startMinutes || currentMinutes >= endMinutes) {
-      return;
-    }
-
-    const exemptRoleIds = Array.isArray(settings.exemptRoleIds)
-      ? settings.exemptRoleIds
-          .map((value) => Number(value))
-          .filter((value) => Number.isInteger(value) && value > 0)
-      : [...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS];
-
-    const [user] = await this.databaseService.db
-      .select({ roleId: users.roleId })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!user) {
-      throw new ForbiddenException('User not found for edit lockout check.');
-    }
-
-    if (exemptRoleIds.includes(user.roleId)) {
-      return;
-    }
-
-    throw new ForbiddenException(
-      'Editing activities is locked for the current lockout window.'
-    );
   }
 
   private getForbiddenLookupIds(
@@ -1273,7 +1216,7 @@ export class ActivitiesService {
       extraCreateChanges?: HistoryChange[];
     }
   ): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     // Extract junction table IDs, venue address, and status/options from the DTO
     // activityStatusId is ignored (backend sets from markAsReviewed + activities.review permission)
@@ -2083,7 +2026,7 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     const existingLock = await this.locksService.getLockForEntity(
       'activity',
@@ -2839,7 +2782,7 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     const source = await this.findOne(sourceId);
 
@@ -2947,7 +2890,7 @@ export class ActivitiesService {
     // Verify activity exists so we return 404 for non-existent IDs (auth already enforced above)
     await this.findOne(id, { dataScope: { bypass: true, teamIds: [] } });
 
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     const reason = options?.reason ?? undefined;
 
@@ -3213,7 +3156,7 @@ export class ActivitiesService {
   }
 
   async addHistoryNote(id: number, note: string, userId: number) {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     const trimmedNote = note.trim();
     if (trimmedNote.length === 0) {
@@ -3257,7 +3200,7 @@ export class ActivitiesService {
    * In a full implementation, this would restore from a published snapshot
    */
   async cancelChanges(id: number, userId: number): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     // Verify activity exists
     const currentActivity = await this.findOne(id);
@@ -3301,7 +3244,7 @@ export class ActivitiesService {
     userId: number,
     context?: { permissions?: string[]; teamIds?: number[] }
   ): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     // Validate reason is provided and not empty
     // Required for audit and admin review purposes
@@ -3441,7 +3384,7 @@ export class ActivitiesService {
     reason: string,
     userId: number
   ): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     if (!reason || reason.trim().length === 0) {
       throw new BadRequestException(
@@ -3574,7 +3517,7 @@ export class ActivitiesService {
     note: string | undefined,
     _context?: { roleName: string }
   ): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     const [existing] = await this.databaseService.db
       .select()
@@ -3707,7 +3650,7 @@ export class ActivitiesService {
     categoryIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);
@@ -3768,7 +3711,7 @@ export class ActivitiesService {
     themeIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);
@@ -3819,7 +3762,7 @@ export class ActivitiesService {
     tagIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);
@@ -3869,7 +3812,7 @@ export class ActivitiesService {
     teamIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
-    await this.ensureUserCanEditDuringRecurringLockout(userId);
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);

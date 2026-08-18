@@ -31,6 +31,7 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { LocksService } from '../locks/locks.service';
+import { RecurringLockoutService } from '../locks/recurring-lockout.service';
 import { LookAheadPolicyService } from '../look-ahead/look-ahead-policy.service';
 import {
   getCategoryScopeById,
@@ -285,6 +286,10 @@ describe('ActivitiesService', () => {
     getSourceLookAheadReports: vi.fn().mockResolvedValue([]),
   };
 
+  const mockRecurringLockoutService = {
+    assertUserCanEditDuringLockout: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -341,6 +346,10 @@ describe('ActivitiesService', () => {
           provide: LookAheadPolicyService,
           useValue: mockLookAheadPolicy,
         },
+        {
+          provide: RecurringLockoutService,
+          useValue: mockRecurringLockoutService,
+        },
       ],
     }).compile();
 
@@ -348,6 +357,10 @@ describe('ActivitiesService', () => {
 
     // Reset all mocks
     vi.clearAllMocks();
+    mockRecurringLockoutService.assertUserCanEditDuringLockout.mockReset();
+    mockRecurringLockoutService.assertUserCanEditDuringLockout.mockResolvedValue(
+      undefined
+    );
     mockLookupScopeMaps([
       [1, { visibility: 'global' }],
       [2, { visibility: 'global' }],
@@ -601,65 +614,34 @@ describe('ActivitiesService', () => {
     });
   });
 
-  describe('recurring lockout guard boundaries', () => {
-    it('blocks at start boundary and respects explicit empty exempt-role list', async () => {
-      mockDatabaseService.db.query.recurringLockoutBannerSettings.findFirst.mockResolvedValue(
+  describe('recurring lockout guard', () => {
+    it('delegates edit checks to RecurringLockoutService', async () => {
+      const lockoutError = new HttpException(
         {
-          isActive: true,
-          startTimeOfDay: '09:00',
-          endTimeOfDay: '10:00',
-          exemptRoleIds: [],
-        }
+          statusCode: 403,
+          message:
+            'Editing activities is locked for the current lockout window.',
+          reason: 'time_lockout',
+        },
+        403
+      );
+      mockDatabaseService.db.select = createMockSelect([
+        createMockActivity({ id: 1 }),
+      ]);
+      mockRecurringLockoutService.assertUserCanEditDuringLockout.mockRejectedValue(
+        lockoutError
       );
 
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
-
-      mockDatabaseService.db.select = vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        limit: vi
-          .fn()
-          .mockResolvedValue([{ roleId: SYSTEM_ROLES.SYSTEM_ADMIN }]),
-      });
-
       await expect(
-        (
-          service as unknown as {
-            ensureUserCanEditDuringRecurringLockout: (
-              userId: number
-            ) => Promise<void>;
-          }
-        ).ensureUserCanEditDuringRecurringLockout(1)
-      ).rejects.toThrow(ForbiddenException);
+        service.update(1, createMockUpdateRequest({ title: 'Blocked' }), 1, {
+          permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+          teamIds: [],
+        })
+      ).rejects.toThrow(HttpException);
 
-      vi.useRealTimers();
-    });
-
-    it('allows edits at end boundary because end time is exclusive', async () => {
-      mockDatabaseService.db.query.recurringLockoutBannerSettings.findFirst.mockResolvedValue(
-        {
-          isActive: true,
-          startTimeOfDay: '09:00',
-          endTimeOfDay: '10:00',
-          exemptRoleIds: [],
-        }
-      );
-
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date('2026-08-05T17:00:00.000Z'));
-
-      await expect(
-        (
-          service as unknown as {
-            ensureUserCanEditDuringRecurringLockout: (
-              userId: number
-            ) => Promise<void>;
-          }
-        ).ensureUserCanEditDuringRecurringLockout(1)
-      ).resolves.toBeUndefined();
-
-      vi.useRealTimers();
+      expect(
+        mockRecurringLockoutService.assertUserCanEditDuringLockout
+      ).toHaveBeenCalledWith(1);
     });
   });
 
