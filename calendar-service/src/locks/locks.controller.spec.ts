@@ -4,22 +4,22 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AuthUser } from '@corpcal/shared';
 
 import { ActivitiesGateway } from '../activities/activities.gateway';
-import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from './application-settings.service';
 import { LocksController } from './locks.controller';
 import { LocksService } from './locks.service';
+import { RecurringLockoutService } from './recurring-lockout.service';
 
 describe('LocksController', () => {
   const tryAcquireLockMock = vi.fn();
+  const assertRoleCanEditDuringLockoutMock = vi.fn();
+
   const mockLocksService = {
     tryAcquireLock: tryAcquireLockMock,
   } as unknown as LocksService;
 
-  const mockDbService = {
-    db: {
-      select: vi.fn(),
-    },
-  } as unknown as DatabaseService;
+  const mockRecurringLockoutService = {
+    assertRoleCanEditDuringLockout: assertRoleCanEditDuringLockoutMock,
+  } as unknown as RecurringLockoutService;
 
   const mockSettingsService = {} as ApplicationSettingsService;
 
@@ -29,7 +29,7 @@ describe('LocksController', () => {
 
   const controller = new LocksController(
     mockLocksService,
-    mockDbService,
+    mockRecurringLockoutService,
     mockSettingsService,
     mockGateway
   );
@@ -46,12 +46,7 @@ describe('LocksController', () => {
   };
 
   it('returns 403 with reason time_lockout for non-exempt users during lockout window', async () => {
-    vi.spyOn(
-      controller as unknown as {
-        ensureUserCanAcquireActivityLock: (u: AuthUser) => Promise<void>;
-      },
-      'ensureUserCanAcquireActivityLock'
-    ).mockRejectedValue(
+    assertRoleCanEditDuringLockoutMock.mockRejectedValue(
       new HttpException(
         {
           statusCode: 403,
@@ -75,12 +70,7 @@ describe('LocksController', () => {
   });
 
   it('allows acquire at lockout end boundary (end time is exclusive)', async () => {
-    vi.spyOn(
-      controller as unknown as {
-        ensureUserCanAcquireActivityLock: (u: AuthUser) => Promise<void>;
-      },
-      'ensureUserCanAcquireActivityLock'
-    ).mockResolvedValue(undefined);
+    assertRoleCanEditDuringLockoutMock.mockResolvedValue(undefined);
 
     tryAcquireLockMock.mockResolvedValue({
       id: 100,
