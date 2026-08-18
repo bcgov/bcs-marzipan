@@ -1966,8 +1966,8 @@ export class ActivitiesService {
   }
 
   /**
-   * Applies an admin-authorized list bulk action without taking or releasing
-   * individual edit locks. The public route is restricted to Admin/System Admin.
+   * Applies a permission-authorized list bulk action without taking or releasing
+   * individual edit locks.
    */
   async bulkUpdate(
     dto: import('@corpcal/shared/schemas').BulkUpdateActivitiesRequest,
