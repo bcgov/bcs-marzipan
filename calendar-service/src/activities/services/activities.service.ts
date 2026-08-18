@@ -1966,8 +1966,8 @@ export class ActivitiesService {
   }
 
   /**
-   * Applies an admin-authorized list bulk action without taking or releasing
-   * individual edit locks. The public route is restricted to Admin/System Admin.
+   * Applies a permitted list bulk action without taking or releasing
+   * individual edit locks.
    */
   async bulkUpdate(
     dto: import('@corpcal/shared/schemas').BulkUpdateActivitiesRequest,
@@ -2006,6 +2006,16 @@ export class ActivitiesService {
 
     const results: ActivityResponse[] = [];
     for (const activityId of dto.activityIds) {
+      if (
+        dto.operation === 'review' ||
+        dto.operation === 'pitchStatus' ||
+        dto.operation === 'issue' ||
+        dto.operation === 'tags' ||
+        dto.operation === 'sharedWith'
+      ) {
+        await this.assertCanBulkEditActivity(activityId, userId, context);
+      }
+
       switch (dto.operation) {
         case 'review':
           results.push(
@@ -2067,6 +2077,33 @@ export class ActivitiesService {
       }
     }
     return results;
+  }
+
+  /** Matches CanEditActivityGuard for bulk operations that bypass its route guard. */
+  private async assertCanBulkEditActivity(
+    activityId: number,
+    userId: number,
+    context: {
+      roleName?: string;
+      teamIds?: number[];
+    }
+  ): Promise<void> {
+    const isBypass =
+      context.roleName === SYSTEM_ROLES.ADMIN ||
+      context.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+    if (isBypass) return;
+
+    const [isCommsContact, leadTeamId] = await Promise.all([
+      this.policyService.isCommsContactForActivity(activityId, userId),
+      this.policyService.getLeadTeamIdForActivity(activityId),
+    ]);
+    const isLeadTeamMember =
+      leadTeamId != null && context.teamIds?.includes(leadTeamId) === true;
+    if (isCommsContact || isLeadTeamMember) return;
+
+    throw new ForbiddenException(
+      'You may only edit activities where you are a comms contact or lead-team member. This activity is shared with your team for viewing only.'
+    );
   }
 
   /**
