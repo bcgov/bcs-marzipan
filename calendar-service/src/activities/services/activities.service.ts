@@ -1966,7 +1966,7 @@ export class ActivitiesService {
   }
 
   /**
-   * Applies a permitted list bulk action without taking or releasing
+   * Applies a permission-authorized list bulk action without taking or releasing
    * individual edit locks.
    */
   async bulkUpdate(
