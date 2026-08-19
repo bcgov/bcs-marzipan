@@ -35,6 +35,10 @@ import {
   ACCESS_DENIED_TITLE,
 } from '../lib/error-messages';
 import { showErrorToast } from '../lib/error-toast';
+import {
+  focusFirstMissingRequiredField,
+  focusRequiredField,
+} from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('CreateActivityForm');
@@ -74,11 +78,15 @@ export const CreateActivityForm: FC = () => {
     hasCreateAny,
   });
 
-  const { isFormValid, missingFields, missingFieldsHelperText } =
-    useActivityFormSubmitState(form, {
-      getFieldLabel: getActivityFieldLabel,
-      schema: createActivityRequestSchema,
-    });
+  const {
+    isFormValid,
+    missingFields,
+    missingFieldItems,
+    missingFieldsHelperText,
+  } = useActivityFormSubmitState(form, {
+    getFieldLabel: getActivityFieldLabel,
+    schema: createActivityRequestSchema,
+  });
 
   const requiredTranslationStatusId = useMemo(
     () =>
@@ -155,6 +163,7 @@ export const CreateActivityForm: FC = () => {
 
   const onError = () => {
     logger.error('Form validation failed');
+    focusFirstMissingRequiredField(missingFieldItems);
     const detail =
       missingFields.length > 0
         ? `Required fields missing: ${missingFields.join(', ')}`
@@ -262,13 +271,14 @@ export const CreateActivityForm: FC = () => {
               {missingFieldsHelperText != null && (
                 <ActivityFormMissingFieldsHint
                   helperText={missingFieldsHelperText}
-                  fields={missingFields}
+                  fields={missingFieldItems}
+                  onFieldSelect={focusRequiredField}
                 />
               )}
               <Button
                 type="submit"
                 variant="default"
-                disabled={!isFormValid || isSubmitting}
+                disabled={isSubmitting}
                 className={!isFormValid ? 'cursor-not-allowed' : undefined}
               >
                 {isSubmitting ? 'Submitting...' : 'Submit'}

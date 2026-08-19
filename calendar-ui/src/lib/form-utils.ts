@@ -12,6 +12,68 @@ export type MissingRequiredFieldItem = {
   label: string;
 };
 
+const FOCUSABLE_FIELD_SELECTOR = [
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'button:not([disabled])',
+  '[contenteditable="true"]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function toCssAttributeValue(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function findFieldElement(fieldName: string): Element | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const escapedFieldName = toCssAttributeValue(fieldName);
+  return (
+    document.querySelector(`[name="${escapedFieldName}"]`) ??
+    document.querySelector(`[data-field="${escapedFieldName}"]`) ??
+    document.getElementById(fieldName)
+  );
+}
+
+function getFocusableFieldTarget(element: Element): HTMLElement | null {
+  if (
+    element instanceof HTMLElement &&
+    element.matches(FOCUSABLE_FIELD_SELECTOR)
+  ) {
+    return element;
+  }
+
+  return element.querySelector<HTMLElement>(FOCUSABLE_FIELD_SELECTOR);
+}
+
+export function focusRequiredField(fieldName: string): boolean {
+  const fieldElement = findFieldElement(fieldName);
+  if (!fieldElement) {
+    return false;
+  }
+
+  fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const focusTarget = getFocusableFieldTarget(fieldElement);
+  focusTarget?.focus({ preventScroll: true });
+
+  return true;
+}
+
+export function focusFirstMissingRequiredField(
+  missingFields: readonly MissingRequiredFieldItem[]
+): boolean {
+  for (const field of missingFields) {
+    if (focusRequiredField(field.name)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /**
  * Extracts missing required field labels from react-hook-form FormState errors.
  *

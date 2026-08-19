@@ -84,6 +84,10 @@ import { showActivityMutationSuccessToast } from '../lib/activity-mutation-succe
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showErrorToast } from '../lib/error-toast';
+import {
+  focusFirstMissingRequiredField,
+  focusRequiredField,
+} from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('ActivityPage');
@@ -134,11 +138,15 @@ export function ActivityPage({
     userTeamIds: user?.teamIds,
     hasCreateAny,
   });
-  const { isFormValid, missingFields, missingFieldsHelperText } =
-    useActivityFormSubmitState(form, {
-      getFieldLabel: getActivityFieldLabel,
-      schema: createActivityRequestSchema,
-    });
+  const {
+    isFormValid,
+    missingFields,
+    missingFieldItems,
+    missingFieldsHelperText,
+  } = useActivityFormSubmitState(form, {
+    getFieldLabel: getActivityFieldLabel,
+    schema: createActivityRequestSchema,
+  });
   const requiredTranslationStatusId = useMemo(
     () =>
       resolveTranslationRequiredStatusId(lookups.translationRequiredStatuses),
@@ -657,6 +665,7 @@ export function ActivityPage({
 
   const onError = () => {
     logger.error('Form validation failed');
+    focusFirstMissingRequiredField(missingFieldItems);
     const detail =
       missingFields.length > 0
         ? `Required fields missing: ${missingFields.join(', ')}`
@@ -1067,7 +1076,8 @@ export function ActivityPage({
               {missingFieldsHelperText != null && (
                 <ActivityFormMissingFieldsHint
                   helperText={missingFieldsHelperText}
-                  fields={missingFields}
+                  fields={missingFieldItems}
+                  onFieldSelect={focusRequiredField}
                 />
               )}
               {canCloneActivity && (

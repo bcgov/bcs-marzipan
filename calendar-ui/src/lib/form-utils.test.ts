@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 import { createActivityRequestSchema } from '@corpcal/shared/schemas';
 
 import {
+  focusFirstMissingRequiredField,
+  focusRequiredField,
   formatMissingRequiredFieldsCountMessage,
   getMissingRequiredFieldItems,
   getMissingRequiredFieldItemsFromZodError,
@@ -40,6 +42,47 @@ describe('formatMissingRequiredFieldsCountMessage', () => {
     expect(formatMissingRequiredFieldsCountMessage(4)).toBe(
       '4 more required fields'
     );
+  });
+});
+
+describe('focusRequiredField', () => {
+  it('scrolls and focuses a control matched by data-field', () => {
+    const container = document.createElement('div');
+    container.dataset.field = 'title';
+    const input = document.createElement('input');
+    container.append(input);
+    document.body.append(container);
+
+    const scrollSpy = vi.spyOn(container, 'scrollIntoView');
+    const focusSpy = vi.spyOn(input, 'focus');
+
+    expect(focusRequiredField('title')).toBe(true);
+
+    expect(scrollSpy).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'center',
+    });
+    expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true });
+
+    container.remove();
+  });
+
+  it('uses the first missing field with a matching element', () => {
+    const input = document.createElement('input');
+    input.name = 'summary';
+    document.body.append(input);
+
+    const scrollSpy = vi.spyOn(input, 'scrollIntoView');
+
+    expect(
+      focusFirstMissingRequiredField([
+        { name: 'title', label: 'Title' },
+        { name: 'summary', label: 'Summary' },
+      ])
+    ).toBe(true);
+    expect(scrollSpy).toHaveBeenCalled();
+
+    input.remove();
   });
 });
 
