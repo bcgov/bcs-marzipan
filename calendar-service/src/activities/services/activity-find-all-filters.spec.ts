@@ -196,8 +196,7 @@ describe('buildActivityFindAllConditions', () => {
     const { db } = createMockDb();
     const conditions = buildActivityFindAllConditions({
       filters: baseFilters({
-        leadMinistryIds: [10],
-        leadOrgIds: [20],
+        leadTeamIds: [10],
         lookAheadStatusValues: ['new'],
       }),
       deletedStatusId: DELETED_STATUS_ID,
@@ -206,8 +205,8 @@ describe('buildActivityFindAllConditions', () => {
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
-    // 2 archive exclusions + 3 inArray filters
-    expect(conditions).toHaveLength(5);
+    // 2 archive exclusions + 2 inArray filters
+    expect(conditions).toHaveLength(4);
   });
 
   it('builds exists subqueries for junction-table filters', () => {

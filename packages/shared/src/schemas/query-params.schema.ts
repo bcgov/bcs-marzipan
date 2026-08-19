@@ -72,8 +72,6 @@ export const filterActivitiesQuerySchema = z.object({
       val === undefined ? undefined : val === 'true'
     ),
   activityStatusIds: commaSeparatedIntArray(),
-  leadMinistryIds: commaSeparatedIntArray(),
-  leadOrgIds: commaSeparatedIntArray(),
   leadTeamIds: commaSeparatedIntArray(),
   commsContactLeadUserIds: commaSeparatedIntArray(),
   flagAssigneeUserIds: commaSeparatedIntArray(),
@@ -152,8 +150,6 @@ export type FilterActivitiesQueryParams = Pick<
 /** Int-array query fields serialized as comma-separated strings in HTTP. */
 export const FILTER_ACTIVITIES_INT_ARRAY_KEYS = [
   'activityStatusIds',
-  'leadMinistryIds',
-  'leadOrgIds',
   'leadTeamIds',
   'commsContactLeadUserIds',
   'flagAssigneeUserIds',

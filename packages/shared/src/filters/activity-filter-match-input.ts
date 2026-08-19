@@ -31,6 +31,7 @@ export interface ActivityFilterMatchInput {
   /** Time confirmation status name (matched case-insensitively against confirmed labels). */
   timeStatusName: string;
   tagIds: number[];
+  leadTeamId: number | null;
   leadMinistryId: number | null;
   leadOrgId: number | null;
   commsContactLeadUserId: number | null;
@@ -74,6 +75,7 @@ export function activityResponseToFilterMatchInput(
     dateStatusName: activity.dateStatus ?? '',
     timeStatusName: activity.timeStatus ?? '',
     tagIds: activity.tags.map((t) => t.id),
+    leadTeamId: activity.leadTeamId ?? null,
     leadMinistryId: activity.leadMinistryId ?? null,
     leadOrgId: activity.leadOrgId ?? null,
     commsContactLeadUserId: commsLead?.userId ?? null,

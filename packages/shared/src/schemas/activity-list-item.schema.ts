@@ -57,6 +57,7 @@ export const activityListItemSchema = z.object({
   leadMinistryAbbreviation:
     activityComputedFieldsSchema.shape.leadMinistryAbbreviation,
   leadTeamDisplayName: activityComputedFieldsSchema.shape.leadTeamDisplayName,
+  leadTeamId: activityDbFieldsSchema.shape.leadTeamId,
   leadMinistryId: activityDbFieldsSchema.shape.leadMinistryId,
   commsContacts: commsContactSchema.array().default([]),
   eventPlanners: activityComputedFieldsSchema.shape.eventPlanners,
@@ -138,6 +139,7 @@ export function activityResponseToListItem(
     leadMinistry: activity.leadMinistry,
     leadMinistryAbbreviation: activity.leadMinistryAbbreviation ?? null,
     leadTeamDisplayName: activity.leadTeamDisplayName ?? null,
+    leadTeamId: activity.leadTeamId,
     leadMinistryId: activity.leadMinistryId,
     commsContacts: activity.commsContacts,
     eventPlanners: activity.eventPlanners ?? [],
