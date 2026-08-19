@@ -107,4 +107,68 @@ describe('LookupsService', () => {
       })
     );
   });
+
+  it('sorts government representatives by canonical person name before returning', async () => {
+    mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
+      createChain(
+        [
+          {
+            id: 2,
+            name: 'Niki Sharma',
+            displayName: 'Attorney General Niki Sharma',
+            title: 'Attorney General and Deputy Premier',
+            ministryId: 3,
+            representativeType: 'minister',
+            sortOrder: 1,
+            isActive: true,
+          },
+          {
+            id: 1,
+            name: 'Lana Popham',
+            displayName: 'Minister Lana Popham',
+            title: 'Minister of Agriculture and Food',
+            ministryId: 2,
+            representativeType: 'minister',
+            sortOrder: 2,
+            isActive: true,
+          },
+        ],
+        'orderBy'
+      )
+    );
+
+    const result = await service.getGovernmentRepresentatives();
+
+    expect(result.map((rep) => rep.name)).toEqual([
+      'Lana Popham',
+      'Niki Sharma',
+    ]);
+  });
+
+  it('sorts event planners by canonical person name before returning', async () => {
+    mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
+      createChain(
+        [
+          {
+            id: 2,
+            name: 'Sharma, Niki',
+            displayName: 'Niki Sharma Events',
+          },
+          {
+            id: 1,
+            name: 'Lana Popham',
+            displayName: 'Lana Popham Events',
+          },
+        ],
+        'orderBy'
+      )
+    );
+
+    const result = await service.getEventPlanners();
+
+    expect(result.map((planner) => planner.label)).toEqual([
+      'Lana Popham Events',
+      'Niki Sharma Events',
+    ]);
+  });
 });
