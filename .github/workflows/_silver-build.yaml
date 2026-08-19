@@ -1,0 +1,178 @@
+name: Silver — Build Image
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REUSABLE WORKFLOW — called exclusively by deploy-silver.yaml (and any future
+# workflow that needs to build Silver images independently).
+#
+# Responsibility: build (or skip-build) both application images via the
+# OpenShift BuildConfigs in the tools namespace, then promote the resulting
+# ImageStreamTags into the target environment namespace.
+#
+# Steps performed:
+#   1. Checkout the requested branch (source for the binary build upload)
+#   2. Install the oc CLI
+#   3. Install envsubst
+#   4. Login to OpenShift
+#   5. Apply BuildConfig + ImageStream manifests in the tools namespace
+#   6. Trigger calendar-service-build  (skipped when rebuild-image = false)
+#   7. Trigger calendar-ui-build        (skipped when rebuild-image = false)
+#   8. Promote ImageStreamTags from tools → target namespace
+#
+# Inputs (all via the calling workflow):
+#   github-environment    – GitHub environment name; used to scope secrets/vars
+#                           e.g. "silver-dev" | "silver-test" | "silver-prod"
+#   openshift-environment – Target OpenShift env key (dev | test | prod)
+#   git-branch            – Branch to check out before triggering the build
+#   rebuild-image         – true  → trigger new BuildConfig runs
+#                           false → skip builds and promote the existing tag
+#
+# Outputs:
+#   service-image  – Full image-registry reference promoted to target namespace
+#   ui-image       – Full image-registry reference promoted to target namespace
+#
+# Required GitHub environment variables (set per environment):
+#   TOOLS_NAMESPACE  – Namespace where BuildConfigs and ImageStreams live
+#   NAMESPACE        – Target deployment namespace for this environment
+#   APP_VERSION      – Semantic version tag applied to the built image
+#
+# Required GitHub environment secrets:
+#   OPENSHIFT_SERVER  – OpenShift API server URL
+#   OPENSHIFT_TOKEN   – Service-account token
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_call:
+    inputs:
+      github-environment:
+        description: >
+          GitHub environment that holds the scoped secrets and variables
+          (silver-dev | silver-test | silver-prod).
+        required: true
+        type: string
+      openshift-environment:
+        description: Target OpenShift environment key (dev | test | prod).
+        required: true
+        type: string
+      git-branch:
+        description: >
+          Branch to check out before uploading sources to the binary build.
+        required: true
+        type: string
+      rebuild-image:
+        description: >
+          Trigger a new OpenShift build for both images.
+          Set to false to skip the build and promote the existing tag.
+        required: false
+        type: boolean
+        default: true
+
+    outputs:
+      service-image:
+        description: >
+          Full image-registry reference for the promoted calendar-service image.
+          Format: image-registry.openshift-image-registry.svc:5000/<ns>/calendar-service:<tag>
+        value: ${{ jobs.build.outputs['service-image'] }}
+      ui-image:
+        description: >
+          Full image-registry reference for the promoted calendar-ui image.
+          Format: image-registry.openshift-image-registry.svc:5000/<ns>/calendar-ui:<tag>
+        value: ${{ jobs.build.outputs['ui-image'] }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build / Promote — ${{ inputs['openshift-environment'] }}
+    runs-on: ubuntu-latest
+    # Bind to the GitHub environment so secrets/vars are scoped correctly.
+    environment: ${{ inputs['github-environment'] }}
+    timeout-minutes: 45
+
+    outputs:
+      service-image: ${{ steps.promote.outputs.service_image }}
+      ui-image: ${{ steps.promote.outputs.ui_image }}
+
+    steps:
+      # ── 1. Source checkout ──────────────────────────────────────────────────
+      - name: Checkout ${{ inputs['git-branch'] }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs['git-branch'] }}
+
+      # ── 2. OpenShift CLI ────────────────────────────────────────────────────
+      - name: Install oc
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          oc: latest
+
+      # ── 3. envsubst (for kustomize variable substitution) ───────────────────
+      - name: Install envsubst
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gettext-base
+
+      # ── 4. Cluster login ────────────────────────────────────────────────────
+      - name: Login to OpenShift
+        run: |
+          oc login "${{ secrets.OPENSHIFT_SERVER }}" \
+            --token="${{ secrets.OPENSHIFT_TOKEN }}" \
+            --insecure-skip-tls-verify=true
+
+      # ── 5. Apply BuildConfig + ImageStream manifests ────────────────────────
+      # Render the openshift/build kustomize tree (substitutes $APP_VERSION and
+      # $TOOLS_NAMESPACE) and apply it idempotently to the tools namespace.
+      # This is a no-op when the resources are already up to date.
+      - name: Apply BuildConfig + ImageStream manifests in tools namespace
+        run: |
+          export APP_VERSION="${{ vars.APP_VERSION }}"
+          export TOOLS_NAMESPACE="${{ vars.TOOLS_NAMESPACE }}"
+
+          oc project "${{ vars.TOOLS_NAMESPACE }}"
+          oc kustomize openshift/build | envsubst | oc apply -f -
+
+      # ── 6. Build calendar-service ───────────────────────────────────────────
+      # Binary build: uploads the checked-out source tree to OpenShift so the
+      # runner's git checkout is used as build context regardless of the
+      # BuildConfig's git source reference.
+      - name: Build calendar-service
+        if: ${{ inputs['rebuild-image'] }}
+        run: |
+          oc -n "${{ vars.TOOLS_NAMESPACE }}" start-build calendar-service-build \
+            --from-dir=. \
+            --follow \
+            --commit="$(git rev-parse HEAD)"
+
+      # ── 7. Build calendar-ui ────────────────────────────────────────────────
+      - name: Build calendar-ui
+        if: ${{ inputs['rebuild-image'] }}
+        run: |
+          oc -n "${{ vars.TOOLS_NAMESPACE }}" start-build calendar-ui-build \
+            --from-dir=. \
+            --follow \
+            --commit="$(git rev-parse HEAD)"
+
+      # ── 8. Promote ImageStreamTags tools → target namespace ─────────────────
+      # `oc tag` copies the image manifest reference; ArgoCD / OpenShift image
+      # triggers in the target namespace then see the new digest on the next pull.
+      - name: Promote images to ${{ inputs['openshift-environment'] }} namespace
+        id: promote
+        run: |
+          TAG="${{ vars.APP_VERSION }}"
+          SRC_NS="${{ vars.TOOLS_NAMESPACE }}"
+          DST_NS="${{ vars.NAMESPACE }}"
+          REGISTRY="image-registry.openshift-image-registry.svc:5000"
+
+          if [[ -z "$SRC_NS" || -z "$DST_NS" || -z "$TAG" ]]; then
+            echo "::error::TOOLS_NAMESPACE, NAMESPACE, and APP_VERSION must all be set"
+            exit 1
+          fi
+
+          oc tag "${SRC_NS}/calendar-service:${TAG}" "${DST_NS}/calendar-service:${TAG}"
+          oc tag "${SRC_NS}/calendar-ui:${TAG}"      "${DST_NS}/calendar-ui:${TAG}"
+
+          echo "service_image=${REGISTRY}/${DST_NS}/calendar-service:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "ui_image=${REGISTRY}/${DST_NS}/calendar-ui:${TAG}"           >> "$GITHUB_OUTPUT"
+
+          echo "Promoted calendar-service:${TAG}  →  ${DST_NS}"
+          echo "Promoted calendar-ui:${TAG}        →  ${DST_NS}"

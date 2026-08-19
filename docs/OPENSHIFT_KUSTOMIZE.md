@@ -7,7 +7,7 @@ This document explains how to deploy the corporate calendar app to OpenShift usi
 The project uses two separate kustomize bases:
 
 - **`openshift/build`** — ImageStreams and BuildConfigs for building images in a tools namespace.
-- **`openshift/deploy`** — Deployments, Services, Routes, and ConfigMaps for running the app in target environments (dev, staging, prod).
+- **`openshift/deploy`** — Deployments, Services, Routes, and ConfigMaps for running the app in target environments (dev, test, prod).
 
 ## Automated deployment via GitHub Actions
 
@@ -17,16 +17,16 @@ The workflow `.github/workflows/pr-deploy-dev.yaml` is triggered on pushes to th
 2. **Applies build resources** in `TOOLS_NAMESPACE` (ImageStreams, BuildConfigs).
 3. **Starts binary builds** for `calendar-service` and `calendar-ui` from repo source.
 4. **Tags images** from tools namespace to the target deployment namespace (e.g., `DEV_NAMESPACE`).
-5. **Applies deploy resources** using kustomize overlay for the target environment (dev/staging/prod).
+5. **Applies deploy resources** using kustomize overlay for the target environment (dev/test/prod).
 6. **Rolls out** the updated deployments.
 
 ### Image versioning (APP_VERSION)
- 
+
 Builds and deployments use a versioned image tag instead of `latest` so the cluster pulls the correct image and avoids stale deploys (updated March 3, 2026). The tag is controlled by the GitHub repository variable **`APP_VERSION`** (e.g. `0.0.1`).
- 
+
 - **BuildConfigs** output to `calendar-service:${APP_VERSION}`, `calendar-ui:${APP_VERSION}`, and `calendar-db-seed:${APP_VERSION}`.
 - **Workflows** pass `vars.APP_VERSION` into the job env and use it when tagging images and applying kustomize; `envsubst` substitutes `${APP_VERSION}` (and namespace vars) in the manifests before `oc apply`.
- 
+
 In GitHub set `APP_VERSION` under **Settings → Secrets and variables → Actions → Variables**. Bump it (e.g. `0.0.1` → `0.0.2`) for each release or deploy so each deployment has a distinct tag; this improves traceability and avoids registry caching issues.
 
 ### Required GitHub Secrets
@@ -37,7 +37,7 @@ Set these secrets in the repo settings for the workflow to run:
 - `OPENSHIFT_TOKEN` — Service account token with build and deploy permissions
 - `OPENSHIFT_TOOLS_NAMESPACE` — Namespace for building images (e.g., `d8b00f-tools`)
 - `OPENSHIFT_DEV_NAMESPACE` — Namespace for dev deployment (e.g., `d8b00f-dev`)
-- `OPENSHIFT_STAGING_NAMESPACE` — Namespace for staging deployment (e.g., `d8b00f-staging`)
+- `OPENSHIFT_TEST_NAMESPACE` — Namespace for test deployment (e.g., `d8b00f-test`)
 - `OPENSHIFT_PROD_NAMESPACE` — Namespace for prod deployment (e.g., `d8b00f-prod`)
 
 ### Workflow trigger
@@ -110,12 +110,12 @@ oc delete job calendar-db-migrate
 Three overlays are available for different environments:
 
 - `openshift/deploy/overlays/dev` — development environment
-- `openshift/deploy/overlays/staging` — staging environment
+- `openshift/deploy/overlays/test` — test environment
 - `openshift/deploy/overlays/prod` — production environment
 
-Each overlay can customize namespaces, replicas, resource limits, and image tags. To use a different overlay, replace `dev` in the deploy command with your target environment (e.g., `openshift/deploy/overlays/staging`).
+Each overlay can customize namespaces, replicas, resource limits, and image tags. To use a different overlay, replace `dev` in the deploy command with your target environment (e.g., `openshift/deploy/overlays/test`).
 
-Each overlay can customize namespaces, replicas, resource limits, and image tags. To use a different overlay, replace `dev` in the deploy command with your target environment (e.g., `openshift/deploy/overlays/staging`).
+Each overlay can customize namespaces, replicas, resource limits, and image tags. To use a different overlay, replace `dev` in the deploy command with your target environment (e.g., `openshift/deploy/overlays/test`).
 
 Notes & Troubleshooting
 

@@ -1,0 +1,226 @@
+name: Deploy to Silver
+
+# ─────────────────────────────────────────────────────────────────────────────
+# USER-FACING ENTRY POINT — the only workflow operators interact with for all
+# Silver (OpenShift) deployments: dev, test, and prod.
+#
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │  HOW IT WORKS                                                           │
+# │                                                                         │
+# │  push to develop          ──►  auto-deploy to Silver dev (rebuild=true) │
+# │  workflow_dispatch        ──►  manual deploy to any Silver environment  │
+# │  workflow_call            ──►  programmatic use (e.g. release gates)    │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# Branch → environment auto-mapping (push triggers):
+#   develop  →  dev
+#
+# Internal call chain:
+#   resolve-env  →  _silver-build  →  [_silver-db-migrate]  →  _silver-rollout
+#
+# Database migrations run BEFORE the rollout so the schema is up-to-date
+# when the new application pods start. Migrations are off by default on push
+# triggers; enable them via the run-migrations input on manual/programmatic runs.
+#
+# GitHub environment → scoped secrets/vars mapping:
+#   dev   →  silver-dev   (vars: NAMESPACE, TOOLS_NAMESPACE, APP_VERSION, …)
+#   test  →  silver-test
+#   prod  →  silver-prod
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  # ── Automatic: push to develop triggers a dev deploy ──────────────────────
+  push:
+    branches:
+      - develop
+
+  # ── Manual: choose target environment and options ─────────────────────────
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target Silver environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+      branch:
+        description: >
+          Branch to check out and deploy.
+          Leave blank to use the branch that triggered the run.
+        required: false
+        type: string
+      rebuild-image:
+        description: >
+          Build a new image via OpenShift BuildConfig.
+          Uncheck to promote the image that is already tagged in the tools
+          namespace (useful for re-deploying a known-good build).
+        required: false
+        type: boolean
+        default: true
+      run-migrations:
+        description: >
+          Run database migrations before the application rollout.
+          Builds and runs the calendar-db-migrate Job in the target namespace.
+          Safe to run multiple times — Drizzle migrations are idempotent.
+        required: false
+        type: boolean
+        default: false
+      run-seeds:
+        description: >
+          Run seed data after migrations (only when run-migrations is also true).
+          Avoid in production.
+        required: false
+        type: boolean
+        default: false
+
+  # ── Programmatic: called by other workflows ────────────────────────────────
+  workflow_call:
+    inputs:
+      environment:
+        description: Target Silver environment (dev | test | prod).
+        required: false
+        type: string
+      branch:
+        description: Branch to deploy.
+        required: false
+        type: string
+      rebuild-image:
+        description: Build a new image (false = promote existing).
+        required: false
+        type: boolean
+        default: true
+      run-migrations:
+        description: Run database migrations before rollout.
+        required: false
+        type: boolean
+        default: false
+      run-seeds:
+        description: Run seed data after migrations.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── 1. Resolve every trigger type into a concrete set of deploy parameters ──
+  resolve-env:
+    name: Resolve Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.map.outputs.environment }}
+      github-environment: ${{ steps.map.outputs.github_environment }}
+      branch: ${{ steps.map.outputs.branch }}
+      rebuild-image: ${{ steps.map.outputs.rebuild_image }}
+    steps:
+      - name: Map trigger to deployment parameters
+        id: map
+        run: |
+          set -euo pipefail
+
+          # ── Target OpenShift environment ───────────────────────────────────
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Automatic trigger: map the source branch to an environment.
+            case "${{ github.ref_name }}" in
+              develop) ENV="dev" ;;
+              *)
+                echo "::error::Auto-deploy is only configured for the 'develop' branch (got '${{ github.ref_name }}')"
+                exit 1
+                ;;
+            esac
+          else
+            # Manual / programmatic trigger: environment must be supplied.
+            ENV="${{ inputs.environment }}"
+            if [[ -z "$ENV" ]]; then
+              echo "::error::The 'environment' input is required for workflow_dispatch / workflow_call triggers"
+              exit 1
+            fi
+          fi
+
+          # ── GitHub environment (holds scoped secrets + variables) ───────────
+          case "$ENV" in
+            dev)  GH_ENV="silver-dev" ;;
+            test) GH_ENV="silver-test" ;;
+            prod) GH_ENV="silver-prod"  ;;
+            *)
+              echo "::error::Unknown Silver environment: '${ENV}'. Must be dev, test, or prod."
+              exit 1
+              ;;
+          esac
+
+          # ── Branch to deploy ───────────────────────────────────────────────
+          INPUT_BRANCH="${{ inputs.branch }}"
+          BRANCH="${INPUT_BRANCH:-${{ github.ref_name }}}"
+
+          # ── Rebuild flag ───────────────────────────────────────────────────
+          # push events always rebuild; manual / programmatic triggers honour
+          # the input (default: true via workflow_call default).
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            REBUILD="true"
+          else
+            RAW_REBUILD="${{ inputs['rebuild-image'] }}"
+            # Boolean inputs arrive as the string "true" or "false".
+            # An unset workflow_call boolean input arrives as "false".
+            # Default to "true" only when the value is genuinely absent.
+            REBUILD="${RAW_REBUILD:-true}"
+          fi
+
+          {
+            echo "environment=${ENV}"
+            echo "github_environment=${GH_ENV}"
+            echo "branch=${BRANCH}"
+            echo "rebuild_image=${REBUILD}"
+          } >> "$GITHUB_OUTPUT"
+
+  # ── 2. Build (or promote) Docker images via OpenShift BuildConfigs ─────────
+  build:
+    name: Build Image — ${{ needs['resolve-env'].outputs.environment }}
+    needs: resolve-env
+    uses: ./.github/workflows/_silver-build.yaml
+    with:
+      github-environment: ${{ needs['resolve-env'].outputs['github-environment'] }}
+      openshift-environment: ${{ needs['resolve-env'].outputs.environment }}
+      git-branch: ${{ needs['resolve-env'].outputs.branch }}
+      # Convert the string output back to a boolean for the reusable workflow.
+      rebuild-image: ${{ needs['resolve-env'].outputs['rebuild-image'] == 'true' }}
+    secrets: inherit
+
+  # ── 3. Run DB migrations before rollout (optional) ─────────────────────────
+  # Migrations run BEFORE the new application pods start so the schema is
+  # always ahead of or equal to what the code expects.
+  # Push triggers never run migrations automatically — enable via the
+  # run-migrations input on workflow_dispatch / workflow_call.
+  db-migrate:
+    name: DB Migrate — ${{ needs['resolve-env'].outputs.environment }}
+    needs: [resolve-env, build]
+    if: ${{ inputs['run-migrations'] == true }}
+    uses: ./.github/workflows/_silver-db-migrate.yaml
+    with:
+      github-environment: ${{ needs['resolve-env'].outputs['github-environment'] }}
+      openshift-environment: ${{ needs['resolve-env'].outputs.environment }}
+      git-branch: ${{ needs['resolve-env'].outputs.branch }}
+      rebuild-image: ${{ needs['resolve-env'].outputs['rebuild-image'] == 'true' }}
+      run-seeds: ${{ inputs['run-seeds'] == true }}
+    secrets: inherit
+
+  # ── 4. Deploy and verify ───────────────────────────────────────────────────
+  # Depends on db-migrate, but db-migrate may be skipped when run-migrations
+  # is false. The if: always() guard keeps rollout running in both cases.
+  rollout:
+    name: Rollout — ${{ needs['resolve-env'].outputs.environment }}
+    needs: [resolve-env, build, db-migrate]
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (needs.db-migrate.result == 'success' || needs.db-migrate.result == 'skipped')
+    uses: ./.github/workflows/_silver-rollout.yaml
+    with:
+      github-environment: ${{ needs['resolve-env'].outputs['github-environment'] }}
+      openshift-environment: ${{ needs['resolve-env'].outputs.environment }}
+      git-branch: ${{ needs['resolve-env'].outputs.branch }}
+      service-image: ${{ needs.build.outputs['service-image'] }}
+      ui-image: ${{ needs.build.outputs['ui-image'] }}
+    secrets: inherit

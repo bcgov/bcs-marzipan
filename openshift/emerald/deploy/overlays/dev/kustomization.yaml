@@ -19,4 +19,3 @@ images:
 
 patches:
   - path: patches/calendar-service-configmap.patch.yaml
-  - path: patches/calendar-ui-configmap.patch.yaml
