@@ -87,9 +87,6 @@ spec:
                 secretKeyRef:
                   name: corpcal-service-secret
                   key: AZURE_REDIRECT_URI
-            #Session_Secret not required (need to check)
-            - name: SESSION_SECRET
-              value: be7f200b-8324-46b2-8628-378dd8bc3d00
             - name: HTTP_PROXY
               value: 'http://swpxkam.gov.bc.ca:8080'
             - name: HTTPS_PROXY
