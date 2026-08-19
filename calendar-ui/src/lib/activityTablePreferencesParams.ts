@@ -45,8 +45,8 @@ const VALID_SORT_KEYS = new Set([
 ]);
 
 const DEFAULT_SORT_KEY = 'startDate';
-const DEFAULT_SORT_DIRECTION = 'desc' as const;
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_SORT_DIRECTION = 'asc' as const;
+const DEFAULT_PAGE_SIZE = 25;
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 100;
 

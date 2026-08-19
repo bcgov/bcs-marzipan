@@ -57,7 +57,7 @@ function makeActivity(id: number) {
   };
 }
 
-const mockActivities = Array.from({ length: 12 }, (_, i) =>
+const mockActivities = Array.from({ length: 30 }, (_, i) =>
   makeActivity(i + 1)
 );
 
@@ -118,12 +118,12 @@ vi.mock('@/hooks/useActivityTableFilterLookups', () => ({
 vi.mock('@/hooks/useActivityTablePreferences', () => ({
   useActivityTablePreferences: () => ({
     preferences: {
-      sortKey: null,
-      sortDirection: 'desc',
+      sortKey: 'startDate',
+      sortDirection: 'asc',
       showCompleted: false,
       showDeleted: false,
       searchKeyword: '',
-      pageSize: 10,
+      pageSize: 25,
       filterState: DEFAULT_ACTIVITY_FILTER_STATE,
     },
     setPreferences: mockSetPreferences,
