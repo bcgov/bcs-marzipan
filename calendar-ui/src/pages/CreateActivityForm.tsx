@@ -78,15 +78,11 @@ export const CreateActivityForm: FC = () => {
     hasCreateAny,
   });
 
-  const {
-    isFormValid,
-    missingFields,
-    missingFieldItems,
-    missingFieldsHelperText,
-  } = useActivityFormSubmitState(form, {
-    getFieldLabel: getActivityFieldLabel,
-    schema: createActivityRequestSchema,
-  });
+  const { missingFields, missingFieldItems, missingFieldsHelperText } =
+    useActivityFormSubmitState(form, {
+      getFieldLabel: getActivityFieldLabel,
+      schema: createActivityRequestSchema,
+    });
 
   const requiredTranslationStatusId = useMemo(
     () =>
@@ -275,12 +271,7 @@ export const CreateActivityForm: FC = () => {
                   onFieldSelect={focusRequiredField}
                 />
               )}
-              <Button
-                type="submit"
-                variant="default"
-                disabled={isSubmitting}
-                className={!isFormValid ? 'cursor-not-allowed' : undefined}
-              >
+              <Button type="submit" variant="default" disabled={isSubmitting}>
                 {isSubmitting ? 'Submitting...' : 'Submit'}
               </Button>
             </div>

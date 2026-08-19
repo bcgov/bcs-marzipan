@@ -1098,7 +1098,6 @@ export function ActivityPage({
                     : 'default'
                 }
                 disabled={!actionFlags.canSubmitUpdate}
-                className={!isFormValid ? 'cursor-not-allowed' : undefined}
               >
                 {isSubmitting ? 'Saving...' : 'Save'}
               </Button>
