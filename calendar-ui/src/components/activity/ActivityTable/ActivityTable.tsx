@@ -146,7 +146,7 @@ import { compareActivityRowsByLevels } from './activityTableSort';
  */
 
 const DEFAULT_SORT_KEY = 'startDate';
-const DEFAULT_SORT_DIRECTION = 'desc' as const;
+const DEFAULT_SORT_DIRECTION = 'asc' as const;
 
 const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   { id: 'activityId', label: 'Activity ID', defaultDirection: 'asc' },
