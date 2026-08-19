@@ -351,8 +351,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
   ) => {
     if (Array.isArray(v)) return;
     if (v == null) {
-      const live = getVenueCurrent(form);
-      applyVenueAddress(form, { ...live, venueName: null });
+      applyVenueAddress(form, EMPTY_VENUE);
       clearVenueStatusIdIfSet(form);
       return;
     }
