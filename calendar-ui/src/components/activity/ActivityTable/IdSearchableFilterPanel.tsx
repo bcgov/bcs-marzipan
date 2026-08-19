@@ -16,7 +16,8 @@ export interface IdSearchableFilterPanelProps {
 }
 
 /**
- * Searchable multi-select filter panel (numeric IDs). Used for tags, teams, and lead dimensions.
+ * Searchable multi-select filter panel for numeric ID lists.
+ * Used for simple "select many" filters.
  */
 export function IdSearchableFilterPanel({
   options,

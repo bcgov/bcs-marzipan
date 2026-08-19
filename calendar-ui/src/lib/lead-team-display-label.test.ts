@@ -23,7 +23,7 @@ describe('formatLeadTeamSelectLabel', () => {
     ).toBe('Legacy Team (Ministry of Example)');
   });
 
-  it('omits brackets when ministry name is absent', () => {
+  it('omits parentheses when ministry name is absent', () => {
     expect(
       formatLeadTeamSelectLabel({
         name: 'Standalone',

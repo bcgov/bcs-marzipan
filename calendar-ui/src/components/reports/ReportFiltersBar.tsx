@@ -593,11 +593,11 @@ export function ReportFiltersBar({
     <div
       className="flex flex-col"
       role="search"
-      aria-label="Filter report activities by datetime, category, look ahead, status, leads, translations, tags, pitch, and keyword"
+      aria-label="Filter report activities by date, category, lead team, comms contact, status, look ahead, tags, translations, pitch, event planner, and keyword"
     >
       <div className="mb-4 flex flex-nowrap items-center justify-between gap-8">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div className="relative max-w-md min-w-[240px] shrink-0">
+          <div className="relative max-w-md min-w-60 shrink-0">
             <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
             <Input
               type="text"
