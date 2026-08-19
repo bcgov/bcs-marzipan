@@ -65,10 +65,10 @@ describe('useActivityTablePreferences', () => {
       );
 
       expect(result.current.preferences.sortKey).toBe('startDate');
-      expect(result.current.preferences.sortDirection).toBe('desc');
+      expect(result.current.preferences.sortDirection).toBe('asc');
       expect(result.current.preferences.showCompleted).toBe(false);
       expect(result.current.preferences.showDeleted).toBe(false);
-      expect(result.current.preferences.pageSize).toBe(10);
+      expect(result.current.preferences.pageSize).toBe(25);
       expect(result.current.preferences.searchKeyword).toBe('');
       expect(result.current.preferences.filterState).toEqual(
         expect.objectContaining({
@@ -133,7 +133,7 @@ describe('useActivityTablePreferences', () => {
         useActivityTablePreferences(canSeeDeleted)
       );
 
-      expect(result.current.preferences.pageSize).toBe(10);
+      expect(result.current.preferences.pageSize).toBe(25);
     });
 
     it('parses search from URL', () => {
