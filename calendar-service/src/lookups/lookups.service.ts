@@ -1101,15 +1101,12 @@ export class LookupsService {
         ministries,
         eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
       )
-      .orderBy(governmentRepresentatives.sortOrder);
+      .orderBy(
+        governmentRepresentatives.sortOrder,
+        governmentRepresentatives.displayName
+      );
 
-    const sortedResults = sortByStaffName(
-      results,
-      (rep) => rep.name || rep.displayName,
-      (rep) => rep.id
-    );
-
-    return sortedResults.map((rep) => ({
+    return results.map((rep) => ({
       id: rep.id,
       label: rep.displayName,
       value: rep.id,
@@ -1137,15 +1134,9 @@ export class LookupsService {
       })
       .from(eventPlanners)
       .where(eq(eventPlanners.isActive, true))
-      .orderBy(eventPlanners.sortOrder);
+      .orderBy(eventPlanners.sortOrder, eventPlanners.displayName);
 
-    const sortedResults = sortByStaffName(
-      results,
-      (planner) => planner.name || planner.displayName,
-      (planner) => planner.id
-    );
-
-    return sortedResults.map((planner) => ({
+    return results.map((planner) => ({
       id: planner.id,
       label: planner.displayName,
       value: planner.id,

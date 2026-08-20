@@ -7,8 +7,10 @@ import type {
   TranslationRequiredStatusLookupItem,
   VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
+import { sortGovernmentRepresentativesForUser } from '@corpcal/shared/utils';
 import type { OptionItem } from '@/schemas/types';
 
+import { useAuth } from './useAuth';
 import {
   useActivityStatuses,
   useActivityTeamSharing,
@@ -140,6 +142,7 @@ export interface FormLookupData {
 }
 
 export function useFormLookups(): FormLookupData {
+  const { user } = useAuth();
   const categoriesQuery = useCategories();
   const organizationsQuery = useOrganizations();
   const ministriesQuery = useMinistries();
@@ -291,14 +294,27 @@ export function useFormLookups(): FormLookupData {
         shortcode: item.shortcode ?? null,
       })) || [];
 
-    // Transform government representatives for Badge components
-    const governmentRepresentatives =
-      governmentRepresentativesQuery.data?.map((item) => ({
-        id: item.id,
-        name: item.name || item.label,
-        displayName: item.displayName || item.label,
-        title: item.title as string | undefined,
-      })) || [];
+    // Teams for Shared With dropdown and response->form mapping (name to id)
+    const sharingPayload = activityTeamSharingQuery.data;
+    const sharedWithTeams =
+      sharingPayload?.teams.map((t) => ({
+        id: t.id,
+        name: t.name,
+        displayName: t.displayName ?? undefined,
+        ministryId: t.ministryId,
+      })) ?? [];
+
+    // Boost the user's ministry minister(s) in the activity form dropdown
+    const governmentRepresentatives = sortGovernmentRepresentativesForUser(
+      governmentRepresentativesQuery.data ?? [],
+      user?.teamIds,
+      sharedWithTeams
+    ).map((item) => ({
+      id: item.id,
+      name: item.name || item.label,
+      displayName: item.displayName || item.label,
+      title: item.title as string | undefined,
+    }));
 
     // Transform news release distributions for Select (serial IDs need to be strings for Select components)
     const newsReleaseDistributions =
@@ -320,16 +336,6 @@ export function useFormLookups(): FormLookupData {
         value: String(item.value),
         label: item.label,
       })) || [];
-
-    // Teams for Shared With dropdown and response->form mapping (name to id)
-    const sharingPayload = activityTeamSharingQuery.data;
-    const sharedWithTeams =
-      sharingPayload?.teams.map((t) => ({
-        id: t.id,
-        name: t.name,
-        displayName: t.displayName ?? undefined,
-        ministryId: t.ministryId,
-      })) ?? [];
 
     const quickShareGroups =
       sharingPayload?.quickShare?.groups.map((g) => ({
@@ -366,6 +372,7 @@ export function useFormLookups(): FormLookupData {
     };
   }, [
     activityStatusesQuery.data,
+    activityTeamSharingQuery.data,
     categoriesQuery.data,
     commsMaterialsQuery.data,
     dateStatusesQuery.data,
@@ -381,11 +388,11 @@ export function useFormLookups(): FormLookupData {
     pitchStatusesQuery.data,
     premierRequestedQuery.data,
     tagsQuery.data,
-    activityTeamSharingQuery.data,
     timeStatusesQuery.data,
-    venueStatusesQuery.data,
     translationLanguagesQuery.data,
     translationRequiredStatusesQuery.data,
+    user?.teamIds,
     usersQuery.data,
+    venueStatusesQuery.data,
   ]);
 }

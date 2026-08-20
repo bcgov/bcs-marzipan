@@ -108,7 +108,7 @@ describe('LookupsService', () => {
     );
   });
 
-  it('sorts government representatives by canonical person name before returning', async () => {
+  it('returns government representatives in admin sortOrder', async () => {
     mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
       createChain(
         [
@@ -140,24 +140,24 @@ describe('LookupsService', () => {
     const result = await service.getGovernmentRepresentatives();
 
     expect(result.map((rep) => rep.name)).toEqual([
-      'Lana Popham',
       'Niki Sharma',
+      'Lana Popham',
     ]);
   });
 
-  it('sorts event planners by canonical person name before returning', async () => {
+  it('returns event planners in admin sortOrder', async () => {
     mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
       createChain(
         [
           {
-            id: 2,
-            name: 'Sharma, Niki',
-            displayName: 'Niki Sharma Events',
-          },
-          {
             id: 1,
             name: 'Lana Popham',
             displayName: 'Lana Popham Events',
+          },
+          {
+            id: 2,
+            name: 'Sharma, Niki',
+            displayName: 'Niki Sharma Events',
           },
         ],
         'orderBy'
