@@ -11,6 +11,7 @@ import {
   getMissingRequiredFieldItemsFromZodError,
   getMissingRequiredFields,
   getMissingRequiredFieldsFromZodError,
+  sortMissingRequiredFieldItems,
 } from './form-utils';
 
 function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
@@ -83,6 +84,26 @@ describe('focusRequiredField', () => {
     expect(scrollSpy).toHaveBeenCalled();
 
     input.remove();
+  });
+});
+
+describe('sortMissingRequiredFieldItems', () => {
+  it('sorts known fields by canonical order and appends unknown fields', () => {
+    const items = [
+      { name: 'title', label: 'Title' },
+      { name: 'unknown', label: 'Unknown' },
+      { name: 'categoryIds', label: 'Category' },
+      { name: 'alsoUnknown', label: 'Also unknown' },
+    ];
+
+    expect(
+      sortMissingRequiredFieldItems(items, ['categoryIds', 'title', 'summary'])
+    ).toEqual([
+      { name: 'categoryIds', label: 'Category' },
+      { name: 'title', label: 'Title' },
+      { name: 'unknown', label: 'Unknown' },
+      { name: 'alsoUnknown', label: 'Also unknown' },
+    ]);
   });
 });
 
@@ -206,6 +227,25 @@ describe('getMissingRequiredFieldItemsFromZodError', () => {
       { name: 'categoryIds', label: 'Label:categoryIds' },
     ]);
   });
+
+  it('sorts by fieldOrder when provided', () => {
+    const schema = z.object({
+      title: z.string().min(1),
+      categoryIds: z.array(z.number()).min(1),
+    });
+
+    const result = schema.safeParse({ title: '', categoryIds: [] });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    const missing = getMissingRequiredFieldItemsFromZodError(
+      result.error,
+      (field) => field,
+      ['categoryIds', 'title']
+    );
+
+    expect(missing.map((item) => item.name)).toEqual(['categoryIds', 'title']);
+  });
 });
 
 describe('getMissingRequiredFieldItems', () => {
@@ -224,5 +264,20 @@ describe('getMissingRequiredFieldItems', () => {
       { name: 'title', label: 'Label:title' },
       { name: 'categoryIds', label: 'Label:categoryIds' },
     ]);
+  });
+
+  it('sorts by fieldOrder when provided regardless of Object.keys order', () => {
+    const missing = getMissingRequiredFieldItems(
+      {
+        errors: {
+          categoryIds: { type: 'too_small', message: 'At least one category' },
+          title: { type: 'too_small', message: 'Required' },
+        },
+      } as never,
+      (field) => field,
+      ['categoryIds', 'title']
+    );
+
+    expect(missing.map((item) => item.name)).toEqual(['categoryIds', 'title']);
   });
 });

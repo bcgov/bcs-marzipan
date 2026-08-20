@@ -75,6 +75,38 @@ export function focusFirstMissingRequiredField(
 }
 
 /**
+ * Sorts missing-field items to match a canonical form layout order.
+ * Fields not in `fieldOrder` keep their relative order and appear after known fields.
+ */
+export function sortMissingRequiredFieldItems(
+  items: readonly MissingRequiredFieldItem[],
+  fieldOrder: readonly string[]
+): MissingRequiredFieldItem[] {
+  const indexByName = new Map(fieldOrder.map((name, index) => [name, index]));
+  const known: MissingRequiredFieldItem[] = [];
+  const unknown: MissingRequiredFieldItem[] = [];
+
+  for (const item of items) {
+    if (indexByName.has(item.name)) {
+      known.push(item);
+    } else {
+      unknown.push(item);
+    }
+  }
+
+  known.sort((a, b) => indexByName.get(a.name)! - indexByName.get(b.name)!);
+
+  return [...known, ...unknown];
+}
+
+function applyMissingFieldOrder(
+  items: MissingRequiredFieldItem[],
+  fieldOrder?: readonly string[]
+): MissingRequiredFieldItem[] {
+  return fieldOrder ? sortMissingRequiredFieldItems(items, fieldOrder) : items;
+}
+
+/**
  * Extracts missing required field labels from react-hook-form FormState errors.
  *
  * @param formState - The FormState object from react-hook-form containing errors
@@ -93,7 +125,8 @@ export function focusFirstMissingRequiredField(
  */
 export function getMissingRequiredFieldItems<TFieldValues extends FieldValues>(
   formState: FormState<TFieldValues>,
-  getFieldLabel?: (fieldName: string) => string
+  getFieldLabel?: (fieldName: string) => string,
+  fieldOrder?: readonly string[]
 ): MissingRequiredFieldItem[] {
   const errors = formState.errors;
   const missingFields: MissingRequiredFieldItem[] = [];
@@ -132,14 +165,15 @@ export function getMissingRequiredFieldItems<TFieldValues extends FieldValues>(
   };
 
   extractErrors(errors);
-  return missingFields;
+  return applyMissingFieldOrder(missingFields, fieldOrder);
 }
 
 export function getMissingRequiredFields<TFieldValues extends FieldValues>(
   formState: FormState<TFieldValues>,
-  getFieldLabel?: (fieldName: string) => string
+  getFieldLabel?: (fieldName: string) => string,
+  fieldOrder?: readonly string[]
 ): string[] {
-  return getMissingRequiredFieldItems(formState, getFieldLabel).map(
+  return getMissingRequiredFieldItems(formState, getFieldLabel, fieldOrder).map(
     (field) => field.label
   );
 }
@@ -151,7 +185,8 @@ export function getMissingRequiredFields<TFieldValues extends FieldValues>(
  */
 export function getMissingRequiredFieldItemsFromZodError(
   error: { issues: ReadonlyArray<ZodIssueLike> },
-  getFieldLabel?: (fieldName: string) => string
+  getFieldLabel?: (fieldName: string) => string,
+  fieldOrder?: readonly string[]
 ): MissingRequiredFieldItem[] {
   const missingFields: MissingRequiredFieldItem[] = [];
   const seenFields = new Set<string>();
@@ -172,17 +207,20 @@ export function getMissingRequiredFieldItemsFromZodError(
     });
   }
 
-  return missingFields;
+  return applyMissingFieldOrder(missingFields, fieldOrder);
 }
 
 /** Maps Zod safeParse issues to top-level field labels for submit gating UI. */
 export function getMissingRequiredFieldsFromZodError(
   error: { issues: ReadonlyArray<ZodIssueLike> },
-  getFieldLabel?: (fieldName: string) => string
+  getFieldLabel?: (fieldName: string) => string,
+  fieldOrder?: readonly string[]
 ): string[] {
-  return getMissingRequiredFieldItemsFromZodError(error, getFieldLabel).map(
-    (field) => field.label
-  );
+  return getMissingRequiredFieldItemsFromZodError(
+    error,
+    getFieldLabel,
+    fieldOrder
+  ).map((field) => field.label);
 }
 
 /** Muted sticky-bar copy when create/edit submit is blocked by required fields. */

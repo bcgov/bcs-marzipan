@@ -70,11 +70,13 @@ emit the correct `kind` per branch.
 ## What you do not need to change
 
 - `calendar-ui/src/lib/form-utils.ts` — imports `isZodMissingRequiredIssue` from `@corpcal/shared/validation`.
-- `useActivityFormSubmitState.ts` — derives missing fields from live `safeParse`.
+- `useActivityFormSubmitState.ts` — derives missing fields from live `safeParse` and sorts them by form layout order automatically.
+- A separate focus-order constant — missing-field order comes from `ACTIVITY_FORM_SECTION_FIELDS` array order in `activity-form-sections.ts`. When adding a required field, place its key at the correct position in the section array (see `ACTIVITY_FORM_SECTIONS.md`).
 
 ## Related files
 
 - `packages/shared/src/validation/zod-issue-kind.ts` — `ZOD_ISSUE_KIND` constants
 - `packages/shared/src/validation/is-zod-missing-required-issue.ts` — classifier
+- `packages/shared/src/activity-form-sections.ts` — section registry and field layout order
 - `packages/shared/src/utils/activity-field-labels.ts` — labels and required-key list
 - `calendar-ui/src/lib/form-utils.ts` — maps classified issues to sticky-bar copy
