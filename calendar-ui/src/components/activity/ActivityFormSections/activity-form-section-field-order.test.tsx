@@ -212,6 +212,7 @@ describe('activity form section field order', () => {
     expect(renderedOrder).toEqual(
       expectedRegistryOrderForRenderedFields('overview', renderedOrder)
     );
+    expect(renderedOrder[0]).toBe('categoryIds');
   });
 
   it('matches registry order in reports', () => {
