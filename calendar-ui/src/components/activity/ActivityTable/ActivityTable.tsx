@@ -1704,8 +1704,10 @@ export function ActivityTable({
                     onSelect={() =>
                       selectActivityIds(
                         sortedData
-                          .filter((row) =>
-                            (user?.teamIds ?? []).includes(row.leadTeamId)
+                          .filter(
+                            (row) =>
+                              row.leadTeamId != null &&
+                              (user?.teamIds ?? []).includes(row.leadTeamId)
                           )
                           .map((row) => row.id)
                       )

@@ -141,6 +141,8 @@ Related variables are wired in both base trees:
 
 - `RATE_LIMIT_MAX` (ConfigMap): max requests per minute per IP for general endpoints.
 - `RATE_LIMIT_AUTH_MAX` (ConfigMap): max requests per minute per IP for sensitive auth endpoints.
+- `RATE_LIMIT_AZURE_MAX` (optional): max requests per window for Azure OIDC endpoints (default: 20).
+- `RATE_LIMIT_AZURE_WINDOW_MS` (optional): Azure OIDC rate-limit window in ms (default: 900000 / 15 min).
 - `RATE_LIMIT_STORE` (ConfigMap): `memory` or `redis`.
 - `RATE_LIMIT_REDIS_URL` (Secret): Redis connection URL used when store mode is `redis`.
 

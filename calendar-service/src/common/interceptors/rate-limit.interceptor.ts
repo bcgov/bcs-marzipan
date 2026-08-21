@@ -5,6 +5,7 @@
  *
  * - General endpoints: RATE_LIMIT_MAX requests per minute per IP (default: 100)
  * - Sensitive auth endpoints: RATE_LIMIT_AUTH_MAX requests per minute per IP (default: 5)
+ * - Azure OIDC endpoints: RATE_LIMIT_AZURE_MAX requests per window per IP (default: 20 / 15 min)
  * - Store backend: RATE_LIMIT_STORE=memory|redis (default: memory)
  */
 
@@ -19,6 +20,12 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { defer, from, Observable, switchMap } from 'rxjs';
+
+interface RateLimitPolicy {
+  maxRequests: number;
+  windowMs: number;
+  bucket: string;
+}
 
 interface RateLimitEntry {
   count: number;
@@ -177,6 +184,8 @@ export class RateLimitInterceptor implements NestInterceptor {
   private readonly store: RateLimitStore;
   private readonly maxRequests: number;
   private readonly authMaxRequests: number;
+  private readonly azureMaxRequests: number;
+  private readonly azureWindowMs: number;
   private readonly windowMs: number = 60000; // 1 minute
 
   constructor(private readonly configService: ConfigService) {
@@ -189,6 +198,17 @@ export class RateLimitInterceptor implements NestInterceptor {
         this.configService.get<string>('RATE_LIMIT_AUTH_MAX') || '5',
         10
       ) || 5;
+    this.azureMaxRequests =
+      parseInt(
+        this.configService.get<string>('RATE_LIMIT_AZURE_MAX') || '20',
+        10
+      ) || 20;
+    this.azureWindowMs =
+      parseInt(
+        this.configService.get<string>('RATE_LIMIT_AZURE_WINDOW_MS') ||
+          '900000',
+        10
+      ) || 900000;
 
     const configuredStoreType =
       this.configService.get<string>('RATE_LIMIT_STORE', 'memory') || 'memory';
@@ -263,19 +283,19 @@ export class RateLimitInterceptor implements NestInterceptor {
       return;
     }
 
-    const maxRequests = this.getMaxRequestsForUrl(url);
+    const policy = this.getRateLimitPolicy(url);
     const ip = this.getClientIp(request);
     const now = Date.now();
-    const key = `ip:${ip}:limit:${maxRequests}`;
+    const key = `ip:${ip}:${policy.bucket}`;
 
     if (now - this.lastCleanupAt > this.windowMs) {
       await this.store.cleanup(now, this.windowMs);
       this.lastCleanupAt = now;
     }
 
-    const entry = await this.store.increment(key, this.windowMs, now);
+    const entry = await this.store.increment(key, policy.windowMs, now);
 
-    if (entry.count > maxRequests) {
+    if (entry.count > policy.maxRequests) {
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
@@ -287,16 +307,31 @@ export class RateLimitInterceptor implements NestInterceptor {
     }
   }
 
-  private getMaxRequestsForUrl(url: string): number {
+  private getRateLimitPolicy(url: string): RateLimitPolicy {
     switch (url) {
       case '/auth/login':
       case '/auth/check-email':
       case '/auth/set-password':
       case '/auth/verify-reset-code':
       case '/auth/change-password':
-        return this.authMaxRequests;
+        return {
+          maxRequests: this.authMaxRequests,
+          windowMs: this.windowMs,
+          bucket: 'auth',
+        };
+      case '/auth/azure':
+      case '/auth/azure/callback':
+        return {
+          maxRequests: this.azureMaxRequests,
+          windowMs: this.azureWindowMs,
+          bucket: 'azure',
+        };
       default:
-        return this.maxRequests;
+        return {
+          maxRequests: this.maxRequests,
+          windowMs: this.windowMs,
+          bucket: 'general',
+        };
     }
   }
 }

@@ -205,7 +205,6 @@ export class AuthController {
 
   @Public()
   @Get('azure')
-  @Throttle({ default: { limit: 20, ttl: 900_000 } })
   @ApiOperation({
     summary: 'Start Azure AD login',
     description: 'Initiates OIDC auth flow and redirects to Microsoft login',
@@ -246,7 +245,6 @@ export class AuthController {
 
   @Public()
   @Get('azure/callback')
-  @Throttle({ default: { limit: 20, ttl: 900_000 } })
   @ApiOperation({
     summary: 'Azure AD callback',
     description: 'Handles OIDC callback and signs user into local app session',
