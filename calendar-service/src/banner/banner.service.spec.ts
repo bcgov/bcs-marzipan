@@ -8,7 +8,6 @@ describe('BannerService', () => {
   const baseRow = {
     id: 1,
     isActive: true,
-    exemptRoleIds: [1],
     content: 'Editing lockout starts soon',
     backgroundColor: '#F4A261',
     textColor: '#1A1A1A',

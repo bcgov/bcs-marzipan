@@ -12,10 +12,7 @@ import type {
   UpsertBannerSettingsBody,
   UpsertRecurringLockoutBannerSettingsBody,
 } from '@corpcal/shared/api/types';
-import {
-  DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
-  DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS,
-} from '@corpcal/shared/schemas';
+import { DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES } from '@corpcal/shared/schemas';
 
 import { ActivitiesGateway } from '../activities/activities.gateway';
 import { DatabaseService } from '../database/database.service';
@@ -148,7 +145,6 @@ export class BannerService {
     const now = new Date();
     const payload = {
       isActive: body.isActive,
-      exemptRoleIds: [...new Set(body.exemptRoleIds)],
       content: body.content.trim(),
       backgroundColor: body.backgroundColor,
       textColor: body.textColor,
@@ -269,11 +265,6 @@ export class BannerService {
     return {
       id: row.id,
       isActive: row.isActive,
-      exemptRoleIds: Array.isArray(row.exemptRoleIds)
-        ? row.exemptRoleIds
-            .map((value) => Number(value))
-            .filter((value) => Number.isInteger(value) && value > 0)
-        : [...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS],
       content: row.content,
       backgroundColor: row.backgroundColor,
       textColor: row.textColor,

@@ -11,17 +11,21 @@ import {
   users,
 } from '@corpcal/database/schema';
 import {
-  isRoleBlockedByRecurringEditLockout,
+  isUserBlockedByRecurringEditLockout,
   RECURRING_EDIT_LOCKOUT_MESSAGE,
   RECURRING_EDIT_LOCKOUT_REASON,
   type RecurringEditLockoutSettingsSlice,
 } from '@corpcal/shared';
 
 import { DatabaseService } from '../database/database.service';
+import { PolicyService } from '../policy/policy.service';
 
 @Injectable()
 export class RecurringLockoutService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly policyService: PolicyService
+  ) {}
 
   createLockoutHttpException(): HttpException {
     return new HttpException(
@@ -40,7 +44,6 @@ export class RecurringLockoutService {
         isActive: recurringLockoutBannerSettings.isActive,
         startTimeOfDay: recurringLockoutBannerSettings.startTimeOfDay,
         endTimeOfDay: recurringLockoutBannerSettings.endTimeOfDay,
-        exemptRoleIds: recurringLockoutBannerSettings.exemptRoleIds,
       })
       .from(recurringLockoutBannerSettings)
       .orderBy(
@@ -52,23 +55,27 @@ export class RecurringLockoutService {
     return row ?? null;
   }
 
-  async assertRoleCanEditDuringLockout(roleId: number): Promise<void> {
-    const settings = await this.getLatestSettings();
-
-    if (isRoleBlockedByRecurringEditLockout(settings, roleId)) {
-      throw this.createLockoutHttpException();
-    }
-  }
-
-  async assertUserCanEditDuringLockout(userId: number): Promise<void> {
+  async assertUserCanEditDuringLockout(
+    userId: number,
+    permissions?: string[]
+  ): Promise<void> {
     const settings = await this.getLatestSettings();
 
     if (!settings?.isActive) {
       return;
     }
 
+    const effectivePermissions =
+      permissions ?? (await this.resolveEffectivePermissions(userId));
+
+    if (isUserBlockedByRecurringEditLockout(settings, effectivePermissions)) {
+      throw this.createLockoutHttpException();
+    }
+  }
+
+  private async resolveEffectivePermissions(userId: number): Promise<string[]> {
     const [user] = await this.databaseService.db
-      .select({ roleId: users.roleId })
+      .select({ id: users.id })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -77,8 +84,7 @@ export class RecurringLockoutService {
       throw new NotFoundException('User not found for edit lockout check.');
     }
 
-    if (isRoleBlockedByRecurringEditLockout(settings, user.roleId)) {
-      throw this.createLockoutHttpException();
-    }
+    return (await this.policyService.getEffectivePermissionsForUser(userId))
+      .permissions;
   }
 }
