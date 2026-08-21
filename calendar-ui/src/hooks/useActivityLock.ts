@@ -214,8 +214,12 @@ export function useActivityLock(
             : undefined);
 
         if (reason === 'locked_by_other' || status === LOCKED_STATUS) {
-          const data = axiosError.response?.data;
-          setLockedByUsername(data?.lockedBy?.username ?? null);
+          try {
+            const statusRes = await getLockStatus(activityId);
+            setLockedByUsername(statusRes.lockedBy?.username ?? null);
+          } catch {
+            setLockedByUsername(null);
+          }
           setLockState('locked-by-other');
           setAcquireFailureReason('locked-by-other');
           return false;
