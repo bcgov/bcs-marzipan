@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import type { UpdateUserBody } from '@corpcal/shared/api/types';
+
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
 import { ActivityUtilsService } from '../activities/services/activity-utils.service';
 import {
@@ -371,9 +373,9 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain(roleRow, 'limit'))
         .mockReturnValueOnce(createChain(teamRows, 'where'));
 
-      await expect(service.update(1, { email: null } as any, 1)).rejects.toThrow(
-        BadRequestException
-      );
+      await expect(
+        service.update(1, { email: null } as unknown as UpdateUserBody, 1)
+      ).rejects.toThrow(BadRequestException);
       expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
     });
   });

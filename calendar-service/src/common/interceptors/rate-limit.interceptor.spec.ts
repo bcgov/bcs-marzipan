@@ -26,6 +26,10 @@ describe('RateLimitInterceptor', () => {
     } as unknown as HttpArgumentsHost;
   }
 
+  function toError(value: unknown): Error {
+    return value instanceof Error ? value : new Error(String(value));
+  }
+
   describe('store selection', () => {
     it('uses InMemoryRateLimitStore by default (memory mode)', () => {
       vi.spyOn(ConfigService.prototype, 'get').mockImplementation((key) => {
@@ -140,7 +144,7 @@ describe('RateLimitInterceptor', () => {
           .intercept(mockContext as ExecutionContext, mockNext)
           .subscribe({
             next: () => resolve(),
-            error: (err) => reject(err),
+            error: (err) => reject(toError(err)),
           });
       });
     });
@@ -158,7 +162,7 @@ describe('RateLimitInterceptor', () => {
             .intercept(mockContext as ExecutionContext, mockNext)
             .subscribe({
               next: () => resolve(),
-              error: (err) => reject(err),
+              error: (err) => reject(toError(err)),
             });
         });
       }
@@ -306,7 +310,7 @@ describe('RateLimitInterceptor', () => {
           .intercept(mockContext as ExecutionContext, mockNext)
           .subscribe({
             next: () => resolve(),
-            error: (err) => reject(err),
+            error: (err) => reject(toError(err)),
           });
       });
     });
@@ -327,7 +331,7 @@ describe('RateLimitInterceptor', () => {
           .intercept(mockContext as ExecutionContext, mockNext)
           .subscribe({
             next: () => resolve(),
-            error: (err) => reject(err),
+            error: (err) => reject(toError(err)),
           });
       });
 
@@ -339,7 +343,7 @@ describe('RateLimitInterceptor', () => {
           .intercept(mockContext as ExecutionContext, mockNext)
           .subscribe({
             next: () => resolve(),
-            error: (err) => reject(err),
+            error: (err) => reject(toError(err)),
           });
       });
     });
@@ -407,7 +411,7 @@ describe('RateLimitInterceptor', () => {
           .intercept(mockContext as ExecutionContext, mockNext)
           .subscribe({
             next: () => resolve(),
-            error: (err) => reject(err),
+            error: (err) => reject(toError(err)),
           });
       });
 
