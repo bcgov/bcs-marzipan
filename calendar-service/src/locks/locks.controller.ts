@@ -59,7 +59,7 @@ export class LocksController {
   @ApiResponse({
     status: 403,
     description:
-      'Editing is blocked by the recurring lockout window for non-exempt users',
+      'Editing is blocked by the recurring lockout window for users without bypass permission',
   })
   async acquire(
     @CurrentUser() user: AuthUser,
@@ -69,8 +69,9 @@ export class LocksController {
       return { locked: false, message: 'Only activity locks are supported.' };
     }
 
-    await this.recurringLockoutService.assertRoleCanEditDuringLockout(
-      user.roleId
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(
+      user.id,
+      user.permissions
     );
 
     const lock = await this.locksService.tryAcquireLock(

@@ -851,7 +851,6 @@ Returns the recurring lockout warning banner when settings are active and the cu
   "data": {
     "id": 1,
     "isActive": true,
-    "exemptRoleIds": [5, 6],
     "content": "<p>Editing will be locked soon.</p>",
     "backgroundColor": "#E6A635",
     "textColor": "#000000",
@@ -871,7 +870,7 @@ Returns the recurring lockout warning banner when settings are active and the cu
 
 **GET** `/banner/recurring-lockout/settings`
 
-**Permission:** `settings.view`
+**Permission:** `settings.manage.recurring_lockout`
 
 Returns the latest recurring lockout configuration, or `null` if never configured.
 
@@ -881,14 +880,13 @@ Returns the latest recurring lockout configuration, or `null` if never configure
 
 **PUT** `/banner/recurring-lockout/settings`
 
-**Permission:** `settings.manage` (System Admin only)
+**Permission:** `settings.manage.recurring_lockout`
 
 **Request Body:**
 
 ```json
 {
   "isActive": true,
-  "exemptRoleIds": [5, 6],
   "content": "<p>All calendar activities are locked for edits between 15:00 and 23:59 daily.</p>",
   "backgroundColor": "#E6A635",
   "textColor": "#000000",
@@ -924,7 +922,7 @@ Saving settings broadcasts `recurringLockoutBannerSettingsUpdated` over the acti
 **Error responses:**
 
 - `423 Locked` — another user holds the lock (`reason: "locked_by_other"`, includes `lockedBy`)
-- `403 Forbidden` — recurring daily edit lockout is active and the user's role is not exempt (`reason: "time_lockout"`)
+- `403 Forbidden` — recurring daily edit lockout is active and the user lacks `activities.bypass_recurring_lockout` (`reason: "time_lockout"`)
 
 ```json
 {
@@ -938,9 +936,9 @@ Saving settings broadcasts `recurringLockoutBannerSettingsUpdated` over the acti
 }
 ```
 
-Activity mutations (`PATCH /activities/:id`, etc.) return the same `403` / `reason: "time_lockout"` during the lockout window for non-exempt users.
+Activity mutations (`PATCH /activities/:id`, etc.) return the same `403` / `reason: "time_lockout"` during the lockout window for users without bypass permission.
 
-Exempt roles (configured via `exemptRoleIds`, default Admin and System Admin) may acquire locks and edit during the window.
+Users with `activities.bypass_recurring_lockout` (granted to Admin and System Admin by default) may acquire locks and edit during the window.
 
 ---
 

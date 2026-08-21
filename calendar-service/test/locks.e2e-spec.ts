@@ -121,7 +121,7 @@ describe('LocksController (API integration)', () => {
       expect(conflict.body.detail).toContain('another user');
     });
 
-    it('blocks non-exempt users during recurring lockout window but allows exempt users', async () => {
+    it('blocks users without bypass permission during recurring lockout window but allows users with bypass permission', async () => {
       const existingSettingsRes = await createAuthRequest(app, systemAdminToken)
         .get('/banner/recurring-lockout/settings')
         .expect(200);
@@ -133,7 +133,6 @@ describe('LocksController (API integration)', () => {
 
       const lockoutBody = {
         isActive: true,
-        exemptRoleIds: [6],
         content: '<p>Recurring lockout e2e test</p>',
         backgroundColor: '#E6A635',
         textColor: '#000000',
@@ -156,14 +155,13 @@ describe('LocksController (API integration)', () => {
 
         expect(String(blocked.body.detail ?? '')).toContain('lockout window');
 
-        await createAuthRequest(app, systemAdminToken)
+        await createAuthRequest(app, adminToken)
           .post('/locks')
           .send({ entityType: 'activity', entityId: activityId })
           .expect(201);
       } finally {
         const restoreBody = previousSettings ?? {
           isActive: false,
-          exemptRoleIds: [5, 6],
           content: '<p>Recurring lockout banner</p>',
           backgroundColor: '#E6A635',
           textColor: '#000000',

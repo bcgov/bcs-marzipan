@@ -95,7 +95,7 @@ export class BannerController {
     description: 'Recurring lockout banner settings retrieved successfully',
     type: RecurringLockoutBannerSettingsNullableResponseWrapperDto,
   })
-  @RequirePermission(PERMISSIONS.SETTINGS.VIEW)
+  @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT)
   @Get('recurring-lockout/settings')
   async getRecurringLockoutBannerSettings(): Promise<
     ResponseWrapper<RecurringLockoutBannerSettings | null>
@@ -134,7 +134,7 @@ export class BannerController {
     type: RecurringLockoutBannerSettingsResponseWrapperDto,
   })
   @ApiBody({ type: UpsertRecurringLockoutBannerSettingsDto })
-  @RequirePermission(PERMISSIONS.SETTINGS.MANAGE)
+  @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT)
   @Put('recurring-lockout/settings')
   async upsertRecurringLockoutBannerSettings(
     @Body(
@@ -143,8 +143,6 @@ export class BannerController {
     body: UpsertRecurringLockoutBannerSettingsDto,
     @CurrentUser() user: AuthUser
   ): Promise<ResponseWrapper<RecurringLockoutBannerSettings>> {
-    this.ensureSystemAdmin(user);
-
     const data = await this.bannerService.upsertRecurringLockoutBannerSettings(
       body,
       user.id

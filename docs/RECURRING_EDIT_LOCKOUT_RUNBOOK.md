@@ -17,11 +17,14 @@ Use recurring edit lockout to prevent activity edits during scheduled windows wh
 - Banner is shown from `startTimeOfDay - bannerLeadMinutes` until `endTimeOfDay` (end exclusive).
 - Example: start `14:00`, end `16:00`, lead `20` means banner appears at `13:40`.
 
-## Exempt Roles
+## Permissions
 
-- Users in exempt roles can still edit during lockout.
-- If exempt role list is explicitly empty, no roles are exempt.
-- If exempt role list is missing/invalid, system defaults are used.
+| Permission                            | Purpose                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------------------- |
+| `settings.manage.recurring_lockout`   | View and configure lockout schedule and banner (Admin and System Admin by default)  |
+| `activities.bypass_recurring_lockout` | Edit activities during an active lockout window (Admin and System Admin by default) |
+
+Bypass uses effective permissions (user role plus team grants), not role ID alone. Assign bypass via role-permission management for custom roles as needed.
 
 ## User-Facing Behavior
 
@@ -34,6 +37,6 @@ Use recurring edit lockout to prevent activity edits during scheduled windows wh
 
 1. Confirm current Pacific time relative to configured lockout window.
 2. Confirm lockout `isActive` is enabled.
-3. Confirm user's role is or is not in exempt roles.
+3. Confirm the user has `activities.bypass_recurring_lockout` (re-login after permission changes).
 4. Check if a different user currently holds the edit lock.
 5. Verify banner lead minutes and expected banner visibility window.

@@ -11,14 +11,14 @@ import { RecurringLockoutService } from './recurring-lockout.service';
 
 describe('LocksController', () => {
   const tryAcquireLockMock = vi.fn();
-  const assertRoleCanEditDuringLockoutMock = vi.fn();
+  const assertUserCanEditDuringLockoutMock = vi.fn();
 
   const mockLocksService = {
     tryAcquireLock: tryAcquireLockMock,
   } as unknown as LocksService;
 
   const mockRecurringLockoutService = {
-    assertRoleCanEditDuringLockout: assertRoleCanEditDuringLockoutMock,
+    assertUserCanEditDuringLockout: assertUserCanEditDuringLockoutMock,
   } as unknown as RecurringLockoutService;
 
   const mockSettingsService = {} as ApplicationSettingsService;
@@ -45,8 +45,8 @@ describe('LocksController', () => {
     teamIds: [],
   };
 
-  it('returns 403 with reason time_lockout for non-exempt users during lockout window', async () => {
-    assertRoleCanEditDuringLockoutMock.mockRejectedValue(
+  it('returns 403 with reason time_lockout for users without bypass permission during lockout window', async () => {
+    assertUserCanEditDuringLockoutMock.mockRejectedValue(
       new HttpException(
         {
           statusCode: 403,
@@ -67,10 +67,15 @@ describe('LocksController', () => {
       const body = err.getResponse() as { reason?: string };
       return err.getStatus() === 403 && body.reason === 'time_lockout';
     });
+
+    expect(assertUserCanEditDuringLockoutMock).toHaveBeenCalledWith(
+      user.id,
+      user.permissions
+    );
   });
 
   it('allows acquire at lockout end boundary (end time is exclusive)', async () => {
-    assertRoleCanEditDuringLockoutMock.mockResolvedValue(undefined);
+    assertUserCanEditDuringLockoutMock.mockResolvedValue(undefined);
 
     tryAcquireLockMock.mockResolvedValue({
       id: 100,
