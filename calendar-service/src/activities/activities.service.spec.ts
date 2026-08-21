@@ -3148,6 +3148,37 @@ describe('ActivitiesService', () => {
     });
   });
 
+  describe('bulkUpdate', () => {
+    it('rejects tag updates for a user with shared-with-only access', async () => {
+      const updateTagsSpy = vi.spyOn(service, 'updateTags');
+      mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
+      mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
+
+      await expect(
+        service.bulkUpdate(
+          { activityIds: [1], operation: 'tags', tagIds: [1] },
+          2,
+          {
+            roleName: 'Editor',
+            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+            teamIds: [20],
+          }
+        )
+      ).rejects.toThrow(
+        'You may only edit activities where you are a comms contact or lead-team member.'
+      );
+
+      expect(updateTagsSpy).not.toHaveBeenCalled();
+      expect(mockPolicyService.isCommsContactForActivity).toHaveBeenCalledWith(
+        1,
+        2
+      );
+      expect(mockPolicyService.getLeadTeamIdForActivity).toHaveBeenCalledWith(
+        1
+      );
+    });
+  });
+
   describe('softDelete', () => {
     it('should throw ForbiddenException when user lacks delete.any and is not comms/lead-team', async () => {
       mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
