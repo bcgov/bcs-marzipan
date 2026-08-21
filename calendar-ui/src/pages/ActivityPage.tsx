@@ -1,9 +1,14 @@
 import { ErrorBoundary } from 'react-error-boundary';
+import type { FieldErrors } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { buildActivityDisplayId, TEAM_PREFIX_FALLBACK } from '@corpcal/shared';
+import {
+  buildActivityDisplayId,
+  getActivityFormSectionFieldKeys,
+  TEAM_PREFIX_FALLBACK,
+} from '@corpcal/shared';
 import { PERMISSIONS, SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
@@ -84,10 +89,7 @@ import { showActivityMutationSuccessToast } from '../lib/activity-mutation-succe
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showErrorToast } from '../lib/error-toast';
-import {
-  focusFirstMissingRequiredField,
-  focusRequiredField,
-} from '../lib/form-utils';
+import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('ActivityPage');
@@ -223,6 +225,7 @@ export function ActivityPage({
     useState(false);
   const handoffAwaitingCompletionRef = useRef(false);
   const handoffToastHandleRef = useRef<LockHandoffToastHandle | null>(null);
+  const activityFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     handoffAwaitingCompletionRef.current = handoffAwaitingCompletion;
@@ -663,9 +666,13 @@ export function ActivityPage({
     await runSubmitUpdate({ kind: 'update', validatedData, notes });
   };
 
-  const onError = () => {
+  const onError = (errors: FieldErrors<ActivityFormData>) => {
     logger.error('Form validation failed');
-    focusFirstMissingRequiredField(missingFieldItems);
+    focusFirstInvalidField(errors, {
+      getFieldLabel: getActivityFieldLabel,
+      fieldOrder: getActivityFormSectionFieldKeys(),
+      root: activityFormRef.current,
+    });
     const detail =
       missingFields.length > 0
         ? `Required fields missing: ${missingFields.join(', ')}`
@@ -985,6 +992,7 @@ export function ActivityPage({
       )}
       <Form {...form}>
         <form
+          ref={activityFormRef}
           onSubmit={(e) => {
             e.preventDefault();
             if (hasEditLock) {
@@ -1077,7 +1085,11 @@ export function ActivityPage({
                 <ActivityFormMissingFieldsHint
                   helperText={missingFieldsHelperText}
                   fields={missingFieldItems}
-                  onFieldSelect={focusRequiredField}
+                  onFieldSelect={(fieldName) =>
+                    focusRequiredField(fieldName, {
+                      root: activityFormRef.current,
+                    })
+                  }
                 />
               )}
               {canCloneActivity && (

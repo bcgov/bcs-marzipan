@@ -1,8 +1,10 @@
 import { ErrorBoundary } from 'react-error-boundary';
+import type { FieldErrors } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useMemo, useState, type FC } from 'react';
+import { useMemo, useRef, useState, type FC } from 'react';
 
+import { getActivityFormSectionFieldKeys } from '@corpcal/shared';
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
@@ -35,10 +37,7 @@ import {
   ACCESS_DENIED_TITLE,
 } from '../lib/error-messages';
 import { showErrorToast } from '../lib/error-toast';
-import {
-  focusFirstMissingRequiredField,
-  focusRequiredField,
-} from '../lib/form-utils';
+import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('CreateActivityForm');
@@ -77,6 +76,8 @@ export const CreateActivityForm: FC = () => {
     userTeamIds: user?.teamIds,
     hasCreateAny,
   });
+
+  const createActivityFormRef = useRef<HTMLFormElement>(null);
 
   const { missingFields, missingFieldItems, missingFieldsHelperText } =
     useActivityFormSubmitState(form, {
@@ -157,9 +158,13 @@ export const CreateActivityForm: FC = () => {
     }
   };
 
-  const onError = () => {
+  const onError = (errors: FieldErrors<ActivityFormData>) => {
     logger.error('Form validation failed');
-    focusFirstMissingRequiredField(missingFieldItems);
+    focusFirstInvalidField(errors, {
+      getFieldLabel: getActivityFieldLabel,
+      fieldOrder: getActivityFormSectionFieldKeys(),
+      root: createActivityFormRef.current,
+    });
     const detail =
       missingFields.length > 0
         ? `Required fields missing: ${missingFields.join(', ')}`
@@ -217,6 +222,7 @@ export const CreateActivityForm: FC = () => {
 
       <Form {...form}>
         <form
+          ref={createActivityFormRef}
           onSubmit={(e) => {
             e.preventDefault();
             void form.handleSubmit(onSubmit, onError)(e);
@@ -268,7 +274,11 @@ export const CreateActivityForm: FC = () => {
                 <ActivityFormMissingFieldsHint
                   helperText={missingFieldsHelperText}
                   fields={missingFieldItems}
-                  onFieldSelect={focusRequiredField}
+                  onFieldSelect={(fieldName) =>
+                    focusRequiredField(fieldName, {
+                      root: createActivityFormRef.current,
+                    })
+                  }
                 />
               )}
               <Button type="submit" variant="default" disabled={isSubmitting}>

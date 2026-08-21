@@ -12,7 +12,11 @@ import {
   ACTIVITY_VENUE_TEXT_MAX_LENGTH,
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
-import { normalizeEventPlannerFormEntries } from '@corpcal/shared/utils';
+import {
+  normalizeEventPlannerFormEntries,
+  partitionGovernmentRepresentativesForLeadTeam,
+  type TeamMinistryRef,
+} from '@corpcal/shared/utils';
 import { fetchCities, fetchVenuePresets } from '@/api/lookupsApi';
 import {
   FormSelectSafe,
@@ -28,10 +32,13 @@ import {
   ComboboxChip,
   ComboboxChips,
   ComboboxChipsInput,
+  ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxGroup,
   ComboboxItem,
   ComboboxList,
+  ComboboxSeparator,
   ComboboxValue,
   useComboboxAnchor,
 } from '@/components/ui/combobox';
@@ -235,16 +242,41 @@ function cityComboboxValueFromVenue(
   return { type: 'freeform', value: cityText };
 }
 
+type RepresentativeOption = {
+  id: number;
+  name: string;
+  displayName?: string;
+  title?: string;
+  ministryId?: number | null;
+  sortOrder?: number;
+};
+
+function toRepresentativeComboboxOption(rep: RepresentativeOption): OptionItem {
+  return {
+    value: rep.id.toString(),
+    label: rep.displayName || rep.name,
+  };
+}
+
+function mergeComboboxItems(
+  pickable: OptionItem[],
+  selected: OptionItem[]
+): OptionItem[] {
+  const byValue = new Map(pickable.map((option) => [option.value, option]));
+  for (const option of selected) {
+    if (!byValue.has(option.value)) {
+      byValue.set(option.value, option);
+    }
+  }
+  return [...byValue.values()];
+}
+
 type ActivityEventSectionProps = {
   venueStatuses: VenueStatusLookupItem[];
-  representativeOptions: Array<{
-    id: number;
-    name: string;
-    displayName?: string;
-    title?: string;
-  }>;
+  representativeOptions: RepresentativeOption[];
   premierRequestedOptions: OptionItem[];
   eventPlannerOptions: OptionItem[];
+  teamMinistryRefs: TeamMinistryRef[];
 };
 
 export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
@@ -252,10 +284,15 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
   representativeOptions,
   premierRequestedOptions,
   eventPlannerOptions,
+  teamMinistryRefs,
 }) => {
   const { readOnly } = useActivityEdit();
   const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
+  const leadTeamId = useWatch({
+    control: form.control,
+    name: 'leadTeamId',
+  });
   const venueStatusIdWatched = useWatch({
     control: form.control,
     name: 'venueStatusId',
@@ -405,11 +442,30 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
     ];
   }, [venueStatuses, allPresets]);
 
-  // Convert representative options to combobox format
-  const representativeComboboxOptions = representativeOptions.map((rep) => ({
-    value: rep.id.toString(),
-    label: rep.displayName || rep.name,
-  }));
+  const { leadMinisterOptions, remainderRepresentativeOptions } =
+    useMemo(() => {
+      const { leadMinister, remainder } =
+        partitionGovernmentRepresentativesForLeadTeam(
+          representativeOptions,
+          leadTeamId,
+          teamMinistryRefs
+        );
+
+      return {
+        leadMinisterOptions: leadMinister
+          ? [toRepresentativeComboboxOption(leadMinister)]
+          : [],
+        remainderRepresentativeOptions: remainder.map(
+          toRepresentativeComboboxOption
+        ),
+      };
+    }, [leadTeamId, representativeOptions, teamMinistryRefs]);
+
+  const representativePickableOptions = useMemo(
+    () => [...leadMinisterOptions, ...remainderRepresentativeOptions],
+    [leadMinisterOptions, remainderRepresentativeOptions]
+  );
+
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.event}>
       <FormField
@@ -464,8 +520,12 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
           const selectedValues = representatives
             .filter((rep) => rep.representativeId !== undefined)
             .map((rep) => rep.representativeId!.toString());
-          const selectedOptions = representativeComboboxOptions.filter((o) =>
+          const selectedOptions = representativePickableOptions.filter((o) =>
             selectedValues.includes(o.value)
+          );
+          const representativeComboboxItems = mergeComboboxItems(
+            representativePickableOptions,
+            selectedOptions
           );
 
           return (
@@ -481,7 +541,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
-                  items={representativeComboboxOptions}
+                  items={representativeComboboxItems}
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected: OptionItem[]) => {
@@ -516,11 +576,29 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   <ComboboxContent anchor={representativesAnchorRef}>
                     <ComboboxEmpty>No representatives found.</ComboboxEmpty>
                     <ComboboxList>
-                      {(option: OptionItem) => (
-                        <ComboboxItem key={option.value} value={option}>
-                          {option.label}
-                        </ComboboxItem>
+                      {leadMinisterOptions.length > 0 && (
+                        <>
+                          <ComboboxGroup items={leadMinisterOptions}>
+                            <ComboboxCollection>
+                              {(option: OptionItem) => (
+                                <ComboboxItem key={option.value} value={option}>
+                                  {option.label}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxCollection>
+                          </ComboboxGroup>
+                          <ComboboxSeparator />
+                        </>
                       )}
+                      <ComboboxGroup items={remainderRepresentativeOptions}>
+                        <ComboboxCollection>
+                          {(option: OptionItem) => (
+                            <ComboboxItem key={option.value} value={option}>
+                              {option.label}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxCollection>
+                      </ComboboxGroup>
                     </ComboboxList>
                   </ComboboxContent>
                 </Combobox>
