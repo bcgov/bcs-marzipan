@@ -19,7 +19,7 @@ export const recurringLockoutBannerSettings = pgTable(
     exemptRoleIds: jsonb('exempt_role_ids')
       .$type<number[]>()
       .notNull()
-      .default([5, 6]),
+      .default([5, 6] /* Admin + System Admin (seed role IDs) */),
     content: text('content').notNull(),
     backgroundColor: varchar('background_color', { length: 20 })
       .notNull()
