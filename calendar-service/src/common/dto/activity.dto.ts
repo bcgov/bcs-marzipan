@@ -2,6 +2,7 @@ import { createZodDto } from 'nestjs-zod';
 
 import {
   addActivityHistoryNoteRequestSchema,
+  bulkUpdateActivitiesRequestSchema,
   cloneActivityRequestSchema,
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
@@ -34,6 +35,11 @@ export class CloneActivityDto extends createZodDto(
  */
 export class UpdateActivityDto extends createZodDto(
   updateActivityRequestSchema
+) {}
+
+/** DTO for the Admin/System Admin activity-list bulk actions. */
+export class BulkUpdateActivitiesDto extends createZodDto(
+  bulkUpdateActivitiesRequestSchema
 ) {}
 
 /**

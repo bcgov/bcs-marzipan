@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: calendar-postgres
+  name: corpcal-postgres
   labels:
-    app: calendar-postgres
-    app.kubernetes.io/name: calendar
-    app.kubernetes.io/component: postgres
+    app: corpcal-postgres
+    app.kubernetes.io/name: corpcal
+    app.kubernetes.io/component: database
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/instance: dev
-    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: '16'
+    app.kubernetes.io/managed-by: github-actions
 spec:
-  serviceName: calendar-postgres
+  serviceName: corpcal-postgres
   replicas: 1
   selector:
     matchLabels:
-      app: calendar-postgres
+      app: corpcal-postgres
 
   template:
     metadata:
       labels:
-        app: calendar-postgres
+        app: corpcal-postgres
     spec:
       # OpenShift restricted SCC safe
       securityContext: {}
@@ -31,17 +31,17 @@ spec:
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: calendar-postgres-secret
+                  name: corpcal-postgres-secret
                   key: POSTGRES_DB
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: calendar-postgres-secret
+                  name: corpcal-postgres-secret
                   key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: calendar-postgres-secret
+                  name: corpcal-postgres-secret
                   key: POSTGRES_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
@@ -65,4 +65,4 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: postgres-pvc
+            claimName: corpcal-postgres-pvc

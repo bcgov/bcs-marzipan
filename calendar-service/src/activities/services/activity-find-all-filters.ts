@@ -211,16 +211,6 @@ export function buildActivityFindAllConditions(
     conditions.push(eq(activities.isIssue, filters.isIssue));
   }
 
-  if (filters.leadMinistryIds != null && filters.leadMinistryIds.length > 0) {
-    conditions.push(
-      inArray(activities.leadMinistryId, filters.leadMinistryIds)
-    );
-  }
-
-  if (filters.leadOrgIds != null && filters.leadOrgIds.length > 0) {
-    conditions.push(inArray(activities.leadOrgId, filters.leadOrgIds));
-  }
-
   if (filters.leadTeamIds != null && filters.leadTeamIds.length > 0) {
     conditions.push(inArray(activities.leadTeamId, filters.leadTeamIds));
   }
@@ -515,8 +505,6 @@ export function hasActivityFindAllFilterFields(
     query.endDateTo !== undefined ||
     query.scheduledDateRangeOverlaps === true ||
     (query.activityStatusIds != null && query.activityStatusIds.length > 0) ||
-    (query.leadMinistryIds != null && query.leadMinistryIds.length > 0) ||
-    (query.leadOrgIds != null && query.leadOrgIds.length > 0) ||
     (query.leadTeamIds != null && query.leadTeamIds.length > 0) ||
     (query.commsContactLeadUserIds != null &&
       query.commsContactLeadUserIds.length > 0) ||

@@ -7,6 +7,7 @@ import type {
 import {
   serializeFilterActivitiesQueryParams,
   type AddActivityHistoryNoteRequest,
+  type BulkUpdateActivitiesRequest,
   type CloneActivityRequest,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
@@ -94,6 +95,17 @@ export async function updateActivity(
     {
       timeout: 20_000,
     }
+  );
+  return res.data.data;
+}
+
+export async function bulkUpdateActivities(
+  body: BulkUpdateActivitiesRequest
+): Promise<ActivityResponse[]> {
+  const res = await api.post<{ success: boolean; data: ActivityResponse[] }>(
+    '/activities/bulk-update',
+    body,
+    { timeout: 30_000 }
   );
   return res.data.data;
 }

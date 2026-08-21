@@ -1,16 +1,19 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: calendar-service
+  name: corpcal-service-route
   labels:
-    app.kubernetes.io/name: calendar
+    app.kubernetes.io/name: corpcal
     app.kubernetes.io/component: service
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: ${APP_VERSION}
+    app.kubernetes.io/managed-by: github-actions
+  annotations:
+    aviinfrasetting.ako.vmware.com/name: dataclass-public
 spec:
   to:
     kind: Service
-    name: calendar-service
+    name: corpcal-service
   port:
     targetPort: http
   tls:

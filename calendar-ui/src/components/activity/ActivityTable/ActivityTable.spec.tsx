@@ -42,6 +42,7 @@ function makeActivity(id: number) {
     commsContacts: [],
     eventPlanners: [],
     eventPlannerLeadIds: [],
+    leadTeamId: null,
     leadMinistryId: null,
     leadOrgId: null,
     translationsRequired: [],
@@ -94,8 +95,7 @@ vi.mock('@/hooks/useActivityTableFilterLookups', () => ({
     statusOptions: [],
     pitchRequiredStatusOptions: [],
     tagOptions: [],
-    ministryOptions: [],
-    organizationOptions: [],
+    leadTeamOptions: [],
     commsContactOptions: [],
     eventPlannerOptions: [],
     translationOptions: [],
@@ -104,8 +104,7 @@ vi.mock('@/hooks/useActivityTableFilterLookups', () => ({
       statusOptions: [],
       pitchRequiredStatusOptions: [],
       tagOptions: [],
-      ministryOptions: [],
-      organizationOptions: [],
+      leadTeamOptions: [],
       commsContactOptions: [],
       eventPlannerOptions: [],
       translationStatusOptions: [],
@@ -140,8 +139,18 @@ vi.mock('@/hooks/useSavedFilters', () => ({
 
 vi.mock('@/hooks/useLookups', () => ({
   useCategories: () => ({ data: [] }),
+  usePitchRequiredStatuses: () => ({ data: [] }),
+  useTags: () => ({ data: [] }),
+  useTeams: () => ({ data: [] }),
   useTranslationLanguages: () => ({ data: [], isLoading: false }),
   useUsers: () => ({ data: [] }),
+}));
+
+vi.mock('@/hooks/useFavourites', () => ({
+  useFavourites: () => ({
+    favouriteActivityIds: [],
+    toggle: vi.fn(),
+  }),
 }));
 
 vi.mock('@/hooks/useCalendar', () => ({
@@ -151,6 +160,10 @@ vi.mock('@/hooks/useCalendar', () => ({
     isError: false,
     isFetching: false,
     refetch: vi.fn(),
+  }),
+  useBulkUpdateActivities: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
   }),
   useSyncActivityFlags: () => ({
     mutate: vi.fn(),

@@ -4,15 +4,20 @@ resources:
   - ../../base
 
 namespace: dc4c90-prod
+labels:
+  - pairs:
+      app.kubernetes.io/instance: corpcal-prod
+      env: prod
+    includeSelectors: false
 
 # Replace images built into the OpenShift internal registry.
 images:
-  - name: calendar-service:latest
-    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/calendar-service
+  - name: corpcal-service:latest
+    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/corpcal-service
     newTag: 0.0.1
-  - name: calendar-ui:latest
-    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/calendar-ui
+  - name: corpcal-ui:latest
+    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/corpcal-ui
     newTag: 0.0.1
-  - name: calendar-db-migrate:latest
-    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/calendar-db-migrate
+  - name: corpcal-db-migrate:latest
+    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/corpcal-db-migrate
     newTag: 0.0.1

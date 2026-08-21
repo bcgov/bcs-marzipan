@@ -24,6 +24,8 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { invalidateUserCaches, userQueryKeys } from '@/lib/userQueryKeys';
 
+const GOV_BC_EMAIL_DOMAIN = '@gov.bc.ca';
+
 interface UserEditModalProps {
   user: UserListItem;
   onClose: () => void;
@@ -42,6 +44,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
     displayParts.length > 1 ? displayParts[displayParts.length - 1] : ''
   );
   const [email, setEmail] = useState<string | null>(user.adEmail ?? '');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>('');
   const [jobTitle, setJobTitle] = useState<string | null>('');
   const [isActive, setIsActive] = useState<boolean>(true);
@@ -70,6 +73,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
       setFirstName(parts.slice(0, -1).join(' ') || parts[0] || '');
       setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
       setEmail(detail.adEmail ?? '');
+      setEmailError(null);
       setPhone(detail.phone ?? '');
       setJobTitle(detail.jobTitle ?? '');
       setIsActive(Boolean(detail.isActive));
@@ -102,12 +106,26 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
 
     // Profile fields are only editable by admins / sys-admins.
     if (canEditProfile) {
+      const normalizedEmail = (email ?? '').trim().toLowerCase();
+      if (!normalizedEmail) {
+        setEmailError('Email is required');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        setEmailError('Invalid email format');
+        return;
+      }
+      if (!normalizedEmail.endsWith(GOV_BC_EMAIL_DOMAIN)) {
+        setEmailError('Email must be a @gov.bc.ca address');
+        return;
+      }
+
       const combinedName = [firstName, lastName]
         .map((part) => (part ?? '').trim())
         .filter(Boolean)
         .join(' ');
       body.displayName = combinedName || null;
-      body.email = (email ?? '').trim() || null;
+      body.email = normalizedEmail;
       body.phone = (phone ?? '').trim() || null;
       body.jobTitle = (jobTitle ?? '').trim() || null;
     }
@@ -158,11 +176,19 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
               <Input
                 type="email"
                 value={email ?? ''}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError(null);
+                }}
                 readOnly={!canEditProfile}
                 disabled={!canEditProfile}
                 className={canEditProfile ? undefined : 'bg-slate-50'}
               />
+              {emailError ? (
+                <p className="text-destructive text-sm font-medium">
+                  {emailError}
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">

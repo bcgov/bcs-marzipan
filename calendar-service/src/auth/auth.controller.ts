@@ -17,7 +17,6 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { CookieOptions, Request, Response } from 'express';
 import * as oidc from 'openid-client';
 
@@ -50,7 +49,6 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Login',
     description:
@@ -90,7 +88,6 @@ export class AuthController {
 
   @Public()
   @Get('local/config')
-  @SkipThrottle()
   @ApiOperation({
     summary: 'Local auth availability',
     description:
@@ -107,7 +104,6 @@ export class AuthController {
   @Public()
   @Post('check-email')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Check email status',
     description: 'Returns account status for a given email (local auth)',
@@ -124,7 +120,6 @@ export class AuthController {
   @Public()
   @Post('set-password')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Set first-time password',
     description: 'Activates a pending account by setting its initial password',
@@ -147,7 +142,6 @@ export class AuthController {
   @Public()
   @Post('verify-reset-code')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Verify password reset code',
     description: 'Validates an admin-issued reset code without consuming it',
@@ -171,7 +165,6 @@ export class AuthController {
   @Public()
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Change password',
     description:
@@ -212,7 +205,6 @@ export class AuthController {
 
   @Public()
   @Get('azure')
-  @Throttle({ default: { limit: 20, ttl: 900_000 } })
   @ApiOperation({
     summary: 'Start Azure AD login',
     description: 'Initiates OIDC auth flow and redirects to Microsoft login',
@@ -253,7 +245,6 @@ export class AuthController {
 
   @Public()
   @Get('azure/callback')
-  @Throttle({ default: { limit: 20, ttl: 900_000 } })
   @ApiOperation({
     summary: 'Azure AD callback',
     description: 'Handles OIDC callback and signs user into local app session',

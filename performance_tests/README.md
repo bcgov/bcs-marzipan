@@ -74,8 +74,12 @@ npm run perf:k6:browser:auth:local
 
 ## Rate limits (calendar-service)
 
-- `POST /auth/login`: **5 requests / minute / IP** (`@Throttle` on auth controller)
-- Global: `ThrottlerModule` **200/min**; `RateLimitInterceptor` default **100/min** (health/ready excluded)
+Rate limiting is enforced by a single global `RateLimitInterceptor`:
+
+- **Sensitive auth** (`POST /auth/login`, `/auth/check-email`, `/auth/set-password`, `/auth/verify-reset-code`, `/auth/change-password`): **5 req/min per IP** (`RATE_LIMIT_AUTH_MAX`)
+- **Azure OIDC** (`GET /auth/azure`, `/auth/azure/callback`): **20 req / 15 min per IP** (`RATE_LIMIT_AZURE_MAX`, `RATE_LIMIT_AZURE_WINDOW_MS`)
+- **General API**: **100 req/min per IP** by default (`RATE_LIMIT_MAX`; OpenShift configmaps use 200)
+- **Health/readiness** (`/health`, `/ready`): excluded
 
 Load tests sleep between iterations to stay under general limits; login is handled once via `setup()` or `PERF_BEARER_TOKEN`.
 

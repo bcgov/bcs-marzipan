@@ -29,8 +29,7 @@ export type ActivityFilterSummaryContext = {
   categoryOptions?: OptionItem[];
   pitchRequiredStatusOptions: OptionItem[];
   tagOptions: OptionItem[];
-  ministryOptions: OptionItem[];
-  organizationOptions: OptionItem[];
+  leadTeamOptions: OptionItem[];
   commsContactOptions: OptionItem[];
   eventPlannerOptions: OptionItem[];
   translationStatusOptions: OptionItem[];
@@ -134,6 +133,17 @@ export function buildActivityFilterChipRows(
       chips: filterState.categoryIds.map((id) => ({
         chipKey: `category:${id}`,
         displayLabel: labelForNumericId(id, ctx.categoryOptions ?? []),
+      })),
+    });
+  }
+
+  if (filterState.commsContactLeadUserIds.length > 0) {
+    rows.push({
+      rowKey: 'commsContact',
+      label: 'Comms contact',
+      chips: filterState.commsContactLeadUserIds.map((id) => ({
+        chipKey: `comms:${id}`,
+        displayLabel: labelForNumericId(id, ctx.commsContactOptions),
       })),
     });
   }
@@ -251,35 +261,13 @@ export function buildActivityFilterChipRows(
     });
   }
 
-  if (filterState.leadMinistryIds.length > 0) {
+  if ((filterState.leadTeamIds ?? []).length > 0) {
     rows.push({
-      rowKey: 'leadMinistry',
-      label: 'Ministry',
-      chips: filterState.leadMinistryIds.map((id) => ({
-        chipKey: `leadMinistry:${id}`,
-        displayLabel: labelForNumericId(id, ctx.ministryOptions),
-      })),
-    });
-  }
-
-  if (filterState.leadOrgIds.length > 0) {
-    rows.push({
-      rowKey: 'leadOrganization',
-      label: 'Organization',
-      chips: filterState.leadOrgIds.map((id) => ({
-        chipKey: `leadOrg:${id}`,
-        displayLabel: labelForNumericId(id, ctx.organizationOptions),
-      })),
-    });
-  }
-
-  if (filterState.commsContactLeadUserIds.length > 0) {
-    rows.push({
-      rowKey: 'commsContact',
-      label: 'Comms contact',
-      chips: filterState.commsContactLeadUserIds.map((id) => ({
-        chipKey: `comms:${id}`,
-        displayLabel: labelForNumericId(id, ctx.commsContactOptions),
+      rowKey: 'leadTeam',
+      label: 'Lead',
+      chips: (filterState.leadTeamIds ?? []).map((id) => ({
+        chipKey: `leadTeam:${id}`,
+        displayLabel: labelForNumericId(id, ctx.leadTeamOptions),
       })),
     });
   }
@@ -507,30 +495,6 @@ export function clearSavedFilterChip(
         searchKeyword: kw,
       };
     }
-    case 'leadMinistry': {
-      const id = parseInt(raw, 10);
-      if (!Number.isFinite(id))
-        return { filterState: state, searchKeyword: kw };
-      return {
-        filterState: {
-          ...state,
-          leadMinistryIds: state.leadMinistryIds.filter((x) => x !== id),
-        },
-        searchKeyword: kw,
-      };
-    }
-    case 'leadOrg': {
-      const id = parseInt(raw, 10);
-      if (!Number.isFinite(id))
-        return { filterState: state, searchKeyword: kw };
-      return {
-        filterState: {
-          ...state,
-          leadOrgIds: state.leadOrgIds.filter((x) => x !== id),
-        },
-        searchKeyword: kw,
-      };
-    }
     case 'comms': {
       const id = parseInt(raw, 10);
       if (!Number.isFinite(id))
@@ -555,6 +519,19 @@ export function clearSavedFilterChip(
           eventPlannerLeadIds: state.eventPlannerLeadIds.filter(
             (x) => x !== id
           ),
+        },
+        searchKeyword: kw,
+      };
+    }
+    case 'leadTeam':
+    case 'team': {
+      const id = parseInt(raw, 10);
+      if (!Number.isFinite(id))
+        return { filterState: state, searchKeyword: kw };
+      return {
+        filterState: {
+          ...state,
+          leadTeamIds: (state.leadTeamIds ?? []).filter((x) => x !== id),
         },
         searchKeyword: kw,
       };

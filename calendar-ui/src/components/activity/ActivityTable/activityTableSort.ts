@@ -88,7 +88,7 @@ const ACTIVITY_SORT_COMPARATORS: Record<string, RowComparator> = {
 
 /**
  * Compare two activity table rows for a single sort level (key + direction).
- * Handles startDate nulls specially to ensure they always sort last, regardless of direction.
+ * startDate nulls are treated as furthest out: last when asc, first when desc.
  */
 function compareActivityRowsOneLevel(
   a: ActivityTableRow,
@@ -96,19 +96,15 @@ function compareActivityRowsOneLevel(
   sortKey: string,
   direction: 'asc' | 'desc'
 ): number {
-  // Special handling for startDate: nulls should always sort last, regardless of direction
   if (sortKey === 'startDate') {
     const aHasDate = a.startDate != null;
     const bHasDate = b.startDate != null;
 
-    // If one or both are null, handle before applying direction
     if (!aHasDate || !bHasDate) {
-      // Both null: equal
       if (!aHasDate && !bHasDate) return 0;
-      // Only a is null: a comes after (positive result)
-      if (!aHasDate) return 1;
-      // Only b is null: a comes before (negative result)
-      return -1;
+      const nullSortsAfterDated = direction === 'asc';
+      if (!aHasDate) return nullSortsAfterDated ? 1 : -1;
+      return nullSortsAfterDated ? -1 : 1;
     }
   }
 
