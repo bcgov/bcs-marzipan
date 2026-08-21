@@ -15,7 +15,7 @@ function makeMatchInput(
     id: 1,
     startDate: null,
     endDate: null,
-    categoryNames: [],
+    categoryIds: [],
     activityStatusId: 0,
     pitchRequiredStatusName: null,
     pitchDate: null,
@@ -24,6 +24,7 @@ function makeMatchInput(
     dateStatusName: '',
     timeStatusName: '',
     tagIds: [],
+    leadTeamId: null,
     leadMinistryId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,
@@ -42,7 +43,7 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
   it('maps category and tag filters to array query params', () => {
     const filterState: ActivityFilterState = {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
-      categoryNames: ['Event', 'FYI'],
+      categoryIds: [1, 3],
       tagIds: [1, 2],
       activityStatusIds: [1, 3],
     };
@@ -55,17 +56,17 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
       { completedStatusId: 5, deletedStatusId: 9 },
       false
     );
-    expect(params.categoryNames).toEqual(['Event', 'FYI']);
+    expect(params.categoryIds).toEqual([1, 3]);
     expect(params.tagIds).toEqual([1, 2]);
     expect(params.activityStatusIds).toEqual([1, 3]);
     expect(params.includeCompleted).toBe(false);
     expect(params.includeDeleted).toBe(false);
   });
 
-  it('maps comms and ministry multi-selects', () => {
+  it('maps comms and lead team multi-selects', () => {
     const filterState: ActivityFilterState = {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
-      leadMinistryIds: [10, 20],
+      leadTeamIds: [10, 20],
       commsContactLeadUserIds: [100],
       eventPlannerLeadIds: [5, 6],
     };
@@ -78,7 +79,7 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
       {},
       true
     );
-    expect(params.leadMinistryIds).toEqual([10, 20]);
+    expect(params.leadTeamIds).toEqual([10, 20]);
     expect(params.commsContactLeadUserIds).toEqual([100]);
     expect(params.eventPlannerLeadIds).toEqual([5, 6]);
     expect(params.search).toBeUndefined();
@@ -234,10 +235,10 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
     ).toBe(false);
   });
 
-  it('category maps to names and matches case-insensitively', () => {
+  it('category maps to ids and matches by lookup id', () => {
     const filterState: ActivityFilterState = {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
-      categoryNames: ['Event'],
+      categoryIds: [1],
     };
     const params = activityFilterStateToQueryParams(
       {
@@ -248,17 +249,17 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
       {},
       false
     );
-    expect(params.categoryNames).toEqual(['Event']);
+    expect(params.categoryIds).toEqual([1]);
     expect(
       activityMatchesFilterState(
         filterState,
-        makeMatchInput({ categoryNames: ['event'] })
+        makeMatchInput({ categoryIds: [1] })
       )
     ).toBe(true);
     expect(
       activityMatchesFilterState(
         filterState,
-        makeMatchInput({ categoryNames: ['Release'] })
+        makeMatchInput({ categoryIds: [2] })
       )
     ).toBe(false);
   });

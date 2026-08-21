@@ -51,12 +51,10 @@ export function activityMatchesFilterState(
     }
   }
 
-  // Category (case-insensitive, trimmed; OR within).
-  if (filterState.categoryNames.length > 0) {
-    const set = new Set(
-      filterState.categoryNames.map((n) => n.toLowerCase().trim())
-    );
-    if (!input.categoryNames.some((c) => set.has(c.toLowerCase().trim()))) {
+  // Category (OR within).
+  if (filterState.categoryIds.length > 0) {
+    const set = new Set(filterState.categoryIds);
+    if (!input.categoryIds.some((id) => set.has(id))) {
       return false;
     }
   }
@@ -148,23 +146,17 @@ export function activityMatchesFilterState(
     if (!input.tagIds.some((id) => tagSet.has(id))) return false;
   }
 
+  // Lead team (OR within).
+  if (filterState.leadTeamIds.length > 0) {
+    if (
+      input.leadTeamId == null ||
+      !filterState.leadTeamIds.includes(input.leadTeamId)
+    ) {
+      return false;
+    }
+  }
+
   // Leads (AND across types; OR within each type).
-  if (filterState.leadMinistryIds.length > 0) {
-    if (
-      input.leadMinistryId == null ||
-      !filterState.leadMinistryIds.includes(input.leadMinistryId)
-    ) {
-      return false;
-    }
-  }
-  if (filterState.leadOrgIds.length > 0) {
-    if (
-      input.leadOrgId == null ||
-      !filterState.leadOrgIds.includes(input.leadOrgId)
-    ) {
-      return false;
-    }
-  }
   if (filterState.commsContactLeadUserIds.length > 0) {
     if (
       input.commsContactLeadUserId == null ||

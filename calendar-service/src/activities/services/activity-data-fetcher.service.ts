@@ -37,6 +37,7 @@ import type { Activity } from '@corpcal/database/types';
 import type { EventPlannerDetail } from '@corpcal/shared/schemas';
 
 import { DatabaseService } from '../../database/database.service';
+import { sortByStaffName } from '../../users/staff-name-sort';
 
 /**
  * Service for fetching related data for activities
@@ -776,6 +777,18 @@ export class ActivityDataFetcherService {
       });
       map.set(row.activityId, existing);
     }
+
+    for (const [activityId, contacts] of map.entries()) {
+      map.set(
+        activityId,
+        sortByStaffName(
+          contacts,
+          (contact) => contact.name,
+          (contact) => contact.userId
+        )
+      );
+    }
+
     return map;
   }
 
@@ -873,7 +886,11 @@ export class ActivityDataFetcherService {
   async fetchEventPlannerDetailsForActivities(
     activityIds: number[]
   ): Promise<Map<number, EventPlannerDetail[]>> {
-    const map = new Map<number, EventPlannerDetail[]>();
+    type EventPlannerDetailWithSortName = EventPlannerDetail & {
+      sortName: string;
+    };
+
+    const map = new Map<number, EventPlannerDetailWithSortName[]>();
     if (activityIds.length === 0) return map;
 
     const rows = await this.databaseService.db
@@ -912,6 +929,12 @@ export class ActivityDataFetcherService {
         (row.eventPlannerId != null
           ? `Planner #${row.eventPlannerId}`
           : 'Unknown planner');
+      const sortName =
+        fromFreeform ||
+        (row.eventPlannerId != null && row.name
+          ? row.name.trim()
+          : fromLookup) ||
+        name;
 
       const list = map.get(row.activityId) ?? [];
       list.push({
@@ -919,10 +942,25 @@ export class ActivityDataFetcherService {
         eventPlannerName: row.eventPlannerName ?? undefined,
         name,
         isLead: row.isLead ?? false,
+        sortName,
       });
       map.set(row.activityId, list);
     }
-    return map;
+
+    const sortedMap = new Map<number, EventPlannerDetail[]>();
+
+    for (const [activityId, planners] of map.entries()) {
+      sortedMap.set(
+        activityId,
+        sortByStaffName(
+          planners,
+          (planner) => planner.sortName,
+          (planner) => planner.eventPlannerId ?? planner.name
+        ).map(({ sortName: _sortName, ...planner }) => planner)
+      );
+    }
+
+    return sortedMap;
   }
 
   /**

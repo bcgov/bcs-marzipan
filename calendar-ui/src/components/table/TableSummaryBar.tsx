@@ -143,6 +143,8 @@ interface TableSummaryBarProps {
   count: number;
   singularLabel: string;
   pluralLabel?: string;
+  /** When false, renders filter/reset controls without the item-count label. */
+  showCount?: boolean;
   filters?: BooleanFilter[];
   /** Shown after the count when a saved filter is the active selection. */
   appliedSavedFilterName?: string | null;
@@ -153,7 +155,7 @@ interface TableSummaryBarProps {
   appliedFilterTypeLabels?: string[];
   /** Defaults to 3; remainder summarized as “+n more”. */
   maxVisibleFilterTypes?: number;
-  /** When set, renders a compact “Clear filters” control for all breakpoints. */
+  /** When set, renders a compact “Reset all filters” control for all breakpoints. */
   onClearFilters?: () => void;
   /**
    * When non-empty, an info control before the summary opens a read-only popover with one row
@@ -167,6 +169,7 @@ export function TableSummaryBar({
   count,
   singularLabel,
   pluralLabel,
+  showCount = true,
   filters = [],
   appliedSavedFilterName = null,
   appliedFilterTypeLabels = [],
@@ -211,9 +214,11 @@ export function TableSummaryBar({
     >
       <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
         <span className="inline-flex min-h-9 min-w-0 flex-wrap items-center gap-x-1">
-          <span className="shrink-0 leading-normal">
-            Showing {count} {label}
-          </span>
+          {showCount && (
+            <span className="shrink-0 leading-normal">
+              Showing {count} {label}
+            </span>
+          )}
           {showSavedFilterSummary ? (
             hasFilterDetailPopover ? (
               <span
@@ -261,10 +266,10 @@ export function TableSummaryBar({
             type="button"
             onClick={onClearFilters}
             className="text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-sm font-normal transition-colors outline-none focus-visible:ring-[3px]"
-            aria-label="Clear all filters"
+            aria-label="Reset all filters"
           >
             <X className="size-3 shrink-0" aria-hidden />
-            Clear all filters
+            Reset all filters
           </button>
         ) : null}
       </span>

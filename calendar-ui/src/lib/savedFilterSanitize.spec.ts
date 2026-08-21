@@ -17,7 +17,7 @@ describe('sanitizeSavedFilterPayload', () => {
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: ['Event', 'Issues'],
+      categoryIds: [1, 2],
       activityStatusIds: [1, 2, 3],
       pitchRequiredStatusNames: ['Required'],
       pitchDateFilter: { kind: 'not_scheduled' },
@@ -26,8 +26,7 @@ describe('sanitizeSavedFilterPayload', () => {
       dateConfirmedFilter: 'confirmed',
       timeConfirmedFilter: 'not_confirmed',
       tagIds: [10, 20],
-      leadMinistryIds: [5],
-      leadOrgIds: [6],
+      leadTeamIds: [5],
       commsContactLeadUserIds: [7],
       eventPlannerLeadIds: [8],
       translationRequiredStatusIds: [9],
@@ -41,7 +40,7 @@ describe('sanitizeSavedFilterPayload', () => {
 
     expect(result.hadInvalidValues).toBe(false);
     expect(result.searchKeyword).toBe('test search');
-    expect(result.filterState.categoryNames).toEqual(['Event', 'Issues']);
+    expect(result.filterState.categoryIds).toEqual([1, 2]);
     expect(result.filterState.activityStatusIds).toEqual([1, 2, 3]);
     expect(result.filterState.dateRange.startDate).toBe('2025-01-01');
     expect(result.filterState.pitchDateFilter).toEqual({
@@ -81,7 +80,7 @@ describe('sanitizeSavedFilterPayload', () => {
     });
 
     expect(result.hadInvalidValues).toBe(false);
-    expect(result.filterState.categoryNames).toEqual([]);
+    expect(result.filterState.categoryIds).toEqual([]);
     expect(result.filterState.activityStatusIds).toEqual([]);
     expect(result.filterState.dateRange.startDate).toBe('2025-01-01');
     expect(result.filterState.dateRange.endDate).toBe('');
@@ -133,15 +132,32 @@ describe('sanitizeSavedFilterPayload', () => {
   it('should handle non-array values for array fields by returning empty arrays', () => {
     const result = sanitizeSavedFilterPayload({
       filterState: {
-        categoryNames: 'not an array',
+        categoryIds: 'not an array',
         activityStatusIds: 42,
         tagIds: null,
       },
       searchKeyword: '',
     });
 
-    expect(result.filterState.categoryNames).toEqual([]);
+    expect(result.filterState.categoryIds).toEqual([]);
     expect(result.filterState.activityStatusIds).toEqual([]);
     expect(result.filterState.tagIds).toEqual([]);
+  });
+
+  it('expands legacy leadMinistryIds into leadTeamIds when ministry map is provided', () => {
+    const result = sanitizeSavedFilterPayload(
+      {
+        filterState: { leadMinistryIds: [100], leadTeamIds: [9] },
+        searchKeyword: '',
+      },
+      {
+        teamIds: new Set([9, 10, 11]),
+        teamIdsByMinistryId: new Map([[100, [10, 11]]]),
+      }
+    );
+    expect(result.hadInvalidValues).toBe(true);
+    expect(result.filterState.leadTeamIds.sort((a, b) => a - b)).toEqual([
+      9, 10, 11,
+    ]);
   });
 });

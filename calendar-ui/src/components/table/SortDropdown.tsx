@@ -16,6 +16,8 @@ export interface SortColumnConfig {
   id: string;
   label: string;
   defaultDirection?: 'asc' | 'desc';
+  /** When set, used for the sort trigger suffix instead of A–Z / Newest. */
+  directionLabels?: { asc: string; desc: string };
   /** Tie-breaker sort levels applied when this column is primary (under the hood). */
   tieBreakers?: SortLevel[];
 }
@@ -40,6 +42,9 @@ function directionLabel(
   column: SortColumnConfig,
   direction: 'asc' | 'desc'
 ): string {
+  if (column.directionLabels) {
+    return column.directionLabels[direction];
+  }
   const isDateLike = column.defaultDirection === 'desc';
   if (isDateLike) {
     return direction === 'desc' ? 'Newest' : 'Oldest';

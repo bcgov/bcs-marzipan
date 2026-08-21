@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { render, screen } from '@/test/test-utils';
+import { render, screen, within } from '@/test/test-utils';
+
+import { Settings } from './Settings';
 
 // Mock every child admin section so the test only exercises Settings itself.
 vi.mock('@/components/admin', () => ({
+  ActivityInfoIconSettingsAdmin: () => (
+    <div data-testid="activity-info-icons-section">ActivityInfoIcons</div>
+  ),
   BannerSettingsAdmin: () => <div data-testid="banner-section">Banner</div>,
 }));
 vi.mock('@/components/admin/ActivityCompletionSettingsAdmin', () => ({
@@ -64,6 +69,7 @@ const SYSTEM_ADMIN_ONLY_LINKS = [
   'Edit lock idle',
   'Activity completion',
   'Look Ahead reset',
+  'Activity info icons',
   'Review-exempt fields',
   'Permission visibility',
 ];
@@ -79,8 +85,15 @@ const LOOKUP_LINKS = [
   'Tags',
   'Activity statuses',
   'Themes',
-  'Venue presets',
+  'Venue Presets',
 ];
+
+function getQuickNavLinks() {
+  const nav = screen.getByRole('navigation', {
+    name: /settings quick navigation/i,
+  });
+  return within(nav);
+}
 
 describe('Settings quick navigation', () => {
   beforeEach(() => {
@@ -95,24 +108,24 @@ describe('Settings quick navigation', () => {
       });
     });
 
-    it('shows all system-admin-only quick nav links', async () => {
-      const { Settings } = await import('./Settings');
+    it('shows all system-admin-only quick nav links', () => {
       render(<Settings />);
+      const quickNav = getQuickNavLinks();
 
       for (const label of SYSTEM_ADMIN_ONLY_LINKS) {
         expect(
-          screen.getByRole('link', { name: new RegExp(label, 'i') })
+          quickNav.getByRole('link', { name: new RegExp(label, 'i') })
         ).toBeInTheDocument();
       }
     });
 
-    it('shows all lookup quick nav links', async () => {
-      const { Settings } = await import('./Settings');
+    it('shows all lookup quick nav links', () => {
       render(<Settings />);
+      const quickNav = getQuickNavLinks();
 
       for (const label of LOOKUP_LINKS) {
         expect(
-          screen.getByRole('link', { name: new RegExp(label, 'i') })
+          quickNav.getByRole('link', { name: new RegExp(label, 'i') })
         ).toBeInTheDocument();
       }
     });
@@ -126,24 +139,24 @@ describe('Settings quick navigation', () => {
       });
     });
 
-    it('hides system-admin-only quick nav links', async () => {
-      const { Settings } = await import('./Settings');
+    it('hides system-admin-only quick nav links', () => {
       render(<Settings />);
+      const quickNav = getQuickNavLinks();
 
       for (const label of SYSTEM_ADMIN_ONLY_LINKS) {
         expect(
-          screen.queryByRole('link', { name: new RegExp(label, 'i') })
+          quickNav.queryByRole('link', { name: new RegExp(label, 'i') })
         ).not.toBeInTheDocument();
       }
     });
 
-    it('still shows all lookup quick nav links', async () => {
-      const { Settings } = await import('./Settings');
+    it('still shows all lookup quick nav links', () => {
       render(<Settings />);
+      const quickNav = getQuickNavLinks();
 
       for (const label of LOOKUP_LINKS) {
         expect(
-          screen.getByRole('link', { name: new RegExp(label, 'i') })
+          quickNav.getByRole('link', { name: new RegExp(label, 'i') })
         ).toBeInTheDocument();
       }
     });

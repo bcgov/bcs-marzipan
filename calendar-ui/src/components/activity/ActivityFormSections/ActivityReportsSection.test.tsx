@@ -53,6 +53,10 @@ vi.mock('@/hooks/useLookups', () => ({
   useReports: () => ({ data: [], isLoading: false }),
 }));
 
+vi.mock('../activity-info-icon-settings-context', () => ({
+  ActivityFieldInfoIcon: () => null,
+}));
+
 function ActivityReportsSectionHarness({
   defaultValues,
   onFormReady,

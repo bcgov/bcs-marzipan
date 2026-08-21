@@ -13,6 +13,7 @@ import type { Mock } from 'vitest';
 import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
 import { AuthService } from './auth.service';
+import * as adStrategy from './strategies/ad.strategy';
 import {
   findUserByEmailLocal,
   findUserByIdLocal,
@@ -70,6 +71,14 @@ vi.mock('./strategies/local.strategy', () => ({
   updateLastLogin: vi.fn(),
   updateUserPassword: vi.fn(),
   updateUserStatus: vi.fn(),
+}));
+
+vi.mock('./strategies/ad.strategy', () => ({
+  findUserByEmail: vi.fn(),
+  findUserByEmailAnyStatus: vi.fn(),
+  findUserByExternalId: vi.fn(),
+  findUserByExternalIdAnyStatus: vi.fn(),
+  syncAzureIdentity: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -213,6 +222,7 @@ describe('AuthService — local auth methods', () => {
       passwordHash: string | null;
       status: string;
       isActive: boolean;
+      directLoginEnabled: boolean;
     }> = {}
   ) {
     return {
@@ -224,6 +234,7 @@ describe('AuthService — local auth methods', () => {
       passwordHash: 'existing-hash',
       status: 'active',
       isActive: true,
+      directLoginEnabled: false,
       ...overrides,
     };
   }
@@ -231,12 +242,19 @@ describe('AuthService — local auth methods', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     localMockDb = makeChain();
+    localMockDb.transaction = vi
+      .fn()
+      .mockImplementation(
+        async (fn: (tx: typeof localMockDb) => Promise<void>) => fn(localMockDb)
+      );
 
     vi.mocked(bcrypt.hash).mockResolvedValue('hashed-value' as never);
     vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
     vi.mocked(updateUserPassword).mockResolvedValue(undefined);
     vi.mocked(updateUserStatus).mockResolvedValue(undefined);
     vi.mocked(updateLastLogin).mockResolvedValue(undefined);
+    vi.mocked(adStrategy.findUserByExternalIdAnyStatus).mockResolvedValue(null);
+    vi.mocked(adStrategy.findUserByEmailAnyStatus).mockResolvedValue(null);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -325,6 +343,30 @@ describe('AuthService — local auth methods', () => {
       expect(result.status).toBe('active');
       expect((result as { email?: string }).email).toBe('test@example.com');
     });
+
+    it('returns sso_recommended for an IDIR-only account (active, no passwordHash, directLogin disabled)', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: false,
+        })
+      );
+      const result = await service.checkEmail('test@example.com');
+      expect(result.status).toBe('sso_recommended');
+    });
+
+    it('returns pending for an IDIR account with direct login enabled but no password set', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: true,
+        })
+      );
+      const result = await service.checkEmail('test@example.com');
+      expect(result.status).toBe('pending');
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -361,6 +403,37 @@ describe('AuthService — local auth methods', () => {
         'active'
       );
     });
+
+    it('allows active IDIR user with directLoginEnabled and no password to set a password', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: true,
+        })
+      );
+      await service.setPassword('test@example.com', 'ValidPass1!');
+      expect(bcrypt.hash).toHaveBeenCalledWith('ValidPass1!', 12);
+      expect(updateUserPassword).toHaveBeenCalledWith(
+        localMockDb,
+        1,
+        'hashed-value',
+        'active'
+      );
+    });
+
+    it('rejects active IDIR user with no passwordHash when directLoginEnabled is false', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: false,
+        })
+      );
+      await expect(
+        service.setPassword('test@example.com', 'ValidPass1!')
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -396,6 +469,26 @@ describe('AuthService — local auth methods', () => {
       ).rejects.toThrow(UnauthorizedException);
 
       expect(updateLastLogin).not.toHaveBeenCalled();
+    });
+
+    it('returns requiresPasswordSetup for active user with directLoginEnabled and no password', async () => {
+      vi.mocked(findUserByEmailLocal).mockResolvedValue(
+        makeLocalUser({
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: true,
+        })
+      );
+
+      const result = await service.login({
+        username: 'test@example.com',
+        password: 'AnyPass1!',
+      });
+
+      expect(result).toEqual({
+        requiresPasswordSetup: true,
+        email: 'test@example.com',
+      });
     });
   });
 
@@ -487,9 +580,27 @@ describe('AuthService — local auth methods', () => {
       );
     });
 
-    it('throws BadRequestException for an SSO-only user (active, no passwordHash)', async () => {
+    it('allows reset for active user with directLoginEnabled and no password', async () => {
       vi.mocked(findUserByIdLocal).mockResolvedValue(
-        makeLocalUser({ isActive: true, status: 'active', passwordHash: null })
+        makeLocalUser({
+          isActive: true,
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: true,
+        })
+      );
+      const token = await service.createPasswordResetToken(1);
+      expect(token).toMatch(/^[0-9a-f]{32}$/);
+    });
+
+    it('rejects SSO-only user (no password, directLogin disabled)', async () => {
+      vi.mocked(findUserByIdLocal).mockResolvedValue(
+        makeLocalUser({
+          isActive: true,
+          status: 'active',
+          passwordHash: null,
+          directLoginEnabled: false,
+        })
       );
       await expect(service.createPasswordResetToken(1)).rejects.toThrow(
         BadRequestException
@@ -509,6 +620,179 @@ describe('AuthService — local auth methods', () => {
       vi.mocked(findUserByIdLocal).mockResolvedValue(makeLocalUser());
       const token = await service.createPasswordResetToken(1);
       expect(token).toMatch(/^[0-9a-f]{32}$/);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // loginWithAzureClaims()
+  // -------------------------------------------------------------------------
+
+  describe('loginWithAzureClaims()', () => {
+    it('allows a pending user to sign in with Microsoft using email match', async () => {
+      vi.mocked(adStrategy.findUserByExternalId)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(
+          makeLocalUser({
+            id: 42,
+            status: 'active',
+            adEmail: 'new.user@example.com',
+          })
+        );
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(
+        makeLocalUser({
+          id: 42,
+          status: 'pending',
+          adEmail: 'new.user@example.com',
+        })
+      );
+
+      const result = await service.loginWithAzureClaims({
+        externalId: 'azure-123',
+        email: 'new.user@example.com',
+        username: 'new.user@example.com',
+        displayName: 'New User',
+      });
+
+      expect(adStrategy.findUserByEmail).toHaveBeenCalledTimes(1);
+      expect(updateUserStatus).toHaveBeenCalledWith(
+        expect.anything(),
+        42,
+        'active'
+      );
+      expect(adStrategy.syncAzureIdentity).toHaveBeenCalledTimes(1);
+      expect(result.user.id).toBe(42);
+      expect(result.user.email).toBe('new.user@example.com');
+    });
+
+    it('allows a pending user matched by externalId without changing lookup path', async () => {
+      vi.mocked(adStrategy.findUserByExternalId)
+        .mockResolvedValueOnce(
+          makeLocalUser({
+            id: 43,
+            status: 'pending',
+            adEmail: 'linked@example.com',
+          })
+        )
+        .mockResolvedValueOnce(
+          makeLocalUser({
+            id: 43,
+            status: 'active',
+            adEmail: 'linked@example.com',
+          })
+        );
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(null);
+
+      await service.loginWithAzureClaims({
+        externalId: 'azure-pending',
+        email: 'linked@example.com',
+      });
+
+      expect(updateUserStatus).toHaveBeenCalledWith(
+        expect.anything(),
+        43,
+        'active'
+      );
+      expect(adStrategy.findUserByEmail).not.toHaveBeenCalled();
+    });
+
+    it('rejects deactivated user matched by externalId (isActive=false)', async () => {
+      vi.mocked(adStrategy.findUserByExternalIdAnyStatus).mockResolvedValue(
+        makeLocalUser({
+          id: 7,
+          isActive: false,
+          status: 'active',
+        })
+      );
+
+      await expect(
+        service.loginWithAzureClaims({
+          externalId: 'azure-deactivated',
+          email: 'deactivated@example.com',
+        })
+      ).rejects.toThrow(/deactivated/i);
+
+      expect(adStrategy.findUserByExternalId).not.toHaveBeenCalled();
+    });
+
+    it('rejects when no active account matches externalId or email', async () => {
+      vi.mocked(adStrategy.findUserByExternalId).mockResolvedValue(null);
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(null);
+
+      await expect(
+        service.loginWithAzureClaims({
+          externalId: 'azure-456',
+          email: 'missing@example.com',
+        })
+      ).rejects.toThrow(/No Corporate Calendar account found/i);
+    });
+
+    it('rejects inactive-status user matched by email', async () => {
+      vi.mocked(adStrategy.findUserByExternalIdAnyStatus).mockResolvedValue(
+        null
+      );
+      vi.mocked(adStrategy.findUserByEmailAnyStatus).mockResolvedValue(
+        makeLocalUser({
+          id: 5,
+          status: 'inactive',
+        })
+      );
+
+      await expect(
+        service.loginWithAzureClaims({
+          externalId: 'azure-456',
+          email: 'inactive@example.com',
+        })
+      ).rejects.toThrow(/deactivated/i);
+
+      expect(adStrategy.findUserByEmail).not.toHaveBeenCalled();
+    });
+
+    it('rejects password_reset_required user matched by email', async () => {
+      vi.mocked(adStrategy.findUserByExternalId).mockResolvedValue(null);
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(
+        makeLocalUser({
+          id: 6,
+          status: 'password_reset_required',
+        })
+      );
+
+      await expect(
+        service.loginWithAzureClaims({
+          externalId: 'azure-789',
+          email: 'reset@example.com',
+        })
+      ).rejects.toThrow(/password reset is required/i);
+    });
+
+    it('signs in active user matched by email without changing status', async () => {
+      vi.mocked(adStrategy.findUserByExternalId)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(
+          makeLocalUser({
+            id: 99,
+            status: 'active',
+            adEmail: 'linked@example.com',
+          })
+        );
+      vi.mocked(adStrategy.findUserByEmail).mockResolvedValue(
+        makeLocalUser({
+          id: 99,
+          status: 'active',
+          adEmail: 'linked@example.com',
+        })
+      );
+
+      await service.loginWithAzureClaims({
+        externalId: 'azure-linked',
+        email: 'linked@example.com',
+      });
+
+      expect(updateUserStatus).not.toHaveBeenCalled();
+      expect(adStrategy.syncAzureIdentity).toHaveBeenCalledWith(
+        expect.anything(),
+        99,
+        expect.objectContaining({ externalId: 'azure-linked' })
+      );
     });
   });
 });

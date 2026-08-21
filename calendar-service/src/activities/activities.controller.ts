@@ -22,7 +22,11 @@ import {
 } from '@nestjs/swagger';
 
 import type { Category } from '@corpcal/database/types';
-import { HYDRATION_PROFILES, type AuthUser } from '@corpcal/shared';
+import {
+  HYDRATION_PROFILES,
+  PERMISSIONS,
+  type AuthUser,
+} from '@corpcal/shared';
 import type {
   ActivityListItem,
   ActivityResponse,
@@ -30,6 +34,7 @@ import type {
 } from '@corpcal/shared/api';
 import {
   addActivityHistoryNoteRequestSchema,
+  bulkUpdateActivitiesRequestSchema,
   cloneActivityRequestSchema,
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
@@ -43,6 +48,7 @@ import {
   updateTagsSchema,
   updateThemesSchema,
   type AddActivityHistoryNoteRequest,
+  type BulkUpdateActivitiesRequest,
   type CloneActivityRequest,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
@@ -58,6 +64,7 @@ import {
   ActivityArrayResponseWrapperDto,
   ActivityResponseWrapperDto,
   AddActivityHistoryNoteDto,
+  BulkUpdateActivitiesDto,
   CloneActivityDto,
   CreateActivityDto,
   RequestDeleteDto,
@@ -412,6 +419,32 @@ export class ActivitiesController {
       success: true,
       data: result,
     };
+  }
+
+  @ApiOperation({
+    summary: 'Bulk update activities',
+    description:
+      'Marks selected activities reviewed or changes their pitch-required status without acquiring individual edit locks. Requires activities.bulkUpdate and the permission required for the selected operation.',
+  })
+  @ApiBody({ type: BulkUpdateActivitiesDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Activities updated successfully',
+    type: ActivityArrayResponseWrapperDto,
+  })
+  @RequirePermission(PERMISSIONS.ACTIVITIES.BULK_UPDATE)
+  @Post('bulk-update')
+  async bulkUpdate(
+    @Body(new ZodValidationPipe(bulkUpdateActivitiesRequestSchema))
+    body: BulkUpdateActivitiesRequest,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: ActivityResponse[] }> {
+    const result = await this.activitiesService.bulkUpdate(body, user.id, {
+      roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: user.teamIds,
+    });
+    return { success: true, data: result };
   }
 
   @ApiOperation({

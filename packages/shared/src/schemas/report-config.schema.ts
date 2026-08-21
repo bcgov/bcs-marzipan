@@ -23,7 +23,7 @@ import { LEGEND_SWATCH_HEX_REGEX } from './legend-swatch-hex';
  */
 export const reportFilterConfigSchema = z.object({
   status: z.array(z.string()).optional(),
-  category: z.array(z.string()).optional(),
+  categoryIds: z.array(z.number().int()).optional(),
   tags: z.array(z.string()).optional(),
   dateRange: z
     .object({
@@ -154,7 +154,7 @@ export function mergeReportFilters(
   // Properties not specified in section filter are inherited from global filter
   return {
     status: sectionFilter.status ?? globalFilter.status,
-    category: sectionFilter.category ?? globalFilter.category,
+    categoryIds: sectionFilter.categoryIds ?? globalFilter.categoryIds,
     tags: sectionFilter.tags ?? globalFilter.tags,
     dateRange: sectionFilter.dateRange ?? globalFilter.dateRange,
     lookAheadSection:

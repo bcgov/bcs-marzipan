@@ -18,6 +18,7 @@ export interface ActivityTableRow {
   // Overview column
   title: string;
   activityCategories: string[];
+  categoryIds: number[];
   pitchDate: string | null;
   pitchRequiredStatus: string | null;
   isConfidential: boolean;
@@ -54,6 +55,8 @@ export interface ActivityTableRow {
   eventPlanners: string[];
   /** Event planner lookup IDs for client-side filtering */
   eventPlannerLeadIds: number[];
+  /** Lead team ID for client-side team filter */
+  leadTeamId: number | null;
   leadMinistryId: number | null;
   leadOrgId: number | null;
   commsContactLeadUserId: number | null;
@@ -117,6 +120,7 @@ export function mapActivityToTableRow(
     // Overview
     title: activity.title,
     activityCategories: activity.category,
+    categoryIds: activity.categoryIds ?? [],
     pitchDate: activity.pitchDate ?? null,
     pitchRequiredStatus: activity.pitchRequiredStatus ?? null,
     isConfidential: activity.isConfidential,
@@ -149,6 +153,7 @@ export function mapActivityToTableRow(
     commsContactsCount: activity.commsContacts.length,
     eventPlanners: activity.eventPlanners ?? [],
     eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],
+    leadTeamId: activity.leadTeamId ?? null,
     leadMinistryId: activity.leadMinistryId ?? null,
     leadOrgId: activity.leadOrgId ?? null,
     commsContactLeadUserId: commsLead?.userId ?? null,

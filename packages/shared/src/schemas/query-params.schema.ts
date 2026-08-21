@@ -72,15 +72,13 @@ export const filterActivitiesQuerySchema = z.object({
       val === undefined ? undefined : val === 'true'
     ),
   activityStatusIds: commaSeparatedIntArray(),
-  leadMinistryIds: commaSeparatedIntArray(),
-  leadOrgIds: commaSeparatedIntArray(),
   leadTeamIds: commaSeparatedIntArray(),
   commsContactLeadUserIds: commaSeparatedIntArray(),
   flagAssigneeUserIds: commaSeparatedIntArray(),
   sharedWithTeamIds: commaSeparatedIntArray(),
   eventPlannerLeadIds: commaSeparatedIntArray(),
   tagIds: commaSeparatedIntArray(),
-  categoryNames: commaSeparatedStringArray(),
+  categoryIds: commaSeparatedIntArray(),
   translationRequiredStatusIds: commaSeparatedIntArray(),
   translationLanguageIds: commaSeparatedIntArray(),
   pitchRequiredStatusNames: commaSeparatedStringArray(),
@@ -152,21 +150,19 @@ export type FilterActivitiesQueryParams = Pick<
 /** Int-array query fields serialized as comma-separated strings in HTTP. */
 export const FILTER_ACTIVITIES_INT_ARRAY_KEYS = [
   'activityStatusIds',
-  'leadMinistryIds',
-  'leadOrgIds',
   'leadTeamIds',
   'commsContactLeadUserIds',
   'flagAssigneeUserIds',
   'sharedWithTeamIds',
   'eventPlannerLeadIds',
   'tagIds',
+  'categoryIds',
   'translationRequiredStatusIds',
   'translationLanguageIds',
 ] as const satisfies readonly (keyof FilterActivitiesQueryParams)[];
 
 /** String-array query fields serialized as comma-separated strings in HTTP. */
 export const FILTER_ACTIVITIES_STRING_ARRAY_KEYS = [
-  'categoryNames',
   'pitchRequiredStatusNames',
   'lookAheadStatusValues',
   'lookAheadSectionValues',

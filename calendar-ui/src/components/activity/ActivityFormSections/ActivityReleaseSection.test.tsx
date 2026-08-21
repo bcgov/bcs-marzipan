@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FormProvider, useForm } from 'react-hook-form';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { TranslationRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
@@ -17,6 +17,10 @@ beforeAll(() => {
     Element.prototype.releasePointerCapture = () => undefined;
   }
 });
+
+vi.mock('../activity-info-icon-settings-context', () => ({
+  ActivityFieldInfoIcon: () => null,
+}));
 
 const mockTranslationRequiredStatuses = [
   {

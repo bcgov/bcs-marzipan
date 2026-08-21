@@ -16,7 +16,7 @@ describe('buildReportClearFilterState', () => {
 
     expect(cleared.dateRange).toEqual(baseline.filterState.dateRange);
     expect(cleared.dateRange.startDate).not.toBe('');
-    expect(cleared.categoryNames).toEqual([]);
+    expect(cleared.categoryIds).toEqual([]);
     expect(cleared.activityStatusIds).toEqual([]);
     expect(cleared.tagIds).toEqual([]);
   });
@@ -57,7 +57,7 @@ describe('hasReportClearableFiltersActive', () => {
   it('returns true when category filters are applied', () => {
     const filterState = {
       ...buildReportClearFilterState('look-ahead'),
-      categoryNames: ['Media'],
+      categoryIds: [1],
     };
     expect(hasReportClearableFiltersActive(filterState, 'look-ahead', '')).toBe(
       true

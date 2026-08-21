@@ -65,14 +65,14 @@ describe('useActivityTablePreferences', () => {
       );
 
       expect(result.current.preferences.sortKey).toBe('startDate');
-      expect(result.current.preferences.sortDirection).toBe('desc');
+      expect(result.current.preferences.sortDirection).toBe('asc');
       expect(result.current.preferences.showCompleted).toBe(false);
       expect(result.current.preferences.showDeleted).toBe(false);
-      expect(result.current.preferences.pageSize).toBe(10);
+      expect(result.current.preferences.pageSize).toBe(25);
       expect(result.current.preferences.searchKeyword).toBe('');
       expect(result.current.preferences.filterState).toEqual(
         expect.objectContaining({
-          categoryNames: [],
+          categoryIds: [],
           activityStatusIds: [],
           tagIds: [],
           dateConfirmedFilter: 'any',
@@ -133,7 +133,7 @@ describe('useActivityTablePreferences', () => {
         useActivityTablePreferences(canSeeDeleted)
       );
 
-      expect(result.current.preferences.pageSize).toBe(10);
+      expect(result.current.preferences.pageSize).toBe(25);
     });
 
     it('parses search from URL', () => {
@@ -148,7 +148,7 @@ describe('useActivityTablePreferences', () => {
 
     it('parses filter state from URL (date range, category, status, tag)', () => {
       mockSearchParams = new URLSearchParams(
-        'sort=startDate&dateFrom=2025-01-01&dateTo=2025-01-31&category=Event,Release&status=1,2&tag=10,20'
+        'sort=startDate&dateFrom=2025-01-01&dateTo=2025-01-31&category=1,2&status=1,2&tag=10,20'
       );
 
       const { result } = renderHook(() =>
@@ -158,9 +158,24 @@ describe('useActivityTablePreferences', () => {
       const f = result.current.preferences.filterState;
       expect(f.dateRange.startDate).toBe('2025-01-01');
       expect(f.dateRange.endDate).toBe('2025-01-31');
-      expect(f.categoryNames).toEqual(['Event', 'Release']);
+      expect(f.categoryIds).toEqual([1, 2]);
       expect(f.activityStatusIds).toEqual([1, 2]);
       expect(f.tagIds).toEqual([10, 20]);
+    });
+
+    it('parses lead filter ids from URL', () => {
+      mockSearchParams = new URLSearchParams(
+        'sort=startDate&leadTeam=5,6&commsLead=7&eventPlanner=8,9'
+      );
+
+      const { result } = renderHook(() =>
+        useActivityTablePreferences(canSeeDeleted)
+      );
+
+      const f = result.current.preferences.filterState;
+      expect(f.leadTeamIds).toEqual([5, 6]);
+      expect(f.commsContactLeadUserIds).toEqual([7]);
+      expect(f.eventPlannerLeadIds).toEqual([8, 9]);
     });
 
     it('parses confirmed filters from URL', () => {
@@ -195,7 +210,7 @@ describe('useActivityTablePreferences', () => {
             noStartDate: false,
             noEndDate: false,
           },
-          categoryNames: ['Event'],
+          categoryIds: [1],
           activityStatusIds: [1],
           pitchRequiredStatusNames: [],
           pitchDateFilter: { kind: 'any' },
@@ -204,8 +219,7 @@ describe('useActivityTablePreferences', () => {
           dateConfirmedFilter: 'any',
           timeConfirmedFilter: 'any',
           tagIds: [],
-          leadMinistryIds: [],
-          leadOrgIds: [],
+          leadTeamIds: [],
           commsContactLeadUserIds: [],
           eventPlannerLeadIds: [],
           translationRequiredStatusIds: [],
@@ -227,9 +241,7 @@ describe('useActivityTablePreferences', () => {
       expect(result.current.preferences.filterState.dateRange.startDate).toBe(
         '2025-02-01'
       );
-      expect(result.current.preferences.filterState.categoryNames).toEqual([
-        'Event',
-      ]);
+      expect(result.current.preferences.filterState.categoryIds).toEqual([1]);
     });
 
     it('ignores sessionStorage when URL has any known param', () => {
@@ -247,7 +259,7 @@ describe('useActivityTablePreferences', () => {
             noStartDate: false,
             noEndDate: false,
           },
-          categoryNames: [] as string[],
+          categoryIds: [] as number[],
           activityStatusIds: [] as number[],
           pitchRequiredStatusNames: [] as string[],
           pitchDateFilter: { kind: 'any' as const },
@@ -256,8 +268,7 @@ describe('useActivityTablePreferences', () => {
           dateConfirmedFilter: 'any' as const,
           timeConfirmedFilter: 'any' as const,
           tagIds: [] as number[],
-          leadMinistryIds: [] as number[],
-          leadOrgIds: [] as number[],
+          leadTeamIds: [] as number[],
           commsContactLeadUserIds: [] as number[],
           eventPlannerLeadIds: [] as number[],
           translationRequiredStatusIds: [],
@@ -324,6 +335,32 @@ describe('useActivityTablePreferences', () => {
         { replace: true }
       );
     });
+
+    it('syncs lead filter ids to URL when filter state changes', () => {
+      const { result } = renderHook(() =>
+        useActivityTablePreferences(canSeeDeleted)
+      );
+
+      act(() => {
+        result.current.setPreferences({
+          filterState: {
+            ...result.current.preferences.filterState,
+            leadTeamIds: [12],
+            commsContactLeadUserIds: [34],
+            eventPlannerLeadIds: [56],
+          },
+        });
+      });
+
+      expect(mockSetSearchParams).toHaveBeenCalledWith(
+        expect.objectContaining({
+          leadTeam: '12',
+          commsLead: '34',
+          eventPlanner: '56',
+        }),
+        { replace: true }
+      );
+    });
   });
 
   describe('debounced URL sync for search', () => {
@@ -385,7 +422,7 @@ describe('getStoredActivityListSearch', () => {
           noStartDate: false,
           noEndDate: false,
         },
-        categoryNames: [] as string[],
+        categoryIds: [] as number[],
         activityStatusIds: [] as number[],
         pitchRequiredStatusNames: [] as string[],
         pitchDateFilter: { kind: 'any' as const },
@@ -394,8 +431,7 @@ describe('getStoredActivityListSearch', () => {
         dateConfirmedFilter: 'any' as const,
         timeConfirmedFilter: 'any' as const,
         tagIds: [] as number[],
-        leadMinistryIds: [] as number[],
-        leadOrgIds: [] as number[],
+        leadTeamIds: [] as number[],
         commsContactLeadUserIds: [] as number[],
         eventPlannerLeadIds: [] as number[],
         translationRequiredStatusIds: [],

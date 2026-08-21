@@ -1,12 +1,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: calendar-service-config
+  name: corpcal-service-config
   labels:
-    app.kubernetes.io/name: calendar
+    app.kubernetes.io/name: corpcal
     app.kubernetes.io/component: service
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: ${APP_VERSION}
+    app.kubernetes.io/managed-by: github-actions
 data:
   NODE_ENV: production
   AUTH_STRATEGY: azure

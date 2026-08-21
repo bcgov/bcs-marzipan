@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: calendar-service-config
+  name: corpcal-service-config
 data:
   AUTH_COOKIE_DOMAIN: calendar-ui-dc4c90-dev.apps.emerald.devops.gov.bc.ca
   POST_LOGIN_REDIRECT_URL: https://calendar-ui-dc4c90-dev.apps.emerald.devops.gov.bc.ca

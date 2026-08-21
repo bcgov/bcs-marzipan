@@ -16,6 +16,7 @@ import type { AuthUser, PermissionKey } from '@corpcal/shared';
 import * as authApi from '../api/authApi';
 
 export const LOGIN_MODAL_SESSION_KEY = 'corpcal_show_login_modal';
+export const AUTH_USER_ID_SESSION_KEY = 'corpcal_auth_user_id';
 
 export interface LoginResult {
   success: boolean;
@@ -62,9 +63,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const userData = await authApi.getCurrentUser();
       setUser(userData);
+      sessionStorage.setItem(AUTH_USER_ID_SESSION_KEY, String(userData.id));
     } catch {
       // No valid session - user is not authenticated
       setUser(null);
+      sessionStorage.removeItem(AUTH_USER_ID_SESSION_KEY);
     }
   }, []);
 
@@ -124,6 +127,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         sessionStorage.setItem(LOGIN_MODAL_SESSION_KEY, '1');
+        sessionStorage.setItem(
+          AUTH_USER_ID_SESSION_KEY,
+          String(response.user.id)
+        );
         setPendingLoginModal(true);
         setUser(response.user);
         return { success: true };
@@ -143,6 +150,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authApi.logout();
     } finally {
       sessionStorage.removeItem(LOGIN_MODAL_SESSION_KEY);
+      sessionStorage.removeItem(AUTH_USER_ID_SESSION_KEY);
       setPendingLoginModal(false);
       setUser(null);
     }

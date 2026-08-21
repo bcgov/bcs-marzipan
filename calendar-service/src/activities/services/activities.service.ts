@@ -36,7 +36,6 @@ import {
   timeStatuses,
   translatedLanguages,
   translationRequiredStatuses,
-  userTeams,
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
@@ -81,6 +80,7 @@ import {
   buildReviewSnapshot,
   diffReviewFields,
   getEmptyReviewBaseline,
+  getForbiddenLookupIds,
   isDeepEqual,
   mapResponseToFormData,
   normalizeVenueAddressForForm,
@@ -94,13 +94,15 @@ import { DatabaseService } from '../../database/database.service';
 import { ApplicationSettingsService } from '../../locks/application-settings.service';
 import { LocksService } from '../../locks/locks.service';
 import { LookAheadPolicyService } from '../../look-ahead/look-ahead-policy.service';
-import { getVisibleCategoryIds } from '../../policy/category-scoping.helper';
 import {
   resolveDataScope,
   type RequestContext as RequestContextType,
 } from '../../policy/dto/user-context.dto';
+import {
+  getCategoryScopeById,
+  getTagScopeById,
+} from '../../policy/lookup-scope.helper';
 import { PolicyService } from '../../policy/policy.service';
-import { getVisibleTagIds } from '../../policy/tag-scoping.helper';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
@@ -187,27 +189,63 @@ export class ActivitiesService {
   }
 
   /**
-   * Validates that all submitted tag IDs are within the set of tags visible
-   * to the user's teams (global tags + team-scoped tags for those teams).
-   * Users with ACTIVITIES.CREATE_ANY bypass this check — they act on behalf
-   * of any team and may legitimately use any tag.
+   * Validates submitted tag IDs are selectable for the user's teams, allowing
+   * grandfathered tags already on the activity on update.
    */
   private async validateTagIds(
     tagIds: number[],
     teamIds: number[] | undefined,
-    permissions: string[] | undefined
+    permissions: string[] | undefined,
+    existingTagIds?: number[]
   ): Promise<void> {
     if (!tagIds.length) return;
     const canUseAny =
       permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ?? false;
     if (canUseAny) return;
 
-    const visibleIds = await getVisibleTagIds(this.databaseService.db, teamIds);
-    const visibleSet = new Set(visibleIds);
-    const forbidden = tagIds.filter((id) => !visibleSet.has(id));
+    const scopeById = await getTagScopeById(this.databaseService.db, [
+      ...new Set([...tagIds, ...(existingTagIds ?? [])]),
+    ]);
+    const forbidden = getForbiddenLookupIds(
+      tagIds,
+      existingTagIds,
+      teamIds,
+      scopeById
+    );
     if (forbidden.length > 0) {
       throw new BadRequestException(
         `Tag IDs not available to your teams: ${forbidden.join(', ')}`
+      );
+    }
+  }
+
+  /**
+   * Validates submitted category IDs are selectable for the user's teams,
+   * allowing grandfathered categories already on the activity on update.
+   */
+  private async validateCategoryIdsForUser(
+    categoryIds: number[],
+    teamIds: number[] | undefined,
+    permissions: string[] | undefined,
+    existingCategoryIds?: number[]
+  ): Promise<void> {
+    if (!categoryIds.length) return;
+    const canUseAny =
+      permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ?? false;
+    if (canUseAny) return;
+
+    const scopeById = await getCategoryScopeById(this.databaseService.db, [
+      ...new Set([...categoryIds, ...(existingCategoryIds ?? [])]),
+    ]);
+    const forbidden = getForbiddenLookupIds(
+      categoryIds,
+      existingCategoryIds,
+      teamIds,
+      scopeById
+    );
+    if (forbidden.length > 0) {
+      throw new BadRequestException(
+        `Category IDs not available to your teams: ${forbidden.join(', ')}`
       );
     }
   }
@@ -1225,6 +1263,11 @@ export class ActivitiesService {
       throw new BadRequestException('At least one category is required.');
     }
     await this.utilsService.validateCategoryIds(categoryIds);
+    await this.validateCategoryIdsForUser(
+      categoryIds,
+      context?.teamIds,
+      context?.permissions
+    );
     if (tagIds?.length) {
       await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
     }
@@ -1923,6 +1966,147 @@ export class ActivitiesService {
   }
 
   /**
+   * Applies a permission-authorized list bulk action without taking or releasing
+   * individual edit locks.
+   */
+  async bulkUpdate(
+    dto: import('@corpcal/shared/schemas').BulkUpdateActivitiesRequest,
+    userId: number,
+    context: {
+      roleName?: string;
+      permissions?: string[];
+      teamIds?: number[];
+    }
+  ): Promise<ActivityResponse[]> {
+    const requiredOperationPermissionByOperation = {
+      review: PERMISSIONS.ACTIVITIES.REVIEW,
+      pitchStatus: PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
+      issue: PERMISSIONS.ACTIVITIES.EDIT,
+      tags: PERMISSIONS.ACTIVITIES.EDIT,
+      sharedWith: PERMISSIONS.ACTIVITIES.EDIT,
+      flag: PERMISSIONS.ACTIVITIES.FLAG,
+      delete: PERMISSIONS.ACTIVITIES.DELETE,
+    } as const;
+    const requiredOperationPermission =
+      requiredOperationPermissionByOperation[dto.operation];
+    if (!context.permissions?.includes(requiredOperationPermission)) {
+      throw new ForbiddenException(
+        `You do not have permission to perform this bulk activity operation.`
+      );
+    }
+
+    if (
+      dto.operation === 'flag' &&
+      (dto.flagTeamId == null || !context.teamIds?.includes(dto.flagTeamId))
+    ) {
+      throw new ForbiddenException(
+        'You are not a member of the specified flag team.'
+      );
+    }
+
+    const results: ActivityResponse[] = [];
+    for (const activityId of dto.activityIds) {
+      if (
+        dto.operation === 'review' ||
+        dto.operation === 'pitchStatus' ||
+        dto.operation === 'issue' ||
+        dto.operation === 'tags' ||
+        dto.operation === 'sharedWith'
+      ) {
+        await this.assertCanBulkEditActivity(activityId, userId, context);
+      }
+
+      switch (dto.operation) {
+        case 'review':
+          results.push(
+            await this.update(
+              activityId,
+              { markAsReviewed: true },
+              userId,
+              context,
+              { bypassEditLock: true }
+            )
+          );
+          break;
+        case 'pitchStatus':
+          results.push(
+            await this.update(
+              activityId,
+              { pitchRequiredStatusId: dto.pitchRequiredStatusId! },
+              userId,
+              context,
+              { bypassEditLock: true }
+            )
+          );
+          break;
+        case 'issue':
+          results.push(
+            await this.update(activityId, { isIssue: true }, userId, context, {
+              bypassEditLock: true,
+            })
+          );
+          break;
+        case 'tags':
+          results.push(await this.updateTags(activityId, dto.tagIds!, userId));
+          break;
+        case 'sharedWith':
+          results.push(
+            await this.updateSharedWith(activityId, dto.teamIds!, userId)
+          );
+          break;
+        case 'flag':
+          await this.flagsService.syncFlags(
+            activityId,
+            dto.flagTeamId!,
+            dto.assigneeIds!,
+            userId
+          );
+          this.activitiesGateway.broadcastActivityUpdated(activityId);
+          results.push(await this.findOne(activityId));
+          break;
+        case 'delete':
+          results.push(
+            await this.softDelete(
+              activityId,
+              dto.deleteReason!,
+              userId,
+              context
+            )
+          );
+          break;
+      }
+    }
+    return results;
+  }
+
+  /** Matches CanEditActivityGuard for bulk operations that bypass its route guard. */
+  private async assertCanBulkEditActivity(
+    activityId: number,
+    userId: number,
+    context: {
+      roleName?: string;
+      teamIds?: number[];
+    }
+  ): Promise<void> {
+    const isBypass =
+      context.roleName === SYSTEM_ROLES.ADMIN ||
+      context.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+    if (isBypass) return;
+
+    const [isCommsContact, leadTeamId] = await Promise.all([
+      this.policyService.isCommsContactForActivity(activityId, userId),
+      this.policyService.getLeadTeamIdForActivity(activityId),
+    ]);
+    const isLeadTeamMember =
+      leadTeamId != null && context.teamIds?.includes(leadTeamId) === true;
+    if (isCommsContact || isLeadTeamMember) return;
+
+    throw new ForbiddenException(
+      'You may only edit activities where you are a comms contact or lead-team member. This activity is shared with your team for viewing only.'
+    );
+  }
+
+  /**
    * Update an activity
    */
   async update(
@@ -1933,7 +2117,8 @@ export class ActivitiesService {
       roleName?: string;
       permissions?: string[];
       teamIds?: number[];
-    }
+    },
+    options?: { bypassEditLock?: boolean }
   ): Promise<ActivityResponse> {
     // Resolve existence first so missing IDs return 404 instead of lock-required 423.
     const [oldActivity] = await this.databaseService.db
@@ -1946,38 +2131,39 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
-    const existingLock = await this.locksService.getLockForEntity(
-      'activity',
-      id
-    );
-    if (!existingLock) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.LOCKED,
-          message:
-            'You must acquire an edit lock before updating this activity.',
-          locked: true,
-          lockRequired: true,
-        },
-        HttpStatus.LOCKED
-      );
-    }
-    if (existingLock.userId !== userId) {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.LOCKED,
-          message: 'This activity is being edited by another user.',
-          locked: true,
-          lockedBy: {
-            userId: existingLock.userId,
-            username: existingLock.username,
-            acquiredAt: existingLock.acquiredAt,
-            expiresAt: existingLock.expiresAt,
-            idleExpiresAt: existingLock.idleExpiresAt,
+    const existingLock = options?.bypassEditLock
+      ? null
+      : await this.locksService.getLockForEntity('activity', id);
+    if (!options?.bypassEditLock) {
+      if (!existingLock) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.LOCKED,
+            message:
+              'You must acquire an edit lock before updating this activity.',
+            locked: true,
+            lockRequired: true,
           },
-        },
-        HttpStatus.LOCKED
-      );
+          HttpStatus.LOCKED
+        );
+      }
+      if (existingLock.userId !== userId) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.LOCKED,
+            message: 'This activity is being edited by another user.',
+            locked: true,
+            lockedBy: {
+              userId: existingLock.userId,
+              username: existingLock.username,
+              acquiredAt: existingLock.acquiredAt,
+              expiresAt: existingLock.expiresAt,
+              idleExpiresAt: existingLock.idleExpiresAt,
+            },
+          },
+          HttpStatus.LOCKED
+        );
+      }
     }
 
     // Reject update when activity is delete_requested or deleted
@@ -2166,9 +2352,32 @@ export class ActivitiesService {
     // connection while borrowing another from the pool (pool starvation under load).
     if (categoryIds !== undefined) {
       await this.utilsService.validateCategoryIds(categoryIds);
+      const existingCategoryRows = await this.databaseService.db
+        .select({ categoryId: activityCategories.categoryId })
+        .from(activityCategories)
+        .where(eq(activityCategories.activityId, id));
+      const existingCategoryIds = existingCategoryRows.map((c) => c.categoryId);
+      await this.validateCategoryIdsForUser(
+        categoryIds,
+        context?.teamIds,
+        context?.permissions,
+        existingCategoryIds
+      );
     }
-    if (tagIds?.length) {
-      await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
+    if (tagIds !== undefined) {
+      const existingTagRows = await this.databaseService.db
+        .select({ tagId: activityTags.tagId })
+        .from(activityTags)
+        .where(eq(activityTags.activityId, id));
+      const existingTagIds = existingTagRows.map((t) => t.tagId);
+      if (tagIds.length > 0) {
+        await this.validateTagIds(
+          tagIds,
+          context?.teamIds,
+          context?.permissions,
+          existingTagIds
+        );
+      }
     }
     if (Object.prototype.hasOwnProperty.call(dto, 'lookAheadSection')) {
       await this.lookAheadPolicy.assertAllowedLookAheadSection(
@@ -3512,19 +3721,13 @@ export class ActivitiesService {
   }
 
   /**
-   * Fetch categories available to the user based on their team memberships
-   * @param userTeams - Optional array of team IDs the user belongs to
-   * @returns Categories that are either global or team-scoped for the user's teams
+   * Fetch all active categories for legacy activity categories endpoint.
    */
-  public async fetchCategories(userTeams?: number[]): Promise<Category[]> {
-    const ids = await getVisibleCategoryIds(this.databaseService.db, userTeams);
-    if (ids.length === 0) {
-      return [];
-    }
+  public async fetchCategories(_userTeams?: number[]): Promise<Category[]> {
     const rows = await this.databaseService.db
       .select()
       .from(categories)
-      .where(and(eq(categories.isActive, true), inArray(categories.id, ids)))
+      .where(eq(categories.isActive, true))
       .orderBy(categories.name);
     return rows;
   }

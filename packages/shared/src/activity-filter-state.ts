@@ -16,7 +16,7 @@ export type PitchDateFilter =
 
 export interface ActivityFilterState {
   dateRange: DateRangeValue;
-  categoryNames: string[];
+  categoryIds: number[];
   activityStatusIds: number[];
   pitchRequiredStatusNames: string[];
   pitchDateFilter: PitchDateFilter;
@@ -25,8 +25,8 @@ export interface ActivityFilterState {
   dateConfirmedFilter: 'any' | 'confirmed' | 'not_confirmed';
   timeConfirmedFilter: 'any' | 'confirmed' | 'not_confirmed';
   tagIds: number[];
-  leadMinistryIds: number[];
-  leadOrgIds: number[];
+  /** Activity lead team IDs (OR within; AND with other dimensions). */
+  leadTeamIds: number[];
   commsContactLeadUserIds: number[];
   eventPlannerLeadIds: number[];
   translationRequiredStatusIds: number[];
@@ -38,7 +38,7 @@ export type ConfirmedFilterValue = ActivityFilterState['dateConfirmedFilter'];
 /** Canonical keys for `ActivityFilterState` (used to reject unknown JSON keys). */
 export const ACTIVITY_FILTER_STATE_KEYS = [
   'dateRange',
-  'categoryNames',
+  'categoryIds',
   'activityStatusIds',
   'pitchRequiredStatusNames',
   'pitchDateFilter',
@@ -47,8 +47,7 @@ export const ACTIVITY_FILTER_STATE_KEYS = [
   'dateConfirmedFilter',
   'timeConfirmedFilter',
   'tagIds',
-  'leadMinistryIds',
-  'leadOrgIds',
+  'leadTeamIds',
   'commsContactLeadUserIds',
   'eventPlannerLeadIds',
   'translationRequiredStatusIds',
@@ -91,7 +90,7 @@ export const DEFAULT_ACTIVITY_FILTER_STATE: ActivityFilterState = {
     noStartDate: false,
     noEndDate: false,
   },
-  categoryNames: [],
+  categoryIds: [],
   activityStatusIds: [],
   pitchRequiredStatusNames: [],
   pitchDateFilter: { kind: 'any' },
@@ -100,8 +99,7 @@ export const DEFAULT_ACTIVITY_FILTER_STATE: ActivityFilterState = {
   dateConfirmedFilter: 'any',
   timeConfirmedFilter: 'any',
   tagIds: [],
-  leadMinistryIds: [],
-  leadOrgIds: [],
+  leadTeamIds: [],
   commsContactLeadUserIds: [],
   eventPlannerLeadIds: [],
   translationRequiredStatusIds: [],
@@ -161,7 +159,7 @@ export function coerceActivityFilterStateFromRecord(
     noEndDate: dr?.noEndDate === true,
   };
 
-  const categoryNames = sanitizeStringArray(raw.categoryNames);
+  const categoryIds = sanitizeIdArrayNoLookup(raw.categoryIds);
   const activityStatusIds = sanitizeIdArrayNoLookup(raw.activityStatusIds);
   const pitchRequiredStatusNames = sanitizeStringArray(
     raw.pitchRequiredStatusNames
@@ -207,7 +205,7 @@ export function coerceActivityFilterStateFromRecord(
 
   return {
     dateRange,
-    categoryNames,
+    categoryIds,
     activityStatusIds,
     pitchRequiredStatusNames,
     pitchDateFilter,
@@ -216,8 +214,7 @@ export function coerceActivityFilterStateFromRecord(
     dateConfirmedFilter,
     timeConfirmedFilter,
     tagIds: sanitizeIdArrayNoLookup(raw.tagIds),
-    leadMinistryIds: sanitizeIdArrayNoLookup(raw.leadMinistryIds),
-    leadOrgIds: sanitizeIdArrayNoLookup(raw.leadOrgIds),
+    leadTeamIds: sanitizeIdArrayNoLookup(raw.leadTeamIds),
     commsContactLeadUserIds: sanitizeIdArrayNoLookup(
       raw.commsContactLeadUserIds
     ),

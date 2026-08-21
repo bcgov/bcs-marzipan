@@ -7,6 +7,7 @@ import {
   type ActivityFieldScope,
 } from '@corpcal/shared';
 import type { CommsContactCandidate } from '@corpcal/shared/api/types';
+import { PERMISSIONS } from '@corpcal/shared/auth';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { FormDisplayOptionsProvider } from '@/components/ui/form';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,6 +19,7 @@ import {
   ActivityEditProvider,
   type ActivityEditContextValue,
 } from './activity-edit-context';
+import { ActivityInfoIconSettingsProvider } from './activity-info-icon-settings-context';
 import {
   defaultActivityLeadTeamFieldConfig,
   type ActivityLeadTeamFieldConfig,
@@ -100,7 +102,8 @@ export function ActivityFormBody({
     return [...candidateOptions, ...fallbacks];
   }, [commsContactCandidates, commsContacts, lookups.users]);
 
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const hasCreateAny = hasPermission(PERMISSIONS.ACTIVITIES.CREATE_ANY);
 
   const canViewScope = useCallback(
     (scope: ActivityFieldScope) =>
@@ -133,62 +136,82 @@ export function ActivityFormBody({
     [readOnly, canViewScope, canEditScope]
   );
 
+  const teamMinistryRefs = useMemo(() => {
+    const byId = new Map<number, { id: number; ministryId: number | null }>();
+    for (const team of lookups.sharedWithTeams) {
+      byId.set(team.id, { id: team.id, ministryId: team.ministryId });
+    }
+    for (const team of leadTeamField.options) {
+      byId.set(team.id, { id: team.id, ministryId: team.ministryId });
+    }
+    return [...byId.values()];
+  }, [leadTeamField.options, lookups.sharedWithTeams]);
+
   return (
     <ActivityEditProvider value={editContextValue}>
-      <FormDisplayOptionsProvider
-        showChangedBadges={showChangedBadges}
-        reviewerChangedPaths={reviewerChangedPaths}
-      >
-        <div
-          className={cn(
-            'grid grid-cols-1 gap-12 lg:grid-cols-2',
-            ACTIVITY_FORM_FIELD_SHADOW_RESET
-          )}
+      <ActivityInfoIconSettingsProvider>
+        <FormDisplayOptionsProvider
+          showChangedBadges={showChangedBadges}
+          reviewerChangedPaths={reviewerChangedPaths}
         >
-          <div className="space-y-12">
-            <ActivityOverviewSection
-              categories={lookups.categories}
-              organizations={lookups.organizations}
-              tags={lookups.tags}
-              pitchRequiredStatuses={lookups.pitchRequiredStatuses}
-              leadTeamField={leadTeamField}
-            />
+          <div
+            className={cn(
+              'grid grid-cols-1 gap-12 lg:grid-cols-2',
+              ACTIVITY_FORM_FIELD_SHADOW_RESET
+            )}
+          >
+            <div className="space-y-12">
+              <ActivityOverviewSection
+                categories={lookups.categories}
+                organizations={lookups.organizations}
+                tags={lookups.tags}
+                pitchRequiredStatuses={lookups.pitchRequiredStatuses}
+                leadTeamField={leadTeamField}
+                userTeamIds={user?.teamIds ?? []}
+                hasCreateAny={hasCreateAny}
+              />
 
-            <ActivityCommsSection
-              commsMaterialOptions={lookups.commsMaterials}
-              commsLeadOptions={commsLeadOptions}
-            />
+              <ActivityCommsSection
+                commsMaterialOptions={lookups.commsMaterials}
+                commsLeadOptions={commsLeadOptions}
+              />
+            </div>
+
+            <div className="space-y-12">
+              <ActivityReportsSection />
+
+              <ActivityScheduleSection
+                dateStatuses={lookups.dateStatuses}
+                timeStatuses={lookups.timeStatuses}
+              />
+
+              <ActivityReleaseSection
+                newsReleaseDistributionOptions={
+                  lookups.newsReleaseDistributions
+                }
+                newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                translationRequiredStatuses={
+                  lookups.translationRequiredStatuses
+                }
+                translationLanguageOptions={lookups.translationLanguages}
+              />
+
+              <ActivityEventSection
+                venueStatuses={lookups.venueStatuses}
+                representativeOptions={lookups.governmentRepresentatives}
+                premierRequestedOptions={lookups.premierRequested}
+                eventPlannerOptions={lookups.eventPlanners}
+                teamMinistryRefs={teamMinistryRefs}
+              />
+
+              <ActivitySharingSection
+                sharedWithTeams={lookups.sharedWithTeams}
+                quickShareGroups={lookups.quickShareGroups}
+              />
+            </div>
           </div>
-
-          <div className="space-y-12">
-            <ActivityReportsSection />
-
-            <ActivityScheduleSection
-              dateStatuses={lookups.dateStatuses}
-              timeStatuses={lookups.timeStatuses}
-            />
-
-            <ActivityReleaseSection
-              newsReleaseDistributionOptions={lookups.newsReleaseDistributions}
-              newsReleaseOriginOptions={lookups.newsReleaseOrigins}
-              translationRequiredStatuses={lookups.translationRequiredStatuses}
-              translationLanguageOptions={lookups.translationLanguages}
-            />
-
-            <ActivityEventSection
-              venueStatuses={lookups.venueStatuses}
-              representativeOptions={lookups.governmentRepresentatives}
-              premierRequestedOptions={lookups.premierRequested}
-              eventPlannerOptions={lookups.eventPlanners}
-            />
-
-            <ActivitySharingSection
-              sharedWithTeams={lookups.sharedWithTeams}
-              quickShareGroups={lookups.quickShareGroups}
-            />
-          </div>
-        </div>
-      </FormDisplayOptionsProvider>
+        </FormDisplayOptionsProvider>
+      </ActivityInfoIconSettingsProvider>
     </ActivityEditProvider>
   );
 }

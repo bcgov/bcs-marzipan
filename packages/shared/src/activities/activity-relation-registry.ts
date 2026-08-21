@@ -185,7 +185,7 @@ export function relationsForQueryFilters(
   if (query.tagIds != null && query.tagIds.length > 0) {
     addRelations(result, ['tags']);
   }
-  if (query.categoryNames != null && query.categoryNames.length > 0) {
+  if (query.categoryIds != null && query.categoryIds.length > 0) {
     addRelations(result, ['categories']);
   }
   if (
@@ -199,12 +199,6 @@ export function relationsForQueryFilters(
     query.eventPlannerLeadIds.length > 0
   ) {
     addRelations(result, ['eventPlannerDetails']);
-  }
-  if (query.leadMinistryIds != null && query.leadMinistryIds.length > 0) {
-    addRelations(result, ['leadMinistry', 'leadMinistryAbbreviation']);
-  }
-  if (query.leadOrgIds != null && query.leadOrgIds.length > 0) {
-    addRelations(result, ['leadOrg']);
   }
   if (
     query.translationRequiredStatusIds != null &&

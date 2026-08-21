@@ -23,6 +23,8 @@ export interface ActivityTableLayoutProps {
   filterDetailLines?: TableSummaryFilterDetailLine[];
   /** Clears panel filters only (not search); clears saved-filter selection in the parent. */
   onClearFilters?: () => void;
+  /** When false, the caller renders the summary controls outside this layout. */
+  showSummary?: boolean;
   /** Content inside the scroll area (table, loading spinner, or empty state). */
   children: ReactNode;
 }
@@ -41,20 +43,23 @@ export function ActivityTableLayout({
   appliedFilterTypeLabels = [],
   filterDetailLines = [],
   onClearFilters,
+  showSummary = true,
   children,
 }: ActivityTableLayoutProps) {
   return (
     <div className="min-w-0 space-y-4">
-      <TableSummaryBar
-        count={count}
-        singularLabel={singularLabel}
-        pluralLabel={pluralLabel}
-        filters={filters}
-        appliedSavedFilterName={appliedSavedFilterName}
-        appliedFilterTypeLabels={appliedFilterTypeLabels}
-        filterDetailLines={filterDetailLines}
-        onClearFilters={onClearFilters}
-      />
+      {showSummary && (
+        <TableSummaryBar
+          count={count}
+          singularLabel={singularLabel}
+          pluralLabel={pluralLabel}
+          filters={filters}
+          appliedSavedFilterName={appliedSavedFilterName}
+          appliedFilterTypeLabels={appliedFilterTypeLabels}
+          filterDetailLines={filterDetailLines}
+          onClearFilters={onClearFilters}
+        />
+      )}
       <TableScrollContainer ref={scrollRef}>{children}</TableScrollContainer>
     </div>
   );

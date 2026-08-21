@@ -23,15 +23,25 @@ import {
 import { cn } from '@/lib/utils';
 
 const ComboboxReadOnlyContext = React.createContext(false);
+const ComboboxFieldContext = React.createContext<string | undefined>(undefined);
+
+type ComboboxRootProps<
+  Value,
+  Multiple extends boolean | undefined = false,
+> = ComboboxPrimitive.Root.Props<Value, Multiple> & {
+  'data-field'?: string;
+};
 
 /** Base UI root supports `readOnly` (non-muted) vs `disabled` (muted). */
 function Combobox<Value, Multiple extends boolean | undefined = false>(
-  props: ComboboxPrimitive.Root.Props<Value, Multiple>
+  props: ComboboxRootProps<Value, Multiple>
 ) {
-  const { readOnly, ...rest } = props;
+  const { readOnly, 'data-field': dataField, ...rest } = props;
   return (
     <ComboboxReadOnlyContext.Provider value={Boolean(readOnly)}>
-      <ComboboxPrimitive.Root readOnly={readOnly} {...rest} />
+      <ComboboxFieldContext.Provider value={dataField}>
+        <ComboboxPrimitive.Root readOnly={readOnly} {...rest} />
+      </ComboboxFieldContext.Provider>
     </ComboboxReadOnlyContext.Provider>
   );
 }
@@ -91,8 +101,9 @@ function ComboboxInput({
   showTrigger?: boolean;
   showClear?: boolean;
 }) {
+  const dataField = React.useContext(ComboboxFieldContext);
   return (
-    <InputGroup className={cn('w-auto', className)}>
+    <InputGroup className={cn('w-auto', className)} data-field={dataField}>
       <ComboboxPrimitive.Input
         render={<InputGroupInput disabled={disabled} />}
         {...props}
@@ -264,9 +275,11 @@ function ComboboxChips({
 }: React.ComponentPropsWithRef<typeof ComboboxPrimitive.Chips> &
   ComboboxPrimitive.Chips.Props) {
   const readOnly = React.useContext(ComboboxReadOnlyContext);
+  const dataField = React.useContext(ComboboxFieldContext);
   return (
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
+      data-field={dataField}
       data-readonly={readOnly ? '' : undefined}
       className={cn(
         'border-input focus-within:border-ring focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:bg-input/30 dark:has-aria-invalid:border-destructive/50 dark:has-aria-invalid:ring-destructive/40 flex min-h-(--input-height) flex-wrap items-center gap-1.5 rounded-md border bg-transparent bg-clip-padding px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-aria-invalid:ring-[3px] has-data-[slot=combobox-chip]:px-1.5',

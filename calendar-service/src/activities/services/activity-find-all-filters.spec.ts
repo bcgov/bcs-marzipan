@@ -112,7 +112,7 @@ describe('hasActivityFindAllFilterFields', () => {
       hasActivityFindAllFilterFields({
         activityStatusIds: [],
         tagIds: [],
-        categoryNames: [],
+        categoryIds: [],
       })
     ).toBe(false);
   });
@@ -123,7 +123,7 @@ describe('hasActivityFindAllFilterFields', () => {
     ['scheduledDateRangeOverlaps', { scheduledDateRangeOverlaps: true }],
     ['activityStatusIds', { activityStatusIds: [1, 2] }],
     ['tagIds', { tagIds: [10] }],
-    ['categoryNames', { categoryNames: ['Event'] }],
+    ['categoryIds', { categoryIds: [1] }],
     ['lookAheadSectionValues', { lookAheadSectionValues: ['events'] }],
     ['dateConfirmedFilter', { dateConfirmedFilter: 'confirmed' }],
     ['pitchDateNotScheduled', { pitchDateNotScheduled: true }],
@@ -196,8 +196,7 @@ describe('buildActivityFindAllConditions', () => {
     const { db } = createMockDb();
     const conditions = buildActivityFindAllConditions({
       filters: baseFilters({
-        leadMinistryIds: [10],
-        leadOrgIds: [20],
+        leadTeamIds: [10],
         lookAheadStatusValues: ['new'],
       }),
       deletedStatusId: DELETED_STATUS_ID,
@@ -206,8 +205,8 @@ describe('buildActivityFindAllConditions', () => {
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
-    // 2 archive exclusions + 3 inArray filters
-    expect(conditions).toHaveLength(5);
+    // 2 archive exclusions + 2 inArray filters
+    expect(conditions).toHaveLength(4);
   });
 
   it('builds exists subqueries for junction-table filters', () => {
@@ -226,16 +225,14 @@ describe('buildActivityFindAllConditions', () => {
     expect(select).toHaveBeenCalledTimes(2);
   });
 
-  it('builds category exists with a join', () => {
+  it('builds category exists on junction table', () => {
     const { select, db } = createMockDb();
     const from = vi.fn(() => ({
-      innerJoin: vi.fn(() => ({
-        where: vi.fn(),
-      })),
+      where: vi.fn(),
     }));
     select.mockReturnValueOnce({ from } as never);
     buildActivityFindAllConditions({
-      filters: baseFilters({ categoryNames: ['Event', 'FYI'] }),
+      filters: baseFilters({ categoryIds: [1, 2] }),
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,

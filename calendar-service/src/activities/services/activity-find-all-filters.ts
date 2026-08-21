@@ -22,7 +22,6 @@ import {
   activitySharedWithTeams,
   activityTags,
   activityTranslationsRequired,
-  categories,
   dateStatuses,
   pitchRequiredStatuses,
   timeStatuses,
@@ -212,16 +211,6 @@ export function buildActivityFindAllConditions(
     conditions.push(eq(activities.isIssue, filters.isIssue));
   }
 
-  if (filters.leadMinistryIds != null && filters.leadMinistryIds.length > 0) {
-    conditions.push(
-      inArray(activities.leadMinistryId, filters.leadMinistryIds)
-    );
-  }
-
-  if (filters.leadOrgIds != null && filters.leadOrgIds.length > 0) {
-    conditions.push(inArray(activities.leadOrgId, filters.leadOrgIds));
-  }
-
   if (filters.leadTeamIds != null && filters.leadTeamIds.length > 0) {
     conditions.push(inArray(activities.leadTeamId, filters.leadTeamIds));
   }
@@ -409,27 +398,17 @@ export function buildActivityFindAllConditions(
     );
   }
 
-  if (filters.categoryNames != null && filters.categoryNames.length > 0) {
-    const nameMatches = filters.categoryNames.map((name) =>
-      or(
-        lowerTrimMatch(categories.displayName, name),
-        lowerTrimMatch(categories.name, name)
-      )
-    );
+  if (filters.categoryIds != null && filters.categoryIds.length > 0) {
     conditions.push(
       exists(
         db
           .select({ one: sql`1` })
           .from(activityCategories)
-          .innerJoin(
-            categories,
-            eq(activityCategories.categoryId, categories.id)
-          )
           .where(
             and(
               eq(activityCategories.activityId, activities.id),
-              eq(activityCategories.isActive, true),
-              or(...nameMatches)
+              inArray(activityCategories.categoryId, filters.categoryIds),
+              eq(activityCategories.isActive, true)
             )
           )
       )
@@ -526,8 +505,6 @@ export function hasActivityFindAllFilterFields(
     query.endDateTo !== undefined ||
     query.scheduledDateRangeOverlaps === true ||
     (query.activityStatusIds != null && query.activityStatusIds.length > 0) ||
-    (query.leadMinistryIds != null && query.leadMinistryIds.length > 0) ||
-    (query.leadOrgIds != null && query.leadOrgIds.length > 0) ||
     (query.leadTeamIds != null && query.leadTeamIds.length > 0) ||
     (query.commsContactLeadUserIds != null &&
       query.commsContactLeadUserIds.length > 0) ||
@@ -535,7 +512,7 @@ export function hasActivityFindAllFilterFields(
       query.flagAssigneeUserIds.length > 0) ||
     (query.sharedWithTeamIds != null && query.sharedWithTeamIds.length > 0) ||
     (query.tagIds != null && query.tagIds.length > 0) ||
-    (query.categoryNames != null && query.categoryNames.length > 0) ||
+    (query.categoryIds != null && query.categoryIds.length > 0) ||
     (query.translationRequiredStatusIds != null &&
       query.translationRequiredStatusIds.length > 0) ||
     (query.translationLanguageIds != null &&

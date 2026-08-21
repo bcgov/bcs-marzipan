@@ -15,8 +15,7 @@ const emptyCtx: ActivityFilterSummaryContext = {
   statusOptions: [],
   pitchRequiredStatusOptions: [],
   tagOptions: [],
-  ministryOptions: [],
-  organizationOptions: [],
+  leadTeamOptions: [],
   commsContactOptions: [],
   eventPlannerOptions: [],
   translationStatusOptions: [],
@@ -28,12 +27,13 @@ describe('getAppliedActivityFilterTypeLabels', () => {
     const labels = getAppliedActivityFilterTypeLabels(
       {
         ...DEFAULT_ACTIVITY_FILTER_STATE,
-        categoryNames: ['A'],
+        categoryIds: [1],
         activityStatusIds: [1],
       },
       'kw',
       {
         ...emptyCtx,
+        categoryOptions: [{ value: '1', label: 'Alpha' }],
         statusOptions: [{ value: '1', label: 'Published' }],
       }
     );
@@ -171,15 +171,15 @@ describe('clearSavedFilterChip', () => {
     expect(next.filterState.tagIds).toEqual([1, 3]);
   });
 
-  it('removes one category by encoded name', () => {
+  it('removes one category id', () => {
     const next = clearSavedFilterChip(
-      `category:${encodeURIComponent('Alpha & Beta')}`,
+      'category:1',
       {
         ...DEFAULT_ACTIVITY_FILTER_STATE,
-        categoryNames: ['Alpha & Beta', 'Gamma'],
+        categoryIds: [1, 2],
       },
       ''
     );
-    expect(next.filterState.categoryNames).toEqual(['Gamma']);
+    expect(next.filterState.categoryIds).toEqual([2]);
   });
 });

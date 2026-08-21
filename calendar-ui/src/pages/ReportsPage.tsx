@@ -357,11 +357,10 @@ export function ReportsPage() {
       report_name: activeReport,
       filter_keys_used: filterKeysUsed,
       active_filter_count: activeFilterCount,
-      category_count: preferences.filterState.categoryNames.length,
+      category_count: preferences.filterState.categoryIds.length,
       status_count: preferences.filterState.activityStatusIds.length,
       tag_count: preferences.filterState.tagIds.length,
-      ministry_count: preferences.filterState.leadMinistryIds.length,
-      org_count: preferences.filterState.leadOrgIds.length,
+      lead_team_count: preferences.filterState.leadTeamIds.length,
     });
   }, [
     activeFilterCount,
@@ -609,7 +608,6 @@ export function ReportsPage() {
     <>
       <PageHeader
         title="Reports"
-        description="Generate and export various activity reports"
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Button

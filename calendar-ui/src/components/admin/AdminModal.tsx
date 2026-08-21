@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { ReactNode } from 'react';
+import { ComponentProps, ReactNode, type RefObject } from 'react';
 
 import { Button } from '../ui/button';
 import {
@@ -23,6 +23,10 @@ interface AdminModalProps {
   cancelLabel?: string;
   isLoading?: boolean;
   isDestructive?: boolean;
+  /** Attach to DialogContent so nested popovers/comboboxes can portal inside the dialog */
+  contentRef?: RefObject<HTMLDivElement | null>;
+  /** Prevent dialog close on Escape while a nested overlay (e.g. combobox) is open */
+  onEscapeKeyDown?: ComponentProps<typeof DialogContent>['onEscapeKeyDown'];
 }
 
 /**
@@ -42,6 +46,8 @@ export function AdminModal({
   cancelLabel = 'Cancel',
   isLoading = false,
   isDestructive = false,
+  contentRef,
+  onEscapeKeyDown,
 }: AdminModalProps) {
   const handleCancel = () => {
     if (onCancel) {
@@ -56,7 +62,11 @@ export function AdminModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent
+        ref={contentRef}
+        className="sm:max-w-[500px]"
+        onEscapeKeyDown={onEscapeKeyDown}
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">{title}</DialogTitle>
           {description && (

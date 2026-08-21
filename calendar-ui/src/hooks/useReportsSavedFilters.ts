@@ -35,21 +35,21 @@ export function useReportsSavedFilters(options: {
     () =>
       buildValidFilterLookupsFromOptions({
         statusOptions: lookups.statusOptions,
+        categoryOptions: lookups.categoryOptions,
         tagOptions: lookups.tagOptions,
-        ministryOptions: lookups.ministryOptions,
-        organizationOptions: lookups.organizationOptions,
         commsContactOptions: lookups.commsContactOptions,
         eventPlannerOptions: lookups.eventPlannerOptions,
+        leadTeamOptions: lookups.leadTeamOptions,
         translationStatusOptions: lookups.translationStatusOptions,
         translationOptions: lookups.translationOptions,
       }),
     [
       lookups.statusOptions,
+      lookups.categoryOptions,
       lookups.tagOptions,
-      lookups.ministryOptions,
-      lookups.organizationOptions,
       lookups.commsContactOptions,
       lookups.eventPlannerOptions,
+      lookups.leadTeamOptions,
       lookups.translationStatusOptions,
       lookups.translationOptions,
     ]

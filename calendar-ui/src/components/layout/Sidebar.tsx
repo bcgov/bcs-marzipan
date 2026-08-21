@@ -28,6 +28,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 
 const SIDEBAR_PINNED_KEY = 'sidebar_pinned';
+const APP_VERSION = import.meta.env.VITE_APP_VERSION?.trim() || 'dev';
 
 type NavItem = { to: string; label: string; icon: typeof CalendarDays };
 
@@ -113,6 +114,9 @@ function AppSidebarContent() {
         <SidebarMenu>
           <SidebarPinButton />
         </SidebarMenu>
+        <div className="text-muted-foreground h-5 shrink-0 overflow-hidden px-2 pb-1 text-left text-xs whitespace-nowrap group-data-[collapsible=icon]:invisible">
+          Version {APP_VERSION}
+        </div>
       </SidebarFooter>
     </>
   );

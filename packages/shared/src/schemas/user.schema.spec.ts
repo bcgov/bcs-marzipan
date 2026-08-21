@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addUserToTeamBodySchema,
   createUserBodySchema,
+  removeUserFromTeamBodySchema,
   TEAM_ROLES,
   transferActivitiesBodySchema,
   updateUserBodySchema,
@@ -49,10 +50,12 @@ describe('userListItemSchema', () => {
 describe('createUserBodySchema', () => {
   it('accepts valid body with email and roleId', () => {
     const result = createUserBodySchema.parse({
-      email: 'user@example.gov.bc.ca',
+      email: 'user@gov.bc.ca',
+      idirUsername: 'JSMITH',
       roleId: 1,
     });
-    expect(result.email).toBe('user@example.gov.bc.ca');
+    expect(result.email).toBe('user@gov.bc.ca');
+    expect(result.idirUsername).toBe('JSMITH');
     expect(result.roleId).toBe(1);
     expect(result.displayName).toBeUndefined();
     expect(result.teams).toBeUndefined();
@@ -60,7 +63,8 @@ describe('createUserBodySchema', () => {
 
   it('accepts optional displayName and teams', () => {
     const result = createUserBodySchema.parse({
-      email: 'user@example.com',
+      email: 'user@gov.bc.ca',
+      idirUsername: 'JDOE',
       roleId: 2,
       displayName: 'Jane Doe',
       teams: [
@@ -76,7 +80,8 @@ describe('createUserBodySchema', () => {
 
   it('enforces displayName max length (255)', () => {
     const valid = createUserBodySchema.parse({
-      email: 'user@example.com',
+      email: 'user@gov.bc.ca',
+      idirUsername: 'JDOE',
       roleId: 2,
       displayName: 'd'.repeat(255),
     });
@@ -84,7 +89,8 @@ describe('createUserBodySchema', () => {
 
     expect(() =>
       createUserBodySchema.parse({
-        email: 'user@example.com',
+        email: 'user@gov.bc.ca',
+        idirUsername: 'JDOE',
         roleId: 2,
         displayName: 'd'.repeat(256),
       })
@@ -92,12 +98,23 @@ describe('createUserBodySchema', () => {
   });
 
   it('rejects missing email', () => {
-    expect(() => createUserBodySchema.parse({ roleId: 1 })).toThrow();
+    expect(() =>
+      createUserBodySchema.parse({ idirUsername: 'JDOE', roleId: 1 })
+    ).toThrow();
+  });
+
+  it('rejects missing IDIR username', () => {
+    expect(() =>
+      createUserBodySchema.parse({ email: 'u@gov.bc.ca', roleId: 1 })
+    ).toThrow();
   });
 
   it('rejects missing roleId', () => {
     expect(() =>
-      createUserBodySchema.parse({ email: 'u@example.com' })
+      createUserBodySchema.parse({
+        email: 'u@gov.bc.ca',
+        idirUsername: 'JDOE',
+      })
     ).toThrow();
   });
 
@@ -105,6 +122,27 @@ describe('createUserBodySchema', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: 'not-an-email',
+        idirUsername: 'JDOE',
+        roleId: 1,
+      })
+    ).toThrow();
+  });
+
+  it('rejects non-BC Gov email domains', () => {
+    expect(() =>
+      createUserBodySchema.parse({
+        email: 'user@example.com',
+        idirUsername: 'JDOE',
+        roleId: 1,
+      })
+    ).toThrow();
+  });
+
+  it('rejects IDIR values that look like emails', () => {
+    expect(() =>
+      createUserBodySchema.parse({
+        email: 'user@gov.bc.ca',
+        idirUsername: 'user@gov.bc.ca',
         roleId: 1,
       })
     ).toThrow();
@@ -112,7 +150,11 @@ describe('createUserBodySchema', () => {
 
   it('rejects empty email', () => {
     expect(() =>
-      createUserBodySchema.parse({ email: '   ', roleId: 1 })
+      createUserBodySchema.parse({
+        email: '   ',
+        idirUsername: 'JDOE',
+        roleId: 1,
+      })
     ).toThrow();
   });
 });
@@ -189,44 +231,121 @@ describe('updateUserBodySchema', () => {
       updateUserBodySchema.parse({ notes: 'n'.repeat(1001) })
     ).toThrow();
   });
+
+  it('accepts @gov.bc.ca email updates', () => {
+    const result = updateUserBodySchema.parse({ email: 'edited@gov.bc.ca' });
+    expect(result.email).toBe('edited@gov.bc.ca');
+  });
+
+  it('rejects non-BC Gov email updates', () => {
+    expect(() =>
+      updateUserBodySchema.parse({ email: 'edited@example.com' })
+    ).toThrow();
+  });
+
+  it('rejects null email updates', () => {
+    expect(() => updateUserBodySchema.parse({ email: null })).toThrow();
+  });
+
+  it('rejects empty email updates', () => {
+    expect(() => updateUserBodySchema.parse({ email: '   ' })).toThrow();
+  });
 });
 
 describe('transferActivitiesBodySchema', () => {
-  it('accepts valid transfer body with at least one flag true', () => {
+  it('accepts a valid transfer body', () => {
     const result = transferActivitiesBodySchema.parse({
       targetUserId: 2,
-      transferCommsLead: true,
-      transferCommsContact: false,
+      fromTeamId: 1,
+      includeNonLead: false,
     });
     expect(result.targetUserId).toBe(2);
-    expect(result.transferCommsLead).toBe(true);
+    expect(result.fromTeamId).toBe(1);
+    expect(result.toTeamId).toBeUndefined();
+    expect(result.includeNonLead).toBe(false);
   });
 
-  it('accepts optional activityIds', () => {
+  it('accepts optional toTeamId and activityIds', () => {
     const result = transferActivitiesBodySchema.parse({
       targetUserId: 2,
-      transferCommsLead: true,
-      transferCommsContact: true,
+      fromTeamId: 1,
+      toTeamId: 3,
+      includeNonLead: true,
       activityIds: [1, 2, 3],
     });
+    expect(result.toTeamId).toBe(3);
     expect(result.activityIds).toEqual([1, 2, 3]);
+  });
+
+  it('rejects an explicit empty activityIds array', () => {
+    expect(() =>
+      transferActivitiesBodySchema.parse({
+        targetUserId: 2,
+        fromTeamId: 1,
+        includeNonLead: false,
+        activityIds: [],
+      })
+    ).toThrow();
+  });
+
+  it('requires fromTeamId', () => {
+    expect(() =>
+      transferActivitiesBodySchema.parse({
+        targetUserId: 2,
+        includeNonLead: true,
+      })
+    ).toThrow();
   });
 
   it('enforces notes max length (1000)', () => {
     transferActivitiesBodySchema.parse({
       targetUserId: 2,
-      transferCommsLead: true,
-      transferCommsContact: true,
+      fromTeamId: 1,
+      includeNonLead: true,
       notes: 'n'.repeat(1000),
     });
 
     expect(() =>
       transferActivitiesBodySchema.parse({
         targetUserId: 2,
-        transferCommsLead: true,
-        transferCommsContact: true,
+        fromTeamId: 1,
+        includeNonLead: true,
         notes: 'n'.repeat(1001),
       })
+    ).toThrow();
+  });
+});
+
+describe('removeUserFromTeamBodySchema', () => {
+  it('defaults to an empty, valid body when omitted', () => {
+    const result = removeUserFromTeamBodySchema.parse(undefined);
+    expect(result).toEqual({ includeNonLead: false });
+  });
+
+  it('accepts an empty object (silent removal, no comms to transfer)', () => {
+    const result = removeUserFromTeamBodySchema.parse({});
+    expect(result.targetUserId).toBeUndefined();
+    expect(result.includeNonLead).toBe(false);
+  });
+
+  it('accepts a full transfer payload', () => {
+    const result = removeUserFromTeamBodySchema.parse({
+      targetUserId: 2,
+      toTeamId: 3,
+      includeNonLead: true,
+      notes: 'reason',
+    });
+    expect(result).toEqual({
+      targetUserId: 2,
+      toTeamId: 3,
+      includeNonLead: true,
+      notes: 'reason',
+    });
+  });
+
+  it('enforces notes max length (1000)', () => {
+    expect(() =>
+      removeUserFromTeamBodySchema.parse({ notes: 'n'.repeat(1001) })
     ).toThrow();
   });
 });

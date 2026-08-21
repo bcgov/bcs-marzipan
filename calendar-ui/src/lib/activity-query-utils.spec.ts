@@ -18,6 +18,7 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     displayId: null,
     title: '',
     activityCategories: [],
+    categoryIds: [],
     pitchDate: null,
     pitchRequiredStatus: null,
     isConfidential: false,
@@ -44,6 +45,7 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     commsContactsCount: 0,
     eventPlanners: [],
     eventPlannerLeadIds: [],
+    leadTeamId: null,
     leadMinistryId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,
@@ -165,17 +167,21 @@ describe('filterActivityRowsByFilters', () => {
           noStartDate: false,
           noEndDate: false,
         },
-        categoryNames: [],
+        categoryIds: [],
         activityStatusIds: [],
       })
     ).toEqual(rows);
   });
 
-  it('filters by category names', () => {
+  it('filters by category ids', () => {
     const rows = [
-      makeRow({ id: 1, activityCategories: ['Event', 'Release'] }),
-      makeRow({ id: 2, activityCategories: ['FYI'] }),
-      makeRow({ id: 3, activityCategories: [] }),
+      makeRow({
+        id: 1,
+        activityCategories: ['Event', 'Release'],
+        categoryIds: [1, 2],
+      }),
+      makeRow({ id: 2, activityCategories: ['FYI'], categoryIds: [3] }),
+      makeRow({ id: 3, activityCategories: [], categoryIds: [] }),
     ];
     const result = filterActivityRowsByFilters(rows, {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
@@ -185,7 +191,7 @@ describe('filterActivityRowsByFilters', () => {
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: ['Event', 'FYI'],
+      categoryIds: [1, 3],
       activityStatusIds: [],
     });
     expect(result.map((r) => r.id)).toEqual([1, 2]);
@@ -205,7 +211,7 @@ describe('filterActivityRowsByFilters', () => {
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: [],
+      categoryIds: [],
       activityStatusIds: [1, 3],
     });
     expect(result.map((r) => r.id)).toEqual([1, 3]);
@@ -324,7 +330,7 @@ describe('filterActivityRowsByFilters', () => {
         noStartDate: false,
         noEndDate: false,
       },
-      categoryNames: [],
+      categoryIds: [],
       activityStatusIds: [],
     });
     expect(result.map((r) => r.id)).toEqual([1, 2, 4]);
@@ -470,31 +476,18 @@ describe('filterActivityRowsByFilters', () => {
     expect(result.map((r) => r.id)).toEqual([1, 2]);
   });
 
-  it('filters by leadMinistryIds', () => {
+  it('filters by leadTeamIds', () => {
     const rows = [
-      makeRow({ id: 1, leadMinistryId: 10 }),
-      makeRow({ id: 2, leadMinistryId: 20 }),
-      makeRow({ id: 3, leadMinistryId: null }),
-      makeRow({ id: 4, leadMinistryId: 10 }),
+      makeRow({ id: 1, leadTeamId: 10 }),
+      makeRow({ id: 2, leadTeamId: 20 }),
+      makeRow({ id: 3, leadTeamId: null }),
+      makeRow({ id: 4, leadTeamId: 10 }),
     ];
     const result = filterActivityRowsByFilters(rows, {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
-      leadMinistryIds: [10, 30],
+      leadTeamIds: [10, 30],
     });
     expect(result.map((r) => r.id)).toEqual([1, 4]);
-  });
-
-  it('filters by leadOrgIds', () => {
-    const rows = [
-      makeRow({ id: 1, leadOrgId: 5 }),
-      makeRow({ id: 2, leadOrgId: 6 }),
-      makeRow({ id: 3, leadOrgId: null }),
-    ];
-    const result = filterActivityRowsByFilters(rows, {
-      ...DEFAULT_ACTIVITY_FILTER_STATE,
-      leadOrgIds: [5],
-    });
-    expect(result.map((r) => r.id)).toEqual([1]);
   });
 
   it('filters by commsContactLeadUserIds', () => {
@@ -527,23 +520,20 @@ describe('filterActivityRowsByFilters', () => {
     const rows = [
       makeRow({
         id: 1,
-        leadMinistryId: 10,
-        leadOrgId: 5,
+        leadTeamId: 10,
         commsContactLeadUserId: 100,
         eventPlannerLeadIds: [1],
       }),
       makeRow({
         id: 2,
-        leadMinistryId: 10,
-        leadOrgId: 99,
+        leadTeamId: 99,
         commsContactLeadUserId: 100,
         eventPlannerLeadIds: [1],
       }),
     ];
     const result = filterActivityRowsByFilters(rows, {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
-      leadMinistryIds: [10],
-      leadOrgIds: [5],
+      leadTeamIds: [10],
       commsContactLeadUserIds: [100],
       eventPlannerLeadIds: [1],
     });
