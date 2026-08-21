@@ -58,6 +58,10 @@ import {
   tableThead,
 } from '@/components/table/tableConstants';
 import { TablePagination } from '@/components/table/TablePagination';
+import {
+  handleTableRowClick,
+  handleTableRowKeyDown,
+} from '@/components/table/tableRowNavigation';
 import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
@@ -90,6 +94,7 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
+import { buildValidFilterLookupsFromOptions } from '@/lib/activity-filter-lookups';
 import {
   canResolveTranslationLanguageFilter,
   filterActivityRowsByFilters,
@@ -112,13 +117,16 @@ import {
   parseDateOnlyString,
 } from '@/lib/datetime-utils';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import {
+  hasMinistryTabLeadTeamFilterConflict,
+  MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE,
+} from '@/lib/ministry-tab-lead-filter-conflict';
 import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
 import {
   sanitizeSavedFilterPayload,
   type ValidFilterLookups,
 } from '@/lib/savedFilterSanitize';
 import { cn } from '@/lib/utils';
-import type { OptionItem } from '@/schemas/types';
 
 import { ActivityTableEmptyState } from './ActivityTableEmptyState';
 import {
@@ -142,7 +150,7 @@ import { compareActivityRowsByLevels } from './activityTableSort';
  */
 
 const DEFAULT_SORT_KEY = 'startDate';
-const DEFAULT_SORT_DIRECTION = 'desc' as const;
+const DEFAULT_SORT_DIRECTION = 'asc' as const;
 
 const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   { id: 'activityId', label: 'Activity ID', defaultDirection: 'asc' },
@@ -166,8 +174,9 @@ const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   },
   {
     id: 'startDate',
-    label: 'Scheduled date',
+    label: 'Date',
     defaultDirection: 'asc',
+    directionLabels: { asc: 'Soonest', desc: 'Latest' },
     tieBreakers: [{ key: 'startTime', direction: 'asc' }],
   },
   { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
@@ -963,8 +972,7 @@ export function ActivityTable({
     statusOptions,
     pitchRequiredStatusOptions,
     tagOptions,
-    ministryOptions,
-    organizationOptions,
+    leadTeamOptions,
     commsContactOptions,
     eventPlannerOptions,
     translationOptions,
@@ -1040,35 +1048,41 @@ export function ActivityTable({
     [translationLanguagesForFilter]
   );
 
-  const validFilterLookupsForDefaultApply = useMemo((): ValidFilterLookups => {
-    const nums = (options: OptionItem[]) =>
-      new Set(
-        options
-          .map((o) => parseInt(o.value, 10))
-          .filter((n) => Number.isFinite(n))
-      );
-    return {
-      statusIds: nums(statusOptions),
-      categoryIds: nums(categoryOptions),
-      tagIds: nums(tagOptions),
-      ministryIds: nums(ministryOptions),
-      orgIds: nums(organizationOptions),
-      commsContactUserIds: nums(commsContactOptions),
-      eventPlannerIds: nums(eventPlannerOptions),
-      translationStatusIds: nums(translationStatusOptions),
-      translationLanguageIds: nums(translationOptions),
-    };
-  }, [
-    statusOptions,
-    categoryOptions,
-    tagOptions,
-    ministryOptions,
-    organizationOptions,
-    commsContactOptions,
-    eventPlannerOptions,
-    translationStatusOptions,
-    translationOptions,
-  ]);
+  const validFilterLookupsForDefaultApply = useMemo(
+    (): ValidFilterLookups =>
+      buildValidFilterLookupsFromOptions({
+        statusOptions,
+        categoryOptions,
+        tagOptions,
+        commsContactOptions,
+        eventPlannerOptions,
+        leadTeamOptions,
+        translationStatusOptions,
+        translationOptions,
+      }),
+    [
+      statusOptions,
+      categoryOptions,
+      tagOptions,
+      commsContactOptions,
+      eventPlannerOptions,
+      leadTeamOptions,
+      translationStatusOptions,
+      translationOptions,
+    ]
+  );
+
+  const ministryTabLeadTeamId =
+    leadTeamIds?.length === 1 ? leadTeamIds[0] : undefined;
+
+  const leadFilterConflictsWithMinistryTab = useMemo(
+    () =>
+      hasMinistryTabLeadTeamFilterConflict(
+        ministryTabLeadTeamId,
+        filterState.leadTeamIds
+      ),
+    [ministryTabLeadTeamId, filterState.leadTeamIds]
+  );
 
   const savedFilterDefaultLookupsReady =
     hasActivityStatuses && !savedFiltersHook.isLoading;
@@ -1686,8 +1700,7 @@ export function ActivityTable({
       tagOptions={tagOptions}
       translationStatusOptions={translationStatusOptions}
       translationOptions={translationOptions}
-      ministryOptions={ministryOptions}
-      organizationOptions={organizationOptions}
+      leadTeamOptions={leadTeamOptions}
       commsContactOptions={commsContactOptions}
       eventPlannerOptions={eventPlannerOptions}
       pitchFieldVisibility={pitchFieldVisibility}
@@ -1798,7 +1811,24 @@ export function ActivityTable({
               variant={
                 favouriteActivityIds !== undefined
                   ? 'no-favourites'
-                  : 'no-search-match'
+                  : leadFilterConflictsWithMinistryTab ||
+                      (hasActiveCriteria && searchKeyword.trim() === '')
+                    ? 'no-filter-match'
+                    : searchKeyword.trim() !== ''
+                      ? 'no-search-match'
+                      : hasActiveCriteria
+                        ? 'no-filter-match'
+                        : 'no-data'
+              }
+              conflictNote={
+                leadFilterConflictsWithMinistryTab
+                  ? MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE
+                  : undefined
+              }
+              onClearFilters={
+                hasActiveCriteria && favouriteActivityIds === undefined
+                  ? handleClearAllCriteria
+                  : undefined
               }
             />
           ) : (
@@ -1871,28 +1901,23 @@ export function ActivityTable({
                     <tr
                       key={row.id}
                       data-activity-id={row.original.id}
+                      role="button"
+                      aria-label={`Open activity ${row.original.title}`}
                       className={cn(
-                        `group/row ${tableBodyRow} cursor-pointer`,
+                        `group/row ${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`,
                         isNewRow && 'animate-in fade-in-0 duration-300',
                         isHighlightRow && 'live-row-highlight'
                       )}
                       tabIndex={0}
                       onClick={(e) => {
-                        if (
-                          (e.target as HTMLElement).closest('[data-no-row-nav]')
-                        )
-                          return;
-                        if (window.getSelection()?.toString().trim()) return;
-                        openActivityWithScroll(row.original.id);
+                        handleTableRowClick(e, () => {
+                          openActivityWithScroll(row.original.id);
+                        });
                       }}
                       onKeyDown={(e) => {
-                        if (e.key !== 'Enter' && e.key !== ' ') return;
-                        if (
-                          (e.target as HTMLElement).closest('[data-no-row-nav]')
-                        )
-                          return;
-                        e.preventDefault();
-                        openActivityWithScroll(row.original.id);
+                        handleTableRowKeyDown(e, () => {
+                          openActivityWithScroll(row.original.id);
+                        });
                       }}
                     >
                       {row.getVisibleCells().map((cell) => {

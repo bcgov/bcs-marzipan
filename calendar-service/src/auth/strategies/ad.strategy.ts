@@ -2,7 +2,10 @@ import { and, eq, sql } from 'drizzle-orm';
 
 import { users } from '@corpcal/database/schema';
 
-import type { Database } from '../../database/database.provider';
+import type {
+  Database,
+  DrizzleDbExecutor,
+} from '../../database/database.provider';
 
 export interface AuthDbUser {
   id: number;
@@ -11,6 +14,10 @@ export interface AuthDbUser {
   adDisplayName: string | null;
   adEmail: string | null;
   status: string;
+}
+
+export interface AuthDbUserWithActive extends AuthDbUser {
+  isActive: boolean;
 }
 
 const authUserSelection = {
@@ -22,6 +29,11 @@ const authUserSelection = {
   status: users.status,
 };
 
+const authUserWithActiveSelection = {
+  ...authUserSelection,
+  isActive: users.isActive,
+};
+
 export async function findUserByExternalId(
   db: Database,
   externalId: string
@@ -29,13 +41,20 @@ export async function findUserByExternalId(
   const [row] = await db
     .select(authUserSelection)
     .from(users)
-    .where(
-      and(
-        eq(users.externalId, externalId),
-        eq(users.isActive, true),
-        eq(users.status, 'active')
-      )
-    )
+    .where(and(eq(users.externalId, externalId), eq(users.isActive, true)))
+    .limit(1);
+
+  return row ?? null;
+}
+
+export async function findUserByExternalIdAnyStatus(
+  db: Database,
+  externalId: string
+): Promise<AuthDbUserWithActive | null> {
+  const [row] = await db
+    .select(authUserWithActiveSelection)
+    .from(users)
+    .where(eq(users.externalId, externalId))
     .limit(1);
 
   return row ?? null;
@@ -53,8 +72,7 @@ export async function findUserByEmail(
     .where(
       and(
         sql`lower(${users.adEmail}) = ${normalizedEmail}`,
-        eq(users.isActive, true),
-        eq(users.status, 'active')
+        eq(users.isActive, true)
       )
     )
     .limit(1);
@@ -62,25 +80,23 @@ export async function findUserByEmail(
   return row ?? null;
 }
 
-/**
- * Looks up a user by externalId regardless of status — used to produce a
- * more informative error when the account exists but is pending/reset-required.
- */
-export async function findUserByExternalIdAnyStatus(
+export async function findUserByEmailAnyStatus(
   db: Database,
-  externalId: string
-): Promise<Pick<AuthDbUser, 'status'> | null> {
+  email: string
+): Promise<AuthDbUserWithActive | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+
   const [row] = await db
-    .select({ status: users.status })
+    .select(authUserWithActiveSelection)
     .from(users)
-    .where(and(eq(users.externalId, externalId), eq(users.isActive, true)))
+    .where(sql`lower(${users.adEmail}) = ${normalizedEmail}`)
     .limit(1);
 
   return row ?? null;
 }
 
 export async function syncAzureIdentity(
-  db: Database,
+  db: DrizzleDbExecutor,
   userId: number,
   identity: {
     externalId: string;

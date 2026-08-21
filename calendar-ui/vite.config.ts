@@ -6,7 +6,7 @@ import { defineConfig, type PluginOption } from 'vite';
 
 import { vendorCodeSplittingGroups } from './vite-chunk-groups';
 
-// Dev (optimizeDeps) and prod (build) must use the same esbuild target. Default
+// Dev (optimizeDeps) and prod (build) must use the same transform target. Default
 // legacy targets cause "Transforming destructuring ... is not supported yet" when
 // pre-bundling modern dependencies (@base-ui/react, reselect, etc.).
 const buildTarget = 'es2022';
@@ -70,6 +70,9 @@ export default defineConfig({
     sourcemap: true,
     // React Compiler and deps assume modern runtimes.
     target: buildTarget,
+    // Current largest chunks are expected (vendor/exceljs); keep warnings meaningful
+    // without noisy output until deeper chunking work lands.
+    chunkSizeWarningLimit: 1000,
     rolldownOptions: {
       output: {
         codeSplitting: {

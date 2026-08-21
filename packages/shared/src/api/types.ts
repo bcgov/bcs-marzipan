@@ -59,6 +59,7 @@ export type {
   AddUserToTeamBody,
   UpdateUserTeamRoleBody,
   TransferActivitiesBody,
+  RemoveUserFromTeamBody,
 } from '../schemas/user.schema';
 
 // Team CRUD API types

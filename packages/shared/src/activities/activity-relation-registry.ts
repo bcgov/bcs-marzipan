@@ -200,12 +200,6 @@ export function relationsForQueryFilters(
   ) {
     addRelations(result, ['eventPlannerDetails']);
   }
-  if (query.leadMinistryIds != null && query.leadMinistryIds.length > 0) {
-    addRelations(result, ['leadMinistry', 'leadMinistryAbbreviation']);
-  }
-  if (query.leadOrgIds != null && query.leadOrgIds.length > 0) {
-    addRelations(result, ['leadOrg']);
-  }
   if (
     query.translationRequiredStatusIds != null &&
     query.translationRequiredStatusIds.length > 0

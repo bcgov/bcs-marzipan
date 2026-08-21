@@ -67,9 +67,11 @@ vi.mock('@/api/usersApi', () => ({
     isActive: true,
     notes: null,
     directLoginEnabled: false,
+    teams: [],
   }),
   fetchRoles: vi.fn().mockResolvedValue([{ id: 2, name: 'Editor' }]),
   fetchRolePermissions: vi.fn().mockResolvedValue([]),
+  fetchTeams: vi.fn().mockResolvedValue([]),
 }));
 
 describe('Permissions visibility integration', () => {

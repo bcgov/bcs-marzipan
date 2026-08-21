@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { invalidateUserCaches } from '@/lib/userQueryKeys';
 
 interface AddTeamMemberModalProps {
   open: boolean;
@@ -103,6 +104,10 @@ export function AddTeamMemberModal({
         });
       }
       void qc.invalidateQueries({ queryKey: ['team', teamId] });
+      for (const [index, result] of results.entries()) {
+        if (result.status !== 'fulfilled') continue;
+        invalidateUserCaches(qc, selectedUsers[index].id);
+      }
       onAdded();
       onClose();
     } catch (err: any) {

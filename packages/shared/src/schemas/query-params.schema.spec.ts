@@ -47,7 +47,6 @@ describe('filterActivitiesQuerySchema', () => {
   it('parses array filter params from comma-separated strings', () => {
     const result = filterActivitiesQuerySchema.parse({
       activityStatusIds: '1,2,3',
-      leadMinistryIds: '5',
       leadTeamIds: '7,8',
       commsContactLeadUserIds: '10',
       flagAssigneeUserIds: '20',
@@ -57,7 +56,6 @@ describe('filterActivitiesQuerySchema', () => {
       lookAheadSectionValues: 'events,issues',
     });
     expect(result.activityStatusIds).toEqual([1, 2, 3]);
-    expect(result.leadMinistryIds).toEqual([5]);
     expect(result.leadTeamIds).toEqual([7, 8]);
     expect(result.commsContactLeadUserIds).toEqual([10]);
     expect(result.flagAssigneeUserIds).toEqual([20]);
