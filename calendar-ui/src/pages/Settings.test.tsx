@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PERMISSIONS } from '@corpcal/shared';
 import { render, screen, within } from '@/test/test-utils';
 
 import { Settings } from './Settings';
@@ -68,7 +69,6 @@ const ADMIN_ROLE_ID = 5;
 
 const SYSTEM_ADMIN_ONLY_LINKS = [
   'System banner',
-  'Recurring edit lockout',
   'Login modal',
   'Edit lock idle',
   'Activity completion',
@@ -77,6 +77,8 @@ const SYSTEM_ADMIN_ONLY_LINKS = [
   'Review-exempt fields',
   'Permission visibility',
 ];
+
+const RECURRING_LOCKOUT_LINK = 'Recurring edit lockout';
 
 const LOOKUP_LINKS = [
   'Report PDF cover contact',
@@ -163,6 +165,54 @@ describe('Settings quick navigation', () => {
           quickNav.getByRole('link', { name: new RegExp(label, 'i') })
         ).toBeInTheDocument();
       }
+    });
+  });
+
+  describe('with settings.manage.recurring_lockout permission', () => {
+    beforeEach(() => {
+      mockUseAuth.mockReturnValue({
+        user: {
+          id: 2,
+          roleId: ADMIN_ROLE_ID,
+          permissions: [PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT],
+        },
+        hasPermission: () => true,
+      });
+    });
+
+    it('shows the recurring edit lockout quick nav link', () => {
+      render(<Settings />);
+      const quickNav = getQuickNavLinks();
+
+      expect(
+        quickNav.getByRole('link', {
+          name: new RegExp(RECURRING_LOCKOUT_LINK, 'i'),
+        })
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('without settings.manage.recurring_lockout permission', () => {
+    beforeEach(() => {
+      mockUseAuth.mockReturnValue({
+        user: {
+          id: 1,
+          roleId: SYSTEM_ADMIN_ROLE_ID,
+          permissions: [],
+        },
+        hasPermission: () => true,
+      });
+    });
+
+    it('hides the recurring edit lockout quick nav link', () => {
+      render(<Settings />);
+      const quickNav = getQuickNavLinks();
+
+      expect(
+        quickNav.queryByRole('link', {
+          name: new RegExp(RECURRING_LOCKOUT_LINK, 'i'),
+        })
+      ).not.toBeInTheDocument();
     });
   });
 });
