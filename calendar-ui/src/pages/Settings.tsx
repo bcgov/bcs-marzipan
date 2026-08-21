@@ -19,7 +19,7 @@ import {
   Users,
 } from 'lucide-react';
 
-import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import {
   ActivityInfoIconSettingsAdmin,
   BannerSettingsAdmin,
@@ -77,6 +77,9 @@ type Section =
 export function Settings() {
   const { user } = useAuth();
   const isSystemAdmin = user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
+  const canManageRecurringLockout = Boolean(
+    user?.permissions?.includes(PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT)
+  );
 
   const sections = [
     {
@@ -89,7 +92,7 @@ export function Settings() {
       id: 'recurring-lockout-banner' as Section,
       label: 'Recurring edit lockout',
       icon: PencilOff,
-      show: isSystemAdmin,
+      show: canManageRecurringLockout,
     },
     {
       id: 'login-modal' as Section,

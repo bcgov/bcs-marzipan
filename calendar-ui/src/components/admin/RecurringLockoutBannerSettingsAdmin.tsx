@@ -3,7 +3,7 @@ import { PencilOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import { PERMISSIONS } from '@corpcal/shared';
 import type {
   RecurringLockoutBannerSettings,
   UpsertRecurringLockoutBannerSettingsBody,
@@ -12,7 +12,6 @@ import {
   BANNER_CONTENT_MAX_LENGTH,
   DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
   DEFAULT_RECURRING_EDIT_LOCKOUT_END_TIME,
-  DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS,
   DEFAULT_RECURRING_EDIT_LOCKOUT_START_TIME,
 } from '@corpcal/shared/schemas';
 import {
@@ -25,7 +24,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useAuth } from '@/hooks/useAuth';
 import { usePermission } from '@/hooks/usePermissions';
 import { showErrorToast, showSuccessToast } from '@/lib/error-toast';
 
@@ -40,19 +38,18 @@ type RecurringLockoutFormData = {
   startTimeOfDay: string;
   endTimeOfDay: string;
   bannerLeadMinutes: number;
-  exemptRoleIdsInput: string;
 };
 
 const DEFAULT_FORM_DATA: RecurringLockoutFormData = {
   isActive: false,
-  content: 'Editing activities is currently locked for non-exempt users.',
+  content:
+    'Editing activities is currently locked for users without lockout bypass permission.',
   backgroundColor: '#E6A635',
   textColor: '#000000',
   variant: 'warning',
   startTimeOfDay: DEFAULT_RECURRING_EDIT_LOCKOUT_START_TIME,
   endTimeOfDay: DEFAULT_RECURRING_EDIT_LOCKOUT_END_TIME,
   bannerLeadMinutes: DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
-  exemptRoleIdsInput: DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS.join(', '),
 };
 
 function toFormData(
@@ -71,21 +68,7 @@ function toFormData(
     startTimeOfDay: settings.startTimeOfDay,
     endTimeOfDay: settings.endTimeOfDay,
     bannerLeadMinutes: settings.bannerLeadMinutes,
-    exemptRoleIdsInput: settings.exemptRoleIds.join(', '),
   };
-}
-
-function parseExemptRoleIds(input: string): number[] {
-  if (!input.trim()) {
-    return [];
-  }
-
-  const parsed = input
-    .split(',')
-    .map((value) => Number(value.trim()))
-    .filter((value) => Number.isInteger(value) && value > 0);
-
-  return [...new Set(parsed)];
 }
 
 function toRequestBody(
@@ -100,36 +83,23 @@ function toRequestBody(
     startTimeOfDay: formData.startTimeOfDay,
     endTimeOfDay: formData.endTimeOfDay,
     bannerLeadMinutes: formData.bannerLeadMinutes,
-    exemptRoleIds: parseExemptRoleIds(formData.exemptRoleIdsInput),
   };
 }
 
 export function RecurringLockoutBannerSettingsAdmin() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const hasSettingsManage = usePermission(PERMISSIONS.SETTINGS.MANAGE);
-  const isSystemAdmin = user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
-  const canManage = hasSettingsManage && isSystemAdmin;
+  const canManage = usePermission(
+    PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT
+  );
 
-  if (!isSystemAdmin) {
+  if (!canManage) {
     return null;
   }
 
-  return (
-    <RecurringLockoutBannerSettingsAdminInner
-      canManage={canManage}
-      queryClient={queryClient}
-    />
-  );
+  return <RecurringLockoutBannerSettingsAdminInner />;
 }
 
-function RecurringLockoutBannerSettingsAdminInner({
-  canManage,
-  queryClient,
-}: {
-  canManage: boolean;
-  queryClient: ReturnType<typeof useQueryClient>;
-}) {
+function RecurringLockoutBannerSettingsAdminInner() {
+  const queryClient = useQueryClient();
   const [formData, setFormData] =
     useState<RecurringLockoutFormData>(DEFAULT_FORM_DATA);
   const lastContentLimitToastAtRef = useRef(0);
@@ -256,28 +226,26 @@ function RecurringLockoutBannerSettingsAdminInner({
   return (
     <AdminSection
       title="Recurring edit lockout"
-      description="Configure a recurring lockout window, exempt roles, and the warning banner shown before lockout starts."
+      description="Configure a recurring lockout window and the warning banner shown before lockout starts. Users with activities.bypass_recurring_lockout may still edit during the window."
       isLoading={isLoading}
       headerAction={
-        canManage ? (
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleReset}
-              disabled={!hasChanges || saveMutation.isPending}
-            >
-              Reset
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSave}
-              disabled={!hasChanges || saveMutation.isPending}
-            >
-              Save
-            </Button>
-          </div>
-        ) : null
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleReset}
+            disabled={!hasChanges || saveMutation.isPending}
+          >
+            Reset
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={!hasChanges || saveMutation.isPending}
+          >
+            Save
+          </Button>
+        </div>
       }
     >
       {error && (
@@ -286,19 +254,12 @@ function RecurringLockoutBannerSettingsAdminInner({
         </div>
       )}
 
-      {!canManage && (
-        <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-          You can view the current configuration, but only System Admin users
-          can update it.
-        </div>
-      )}
-
       <div className="space-y-5">
         <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
           <PencilOff className="h-5 w-5 text-slate-600" />
           <div className="text-sm text-slate-700">
-            Non-exempt users cannot edit activities during the configured
-            lockout window.
+            Users without the bypass permission cannot edit activities during
+            the configured lockout window.
           </div>
         </div>
 
@@ -310,7 +271,6 @@ function RecurringLockoutBannerSettingsAdminInner({
               onCheckedChange={(checked) =>
                 setFormData((current) => ({ ...current, isActive: !!checked }))
               }
-              disabled={!canManage}
             />
             <Label htmlFor="recurring-lockout-is-active">Active</Label>
           </div>
@@ -338,7 +298,6 @@ function RecurringLockoutBannerSettingsAdminInner({
                   startTimeOfDay: e.target.value,
                 }))
               }
-              disabled={!canManage}
             />
           </div>
 
@@ -354,7 +313,6 @@ function RecurringLockoutBannerSettingsAdminInner({
                   endTimeOfDay: e.target.value,
                 }))
               }
-              disabled={!canManage}
             />
           </div>
 
@@ -372,31 +330,8 @@ function RecurringLockoutBannerSettingsAdminInner({
                   bannerLeadMinutes: Number(e.target.value || 0),
                 }))
               }
-              disabled={!canManage}
             />
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="exempt-role-ids">
-            Exempt role IDs (comma-separated)
-          </Label>
-          <Input
-            id="exempt-role-ids"
-            value={formData.exemptRoleIdsInput}
-            onChange={(e) =>
-              setFormData((current) => ({
-                ...current,
-                exemptRoleIdsInput: e.target.value,
-              }))
-            }
-            disabled={!canManage}
-            placeholder="1, 2"
-          />
-          <p className="text-xs text-slate-500">
-            Enter numeric role IDs, separated by commas. Leave empty for no
-            exemptions.
-          </p>
         </div>
 
         <div className="space-y-2">
@@ -415,7 +350,6 @@ function RecurringLockoutBannerSettingsAdminInner({
                 content: next,
               }));
             }}
-            disabled={!canManage}
             rows={4}
           />
           <div className="text-xs text-slate-500">
