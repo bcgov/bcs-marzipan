@@ -132,6 +132,7 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
+import { buildValidFilterLookupsFromOptions } from '@/lib/activity-filter-lookups';
 import {
   canResolveTranslationLanguageFilter,
   filterActivityRowsByFilters,
@@ -154,13 +155,16 @@ import {
   parseDateOnlyString,
 } from '@/lib/datetime-utils';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import {
+  hasMinistryTabLeadTeamFilterConflict,
+  MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE,
+} from '@/lib/ministry-tab-lead-filter-conflict';
 import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
 import {
   sanitizeSavedFilterPayload,
   type ValidFilterLookups,
 } from '@/lib/savedFilterSanitize';
 import { cn } from '@/lib/utils';
-import type { OptionItem } from '@/schemas/types';
 
 import { ActivityTableEmptyState } from './ActivityTableEmptyState';
 import {
@@ -184,7 +188,7 @@ import { compareActivityRowsByLevels } from './activityTableSort';
  */
 
 const DEFAULT_SORT_KEY = 'startDate';
-const DEFAULT_SORT_DIRECTION = 'desc' as const;
+const DEFAULT_SORT_DIRECTION = 'asc' as const;
 
 const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   { id: 'activityId', label: 'Activity ID', defaultDirection: 'asc' },
@@ -208,8 +212,9 @@ const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
   },
   {
     id: 'startDate',
-    label: 'Scheduled date',
+    label: 'Date',
     defaultDirection: 'asc',
+    directionLabels: { asc: 'Soonest', desc: 'Latest' },
     tieBreakers: [{ key: 'startTime', direction: 'asc' }],
   },
   { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
@@ -1026,8 +1031,7 @@ export function ActivityTable({
     statusOptions,
     pitchRequiredStatusOptions,
     tagOptions,
-    ministryOptions,
-    organizationOptions,
+    leadTeamOptions,
     commsContactOptions,
     eventPlannerOptions,
     translationOptions,
@@ -1130,35 +1134,41 @@ export function ActivityTable({
     [translationLanguagesForFilter]
   );
 
-  const validFilterLookupsForDefaultApply = useMemo((): ValidFilterLookups => {
-    const nums = (options: OptionItem[]) =>
-      new Set(
-        options
-          .map((o) => parseInt(o.value, 10))
-          .filter((n) => Number.isFinite(n))
-      );
-    return {
-      statusIds: nums(statusOptions),
-      categoryIds: nums(categoryOptions),
-      tagIds: nums(tagOptions),
-      ministryIds: nums(ministryOptions),
-      orgIds: nums(organizationOptions),
-      commsContactUserIds: nums(commsContactOptions),
-      eventPlannerIds: nums(eventPlannerOptions),
-      translationStatusIds: nums(translationStatusOptions),
-      translationLanguageIds: nums(translationOptions),
-    };
-  }, [
-    statusOptions,
-    categoryOptions,
-    tagOptions,
-    ministryOptions,
-    organizationOptions,
-    commsContactOptions,
-    eventPlannerOptions,
-    translationStatusOptions,
-    translationOptions,
-  ]);
+  const validFilterLookupsForDefaultApply = useMemo(
+    (): ValidFilterLookups =>
+      buildValidFilterLookupsFromOptions({
+        statusOptions,
+        categoryOptions,
+        tagOptions,
+        commsContactOptions,
+        eventPlannerOptions,
+        leadTeamOptions,
+        translationStatusOptions,
+        translationOptions,
+      }),
+    [
+      statusOptions,
+      categoryOptions,
+      tagOptions,
+      commsContactOptions,
+      eventPlannerOptions,
+      leadTeamOptions,
+      translationStatusOptions,
+      translationOptions,
+    ]
+  );
+
+  const ministryTabLeadTeamId =
+    leadTeamIds?.length === 1 ? leadTeamIds[0] : undefined;
+
+  const leadFilterConflictsWithMinistryTab = useMemo(
+    () =>
+      hasMinistryTabLeadTeamFilterConflict(
+        ministryTabLeadTeamId,
+        filterState.leadTeamIds
+      ),
+    [ministryTabLeadTeamId, filterState.leadTeamIds]
+  );
 
   const savedFilterDefaultLookupsReady =
     hasActivityStatuses && !savedFiltersHook.isLoading;
@@ -1983,8 +1993,7 @@ export function ActivityTable({
       tagOptions={tagOptions}
       translationStatusOptions={translationStatusOptions}
       translationOptions={translationOptions}
-      ministryOptions={ministryOptions}
-      organizationOptions={organizationOptions}
+      leadTeamOptions={leadTeamOptions}
       commsContactOptions={commsContactOptions}
       eventPlannerOptions={eventPlannerOptions}
       pitchFieldVisibility={pitchFieldVisibility}
@@ -2187,7 +2196,24 @@ export function ActivityTable({
               variant={
                 favouriteActivityIds !== undefined
                   ? 'no-favourites'
-                  : 'no-search-match'
+                  : leadFilterConflictsWithMinistryTab ||
+                      (hasActiveCriteria && searchKeyword.trim() === '')
+                    ? 'no-filter-match'
+                    : searchKeyword.trim() !== ''
+                      ? 'no-search-match'
+                      : hasActiveCriteria
+                        ? 'no-filter-match'
+                        : 'no-data'
+              }
+              conflictNote={
+                leadFilterConflictsWithMinistryTab
+                  ? MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE
+                  : undefined
+              }
+              onClearFilters={
+                hasActiveCriteria && favouriteActivityIds === undefined
+                  ? handleClearAllCriteria
+                  : undefined
               }
             />
           ) : (

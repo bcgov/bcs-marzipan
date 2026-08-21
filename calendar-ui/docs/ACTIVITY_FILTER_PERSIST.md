@@ -58,10 +58,10 @@ Defined in [calendar-ui/src/hooks/useActivityTablePreferences.ts](src/hooks/useA
 | Preference    | URL param   | Type                                    | Default     |
 | ------------- | ----------- | --------------------------------------- | ----------- |
 | sortKey       | `sort`      | string (must be in VALID_SORT_KEYS)     | `startDate` |
-| sortDirection | `dir`       | `asc` \| `desc`                         | `desc`      |
+| sortDirection | `dir`       | `asc` \| `desc`                         | `asc`       |
 | showCompleted | `completed` | boolean                                 | `false`     |
 | showDeleted   | `deleted`   | boolean                                 | `false`     |
-| pageSize      | `pageSize`  | number (1–100)                          | `10`        |
+| pageSize      | `pageSize`  | number (1–100)                          | `25`        |
 | searchKeyword | `search`    | string (keyword; sync to URL debounced) | `''`        |
 
 - **sessionStorage key**: `activityTablePreferences`. Stored value is a single JSON object with these keys.

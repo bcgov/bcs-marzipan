@@ -16,6 +16,7 @@ import {
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 
 import { DatabaseService } from '../../database/database.service';
+import { sortByStaffName } from '../../users/staff-name-sort';
 import { ActivityHistoryService } from './activity-history.service';
 
 /**
@@ -481,6 +482,18 @@ export class ActivityFlagsService {
       existing.push(flag);
       map.set(row.activityId, existing);
     }
+
+    for (const [activityId, flags] of map.entries()) {
+      map.set(
+        activityId,
+        sortByStaffName(
+          flags,
+          (flag) => flag.assigneeName,
+          (flag) => flag.assigneeId
+        )
+      );
+    }
+
     return map;
   }
 

@@ -441,8 +441,7 @@ describe('ReportsPage placeholder data handling', () => {
         category_count: 0,
         status_count: 0,
         tag_count: 0,
-        ministry_count: 0,
-        org_count: 0,
+        lead_team_count: 0,
       })
     );
   });

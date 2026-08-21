@@ -81,7 +81,7 @@ describe('activityFilterStateToQueryParams', () => {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
       tagIds: [1, 2],
       categoryIds: [1, 2],
-      leadMinistryIds: [10],
+      leadTeamIds: [10],
     };
     const result = activityFilterStateToQueryParams(
       {
@@ -94,7 +94,7 @@ describe('activityFilterStateToQueryParams', () => {
     );
     expect(result.tagIds).toEqual([1, 2]);
     expect(result.categoryIds).toEqual([1, 2]);
-    expect(result.leadMinistryIds).toEqual([10]);
+    expect(result.leadTeamIds).toEqual([10]);
   });
 
   it('maps pitch scheduled without bounds to pitchDateScheduled', () => {

@@ -4,6 +4,7 @@ import { useForm, type Resolver } from 'react-hook-form';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { getActivityFormSectionFieldKeys } from '@corpcal/shared';
 import {
   createActivityRequestSchema,
   type ActivityFormData,
@@ -75,6 +76,40 @@ describe('useActivityFormSubmitState', () => {
     expect(result.current.submitState.missingFields).toEqual([]);
     expect(result.current.submitState.missingFieldsHelperText).toBeNull();
     expect(result.current.submitState.isFormValid).toBe(true);
+  });
+
+  it('orders missing fields by activity form layout', () => {
+    const { result } = renderHook(() => {
+      const form = useForm<ActivityFormData>({
+        mode: 'onChange',
+        defaultValues: {
+          ...getDefaultFormValues(),
+          title: '',
+          categoryIds: [],
+          summary: '',
+        } as ActivityFormData,
+      });
+
+      const submitState = useActivityFormSubmitState(form, {
+        getFieldLabel: (field) => field,
+        schema: createActivityRequestSchema,
+      });
+
+      return { form, submitState };
+    });
+
+    const missingNames = result.current.submitState.missingFieldItems.map(
+      (item) => item.name
+    );
+    const fieldOrder = getActivityFormSectionFieldKeys();
+    const orderedMissing = [...missingNames].sort(
+      (a, b) => fieldOrder.indexOf(a) - fieldOrder.indexOf(b)
+    );
+
+    expect(missingNames).toEqual(orderedMissing);
+    expect(missingNames.indexOf('categoryIds')).toBeLessThan(
+      missingNames.indexOf('title')
+    );
   });
 
   it('updates missing fields when commsContacts is cleared', () => {

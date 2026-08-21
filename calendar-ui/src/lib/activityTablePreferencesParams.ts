@@ -29,6 +29,9 @@ const URL_PARAM_LOOK_AHEAD_SECTION = 'lookAheadSection';
 const URL_PARAM_DATE_CONFIRMED = 'dateConfirmed';
 const URL_PARAM_TIME_CONFIRMED = 'timeConfirmed';
 const URL_PARAM_TAG = 'tag';
+const URL_PARAM_LEAD_TEAM = 'leadTeam';
+const URL_PARAM_COMMS_LEAD = 'commsLead';
+const URL_PARAM_EVENT_PLANNER = 'eventPlanner';
 const URL_PARAM_TRANSLATION = 'translation';
 const URL_PARAM_TRANSLATION_STATUS = 'translationStatus';
 
@@ -45,8 +48,8 @@ const VALID_SORT_KEYS = new Set([
 ]);
 
 const DEFAULT_SORT_KEY = 'startDate';
-const DEFAULT_SORT_DIRECTION = 'desc' as const;
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_SORT_DIRECTION = 'asc' as const;
+const DEFAULT_PAGE_SIZE = 25;
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 100;
 
@@ -173,6 +176,15 @@ function parseFromSearchParams(
       : 'any';
 
   const tagIds = parseIdListFromQueryParam(searchParams.get(URL_PARAM_TAG));
+  const leadTeamIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_LEAD_TEAM)
+  );
+  const commsContactLeadUserIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_COMMS_LEAD)
+  );
+  const eventPlannerLeadIds = parseIdListFromQueryParam(
+    searchParams.get(URL_PARAM_EVENT_PLANNER)
+  );
   const translationLanguageIds = parseIdListFromQueryParam(
     searchParams.get(URL_PARAM_TRANSLATION)
   );
@@ -196,10 +208,9 @@ function parseFromSearchParams(
     dateConfirmedFilter,
     timeConfirmedFilter,
     tagIds,
-    leadMinistryIds: [],
-    leadOrgIds: [],
-    commsContactLeadUserIds: [],
-    eventPlannerLeadIds: [],
+    leadTeamIds,
+    commsContactLeadUserIds,
+    eventPlannerLeadIds,
     translationRequiredStatusIds,
     translationLanguageIds,
   };
@@ -330,13 +341,8 @@ function parseFromStorage(
               (n): n is number => typeof n === 'number' && Number.isFinite(n)
             )
           : [];
-        const leadMinistryIds = Array.isArray(rawFilter.leadMinistryIds)
-          ? (rawFilter.leadMinistryIds as number[]).filter(
-              (n): n is number => typeof n === 'number' && Number.isFinite(n)
-            )
-          : [];
-        const leadOrgIds = Array.isArray(rawFilter.leadOrgIds)
-          ? (rawFilter.leadOrgIds as number[]).filter(
+        const leadTeamIds = Array.isArray(rawFilter.leadTeamIds)
+          ? (rawFilter.leadTeamIds as number[]).filter(
               (n): n is number => typeof n === 'number' && Number.isFinite(n)
             )
           : [];
@@ -390,8 +396,7 @@ function parseFromStorage(
           dateConfirmedFilter,
           timeConfirmedFilter,
           tagIds,
-          leadMinistryIds,
-          leadOrgIds,
+          leadTeamIds,
           commsContactLeadUserIds,
           eventPlannerLeadIds,
           translationRequiredStatusIds,
@@ -439,6 +444,9 @@ export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
     searchParams.has(URL_PARAM_DATE_CONFIRMED) ||
     searchParams.has(URL_PARAM_TIME_CONFIRMED) ||
     searchParams.has(URL_PARAM_TAG) ||
+    searchParams.has(URL_PARAM_LEAD_TEAM) ||
+    searchParams.has(URL_PARAM_COMMS_LEAD) ||
+    searchParams.has(URL_PARAM_EVENT_PLANNER) ||
     searchParams.has(URL_PARAM_TRANSLATION) ||
     searchParams.has(URL_PARAM_TRANSLATION_STATUS)
   );
@@ -492,6 +500,9 @@ export function preferencesToParams(
     [URL_PARAM_TIME_CONFIRMED]:
       f.timeConfirmedFilter === 'any' ? '' : f.timeConfirmedFilter,
     [URL_PARAM_TAG]: f.tagIds.join(','),
+    [URL_PARAM_LEAD_TEAM]: f.leadTeamIds.join(','),
+    [URL_PARAM_COMMS_LEAD]: f.commsContactLeadUserIds.join(','),
+    [URL_PARAM_EVENT_PLANNER]: f.eventPlannerLeadIds.join(','),
     [URL_PARAM_TRANSLATION]: f.translationLanguageIds.join(','),
     [URL_PARAM_TRANSLATION_STATUS]: f.translationRequiredStatusIds.join(','),
   };

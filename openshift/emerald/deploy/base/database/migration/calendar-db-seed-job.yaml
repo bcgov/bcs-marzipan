@@ -1,28 +1,28 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: calendar-db-seed
+  name: corpcal-db-seed-job
   labels:
-    app: calendar-db-seed
-    app.kubernetes.io/name: calendar
-    app.kubernetes.io/component: job
+    app: corpcal-db-seed-job
+    app.kubernetes.io/name: corpcal
+    app.kubernetes.io/component: seed
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/instance: dev
-    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: ${APP_VERSION}
+    app.kubernetes.io/managed-by: github-actions
 spec:
   backoffLimit: 1
   template:
     metadata:
       labels:
-        app: calendar-db-seed
+        app: corpcal-db-seed-job
     spec:
       restartPolicy: Never
       containers:
         - name: seed
-          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/calendar-db-seed:${APP_VERSION}
+          image: image-registry.openshift-image-registry.svc:5000/${DEV_NAMESPACE}/corpcal-db-seed:${APP_VERSION}
           env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: corpcal-service-secret
                   key: DATABASE_URL

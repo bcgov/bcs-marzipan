@@ -88,8 +88,7 @@ export function ActivityPageHeader({
       : formatRelativeTime(d);
   }
 
-  const sortedFlags =
-    flags == null ? [] : [...flags].sort((a, b) => a.teamId - b.teamId);
+  const sortedFlags = flags ?? [];
   const stackedFlags = [...sortedFlags].reverse();
   const visibleStackedFlags = stackedFlags.slice(0, 3);
   const overflowFlagCount = Math.max(stackedFlags.length - 3, 0);
