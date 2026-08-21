@@ -50,9 +50,15 @@ export class BannerService {
     const leadMinutes = Number.isInteger(row.bannerLeadMinutes)
       ? Math.max(0, Number(row.bannerLeadMinutes))
       : DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES;
-    const bannerStartMinutes = Math.max(0, startMinutes - leadMinutes);
+    const minutesPerDay = 24 * 60;
+    const bannerStartMinutes =
+      (startMinutes - leadMinutes + minutesPerDay) % minutesPerDay;
+    const inWindow =
+      bannerStartMinutes > endMinutes
+        ? currentMinutes >= bannerStartMinutes || currentMinutes < endMinutes
+        : currentMinutes >= bannerStartMinutes && currentMinutes < endMinutes;
 
-    if (currentMinutes < bannerStartMinutes || currentMinutes >= endMinutes) {
+    if (!inWindow) {
       return null;
     }
 
