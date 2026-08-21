@@ -30,6 +30,7 @@ import type {
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
+import { sortByStaffName } from '../users/staff-name-sort';
 
 @Injectable()
 export class TeamsService {
@@ -138,13 +139,11 @@ export class TeamsService {
     }
 
     const rows = await this.fetchCommsEligibleUsersForTeam(teamId);
-    const sorted = [...rows].sort((a, b) => {
-      const sa = a.adDisplayName ?? a.adUsername ?? '';
-      const sb = b.adDisplayName ?? b.adUsername ?? '';
-      const byName = sa.localeCompare(sb, undefined, { sensitivity: 'base' });
-      if (byName !== 0) return byName;
-      return a.id - b.id;
-    });
+    const sorted = sortByStaffName(
+      rows,
+      (u) => u.adDisplayName ?? u.adUsername ?? `User ${u.id}`,
+      (u) => u.id
+    );
 
     return sorted.map((u) => {
       const label = u.adDisplayName ?? u.adUsername ?? `User ${u.id}`;
@@ -350,11 +349,15 @@ export class TeamsService {
       ...t,
       ministryName,
       memberCount: memberRows.length,
-      members: memberRows.map((m) => ({
-        userId: m.userId,
-        userName: userMap.get(m.userId) ?? `User ${m.userId}`,
-        role: m.role,
-      })),
+      members: sortByStaffName(
+        memberRows.map((m) => ({
+          userId: m.userId,
+          userName: userMap.get(m.userId) ?? `User ${m.userId}`,
+          role: m.role,
+        })),
+        (m) => m.userName,
+        (m) => m.userId
+      ),
     };
   }
 

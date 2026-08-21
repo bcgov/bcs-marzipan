@@ -72,6 +72,7 @@ import { reportConfigSchema } from '@corpcal/shared/schemas';
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
+import { sortByStaffName } from '../users/staff-name-sort';
 import {
   loadTeamMetadataForLookupIds,
   teamMetadataForLookup,
@@ -450,7 +451,17 @@ export class LookupsService {
       .where(and(...conditions))
       .orderBy(users.adDisplayName, users.adUsername);
 
-    return results.map((user) => {
+    const sortedResults = sortByStaffName(
+      results,
+      (user) =>
+        user.adDisplayName ??
+        user.adUsername ??
+        user.adEmail ??
+        `User ${user.id}`,
+      (user) => user.id
+    );
+
+    return sortedResults.map((user) => {
       const label = user.adDisplayName ?? user.adUsername ?? `User ${user.id}`;
       return {
         id: user.id,
@@ -1090,7 +1101,10 @@ export class LookupsService {
         ministries,
         eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
       )
-      .orderBy(governmentRepresentatives.sortOrder);
+      .orderBy(
+        governmentRepresentatives.sortOrder,
+        governmentRepresentatives.displayName
+      );
 
     return results.map((rep) => ({
       id: rep.id,
@@ -1120,7 +1134,7 @@ export class LookupsService {
       })
       .from(eventPlanners)
       .where(eq(eventPlanners.isActive, true))
-      .orderBy(eventPlanners.sortOrder);
+      .orderBy(eventPlanners.sortOrder, eventPlanners.displayName);
 
     return results.map((planner) => ({
       id: planner.id,

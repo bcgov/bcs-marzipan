@@ -136,6 +136,17 @@ export function ActivityFormBody({
     [readOnly, canViewScope, canEditScope]
   );
 
+  const teamMinistryRefs = useMemo(() => {
+    const byId = new Map<number, { id: number; ministryId: number | null }>();
+    for (const team of lookups.sharedWithTeams) {
+      byId.set(team.id, { id: team.id, ministryId: team.ministryId });
+    }
+    for (const team of leadTeamField.options) {
+      byId.set(team.id, { id: team.id, ministryId: team.ministryId });
+    }
+    return [...byId.values()];
+  }, [leadTeamField.options, lookups.sharedWithTeams]);
+
   return (
     <ActivityEditProvider value={editContextValue}>
       <ActivityInfoIconSettingsProvider>
@@ -190,6 +201,7 @@ export function ActivityFormBody({
                 representativeOptions={lookups.governmentRepresentatives}
                 premierRequestedOptions={lookups.premierRequested}
                 eventPlannerOptions={lookups.eventPlanners}
+                teamMinistryRefs={teamMinistryRefs}
               />
 
               <ActivitySharingSection

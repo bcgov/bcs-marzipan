@@ -39,6 +39,7 @@ import { ActivityUtilsService } from '../activities/services/activity-utils.serv
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { TeamsService } from '../teams/teams.service';
+import { sortByStaffName } from './staff-name-sort';
 
 /** A single comms-contact row scoped to a user + lead team, used by transfer/removal flows. */
 interface ScopedCommsRow {
@@ -243,7 +244,13 @@ export class UsersService {
       teamsByUser.set(t.userId, list);
     }
 
-    return userRows.map((u) => ({
+    const sortedUserRows = sortByStaffName(
+      userRows,
+      (u) => u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`,
+      (u) => u.id
+    );
+
+    return sortedUserRows.map((u) => ({
       id: u.id,
       adUsername: u.adUsername,
       adDisplayName: u.adDisplayName,
