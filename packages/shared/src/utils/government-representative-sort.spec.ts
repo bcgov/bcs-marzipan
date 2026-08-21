@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { sortGovernmentRepresentativesForUser } from './government-representative-sort';
+import { partitionGovernmentRepresentativesForLeadTeam } from './government-representative-sort';
 
-describe('sortGovernmentRepresentativesForUser', () => {
+describe('partitionGovernmentRepresentativesForLeadTeam', () => {
   const reps = [
     {
       id: 1,
@@ -13,8 +13,8 @@ describe('sortGovernmentRepresentativesForUser', () => {
     },
     {
       id: 2,
-      name: 'User Minister',
-      displayName: 'User Minister',
+      name: 'Lead Minister',
+      displayName: 'Lead Minister',
       ministryId: 10,
       sortOrder: 5,
     },
@@ -32,52 +32,35 @@ describe('sortGovernmentRepresentativesForUser', () => {
     { id: 200, ministryId: 30 },
   ];
 
-  it('returns global sortOrder when user has no teams', () => {
-    expect(
-      sortGovernmentRepresentativesForUser(reps, [], teams).map((rep) => rep.id)
-    ).toEqual([1, 3, 2]);
+  it('returns global sortOrder when lead team is not set', () => {
+    const { leadMinister, remainder } =
+      partitionGovernmentRepresentativesForLeadTeam(reps, undefined, teams);
+
+    expect(leadMinister).toBeNull();
+    expect(remainder.map((rep) => rep.id)).toEqual([1, 3, 2]);
   });
 
-  it('boosts reps for ministries linked to the user teams', () => {
-    expect(
-      sortGovernmentRepresentativesForUser(reps, [100], teams).map(
-        (rep) => rep.id
-      )
-    ).toEqual([2, 1, 3]);
+  it('pins the lead team ministry minister ahead of the sorted remainder', () => {
+    const { leadMinister, remainder } =
+      partitionGovernmentRepresentativesForLeadTeam(reps, 100, teams);
+
+    expect(leadMinister?.id).toBe(2);
+    expect(remainder.map((rep) => rep.id)).toEqual([1, 3]);
   });
 
-  it('preserves sortOrder within boosted and non-boosted groups', () => {
-    const manyReps = [
-      {
-        id: 1,
-        displayName: 'B',
-        ministryId: 10,
-        sortOrder: 2,
-      },
-      {
-        id: 2,
-        displayName: 'A',
-        ministryId: 10,
-        sortOrder: 1,
-      },
-      {
-        id: 3,
-        displayName: 'D',
-        ministryId: 20,
-        sortOrder: 2,
-      },
-      {
-        id: 4,
-        displayName: 'C',
-        ministryId: 20,
-        sortOrder: 1,
-      },
-    ];
+  it('returns sorted list only when lead team has no ministry', () => {
+    const { leadMinister, remainder } =
+      partitionGovernmentRepresentativesForLeadTeam(reps, 999, teams);
 
-    expect(
-      sortGovernmentRepresentativesForUser(manyReps, [100], teams).map(
-        (rep) => rep.id
-      )
-    ).toEqual([2, 1, 4, 3]);
+    expect(leadMinister).toBeNull();
+    expect(remainder.map((rep) => rep.id)).toEqual([1, 3, 2]);
+  });
+
+  it('returns sorted list only when the ministry has no matching minister rep', () => {
+    const { leadMinister, remainder } =
+      partitionGovernmentRepresentativesForLeadTeam(reps, 200, teams);
+
+    expect(leadMinister).toBeNull();
+    expect(remainder.map((rep) => rep.id)).toEqual([1, 3, 2]);
   });
 });

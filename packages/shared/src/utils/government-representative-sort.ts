@@ -11,6 +11,11 @@ export interface TeamMinistryRef {
   ministryId?: number | null;
 }
 
+export interface GovernmentRepresentativePartition<T> {
+  leadMinister: T | null;
+  remainder: T[];
+}
+
 function compareGovernmentRepresentatives<
   T extends GovernmentRepresentativeSortItem,
 >(a: T, b: T): number {
@@ -25,45 +30,40 @@ function compareGovernmentRepresentatives<
 }
 
 /**
- * Boosts government representatives linked to ministries the user's teams
- * belong to, while preserving admin sortOrder within each group.
+ * Pins the lead team's ministry minister (when resolvable) ahead of the
+ * admin sortOrder list for activity-form representative pickers.
  */
-export function sortGovernmentRepresentativesForUser<
+export function partitionGovernmentRepresentativesForLeadTeam<
   T extends GovernmentRepresentativeSortItem,
 >(
   reps: readonly T[],
-  userTeamIds: number[] | undefined,
+  leadTeamId: number | null | undefined,
   teams: readonly TeamMinistryRef[] | undefined
-): T[] {
-  const userTeamIdSet = new Set(userTeamIds ?? []);
-  if (userTeamIdSet.size === 0) {
-    return [...reps].sort(compareGovernmentRepresentatives);
+): GovernmentRepresentativePartition<T> {
+  const sorted = [...reps].sort(compareGovernmentRepresentatives);
+
+  if (leadTeamId == null) {
+    return { leadMinister: null, remainder: sorted };
   }
 
-  const userMinistryIds = new Set(
-    (teams ?? [])
-      .filter((team) => userTeamIdSet.has(team.id))
-      .map((team) => team.ministryId)
-      .filter((id): id is number => id != null)
+  const leadTeamMinistryId = (teams ?? []).find(
+    (team) => team.id === leadTeamId
+  )?.ministryId;
+
+  if (leadTeamMinistryId == null) {
+    return { leadMinister: null, remainder: sorted };
+  }
+
+  const leadMinisterIndex = sorted.findIndex(
+    (rep) => rep.ministryId === leadTeamMinistryId
   );
 
-  if (userMinistryIds.size === 0) {
-    return [...reps].sort(compareGovernmentRepresentatives);
+  if (leadMinisterIndex < 0) {
+    return { leadMinister: null, remainder: sorted };
   }
 
-  const prioritized: T[] = [];
-  const remainder: T[] = [];
+  const leadMinister = sorted[leadMinisterIndex];
+  const remainder = sorted.filter((rep) => rep.id !== leadMinister.id);
 
-  for (const rep of reps) {
-    if (rep.ministryId != null && userMinistryIds.has(rep.ministryId)) {
-      prioritized.push(rep);
-    } else {
-      remainder.push(rep);
-    }
-  }
-
-  prioritized.sort(compareGovernmentRepresentatives);
-  remainder.sort(compareGovernmentRepresentatives);
-
-  return [...prioritized, ...remainder];
+  return { leadMinister, remainder };
 }

@@ -276,6 +276,7 @@ describe('activity form section field order', () => {
           representativeOptions={[]}
           premierRequestedOptions={[{ value: '1', label: 'No' }]}
           eventPlannerOptions={[]}
+          teamMinistryRefs={[]}
         />
       </SectionFormHarness>
     );
