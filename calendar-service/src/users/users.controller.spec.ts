@@ -19,7 +19,7 @@ const mockUser: AuthUser = {
   id: 1,
   username: 'testuser',
   displayName: 'Test User',
-  email: 'test@example.com',
+  email: 'test@gov.bc.ca',
   roleId: 5,
   roleName: 'Admin',
   permissions: ['users.view', 'users.edit', 'users.transfer_activities'],
@@ -98,13 +98,14 @@ describe('UsersController', () => {
   describe('create', () => {
     it('should create user and return 201 with data', async () => {
       const dto = {
-        email: 'newuser@example.gov.bc.ca',
+        email: 'newuser@gov.bc.ca',
+        idirUsername: 'JNEWUSER',
         roleId: 2,
         displayName: 'New User',
       };
       const created = createMockUserDetail({
         id: 99,
-        adEmail: 'newuser@example.gov.bc.ca',
+        adEmail: 'newuser@gov.bc.ca',
         roleId: 2,
         adDisplayName: 'New User',
       });
@@ -118,7 +119,11 @@ describe('UsersController', () => {
     });
 
     it('should throw when service throws ConflictException for duplicate email', async () => {
-      const dto = { email: 'existing@example.com', roleId: 1 };
+      const dto = {
+        email: 'existing@gov.bc.ca',
+        idirUsername: 'JEXIST',
+        roleId: 1,
+      };
       mockUsersService.create.mockRejectedValue(
         new ConflictException('A user with this email already exists.')
       );

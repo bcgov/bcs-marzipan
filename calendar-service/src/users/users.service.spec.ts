@@ -117,7 +117,10 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain([{ id: 1 }], 'limit'));
 
       await expect(
-        service.create({ email: 'existing@example.com', roleId: 1 }, 1)
+        service.create(
+          { email: 'existing@gov.bc.ca', idirUsername: 'JEXIST', roleId: 1 },
+          1
+        )
       ).rejects.toThrow(ConflictException);
       expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
     });
@@ -129,7 +132,10 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain([], 'limit'));
 
       await expect(
-        service.create({ email: 'new@example.com', roleId: 999 }, 1)
+        service.create(
+          { email: 'new@gov.bc.ca', idirUsername: 'JNEW', roleId: 999 },
+          1
+        )
       ).rejects.toThrow(BadRequestException);
       expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
     });
@@ -137,9 +143,9 @@ describe('UsersService', () => {
     it('should create user and return UserDetail', async () => {
       const userRow = {
         id: 1,
-        adUsername: null,
+        adUsername: 'JNEWUSER',
         adDisplayName: 'New User',
-        adEmail: 'newuser@example.com',
+        adEmail: 'newuser@gov.bc.ca',
         roleId: 2,
         isActive: true,
         notes: null,
@@ -171,7 +177,8 @@ describe('UsersService', () => {
 
       const result = await service.create(
         {
-          email: 'newuser@example.com',
+          email: 'newuser@gov.bc.ca',
+          idirUsername: 'jnewuser',
           roleId: 2,
           displayName: 'New User',
         },
@@ -180,7 +187,8 @@ describe('UsersService', () => {
 
       expect(result).not.toBeNull();
       expect(result.id).toBe(1);
-      expect(result.adEmail).toBe('newuser@example.com');
+      expect(result.adEmail).toBe('newuser@gov.bc.ca');
+      expect(result.adUsername).toBe('JNEWUSER');
       expect(result.roleId).toBe(2);
       expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(2);
     });
@@ -317,6 +325,56 @@ describe('UsersService', () => {
 
       expect(result).not.toBeNull();
       expect(result.roleId).toBe(2);
+    });
+
+    it('should reject non-BC Gov email updates', async () => {
+      const userRow = {
+        id: 1,
+        adUsername: 'u1',
+        adDisplayName: 'User One',
+        adEmail: 'u1@gov.bc.ca',
+        roleId: 1,
+        isActive: true,
+        notes: null,
+      };
+      const roleRow = [{ name: 'Admin' }];
+      const teamRows: { teamId: number; role: string }[] = [];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'));
+
+      await expect(
+        service.update(1, { email: 'user@example.com' }, 1)
+      ).rejects.toThrow(BadRequestException);
+      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject null email updates', async () => {
+      const userRow = {
+        id: 1,
+        adUsername: 'u1',
+        adDisplayName: 'User One',
+        adEmail: 'u1@gov.bc.ca',
+        roleId: 1,
+        isActive: true,
+        notes: null,
+      };
+      const roleRow = [{ name: 'Admin' }];
+      const teamRows: { teamId: number; role: string }[] = [];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'));
+
+      await expect(service.update(1, { email: null } as any, 1)).rejects.toThrow(
+        BadRequestException
+      );
+      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
     });
   });
 
