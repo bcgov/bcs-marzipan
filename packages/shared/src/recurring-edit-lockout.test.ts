@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { SYSTEM_ROLE_IDS } from './auth/constants';
+import { PERMISSIONS } from './auth/constants';
 import {
-  isRoleBlockedByRecurringEditLockout,
+  isUserBlockedByRecurringEditLockout,
   isWithinRecurringEditLockoutWindow,
 } from './recurring-edit-lockout';
 
@@ -10,7 +10,6 @@ const baseSettings = {
   isActive: true,
   startTimeOfDay: '09:00',
   endTimeOfDay: '10:00',
-  exemptRoleIds: [],
 };
 
 describe('isWithinRecurringEditLockoutWindow', () => {
@@ -27,45 +26,38 @@ describe('isWithinRecurringEditLockoutWindow', () => {
   });
 });
 
-describe('isRoleBlockedByRecurringEditLockout', () => {
-  it('blocks non-exempt roles during the lockout window', () => {
+describe('isUserBlockedByRecurringEditLockout', () => {
+  it('blocks users without bypass permission during the lockout window', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
 
     expect(
-      isRoleBlockedByRecurringEditLockout(baseSettings, SYSTEM_ROLE_IDS.EDITOR)
+      isUserBlockedByRecurringEditLockout(baseSettings, [
+        PERMISSIONS.ACTIVITIES.EDIT,
+      ])
     ).toBe(true);
 
     vi.useRealTimers();
   });
 
-  it('allows exempt roles during the lockout window', () => {
+  it('allows users with bypass permission during the lockout window', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
 
     expect(
-      isRoleBlockedByRecurringEditLockout(
-        {
-          ...baseSettings,
-          exemptRoleIds: [SYSTEM_ROLE_IDS.SYSTEM_ADMIN],
-        },
-        SYSTEM_ROLE_IDS.SYSTEM_ADMIN
-      )
+      isUserBlockedByRecurringEditLockout(baseSettings, [
+        PERMISSIONS.ACTIVITIES.BYPASS_RECURRING_LOCKOUT,
+      ])
     ).toBe(false);
 
     vi.useRealTimers();
   });
 
-  it('respects an explicit empty exempt-role list', () => {
+  it('does not block outside the lockout window', () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
+    vi.setSystemTime(new Date('2026-08-05T17:00:00.000Z'));
 
-    expect(
-      isRoleBlockedByRecurringEditLockout(
-        baseSettings,
-        SYSTEM_ROLE_IDS.SYSTEM_ADMIN
-      )
-    ).toBe(true);
+    expect(isUserBlockedByRecurringEditLockout(baseSettings, [])).toBe(false);
 
     vi.useRealTimers();
   });

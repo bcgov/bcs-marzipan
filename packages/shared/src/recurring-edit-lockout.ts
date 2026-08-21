@@ -1,5 +1,5 @@
 import { toPacificHourMinute } from './activity-completion';
-import { DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS } from './schemas/banner.schema';
+import { PERMISSIONS } from './auth/constants';
 
 export const RECURRING_EDIT_LOCKOUT_REASON = 'time_lockout' as const;
 
@@ -10,7 +10,6 @@ export type RecurringEditLockoutSettingsSlice = {
   isActive: boolean;
   startTimeOfDay: string;
   endTimeOfDay: string;
-  exemptRoleIds: unknown;
 };
 
 export function timeOfDayToMinutes(timeOfDay: string): number {
@@ -18,16 +17,10 @@ export function timeOfDayToMinutes(timeOfDay: string): number {
   return hour * 60 + minute;
 }
 
-export function parseRecurringEditLockoutExemptRoleIds(
-  exemptRoleIds: unknown
-): number[] {
-  if (!Array.isArray(exemptRoleIds)) {
-    return [...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS];
-  }
-
-  return exemptRoleIds
-    .map((value) => Number(value))
-    .filter((value) => Number.isInteger(value) && value > 0);
+export function canBypassRecurringEditLockout(
+  permissions: readonly string[]
+): boolean {
+  return permissions.includes(PERMISSIONS.ACTIVITIES.BYPASS_RECURRING_LOCKOUT);
 }
 
 /**
@@ -47,11 +40,12 @@ export function isWithinRecurringEditLockoutWindow(
 }
 
 /**
- * Returns true when recurring lockout is active and the role is not exempt.
+ * Returns true when recurring lockout is active, the current time is within
+ * the window, and the user lacks activities.bypass_recurring_lockout.
  */
-export function isRoleBlockedByRecurringEditLockout(
+export function isUserBlockedByRecurringEditLockout(
   settings: RecurringEditLockoutSettingsSlice | null | undefined,
-  roleId: number,
+  permissions: readonly string[],
   nowMs: number = Date.now()
 ): boolean {
   if (!settings?.isActive) {
@@ -62,9 +56,5 @@ export function isRoleBlockedByRecurringEditLockout(
     return false;
   }
 
-  const exemptRoleIds = parseRecurringEditLockoutExemptRoleIds(
-    settings.exemptRoleIds
-  );
-
-  return !exemptRoleIds.includes(roleId);
+  return !canBypassRecurringEditLockout(permissions);
 }

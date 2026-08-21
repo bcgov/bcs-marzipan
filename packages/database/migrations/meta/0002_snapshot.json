@@ -1,5 +1,5 @@
 {
-  "id": "3ca2a1a8-e38f-42b5-9543-3b6e5ffc70e5",
+  "id": "6677d448-7ad7-4165-bf6f-d9b4baba1f6b",
   "prevId": "371fad95-60ca-45bd-84cf-57fbc7e7cbff",
   "version": "7",
   "dialect": "postgresql",
@@ -6506,13 +6506,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
-        },
-        "exempt_role_ids": {
-          "name": "exempt_role_ids",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[5,6]'::jsonb"
         },
         "content": {
           "name": "content",

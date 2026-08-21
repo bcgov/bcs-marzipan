@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   BANNER_CONTENT_MAX_LENGTH,
   DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
-  DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS,
   upsertBannerSettingsRequestSchema,
   upsertRecurringLockoutBannerSettingsRequestSchema,
 } from './banner.schema';
@@ -60,7 +59,6 @@ describe('upsertBannerSettingsRequestSchema', () => {
 function validRecurringBannerBody(overrides: Record<string, unknown> = {}) {
   return {
     isActive: true,
-    exemptRoleIds: [...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS],
     content: '<p>Editing is now locked for the day.</p>',
     backgroundColor: '#E6A635',
     textColor: '#000000',
@@ -78,24 +76,15 @@ describe('upsertRecurringLockoutBannerSettingsRequestSchema', () => {
       validRecurringBannerBody()
     );
     expect(result.startTimeOfDay).toBe('15:00');
-    expect(result.exemptRoleIds).toEqual([
-      ...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS,
-    ]);
     expect(result.bannerLeadMinutes).toBe(30);
   });
 
-  it('defaults exempt roles and banner lead time when not provided', () => {
-    const {
-      exemptRoleIds: _unused,
-      bannerLeadMinutes: _unusedLead,
-      ...body
-    } = validRecurringBannerBody();
+  it('defaults banner lead time when not provided', () => {
+    const { bannerLeadMinutes: _unusedLead, ...body } =
+      validRecurringBannerBody();
     const result =
       upsertRecurringLockoutBannerSettingsRequestSchema.parse(body);
 
-    expect(result.exemptRoleIds).toEqual([
-      ...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS,
-    ]);
     expect(result.bannerLeadMinutes).toBe(
       DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES
     );
@@ -134,20 +123,5 @@ describe('upsertRecurringLockoutBannerSettingsRequestSchema', () => {
       throw new Error('Expected validation failure for invalid time range');
     }
     expect(result.error.issues[0]?.path).toEqual(['endTimeOfDay']);
-  });
-
-  it('rejects duplicate exempt roles', () => {
-    const duplicateRoleId = DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS[0];
-    const result = upsertRecurringLockoutBannerSettingsRequestSchema.safeParse(
-      validRecurringBannerBody({
-        exemptRoleIds: [duplicateRoleId, duplicateRoleId],
-      })
-    );
-
-    expect(result.success).toBe(false);
-    if (result.success) {
-      throw new Error('Expected validation failure for duplicate exempt roles');
-    }
-    expect(result.error.issues[0]?.path).toEqual(['exemptRoleIds']);
   });
 });
