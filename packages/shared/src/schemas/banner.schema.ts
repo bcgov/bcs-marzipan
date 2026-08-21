@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { SYSTEM_ROLE_IDS } from '../auth/constants';
-
 const hexColorSchema = z
   .string()
   .regex(/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/, 'Must be a valid hex color');
@@ -14,10 +12,6 @@ export const BANNER_CONTENT_MAX_LENGTH = 500;
 export const DEFAULT_RECURRING_EDIT_LOCKOUT_START_TIME = '15:00';
 export const DEFAULT_RECURRING_EDIT_LOCKOUT_END_TIME = '23:59';
 export const DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES = 30;
-export const DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS = [
-  SYSTEM_ROLE_IDS.ADMIN,
-  SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
-] as const;
 
 export const bannerSettingsSchema = z.object({
   id: z.number().int(),
@@ -70,7 +64,6 @@ export const upsertBannerSettingsRequestSchema = z
 export const recurringLockoutBannerSettingsSchema = z.object({
   id: z.number().int(),
   isActive: z.boolean(),
-  exemptRoleIds: z.array(z.number().int().positive()),
   content: z.string(),
   backgroundColor: hexColorSchema,
   textColor: hexColorSchema,
@@ -94,9 +87,6 @@ function timeToMinutes(time: string): number {
 export const upsertRecurringLockoutBannerSettingsRequestSchema = z
   .object({
     isActive: z.boolean(),
-    exemptRoleIds: z
-      .array(z.number().int().positive())
-      .default([...DEFAULT_RECURRING_EDIT_LOCKOUT_EXEMPT_ROLE_IDS]),
     content: z
       .string()
       .trim()
@@ -129,14 +119,6 @@ export const upsertRecurringLockoutBannerSettingsRequestSchema = z
         code: z.ZodIssueCode.custom,
         path: ['endTimeOfDay'],
         message: 'End time must be after start time',
-      });
-    }
-
-    if (new Set(value.exemptRoleIds).size !== value.exemptRoleIds.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['exemptRoleIds'],
-        message: 'Exempt roles must be unique',
       });
     }
   });

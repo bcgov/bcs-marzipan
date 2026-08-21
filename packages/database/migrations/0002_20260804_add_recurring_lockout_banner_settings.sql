@@ -1,7 +1,6 @@
 CREATE TABLE "recurring_lockout_banner_settings" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"is_active" boolean DEFAULT false NOT NULL,
-	"exempt_role_ids" jsonb DEFAULT '[5,6]'::jsonb NOT NULL,
 	"content" text NOT NULL,
 	"background_color" varchar(20) DEFAULT '#E6A635' NOT NULL,
 	"text_color" varchar(20) DEFAULT '#000000' NOT NULL,
@@ -15,6 +14,5 @@ CREATE TABLE "recurring_lockout_banner_settings" (
 	"last_updated_by" integer NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "recurring_lockout_banner_settings" ADD CONSTRAINT "recurring_lockout_banner_settings_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
---> statement-breakpoint
+ALTER TABLE "recurring_lockout_banner_settings" ADD CONSTRAINT "recurring_lockout_banner_settings_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recurring_lockout_banner_settings" ADD CONSTRAINT "recurring_lockout_banner_settings_last_updated_by_users_id_fk" FOREIGN KEY ("last_updated_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;

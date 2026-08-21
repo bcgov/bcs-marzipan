@@ -1,7 +1,6 @@
 import {
   boolean,
   integer,
-  jsonb,
   pgTable,
   serial,
   text,
@@ -16,10 +15,6 @@ export const recurringLockoutBannerSettings = pgTable(
   {
     id: serial('id').primaryKey(),
     isActive: boolean('is_active').notNull().default(false),
-    exemptRoleIds: jsonb('exempt_role_ids')
-      .$type<number[]>()
-      .notNull()
-      .default([5, 6] /* Admin + System Admin (seed role IDs) */),
     content: text('content').notNull(),
     backgroundColor: varchar('background_color', { length: 20 })
       .notNull()
