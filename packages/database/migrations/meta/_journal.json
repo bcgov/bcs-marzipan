@@ -15,6 +15,13 @@
       "when": 1785254375134,
       "tag": "0001_20260728_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785520999753,
+      "tag": "0002_20260731_unify_flag_term",
+      "breakpoints": true
     }
   ]
 }

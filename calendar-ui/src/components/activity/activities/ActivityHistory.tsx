@@ -453,7 +453,8 @@ export default function ActivityHistory({
                                       )
                                         .filter(
                                           (change) =>
-                                            change.field !== 'flag.assigneeName'
+                                            change.field !==
+                                            'flag.flaggedUserName'
                                         )
                                         .map((change, index) => (
                                           <div
@@ -509,7 +510,7 @@ export default function ActivityHistory({
                                   (!entry.changes ||
                                     entry.changes.length === 0 ||
                                     entry.changes.every(
-                                      (c) => c.field === 'flag.assigneeName'
+                                      (c) => c.field === 'flag.flaggedUserName'
                                     )) &&
                                   entry.actionType !== 'flag_assigned' &&
                                   entry.actionType !== 'flag_removed' ? (

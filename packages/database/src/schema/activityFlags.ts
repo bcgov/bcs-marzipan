@@ -14,10 +14,10 @@ import { teams } from './teams';
 import { users } from './user';
 
 /**
- * ActivityFlags table - Tracks which user is assigned ("flagged") per activity per team.
+ * ActivityFlags table - Tracks which user is flagged per activity per team.
  * Rules:
- *   - Multiple assignees are allowed per (activity, team) pair.
- *   - At most one row per (activity, team, assignee) tuple.
+ *   - Multiple flagged users are allowed per (activity, team) pair.
+ *   - At most one row per (activity, team, flagged user) tuple.
  *   - Any team member with activities.flag permission can set or replace the flag.
  *   - Any active team member can remove the flag (no flag permission required).
  *   - Removing is done by deleting the row.
@@ -32,10 +32,10 @@ export const activityFlags = pgTable(
     teamId: integer('team_id')
       .notNull()
       .references(() => teams.id, { onDelete: 'cascade' }),
-    assigneeId: integer('assignee_id')
+    flaggedUserId: integer('flagged_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    assignedById: integer('assigned_by_id')
+    flaggedById: integer('flagged_by_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     displayTeamId: integer('display_team_id').references(() => teams.id, {
@@ -50,7 +50,7 @@ export const activityFlags = pgTable(
       .defaultNow(),
   },
   (table) => [
-    unique().on(table.activityId, table.teamId, table.assigneeId),
+    unique().on(table.activityId, table.teamId, table.flaggedUserId),
     index('activity_flags_activity_id_team_id_idx').on(
       table.activityId,
       table.teamId
@@ -73,14 +73,14 @@ export const activityFlagsRelations = relations(activityFlags, ({ one }) => ({
     references: [teams.id],
     relationName: 'displayTeam',
   }),
-  assignee: one(users, {
-    fields: [activityFlags.assigneeId],
+  flaggedUser: one(users, {
+    fields: [activityFlags.flaggedUserId],
     references: [users.id],
-    relationName: 'flagAssignee',
+    relationName: 'flaggedUser',
   }),
-  assignedBy: one(users, {
-    fields: [activityFlags.assignedById],
+  flaggedBy: one(users, {
+    fields: [activityFlags.flaggedById],
     references: [users.id],
-    relationName: 'flagAssignedBy',
+    relationName: 'flaggedByUser',
   }),
 }));

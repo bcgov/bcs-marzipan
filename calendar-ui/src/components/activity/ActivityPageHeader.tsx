@@ -6,7 +6,7 @@ import {
   ActivityFlagIcon,
   ActivityFlagOverflowIcon,
 } from '@/components/activity/activities/ActivityFlagIcon';
-import { AssignActivityModal } from '@/components/activity/activities/AssignActivityModal';
+import { FlagActivityModal } from '@/components/activity/activities/FlagActivityModal';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CopyableText } from '@/components/ui/copyable-text';
@@ -29,21 +29,21 @@ type ActivityPageHeaderProps = {
   lastUpdatedDateTime?: string | null;
   createdDateTime?: string | null;
   onHistoryClick?: () => void;
-  /** Flags for activities assigned to the current user's teams. */
+  /** Flags for activities flagged for the current user's teams. */
   flags?: ActivityFlagResponse[];
   canFlag?: boolean;
   onFlagSync?: (
     teamId: number,
-    assigneeIds: number[],
+    flaggedUserIds: number[],
     note?: string,
-    assigneeNames?: string[],
-    displayTeamPerAssignee?: Record<number, number | null>
+    flaggedUserNames?: string[],
+    displayTeamPerFlaggedUser?: Record<number, number | null>
   ) => void;
-  /** Called when a non-flagging user removes their own assignment. */
-  onFlagUnassign?: (
+  /** Called when a non-flagging user removes their own flag. */
+  onRemoveSelfFlag?: (
     teamId: number,
-    assigneeId: number,
-    assigneeName?: string
+    flaggedUserId: number,
+    flaggedUserName?: string
   ) => void;
   isFlagPending?: boolean;
   isFavourite?: boolean;
@@ -67,13 +67,13 @@ export function ActivityPageHeader({
   flags,
   canFlag,
   onFlagSync,
-  onFlagUnassign,
+  onRemoveSelfFlag,
   isFlagPending,
   isFavourite,
   onFavouriteToggle,
   isFavouriteToggling,
 }: ActivityPageHeaderProps): ReactElement {
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [flagModalOpen, setFlagModalOpen] = useState(false);
 
   const statusDisplay = formatDisplayValue(activityStatus);
   let updatedLabel: string | null = null;
@@ -97,8 +97,9 @@ export function ActivityPageHeader({
   const currentUserFlag =
     currentUserId == null
       ? null
-      : (sortedFlags.find((flag) => flag.assigneeId === currentUserId) ?? null);
-  const flaggedLabel = sortedFlags.map((f) => f.assigneeName).join(', ');
+      : (sortedFlags.find((flag) => flag.flaggedUserId === currentUserId) ??
+        null);
+  const flaggedLabel = sortedFlags.map((f) => f.flaggedUserName).join(', ');
 
   const iconButtonClassName = 'shrink-0';
   const multiFlagButtonClassName = 'mr-3 h-10 shrink-0 px-2 pr-4';
@@ -176,15 +177,15 @@ export function ActivityPageHeader({
               size="icon"
               title={
                 isFlagged
-                  ? `Assigned to ${flaggedLabel} — click to edit`
-                  : 'Assign activity'
+                  ? `Flagged for ${flaggedLabel} — click to edit`
+                  : 'Flag activity'
               }
               aria-label={
                 isFlagged
-                  ? `Assigned to ${flaggedLabel} — click to edit`
-                  : 'Assign activity'
+                  ? `Flagged for ${flaggedLabel} — click to edit`
+                  : 'Flag activity'
               }
-              onClick={() => setAssignModalOpen(true)}
+              onClick={() => setFlagModalOpen(true)}
               disabled={isFlagPending}
               className={
                 isFlagged ? multiFlagButtonClassName : iconButtonClassName
@@ -194,13 +195,13 @@ export function ActivityPageHeader({
                 <span className="flex items-center pr-1.5">
                   {visibleStackedFlags.map((flag, index) => (
                     <span
-                      key={`${flag.teamId}:${flag.assigneeId}`}
+                      key={`${flag.teamId}:${flag.flaggedUserId}`}
                       className={index > 0 ? '-ml-0.5' : undefined}
                       style={{ zIndex: index + 1 }}
                     >
                       <ActivityFlagIcon
-                        assigneeName={flag.assigneeName}
-                        assigneeFlagColour={flag.assigneeFlagColour}
+                        flaggedUserName={flag.flaggedUserName}
+                        flaggedUserColour={flag.flaggedUserColour}
                       />
                     </span>
                   ))}
@@ -219,32 +220,32 @@ export function ActivityPageHeader({
                 </span>
               ) : (
                 <ActivityFlagIcon
-                  assigneeName={null}
-                  assigneeFlagColour={null}
+                  flaggedUserName={null}
+                  flaggedUserColour={null}
                 />
               )}
             </Button>
           )}
-          {!canFlag && currentUserFlag && onFlagUnassign && (
+          {!canFlag && currentUserFlag && onRemoveSelfFlag && (
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              title={`Assigned to ${currentUserFlag.assigneeName} — click to unassign`}
-              aria-label={`Assigned to ${currentUserFlag.assigneeName} — click to unassign`}
+              title={`Flagged for ${currentUserFlag.flaggedUserName} — click to remove flag`}
+              aria-label={`Flagged for ${currentUserFlag.flaggedUserName} — click to remove flag`}
               onClick={() =>
-                onFlagUnassign(
+                onRemoveSelfFlag(
                   currentUserFlag.teamId,
-                  currentUserFlag.assigneeId,
-                  currentUserFlag.assigneeName
+                  currentUserFlag.flaggedUserId,
+                  currentUserFlag.flaggedUserName
                 )
               }
               disabled={isFlagPending}
               className={iconButtonClassName}
             >
               <ActivityFlagIcon
-                assigneeName={currentUserFlag.assigneeName}
-                assigneeFlagColour={currentUserFlag.assigneeFlagColour}
+                flaggedUserName={currentUserFlag.flaggedUserName}
+                flaggedUserColour={currentUserFlag.flaggedUserColour}
               />
             </Button>
           )}
@@ -280,26 +281,26 @@ export function ActivityPageHeader({
       )}
 
       {canFlag && onFlagSync && (
-        <AssignActivityModal
-          open={assignModalOpen}
-          onOpenChange={setAssignModalOpen}
+        <FlagActivityModal
+          open={flagModalOpen}
+          onOpenChange={setFlagModalOpen}
           flags={flags ?? []}
           isSubmitting={isFlagPending ?? false}
           onSync={(
             teamId,
-            assigneeIds,
+            flaggedUserIds,
             note,
-            assigneeNames,
-            displayTeamPerAssignee
+            flaggedUserNames,
+            displayTeamPerFlaggedUser
           ) => {
             onFlagSync(
               teamId,
-              assigneeIds,
+              flaggedUserIds,
               note,
-              assigneeNames,
-              displayTeamPerAssignee
+              flaggedUserNames,
+              displayTeamPerFlaggedUser
             );
-            setAssignModalOpen(false);
+            setFlagModalOpen(false);
           }}
           displayId={displayId}
         />

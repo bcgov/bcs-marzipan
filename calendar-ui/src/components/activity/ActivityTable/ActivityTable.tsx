@@ -276,9 +276,9 @@ function OverviewCell({
   isFavourite?: boolean;
   onFlagSync?: (
     teamId: number,
-    assigneeIds: number[],
-    assigneeNames?: string[],
-    displayTeamPerAssignee?: Record<number, number | null>
+    flaggedUserIds: number[],
+    flaggedUserNames?: string[],
+    displayTeamPerFlaggedUser?: Record<number, number | null>
   ) => void;
   flagPending?: boolean;
   showReviewHighlights: boolean;
@@ -294,20 +294,20 @@ function OverviewCell({
     rowHasAnyChangedPath(row, ['pitchDate', 'pitchRequiredStatusId']);
   const categoriesChanged =
     showReviewHighlights && rowHasChangedPath(row, 'categoryIds');
-  const assignedFlags = useMemo(() => {
+  const displayFlags = useMemo(() => {
     const uniqueFlags = new Map<number, ActivityTableRow['flags'][number]>();
     row.flags.forEach((flag) => {
-      if (!uniqueFlags.has(flag.assigneeId)) {
-        uniqueFlags.set(flag.assigneeId, flag);
+      if (!uniqueFlags.has(flag.flaggedUserId)) {
+        uniqueFlags.set(flag.flaggedUserId, flag);
       }
     });
     return Array.from(uniqueFlags.values());
   }, [row.flags]);
-  const hasAssignedUsers = assignedFlags.length > 0;
-  const visibleAssignedFlags = assignedFlags.slice(0, 3);
-  const overflowAssignedCount = Math.max(assignedFlags.length - 3, 0);
-  const assignedTooltip = assignedFlags
-    .map((flag) => flag.assigneeName)
+  const hasFlaggedUsers = displayFlags.length > 0;
+  const visibleFlags = displayFlags.slice(0, 3);
+  const overflowFlagCount = Math.max(displayFlags.length - 3, 0);
+  const flaggedTooltip = displayFlags
+    .map((flag) => flag.flaggedUserName)
     .join(', ');
 
   return (
@@ -340,7 +340,7 @@ function OverviewCell({
             />
           </span>
         )}
-        {hasAssignedUsers && canFlag && onFlagSync ? (
+        {hasFlaggedUsers && canFlag && onFlagSync ? (
           <ActivityFlagPopover
             activityId={row.id}
             flags={row.flags}
@@ -349,32 +349,32 @@ function OverviewCell({
             isPending={flagPending}
             triggerContent={
               <span
-                title={assignedTooltip}
-                aria-label={assignedTooltip}
+                title={flaggedTooltip}
+                aria-label={flaggedTooltip}
                 className="inline-flex"
               >
                 <div className="flex items-center">
-                  {visibleAssignedFlags.map((flag, index) => (
+                  {visibleFlags.map((flag, index) => (
                     <span
-                      key={`${flag.teamId}:${flag.assigneeId}`}
+                      key={`${flag.teamId}:${flag.flaggedUserId}`}
                       className={index > 0 ? '-ml-0.5' : undefined}
                       style={{ zIndex: index + 1 }}
                     >
                       <ActivityFlagIcon
-                        assigneeName={flag.assigneeName}
-                        assigneeFlagColour={flag.assigneeFlagColour}
+                        flaggedUserName={flag.flaggedUserName}
+                        flaggedUserColour={flag.flaggedUserColour}
                       />
                     </span>
                   ))}
-                  {overflowAssignedCount > 0 ? (
+                  {overflowFlagCount > 0 ? (
                     <span
                       className={
-                        visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined
+                        visibleFlags.length > 0 ? '-ml-0.5' : undefined
                       }
-                      style={{ zIndex: visibleAssignedFlags.length + 1 }}
+                      style={{ zIndex: visibleFlags.length + 1 }}
                     >
                       <ActivityFlagOverflowIcon
-                        extraCount={overflowAssignedCount}
+                        extraCount={overflowFlagCount}
                       />
                     </span>
                   ) : null}
@@ -382,37 +382,33 @@ function OverviewCell({
               </span>
             }
           />
-        ) : hasAssignedUsers ? (
+        ) : hasFlaggedUsers ? (
           <span
             data-no-row-nav
             onClick={(e) => e.stopPropagation()}
-            title={assignedTooltip}
-            aria-label={assignedTooltip}
+            title={flaggedTooltip}
+            aria-label={flaggedTooltip}
             className="inline-flex"
           >
             <div className="flex items-center">
-              {visibleAssignedFlags.map((flag, index) => (
+              {visibleFlags.map((flag, index) => (
                 <span
-                  key={`${flag.teamId}:${flag.assigneeId}`}
+                  key={`${flag.teamId}:${flag.flaggedUserId}`}
                   className={index > 0 ? '-ml-0.5' : undefined}
                   style={{ zIndex: index + 1 }}
                 >
                   <ActivityFlagIcon
-                    assigneeName={flag.assigneeName}
-                    assigneeFlagColour={flag.assigneeFlagColour}
+                    flaggedUserName={flag.flaggedUserName}
+                    flaggedUserColour={flag.flaggedUserColour}
                   />
                 </span>
               ))}
-              {overflowAssignedCount > 0 ? (
+              {overflowFlagCount > 0 ? (
                 <span
-                  className={
-                    visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined
-                  }
-                  style={{ zIndex: visibleAssignedFlags.length + 1 }}
+                  className={visibleFlags.length > 0 ? '-ml-0.5' : undefined}
+                  style={{ zIndex: visibleFlags.length + 1 }}
                 >
-                  <ActivityFlagOverflowIcon
-                    extraCount={overflowAssignedCount}
-                  />
+                  <ActivityFlagOverflowIcon extraCount={overflowFlagCount} />
                 </span>
               ) : null}
             </div>
@@ -935,8 +931,8 @@ export interface ActivityTableProps {
   favouriteActivityIds?: number[];
   /** IDs currently in the user's watchlist; used to show the watchlist star indicator. */
   watchlistActivityIds?: number[];
-  /** When set, only activities flag-assigned to any of these users are shown. */
-  flagAssigneeUserIds?: number[];
+  /** When set, only activities flagged for any of these users are shown. */
+  flaggedUserIds?: number[];
   /**
    * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
    * is considered applied (e.g. single ActivityTable across activity list tabs).
@@ -953,7 +949,7 @@ export function ActivityTable({
   sharedWithTeamIds,
   favouriteActivityIds,
   watchlistActivityIds,
-  flagAssigneeUserIds,
+  flaggedUserIds,
   activeSavedFilter: activeSavedFilterFromParent,
   onActiveSavedFilterChange,
 }: ActivityTableProps = {}) {
@@ -1173,8 +1169,8 @@ export function ActivityTable({
         commsContactLeadUserIds.length > 0 && { commsContactLeadUserIds }),
       ...(sharedWithTeamIds !== undefined &&
         sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
-      ...(flagAssigneeUserIds !== undefined &&
-        flagAssigneeUserIds.length > 0 && { flagAssigneeUserIds }),
+      ...(flaggedUserIds !== undefined &&
+        flaggedUserIds.length > 0 && { flaggedUserIds }),
     };
   }, [
     effectiveShowCompleted,
@@ -1182,7 +1178,7 @@ export function ActivityTable({
     leadTeamIds,
     commsContactLeadUserIds,
     sharedWithTeamIds,
-    flagAssigneeUserIds,
+    flaggedUserIds,
   ]);
 
   const sameNumericArray = (
@@ -1211,10 +1207,7 @@ export function ActivityTable({
         prev.sharedWithTeamIds,
         activityFilters.sharedWithTeamIds
       ) &&
-      sameNumericArray(
-        prev.flagAssigneeUserIds,
-        activityFilters.flagAssigneeUserIds
-      );
+      sameNumericArray(prev.flaggedUserIds, activityFilters.flaggedUserIds);
     if (!same) {
       prevFiltersRef.current = activityFilters;
       setPageIndex(0);
@@ -1457,14 +1450,14 @@ export function ActivityTable({
             isFavourite={watchlistActivityIdSet.has(row.original.id)}
             onFlagSync={(
               teamId,
-              assigneeIds,
-              assigneeNames,
-              displayTeamPerAssignee
+              flaggedUserIds,
+              flaggedUserNames,
+              displayTeamPerFlaggedUser
             ) =>
               syncFlagsMutation.mutate({
                 activityId: row.original.id,
-                body: { teamId, assigneeIds, displayTeamPerAssignee },
-                assigneeNames,
+                body: { teamId, flaggedUserIds, displayTeamPerFlaggedUser },
+                flaggedUserNames,
               })
             }
             flagPending={syncFlagsMutation.isPending}

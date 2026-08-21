@@ -339,10 +339,7 @@ export function buildActivityFindAllConditions(
     );
   }
 
-  if (
-    filters.flagAssigneeUserIds != null &&
-    filters.flagAssigneeUserIds.length > 0
-  ) {
+  if (filters.flaggedUserIds != null && filters.flaggedUserIds.length > 0) {
     conditions.push(
       exists(
         db
@@ -351,7 +348,7 @@ export function buildActivityFindAllConditions(
           .where(
             and(
               eq(activityFlags.activityId, activities.id),
-              inArray(activityFlags.assigneeId, filters.flagAssigneeUserIds)
+              inArray(activityFlags.flaggedUserId, filters.flaggedUserIds)
             )
           )
       )
@@ -508,8 +505,7 @@ export function hasActivityFindAllFilterFields(
     (query.leadTeamIds != null && query.leadTeamIds.length > 0) ||
     (query.commsContactLeadUserIds != null &&
       query.commsContactLeadUserIds.length > 0) ||
-    (query.flagAssigneeUserIds != null &&
-      query.flagAssigneeUserIds.length > 0) ||
+    (query.flaggedUserIds != null && query.flaggedUserIds.length > 0) ||
     (query.sharedWithTeamIds != null && query.sharedWithTeamIds.length > 0) ||
     (query.tagIds != null && query.tagIds.length > 0) ||
     (query.categoryIds != null && query.categoryIds.length > 0) ||

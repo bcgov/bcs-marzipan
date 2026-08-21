@@ -49,7 +49,7 @@ describe('filterActivitiesQuerySchema', () => {
       activityStatusIds: '1,2,3',
       leadTeamIds: '7,8',
       commsContactLeadUserIds: '10',
-      flagAssigneeUserIds: '20',
+      flaggedUserIds: '20',
       sharedWithTeamIds: '1,2',
       tagIds: '99',
       categoryIds: '1,2',
@@ -58,7 +58,7 @@ describe('filterActivitiesQuerySchema', () => {
     expect(result.activityStatusIds).toEqual([1, 2, 3]);
     expect(result.leadTeamIds).toEqual([7, 8]);
     expect(result.commsContactLeadUserIds).toEqual([10]);
-    expect(result.flagAssigneeUserIds).toEqual([20]);
+    expect(result.flaggedUserIds).toEqual([20]);
     expect(result.sharedWithTeamIds).toEqual([1, 2]);
     expect(result.tagIds).toEqual([99]);
     expect(result.categoryIds).toEqual([1, 2]);

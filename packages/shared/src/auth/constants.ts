@@ -95,7 +95,7 @@ export const PERMISSIONS = {
     LOCK_FORCE_HANDOFF: 'activities.lock.forceHandoff',
     /** Manually progress an activity to Completed status. */
     COMPLETE: 'activities.complete',
-    /** Assign (flag) an activity to a team member for follow-up. Team-scoped. */
+    /** Flag an activity for a team member to follow up. Team-scoped. */
     FLAG: 'activities.flag',
   },
   DRAFTS: {

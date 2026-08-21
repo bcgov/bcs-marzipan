@@ -52,12 +52,12 @@ export class ActivityFlagsController {
   ) {}
 
   @ApiOperation({
-    summary: 'Assign (flag) an activity',
+    summary: 'Flag an activity for one teammate (legacy)',
     description:
-      'Legacy single-assignee endpoint. Assigns one team member to an activity for follow-up. ' +
-      'Internally syncs the full assignee set for the given (activity, team) pair to exactly one assignee, ' +
-      'so calling this route will remove any other existing assignees for that team. ' +
-      'Prefer PUT /activities/:id/flags for multi-assignee updates. ' +
+      'Legacy single-user endpoint. Flags one team member on an activity for follow-up. ' +
+      'Internally syncs the full flagged-user set for the given (activity, team) pair to exactly one user, ' +
+      'so calling this route will remove any other existing flags for that team. ' +
+      'Prefer PUT /activities/:id/flags for multi-user updates. ' +
       "Requires activities.flag permission. The caller's teamId must be provided in the body.",
   })
   @ApiParam({ name: 'id', type: Number, description: 'Activity ID' })
@@ -65,7 +65,7 @@ export class ActivityFlagsController {
   @ApiResponse({ status: 200, description: 'Flag set successfully' })
   @ApiResponse({
     status: 403,
-    description: 'No team with flag permission or assignee not on team',
+    description: 'No team with flag permission or flagged user not on team',
   })
   @ApiResponse({ status: 404, description: 'Activity not found' })
   @RequirePermission('activities.flag')
@@ -87,7 +87,7 @@ export class ActivityFlagsController {
     await this.flagsService.upsertFlag(
       activityId,
       body.teamId,
-      body.assigneeId,
+      body.flaggedUserId,
       user.id,
       body.note
     );
@@ -96,12 +96,12 @@ export class ActivityFlagsController {
   }
 
   @ApiOperation({
-    summary: 'Sync reviewer assignees for an activity',
+    summary: 'Sync flagged users for an activity',
     description:
-      'Sets the full assignee list for the given (activity, team) pair. ' +
-      'Adds missing assignees and removes assignees not present in the provided list. ' +
-      'This is the preferred multi-assignee endpoint. ' +
-      'By contrast, the legacy PUT /activities/:id/flag route overwrites the full set to a single assignee and can remove other assignees for that team. ' +
+      'Sets the full flagged-user list for the given (activity, team) pair. ' +
+      'Adds missing users and removes flags for users not present in the provided list. ' +
+      'This is the preferred multi-user endpoint. ' +
+      'By contrast, the legacy PUT /activities/:id/flag route overwrites the full set to a single user and can remove other flags for that team. ' +
       'Requires activities.flag permission and a teamId the caller belongs to.',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Activity ID' })
@@ -109,7 +109,7 @@ export class ActivityFlagsController {
   @ApiResponse({ status: 200, description: 'Flags synced successfully' })
   @ApiResponse({
     status: 403,
-    description: 'No team with flag permission or assignee not on team',
+    description: 'No team with flag permission or flagged user not on team',
   })
   @ApiResponse({ status: 404, description: 'Activity not found' })
   @RequirePermission('activities.flag')
@@ -122,8 +122,8 @@ export class ActivityFlagsController {
     @CurrentUser() user: AuthUser
   ): Promise<{
     success: boolean;
-    addedAssigneeIds: number[];
-    removedAssigneeIds: number[];
+    addedFlaggedUserIds: number[];
+    removedFlaggedUserIds: number[];
   }> {
     if (!user.teamIds.includes(body.teamId)) {
       throw new ForbiddenException(
@@ -134,35 +134,35 @@ export class ActivityFlagsController {
     const delta = await this.flagsService.syncFlags(
       activityId,
       body.teamId,
-      body.assigneeIds,
+      body.flaggedUserIds,
       user.id,
       body.note,
-      body.displayTeamPerAssignee
+      body.displayTeamPerFlaggedUser
     );
     this.gateway.broadcastActivityUpdated(activityId);
     return { success: true, ...delta };
   }
 
   @ApiOperation({
-    summary: 'Remove one assignee flag from an activity',
+    summary: 'Remove one flag for a user on an activity',
     description:
-      'Removes one assignee from the flag set for the given (activity, team) pair. ' +
+      'Removes one flagged user from the flag set for the given (activity, team) pair. ' +
       'Any authenticated team member can unflag.',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Activity ID' })
   @ApiParam({ name: 'teamId', type: Number, description: 'Team ID' })
   @ApiParam({
-    name: 'assigneeId',
+    name: 'flaggedUserId',
     type: Number,
-    description: 'Assignee user ID',
+    description: 'Flagged user ID',
   })
-  @ApiResponse({ status: 200, description: 'Assignee flag removed' })
-  @Delete(':id/flag/:teamId/:assigneeId')
+  @ApiResponse({ status: 200, description: 'Flag removed' })
+  @Delete(':id/flag/:teamId/:flaggedUserId')
   @HttpCode(HttpStatus.OK)
-  async removeAssigneeFlag(
+  async removeFlagForUser(
     @Param('id', ParseIntPipe) activityId: number,
     @Param('teamId', ParseIntPipe) teamId: number,
-    @Param('assigneeId', ParseIntPipe) assigneeId: number,
+    @Param('flaggedUserId', ParseIntPipe) flaggedUserId: number,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean }> {
     if (!user.teamIds.includes(teamId)) {
@@ -171,10 +171,10 @@ export class ActivityFlagsController {
       );
     }
 
-    await this.flagsService.removeAssigneeFlag(
+    await this.flagsService.removeFlagForUser(
       activityId,
       teamId,
-      assigneeId,
+      flaggedUserId,
       user.id
     );
     this.gateway.broadcastActivityUpdated(activityId);
@@ -182,9 +182,9 @@ export class ActivityFlagsController {
   }
 
   @ApiOperation({
-    summary: 'Remove all assignee flags for a team',
+    summary: 'Remove all flags for a team on an activity',
     description:
-      'Removes all assignee flags for the given team. Any authenticated team member can unflag.',
+      'Removes all flags for the given team. Any authenticated team member can unflag.',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Activity ID' })
   @ApiParam({ name: 'teamId', type: Number, description: 'Team ID' })

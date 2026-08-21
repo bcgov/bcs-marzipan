@@ -1,11 +1,11 @@
 /**
  * ActivityFlagPopover
  *
- * A quick-assign popover shown from the Activity List row (no modal, no notes).
+ * A quick-flag popover shown from the Activity List row (no modal, no notes).
  * Opens when the Flag button is clicked; shows a searchable list of teammates
  * with a multi-select checkbox pattern.
  *
- * Same flag semantics as AssignActivityModal but inline, no note field.
+ * Same flag semantics as FlagActivityModal but inline, no note field.
  */
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -35,17 +35,17 @@ interface ActivityFlagPopoverProps {
   activityId: number;
   /** Existing flags for the current user's teams. */
   flags: ActivityFlagResponse[];
-  /** Called to sync the full assignee set for a team. */
+  /** Called to sync the full flagged-user set for a team. */
   onSync: (
     teamId: number,
-    assigneeIds: number[],
-    assigneeNames?: string[],
-    displayTeamPerAssignee?: Record<number, number | null>
+    flaggedUserIds: number[],
+    flaggedUserNames?: string[],
+    displayTeamPerFlaggedUser?: Record<number, number | null>
   ) => void;
   isPending?: boolean;
-  /** When true, shows assignment state without any interactive controls. */
+  /** When true, shows flag state without any interactive controls. */
   readOnly?: boolean;
-  /** Optional custom trigger content (e.g., assigned avatar stack). */
+  /** Optional custom trigger content (e.g., flagged-user avatar stack). */
   triggerContent?: ReactNode;
 }
 
@@ -61,7 +61,7 @@ export function ActivityFlagPopover({
   const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
-  const [draftAssigneeIds, setDraftAssigneeIds] = useState<number[]>([]);
+  const [draftFlaggedUserIds, setDraftFlaggedUserIds] = useState<number[]>([]);
   const [selectedTeamPerUser, setSelectedTeamPerUser] = useState<
     Record<number, number>
   >({});
@@ -92,13 +92,13 @@ export function ActivityFlagPopover({
         : existingFlags.filter((f) => f.teamId === primaryTeamId),
     [existingFlags, primaryTeamId]
   );
-  const selectedAssigneeIds = useMemo(
-    () => existingFlagsForPrimaryTeam.map((f) => f.assigneeId),
+  const selectedFlaggedUserIds = useMemo(
+    () => existingFlagsForPrimaryTeam.map((f) => f.flaggedUserId),
     [existingFlagsForPrimaryTeam]
   );
-  const isFlagged = selectedAssigneeIds.length > 0;
+  const isFlagged = selectedFlaggedUserIds.length > 0;
   const flaggedLabel = existingFlagsForPrimaryTeam
-    .map((f) => f.assigneeName)
+    .map((f) => f.flaggedUserName)
     .join(', ');
   const iconFlag = existingFlagsForPrimaryTeam[0] ?? null;
   const primaryTeamMembers = useMemo(
@@ -118,7 +118,7 @@ export function ActivityFlagPopover({
     fetchUsers({ teamIds })
       .then((userList) => {
         // Expand each user into one TeamMemberOption per team that overlaps with
-        // the current user's teams (we can only assign within our own teams).
+        // the current user's teams (we can only flag within our own teams).
         const nextMembers: TeamMemberOption[] = [];
         for (const u of userList) {
           const name = u.adDisplayName ?? u.adUsername ?? `User ${u.id}`;
@@ -143,7 +143,7 @@ export function ActivityFlagPopover({
         // First, load any saved displayTeamId from existing flags
         existingFlags.forEach((flag) => {
           if (flag.displayTeamId != null) {
-            initialSelectedTeam[flag.assigneeId] = flag.displayTeamId;
+            initialSelectedTeam[flag.flaggedUserId] = flag.displayTeamId;
           }
         });
 
@@ -212,11 +212,11 @@ export function ActivityFlagPopover({
       setSelectedTeamPerUser({});
       return;
     }
-    setDraftAssigneeIds(selectedAssigneeIds);
-  }, [open, selectedAssigneeIds]);
+    setDraftFlaggedUserIds(selectedFlaggedUserIds);
+  }, [open, selectedFlaggedUserIds]);
 
   const handleToggle = (memberId: number) => {
-    setDraftAssigneeIds((prev) =>
+    setDraftFlaggedUserIds((prev) =>
       prev.includes(memberId)
         ? prev.filter((id) => id !== memberId)
         : [...prev, memberId]
@@ -225,18 +225,24 @@ export function ActivityFlagPopover({
 
   const handleSave = () => {
     if (!primaryTeamId) return;
-    const nextAssigneeIds = draftAssigneeIds.filter((assigneeId) => {
-      const userTeams = userTeamsMap.get(assigneeId) ?? [];
-      // Assign to the primary team only
+    const nextFlaggedUserIds = draftFlaggedUserIds.filter((flaggedUserId) => {
+      const userTeams = userTeamsMap.get(flaggedUserId) ?? [];
+      // Flag on the primary team only
       return userTeams.some((m) => m.teamId === primaryTeamId);
     });
 
     const selectedNames = members
       .filter(
-        (m) => m.teamId === primaryTeamId && nextAssigneeIds.includes(m.userId)
+        (m) =>
+          m.teamId === primaryTeamId && nextFlaggedUserIds.includes(m.userId)
       )
       .map((m) => m.label);
-    onSync(primaryTeamId, nextAssigneeIds, selectedNames, selectedTeamPerUser);
+    onSync(
+      primaryTeamId,
+      nextFlaggedUserIds,
+      selectedNames,
+      selectedTeamPerUser
+    );
 
     setOpen(false);
   };
@@ -245,12 +251,12 @@ export function ActivityFlagPopover({
     if (!isFlagged || !iconFlag) return null;
     return (
       <span
-        title={`Assigned to ${flaggedLabel}`}
-        aria-label={`Assigned to ${flaggedLabel}`}
+        title={`Flagged for ${flaggedLabel}`}
+        aria-label={`Flagged for ${flaggedLabel}`}
       >
         <ActivityFlagIcon
-          assigneeName={iconFlag.assigneeName}
-          assigneeFlagColour={iconFlag.assigneeFlagColour}
+          flaggedUserName={iconFlag.flaggedUserName}
+          flaggedUserColour={iconFlag.flaggedUserColour}
         />
       </span>
     );
@@ -264,11 +270,9 @@ export function ActivityFlagPopover({
           variant="ghost"
           size={triggerContent ? 'sm' : 'icon'}
           aria-label={
-            isFlagged
-              ? 'Assigned — click to edit assignments'
-              : 'Assign activity'
+            isFlagged ? 'Flagged — click to edit flags' : 'Flag activity'
           }
-          title={isFlagged ? `Assigned to ${flaggedLabel}` : 'Assign activity'}
+          title={isFlagged ? `Flagged for ${flaggedLabel}` : 'Flag activity'}
           disabled={isPending || !primaryTeamId}
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
@@ -276,8 +280,10 @@ export function ActivityFlagPopover({
         >
           {triggerContent ?? (
             <ActivityFlagIcon
-              assigneeName={isFlagged ? (iconFlag?.assigneeName ?? null) : null}
-              assigneeFlagColour={iconFlag?.assigneeFlagColour}
+              flaggedUserName={
+                isFlagged ? (iconFlag?.flaggedUserName ?? null) : null
+              }
+              flaggedUserColour={iconFlag?.flaggedUserColour}
             />
           )}
         </Button>
@@ -289,7 +295,7 @@ export function ActivityFlagPopover({
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-muted-foreground px-3 pt-3 pb-1 text-[12px] font-medium tracking-wide uppercase">
-          Assign activity
+          Flag activity
         </p>
         {loadingMembers ? (
           <div className="text-muted-foreground px-3 py-4 text-center text-sm">
@@ -303,7 +309,7 @@ export function ActivityFlagPopover({
             renderOption={(opt) => {
               const memberId = parseInt(opt.value, 10);
               const isMe = memberId === user?.id;
-              const isSelected = draftAssigneeIds.includes(memberId);
+              const isSelected = draftFlaggedUserIds.includes(memberId);
               const hasTeammates = options.length > 1;
               const userTeams = userTeamsMap.get(memberId) ?? [];
               const hasMultipleTeams = userTeams.length > 1;
@@ -411,7 +417,7 @@ export function ActivityFlagPopover({
                 isPending || !primaryTeamId || primaryTeamMembers.length === 0
               }
             >
-              Save assignments
+              Save flags
             </Button>
           </div>
         )}

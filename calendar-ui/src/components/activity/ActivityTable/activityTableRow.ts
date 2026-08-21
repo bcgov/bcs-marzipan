@@ -77,7 +77,7 @@ export interface ActivityTableRow {
   lastUpdatedBy: number;
   createdDateTime: string;
 
-  // Flags (team-scoped assignments)
+  // Flags (team-scoped, visible to teammates)
   flags: ActivityFlagResponse[];
 }
 

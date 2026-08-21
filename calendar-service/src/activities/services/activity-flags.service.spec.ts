@@ -117,7 +117,7 @@ describe('ActivityFlagsService', () => {
       );
     });
 
-    it('throws ForbiddenException when assignee is not a team member', async () => {
+    it('throws ForbiddenException when flagged user is not a team member', async () => {
       let callCount = 0;
       mockDb.select.mockImplementation(() => {
         callCount++;
@@ -151,7 +151,7 @@ describe('ActivityFlagsService', () => {
         'flag_assigned',
         [
           {
-            field: 'flag.assigneeName',
+            field: 'flag.flaggedUserName',
             oldValue: null,
             newValue: 'Jane Smith',
           },
@@ -161,14 +161,14 @@ describe('ActivityFlagsService', () => {
       );
     });
 
-    it('records flag_assigned and flag_removed when replacing one assignee with another', async () => {
+    it('records flag_assigned and flag_removed when replacing one flagged user with another', async () => {
       let callCount = 0;
       mockDb.select.mockImplementation(() => {
         callCount++;
         if (callCount === 1) return makeChain([{ id: 1 }], 'limit');
         if (callCount === 2)
           return makeChain([{ userId: 2, name: 'Jane Smith' }], 'where');
-        return makeChain([{ assigneeId: 4, name: 'Old Person' }], 'where');
+        return makeChain([{ flaggedUserId: 4, name: 'Old Person' }], 'where');
       });
       mockDb.insert.mockReturnValue(makeInsertChain());
       mockDb.delete.mockReturnValue(makeDeleteChain());
@@ -181,7 +181,7 @@ describe('ActivityFlagsService', () => {
         'flag_assigned',
         [
           {
-            field: 'flag.assigneeName',
+            field: 'flag.flaggedUserName',
             oldValue: null,
             newValue: 'Jane Smith',
           },
@@ -195,7 +195,7 @@ describe('ActivityFlagsService', () => {
         'flag_removed',
         [
           {
-            field: 'flag.assigneeName',
+            field: 'flag.flaggedUserName',
             oldValue: 'Old Person',
             newValue: null,
           },
@@ -210,7 +210,7 @@ describe('ActivityFlagsService', () => {
   // syncFlags (update path)
   // ---------------------------------------------------------------------------
   describe('syncFlags', () => {
-    it('updates displayTeamId on existing flags when displayTeamPerAssignee provided', async () => {
+    it('updates displayTeamId on existing flags when displayTeamPerFlaggedUser provided', async () => {
       let callCount = 0;
       mockDb.select.mockImplementation(() => {
         callCount++;
@@ -230,12 +230,12 @@ describe('ActivityFlagsService', () => {
               { userId: 3, teamId: 5 },
             ],
             'where'
-          ); // userTeams for displayTeamPerAssignee validation
+          ); // userTeams for displayTeamPerFlaggedUser validation
         // Existing flags for syncFlags (same set as desired)
         return makeChain(
           [
-            { assigneeId: 2, name: 'Jane Smith' },
-            { assigneeId: 3, name: 'Bob Jones' },
+            { flaggedUserId: 2, name: 'Jane Smith' },
+            { flaggedUserId: 3, name: 'Bob Jones' },
           ],
           'where'
         );
@@ -244,7 +244,7 @@ describe('ActivityFlagsService', () => {
 
       await service.syncFlags(1, 1, [2, 3], 5, undefined, { 2: 10, 3: null });
 
-      // Verify update is called for each assignee with displayTeamPerAssignee entry
+      // Verify update is called for each flagged user with displayTeamPerFlaggedUser entry
       expect(mockDb.update).toHaveBeenCalled();
       const updateCalls = mockDb.update.mock.calls;
       expect(updateCalls.length).toBeGreaterThan(0);
@@ -258,7 +258,7 @@ describe('ActivityFlagsService', () => {
         if (callCount === 2)
           return makeChain([{ userId: 2, name: 'Jane Smith' }], 'where'); // members
         // Existing flags
-        return makeChain([{ assigneeId: 2, name: 'Jane Smith' }], 'where');
+        return makeChain([{ flaggedUserId: 2, name: 'Jane Smith' }], 'where');
       });
       mockDb.update.mockReturnValue(makeUpdateChain());
 
@@ -303,15 +303,15 @@ describe('ActivityFlagsService', () => {
   // removeFlag
   // ---------------------------------------------------------------------------
   describe('removeFlag', () => {
-    it('records flag_removed for each assignee removed', async () => {
+    it('records flag_removed for each flagged user removed', async () => {
       let callCount = 0;
       mockDb.select.mockImplementation(() => {
         callCount++;
         if (callCount === 1)
           return makeChain(
             [
-              { assigneeId: 2, name: 'Jane Smith' },
-              { assigneeId: 4, name: 'John Doe' },
+              { flaggedUserId: 2, name: 'Jane Smith' },
+              { flaggedUserId: 4, name: 'John Doe' },
             ],
             'where'
           );
@@ -325,13 +325,25 @@ describe('ActivityFlagsService', () => {
         1,
         3,
         'flag_removed',
-        [{ field: 'flag.assigneeName', oldValue: 'Jane Smith', newValue: null }]
+        [
+          {
+            field: 'flag.flaggedUserName',
+            oldValue: 'Jane Smith',
+            newValue: null,
+          },
+        ]
       );
       expect(mockHistoryService.recordChange).toHaveBeenCalledWith(
         1,
         3,
         'flag_removed',
-        [{ field: 'flag.assigneeName', oldValue: 'John Doe', newValue: null }]
+        [
+          {
+            field: 'flag.flaggedUserName',
+            oldValue: 'John Doe',
+            newValue: null,
+          },
+        ]
       );
     });
 
@@ -346,22 +358,28 @@ describe('ActivityFlagsService', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // removeAssigneeFlag
+  // removeFlagForUser
   // ---------------------------------------------------------------------------
-  describe('removeAssigneeFlag', () => {
-    it('removes one assignee and writes history entry', async () => {
+  describe('removeFlagForUser', () => {
+    it('removes one flagged user and writes history entry', async () => {
       mockDb.select.mockReturnValue(
         makeChain([{ name: 'Jane Smith' }], 'limit')
       );
       mockDb.delete.mockReturnValue(makeDeleteChain());
 
-      await service.removeAssigneeFlag(1, 1, 2, 3);
+      await service.removeFlagForUser(1, 1, 2, 3);
 
       expect(mockHistoryService.recordChange).toHaveBeenCalledWith(
         1,
         3,
         'flag_removed',
-        [{ field: 'flag.assigneeName', oldValue: 'Jane Smith', newValue: null }]
+        [
+          {
+            field: 'flag.flaggedUserName',
+            oldValue: 'Jane Smith',
+            newValue: null,
+          },
+        ]
       );
     });
   });
@@ -388,11 +406,11 @@ describe('ActivityFlagsService', () => {
           activityId: 1,
           teamId: 10,
           teamName: 'Team A',
-          assigneeId: 2,
-          assigneeName: 'Jane Smith',
-          assignedById: 3,
+          flaggedUserId: 2,
+          flaggedUserName: 'Jane Smith',
+          flaggedById: 3,
           note: null,
-          assigneeFlagColour: null,
+          flaggedUserColour: null,
           createdAt: new Date('2026-01-01'),
           updatedAt: new Date('2026-01-01'),
         },
@@ -400,11 +418,11 @@ describe('ActivityFlagsService', () => {
           activityId: 1,
           teamId: 20,
           teamName: 'Team B',
-          assigneeId: 4,
-          assigneeName: 'John Doe',
-          assignedById: 3,
+          flaggedUserId: 4,
+          flaggedUserName: 'John Doe',
+          flaggedById: 3,
           note: null,
-          assigneeFlagColour: '#FF5733',
+          flaggedUserColour: '#FF5733',
           createdAt: new Date('2026-01-01'),
           updatedAt: new Date('2026-01-01'),
         },
@@ -412,11 +430,11 @@ describe('ActivityFlagsService', () => {
           activityId: 2,
           teamId: 10,
           teamName: 'Team A',
-          assigneeId: 2,
-          assigneeName: 'Jane Smith',
-          assignedById: 3,
+          flaggedUserId: 2,
+          flaggedUserName: 'Jane Smith',
+          flaggedById: 3,
           note: null,
-          assigneeFlagColour: null,
+          flaggedUserColour: null,
           createdAt: new Date('2026-01-01'),
           updatedAt: new Date('2026-01-01'),
         },
@@ -452,11 +470,11 @@ describe('ActivityFlagsService', () => {
       expect(result.get(3)).toBeUndefined();
       // Verify flag colour is mapped correctly
       const flags1 = result.get(1)!;
-      expect(flags1.find((f) => f.assigneeId === 4)?.assigneeFlagColour).toBe(
+      expect(flags1.find((f) => f.flaggedUserId === 4)?.flaggedUserColour).toBe(
         '#FF5733'
       );
       expect(
-        flags1.find((f) => f.assigneeId === 2)?.assigneeFlagColour
+        flags1.find((f) => f.flaggedUserId === 2)?.flaggedUserColour
       ).toBeNull();
     });
   });

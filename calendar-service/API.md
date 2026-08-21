@@ -101,7 +101,7 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | `activityStatusIds`            | int[]                          | Filter by status IDs (OR). When omitted, deleted activities are excluded; completed are excluded unless `includeCompleted=true` |
 | `leadTeamIds`                  | int[]                          | Lead team IDs (OR). Replaces removed `leadMinistryIds` / `leadOrgIds` filter params                                             |
 | `commsContactLeadUserIds`      | int[]                          | Lead comms contact user IDs (OR)                                                                                                |
-| `flagAssigneeUserIds`          | int[]                          | Flag assignee user IDs (OR)                                                                                                     |
+| `flaggedUserIds`               | int[]                          | Flagged user IDs (OR)                                                                                                           |
 | `sharedWithTeamIds`            | int[]                          | Shared-with team IDs (OR)                                                                                                       |
 | `eventPlannerLeadIds`          | int[]                          | Lead event planner IDs (OR)                                                                                                     |
 | `tagIds`                       | int[]                          | Tag IDs (OR)                                                                                                                    |
@@ -227,6 +227,89 @@ Updates an existing activity. Only provided fields are updated (partial update).
 ```
 
 **Note:** Junction table records (categories, tags, etc.) are replaced entirely if provided.
+
+---
+
+### Activity flags
+
+Activity flags mark team members for follow-up on an activity. Multiple flagged users are allowed per `(activity, team)`; uniqueness is on `(activity_id, team_id, flagged_user_id)`.
+
+**Flag object** (included in `GET /activities` and `GET /activities/:id` under `flags`):
+
+| Field               | Type     | Description                                                                   |
+| ------------------- | -------- | ----------------------------------------------------------------------------- |
+| `teamId`            | int      | Team that owns this flag row                                                  |
+| `teamName`          | string   | Display name of `teamId`                                                      |
+| `displayTeamId`     | int?     | Optional badge team (cosmetic); null means use `teamId`                       |
+| `displayTeamName`   | string?  | Display name of `displayTeamId` when set                                      |
+| `flaggedUserId`     | int      | User flagged for follow-up                                                    |
+| `flaggedUserName`   | string   | Display name of the flagged user                                              |
+| `flaggedById`       | int      | User who last set or synced this flag                                         |
+| `note`              | string?  | Optional note stored with the flag                                            |
+| `flaggedUserColour` | string?  | Admin-configured hex colour for this user’s flag badge; null uses app default |
+| `createdAt`         | datetime | ISO timestamp                                                                 |
+| `updatedAt`         | datetime | ISO timestamp                                                                 |
+
+**Authorization:** Setting or syncing flags requires `activities.flag` and a `teamId` the caller belongs to. Removing flags (single user or whole team) requires team membership only.
+
+#### Sync flagged users (preferred)
+
+**PUT** `/activities/:id/flags`
+
+Sets the full flagged-user list for the given `(activity, team)`. Adds missing users and removes flags for users not in the list.
+
+**Request body:**
+
+```json
+{
+  "teamId": 1,
+  "flaggedUserIds": [8, 12],
+  "displayTeamPerFlaggedUser": { "8": 1, "12": null },
+  "note": "Optional note for new/updated rows"
+}
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "addedFlaggedUserIds": [8, 12],
+  "removedFlaggedUserIds": []
+}
+```
+
+#### Flag one user (legacy)
+
+**PUT** `/activities/:id/flag`
+
+Legacy single-user endpoint. Internally syncs the team’s flagged-user set to exactly one user (removes other flags for that team on this activity). Prefer **PUT** `/activities/:id/flags` for multiple users.
+
+**Request body:**
+
+```json
+{
+  "teamId": 1,
+  "flaggedUserId": 8,
+  "note": "Optional note"
+}
+```
+
+**Response:** `200 OK` — `{ "success": true }`
+
+#### Remove one user’s flag
+
+**DELETE** `/activities/:id/flag/:teamId/:flaggedUserId`
+
+**Response:** `200 OK` — `{ "success": true }`
+
+#### Remove all flags for a team on an activity
+
+**DELETE** `/activities/:id/flag/:teamId`
+
+**Response:** `200 OK` — `{ "success": true }`
+
+**List filter:** Use query param `flaggedUserIds` on **GET** `/activities` to return activities flagged for any of the given user IDs (OR semantics). See the query parameter table above.
 
 ---
 
