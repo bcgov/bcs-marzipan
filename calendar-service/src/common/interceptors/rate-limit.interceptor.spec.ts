@@ -242,6 +242,62 @@ describe('RateLimitInterceptor', () => {
       ).resolves.toBeUndefined();
     });
 
+    it('applies Azure OIDC limits on /auth/azure routes', async () => {
+      vi.spyOn(ConfigService.prototype, 'get').mockImplementation((key) => {
+        if (key === 'RATE_LIMIT_AZURE_MAX') return '2';
+        if (key === 'RATE_LIMIT_AZURE_WINDOW_MS') return '900000';
+        if (key === 'RATE_LIMIT_STORE') return 'memory';
+        return undefined;
+      });
+
+      const testConfigService = new ConfigService();
+      const azureLimitedInterceptor = new RateLimitInterceptor(
+        testConfigService
+      );
+
+      const azureRequest = {
+        url: '/auth/azure',
+        ip: '127.0.0.12',
+        headers: {},
+      };
+      mockContext = {
+        switchToHttp: () => createHttpArgumentsHost(azureRequest),
+      };
+
+      for (let i = 0; i < 2; i++) {
+        await new Promise<void>((resolve) => {
+          azureLimitedInterceptor
+            .intercept(mockContext as ExecutionContext, mockNext)
+            .subscribe({
+              next: () => resolve(),
+              error: (err) => {
+                throw err;
+              },
+            });
+        });
+      }
+
+      await expect(
+        new Promise<void>((resolve, reject) => {
+          azureLimitedInterceptor
+            .intercept(mockContext as ExecutionContext, mockNext)
+            .subscribe({
+              next: () =>
+                reject(new Error('Azure request should have been blocked')),
+              error: (error) => {
+                if (error.getStatus() === 429) {
+                  resolve();
+                } else {
+                  reject(
+                    error instanceof Error ? error : new Error(String(error))
+                  );
+                }
+              },
+            });
+        })
+      ).resolves.toBeUndefined();
+    });
+
     it('uses general limits for non-sensitive auth endpoints', async () => {
       vi.spyOn(ConfigService.prototype, 'get').mockImplementation((key) => {
         if (key === 'RATE_LIMIT_MAX') return '2';
