@@ -191,7 +191,7 @@ export type ActivityCompletionBatchRunResult = {
 
 /**
  * Well-known ID for the seeded system user used by automated jobs.
- * Must match the database seed (e.g. `0000_20260127_roles_permissions.sql`).
+ * Must match the database seed (e.g. `0000_roles_permissions.sql`).
  */
 export const CALENDAR_SYSTEM_USER_ID = 999;
 

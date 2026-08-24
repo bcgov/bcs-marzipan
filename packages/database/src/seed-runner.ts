@@ -315,12 +315,14 @@ export class SeedRunner {
       const dirName = path.basename(seedPath).toLowerCase();
       const isConfigDirectory = dirName === 'config-data';
       const isSeedDirectory = dirName === 'seeds';
+      // Custom/unknown directories (passed via constructor) are always included regardless of scope.
+      const isCustomDirectory = !isConfigDirectory && !isSeedDirectory;
 
-      if (scope === 'config' && !isConfigDirectory) {
+      if (scope === 'config' && !isConfigDirectory && !isCustomDirectory) {
         continue;
       }
 
-      if (scope === 'seed' && !isSeedDirectory) {
+      if (scope === 'seed' && !isSeedDirectory && !isCustomDirectory) {
         continue;
       }
 

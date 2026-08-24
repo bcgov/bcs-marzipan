@@ -1,6 +1,6 @@
-﻿-- Seed Script for Roles + Base RBAC
+- Seed Script for Roles + Base RBAC
 -- This script seeds system roles, permission catalog, and base role-permission mappings
--- MUST run before 0001_20260313_lookups_seed_data.sql as users reference roles
+-- MUST run before 0001_lookup_status.sql as users reference roles
 -- Idempotent: upserts by id so re-runs update existing rows (role_id FKs stay valid)
 
 -- ============================================================================

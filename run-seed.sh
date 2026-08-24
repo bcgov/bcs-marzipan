@@ -19,13 +19,11 @@ case "${SEED_SCOPE:-all}" in
   *)      dirs="/config-data /seeds" ;;
 esac
 
-# Run config-data first, then seeds. Keep alphabetical order within each directory.
+# Run config-data first, then seeds. Glob expands in lexical order within each directory.
 for dir in $dirs; do
-  for f in $(find "$dir" -maxdepth 1 -type f -name '*.sql' | awk -F/ '{print $NF "|" $0}' | sort | cut -d'|' -f2-); do
-    if [ ! -f "$f" ]; then
-      continue
-    fi
-
+  [ -d "$dir" ] || continue
+  for f in "$dir"/*.sql; do
+    [ -f "$f" ] || continue
     echo "Applying $f"
     psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
   done

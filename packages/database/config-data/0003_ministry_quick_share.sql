@@ -1,4 +1,4 @@
--- Ministry groups for activity "Shared with teams" shortcuts (depends on users id=999; see 0006 consolidated permissions/settings seed / CALENDAR_SYSTEM_USER_ID)
+-- Ministry groups for activity "Shared with teams" shortcuts (depends on users id=999; see 0000_roles_permissions.sql / CALENDAR_SYSTEM_USER_ID)
 -- Social: CITZ, AG, MCFD, ECC, HLTH, IRR, PSFS, PSSG, SDPR, TACS
 -- Resource: AF, EMCR, ECS, ENV, FOR, MIN, WLRS
 -- Economical: FIN, HMA, INF, JEG, LRB, MOTT
