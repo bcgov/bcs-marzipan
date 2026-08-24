@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  CORP_PACIFIC_LABEL,
   DEFAULT_RECURRING_LOCKOUT_ACTIVE_CONTENT,
   DEFAULT_RECURRING_LOCKOUT_LEAD_CONTENT,
   PERMISSIONS,
@@ -30,9 +31,9 @@ import {
 import { fetchReportCoverContactSettings } from '@/api/reportCoverContactApi';
 import { SystemBanner } from '@/components/layout/SystemBanner';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { usePermission } from '@/hooks/usePermissions';
 import { RECURRING_LOCKOUT_BANNER_QUERY_KEY } from '@/hooks/useRecurringLockoutBanner';
@@ -127,6 +128,32 @@ function buildPreviewBanner(
     lastUpdatedDateTime:
       settings?.lastUpdatedDateTime ?? new Date().toISOString(),
   };
+}
+
+function BannerContentPreview({
+  banner,
+  emptyMessage,
+}: {
+  banner: BannerSettings | null;
+  emptyMessage: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-slate-500">Preview</p>
+      {banner ? (
+        <div
+          aria-hidden
+          className="overflow-hidden rounded-md border border-slate-200"
+        >
+          <SystemBanner banner={banner} icon={PencilOff} />
+        </div>
+      ) : (
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+          {emptyMessage}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function RecurringLockoutBannerSettingsAdmin() {
@@ -324,7 +351,7 @@ function RecurringLockoutBannerSettingsAdminInner() {
   return (
     <AdminSection
       title="Recurring edit lockout"
-      description="Configure a recurring lockout window and warning banners shown before and during lockout. Users with activities.bypass_recurring_lockout may still edit during the window."
+      description="Configure a daily lockout window and warning banners. Users without bypass permission cannot edit activities during lockout."
       isLoading={isLoading}
       headerAction={
         <div className="flex items-center gap-2">
@@ -353,65 +380,63 @@ function RecurringLockoutBannerSettingsAdminInner() {
       )}
 
       <div className="space-y-5">
-        <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-          <PencilOff className="h-5 w-5 text-slate-600" />
-          <div className="text-sm text-slate-700">
-            Users without the bypass permission cannot edit activities during
-            the configured lockout window.
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <Checkbox
+            <Switch
               id="recurring-lockout-is-active"
               checked={formData.isActive}
               onCheckedChange={(checked) =>
-                setFormData((current) => ({ ...current, isActive: !!checked }))
+                setFormData((current) => ({ ...current, isActive: checked }))
               }
             />
-            <Label htmlFor="recurring-lockout-is-active">Active</Label>
-          </div>
-          <div>
-            <Label className="text-sm font-medium text-slate-900">
-              Current Status
+            <Label
+              htmlFor="recurring-lockout-is-active"
+              className="font-normal"
+            >
+              Enable recurring lockout
             </Label>
-            <p className="mt-1 text-sm text-slate-600">
-              Recurring lockout is currently{' '}
-              {formData.isActive ? 'active' : 'inactive'}.
-            </p>
           </div>
+          <p className="text-xs text-slate-500">
+            {formData.isActive
+              ? 'Lockout window and warning banners apply on schedule.'
+              : 'Recurring lockout is disabled. No lockout window or banners will apply.'}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="lockout-start-time">Start time (Pacific)</Label>
-            <Input
-              id="lockout-start-time"
-              type="time"
-              value={formData.startTimeOfDay}
-              onChange={(e) =>
-                setFormData((current) => ({
-                  ...current,
-                  startTimeOfDay: e.target.value,
-                }))
-              }
-            />
-          </div>
+          <div className="space-y-2 md:col-span-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="lockout-start-time">Start time</Label>
+                <Input
+                  id="lockout-start-time"
+                  type="time"
+                  value={formData.startTimeOfDay}
+                  onChange={(e) =>
+                    setFormData((current) => ({
+                      ...current,
+                      startTimeOfDay: e.target.value,
+                    }))
+                  }
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="lockout-end-time">End time (Pacific)</Label>
-            <Input
-              id="lockout-end-time"
-              type="time"
-              value={formData.endTimeOfDay}
-              onChange={(e) =>
-                setFormData((current) => ({
-                  ...current,
-                  endTimeOfDay: e.target.value,
-                }))
-              }
-            />
+              <div className="space-y-2">
+                <Label htmlFor="lockout-end-time">End time</Label>
+                <Input
+                  id="lockout-end-time"
+                  type="time"
+                  value={formData.endTimeOfDay}
+                  onChange={(e) =>
+                    setFormData((current) => ({
+                      ...current,
+                      endTimeOfDay: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">{CORP_PACIFIC_LABEL}</p>
           </div>
 
           <div className="space-y-2">
@@ -432,66 +457,55 @@ function RecurringLockoutBannerSettingsAdminInner() {
           </div>
         </div>
 
-        <p className="text-xs text-slate-500">
-          Placeholders: {PLACEHOLDER_HELPER}. Contact email is managed under
-          Report cover contact settings.
-        </p>
-
         <div className="space-y-2">
           <Label htmlFor="lockout-banner-lead-content">
-            Lead-up banner content
+            Lockout banner (lead-up)
           </Label>
-          <Textarea
-            id="lockout-banner-lead-content"
-            value={formData.leadContent}
-            onChange={(e) => handleContentChange('leadContent', e.target.value)}
-            rows={3}
-          />
-          <div className="text-xs text-slate-500">
-            {formData.leadContent.trim().length} / {BANNER_CONTENT_MAX_LENGTH}
+          <div className="space-y-2 rounded-md border border-slate-200 p-3">
+            <Textarea
+              id="lockout-banner-lead-content"
+              value={formData.leadContent}
+              onChange={(e) =>
+                handleContentChange('leadContent', e.target.value)
+              }
+              rows={3}
+            />
+            <div className="text-xs text-slate-500">
+              {formData.leadContent.trim().length} / {BANNER_CONTENT_MAX_LENGTH}
+            </div>
+            <BannerContentPreview
+              banner={leadPreviewBanner}
+              emptyMessage="Add lead-up banner content to preview."
+            />
           </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="lockout-banner-active-content">
-            Active lockout banner content
+            Lockout banner (active)
           </Label>
-          <Textarea
-            id="lockout-banner-active-content"
-            value={formData.activeContent}
-            onChange={(e) =>
-              handleContentChange('activeContent', e.target.value)
-            }
-            rows={3}
-          />
-          <div className="text-xs text-slate-500">
-            {formData.activeContent.trim().length} / {BANNER_CONTENT_MAX_LENGTH}
+          <div className="space-y-2 rounded-md border border-slate-200 p-3">
+            <Textarea
+              id="lockout-banner-active-content"
+              value={formData.activeContent}
+              onChange={(e) =>
+                handleContentChange('activeContent', e.target.value)
+              }
+              rows={3}
+            />
+            <div className="text-xs text-slate-500">
+              {formData.activeContent.trim().length} /{' '}
+              {BANNER_CONTENT_MAX_LENGTH}
+            </div>
+            <BannerContentPreview
+              banner={activePreviewBanner}
+              emptyMessage="Add active lockout banner content to preview."
+            />
           </div>
         </div>
-
-        <div className="space-y-3">
-          <Label>Preview</Label>
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-600">Lead-up</p>
-            {leadPreviewBanner ? (
-              <SystemBanner banner={leadPreviewBanner} icon={PencilOff} />
-            ) : (
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                Add lead-up banner content to preview.
-              </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-600">Active lockout</p>
-            {activePreviewBanner ? (
-              <SystemBanner banner={activePreviewBanner} icon={PencilOff} />
-            ) : (
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                Add active lockout banner content to preview.
-              </div>
-            )}
-          </div>
-        </div>
+        <p className="text-xs text-slate-500">
+          Placeholders: {PLACEHOLDER_HELPER} can be used in the banner content.
+        </p>
       </div>
     </AdminSection>
   );
