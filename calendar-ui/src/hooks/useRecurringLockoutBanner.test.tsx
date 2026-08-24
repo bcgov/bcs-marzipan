@@ -118,63 +118,71 @@ describe('useRecurringLockoutBanner', () => {
 
 describe('useRecurringEditLockout', () => {
   it('reports isBlocked during the active lockout window without bypass permission', async () => {
-    vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
 
-    fetchActiveRecurringLockoutBannerStateMock.mockResolvedValue({
-      banner: null,
-      schedule: {
-        isActive: true,
-        startTimeOfDay: '09:00',
-        endTimeOfDay: '10:00',
-        bannerLeadMinutes: 20,
-      },
-    });
+    try {
+      vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
 
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
+      fetchActiveRecurringLockoutBannerStateMock.mockResolvedValue({
+        banner: null,
+        schedule: {
+          isActive: true,
+          startTimeOfDay: '09:00',
+          endTimeOfDay: '10:00',
+          bannerLeadMinutes: 20,
+        },
+      });
 
-    const { result } = renderHook(
-      () => useRecurringEditLockout([PERMISSIONS.ACTIVITIES.EDIT]),
-      { wrapper: createWrapper(queryClient) }
-    );
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
 
-    await waitFor(() => {
-      expect(result.current.isBlocked).toBe(true);
-    });
+      const { result } = renderHook(
+        () => useRecurringEditLockout([PERMISSIONS.ACTIVITIES.EDIT]),
+        { wrapper: createWrapper(queryClient) }
+      );
 
-    vi.useRealTimers();
+      await waitFor(() => {
+        expect(result.current.isBlocked).toBe(true);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not block users with bypass permission during the lockout window', async () => {
-    vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
 
-    fetchActiveRecurringLockoutBannerStateMock.mockResolvedValue({
-      banner: null,
-      schedule: {
-        isActive: true,
-        startTimeOfDay: '09:00',
-        endTimeOfDay: '10:00',
-        bannerLeadMinutes: 20,
-      },
-    });
+    try {
+      vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
 
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
+      fetchActiveRecurringLockoutBannerStateMock.mockResolvedValue({
+        banner: null,
+        schedule: {
+          isActive: true,
+          startTimeOfDay: '09:00',
+          endTimeOfDay: '10:00',
+          bannerLeadMinutes: 20,
+        },
+      });
 
-    const { result } = renderHook(
-      () =>
-        useRecurringEditLockout([
-          PERMISSIONS.ACTIVITIES.BYPASS_RECURRING_LOCKOUT,
-        ]),
-      { wrapper: createWrapper(queryClient) }
-    );
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
 
-    await waitFor(() => {
-      expect(result.current.isBlocked).toBe(false);
-    });
+      const { result } = renderHook(
+        () =>
+          useRecurringEditLockout([
+            PERMISSIONS.ACTIVITIES.BYPASS_RECURRING_LOCKOUT,
+          ]),
+        { wrapper: createWrapper(queryClient) }
+      );
 
-    vi.useRealTimers();
+      await waitFor(() => {
+        expect(result.current.isBlocked).toBe(false);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

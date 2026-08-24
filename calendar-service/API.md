@@ -897,7 +897,8 @@ Returns the latest recurring lockout configuration, or `null` if never configure
 ```json
 {
   "isActive": true,
-  "content": "<p>All calendar activities are locked for edits between 15:00 and 23:59 daily.</p>",
+  "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.",
+  "activeContent": "Updates to activities are locked out until <lockEndTime> PT.",
   "backgroundColor": "#E6A635",
   "textColor": "#000000",
   "variant": "warning",
