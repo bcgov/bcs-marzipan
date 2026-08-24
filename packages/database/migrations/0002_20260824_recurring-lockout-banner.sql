@@ -1,7 +1,8 @@
 CREATE TABLE "recurring_lockout_banner_settings" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"is_active" boolean DEFAULT false NOT NULL,
-	"content" text NOT NULL,
+	"lead_content" text DEFAULT 'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT. Please make updates before lockout begins.' NOT NULL,
+	"active_content" text DEFAULT 'Updates to activities are locked out until <lockEndTime> PT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.' NOT NULL,
 	"background_color" varchar(20) DEFAULT '#E6A635' NOT NULL,
 	"text_color" varchar(20) DEFAULT '#000000' NOT NULL,
 	"variant" varchar(20) DEFAULT 'warning' NOT NULL,

@@ -19,8 +19,8 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1787354038311,
-      "tag": "0002_20260804_add_recurring_lockout_banner_settings",
+      "when": 1787602890197,
+      "tag": "0002_20260824_recurring-lockout-banner",
       "breakpoints": true
     }
   ]
