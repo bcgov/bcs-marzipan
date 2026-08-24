@@ -134,11 +134,26 @@ export function getNextRecurringLockoutBannerBoundaryMs(
 
   const { hour, minute } = toPacificHourMinute(nowMs);
   const currentMinutes = hour * 60 + minute;
+  const startMinutes = timeOfDayToMinutes(String(settings.startTimeOfDay));
   const { bannerStartMinutes, endMinutes } =
     getRecurringLockoutBannerVisibilityMinutes(settings);
   const inWindow = isWithinRecurringLockoutBannerWindow(settings, nowMs);
 
   if (inWindow) {
+    const inLockout = isWithinRecurringEditLockoutWindow(settings, nowMs);
+
+    if (!inLockout) {
+      const msUntilLockStart = msUntilPacificMinuteOfDay(nowMs, startMinutes);
+      const msUntilHide =
+        bannerStartMinutes > endMinutes && currentMinutes >= bannerStartMinutes
+          ? msUntilPacificMinuteOfDay(nowMs, endMinutes, {
+              forceNextCalendarDay: true,
+            })
+          : msUntilPacificMinuteOfDay(nowMs, endMinutes);
+
+      return Math.min(msUntilLockStart, msUntilHide);
+    }
+
     if (
       bannerStartMinutes > endMinutes &&
       currentMinutes >= bannerStartMinutes

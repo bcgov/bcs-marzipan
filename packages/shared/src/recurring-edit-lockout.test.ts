@@ -113,12 +113,23 @@ describe('getNextRecurringLockoutBannerBoundaryMs', () => {
     vi.useRealTimers();
   });
 
-  it('returns ms until hide when inside the banner window', () => {
+  it('returns ms until hide when inside the banner window during active lockout', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-05T21:00:00.000Z'));
+
+    expect(getNextRecurringLockoutBannerBoundaryMs(bannerSettings)).toBe(
+      120 * 60_000
+    );
+
+    vi.useRealTimers();
+  });
+
+  it('returns ms until lock start when inside the lead-up window', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-05T20:40:00.000Z'));
 
     expect(getNextRecurringLockoutBannerBoundaryMs(bannerSettings)).toBe(
-      140 * 60_000
+      20 * 60_000
     );
 
     vi.useRealTimers();

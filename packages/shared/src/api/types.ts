@@ -23,6 +23,7 @@ export type {
 export type {
   BannerSettings,
   RecurringLockoutBannerSettings,
+  ActiveRecurringLockoutBanner,
   RecurringLockoutBannerSchedule,
   ActiveRecurringLockoutBannerResponse,
   UpsertRecurringLockoutBannerSettingsBody,
