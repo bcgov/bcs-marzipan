@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { timeOfDayToMinutes } from '../recurring-edit-lockout';
+
 const hexColorSchema = z
   .string()
   .regex(/^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/, 'Must be a valid hex color');
@@ -79,11 +81,6 @@ export const recurringLockoutBannerSettingsSchema = z.object({
   lastUpdatedDateTime: z.string().datetime(),
 });
 
-function timeToMinutes(time: string): number {
-  const [hour, minute] = time.split(':').map(Number);
-  return hour * 60 + minute;
-}
-
 export const upsertRecurringLockoutBannerSettingsRequestSchema = z
   .object({
     isActive: z.boolean(),
@@ -113,7 +110,8 @@ export const upsertRecurringLockoutBannerSettingsRequestSchema = z
   })
   .superRefine((value, ctx) => {
     if (
-      timeToMinutes(value.endTimeOfDay) <= timeToMinutes(value.startTimeOfDay)
+      timeOfDayToMinutes(value.endTimeOfDay) <=
+      timeOfDayToMinutes(value.startTimeOfDay)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

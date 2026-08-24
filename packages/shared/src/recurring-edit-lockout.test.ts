@@ -2,14 +2,23 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { PERMISSIONS } from './auth/constants';
 import {
+  getNextRecurringLockoutBannerBoundaryMs,
   isUserBlockedByRecurringEditLockout,
   isWithinRecurringEditLockoutWindow,
+  isWithinRecurringLockoutBannerWindow,
 } from './recurring-edit-lockout';
 
 const baseSettings = {
   isActive: true,
   startTimeOfDay: '09:00',
   endTimeOfDay: '10:00',
+};
+
+const bannerSettings = {
+  isActive: true,
+  startTimeOfDay: '14:00',
+  endTimeOfDay: '16:00',
+  bannerLeadMinutes: 20,
 };
 
 describe('isWithinRecurringEditLockoutWindow', () => {
@@ -58,6 +67,59 @@ describe('isUserBlockedByRecurringEditLockout', () => {
     vi.setSystemTime(new Date('2026-08-05T17:00:00.000Z'));
 
     expect(isUserBlockedByRecurringEditLockout(baseSettings, [])).toBe(false);
+
+    vi.useRealTimers();
+  });
+});
+
+describe('isWithinRecurringLockoutBannerWindow', () => {
+  it('returns null before the lead-time window starts', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-05T20:39:00.000Z'));
+
+    expect(isWithinRecurringLockoutBannerWindow(bannerSettings)).toBe(false);
+
+    vi.useRealTimers();
+  });
+
+  it('returns banner during lead-time window before lockout start', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-05T20:40:00.000Z'));
+
+    expect(isWithinRecurringLockoutBannerWindow(bannerSettings)).toBe(true);
+
+    vi.useRealTimers();
+  });
+
+  it('returns null at end boundary because end time is exclusive', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-05T23:00:00.000Z'));
+
+    expect(isWithinRecurringLockoutBannerWindow(bannerSettings)).toBe(false);
+
+    vi.useRealTimers();
+  });
+});
+
+describe('getNextRecurringLockoutBannerBoundaryMs', () => {
+  it('returns ms until show when outside the banner window', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-05T20:39:00.000Z'));
+
+    expect(getNextRecurringLockoutBannerBoundaryMs(bannerSettings)).toBe(
+      60_000
+    );
+
+    vi.useRealTimers();
+  });
+
+  it('returns ms until hide when inside the banner window', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-05T20:40:00.000Z'));
+
+    expect(getNextRecurringLockoutBannerBoundaryMs(bannerSettings)).toBe(
+      140 * 60_000
+    );
 
     vi.useRealTimers();
   });
