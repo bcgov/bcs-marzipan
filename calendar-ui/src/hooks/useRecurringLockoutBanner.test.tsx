@@ -3,10 +3,12 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
+import { PERMISSIONS } from '@corpcal/shared/auth';
 import { fetchActiveRecurringLockoutBannerState } from '@/api/bannerApi';
 
 import {
   RECURRING_LOCKOUT_BANNER_QUERY_KEY,
+  useRecurringEditLockout,
   useRecurringLockoutBanner,
 } from './useRecurringLockoutBanner';
 
@@ -111,5 +113,68 @@ describe('useRecurringLockoutBanner', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('useRecurringEditLockout', () => {
+  it('reports isBlocked during the active lockout window without bypass permission', async () => {
+    vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
+
+    fetchActiveRecurringLockoutBannerStateMock.mockResolvedValue({
+      banner: null,
+      schedule: {
+        isActive: true,
+        startTimeOfDay: '09:00',
+        endTimeOfDay: '10:00',
+        bannerLeadMinutes: 20,
+      },
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { result } = renderHook(
+      () => useRecurringEditLockout([PERMISSIONS.ACTIVITIES.EDIT]),
+      { wrapper: createWrapper(queryClient) }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isBlocked).toBe(true);
+    });
+
+    vi.useRealTimers();
+  });
+
+  it('does not block users with bypass permission during the lockout window', async () => {
+    vi.setSystemTime(new Date('2026-08-05T16:00:00.000Z'));
+
+    fetchActiveRecurringLockoutBannerStateMock.mockResolvedValue({
+      banner: null,
+      schedule: {
+        isActive: true,
+        startTimeOfDay: '09:00',
+        endTimeOfDay: '10:00',
+        bannerLeadMinutes: 20,
+      },
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { result } = renderHook(
+      () =>
+        useRecurringEditLockout([
+          PERMISSIONS.ACTIVITIES.BYPASS_RECURRING_LOCKOUT,
+        ]),
+      { wrapper: createWrapper(queryClient) }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isBlocked).toBe(false);
+    });
+
+    vi.useRealTimers();
   });
 });

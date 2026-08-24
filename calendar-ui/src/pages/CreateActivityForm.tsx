@@ -18,7 +18,12 @@ import {
 } from '@/components/activity';
 import { CreateActivityConfirmModal } from '@/components/activity/activities/CreateActivityConfirmModal';
 import { PageHeader } from '@/components/layout';
-import { FormErrorFallback, StatusMessage } from '@/components/shared';
+import {
+  FormErrorFallback,
+  LockoutBanner,
+  LockoutBannerContent,
+  StatusMessage,
+} from '@/components/shared';
 import { Button } from '@/components/ui/button';
 
 import { Form } from '../components/ui/form';
@@ -26,6 +31,8 @@ import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState';
 import { useAuth } from '../hooks/useAuth';
 import { useCreateActivity } from '../hooks/useCalendar';
+import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
+import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import { buildPayloadForCreate } from '../lib/activity-form-payload';
@@ -39,8 +46,12 @@ import {
 import { showErrorToast } from '../lib/error-toast';
 import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
+import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
 
 const logger = createLogger('CreateActivityForm');
+
+/** Match sticky back bar height (py-3 + h-8 sm button ≈ 56px). IO rootMargin only accepts px or %. */
+const LOCK_BANNER_INTERSECTION_ROOT_MARGIN = '-56px 0px 0px 0px';
 
 /** Create flow: navigates back to the list (or `location.state.from`) after submit/cancel; same-tab as Activity list. */
 export const CreateActivityForm: FC = () => {
@@ -60,6 +71,28 @@ export const CreateActivityForm: FC = () => {
   const hasCreateAny = hasPermission(PERMISSIONS.ACTIVITIES.CREATE_ANY);
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const canViewActivity = hasPermission(PERMISSIONS.ACTIVITIES.VIEW);
+
+  const {
+    isBlocked: isBlockedByRecurringLockout,
+    schedule: recurringLockoutSchedule,
+  } = useRecurringEditLockout(user?.permissions ?? []);
+
+  const lockoutInlineMessage = useMemo(
+    () =>
+      recurringLockoutSchedule != null
+        ? getRecurringLockoutInlineMessage(recurringLockoutSchedule)
+        : '',
+    [recurringLockoutSchedule]
+  );
+
+  const [lockoutBannerSentinel, setLockoutBannerSentinel] =
+    useState<HTMLDivElement | null>(null);
+  const lockoutBannerInView = useElementIsIntersecting(
+    lockoutBannerSentinel,
+    isBlockedByRecurringLockout,
+    LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
+    0
+  );
 
   const {
     form,
@@ -217,8 +250,27 @@ export const CreateActivityForm: FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <ActivityFormStickyHeader />
+      <ActivityFormStickyHeader
+        lockStrip={
+          isBlockedByRecurringLockout ? (
+            <LockoutBannerContent
+              message={lockoutInlineMessage}
+              className="max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-1"
+            />
+          ) : undefined
+        }
+        lockStripVisible={isBlockedByRecurringLockout && !lockoutBannerInView}
+      />
       <PageHeader title="Create New Activity" />
+
+      {isBlockedByRecurringLockout && (
+        <div ref={setLockoutBannerSentinel}>
+          <LockoutBanner
+            inert={!lockoutBannerInView}
+            message={lockoutInlineMessage}
+          />
+        </div>
+      )}
 
       <Form {...form}>
         <form
@@ -246,7 +298,7 @@ export const CreateActivityForm: FC = () => {
           <ActivityFormBody
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
-            readOnly={false}
+            readOnly={isBlockedByRecurringLockout}
             showChangedBadges={false}
             leadTeamField={{
               options: leadTeamOptions,
@@ -281,7 +333,11 @@ export const CreateActivityForm: FC = () => {
                   }
                 />
               )}
-              <Button type="submit" variant="default" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                variant="default"
+                disabled={isSubmitting || isBlockedByRecurringLockout}
+              >
                 {isSubmitting ? 'Submitting...' : 'Submit'}
               </Button>
             </div>

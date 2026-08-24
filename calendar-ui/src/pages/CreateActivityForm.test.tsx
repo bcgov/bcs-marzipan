@@ -1,37 +1,108 @@
-/**
- * CreateActivityForm Tests
- *
- * NOTE: Tests are currently skipped due to a critical bug in the form component
- * that prevents it from rendering. The form uses SelectItem components with empty
- * string values (e.g., <SelectItem value="">None</SelectItem>), which Radix UI
- * doesn't allow, causing the form to crash on render.
- *
- * The following tests are worth keeping as they verify core business logic that
- * should remain stable after the refactor:
- * - Required field validation (title, dateStatusId, etc.)
- * - Title length validation (max 255 characters)
- * - Form reset functionality
- *
- * Tests removed as too brittle:
- * - Form submission payload structure test (too tied to implementation details)
- */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { beforeEach, describe, it, vi } from 'vitest';
+import { PERMISSIONS } from '@corpcal/shared/auth';
 
-describe('CreateActivityForm', () => {
+import { CreateActivityForm } from './CreateActivityForm';
+
+let mockIsBlockedByRecurringLockout = false;
+
+vi.mock('../hooks/useRecurringLockoutBanner', () => ({
+  useRecurringEditLockout: () => ({
+    isBlocked: mockIsBlockedByRecurringLockout,
+    schedule: mockIsBlockedByRecurringLockout
+      ? { isActive: true, startTimeOfDay: '09:00', endTimeOfDay: '10:00' }
+      : null,
+    banner: null,
+  }),
+  useRecurringLockoutBanner: () => null,
+}));
+
+vi.mock('../hooks/useAuth', () => ({
+  useAuth: () => ({
+    hasPermission: () => true,
+    isLoading: false,
+    user: {
+      id: 1,
+      permissions: [PERMISSIONS.ACTIVITIES.CREATE],
+      teamIds: [],
+    },
+  }),
+}));
+
+vi.mock('../hooks/useCalendar', () => ({
+  useCreateActivity: () => ({ mutateAsync: vi.fn() }),
+}));
+
+vi.mock('../hooks/useActivityFormSetup', () => ({
+  useActivityFormSetup: () => ({
+    form: {
+      formState: { isDirty: false },
+      handleSubmit: (onValid: () => void) => () => onValid(),
+      reset: vi.fn(),
+      getValues: () => ({}),
+    },
+    lookups: {
+      isLoading: false,
+      hasError: false,
+      translationRequiredStatuses: [],
+    },
+    leadTeamOptions: [],
+    leadTeamOptionsError: null,
+    leadTeamOptionsFetching: false,
+    refetchLeadTeamOptions: vi.fn(),
+    commsContactCandidates: [],
+  }),
+}));
+
+vi.mock('../hooks/useActivityFormSubmitState', () => ({
+  useActivityFormSubmitState: () => ({
+    missingFields: [],
+    missingFieldItems: [],
+    missingFieldsHelperText: null,
+  }),
+}));
+
+vi.mock('@/components/activity', () => ({
+  ActivityFormBody: ({ readOnly }: { readOnly?: boolean }) => (
+    <textarea readOnly={readOnly} placeholder="Enter activity title" />
+  ),
+  ActivityFormMissingFieldsHint: () => null,
+  ActivityFormStickyHeader: ({
+    lockStrip,
+  }: {
+    lockStrip?: React.ReactNode;
+  }) => <div data-testid="sticky-header">{lockStrip}</div>,
+}));
+
+function renderCreateForm() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <CreateActivityForm />
+      </QueryClientProvider>
+    </MemoryRouter>
+  );
+}
+
+describe('CreateActivityForm recurring lockout', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockIsBlockedByRecurringLockout = false;
   });
 
-  // Tests will be re-enabled after the form refactor fixes the SelectItem bug
-  describe.skip('Required Field Validation', () => {
-    it.todo('blocks submission when title is missing');
-    it.todo('blocks submission when dateStatusId is missing');
-    it.todo('rejects title exceeding 255 characters');
-    it.todo('accepts title at exactly 255 characters');
-  });
+  it('disables fields and submit during recurring edit lockout', () => {
+    mockIsBlockedByRecurringLockout = true;
+    renderCreateForm();
 
-  describe.skip('Form Reset', () => {
-    it.todo('resets form when cancel button is clicked');
+    expect(screen.getByRole('alert')).toHaveTextContent(/locked until/i);
+    expect(screen.getByPlaceholderText('Enter activity title')).toHaveAttribute(
+      'readonly'
+    );
+    expect(screen.getByRole('button', { name: /^Submit$/i })).toBeDisabled();
   });
 });

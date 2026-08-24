@@ -38,6 +38,8 @@ import {
   FormErrorFallback,
   LockBanner,
   LockBannerContent,
+  LockoutBanner,
+  LockoutBannerContent,
 } from '@/components/shared';
 import { Badge, normalizeActivityStatus } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -73,6 +75,7 @@ import {
 import { useEditLockSession } from '../hooks/useEditLockSession';
 import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { useFavourites } from '../hooks/useFavourites';
+import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
   buildActivityListScrollRestoreReturnState,
@@ -95,6 +98,8 @@ import {
   getRecurringEditLockoutErrorMessage,
   RECURRING_EDIT_LOCKOUT_UI_MESSAGE,
 } from '../lib/recurring-edit-lockout-error';
+import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
+import { revertActivityEditSession } from '../lib/revert-activity-edit-session';
 
 const logger = createLogger('ActivityPage');
 
@@ -223,6 +228,19 @@ export function ActivityPage({
     clearLockedByOther,
   } = useActivityLock(id, user?.id);
 
+  const {
+    isBlocked: isBlockedByRecurringLockout,
+    schedule: recurringLockoutSchedule,
+  } = useRecurringEditLockout(user?.permissions ?? []);
+
+  const lockoutInlineMessage = useMemo(
+    () =>
+      recurringLockoutSchedule != null
+        ? getRecurringLockoutInlineMessage(recurringLockoutSchedule)
+        : '',
+    [recurringLockoutSchedule]
+  );
+
   const [isEditing, setIsEditing] = useState(false);
   const [forceHandoffPending, setForceHandoffPending] = useState(false);
   const [cancelHandoffPending, setCancelHandoffPending] = useState(false);
@@ -335,21 +353,17 @@ export function ActivityPage({
       }
     },
     onLockReleased: () => {
-      const initialData = initialFormDataRef.current;
-      // Revert unsaved edits when we lose the lock while in edit mode; baseline is kept in initialFormDataRef.
-      const shouldResetForm = isEditing && initialData != null;
       clearLockedByOther();
-      applyExternalLockReleased();
-      setFormUiEpoch((epoch) => epoch + 1);
-      setIsEditing(false);
-      if (shouldResetForm) {
-        // Do not call form.reset (and thus TipTap setContent via RHF) during React render or commit phases.
-        // queueMicrotask matches rich-text-field deferred sync and avoids render-phase editor updates.
-        queueMicrotask(() => {
-          form.reset(initialData);
-        });
-      }
-      void refreshActivity();
+      void revertActivityEditSession({
+        isEditing,
+        initialFormData: initialFormDataRef.current,
+        form,
+        setFormUiEpoch,
+        setIsEditing,
+        applyExternalLockReleased,
+      }).then(() => {
+        void refreshActivity();
+      });
     },
     onDataUpdated: () => {
       void refreshActivity();
@@ -412,6 +426,7 @@ export function ActivityPage({
   const mayEdit =
     canEditActivity &&
     lockState !== 'locked-by-other' &&
+    !isBlockedByRecurringLockout &&
     lockState !== 'checking' &&
     lockState !== 'acquiring' &&
     (!isBlockedStatus || canEditWhenBlocked);
@@ -438,14 +453,26 @@ export function ActivityPage({
   const canCloneActivity = canCreateActivity && mayEditFormFields;
   /** True when the user cannot edit for permission/status reasons (not merely waiting on a lock). */
   const isViewOnlyByPermission = !mayEditFormFields;
-  const readOnly = lockState === 'locked-by-other' || !mayEditFormFields;
+  const readOnly =
+    lockState === 'locked-by-other' ||
+    isBlockedByRecurringLockout ||
+    !mayEditFormFields;
   const hasEditLock = lockState === 'owned';
   const isLockedByOther = lockState === 'locked-by-other';
+  const showLockoutNotice = isBlockedByRecurringLockout && !isLockedByOther;
   const [lockBannerSentinel, setLockBannerSentinel] =
+    useState<HTMLDivElement | null>(null);
+  const [lockoutBannerSentinel, setLockoutBannerSentinel] =
     useState<HTMLDivElement | null>(null);
   const lockBannerInView = useElementIsIntersecting(
     lockBannerSentinel,
     isLockedByOther,
+    LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
+    0
+  );
+  const lockoutBannerInView = useElementIsIntersecting(
+    lockoutBannerSentinel,
+    showLockoutNotice,
     LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
     0
   );
@@ -459,6 +486,7 @@ export function ActivityPage({
     canSubmitWithoutValidationErrors: isFormValid,
     isSubmitting,
     readOnly,
+    isBlockedByRecurringLockout,
     isDirty,
   });
 
@@ -495,6 +523,47 @@ export function ActivityPage({
     initialFormDataRef,
     onAcquireConflict: onEditLockAcquireConflict,
   });
+
+  const wasBlockedByRecurringLockoutRef = useRef(false);
+
+  useEffect(() => {
+    const wasBlocked = wasBlockedByRecurringLockoutRef.current;
+    wasBlockedByRecurringLockoutRef.current = isBlockedByRecurringLockout;
+
+    if (!isBlockedByRecurringLockout) {
+      return;
+    }
+
+    const justBlocked = !wasBlocked;
+    if (!justBlocked) {
+      return;
+    }
+
+    if (!isEditing && lockState !== 'owned') {
+      return;
+    }
+
+    void revertActivityEditSession({
+      isEditing,
+      initialFormData: initialFormDataRef.current,
+      form,
+      setFormUiEpoch,
+      setIsEditing,
+      applyExternalLockReleased,
+      release: lockState === 'owned' ? release : undefined,
+    }).then(() => {
+      void refreshActivity();
+    });
+  }, [
+    applyExternalLockReleased,
+    form,
+    initialFormDataRef,
+    isBlockedByRecurringLockout,
+    isEditing,
+    lockState,
+    release,
+    refreshActivity,
+  ]);
 
   const handleOpenDeleteModal = useCallback(async () => {
     if (normalizedStatus === 'delete_requested') {
@@ -928,9 +997,17 @@ export function ActivityPage({
               cancelHandoffPending={cancelHandoffPending}
               className="max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-1"
             />
+          ) : showLockoutNotice ? (
+            <LockoutBannerContent
+              message={lockoutInlineMessage}
+              className="max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-1"
+            />
           ) : undefined
         }
-        lockStripVisible={isLockedByOther && !lockBannerInView}
+        lockStripVisible={
+          (isLockedByOther && !lockBannerInView) ||
+          (showLockoutNotice && !lockoutBannerInView)
+        }
       />
       <ActivityPageHeader
         displayId={displayId}
@@ -993,6 +1070,14 @@ export function ActivityPage({
                 : undefined
             }
             cancelHandoffPending={cancelHandoffPending}
+          />
+        </div>
+      )}
+      {showLockoutNotice && (
+        <div ref={setLockoutBannerSentinel}>
+          <LockoutBanner
+            inert={!lockoutBannerInView}
+            message={lockoutInlineMessage}
           />
         </div>
       )}
@@ -1064,7 +1149,7 @@ export function ActivityPage({
                       e.stopPropagation();
                       ensureEditThen(() => setShowRequestDeleteModal(true));
                     }}
-                    disabled={isSubmitting || actionFlags.isLockedByOther}
+                    disabled={isSubmitting || actionFlags.isEditingBlocked}
                   >
                     Request delete
                   </Button>
@@ -1077,7 +1162,7 @@ export function ActivityPage({
                       e.stopPropagation();
                       ensureEditThen(() => void handleOpenDeleteModal());
                     }}
-                    disabled={isSubmitting || actionFlags.isLockedByOther}
+                    disabled={isSubmitting || actionFlags.isEditingBlocked}
                   >
                     Delete
                   </Button>
@@ -1112,7 +1197,9 @@ export function ActivityPage({
                   type="button"
                   variant="outline"
                   onClick={() => setShowCloneModal(true)}
-                  disabled={isSubmitting || isLockedByOther || isDirty}
+                  disabled={
+                    isSubmitting || actionFlags.isEditingBlocked || isDirty
+                  }
                 >
                   Clone
                 </Button>

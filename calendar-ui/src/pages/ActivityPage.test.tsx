@@ -133,6 +133,7 @@ vi.mock('../hooks/useCalendar', async (importOriginal) => {
 });
 
 let mockLockState = 'idle';
+const mockApplyExternalLockReleased = vi.fn();
 vi.mock('../hooks/useActivityLock', () => ({
   useActivityLock: () => ({
     lock: null,
@@ -140,9 +141,31 @@ vi.mock('../hooks/useActivityLock', () => ({
     lockedByUsername: mockLockState === 'locked-by-other' ? 'Other User' : null,
     acquire: mockAcquire,
     release: mockRelease,
+    refreshLockFromServer: vi.fn(),
+    sendHeartbeat: vi.fn(),
+    applyExternalLockReleased: mockApplyExternalLockReleased,
     setLockedByOther: mockSetLockedByOther,
     clearLockedByOther: mockClearLockedByOther,
+    acquireFailureReason: null,
   }),
+}));
+
+let mockIsBlockedByRecurringLockout = false;
+const mockRecurringLockoutSchedule = {
+  isActive: true,
+  startTimeOfDay: '09:00',
+  endTimeOfDay: '10:00',
+};
+vi.mock('../hooks/useRecurringLockoutBanner', () => ({
+  useRecurringEditLockout: () => ({
+    isBlocked: mockIsBlockedByRecurringLockout,
+    schedule: mockIsBlockedByRecurringLockout
+      ? mockRecurringLockoutSchedule
+      : null,
+    banner: null,
+  }),
+  useRecurringLockoutBanner: () => null,
+  RECURRING_LOCKOUT_BANNER_QUERY_KEY: ['banner', 'recurring-lockout', 'active'],
 }));
 
 vi.mock('../hooks/useActivityWebSocket', () => ({
@@ -407,8 +430,10 @@ describe('ActivityPage optimistic inline edit', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockRelease.mockClear();
+    mockApplyExternalLockReleased.mockClear();
     mockAcquire.mockClear().mockResolvedValue(true);
     mockLockState = 'idle';
+    mockIsBlockedByRecurringLockout = false;
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
@@ -650,12 +675,66 @@ describe('ActivityPage optimistic inline edit', () => {
     const titleTextarea = screen.getByPlaceholderText('Enter activity title');
     expect(titleTextarea).toHaveAttribute('readonly');
   });
+
+  it('form is read-only during recurring edit lockout', async () => {
+    mockIsBlockedByRecurringLockout = true;
+    renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    const lockoutBanner = screen.getByRole('alert');
+    expect(lockoutBanner).toHaveTextContent(/locked until/i);
+    expect(lockoutBanner).toHaveTextContent(/read-only/i);
+    const titleTextarea = screen.getByPlaceholderText('Enter activity title');
+    expect(titleTextarea).toHaveAttribute('readonly');
+  });
+
+  it('does not show Review during recurring edit lockout', async () => {
+    mockIsBlockedByRecurringLockout = true;
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) =>
+        key === PERMISSIONS.ACTIVITIES.EDIT ||
+        key === PERMISSIONS.ACTIVITIES.CREATE ||
+        key === PERMISSIONS.ACTIVITIES.REVIEW,
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: [
+          ...mockEditorFieldPermissions,
+          PERMISSIONS.ACTIVITIES.REVIEW,
+        ],
+      },
+    });
+
+    renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    expect(
+      screen.queryByRole('button', { name: /^(Save and )?Review$/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not acquire edit lock while recurring lockout is active', async () => {
+    mockIsBlockedByRecurringLockout = true;
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByPlaceholderText(
+      'Enter activity title'
+    );
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
+
+    await act(() => Promise.resolve());
+    expect(mockAcquire).not.toHaveBeenCalled();
+  });
 });
 
 describe('ActivityPage clone button', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockLockState = 'idle';
+    mockIsBlockedByRecurringLockout = false;
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
