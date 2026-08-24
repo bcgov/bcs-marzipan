@@ -6,10 +6,12 @@ import {
   recurringLockoutBannerSettings,
 } from '@corpcal/database/schema';
 import {
-  isWithinRecurringLockoutBannerWindow,
+  getRecurringLockoutBannerPhase,
+  resolveRecurringLockoutBannerContent,
   type RecurringLockoutBannerScheduleSlice,
 } from '@corpcal/shared';
 import type {
+  ActiveRecurringLockoutBanner,
   ActiveRecurringLockoutBannerResponse,
   BannerSettings,
   RecurringLockoutBannerSettings,
@@ -20,6 +22,7 @@ import { DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES } from '@corpcal/sha
 
 import { ActivitiesGateway } from '../activities/activities.gateway';
 import { DatabaseService } from '../database/database.service';
+import { ApplicationSettingsService } from '../locks/application-settings.service';
 
 type BannerSettingsRow = typeof bannerSettings.$inferSelect;
 type RecurringLockoutBannerSettingsRow =
@@ -29,7 +32,8 @@ type RecurringLockoutBannerSettingsRow =
 export class BannerService {
   constructor(
     private readonly databaseService: DatabaseService,
-    private readonly activitiesGateway: ActivitiesGateway
+    private readonly activitiesGateway: ActivitiesGateway,
+    private readonly applicationSettings: ApplicationSettingsService
   ) {}
 
   async getCurrentRecurringLockoutBannerSettings(): Promise<RecurringLockoutBannerSettings | null> {
@@ -37,7 +41,7 @@ export class BannerService {
     return row ? this.mapRecurringLockoutRow(row) : null;
   }
 
-  async getActiveRecurringLockoutBanner(): Promise<RecurringLockoutBannerSettings | null> {
+  async getActiveRecurringLockoutBanner(): Promise<ActiveRecurringLockoutBanner | null> {
     const response = await this.getActiveRecurringLockoutBannerState();
     return response.banner;
   }
@@ -50,11 +54,32 @@ export class BannerService {
     }
 
     const schedule = this.toBannerScheduleSlice(row);
-    const banner = isWithinRecurringLockoutBannerWindow(schedule)
-      ? this.mapRecurringLockoutRow(row)
-      : null;
+    const phase = getRecurringLockoutBannerPhase(schedule);
 
-    return { banner, schedule };
+    if (phase == null) {
+      return { banner: null, schedule };
+    }
+
+    const mapped = this.mapRecurringLockoutRow(row);
+    const { contactEmail } =
+      await this.applicationSettings.getLookAheadReportCoverContact();
+    const content = resolveRecurringLockoutBannerContent({
+      phase,
+      leadContent: mapped.leadContent,
+      activeContent: mapped.activeContent,
+      startTimeOfDay: mapped.startTimeOfDay,
+      endTimeOfDay: mapped.endTimeOfDay,
+      contactEmail,
+    });
+
+    return {
+      banner: {
+        ...mapped,
+        content,
+        phase,
+      },
+      schedule,
+    };
   }
 
   async getCurrentBannerSettings(): Promise<BannerSettings | null> {
@@ -140,7 +165,8 @@ export class BannerService {
     const now = new Date();
     const payload = {
       isActive: body.isActive,
-      content: body.content.trim(),
+      leadContent: body.leadContent.trim(),
+      activeContent: body.activeContent.trim(),
       backgroundColor: body.backgroundColor,
       textColor: body.textColor,
       variant: body.variant,
@@ -268,7 +294,8 @@ export class BannerService {
     return {
       id: row.id,
       isActive: row.isActive,
-      content: row.content,
+      leadContent: row.leadContent,
+      activeContent: row.activeContent,
       backgroundColor: row.backgroundColor,
       textColor: row.textColor,
       variant,
