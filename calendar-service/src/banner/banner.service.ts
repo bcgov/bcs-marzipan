@@ -5,7 +5,10 @@ import {
   bannerSettings,
   recurringLockoutBannerSettings,
 } from '@corpcal/database/schema';
-import { toPacificHourMinute } from '@corpcal/shared';
+import {
+  isWithinRecurringLockoutBannerWindow,
+  type RecurringLockoutBannerScheduleSlice,
+} from '@corpcal/shared';
 import type {
   BannerSettings,
   RecurringLockoutBannerSettings,
@@ -40,22 +43,9 @@ export class BannerService {
       return null;
     }
 
-    const { hour, minute } = toPacificHourMinute(Date.now());
-    const currentMinutes = hour * 60 + minute;
-    const startMinutes = this.timeToMinutes(row.startTimeOfDay);
-    const endMinutes = this.timeToMinutes(row.endTimeOfDay);
-    const leadMinutes = Number.isInteger(row.bannerLeadMinutes)
-      ? Math.max(0, Number(row.bannerLeadMinutes))
-      : DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES;
-    const minutesPerDay = 24 * 60;
-    const bannerStartMinutes =
-      (startMinutes - leadMinutes + minutesPerDay) % minutesPerDay;
-    const inWindow =
-      bannerStartMinutes > endMinutes
-        ? currentMinutes >= bannerStartMinutes || currentMinutes < endMinutes
-        : currentMinutes >= bannerStartMinutes && currentMinutes < endMinutes;
+    const schedule = this.toBannerScheduleSlice(row);
 
-    if (!inWindow) {
+    if (!isWithinRecurringLockoutBannerWindow(schedule)) {
       return null;
     }
 
@@ -214,9 +204,17 @@ export class BannerService {
     return row ?? null;
   }
 
-  private timeToMinutes(timeOfDay: string): number {
-    const [hour, minute] = timeOfDay.split(':').map(Number);
-    return hour * 60 + minute;
+  private toBannerScheduleSlice(
+    row: RecurringLockoutBannerSettingsRow
+  ): RecurringLockoutBannerScheduleSlice {
+    return {
+      isActive: row.isActive,
+      startTimeOfDay: row.startTimeOfDay,
+      endTimeOfDay: row.endTimeOfDay,
+      bannerLeadMinutes: Number.isInteger(row.bannerLeadMinutes)
+        ? Math.max(0, Number(row.bannerLeadMinutes))
+        : DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
+    };
   }
 
   private mapRow(row: BannerSettingsRow): BannerSettings {
