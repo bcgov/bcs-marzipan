@@ -51,7 +51,7 @@ export function SystemBanner({
 
           <div
             className={
-              'mt-1 min-w-0 flex-1 text-sm leading-none whitespace-pre-wrap ' +
+              'mt-0.5 min-w-0 flex-1 text-sm leading-snug whitespace-pre-wrap ' +
               '[&_strong]:font-semibold ' +
               '[&_p]:m-0 [&_p]:inline ' +
               '[&_div]:m-0 [&_div]:p-0 ' +

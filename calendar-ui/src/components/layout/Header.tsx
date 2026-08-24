@@ -1,5 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, ChevronDown, LogOut, PencilOff, User } from 'lucide-react';
+import {
+  Bell,
+  ChevronDown,
+  LogOut,
+  Pencil,
+  PencilOff,
+  User,
+} from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -203,7 +210,7 @@ const Header = () => {
       {visibleRecurringLockoutBanner && (
         <SystemBanner
           banner={visibleRecurringLockoutBanner}
-          icon={PencilOff}
+          icon={canBypassRecurringLockout ? Pencil : PencilOff}
           className="border-b border-black/10"
         />
       )}
