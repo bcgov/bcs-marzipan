@@ -34,7 +34,12 @@ describe('useRecurringLockoutBanner', () => {
       banner: {
         id: 1,
         isActive: true,
-        content: '<p>Lockout soon</p>',
+        leadContent:
+          'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
+        activeContent:
+          'Updates to activities are locked out until <lockEndTime> PT.',
+        content: 'Updates to activities will be locked 2:00 pm - 4:00 pm PT.',
+        phase: 'lead-up',
         backgroundColor: '#E6A635',
         textColor: '#000000',
         variant: 'warning',
@@ -61,7 +66,9 @@ describe('useRecurringLockoutBanner', () => {
     });
 
     await waitFor(() => {
-      expect(result.current?.content).toBe('<p>Lockout soon</p>');
+      expect(result.current?.content).toBe(
+        'Updates to activities will be locked 2:00 pm - 4:00 pm PT.'
+      );
     });
   });
 

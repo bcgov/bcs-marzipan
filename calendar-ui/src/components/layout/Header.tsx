@@ -3,6 +3,10 @@ import { Bell, ChevronDown, LogOut, PencilOff, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import {
+  appendRecurringLockoutBypassNotice,
+  PERMISSIONS,
+} from '@corpcal/shared';
 import type { BannerSettings } from '@corpcal/shared/api/types';
 import { fetchActiveBanner } from '@/api/bannerApi';
 import logo from '@/assets/Logo.svg';
@@ -23,6 +27,7 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useBannerSettingsWebSocket } from '@/hooks/useBannerSettingsWebSocket';
+import { usePermission } from '@/hooks/usePermissions';
 import {
   RECURRING_LOCKOUT_BANNER_QUERY_KEY,
   useRecurringLockoutBanner,
@@ -61,6 +66,9 @@ const Header = () => {
   });
 
   const recurringLockoutBanner = useRecurringLockoutBanner();
+  const canBypassRecurringLockout = usePermission(
+    PERMISSIONS.ACTIVITIES.BYPASS_RECURRING_LOCKOUT
+  );
 
   const visibleBanner = useMemo(() => {
     if (!banner) {
@@ -79,10 +87,14 @@ const Header = () => {
       return null;
     }
 
+    const content = canBypassRecurringLockout
+      ? appendRecurringLockoutBypassNotice(recurringLockoutBanner.content)
+      : recurringLockoutBanner.content;
+
     return {
       id: recurringLockoutBanner.id,
       isActive: recurringLockoutBanner.isActive,
-      content: recurringLockoutBanner.content,
+      content,
       backgroundColor: recurringLockoutBanner.backgroundColor,
       textColor: recurringLockoutBanner.textColor,
       variant: recurringLockoutBanner.variant,
@@ -93,7 +105,7 @@ const Header = () => {
       createdDateTime: recurringLockoutBanner.createdDateTime,
       lastUpdatedDateTime: recurringLockoutBanner.lastUpdatedDateTime,
     } satisfies BannerSettings;
-  }, [recurringLockoutBanner]);
+  }, [canBypassRecurringLockout, recurringLockoutBanner]);
 
   useBannerSettingsWebSocket({
     onSystemBannerSettingsUpdated: () => {
