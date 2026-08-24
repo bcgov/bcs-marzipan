@@ -133,7 +133,10 @@ describe('LocksController (API integration)', () => {
 
       const lockoutBody = {
         isActive: true,
-        content: '<p>Recurring lockout e2e test</p>',
+        leadContent:
+          'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
+        activeContent:
+          'Updates to activities are locked out until <lockEndTime> PT.',
         backgroundColor: '#E6A635',
         textColor: '#000000',
         variant: 'warning',
@@ -162,7 +165,10 @@ describe('LocksController (API integration)', () => {
       } finally {
         const restoreBody = previousSettings ?? {
           isActive: false,
-          content: '<p>Recurring lockout banner</p>',
+          leadContent:
+            'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
+          activeContent:
+            'Updates to activities are locked out until <lockEndTime> PT.',
           backgroundColor: '#E6A635',
           textColor: '#000000',
           variant: 'warning',

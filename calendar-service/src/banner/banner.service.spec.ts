@@ -1,14 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  DEFAULT_RECURRING_LOCKOUT_ACTIVE_CONTENT,
+  DEFAULT_RECURRING_LOCKOUT_LEAD_CONTENT,
+} from '@corpcal/shared';
+
 import { ActivitiesGateway } from '../activities/activities.gateway';
 import { DatabaseService } from '../database/database.service';
+import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { BannerService } from './banner.service';
 
 describe('BannerService', () => {
   const baseRow = {
     id: 1,
     isActive: true,
-    content: 'Editing lockout starts soon',
+    leadContent: DEFAULT_RECURRING_LOCKOUT_LEAD_CONTENT,
+    activeContent: DEFAULT_RECURRING_LOCKOUT_ACTIVE_CONTENT,
     backgroundColor: '#F4A261',
     textColor: '#1A1A1A',
     variant: 'warning',
@@ -30,7 +37,18 @@ describe('BannerService', () => {
     broadcastRecurringLockoutBannerSettingsUpdated: vi.fn(),
   } as unknown as ActivitiesGateway;
 
-  const service = new BannerService(mockDatabaseService, mockGateway);
+  const mockApplicationSettings = {
+    getLookAheadReportCoverContact: vi.fn().mockResolvedValue({
+      contactPhone: '',
+      contactEmail: 'gcpe@example.com',
+    }),
+  } as unknown as ApplicationSettingsService;
+
+  const service = new BannerService(
+    mockDatabaseService,
+    mockGateway,
+    mockApplicationSettings
+  );
 
   it('returns null before the lead-time window starts', async () => {
     vi.spyOn(
@@ -50,7 +68,7 @@ describe('BannerService', () => {
     vi.useRealTimers();
   });
 
-  it('returns banner during lead-time window before lockout start', async () => {
+  it('returns resolved lead-up copy during the warning window', async () => {
     vi.spyOn(
       service as unknown as {
         getLatestRecurringLockoutBannerRow: () => Promise<
@@ -65,7 +83,32 @@ describe('BannerService', () => {
     const result = await service.getActiveRecurringLockoutBanner();
 
     expect(result).not.toBeNull();
-    expect(result?.id).toBe(1);
+    expect(result?.phase).toBe('lead-up');
+    expect(result?.content).toBe(
+      'Updates to activities will be locked 2:00 pm - 4:00 pm PT. Please make updates before lockout begins.'
+    );
+    vi.useRealTimers();
+  });
+
+  it('returns resolved active copy during the lockout window', async () => {
+    vi.spyOn(
+      service as unknown as {
+        getLatestRecurringLockoutBannerRow: () => Promise<
+          typeof baseRow | null
+        >;
+      },
+      'getLatestRecurringLockoutBannerRow'
+    ).mockResolvedValue(baseRow);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-05T21:00:00.000Z'));
+
+    const result = await service.getActiveRecurringLockoutBanner();
+
+    expect(result).not.toBeNull();
+    expect(result?.phase).toBe('active');
+    expect(result?.content).toBe(
+      'Updates to activities are locked out until 4:00 pm PT. Contact <a href="mailto:gcpe@example.com">gcpe@example.com</a> to make emerging or urgent updates.'
+    );
     vi.useRealTimers();
   });
 
