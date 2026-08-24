@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePermission } from '@/hooks/usePermissions';
+import { RECURRING_LOCKOUT_BANNER_QUERY_KEY } from '@/hooks/useRecurringLockoutBanner';
 import { showErrorToast, showSuccessToast } from '@/lib/error-toast';
 
 import { AdminSection } from './AdminSection';
@@ -159,7 +160,7 @@ function RecurringLockoutBannerSettingsAdminInner() {
         saved
       );
       void queryClient.invalidateQueries({
-        queryKey: ['banner', 'recurring-lockout', 'active'],
+        queryKey: RECURRING_LOCKOUT_BANNER_QUERY_KEY,
       });
       showSuccessToast('Recurring lockout settings saved');
     },

@@ -10,6 +10,7 @@ import {
   type RecurringLockoutBannerScheduleSlice,
 } from '@corpcal/shared';
 import type {
+  ActiveRecurringLockoutBannerResponse,
   BannerSettings,
   RecurringLockoutBannerSettings,
   UpsertBannerSettingsBody,
@@ -37,19 +38,23 @@ export class BannerService {
   }
 
   async getActiveRecurringLockoutBanner(): Promise<RecurringLockoutBannerSettings | null> {
+    const response = await this.getActiveRecurringLockoutBannerState();
+    return response.banner;
+  }
+
+  async getActiveRecurringLockoutBannerState(): Promise<ActiveRecurringLockoutBannerResponse> {
     const row = await this.getLatestRecurringLockoutBannerRow();
 
-    if (!row || !row.isActive) {
-      return null;
+    if (!row) {
+      return { banner: null, schedule: null };
     }
 
     const schedule = this.toBannerScheduleSlice(row);
+    const banner = isWithinRecurringLockoutBannerWindow(schedule)
+      ? this.mapRecurringLockoutRow(row)
+      : null;
 
-    if (!isWithinRecurringLockoutBannerWindow(schedule)) {
-      return null;
-    }
-
-    return this.mapRecurringLockoutRow(row);
+    return { banner, schedule };
   }
 
   async getCurrentBannerSettings(): Promise<BannerSettings | null> {

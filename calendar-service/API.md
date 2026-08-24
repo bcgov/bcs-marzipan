@@ -841,7 +841,7 @@ Returns the currently active scheduled system banner, or `null`.
 
 **GET** `/banner/recurring-lockout`
 
-Returns the recurring lockout warning banner when settings are active and the current Pacific time is within the banner visibility window (`startTimeOfDay - bannerLeadMinutes` through `endTimeOfDay`, end exclusive). Returns `null` outside that window.
+Returns the recurring lockout warning banner when settings are active and the current Pacific time is within the banner visibility window (`startTimeOfDay - bannerLeadMinutes` through `endTimeOfDay`, end exclusive). Also returns schedule metadata so clients can refresh at window boundaries without polling.
 
 **Response:** `200 OK`
 
@@ -849,20 +849,30 @@ Returns the recurring lockout warning banner when settings are active and the cu
 {
   "success": true,
   "data": {
-    "id": 1,
-    "isActive": true,
-    "content": "<p>Editing will be locked soon.</p>",
-    "backgroundColor": "#E6A635",
-    "textColor": "#000000",
-    "variant": "warning",
-    "startTimeOfDay": "15:00",
-    "endTimeOfDay": "23:59",
-    "bannerLeadMinutes": 30,
-    "createdDateTime": "2026-08-04T12:00:00.000Z",
-    "lastUpdatedDateTime": "2026-08-04T12:00:00.000Z"
+    "banner": {
+      "id": 1,
+      "isActive": true,
+      "content": "<p>Editing will be locked soon.</p>",
+      "backgroundColor": "#E6A635",
+      "textColor": "#000000",
+      "variant": "warning",
+      "startTimeOfDay": "15:00",
+      "endTimeOfDay": "23:59",
+      "bannerLeadMinutes": 30,
+      "createdDateTime": "2026-08-04T12:00:00.000Z",
+      "lastUpdatedDateTime": "2026-08-04T12:00:00.000Z"
+    },
+    "schedule": {
+      "isActive": true,
+      "startTimeOfDay": "15:00",
+      "endTimeOfDay": "23:59",
+      "bannerLeadMinutes": 30
+    }
   }
 }
 ```
+
+When the banner is outside its visibility window, `banner` is `null` but `schedule` is still returned when settings exist.
 
 ---
 

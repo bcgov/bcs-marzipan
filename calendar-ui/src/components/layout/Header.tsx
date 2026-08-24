@@ -4,10 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { BannerSettings } from '@corpcal/shared/api/types';
-import {
-  fetchActiveBanner,
-  fetchActiveRecurringLockoutBanner,
-} from '@/api/bannerApi';
+import { fetchActiveBanner } from '@/api/bannerApi';
 import logo from '@/assets/Logo.svg';
 import { MOCK_USERS } from '@/components/shared/UserSwitcher';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -26,6 +23,10 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useBannerSettingsWebSocket } from '@/hooks/useBannerSettingsWebSocket';
+import {
+  RECURRING_LOCKOUT_BANNER_QUERY_KEY,
+  useRecurringLockoutBanner,
+} from '@/hooks/useRecurringLockoutBanner';
 
 import { SystemBanner } from './SystemBanner';
 
@@ -59,12 +60,7 @@ const Header = () => {
     refetchInterval: 60_000,
   });
 
-  const { data: recurringLockoutBanner } = useQuery({
-    queryKey: ['banner', 'recurring-lockout', 'active'],
-    queryFn: fetchActiveRecurringLockoutBanner,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  });
+  const recurringLockoutBanner = useRecurringLockoutBanner();
 
   const visibleBanner = useMemo(() => {
     if (!banner) {
@@ -105,7 +101,7 @@ const Header = () => {
     },
     onRecurringLockoutBannerSettingsUpdated: () => {
       void queryClient.invalidateQueries({
-        queryKey: ['banner', 'recurring-lockout', 'active'],
+        queryKey: RECURRING_LOCKOUT_BANNER_QUERY_KEY,
       });
     },
   });

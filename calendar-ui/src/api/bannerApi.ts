@@ -1,4 +1,5 @@
 import type {
+  ActiveRecurringLockoutBannerResponse,
   BannerSettings,
   RecurringLockoutBannerSettings,
   UpsertBannerSettingsBody,
@@ -23,9 +24,9 @@ export async function fetchBannerSettings(): Promise<BannerSettings | null> {
   return res.data.data;
 }
 
-export async function fetchActiveRecurringLockoutBanner(): Promise<RecurringLockoutBannerSettings | null> {
+export async function fetchActiveRecurringLockoutBannerState(): Promise<ActiveRecurringLockoutBannerResponse> {
   const res = await api.get<
-    WrappedResponse<RecurringLockoutBannerSettings | null>
+    WrappedResponse<ActiveRecurringLockoutBannerResponse>
   >('/banner/recurring-lockout');
   return res.data.data;
 }

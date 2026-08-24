@@ -8,6 +8,7 @@ import {
   type ResponseWrapper,
 } from '@corpcal/shared';
 import type {
+  ActiveRecurringLockoutBannerResponse,
   BannerSettings,
   RecurringLockoutBannerSettings,
 } from '@corpcal/shared/api/types';
@@ -18,6 +19,7 @@ import {
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
+  ActiveRecurringLockoutBannerResponseWrapperDto,
   BannerSettingsNullableResponseWrapperDto,
   BannerSettingsResponseWrapperDto,
   RecurringLockoutBannerSettingsNullableResponseWrapperDto,
@@ -61,18 +63,19 @@ export class BannerController {
   @ApiOperation({
     summary: 'Get active recurring lockout banner',
     description:
-      'Returns the recurring lockout banner when active for the current time of day, or null when not active.',
+      'Returns the recurring lockout banner when active for the current time of day, plus schedule metadata for client-side boundary refresh.',
   })
   @ApiResponse({
     status: 200,
     description: 'Active recurring lockout banner retrieved successfully',
-    type: RecurringLockoutBannerSettingsNullableResponseWrapperDto,
+    type: ActiveRecurringLockoutBannerResponseWrapperDto,
   })
   @Get('recurring-lockout')
   async getActiveRecurringLockoutBanner(): Promise<
-    ResponseWrapper<RecurringLockoutBannerSettings | null>
+    ResponseWrapper<ActiveRecurringLockoutBannerResponse>
   > {
-    const data = await this.bannerService.getActiveRecurringLockoutBanner();
+    const data =
+      await this.bannerService.getActiveRecurringLockoutBannerState();
     return { success: true, data };
   }
 

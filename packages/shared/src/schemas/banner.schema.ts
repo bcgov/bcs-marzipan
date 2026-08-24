@@ -81,6 +81,22 @@ export const recurringLockoutBannerSettingsSchema = z.object({
   lastUpdatedDateTime: z.string().datetime(),
 });
 
+export const recurringLockoutBannerScheduleSchema = z.object({
+  isActive: z.boolean(),
+  startTimeOfDay: timeOfDaySchema,
+  endTimeOfDay: timeOfDaySchema,
+  bannerLeadMinutes: z
+    .number()
+    .int()
+    .min(0)
+    .max(24 * 60),
+});
+
+export const activeRecurringLockoutBannerResponseSchema = z.object({
+  banner: recurringLockoutBannerSettingsSchema.nullable(),
+  schedule: recurringLockoutBannerScheduleSchema.nullable(),
+});
+
 export const upsertRecurringLockoutBannerSettingsRequestSchema = z
   .object({
     isActive: z.boolean(),
@@ -127,6 +143,12 @@ export type UpsertBannerSettingsBody = z.infer<
 >;
 export type RecurringLockoutBannerSettings = z.infer<
   typeof recurringLockoutBannerSettingsSchema
+>;
+export type RecurringLockoutBannerSchedule = z.infer<
+  typeof recurringLockoutBannerScheduleSchema
+>;
+export type ActiveRecurringLockoutBannerResponse = z.infer<
+  typeof activeRecurringLockoutBannerResponseSchema
 >;
 export type UpsertRecurringLockoutBannerSettingsBody = z.infer<
   typeof upsertRecurringLockoutBannerSettingsRequestSchema

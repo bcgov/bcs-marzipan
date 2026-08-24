@@ -1,6 +1,7 @@
 import { createZodDto } from 'nestjs-zod';
 
 import {
+  activeRecurringLockoutBannerResponseSchema,
   bannerSettingsSchema,
   createResponseWrapperSchema,
   recurringLockoutBannerSettingsSchema,
@@ -36,4 +37,8 @@ export class RecurringLockoutBannerSettingsResponseWrapperDto extends createZodD
 
 export class RecurringLockoutBannerSettingsNullableResponseWrapperDto extends createZodDto(
   createResponseWrapperSchema(recurringLockoutBannerSettingsSchema.nullable())
+) {}
+
+export class ActiveRecurringLockoutBannerResponseWrapperDto extends createZodDto(
+  createResponseWrapperSchema(activeRecurringLockoutBannerResponseSchema)
 ) {}
