@@ -90,6 +90,8 @@ export interface FormLookupData {
     name: string;
     displayName?: string;
     title?: string;
+    ministryId?: number | null;
+    sortOrder?: number;
   }>;
 
   // News Release Distributions - for Select
@@ -298,6 +300,8 @@ export function useFormLookups(): FormLookupData {
         name: item.name || item.label,
         displayName: item.displayName || item.label,
         title: item.title as string | undefined,
+        ministryId: item.ministryId ?? null,
+        sortOrder: item.sortOrder,
       })) || [];
 
     // Transform news release distributions for Select (serial IDs need to be strings for Select components)
@@ -366,6 +370,7 @@ export function useFormLookups(): FormLookupData {
     };
   }, [
     activityStatusesQuery.data,
+    activityTeamSharingQuery.data,
     categoriesQuery.data,
     commsMaterialsQuery.data,
     dateStatusesQuery.data,
@@ -381,11 +386,10 @@ export function useFormLookups(): FormLookupData {
     pitchStatusesQuery.data,
     premierRequestedQuery.data,
     tagsQuery.data,
-    activityTeamSharingQuery.data,
     timeStatusesQuery.data,
-    venueStatusesQuery.data,
     translationLanguagesQuery.data,
     translationRequiredStatusesQuery.data,
     usersQuery.data,
+    venueStatusesQuery.data,
   ]);
 }

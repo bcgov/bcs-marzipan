@@ -81,6 +81,8 @@ export const PERMISSIONS = {
     DELETE_ANY: 'activities.delete.any',
     APPROVE: 'activities.approve',
     REVIEW: 'activities.review',
+    /** Perform supported updates against multiple activities from the list. */
+    BULK_UPDATE: 'activities.bulkUpdate',
     PUBLISH: 'activities.publish',
     UNPUBLISH: 'activities.unpublish',
     NOTES_VIEW: 'activities.notes.view',

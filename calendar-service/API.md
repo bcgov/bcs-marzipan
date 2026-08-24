@@ -862,7 +862,19 @@ Server error occurred.
 ## Notes
 
 - **Authentication:** Endpoints that create, update, or delete resources require a valid JWT (cookie or `Authorization: Bearer`). The **authenticated user** is used for audit fields and activity history.
-- **Rate Limiting:** Not currently implemented.
+- **Rate Limiting:** A single global rate-limit interceptor is active:
+  - **General endpoints**: 100 requests/minute per IP by default (`RATE_LIMIT_MAX`).
+  - **Sensitive auth endpoints** (`/auth/login`, `/auth/check-email`, `/auth/set-password`, `/auth/verify-reset-code`, `/auth/change-password`): 5 requests/minute per IP by default (`RATE_LIMIT_AUTH_MAX`).
+  - **Azure OIDC endpoints** (`/auth/azure`, `/auth/azure/callback`): 20 requests per 15 minutes per IP by default (`RATE_LIMIT_AZURE_MAX`, `RATE_LIMIT_AZURE_WINDOW_MS`).
+  - **Storage backend**: Configurable via `RATE_LIMIT_STORE` (default: `memory`, set to `redis` for multi-replica consistency).
+  - **429 Response**: When rate limit is exceeded:
+    ```json
+    {
+      "statusCode": 429,
+      "message": "Rate limit exceeded. Please try again later.",
+      "retryAfter": <seconds_until_reset>
+    }
+    ```
 - **CORS:** Enabled for development. Configure allowed origins for production.
 - **Audit Fields:** `createdBy`, `lastUpdatedBy`, `createdDateTime`, and `lastUpdatedDateTime` are set from the authenticated user and current time on create and update. Activity history records the user ID for each change.
 - **Display ID:** Auto-generated as `<MINISTRY_ABBREV>-<6_DIGIT_ID>` (e.g., `MIN-000006`).

@@ -6,12 +6,16 @@ import {
   type UseFormReturn,
 } from 'react-hook-form';
 
+import { getActivityFormSectionFieldKeys } from '@corpcal/shared';
+
 import {
   formatMissingRequiredFieldsCountMessage,
   getMissingRequiredFieldItems,
   getMissingRequiredFieldItemsFromZodError,
   type MissingRequiredFieldItem,
 } from '../lib/form-utils';
+
+const ACTIVITY_FORM_FIELD_ORDER = getActivityFormSectionFieldKeys();
 
 type ActivityFormValidationSchema<TFieldValues extends FieldValues> = {
   safeParse: (data: unknown) =>
@@ -62,7 +66,8 @@ export function useActivityFormSubmitState<TFieldValues extends FieldValues>(
       ? []
       : getMissingRequiredFieldItemsFromZodError(
           result.error,
-          options.getFieldLabel
+          options.getFieldLabel,
+          ACTIVITY_FORM_FIELD_ORDER
         );
 
     return {
@@ -78,7 +83,8 @@ export function useActivityFormSubmitState<TFieldValues extends FieldValues>(
 
   const missingFieldItems = getMissingRequiredFieldItems(
     { errors } as FormState<TFieldValues>,
-    options?.getFieldLabel
+    options?.getFieldLabel,
+    ACTIVITY_FORM_FIELD_ORDER
   );
 
   return {

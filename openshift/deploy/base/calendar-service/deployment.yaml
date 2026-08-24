@@ -69,11 +69,31 @@ spec:
                 configMapKeyRef:
                   name: calendar-service-config
                   key: POST_LOGIN_REDIRECT_URL
+            - name: RATE_LIMIT_MAX
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: RATE_LIMIT_MAX
+            - name: RATE_LIMIT_AUTH_MAX
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: RATE_LIMIT_AUTH_MAX
+            - name: RATE_LIMIT_STORE
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: RATE_LIMIT_STORE
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: calendar-service-secrets
                   key: JWT_SECRET
+            - name: RATE_LIMIT_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: RATE_LIMIT_REDIS_URL
             - name: AZURE_TENANT_ID
               valueFrom:
                 secretKeyRef:

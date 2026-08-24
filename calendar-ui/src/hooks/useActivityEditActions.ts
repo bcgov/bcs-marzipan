@@ -4,8 +4,9 @@ export type ActivityEditActionFlags = {
   /** Another user holds the edit lock. */
   isLockedByOther: boolean;
   /**
-   * Save submits through the form when the client holds the edit lock, validation passes, and
-   * the form has unsaved edits. Review uses ensureEditThen separately so reviewers can mark
+   * Save submits through the form when the client holds the edit lock and the form has unsaved
+   * edits. Validation failures are handled by the form submit error path so focus can move to
+   * the first invalid field. Review uses ensureEditThen separately so reviewers can mark
    * reviewed without dirtying the form first.
    */
   canSubmitUpdate: boolean;
@@ -50,12 +51,7 @@ export function useActivityEditActions({
 }: UseActivityEditActionsInput): ActivityEditActionFlags {
   const isLockedByOther = lockState === 'locked-by-other';
 
-  const canSubmitUpdate =
-    hasEditLock &&
-    canSubmitWithoutValidationErrors &&
-    !isSubmitting &&
-    !readOnly &&
-    isDirty;
+  const canSubmitUpdate = hasEditLock && !isSubmitting && !readOnly && isDirty;
 
   const showReviewAction =
     canReviewActivities && mayEditFormFields && !isLockedByOther;

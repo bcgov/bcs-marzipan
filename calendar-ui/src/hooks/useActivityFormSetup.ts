@@ -79,6 +79,8 @@ export function useActivityFormSetup({
       createActivityRequestSchema
     ) as Resolver<ActivityFormData>,
     mode: 'onChange',
+    // Create/edit pages focus invalid fields in layout order via onError + form-utils.
+    shouldFocusError: false,
     defaultValues: getDefaultFormValues(),
   });
 

@@ -56,12 +56,25 @@ import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { userQueryKeys } from '@/lib/userQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
+const GOV_BC_EMAIL_DOMAIN = '@gov.bc.ca';
+
 const createUserFormSchema = z.object({
   email: z
     .string()
     .trim()
     .min(1, 'Email is required')
-    .email('Invalid email format'),
+    .email('Invalid email format')
+    .max(255)
+    .refine(
+      (value) => value.toLowerCase().endsWith(GOV_BC_EMAIL_DOMAIN),
+      'Email must be a @gov.bc.ca address'
+    ),
+  idirUsername: z
+    .string()
+    .trim()
+    .min(1, 'IDIR username is required')
+    .max(255)
+    .regex(/^[^\s@]+$/, 'IDIR username must not contain spaces or @'),
   roleId: z.string().min(1, 'Role is required'),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).default(''),
   adJobTitle: z.string().trim().max(USER_JOB_TITLE_MAX_LENGTH).default(''),
@@ -73,6 +86,7 @@ type CreateUserFormData = z.infer<typeof createUserFormSchema>;
 
 const defaultValues: CreateUserFormData = {
   email: '',
+  idirUsername: '',
   roleId: '',
   displayName: '',
   adJobTitle: '',
@@ -85,6 +99,8 @@ interface UserCreateModalProps {
   onClose: () => void;
   onSaved?: () => void;
 }
+
+type CreateUserRequest = CreateUserBody;
 
 /**
  * Modal for the "Add user" flow. Creates a local user (email + role required)
@@ -124,7 +140,7 @@ export function UserCreateModal({
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: CreateUserBody) => createUser(body),
+    mutationFn: (body: CreateUserRequest) => createUser(body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: userQueryKeys.list() });
       toast.success('User created');
@@ -166,8 +182,9 @@ export function UserCreateModal({
       form.setError('roleId', { message: 'Role is required' });
       return;
     }
-    const body: CreateUserBody = {
+    const body: CreateUserRequest = {
       email: data.email.trim(),
+      idirUsername: data.idirUsername.trim().toUpperCase(),
       roleId: parsedRoleId,
       ...(data.displayName?.trim() && {
         displayName: data.displayName.trim(),
@@ -200,8 +217,8 @@ export function UserCreateModal({
         <DialogHeader>
           <DialogTitle>Add user</DialogTitle>
           <DialogDescription>
-            Create a new user. Users can sign in with their email and Microsoft
-            account.
+            Create a new user. Use a @gov.bc.ca email and the user&apos;s IDIR
+            username.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -228,6 +245,32 @@ export function UserCreateModal({
                       type="email"
                       placeholder="example@gov.bc.ca"
                       autoComplete="email"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="idirUsername"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel showDirtyIndicator={false}>
+                    IDIR username{' '}
+                    <span
+                      className="text-required-field-indicator font-semibold"
+                      aria-hidden
+                    >
+                      *
+                    </span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="JSMITH"
+                      autoComplete="off"
                       {...field}
                     />
                   </FormControl>
