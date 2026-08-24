@@ -11,6 +11,10 @@ import {
   releaseLockWithKeepalive,
   type LockInfo,
 } from '../api/locksApi';
+import {
+  getRecurringEditLockoutDetailFallback,
+  isRecurringEditLockoutError,
+} from '../lib/recurring-edit-lockout-error';
 
 export type LockState =
   | 'idle'
@@ -226,10 +230,9 @@ export function useActivityLock(
         }
 
         if (
+          isRecurringEditLockoutError(err) ||
           reason === 'time_lockout' ||
-          (status === 403 &&
-            typeof detail === 'string' &&
-            detail.toLowerCase().includes('lockout window'))
+          (status === 403 && getRecurringEditLockoutDetailFallback(detail))
         ) {
           setLockedByUsername(null);
           setLockState('idle');
