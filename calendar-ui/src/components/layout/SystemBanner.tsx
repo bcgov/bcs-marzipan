@@ -44,19 +44,19 @@ export function SystemBanner({
       }}
     >
       <div className={cn('px-4 py-2 md:px-20')}>
-        <div className={cn('mx-auto flex w-full items-center gap-3')}>
+        <div className={cn('mx-auto flex w-full items-start gap-3')}>
           <div aria-hidden className="shrink-0 rounded-full bg-black/10 p-1">
             <Icon className="h-4 w-4" />
           </div>
 
           <div
             className={
-              'min-w-0 flex-1 text-sm leading-6 whitespace-pre-wrap ' +
+              'mt-1 min-w-0 flex-1 text-sm leading-none whitespace-pre-wrap ' +
               '[&_strong]:font-semibold ' +
               '[&_p]:m-0 [&_p]:inline ' +
-              // default anchor styling (but don't override elements that already have a bg- utility)
-              '[&_a]:opacity-90 [&_a]:transition-opacity [&_a:hover]:opacity-100 ' +
-              '[&_a:not([class*="bg-"])]:bg-[#ffffff] [&_a:not([class*="bg-"])]:text-current ' +
+              '[&_div]:m-0 [&_div]:p-0 ' +
+              // Unstyled links follow activity rich-text convention; explicit classes win.
+              '[&_a:not([class])]:text-primary [&_a:not([class])]:underline [&_a:not([class])]:underline-offset-2 ' +
               '[&_code]:rounded [&_code]:bg-black/10 [&_code]:px-1 [&_code]:py-0.5 ' +
               '[&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 ' +
               // default button styling when no explicit bg utility provided

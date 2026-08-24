@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 import { getNextRecurringLockoutBannerBoundaryMs } from '@corpcal/shared';
-import type { RecurringLockoutBannerSettings } from '@corpcal/shared/api/types';
+import type { ActiveRecurringLockoutBanner } from '@corpcal/shared/api/types';
 import { fetchActiveRecurringLockoutBannerState } from '@/api/bannerApi';
 
 export const RECURRING_LOCKOUT_BANNER_QUERY_KEY = [
@@ -14,7 +14,7 @@ export const RECURRING_LOCKOUT_BANNER_QUERY_KEY = [
 const RECURRING_LOCKOUT_BANNER_FALLBACK_REFETCH_MS = 60_000;
 const BOUNDARY_INVALIDATION_BUFFER_MS = 1_000;
 
-export function useRecurringLockoutBanner(): RecurringLockoutBannerSettings | null {
+export function useRecurringLockoutBanner(): ActiveRecurringLockoutBanner | null {
   const queryClient = useQueryClient();
 
   const { data } = useQuery({

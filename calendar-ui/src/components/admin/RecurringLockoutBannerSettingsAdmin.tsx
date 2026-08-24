@@ -3,8 +3,17 @@ import { PencilOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { PERMISSIONS } from '@corpcal/shared';
+import {
+  DEFAULT_RECURRING_LOCKOUT_ACTIVE_CONTENT,
+  DEFAULT_RECURRING_LOCKOUT_LEAD_CONTENT,
+  PERMISSIONS,
+  RECURRING_LOCKOUT_BANNER_CONTACT_EMAIL_PLACEHOLDER,
+  RECURRING_LOCKOUT_BANNER_LOCK_END_TIME_PLACEHOLDER,
+  RECURRING_LOCKOUT_BANNER_LOCK_START_TIME_PLACEHOLDER,
+  resolveRecurringLockoutBannerContent,
+} from '@corpcal/shared';
 import type {
+  BannerSettings,
   RecurringLockoutBannerSettings,
   UpsertRecurringLockoutBannerSettingsBody,
 } from '@corpcal/shared/api/types';
@@ -18,6 +27,7 @@ import {
   fetchRecurringLockoutBannerSettings,
   upsertRecurringLockoutBannerSettings,
 } from '@/api/bannerApi';
+import { fetchReportCoverContactSettings } from '@/api/reportCoverContactApi';
 import { SystemBanner } from '@/components/layout/SystemBanner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -32,7 +42,8 @@ import { AdminSection } from './AdminSection';
 
 type RecurringLockoutFormData = {
   isActive: boolean;
-  content: string;
+  leadContent: string;
+  activeContent: string;
   backgroundColor: string;
   textColor: string;
   variant: 'info' | 'warning' | 'success';
@@ -43,8 +54,8 @@ type RecurringLockoutFormData = {
 
 const DEFAULT_FORM_DATA: RecurringLockoutFormData = {
   isActive: false,
-  content:
-    'Editing activities is currently locked for users without lockout bypass permission.',
+  leadContent: DEFAULT_RECURRING_LOCKOUT_LEAD_CONTENT,
+  activeContent: DEFAULT_RECURRING_LOCKOUT_ACTIVE_CONTENT,
   backgroundColor: '#E6A635',
   textColor: '#000000',
   variant: 'warning',
@@ -52,6 +63,12 @@ const DEFAULT_FORM_DATA: RecurringLockoutFormData = {
   endTimeOfDay: DEFAULT_RECURRING_EDIT_LOCKOUT_END_TIME,
   bannerLeadMinutes: DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
 };
+
+const PLACEHOLDER_HELPER = [
+  RECURRING_LOCKOUT_BANNER_LOCK_START_TIME_PLACEHOLDER,
+  RECURRING_LOCKOUT_BANNER_LOCK_END_TIME_PLACEHOLDER,
+  RECURRING_LOCKOUT_BANNER_CONTACT_EMAIL_PLACEHOLDER,
+].join(', ');
 
 function toFormData(
   settings: RecurringLockoutBannerSettings | null
@@ -62,7 +79,8 @@ function toFormData(
 
   return {
     isActive: settings.isActive,
-    content: settings.content,
+    leadContent: settings.leadContent,
+    activeContent: settings.activeContent,
     backgroundColor: settings.backgroundColor,
     textColor: settings.textColor,
     variant: settings.variant,
@@ -77,13 +95,37 @@ function toRequestBody(
 ): UpsertRecurringLockoutBannerSettingsBody {
   return {
     isActive: formData.isActive,
-    content: formData.content.trim(),
+    leadContent: formData.leadContent.trim(),
+    activeContent: formData.activeContent.trim(),
     backgroundColor: formData.backgroundColor,
     textColor: formData.textColor,
     variant: formData.variant,
     startTimeOfDay: formData.startTimeOfDay,
     endTimeOfDay: formData.endTimeOfDay,
     bannerLeadMinutes: formData.bannerLeadMinutes,
+  };
+}
+
+function buildPreviewBanner(
+  formData: RecurringLockoutFormData,
+  settings: RecurringLockoutBannerSettings | null | undefined,
+  contactEmail: string,
+  content: string
+): BannerSettings {
+  return {
+    id: settings?.id ?? 0,
+    isActive: formData.isActive,
+    content,
+    backgroundColor: formData.backgroundColor,
+    textColor: formData.textColor,
+    variant: formData.variant,
+    isDismissible: false,
+    dismissScope: 'persistent',
+    startDateTime: null,
+    endDateTime: null,
+    createdDateTime: settings?.createdDateTime ?? new Date().toISOString(),
+    lastUpdatedDateTime:
+      settings?.lastUpdatedDateTime ?? new Date().toISOString(),
   };
 }
 
@@ -115,6 +157,12 @@ function RecurringLockoutBannerSettingsAdminInner() {
     retry: false,
   });
 
+  const { data: reportCoverContact } = useQuery({
+    queryKey: ['settings', 'report-cover-contact'],
+    queryFn: fetchReportCoverContactSettings,
+    retry: false,
+  });
+
   const initialFormData = useMemo(
     () => toFormData(settings ?? null),
     [settings]
@@ -129,27 +177,43 @@ function RecurringLockoutBannerSettingsAdminInner() {
     [formData, initialFormData]
   );
 
-  const previewBanner = useMemo(() => {
-    if (!formData.content.trim()) {
+  const contactEmail = reportCoverContact?.contactEmail ?? '';
+
+  const leadPreviewBanner = useMemo(() => {
+    const trimmed = formData.leadContent.trim();
+    if (!trimmed) {
       return null;
     }
 
-    return {
-      id: settings?.id ?? 0,
-      isActive: formData.isActive,
-      content: formData.content,
-      backgroundColor: formData.backgroundColor,
-      textColor: formData.textColor,
-      variant: formData.variant,
-      isDismissible: false,
-      dismissScope: 'persistent' as const,
-      startDateTime: null,
-      endDateTime: null,
-      createdDateTime: settings?.createdDateTime ?? new Date().toISOString(),
-      lastUpdatedDateTime:
-        settings?.lastUpdatedDateTime ?? new Date().toISOString(),
-    };
-  }, [formData, settings]);
+    const content = resolveRecurringLockoutBannerContent({
+      phase: 'lead-up',
+      leadContent: trimmed,
+      activeContent: formData.activeContent.trim(),
+      startTimeOfDay: formData.startTimeOfDay,
+      endTimeOfDay: formData.endTimeOfDay,
+      contactEmail,
+    });
+
+    return buildPreviewBanner(formData, settings, contactEmail, content);
+  }, [contactEmail, formData, settings]);
+
+  const activePreviewBanner = useMemo(() => {
+    const trimmed = formData.activeContent.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const content = resolveRecurringLockoutBannerContent({
+      phase: 'active',
+      leadContent: formData.leadContent.trim(),
+      activeContent: trimmed,
+      startTimeOfDay: formData.startTimeOfDay,
+      endTimeOfDay: formData.endTimeOfDay,
+      contactEmail,
+    });
+
+    return buildPreviewBanner(formData, settings, contactEmail, content);
+  }, [contactEmail, formData, settings]);
 
   const saveMutation = useMutation({
     mutationFn: (data: RecurringLockoutFormData) =>
@@ -180,21 +244,53 @@ function RecurringLockoutBannerSettingsAdminInner() {
     }
   };
 
+  const handleContentChange = (
+    field: 'leadContent' | 'activeContent',
+    next: string
+  ) => {
+    if (next.trim().length > BANNER_CONTENT_MAX_LENGTH) {
+      notifyContentLimitExceeded();
+      return;
+    }
+
+    setFormData((current) => ({
+      ...current,
+      [field]: next,
+    }));
+  };
+
   const handleReset = () => {
     setFormData(initialFormData);
   };
 
-  const handleSave = () => {
-    const trimmed = formData.content.trim();
+  const validateContentField = (value: string, label: string): boolean => {
+    const trimmed = value.trim();
     if (!trimmed) {
-      toast.error('Banner content cannot be empty');
-      return;
+      toast.error(`${label} cannot be empty`);
+      return false;
     }
 
     if (trimmed.length > BANNER_CONTENT_MAX_LENGTH) {
       toast.error(
-        `Banner content must be ${BANNER_CONTENT_MAX_LENGTH} characters or fewer`
+        `${label} must be ${BANNER_CONTENT_MAX_LENGTH} characters or fewer`
       );
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSave = () => {
+    if (!validateContentField(formData.leadContent, 'Lead-up banner content')) {
+      return;
+    }
+
+    if (
+      !validateContentField(
+        formData.activeContent,
+        'Active lockout banner content'
+      )
+    ) {
       return;
     }
 
@@ -220,14 +316,15 @@ function RecurringLockoutBannerSettingsAdminInner() {
 
     saveMutation.mutate({
       ...formData,
-      content: trimmed,
+      leadContent: formData.leadContent.trim(),
+      activeContent: formData.activeContent.trim(),
     });
   };
 
   return (
     <AdminSection
       title="Recurring edit lockout"
-      description="Configure a recurring lockout window and the warning banner shown before lockout starts. Users with activities.bypass_recurring_lockout may still edit during the window."
+      description="Configure a recurring lockout window and warning banners shown before and during lockout. Users with activities.bypass_recurring_lockout may still edit during the window."
       isLoading={isLoading}
       headerAction={
         <div className="flex items-center gap-2">
@@ -335,38 +432,65 @@ function RecurringLockoutBannerSettingsAdminInner() {
           </div>
         </div>
 
+        <p className="text-xs text-slate-500">
+          Placeholders: {PLACEHOLDER_HELPER}. Contact email is managed under
+          Report cover contact settings.
+        </p>
+
         <div className="space-y-2">
-          <Label htmlFor="lockout-banner-content">Banner content</Label>
+          <Label htmlFor="lockout-banner-lead-content">
+            Lead-up banner content
+          </Label>
           <Textarea
-            id="lockout-banner-content"
-            value={formData.content}
-            onChange={(e) => {
-              const next = e.target.value;
-              if (next.trim().length > BANNER_CONTENT_MAX_LENGTH) {
-                notifyContentLimitExceeded();
-                return;
-              }
-              setFormData((current) => ({
-                ...current,
-                content: next,
-              }));
-            }}
-            rows={4}
+            id="lockout-banner-lead-content"
+            value={formData.leadContent}
+            onChange={(e) => handleContentChange('leadContent', e.target.value)}
+            rows={3}
           />
           <div className="text-xs text-slate-500">
-            {formData.content.trim().length} / {BANNER_CONTENT_MAX_LENGTH}
+            {formData.leadContent.trim().length} / {BANNER_CONTENT_MAX_LENGTH}
           </div>
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="lockout-banner-active-content">
+            Active lockout banner content
+          </Label>
+          <Textarea
+            id="lockout-banner-active-content"
+            value={formData.activeContent}
+            onChange={(e) =>
+              handleContentChange('activeContent', e.target.value)
+            }
+            rows={3}
+          />
+          <div className="text-xs text-slate-500">
+            {formData.activeContent.trim().length} / {BANNER_CONTENT_MAX_LENGTH}
+          </div>
+        </div>
+
+        <div className="space-y-3">
           <Label>Preview</Label>
-          {previewBanner ? (
-            <SystemBanner banner={previewBanner} icon={PencilOff} />
-          ) : (
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-              Add banner content to preview.
-            </div>
-          )}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-600">Lead-up</p>
+            {leadPreviewBanner ? (
+              <SystemBanner banner={leadPreviewBanner} icon={PencilOff} />
+            ) : (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                Add lead-up banner content to preview.
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-slate-600">Active lockout</p>
+            {activePreviewBanner ? (
+              <SystemBanner banner={activePreviewBanner} icon={PencilOff} />
+            ) : (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                Add active lockout banner content to preview.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </AdminSection>
