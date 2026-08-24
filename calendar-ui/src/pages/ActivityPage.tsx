@@ -91,6 +91,10 @@ import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showErrorToast } from '../lib/error-toast';
 import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
+import {
+  getRecurringEditLockoutErrorMessage,
+  RECURRING_EDIT_LOCKOUT_UI_MESSAGE,
+} from '../lib/recurring-edit-lockout-error';
 
 const logger = createLogger('ActivityPage');
 
@@ -470,7 +474,7 @@ export function ActivityPage({
 
   const getEditLockAcquireToastMessage = useCallback((): string => {
     if (acquireFailureReason === 'time-lockout') {
-      return 'Cannot edit right now. Editing is locked during the scheduled lockout window.';
+      return RECURRING_EDIT_LOCKOUT_UI_MESSAGE;
     }
     return EDIT_LOCK_CONFLICT_TOAST;
   }, [acquireFailureReason]);
@@ -645,9 +649,10 @@ export function ActivityPage({
       } catch (err) {
         logger.error('Failed to update activity', err);
         const message =
-          err instanceof ApiError && err.status === 409
+          getRecurringEditLockoutErrorMessage(err) ??
+          (err instanceof ApiError && err.status === 409
             ? 'The entry is locked by another user. Your changes could not be saved.'
-            : 'Your changes could not be saved.';
+            : 'Your changes could not be saved.');
         showErrorToast(err, message);
       } finally {
         setIsSubmitting(false);
@@ -852,9 +857,10 @@ export function ActivityPage({
     } catch (err) {
       logger.error('Failed to soft delete activity', err);
       const message =
-        err instanceof ApiError && err.status === 403
+        getRecurringEditLockoutErrorMessage(err) ??
+        (err instanceof ApiError && err.status === 403
           ? 'You do not have permission to delete this activity'
-          : undefined;
+          : undefined);
       showErrorToast(err, message);
     } finally {
       setIsDeleteSubmitting(false);
@@ -874,9 +880,10 @@ export function ActivityPage({
     } catch (err) {
       logger.error('Failed to delete activity', err);
       const message =
-        err instanceof ApiError && err.status === 403
+        getRecurringEditLockoutErrorMessage(err) ??
+        (err instanceof ApiError && err.status === 403
           ? 'You do not have permission to delete this activity'
-          : undefined;
+          : undefined);
       showErrorToast(err, message);
     } finally {
       setIsDeleteSubmitting(false);
