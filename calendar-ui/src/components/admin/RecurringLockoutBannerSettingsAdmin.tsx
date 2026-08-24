@@ -110,7 +110,6 @@ function toRequestBody(
 function buildPreviewBanner(
   formData: RecurringLockoutFormData,
   settings: RecurringLockoutBannerSettings | null | undefined,
-  contactEmail: string,
   content: string
 ): BannerSettings {
   return {
@@ -221,7 +220,7 @@ function RecurringLockoutBannerSettingsAdminInner() {
       contactEmail,
     });
 
-    return buildPreviewBanner(formData, settings, contactEmail, content);
+    return buildPreviewBanner(formData, settings, content);
   }, [contactEmail, formData, settings]);
 
   const activePreviewBanner = useMemo(() => {
@@ -239,7 +238,7 @@ function RecurringLockoutBannerSettingsAdminInner() {
       contactEmail,
     });
 
-    return buildPreviewBanner(formData, settings, contactEmail, content);
+    return buildPreviewBanner(formData, settings, content);
   }, [contactEmail, formData, settings]);
 
   const saveMutation = useMutation({
