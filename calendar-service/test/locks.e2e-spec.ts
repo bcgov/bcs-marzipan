@@ -14,6 +14,7 @@ import { DatabaseService } from '../src/database/database.service';
 import { LocksService } from '../src/locks/locks.service';
 import {
   createAuthRequest,
+  createMockActivityRequest,
   createMockUpdateRequest,
   e2eLogin,
 } from './test-helpers';
@@ -158,23 +159,51 @@ describe('LocksController (API integration)', () => {
 
         expect(String(blocked.body.detail ?? '')).toContain('lockout window');
 
-        await createAuthRequest(app, adminToken)
+        const blockedCreate = await createAuthRequest(app, holderToken)
+          .post('/activities')
+          .send(
+            createMockActivityRequest({
+              title: `Lockout create blocked ${Date.now()}`,
+            })
+          )
+          .expect(403);
+
+        expect(String(blockedCreate.body.detail ?? '')).toContain(
+          'lockout window'
+        );
+
+        const adminAcquire = await createAuthRequest(app, adminToken)
           .post('/locks')
           .send({ entityType: 'activity', entityId: activityId })
           .expect(201);
+
+        await createAuthRequest(app, adminToken)
+          .patch(`/activities/${activityId}`)
+          .send(
+            createMockUpdateRequest({
+              title: `Lockout bypass patch ${Date.now()}`,
+            })
+          )
+          .expect(200);
+
+        await createAuthRequest(app, adminToken)
+          .delete(`/locks/${adminAcquire.body.id as number}`)
+          .expect(204);
       } finally {
-        const restoreBody = previousSettings ?? {
+        const restoreBody = {
           isActive: false,
           leadContent:
+            previousSettings?.leadContent ??
             'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
           activeContent:
+            previousSettings?.activeContent ??
             'Updates to activities are locked out until <lockEndTime> PT.',
-          backgroundColor: '#E6A635',
-          textColor: '#000000',
-          variant: 'warning',
-          startTimeOfDay: '15:00',
-          endTimeOfDay: '23:59',
-          bannerLeadMinutes: 30,
+          backgroundColor: previousSettings?.backgroundColor ?? '#E6A635',
+          textColor: previousSettings?.textColor ?? '#000000',
+          variant: previousSettings?.variant ?? 'warning',
+          startTimeOfDay: previousSettings?.startTimeOfDay ?? '15:00',
+          endTimeOfDay: previousSettings?.endTimeOfDay ?? '23:59',
+          bannerLeadMinutes: previousSettings?.bannerLeadMinutes ?? 30,
         };
 
         await createAuthRequest(app, systemAdminToken)
