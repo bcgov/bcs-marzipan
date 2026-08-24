@@ -15,6 +15,15 @@ export const DEFAULT_RECURRING_EDIT_LOCKOUT_START_TIME = '15:00';
 export const DEFAULT_RECURRING_EDIT_LOCKOUT_END_TIME = '23:59';
 export const DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES = 30;
 
+const recurringLockoutBannerContentSchema = z
+  .string()
+  .trim()
+  .min(1, 'Banner content is required')
+  .max(
+    BANNER_CONTENT_MAX_LENGTH,
+    `Banner content must be ${BANNER_CONTENT_MAX_LENGTH} characters or fewer`
+  );
+
 export const bannerSettingsSchema = z.object({
   id: z.number().int(),
   isActive: z.boolean(),
@@ -66,7 +75,8 @@ export const upsertBannerSettingsRequestSchema = z
 export const recurringLockoutBannerSettingsSchema = z.object({
   id: z.number().int(),
   isActive: z.boolean(),
-  content: z.string(),
+  leadContent: z.string(),
+  activeContent: z.string(),
   backgroundColor: hexColorSchema,
   textColor: hexColorSchema,
   variant: z.enum(['info', 'warning', 'success']),
@@ -81,6 +91,12 @@ export const recurringLockoutBannerSettingsSchema = z.object({
   lastUpdatedDateTime: z.string().datetime(),
 });
 
+export const activeRecurringLockoutBannerSchema =
+  recurringLockoutBannerSettingsSchema.extend({
+    content: z.string(),
+    phase: z.enum(['lead-up', 'active']),
+  });
+
 export const recurringLockoutBannerScheduleSchema = z.object({
   isActive: z.boolean(),
   startTimeOfDay: timeOfDaySchema,
@@ -93,21 +109,15 @@ export const recurringLockoutBannerScheduleSchema = z.object({
 });
 
 export const activeRecurringLockoutBannerResponseSchema = z.object({
-  banner: recurringLockoutBannerSettingsSchema.nullable(),
+  banner: activeRecurringLockoutBannerSchema.nullable(),
   schedule: recurringLockoutBannerScheduleSchema.nullable(),
 });
 
 export const upsertRecurringLockoutBannerSettingsRequestSchema = z
   .object({
     isActive: z.boolean(),
-    content: z
-      .string()
-      .trim()
-      .min(1, 'Banner content is required')
-      .max(
-        BANNER_CONTENT_MAX_LENGTH,
-        `Banner content must be ${BANNER_CONTENT_MAX_LENGTH} characters or fewer`
-      ),
+    leadContent: recurringLockoutBannerContentSchema,
+    activeContent: recurringLockoutBannerContentSchema,
     backgroundColor: hexColorSchema,
     textColor: hexColorSchema,
     variant: z.enum(['info', 'warning', 'success']).default('warning'),
@@ -143,6 +153,9 @@ export type UpsertBannerSettingsBody = z.infer<
 >;
 export type RecurringLockoutBannerSettings = z.infer<
   typeof recurringLockoutBannerSettingsSchema
+>;
+export type ActiveRecurringLockoutBanner = z.infer<
+  typeof activeRecurringLockoutBannerSchema
 >;
 export type RecurringLockoutBannerSchedule = z.infer<
   typeof recurringLockoutBannerScheduleSchema

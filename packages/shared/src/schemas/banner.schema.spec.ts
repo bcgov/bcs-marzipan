@@ -59,7 +59,10 @@ describe('upsertBannerSettingsRequestSchema', () => {
 function validRecurringBannerBody(overrides: Record<string, unknown> = {}) {
   return {
     isActive: true,
-    content: '<p>Editing is now locked for the day.</p>',
+    leadContent:
+      'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
+    activeContent:
+      'Updates to activities are locked out until <lockEndTime> PT. Contact <report_look_ahead_cover_contact_email>.',
     backgroundColor: '#E6A635',
     textColor: '#000000',
     variant: 'warning',
