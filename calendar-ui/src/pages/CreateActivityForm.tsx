@@ -2,7 +2,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import type { FieldErrors } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useMemo, useRef, useState, type FC } from 'react';
+import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 
 import { getActivityFormSectionFieldKeys } from '@corpcal/shared';
 import { PERMISSIONS } from '@corpcal/shared/auth';
@@ -46,6 +46,7 @@ import {
 import { showErrorToast } from '../lib/error-toast';
 import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
+import { getRecurringEditLockoutErrorMessage } from '../lib/recurring-edit-lockout-error';
 import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
 
 const logger = createLogger('CreateActivityForm');
@@ -124,6 +125,15 @@ export const CreateActivityForm: FC = () => {
     [lookups.translationRequiredStatuses]
   );
 
+  useEffect(() => {
+    if (!isBlockedByRecurringLockout) {
+      return;
+    }
+
+    setShowConfirmModal(false);
+    setValidatedData(null);
+  }, [isBlockedByRecurringLockout]);
+
   const handleCancel = () => {
     void form.reset();
     void navigate(listOrBackPath);
@@ -138,7 +148,7 @@ export const CreateActivityForm: FC = () => {
     notes?: string,
     markAsReviewed?: boolean
   ) => {
-    if (!validatedData) return;
+    if (!validatedData || isBlockedByRecurringLockout) return;
     const titleForToast = validatedData.title;
     setIsSubmitting(true);
     try {
@@ -185,7 +195,8 @@ export const CreateActivityForm: FC = () => {
       logger.error('Failed to create activity', error);
       showErrorToast(
         error,
-        'Your activity could not be created. If the problem persists, please contact calendar admins.'
+        getRecurringEditLockoutErrorMessage(error) ??
+          'Your activity could not be created. If the problem persists, please contact calendar admins.'
       );
       setIsSubmitting(false);
     }
@@ -364,6 +375,7 @@ export const CreateActivityForm: FC = () => {
           }
           showMarkAsReviewed={canReviewActivities}
           isSubmitting={isSubmitting}
+          confirmDisabled={isBlockedByRecurringLockout}
         />
       ) : null}
     </ErrorBoundary>

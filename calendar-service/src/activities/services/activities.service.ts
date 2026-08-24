@@ -147,6 +147,16 @@ export class ActivitiesService {
     return buildEffectiveReviewExemptKeys(fromDb);
   }
 
+  private async assertCanEditDuringLockout(
+    userId: number,
+    permissions?: string[]
+  ): Promise<void> {
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(
+      userId,
+      permissions
+    );
+  }
+
   /**
    * Normalize venue address data by trimming whitespace and converting empty strings to null.
    * This prevents false change detection due to whitespace differences.
@@ -1216,7 +1226,7 @@ export class ActivitiesService {
       extraCreateChanges?: HistoryChange[];
     }
   ): Promise<ActivityResponse> {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
 
     // Extract junction table IDs, venue address, and status/options from the DTO
     // activityStatusId is ignored (backend sets from markAsReviewed + activities.review permission)
@@ -2168,7 +2178,7 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
 
     const existingLock = options?.bypassEditLock
       ? null
@@ -2925,7 +2935,7 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse> {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId, context.permissions);
 
     const source = await this.findOne(sourceId);
 
@@ -3033,7 +3043,7 @@ export class ActivitiesService {
     // Verify activity exists so we return 404 for non-existent IDs (auth already enforced above)
     await this.findOne(id, { dataScope: { bypass: true, teamIds: [] } });
 
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
 
     const reason = options?.reason ?? undefined;
 
@@ -3299,7 +3309,7 @@ export class ActivitiesService {
   }
 
   async addHistoryNote(id: number, note: string, userId: number) {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId);
 
     const trimmedNote = note.trim();
     if (trimmedNote.length === 0) {
@@ -3343,7 +3353,7 @@ export class ActivitiesService {
    * In a full implementation, this would restore from a published snapshot
    */
   async cancelChanges(id: number, userId: number): Promise<ActivityResponse> {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId);
 
     // Verify activity exists
     const currentActivity = await this.findOne(id);
@@ -3387,7 +3397,7 @@ export class ActivitiesService {
     userId: number,
     context?: { permissions?: string[]; teamIds?: number[] }
   ): Promise<ActivityResponse> {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
 
     // Validate reason is provided and not empty
     // Required for audit and admin review purposes
@@ -3527,7 +3537,7 @@ export class ActivitiesService {
     reason: string,
     userId: number
   ): Promise<ActivityResponse> {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId);
 
     if (!reason || reason.trim().length === 0) {
       throw new BadRequestException(
@@ -3660,7 +3670,7 @@ export class ActivitiesService {
     note: string | undefined,
     _context?: { roleName: string }
   ): Promise<ActivityResponse> {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId);
 
     const [existing] = await this.databaseService.db
       .select()
@@ -3793,7 +3803,7 @@ export class ActivitiesService {
     categoryIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);
@@ -3854,7 +3864,7 @@ export class ActivitiesService {
     themeIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);
@@ -3905,7 +3915,7 @@ export class ActivitiesService {
     tagIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);
@@ -3955,7 +3965,7 @@ export class ActivitiesService {
     teamIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
-    await this.recurringLockoutService.assertUserCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);

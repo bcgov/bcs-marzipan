@@ -641,7 +641,7 @@ describe('ActivitiesService', () => {
 
       expect(
         mockRecurringLockoutService.assertUserCanEditDuringLockout
-      ).toHaveBeenCalledWith(1);
+      ).toHaveBeenCalledWith(1, [PERMISSIONS.ACTIVITIES.EDIT]);
     });
   });
 
