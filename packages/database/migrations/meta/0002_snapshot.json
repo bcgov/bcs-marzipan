@@ -1,5 +1,5 @@
 {
-  "id": "6677d448-7ad7-4165-bf6f-d9b4baba1f6b",
+  "id": "527ad03c-ae86-4b7c-a829-dc29c408248f",
   "prevId": "371fad95-60ca-45bd-84cf-57fbc7e7cbff",
   "version": "7",
   "dialect": "postgresql",
@@ -6507,11 +6507,19 @@
           "notNull": true,
           "default": false
         },
-        "content": {
-          "name": "content",
+        "lead_content": {
+          "name": "lead_content",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT. Please make updates before lockout begins.'"
+        },
+        "active_content": {
+          "name": "active_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Updates to activities are locked out until <lockEndTime> PT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.'"
         },
         "background_color": {
           "name": "background_color",
