@@ -4,6 +4,19 @@ import { AppModule } from '../app.module';
 import { AppLogger } from '../common/logger/logger.service';
 import { SeedService } from '../database/seed.service';
 
+type SeedCommandScope = 'all' | 'config' | 'seed';
+
+function parseScope(argv: string[]): SeedCommandScope {
+  const scopeArg = argv.find((arg) => arg.startsWith('--scope='));
+  const value = scopeArg?.split('=')[1]?.toLowerCase();
+
+  if (value === 'config' || value === 'seed' || value === 'all') {
+    return value;
+  }
+
+  return 'all';
+}
+
 /**
  * CLI command to seed the database with lookup table data.
  * Usage: npm run seed
@@ -15,11 +28,20 @@ async function bootstrap() {
 
   const logger = app.get(AppLogger);
   const seedService = app.get(SeedService);
+  const scope = parseScope(process.argv);
 
-  logger.log('Running database seed command...', 'SeedCommand');
+  logger.log(
+    `Running database seed command (scope: ${scope})...`,
+    'SeedCommand'
+  );
 
   try {
-    const success = await seedService.seed();
+    const success =
+      scope === 'config'
+        ? await seedService.seedConfigData()
+        : scope === 'seed'
+          ? await seedService.seedData()
+          : await seedService.seed();
 
     if (success) {
       logger.log('Database seeding completed successfully', 'SeedCommand');

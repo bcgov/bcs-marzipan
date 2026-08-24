@@ -1,9 +1,10 @@
 FROM postgres:16-alpine
 
-WORKDIR /seeds
+WORKDIR /
 
-# Bundle seed files directly into the image
-COPY packages/database/seeds/*.sql /seeds
+# Bundle config and seed SQL files directly into the image
+COPY packages/database/config-data/*.sql /config-data/
+COPY packages/database/seeds/*.sql /seeds/
 COPY run-seed.sh /run-seed.sh
 
 RUN chmod +x /run-seed.sh

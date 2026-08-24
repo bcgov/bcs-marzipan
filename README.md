@@ -66,6 +66,7 @@ npm run seed --workspace=calendar-service
 If you prefer to run SQL manually, the migration and seed files are located at:
 
 - **Schema**: `packages/database/migrations/*.sql`
+- **Config data**: `packages/database/config-data/*.sql`
 - **Seed data**: `packages/database/seeds/*.sql`
 
 See [Database Package Documentation](packages/database/README.md) for detailed setup and schema change workflows.
