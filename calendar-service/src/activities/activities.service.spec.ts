@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { activityEventPlanners } from '@corpcal/database/schema';
+import { activityEventPlanners, editLocks } from '@corpcal/database/schema';
 import type { Activity } from '@corpcal/database/types';
 import {
   buildActivityDisplayId,
@@ -3067,8 +3067,9 @@ describe('ActivitiesService', () => {
       });
       expect(mockTx.delete).toHaveBeenCalled();
       expect(deleteWhere).toHaveBeenCalled();
-      expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(15);
+      expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(16);
       expect(deletedTables).toContain(activityEventPlanners);
+      expect(deletedTables).toContain(editLocks);
       expect(
         mockActivitiesGateway.broadcastActivityUpdated
       ).toHaveBeenCalledWith(1);

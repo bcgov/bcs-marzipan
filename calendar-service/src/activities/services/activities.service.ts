@@ -31,6 +31,7 @@ import {
   commsMaterials,
   dateStatuses,
   deletionAudit,
+  editLocks,
   ministries,
   pitchRequiredStatuses,
   teams,
@@ -3093,6 +3094,11 @@ export class ActivitiesService {
         .delete(activitySubscriptions)
         .where(eq(activitySubscriptions.activityId, id));
       await tx.delete(venueAddresses).where(eq(venueAddresses.activityId, id));
+      await tx
+        .delete(editLocks)
+        .where(
+          and(eq(editLocks.entityType, 'activity'), eq(editLocks.entityId, id))
+        );
 
       await tx.delete(activities).where(eq(activities.id, id));
     });
