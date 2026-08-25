@@ -16,6 +16,7 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
+  activityEventPlanners,
   activityHistory,
   activityReportSettings,
   activityRepresentatives,
@@ -3068,6 +3069,9 @@ export class ActivitiesService {
       await tx
         .delete(activityCommsMaterials)
         .where(eq(activityCommsMaterials.activityId, id));
+      await tx
+        .delete(activityEventPlanners)
+        .where(eq(activityEventPlanners.activityId, id));
       await tx
         .delete(activityReportSettings)
         .where(eq(activityReportSettings.activityId, id));

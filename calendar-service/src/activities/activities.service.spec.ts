@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { activityEventPlanners } from '@corpcal/database/schema';
 import type { Activity } from '@corpcal/database/types';
 import {
   buildActivityDisplayId,
@@ -3034,9 +3035,13 @@ describe('ActivitiesService', () => {
         returning: vi.fn().mockResolvedValue([{ id: 1 }]),
       });
       const deleteWhere = vi.fn().mockResolvedValue(undefined);
+      const deletedTables: unknown[] = [];
       const mockTx = {
         insert: vi.fn().mockReturnValue({ values: insertValues }),
-        delete: vi.fn().mockReturnValue({ where: deleteWhere }),
+        delete: vi.fn((table) => {
+          deletedTables.push(table);
+          return { where: deleteWhere };
+        }),
       };
       mockDatabaseService.db.transaction = vi.fn(async (callback) => {
         return await callback(mockTx);
@@ -3062,7 +3067,8 @@ describe('ActivitiesService', () => {
       });
       expect(mockTx.delete).toHaveBeenCalled();
       expect(deleteWhere).toHaveBeenCalled();
-      expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(14);
+      expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(15);
+      expect(deletedTables).toContain(activityEventPlanners);
       expect(
         mockActivitiesGateway.broadcastActivityUpdated
       ).toHaveBeenCalledWith(1);
