@@ -1,4 +1,4 @@
-- Seed Script for Roles + Base RBAC
+-- Seed Script for Roles + Base RBAC
 -- This script seeds system roles, permission catalog, and base role-permission mappings
 -- MUST run before 0001_lookup_status.sql as users reference roles
 -- Idempotent: upserts by id so re-runs update existing rows (role_id FKs stay valid)
@@ -43,6 +43,7 @@ INSERT INTO permissions (key, display_name, category, subcategory, description, 
   ('activities.complete', 'Complete activities', 'Activities', 'Admin', NULL, 'activities', NULL, 'complete', 12),
   ('activities.flag', 'Flag / assign activities', 'Activities', 'Assignment', 'Assign an activity to a team member for follow-up. Visible within the team.', 'activities', NULL, 'flag', 13),
   ('activities.lock.forceHandoff', 'Force unlock', 'Activities', 'Edit lock', 'Force unlock of a locked activity.', 'activities', 'lock', 'forceHandoff', 50),
+  ('activities.bulkUpdate','Bulk update activities','Activities', 'Workflow', 'Mark multiple activities reviewed or update their pitch status from the activity list', 'activities', NULL, 'bulkUpdate', 12),
   ('drafts.view', 'View drafts', 'Drafts', 'Basic', NULL, 'drafts', NULL, 'view', 10),
   ('drafts.create', 'Create drafts', 'Drafts', 'Basic', NULL, 'drafts', NULL, 'create', 11),
   ('drafts.edit', 'Edit drafts', 'Drafts', 'Basic', NULL, 'drafts', NULL, 'edit', 12),
@@ -144,6 +145,16 @@ SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'System Admin'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- 9. Admin/System Admin Bulk Update permission
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name IN ('Admin', 'System Admin')
+  AND p.key = 'activities.bulkUpdate'
+ON CONFLICT (role_id, permission_id) DO UPDATE
+SET is_active = true, updated_at = now();
 
 -- System user for automated jobs + activity completion permissions
 -- Idempotent: uses ON CONFLICT where applicable

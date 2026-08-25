@@ -264,7 +264,6 @@ WHERE p.key IN (
   'activities.notes.edit',
   'activities.lookAhead.edit',
   'activities.translations.edit',
-  'activities.pitchStatus.edit',
   'activities.pitchDate.edit'
 )
 ON CONFLICT (team_id, permission_id) DO NOTHING;

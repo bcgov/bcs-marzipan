@@ -1,4 +1,4 @@
-- Seed script for database lookups and reference data.
+-- Seed script for database lookups and reference data.
 -- Run after schema migrations (see packages/database/migrations/) and after 0000_roles_permissions.sql (roles FK on users).
 --
 -- Serial sequences for explicit-id inserts are reset at end of pipeline:

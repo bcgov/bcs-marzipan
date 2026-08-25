@@ -148,13 +148,17 @@ export function parseSqlStatements(sqlContent: string): string[] {
 /**
  * Seed Runner
  *
- * Automatically discovers and executes seed SQL files from the seeds directory.
- * Files match `####_*_seed*.sql`. Use zero-padded numeric prefixes in order (`0000`, `0001`, …); reserve `9999_*` for sequence sync (must sort last).
+ * Automatically discovers and executes seed SQL files from config-data/ and seeds/ directories.
+ * Files must match `####_*.sql` (four-digit numeric prefix). Use zero-padded prefixes in order
+ * (`0000`, `0001`, …); reserve `9999_*` for sequence sync (must sort last).
+ *
+ * When scope is 'all' (default), config-data/ files run first, then seeds/ files.
+ * Use scope 'config' to run only config-data/ files, or 'seed' to run only seeds/ files.
  *
  * Features:
- * - Auto-discovers seed files matching the pattern
- * - Executes seeds in alphabetical order (numeric prefix ensures order)
- * - Tracks applied seeds in _seed_history table
+ * - Auto-discovers seed files matching `####_*.sql` across both directories
+ * - Executes seeds in alphabetical order per directory (numeric prefix ensures order)
+ * - Tracks applied seeds in _seed_history table (keyed by filename — filenames must be unique across all directories)
  * - Idempotent execution (skips already applied seeds unless --force)
  */
 export class SeedRunner {
@@ -420,6 +424,17 @@ export class SeedRunner {
       return [];
     }
 
+    // Guard: fail fast if duplicate filenames exist across directories
+    const seen = new Set<string>();
+    for (const { filename } of seedFiles) {
+      if (seen.has(filename)) {
+        throw new Error(
+          `Duplicate seed filename detected: "${filename}". Each seed file must have a unique name across all seed directories.`
+        );
+      }
+      seen.add(filename);
+    }
+
     const results: SeedResult[] = [];
 
     for (const seedFile of seedFiles) {
@@ -450,7 +465,8 @@ export class SeedRunner {
   }
 
   /**
-   * Gets the path to the seeds directory
+   * Gets a comma-separated string of all configured seed directory paths.
+   * @deprecated Prefer getSeedDirectories() for programmatic use.
    */
   getSeedsPath(): string {
     return this.seedsPaths.join(', ');

@@ -1,5 +1,5 @@
-﻿-- Field-level scoped permissions seed (team/field access enforcement).
--- Idempotent: permissions use ON CONFLICT (key) DO NOTHING; team grants use ON CONFLICT DO NOTHING on (team_id, permission_id).
+﻿-- Field-level scoped permissions seed (role and field access enforcement).
+-- Idempotent: permissions use ON CONFLICT (key) DO NOTHING; role grants use ON CONFLICT DO NOTHING on (role_id, permission_id).
 
 -- 1. Permission catalog (pitch date has edit only; no view permission - all users with activity access may read it)
 INSERT INTO permissions (key, display_name, category, subcategory, description, resource, scope, action, sort_order) VALUES
