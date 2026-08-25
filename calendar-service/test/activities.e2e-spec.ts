@@ -10,6 +10,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import type { TeamDetail } from '@corpcal/shared/api/types';
+import type { CreateActivityRequest } from '@corpcal/shared/schemas';
 
 import { AppModule } from '../src/app.module';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
@@ -19,6 +20,47 @@ import {
   createMockUpdateRequest,
   e2eLogin,
 } from './test-helpers';
+
+/** Seeded e2e login user thomas.garcia (id 18) is on lead team 2 (CCHQ). */
+const E2E_LEAD_TEAM_ID = 2;
+const E2E_LOGIN_USER_ID = 18;
+
+/** Activity create payload valid for thomas.garcia against seeded DB. */
+function createE2eActivityRequest(
+  overrides?: Partial<CreateActivityRequest>
+): CreateActivityRequest {
+  return createMockActivityRequest({
+    leadTeamId: E2E_LEAD_TEAM_ID,
+    commsContacts: [{ userId: E2E_LOGIN_USER_ID, isLead: true }],
+    ...overrides,
+  });
+}
+
+/** Rich create payload covering junction tables exercised by hard delete. */
+function createFullyPopulatedE2eActivityRequest(
+  overrides?: Partial<CreateActivityRequest>
+): CreateActivityRequest {
+  return createE2eActivityRequest({
+    title: 'E2E Hard Delete Full Relations',
+    categoryIds: [1, 2],
+    tagIds: [1],
+    commsMaterialIds: [1],
+    translationLanguageIds: [1],
+    eventPlanners: [
+      { eventPlannerId: 1, isLead: true },
+      { eventPlannerName: 'External venue coordinator', isLead: false },
+    ],
+    representatives: [{ representativeName: 'E2E Representative' }],
+    venueAddress: {
+      venueName: 'E2E Integration Venue',
+      addressLine1: '123 Test Street',
+      city: 'Victoria',
+      provinceOrState: 'BC',
+      country: 'Canada',
+    },
+    ...overrides,
+  });
+}
 
 /** UUID v4 pattern per RFC 4122 */
 const UUID_V4_REGEX =
@@ -103,12 +145,9 @@ describe('ActivitiesController (API integration)', () => {
 
   describe('/activities (POST)', () => {
     it('should create a new activity', async () => {
-      const createActivityDto = createMockActivityRequest({
+      const createActivityDto = createE2eActivityRequest({
         title: 'Integration Test Activity',
         summary: 'This is a test activity created via API integration tests',
-        // thomas.garcia (18) is on lead team 2; user 1 is not on team 1 for default mock comms.
-        leadTeamId: 2,
-        commsContacts: [{ userId: 18, isLead: true }],
       });
 
       const res = await createAuthRequest(app, accessToken)
@@ -328,15 +367,29 @@ describe('ActivitiesController (API integration)', () => {
   });
 
   describe('/activities/:id (DELETE)', () => {
-    it.skip('should delete an activity', () => {
-      // Skip: hard delete fails with 500 when activity_history references the activity (FK). Service may need to soft-delete or cascade.
-      return createAuthRequest(app, accessToken)
-        .delete(`/activities/${createdActivityId}`)
-        .expect(200)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('message');
-          expect(res.body.message).toContain('deleted');
-        });
+    let hardDeleteTargetId: number;
+
+    beforeAll(async () => {
+      const res = await createAuthRequest(app, accessToken)
+        .post('/activities')
+        .send(
+          createE2eActivityRequest({
+            title: 'E2E Hard Delete Target',
+          })
+        )
+        .expect(201);
+      hardDeleteTargetId = res.body.data.id;
+    });
+
+    it('should delete an activity', async () => {
+      const res = await createAuthRequest(app, accessToken)
+        .delete(`/activities/${hardDeleteTargetId}`)
+        .send({ reason: 'E2E hard delete cleanup' })
+        .expect(200);
+
+      expect(res.body).toHaveProperty('message');
+      expect(res.body.message).toContain('deleted');
+      expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
     });
 
     it('should return 404 when deleting non-existent activity', () => {
@@ -349,15 +402,101 @@ describe('ActivitiesController (API integration)', () => {
         });
     });
 
-    it.skip('should return 404 when fetching deleted activity', () => {
-      // Skip: depends on delete succeeding; currently delete returns 500 due to activity_history FK.
+    it('should return 404 when fetching deleted activity', () => {
       return createAuthRequest(app, accessToken)
-        .get(`/activities/${createdActivityId}`)
+        .get(`/activities/${hardDeleteTargetId}`)
         .expect(404)
         .expect((res) => {
           expectProblemDetails(res, 404);
           expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
         });
+    });
+  });
+
+  describe('/activities/:id (DELETE) with full relations', () => {
+    it('should hard delete an activity with event planners, flags, favourites, and edit lock', async () => {
+      const meRes = await createAuthRequest(app, accessToken)
+        .get('/auth/me')
+        .expect(200);
+      const myTeamIds = (meRes.body?.teamIds as number[] | undefined) ?? [];
+      expect(myTeamIds.length).toBeGreaterThan(0);
+      const flagTeamId = myTeamIds[0];
+
+      const teamRes = await createAuthRequest(app, accessToken)
+        .get(`/teams/${flagTeamId}`)
+        .expect(200);
+      const team = teamRes.body.data as TeamDetail;
+      expect(team.members.length).toBeGreaterThan(0);
+      const assigneeIds = [...new Set(team.members.map((m) => m.userId))].slice(
+        0,
+        2
+      );
+
+      const createRes = await createAuthRequest(app, accessToken)
+        .post('/activities')
+        .send(createFullyPopulatedE2eActivityRequest())
+        .expect(201);
+      const activityId = createRes.body.data.id as number;
+
+      await createAuthRequest(app, accessToken)
+        .put(`/activities/${activityId}/flags`)
+        .send({ teamId: flagTeamId, assigneeIds })
+        .expect(200);
+
+      await createAuthRequest(app, accessToken)
+        .post(`/activity-favourites/${activityId}`)
+        .expect(201);
+
+      await createAuthRequest(app, accessToken)
+        .post('/locks')
+        .send({ entityType: 'activity', entityId: activityId })
+        .expect(201);
+
+      const detailRes = await createAuthRequest(app, accessToken)
+        .get(`/activities/${activityId}`)
+        .expect(200);
+      const activity = detailRes.body.data as {
+        eventPlannerDetails?: unknown[];
+        eventPlanners?: string[];
+        flags?: unknown[];
+        venueAddress?: { venueName?: string | null };
+      };
+      expect(
+        (activity.eventPlannerDetails?.length ?? 0) +
+          (activity.eventPlanners?.length ?? 0)
+      ).toBeGreaterThanOrEqual(2);
+      expect(activity.flags?.length ?? 0).toBeGreaterThanOrEqual(1);
+      expect(activity.venueAddress?.venueName).toBe('E2E Integration Venue');
+
+      const favouritesBefore = await createAuthRequest(app, accessToken)
+        .get('/activity-favourites')
+        .expect(200);
+      expect(favouritesBefore.body.data.activityIds).toContain(activityId);
+
+      const lockBefore = await createAuthRequest(app, accessToken)
+        .get(`/locks/activity/${activityId}`)
+        .expect(200);
+      expect(lockBefore.body.locked).toBe(true);
+
+      const deleteRes = await createAuthRequest(app, accessToken)
+        .delete(`/activities/${activityId}`)
+        .send({ reason: 'E2E hard delete with full related rows' })
+        .expect(200);
+      expect(deleteRes.body.message).toContain('deleted');
+
+      await createAuthRequest(app, accessToken)
+        .get(`/activities/${activityId}`)
+        .expect(404);
+
+      const favouritesAfter = await createAuthRequest(app, accessToken)
+        .get('/activity-favourites')
+        .expect(200);
+      expect(favouritesAfter.body.data.activityIds).not.toContain(activityId);
+
+      const lockAfter = await createAuthRequest(app, accessToken)
+        .get(`/locks/activity/${activityId}`)
+        .expect(200);
+      expect(lockAfter.body.locked).toBe(false);
     });
   });
 
@@ -464,7 +603,7 @@ describe('ActivitiesController (API integration)', () => {
     beforeAll(async () => {
       const res = await createAuthRequest(app, accessToken)
         .post('/activities')
-        .send(createMockActivityRequest({ title: 'E2E Soft Delete Target' }))
+        .send(createE2eActivityRequest({ title: 'E2E Soft Delete Target' }))
         .expect(201);
       softDeleteTargetId = res.body.data.id;
     });
@@ -522,18 +661,16 @@ describe('ActivitiesController (API integration)', () => {
         createAuthRequest(app, accessToken)
           .post('/activities')
           .send(
-            createMockActivityRequest({
+            createE2eActivityRequest({
               title: 'E2E Request Delete Target',
-              leadTeamId: 9,
             })
           )
           .expect(201),
         createAuthRequest(app, accessToken)
           .post('/activities')
           .send(
-            createMockActivityRequest({
+            createE2eActivityRequest({
               title: 'E2E Already Requested',
-              leadTeamId: 9,
             })
           )
           .expect(201),
@@ -545,14 +682,14 @@ describe('ActivitiesController (API integration)', () => {
       await createAuthRequest(app, accessToken)
         .post(`/activities/${alreadyRequestedId}/request-delete`)
         .send({ reason: 'Setting up conflict test state for e2e' })
-        .expect(200);
+        .expect(201);
     });
 
     it('should request delete on an activity', async () => {
       const res = await createAuthRequest(app, accessToken)
         .post(`/activities/${requestDeleteTargetId}/request-delete`)
         .send({ reason: 'This activity duplicates another one' })
-        .expect(200);
+        .expect(201);
 
       expect(res.body).toHaveProperty('success', true);
       expect(res.body).toHaveProperty('data');
@@ -590,17 +727,14 @@ describe('ActivitiesController (API integration)', () => {
         createAuthRequest(app, accessToken)
           .post('/activities')
           .send(
-            createMockActivityRequest({
+            createE2eActivityRequest({
               title: 'E2E Restore From Requested',
-              leadTeamId: 9,
             })
           )
           .expect(201),
         createAuthRequest(app, accessToken)
           .post('/activities')
-          .send(
-            createMockActivityRequest({ title: 'E2E Restore From Deleted' })
-          )
+          .send(createE2eActivityRequest({ title: 'E2E Restore From Deleted' }))
           .expect(201),
       ]);
       restoreFromRequestedId = res1.body.data.id;
@@ -610,7 +744,7 @@ describe('ActivitiesController (API integration)', () => {
       await createAuthRequest(app, accessToken)
         .post(`/activities/${restoreFromRequestedId}/request-delete`)
         .send({ reason: 'Setting up restore test state from requested' })
-        .expect(200);
+        .expect(201);
 
       // Set up deleted state for second activity via soft-delete
       await createAuthRequest(app, accessToken)
@@ -623,7 +757,7 @@ describe('ActivitiesController (API integration)', () => {
       const res = await createAuthRequest(app, accessToken)
         .post(`/activities/${restoreFromRequestedId}/restore`)
         .send({ note: 'Restoring after further review' })
-        .expect(200);
+        .expect(201);
 
       expect(res.body).toHaveProperty('success', true);
       expect(res.body).toHaveProperty('data');
@@ -635,7 +769,7 @@ describe('ActivitiesController (API integration)', () => {
       const res = await createAuthRequest(app, accessToken)
         .post(`/activities/${restoreFromDeletedId}/restore`)
         .send({ note: 'Restoring from deleted state' })
-        .expect(200);
+        .expect(201);
 
       expect(res.body).toHaveProperty('success', true);
       expect(res.body).toHaveProperty('data');
