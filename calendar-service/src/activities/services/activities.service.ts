@@ -3015,7 +3015,8 @@ export class ActivitiesService {
   /**
    * Remove an activity (hard delete).
    * When context.permissions does not include activities.delete.any, user must be comms contact or lead-team member for the activity.
-   * Writes to deletion_audit, then deletes all child rows and the activity in a single transaction.
+   * Writes to deletion_audit, deletes child rows and polymorphic edit locks,
+   * then deletes the activity in a single transaction (see activity-hard-delete.coverage).
    */
   async remove(
     id: number,
@@ -3057,7 +3058,7 @@ export class ActivitiesService {
         reason: reason ?? null,
       });
 
-      // Delete all child rows that reference this activity (order does not matter for these tables)
+      // Delete child rows that reference this activity (order does not matter for these tables).
       await tx
         .delete(activityHistory)
         .where(eq(activityHistory.activityId, id));
@@ -3094,6 +3095,8 @@ export class ActivitiesService {
         .delete(activitySubscriptions)
         .where(eq(activitySubscriptions.activityId, id));
       await tx.delete(venueAddresses).where(eq(venueAddresses.activityId, id));
+
+      // Polymorphic lock rows have no activities.id FK — must delete explicitly.
       await tx
         .delete(editLocks)
         .where(

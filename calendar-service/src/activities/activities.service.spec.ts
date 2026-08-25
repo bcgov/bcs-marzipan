@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { activityEventPlanners, editLocks } from '@corpcal/database/schema';
 import type { Activity } from '@corpcal/database/types';
 import {
   buildActivityDisplayId,
@@ -41,6 +40,7 @@ import {
 import { PolicyService } from '../policy/policy.service';
 import { TeamsService } from '../teams/teams.service';
 import { ActivitiesGateway } from './activities.gateway';
+import { ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES } from './activity-hard-delete.coverage';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
 import { createMockActivityDataFetcherService } from './services/activity-data-fetcher.service.mock';
@@ -3065,11 +3065,12 @@ describe('ActivitiesService', () => {
         userId: 10,
         reason: 'Duplicate entry',
       });
-      expect(mockTx.delete).toHaveBeenCalled();
-      expect(deleteWhere).toHaveBeenCalled();
-      expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(16);
-      expect(deletedTables).toContain(activityEventPlanners);
-      expect(deletedTables).toContain(editLocks);
+      expect(mockTx.delete.mock.calls.map(([table]) => table)).toEqual([
+        ...ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES,
+      ]);
+      expect(deletedTables).toEqual([
+        ...ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES,
+      ]);
       expect(
         mockActivitiesGateway.broadcastActivityUpdated
       ).toHaveBeenCalledWith(1);
