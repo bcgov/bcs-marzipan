@@ -12,7 +12,10 @@ export interface SeedResult {
 export interface SeedOptions {
   force?: boolean;
   dryRun?: boolean;
+  scope?: SeedScope;
 }
+
+export type SeedScope = 'all' | 'config' | 'seed';
 
 /**
  * Database interface that seed-runner requires
@@ -145,32 +148,39 @@ export function parseSqlStatements(sqlContent: string): string[] {
 /**
  * Seed Runner
  *
- * Automatically discovers and executes seed SQL files from the seeds directory.
- * Files match `####_*_seed*.sql`. Use zero-padded numeric prefixes in order (`0000`, `0001`, …); reserve `9999_*` for sequence sync (must sort last).
+ * Automatically discovers and executes seed SQL files from config-data/ and seeds/ directories.
+ * Files must match `####_*.sql` (four-digit numeric prefix). Use zero-padded prefixes in order
+ * (`0000`, `0001`, …); reserve `9999_*` for sequence sync (must sort last).
+ *
+ * When scope is 'all' (default), config-data/ files run first, then seeds/ files.
+ * Use scope 'config' to run only config-data/ files, or 'seed' to run only seeds/ files.
  *
  * Features:
- * - Auto-discovers seed files matching the pattern
- * - Executes seeds in alphabetical order (numeric prefix ensures order)
- * - Tracks applied seeds in _seed_history table
+ * - Auto-discovers seed files matching `####_*.sql` across both directories
+ * - Executes seeds in alphabetical order per directory (numeric prefix ensures order)
+ * - Tracks applied seeds in _seed_history table (keyed by filename — filenames must be unique across all directories)
  * - Idempotent execution (skips already applied seeds unless --force)
  */
 export class SeedRunner {
-  private readonly seedsPath: string;
+  private readonly seedsPaths: string[];
 
   constructor(
     private readonly db: SeedableDatabase,
     seedsDirectory?: string
   ) {
-    // Resolve seeds directory path
-    // In development: from packages/database/src -> packages/database/seeds
-    // In production: from packages/database/dist -> packages/database/seeds
+    // Resolve seed directories.
+    // In development: from packages/database/src -> packages/database/config-data + packages/database/seeds
+    // In production: from packages/database/dist -> packages/database/config-data + packages/database/seeds
     if (seedsDirectory) {
-      this.seedsPath = seedsDirectory;
+      this.seedsPaths = [seedsDirectory];
     } else {
       // Find the package root by looking for package.json
       // This works regardless of whether we're in src/ or dist/
       const packageRoot = this.findPackageRoot();
-      this.seedsPath = path.join(packageRoot, 'seeds');
+      this.seedsPaths = [
+        path.join(packageRoot, 'config-data'),
+        path.join(packageRoot, 'seeds'),
+      ];
     }
   }
 
@@ -289,28 +299,56 @@ export class SeedRunner {
   }
 
   /**
-   * Discovers seed files in the seeds directory
-   * Matches pattern: ####_*_seed_*.sql or ####_*seed*.sql
+   * Discovers seed files in configured seed directories.
+   * Matches pattern: ####_*.sql
+   *
+   * Execution order is two-phase when scope=all:
+   * 1) all files in config-data/ (sorted by filename)
+   * 2) all files in seeds/ (sorted by filename)
    */
-  private discoverSeedFiles(): string[] {
-    if (!fs.existsSync(this.seedsPath)) {
-      return [];
+  private discoverSeedFiles(
+    scope: SeedScope
+  ): Array<{ filePath: string; filename: string }> {
+    const discoveredFiles: Array<{ filePath: string; filename: string }> = [];
+
+    for (const seedPath of this.seedsPaths) {
+      if (!fs.existsSync(seedPath)) {
+        continue;
+      }
+
+      const dirName = path.basename(seedPath).toLowerCase();
+      const isConfigDirectory = dirName === 'config-data';
+      const isSeedDirectory = dirName === 'seeds';
+      // Custom/unknown directories (passed via constructor) are always included regardless of scope.
+      const isCustomDirectory = !isConfigDirectory && !isSeedDirectory;
+
+      if (scope === 'config' && !isConfigDirectory && !isCustomDirectory) {
+        continue;
+      }
+
+      if (scope === 'seed' && !isSeedDirectory && !isCustomDirectory) {
+        continue;
+      }
+
+      const files = fs.readdirSync(seedPath);
+      const seedFiles = files
+        .filter((file) => {
+          // Match files that:
+          // 1. End with .sql
+          // 2. Start with 4 digits followed by underscore
+          return file.endsWith('.sql') && /^\d{4}_/.test(file);
+        })
+        .sort((a, b) => a.localeCompare(b));
+
+      for (const filename of seedFiles) {
+        discoveredFiles.push({
+          filePath: path.join(seedPath, filename),
+          filename,
+        });
+      }
     }
 
-    const files = fs.readdirSync(this.seedsPath);
-    const seedFiles = files
-      .filter((file) => {
-        // Match files that:
-        // 1. End with .sql
-        // 2. Start with 4 digits followed by underscore
-        // 3. Contain "seed" in the filename
-        return (
-          file.endsWith('.sql') && /^\d{4}_/.test(file) && /seed/i.test(file)
-        );
-      })
-      .sort(); // Alphabetical sort ensures numeric prefix order
-
-    return seedFiles;
+    return discoveredFiles;
   }
 
   /**
@@ -330,10 +368,10 @@ export class SeedRunner {
    * Executes a single seed file
    */
   private async executeSeedFile(
+    filePath: string,
     filename: string,
     options: SeedOptions = {}
   ): Promise<SeedResult> {
-    const filePath = path.join(this.seedsPath, filename);
     const statements = this.parseSqlFile(filePath);
 
     if (options.dryRun) {
@@ -379,26 +417,42 @@ export class SeedRunner {
     const appliedSeeds = await this.getAppliedSeeds();
 
     // Discover seed files
-    const seedFiles = this.discoverSeedFiles();
+    const scope = options.scope ?? 'all';
+    const seedFiles = this.discoverSeedFiles(scope);
 
     if (seedFiles.length === 0) {
       return [];
+    }
+
+    // Guard: fail fast if duplicate filenames exist across directories
+    const seen = new Set<string>();
+    for (const { filename } of seedFiles) {
+      if (seen.has(filename)) {
+        throw new Error(
+          `Duplicate seed filename detected: "${filename}". Each seed file must have a unique name across all seed directories.`
+        );
+      }
+      seen.add(filename);
     }
 
     const results: SeedResult[] = [];
 
     for (const seedFile of seedFiles) {
       // Skip if already applied (unless force flag is set)
-      if (!options.force && appliedSeeds.has(seedFile)) {
+      if (!options.force && appliedSeeds.has(seedFile.filename)) {
         results.push({
-          file: seedFile,
+          file: seedFile.filename,
           success: true,
           statementsExecuted: 0,
         });
         continue;
       }
 
-      const result = await this.executeSeedFile(seedFile, options);
+      const result = await this.executeSeedFile(
+        seedFile.filePath,
+        seedFile.filename,
+        options
+      );
       results.push(result);
 
       // Stop on first error (unless force flag allows continuation)
@@ -411,9 +465,17 @@ export class SeedRunner {
   }
 
   /**
-   * Gets the path to the seeds directory
+   * Gets a comma-separated string of all configured seed directory paths.
+   * @deprecated Prefer getSeedDirectories() for programmatic use.
    */
   getSeedsPath(): string {
-    return this.seedsPath;
+    return this.seedsPaths.join(', ');
+  }
+
+  /**
+   * Gets the configured seed directories.
+   */
+  getSeedDirectories(): string[] {
+    return [...this.seedsPaths];
   }
 }
