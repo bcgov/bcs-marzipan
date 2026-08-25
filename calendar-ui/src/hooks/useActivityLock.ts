@@ -220,12 +220,41 @@ export function useActivityLock(
         if (reason === 'locked_by_other' || status === LOCKED_STATUS) {
           try {
             const statusRes = await getLockStatus(activityId);
-            setLockedByUsername(statusRes.lockedBy?.username ?? null);
+            if (statusRes.locked && !statusRes.isOwnLock) {
+              setLockedByUsername(statusRes.lockedBy?.username ?? null);
+              setLockState('locked-by-other');
+              setAcquireFailureReason('locked-by-other');
+            } else if (
+              statusRes.locked &&
+              statusRes.isOwnLock &&
+              currentUserId != null
+            ) {
+              const info = buildLockInfoFromStatus(
+                activityId,
+                currentUserId,
+                statusRes
+              );
+              if (info) {
+                lockRef.current = info;
+                setLock(info);
+                setLockState('owned');
+                setLockedByUsername(null);
+                setAcquireFailureReason(null);
+                return true;
+              }
+              setLockedByUsername(null);
+              setLockState('idle');
+              setAcquireFailureReason(null);
+            } else {
+              setLockedByUsername(null);
+              setLockState('idle');
+              setAcquireFailureReason(null);
+            }
           } catch {
             setLockedByUsername(null);
+            setLockState('locked-by-other');
+            setAcquireFailureReason('locked-by-other');
           }
-          setLockState('locked-by-other');
-          setAcquireFailureReason('locked-by-other');
           return false;
         }
 
@@ -250,7 +279,7 @@ export function useActivityLock(
 
     acquireInFlightRef.current = promise;
     return promise;
-  }, [activityId]);
+  }, [activityId, currentUserId]);
 
   const release = useCallback(async (): Promise<void> => {
     const currentLock = lockRef.current;
