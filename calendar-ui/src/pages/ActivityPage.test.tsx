@@ -141,6 +141,7 @@ vi.mock('../hooks/useActivityLock', () => ({
     lockedByUsername: mockLockState === 'locked-by-other' ? 'Other User' : null,
     acquire: mockAcquire,
     release: mockRelease,
+    releaseWithRetry: mockRelease,
     refreshLockFromServer: vi.fn(),
     sendHeartbeat: vi.fn(),
     applyExternalLockReleased: mockApplyExternalLockReleased,
@@ -148,6 +149,10 @@ vi.mock('../hooks/useActivityLock', () => ({
     clearLockedByOther: mockClearLockedByOther,
     acquireFailureReason: null,
   }),
+}));
+
+vi.mock('../hooks/useLockoutEditCountdownToast', () => ({
+  useLockoutEditCountdownToast: vi.fn(),
 }));
 
 let mockIsBlockedByRecurringLockout = false;

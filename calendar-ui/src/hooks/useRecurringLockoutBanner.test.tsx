@@ -3,11 +3,13 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
+import { getNextRecurringLockoutBannerBoundaryMs } from '@corpcal/shared';
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import { fetchActiveRecurringLockoutBannerState } from '@/api/bannerApi';
 
 import {
   RECURRING_LOCKOUT_BANNER_QUERY_KEY,
+  RECURRING_LOCKOUT_BOUNDARY_INVALIDATION_BUFFER_MS,
   useRecurringEditLockout,
   useRecurringLockoutBanner,
 } from './useRecurringLockoutBanner';
@@ -80,14 +82,16 @@ describe('useRecurringLockoutBanner', () => {
     try {
       vi.setSystemTime(new Date('2026-08-05T20:39:00.000Z'));
 
+      const schedule = {
+        isActive: true,
+        startTimeOfDay: '14:00',
+        endTimeOfDay: '16:00',
+        bannerLeadMinutes: 20,
+      };
+
       fetchActiveRecurringLockoutBannerStateMock.mockResolvedValue({
         banner: null,
-        schedule: {
-          isActive: true,
-          startTimeOfDay: '14:00',
-          endTimeOfDay: '16:00',
-          bannerLeadMinutes: 20,
-        },
+        schedule,
       });
 
       const queryClient = new QueryClient({
@@ -103,8 +107,13 @@ describe('useRecurringLockoutBanner', () => {
         await Promise.resolve();
       });
 
+      const delayMs = getNextRecurringLockoutBannerBoundaryMs(schedule);
+      expect(delayMs).not.toBeNull();
+
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(61_000);
+        await vi.advanceTimersByTimeAsync(
+          delayMs! + RECURRING_LOCKOUT_BOUNDARY_INVALIDATION_BUFFER_MS
+        );
       });
 
       expect(invalidateSpy).toHaveBeenCalledWith({
@@ -181,6 +190,50 @@ describe('useRecurringEditLockout', () => {
       await waitFor(() => {
         expect(result.current.isBlocked).toBe(false);
       });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('flips isBlocked at lockout start and end via the client boundary clock', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      vi.setSystemTime(new Date('2026-08-05T20:57:00.000Z'));
+
+      fetchActiveRecurringLockoutBannerStateMock.mockResolvedValue({
+        banner: null,
+        schedule: {
+          isActive: true,
+          startTimeOfDay: '14:00',
+          endTimeOfDay: '16:00',
+          bannerLeadMinutes: 20,
+        },
+      });
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+
+      const { result } = renderHook(
+        () => useRecurringEditLockout([PERMISSIONS.ACTIVITIES.EDIT]),
+        { wrapper: createWrapper(queryClient) }
+      );
+
+      await waitFor(() => {
+        expect(result.current.schedule).not.toBeNull();
+      });
+      expect(result.current.isBlocked).toBe(false);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3 * 60_000);
+      });
+      expect(result.current.isBlocked).toBe(true);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2 * 60 * 60_000);
+      });
+      expect(result.current.isBlocked).toBe(false);
     } finally {
       vi.useRealTimers();
     }

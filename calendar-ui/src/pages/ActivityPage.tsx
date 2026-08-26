@@ -48,6 +48,7 @@ import {
   startLockHandoffCountdownToast,
   type LockHandoffToastHandle,
 } from '@/lib/lock-handoff-toast';
+import { teardownEditSessionForLockout } from '@/lib/teardown-edit-session-for-lockout';
 
 import { cloneActivity, fetchActivityHistory } from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
@@ -75,6 +76,7 @@ import {
 import { useEditLockSession } from '../hooks/useEditLockSession';
 import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { useFavourites } from '../hooks/useFavourites';
+import { useLockoutEditCountdownToast } from '../hooks/useLockoutEditCountdownToast';
 import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
@@ -221,6 +223,7 @@ export function ActivityPage({
     acquireFailureReason,
     acquire,
     release,
+    releaseWithRetry,
     refreshLockFromServer,
     sendHeartbeat,
     applyExternalLockReleased,
@@ -270,6 +273,17 @@ export function ActivityPage({
     isEditing,
     sendHeartbeat,
   });
+
+  useLockoutEditCountdownToast({
+    activityId: id,
+    isEditing,
+    lockState,
+    schedule: recurringLockoutSchedule,
+    isBlockedByRecurringLockout,
+    permissions: user?.permissions ?? [],
+  });
+
+  const lockoutSubmitGenerationRef = useRef(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -543,25 +557,42 @@ export function ActivityPage({
       return;
     }
 
-    void revertActivityEditSession({
+    if (recurringLockoutSchedule == null) {
+      return;
+    }
+
+    void teardownEditSessionForLockout({
+      activityId: id,
+      schedule: recurringLockoutSchedule,
+      lockoutSubmitGenerationRef,
       isEditing,
+      lockState,
       initialFormData: initialFormDataRef.current,
       form,
       setFormUiEpoch,
       setIsEditing,
       applyExternalLockReleased,
-      release: lockState === 'owned' ? release : undefined,
+      releaseWithRetry,
+      closeSubmitModals: () => {
+        setShowConfirmModal(false);
+        setShowReviewModal(false);
+        setShowCompleteModal(false);
+        setValidatedData(null);
+        setIsSubmitting(false);
+      },
     }).then(() => {
       void refreshActivity();
     });
   }, [
     applyExternalLockReleased,
     form,
+    id,
     initialFormDataRef,
     isBlockedByRecurringLockout,
     isEditing,
     lockState,
-    release,
+    recurringLockoutSchedule,
+    releaseWithRetry,
     refreshActivity,
   ]);
 
@@ -641,6 +672,11 @@ export function ActivityPage({
 
   const runSubmitUpdate = useCallback(
     async (mode: SubmitActivityMode) => {
+      if (isBlockedByRecurringLockout) {
+        return;
+      }
+
+      const submitGeneration = lockoutSubmitGenerationRef.current;
       setIsSubmitting(true);
       try {
         let submitData: UpdateActivityRequest;
@@ -689,6 +725,9 @@ export function ActivityPage({
           id,
           data: submitData,
         });
+        if (submitGeneration !== lockoutSubmitGenerationRef.current) {
+          return;
+        }
         const titleForToast =
           mode.kind === 'reviewOnly' || mode.kind === 'completeOnly'
             ? (activity.title ?? '')
@@ -716,6 +755,9 @@ export function ActivityPage({
         applyExternalLockReleased();
         void navigate('/');
       } catch (err) {
+        if (submitGeneration !== lockoutSubmitGenerationRef.current) {
+          return;
+        }
         logger.error('Failed to update activity', err);
         const message =
           getRecurringEditLockoutErrorMessage(err) ??
@@ -725,10 +767,12 @@ export function ActivityPage({
         showErrorToast(err, message);
       } finally {
         setIsSubmitting(false);
-        setShowConfirmModal(false);
-        setShowReviewModal(false);
-        setShowCompleteModal(false);
-        setValidatedData(null);
+        if (submitGeneration === lockoutSubmitGenerationRef.current) {
+          setShowConfirmModal(false);
+          setShowReviewModal(false);
+          setShowCompleteModal(false);
+          setValidatedData(null);
+        }
       }
     },
     [
@@ -740,6 +784,7 @@ export function ActivityPage({
       applyExternalLockReleased,
       navigate,
       requiredTranslationStatusId,
+      isBlockedByRecurringLockout,
     ]
   );
 
