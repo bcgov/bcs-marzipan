@@ -15,6 +15,7 @@ import {
   getRecurringEditLockoutDetailFallback,
   isRecurringEditLockoutError,
 } from '../lib/recurring-edit-lockout-error';
+import { releaseLockWithRetry as releaseLockApiWithRetry } from '../lib/release-lock-with-retry';
 
 export type LockState =
   | 'idle'
@@ -35,6 +36,8 @@ type UseActivityLockResult = {
   lockedByUsername: string | null;
   acquire: () => Promise<boolean>;
   release: () => Promise<void>;
+  /** Best-effort release with short retries before clearing local hold. */
+  releaseWithRetry: () => Promise<void>;
   /** Re-fetch lock from server (e.g. after WebSocket lock transfer). */
   refreshLockFromServer: () => Promise<void>;
   /** Extend idle deadline (throttled server-side). */
@@ -72,6 +75,20 @@ function buildLockInfoFromStatus(
     expiresAt: status.lockedBy.expiresAt,
     idleExpiresAt: status.lockedBy.idleExpiresAt,
   };
+}
+
+function clearHeldLockOptimistically(
+  lockRef: { current: LockInfo | null },
+  setLock: (lock: LockInfo | null) => void,
+  setLockState: (state: LockState) => void
+): number | null {
+  const currentLock = lockRef.current;
+  if (currentLock == null) return null;
+  const lockId = currentLock.id;
+  lockRef.current = null;
+  setLock(null);
+  setLockState('idle');
+  return lockId;
 }
 
 /**
@@ -282,16 +299,19 @@ export function useActivityLock(
   }, [activityId, currentUserId]);
 
   const release = useCallback(async (): Promise<void> => {
-    const currentLock = lockRef.current;
-    if (currentLock == null) return;
-    lockRef.current = null;
-    setLock(null);
-    setLockState('idle');
+    const lockId = clearHeldLockOptimistically(lockRef, setLock, setLockState);
+    if (lockId == null) return;
     try {
-      await releaseLock(currentLock.id);
+      await releaseLock(lockId);
     } catch {
       // Best-effort release; server TTL handles cleanup
     }
+  }, []);
+
+  const releaseWithRetry = useCallback(async (): Promise<void> => {
+    const lockId = clearHeldLockOptimistically(lockRef, setLock, setLockState);
+    if (lockId == null) return;
+    await releaseLockApiWithRetry(releaseLock, lockId);
   }, []);
 
   useEffect(() => {
@@ -337,6 +357,7 @@ export function useActivityLock(
     lockedByUsername,
     acquire,
     release,
+    releaseWithRetry,
     refreshLockFromServer,
     sendHeartbeat,
     mergeLockIdleExpiry,

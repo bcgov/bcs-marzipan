@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { PERMISSIONS } from './auth/constants';
 import {
+  getMsUntilRecurringEditLockoutStart,
   getNextRecurringLockoutBannerBoundaryMs,
   isUserBlockedByRecurringEditLockout,
   isWithinRecurringEditLockoutWindow,
@@ -96,6 +97,28 @@ describe('isWithinRecurringLockoutBannerWindow', () => {
     vi.setSystemTime(new Date('2026-08-05T23:00:00.000Z'));
 
     expect(isWithinRecurringLockoutBannerWindow(bannerSettings)).toBe(false);
+
+    vi.useRealTimers();
+  });
+});
+
+describe('getMsUntilRecurringEditLockoutStart', () => {
+  it('returns ms until start when outside the lockout window', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-05T20:40:00.000Z'));
+
+    expect(getMsUntilRecurringEditLockoutStart(bannerSettings)).toBe(
+      20 * 60_000
+    );
+
+    vi.useRealTimers();
+  });
+
+  it('returns null when the lockout window has already started', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-05T21:00:00.000Z'));
+
+    expect(getMsUntilRecurringEditLockoutStart(bannerSettings)).toBeNull();
 
     vi.useRealTimers();
   });

@@ -169,6 +169,26 @@ export function getNextRecurringLockoutBannerBoundaryMs(
   return msUntilPacificMinuteOfDay(nowMs, bannerStartMinutes);
 }
 
+/**
+ * Milliseconds until the recurring edit lockout start boundary (Pacific time).
+ * Returns null when settings are inactive or the lockout window has already started.
+ */
+export function getMsUntilRecurringEditLockoutStart(
+  settings: RecurringEditLockoutSettingsSlice | null | undefined,
+  nowMs: number = Date.now()
+): number | null {
+  if (!settings?.isActive) {
+    return null;
+  }
+
+  if (isWithinRecurringEditLockoutWindow(settings, nowMs)) {
+    return null;
+  }
+
+  const startMinutes = timeOfDayToMinutes(String(settings.startTimeOfDay));
+  return msUntilPacificMinuteOfDay(nowMs, startMinutes);
+}
+
 export function canBypassRecurringEditLockout(
   permissions: readonly string[]
 ): boolean {
