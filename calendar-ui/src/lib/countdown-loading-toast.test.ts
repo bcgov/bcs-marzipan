@@ -8,6 +8,7 @@ import {
 const { toastMock } = vi.hoisted(() => ({
   toastMock: {
     loading: vi.fn(),
+    warning: vi.fn(),
     dismiss: vi.fn(),
   },
 }));
@@ -67,6 +68,38 @@ describe('startCountdownLoadingToast', () => {
 
     vi.advanceTimersByTime(1000);
     expect(toastMock.dismiss).toHaveBeenCalledWith('countdown-test');
+
+    handle.dispose();
+  });
+
+  it('supports warning variant with live countdown', () => {
+    const handle = startCountdownLoadingToast({
+      toastId: 'countdown-warning',
+      endMs: Date.now() + 2_000,
+      variant: 'warning',
+      getContent: (secondsLeft) => ({
+        title: 'Warning',
+        description: `${secondsLeft}s remaining`,
+      }),
+    });
+
+    expect(toastMock.warning).toHaveBeenCalledWith(
+      'Warning',
+      expect.objectContaining({
+        id: 'countdown-warning',
+        description: '2s remaining',
+        duration: Infinity,
+      })
+    );
+    expect(toastMock.loading).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1000);
+    expect(toastMock.warning.mock.calls.at(-1)?.[1]).toEqual(
+      expect.objectContaining({ description: '1s remaining' })
+    );
+
+    vi.advanceTimersByTime(1000);
+    expect(toastMock.dismiss).toHaveBeenCalledWith('countdown-warning');
 
     handle.dispose();
   });

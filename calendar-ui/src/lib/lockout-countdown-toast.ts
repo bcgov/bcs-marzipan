@@ -28,6 +28,7 @@ export function startLockoutCountdownToast(options: {
   return startCountdownLoadingToast({
     toastId,
     endMs: options.lockStartMs,
+    variant: 'warning',
     getContent: (secondsLeft) => ({
       title,
       description: `Unsaved changes will be lost in ${formatCountdownRemaining(secondsLeft)}.`,
