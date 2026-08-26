@@ -48,7 +48,6 @@ import {
   startLockHandoffCountdownToast,
   type LockHandoffToastHandle,
 } from '@/lib/lock-handoff-toast';
-import { teardownEditSessionForLockout } from '@/lib/teardown-edit-session-for-lockout';
 
 import { cloneActivity, fetchActivityHistory } from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
@@ -76,8 +75,8 @@ import {
 import { useEditLockSession } from '../hooks/useEditLockSession';
 import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { useFavourites } from '../hooks/useFavourites';
-import { useLockoutEditCountdownToast } from '../hooks/useLockoutEditCountdownToast';
 import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
+import { useRecurringLockoutSession } from '../hooks/useRecurringLockoutSession';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
   buildActivityListScrollRestoreReturnState,
@@ -274,16 +273,6 @@ export function ActivityPage({
     sendHeartbeat,
   });
 
-  useLockoutEditCountdownToast({
-    activityId: id,
-    isEditing,
-    lockState,
-    schedule: recurringLockoutSchedule,
-    isBlockedByRecurringLockout,
-    permissions: user?.permissions ?? [],
-  });
-
-  const lockoutSubmitGenerationRef = useRef(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -302,6 +291,7 @@ export function ActivityPage({
    * when edit lock is externally lost, so open overlays cannot remain stuck.
    */
   const [formUiEpoch, setFormUiEpoch] = useState(0);
+
   const [isRestoring, setIsRestoring] = useState(false);
   const [isRequestDeleteSubmitting, setIsRequestDeleteSubmitting] =
     useState(false);
@@ -311,6 +301,32 @@ export function ActivityPage({
   );
   const { isFormHydrated, hydrationGeneration, initialFormDataRef } =
     useActivityEditFormHydration(activity, lookups, form);
+
+  const closeSubmitModals = useCallback(() => {
+    setShowConfirmModal(false);
+    setShowReviewModal(false);
+    setShowCompleteModal(false);
+    setValidatedData(null);
+    setIsSubmitting(false);
+  }, []);
+
+  const { isRecurringLockoutBlocking, lockoutSubmitGenerationRef } =
+    useRecurringLockoutSession({
+      activityId: id,
+      isBlockedByRecurringLockout,
+      recurringLockoutSchedule,
+      permissions: user?.permissions ?? [],
+      isEditing,
+      lockState,
+      form,
+      initialFormDataRef,
+      setFormUiEpoch,
+      setIsEditing,
+      applyExternalLockReleased,
+      releaseWithRetry,
+      refreshActivity,
+      closeSubmitModals,
+    });
 
   const updateMutation = useUpdateActivity();
   const deleteMutation = useDeleteActivity();
@@ -440,7 +456,7 @@ export function ActivityPage({
   const mayEdit =
     canEditActivity &&
     lockState !== 'locked-by-other' &&
-    !isBlockedByRecurringLockout &&
+    !isRecurringLockoutBlocking &&
     lockState !== 'checking' &&
     lockState !== 'acquiring' &&
     (!isBlockedStatus || canEditWhenBlocked);
@@ -469,11 +485,11 @@ export function ActivityPage({
   const isViewOnlyByPermission = !mayEditFormFields;
   const readOnly =
     lockState === 'locked-by-other' ||
-    isBlockedByRecurringLockout ||
+    isRecurringLockoutBlocking ||
     !mayEditFormFields;
   const hasEditLock = lockState === 'owned';
   const isLockedByOther = lockState === 'locked-by-other';
-  const showLockoutNotice = isBlockedByRecurringLockout && !isLockedByOther;
+  const showLockoutNotice = isRecurringLockoutBlocking && !isLockedByOther;
   const [lockBannerSentinel, setLockBannerSentinel] =
     useState<HTMLDivElement | null>(null);
   const [lockoutBannerSentinel, setLockoutBannerSentinel] =
@@ -500,7 +516,7 @@ export function ActivityPage({
     canSubmitWithoutValidationErrors: isFormValid,
     isSubmitting,
     readOnly,
-    isBlockedByRecurringLockout,
+    isBlockedByRecurringLockout: isRecurringLockoutBlocking,
     isDirty,
   });
 
@@ -537,64 +553,6 @@ export function ActivityPage({
     initialFormDataRef,
     onAcquireConflict: onEditLockAcquireConflict,
   });
-
-  const wasBlockedByRecurringLockoutRef = useRef(false);
-
-  useEffect(() => {
-    const wasBlocked = wasBlockedByRecurringLockoutRef.current;
-    wasBlockedByRecurringLockoutRef.current = isBlockedByRecurringLockout;
-
-    if (!isBlockedByRecurringLockout) {
-      return;
-    }
-
-    const justBlocked = !wasBlocked;
-    if (!justBlocked) {
-      return;
-    }
-
-    if (!isEditing && lockState !== 'owned') {
-      return;
-    }
-
-    if (recurringLockoutSchedule == null) {
-      return;
-    }
-
-    void teardownEditSessionForLockout({
-      activityId: id,
-      schedule: recurringLockoutSchedule,
-      lockoutSubmitGenerationRef,
-      isEditing,
-      lockState,
-      initialFormData: initialFormDataRef.current,
-      form,
-      setFormUiEpoch,
-      setIsEditing,
-      applyExternalLockReleased,
-      releaseWithRetry,
-      closeSubmitModals: () => {
-        setShowConfirmModal(false);
-        setShowReviewModal(false);
-        setShowCompleteModal(false);
-        setValidatedData(null);
-        setIsSubmitting(false);
-      },
-    }).then(() => {
-      void refreshActivity();
-    });
-  }, [
-    applyExternalLockReleased,
-    form,
-    id,
-    initialFormDataRef,
-    isBlockedByRecurringLockout,
-    isEditing,
-    lockState,
-    recurringLockoutSchedule,
-    releaseWithRetry,
-    refreshActivity,
-  ]);
 
   const handleOpenDeleteModal = useCallback(async () => {
     if (normalizedStatus === 'delete_requested') {
@@ -672,7 +630,7 @@ export function ActivityPage({
 
   const runSubmitUpdate = useCallback(
     async (mode: SubmitActivityMode) => {
-      if (isBlockedByRecurringLockout) {
+      if (isRecurringLockoutBlocking) {
         return;
       }
 
@@ -784,7 +742,8 @@ export function ActivityPage({
       applyExternalLockReleased,
       navigate,
       requiredTranslationStatusId,
-      isBlockedByRecurringLockout,
+      isRecurringLockoutBlocking,
+      lockoutSubmitGenerationRef,
     ]
   );
 

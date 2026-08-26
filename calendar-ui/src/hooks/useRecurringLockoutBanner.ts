@@ -51,6 +51,11 @@ function useRecurringLockoutBoundaryClock(
 
     const timeoutId = window.setTimeout(() => {
       setBoundaryEpoch((epoch) => epoch + 1);
+      // Re-check one second later: timer can fire just before the Pacific minute rolls over,
+      // leaving isBlocked stale until the next boundary (lockout end).
+      window.setTimeout(() => {
+        setBoundaryEpoch((epoch) => epoch + 1);
+      }, 1000);
     }, delayMs);
 
     return () => {
