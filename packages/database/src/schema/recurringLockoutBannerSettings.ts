@@ -41,6 +41,9 @@ export const recurringLockoutBannerSettings = pgTable(
       .notNull()
       .default('23:59'),
     bannerLeadMinutes: integer('banner_lead_minutes').notNull().default(30),
+    editCountdownLeadMinutes: integer('edit_countdown_lead_minutes')
+      .notNull()
+      .default(3),
     createdDateTime: timestamp('created_date_time', { withTimezone: true })
       .notNull()
       .defaultNow(),

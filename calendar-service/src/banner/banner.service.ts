@@ -18,7 +18,10 @@ import type {
   UpsertBannerSettingsBody,
   UpsertRecurringLockoutBannerSettingsBody,
 } from '@corpcal/shared/api/types';
-import { DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES } from '@corpcal/shared/schemas';
+import {
+  DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
+  DEFAULT_RECURRING_EDIT_LOCKOUT_COUNTDOWN_LEAD_MINUTES,
+} from '@corpcal/shared/schemas';
 
 import { ActivitiesGateway } from '../activities/activities.gateway';
 import { DatabaseService } from '../database/database.service';
@@ -173,6 +176,7 @@ export class BannerService {
       startTimeOfDay: body.startTimeOfDay,
       endTimeOfDay: body.endTimeOfDay,
       bannerLeadMinutes: body.bannerLeadMinutes,
+      editCountdownLeadMinutes: body.editCountdownLeadMinutes,
       lastUpdatedDateTime: now,
       lastUpdatedBy: userId,
     };
@@ -245,6 +249,9 @@ export class BannerService {
       bannerLeadMinutes: Number.isInteger(row.bannerLeadMinutes)
         ? Math.max(0, Number(row.bannerLeadMinutes))
         : DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
+      editCountdownLeadMinutes: Number.isInteger(row.editCountdownLeadMinutes)
+        ? Math.max(1, Number(row.editCountdownLeadMinutes))
+        : DEFAULT_RECURRING_EDIT_LOCKOUT_COUNTDOWN_LEAD_MINUTES,
     };
   }
 
@@ -304,6 +311,9 @@ export class BannerService {
       bannerLeadMinutes: Number.isInteger(row.bannerLeadMinutes)
         ? Math.max(0, Number(row.bannerLeadMinutes))
         : DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
+      editCountdownLeadMinutes: Number.isInteger(row.editCountdownLeadMinutes)
+        ? Math.max(1, Number(row.editCountdownLeadMinutes))
+        : DEFAULT_RECURRING_EDIT_LOCKOUT_COUNTDOWN_LEAD_MINUTES,
       createdDateTime: row.createdDateTime.toISOString(),
       lastUpdatedDateTime: row.lastUpdatedDateTime.toISOString(),
     };

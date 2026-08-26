@@ -16,7 +16,17 @@ export type RecurringEditLockoutSettingsSlice = {
 export type RecurringLockoutBannerScheduleSlice =
   RecurringEditLockoutSettingsSlice & {
     bannerLeadMinutes: number;
+    editCountdownLeadMinutes: number;
   };
+
+export function getRecurringEditLockoutCountdownWindowMs(
+  settings: Pick<
+    RecurringLockoutBannerScheduleSlice,
+    'editCountdownLeadMinutes'
+  >
+): number {
+  return settings.editCountdownLeadMinutes * 60 * 1000;
+}
 
 const MINUTES_PER_DAY = 24 * 60;
 

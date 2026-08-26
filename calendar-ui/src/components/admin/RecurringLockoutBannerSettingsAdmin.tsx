@@ -21,6 +21,7 @@ import type {
 import {
   BANNER_CONTENT_MAX_LENGTH,
   DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
+  DEFAULT_RECURRING_EDIT_LOCKOUT_COUNTDOWN_LEAD_MINUTES,
   DEFAULT_RECURRING_EDIT_LOCKOUT_END_TIME,
   DEFAULT_RECURRING_EDIT_LOCKOUT_START_TIME,
 } from '@corpcal/shared/schemas';
@@ -51,6 +52,7 @@ type RecurringLockoutFormData = {
   startTimeOfDay: string;
   endTimeOfDay: string;
   bannerLeadMinutes: number;
+  editCountdownLeadMinutes: number;
 };
 
 const DEFAULT_FORM_DATA: RecurringLockoutFormData = {
@@ -63,6 +65,8 @@ const DEFAULT_FORM_DATA: RecurringLockoutFormData = {
   startTimeOfDay: DEFAULT_RECURRING_EDIT_LOCKOUT_START_TIME,
   endTimeOfDay: DEFAULT_RECURRING_EDIT_LOCKOUT_END_TIME,
   bannerLeadMinutes: DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
+  editCountdownLeadMinutes:
+    DEFAULT_RECURRING_EDIT_LOCKOUT_COUNTDOWN_LEAD_MINUTES,
 };
 
 const PLACEHOLDER_HELPER = [
@@ -88,6 +92,7 @@ function toFormData(
     startTimeOfDay: settings.startTimeOfDay,
     endTimeOfDay: settings.endTimeOfDay,
     bannerLeadMinutes: settings.bannerLeadMinutes,
+    editCountdownLeadMinutes: settings.editCountdownLeadMinutes,
   };
 }
 
@@ -104,6 +109,7 @@ function toRequestBody(
     startTimeOfDay: formData.startTimeOfDay,
     endTimeOfDay: formData.endTimeOfDay,
     bannerLeadMinutes: formData.bannerLeadMinutes,
+    editCountdownLeadMinutes: formData.editCountdownLeadMinutes,
   };
 }
 
@@ -202,6 +208,9 @@ function RecurringLockoutBannerSettingsAdminInner() {
     () => JSON.stringify(formData) !== JSON.stringify(initialFormData),
     [formData, initialFormData]
   );
+
+  const editCountdownExceedsBannerLead =
+    formData.editCountdownLeadMinutes > formData.bannerLeadMinutes;
 
   const contactEmail = reportCoverContact?.contactEmail ?? '';
 
@@ -340,6 +349,14 @@ function RecurringLockoutBannerSettingsAdminInner() {
       return;
     }
 
+    if (
+      formData.editCountdownLeadMinutes < 1 ||
+      formData.editCountdownLeadMinutes > 1440
+    ) {
+      toast.error('Edit countdown lead minutes must be between 1 and 1440');
+      return;
+    }
+
     saveMutation.mutate({
       ...formData,
       leadContent: formData.leadContent.trim(),
@@ -402,42 +419,42 @@ function RecurringLockoutBannerSettingsAdminInner() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="space-y-2 md:col-span-2">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="lockout-start-time">Start time</Label>
-                <Input
-                  id="lockout-start-time"
-                  type="time"
-                  value={formData.startTimeOfDay}
-                  onChange={(e) =>
-                    setFormData((current) => ({
-                      ...current,
-                      startTimeOfDay: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="lockout-end-time">End time</Label>
-                <Input
-                  id="lockout-end-time"
-                  type="time"
-                  value={formData.endTimeOfDay}
-                  onChange={(e) =>
-                    setFormData((current) => ({
-                      ...current,
-                      endTimeOfDay: e.target.value,
-                    }))
-                  }
-                />
-              </div>
+        <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="lockout-start-time">Start time</Label>
+              <Input
+                id="lockout-start-time"
+                type="time"
+                value={formData.startTimeOfDay}
+                onChange={(e) =>
+                  setFormData((current) => ({
+                    ...current,
+                    startTimeOfDay: e.target.value,
+                  }))
+                }
+              />
             </div>
-            <p className="text-xs text-slate-500">{CORP_PACIFIC_LABEL}</p>
-          </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="lockout-end-time">End time</Label>
+              <Input
+                id="lockout-end-time"
+                type="time"
+                value={formData.endTimeOfDay}
+                onChange={(e) =>
+                  setFormData((current) => ({
+                    ...current,
+                    endTimeOfDay: e.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+          <p className="text-xs text-slate-500">{CORP_PACIFIC_LABEL}</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="banner-lead-minutes">Banner lead minutes</Label>
             <Input
@@ -453,6 +470,30 @@ function RecurringLockoutBannerSettingsAdminInner() {
                 }))
               }
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-countdown-lead-minutes">
+              Lockout countdown minutes
+            </Label>
+            <Input
+              id="lockout-countdown-lead-minutes"
+              type="number"
+              min={1}
+              max={1440}
+              value={formData.editCountdownLeadMinutes}
+              onChange={(e) =>
+                setFormData((current) => ({
+                  ...current,
+                  editCountdownLeadMinutes: Number(e.target.value || 1),
+                }))
+              }
+            />
+            {editCountdownExceedsBannerLead ? (
+              <p className="text-sm text-amber-700">
+                Lockout countdown lead is longer than banner lead time.
+              </p>
+            ) : null}
           </div>
         </div>
 

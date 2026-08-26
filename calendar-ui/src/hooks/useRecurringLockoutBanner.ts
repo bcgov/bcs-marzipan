@@ -28,7 +28,7 @@ function getScheduleKey(
   schedule: RecurringLockoutBannerScheduleSlice | null
 ): string | null {
   return schedule
-    ? `${schedule.isActive}:${schedule.startTimeOfDay}:${schedule.endTimeOfDay}:${schedule.bannerLeadMinutes}`
+    ? `${schedule.isActive}:${schedule.startTimeOfDay}:${schedule.endTimeOfDay}:${schedule.bannerLeadMinutes}:${schedule.editCountdownLeadMinutes}`
     : null;
 }
 

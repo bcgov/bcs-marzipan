@@ -52,6 +52,7 @@ describe('useRecurringLockoutBanner', () => {
         startTimeOfDay: '14:00',
         endTimeOfDay: '16:00',
         bannerLeadMinutes: 20,
+        editCountdownLeadMinutes: 3,
         createdDateTime: '2026-08-05T18:00:00.000Z',
         lastUpdatedDateTime: '2026-08-05T18:00:00.000Z',
       },
@@ -60,6 +61,7 @@ describe('useRecurringLockoutBanner', () => {
         startTimeOfDay: '14:00',
         endTimeOfDay: '16:00',
         bannerLeadMinutes: 20,
+        editCountdownLeadMinutes: 3,
       },
     });
 
@@ -89,6 +91,7 @@ describe('useRecurringLockoutBanner', () => {
         startTimeOfDay: '14:00',
         endTimeOfDay: '16:00',
         bannerLeadMinutes: 20,
+        editCountdownLeadMinutes: 3,
       };
 
       fetchActiveRecurringLockoutBannerStateMock.mockResolvedValue({
@@ -141,6 +144,7 @@ describe('useRecurringEditLockout', () => {
           startTimeOfDay: '09:00',
           endTimeOfDay: '10:00',
           bannerLeadMinutes: 20,
+          editCountdownLeadMinutes: 3,
         },
       });
 
@@ -174,6 +178,7 @@ describe('useRecurringEditLockout', () => {
           startTimeOfDay: '09:00',
           endTimeOfDay: '10:00',
           bannerLeadMinutes: 20,
+          editCountdownLeadMinutes: 3,
         },
       });
 
@@ -210,6 +215,7 @@ describe('useRecurringEditLockout', () => {
           startTimeOfDay: '14:00',
           endTimeOfDay: '16:00',
           bannerLeadMinutes: 20,
+          editCountdownLeadMinutes: 3,
         },
       });
 
@@ -258,6 +264,7 @@ describe('useRecurringEditLockout', () => {
           startTimeOfDay: '14:00',
           endTimeOfDay: '16:00',
           bannerLeadMinutes: 20,
+          editCountdownLeadMinutes: 3,
         },
       });
 
@@ -302,6 +309,7 @@ describe('useRecurringEditLockout', () => {
         startTimeOfDay: '14:00',
         endTimeOfDay: '16:00',
         bannerLeadMinutes: 20,
+        editCountdownLeadMinutes: 3,
       };
       const permissions = [PERMISSIONS.ACTIVITIES.EDIT] as const;
 

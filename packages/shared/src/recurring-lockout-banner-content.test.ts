@@ -15,6 +15,7 @@ const schedule = {
   startTimeOfDay: '14:00',
   endTimeOfDay: '16:00',
   bannerLeadMinutes: 20,
+  editCountdownLeadMinutes: 3,
 };
 
 describe('getRecurringLockoutBannerPhase', () => {

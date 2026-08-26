@@ -11,9 +11,6 @@ import {
 } from './countdown-loading-toast';
 import { getRecurringLockoutInlineMessage } from './recurring-lockout-inline-message';
 
-/** Show the edit-session countdown in the last three minutes before lockout. */
-export const LOCKOUT_EDIT_COUNTDOWN_WINDOW_MS = 3 * 60 * 1000;
-
 const DISCARD_TOAST_DURATION_MS = 8000;
 
 export type LockoutCountdownToastHandle = {

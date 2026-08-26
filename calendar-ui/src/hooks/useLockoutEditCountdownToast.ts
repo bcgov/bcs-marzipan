@@ -3,11 +3,11 @@ import { useEffect, useRef } from 'react';
 import {
   canBypassRecurringEditLockout,
   getMsUntilRecurringEditLockoutStart,
-  type RecurringEditLockoutSettingsSlice,
+  getRecurringEditLockoutCountdownWindowMs,
+  type RecurringLockoutBannerScheduleSlice,
 } from '@corpcal/shared';
 import {
   formatLockoutStartTimeLabel,
-  LOCKOUT_EDIT_COUNTDOWN_WINDOW_MS,
   startLockoutCountdownToast,
   type LockoutCountdownToastHandle,
 } from '@/lib/lockout-countdown-toast';
@@ -18,14 +18,14 @@ type UseLockoutEditCountdownToastOptions = {
   activityId: number;
   isEditing: boolean;
   lockState: LockState;
-  schedule: RecurringEditLockoutSettingsSlice | null;
+  schedule: RecurringLockoutBannerScheduleSlice | null;
   isBlockedByRecurringLockout: boolean;
   permissions: readonly string[];
 };
 
 /**
- * Warns non-bypass editors with a live countdown in the last three minutes
- * before the recurring lockout window starts.
+ * Warns non-bypass editors with a live countdown before the recurring lockout
+ * window starts. The lead time is configured in recurring lockout settings.
  */
 export function useLockoutEditCountdownToast({
   activityId,
@@ -71,6 +71,9 @@ export function useLockoutEditCountdownToast({
       schedule.startTimeOfDay
     );
 
+    const countdownWindowMs =
+      getRecurringEditLockoutCountdownWindowMs(schedule);
+
     const showCountdown = (): void => {
       handleRef.current?.dispose();
       handleRef.current = startLockoutCountdownToast({
@@ -80,12 +83,12 @@ export function useLockoutEditCountdownToast({
       });
     };
 
-    if (msUntilStart <= LOCKOUT_EDIT_COUNTDOWN_WINDOW_MS) {
+    if (msUntilStart <= countdownWindowMs) {
       showCountdown();
     } else {
       preWindowTimeoutRef.current = window.setTimeout(
         showCountdown,
-        msUntilStart - LOCKOUT_EDIT_COUNTDOWN_WINDOW_MS
+        msUntilStart - countdownWindowMs
       );
     }
 

@@ -1,5 +1,5 @@
 {
-  "id": "527ad03c-ae86-4b7c-a829-dc29c408248f",
+  "id": "55923fb0-189b-4ae6-af3d-d8fff4ea40f1",
   "prevId": "371fad95-60ca-45bd-84cf-57fbc7e7cbff",
   "version": "7",
   "dialect": "postgresql",
@@ -6562,6 +6562,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": 30
+        },
+        "edit_countdown_lead_minutes": {
+          "name": "edit_countdown_lead_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 3
         },
         "created_date_time": {
           "name": "created_date_time",
