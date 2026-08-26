@@ -1,6 +1,9 @@
 import { toast } from 'sonner';
 
-import { startCountdownLoadingToast } from './countdown-loading-toast';
+import {
+  formatCountdownRemaining,
+  startCountdownLoadingToast,
+} from './countdown-loading-toast';
 
 export type LockHandoffPendingPayload = {
   activityId: number;
@@ -52,10 +55,14 @@ export function startLockHandoffCountdownToast(
   const toastId = `lock-handoff-${payload.activityId}-${payload.graceEndsAt}`;
   const cancelledInfoToastId = `${toastId}-cancelled-info`;
   const endMs = new Date(payload.graceEndsAt).getTime();
-  const baseMessage =
+  const title =
     payload.role === 'holder'
-      ? `${payload.counterpartUsername} has requested to edit this activity. Please save your changes.\nAny unsaved changes will be lost.`
-      : `Requesting the current editor to save their changes. The activity will be unlocked after the timer ends.`;
+      ? `${payload.counterpartUsername} has requested to edit this activity. Please save your changes.`
+      : 'Requesting the current editor to save their changes.';
+  const countdownDescriptionPrefix =
+    payload.role === 'holder'
+      ? 'Unsaved changes will be lost in'
+      : 'The activity will be unlocked in';
 
   let countdownHandle: ReturnType<typeof startCountdownLoadingToast> | null =
     null;
@@ -70,11 +77,14 @@ export function startLockHandoffCountdownToast(
   countdownHandle = startCountdownLoadingToast({
     toastId,
     endMs,
-    getMessage: (secondsLeft) => {
+    getContent: (secondsLeft) => {
       if (payload.role === 'requester' && secondsLeft <= 0) {
-        return 'Unlocking activity...';
+        return { title: 'Unlocking activity...' };
       }
-      return `${baseMessage} (${secondsLeft}s)`;
+      return {
+        title,
+        description: `${countdownDescriptionPrefix} ${formatCountdownRemaining(secondsLeft)}.`,
+      };
     },
     onExpired: payload.role === 'requester' ? () => false : undefined,
   });

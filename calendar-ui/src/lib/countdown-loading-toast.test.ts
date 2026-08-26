@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { startCountdownLoadingToast } from './countdown-loading-toast';
+import {
+  formatCountdownRemaining,
+  startCountdownLoadingToast,
+} from './countdown-loading-toast';
 
 const { toastMock } = vi.hoisted(() => ({
   toastMock: {
@@ -12,6 +15,20 @@ const { toastMock } = vi.hoisted(() => ({
 vi.mock('sonner', () => ({
   toast: toastMock,
 }));
+
+describe('formatCountdownRemaining', () => {
+  it('shows minutes only when at least one minute remains', () => {
+    expect(formatCountdownRemaining(180)).toBe('3 minutes');
+    expect(formatCountdownRemaining(61)).toBe('2 minutes');
+    expect(formatCountdownRemaining(60)).toBe('1 minute');
+  });
+
+  it('shows seconds when under one minute', () => {
+    expect(formatCountdownRemaining(59)).toBe('59 seconds');
+    expect(formatCountdownRemaining(1)).toBe('1 second');
+    expect(formatCountdownRemaining(0)).toBe('0 seconds');
+  });
+});
 
 describe('startCountdownLoadingToast', () => {
   beforeEach(() => {
@@ -28,16 +45,25 @@ describe('startCountdownLoadingToast', () => {
     const handle = startCountdownLoadingToast({
       toastId: 'countdown-test',
       endMs: Date.now() + 2_000,
-      getMessage: (secondsLeft) => `Waiting (${secondsLeft}s)`,
+      getContent: (secondsLeft) => ({
+        title: 'Waiting',
+        description: `${secondsLeft}s remaining`,
+      }),
     });
 
     expect(toastMock.loading).toHaveBeenCalledWith(
-      'Waiting (2s)',
-      expect.objectContaining({ id: 'countdown-test', duration: Infinity })
+      'Waiting',
+      expect.objectContaining({
+        id: 'countdown-test',
+        description: '2s remaining',
+        duration: Infinity,
+      })
     );
 
     vi.advanceTimersByTime(1000);
-    expect(toastMock.loading.mock.calls.at(-1)?.[0]).toBe('Waiting (1s)');
+    expect(toastMock.loading.mock.calls.at(-1)?.[1]).toEqual(
+      expect.objectContaining({ description: '1s remaining' })
+    );
 
     vi.advanceTimersByTime(1000);
     expect(toastMock.dismiss).toHaveBeenCalledWith('countdown-test');
@@ -51,8 +77,10 @@ describe('startCountdownLoadingToast', () => {
     startCountdownLoadingToast({
       toastId: 'countdown-expired',
       endMs: Date.now(),
-      getMessage: (secondsLeft) =>
-        secondsLeft > 0 ? `Waiting (${secondsLeft}s)` : 'Done waiting',
+      getContent: (secondsLeft) =>
+        secondsLeft > 0
+          ? { title: 'Waiting', description: `${secondsLeft}s remaining` }
+          : { title: 'Done waiting' },
       onExpired,
     });
 
@@ -67,7 +95,10 @@ describe('startCountdownLoadingToast', () => {
     const handle = startCountdownLoadingToast({
       toastId: 'countdown-dispose',
       endMs: Date.now() + 60_000,
-      getMessage: (secondsLeft) => `Waiting (${secondsLeft}s)`,
+      getContent: (secondsLeft) => ({
+        title: 'Waiting',
+        description: `${secondsLeft}s remaining`,
+      }),
     });
 
     handle.dispose();

@@ -1,5 +1,19 @@
 import { toast } from 'sonner';
 
+/** Formats remaining time: minutes only when >= 1 minute, seconds when under. */
+export function formatCountdownRemaining(secondsLeft: number): string {
+  if (secondsLeft >= 60) {
+    const minutes = Math.ceil(secondsLeft / 60);
+    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+  }
+  return `${secondsLeft} ${secondsLeft === 1 ? 'second' : 'seconds'}`;
+}
+
+export type CountdownLoadingToastContent = {
+  title: string;
+  description?: string;
+};
+
 export type CountdownLoadingToastHandle = {
   dispose: () => void;
 };
@@ -7,7 +21,7 @@ export type CountdownLoadingToastHandle = {
 export function startCountdownLoadingToast(options: {
   toastId: string;
   endMs: number;
-  getMessage: (secondsLeft: number) => string;
+  getContent: (secondsLeft: number) => CountdownLoadingToastContent;
   /** Called once when secondsLeft reaches 0. Return false to stop ticking without dismissing. */
   onExpired?: () => boolean | void;
 }): CountdownLoadingToastHandle {
@@ -35,8 +49,10 @@ export function startCountdownLoadingToast(options: {
       0,
       Math.ceil((options.endMs - Date.now()) / 1000)
     );
-    toast.loading(options.getMessage(secondsLeft), {
+    const content = options.getContent(secondsLeft);
+    toast.loading(content.title, {
       id: options.toastId,
+      description: content.description,
       duration: Infinity,
     });
     if (secondsLeft <= 0 && !expired) {
