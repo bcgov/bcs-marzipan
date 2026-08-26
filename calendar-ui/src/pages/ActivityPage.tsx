@@ -310,23 +310,22 @@ export function ActivityPage({
     setIsSubmitting(false);
   }, []);
 
-  const { isRecurringLockoutBlocking, lockoutSubmitGenerationRef } =
-    useRecurringLockoutSession({
-      activityId: id,
-      isBlockedByRecurringLockout,
-      recurringLockoutSchedule,
-      permissions: user?.permissions ?? [],
-      isEditing,
-      lockState,
-      form,
-      initialFormDataRef,
-      setFormUiEpoch,
-      setIsEditing,
-      applyExternalLockReleased,
-      releaseWithRetry,
-      refreshActivity,
-      closeSubmitModals,
-    });
+  const { lockoutSubmitGenerationRef } = useRecurringLockoutSession({
+    activityId: id,
+    isBlockedByRecurringLockout,
+    recurringLockoutSchedule,
+    permissions: user?.permissions ?? [],
+    isEditing,
+    lockState,
+    form,
+    initialFormDataRef,
+    setFormUiEpoch,
+    setIsEditing,
+    applyExternalLockReleased,
+    releaseWithRetry,
+    refreshActivity,
+    closeSubmitModals,
+  });
 
   const updateMutation = useUpdateActivity();
   const deleteMutation = useDeleteActivity();
@@ -456,7 +455,7 @@ export function ActivityPage({
   const mayEdit =
     canEditActivity &&
     lockState !== 'locked-by-other' &&
-    !isRecurringLockoutBlocking &&
+    !isBlockedByRecurringLockout &&
     lockState !== 'checking' &&
     lockState !== 'acquiring' &&
     (!isBlockedStatus || canEditWhenBlocked);
@@ -485,11 +484,11 @@ export function ActivityPage({
   const isViewOnlyByPermission = !mayEditFormFields;
   const readOnly =
     lockState === 'locked-by-other' ||
-    isRecurringLockoutBlocking ||
+    isBlockedByRecurringLockout ||
     !mayEditFormFields;
   const hasEditLock = lockState === 'owned';
   const isLockedByOther = lockState === 'locked-by-other';
-  const showLockoutNotice = isRecurringLockoutBlocking && !isLockedByOther;
+  const showLockoutNotice = isBlockedByRecurringLockout && !isLockedByOther;
   const [lockBannerSentinel, setLockBannerSentinel] =
     useState<HTMLDivElement | null>(null);
   const [lockoutBannerSentinel, setLockoutBannerSentinel] =
@@ -516,7 +515,7 @@ export function ActivityPage({
     canSubmitWithoutValidationErrors: isFormValid,
     isSubmitting,
     readOnly,
-    isBlockedByRecurringLockout: isRecurringLockoutBlocking,
+    isBlockedByRecurringLockout: isBlockedByRecurringLockout,
     isDirty,
   });
 
@@ -630,7 +629,7 @@ export function ActivityPage({
 
   const runSubmitUpdate = useCallback(
     async (mode: SubmitActivityMode) => {
-      if (isRecurringLockoutBlocking) {
+      if (isBlockedByRecurringLockout) {
         return;
       }
 
@@ -742,7 +741,7 @@ export function ActivityPage({
       applyExternalLockReleased,
       navigate,
       requiredTranslationStatusId,
-      isRecurringLockoutBlocking,
+      isBlockedByRecurringLockout,
       lockoutSubmitGenerationRef,
     ]
   );

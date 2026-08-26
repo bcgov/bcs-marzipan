@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import type { UseFormReturn } from 'react-hook-form';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MutableRefObject } from 'react';
@@ -10,14 +10,6 @@ import type { LockState } from './useActivityLock';
 import { useRecurringLockoutSession } from './useRecurringLockoutSession';
 
 const useLockoutEditCountdownToastMock = vi.fn();
-
-vi.mock('@corpcal/shared', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@corpcal/shared')>();
-  return {
-    ...actual,
-    isWithinRecurringEditLockoutWindow: vi.fn(() => true),
-  };
-});
 
 vi.mock('./useLockoutEditCountdownToast', () => ({
   useLockoutEditCountdownToast: (
@@ -77,44 +69,34 @@ describe('useRecurringLockoutSession', () => {
     useLockoutEditCountdownToastMock.mockImplementation(() => undefined);
   });
 
-  it('combines server isBlocked with the session latch', () => {
-    const { result, rerender } = renderHook(
+  it('returns lockoutSubmitGenerationRef', () => {
+    const { result } = renderHook(
       (props) => useRecurringLockoutSession(props),
       { initialProps: createOptions() }
     );
 
-    expect(result.current.isRecurringLockoutBlocking).toBe(false);
-
-    rerender(createOptions({ isBlockedByRecurringLockout: true }));
-
-    expect(result.current.isRecurringLockoutBlocking).toBe(true);
+    expect(result.current.lockoutSubmitGenerationRef.current).toBe(0);
   });
 
-  it('runs teardown once when countdown and boundary transition both fire', async () => {
-    let onLockoutStart: (() => void) | undefined;
-
-    useLockoutEditCountdownToastMock.mockImplementation((options) => {
-      onLockoutStart = options.onLockoutStart;
-    });
-
-    const { result, rerender } = renderHook(
+  it('runs teardown once when blocking flips true and stays true across re-renders', async () => {
+    const { rerender } = renderHook(
       (props) => useRecurringLockoutSession(props),
       { initialProps: createOptions() }
     );
 
-    act(() => {
-      onLockoutStart?.();
-    });
+    rerender(createOptions({ isBlockedByRecurringLockout: true }));
 
     await waitFor(() => {
       expect(teardownEditSessionForLockoutMock).toHaveBeenCalledTimes(1);
     });
 
-    rerender(createOptions({ isBlockedByRecurringLockout: true }));
-
-    await waitFor(() => {
-      expect(result.current.isRecurringLockoutBlocking).toBe(true);
-    });
+    rerender(
+      createOptions({
+        isBlockedByRecurringLockout: true,
+        isEditing: false,
+        lockState: 'idle',
+      })
+    );
 
     expect(teardownEditSessionForLockoutMock).toHaveBeenCalledTimes(1);
   });
@@ -144,7 +126,7 @@ describe('useRecurringLockoutSession', () => {
       {
         initialProps: createOptions({
           isEditing: false,
-          lockState: 'unlocked',
+          lockState: 'idle',
         }),
       }
     );
@@ -153,12 +135,43 @@ describe('useRecurringLockoutSession', () => {
       createOptions({
         isBlockedByRecurringLockout: true,
         isEditing: false,
-        lockState: 'unlocked',
+        lockState: 'idle',
       })
     );
 
     await waitFor(() => {
       expect(teardownEditSessionForLockoutMock).not.toHaveBeenCalled();
     });
+  });
+
+  it('does not re-run teardown when blocking becomes true again with no active edit session', async () => {
+    const { rerender } = renderHook(
+      (props) => useRecurringLockoutSession(props),
+      { initialProps: createOptions() }
+    );
+
+    rerender(createOptions({ isBlockedByRecurringLockout: true }));
+
+    await waitFor(() => {
+      expect(teardownEditSessionForLockoutMock).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      createOptions({
+        isBlockedByRecurringLockout: false,
+        isEditing: false,
+        lockState: 'idle',
+      })
+    );
+
+    rerender(
+      createOptions({
+        isBlockedByRecurringLockout: true,
+        isEditing: false,
+        lockState: 'idle',
+      })
+    );
+
+    expect(teardownEditSessionForLockoutMock).toHaveBeenCalledTimes(1);
   });
 });

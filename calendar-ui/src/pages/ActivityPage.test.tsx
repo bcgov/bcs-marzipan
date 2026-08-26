@@ -204,19 +204,25 @@ vi.mock('../hooks/useCommsContactSync', () => ({
   useCommsContactSync: () => {},
 }));
 
-function renderWithProviders(
-  ui: React.ReactElement,
-  options?: { initialRoute?: string }
+function buildActivityPageTree(
+  activity: ActivityPageProps['activity'],
+  refreshActivity: () => Promise<void>,
+  queryClient: QueryClient,
+  initialRoute: string
 ) {
-  const initialRoute = options?.initialRoute ?? '/activity/1';
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
+  return (
     <MemoryRouter initialEntries={[initialRoute]}>
       <QueryClientProvider client={queryClient}>
         <Routes>
-          <Route path="activity/:id" element={ui} />
+          <Route
+            path="activity/:id"
+            element={
+              <ActivityPage
+                activity={activity}
+                refreshActivity={refreshActivity}
+              />
+            }
+          />
         </Routes>
       </QueryClientProvider>
     </MemoryRouter>
@@ -230,10 +236,29 @@ function renderActivityPage(overrides?: {
 }) {
   const activity = overrides?.activity ?? mockActivityWithLeadTeam;
   const refreshActivity = overrides?.refreshActivity ?? mockRefreshActivity;
-  return renderWithProviders(
-    <ActivityPage activity={activity} refreshActivity={refreshActivity} />,
-    { initialRoute: overrides?.initialRoute }
+  const initialRoute = overrides?.initialRoute ?? '/activity/1';
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const tree = buildActivityPageTree(
+    activity,
+    refreshActivity,
+    queryClient,
+    initialRoute
   );
+  const result = render(tree);
+  return {
+    ...result,
+    rerender: () =>
+      result.rerender(
+        buildActivityPageTree(
+          activity,
+          refreshActivity,
+          queryClient,
+          initialRoute
+        )
+      ),
+  };
 }
 
 describe('ActivityPage form readiness', () => {
@@ -691,6 +716,23 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(lockoutBanner).toHaveTextContent(/read-only/i);
     const titleTextarea = screen.getByPlaceholderText('Enter activity title');
     expect(titleTextarea).toHaveAttribute('readonly');
+  });
+
+  it('clears lockout banner and read-only when recurring lockout ends', async () => {
+    mockIsBlockedByRecurringLockout = true;
+    const view = renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/read-only/i);
+
+    mockIsBlockedByRecurringLockout = false;
+    view.rerender();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+    const titleTextarea = screen.getByPlaceholderText('Enter activity title');
+    expect(titleTextarea).not.toHaveAttribute('readonly');
   });
 
   it('does not show Review during recurring edit lockout', async () => {
