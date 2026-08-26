@@ -9,6 +9,7 @@ CREATE TABLE "recurring_lockout_banner_settings" (
 	"start_time_of_day" varchar(5) DEFAULT '15:00' NOT NULL,
 	"end_time_of_day" varchar(5) DEFAULT '23:59' NOT NULL,
 	"banner_lead_minutes" integer DEFAULT 30 NOT NULL,
+	"edit_countdown_lead_minutes" integer DEFAULT 3 NOT NULL,
 	"created_date_time" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_by" integer NOT NULL,
 	"last_updated_date_time" timestamp with time zone DEFAULT now() NOT NULL,

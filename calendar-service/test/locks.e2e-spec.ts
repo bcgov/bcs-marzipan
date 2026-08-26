@@ -204,6 +204,8 @@ describe('LocksController (API integration)', () => {
           startTimeOfDay: previousSettings?.startTimeOfDay ?? '15:00',
           endTimeOfDay: previousSettings?.endTimeOfDay ?? '23:59',
           bannerLeadMinutes: previousSettings?.bannerLeadMinutes ?? 30,
+          editCountdownLeadMinutes:
+            previousSettings?.editCountdownLeadMinutes ?? 3,
         };
 
         await createAuthRequest(app, systemAdminToken)

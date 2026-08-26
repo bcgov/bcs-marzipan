@@ -4,6 +4,7 @@ import { PERMISSIONS } from './auth/constants';
 import {
   getMsUntilNextRecurringLockoutBoundary,
   getMsUntilRecurringEditLockoutStart,
+  getRecurringEditLockoutCountdownWindowMs,
   isUserBlockedByRecurringEditLockout,
   isWithinRecurringEditLockoutWindow,
   isWithinRecurringLockoutBannerWindow,
@@ -20,7 +21,16 @@ const bannerSettings = {
   startTimeOfDay: '14:00',
   endTimeOfDay: '16:00',
   bannerLeadMinutes: 20,
+  editCountdownLeadMinutes: 3,
 };
+
+describe('getRecurringEditLockoutCountdownWindowMs', () => {
+  it('converts configured lead minutes to milliseconds', () => {
+    expect(getRecurringEditLockoutCountdownWindowMs(bannerSettings)).toBe(
+      3 * 60 * 1000
+    );
+  });
+});
 
 describe('isWithinRecurringEditLockoutWindow', () => {
   it('includes the start boundary and excludes the end boundary', () => {

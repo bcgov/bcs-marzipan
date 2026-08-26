@@ -1,7 +1,7 @@
 import type { UseFormReturn } from 'react-hook-form';
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 
-import type { RecurringEditLockoutSettingsSlice } from '@corpcal/shared';
+import type { RecurringLockoutBannerScheduleSlice } from '@corpcal/shared';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { teardownEditSessionForLockout } from '@/lib/teardown-edit-session-for-lockout';
 
@@ -11,7 +11,7 @@ import { useLockoutEditCountdownToast } from './useLockoutEditCountdownToast';
 export type UseRecurringLockoutSessionOptions = {
   activityId: number;
   isBlockedByRecurringLockout: boolean;
-  recurringLockoutSchedule: RecurringEditLockoutSettingsSlice | null;
+  recurringLockoutSchedule: RecurringLockoutBannerScheduleSlice | null;
   permissions: readonly string[];
   isEditing: boolean;
   lockState: LockState;

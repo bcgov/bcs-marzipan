@@ -14,6 +14,7 @@ export const BANNER_CONTENT_MAX_LENGTH = 500;
 export const DEFAULT_RECURRING_EDIT_LOCKOUT_START_TIME = '15:00';
 export const DEFAULT_RECURRING_EDIT_LOCKOUT_END_TIME = '23:59';
 export const DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES = 30;
+export const DEFAULT_RECURRING_EDIT_LOCKOUT_COUNTDOWN_LEAD_MINUTES = 3;
 
 const recurringLockoutBannerContentSchema = z
   .string()
@@ -87,6 +88,11 @@ export const recurringLockoutBannerSettingsSchema = z.object({
     .int()
     .min(0)
     .max(24 * 60),
+  editCountdownLeadMinutes: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 60),
   createdDateTime: z.string().datetime(),
   lastUpdatedDateTime: z.string().datetime(),
 });
@@ -105,6 +111,11 @@ export const recurringLockoutBannerScheduleSchema = z.object({
     .number()
     .int()
     .min(0)
+    .max(24 * 60),
+  editCountdownLeadMinutes: z
+    .number()
+    .int()
+    .min(1)
     .max(24 * 60),
 });
 
@@ -133,6 +144,12 @@ export const upsertRecurringLockoutBannerSettingsRequestSchema = z
       .min(0, 'Banner lead time must be 0 or greater')
       .max(24 * 60, 'Banner lead time cannot exceed 1440 minutes')
       .default(DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES),
+    editCountdownLeadMinutes: z
+      .number()
+      .int()
+      .min(1, 'Edit countdown lead time must be at least 1 minute')
+      .max(24 * 60, 'Edit countdown lead time cannot exceed 1440 minutes')
+      .default(DEFAULT_RECURRING_EDIT_LOCKOUT_COUNTDOWN_LEAD_MINUTES),
   })
   .superRefine((value, ctx) => {
     if (

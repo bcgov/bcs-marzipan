@@ -22,6 +22,7 @@ describe('BannerService', () => {
     startTimeOfDay: '14:00',
     endTimeOfDay: '16:00',
     bannerLeadMinutes: 20,
+    editCountdownLeadMinutes: 3,
     createdDateTime: new Date('2026-08-05T18:00:00.000Z'),
     lastUpdatedDateTime: new Date('2026-08-05T18:00:00.000Z'),
   };
