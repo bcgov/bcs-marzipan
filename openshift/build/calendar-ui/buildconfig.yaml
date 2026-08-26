@@ -20,6 +20,9 @@ spec:
   strategy:
     type: Docker
     dockerStrategy:
+      buildArgs:
+        - name: APP_VERSION
+          value: ${APP_VERSION}
       resources:
         limits:
           memory: 4Gi

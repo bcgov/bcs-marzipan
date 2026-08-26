@@ -29,6 +29,7 @@ import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
 import {
   findUserByEmail,
+  findUserByEmailAnyStatus,
   findUserByExternalId,
   findUserByExternalIdAnyStatus,
   syncAzureIdentity,
@@ -89,6 +90,31 @@ export class AuthService {
     displayName?: string;
     email?: string;
   }): Promise<AuthResponseDto> {
+    const deactivatedByExternalId = await findUserByExternalIdAnyStatus(
+      this.databaseService.db,
+      claims.externalId
+    );
+    if (
+      deactivatedByExternalId &&
+      this.isAccountDeactivated(deactivatedByExternalId)
+    ) {
+      throw new UnauthorizedException(
+        'This account is deactivated. Please contact your administrator.'
+      );
+    }
+
+    if (claims.email?.trim()) {
+      const deactivatedByEmail = await findUserByEmailAnyStatus(
+        this.databaseService.db,
+        claims.email
+      );
+      if (deactivatedByEmail && this.isAccountDeactivated(deactivatedByEmail)) {
+        throw new UnauthorizedException(
+          'This account is deactivated. Please contact your administrator.'
+        );
+      }
+    }
+
     let dbUser = await findUserByExternalId(
       this.databaseService.db,
       claims.externalId
@@ -99,31 +125,30 @@ export class AuthService {
     }
 
     if (!dbUser) {
-      // Check whether the account exists but has a non-active status so we can
-      // return a meaningful error instead of the generic "no account" message.
-      const anyStatus = await findUserByExternalIdAnyStatus(
-        this.databaseService.db,
-        claims.externalId
-      );
-
-      if (anyStatus?.status === 'pending') {
-        throw new UnauthorizedException(
-          'Your account has not been activated yet. Please sign in with your email and password to complete account setup.'
-        );
-      }
-
-      if (anyStatus?.status === 'password_reset_required') {
-        throw new UnauthorizedException(
-          'A password reset is required before you can sign in. Please use the email/password flow and follow the reset instructions.'
-        );
-      }
-
       throw new UnauthorizedException(
-        'No active local account found for this Azure AD user.'
+        'No Corporate Calendar account found for this Microsoft identity.'
       );
     }
 
-    await syncAzureIdentity(this.databaseService.db, dbUser.id, claims);
+    if (this.isAccountDeactivated(dbUser)) {
+      throw new UnauthorizedException(
+        'This account is deactivated. Please contact your administrator.'
+      );
+    }
+
+    if (dbUser.status === 'password_reset_required') {
+      throw new UnauthorizedException(
+        'A password reset is required before you can sign in. Please use the email/password flow and follow the reset instructions.'
+      );
+    }
+
+    // Admin-created users start as pending; promote on first successful SSO.
+    await this.databaseService.db.transaction(async (tx) => {
+      if (dbUser.status !== 'active') {
+        await updateUserStatus(tx, dbUser.id, 'active');
+      }
+      await syncAzureIdentity(tx, dbUser.id, claims);
+    });
 
     const syncedUser =
       (await findUserByExternalId(
@@ -132,6 +157,13 @@ export class AuthService {
       )) ?? dbUser;
 
     return this.buildAuthResponse(syncedUser);
+  }
+
+  private isAccountDeactivated(user: {
+    isActive?: boolean;
+    status: string;
+  }): boolean {
+    return user.isActive === false || user.status === 'inactive';
   }
 
   private async loginMock(username: string): Promise<AuthResponseDto> {
@@ -151,6 +183,8 @@ export class AuthService {
   /**
    * Step 1: Check the status of a local account by email.
    * Called before prompting for a password so the UI can branch on account state.
+   *
+   * See CheckEmailStatus in @corpcal/shared for the response contract (anti-enumeration).
    */
   async checkEmail(email: string): Promise<CheckEmailResponse> {
     const dbUser = await findUserByEmailLocal(
@@ -175,6 +209,17 @@ export class AuthService {
     if (dbUser.status === 'password_reset_required') {
       return {
         status: 'requires_reset',
+        email: dbUser.adEmail ?? undefined,
+      };
+    }
+
+    // Active user with no password hash: direct-login setup vs SSO-only.
+    if (!dbUser.passwordHash) {
+      if (dbUser.directLoginEnabled) {
+        return { status: 'pending', email: dbUser.adEmail ?? undefined };
+      }
+      return {
+        status: 'sso_recommended',
         email: dbUser.adEmail ?? undefined,
       };
     }
@@ -222,6 +267,12 @@ export class AuthService {
     }
 
     if (!dbUser.passwordHash) {
+      if (dbUser.status === 'active' && dbUser.directLoginEnabled) {
+        return {
+          requiresPasswordSetup: true as const,
+          email: dbUser.adEmail ?? email.trim(),
+        };
+      }
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -256,7 +307,12 @@ export class AuthService {
       throw new BadRequestException('Account not found');
     }
 
-    if (dbUser.status !== 'pending') {
+    const canSetPassword =
+      dbUser.status === 'pending' ||
+      (dbUser.status === 'active' &&
+        dbUser.directLoginEnabled &&
+        !dbUser.passwordHash);
+    if (!canSetPassword) {
       throw new BadRequestException(
         'Account has already been activated. Please use the login page.'
       );
@@ -426,10 +482,10 @@ export class AuthService {
    * Create a temporary reset token for an admin-triggered password reset.
    * Sets the user's status to password_reset_required and returns the plaintext code.
    *
-   * Only allowed for users who are local-auth eligible: accounts that are
-   * pending, active with a password hash, or already in password_reset_required.
-   * Pure Azure-SSO accounts (no password_hash, status=active) are rejected to
-   * avoid silently forcing them down the local password path.
+   * Allowed for active users with an existing password or with direct login
+   * enabled (including IDIR accounts establishing a local password). SSO-only
+   * users (no password, directLogin disabled) are rejected to avoid blocking
+   * Microsoft sign-in via password_reset_required. Inactive users are rejected.
    */
   async createPasswordResetToken(userId: number): Promise<string> {
     const dbUser = await findUserByIdLocal(this.databaseService.db, userId);
@@ -438,18 +494,17 @@ export class AuthService {
       throw new BadRequestException('User not found');
     }
 
-    // Reject SSO-only users: active account with no password hash means they
-    // have never used local auth and are not expected to.
-    if (dbUser.isActive && dbUser.status === 'active' && !dbUser.passwordHash) {
-      throw new BadRequestException(
-        'This user signs in via Microsoft (SSO) and is not eligible for a local password reset.'
-      );
-    }
-
     // Inactive users cannot be given a reset token.
     if (!dbUser.isActive || dbUser.status === 'inactive') {
       throw new BadRequestException(
         'Cannot initiate a password reset for an inactive user.'
+      );
+    }
+
+    const canReset = dbUser.passwordHash !== null || dbUser.directLoginEnabled;
+    if (!canReset) {
+      throw new BadRequestException(
+        'This user signs in via Microsoft (SSO) only. Enable direct login before issuing a password reset.'
       );
     }
 

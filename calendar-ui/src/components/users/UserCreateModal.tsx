@@ -7,7 +7,11 @@ import { z } from 'zod';
 import { useEffect, useRef, useState } from 'react';
 
 import type { CreateUserBody } from '@corpcal/shared/api/types';
-import { USER_DISPLAY_NAME_MAX_LENGTH } from '@corpcal/shared/schemas';
+import {
+  USER_DISPLAY_NAME_MAX_LENGTH,
+  USER_JOB_TITLE_MAX_LENGTH,
+  USER_PHONE_MAX_LENGTH,
+} from '@corpcal/shared/schemas';
 import { createUser, fetchRoles, fetchTeams } from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +23,7 @@ import {
   ComboboxEmpty,
   ComboboxItem,
   ComboboxList,
+  ComboboxSeparator,
   ComboboxValue,
   useComboboxAnchor,
 } from '@/components/ui/combobox';
@@ -46,17 +51,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import { userQueryKeys } from '@/lib/userQueryKeys';
 import type { OptionItem } from '@/schemas/types';
+
+const GOV_BC_EMAIL_DOMAIN = '@gov.bc.ca';
 
 const createUserFormSchema = z.object({
   email: z
     .string()
     .trim()
     .min(1, 'Email is required')
-    .email('Invalid email format'),
+    .email('Invalid email format')
+    .max(255)
+    .refine(
+      (value) => value.toLowerCase().endsWith(GOV_BC_EMAIL_DOMAIN),
+      'Email must be a @gov.bc.ca address'
+    ),
+  idirUsername: z
+    .string()
+    .trim()
+    .min(1, 'IDIR username is required')
+    .max(255)
+    .regex(/^[^\s@]+$/, 'IDIR username must not contain spaces or @'),
   roleId: z.string().min(1, 'Role is required'),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).default(''),
+  adJobTitle: z.string().trim().max(USER_JOB_TITLE_MAX_LENGTH).default(''),
+  adPhone: z.string().trim().max(USER_PHONE_MAX_LENGTH).default(''),
   teamIds: z.array(z.number().int()).default([]),
 });
 
@@ -64,8 +86,11 @@ type CreateUserFormData = z.infer<typeof createUserFormSchema>;
 
 const defaultValues: CreateUserFormData = {
   email: '',
+  idirUsername: '',
   roleId: '',
   displayName: '',
+  adJobTitle: '',
+  adPhone: '',
   teamIds: [],
 };
 
@@ -74,6 +99,8 @@ interface UserCreateModalProps {
   onClose: () => void;
   onSaved?: () => void;
 }
+
+type CreateUserRequest = CreateUserBody;
 
 /**
  * Modal for the "Add user" flow. Creates a local user (email + role required)
@@ -113,9 +140,9 @@ export function UserCreateModal({
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: CreateUserBody) => createUser(body),
+    mutationFn: (body: CreateUserRequest) => createUser(body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['users'] });
+      void queryClient.invalidateQueries({ queryKey: userQueryKeys.list() });
       toast.success('User created');
       form.reset(defaultValues);
       onSaved?.();
@@ -155,11 +182,18 @@ export function UserCreateModal({
       form.setError('roleId', { message: 'Role is required' });
       return;
     }
-    const body: CreateUserBody = {
+    const body: CreateUserRequest = {
       email: data.email.trim(),
+      idirUsername: data.idirUsername.trim().toUpperCase(),
       roleId: parsedRoleId,
       ...(data.displayName?.trim() && {
         displayName: data.displayName.trim(),
+      }),
+      ...(data.adJobTitle?.trim() && {
+        adJobTitle: data.adJobTitle.trim(),
+      }),
+      ...(data.adPhone?.trim() && {
+        adPhone: data.adPhone.trim(),
       }),
       ...(data.teamIds &&
         data.teamIds.length > 0 && {
@@ -183,8 +217,8 @@ export function UserCreateModal({
         <DialogHeader>
           <DialogTitle>Add user</DialogTitle>
           <DialogDescription>
-            Create a new user. Users can sign in with their email and Microsoft
-            account.
+            Create a new user. Use a @gov.bc.ca email and the user&apos;s IDIR
+            username.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -220,6 +254,32 @@ export function UserCreateModal({
             />
             <FormField
               control={form.control}
+              name="idirUsername"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel showDirtyIndicator={false}>
+                    IDIR username{' '}
+                    <span
+                      className="text-required-field-indicator font-semibold"
+                      aria-hidden
+                    >
+                      *
+                    </span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="JSMITH"
+                      autoComplete="off"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="displayName"
               render={({ field }) => (
                 <FormItem>
@@ -228,6 +288,42 @@ export function UserCreateModal({
                     <Input
                       type="text"
                       maxLength={USER_DISPLAY_NAME_MAX_LENGTH}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="adJobTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel showDirtyIndicator={false}>Job title</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="e.g. Senior Analyst"
+                      maxLength={USER_JOB_TITLE_MAX_LENGTH}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="adPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel showDirtyIndicator={false}>Phone</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="e.g. 250-555-0123"
+                      maxLength={USER_PHONE_MAX_LENGTH}
                       {...field}
                     />
                   </FormControl>
@@ -288,6 +384,12 @@ export function UserCreateModal({
                 const selectedOptions = teamOptions.filter((o) =>
                   currentValues.includes(o.value)
                 );
+                const allTeamIds = teamOptions.map((o) =>
+                  parseInt(o.value, 10)
+                );
+                const allTeamsSelected =
+                  allTeamIds.length > 0 &&
+                  allTeamIds.every((id) => field.value.includes(id));
                 return (
                   <FormItem>
                     <FormLabel showDirtyIndicator={false}>Teams</FormLabel>
@@ -323,16 +425,30 @@ export function UserCreateModal({
                         <ComboboxContent
                           anchor={teamsAnchorRef}
                           container={dialogContentRef}
-                          className="max-h-72"
+                          className="popover-list-scroll flex max-h-[min(var(--popover-list-max-height),24rem)] flex-col overflow-x-hidden overflow-y-auto p-0"
                         >
-                          <ComboboxEmpty>No teams found.</ComboboxEmpty>
-                          <ComboboxList>
-                            {(option: OptionItem) => (
-                              <ComboboxItem key={option.value} value={option}>
-                                {option.label}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxList>
+                          <div className="bg-popover px-1 py-1">
+                            <TeamsComboboxSelectAllRow
+                              allSelected={allTeamsSelected}
+                              disabled={teamOptions.length === 0}
+                              onToggleSelectAll={() => {
+                                field.onChange(
+                                  allTeamsSelected ? [] : allTeamIds
+                                );
+                              }}
+                            />
+                            {teamOptions.length > 0 ? (
+                              <ComboboxSeparator className="my-1" />
+                            ) : null}
+                            <ComboboxEmpty>No teams found.</ComboboxEmpty>
+                            <ComboboxList className="max-h-none scroll-py-1 overflow-visible p-0 data-empty:p-0">
+                              {(option: OptionItem) => (
+                                <ComboboxItem key={option.value} value={option}>
+                                  {option.label}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxList>
+                          </div>
                         </ComboboxContent>
                       </Combobox>
                     </FormControl>

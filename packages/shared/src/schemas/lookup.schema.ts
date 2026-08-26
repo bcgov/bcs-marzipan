@@ -441,6 +441,7 @@ export const governmentRepresentativeLookupItemSchema = lookupItemSchema.extend(
   {
     name: z.string(),
     displayName: z.string(),
+    sortOrder: z.number().int(),
     title: z.string().nullable(),
     /** Derived: ministry id when this rep is that ministry’s designated minister */
     ministryId: z.number().int().nullable().optional(),

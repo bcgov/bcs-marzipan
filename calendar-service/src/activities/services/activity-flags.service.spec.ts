@@ -386,18 +386,6 @@ describe('ActivityFlagsService', () => {
       const rows = [
         {
           activityId: 1,
-          teamId: 10,
-          teamName: 'Team A',
-          assigneeId: 2,
-          assigneeName: 'Jane Smith',
-          assignedById: 3,
-          note: null,
-          assigneeFlagColour: null,
-          createdAt: new Date('2026-01-01'),
-          updatedAt: new Date('2026-01-01'),
-        },
-        {
-          activityId: 1,
           teamId: 20,
           teamName: 'Team B',
           assigneeId: 4,
@@ -405,6 +393,18 @@ describe('ActivityFlagsService', () => {
           assignedById: 3,
           note: null,
           assigneeFlagColour: '#FF5733',
+          createdAt: new Date('2026-01-01'),
+          updatedAt: new Date('2026-01-01'),
+        },
+        {
+          activityId: 1,
+          teamId: 10,
+          teamName: 'Team A',
+          assigneeId: 2,
+          assigneeName: 'Jane Smith',
+          assignedById: 3,
+          note: null,
+          assigneeFlagColour: null,
           createdAt: new Date('2026-01-01'),
           updatedAt: new Date('2026-01-01'),
         },
@@ -452,6 +452,10 @@ describe('ActivityFlagsService', () => {
       expect(result.get(3)).toBeUndefined();
       // Verify flag colour is mapped correctly
       const flags1 = result.get(1)!;
+      expect(flags1.map((f) => f.assigneeName)).toEqual([
+        'Jane Smith',
+        'John Doe',
+      ]);
       expect(flags1.find((f) => f.assigneeId === 4)?.assigneeFlagColour).toBe(
         '#FF5733'
       );

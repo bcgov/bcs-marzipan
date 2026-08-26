@@ -482,6 +482,68 @@ export const updateActivityRequestSchema = createBaseSchema
   );
 
 /**
+ * Administrative bulk action request. This intentionally permits only the
+ * operations available from the activity list bulk-actions UI.
+ */
+export const bulkUpdateActivitiesRequestSchema = z
+  .object({
+    activityIds: z.array(z.number().int().positive()).min(1).max(100),
+    operation: z.enum([
+      'review',
+      'pitchStatus',
+      'issue',
+      'tags',
+      'sharedWith',
+      'flag',
+      'delete',
+    ]),
+    pitchRequiredStatusId: z.number().int().positive().optional(),
+    tagIds: z.array(z.number().int().positive()).max(100).optional(),
+    teamIds: z.array(z.number().int().positive()).max(100).optional(),
+    flagTeamId: z.number().int().positive().optional(),
+    assigneeIds: z
+      .array(z.number().int().positive())
+      .min(1)
+      .max(100)
+      .optional(),
+    deleteReason: z.string().min(10).max(1000).trim().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const addRequiredIssue = (field: string) => {
+      ctx.addIssue({
+        code: 'custom',
+        message: `${field} is required for ${data.operation}.`,
+        path: [field],
+      });
+    };
+    if (
+      data.operation === 'pitchStatus' &&
+      data.pitchRequiredStatusId === undefined
+    ) {
+      addRequiredIssue('pitchRequiredStatusId');
+    }
+    if (data.operation === 'tags' && data.tagIds === undefined) {
+      addRequiredIssue('tagIds');
+    }
+    if (data.operation === 'sharedWith' && data.teamIds === undefined) {
+      addRequiredIssue('teamIds');
+    }
+    if (data.operation === 'flag' && data.flagTeamId === undefined) {
+      addRequiredIssue('flagTeamId');
+    }
+    if (data.operation === 'delete' && data.deleteReason === undefined) {
+      addRequiredIssue('deleteReason');
+    }
+    if (data.operation === 'flag' && data.assigneeIds === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'assigneeIds is required for flag.',
+        path: ['assigneeIds'],
+      });
+    }
+  });
+
+/**
  * Schema for soft deleting an activity
  * Requires a reason to be provided for audit and admin review purposes
  */
@@ -552,6 +614,9 @@ export const hardDeleteRequestBodySchema = hardDeleteRequestSchema.default({});
  */
 export type CreateActivityRequest = z.infer<typeof createActivityRequestSchema>;
 export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
+export type BulkUpdateActivitiesRequest = z.infer<
+  typeof bulkUpdateActivitiesRequestSchema
+>;
 export type SoftDeleteRequest = z.infer<typeof softDeleteRequestSchema>;
 export type RequestDeleteRequest = z.infer<typeof requestDeleteRequestSchema>;
 export type RestoreRequest = z.infer<typeof restoreRequestSchema>;

@@ -65,10 +65,10 @@ describe('useActivityTablePreferences', () => {
       );
 
       expect(result.current.preferences.sortKey).toBe('startDate');
-      expect(result.current.preferences.sortDirection).toBe('desc');
+      expect(result.current.preferences.sortDirection).toBe('asc');
       expect(result.current.preferences.showCompleted).toBe(false);
       expect(result.current.preferences.showDeleted).toBe(false);
-      expect(result.current.preferences.pageSize).toBe(10);
+      expect(result.current.preferences.pageSize).toBe(25);
       expect(result.current.preferences.searchKeyword).toBe('');
       expect(result.current.preferences.filterState).toEqual(
         expect.objectContaining({
@@ -133,7 +133,7 @@ describe('useActivityTablePreferences', () => {
         useActivityTablePreferences(canSeeDeleted)
       );
 
-      expect(result.current.preferences.pageSize).toBe(10);
+      expect(result.current.preferences.pageSize).toBe(25);
     });
 
     it('parses search from URL', () => {
@@ -161,6 +161,21 @@ describe('useActivityTablePreferences', () => {
       expect(f.categoryIds).toEqual([1, 2]);
       expect(f.activityStatusIds).toEqual([1, 2]);
       expect(f.tagIds).toEqual([10, 20]);
+    });
+
+    it('parses lead filter ids from URL', () => {
+      mockSearchParams = new URLSearchParams(
+        'sort=startDate&leadTeam=5,6&commsLead=7&eventPlanner=8,9'
+      );
+
+      const { result } = renderHook(() =>
+        useActivityTablePreferences(canSeeDeleted)
+      );
+
+      const f = result.current.preferences.filterState;
+      expect(f.leadTeamIds).toEqual([5, 6]);
+      expect(f.commsContactLeadUserIds).toEqual([7]);
+      expect(f.eventPlannerLeadIds).toEqual([8, 9]);
     });
 
     it('parses confirmed filters from URL', () => {
@@ -204,8 +219,7 @@ describe('useActivityTablePreferences', () => {
           dateConfirmedFilter: 'any',
           timeConfirmedFilter: 'any',
           tagIds: [],
-          leadMinistryIds: [],
-          leadOrgIds: [],
+          leadTeamIds: [],
           commsContactLeadUserIds: [],
           eventPlannerLeadIds: [],
           translationRequiredStatusIds: [],
@@ -254,8 +268,7 @@ describe('useActivityTablePreferences', () => {
           dateConfirmedFilter: 'any' as const,
           timeConfirmedFilter: 'any' as const,
           tagIds: [] as number[],
-          leadMinistryIds: [] as number[],
-          leadOrgIds: [] as number[],
+          leadTeamIds: [] as number[],
           commsContactLeadUserIds: [] as number[],
           eventPlannerLeadIds: [] as number[],
           translationRequiredStatusIds: [],
@@ -319,6 +332,32 @@ describe('useActivityTablePreferences', () => {
 
       expect(mockSetSearchParams).toHaveBeenCalledWith(
         expect.objectContaining({ sort: 'activityId' }),
+        { replace: true }
+      );
+    });
+
+    it('syncs lead filter ids to URL when filter state changes', () => {
+      const { result } = renderHook(() =>
+        useActivityTablePreferences(canSeeDeleted)
+      );
+
+      act(() => {
+        result.current.setPreferences({
+          filterState: {
+            ...result.current.preferences.filterState,
+            leadTeamIds: [12],
+            commsContactLeadUserIds: [34],
+            eventPlannerLeadIds: [56],
+          },
+        });
+      });
+
+      expect(mockSetSearchParams).toHaveBeenCalledWith(
+        expect.objectContaining({
+          leadTeam: '12',
+          commsLead: '34',
+          eventPlanner: '56',
+        }),
         { replace: true }
       );
     });
@@ -392,8 +431,7 @@ describe('getStoredActivityListSearch', () => {
         dateConfirmedFilter: 'any' as const,
         timeConfirmedFilter: 'any' as const,
         tagIds: [] as number[],
-        leadMinistryIds: [] as number[],
-        leadOrgIds: [] as number[],
+        leadTeamIds: [] as number[],
         commsContactLeadUserIds: [] as number[],
         eventPlannerLeadIds: [] as number[],
         translationRequiredStatusIds: [],

@@ -8,6 +8,7 @@ import type {
 } from '@corpcal/shared/api/types';
 import type {
   AddActivityHistoryNoteRequest,
+  BulkUpdateActivitiesRequest,
   RequestDeleteRequest,
   RestoreRequest,
   SoftDeleteRequest,
@@ -17,6 +18,7 @@ import type {
 
 import {
   addActivityHistoryNote,
+  bulkUpdateActivities,
   createActivity,
   deleteActivity,
   fetchActivities,
@@ -136,6 +138,21 @@ export function useUpdateActivity() {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
       scheduleLiveActivityRefresh(qc, { source: 'local', activityId: vars.id });
+    },
+  });
+}
+
+export function useBulkUpdateActivities() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BulkUpdateActivitiesRequest) =>
+      bulkUpdateActivities(body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      scheduleLiveActivityRefresh(qc, {
+        source: 'local',
+        invalidateActivities: true,
+      });
     },
   });
 }

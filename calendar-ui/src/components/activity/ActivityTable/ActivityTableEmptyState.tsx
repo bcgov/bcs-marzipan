@@ -30,15 +30,21 @@ const EMPTY_MESSAGES: Record<
 export function ActivityTableEmptyState({
   variant,
   onClearFilters,
+  conflictNote,
 }: {
   variant: ActivityTableEmptyStateVariant;
   onClearFilters?: () => void;
+  /** Extra guidance when tab scope and filters conflict (e.g. Ministry tab + Lead filter). */
+  conflictNote?: string;
 }) {
   const { title, description } = EMPTY_MESSAGES[variant];
   return (
     <div className="py-12 text-center text-sm text-slate-600">
       <div className="mb-2 font-semibold">{title}</div>
       <div>{description}</div>
+      {conflictNote ? (
+        <p className="mx-auto mt-3 max-w-md text-slate-500">{conflictNote}</p>
+      ) : null}
       {variant === 'no-filter-match' && onClearFilters ? (
         <button
           type="button"

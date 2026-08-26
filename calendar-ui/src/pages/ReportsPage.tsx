@@ -360,8 +360,7 @@ export function ReportsPage() {
       category_count: preferences.filterState.categoryIds.length,
       status_count: preferences.filterState.activityStatusIds.length,
       tag_count: preferences.filterState.tagIds.length,
-      ministry_count: preferences.filterState.leadMinistryIds.length,
-      org_count: preferences.filterState.leadOrgIds.length,
+      lead_team_count: preferences.filterState.leadTeamIds.length,
     });
   }, [
     activeFilterCount,

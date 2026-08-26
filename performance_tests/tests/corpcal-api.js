@@ -19,7 +19,7 @@
  *   BASE_URL=http://localhost:3000/api k6 run performance_tests/tests/corpcal-api.js
  *
  * Shared environments: prefer PERF_BEARER_TOKEN. POST /activities creates real rows — avoid shared DEV unless intended.
- * General API limits: ThrottlerModule 200 req/min; RateLimitInterceptor default 100 req/min (health/ready excluded).
+ * General API limits: RateLimitInterceptor default 100 req/min (health/ready excluded).
  */
 
 import { sleep } from 'k6';
