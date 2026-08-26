@@ -28,14 +28,14 @@ describe('startLockoutCountdownToast', () => {
     vi.useRealTimers();
   });
 
-  it('shows a loading toast with a live countdown', () => {
+  it('shows a warning toast with a live countdown', () => {
     const handle = startLockoutCountdownToast({
       activityId: 5,
       lockStartMs: Date.now() + 60_000,
       lockStartTimeLabel: '2:00 pm',
     });
 
-    expect(toastMock.loading).toHaveBeenCalledWith(
+    expect(toastMock.warning).toHaveBeenCalledWith(
       expect.stringContaining('Activity editing will be locked at 2:00 pm PT'),
       expect.objectContaining({
         description: 'Unsaved changes will be lost in 1 minute.',
@@ -44,7 +44,7 @@ describe('startLockoutCountdownToast', () => {
     );
 
     vi.advanceTimersByTime(1000);
-    expect(toastMock.loading.mock.calls.at(-1)?.[1]).toEqual(
+    expect(toastMock.warning.mock.calls.at(-1)?.[1]).toEqual(
       expect.objectContaining({
         description: 'Unsaved changes will be lost in 59 seconds.',
       })

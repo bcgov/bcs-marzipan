@@ -18,10 +18,14 @@ export type CountdownLoadingToastHandle = {
   dispose: () => void;
 };
 
+export type CountdownLoadingToastVariant = 'loading' | 'warning';
+
 export function startCountdownLoadingToast(options: {
   toastId: string;
   endMs: number;
   getContent: (secondsLeft: number) => CountdownLoadingToastContent;
+  /** Toast icon style; defaults to loading spinner. */
+  variant?: CountdownLoadingToastVariant;
   /** Called once when secondsLeft reaches 0. Return false to stop ticking without dismissing. */
   onExpired?: () => boolean | void;
 }): CountdownLoadingToastHandle {
@@ -50,11 +54,16 @@ export function startCountdownLoadingToast(options: {
       Math.ceil((options.endMs - Date.now()) / 1000)
     );
     const content = options.getContent(secondsLeft);
-    toast.loading(content.title, {
+    const toastOptions = {
       id: options.toastId,
       description: content.description,
       duration: Infinity,
-    });
+    };
+    if (options.variant === 'warning') {
+      toast.warning(content.title, toastOptions);
+    } else {
+      toast.loading(content.title, toastOptions);
+    }
     if (secondsLeft <= 0 && !expired) {
       expired = true;
       const keepTicking = options.onExpired?.();

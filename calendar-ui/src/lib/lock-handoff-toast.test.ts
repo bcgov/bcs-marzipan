@@ -5,6 +5,7 @@ import { startLockHandoffCountdownToast } from './lock-handoff-toast';
 const { toastMock } = vi.hoisted(() => ({
   toastMock: {
     loading: vi.fn(),
+    warning: vi.fn(),
     dismiss: vi.fn(),
     success: vi.fn(),
     info: vi.fn(),
@@ -34,14 +35,15 @@ describe('startLockHandoffCountdownToast', () => {
       role: 'holder',
     });
 
-    expect(toastMock.loading.mock.calls.at(-1)?.[0]).toContain(
+    expect(toastMock.warning.mock.calls.at(-1)?.[0]).toContain(
       'admin has requested to edit this activity'
     );
-    expect(toastMock.loading.mock.calls.at(-1)?.[1]).toEqual(
+    expect(toastMock.warning.mock.calls.at(-1)?.[1]).toEqual(
       expect.objectContaining({
         description: 'Unsaved changes will be lost in 1 minute.',
       })
     );
+    expect(toastMock.loading).not.toHaveBeenCalled();
 
     handle.dispose();
   });
@@ -62,6 +64,7 @@ describe('startLockHandoffCountdownToast', () => {
         description: 'The activity will be unlocked in 1 minute.',
       })
     );
+    expect(toastMock.warning).not.toHaveBeenCalled();
 
     handle.dispose();
   });

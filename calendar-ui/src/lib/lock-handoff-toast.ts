@@ -77,6 +77,7 @@ export function startLockHandoffCountdownToast(
   countdownHandle = startCountdownLoadingToast({
     toastId,
     endMs,
+    variant: payload.role === 'holder' ? 'warning' : 'loading',
     getContent: (secondsLeft) => {
       if (payload.role === 'requester' && secondsLeft <= 0) {
         return { title: 'Unlocking activity...' };
