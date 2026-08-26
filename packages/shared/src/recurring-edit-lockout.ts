@@ -1,5 +1,6 @@
 import { toPacificHourMinute } from './activity-completion';
 import { PERMISSIONS } from './auth/constants';
+import { CORP_PACIFIC_OFFSET_MS } from './datetime/constants';
 
 export const RECURRING_EDIT_LOCKOUT_REASON = 'time_lockout' as const;
 
@@ -18,7 +19,6 @@ export type RecurringLockoutBannerScheduleSlice =
   };
 
 const MINUTES_PER_DAY = 24 * 60;
-const PACIFIC_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 export function timeOfDayToMinutes(timeOfDay: string): number {
   const [hour, minute] = timeOfDay.split(':').map(Number);
@@ -31,7 +31,7 @@ function pacificDateParts(utcMs: number): {
   day: number;
   minuteOfDay: number;
 } {
-  const d = new Date(utcMs - PACIFIC_OFFSET_MS);
+  const d = new Date(utcMs - CORP_PACIFIC_OFFSET_MS);
   return {
     year: d.getUTCFullYear(),
     month: d.getUTCMonth() + 1,
@@ -48,7 +48,9 @@ function pacificMinuteOfDayToUtcMs(
 ): number {
   const hour = Math.floor(minuteOfDay / 60);
   const minute = minuteOfDay % 60;
-  return Date.UTC(year, month - 1, day, hour, minute, 0, 0) + PACIFIC_OFFSET_MS;
+  return (
+    Date.UTC(year, month - 1, day, hour, minute, 0, 0) + CORP_PACIFIC_OFFSET_MS
+  );
 }
 
 function msUntilPacificMinuteOfDay(
@@ -121,52 +123,27 @@ export function isWithinRecurringLockoutBannerWindow(
 }
 
 /**
- * Milliseconds until the next banner show or hide boundary in Pacific time.
- * Returns null when lockout banner settings are inactive.
+ * Milliseconds until the next recurring lockout boundary in Pacific time
+ * (banner show, lockout start, or lockout end). Returns null when settings
+ * are inactive.
  */
-export function getNextRecurringLockoutBannerBoundaryMs(
-  settings: RecurringLockoutBannerScheduleSlice,
+export function getMsUntilNextRecurringLockoutBoundary(
+  settings: RecurringLockoutBannerScheduleSlice | null | undefined,
   nowMs: number = Date.now()
 ): number | null {
-  if (!settings.isActive) {
+  if (!settings?.isActive) {
     return null;
   }
 
-  const { hour, minute } = toPacificHourMinute(nowMs);
-  const currentMinutes = hour * 60 + minute;
-  const startMinutes = timeOfDayToMinutes(String(settings.startTimeOfDay));
   const { bannerStartMinutes, endMinutes } =
     getRecurringLockoutBannerVisibilityMinutes(settings);
-  const inWindow = isWithinRecurringLockoutBannerWindow(settings, nowMs);
+  const startMinutes = timeOfDayToMinutes(String(settings.startTimeOfDay));
 
-  if (inWindow) {
-    const inLockout = isWithinRecurringEditLockoutWindow(settings, nowMs);
-
-    if (!inLockout) {
-      const msUntilLockStart = msUntilPacificMinuteOfDay(nowMs, startMinutes);
-      const msUntilHide =
-        bannerStartMinutes > endMinutes && currentMinutes >= bannerStartMinutes
-          ? msUntilPacificMinuteOfDay(nowMs, endMinutes, {
-              forceNextCalendarDay: true,
-            })
-          : msUntilPacificMinuteOfDay(nowMs, endMinutes);
-
-      return Math.min(msUntilLockStart, msUntilHide);
-    }
-
-    if (
-      bannerStartMinutes > endMinutes &&
-      currentMinutes >= bannerStartMinutes
-    ) {
-      return msUntilPacificMinuteOfDay(nowMs, endMinutes, {
-        forceNextCalendarDay: true,
-      });
-    }
-
-    return msUntilPacificMinuteOfDay(nowMs, endMinutes);
-  }
-
-  return msUntilPacificMinuteOfDay(nowMs, bannerStartMinutes);
+  return Math.min(
+    ...[bannerStartMinutes, startMinutes, endMinutes].map((minuteOfDay) =>
+      msUntilPacificMinuteOfDay(nowMs, minuteOfDay)
+    )
+  );
 }
 
 /**

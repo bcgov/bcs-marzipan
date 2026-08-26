@@ -1,16 +1,7 @@
 import type { UseFormReturn } from 'react-hook-form';
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type MutableRefObject,
-} from 'react';
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 
-import {
-  isWithinRecurringEditLockoutWindow,
-  type RecurringEditLockoutSettingsSlice,
-} from '@corpcal/shared';
+import type { RecurringEditLockoutSettingsSlice } from '@corpcal/shared';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { teardownEditSessionForLockout } from '@/lib/teardown-edit-session-for-lockout';
 
@@ -35,13 +26,12 @@ export type UseRecurringLockoutSessionOptions = {
 };
 
 export type UseRecurringLockoutSessionResult = {
-  isRecurringLockoutBlocking: boolean;
   lockoutSubmitGenerationRef: MutableRefObject<number>;
 };
 
 /**
- * Latches recurring lockout blocking at clock boundaries, tears down active edit
- * sessions once, and wires the pre-lockout countdown toast.
+ * Tears down active edit sessions when recurring lockout begins and wires
+ * the pre-lockout countdown toast.
  */
 export function useRecurringLockoutSession({
   activityId,
@@ -60,29 +50,6 @@ export function useRecurringLockoutSession({
   closeSubmitModals,
 }: UseRecurringLockoutSessionOptions): UseRecurringLockoutSessionResult {
   const lockoutSubmitGenerationRef = useRef(0);
-  const [lockoutBoundaryRecheckTick, setLockoutBoundaryRecheckTick] =
-    useState(0);
-  /** Latches during lockout when the hook's isBlocked lags behind the clock at the boundary. */
-  const [lockoutSessionBlocked, setLockoutSessionBlocked] = useState(false);
-
-  useEffect(() => {
-    if (isBlockedByRecurringLockout) {
-      setLockoutSessionBlocked(true);
-    }
-  }, [isBlockedByRecurringLockout]);
-
-  useEffect(() => {
-    if (recurringLockoutSchedule == null) {
-      setLockoutSessionBlocked(false);
-      return;
-    }
-    if (!isWithinRecurringEditLockoutWindow(recurringLockoutSchedule)) {
-      setLockoutSessionBlocked(false);
-    }
-  }, [recurringLockoutSchedule, lockoutBoundaryRecheckTick]);
-
-  const isRecurringLockoutBlocking =
-    isBlockedByRecurringLockout || lockoutSessionBlocked;
 
   const lockoutTeardownStartedRef = useRef(false);
   const isEditingRef = useRef(isEditing);
@@ -93,10 +60,10 @@ export function useRecurringLockoutSession({
   recurringLockoutScheduleRef.current = recurringLockoutSchedule;
 
   useEffect(() => {
-    if (!isRecurringLockoutBlocking) {
+    if (!isBlockedByRecurringLockout) {
       lockoutTeardownStartedRef.current = false;
     }
-  }, [isRecurringLockoutBlocking]);
+  }, [isBlockedByRecurringLockout]);
 
   const runLockoutTeardownIfNeeded = useCallback(() => {
     if (lockoutTeardownStartedRef.current) {
@@ -144,30 +111,22 @@ export function useRecurringLockoutSession({
     setIsEditing,
   ]);
 
-  const handleRecurringLockoutStart = useCallback(() => {
-    setLockoutSessionBlocked(true);
-    // Force a React re-render so time-derived isBlocked/readOnly recompute at lockout start.
-    setLockoutBoundaryRecheckTick((tick) => tick + 1);
-    runLockoutTeardownIfNeeded();
-  }, [runLockoutTeardownIfNeeded]);
-
   useLockoutEditCountdownToast({
     activityId,
     isEditing,
     lockState,
     schedule: recurringLockoutSchedule,
-    isBlockedByRecurringLockout: isRecurringLockoutBlocking,
+    isBlockedByRecurringLockout,
     permissions,
-    onLockoutStart: handleRecurringLockoutStart,
   });
 
   const wasBlockedByRecurringLockoutRef = useRef(false);
 
   useEffect(() => {
     const wasBlocked = wasBlockedByRecurringLockoutRef.current;
-    wasBlockedByRecurringLockoutRef.current = isRecurringLockoutBlocking;
+    wasBlockedByRecurringLockoutRef.current = isBlockedByRecurringLockout;
 
-    if (!isRecurringLockoutBlocking) {
+    if (!isBlockedByRecurringLockout) {
       return;
     }
 
@@ -177,10 +136,9 @@ export function useRecurringLockoutSession({
     }
 
     runLockoutTeardownIfNeeded();
-  }, [isRecurringLockoutBlocking, runLockoutTeardownIfNeeded]);
+  }, [isBlockedByRecurringLockout, runLockoutTeardownIfNeeded]);
 
   return {
-    isRecurringLockoutBlocking,
     lockoutSubmitGenerationRef,
   };
 }

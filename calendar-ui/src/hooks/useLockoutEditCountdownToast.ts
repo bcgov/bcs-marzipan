@@ -21,8 +21,6 @@ type UseLockoutEditCountdownToastOptions = {
   schedule: RecurringEditLockoutSettingsSlice | null;
   isBlockedByRecurringLockout: boolean;
   permissions: readonly string[];
-  /** Invoked when the countdown reaches the recurring lockout start boundary. */
-  onLockoutStart?: () => void;
 };
 
 /**
@@ -36,12 +34,9 @@ export function useLockoutEditCountdownToast({
   schedule,
   isBlockedByRecurringLockout,
   permissions,
-  onLockoutStart,
 }: UseLockoutEditCountdownToastOptions): void {
   const handleRef = useRef<LockoutCountdownToastHandle | null>(null);
   const preWindowTimeoutRef = useRef<number | null>(null);
-  const onLockoutStartRef = useRef(onLockoutStart);
-  onLockoutStartRef.current = onLockoutStart;
 
   useEffect(() => {
     const dispose = (): void => {
@@ -82,7 +77,6 @@ export function useLockoutEditCountdownToast({
         activityId,
         lockStartMs,
         lockStartTimeLabel,
-        onLockoutStart: () => onLockoutStartRef.current?.(),
       });
     };
 

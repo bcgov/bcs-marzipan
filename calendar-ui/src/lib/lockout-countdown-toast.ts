@@ -24,8 +24,6 @@ export function startLockoutCountdownToast(options: {
   activityId: number;
   lockStartMs: number;
   lockStartTimeLabel: string;
-  /** Called once when the countdown reaches zero at the recurring lockout start boundary. */
-  onLockoutStart?: () => void;
 }): LockoutCountdownToastHandle {
   const toastId = `lockout-countdown-${options.activityId}-${options.lockStartMs}`;
   const title = `Activity editing will be locked at ${options.lockStartTimeLabel} PT.`;
@@ -37,9 +35,6 @@ export function startLockoutCountdownToast(options: {
       title,
       description: `Unsaved changes will be lost in ${formatCountdownRemaining(secondsLeft)}.`,
     }),
-    onExpired: () => {
-      options.onLockoutStart?.();
-    },
   });
 }
 

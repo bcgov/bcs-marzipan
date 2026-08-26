@@ -3,13 +3,13 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
-import { getNextRecurringLockoutBannerBoundaryMs } from '@corpcal/shared';
+import { getMsUntilNextRecurringLockoutBoundary } from '@corpcal/shared';
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import { fetchActiveRecurringLockoutBannerState } from '@/api/bannerApi';
 
 import {
   RECURRING_LOCKOUT_BANNER_QUERY_KEY,
-  RECURRING_LOCKOUT_BOUNDARY_INVALIDATION_BUFFER_MS,
+  RECURRING_LOCKOUT_BOUNDARY_SETTLE_MS,
   useRecurringEditLockout,
   useRecurringLockoutBanner,
 } from './useRecurringLockoutBanner';
@@ -76,7 +76,7 @@ describe('useRecurringLockoutBanner', () => {
     });
   });
 
-  it('schedules invalidation at the next banner boundary', async () => {
+  it('schedules invalidation at the next lockout boundary', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
 
     try {
@@ -107,12 +107,12 @@ describe('useRecurringLockoutBanner', () => {
         await Promise.resolve();
       });
 
-      const delayMs = getNextRecurringLockoutBannerBoundaryMs(schedule);
+      const delayMs = getMsUntilNextRecurringLockoutBoundary(schedule);
       expect(delayMs).not.toBeNull();
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(
-          delayMs! + RECURRING_LOCKOUT_BOUNDARY_INVALIDATION_BUFFER_MS
+          delayMs! + RECURRING_LOCKOUT_BOUNDARY_SETTLE_MS
         );
       });
 
@@ -226,13 +226,63 @@ describe('useRecurringEditLockout', () => {
       expect(result.current.isBlocked).toBe(false);
 
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(3 * 60_000);
+        await vi.advanceTimersByTimeAsync(
+          3 * 60_000 + RECURRING_LOCKOUT_BOUNDARY_SETTLE_MS
+        );
       });
       expect(result.current.isBlocked).toBe(true);
 
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(2 * 60 * 60_000);
+        await vi.advanceTimersByTimeAsync(
+          2 * 60 * 60_000 + RECURRING_LOCKOUT_BOUNDARY_SETTLE_MS
+        );
       });
+      expect(result.current.isBlocked).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('re-derives isBlocked on visibilitychange after the end boundary', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      vi.setSystemTime(new Date('2026-08-05T21:00:00.000Z'));
+
+      fetchActiveRecurringLockoutBannerStateMock.mockResolvedValue({
+        banner: null,
+        schedule: {
+          isActive: true,
+          startTimeOfDay: '14:00',
+          endTimeOfDay: '16:00',
+          bannerLeadMinutes: 20,
+        },
+      });
+
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'visible',
+      });
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+
+      const { result } = renderHook(
+        () => useRecurringEditLockout([PERMISSIONS.ACTIVITIES.EDIT]),
+        { wrapper: createWrapper(queryClient) }
+      );
+
+      await waitFor(() => {
+        expect(result.current.isBlocked).toBe(true);
+      });
+
+      vi.setSystemTime(new Date('2026-08-05T23:00:00.000Z'));
+
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
       expect(result.current.isBlocked).toBe(false);
     } finally {
       vi.useRealTimers();
