@@ -1,3 +1,4 @@
+import { transformAsync } from '@babel/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -13,6 +14,7 @@ import {
   useRecurringEditLockout,
   useRecurringLockoutBanner,
 } from './useRecurringLockoutBanner';
+import hookSource from './useRecurringLockoutBanner.ts?raw';
 
 vi.mock('@/api/bannerApi', () => ({
   fetchActiveRecurringLockoutBannerState: vi.fn(),
@@ -287,5 +289,91 @@ describe('useRecurringEditLockout', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('recomputes isBlocked across boundaries when schedule and permissions keep object identity', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      vi.setSystemTime(new Date('2026-08-05T20:57:00.000Z'));
+
+      const schedule = {
+        isActive: true,
+        startTimeOfDay: '14:00',
+        endTimeOfDay: '16:00',
+        bannerLeadMinutes: 20,
+      };
+      const permissions = [PERMISSIONS.ACTIVITIES.EDIT] as const;
+
+      fetchActiveRecurringLockoutBannerStateMock.mockImplementation(() =>
+        Promise.resolve({
+          banner: null,
+          schedule,
+        })
+      );
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+
+      const { result } = renderHook(
+        () => useRecurringEditLockout(permissions),
+        {
+          wrapper: createWrapper(queryClient),
+        }
+      );
+
+      await waitFor(() => {
+        expect(result.current.schedule).toBe(schedule);
+      });
+      expect(result.current.isBlocked).toBe(false);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(
+          3 * 60_000 + RECURRING_LOCKOUT_BOUNDARY_SETTLE_MS
+        );
+      });
+
+      expect(fetchActiveRecurringLockoutBannerStateMock).toHaveBeenCalled();
+      expect(result.current.schedule).toBe(schedule);
+      expect(result.current.isBlocked).toBe(true);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(
+          2 * 60 * 60_000 + RECURRING_LOCKOUT_BOUNDARY_SETTLE_MS
+        );
+      });
+
+      expect(result.current.schedule).toBe(schedule);
+      expect(result.current.isBlocked).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('useRecurringEditLockout React Compiler contract', () => {
+  it('includes boundaryNowMs in the isBlocked memo cache key', async () => {
+    const result = await transformAsync(hookSource, {
+      filename: 'useRecurringLockoutBanner.ts',
+      babelrc: false,
+      configFile: false,
+      parserOpts: { plugins: ['typescript'] },
+      plugins: [['babel-plugin-react-compiler', {}]],
+    });
+
+    expect(result?.code).toBeDefined();
+
+    const compiled = result!.code!;
+
+    expect(compiled).toMatch(
+      /isUserBlockedByRecurringEditLockout\(schedule, permissions, boundaryNowMs\)/
+    );
+    expect(compiled).toMatch(
+      /\$\[\d+\] !== boundaryNowMs \|\| \$\[\d+\] !== permissions \|\| \$\[\d+\] !== schedule/
+    );
+    expect(compiled).not.toMatch(
+      /if \(\$\[\d+\] !== permissions \|\| \$\[\d+\] !== schedule\) \{\s*t0 = schedule != null && isUserBlockedByRecurringEditLockout\(schedule, permissions\);/
+    );
   });
 });
