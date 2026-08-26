@@ -5,7 +5,10 @@ import {
   type RecurringEditLockoutSettingsSlice,
 } from '@corpcal/shared';
 
-import { startCountdownLoadingToast } from './countdown-loading-toast';
+import {
+  formatCountdownRemaining,
+  startCountdownLoadingToast,
+} from './countdown-loading-toast';
 import { getRecurringLockoutInlineMessage } from './recurring-lockout-inline-message';
 
 /** Show the edit-session countdown in the last three minutes before lockout. */
@@ -21,14 +24,22 @@ export function startLockoutCountdownToast(options: {
   activityId: number;
   lockStartMs: number;
   lockStartTimeLabel: string;
+  /** Called once when the countdown reaches zero at the recurring lockout start boundary. */
+  onLockoutStart?: () => void;
 }): LockoutCountdownToastHandle {
   const toastId = `lockout-countdown-${options.activityId}-${options.lockStartMs}`;
-  const baseMessage = `Activity editing will lock at ${options.lockStartTimeLabel} PT. Save your changes.\nAny unsaved changes will be discarded.`;
+  const title = `Activity editing will be locked at ${options.lockStartTimeLabel} PT.`;
 
   return startCountdownLoadingToast({
     toastId,
     endMs: options.lockStartMs,
-    getMessage: (secondsLeft) => `${baseMessage} (${secondsLeft}s)`,
+    getContent: (secondsLeft) => ({
+      title,
+      description: `Unsaved changes will be lost in ${formatCountdownRemaining(secondsLeft)}.`,
+    }),
+    onExpired: () => {
+      options.onLockoutStart?.();
+    },
   });
 }
 
@@ -38,7 +49,7 @@ export function showLockoutChangesDiscardedToast(
 ): void {
   toast.warning('Unsaved changes discarded', {
     id: `lockout-discarded-${activityId}`,
-    description: `Editing is now locked. ${getRecurringLockoutInlineMessage(schedule)}`,
+    description: `${getRecurringLockoutInlineMessage(schedule)}`,
     duration: DISCARD_TOAST_DURATION_MS,
   });
 }

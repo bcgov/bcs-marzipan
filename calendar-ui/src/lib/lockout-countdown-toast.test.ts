@@ -36,13 +36,19 @@ describe('startLockoutCountdownToast', () => {
     });
 
     expect(toastMock.loading).toHaveBeenCalledWith(
-      expect.stringContaining('Activity editing will lock at 2:00 pm PT'),
-      expect.objectContaining({ duration: Infinity })
+      expect.stringContaining('Activity editing will be locked at 2:00 pm PT'),
+      expect.objectContaining({
+        description: 'Unsaved changes will be lost in 1 minute.',
+        duration: Infinity,
+      })
     );
-    expect(toastMock.loading.mock.calls.at(-1)?.[0]).toContain('(60s)');
 
     vi.advanceTimersByTime(1000);
-    expect(toastMock.loading.mock.calls.at(-1)?.[0]).toContain('(59s)');
+    expect(toastMock.loading.mock.calls.at(-1)?.[1]).toEqual(
+      expect.objectContaining({
+        description: 'Unsaved changes will be lost in 59 seconds.',
+      })
+    );
 
     handle.dispose();
     expect(toastMock.dismiss).toHaveBeenCalled();
