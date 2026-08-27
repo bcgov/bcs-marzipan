@@ -28,8 +28,6 @@ export const RECURRING_LOCKOUT_BANNER_BYPASS_NOTICE =
 
 export type RecurringLockoutBannerPhase = 'lead-up' | 'active';
 
-const SIMPLE_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -40,7 +38,22 @@ function escapeHtml(text: string): string {
 }
 
 export function isLikelyEmailAddress(value: string): boolean {
-  return SIMPLE_EMAIL_PATTERN.test(value.trim());
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.includes(' ')) {
+    return false;
+  }
+
+  const atIndex = trimmed.indexOf('@');
+  if (atIndex <= 0 || atIndex !== trimmed.lastIndexOf('@')) {
+    return false;
+  }
+
+  const domainPart = trimmed.slice(atIndex + 1);
+  const dotIndex = domainPart.indexOf('.');
+
+  return (
+    domainPart.length > 0 && dotIndex > 0 && dotIndex < domainPart.length - 1
+  );
 }
 
 export function formatRecurringLockoutContactForBanner(
