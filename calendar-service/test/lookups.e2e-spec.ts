@@ -41,11 +41,19 @@ describe('LookupsController (e2e)', () => {
         });
     });
 
-    it('should set a revalidation-first Cache-Control header', () => {
+    it('should set Cache-Control: private on the normal (scoped) request', () => {
       return createAuthRequest(app, accessToken)
         .get('/lookups/categories')
         .expect(200)
-        .expect('Cache-Control', /no-store|no-cache/);
+        .expect('Cache-Control', /private, max-age=300/);
+    });
+
+    it('should set Cache-Control: no-store when includeAll=true (admin user)', () => {
+      return createAuthRequest(app, accessToken)
+        .get('/lookups/categories')
+        .query({ includeAll: 'true' })
+        .expect(200)
+        .expect('Cache-Control', /no-store/);
     });
   });
 

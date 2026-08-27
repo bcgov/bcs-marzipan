@@ -40,6 +40,7 @@ import {
 import { PolicyService } from '../policy/policy.service';
 import { TeamsService } from '../teams/teams.service';
 import { ActivitiesGateway } from './activities.gateway';
+import { ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES } from './activity-hard-delete.coverage';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
 import { createMockActivityDataFetcherService } from './services/activity-data-fetcher.service.mock';
@@ -3034,9 +3035,13 @@ describe('ActivitiesService', () => {
         returning: vi.fn().mockResolvedValue([{ id: 1 }]),
       });
       const deleteWhere = vi.fn().mockResolvedValue(undefined);
+      const deletedTables: unknown[] = [];
       const mockTx = {
         insert: vi.fn().mockReturnValue({ values: insertValues }),
-        delete: vi.fn().mockReturnValue({ where: deleteWhere }),
+        delete: vi.fn((table) => {
+          deletedTables.push(table);
+          return { where: deleteWhere };
+        }),
       };
       mockDatabaseService.db.transaction = vi.fn(async (callback) => {
         return await callback(mockTx);
@@ -3060,9 +3065,12 @@ describe('ActivitiesService', () => {
         userId: 10,
         reason: 'Duplicate entry',
       });
-      expect(mockTx.delete).toHaveBeenCalled();
-      expect(deleteWhere).toHaveBeenCalled();
-      expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(14);
+      expect(mockTx.delete.mock.calls.map(([table]) => table)).toEqual([
+        ...ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES,
+      ]);
+      expect(deletedTables).toEqual([
+        ...ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES,
+      ]);
       expect(
         mockActivitiesGateway.broadcastActivityUpdated
       ).toHaveBeenCalledWith(1);
