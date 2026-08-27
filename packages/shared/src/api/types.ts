@@ -22,6 +22,11 @@ export type {
 } from '../schemas/activity-flag.schema';
 export type {
   BannerSettings,
+  RecurringLockoutBannerSettings,
+  ActiveRecurringLockoutBanner,
+  RecurringLockoutBannerSchedule,
+  ActiveRecurringLockoutBannerResponse,
+  UpsertRecurringLockoutBannerSettingsBody,
   UpsertBannerSettingsBody,
 } from '../schemas/banner.schema';
 export type {

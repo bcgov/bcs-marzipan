@@ -31,6 +31,7 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { LocksService } from '../locks/locks.service';
+import { RecurringLockoutService } from '../locks/recurring-lockout.service';
 import { LookAheadPolicyService } from '../look-ahead/look-ahead-policy.service';
 import {
   getCategoryScopeById,
@@ -140,6 +141,11 @@ describe('ActivitiesService', () => {
   // Mock database service
   const mockDatabaseService = {
     db: {
+      query: {
+        recurringLockoutBannerSettings: {
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+      },
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
@@ -280,6 +286,10 @@ describe('ActivitiesService', () => {
     getSourceLookAheadReports: vi.fn().mockResolvedValue([]),
   };
 
+  const mockRecurringLockoutService = {
+    assertUserCanEditDuringLockout: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -336,6 +346,10 @@ describe('ActivitiesService', () => {
           provide: LookAheadPolicyService,
           useValue: mockLookAheadPolicy,
         },
+        {
+          provide: RecurringLockoutService,
+          useValue: mockRecurringLockoutService,
+        },
       ],
     }).compile();
 
@@ -343,6 +357,10 @@ describe('ActivitiesService', () => {
 
     // Reset all mocks
     vi.clearAllMocks();
+    mockRecurringLockoutService.assertUserCanEditDuringLockout.mockReset();
+    mockRecurringLockoutService.assertUserCanEditDuringLockout.mockResolvedValue(
+      undefined
+    );
     mockLookupScopeMaps([
       [1, { visibility: 'global' }],
       [2, { visibility: 'global' }],
@@ -593,6 +611,37 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createMockSelect([]);
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('recurring lockout guard', () => {
+    it('delegates edit checks to RecurringLockoutService', async () => {
+      const lockoutError = new HttpException(
+        {
+          statusCode: 403,
+          message:
+            'Editing activities is locked for the current lockout window.',
+          reason: 'time_lockout',
+        },
+        403
+      );
+      mockDatabaseService.db.select = createMockSelect([
+        createMockActivity({ id: 1 }),
+      ]);
+      mockRecurringLockoutService.assertUserCanEditDuringLockout.mockRejectedValue(
+        lockoutError
+      );
+
+      await expect(
+        service.update(1, createMockUpdateRequest({ title: 'Blocked' }), 1, {
+          permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+          teamIds: [],
+        })
+      ).rejects.toThrow(HttpException);
+
+      expect(
+        mockRecurringLockoutService.assertUserCanEditDuringLockout
+      ).toHaveBeenCalledWith(1, [PERMISSIONS.ACTIVITIES.EDIT]);
     });
   });
 

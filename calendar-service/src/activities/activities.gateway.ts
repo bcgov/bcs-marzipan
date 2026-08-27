@@ -326,4 +326,14 @@ export class ActivitiesGateway
     this.logger.log('Broadcasting login modal settings updated');
     this.server.emit('loginModalSettingsUpdated');
   }
+
+  broadcastSystemBannerSettingsUpdated(): void {
+    this.logger.log('Broadcasting system banner settings updated');
+    this.server.emit('systemBannerSettingsUpdated');
+  }
+
+  broadcastRecurringLockoutBannerSettingsUpdated(): void {
+    this.logger.log('Broadcasting recurring lockout banner settings updated');
+    this.server.emit('recurringLockoutBannerSettingsUpdated');
+  }
 }

@@ -816,6 +816,174 @@ Returns admin-defined venue presets for the activity form. All active presets ap
 
 ---
 
+## Banner Endpoints
+
+Recurring edit lockout uses Pacific time. Lockout start is inclusive; end is exclusive (e.g. `09:00`–`10:00` blocks through `09:59`).
+
+### Get Active System Banner
+
+**GET** `/banner`
+
+Returns the currently active scheduled system banner, or `null`.
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": null
+}
+```
+
+---
+
+### Get Active Recurring Lockout Banner
+
+**GET** `/banner/recurring-lockout`
+
+Returns the recurring lockout warning banner when settings are active and the current Pacific time is within the banner visibility window (`startTimeOfDay - bannerLeadMinutes` through `endTimeOfDay`, end exclusive). Also returns schedule metadata so clients can refresh at window boundaries without polling.
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "banner": {
+      "id": 1,
+      "isActive": true,
+      "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PT. Please make updates before lockout begins.",
+      "activeContent": "Updates to activities are locked out until <lockEndTime> PT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.",
+      "content": "Updates to activities will be locked 3:00 pm - 11:59 pm PT. Please make updates before lockout begins.",
+      "phase": "lead-up",
+      "backgroundColor": "#E6A635",
+      "textColor": "#000000",
+      "variant": "warning",
+      "startTimeOfDay": "15:00",
+      "endTimeOfDay": "23:59",
+      "bannerLeadMinutes": 30,
+      "editCountdownLeadMinutes": 3,
+      "createdDateTime": "2026-08-04T12:00:00.000Z",
+      "lastUpdatedDateTime": "2026-08-04T12:00:00.000Z"
+    },
+    "schedule": {
+      "isActive": true,
+      "startTimeOfDay": "15:00",
+      "endTimeOfDay": "23:59",
+      "bannerLeadMinutes": 30,
+      "editCountdownLeadMinutes": 3
+    }
+  }
+}
+```
+
+When the banner is outside its visibility window, `banner` is `null` but `schedule` is still returned when settings exist.
+
+---
+
+### Get Recurring Lockout Banner Settings
+
+**GET** `/banner/recurring-lockout/settings`
+
+**Permission:** `settings.manage.recurring_lockout`
+
+Returns the latest recurring lockout configuration, or `null` if never configured.
+
+---
+
+### Create or Update Recurring Lockout Banner Settings
+
+**PUT** `/banner/recurring-lockout/settings`
+
+**Permission:** `settings.manage.recurring_lockout`
+
+**Request Body:**
+
+```json
+{
+  "isActive": true,
+  "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.",
+  "activeContent": "Updates to activities are locked out until <lockEndTime> PT.",
+  "backgroundColor": "#E6A635",
+  "textColor": "#000000",
+  "variant": "warning",
+  "startTimeOfDay": "15:00",
+  "endTimeOfDay": "23:59",
+  "bannerLeadMinutes": 30,
+  "editCountdownLeadMinutes": 3
+}
+```
+
+`editCountdownLeadMinutes` controls how many minutes before lockout starts that editors see a live countdown toast while editing. Defaults to `3` when omitted.
+
+Saving settings broadcasts `recurringLockoutBannerSettingsUpdated` over the activities WebSocket.
+
+---
+
+## Locks Endpoints
+
+### Acquire Edit Lock
+
+**POST** `/locks`
+
+**Request Body:**
+
+```json
+{
+  "entityType": "activity",
+  "entityId": 42,
+  "lockSessionId": "optional-client-session-id"
+}
+```
+
+**Response:** `200 OK` — lock acquired
+
+**Error responses:**
+
+- `423 Locked` — another user holds the lock (`reason: "locked_by_other"`, includes `lockedBy`)
+- `403 Forbidden` — recurring daily edit lockout is active and the user lacks `activities.bypass_recurring_lockout` (`reason: "time_lockout"`)
+
+```json
+{
+  "type": "https://api.example.com/errors/forbidden",
+  "title": "Forbidden",
+  "status": 403,
+  "detail": "Editing activities is locked for the current lockout window.",
+  "instance": "/locks",
+  "correlationId": "abc-123",
+  "reason": "time_lockout"
+}
+```
+
+Activity mutations (`PATCH /activities/:id`, etc.) return the same `403` / `reason: "time_lockout"` during the lockout window for users without bypass permission.
+
+Users with `activities.bypass_recurring_lockout` (granted to Admin and System Admin by default) may acquire locks and edit during the window.
+
+---
+
+### Get Activity Lock Status
+
+**GET** `/locks/activity/:activityId`
+
+**Response:** `200 OK`
+
+```json
+{
+  "locked": true,
+  "isOwnLock": false,
+  "lockId": 12,
+  "lockedBy": {
+    "userId": 3,
+    "username": "Jane Editor",
+    "acquiredAt": "2026-08-04T20:00:00.000Z",
+    "expiresAt": "2026-08-04T20:05:00.000Z",
+    "idleExpiresAt": "2026-08-04T20:30:00.000Z"
+  }
+}
+```
+
+---
+
 ## Error Responses
 
 ### 400 Bad Request
