@@ -76,6 +76,8 @@ INSERT INTO permissions (key, display_name, category, subcategory, description, 
   ('settings.manage.look_ahead_reset', 'Manage Look Ahead status reset', 'Settings', 'Admin', NULL, 'settings', NULL, 'manage', 63),
   ('settings.manage.review_exempt_fields', 'Manage review-exempt activity fields', 'Settings', 'Admin', NULL, 'settings', NULL, 'manage', 64),
   ('settings.manage.activity_info_icons', 'Manage activity info icon text', 'Settings', 'Admin', NULL, 'settings', NULL, 'manage', 65),
+  ('settings.manage.recurring_lockout', 'Manage recurring edit lockout', 'Settings', 'Admin', NULL, 'settings', NULL, 'manage', 66),
+  ('activities.bypass_recurring_lockout', 'Bypass recurring edit lockout', 'Activities', 'Edit lock', 'Edit activities during the recurring daily lockout window.', 'activities', 'lockout', 'bypass', 67),
   ('favourites.manage', 'Manage activity favourites', 'Favourites', 'Basic', NULL, 'favourites', NULL, 'manage', 80),
   ('system.view_logs', 'View system logs', 'System', 'Admin', NULL, 'system', NULL, 'view_logs', 70),
   ('system.manage_permissions', 'Manage permissions', 'System', 'Admin', NULL, 'system', NULL, 'manage_permissions', 71)
@@ -194,7 +196,12 @@ WHERE (
   )
 ) OR (
   r.name IN ('Admin', 'System Admin')
-  AND p.key IN ('activities.lock.forceHandoff', 'activities.flag')
+  AND p.key IN (
+    'activities.lock.forceHandoff',
+    'activities.flag',
+    'activities.bypass_recurring_lockout',
+    'settings.manage.recurring_lockout'
+  )
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
