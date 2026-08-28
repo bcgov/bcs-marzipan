@@ -42,11 +42,13 @@ import {
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import {
+  addCalendarDays,
   buildEffectiveReviewExemptKeys,
   DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
   HYDRATION_PROFILES,
   isManualCompleteEligible,
   normalizeActivityStatusLabel,
+  pacificCalendarDateFromInstant,
   PERMISSIONS,
   PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
   profileIncludesRelation,
@@ -3193,9 +3195,11 @@ export class ActivitiesService {
       };
     }
 
-    // Default scope: today (server local date)
-    const now = new Date();
-    const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    // Default scope: today in corp Pacific
+    const todayPacific = pacificCalendarDateFromInstant(Date.now());
+    const todayDateStr =
+      todayPacific ??
+      `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}-${String(new Date().getUTCDate()).padStart(2, '0')}`;
 
     const historyPage =
       await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
@@ -3261,15 +3265,13 @@ export class ActivitiesService {
     const page = Math.max(1, opts.page ?? 1);
     const pageSize = Math.max(1, opts.pageSize ?? 50);
 
-    // Apply a default 30-day window when neither bound is provided to prevent
+    // Apply a default 30-day Pacific window when neither bound is provided to prevent
     // unbounded history scans and expensive COUNT(*) over all-time data.
-    const now = new Date();
-    const formatDate = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const defaultEndDate = formatDate(now);
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const defaultStartDate = formatDate(thirtyDaysAgo);
+    const todayPacific = pacificCalendarDateFromInstant(Date.now());
+    const defaultEndDate =
+      todayPacific ??
+      `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}-${String(new Date().getUTCDate()).padStart(2, '0')}`;
+    const defaultStartDate = addCalendarDays(defaultEndDate, -30);
 
     const startDate =
       opts.startDate ??
