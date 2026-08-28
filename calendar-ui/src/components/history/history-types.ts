@@ -27,6 +27,8 @@ export type HistoryChangeViewModel =
       message: string;
     };
 
+export type HistoryListVariant = 'default' | 'compact';
+
 export type HistoryEntryViewModel = {
   id: number;
   actor: HistoryActorViewModel;

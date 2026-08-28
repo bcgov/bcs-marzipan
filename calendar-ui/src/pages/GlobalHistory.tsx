@@ -904,7 +904,11 @@ export function GlobalHistory() {
       ) : (
         <>
           <TableScrollContainer ref={tableScrollRef}>
-            <HistoryList entries={historyEntries} className="p-5" />
+            <HistoryList
+              entries={historyEntries}
+              variant="compact"
+              className="p-5"
+            />
           </TableScrollContainer>
           <TablePagination
             totalItems={historyQuery.data?.totalItems ?? 0}

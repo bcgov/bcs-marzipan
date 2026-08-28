@@ -1,18 +1,15 @@
 import { useState } from 'react';
 
 import { ExpandableText } from '@/components/shared';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 
+import { historyDetailsHasDisclosure } from './history-details-label';
 import type { HistoryChangeViewModel } from './history-types';
+import { HistoryDetailsDisclosure } from './HistoryDetailsDisclosure';
 
 type HistoryChangeListProps = {
   changes: HistoryChangeViewModel[];
+  note?: string | null;
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   mode?: 'disclosure' | 'preview';
@@ -47,6 +44,7 @@ function ChangeRows({ changes }: { changes: HistoryChangeViewModel[] }) {
 
 export function HistoryChangeList({
   changes,
+  note,
   expanded = false,
   onExpandedChange,
   mode = 'disclosure',
@@ -54,9 +52,10 @@ export function HistoryChangeList({
   className,
 }: HistoryChangeListProps) {
   const [previewExpanded, setPreviewExpanded] = useState(false);
-  if (changes.length === 0) return null;
+  const hasNote = Boolean(note?.trim());
+  const hasDisclosure = historyDetailsHasDisclosure(changes.length, hasNote);
 
-  const countLabel = `${changes.length} change${changes.length === 1 ? '' : 's'}`;
+  if (!hasDisclosure) return null;
 
   if (mode === 'preview') {
     const hasHidden = changes.length > previewLimit;
@@ -66,6 +65,11 @@ export function HistoryChangeList({
 
     return (
       <div className={cn('space-y-2', className)}>
+        {hasNote ? (
+          <div className="text-foreground text-sm leading-5 whitespace-pre-wrap">
+            {note}
+          </div>
+        ) : null}
         <ChangeRows changes={visibleChanges} />
         {hasHidden && (
           <button
@@ -86,21 +90,19 @@ export function HistoryChangeList({
   }
 
   return (
-    <Accordion
-      type="single"
-      collapsible
-      value={expanded ? 'changes' : ''}
-      onValueChange={(value) => onExpandedChange?.(value === 'changes')}
+    <HistoryDetailsDisclosure
+      changeCount={changes.length}
+      hasNote={hasNote}
+      expanded={expanded}
+      onExpandedChange={onExpandedChange}
       className={className}
     >
-      <AccordionItem value="changes" className="border-none">
-        <AccordionTrigger className="text-primary data-[state=open]:text-primary py-1 text-sm font-medium hover:no-underline">
-          {countLabel}
-        </AccordionTrigger>
-        <AccordionContent className="pb-1">
-          <ChangeRows changes={changes} />
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+      {hasNote ? (
+        <div className="text-foreground text-sm leading-5 whitespace-pre-wrap">
+          {note}
+        </div>
+      ) : null}
+      {changes.length > 0 ? <ChangeRows changes={changes} /> : null}
+    </HistoryDetailsDisclosure>
   );
 }

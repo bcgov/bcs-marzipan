@@ -14,5 +14,6 @@ export type {
   HistoryActorViewModel,
   HistoryChangeViewModel,
   HistoryEntryViewModel,
+  HistoryListVariant,
   HistorySubjectViewModel,
 } from './history-types';

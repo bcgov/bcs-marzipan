@@ -6,11 +6,16 @@ import {
 } from '@/lib/datetime-utils';
 import { cn } from '@/lib/utils';
 
-import type { HistoryEntryViewModel } from './history-types';
+import { historyDetailsHasDisclosure } from './history-details-label';
+import type {
+  HistoryEntryViewModel,
+  HistoryListVariant,
+} from './history-types';
 import { HistoryEntry } from './HistoryEntry';
 
 type HistoryListProps = {
   entries: HistoryEntryViewModel[];
+  variant?: HistoryListVariant;
   className?: string;
 };
 
@@ -33,22 +38,50 @@ function pruneIdSet(current: Set<number>, validIds: Set<number>): Set<number> {
   return next;
 }
 
-export function HistoryList({ entries, className }: HistoryListProps) {
+function entryHasInlineNotes(
+  entry: HistoryEntryViewModel,
+  variant: HistoryListVariant
+): boolean {
+  return variant === 'default' && Boolean(entry.notes?.trim());
+}
+
+function entryHasDisclosure(
+  entry: HistoryEntryViewModel,
+  variant: HistoryListVariant
+): boolean {
+  if (variant === 'compact') {
+    return historyDetailsHasDisclosure(
+      entry.changes.length,
+      Boolean(entry.notes?.trim())
+    );
+  }
+  return entry.changes.length > 0;
+}
+
+export function HistoryList({
+  entries,
+  variant = 'default',
+  className,
+}: HistoryListProps) {
+  const isCompact = variant === 'compact';
   const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
   const [expandedChanges, setExpandedChanges] = useState<Set<number>>(
     new Set()
   );
 
   const noteIds = useMemo(
-    () => entries.filter((entry) => entry.notes).map((entry) => entry.id),
-    [entries]
+    () =>
+      entries
+        .filter((entry) => entryHasInlineNotes(entry, variant))
+        .map((entry) => entry.id),
+    [entries, variant]
   );
   const changeIds = useMemo(
     () =>
       entries
-        .filter((entry) => entry.changes.length > 0)
+        .filter((entry) => entryHasDisclosure(entry, variant))
         .map((entry) => entry.id),
-    [entries]
+    [entries, variant]
   );
   const validIds = useMemo(
     () => new Set(entries.map((entry) => entry.id)),
@@ -85,11 +118,14 @@ export function HistoryList({ entries, className }: HistoryListProps) {
   const allChangesExpanded =
     changeIds.length > 0 && changeIds.every((id) => expandedChanges.has(id));
 
+  const showBulkNotes = !isCompact && noteIds.length > 0;
+  const showBulkChanges = changeIds.length > 0;
+
   return (
     <div className={cn('space-y-4', className)}>
-      {(noteIds.length > 0 || changeIds.length > 0) && (
+      {(showBulkNotes || showBulkChanges) && (
         <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-          {noteIds.length > 0 && (
+          {showBulkNotes && (
             <button
               type="button"
               onClick={() =>
@@ -102,7 +138,7 @@ export function HistoryList({ entries, className }: HistoryListProps) {
               {allNotesExpanded ? 'Collapse all notes' : 'Expand all notes'}
             </button>
           )}
-          {changeIds.length > 0 && (
+          {showBulkChanges && (
             <button
               type="button"
               onClick={() =>
@@ -112,9 +148,13 @@ export function HistoryList({ entries, className }: HistoryListProps) {
               }
               className="text-primary text-xs font-medium hover:underline"
             >
-              {allChangesExpanded
-                ? 'Collapse all changes'
-                : 'Expand all changes'}
+              {isCompact
+                ? allChangesExpanded
+                  ? 'Collapse all details'
+                  : 'Expand all details'
+                : allChangesExpanded
+                  ? 'Collapse all changes'
+                  : 'Expand all changes'}
             </button>
           )}
         </div>
@@ -133,6 +173,7 @@ export function HistoryList({ entries, className }: HistoryListProps) {
               <HistoryEntry
                 key={entry.id}
                 entry={entry}
+                variant={variant}
                 notesExpanded={expandedNotes.has(entry.id)}
                 changesExpanded={expandedChanges.has(entry.id)}
                 onNotesExpandedChange={(expanded) =>
