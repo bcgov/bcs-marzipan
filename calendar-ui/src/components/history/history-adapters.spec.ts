@@ -8,7 +8,7 @@ import { toTeamHistoryViewModel } from './team-history-adapter';
 import { toUserHistoryViewModel } from './user-history-adapter';
 
 describe('history adapters', () => {
-  it('normalizes activity actors and excludes flag assignee metadata', () => {
+  it('normalizes activity actors and shows flag assignee in changes', () => {
     const result = toActivityHistoryViewModel({
       id: 1,
       activityId: 10,
@@ -28,25 +28,17 @@ describe('history adapters', () => {
     });
 
     expect(result.actor.name).toBe('Jane Martinez');
-    expect(result.actionLabel).toBe('Activity assigned to Jane Martinez');
-    expect(result.changes).toHaveLength(1);
-  });
-
-  it('suppresses system-generated activity history notes', () => {
-    const result = toActivityHistoryViewModel({
-      id: 1,
-      activityId: 10,
-      userId: 4,
-      actionType: 'reviewed',
-      timestamp: '2026-08-27T12:00:00Z',
-      notes: 'Activity reviewed and updated',
-      changes: [],
+    expect(result.actionLabel).toBe('Flagged');
+    expect(result.changes).toHaveLength(2);
+    expect(result.changes[0]).toMatchObject({
+      kind: 'transition',
+      label: 'Flagged for review',
+      oldValue: '(empty)',
+      newValue: 'Jane Martinez',
     });
-
-    expect(result.notes).toBeNull();
   });
 
-  it('preserves user-authored activity history notes', () => {
+  it('preserves activity history notes', () => {
     const result = toActivityHistoryViewModel({
       id: 1,
       activityId: 10,
@@ -82,6 +74,7 @@ describe('history adapters', () => {
     );
 
     expect(result.team).toBe('News');
+    expect(result.actionLabel).toBe('Updated');
     expect(result.subject).toEqual({
       label: 'ACT-10 Announcement',
       href: '/activity/10',

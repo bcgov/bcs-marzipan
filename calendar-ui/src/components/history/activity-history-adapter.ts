@@ -4,10 +4,8 @@ import type {
 } from '@corpcal/shared/api/types';
 import {
   formatHistoryFieldValue,
-  getActionLabel,
   getActionText,
   getHistoryFieldLabel,
-  normalizeActivityHistoryNotes,
   type LookupMaps,
 } from '@/lib/activity-history-format';
 
@@ -46,13 +44,12 @@ export function toActivityHistoryViewModel(
   return {
     id: entry.id,
     actor: activityActor(entry),
-    actionLabel: getActionLabel(entry.actionType, entry.changes ?? []),
+    actionLabel: getActionText(entry.actionType),
     changes: normalizeTransitionChanges(entry.changes, {
       getLabel: getHistoryFieldLabel,
       formatValue,
-      include: (change) => change.field !== 'flag.assigneeName',
     }),
-    notes: normalizeActivityHistoryNotes(entry.notes),
+    notes: entry.notes,
     timestamp: entry.timestamp,
   };
 }
@@ -67,7 +64,6 @@ export function toGlobalActivityHistoryViewModel(
   const base = toActivityHistoryViewModel(entry, options);
   return {
     ...base,
-    actionLabel: getActionText(entry.actionType).toLowerCase(),
     team: options.team,
     subject: {
       label: [

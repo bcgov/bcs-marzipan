@@ -41,7 +41,7 @@ import {
 } from '@/hooks/useLookups';
 import {
   formatHistoryFieldValue,
-  getActionLabel,
+  getActionText,
   getHistoryFieldLabel,
   type LookupMaps,
   type StatusLookupMap,
@@ -73,7 +73,7 @@ function matchesSearch(
   const haystacks = [
     entry.actor?.displayName || entry.userName || `User ${entry.userId}`,
     entry.actor?.username,
-    getActionLabel(entry.actionType, entry.changes ?? []),
+    getActionText(entry.actionType),
     entry.notes,
     ...(entry.changes ?? []).flatMap((change) => [
       getHistoryFieldLabel(change.field),

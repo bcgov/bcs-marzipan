@@ -1,18 +1,13 @@
 import type { HistoryChange } from '@corpcal/shared/api/types';
 
+import { getHistoryActionLabel } from './history-action-labels';
 import type {
   HistoryActorViewModel,
   HistoryChangeViewModel,
 } from './history-types';
 
 export function humanizeHistoryAction(actionType: string): string {
-  const spaced = actionType
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .trim();
-
-  if (!spaced) return 'Updated';
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+  return getHistoryActionLabel(actionType);
 }
 
 export function formatHistoryUsername(username?: string | null): string | null {

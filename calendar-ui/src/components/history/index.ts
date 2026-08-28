@@ -2,6 +2,7 @@ export { HistoryChangeList } from './HistoryChangeList';
 export { HistoryEntry } from './HistoryEntry';
 export { HistoryList } from './HistoryList';
 export { HistoryNote } from './HistoryNote';
+export { getHistoryActionLabel } from './history-action-labels';
 export { normalizeTransitionChanges } from './history-format';
 export {
   toActivityHistoryViewModel,
