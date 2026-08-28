@@ -1,6 +1,6 @@
 import type { HistoryChange } from '@corpcal/shared/api/types';
 
-interface UserHistoryLookups {
+export interface UserHistoryLookups {
   roleNamesById: Record<number, string>;
   teamNamesById: Record<number, string>;
   activityTitlesById?: Record<number, string>;
@@ -32,7 +32,7 @@ const USER_HISTORY_FIELD_LABELS: Record<string, string> = {
   activityIds: 'Activities',
 };
 
-function toLabelFromField(field: string): string {
+export function getUserHistoryFieldLabel(field: string): string {
   const knownLabel = USER_HISTORY_FIELD_LABELS[field];
   if (knownLabel) return knownLabel;
 
@@ -68,7 +68,7 @@ function formatBooleanValue(field: string, value: boolean): string {
   return value ? 'Yes' : 'No';
 }
 
-function formatHistoryValue(
+export function formatUserHistoryValue(
   field: string,
   value: unknown,
   lookups: UserHistoryLookups
@@ -127,12 +127,20 @@ export function buildUserHistoryChangeMessage(
   change: HistoryChange,
   lookups: UserHistoryLookups
 ): string {
-  const label = toLabelFromField(change.field);
+  const label = getUserHistoryFieldLabel(change.field);
   const oldEmpty = isEmptyValue(change.oldValue);
   const newEmpty = isEmptyValue(change.newValue);
 
-  const oldValue = formatHistoryValue(change.field, change.oldValue, lookups);
-  const newValue = formatHistoryValue(change.field, change.newValue, lookups);
+  const oldValue = formatUserHistoryValue(
+    change.field,
+    change.oldValue,
+    lookups
+  );
+  const newValue = formatUserHistoryValue(
+    change.field,
+    change.newValue,
+    lookups
+  );
 
   if (oldEmpty && newEmpty) return `${label} updated`;
   if (oldEmpty) return `${label} set to ${newValue}`;

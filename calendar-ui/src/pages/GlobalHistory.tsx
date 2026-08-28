@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
@@ -23,11 +23,14 @@ import {
   ScheduledDateRangeFields,
   type DateRangeValue,
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
+import {
+  HistoryList,
+  toGlobalActivityHistoryViewModel,
+} from '@/components/history';
 import { PageHeader } from '@/components/layout';
 import { ErrorState } from '@/components/shared';
 import { TablePagination } from '@/components/table/TablePagination';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import {
   Popover,
@@ -49,7 +52,6 @@ import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import {
   formatHistoryFieldValue,
   getActionText,
-  getHistoryFieldLabel,
 } from '@/lib/activity-history-format';
 import {
   CORP_PACIFIC_TIME_ZONE,
@@ -233,7 +235,7 @@ function SearchableMultiSelectFilter({
           clearAriaLabel={`Clear ${label} filter`}
         />
       </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0" align="start">
+      <PopoverContent className="w-70 p-0" align="start">
         <div className="p-3">
           <div className="mb-3 text-xs font-medium tracking-wide text-slate-500 uppercase">
             {label}
@@ -318,9 +320,6 @@ export function GlobalHistory() {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedLeadTeamIds, setSelectedLeadTeamIds] = useState<string[]>([]);
-  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(
-    () => new Set()
-  );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const tableScrollRef = useRef<HTMLDivElement>(null);
@@ -601,18 +600,6 @@ export function GlobalHistory() {
     [premierRequestedQuery.data]
   );
 
-  const toggleExpandedEntry = (entryId: number) => {
-    setExpandedEntries((prev) => {
-      const next = new Set(prev);
-      if (next.has(entryId)) {
-        next.delete(entryId);
-      } else {
-        next.add(entryId);
-      }
-      return next;
-    });
-  };
-
   const formatChangeValue = (field: string, value: unknown): string => {
     let formattedValue: string;
 
@@ -727,23 +714,13 @@ export function GlobalHistory() {
     user?.id,
   ]);
 
-  const groupedEntries = useMemo(() => {
-    const groups = new Map<string, GlobalActivityHistoryEntry[]>();
-
-    filteredEntries.forEach((entry) => {
-      const heading = formatPacificHistoryListDayHeading(
-        new Date(entry.timestamp)
-      );
-      const group = groups.get(heading);
-      if (group) {
-        group.push(entry);
-      } else {
-        groups.set(heading, [entry]);
-      }
-    });
-
-    return [...groups.entries()];
-  }, [filteredEntries]);
+  const historyEntries = filteredEntries.map((entry) =>
+    toGlobalActivityHistoryViewModel(entry, {
+      team: leadTeamLabelMap.get(entry.activity.leadTeamId),
+      subjectState: activityFormLinkState(location).state,
+      formatValue: formatChangeValue,
+    })
+  );
 
   // Derive which quick-select preset is active from the current dateRange.
   // Returns null when no preset matches (including on initial load with no date set).
@@ -916,7 +893,7 @@ export function GlobalHistory() {
           message="Try again or refresh the page."
           onRetry={() => void historyQuery.refetch()}
         />
-      ) : groupedEntries.length === 0 ? (
+      ) : historyEntries.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
           {isDateRangeActive(dateRange) ? (
             <div>No changes in the selected timeframe.</div>
@@ -927,137 +904,7 @@ export function GlobalHistory() {
       ) : (
         <>
           <TableScrollContainer ref={tableScrollRef}>
-            <div className="space-y-8 p-5">
-              {groupedEntries.map(([heading, dayEntries]) => (
-                <section key={heading} className="space-y-4">
-                  <h2 className="text-base font-normal text-slate-700">
-                    {heading}
-                  </h2>
-                  <div className="space-y-[2.5px]">
-                    {dayEntries.map((entry) => {
-                      const timestamp = new Date(entry.timestamp);
-                      const teamName = leadTeamLabelMap.get(
-                        entry.activity.leadTeamId
-                      );
-                      const hasChanges = (entry.changes?.length ?? 0) > 0;
-                      const isExpanded = expandedEntries.has(entry.id);
-
-                      return (
-                        <article
-                          key={entry.id}
-                          className="flex items-start justify-between gap-6 rounded-lg bg-white"
-                        >
-                          <div className="flex min-w-0 flex-1 gap-3">
-                            <Avatar
-                              className="h-9 w-9"
-                              title={getActorDisplayName(entry)}
-                            >
-                              <AvatarFallback className="bg-indigo-100 text-xs font-semibold text-indigo-700">
-                                {getActorInitials(entry)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 space-y-1.5">
-                              <div className="flex min-h-9 flex-wrap items-center gap-2 text-sm text-slate-700">
-                                <span className="font-medium text-slate-900">
-                                  {getActorDisplayName(entry)}
-                                </span>
-                                {teamName ? (
-                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                                    {teamName}
-                                  </span>
-                                ) : null}
-                                <span>
-                                  {getActionText(
-                                    entry.actionType
-                                  ).toLowerCase()}
-                                </span>
-                                <Link
-                                  to={`/activity/${entry.activity.id}`}
-                                  {...activityFormLinkState(location)}
-                                  className="font-medium text-blue-700 hover:underline"
-                                >
-                                  {entry.activity.displayId ||
-                                    `Activity ${entry.activity.id}`}
-                                </Link>
-                              </div>
-
-                              <div className="text-sm font-bold text-slate-900">
-                                {entry.activity.title}
-                              </div>
-
-                              {entry.notes ? (
-                                <div className="text-sm text-slate-700">
-                                  {entry.notes}
-                                </div>
-                              ) : null}
-
-                              {hasChanges ? (
-                                <div className="space-y-1 pt-1">
-                                  {isExpanded ? (
-                                    <>
-                                      {entry.changes?.map((change, index) => (
-                                        <div
-                                          key={`${entry.id}-${index}`}
-                                          className="text-foreground text-sm"
-                                        >
-                                          <span className="text-foreground font-medium">
-                                            {getHistoryFieldLabel(change.field)}
-                                            :
-                                          </span>{' '}
-                                          <span className="text-muted-foreground">
-                                            {formatChangeValue(
-                                              change.field,
-                                              change.oldValue
-                                            )}
-                                          </span>{' '}
-                                          <span aria-hidden>→</span>{' '}
-                                          <span>
-                                            {formatChangeValue(
-                                              change.field,
-                                              change.newValue
-                                            )}
-                                          </span>
-                                        </div>
-                                      ))}
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          toggleExpandedEntry(entry.id)
-                                        }
-                                        className="text-sm font-medium text-blue-700 hover:underline"
-                                      >
-                                        Show less
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        toggleExpandedEntry(entry.id)
-                                      }
-                                      className="text-sm font-medium text-blue-700 hover:underline"
-                                    >
-                                      Show more
-                                    </button>
-                                  )}
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                          <div className="shrink-0 text-sm text-slate-500">
-                            {formatExactDate(timestamp, {
-                              includeTime: true,
-                              timeZone: CORP_PACIFIC_TIME_ZONE,
-                              appendPacificTimeAbbrev: true,
-                            })}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-            </div>
+            <HistoryList entries={historyEntries} className="p-5" />
           </TableScrollContainer>
           <TablePagination
             totalItems={historyQuery.data?.totalItems ?? 0}

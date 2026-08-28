@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { usePermission } from '@/hooks/usePermissions';
+import { CORP_PACIFIC_TIME_ZONE, formatExactDate } from '@/lib/datetime-utils';
 
 const SETTINGS_FIELD_LABEL_ROW_CLASS = 'flex min-h-[18px] items-center gap-2';
 
@@ -561,7 +562,12 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
                   <p className="text-foreground text-sm font-medium">
                     Last clear: {data.lastClear.updated} activity(s) via{' '}
                     {formatLastClearTrigger(data.lastClear.trigger)} at{' '}
-                    {new Date(data.lastClear.at).toLocaleString()}
+                    {formatExactDate(new Date(data.lastClear.at), {
+                      includeTime: true,
+                      includeYear: true,
+                      timeZone: CORP_PACIFIC_TIME_ZONE,
+                      appendPacificTimeAbbrev: true,
+                    })}
                   </p>
                 ) : null}
               </div>

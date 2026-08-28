@@ -1,7 +1,10 @@
-import { useMemo, useState, type ReactElement } from 'react';
+import { useMemo, type ReactElement } from 'react';
 
 import type { HistoryChange } from '@corpcal/shared/api/types';
-import { ExpandableText } from '@/components/shared';
+import {
+  HistoryChangeList,
+  normalizeTransitionChanges,
+} from '@/components/history';
 import {
   useActivityStatuses,
   useCategories,
@@ -29,8 +32,6 @@ import {
   type StatusLookupMap,
 } from '@/lib/activity-history-format';
 
-const INITIAL_VISIBLE_CHANGES = 5;
-
 export type ActivityFormChangesListProps = {
   changes: HistoryChange[];
   className?: string;
@@ -44,8 +45,6 @@ export function ActivityFormChangesList({
   changes,
   className,
 }: ActivityFormChangesListProps): ReactElement {
-  const [showAllChanges, setShowAllChanges] = useState(false);
-
   const activityStatusesQuery = useActivityStatuses();
   const dateStatusesQuery = useDateStatuses();
   const timeStatusesQuery = useTimeStatuses();
@@ -161,63 +160,27 @@ export function ActivityFormChangesList({
     organizationsQuery.data,
   ]);
 
-  const visibleChanges = showAllChanges
-    ? changes
-    : changes.slice(0, INITIAL_VISIBLE_CHANGES);
-  const hiddenCount = changes.length - INITIAL_VISIBLE_CHANGES;
+  const normalizedChanges = useMemo(
+    () =>
+      normalizeTransitionChanges(changes, {
+        getLabel: getHistoryFieldLabel,
+        formatValue: (field, value) =>
+          formatHistoryFieldValue(field, value, lookupMaps),
+      }),
+    [changes, lookupMaps]
+  );
 
   return (
     <div className={className}>
       {changes.length === 0 ? (
         <p className="text-muted-foreground text-sm">No changes detected.</p>
       ) : (
-        <div className="space-y-2 pr-1">
-          {visibleChanges.map((change, idx) => (
-            <div key={idx} className="text-sm">
-              <strong className="font-medium">
-                {getHistoryFieldLabel(change.field)}:
-              </strong>{' '}
-              <span className="text-muted-foreground">
-                <ExpandableText
-                  text={formatHistoryFieldValue(
-                    change.field,
-                    change.oldValue,
-                    lookupMaps
-                  )}
-                />
-              </span>{' '}
-              &rarr;{' '}
-              <span>
-                <ExpandableText
-                  text={formatHistoryFieldValue(
-                    change.field,
-                    change.newValue,
-                    lookupMaps
-                  )}
-                />
-              </span>
-            </div>
-          ))}
-
-          {!showAllChanges && hiddenCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowAllChanges(true)}
-              className="text-primary mt-2 cursor-pointer text-sm font-medium hover:underline"
-            >
-              Show {hiddenCount} more change{hiddenCount !== 1 ? 's' : ''}
-            </button>
-          )}
-          {showAllChanges && hiddenCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowAllChanges(false)}
-              className="text-primary mt-2 cursor-pointer text-sm font-medium hover:underline"
-            >
-              Show less
-            </button>
-          )}
-        </div>
+        <HistoryChangeList
+          changes={normalizedChanges}
+          mode="preview"
+          previewLimit={5}
+          className="pr-1"
+        />
       )}
     </div>
   );

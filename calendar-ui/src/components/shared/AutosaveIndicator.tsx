@@ -1,5 +1,7 @@
 import type { FC } from 'react';
 
+import { formatTime } from '@/lib/datetime-utils';
+
 interface AutosaveIndicatorProps {
   /** Whether the user is authenticated */
   isAuthenticated: boolean;
@@ -49,7 +51,7 @@ export const AutosaveIndicator: FC<AutosaveIndicatorProps> = ({
     return (
       <div className="text-sm">
         <span className="text-green-600">
-          Draft saved at {lastSaved.toLocaleTimeString()}
+          Draft saved at {formatTime(lastSaved)}
         </span>
       </div>
     );

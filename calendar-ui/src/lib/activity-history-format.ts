@@ -6,6 +6,7 @@ import {
   isDeepEqual,
   plainTextFromActivityRichField,
 } from '@corpcal/shared/utils';
+import { formatTime12h } from '@/lib/datetime-utils';
 
 /**
  * Shared formatting utilities for displaying activity history changes.
@@ -32,6 +33,25 @@ const ACTION_TEXT_MAP: Record<string, string> = {
   flag_assigned: 'Activity assigned',
   flag_removed: 'Activity unassigned',
 };
+
+/** Auto-generated notes stored by the API that duplicate the action label. */
+const SYSTEM_ACTIVITY_HISTORY_NOTES = new Set([
+  'Activity created',
+  'Activity updated',
+  'Activity completed',
+  'Activity completed and updated',
+  'Activity reviewed',
+  'Activity reviewed and updated',
+]);
+
+export function normalizeActivityHistoryNotes(
+  notes: string | null | undefined
+): string | null | undefined {
+  if (notes == null) return notes;
+  const trimmed = notes.trim();
+  if (!trimmed) return null;
+  return SYSTEM_ACTIVITY_HISTORY_NOTES.has(trimmed) ? null : notes;
+}
 
 /**
  * Returns a richer action label for flag entries that embeds the assignee name.
@@ -141,6 +161,14 @@ export function formatHistoryFieldValue(
 ): string {
   if (value === null || value === undefined || value === '') {
     return '(empty)';
+  }
+
+  if (
+    (field === 'startTime' || field === 'endTime') &&
+    typeof value === 'string'
+  ) {
+    const formatted = formatTime12h(value);
+    return formatted === '' ? '(empty)' : formatted;
   }
 
   if (
