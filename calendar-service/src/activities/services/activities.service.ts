@@ -1559,7 +1559,7 @@ export class ActivitiesService {
       userId,
       'created',
       createdChanges,
-      activityHistoryNotes || 'Activity created'
+      activityHistoryNotes?.trim() || undefined
     );
 
     // When created as Reviewed, persist the review snapshot so the diff starts empty.
@@ -2861,15 +2861,6 @@ export class ActivitiesService {
       : reviewedByUser
         ? 'reviewed'
         : 'updated';
-    const defaultHistoryNote = completedByUser
-      ? allChanges.length > 0
-        ? 'Activity completed and updated'
-        : 'Activity completed'
-      : reviewedByUser
-        ? allChanges.length > 0
-          ? 'Activity reviewed and updated'
-          : 'Activity reviewed'
-        : 'Activity updated';
 
     // Record all activity changes in a single history entry
     await this.activityHistoryService.recordChange(
@@ -2877,7 +2868,7 @@ export class ActivitiesService {
       userId,
       historyActionType,
       allChanges.length > 0 ? allChanges : undefined,
-      activityHistoryNotes || defaultHistoryNote
+      activityHistoryNotes?.trim() || undefined
     );
 
     // When status becomes Reviewed, capture the current state as the review snapshot.
@@ -3114,9 +3105,9 @@ export class ActivitiesService {
   /**
    * Get activity history
    */
-  async getHistory(id: number) {
-    // Verify activity exists
-    await this.findOne(id);
+  async getHistory(id: number, ctx?: RequestContextType) {
+    // Verify activity exists and is visible to the caller
+    await this.findOne(id, ctx);
     return this.activityHistoryService.getActivityHistory(id);
   }
 

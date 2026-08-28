@@ -656,11 +656,14 @@ export class ActivitiesController {
   })
   @RequirePermission('activities.view')
   @Get(':id/history')
-  async getHistory(@Param('id', ParseIntPipe) id: number): Promise<{
+  async getHistory(
+    @Param('id', ParseIntPipe) id: number,
+    @RequestContext() ctx: RequestContextType
+  ): Promise<{
     success: boolean;
     data: Awaited<ReturnType<ActivitiesService['getHistory']>>;
   }> {
-    const result = await this.activitiesService.getHistory(id);
+    const result = await this.activitiesService.getHistory(id, ctx);
     return {
       success: true,
       data: result,

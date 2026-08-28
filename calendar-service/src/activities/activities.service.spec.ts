@@ -615,6 +615,26 @@ describe('ActivitiesService', () => {
     });
   });
 
+  describe('getHistory', () => {
+    it('passes request context to findOne for visibility checks', async () => {
+      const ctx = BYPASS_FIND_ONE_CTX;
+      const findOneSpy = vi
+        .spyOn(service, 'findOne')
+        .mockResolvedValue(createMockActivityResponse());
+      mockActivityHistoryService.getActivityHistory.mockResolvedValueOnce([
+        { id: 1, activityId: 25, userId: 1, actionType: 'updated' },
+      ]);
+
+      const result = await service.getHistory(25, ctx);
+
+      expect(findOneSpy).toHaveBeenCalledWith(25, ctx);
+      expect(
+        mockActivityHistoryService.getActivityHistory
+      ).toHaveBeenCalledWith(25);
+      expect(result).toHaveLength(1);
+    });
+  });
+
   describe('recurring lockout guard', () => {
     it('delegates edit checks to RecurringLockoutService', async () => {
       const lockoutError = new HttpException(
