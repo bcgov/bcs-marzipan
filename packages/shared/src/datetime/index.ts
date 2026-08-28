@@ -23,6 +23,8 @@ export {
 export {
   addCalendarDays,
   pacificCalendarDateFromInstant,
+  pacificCalendarDayEndInstant,
+  pacificCalendarDayStartInstant,
   pacificCivilToInstantMs,
   pacificDayKey,
 } from './calendar';
