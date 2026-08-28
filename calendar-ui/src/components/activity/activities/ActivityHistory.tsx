@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchActivityHistory } from '@/api/activitiesApi';
+import { HistoryList, toActivityHistoryViewModel } from '@/components/history';
 import { ErrorState } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,12 +46,6 @@ import {
   type LookupMaps,
   type StatusLookupMap,
 } from '@/lib/activity-history-format';
-import {
-  CORP_PACIFIC_TIME_ZONE,
-  formatLongDate,
-  formatPacificTimeWithAbbrev,
-  pacificActivityHistoryRecencyBucket,
-} from '@/lib/datetime-utils';
 import { LOAD_HISTORY_MESSAGE, LOAD_HISTORY_TITLE } from '@/lib/error-messages';
 import { showErrorToast } from '@/lib/error-toast';
 import { createLogger } from '@/lib/logger';
@@ -65,22 +60,6 @@ export interface DateStatusLookupItem {
 
 const MAX_NOTE_LENGTH = 1000;
 
-function getActorDisplayName(entry: ActivityHistoryEntry): string {
-  return entry.actor?.displayName || entry.userName || `User ${entry.userId}`;
-}
-
-function getActorInitials(entry: ActivityHistoryEntry): string {
-  const displayName = getActorDisplayName(entry);
-  const parts = displayName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) {
-    return 'U';
-  }
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-}
-
 function matchesSearch(
   entry: ActivityHistoryEntry,
   query: string,
@@ -92,7 +71,7 @@ function matchesSearch(
   }
 
   const haystacks = [
-    getActorDisplayName(entry),
+    entry.actor?.displayName || entry.userName || `User ${entry.userId}`,
     entry.actor?.username,
     getActionLabel(entry.actionType, entry.changes ?? []),
     entry.notes,
@@ -127,9 +106,6 @@ export default function ActivityHistory({
   const [searchQuery, setSearchQuery] = useState('');
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(
-    new Set()
-  );
   const addNoteMutation = useAddActivityHistoryNote();
 
   const activityStatusesQuery = useActivityStatuses();
@@ -150,19 +126,6 @@ export default function ActivityHistory({
   const governmentRepsQuery = useGovernmentRepresentatives();
   const ministriesQuery = useMinistries();
   const organizationsQuery = useOrganizations();
-
-  // Toggle expanded state for a history entry
-  const toggleExpandedEntry = useCallback((entryId: number) => {
-    setExpandedEntries((prev) => {
-      const next = new Set(prev);
-      if (next.has(entryId)) {
-        next.delete(entryId);
-      } else {
-        next.add(entryId);
-      }
-      return next;
-    });
-  }, []);
 
   const lookupMaps = useMemo((): LookupMaps => {
     const toMap = (
@@ -301,24 +264,13 @@ export default function ActivityHistory({
       entries.filter((entry) => matchesSearch(entry, searchQuery, lookupMaps)),
     [entries, searchQuery, lookupMaps]
   );
-
-  // Categorize into Today / This week / Earlier using corp Pacific calendar
-  // boundaries so buckets match Pacific-formatted timestamps.
-  const groupsOrder = ['Today', 'This week', 'Earlier'] as const;
-  const groups: Record<string, ActivityHistoryEntry[]> = {
-    Today: [],
-    'This week': [],
-    Earlier: [],
-  };
-
-  const now = new Date();
-  for (const e of filteredEntries) {
-    const bucket = pacificActivityHistoryRecencyBucket(
-      new Date(e.timestamp),
-      now
-    );
-    groups[bucket].push(e);
-  }
+  const historyEntries = useMemo(
+    () =>
+      filteredEntries.map((entry) =>
+        toActivityHistoryViewModel(entry, { lookupMaps })
+      ),
+    [filteredEntries, lookupMaps]
+  );
 
   const trimmedNote = noteText.trim();
 
@@ -352,7 +304,7 @@ export default function ActivityHistory({
           <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/40" />
           <DialogPrimitive.Content
             className={
-              'bg-background fixed top-0 right-0 z-50 h-full w-full max-w-md translate-x-full transform p-6 transition duration-200 ease-in-out data-[state=open]:translate-x-0'
+              'bg-background fixed top-0 right-0 z-50 h-full w-full max-w-xl translate-x-full transform p-6 transition duration-200 ease-in-out data-[state=open]:translate-x-0'
             }
           >
             <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 hover:opacity-100">
@@ -406,126 +358,7 @@ export default function ActivityHistory({
               ) : filteredEntries.length === 0 ? (
                 <div>No matching history found.</div>
               ) : (
-                groupsOrder.map((groupKey) =>
-                  groups[groupKey].length > 0 ? (
-                    <div key={groupKey} className="mb-6">
-                      <div className="mb-2 text-sm font-semibold">
-                        {groupKey}
-                      </div>
-                      <div className="space-y-4">
-                        {groups[groupKey].map((entry) => (
-                          <div key={entry.id} className="rounded py-3">
-                            <div className="flex gap-3">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
-                                {getActorInitials(entry)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-start justify-between gap-2">
-                                  <div>
-                                    <div className="text-foreground text-base font-normal">
-                                      {getActorDisplayName(entry)}
-                                    </div>
-                                    <div className="text-muted-foreground mt-1 text-sm">
-                                      {getActionLabel(
-                                        entry.actionType,
-                                        entry.changes ?? []
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="text-muted-foreground text-sm">
-                                    {groupKey === 'Today'
-                                      ? `Today at ${formatPacificTimeWithAbbrev(
-                                          new Date(entry.timestamp)
-                                        )}`
-                                      : formatLongDate(
-                                          new Date(entry.timestamp),
-                                          { timeZone: CORP_PACIFIC_TIME_ZONE }
-                                        )}
-                                  </div>
-                                </div>
-
-                                <div className="text-foreground mt-3 space-y-3 text-sm">
-                                  {entry.changes && entry.changes.length > 0 ? (
-                                    <div>
-                                      {(expandedEntries.has(entry.id)
-                                        ? entry.changes
-                                        : entry.changes.slice(0, 3)
-                                      )
-                                        .filter(
-                                          (change) =>
-                                            change.field !== 'flag.assigneeName'
-                                        )
-                                        .map((change, index) => (
-                                          <div
-                                            key={index}
-                                            className="mb-1 text-sm"
-                                          >
-                                            <strong className="font-medium">
-                                              {getHistoryFieldLabel(
-                                                change.field
-                                              )}
-                                              :
-                                            </strong>{' '}
-                                            <span className="text-muted-foreground">
-                                              {formatHistoryFieldValue(
-                                                change.field,
-                                                change.oldValue,
-                                                lookupMaps
-                                              )}
-                                            </span>{' '}
-                                            →{' '}
-                                            <span>
-                                              {formatHistoryFieldValue(
-                                                change.field,
-                                                change.newValue,
-                                                lookupMaps
-                                              )}
-                                            </span>
-                                          </div>
-                                        ))}
-                                      {entry.changes.length > 3 ? (
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            toggleExpandedEntry(entry.id)
-                                          }
-                                          className="mt-1 cursor-pointer border-none bg-transparent p-0 text-sm font-medium text-blue-600 hover:text-blue-800"
-                                        >
-                                          {expandedEntries.has(entry.id)
-                                            ? 'Show less'
-                                            : 'Show more'}
-                                        </button>
-                                      ) : null}
-                                    </div>
-                                  ) : null}
-
-                                  {entry.notes ? (
-                                    <div className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                                      {entry.notes}
-                                    </div>
-                                  ) : null}
-
-                                  {!entry.notes &&
-                                  (!entry.changes ||
-                                    entry.changes.length === 0 ||
-                                    entry.changes.every(
-                                      (c) => c.field === 'flag.assigneeName'
-                                    )) &&
-                                  entry.actionType !== 'flag_assigned' &&
-                                  entry.actionType !== 'flag_removed' ? (
-                                    <div className="text-muted-foreground text-sm">
-                                      No field-level changes recorded
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null
-                )
+                <HistoryList entries={historyEntries} />
               )}
             </div>
           </DialogPrimitive.Content>
