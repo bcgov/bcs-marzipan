@@ -101,6 +101,8 @@ export const PERMISSIONS = {
     FLAG: 'activities.flag',
     /** Edit activities during the recurring daily lockout window. */
     BYPASS_RECURRING_LOCKOUT: 'activities.bypass_recurring_lockout',
+    /** Remove your own team from an activity's Shared With list. Does not grant broader edit access. */
+    UNSHARE: 'activities.unshare',
   },
   DRAFTS: {
     VIEW: 'drafts.view',

@@ -81,7 +81,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   endTime: 'End time',
   pitchDate: 'Pitch date',
   executiveSummary: 'Executive summary',
-  schedulingNotes: 'Scheduling notes',
+  schedulingNotes: 'Scheduling and approval notes',
   lookAheadStatus: 'Look Ahead status',
   lookAheadSection: 'Look Ahead section',
   pitchRequiredStatusId: 'Pitch required',

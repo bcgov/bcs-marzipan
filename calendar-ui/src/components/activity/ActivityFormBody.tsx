@@ -49,6 +49,8 @@ type ActivityFormBodyProps = {
   lookups: FormLookupData;
   /** From parent `useCommsContactCandidates` -- avoids a duplicate query and stale option lists. */
   commsContactCandidates: CommsContactCandidate[] | undefined;
+  /** Persisted activity ID (edit/view only). Enables the unshare-own-team action. */
+  activityId?: number;
   readOnly?: boolean;
   /** When false, FormLabel "Changed" badges are hidden (e.g. on create form). Default true for edit/view. */
   showChangedBadges?: boolean;
@@ -63,6 +65,7 @@ type ActivityFormBodyProps = {
 export function ActivityFormBody({
   lookups,
   commsContactCandidates,
+  activityId,
   readOnly = false,
   showChangedBadges = true,
   reviewerChangedPaths,
@@ -205,6 +208,7 @@ export function ActivityFormBody({
               />
 
               <ActivitySharingSection
+                activityId={activityId}
                 sharedWithTeams={lookups.sharedWithTeams}
                 quickShareGroups={lookups.quickShareGroups}
               />

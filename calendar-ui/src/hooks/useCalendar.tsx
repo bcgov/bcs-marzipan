@@ -26,6 +26,7 @@ import {
   requestDeleteActivity,
   restoreActivity,
   softDeleteActivity,
+  unshareActivityTeam,
   updateActivity,
 } from '../api/activitiesApi';
 import { removeAssigneeActivityFlag, syncActivityFlags } from '../api/flagsApi';
@@ -228,6 +229,20 @@ export function useRequestDeleteActivity() {
   return useMutation({
     mutationFn: ({ id, body }: { id: number; body: RequestDeleteRequest }) =>
       requestDeleteActivity(id, body),
+    onSuccess: (_, vars) => {
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
+      scheduleLiveActivityRefresh(qc, { source: 'local', activityId: vars.id });
+    },
+  });
+}
+
+// Unshare a single team from the activity's Shared With list
+export function useUnshareActivityTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, teamId }: { id: number; teamId: number }) =>
+      unshareActivityTeam(id, teamId),
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.id] });

@@ -86,6 +86,7 @@ import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.gua
 import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-delete-activity.guard';
 import { CanRestoreActivityGuard } from '../policy/guards/can-restore-activity.guard';
+import { CanUnshareActivityTeamGuard } from '../policy/guards/can-unshare-activity-team.guard';
 import { ActivityResponseRedactionInterceptor } from './interceptors/activity-response-redaction.interceptor';
 import { ActivitiesService } from './services/activities.service';
 import { hasActivityFindAllFilterFields } from './services/activity-find-all-filters';
@@ -960,6 +961,55 @@ export class ActivitiesController {
     const result = await this.activitiesService.updateSharedWith(
       id,
       body.teamIds,
+      user.id
+    );
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @ApiOperation({
+    summary: 'Unshare an activity from a team',
+    description:
+      "Removes a single team from an activity's Shared With list. Only the team's own members (or a bypass role) may remove it.",
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Activity ID',
+    example: 1,
+  })
+  @ApiParam({
+    name: 'teamId',
+    type: Number,
+    description: 'Team ID to remove from the Shared With list',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Activity unshared from team successfully',
+    type: ActivityResponseWrapperDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Activity is not currently shared with that team',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Activity not found',
+  })
+  @RequirePermission(PERMISSIONS.ACTIVITIES.UNSHARE)
+  @UseGuards(CanUnshareActivityTeamGuard)
+  @Delete(':id/shared-with/:teamId')
+  async unshareTeam(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: ActivityResponse }> {
+    const result = await this.activitiesService.unshareTeam(
+      id,
+      teamId,
       user.id
     );
     return {

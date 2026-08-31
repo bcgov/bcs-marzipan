@@ -1119,6 +1119,7 @@ export function ActivityPage({
             key={formUiEpoch}
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
+            activityId={id}
             readOnly={readOnly}
             reviewerChangedPaths={reviewerChangedPaths}
             leadTeamField={{
