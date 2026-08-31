@@ -4019,4 +4019,64 @@ export class ActivitiesService {
     // Return updated activity
     return this.findOne(id);
   }
+
+  /**
+   * Remove a single team from an activity's Shared With list.
+   * Used by the activities.unshare action, which lets a team member remove their own
+   * team's share without granting broader edit access to the activity.
+   */
+  async unshareTeam(
+    id: number,
+    teamId: number,
+    userId: number
+  ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
+    // Verify activity exists
+    await this.findOne(id);
+
+    const existingShared = await this.databaseService.db
+      .select({ teamId: activitySharedWithTeams.teamId })
+      .from(activitySharedWithTeams)
+      .where(eq(activitySharedWithTeams.activityId, id));
+    const existingTeamIds = existingShared.map((s) => s.teamId);
+
+    if (!existingTeamIds.includes(teamId)) {
+      throw new BadRequestException(
+        'This activity is not currently shared with that team.'
+      );
+    }
+
+    const newTeamIds = existingTeamIds.filter((t) => t !== teamId);
+    const now = new Date();
+
+    await this.databaseService.db.transaction(async (tx) => {
+      await this.junctionService.updateJunctionRecords(
+        tx,
+        activitySharedWithTeams,
+        id,
+        newTeamIds,
+        (teamId: number) => ({ teamId }),
+        'teamId',
+        userId,
+        now
+      );
+    });
+
+    await this.activityHistoryService.recordChange(
+      id,
+      userId,
+      'updated',
+      [
+        {
+          field: 'sharedWith',
+          oldValue: existingTeamIds,
+          newValue: newTeamIds,
+        },
+      ],
+      'Activity unshared from team'
+    );
+
+    return this.findOne(id);
+  }
 }

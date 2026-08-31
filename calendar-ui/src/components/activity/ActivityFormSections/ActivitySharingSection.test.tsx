@@ -23,6 +23,20 @@ vi.mock('@/hooks/useLeadTeamOptions', () => ({
   }),
 }));
 
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { teamIds: [] },
+    hasPermission: () => false,
+  }),
+}));
+
+vi.mock('@/hooks/useCalendar', () => ({
+  useUnshareActivityTeam: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+}));
+
 vi.mock('../activity-info-icon-settings-context', () => ({
   ActivityFieldInfoIcon: () => null,
 }));

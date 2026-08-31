@@ -3205,6 +3205,66 @@ describe('ActivitiesService', () => {
     });
   });
 
+  describe('unshareTeam', () => {
+    beforeEach(() => {
+      vi.spyOn(service, 'findOne').mockResolvedValue(
+        createMockActivityResponse({ id: 10 })
+      );
+    });
+
+    it('removes the given team from the shared-with list and records history', async () => {
+      mockDatabaseService.db.select = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi
+            .fn()
+            .mockResolvedValue([{ teamId: 1 }, { teamId: 2 }, { teamId: 3 }]),
+        }),
+      });
+      mockDatabaseService.db.transaction = vi.fn((callback) => callback({}));
+
+      const result = await service.unshareTeam(10, 2, 99);
+
+      expect(mockJunctionService.updateJunctionRecords).toHaveBeenCalledWith(
+        {},
+        expect.anything(),
+        10,
+        [1, 3],
+        expect.any(Function),
+        'teamId',
+        99,
+        expect.any(Date)
+      );
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalledWith(
+        10,
+        99,
+        'updated',
+        [
+          {
+            field: 'sharedWith',
+            oldValue: [1, 2, 3],
+            newValue: [1, 3],
+          },
+        ],
+        'Activity unshared from team'
+      );
+      expect(result).toEqual(createMockActivityResponse({ id: 10 }));
+    });
+
+    it('throws BadRequestException when the activity is not shared with that team', async () => {
+      mockDatabaseService.db.select = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ teamId: 1 }]),
+        }),
+      });
+      mockDatabaseService.db.transaction = vi.fn();
+
+      await expect(service.unshareTeam(10, 99, 99)).rejects.toThrow(
+        BadRequestException
+      );
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+  });
+
   describe('bulkUpdate', () => {
     it('rejects tag updates for a user with shared-with-only access', async () => {
       const updateTagsSpy = vi.spyOn(service, 'updateTags');

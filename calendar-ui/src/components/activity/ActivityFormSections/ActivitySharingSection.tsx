@@ -1,9 +1,12 @@
-import { CheckIcon, Globe, Lock } from 'lucide-react';
+import { CheckIcon, Globe, Lock, X } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
+import { toast } from 'sonner';
 import { useMemo, type FC } from 'react';
 
+import { PERMISSIONS } from '@corpcal/shared/auth';
 import { DEFAULT_VISIBILITY } from '@corpcal/shared/constants/constants';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { Button } from '@/components/ui/button';
 import {
   Combobox,
   ComboboxChip,
@@ -26,6 +29,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/hooks/useAuth';
+import { useUnshareActivityTeam } from '@/hooks/useCalendar';
 import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
@@ -115,6 +120,8 @@ function SharingShortcutRow({
 type ActivitySharingSectionProps = {
   sharedWithTeams: SharingTeamLookup[];
   quickShareGroups: QuickShareGroupLookup[];
+  /** Persisted activity ID (edit/view only). Enables the unshare-own-team action. */
+  activityId?: number;
 };
 
 const RESTRICT_ACCESS_SWITCH_ID = 'activity-visibility-restrict-access';
@@ -122,12 +129,55 @@ const RESTRICT_ACCESS_SWITCH_ID = 'activity-visibility-restrict-access';
 export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
   sharedWithTeams,
   quickShareGroups,
+  activityId,
 }) => {
   const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
   const sharedWithAnchorRef = useComboboxAnchor();
   const leadTeamId = useWatch({ control: form.control, name: 'leadTeamId' });
   const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
+  const { user, hasPermission } = useAuth();
+  const canUnshare = hasPermission(PERMISSIONS.ACTIVITIES.UNSHARE);
+  const unshareMutation = useUnshareActivityTeam();
+  const sharedWithTeamIdsValue = useWatch({
+    control: form.control,
+    name: 'sharedWithTeamIds',
+  });
+
+  const myUnshareableTeams = useMemo(() => {
+    if (
+      !canUnshare ||
+      activityId == null ||
+      !Array.isArray(sharedWithTeamIdsValue)
+    ) {
+      return [];
+    }
+    const myTeamIds = new Set(user?.teamIds ?? []);
+    return sharedWithTeams.filter(
+      (t) => myTeamIds.has(t.id) && sharedWithTeamIdsValue.includes(t.id)
+    );
+  }, [
+    canUnshare,
+    activityId,
+    sharedWithTeamIdsValue,
+    user?.teamIds,
+    sharedWithTeams,
+  ]);
+
+  const handleUnshare = (teamId: number, teamLabel: string) => {
+    if (activityId == null) return;
+    unshareMutation.mutate(
+      { id: activityId, teamId },
+      {
+        onSuccess: () => {
+          toast.success(`Removed ${teamLabel} from Shared With`);
+        },
+        onError: () => {
+          toast.error(`Could not remove ${teamLabel} from Shared With`);
+        },
+      }
+    );
+  };
 
   const leadTeamName = useMemo(() => {
     if (leadTeamId == null) return 'lead team';
@@ -351,6 +401,32 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
           );
         }}
       />
+
+      {myUnshareableTeams.length > 0 ? (
+        <div className="space-y-2 border-t pt-3">
+          <p className="text-muted-foreground text-sm">
+            Your team can remove itself from this activity&apos;s Shared with
+            list.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {myUnshareableTeams.map((team) => (
+              <Button
+                key={team.id}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={unshareMutation.isPending}
+                onClick={() =>
+                  handleUnshare(team.id, team.displayName ?? team.name)
+                }
+              >
+                <X className="mr-1 size-3.5" aria-hidden />
+                Remove {team.displayName ?? team.name}
+              </Button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </ActivityFormSection>
   );
 };

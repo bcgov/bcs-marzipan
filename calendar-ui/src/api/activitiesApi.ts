@@ -150,6 +150,20 @@ export async function softDeleteActivity(
   return res.data.data;
 }
 
+/**
+ * Remove a single team from an activity's Shared With list.
+ * DELETE /activities/:id/shared-with/:teamId
+ */
+export async function unshareActivityTeam(
+  id: number,
+  teamId: number
+): Promise<ActivityResponse> {
+  const res = await api.delete<{ success: boolean; data: ActivityResponse }>(
+    `/activities/${id}/shared-with/${teamId}`
+  );
+  return res.data.data;
+}
+
 export async function fetchActivityHistory(
   id: number
 ): Promise<ActivityHistoryEntry[]> {
