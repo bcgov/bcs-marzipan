@@ -307,7 +307,12 @@ describe('ActivitiesController', () => {
     it('should unshare the given team from the activity', async () => {
       mockActivitiesService.unshareTeam.mockResolvedValue(mockActivityResponse);
 
-      const result = await controller.unshareTeam(1, 7, mockUser);
+      const result = await controller.unshareTeam(
+        1,
+        7,
+        mockUser,
+        mockRequestContext
+      );
 
       expect(result).toEqual({
         success: true,
@@ -316,7 +321,8 @@ describe('ActivitiesController', () => {
       expect(mockActivitiesService.unshareTeam).toHaveBeenCalledWith(
         1,
         7,
-        mockUser.id
+        mockUser.id,
+        mockRequestContext
       );
     });
   });

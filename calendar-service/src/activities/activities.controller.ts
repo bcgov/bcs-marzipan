@@ -1005,12 +1005,14 @@ export class ActivitiesController {
   async unshareTeam(
     @Param('id', ParseIntPipe) id: number,
     @Param('teamId', ParseIntPipe) teamId: number,
-    @CurrentUser() user: AuthUser
+    @CurrentUser() user: AuthUser,
+    @RequestContext() ctx: RequestContextType
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     const result = await this.activitiesService.unshareTeam(
       id,
       teamId,
-      user.id
+      user.id,
+      ctx
     );
     return {
       success: true,
