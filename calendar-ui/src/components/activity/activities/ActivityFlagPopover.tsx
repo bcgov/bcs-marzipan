@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
 
 interface TeamMemberOption {
   userId: number;
@@ -272,7 +273,15 @@ export function ActivityFlagPopover({
           disabled={isPending || !primaryTeamId}
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
-          className={triggerContent ? 'h-6 shrink-0 px-1.5' : 'size-6 shrink-0'}
+          className={cn(
+            'group',
+            // Stacked badges already show a per-avatar ring on hover; suppress the
+            // ghost button's own hover background so it doesn't show as a grey
+            // block around the last (unobscured) avatar.
+            triggerContent
+              ? 'h-6 shrink-0 px-1.5 hover:bg-transparent'
+              : 'size-6 shrink-0'
+          )}
         >
           {triggerContent ?? (
             <ActivityFlagIcon
