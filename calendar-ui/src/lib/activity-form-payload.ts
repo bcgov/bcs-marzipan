@@ -73,6 +73,12 @@ export type UpdatePayloadOptions = ActivityFormPayloadOptions & {
    * omitted so unrelated saves do not send implicit clears.
    */
   includeRepresentatives?: boolean;
+  /**
+   * Include sharedWithTeamIds in PATCH payload, even when cleared to `[]`.
+   * Without this, an intentional clear-to-empty is dropped by
+   * `toUndefinedIfEmpty` and the backend treats the field as untouched.
+   */
+  includeSharedWithTeamIds?: boolean;
 };
 
 function prepareForSubmit(
@@ -99,6 +105,7 @@ export function buildPayloadForUpdate(
     markAsReviewed,
     markAsCompleted,
     includeRepresentatives = true,
+    includeSharedWithTeamIds = true,
   } = options ?? {};
   const prepared = prepareForSubmit(data, requiredTranslationStatusId);
   const preparedFormValues = prepareForSubmit(
@@ -119,6 +126,14 @@ export function buildPayloadForUpdate(
     payload.representatives = preparedFormValues.representatives ?? [];
   } else {
     delete payload.representatives;
+  }
+  if (includeSharedWithTeamIds) {
+    // Send the cleared array as-is so removing the last shared team actually
+    // persists; buildPayloadFromPrepared's toUndefinedIfEmpty would otherwise
+    // turn `[]` into `undefined`, which the backend treats as "no change".
+    payload.sharedWithTeamIds = preparedFormValues.sharedWithTeamIds ?? [];
+  } else {
+    delete payload.sharedWithTeamIds;
   }
   if (markAsReviewed !== undefined) {
     payload.markAsReviewed = markAsReviewed;
