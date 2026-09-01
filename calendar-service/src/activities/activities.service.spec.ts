@@ -3278,8 +3278,12 @@ describe('ActivitiesService', () => {
         [{ teamId: 1 }, { teamId: 2 }, { teamId: 3 }]
       );
       mockDatabaseService.db.transaction = vi.fn((callback) => callback({}));
+      const ctx = {
+        user: { id: 99, roleName: 'Editor', permissions: [], teamIds: [2] },
+        dataScope: { bypass: false, teamIds: [2] },
+      };
 
-      const result = await service.unshareTeam(10, 2, 99);
+      const result = await service.unshareTeam(10, 2, 99, ctx as never);
 
       expect(mockJunctionService.updateJunctionRecords).toHaveBeenCalledWith(
         {},
@@ -3304,12 +3308,25 @@ describe('ActivitiesService', () => {
         ],
         'Activity unshared from team'
       );
-      // Final fetch bypasses view data-scoping: the caller may only be a
-      // shared-with team member, not otherwise visible under default scoping.
+      // Final fetch keeps the caller's user context (so canEdit/reviewer
+      // fields still populate) but forces bypass: the caller may only be a
+      // shared-with team member, which findOne's default scoping would hide.
+      expect(findOneSpy).toHaveBeenCalledWith(10, {
+        user: ctx.user,
+        dataScope: { bypass: true, teamIds: [2] },
+      });
+      expect(result).toEqual(createMockActivityResponse({ id: 10 }));
+    });
+
+    it('still forces a bypass data scope when called without a request context', async () => {
+      mockSelectsFor([{ id: 10 }], [{ teamId: 1 }, { teamId: 2 }]);
+      mockDatabaseService.db.transaction = vi.fn((callback) => callback({}));
+
+      await service.unshareTeam(10, 2, 99);
+
       expect(findOneSpy).toHaveBeenCalledWith(10, {
         dataScope: { bypass: true, teamIds: [] },
       });
-      expect(result).toEqual(createMockActivityResponse({ id: 10 }));
     });
 
     it('throws NotFoundException when the activity does not exist (regression: must not use scoped findOne)', async () => {

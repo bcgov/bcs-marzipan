@@ -4069,7 +4069,8 @@ export class ActivitiesService {
   async unshareTeam(
     id: number,
     teamId: number,
-    userId: number
+    userId: number,
+    ctx?: RequestContextType
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
@@ -4126,8 +4127,12 @@ export class ActivitiesService {
       'Activity unshared from team'
     );
 
-    // Bypass visibility scoping for the response: the caller may only be a
-    // shared-with team member, which findOne's default scope would hide.
-    return this.findOne(id, { dataScope: { bypass: true, teamIds: [] } });
+    // Keep the caller's user context (for canEdit/reviewer fields) but force
+    // bypass: the caller may only be a shared-with team member, which
+    // findOne's default visibility scoping would otherwise hide.
+    return this.findOne(id, {
+      ...ctx,
+      dataScope: { bypass: true, teamIds: ctx?.dataScope?.teamIds ?? [] },
+    });
   }
 }
