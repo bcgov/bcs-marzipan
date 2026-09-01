@@ -533,8 +533,15 @@ export function ActivityPage({
     if (acquireFailureReason === 'time-lockout') {
       return RECURRING_EDIT_LOCKOUT_UI_MESSAGE;
     }
-    return EDIT_LOCK_CONFLICT_TOAST;
-  }, [acquireFailureReason]);
+    if (acquireFailureReason === 'other') {
+      // Distinct from a real lock conflict: request failed for an unrelated
+      // reason (network/server error), so don't claim someone else is editing.
+      return 'Could not start editing this activity. Please try again.';
+    }
+    return lockedByUsername
+      ? `Cannot edit. ${lockedByUsername} has started editing this activity.`
+      : EDIT_LOCK_CONFLICT_TOAST;
+  }, [acquireFailureReason, lockedByUsername]);
 
   const onEditLockAcquireConflict = useCallback(() => {
     toast.error(getEditLockAcquireToastMessage());
@@ -655,6 +662,8 @@ export function ActivityPage({
                   requiredTranslationStatusId,
                   includeRepresentatives:
                     !!form.formState.dirtyFields.representatives,
+                  includeSharedWithTeamIds:
+                    !!form.formState.dirtyFields.sharedWithTeamIds,
                 }
               : mode.kind === 'completeWithSave'
                 ? {
@@ -662,11 +671,15 @@ export function ActivityPage({
                     requiredTranslationStatusId,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
+                    includeSharedWithTeamIds:
+                      !!form.formState.dirtyFields.sharedWithTeamIds,
                   }
                 : {
                     requiredTranslationStatusId,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
+                    includeSharedWithTeamIds:
+                      !!form.formState.dirtyFields.sharedWithTeamIds,
                   };
           submitData = {
             ...buildPayloadForUpdate(

@@ -615,6 +615,41 @@ describe('ActivitiesService', () => {
     });
   });
 
+  describe('canEdit bypass (regression: Advanced Editor is not an edit bypass role)', () => {
+    const svc = () =>
+      service as unknown as {
+        isEditBypassRole: (roleName?: string) => boolean;
+        computeCanEdit: (
+          leadTeamId: number | null,
+          commsContactUserIds: number[],
+          userId: number | undefined,
+          teamIds: number[] | undefined,
+          bypass: boolean
+        ) => boolean;
+      };
+
+    it('only treats Admin/System Admin as an edit bypass role', () => {
+      expect(svc().isEditBypassRole('Advanced Editor')).toBe(false);
+      expect(svc().isEditBypassRole('Advanced Viewer')).toBe(false);
+      expect(svc().isEditBypassRole(SYSTEM_ROLES.ADMIN)).toBe(true);
+      expect(svc().isEditBypassRole(SYSTEM_ROLES.SYSTEM_ADMIN)).toBe(true);
+    });
+
+    it('is false for a shared-with-only user even when their role bypasses view data-scoping', () => {
+      // Advanced Editor: not lead team, not comms contact, bypass=false (per isEditBypassRole)
+      expect(svc().computeCanEdit(1, [], 5, [2], false)).toBe(false);
+    });
+
+    it('is true for a lead-team member or comms contact regardless of bypass', () => {
+      expect(svc().computeCanEdit(1, [], 5, [1], false)).toBe(true);
+      expect(svc().computeCanEdit(1, [5], 5, [2], false)).toBe(true);
+    });
+
+    it('is true when the caller is an explicit edit bypass role', () => {
+      expect(svc().computeCanEdit(1, [], 5, [2], true)).toBe(true);
+    });
+  });
+
   describe('recurring lockout guard', () => {
     it('delegates edit checks to RecurringLockoutService', async () => {
       const lockoutError = new HttpException(
@@ -3206,20 +3241,42 @@ describe('ActivitiesService', () => {
   });
 
   describe('unshareTeam', () => {
+    let findOneSpy: ReturnType<typeof vi.spyOn>;
+
     beforeEach(() => {
-      vi.spyOn(service, 'findOne').mockResolvedValue(
-        createMockActivityResponse({ id: 10 })
-      );
+      findOneSpy = vi
+        .spyOn(service, 'findOne')
+        .mockResolvedValue(createMockActivityResponse({ id: 10 }));
     });
 
-    it('removes the given team from the shared-with list and records history', async () => {
-      mockDatabaseService.db.select = vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi
-            .fn()
-            .mockResolvedValue([{ teamId: 1 }, { teamId: 2 }, { teamId: 3 }]),
-        }),
+    /** Distinguishes the existence-check select({ id }) from the shared-teams select({ teamId }). */
+    function mockSelectsFor(
+      existsRows: Array<{ id: number }>,
+      sharedTeamRows: Array<{ teamId: number }>
+    ) {
+      mockDatabaseService.db.select = vi.fn((cols: Record<string, unknown>) => {
+        if (cols && 'id' in cols) {
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue(existsRows),
+              }),
+            }),
+          };
+        }
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(sharedTeamRows),
+          }),
+        };
       });
+    }
+
+    it('removes the given team from the shared-with list and records history', async () => {
+      mockSelectsFor(
+        [{ id: 10 }],
+        [{ teamId: 1 }, { teamId: 2 }, { teamId: 3 }]
+      );
       mockDatabaseService.db.transaction = vi.fn((callback) => callback({}));
 
       const result = await service.unshareTeam(10, 2, 99);
@@ -3247,15 +3304,26 @@ describe('ActivitiesService', () => {
         ],
         'Activity unshared from team'
       );
+      // Final fetch bypasses view data-scoping: the caller may only be a
+      // shared-with team member, not otherwise visible under default scoping.
+      expect(findOneSpy).toHaveBeenCalledWith(10, {
+        dataScope: { bypass: true, teamIds: [] },
+      });
       expect(result).toEqual(createMockActivityResponse({ id: 10 }));
     });
 
+    it('throws NotFoundException when the activity does not exist (regression: must not use scoped findOne)', async () => {
+      mockSelectsFor([], []);
+      mockDatabaseService.db.transaction = vi.fn();
+
+      await expect(service.unshareTeam(999, 2, 99)).rejects.toThrow(
+        NotFoundException
+      );
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
     it('throws BadRequestException when the activity is not shared with that team', async () => {
-      mockDatabaseService.db.select = vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ teamId: 1 }]),
-        }),
-      });
+      mockSelectsFor([{ id: 10 }], [{ teamId: 1 }]);
       mockDatabaseService.db.transaction = vi.fn();
 
       await expect(service.unshareTeam(10, 99, 99)).rejects.toThrow(

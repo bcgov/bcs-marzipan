@@ -145,7 +145,10 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
   });
 
   const myUnshareableTeams = useMemo(() => {
+    // Full editors already remove teams via the field below + Save; showing this
+    // too would let an instant API call race with their in-progress form edits.
     if (
+      !readOnly ||
       !canUnshare ||
       activityId == null ||
       !Array.isArray(sharedWithTeamIdsValue)
@@ -157,6 +160,7 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
       (t) => myTeamIds.has(t.id) && sharedWithTeamIdsValue.includes(t.id)
     );
   }, [
+    readOnly,
     canUnshare,
     activityId,
     sharedWithTeamIdsValue,
@@ -170,6 +174,14 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
       { id: activityId, teamId },
       {
         onSuccess: () => {
+          // Sync the now-stale RHF field so the badge disappears immediately;
+          // not a user edit, so don't mark the field dirty.
+          const current = form.getValues('sharedWithTeamIds') ?? [];
+          form.setValue(
+            'sharedWithTeamIds',
+            current.filter((id) => id !== teamId),
+            { shouldDirty: false }
+          );
           toast.success(`Removed ${teamLabel} from Shared With`);
         },
         onError: () => {

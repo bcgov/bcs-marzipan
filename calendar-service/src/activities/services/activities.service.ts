@@ -1843,7 +1843,7 @@ export class ActivitiesService {
         commsContacts.map((c) => c.userId),
         ctx.ctx.user.id,
         ctx.ctx.user.teamIds,
-        ctx.dataScope?.bypass ?? false
+        this.isEditBypassRole(ctx.ctx.user.roleName)
       );
 
     return {
@@ -1913,6 +1913,17 @@ export class ActivitiesService {
   }
 
   /**
+   * Mirrors CanEditActivityGuard's bypass check (Admin/System Admin only).
+   * Not the same as data-scope view bypass, which also covers Advanced
+   * Viewer/Advanced Editor and would falsely report canEdit for them.
+   */
+  private isEditBypassRole(roleName: string | undefined): boolean {
+    return (
+      roleName === SYSTEM_ROLES.ADMIN || roleName === SYSTEM_ROLES.SYSTEM_ADMIN
+    );
+  }
+
+  /**
    * Find one activity by ID. When dataScope is provided and bypass is false, returns 404 if the activity is not visible to the user's teams.
    */
   async findOne(
@@ -1969,7 +1980,7 @@ export class ActivitiesService {
         commsContacts.map((c) => c.userId),
         ctx.user.id,
         ctx.user.teamIds,
-        dataScope?.bypass ?? false
+        this.isEditBypassRole(ctx.user.roleName)
       );
 
     const response = this.mapFetchedActivityToResponseDto(activity, related, {
@@ -2096,18 +2107,18 @@ export class ActivitiesService {
           );
           break;
         case 'tags':
-          results.push(await this.updateTags(activityId, dto.tagIds!, userId));
+          results.push(await this.updateTags(activityId, dto.tagIds, userId));
           break;
         case 'sharedWith':
           results.push(
-            await this.updateSharedWith(activityId, dto.teamIds!, userId)
+            await this.updateSharedWith(activityId, dto.teamIds, userId)
           );
           break;
         case 'flag':
           await this.flagsService.syncFlags(
             activityId,
-            dto.flagTeamId!,
-            dto.assigneeIds!,
+            dto.flagTeamId,
+            dto.assigneeIds,
             userId
           );
           this.activitiesGateway.broadcastActivityUpdated(activityId);
@@ -2115,12 +2126,7 @@ export class ActivitiesService {
           break;
         case 'delete':
           results.push(
-            await this.softDelete(
-              activityId,
-              dto.deleteReason!,
-              userId,
-              context
-            )
+            await this.softDelete(activityId, dto.deleteReason, userId, context)
           );
           break;
       }
@@ -4032,8 +4038,16 @@ export class ActivitiesService {
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
-    // Verify activity exists
-    await this.findOne(id);
+    // Plain existence check (not scoped via findOne's data-scope visibility rules):
+    // the caller may only be a shared-with team member, not visible under default scoping.
+    const [existingActivity] = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+    if (!existingActivity) {
+      throw new NotFoundException(`Activity #${id} not found`);
+    }
 
     const existingShared = await this.databaseService.db
       .select({ teamId: activitySharedWithTeams.teamId })
@@ -4077,6 +4091,8 @@ export class ActivitiesService {
       'Activity unshared from team'
     );
 
-    return this.findOne(id);
+    // Bypass visibility scoping for the response: the caller may only be a
+    // shared-with team member, which findOne's default scope would hide.
+    return this.findOne(id, { dataScope: { bypass: true, teamIds: [] } });
   }
 }
