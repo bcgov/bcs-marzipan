@@ -49,7 +49,11 @@ export function ActivityFlagIcon({
 
   return (
     <span className={cn(iconContainerClassName, className)}>
-      <Avatar size="sm" className="size-full border border-white/70">
+      {/* group-hover so every stacked avatar highlights together on hover, not just the topmost (last) one hiding the others' overlap. */}
+      <Avatar
+        size="sm"
+        className="group-hover:ring-ring size-full border border-white/70 transition-shadow group-hover:z-20 group-hover:ring-2"
+      >
         <AvatarFallback className="text-[8px] font-medium">
           {getAssigneeInitials(assigneeName)}
         </AvatarFallback>
