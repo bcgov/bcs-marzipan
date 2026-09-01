@@ -750,6 +750,9 @@ export const ActivityOverviewSection: React.FC<
                   />
                 </>
               </FormLabel>
+              <p className="text-muted-foreground text-xs">
+                Details not for Look Ahead
+              </p>
             </div>
           </FormItem>
         )}
