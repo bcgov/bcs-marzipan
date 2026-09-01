@@ -2088,17 +2088,24 @@ export class ActivitiesService {
             )
           );
           break;
-        case 'pitchStatus':
+        case 'pitchStatus': {
+          const { pitchRequiredStatusId } = dto;
+          if (pitchRequiredStatusId === undefined) {
+            throw new BadRequestException(
+              'pitchRequiredStatusId is required for the pitchStatus operation.'
+            );
+          }
           results.push(
             await this.update(
               activityId,
-              { pitchRequiredStatusId: dto.pitchRequiredStatusId! },
+              { pitchRequiredStatusId },
               userId,
               context,
               { bypassEditLock: true }
             )
           );
           break;
+        }
         case 'issue':
           results.push(
             await this.update(activityId, { isIssue: true }, userId, context, {
@@ -2106,29 +2113,57 @@ export class ActivitiesService {
             })
           );
           break;
-        case 'tags':
-          results.push(await this.updateTags(activityId, dto.tagIds, userId));
+        case 'tags': {
+          const { tagIds } = dto;
+          if (tagIds === undefined) {
+            throw new BadRequestException(
+              'tagIds is required for the tags operation.'
+            );
+          }
+          results.push(await this.updateTags(activityId, tagIds, userId));
           break;
-        case 'sharedWith':
+        }
+        case 'sharedWith': {
+          const { teamIds } = dto;
+          if (teamIds === undefined) {
+            throw new BadRequestException(
+              'teamIds is required for the sharedWith operation.'
+            );
+          }
           results.push(
-            await this.updateSharedWith(activityId, dto.teamIds, userId)
+            await this.updateSharedWith(activityId, teamIds, userId)
           );
           break;
-        case 'flag':
+        }
+        case 'flag': {
+          const { flagTeamId, assigneeIds } = dto;
+          if (flagTeamId === undefined || assigneeIds === undefined) {
+            throw new BadRequestException(
+              'flagTeamId and assigneeIds are required for the flag operation.'
+            );
+          }
           await this.flagsService.syncFlags(
             activityId,
-            dto.flagTeamId,
-            dto.assigneeIds,
+            flagTeamId,
+            assigneeIds,
             userId
           );
           this.activitiesGateway.broadcastActivityUpdated(activityId);
           results.push(await this.findOne(activityId));
           break;
-        case 'delete':
+        }
+        case 'delete': {
+          const { deleteReason } = dto;
+          if (deleteReason === undefined) {
+            throw new BadRequestException(
+              'deleteReason is required for the delete operation.'
+            );
+          }
           results.push(
-            await this.softDelete(activityId, dto.deleteReason, userId, context)
+            await this.softDelete(activityId, deleteReason, userId, context)
           );
           break;
+        }
       }
     }
     return results;
