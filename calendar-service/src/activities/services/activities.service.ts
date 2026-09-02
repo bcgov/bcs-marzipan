@@ -4117,12 +4117,11 @@ export class ActivitiesService {
       id,
       userId,
       'updated',
-      [
         {
-          field: 'sharedWith',
+          field: 'sharedWithTeamIds',
           oldValue: existingTeamIds,
           newValue: newTeamIds,
-        },
+        }
       ],
       'Activity unshared from team'
     );
