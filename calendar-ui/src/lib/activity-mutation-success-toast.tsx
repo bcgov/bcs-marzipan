@@ -2,7 +2,7 @@ import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
 
-export const ACTIVITY_MUTATION_SUCCESS_TOAST_DURATION_MS = 7000;
+export const ACTIVITY_MUTATION_SUCCESS_TOAST_DURATION_MS = 5000;
 
 export type ActivityMutationSuccessKind = 'created' | 'updated' | 'cloned';
 

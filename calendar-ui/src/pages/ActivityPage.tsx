@@ -420,7 +420,7 @@ export function ActivityPage({
         if (payload.role === 'holder') {
           toast.info(
             `Edit access was transferred to ${payload.counterpartUsername}.`,
-            { duration: 6000 }
+            { duration: 5000 }
           );
         } else {
           toast.success('The activity is ready to edit.', {
@@ -434,7 +434,7 @@ export function ActivityPage({
       if (payload.outcome === 'aborted_no_holder_lock') {
         toast.warning(
           'Lock transfer could not complete. The activity is no longer held by the original editor.',
-          { duration: 8000 }
+          { duration: 7000 }
         );
       }
     },
@@ -777,7 +777,7 @@ export function ActivityPage({
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
-      duration: 6000,
+      duration: 7000,
     });
   };
 
