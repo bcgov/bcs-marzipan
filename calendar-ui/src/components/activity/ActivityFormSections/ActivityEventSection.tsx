@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useFormContext, useWatch, type UseFormReturn } from 'react-hook-form';
-import { useMemo, type FC } from 'react';
+import { useMemo, useState, type FC } from 'react';
 
 import type {
   CityLookupItem,
@@ -289,6 +289,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
   const { readOnly } = useActivityEdit();
   const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
+  const [representativeSearch, setRepresentativeSearch] = useState('');
   const leadTeamId = useWatch({
     control: form.control,
     name: 'leadTeamId',
@@ -466,6 +467,25 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
     [leadMinisterOptions, remainderRepresentativeOptions]
   );
 
+  const filteredLeadMinisterOptions = useMemo(
+    () =>
+      leadMinisterOptions.filter((option) =>
+        option.label
+          .toLowerCase()
+          .includes(representativeSearch.trim().toLowerCase())
+      ),
+    [leadMinisterOptions, representativeSearch]
+  );
+  const filteredRemainderRepresentativeOptions = useMemo(
+    () =>
+      remainderRepresentativeOptions.filter((option) =>
+        option.label
+          .toLowerCase()
+          .includes(representativeSearch.trim().toLowerCase())
+      ),
+    [remainderRepresentativeOptions, representativeSearch]
+  );
+
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.event}>
       <FormField
@@ -524,7 +544,10 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             selectedValues.includes(o.value)
           );
           const representativeComboboxItems = mergeComboboxItems(
-            representativePickableOptions,
+            [
+              ...filteredLeadMinisterOptions,
+              ...filteredRemainderRepresentativeOptions,
+            ],
             selectedOptions
           );
 
@@ -545,6 +568,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected: OptionItem[]) => {
+                    setRepresentativeSearch('');
                     setActivityFormFieldValue(
                       form,
                       field.name,
@@ -568,7 +592,12 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Add representatives" />
+                          <ComboboxChipsInput
+                            placeholder="Search representatives"
+                            onInput={(event) =>
+                              setRepresentativeSearch(event.currentTarget.value)
+                            }
+                          />
                         </>
                       )}
                     </ComboboxValue>
@@ -576,9 +605,9 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   <ComboboxContent anchor={representativesAnchorRef}>
                     <ComboboxEmpty>No representatives found.</ComboboxEmpty>
                     <ComboboxList>
-                      {leadMinisterOptions.length > 0 && (
+                      {filteredLeadMinisterOptions.length > 0 && (
                         <>
-                          <ComboboxGroup items={leadMinisterOptions}>
+                          <ComboboxGroup items={filteredLeadMinisterOptions}>
                             <ComboboxCollection>
                               {(option: OptionItem) => (
                                 <ComboboxItem key={option.value} value={option}>
@@ -590,7 +619,9 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                           <ComboboxSeparator />
                         </>
                       )}
-                      <ComboboxGroup items={remainderRepresentativeOptions}>
+                      <ComboboxGroup
+                        items={filteredRemainderRepresentativeOptions}
+                      >
                         <ComboboxCollection>
                           {(option: OptionItem) => (
                             <ComboboxItem key={option.value} value={option}>
