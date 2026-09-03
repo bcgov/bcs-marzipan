@@ -140,7 +140,8 @@ VALUES
   (10, 'igrs event', 'IGRS Event', 10, 'team', true, 'IGRS event category', 999, 999),
   (11, 'half-masting', 'Half-masting', 11, 'team', true, 'Half-masting category', 999, 999),
   (12, 'national day', 'National day', 12, 'team', true, 'National day category', 999, 999),
-  (13, 'visit', 'Visit', 13, 'team', true, 'Visit category', 999, 999)
+  (13, 'visit', 'Visit', 13, 'team', true, 'Visit category', 999, 999),
+  (14, 'psa', 'PSA', 14, 'global', true, 'PSA category', 999, 999)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
