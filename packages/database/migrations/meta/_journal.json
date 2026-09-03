@@ -22,6 +22,13 @@
       "when": 1787853629547,
       "tag": "0002_20260827_recurring_edit_lockout",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788460678884,
+      "tag": "0003_20260903_add_psa_category",
+      "breakpoints": true
     }
   ]
 }
