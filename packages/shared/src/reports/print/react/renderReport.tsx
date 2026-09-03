@@ -150,7 +150,7 @@ export function wrapPrintReportHtmlDocument(
     ? 'corpcal-print-pdf-cover-sheet-only-doc'
     : '';
   const bodyClassAttr = bodyClass ? ` class="${bodyClass}"` : '';
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body${bodyClassAttr} style="margin:0;background:#fff;">${coverPageHtml}${fragmentHtml}</body></html>`;
+  return `<!DOCTYPE html><html lang="en-CA"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body${bodyClassAttr} style="margin:0;background:#fff;">${coverPageHtml}${fragmentHtml}</body></html>`;
 }
 
 /** Back-compat utility: `CORPCAL_PRINT_ROOT_CLASS` as a namespaced selector value. */
