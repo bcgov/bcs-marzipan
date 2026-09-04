@@ -300,7 +300,8 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   font-size: 1em;
   color: var(--print-ink-muted);
 }
-.corpcal-print-root .corpcal-print-release-translation {
+.corpcal-print-root .corpcal-print-release-translation,
+.corpcal-print-root .corpcal-print-meta-look-ahead-green {
   font-size: 1em;
   font-weight: 400;
   /* Literal first: guaranteed contrast on table + zebra if a custom property chain fails. */
