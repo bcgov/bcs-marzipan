@@ -115,19 +115,20 @@ export function showErrorToast(error: unknown, customMessage?: string): void {
     title = getErrorTitle(error.status);
     message = customMessage || error.detail;
 
-    // Adjust variant and duration based on error type
+    // Adjust the toast variant based on the error type while keeping the
+    // default 7s duration consistent across app-level error notifications.
     if (error.status === 409) {
-      // Conflict - warning style, longer duration
+      // Conflicts are user-actionable, so surface them as warnings.
       variant = 'warning';
     } else if (error.status === 429) {
-      // Rate limiting - warning style
+      // Rate limiting is transient; keep it as a warning with the default duration.
       variant = 'warning';
       message = 'Too many requests. Please wait a moment and try again.';
     } else if (error.status >= 500) {
-      // Server errors - error style, longer duration
+      // Server-side failures are surfaced as error toasts with the default duration.
       message = 'Server error. Please try again later.';
     } else if (error.isRetryable()) {
-      // Retryable errors - warning style
+      // Retryable client-side conditions are shown as warnings.
       variant = 'warning';
     }
 

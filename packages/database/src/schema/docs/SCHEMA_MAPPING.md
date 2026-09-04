@@ -283,7 +283,7 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 
 ### Notes
 
-- **Activity form**: The venue name control uses the `venueName` label (DB `venue_name`). The nested object for the full `venue_addresses` row is `venueAddress` in API payloads; confirm/history labels that whole object as "Venue address". Users can select venue presets, enter a custom venue name, or choose "Venue TBC"; address lines are edited separately.
+- **Activity form**: The venue name control uses the `venueName` label (DB `venue_name`). The nested object for the full `venue_addresses` row is `venueAddress` in API payloads; confirm/history labels that whole object as "Venue address". Users can select venue presets, enter a custom venue name, or choose "Venue TBD"; address lines are edited separately.
 - **Migrations**: `address_line2` was added in migration `0001_venue_address_line2`; `street` was renamed to `address_line1` in `0002_rename_street_to_address_line1` for naming parity with `address_line2`.
 
 ---
