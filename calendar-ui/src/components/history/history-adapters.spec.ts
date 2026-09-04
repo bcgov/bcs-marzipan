@@ -32,6 +32,7 @@ describe('history adapters', () => {
     expect(result.changes).toHaveLength(2);
     expect(result.changes[0]).toMatchObject({
       kind: 'transition',
+      field: 'flag.assigneeName',
       label: 'Flagged for review',
       oldValue: '(empty)',
       newValue: 'Jane Martinez',

@@ -62,6 +62,7 @@ export function normalizeTransitionChanges(
     .map((change, index) => ({
       key: `${change.field}-${index}`,
       kind: 'transition' as const,
+      field: change.field,
       label: options.getLabel(change.field),
       oldValue: options.formatValue(change.field, change.oldValue),
       newValue: options.formatValue(change.field, change.newValue),

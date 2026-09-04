@@ -1,11 +1,11 @@
 import { useState } from 'react';
 
-import { ExpandableText } from '@/components/shared';
 import { cn } from '@/lib/utils';
 
 import { historyDetailsHasDisclosure } from './history-details-label';
 import type { HistoryChangeViewModel } from './history-types';
 import { HistoryDetailsDisclosure } from './HistoryDetailsDisclosure';
+import { HistoryTransitionChange } from './HistoryTransitionChange';
 
 type HistoryChangeListProps = {
   changes: HistoryChangeViewModel[];
@@ -26,16 +26,12 @@ function ChangeRows({ changes }: { changes: HistoryChangeViewModel[] }) {
             {change.message}
           </div>
         ) : (
-          <div key={change.key} className="text-foreground text-sm leading-5">
-            <span className="font-medium">{change.label}:</span>{' '}
-            <span className="text-muted-foreground">
-              <ExpandableText text={change.oldValue} />
-            </span>{' '}
-            <span aria-hidden>→</span>{' '}
-            <span>
-              <ExpandableText text={change.newValue} />
-            </span>
-          </div>
+          <HistoryTransitionChange
+            key={change.key}
+            label={change.label}
+            oldValue={change.oldValue}
+            newValue={change.newValue}
+          />
         )
       )}
     </div>

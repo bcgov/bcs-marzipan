@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -22,28 +22,6 @@ function entry(
   };
 }
 
-function getDetailsPanels(buttonName: string) {
-  return screen.getAllByRole('button', { name: buttonName }).map((button) => {
-    const panelId = button.getAttribute('aria-controls');
-    if (!panelId) {
-      throw new Error(`Missing aria-controls for button "${buttonName}"`);
-    }
-    const panel = document.getElementById(panelId);
-    if (!panel) {
-      throw new Error(`Missing details panel "${panelId}"`);
-    }
-    return panel;
-  });
-}
-
-function getDetailsPanel(buttonName: string) {
-  const [panel] = getDetailsPanels(buttonName);
-  if (!panel) {
-    throw new Error(`Missing details panel for button "${buttonName}"`);
-  }
-  return panel;
-}
-
 describe('HistoryList', () => {
   it('renders the compact entry metadata and hides changes initially', () => {
     render(
@@ -61,6 +39,7 @@ describe('HistoryList', () => {
                 {
                   key: 'title-0',
                   kind: 'transition',
+                  field: 'title',
                   label: 'Title',
                   oldValue: 'Old title',
                   newValue: 'New title',
@@ -81,7 +60,7 @@ describe('HistoryList', () => {
       'aria-expanded',
       'false'
     );
-    expect(getDetailsPanel('1 change')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByText('Old title')).not.toBeInTheDocument();
   });
 
   it('expands changes independently per item and across the list', async () => {
@@ -116,25 +95,17 @@ describe('HistoryList', () => {
     const changeButtons = screen.getAllByRole('button', {
       name: '1 change',
     });
-    const regions = getDetailsPanels('1 change');
     await user.click(changeButtons[0]);
-    expect(regions[0]).toHaveAttribute('aria-hidden', 'false');
-    expect(regions[1]).toHaveAttribute('aria-hidden', 'true');
-    expect(within(regions[0]).getByText('First change')).toBeInTheDocument();
+    expect(screen.getByText('First change')).toBeInTheDocument();
+    expect(screen.queryByText('Second change')).not.toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole('button', { name: 'Expand all changes' })
-    );
-    expect(regions[0]).toHaveAttribute('aria-hidden', 'false');
-    expect(regions[1]).toHaveAttribute('aria-hidden', 'false');
-    expect(within(regions[0]).getByText('First change')).toBeInTheDocument();
-    expect(within(regions[1]).getByText('Second change')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    expect(screen.getByText('First change')).toBeInTheDocument();
+    expect(screen.getByText('Second change')).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole('button', { name: 'Collapse all changes' })
-    );
-    expect(regions[0]).toHaveAttribute('aria-hidden', 'true');
-    expect(regions[1]).toHaveAttribute('aria-hidden', 'true');
+    await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+    expect(screen.queryByText('First change')).not.toBeInTheDocument();
+    expect(screen.queryByText('Second change')).not.toBeInTheDocument();
   });
 
   it('does not show Show less on short notes after Expand all notes', async () => {
@@ -150,14 +121,14 @@ describe('HistoryList', () => {
       </MemoryRouter>
     );
 
-    await user.click(screen.getByRole('button', { name: 'Expand all notes' }));
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
 
     expect(
       screen.queryByRole('button', { name: 'Show less' })
     ).not.toBeInTheDocument();
   });
 
-  it('keeps notes in the disclosure panel in compact variant', async () => {
+  it('shows note and changes in a combined disclosure in compact variant', async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -170,6 +141,7 @@ describe('HistoryList', () => {
                 {
                   key: 'title-0',
                   kind: 'transition',
+                  field: 'title',
                   label: 'Title',
                   oldValue: 'Old title',
                   newValue: 'New title',
@@ -182,28 +154,56 @@ describe('HistoryList', () => {
       </MemoryRouter>
     );
 
-    expect(getDetailsPanel('1 change, Note')).toHaveAttribute(
-      'aria-hidden',
-      'true'
-    );
+    expect(screen.queryByText('Compact note text')).not.toBeInTheDocument();
+    expect(screen.queryByText('Old title')).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Expand all notes' })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Expand all details' })
+      screen.getByRole('button', { name: 'Expand all' })
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '1 change, Note' }));
-    const combinedPanel = getDetailsPanel('1 change, Note');
-    expect(combinedPanel).toHaveAttribute('aria-hidden', 'false');
+    await user.click(screen.getByRole('button', { name: 'Note and 1 change' }));
+    expect(screen.getByText('Compact note text')).toBeInTheDocument();
+    expect(screen.getByText('Old title')).toBeInTheDocument();
     expect(
-      within(combinedPanel).getByText('Compact note text')
+      screen.getByRole('button', { name: 'Hide note and 1 change' })
     ).toBeInTheDocument();
-    expect(within(combinedPanel).getByText('Old title')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Note' }));
-    const notePanel = getDetailsPanel('Note');
-    expect(notePanel).toHaveAttribute('aria-hidden', 'false');
-    expect(within(notePanel).getByText('Note only entry')).toBeInTheDocument();
+    expect(screen.getByText('Note only entry')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Hide note' })
+    ).toBeInTheDocument();
+  });
+
+  it('expands notes and changes together from the main expand-all button', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <HistoryList
+          variant="compact"
+          entries={[
+            entry(1, {
+              notes: 'Compact note text',
+              changes: [
+                {
+                  key: 'title-0',
+                  kind: 'transition',
+                  field: 'title',
+                  label: 'Title',
+                  oldValue: 'Old title',
+                  newValue: 'New title',
+                },
+              ],
+            }),
+          ]}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    expect(screen.getByText('Compact note text')).toBeInTheDocument();
+    expect(screen.getByText('Old title')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Hide note and 1 change' })
+    ).toBeInTheDocument();
   });
 });

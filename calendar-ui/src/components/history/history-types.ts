@@ -17,6 +17,7 @@ export type HistoryChangeViewModel =
   | {
       key: string;
       kind: 'transition';
+      field: string;
       label: string;
       oldValue: string;
       newValue: string;

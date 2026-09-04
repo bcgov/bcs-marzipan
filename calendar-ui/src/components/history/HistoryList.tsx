@@ -63,20 +63,19 @@ export function HistoryList({
   variant = 'default',
   className,
 }: HistoryListProps) {
-  const isCompact = variant === 'compact';
   const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
   const [expandedChanges, setExpandedChanges] = useState<Set<number>>(
     new Set()
   );
 
-  const noteIds = useMemo(
+  const inlineNoteIds = useMemo(
     () =>
       entries
         .filter((entry) => entryHasInlineNotes(entry, variant))
         .map((entry) => entry.id),
     [entries, variant]
   );
-  const changeIds = useMemo(
+  const disclosureIds = useMemo(
     () =>
       entries
         .filter((entry) => entryHasDisclosure(entry, variant))
@@ -113,52 +112,39 @@ export function HistoryList({
     ).filter(([, bucketEntries]) => bucketEntries.length > 0);
   }, [entries]);
 
-  const allNotesExpanded =
-    noteIds.length > 0 && noteIds.every((id) => expandedNotes.has(id));
-  const allChangesExpanded =
-    changeIds.length > 0 && changeIds.every((id) => expandedChanges.has(id));
+  const allInlineNotesExpanded =
+    inlineNoteIds.length === 0 ||
+    inlineNoteIds.every((id) => expandedNotes.has(id));
+  const allDisclosuresExpanded =
+    disclosureIds.length === 0 ||
+    disclosureIds.every((id) => expandedChanges.has(id));
+  const allExpanded = allInlineNotesExpanded && allDisclosuresExpanded;
+  const hasExpandableContent =
+    inlineNoteIds.length > 0 || disclosureIds.length > 0;
 
-  const showBulkNotes = !isCompact && noteIds.length > 0;
-  const showBulkChanges = changeIds.length > 0;
+  const toggleAllExpanded = () => {
+    if (allExpanded) {
+      setExpandedNotes(new Set());
+      setExpandedChanges(new Set());
+      return;
+    }
+    setExpandedNotes(new Set(inlineNoteIds));
+    setExpandedChanges(new Set(disclosureIds));
+  };
 
   return (
     <div className={cn('space-y-4', className)}>
-      {(showBulkNotes || showBulkChanges) && (
+      {hasExpandableContent ? (
         <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-          {showBulkNotes && (
-            <button
-              type="button"
-              onClick={() =>
-                setExpandedNotes(
-                  allNotesExpanded ? new Set() : new Set(noteIds)
-                )
-              }
-              className="text-primary text-xs font-medium hover:underline"
-            >
-              {allNotesExpanded ? 'Collapse all notes' : 'Expand all notes'}
-            </button>
-          )}
-          {showBulkChanges && (
-            <button
-              type="button"
-              onClick={() =>
-                setExpandedChanges(
-                  allChangesExpanded ? new Set() : new Set(changeIds)
-                )
-              }
-              className="text-primary text-xs font-medium hover:underline"
-            >
-              {isCompact
-                ? allChangesExpanded
-                  ? 'Collapse all details'
-                  : 'Expand all details'
-                : allChangesExpanded
-                  ? 'Collapse all changes'
-                  : 'Expand all changes'}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={toggleAllExpanded}
+            className="text-primary text-xs font-medium hover:underline"
+          >
+            {allExpanded ? 'Collapse all' : 'Expand all'}
+          </button>
         </div>
-      )}
+      ) : null}
 
       {groups.map(([heading, groupEntries]) => (
         <section key={heading} aria-labelledby={`history-${heading}`}>
