@@ -682,7 +682,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   venueStatusIdWatched
                 )}
                 onChange={handleVenueNameComboboxChange}
-                placeholder="Venue TBD, TBC, or a venue name…"
+                placeholder="Venue TBD or a venue name…"
                 searchPlaceholder="Search venue status or venues…"
                 emptyMessage="No venues found."
               />

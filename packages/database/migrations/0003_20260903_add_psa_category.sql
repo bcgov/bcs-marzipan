@@ -1,6 +1,5 @@
 -- Add the PSA activity category without modifying existing category rows.
 INSERT INTO "categories" (
-  "id",
   "name",
   "display_name",
   "sort_order",
@@ -11,7 +10,6 @@ INSERT INTO "categories" (
   "last_updated_by"
 )
 SELECT
-  14,
   'psa',
   'PSA',
   14,
