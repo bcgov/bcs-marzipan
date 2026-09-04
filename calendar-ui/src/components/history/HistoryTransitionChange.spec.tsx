@@ -8,14 +8,15 @@ describe('HistoryTransitionChange', () => {
   it('does not show a toggle for short old → new values', () => {
     render(
       <HistoryTransitionChange
+        field="title"
         label="Title"
         oldValue="Old title"
         newValue="New title"
       />
     );
 
-    expect(screen.getByText('Old title')).toBeInTheDocument();
-    expect(screen.getByText('New title')).toBeInTheDocument();
+    expect(screen.getByText('Old')).toBeInTheDocument();
+    expect(screen.getByText('New')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Show more Title change' })
     ).not.toBeInTheDocument();
@@ -27,6 +28,7 @@ describe('HistoryTransitionChange', () => {
   it('uses inline flow so label and change share one line and wrap from the left edge', () => {
     const { container } = render(
       <HistoryTransitionChange
+        field="title"
         label="Title"
         oldValue="Old title"
         newValue="New title"
@@ -44,6 +46,7 @@ describe('HistoryTransitionChange', () => {
 
     const { container } = render(
       <HistoryTransitionChange
+        field="summary"
         label="Summary"
         oldValue={oldValue}
         newValue={newValue}
@@ -56,6 +59,8 @@ describe('HistoryTransitionChange', () => {
     expect(
       screen.getByText(`${newValue.slice(0, 48)}…`, { exact: false })
     ).toBeInTheDocument();
+    expect(container.querySelector('del')).not.toBeInTheDocument();
+    expect(container.querySelector('ins')).not.toBeInTheDocument();
 
     const row = container.firstElementChild;
     const showMore = screen.getByRole('button', {
@@ -68,6 +73,7 @@ describe('HistoryTransitionChange', () => {
   it('shows Show more when only one side exceeds the preview length', () => {
     render(
       <HistoryTransitionChange
+        field="notes"
         label="Notes"
         oldValue="Short"
         newValue={'Updated notes text '.repeat(8)}
@@ -86,8 +92,9 @@ describe('HistoryTransitionChange', () => {
     const oldValue = 'Previous summary text '.repeat(8);
     const newValue = 'Updated summary text '.repeat(8);
 
-    render(
+    const { container } = render(
       <HistoryTransitionChange
+        field="summary"
         label="Summary"
         oldValue={oldValue}
         newValue={newValue}
@@ -98,8 +105,8 @@ describe('HistoryTransitionChange', () => {
       screen.getByRole('button', { name: 'Show more Summary change' })
     );
 
-    expect(screen.getByText(oldValue.trimEnd())).toBeInTheDocument();
-    expect(screen.getByText(newValue.trimEnd())).toBeInTheDocument();
+    expect(container.querySelector('del')).toBeInTheDocument();
+    expect(container.querySelector('ins')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Show less Summary change' })
     ).toBeInTheDocument();
@@ -113,6 +120,7 @@ describe('HistoryTransitionChange', () => {
 
     render(
       <HistoryTransitionChange
+        field="summary"
         label="Summary"
         oldValue={oldValue}
         newValue={newValue}
@@ -132,5 +140,82 @@ describe('HistoryTransitionChange', () => {
     expect(
       screen.getByRole('button', { name: 'Show more Summary change' })
     ).toBeInTheDocument();
+  });
+
+  it('renders narrative diff markup when expanded', async () => {
+    const user = userEvent.setup();
+
+    const { container } = render(
+      <HistoryTransitionChange
+        field="summary"
+        label="Summary"
+        oldValue={'Previous summary text '.repeat(8)}
+        newValue={'Updated summary text '.repeat(8)}
+      />
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Show more Summary change' })
+    );
+
+    expect(container.querySelector('del')).toBeInTheDocument();
+    expect(container.querySelector('ins')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Summary changed:/)).toBeInTheDocument();
+  });
+
+  it('does not render diff markup for non-narrative fields when expanded', async () => {
+    const user = userEvent.setup();
+
+    const oldValue = 'Previous status label '.repeat(8);
+    const newValue = 'Updated status label '.repeat(8);
+
+    const { container } = render(
+      <HistoryTransitionChange
+        field="dateStatusId"
+        label="Date status"
+        oldValue={oldValue}
+        newValue={newValue}
+      />
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Show more Date status change' })
+    );
+
+    expect(container.querySelector('del')).not.toBeInTheDocument();
+    expect(container.querySelector('ins')).not.toBeInTheDocument();
+    expect(screen.getByText(oldValue.trimEnd())).toBeInTheDocument();
+    expect(screen.getByText(newValue.trimEnd())).toBeInTheDocument();
+  });
+
+  it('shows only highlighted new text when old is empty', () => {
+    const { container } = render(
+      <HistoryTransitionChange
+        field="summary"
+        label="Summary"
+        oldValue="(empty)"
+        newValue="Hello world"
+      />
+    );
+
+    expect(screen.queryByText('(empty)')).not.toBeInTheDocument();
+    expect(container.querySelector('del')).not.toBeInTheDocument();
+    expect(screen.getByText('Hello world').tagName).toBe('INS');
+    expect(container.textContent).not.toContain('→');
+  });
+
+  it('shows only deleted old text when new is empty', () => {
+    const { container } = render(
+      <HistoryTransitionChange
+        field="summary"
+        label="Summary"
+        oldValue="Hello world"
+        newValue="(empty)"
+      />
+    );
+
+    expect(screen.getByText('Hello world').tagName).toBe('DEL');
+    expect(container.querySelector('ins')).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain('→');
   });
 });

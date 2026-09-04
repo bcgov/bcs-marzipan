@@ -41,6 +41,7 @@ function ChangeRows({ changes }: { changes: HistoryChangeViewModel[] }) {
         ) : (
           <HistoryTransitionChange
             key={change.key}
+            field={change.field}
             label={change.label}
             oldValue={change.oldValue}
             newValue={change.newValue}

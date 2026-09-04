@@ -159,6 +159,7 @@ import {
   hasMinistryTabLeadTeamFilterConflict,
   MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE,
 } from '@/lib/ministry-tab-lead-filter-conflict';
+import { REVIEW_HIGHLIGHT_BG } from '@/lib/review-highlight';
 import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
 import {
   sanitizeSavedFilterPayload,
@@ -227,8 +228,6 @@ const STATUS_COLUMN_SORT_KEYS = [
   'lastUpdated',
   'createdDateTime',
 ] as const;
-
-const LIST_REVIEW_HIGHLIGHT_BG = 'bg-[#FFDDB3]';
 
 function rowHasChangedPath(row: ActivityTableRow, path: string): boolean {
   const changed = row.changedFieldsSinceReview ?? [];
@@ -501,7 +500,7 @@ function OverviewCell({
         className={cn(
           'mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900',
           titleChanged && 'rounded-sm px-1',
-          titleChanged && LIST_REVIEW_HIGHLIGHT_BG
+          titleChanged && REVIEW_HIGHLIGHT_BG
         )}
         title={row.title}
       >
@@ -512,7 +511,7 @@ function OverviewCell({
           className={cn(
             'mb-2 text-[13px] text-slate-600',
             pitchChanged && 'inline-block rounded-sm px-1',
-            pitchChanged && LIST_REVIEW_HIGHLIGHT_BG
+            pitchChanged && REVIEW_HIGHLIGHT_BG
           )}
         >
           Pitch: {toSentenceCase(pitchLabel)}
@@ -528,7 +527,7 @@ function OverviewCell({
               className: cn(
                 'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
                 categoriesChanged && 'border-transparent',
-                categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
+                categoriesChanged && REVIEW_HIGHLIGHT_BG
               ),
             })
           )}
@@ -650,7 +649,7 @@ function SummaryCell({
           className={cn(
             'text-[14px] leading-[1.4] wrap-anywhere',
             summaryChanged && 'rounded-sm px-1',
-            summaryChanged && LIST_REVIEW_HIGHLIGHT_BG,
+            summaryChanged && REVIEW_HIGHLIGHT_BG,
             !expanded && 'line-clamp-5'
           )}
         >
@@ -724,7 +723,7 @@ function SchedulingCell({
           variant: 'primary' as const,
           className: cn(
             'h-auto min-h-5 text-xs text-white',
-            premierChanged && LIST_REVIEW_HIGHLIGHT_BG,
+            premierChanged && REVIEW_HIGHLIGHT_BG,
             premierChanged && 'border-transparent text-slate-900'
           ),
         },
@@ -752,7 +751,7 @@ function SchedulingCell({
             variant="outline"
             className={cn(
               'h-auto min-h-5 border-slate-200 text-xs text-slate-600',
-              dateStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
+              dateStatusChanged && REVIEW_HIGHLIGHT_BG,
               dateStatusChanged && 'border-transparent'
             )}
           >
@@ -775,7 +774,7 @@ function SchedulingCell({
             variant="outline"
             className={cn(
               'h-5 border-slate-200 text-xs text-slate-600',
-              timeStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
+              timeStatusChanged && REVIEW_HIGHLIGHT_BG,
               timeStatusChanged && 'border-transparent'
             )}
           >
