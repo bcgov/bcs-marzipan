@@ -215,7 +215,7 @@ export const CreateActivityForm: FC = () => {
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
-      duration: 6000,
+      duration: 7000,
     });
   };
 

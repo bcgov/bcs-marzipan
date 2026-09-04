@@ -49,7 +49,7 @@ describe('showErrorToast', () => {
     expect(mockToast.error).toHaveBeenCalledTimes(1);
     expect(mockToast.error).toHaveBeenCalledWith('Not Found', {
       description: 'Not found',
-      duration: 5000,
+      duration: 7000,
     });
     expect(mockToast.warning).not.toHaveBeenCalled();
   });
@@ -71,7 +71,7 @@ describe('showErrorToast', () => {
     expect(mockToast.error).toHaveBeenCalledTimes(1);
     expect(mockToast.error).toHaveBeenCalledWith('Server Error', {
       description: 'Server error. Please try again later.',
-      duration: 8000,
+      duration: 7000,
     });
   });
 
@@ -82,7 +82,7 @@ describe('showErrorToast', () => {
     expect(mockToast.warning).toHaveBeenCalledWith('Connection Error', {
       description:
         'Unable to connect to server. Please check your connection and try again.',
-      duration: 6000,
+      duration: 7000,
     });
   });
 
@@ -92,7 +92,7 @@ describe('showErrorToast', () => {
     expect(mockToast.error).toHaveBeenCalledTimes(1);
     expect(mockToast.error).toHaveBeenCalledWith('Error', {
       description: 'Something broke',
-      duration: 5000,
+      duration: 7000,
     });
   });
 
@@ -104,7 +104,7 @@ describe('showErrorToast', () => {
 
     expect(mockToast.error).toHaveBeenCalledWith('Not Found', {
       description: 'Custom',
-      duration: 5000,
+      duration: 7000,
     });
   });
 
@@ -114,7 +114,7 @@ describe('showErrorToast', () => {
     expect(mockToast.warning).toHaveBeenCalledTimes(1);
     expect(mockToast.warning).toHaveBeenCalledWith('Too Many Requests', {
       description: 'Too many requests. Please wait a moment and try again.',
-      duration: 6000,
+      duration: 7000,
     });
     expect(mockToast.error).not.toHaveBeenCalled();
   });
@@ -125,7 +125,7 @@ describe('showErrorToast', () => {
     expect(mockToast.error).toHaveBeenCalledTimes(1);
     expect(mockToast.error).toHaveBeenCalledWith('Error', {
       description: 'raw string',
-      duration: 5000,
+      duration: 7000,
     });
   });
 });
@@ -135,13 +135,13 @@ describe('showSuccessToast', () => {
     vi.clearAllMocks();
   });
 
-  it('calls toast.success with title and description and duration 3000', () => {
+  it('calls toast.success with title and description and duration 5000', () => {
     showSuccessToast('Saved successfully');
 
     expect(mockToast.success).toHaveBeenCalledTimes(1);
     expect(mockToast.success).toHaveBeenCalledWith('Success', {
       description: 'Saved successfully',
-      duration: 3000,
+      duration: 5000,
     });
   });
 
@@ -150,7 +150,7 @@ describe('showSuccessToast', () => {
 
     expect(mockToast.success).toHaveBeenCalledWith('All good', {
       description: 'Done',
-      duration: 3000,
+      duration: 5000,
     });
   });
 });
@@ -160,13 +160,13 @@ describe('showInfoToast', () => {
     vi.clearAllMocks();
   });
 
-  it('calls toast.info with title and description and duration 4000', () => {
+  it('calls toast.info with title and description and duration 5000', () => {
     showInfoToast('Processing...');
 
     expect(mockToast.info).toHaveBeenCalledTimes(1);
     expect(mockToast.info).toHaveBeenCalledWith('Info', {
       description: 'Processing...',
-      duration: 4000,
+      duration: 5000,
     });
   });
 
@@ -175,7 +175,7 @@ describe('showInfoToast', () => {
 
     expect(mockToast.info).toHaveBeenCalledWith('Notice', {
       description: 'Details here',
-      duration: 4000,
+      duration: 5000,
     });
   });
 });

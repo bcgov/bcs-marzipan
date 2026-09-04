@@ -11,7 +11,7 @@ import {
 } from './countdown-loading-toast';
 import { getRecurringLockoutInlineMessage } from './recurring-lockout-inline-message';
 
-const DISCARD_TOAST_DURATION_MS = 8000;
+const DISCARD_TOAST_DURATION_MS = 7000;
 
 export type LockoutCountdownToastHandle = {
   dispose: () => void;
