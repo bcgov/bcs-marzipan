@@ -66,7 +66,7 @@ export function HistoryEntry({
       });
 
   return (
-    <article className="bg-background flex min-w-0 items-start gap-3 rounded-md py-2">
+    <article className="bg-background border-border flex min-w-0 items-start gap-3 rounded-md border px-2 py-1.5">
       <Avatar size="sm" title={entry.actor.name} className="mt-0.5">
         <AvatarFallback className="bg-primary/10 text-primary font-semibold">
           {historyActorInitials(entry.actor)}

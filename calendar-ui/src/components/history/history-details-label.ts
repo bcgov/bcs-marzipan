@@ -20,6 +20,20 @@ export function historyDetailsBadgeLabel(
   return '';
 }
 
+export function historyDetailsShowLabel(
+  changeCount: number,
+  hasNote: boolean
+): string {
+  const hasChanges = changeCount > 0;
+
+  if (hasNote && hasChanges) {
+    return `Show note and ${historyChangeLabel(changeCount)}`;
+  }
+  if (hasNote) return 'Show note';
+  if (hasChanges) return `Show ${historyChangeLabel(changeCount)}`;
+  return '';
+}
+
 export function historyDetailsHideLabel(
   changeCount: number,
   hasNote: boolean

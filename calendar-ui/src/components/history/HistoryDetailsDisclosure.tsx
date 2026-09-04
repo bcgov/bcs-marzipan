@@ -3,6 +3,7 @@ import { useId, type ReactNode } from 'react';
 import {
   historyDetailsBadgeLabel,
   historyDetailsHideLabel,
+  historyDetailsShowLabel,
 } from './history-details-label';
 import { HistoryBadgeTrigger } from './HistoryBadgeTrigger';
 
@@ -27,7 +28,7 @@ export function HistoryDetailsDisclosure({
   const badgeLabel = historyDetailsBadgeLabel(changeCount, hasNote);
   const triggerLabel = expanded
     ? historyDetailsHideLabel(changeCount, hasNote)
-    : badgeLabel;
+    : historyDetailsShowLabel(changeCount, hasNote);
 
   return (
     <div className={className}>

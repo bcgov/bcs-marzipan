@@ -150,11 +150,11 @@ export function HistoryList({
         <section key={heading} aria-labelledby={`history-${heading}`}>
           <h2
             id={`history-${heading}`}
-            className="text-muted-foreground border-border mb-1 border-b pb-1 text-xs font-semibold tracking-wide uppercase"
+            className="text-muted-foreground mb-1 text-sm font-semibold tracking-wide"
           >
             {heading}
           </h2>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {groupEntries.map((entry) => (
               <HistoryEntry
                 key={entry.id}

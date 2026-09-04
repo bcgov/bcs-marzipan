@@ -4,6 +4,7 @@ import {
   historyDetailsBadgeLabel,
   historyDetailsHasDisclosure,
   historyDetailsHideLabel,
+  historyDetailsShowLabel,
 } from './history-details-label';
 
 describe('historyDetailsBadgeLabel', () => {
@@ -19,6 +20,22 @@ describe('historyDetailsBadgeLabel', () => {
   it('combines note and changes with "and"', () => {
     expect(historyDetailsBadgeLabel(1, true)).toBe('Note and 1 change');
     expect(historyDetailsBadgeLabel(2, true)).toBe('Note and 2 changes');
+  });
+});
+
+describe('historyDetailsShowLabel', () => {
+  it('returns show labels for changes', () => {
+    expect(historyDetailsShowLabel(1, false)).toBe('Show 1 change');
+    expect(historyDetailsShowLabel(3, false)).toBe('Show 3 changes');
+  });
+
+  it('returns show note when only a note is present', () => {
+    expect(historyDetailsShowLabel(0, true)).toBe('Show note');
+  });
+
+  it('combines show note and changes with "and"', () => {
+    expect(historyDetailsShowLabel(1, true)).toBe('Show note and 1 change');
+    expect(historyDetailsShowLabel(2, true)).toBe('Show note and 2 changes');
   });
 });
 

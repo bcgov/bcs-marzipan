@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { historyDetailsHasDisclosure } from './history-details-label';
 import type { HistoryChangeViewModel } from './history-types';
 import { HistoryDetailsDisclosure } from './HistoryDetailsDisclosure';
+import { HistoryNoteLeading } from './HistoryNoteIcon';
 import { HistoryTransitionChange } from './HistoryTransitionChange';
 
 type HistoryChangeListProps = {
@@ -17,12 +18,24 @@ type HistoryChangeListProps = {
   className?: string;
 };
 
+function NoteRow({ note }: { note: string }) {
+  return (
+    <div className="text-foreground flex items-start gap-1.5 text-[13px] leading-4.5">
+      <HistoryNoteLeading />
+      <div className="min-w-0 whitespace-pre-wrap">{note}</div>
+    </div>
+  );
+}
+
 function ChangeRows({ changes }: { changes: HistoryChangeViewModel[] }) {
   return (
     <div className="space-y-1">
       {changes.map((change) =>
         change.kind === 'message' ? (
-          <div key={change.key} className="text-foreground text-sm leading-5">
+          <div
+            key={change.key}
+            className="text-foreground text-[13px] leading-4.5"
+          >
             {change.message}
           </div>
         ) : (
@@ -60,19 +73,15 @@ export function HistoryChangeList({
       : changes.slice(0, previewLimit);
 
     return (
-      <div className={cn('space-y-2', className)}>
-        {hasNote ? (
-          <div className="text-foreground text-sm leading-5 whitespace-pre-wrap">
-            {note}
-          </div>
-        ) : null}
+      <div className={cn('space-y-1', className)}>
+        {hasNote && note ? <NoteRow note={note} /> : null}
         <ChangeRows changes={visibleChanges} />
         {hasHidden && (
           <button
             type="button"
             aria-expanded={previewExpanded}
             onClick={() => setPreviewExpanded((value) => !value)}
-            className="text-primary cursor-pointer text-sm font-medium hover:underline"
+            className="text-primary cursor-pointer text-[13px] font-medium hover:underline"
           >
             {previewExpanded
               ? 'Show less'
@@ -93,11 +102,7 @@ export function HistoryChangeList({
       onExpandedChange={onExpandedChange}
       className={className}
     >
-      {hasNote ? (
-        <div className="text-foreground text-sm leading-5 whitespace-pre-wrap">
-          {note}
-        </div>
-      ) : null}
+      {hasNote && note ? <NoteRow note={note} /> : null}
       {changes.length > 0 ? <ChangeRows changes={changes} /> : null}
     </HistoryDetailsDisclosure>
   );

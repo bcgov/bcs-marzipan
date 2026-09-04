@@ -56,10 +56,9 @@ describe('HistoryList', () => {
     expect(
       screen.getByRole('link', { name: 'ACT-123 Cabinet announcement' })
     ).toHaveAttribute('href', '/activity/123');
-    expect(screen.getByRole('button', { name: '1 change' })).toHaveAttribute(
-      'aria-expanded',
-      'false'
-    );
+    expect(
+      screen.getByRole('button', { name: 'Show 1 change' })
+    ).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('Old title')).not.toBeInTheDocument();
   });
 
@@ -93,7 +92,7 @@ describe('HistoryList', () => {
     );
 
     const changeButtons = screen.getAllByRole('button', {
-      name: '1 change',
+      name: 'Show 1 change',
     });
     await user.click(changeButtons[0]);
     expect(screen.getByText('First change')).toBeInTheDocument();
@@ -160,14 +159,16 @@ describe('HistoryList', () => {
       screen.getByRole('button', { name: 'Expand all' })
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Note and 1 change' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Show note and 1 change' })
+    );
     expect(screen.getByText('Compact note text')).toBeInTheDocument();
     expect(screen.getByText('Old title')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Hide note and 1 change' })
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Note' }));
+    await user.click(screen.getByRole('button', { name: 'Show note' }));
     expect(screen.getByText('Note only entry')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Hide note' })

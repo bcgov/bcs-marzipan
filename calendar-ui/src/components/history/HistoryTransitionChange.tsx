@@ -35,8 +35,8 @@ export function HistoryTransitionChange({
   const displayNew = expanded ? newValue : previewPart(newValue);
 
   return (
-    <div className="text-foreground min-w-0 text-sm leading-5">
-      <span className="font-medium">{label}:</span>{' '}
+    <div className="text-foreground min-w-0 text-[13px] leading-[18px]">
+      <span className="font-semibold">{label}:</span>{' '}
       <span className={cn('wrap-anywhere', expanded && 'whitespace-pre-wrap')}>
         <span className="text-muted-foreground">{displayOld}</span>{' '}
         <span aria-hidden>→</span> <span>{displayNew}</span>
