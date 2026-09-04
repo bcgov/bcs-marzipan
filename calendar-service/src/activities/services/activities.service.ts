@@ -4088,7 +4088,12 @@ export class ActivitiesService {
     const existingShared = await this.databaseService.db
       .select({ teamId: activitySharedWithTeams.teamId })
       .from(activitySharedWithTeams)
-      .where(eq(activitySharedWithTeams.activityId, id));
+      .where(
+        and(
+          eq(activitySharedWithTeams.activityId, id),
+          eq(activitySharedWithTeams.isActive, true)
+        )
+      );
     const existingTeamIds = existingShared.map((s) => s.teamId);
 
     if (!existingTeamIds.includes(teamId)) {
