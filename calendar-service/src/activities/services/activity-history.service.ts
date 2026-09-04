@@ -1,5 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  gte,
+  inArray,
+  lte,
+  sql,
+} from 'drizzle-orm';
 
 import {
   activities,
@@ -482,6 +492,11 @@ export class ActivityHistoryService {
       // optional keyset cursor: base64(JSON.stringify({ t: ISOString, id: number }))
       cursor?: string;
       order?: 'asc' | 'desc';
+      userId?: number;
+      userIds?: number[];
+      actionTypes?: string[];
+      categoryNames?: string[];
+      leadTeamIds?: number[];
     }
   ): Promise<{
     items: ActivityHistoryEntry[];
@@ -546,6 +561,42 @@ export class ActivityHistoryService {
       if (endIso) {
         whereClauses.push(lte(activityHistory.timestamp, endIso));
       }
+    }
+
+    if (opts.userId != null) {
+      whereClauses.push(eq(activityHistory.userId, opts.userId));
+    }
+
+    if (opts.userIds?.length) {
+      whereClauses.push(inArray(activityHistory.userId, opts.userIds));
+    }
+
+    if (opts.actionTypes?.length) {
+      whereClauses.push(inArray(activityHistory.actionType, opts.actionTypes));
+    }
+
+    if (opts.leadTeamIds?.length) {
+      whereClauses.push(inArray(activities.leadTeamId, opts.leadTeamIds));
+    }
+
+    if (opts.categoryNames?.length) {
+      whereClauses.push(
+        exists(
+          this.databaseService.db
+            .select({ one: sql`1` })
+            .from(activityCategories)
+            .innerJoin(
+              categories,
+              eq(activityCategories.categoryId, categories.id)
+            )
+            .where(
+              and(
+                eq(activityCategories.activityId, activityHistory.activityId),
+                inArray(categories.displayName, opts.categoryNames)
+              )
+            )
+        )
+      );
     }
 
     if (opts.query) {
@@ -646,6 +697,10 @@ export class ActivityHistoryService {
         ? and(...(whereClauses as Parameters<typeof and>))
         : whereClauses[0];
 
+    const needsActivitiesJoin =
+      Boolean(opts.query?.trim()) || (opts.leadTeamIds?.length ?? 0) > 0;
+    const needsUsersJoin = Boolean(opts.query?.trim());
+
     let qBuilder = this.databaseService.db
       .select({
         id: activityHistory.id,
@@ -658,11 +713,18 @@ export class ActivityHistoryService {
       })
       .from(activityHistory);
 
-    // If query included fields on activities or users, join those tables for filtering
-    if (opts.query) {
-      qBuilder = (qBuilder as any)
-        .leftJoin(activities, eq(activityHistory.activityId, activities.id))
-        .leftJoin(users, eq(activityHistory.userId, users.id));
+    if (needsActivitiesJoin) {
+      qBuilder = (qBuilder as any).leftJoin(
+        activities,
+        eq(activityHistory.activityId, activities.id)
+      );
+    }
+
+    if (needsUsersJoin) {
+      qBuilder = (qBuilder as any).leftJoin(
+        users,
+        eq(activityHistory.userId, users.id)
+      );
     }
 
     // determine ordering (default: desc)
@@ -714,10 +776,17 @@ export class ActivityHistoryService {
       let countBuilder: any = this.databaseService.db
         .select({ count: sql<number>`count(*)::int` })
         .from(activityHistory as any);
-      if (opts.query) {
-        countBuilder = countBuilder
-          .leftJoin(activities, eq(activityHistory.activityId, activities.id))
-          .leftJoin(users, eq(activityHistory.userId, users.id));
+      if (needsActivitiesJoin) {
+        countBuilder = countBuilder.leftJoin(
+          activities,
+          eq(activityHistory.activityId, activities.id)
+        );
+      }
+      if (needsUsersJoin) {
+        countBuilder = countBuilder.leftJoin(
+          users,
+          eq(activityHistory.userId, users.id)
+        );
       }
       countBuilder = countBuilder.where(whereExpr);
 

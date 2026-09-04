@@ -78,6 +78,8 @@ import {
 } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
+import { parseCommaSeparatedStrings } from '../common/utils/parse-query-strings';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
@@ -277,6 +279,11 @@ export class ActivitiesController {
     @Query('pageSize') pageSize?: string,
     @Query('query') query?: string,
     @Query('order') order?: string,
+    @Query('userId') userId?: string,
+    @Query('userIds') userIds?: string,
+    @Query('actionTypes') actionTypes?: string,
+    @Query('categories') categories?: string,
+    @Query('leadTeamIds') leadTeamIds?: string,
     @RequestContext() ctx?: RequestContextType
   ): Promise<{
     success: boolean;
@@ -309,14 +316,29 @@ export class ActivitiesController {
       ? Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(pageSize, 10) || 50))
       : 50;
 
-    // If any pagination, explicit dates, a query, or an explicit order are provided, return a paged response
+    const parsedUserId = userId ? parseInt(userId, 10) : undefined;
+    if (userId !== undefined && Number.isNaN(parsedUserId)) {
+      throw new BadRequestException('userId must be a valid number');
+    }
+
+    const parsedUserIds = parseCommaSeparatedIds(userIds);
+    const parsedActionTypes = parseCommaSeparatedStrings(actionTypes);
+    const parsedCategories = parseCommaSeparatedStrings(categories);
+    const parsedLeadTeamIds = parseCommaSeparatedIds(leadTeamIds);
+
+    // If any pagination, explicit dates, a query, filters, or an explicit order are provided, return a paged response
     const hasPagingOrDate =
       startDate !== undefined ||
       endDate !== undefined ||
       page !== undefined ||
       pageSize !== undefined ||
       query !== undefined ||
-      order !== undefined;
+      order !== undefined ||
+      userId !== undefined ||
+      userIds !== undefined ||
+      actionTypes !== undefined ||
+      categories !== undefined ||
+      leadTeamIds !== undefined;
 
     if (!hasPagingOrDate) {
       const result = await this.activitiesService.getGlobalHistory(ctx);
@@ -334,6 +356,14 @@ export class ActivitiesController {
         pageSize: parsedPageSize,
         query,
         order: order,
+        userId: parsedUserId,
+        userIds: parsedUserIds.length > 0 ? parsedUserIds : undefined,
+        actionTypes:
+          parsedActionTypes.length > 0 ? parsedActionTypes : undefined,
+        categoryNames:
+          parsedCategories.length > 0 ? parsedCategories : undefined,
+        leadTeamIds:
+          parsedLeadTeamIds.length > 0 ? parsedLeadTeamIds : undefined,
       },
       ctx
     );

@@ -3241,6 +3241,11 @@ export class ActivitiesService {
       pageSize?: number;
       query?: string;
       order?: 'asc' | 'desc';
+      userId?: number;
+      userIds?: number[];
+      actionTypes?: string[];
+      categoryNames?: string[];
+      leadTeamIds?: number[];
     },
     ctx?: RequestContextType
   ): Promise<{
@@ -3290,6 +3295,11 @@ export class ActivitiesService {
           pageSize,
           query: opts.query,
           order: opts.order,
+          userId: opts.userId,
+          userIds: opts.userIds,
+          actionTypes: opts.actionTypes,
+          categoryNames: opts.categoryNames,
+          leadTeamIds: opts.leadTeamIds,
         }
       );
 
