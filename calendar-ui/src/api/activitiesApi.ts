@@ -187,26 +187,59 @@ export async function fetchGlobalActivityHistoryPaged(params?: {
   endDate?: string;
   query?: string;
   order?: 'asc' | 'desc';
+  userId?: number;
+  userIds?: number[];
+  actionTypes?: string[];
+  categories?: string[];
+  leadTeamIds?: number[];
 }): Promise<PagedResult<GlobalActivityHistoryEntry>> {
-  const res = await api.get('/activities/global-history', { params });
-  // Server may return either:
-  // - direct paged shape: { items, page, pageSize, hasNext }
-  // - wrapper shape: { success: true, data: { items, page, ... } }
-  // - legacy array: []
-  if (res.data && typeof res.data === 'object') {
-    // Direct paged shape
-    if ('items' in res.data && Array.isArray(res.data.items)) {
-      return res.data as PagedResult<GlobalActivityHistoryEntry>;
-    }
+  const serializedParams: Record<string, string | number | undefined> = {};
+  if (params == null) {
+    const res = await api.get('/activities/global-history', { params: {} });
+    return normalizeGlobalHistoryPagedResponse(res.data);
+  }
 
-    // Wrapped shape from server
-    if ('data' in res.data && res.data.data && 'items' in res.data.data) {
-      return res.data.data as PagedResult<GlobalActivityHistoryEntry>;
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      serializedParams[key] = value.join(',');
+    } else {
+      serializedParams[key] = value;
     }
   }
 
-  // Fallback: legacy array response -> wrap into a single page
-  const items = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+  const res = await api.get('/activities/global-history', {
+    params: serializedParams,
+  });
+  return normalizeGlobalHistoryPagedResponse(res.data);
+}
+
+function normalizeGlobalHistoryPagedResponse(
+  data: unknown
+): PagedResult<GlobalActivityHistoryEntry> {
+  if (data && typeof data === 'object') {
+    if ('items' in data && Array.isArray(data.items)) {
+      return data as PagedResult<GlobalActivityHistoryEntry>;
+    }
+
+    if (
+      'data' in data &&
+      data.data &&
+      typeof data.data === 'object' &&
+      'items' in data.data
+    ) {
+      return data.data as PagedResult<GlobalActivityHistoryEntry>;
+    }
+  }
+
+  const items = Array.isArray(data)
+    ? data
+    : data &&
+        typeof data === 'object' &&
+        'data' in data &&
+        Array.isArray(data.data)
+      ? data.data
+      : [];
   return {
     items,
     page: 1,

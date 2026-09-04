@@ -36,6 +36,17 @@ const HISTORY_ACTION_LABELS: Record<string, string> = {
   activities_transferred: 'Activities transferred',
 };
 
+const USER_AND_TEAM_HISTORY_ACTION_TYPES = new Set([
+  'role_changed',
+  'activated',
+  'deactivated',
+  'settings_updated',
+  'team_added',
+  'team_removed',
+  'team_role_changed',
+  'activities_transferred',
+]);
+
 function sentenceCaseActionFallback(actionType: string): string {
   const spaced = actionType
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -52,3 +63,10 @@ export function getHistoryActionLabel(actionType: string): string {
   const lower = String(actionType).toLowerCase();
   return HISTORY_ACTION_LABELS[lower] ?? sentenceCaseActionFallback(actionType);
 }
+
+export const GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS = Object.keys(
+  HISTORY_ACTION_LABELS
+)
+  .filter((actionType) => !USER_AND_TEAM_HISTORY_ACTION_TYPES.has(actionType))
+  .map((value) => ({ value, label: getHistoryActionLabel(value) }))
+  .sort((a, b) => a.label.localeCompare(b.label));

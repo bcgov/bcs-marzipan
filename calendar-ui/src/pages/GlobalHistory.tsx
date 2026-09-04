@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
 import {
@@ -24,13 +23,22 @@ import {
   type DateRangeValue,
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import {
+  buildHistoryAppliedFilterTypeLabels,
+  GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,
+  HISTORY_LIST_CONTENT_CLASSNAME,
   HistoryList,
+  HistoryListEmptyState,
+  HistoryListLoading,
+  HistoryListToolbar,
+  HistorySearchInput,
+  historySummaryHasClearableFilters,
   toGlobalActivityHistoryViewModel,
 } from '@/components/history';
 import { PageHeader } from '@/components/layout';
 import { ErrorState } from '@/components/shared';
 import { TablePagination } from '@/components/table/TablePagination';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
+import { TableSummaryBar } from '@/components/table/TableSummaryBar';
 import { Input } from '@/components/ui/input';
 import {
   Popover,
@@ -338,25 +346,52 @@ export function GlobalHistory() {
     selectedLeadTeamIds,
   ]);
 
-  const historyQuery = useQuery({
-    queryKey: [
-      'activities',
-      'global-history',
+  const globalHistoryQueryParams = useMemo(
+    () => ({
       page,
       pageSize,
-      dateRange.startDate,
+      startDate: dateRange.startDate || undefined,
+      endDate: dateRange.endDate || undefined,
+      query: searchQuery || undefined,
+      order: 'desc' as const,
+      userId:
+        activeTab === 'mine' && user?.id != null ? Number(user.id) : undefined,
+      userIds:
+        activeTab === 'all' && selectedUserIds.length > 0
+          ? selectedUserIds
+              .map((id) => Number(id))
+              .filter((id) => !Number.isNaN(id))
+          : undefined,
+      actionTypes:
+        selectedActionTypes.length > 0 ? selectedActionTypes : undefined,
+      categories:
+        selectedCategories.length > 0 ? selectedCategories : undefined,
+      leadTeamIds:
+        selectedLeadTeamIds.length > 0
+          ? selectedLeadTeamIds
+              .map((id) => Number(id))
+              .filter((id) => !Number.isNaN(id))
+          : undefined,
+    }),
+    [
+      activeTab,
       dateRange.endDate,
+      dateRange.startDate,
+      page,
+      pageSize,
       searchQuery,
-    ],
+      selectedActionTypes,
+      selectedCategories,
+      selectedLeadTeamIds,
+      selectedUserIds,
+      user?.id,
+    ]
+  );
+
+  const historyQuery = useQuery({
+    queryKey: ['activities', 'global-history', globalHistoryQueryParams],
     queryFn: (): Promise<PagedResult<GlobalActivityHistoryEntry>> =>
-      fetchGlobalActivityHistoryPaged({
-        page,
-        pageSize,
-        startDate: dateRange.startDate || undefined,
-        endDate: dateRange.endDate || undefined,
-        query: searchQuery || undefined,
-        order: 'desc',
-      }),
+      fetchGlobalActivityHistoryPaged(globalHistoryQueryParams),
     placeholderData: (prev) => prev,
   });
 
@@ -420,47 +455,28 @@ export function GlobalHistory() {
     [historyQuery.data]
   );
 
-  const actionTypeOptions = useMemo<FilterOption[]>(() => {
-    const values = [...new Set(entries.map((entry) => entry.actionType))];
-    return values
-      .sort((a, b) => getActionText(a).localeCompare(getActionText(b)))
-      .map((value) => ({ value, label: getActionText(value) }));
-  }, [entries]);
+  const actionTypeOptions = GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS;
 
   const userOptions = useMemo<FilterOption[]>(() => {
-    const seen = new Map<string, string>();
-    entries.forEach((entry) => {
-      seen.set(String(entry.userId), getActorDisplayName(entry));
-    });
-
-    return [...seen.entries()]
-      .sort((a, b) => a[1].localeCompare(b[1]))
-      .map(([value, label]) => ({ value, label }));
-  }, [entries]);
+    return (usersQuery.data ?? [])
+      .map((entry) => ({
+        value: String(entry.id),
+        label: entry.label || entry.name,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [usersQuery.data]);
 
   const categoryOptions = useMemo<FilterOption[]>(() => {
-    const categories =
-      categoriesQuery.data?.map((category) => {
+    return (categoriesQuery.data ?? [])
+      .map((category) => {
         const displayValue = category.displayName || category.name;
-
         return {
           value: displayValue,
           label: displayValue,
         };
-      }) ?? [];
-
-    if (categories.length > 0) {
-      return [
-        ...new Map(
-          categories.map((category) => [category.value, category])
-        ).values(),
-      ].sort((a, b) => a.label.localeCompare(b.label));
-    }
-
-    return [...new Set(entries.flatMap((entry) => entry.activity.categories))]
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: value }));
-  }, [categoriesQuery.data, entries]);
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [categoriesQuery.data]);
 
   const leadTeamOptions = useMemo<FilterOption[]>(() => {
     return (teamsQuery.data ?? [])
@@ -656,71 +672,72 @@ export function GlobalHistory() {
     return truncateChangeLogValue(formatHistoryFieldValue(field, value));
   };
 
-  const filteredEntries = useMemo(() => {
-    return entries.filter((entry) => {
-      if (activeTab === 'mine' && entry.userId !== user?.id) {
-        return false;
-      }
-
-      if (!matchesSearch(entry, searchQuery)) {
-        return false;
-      }
-
-      if (!isEntryInDateRange(entry, dateRange)) {
-        return false;
-      }
-
-      if (
-        selectedActionTypes.length > 0 &&
-        !selectedActionTypes.includes(entry.actionType)
-      ) {
-        return false;
-      }
-
-      if (
-        selectedUserIds.length > 0 &&
-        !selectedUserIds.includes(String(entry.userId))
-      ) {
-        return false;
-      }
-
-      if (
-        selectedCategories.length > 0 &&
-        !entry.activity.categories.some((category) =>
-          selectedCategories.includes(category)
-        )
-      ) {
-        return false;
-      }
-
-      if (
-        selectedLeadTeamIds.length > 0 &&
-        !selectedLeadTeamIds.includes(String(entry.activity.leadTeamId))
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [
-    activeTab,
-    dateRange,
-    entries,
-    searchQuery,
-    selectedActionTypes,
-    selectedCategories,
-    selectedLeadTeamIds,
-    selectedUserIds,
-    user?.id,
-  ]);
-
-  const historyEntries = filteredEntries.map((entry) =>
+  const historyEntries = entries.map((entry) =>
     toGlobalActivityHistoryViewModel(entry, {
       team: leadTeamLabelMap.get(entry.activity.leadTeamId),
       subjectState: activityFormLinkState(location).state,
       formatValue: formatChangeValue,
     })
   );
+
+  const recordCount = historyQuery.data?.totalItems ?? 0;
+
+  const appliedFilterTypeLabels = useMemo(
+    () =>
+      buildHistoryAppliedFilterTypeLabels({
+        searchQuery,
+        dateRange,
+        activeTab,
+        selectedActionTypes,
+        selectedUserIds,
+        selectedCategories,
+        selectedLeadTeamIds,
+      }),
+    [
+      activeTab,
+      dateRange,
+      searchQuery,
+      selectedActionTypes,
+      selectedCategories,
+      selectedLeadTeamIds,
+      selectedUserIds,
+    ]
+  );
+
+  const clearAllFilters = useCallback(() => {
+    setSearchQuery('');
+    setDateRange(EMPTY_DATE_RANGE);
+    setSelectedActionTypes([]);
+    setSelectedUserIds([]);
+    setSelectedCategories([]);
+    setSelectedLeadTeamIds([]);
+    setActiveTab('all');
+  }, []);
+
+  const showClearFilters = historySummaryHasClearableFilters({
+    searchQuery,
+    dateRange,
+    activeTab,
+    selectedActionTypes,
+    selectedUserIds,
+    selectedCategories,
+    selectedLeadTeamIds,
+  });
+
+  const recordSummaryBar = !historyQuery.isError ? (
+    <TableSummaryBar
+      count={historyQuery.isLoading ? 0 : recordCount}
+      singularLabel="record"
+      pluralLabel="records"
+      appliedFilterTypeLabels={appliedFilterTypeLabels}
+      onClearFilters={showClearFilters ? clearAllFilters : undefined}
+    />
+  ) : null;
+
+  const showHistoryList =
+    !historyQuery.isLoading &&
+    !historyQuery.isError &&
+    historyEntries.length > 0;
 
   // Derive which quick-select preset is active from the current dateRange.
   // Returns null when no preset matches (including on initial load with no date set).
@@ -771,17 +788,7 @@ export function GlobalHistory() {
       </Tabs>
 
       <div className="mb-2 flex flex-wrap items-center gap-3">
-        <div className="relative w-60 max-w-60 min-w-60">
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search"
-            className="pr-3 pl-8"
-            aria-label="Search history"
-          />
-        </div>
+        <HistorySearchInput value={searchQuery} onChange={setSearchQuery} />
         <DateFilter value={dateRange} onChange={setDateRange} />
         <SearchableMultiSelectFilter
           label="Update type"
@@ -885,45 +892,61 @@ export function GlobalHistory() {
         )}
       </div>
 
-      {historyQuery.isLoading ? (
-        <div className="text-sm text-slate-500">Loading history...</div>
-      ) : historyQuery.isError ? (
-        <ErrorState
-          title="Unable to load history"
-          message="Try again or refresh the page."
-          onRetry={() => void historyQuery.refetch()}
-        />
-      ) : historyEntries.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          {isDateRangeActive(dateRange) ? (
-            <div>No changes in the selected timeframe.</div>
-          ) : (
-            <div>No matching history found.</div>
-          )}
-        </div>
-      ) : (
-        <>
-          <TableScrollContainer ref={tableScrollRef}>
+      <div className="min-w-0">
+        {!showHistoryList ? recordSummaryBar : null}
+
+        {historyQuery.isLoading ? (
+          <HistoryListLoading />
+        ) : historyQuery.isError ? (
+          <ErrorState
+            title="Unable to load history"
+            message="Try again or refresh the page."
+            onRetry={() => void historyQuery.refetch()}
+          />
+        ) : historyEntries.length === 0 ? (
+          <TableScrollContainer>
+            <HistoryListEmptyState
+              variant={
+                isDateRangeActive(dateRange)
+                  ? 'no-timeframe'
+                  : 'no-filter-match'
+              }
+            />
+          </TableScrollContainer>
+        ) : (
+          <>
             <HistoryList
               entries={historyEntries}
               variant="compact"
-              className="p-5"
+              className={HISTORY_LIST_CONTENT_CLASSNAME}
+            >
+              {({ expandAll, groups }) => (
+                <div className="min-w-0">
+                  <HistoryListToolbar
+                    summary={recordSummaryBar}
+                    expandAll={expandAll}
+                  />
+                  <TableScrollContainer ref={tableScrollRef}>
+                    {groups}
+                  </TableScrollContainer>
+                </div>
+              )}
+            </HistoryList>
+            <TablePagination
+              totalItems={historyQuery.data?.totalItems ?? 0}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={(p) => setPage(p)}
+              onPageSizeChange={(ps) => {
+                setPageSize(ps);
+                setPage(1);
+              }}
+              scrollContainerRef={tableScrollRef}
+              aria-label="History pagination"
             />
-          </TableScrollContainer>
-          <TablePagination
-            totalItems={historyQuery.data?.totalItems ?? 0}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={(p) => setPage(p)}
-            onPageSizeChange={(ps) => {
-              setPageSize(ps);
-              setPage(1);
-            }}
-            scrollContainerRef={tableScrollRef}
-            aria-label="History pagination"
-          />
-        </>
-      )}
+          </>
+        )}
+      </div>
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import {
   HISTORY_RECENCY_BUCKETS,
@@ -17,7 +17,11 @@ type HistoryListProps = {
   entries: HistoryEntryViewModel[];
   variant?: HistoryListVariant;
   className?: string;
+  children?: (parts: { expandAll: ReactNode; groups: ReactNode }) => ReactNode;
 };
+
+const expandAllButtonClassName =
+  'text-primary text-sm font-medium hover:underline';
 
 function updateIdSet(
   current: Set<number>,
@@ -62,6 +66,7 @@ export function HistoryList({
   entries,
   variant = 'default',
   className,
+  children,
 }: HistoryListProps) {
   const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
   const [expandedChanges, setExpandedChanges] = useState<Set<number>>(
@@ -132,51 +137,64 @@ export function HistoryList({
     setExpandedChanges(new Set(disclosureIds));
   };
 
+  const expandAllButton = hasExpandableContent ? (
+    <button
+      type="button"
+      onClick={toggleAllExpanded}
+      className={expandAllButtonClassName}
+    >
+      {allExpanded ? 'Collapse all' : 'Expand all'}
+    </button>
+  ) : null;
+
+  const groupSections = groups.map(([heading, groupEntries]) => (
+    <section key={heading} aria-labelledby={`history-${heading}`}>
+      <h2
+        id={`history-${heading}`}
+        className="text-muted-foreground bg-background sticky top-0 z-10 mb-3 py-1 text-sm font-semibold tracking-wide"
+      >
+        {heading}
+      </h2>
+      <div className="space-y-2">
+        {groupEntries.map((entry) => (
+          <HistoryEntry
+            key={entry.id}
+            entry={entry}
+            variant={variant}
+            notesExpanded={expandedNotes.has(entry.id)}
+            changesExpanded={expandedChanges.has(entry.id)}
+            onNotesExpandedChange={(expanded) =>
+              setExpandedNotes((current) =>
+                updateIdSet(current, entry.id, expanded)
+              )
+            }
+            onChangesExpandedChange={(expanded) =>
+              setExpandedChanges((current) =>
+                updateIdSet(current, entry.id, expanded)
+              )
+            }
+          />
+        ))}
+      </div>
+    </section>
+  ));
+
+  const groupsNode = (
+    <div className={cn('space-y-4', className)}>{groupSections}</div>
+  );
+
+  if (children) {
+    return children({ expandAll: expandAllButton, groups: groupsNode });
+  }
+
   return (
     <div className={cn('space-y-4', className)}>
-      {hasExpandableContent ? (
+      {expandAllButton ? (
         <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-          <button
-            type="button"
-            onClick={toggleAllExpanded}
-            className="text-primary text-xs font-medium hover:underline"
-          >
-            {allExpanded ? 'Collapse all' : 'Expand all'}
-          </button>
+          {expandAllButton}
         </div>
       ) : null}
-
-      {groups.map(([heading, groupEntries]) => (
-        <section key={heading} aria-labelledby={`history-${heading}`}>
-          <h2
-            id={`history-${heading}`}
-            className="text-muted-foreground mb-1 text-sm font-semibold tracking-wide"
-          >
-            {heading}
-          </h2>
-          <div className="space-y-2">
-            {groupEntries.map((entry) => (
-              <HistoryEntry
-                key={entry.id}
-                entry={entry}
-                variant={variant}
-                notesExpanded={expandedNotes.has(entry.id)}
-                changesExpanded={expandedChanges.has(entry.id)}
-                onNotesExpandedChange={(expanded) =>
-                  setExpandedNotes((current) =>
-                    updateIdSet(current, entry.id, expanded)
-                  )
-                }
-                onChangesExpandedChange={(expanded) =>
-                  setExpandedChanges((current) =>
-                    updateIdSet(current, entry.id, expanded)
-                  )
-                }
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {groupSections}
     </div>
   );
 }
