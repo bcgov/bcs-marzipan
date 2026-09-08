@@ -4135,6 +4135,8 @@ export class ActivitiesService {
     // Keep the caller's user context (for canEdit/reviewer fields) but force
     // bypass: the caller may only be a shared-with team member, which
     // findOne's default visibility scoping would otherwise hide.
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
     return this.findOne(id, {
       ...ctx,
       dataScope: { bypass: true, teamIds: ctx?.dataScope?.teamIds ?? [] },
