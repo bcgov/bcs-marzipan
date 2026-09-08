@@ -112,7 +112,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Editor' AND p.key IN (
-  'activities.view','activities.create','activities.edit','activities.requestDelete','activities.unshare',
+  'activities.view','activities.create','activities.edit','activities.requestDelete',
   'drafts.view','drafts.create','drafts.edit','drafts.delete',
   'reports.view','lookups.view','teams.view'
 )
@@ -130,7 +130,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Advanced Editor' AND p.key IN (
-  'activities.view','activities.create','activities.edit','activities.requestDelete','activities.approve','activities.unshare',
+  'activities.view','activities.create','activities.edit','activities.requestDelete','activities.approve',
   'drafts.view','drafts.create','drafts.edit','drafts.delete','drafts.recover',
   'reports.view','reports.export','lookups.view','teams.view'
 )
