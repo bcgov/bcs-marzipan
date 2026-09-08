@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { Edit, Trash2, XCircle } from 'lucide-react';
+import { Edit, Search, Trash2, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import api from '@/api/axios';
@@ -115,6 +115,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [search, setSearch] = useState('');
   const [submitOverridePending, setSubmitOverridePending] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<T | null>(null);
@@ -210,11 +211,21 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
 
   const filteredData = useMemo(() => {
     if (!data) return [];
-    if (!showStatusFilter) return data;
-    if (filter === 'active') return data.filter((item) => item.isActive);
-    if (filter === 'inactive') return data.filter((item) => !item.isActive);
-    return data;
-  }, [data, filter, showStatusFilter]);
+    const normalizedSearch = search.trim().toLowerCase();
+    return data.filter((item) => {
+      const matchesStatus =
+        !showStatusFilter ||
+        filter === 'all' ||
+        (filter === 'active' && item.isActive) ||
+        (filter === 'inactive' && !item.isActive);
+      const searchableText = `${getItemName(item)} ${item.displayName ?? ''}`;
+      return (
+        matchesStatus &&
+        (normalizedSearch === '' ||
+          searchableText.toLowerCase().includes(normalizedSearch))
+      );
+    });
+  }, [data, filter, getItemName, search, showStatusFilter]);
 
   const baseColumns: ColumnDef<T>[] = useMemo(
     () => [
@@ -373,21 +384,37 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       addButtonLabel={`Add ${entityType}`}
       isLoading={isLoading}
       headerAction={
-        showStatusFilter ? (
-          <Select
-            value={filter}
-            onValueChange={(value: any) => setFilter(value)}
-          >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        ) : undefined
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="relative">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={`Search ${title.toLowerCase()}`}
+              aria-label={`Search ${title.toLowerCase()}`}
+              className="h-9 w-44 rounded-md border border-slate-300 bg-white pr-3 pl-8 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none"
+            />
+          </div>
+          {showStatusFilter && (
+            <Select
+              value={filter}
+              onValueChange={(value: any) => setFilter(value)}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       }
     >
       {error && (
@@ -396,7 +423,9 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         </div>
       )}
       {filteredData && filteredData.length > 0 && (
-        <GenericDataTable data={filteredData} columns={baseColumns} />
+        <div className="max-h-[min(480px,60vh)] overflow-auto rounded-lg border border-slate-200">
+          <GenericDataTable data={filteredData} columns={baseColumns} />
+        </div>
       )}
       {filteredData && filteredData.length === 0 && (
         <div className="py-8 text-center text-slate-600">
