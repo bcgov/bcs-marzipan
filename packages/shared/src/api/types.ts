@@ -85,6 +85,14 @@ export type {
   UpdateMinistryGroupRequest,
 } from '../schemas/ministry-groups.schema';
 
+export type {
+  NotificationBulkActionResult,
+  NotificationItem,
+  NotificationListQuery,
+  NotificationPage,
+  UnreadNotificationCount,
+} from '../schemas/notification.schema';
+
 // Lookup types - re-exported from lookup schema
 export type {
   LookupItem,

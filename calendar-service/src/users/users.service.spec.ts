@@ -15,6 +15,7 @@ import {
   createMockUpdateUserTeamRoleBody,
 } from '../common/test-utils';
 import { DatabaseService } from '../database/database.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TeamsService } from '../teams/teams.service';
 import { UsersService } from './users.service';
 
@@ -79,6 +80,10 @@ describe('UsersService', () => {
     getEligibleCommsUserIds: vi.fn().mockResolvedValue(new Set<number>()),
   };
 
+  const mockNotificationsService = {
+    notifyUserAddedToTeam: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -98,6 +103,10 @@ describe('UsersService', () => {
         {
           provide: TeamsService,
           useValue: mockTeamsService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
         },
       ],
     }).compile();

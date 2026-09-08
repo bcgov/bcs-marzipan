@@ -23,3 +23,4 @@ export * from './saved-filter.schema';
 export * from './user.schema';
 export * from './team.schema';
 export * from './response-wrapper.schema';
+export * from './notification.schema';

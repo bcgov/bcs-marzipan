@@ -96,6 +96,7 @@ import { ApplicationSettingsService } from '../../locks/application-settings.ser
 import { LocksService } from '../../locks/locks.service';
 import { RecurringLockoutService } from '../../locks/recurring-lockout.service';
 import { LookAheadPolicyService } from '../../look-ahead/look-ahead-policy.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import {
   resolveDataScope,
   type RequestContext as RequestContextType,
@@ -135,6 +136,7 @@ export class ActivitiesService {
     private readonly locksService: LocksService,
     private readonly applicationSettings: ApplicationSettingsService,
     private readonly policyService: PolicyService,
+    private readonly notificationsService: NotificationsService,
     private readonly teamsService: TeamsService,
     private readonly flagsService: ActivityFlagsService,
     private readonly lookAheadPolicy: LookAheadPolicyService,
@@ -1579,6 +1581,12 @@ export class ActivitiesService {
       this.activitiesGateway.broadcastActivityCreated(createdActivity.id);
     }
 
+    await this.notificationsService.notifyActivityCreateOrStatusChange({
+      activityId: result.id,
+      actorUserId: userId,
+      changeType: 'create',
+    });
+
     return createdActivity;
   }
 
@@ -2905,6 +2913,14 @@ export class ActivitiesService {
         );
       }
     });
+
+    if (currentStatusName !== newStatusName) {
+      await this.notificationsService.notifyActivityCreateOrStatusChange({
+        activityId: id,
+        actorUserId: userId,
+        changeType: 'status_changed',
+      });
+    }
 
     return result;
   }

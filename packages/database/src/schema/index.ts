@@ -29,3 +29,4 @@ export * from './userActivityFavourites';
 export * from './userSettings';
 export * from './permissionVisibilityAudit';
 export * from './lookAheadResetSnapshots';
+export * from './notifications';

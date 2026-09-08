@@ -13,6 +13,7 @@ export * from './filters/confirmed-status-names';
 export * from './look-ahead-reset';
 export * from './recurring-edit-lockout';
 export * from './recurring-lockout-banner-content';
+export * from './notifications';
 export {
   ACTIVITY_INFO_ICON_FIELD_KEYS,
   ACTIVITY_INFO_ICON_FIELD_KEY_SET,
