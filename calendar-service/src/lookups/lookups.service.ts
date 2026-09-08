@@ -1055,18 +1055,24 @@ export class LookupsService {
   }
 
   /**
-   * Get all active translation languages
+   * Get all translation languages for lists and forms.
+   * @param includeAll - When true (admin), returns all languages including inactive
    */
-  async getTranslationLanguages(): Promise<TranslationLanguageLookupItem[]> {
+  async getTranslationLanguages(
+    includeAll?: boolean
+  ): Promise<TranslationLanguageLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: translatedLanguages.id,
         name: translatedLanguages.name,
         displayName: translatedLanguages.displayName,
         shortcode: translatedLanguages.shortcode,
+        sortOrder: translatedLanguages.sortOrder,
+        isActive: translatedLanguages.isActive,
+        description: translatedLanguages.description,
       })
       .from(translatedLanguages)
-      .where(eq(translatedLanguages.isActive, true))
+      .where(includeAll ? undefined : eq(translatedLanguages.isActive, true))
       .orderBy(translatedLanguages.sortOrder);
 
     return results.map((lang) => ({
@@ -1076,6 +1082,9 @@ export class LookupsService {
       name: lang.name,
       displayName: lang.displayName,
       shortcode: lang.shortcode,
+      sortOrder: lang.sortOrder,
+      isActive: lang.isActive,
+      description: lang.description,
     }));
   }
 
@@ -1601,6 +1610,39 @@ export class LookupsService {
   }
 
   /**
+   * Create a new translation language
+   */
+  async createTranslationLanguage(
+    data: {
+      name: string;
+      displayName?: string | null;
+      shortcode?: string | null;
+      sortOrder: number;
+      isActive?: boolean;
+      description?: string | null;
+    },
+    currentUserId: number
+  ): Promise<typeof translatedLanguages.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(translatedLanguages)
+      .values({
+        name: data.name,
+        displayName: data.displayName ?? data.name,
+        shortcode: data.shortcode ?? undefined,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+        description: data.description ?? undefined,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
    * Create a new government representative
    */
   async createGovernmentRepresentative(
@@ -1953,6 +1995,42 @@ export class LookupsService {
       .update(commsMaterials)
       .set(updateData)
       .where(eq(commsMaterials.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateTranslationLanguage(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string | null;
+      shortcode: string | null;
+      sortOrder: number;
+      isActive: boolean;
+      description: string | null;
+    }>,
+    currentUserId: number
+  ): Promise<typeof translatedLanguages.$inferSelect | undefined> {
+    // Build update object explicitly to ensure type safety
+    const updateData: Partial<typeof translatedLanguages.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName ?? undefined;
+    if (data.shortcode !== undefined)
+      updateData.shortcode = data.shortcode ?? undefined;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.description !== undefined)
+      updateData.description = data.description ?? undefined;
+
+    const [result] = await this.databaseService.db
+      .update(translatedLanguages)
+      .set(updateData)
+      .where(eq(translatedLanguages.id, id))
       .returning();
     return result;
   }

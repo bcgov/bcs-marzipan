@@ -45,6 +45,7 @@ import {
   createMinistryRequestSchema,
   createTagRequestSchema,
   createThemeRequestSchema,
+  createTranslationLanguageRequestSchema,
   createVenuePresetRequestSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
@@ -55,6 +56,7 @@ import {
   updateMinistryRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
+  updateTranslationLanguageRequestSchema,
   updateVenuePresetRequestSchema,
 } from '@corpcal/shared/schemas';
 
@@ -73,6 +75,7 @@ import {
   CreateMinistryGroupDto,
   CreateTagDto,
   CreateThemeDto,
+  CreateTranslationLanguageDto,
   CreateVenuePresetDto,
   GovernmentRepresentativeResponseWrapperDto,
   LookupArrayResponseWrapperDto,
@@ -81,6 +84,7 @@ import {
   MinistryResponseWrapperDto,
   TagResponseWrapperDto,
   ThemeResponseWrapperDto,
+  TranslationLanguageResponseWrapperDto,
   UpdateActivityStatusDto,
   UpdateCategoryDto,
   UpdateCityDto,
@@ -90,6 +94,7 @@ import {
   UpdateMinistryGroupDto,
   UpdateTagDto,
   UpdateThemeDto,
+  UpdateTranslationLanguageDto,
   UpdateVenuePresetDto,
   VenuePresetArrayResponseWrapperDto,
   VenuePresetResponseWrapperDto,
@@ -725,19 +730,94 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Get all translation languages' })
+  @ApiOperation({
+    summary: 'Get all translation languages',
+    description:
+      'Retrieves all active translation languages. Admins with the `lookups.manage` permission can pass ' +
+      '`includeAll=true` to retrieve all languages including inactive; this path sets `Cache-Control: no-store`.',
+  })
+  @ApiQuery({
+    name: 'includeAll',
+    required: false,
+    type: String,
+    enum: ['true'],
+    description:
+      'When set to `"true"` and the caller has the `lookups.manage` permission, returns all translation ' +
+      'languages including inactive.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Translation languages retrieved successfully',
     type: LookupArrayResponseWrapperDto,
   })
   @Get('translation-languages')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getTranslationLanguages(): Promise<{
+  async getTranslationLanguages(
+    @CurrentUser() user: AuthUser,
+    @Query('includeAll') includeAll?: string,
+    @Res({ passthrough: true }) res?: Response
+  ): Promise<{
     success: boolean;
     data: LookupItem[];
   }> {
-    const data = await this.lookupsService.getTranslationLanguages();
+    const shouldIncludeAll =
+      includeAll === 'true' && user.permissions.includes('lookups.manage');
+    res?.setHeader(
+      'Cache-Control',
+      shouldIncludeAll
+        ? 'no-store'
+        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+    );
+    const data =
+      await this.lookupsService.getTranslationLanguages(shouldIncludeAll);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new translation language' })
+  @ApiResponse({
+    status: 201,
+    description: 'Translation language created successfully',
+    type: TranslationLanguageResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateTranslationLanguageDto })
+  @RequirePermission('lookups.manage')
+  @Post('translation-languages')
+  async createTranslationLanguage(
+    @Body(new ZodValidationPipe(createTranslationLanguageRequestSchema))
+    body: CreateTranslationLanguageDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.createTranslationLanguage(
+      body,
+      user.id
+    );
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a translation language' })
+  @ApiResponse({
+    status: 200,
+    description: 'Translation language updated successfully',
+    type: TranslationLanguageResponseWrapperDto,
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Translation Language ID',
+  })
+  @ApiBody({ type: UpdateTranslationLanguageDto })
+  @RequirePermission('lookups.manage')
+  @Patch('translation-languages/:id')
+  async updateTranslationLanguage(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateTranslationLanguageRequestSchema))
+    body: UpdateTranslationLanguageDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateTranslationLanguage(
+      Number(id),
+      body,
+      user.id
+    );
     return { success: true, data };
   }
 

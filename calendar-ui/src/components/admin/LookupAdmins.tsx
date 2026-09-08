@@ -15,6 +15,7 @@ import {
   fetchActivityStatuses,
   fetchAllCategories,
   fetchAllTags,
+  fetchAllTranslationLanguages,
   fetchCities,
   fetchCommsMaterials,
   fetchGovernmentRepresentatives,
@@ -67,6 +68,12 @@ type City = LookupItem & {
 type CommsMaterial = LookupItem & {
   name?: string;
   displayName?: string | null;
+};
+
+type TranslationLanguage = LookupItem & {
+  name?: string;
+  displayName?: string | null;
+  shortcode?: string | null;
 };
 
 type GovernmentRepresentative = LookupItem & {
@@ -182,6 +189,35 @@ const commsMaterialFields: FormField[] = [
     label: 'Display name',
     type: 'text',
     placeholder: 'Optional display name',
+  },
+  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
+];
+
+const translationLanguageFields: FormField[] = [
+  {
+    name: 'name',
+    label: 'Name',
+    type: 'text',
+    required: true,
+    placeholder: 'Enter language name',
+  },
+  {
+    name: 'displayName',
+    label: 'Display name',
+    type: 'text',
+    placeholder: 'Optional display name',
+  },
+  {
+    name: 'shortcode',
+    label: 'Shortcode',
+    type: 'text',
+    placeholder: 'e.g. FR, AR, SC',
   },
   { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
@@ -588,6 +624,33 @@ export function CommsMaterialsAdmin() {
       queryKey={lookupQueryKeys.commsMaterials()}
       queryFn={fetchCommsMaterials}
       formFields={commsMaterialFields}
+    />
+  );
+}
+
+export function TranslationLanguagesAdmin() {
+  return (
+    <GenericLookupAdmin<TranslationLanguage>
+      title="Translation languages"
+      description="Manage languages available for activity translations"
+      entityType="Translation Language"
+      apiEndpoint="/lookups/translation-languages"
+      queryKey={lookupQueryKeys.translationLanguagesAdmin()}
+      queryFn={fetchAllTranslationLanguages}
+      softDelete
+      additionalInvalidateKeys={[lookupQueryKeys.translationLanguages()]}
+      formFields={translationLanguageFields}
+      additionalColumns={[
+        {
+          accessorKey: 'shortcode',
+          header: 'Shortcode',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {row.original.shortcode || '—'}
+            </span>
+          ),
+        },
+      ]}
     />
   );
 }
