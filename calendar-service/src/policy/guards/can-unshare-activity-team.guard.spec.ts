@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS, SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
 
 import { CanUnshareActivityTeamGuard } from './can-unshare-activity-team.guard';
+
 describe('CanUnshareActivityTeamGuard', () => {
   const guard = new CanUnshareActivityTeamGuard();
 
