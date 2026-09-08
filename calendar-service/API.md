@@ -689,6 +689,8 @@ Behavior notes:
 
 **GET** `/lookups/translation-languages`
 
+Returns active languages by default. Admins with `lookups.manage` can pass `includeAll=true` to also retrieve inactive languages (used by the Settings admin); this path sets `Cache-Control: no-store`.
+
 **Cache:** 1 hour
 
 ```json
@@ -705,6 +707,26 @@ Behavior notes:
   ]
 }
 ```
+
+---
+
+### Create Translation Language
+
+**POST** `/lookups/translation-languages`
+
+**Permission:** `lookups.manage`
+
+**Body:** `name` (required), `displayName` (required), `shortcode`, `sortOrder` (required), `isActive` (default true), `description`.
+
+---
+
+### Update Translation Language
+
+**PATCH** `/lookups/translation-languages/:id`
+
+**Permission:** `lookups.manage`
+
+**Body:** Same as create (all optional for partial update). Deactivate a language (soft delete) by setting `isActive` to `false` rather than deleting it, since languages may already be referenced by activities.
 
 ---
 
