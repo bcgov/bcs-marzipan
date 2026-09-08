@@ -2020,8 +2020,7 @@ export class LookupsService {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName ?? undefined;
-    if (data.shortcode !== undefined)
-      updateData.shortcode = data.shortcode ?? undefined;
+    if (data.shortcode !== undefined) updateData.shortcode = data.shortcode;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.description !== undefined)
