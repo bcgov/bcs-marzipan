@@ -35,6 +35,7 @@ import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
+import { showErrorToast } from '@/lib/error-toast';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
 
@@ -184,8 +185,11 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
           );
           toast.success(`Removed ${teamLabel} from Shared With`);
         },
-        onError: () => {
-          toast.error(`Could not remove ${teamLabel} from Shared With`);
+        onError: (error) => {
+          showErrorToast(
+            error,
+            `Could not remove ${teamLabel} from Shared With`
+          );
         },
       }
     );

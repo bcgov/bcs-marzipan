@@ -8,6 +8,7 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnshareActivityTeam } from '@/hooks/useCalendar';
 import { getDefaultFormValues } from '@/lib/activity-form-defaults';
+import { showErrorToast } from '@/lib/error-toast';
 
 import { ActivityEditProvider } from '../activity-edit-context';
 import {
@@ -41,10 +42,15 @@ vi.mock('../activity-info-icon-settings-context', () => ({
   ActivityFieldInfoIcon: () => null,
 }));
 
+vi.mock('@/lib/error-toast', () => ({
+  showErrorToast: vi.fn(),
+}));
+
 const mockUnshareMutate = vi.fn();
 
 beforeEach(() => {
   mockUnshareMutate.mockReset();
+  vi.mocked(showErrorToast).mockReset();
   vi.mocked(useAuth).mockReturnValue({
     user: { teamIds: [] },
     hasPermission: () => false,
@@ -290,5 +296,24 @@ describe('ActivitySharingSection unshare own team', () => {
     options.onSuccess();
 
     expect(formRef?.getValues('sharedWithTeamIds')).toEqual([8]);
+  });
+
+  it('calls showErrorToast on mutation error', async () => {
+    const user = userEvent.setup();
+    renderUnshareHarness({});
+
+    await user.click(screen.getByRole('button', { name: /Remove AG Comms/i }));
+
+    const error = new Error('Unshare failed');
+    const [, options] = mockUnshareMutate.mock.calls[0] as [
+      unknown,
+      { onError: (err: unknown) => void },
+    ];
+    options.onError(error);
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      error,
+      'Could not remove AG Comms from Shared With'
+    );
   });
 });
