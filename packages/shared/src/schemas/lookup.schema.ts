@@ -732,7 +732,7 @@ export const createTranslationLanguageRequestSchema = z.object({
   displayName: z.string().min(1).max(255),
   shortcode: z.string().max(15).nullable().optional(),
   sortOrder: z.number().int(),
-  isActive: z.boolean().default(true).optional(),
+  isActive: z.boolean().optional(),
   description: z.string().nullable().optional(),
 });
 
