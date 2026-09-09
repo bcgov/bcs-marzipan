@@ -51,6 +51,11 @@ const GlobalHistory = lazyWithRetry(() =>
     default: m.GlobalHistory,
   }))
 );
+const NotificationsPage = lazyWithRetry(() =>
+  import('./pages/NotificationsPage').then((m) => ({
+    default: m.NotificationsPage,
+  }))
+);
 const NotFound = lazyWithRetry(() =>
   import('./pages/NotFound').then((m) => ({ default: m.NotFound }))
 );
@@ -189,6 +194,16 @@ function App() {
                       requiredPermission={PERMISSIONS.REPORTS.VIEW}
                     >
                       <ReportsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="notifications"
+                  element={
+                    <ProtectedRoute
+                      requiredPermission={PERMISSIONS.NOTIFICATIONS.VIEW}
+                    >
+                      <NotificationsPage />
                     </ProtectedRoute>
                   }
                 />

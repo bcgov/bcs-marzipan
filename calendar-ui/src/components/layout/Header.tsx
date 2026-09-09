@@ -8,6 +8,7 @@ import {
   User,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -34,11 +35,14 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useBannerSettingsWebSocket } from '@/hooks/useBannerSettingsWebSocket';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useNotificationsWebSocket } from '@/hooks/useNotificationsWebSocket';
 import { usePermission } from '@/hooks/usePermissions';
 import {
   RECURRING_LOCKOUT_BANNER_QUERY_KEY,
   useRecurringLockoutBanner,
 } from '@/hooks/useRecurringLockoutBanner';
+import { getNotificationTargetPath } from '@/lib/notification-links';
 
 import { SystemBanner } from './SystemBanner';
 
@@ -58,6 +62,18 @@ function getBannerDismissKey(banner: BannerSettings): string {
   return `system-banner-dismissed-${banner.id}-${banner.lastUpdatedDateTime}`;
 }
 
+function formatNotificationTime(value: string): string {
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).format(dt);
+}
+
 const Header = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -73,6 +89,20 @@ const Header = () => {
   });
 
   const recurringLockoutBanner = useRecurringLockoutBanner();
+  const {
+    notifications,
+    unreadCount,
+    markRead,
+    dismiss,
+    markAllRead,
+    dismissAll,
+    isMutating: isMutatingNotifications,
+    invalidate: invalidateNotifications,
+  } = useNotifications({
+    includeRead: true,
+    page: 1,
+    pageSize: 12,
+  });
   const canBypassRecurringLockout = usePermission(
     PERMISSIONS.ACTIVITIES.BYPASS_RECURRING_LOCKOUT
   );
@@ -122,6 +152,12 @@ const Header = () => {
       void queryClient.invalidateQueries({
         queryKey: RECURRING_LOCKOUT_BANNER_QUERY_KEY,
       });
+    },
+  });
+
+  useNotificationsWebSocket({
+    onNotificationsChanged: () => {
+      invalidateNotifications();
     },
   });
 
@@ -192,6 +228,20 @@ const Header = () => {
     }
   };
 
+  const openNotification = (recipientId: number, path: string | null) => {
+    if (!path) {
+      return;
+    }
+
+    void markRead(recipientId)
+      .catch(() => {
+        // Ignore failures and still allow navigation.
+      })
+      .finally(() => {
+        void navigate(path);
+      });
+  };
+
   return (
     <div
       ref={headerRef}
@@ -227,10 +277,142 @@ const Header = () => {
         <div className="ml-auto flex items-center gap-4">
           {isAuthenticated && user && (
             <>
-              <Button variant="ghost" size="icon" className="text-slate-600">
-                <Bell className="h-5 w-5" />
-                <span className="sr-only">Notifications</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative text-slate-600"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                    <span className="sr-only">Notifications</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[26rem] p-0">
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <p className="text-sm font-semibold">Notifications</p>
+                    <p className="text-muted-foreground text-xs">
+                      {unreadCount} unread
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <div className="max-h-80 overflow-y-auto p-2">
+                    {notifications.length === 0 && (
+                      <p className="text-muted-foreground px-2 py-6 text-center text-sm">
+                        No notifications
+                      </p>
+                    )}
+
+                    {notifications.map((item) => (
+                      <div
+                        key={item.recipientId}
+                        className="border-border mb-2 rounded-md border px-2 py-2"
+                      >
+                        {getNotificationTargetPath(item) ? (
+                          <button
+                            type="button"
+                            className="text-left"
+                            onClick={() =>
+                              openNotification(
+                                item.recipientId,
+                                getNotificationTargetPath(item)
+                              )
+                            }
+                          >
+                            <p className="text-sm leading-5">{item.summary}</p>
+                          </button>
+                        ) : (
+                          <p className="text-sm leading-5">{item.summary}</p>
+                        )}
+                        <p className="text-muted-foreground mt-1 text-xs">
+                          {formatNotificationTime(item.createdAt)}
+                        </p>
+                        <div className="mt-2 flex items-center gap-2">
+                          {item.status === 'unread' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={isMutatingNotifications}
+                              onClick={() => {
+                                void markRead(item.recipientId);
+                              }}
+                            >
+                              Mark read
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isMutatingNotifications}
+                            onClick={() => {
+                              void dismiss(item.recipientId);
+                            }}
+                          >
+                            Dismiss
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <DropdownMenuSeparator />
+                  <div className="flex items-center justify-between gap-2 px-2 py-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        void navigate('/notifications');
+                      }}
+                    >
+                      View all
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={
+                          isMutatingNotifications || notifications.length === 0
+                        }
+                        onClick={() => {
+                          void markAllRead().then((result) => {
+                            const count = result.updatedCount;
+                            toast.success(
+                              count === 1
+                                ? 'Marked 1 notification as read'
+                                : `Marked ${count} notifications as read`
+                            );
+                          });
+                        }}
+                      >
+                        Mark all read
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={
+                          isMutatingNotifications || notifications.length === 0
+                        }
+                        onClick={() => {
+                          void dismissAll().then((result) => {
+                            const count = result.updatedCount;
+                            toast.success(
+                              count === 1
+                                ? 'Dismissed 1 notification'
+                                : `Dismissed ${count} notifications`
+                            );
+                          });
+                        }}
+                      >
+                        Dismiss all
+                      </Button>
+                    </div>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -140,6 +140,9 @@ export const PERMISSIONS = {
     EDIT: 'teams.edit',
     DELETE: 'teams.delete',
   },
+  NOTIFICATIONS: {
+    VIEW: 'notifications.view',
+  },
   SETTINGS: {
     VIEW: 'settings.view',
     MANAGE: 'settings.manage',

@@ -38,6 +38,7 @@ import { ActivityHistoryService } from '../activities/services/activity-history.
 import { ActivityUtilsService } from '../activities/services/activity-utils.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TeamsService } from '../teams/teams.service';
 import { sortByStaffName } from './staff-name-sort';
 
@@ -63,7 +64,8 @@ export class UsersService {
     private readonly databaseService: DatabaseService,
     private readonly activityHistoryService: ActivityHistoryService,
     private readonly activityUtilsService: ActivityUtilsService,
-    private readonly teamsService: TeamsService
+    private readonly teamsService: TeamsService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   private async recordUserHistory(
@@ -584,6 +586,13 @@ export class UsersService {
       ],
       dto.notes ?? null
     );
+
+    await this.notificationsService.notifyUserAddedToTeam({
+      userId,
+      teamId: dto.teamId,
+      actorUserId: changedByUserId,
+      membershipRole: dto.role,
+    });
   }
 
   /**

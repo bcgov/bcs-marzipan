@@ -33,6 +33,7 @@ import { ApplicationSettingsService } from '../locks/application-settings.servic
 import { LocksService } from '../locks/locks.service';
 import { RecurringLockoutService } from '../locks/recurring-lockout.service';
 import { LookAheadPolicyService } from '../look-ahead/look-ahead-policy.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   getCategoryScopeById,
   getTagScopeById,
@@ -291,6 +292,10 @@ describe('ActivitiesService', () => {
     assertUserCanEditDuringLockout: vi.fn().mockResolvedValue(undefined),
   };
 
+  const mockNotificationsService = {
+    notifyActivityCreateOrStatusChange: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -350,6 +355,10 @@ describe('ActivitiesService', () => {
         {
           provide: RecurringLockoutService,
           useValue: mockRecurringLockoutService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
         },
       ],
     }).compile();
