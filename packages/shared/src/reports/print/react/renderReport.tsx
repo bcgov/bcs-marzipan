@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { ReportDataResponse } from '../../../api/report-data';
-import { PRINT_FOOTER_CHANGED_EXPLANATION_BODY } from './dateFormatters';
 import { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
+import { PRINT_FOOTER_CHANGED_EXPLANATION_BODY } from './dateFormatters';
 import { PrintCustomReportDocument } from './PrintCustomReportDocument';
 import { PrintReportDocument } from './PrintReportDocument';
 import { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
@@ -83,9 +83,7 @@ export function renderPrintReportFragmentHtml(
   options: RenderReportOptions
 ): string {
   if (reportTypeName === 'custom') {
-    return renderToStaticMarkup(
-      <PrintCustomReportDocument data={data} />
-    );
+    return renderToStaticMarkup(<PrintCustomReportDocument data={data} />);
   }
 
   const variant = REPORT_TYPE_TO_VARIANT[reportTypeName];

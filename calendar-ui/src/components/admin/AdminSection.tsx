@@ -60,9 +60,9 @@ export function AdminSection({
                 )}
               />
               <span>
-                <span className="block text-lg font-semibold text-slate-900 sm:text-xl">
+                <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
                   {title}
-                </span>
+                </h2>
                 {description && (
                   <span className="mt-1 block text-sm text-slate-600">
                     {description}
