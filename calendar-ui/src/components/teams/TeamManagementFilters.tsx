@@ -43,7 +43,6 @@ export function TeamManagementFilters({
       aria-label="Filter teams by keyword and sort"
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2" />
         <div className="flex items-center gap-2">
           <div className="relative max-w-md min-w-[240px] flex-1">
             <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
@@ -66,6 +65,8 @@ export function TeamManagementFilters({
               </button>
             )}
           </div>
+        </div>
+        <div className="flex items-center gap-2">
           <SortDropdown
             columns={TEAM_SORT_COLUMNS}
             sortKey={sortKey}
