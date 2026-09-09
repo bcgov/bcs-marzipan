@@ -394,8 +394,8 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={`Search ${title.toLowerCase()}`}
-              aria-label={`Search ${title.toLowerCase()}`}
+              placeholder={`Search ${title}`}
+              aria-label={`Search ${title}`}
               className="h-9 w-44 rounded-md border border-slate-300 bg-white pr-3 pl-8 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none"
             />
           </div>
