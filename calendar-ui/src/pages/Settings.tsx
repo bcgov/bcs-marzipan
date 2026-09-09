@@ -5,6 +5,7 @@ import {
   Eraser,
   FileText,
   FolderTree,
+  Globe,
   Info,
   ListChecks,
   Lock,
@@ -40,6 +41,7 @@ import {
   PermissionsVisibilityAdminSection,
   TagsAdmin,
   ThemesAdmin,
+  TranslationLanguagesAdmin,
   VenuePresetsAdmin,
 } from '@/components/admin/LookupAdmins';
 import { ReportCoverContactSettingsAdmin } from '@/components/admin/ReportCoverContactSettingsAdmin';
@@ -66,6 +68,7 @@ type Section =
   | 'ministries'
   | 'statuses'
   | 'themes'
+  | 'translation-languages'
   | 'venue-presets'
   | 'permissions-visibility';
 
@@ -156,6 +159,11 @@ export function Settings() {
     { id: 'tags' as Section, label: 'Tags', icon: Tag },
     { id: 'statuses' as Section, label: 'Activity statuses', icon: Activity },
     { id: 'themes' as Section, label: 'Themes', icon: Palette },
+    {
+      id: 'translation-languages' as Section,
+      label: 'Translation languages',
+      icon: Globe,
+    },
     { id: 'venue-presets' as Section, label: 'Venue Presets', icon: Bookmark },
     {
       id: 'permissions-visibility' as Section,
@@ -289,6 +297,10 @@ export function Settings() {
 
           <div id="section-themes">
             <ThemesAdmin />
+          </div>
+
+          <div id="section-translation-languages">
+            <TranslationLanguagesAdmin />
           </div>
 
           <div id="section-venue-presets">

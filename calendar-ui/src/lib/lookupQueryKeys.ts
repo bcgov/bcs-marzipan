@@ -48,6 +48,9 @@ export const lookupQueryKeys = {
   translationRequiredStatuses: () =>
     ['lookups', 'translation-required-statuses'] as const,
   translationLanguages: () => ['lookups', 'translation-languages'] as const,
+  /** Admin translation languages list (`includeAll=true`). Shares the `['lookups', 'translation-languages']` prefix. */
+  translationLanguagesAdmin: () =>
+    ['lookups', 'translation-languages', 'admin'] as const,
 
   users: (params?: LookupQueryParams) => ['lookups', 'users', params] as const,
   organizations: (params?: LookupQueryParams) =>

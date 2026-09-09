@@ -416,6 +416,9 @@ export const translationLanguageLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string(),
   shortcode: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  description: z.string().nullable().optional(),
 });
 
 // ============================================
@@ -722,6 +725,24 @@ export const updateCommsMaterialRequestSchema =
   createCommsMaterialRequestSchema.partial();
 
 /**
+ * Create Translation Language Request Schema
+ */
+export const createTranslationLanguageRequestSchema = z.object({
+  name: z.string().min(1).max(255),
+  displayName: z.string().min(1).max(255),
+  shortcode: z.string().max(15).nullable().optional(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean().optional(),
+  description: z.string().nullable().optional(),
+});
+
+/**
+ * Update Translation Language Request Schema
+ */
+export const updateTranslationLanguageRequestSchema =
+  createTranslationLanguageRequestSchema.partial();
+
+/**
  * Create Government Representative Request Schema
  */
 export const createGovernmentRepresentativeRequestSchema = z.object({
@@ -810,6 +831,12 @@ export type CreateCommsMaterialRequest = z.infer<
 >;
 export type UpdateCommsMaterialRequest = z.infer<
   typeof updateCommsMaterialRequestSchema
+>;
+export type CreateTranslationLanguageRequest = z.infer<
+  typeof createTranslationLanguageRequestSchema
+>;
+export type UpdateTranslationLanguageRequest = z.infer<
+  typeof updateTranslationLanguageRequestSchema
 >;
 export type CreateGovernmentRepresentativeRequest = z.infer<
   typeof createGovernmentRepresentativeRequestSchema

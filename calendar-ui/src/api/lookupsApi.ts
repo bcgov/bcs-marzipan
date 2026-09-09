@@ -31,6 +31,7 @@ import type {
   CreateMinistryRequest,
   CreateTagRequest,
   CreateThemeRequest,
+  CreateTranslationLanguageRequest,
   CreateVenuePresetRequest,
   UpdateActivityStatusRequest,
   UpdateCategoryRequest,
@@ -41,6 +42,7 @@ import type {
   UpdateMinistryRequest,
   UpdateTagRequest,
   UpdateThemeRequest,
+  UpdateTranslationLanguageRequest,
   UpdateVenuePresetRequest,
 } from '@corpcal/shared/schemas';
 
@@ -150,6 +152,16 @@ export async function fetchTranslationLanguages(): Promise<
     success: boolean;
     data: TranslationLanguageLookupItem[];
   }>('/lookups/translation-languages');
+  return res.data.data;
+}
+
+export async function fetchAllTranslationLanguages(): Promise<
+  TranslationLanguageLookupItem[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: TranslationLanguageLookupItem[];
+  }>('/lookups/translation-languages', { params: { includeAll: 'true' } });
   return res.data.data;
 }
 
@@ -503,6 +515,28 @@ export async function updateCommsMaterial(
 ): Promise<{ success: boolean; data: any }> {
   const res = await api.patch<{ success: boolean; data: any }>(
     `/lookups/comms-materials/${id}`,
+    data
+  );
+  return res.data;
+}
+
+// Translation Languages
+export async function createTranslationLanguage(
+  data: CreateTranslationLanguageRequest
+): Promise<{ success: boolean; data: any }> {
+  const res = await api.post<{ success: boolean; data: any }>(
+    '/lookups/translation-languages',
+    data
+  );
+  return res.data;
+}
+
+export async function updateTranslationLanguage(
+  id: number,
+  data: UpdateTranslationLanguageRequest
+): Promise<{ success: boolean; data: any }> {
+  const res = await api.patch<{ success: boolean; data: any }>(
+    `/lookups/translation-languages/${id}`,
     data
   );
   return res.data;
