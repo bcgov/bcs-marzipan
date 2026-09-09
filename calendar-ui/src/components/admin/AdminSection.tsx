@@ -59,10 +59,14 @@ export function AdminSection({
                   !isOpen && '-rotate-90'
                 )}
               />
-              <span>
-                <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
+              <span className="min-w-0">
+                <span
+                  role="heading"
+                  aria-level={2}
+                  className="block text-lg font-semibold text-slate-900 sm:text-xl"
+                >
                   {title}
-                </h2>
+                </span>
                 {description && (
                   <span className="mt-1 block text-sm text-slate-600">
                     {description}
