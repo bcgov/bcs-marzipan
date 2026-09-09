@@ -91,11 +91,9 @@ export function AdminSection({
           </div>
         </div>
       </div>
-      {isOpen && (
-        <div id={contentId} className="p-4 sm:p-6">
-          {children}
-        </div>
-      )}
+      <div id={contentId} hidden={!isOpen} className="p-4 sm:p-6">
+        {children}
+      </div>
     </div>
   );
 }
