@@ -2238,7 +2238,7 @@ describe('ActivitiesService', () => {
       });
     });
 
-    it('should throw ConflictException when activity status is delete_requested', async () => {
+    it('should throw ConflictException when activity status is delete_requested and user lacks delete.any', async () => {
       const existingActivity = createMockActivity({
         id: 1,
         activityStatusId: 5,
@@ -2258,17 +2258,113 @@ describe('ActivitiesService', () => {
       });
 
       const updateDto = createMockUpdateRequest({ title: 'Updated' });
+      const context = {
+        permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+        roleName: 'Editor',
+      };
 
-      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+      await expect(service.update(1, updateDto, 1, context)).rejects.toThrow(
         ConflictException
       );
-      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+      await expect(service.update(1, updateDto, 1, context)).rejects.toThrow(
         /cannot be updated when status is 'delete_requested'/
       );
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
     });
 
-    it('should throw ConflictException when activity status is deleted', async () => {
+    it('should update delete_requested activity when user has delete.any and preserve status', async () => {
+      const deleteRequestedStatusId = 5;
+      const existingActivity = createMockActivity({
+        id: 1,
+        activityStatusId: deleteRequestedStatusId,
+        title: 'Before',
+      });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        activityStatusId: deleteRequestedStatusId,
+        title: 'After',
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn((...args) => {
+            if (args.length === 0) {
+              return createMockQueryChain([]);
+            }
+            const fetchChain = {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
+            };
+            fetchChain.innerJoin.mockReturnValue(fetchChain);
+            fetchChain.leftJoin.mockReturnValue(fetchChain);
+            return fetchChain;
+          }),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      let withObjCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        withObjCallCount++;
+        if (withObjCallCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'delete_requested' }]),
+          };
+        }
+        if (withObjCallCount === 2) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: deleteRequestedStatusId }]),
+          };
+        }
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        fetchChain.innerJoin.mockReturnValue(fetchChain);
+        fetchChain.leftJoin.mockReturnValue(fetchChain);
+        return fetchChain;
+      });
+
+      const updateDto = createMockUpdateRequest({ title: 'After' });
+      const result = await service.update(1, updateDto, 1, {
+        permissions: [
+          PERMISSIONS.ACTIVITIES.EDIT,
+          PERMISSIONS.ACTIVITIES.DELETE_ANY,
+        ],
+        roleName: SYSTEM_ROLES.ADMIN,
+      });
+
+      expect(result.title).toBe('After');
+      expect(result.activityStatusId).toBe(deleteRequestedStatusId);
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException when activity status is deleted and user lacks delete.any', async () => {
       const existingActivity = createMockActivity({
         id: 1,
         activityStatusId: 4,
@@ -2286,11 +2382,15 @@ describe('ActivitiesService', () => {
       });
 
       const updateDto = createMockUpdateRequest({ title: 'Updated' });
+      const context = {
+        permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+        roleName: 'Editor',
+      };
 
-      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+      await expect(service.update(1, updateDto, 1, context)).rejects.toThrow(
         ConflictException
       );
-      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+      await expect(service.update(1, updateDto, 1, context)).rejects.toThrow(
         /cannot be updated when status is 'deleted'/
       );
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();

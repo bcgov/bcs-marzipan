@@ -2258,13 +2258,19 @@ export class ActivitiesService {
       }
     }
 
-    // Reject update when activity is delete_requested or deleted
     const currentStatusName = await this.getActivityStatusNameById(
       oldActivity.activityStatusId
     );
+    const canEditWhenBlocked =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ??
+      false;
+
+    // Reject update when activity is delete_requested or deleted unless caller
+    // may edit blocked activities (mirrors UI canEditWhenBlocked / clone guard).
     if (
-      currentStatusName === 'delete_requested' ||
-      currentStatusName === 'deleted'
+      (currentStatusName === 'delete_requested' ||
+        currentStatusName === 'deleted') &&
+      !canEditWhenBlocked
     ) {
       throw new ConflictException(
         `Activity cannot be updated when status is '${currentStatusName}'. Restore the activity first.`
@@ -2302,7 +2308,11 @@ export class ActivitiesService {
 
     let newStatusName: ActivityStatusName;
 
-    if (dto.markAsCompleted === true) {
+    if (currentStatusName === 'delete_requested' && canEditWhenBlocked) {
+      newStatusName = 'delete_requested';
+    } else if (currentStatusName === 'deleted' && canEditWhenBlocked) {
+      newStatusName = 'deleted';
+    } else if (dto.markAsCompleted === true) {
       if (!canComplete) {
         throw new ForbiddenException(
           'You do not have permission to complete activities.'
