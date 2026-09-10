@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
 import { PERMISSIONS as SHARED_PERMISSIONS } from '@corpcal/shared';
@@ -21,6 +20,10 @@ import {
   type TransferActivitiesDraft,
 } from '@/components/users/TransferActivitiesFields';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  formatMemberRemovedDescription,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 import { invalidateUserCaches } from '@/lib/userQueryKeys';
 
 interface RemoveTeamMemberTarget {
@@ -85,6 +88,9 @@ export function RemoveTeamMemberModal({
           hasActivities
         )));
 
+  const sourceName =
+    member?.userName || (sourceUserId ? `User ${sourceUserId}` : 'User');
+
   const removeMutation = useMutation({
     mutationFn: async () => {
       if (sourceUserId == null) {
@@ -100,16 +106,17 @@ export function RemoveTeamMemberModal({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['team', teamId] });
       invalidateUserCaches(queryClient, sourceUserId!);
-      toast.success('Team member removed');
+      showEntityToast('success', 'Member removed', {
+        description: formatMemberRemovedDescription(sourceName, teamName),
+      });
       onRemoved();
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to remove team member');
+      showEntityToast('error', 'Could not remove member', {
+        description: `${sourceName} — ${err.message || 'Failed to remove team member'}`,
+      });
     },
   });
-
-  const sourceName =
-    member?.userName || (sourceUserId ? `User ${sourceUserId}` : 'User');
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>

@@ -395,6 +395,7 @@ export function TeamDetails() {
       <AddTeamMemberModal
         open={showAddMember}
         teamId={team.id}
+        teamName={team.displayName ?? team.name}
         existingMemberIds={
           team.members ? team.members.map((m) => m.userId) : []
         }

@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
 import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
@@ -22,6 +21,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  resolveUserDisplayName,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 import { invalidateUserCaches, userQueryKeys } from '@/lib/userQueryKeys';
 
 const GOV_BC_EMAIL_DOMAIN = '@gov.bc.ca';
@@ -81,14 +84,21 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
   }, [detail]);
 
   const updateMutation = useMutation({
-    mutationFn: (body: UpdateUserBody) => updateUser(user.id, body),
-    onSuccess: () => {
+    mutationFn: ({ body }: { body: UpdateUserBody; displayLabel: string }) =>
+      updateUser(user.id, body),
+    onSuccess: (_data, variables) => {
       invalidateUserCaches(queryClient, user.id);
-      toast.success('User updated', { id: `user-updated-${user.id}` });
+      showEntityToast('success', 'Updated user', {
+        description: variables.displayLabel,
+        id: `user-updated-${user.id}`,
+      });
       onSaved();
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Update failed', {
+    onError: (err: Error, variables) => {
+      showEntityToast('error', 'Could not update user', {
+        description: variables?.displayLabel
+          ? `${variables.displayLabel} — ${err.message || 'Update failed'}`
+          : err.message || 'Update failed',
         id: `user-updated-${user.id}`,
       });
     },
@@ -130,11 +140,19 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
       body.jobTitle = (jobTitle ?? '').trim() || null;
     }
 
-    updateMutation.mutate(body);
+    const combinedName = [firstName, lastName]
+      .map((part) => (part ?? '').trim())
+      .filter(Boolean)
+      .join(' ');
+    const displayLabel =
+      canEditProfile && combinedName
+        ? combinedName
+        : resolveUserDisplayName(user);
+
+    updateMutation.mutate({ body, displayLabel });
   };
 
-  const displayName =
-    user.adDisplayName || user.adUsername || `User ${user.id}`;
+  const displayName = resolveUserDisplayName(user);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>

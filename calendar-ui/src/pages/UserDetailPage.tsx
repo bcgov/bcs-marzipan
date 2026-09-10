@@ -68,6 +68,12 @@ import { UserEditModal } from '@/components/users/UserEditModal';
 import { UserTransferTabContent } from '@/components/users/UserTransferTabContent';
 import { useAuth } from '@/hooks/useAuth';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import {
+  formatRemovedFromTeamDescription,
+  formatUserUpdatedDescription,
+  resolveUserDisplayName,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 import { invalidateUserCaches, userQueryKeys } from '@/lib/userQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
@@ -328,13 +334,20 @@ export default function UserDetailPage() {
     ));
   }, [visibleRows]);
 
-  const syncTeamMembership = async (): Promise<boolean> => {
-    if (!userDetail) return true;
+  const resolveTeamLabel = (teamId: number): string =>
+    teamOptions.find((option) => parseInt(option.value, 10) === teamId)
+      ?.label ?? `Team ${teamId}`;
+
+  const syncTeamMembership = async (): Promise<{
+    ok: boolean;
+    addedTeamLabels: string[];
+  }> => {
+    if (!userDetail) return { ok: true, addedTeamLabels: [] };
 
     const serverTeamIds = new Set(userDetail.teams.map((t) => t.teamId));
     const toAdd = localTeamIds.filter((id) => !serverTeamIds.has(id));
 
-    if (toAdd.length === 0) return true;
+    if (toAdd.length === 0) return { ok: true, addedTeamLabels: [] };
 
     const results = await Promise.allSettled(
       toAdd.map((teamId) => addUserToTeam(userId, { teamId, role: 'member' }))
@@ -342,17 +355,20 @@ export default function UserDetailPage() {
 
     const failed = results.filter((r) => r.status === 'rejected').length;
     invalidateUserCaches(queryClient, userId);
+    const userName = resolveUserDisplayName(userDetail);
+    const teamLabels = toAdd.map(resolveTeamLabel);
 
     if (failed > 0) {
-      toast.error(
-        failed === results.length
-          ? 'Failed to update team membership'
-          : `${failed} team change${failed > 1 ? 's' : ''} failed`
-      );
-      return false;
+      showEntityToast('error', 'Could not update team membership', {
+        description:
+          failed === results.length
+            ? `${userName} — failed to add to ${teamLabels.join(', ')}`
+            : `${userName} — ${failed} of ${results.length} team change${failed > 1 ? 's' : ''} failed`,
+      });
+      return { ok: false, addedTeamLabels: [] };
     }
 
-    return true;
+    return { ok: true, addedTeamLabels: teamLabels };
   };
 
   const handleTeamSelectionChange = async (selected: OptionItem[]) => {
@@ -393,7 +409,12 @@ export default function UserDetailPage() {
       if (activities.length === 0) {
         await removeUserFromTeam(userId, teamId);
         invalidateUserCaches(queryClient, userId);
-        toast.success('Removed from team');
+        showEntityToast('success', 'Removed from team', {
+          description: formatRemovedFromTeamDescription(
+            resolveUserDisplayName(userDetail),
+            teamName
+          ),
+        });
       } else {
         setTeamRemovalModal({
           teamId,
@@ -412,24 +433,32 @@ export default function UserDetailPage() {
   };
 
   const handleSave = async () => {
+    if (!userDetail) return;
+
     const body: { roleId?: number; notes?: string | null } = {};
     if (selectedRoleId != null) body.roleId = selectedRoleId;
     body.notes = localNotes || null;
 
-    const serverDirectLoginEnabled = Boolean(userDetail?.directLoginEnabled);
+    const serverDirectLoginEnabled = Boolean(userDetail.directLoginEnabled);
 
     try {
       await mutation.mutateAsync(body);
 
       // Persist direct login setting if it changed from the server value
-      if (userDetail && serverDirectLoginEnabled !== directLoginEnabled) {
+      if (serverDirectLoginEnabled !== directLoginEnabled) {
         await settingsMutation.mutateAsync({ directLoginEnabled });
       }
 
-      const teamsSaved = await syncTeamMembership();
-      if (!teamsSaved) return;
+      const teamSync = await syncTeamMembership();
+      if (!teamSync.ok) return;
 
-      toast.success('User updated');
+      showEntityToast('success', 'Updated user', {
+        description: formatUserUpdatedDescription(
+          resolveUserDisplayName(userDetail),
+          teamSync.addedTeamLabels
+        ),
+        id: `user-updated-${userId}`,
+      });
       void navigate('/users');
     } catch {
       // Errors are surfaced via mutation onError handlers

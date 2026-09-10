@@ -20,9 +20,9 @@ import { EditReportModal } from '@/components/reports/EditReportModal';
 import { LookAheadDayRangeTabs } from '@/components/reports/LookAheadDayRangeTabs';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
 import { ReportAppliedDateRange } from '@/components/reports/ReportAppliedDateRange';
+import { ReportDayRangeTabs } from '@/components/reports/ReportDayRangeTabs';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
 import { ReportLargeRangeWarning } from '@/components/reports/ReportLargeRangeWarning';
-import { ReportMonthRangeTabs } from '@/components/reports/ReportMonthRangeTabs';
 import { ReportTableSummaryBar } from '@/components/reports/ReportTableSummaryBar';
 import { StatusMessage } from '@/components/shared';
 import { REPORT_PRINT_PREVIEW_SCROLL_HEIGHT } from '@/components/table/tableConstants';
@@ -137,7 +137,7 @@ function reportUsesDayRangeTabs(reportName: string): boolean {
   return reportName === 'look-ahead' || reportName === 'exec';
 }
 
-function reportUsesMonthRangeTabs(reportName: string): boolean {
+function reportUsesStandardDayRangeTabs(reportName: string): boolean {
   return (
     reportName === 'thirty-sixty-ninety' ||
     reportName === 'planning' ||
@@ -672,8 +672,8 @@ export function ReportsPage() {
                     preferences={preferences}
                     setPreferences={setReportPreferences}
                   />
-                ) : reportUsesMonthRangeTabs(activeReport) ? (
-                  <ReportMonthRangeTabs
+                ) : reportUsesStandardDayRangeTabs(activeReport) ? (
+                  <ReportDayRangeTabs
                     preferences={preferences}
                     setPreferences={setReportPreferences}
                   />

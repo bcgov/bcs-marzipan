@@ -101,6 +101,7 @@ import {
 } from '../lib/recurring-edit-lockout-error';
 import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
 import { revertActivityEditSession } from '../lib/revert-activity-edit-session';
+import { TOAST_DURATION_MS } from '../lib/toast-durations';
 
 const logger = createLogger('ActivityPage');
 
@@ -420,12 +421,12 @@ export function ActivityPage({
         if (payload.role === 'holder') {
           toast.info(
             `Edit access was transferred to ${payload.counterpartUsername}.`,
-            { duration: 5000 }
+            { duration: TOAST_DURATION_MS.info }
           );
         } else {
           toast.success('The activity is ready to edit.', {
             id: `lock-handoff-success-${payload.activityId}`,
-            duration: 5000,
+            duration: TOAST_DURATION_MS.success,
           });
           void refreshLockFromServer();
         }
@@ -434,7 +435,7 @@ export function ActivityPage({
       if (payload.outcome === 'aborted_no_holder_lock') {
         toast.warning(
           'Lock transfer could not complete. The activity is no longer held by the original editor.',
-          { duration: 7000 }
+          { duration: TOAST_DURATION_MS.error }
         );
       }
     },
@@ -779,7 +780,7 @@ export function ActivityPage({
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
-      duration: 7000,
+      duration: TOAST_DURATION_MS.error,
     });
   };
 

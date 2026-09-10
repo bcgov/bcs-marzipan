@@ -27,6 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { TOAST_DURATION_MS } from '@/lib/toast-durations';
 
 type ActivityInfoIconSettingsContextValue = {
   getText: (fieldKey: ActivityInfoIconFieldKey) => string | undefined;
@@ -63,7 +64,7 @@ export function ActivityInfoIconSettingsProvider({
         id: 'activity-info-icons-cached-fallback',
         description:
           'Latest settings could not be fetched right now. Using last saved local copy.',
-        duration: 5000,
+        duration: TOAST_DURATION_MS.info,
       });
       return;
     }
@@ -71,7 +72,7 @@ export function ActivityInfoIconSettingsProvider({
       id: 'activity-info-icons-default-fallback',
       description:
         'Latest settings could not be fetched right now. Some configured icons may be temporarily unavailable.',
-      duration: 5000,
+      duration: TOAST_DURATION_MS.info,
     });
   }, [cachedInitialData, error]);
 

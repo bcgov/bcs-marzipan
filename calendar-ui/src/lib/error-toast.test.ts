@@ -7,6 +7,7 @@ import {
   showInfoToast,
   showSuccessToast,
 } from './error-toast';
+import { TOAST_DURATION_MS } from './toast-durations';
 
 const mockToast = vi.hoisted(() => ({
   error: vi.fn(),
@@ -49,7 +50,7 @@ describe('showErrorToast', () => {
     expect(mockToast.error).toHaveBeenCalledTimes(1);
     expect(mockToast.error).toHaveBeenCalledWith('Not Found', {
       description: 'Not found',
-      duration: 7000,
+      duration: TOAST_DURATION_MS.error,
     });
     expect(mockToast.warning).not.toHaveBeenCalled();
   });
@@ -60,7 +61,7 @@ describe('showErrorToast', () => {
     expect(mockToast.warning).toHaveBeenCalledTimes(1);
     expect(mockToast.warning).toHaveBeenCalledWith('Conflict', {
       description: 'Conflict',
-      duration: 7000,
+      duration: TOAST_DURATION_MS.error,
     });
     expect(mockToast.error).not.toHaveBeenCalled();
   });
@@ -71,7 +72,7 @@ describe('showErrorToast', () => {
     expect(mockToast.error).toHaveBeenCalledTimes(1);
     expect(mockToast.error).toHaveBeenCalledWith('Server Error', {
       description: 'Server error. Please try again later.',
-      duration: 7000,
+      duration: TOAST_DURATION_MS.error,
     });
   });
 
@@ -82,7 +83,7 @@ describe('showErrorToast', () => {
     expect(mockToast.warning).toHaveBeenCalledWith('Connection Error', {
       description:
         'Unable to connect to server. Please check your connection and try again.',
-      duration: 7000,
+      duration: TOAST_DURATION_MS.error,
     });
   });
 
@@ -92,7 +93,7 @@ describe('showErrorToast', () => {
     expect(mockToast.error).toHaveBeenCalledTimes(1);
     expect(mockToast.error).toHaveBeenCalledWith('Error', {
       description: 'Something broke',
-      duration: 7000,
+      duration: TOAST_DURATION_MS.error,
     });
   });
 
@@ -104,7 +105,7 @@ describe('showErrorToast', () => {
 
     expect(mockToast.error).toHaveBeenCalledWith('Not Found', {
       description: 'Custom',
-      duration: 7000,
+      duration: TOAST_DURATION_MS.error,
     });
   });
 
@@ -114,7 +115,7 @@ describe('showErrorToast', () => {
     expect(mockToast.warning).toHaveBeenCalledTimes(1);
     expect(mockToast.warning).toHaveBeenCalledWith('Too Many Requests', {
       description: 'Too many requests. Please wait a moment and try again.',
-      duration: 7000,
+      duration: TOAST_DURATION_MS.error,
     });
     expect(mockToast.error).not.toHaveBeenCalled();
   });
@@ -125,7 +126,7 @@ describe('showErrorToast', () => {
     expect(mockToast.error).toHaveBeenCalledTimes(1);
     expect(mockToast.error).toHaveBeenCalledWith('Error', {
       description: 'raw string',
-      duration: 7000,
+      duration: TOAST_DURATION_MS.error,
     });
   });
 });
@@ -141,7 +142,7 @@ describe('showSuccessToast', () => {
     expect(mockToast.success).toHaveBeenCalledTimes(1);
     expect(mockToast.success).toHaveBeenCalledWith('Success', {
       description: 'Saved successfully',
-      duration: 5000,
+      duration: TOAST_DURATION_MS.success,
     });
   });
 
@@ -150,7 +151,7 @@ describe('showSuccessToast', () => {
 
     expect(mockToast.success).toHaveBeenCalledWith('All good', {
       description: 'Done',
-      duration: 5000,
+      duration: TOAST_DURATION_MS.success,
     });
   });
 });
@@ -160,13 +161,13 @@ describe('showInfoToast', () => {
     vi.clearAllMocks();
   });
 
-  it('calls toast.info with title and description and duration 5000', () => {
+  it('calls toast.info with title and description and default duration', () => {
     showInfoToast('Processing...');
 
     expect(mockToast.info).toHaveBeenCalledTimes(1);
     expect(mockToast.info).toHaveBeenCalledWith('Info', {
       description: 'Processing...',
-      duration: 5000,
+      duration: TOAST_DURATION_MS.info,
     });
   });
 
@@ -175,7 +176,7 @@ describe('showInfoToast', () => {
 
     expect(mockToast.info).toHaveBeenCalledWith('Notice', {
       description: 'Details here',
-      duration: 5000,
+      duration: TOAST_DURATION_MS.info,
     });
   });
 });

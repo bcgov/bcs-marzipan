@@ -50,7 +50,7 @@ export interface ReportFiltersBarProps {
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
   onSearchSubmitted?: () => void;
   onSearchCleared?: () => void;
-  /** Optional controls on the row below the search field (e.g. 30/60/90 month tabs). */
+  /** Optional controls on the row below the search field (e.g. 30/60/90 day tabs). */
   printPreviewRowLeading?: ReactNode;
   /** Optional trailing controls on the same row (e.g. Customize, print preview). */
   printPreviewRowTrailing?: ReactNode;

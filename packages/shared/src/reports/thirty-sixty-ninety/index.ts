@@ -2,11 +2,15 @@ export {
   addCalendarMonths,
   buildCalendarMonthSections,
   defaultThirtySixtyNinetyDateRange,
+  defaultThirtySixtyNinetyDayDateRange,
   firstDayOfCalendarMonth,
   lastDayOfCalendarMonth,
+  THIRTY_SIXTY_NINETY_DAY_COUNTS,
   thirtySixtyNinetyDateRangeFromPacificDate,
+  thirtySixtyNinetyDayDateRangeFromPacificDate,
   type CalendarMonthDateRange,
   type CalendarMonthSection,
+  type ThirtySixtyNinetyDayCount,
 } from './buildCalendarMonthSections';
 export { groupActivitiesByMonthSection } from './groupActivitiesByMonthSection';
 export {

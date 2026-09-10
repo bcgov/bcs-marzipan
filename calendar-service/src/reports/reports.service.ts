@@ -580,7 +580,7 @@ export class ReportsService {
       const report: ReportResponse = {
         id: -1,
         name: 'custom',
-        displayName: 'Custom',
+        displayName: 'Excel',
         sortOrder: 0,
         isActive: true,
         visibility: 'team' satisfies Visibility,

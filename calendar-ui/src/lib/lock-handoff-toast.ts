@@ -4,6 +4,7 @@ import {
   formatCountdownRemaining,
   startCountdownLoadingToast,
 } from './countdown-loading-toast';
+import { TOAST_DURATION_MS } from './toast-durations';
 
 export type LockHandoffPendingPayload = {
   activityId: number;
@@ -39,10 +40,6 @@ export type LockHandoffToastHandle = {
    */
   dismissLoadingOnly: () => void;
 };
-
-const SUCCESS_TOAST_DURATION_MS = 5000;
-/** Shown to holder and requester when a pending force handoff is cancelled (must not reuse loading `toastId`). */
-const HANDOFF_CANCELLED_TOAST_DURATION_MS = 5000;
 
 /**
  * Toast with live countdown for admin lock handoff grace period.
@@ -96,7 +93,7 @@ export function startLockHandoffCountdownToast(
     stopCountdown();
     toast.success('Success! The activity is ready to edit.', {
       id: toastId,
-      duration: SUCCESS_TOAST_DURATION_MS,
+      duration: TOAST_DURATION_MS.success,
     });
   };
 
@@ -110,7 +107,7 @@ export function startLockHandoffCountdownToast(
         : 'Unlock request cancelled.';
     toast.info(message, {
       id: cancelledInfoToastId,
-      duration: HANDOFF_CANCELLED_TOAST_DURATION_MS,
+      duration: TOAST_DURATION_MS.info,
     });
   };
 

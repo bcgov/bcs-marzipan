@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useForm, type Resolver } from 'react-hook-form';
-import { toast } from 'sonner';
 import { z } from 'zod';
 import { useEffect, useRef, useState } from 'react';
 
@@ -53,6 +52,10 @@ import {
 } from '@/components/ui/select';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import {
+  formatUserCreatedDescription,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 import { userQueryKeys } from '@/lib/userQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
@@ -102,6 +105,12 @@ interface UserCreateModalProps {
 
 type CreateUserRequest = CreateUserBody;
 
+type CreateUserMutationInput = {
+  body: CreateUserRequest;
+  displayLabel: string;
+  teamLabels: string[];
+};
+
 /**
  * Modal for the "Add user" flow. Creates a local user (email + role required)
  * so they can sign in with Azure AD; optional display name and initial teams.
@@ -140,21 +149,31 @@ export function UserCreateModal({
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: CreateUserRequest) => createUser(body),
-    onSuccess: () => {
+    mutationFn: ({ body }: CreateUserMutationInput) => createUser(body),
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: userQueryKeys.list() });
-      toast.success('User created');
+      showEntityToast('success', 'Created user', {
+        description: formatUserCreatedDescription(
+          variables.displayLabel,
+          variables.teamLabels
+        ),
+      });
       form.reset(defaultValues);
       onSaved?.();
       onClose();
     },
-    onError: (err: Error & { response?: { status?: number } }) => {
+    onError: (err: Error & { response?: { status?: number } }, variables) => {
       const status = err.response?.status;
       const message =
         status === 409
           ? 'A user with this email already exists.'
           : err.message || 'Create failed';
-      toast.error(message);
+      showEntityToast('error', 'Could not create user', {
+        description:
+          variables?.displayLabel != null
+            ? `${variables.displayLabel} — ${message}`
+            : message,
+      });
     },
   });
 
@@ -203,7 +222,18 @@ export function UserCreateModal({
           })),
         }),
     };
-    createMutation.mutate(body);
+    const displayLabel =
+      data.displayName?.trim() ||
+      `${data.idirUsername.trim().toUpperCase()} (${data.email.trim().toLowerCase()})`;
+    const teamLabels = data.teamIds
+      .map(
+        (teamId) =>
+          teamOptions.find((option) => parseInt(option.value, 10) === teamId)
+            ?.label
+      )
+      .filter((label): label is string => Boolean(label));
+
+    createMutation.mutate({ body, displayLabel, teamLabels });
   };
 
   return (
