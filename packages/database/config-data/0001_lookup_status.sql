@@ -95,8 +95,7 @@ WHERE NOT EXISTS (SELECT 1 FROM time_statuses WHERE time_statuses.name = v.name)
 
 INSERT INTO venue_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('TBD', 'Venue TBD', 1, true, 'Venue to be determined', 999, 999),
-  ('TBC', 'Venue TBC', 2, true, 'Venue to be confirmed', 999, 999)
+  ('TBD', 'Venue TBD', 1, true, 'Venue to be determined', 999, 999)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM venue_statuses WHERE venue_statuses.name = v.name);
 
