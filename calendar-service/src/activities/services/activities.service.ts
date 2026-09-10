@@ -1843,7 +1843,7 @@ export class ActivitiesService {
         commsContacts.map((c) => c.userId),
         ctx.ctx.user.id,
         ctx.ctx.user.teamIds,
-        ctx.dataScope?.bypass ?? false
+        this.isEditBypassRole(ctx.ctx.user.roleName)
       );
 
     return {
@@ -1913,6 +1913,17 @@ export class ActivitiesService {
   }
 
   /**
+   * Mirrors CanEditActivityGuard's bypass check (Admin/System Admin only).
+   * Not the same as data-scope view bypass, which also covers Advanced
+   * Viewer/Advanced Editor and would falsely report canEdit for them.
+   */
+  private isEditBypassRole(roleName: string | undefined): boolean {
+    return (
+      roleName === SYSTEM_ROLES.ADMIN || roleName === SYSTEM_ROLES.SYSTEM_ADMIN
+    );
+  }
+
+  /**
    * Find one activity by ID. When dataScope is provided and bypass is false, returns 404 if the activity is not visible to the user's teams.
    */
   async findOne(
@@ -1969,7 +1980,7 @@ export class ActivitiesService {
         commsContacts.map((c) => c.userId),
         ctx.user.id,
         ctx.user.teamIds,
-        dataScope?.bypass ?? false
+        this.isEditBypassRole(ctx.user.roleName)
       );
 
     const response = this.mapFetchedActivityToResponseDto(activity, related, {
@@ -2077,17 +2088,24 @@ export class ActivitiesService {
             )
           );
           break;
-        case 'pitchStatus':
+        case 'pitchStatus': {
+          const { pitchRequiredStatusId } = dto;
+          if (pitchRequiredStatusId === undefined) {
+            throw new BadRequestException(
+              'pitchRequiredStatusId is required for the pitchStatus operation.'
+            );
+          }
           results.push(
             await this.update(
               activityId,
-              { pitchRequiredStatusId: dto.pitchRequiredStatusId! },
+              { pitchRequiredStatusId },
               userId,
               context,
               { bypassEditLock: true }
             )
           );
           break;
+        }
         case 'issue':
           results.push(
             await this.update(activityId, { isIssue: true }, userId, context, {
@@ -2095,34 +2113,57 @@ export class ActivitiesService {
             })
           );
           break;
-        case 'tags':
-          results.push(await this.updateTags(activityId, dto.tagIds!, userId));
+        case 'tags': {
+          const { tagIds } = dto;
+          if (tagIds === undefined) {
+            throw new BadRequestException(
+              'tagIds is required for the tags operation.'
+            );
+          }
+          results.push(await this.updateTags(activityId, tagIds, userId));
           break;
-        case 'sharedWith':
+        }
+        case 'sharedWith': {
+          const { teamIds } = dto;
+          if (teamIds === undefined) {
+            throw new BadRequestException(
+              'teamIds is required for the sharedWith operation.'
+            );
+          }
           results.push(
-            await this.updateSharedWith(activityId, dto.teamIds!, userId)
+            await this.updateSharedWith(activityId, teamIds, userId)
           );
           break;
-        case 'flag':
+        }
+        case 'flag': {
+          const { flagTeamId, assigneeIds } = dto;
+          if (flagTeamId === undefined || assigneeIds === undefined) {
+            throw new BadRequestException(
+              'flagTeamId and assigneeIds are required for the flag operation.'
+            );
+          }
           await this.flagsService.syncFlags(
             activityId,
-            dto.flagTeamId!,
-            dto.assigneeIds!,
+            flagTeamId,
+            assigneeIds,
             userId
           );
           this.activitiesGateway.broadcastActivityUpdated(activityId);
           results.push(await this.findOne(activityId));
           break;
-        case 'delete':
+        }
+        case 'delete': {
+          const { deleteReason } = dto;
+          if (deleteReason === undefined) {
+            throw new BadRequestException(
+              'deleteReason is required for the delete operation.'
+            );
+          }
           results.push(
-            await this.softDelete(
-              activityId,
-              dto.deleteReason!,
-              userId,
-              context
-            )
+            await this.softDelete(activityId, deleteReason, userId, context)
           );
           break;
+        }
       }
     }
     return results;
@@ -4018,5 +4059,87 @@ export class ActivitiesService {
 
     // Return updated activity
     return this.findOne(id);
+  }
+
+  /**
+   * Remove a single team from an activity's Shared With list.
+   * Used by the activities.unshare action, which lets a team member remove their own
+   * team's share without granting broader edit access to the activity.
+   */
+  async unshareTeam(
+    id: number,
+    teamId: number,
+    userId: number,
+    ctx?: RequestContextType
+  ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
+    // Plain existence check (not scoped via findOne's data-scope visibility rules):
+    // the caller may only be a shared-with team member, not visible under default scoping.
+    const [existingActivity] = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+    if (!existingActivity) {
+      throw new NotFoundException(`Activity #${id} not found`);
+    }
+
+    const existingShared = await this.databaseService.db
+      .select({ teamId: activitySharedWithTeams.teamId })
+      .from(activitySharedWithTeams)
+      .where(
+        and(
+          eq(activitySharedWithTeams.activityId, id),
+          eq(activitySharedWithTeams.isActive, true)
+        )
+      );
+    const existingTeamIds = existingShared.map((s) => s.teamId);
+
+    if (!existingTeamIds.includes(teamId)) {
+      throw new BadRequestException(
+        'This activity is not currently shared with that team.'
+      );
+    }
+
+    const newTeamIds = existingTeamIds.filter((t) => t !== teamId);
+    const now = new Date();
+
+    await this.databaseService.db.transaction(async (tx) => {
+      await this.junctionService.updateJunctionRecords(
+        tx,
+        activitySharedWithTeams,
+        id,
+        newTeamIds,
+        (teamId: number) => ({ teamId }),
+        'teamId',
+        userId,
+        now
+      );
+    });
+
+    await this.activityHistoryService.recordChange(
+      id,
+      userId,
+      'updated',
+      [
+        {
+          field: 'sharedWith',
+          oldValue: existingTeamIds,
+          newValue: newTeamIds,
+        },
+      ],
+      'Activity unshared from team'
+    );
+
+    // Keep the caller's user context (for canEdit/reviewer fields) but force
+    // bypass: the caller may only be a shared-with team member, which
+    // findOne's default visibility scoping would otherwise hide.
+    this.activitiesGateway.broadcastActivityUpdated(id);
+
+    return this.findOne(id, {
+      ...ctx,
+      dataScope: { bypass: true, teamIds: ctx?.dataScope?.teamIds ?? [] },
+    });
   }
 }

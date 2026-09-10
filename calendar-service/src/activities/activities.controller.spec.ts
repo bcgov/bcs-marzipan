@@ -13,6 +13,7 @@ import type { RequestContext as RequestContextType } from '../policy/dto/user-co
 import { CanCloneActivityGuard } from '../policy/guards/can-clone-activity.guard';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
 import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
+import { CanUnshareActivityTeamGuard } from '../policy/guards/can-unshare-activity-team.guard';
 import { PolicyService } from '../policy/policy.service';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './services/activities.service';
@@ -71,6 +72,7 @@ describe('ActivitiesController', () => {
     updateThemes: vi.fn(),
     updateTags: vi.fn(),
     updateSharedWith: vi.fn(),
+    unshareTeam: vi.fn(),
     fetchCategories: vi.fn(),
   };
 
@@ -93,6 +95,7 @@ describe('ActivitiesController', () => {
         CanCloneActivityGuard,
         CanDeleteActivityGuard,
         CanEditActivityGuard,
+        CanUnshareActivityTeamGuard,
       ],
     }).compile();
 
@@ -295,6 +298,30 @@ describe('ActivitiesController', () => {
       ).rejects.toThrow();
       expect(mockActivitiesService.findOne).toHaveBeenCalledWith(
         999,
+        mockRequestContext
+      );
+    });
+  });
+
+  describe('unshareTeam', () => {
+    it('should unshare the given team from the activity', async () => {
+      mockActivitiesService.unshareTeam.mockResolvedValue(mockActivityResponse);
+
+      const result = await controller.unshareTeam(
+        1,
+        7,
+        mockUser,
+        mockRequestContext
+      );
+
+      expect(result).toEqual({
+        success: true,
+        data: mockActivityResponse,
+      });
+      expect(mockActivitiesService.unshareTeam).toHaveBeenCalledWith(
+        1,
+        7,
+        mockUser.id,
         mockRequestContext
       );
     });

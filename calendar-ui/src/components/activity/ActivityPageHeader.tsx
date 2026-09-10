@@ -100,7 +100,11 @@ export function ActivityPageHeader({
   const flaggedLabel = sortedFlags.map((f) => f.assigneeName).join(', ');
 
   const iconButtonClassName = 'shrink-0';
-  const multiFlagButtonClassName = 'mr-3 h-10 shrink-0 px-2 pr-4';
+  // Stacked badges show a per-avatar ring on hover; suppress the ghost button's
+  // own hover background so it doesn't show as a grey block around the last
+  // (unobscured) avatar.
+  const multiFlagButtonClassName =
+    'group mr-3 h-10 shrink-0 px-2 pr-4 hover:bg-transparent';
   const headerActionIconClassName = 'text-muted-foreground size-4';
   const timestampClassName = 'text-muted-foreground text-xs sm:text-sm';
   const showActionButtons =

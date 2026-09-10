@@ -361,8 +361,8 @@ function ReleaseCell({
 }) {
   const { release } = row;
   const translationsClass = isLookAheadRollupVariant(variant)
-    ? 'corpcal-print-meta-look-ahead-green'
-    : 'corpcal-print-meta';
+    ? 'corpcal-print-release-translation'
+    : 'corpcal-print-release-value';
   if (!release.newsReleaseOrigin && !release.translationsLine) {
     return <span className="corpcal-print-meta-faint">—</span>;
   }
@@ -370,7 +370,7 @@ function ReleaseCell({
   return (
     <div className="corpcal-print-stack">
       {release.newsReleaseOrigin ? (
-        <div className="corpcal-print-meta-strong">
+        <div className="corpcal-print-release-value">
           {release.newsReleaseOrigin}
         </div>
       ) : null}

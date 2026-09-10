@@ -429,6 +429,7 @@ export default function UserDetailPage() {
       const teamsSaved = await syncTeamMembership();
       if (!teamsSaved) return;
 
+      toast.success('User updated');
       void navigate('/users');
     } catch {
       // Errors are surfaced via mutation onError handlers

@@ -420,7 +420,7 @@ export function ActivityPage({
         if (payload.role === 'holder') {
           toast.info(
             `Edit access was transferred to ${payload.counterpartUsername}.`,
-            { duration: 6000 }
+            { duration: 5000 }
           );
         } else {
           toast.success('The activity is ready to edit.', {
@@ -434,7 +434,7 @@ export function ActivityPage({
       if (payload.outcome === 'aborted_no_holder_lock') {
         toast.warning(
           'Lock transfer could not complete. The activity is no longer held by the original editor.',
-          { duration: 8000 }
+          { duration: 7000 }
         );
       }
     },
@@ -533,8 +533,15 @@ export function ActivityPage({
     if (acquireFailureReason === 'time-lockout') {
       return RECURRING_EDIT_LOCKOUT_UI_MESSAGE;
     }
-    return EDIT_LOCK_CONFLICT_TOAST;
-  }, [acquireFailureReason]);
+    if (acquireFailureReason === 'other') {
+      // Distinct from a real lock conflict: request failed for an unrelated
+      // reason (network/server error), so don't claim someone else is editing.
+      return 'Could not start editing this activity. Please try again.';
+    }
+    return lockedByUsername
+      ? `Cannot edit. ${lockedByUsername} has started editing this activity.`
+      : EDIT_LOCK_CONFLICT_TOAST;
+  }, [acquireFailureReason, lockedByUsername]);
 
   const onEditLockAcquireConflict = useCallback(() => {
     toast.error(getEditLockAcquireToastMessage());
@@ -655,6 +662,8 @@ export function ActivityPage({
                   requiredTranslationStatusId,
                   includeRepresentatives:
                     !!form.formState.dirtyFields.representatives,
+                  includeSharedWithTeamIds:
+                    !!form.formState.dirtyFields.sharedWithTeamIds,
                 }
               : mode.kind === 'completeWithSave'
                 ? {
@@ -662,11 +671,15 @@ export function ActivityPage({
                     requiredTranslationStatusId,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
+                    includeSharedWithTeamIds:
+                      !!form.formState.dirtyFields.sharedWithTeamIds,
                   }
                 : {
                     requiredTranslationStatusId,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
+                    includeSharedWithTeamIds:
+                      !!form.formState.dirtyFields.sharedWithTeamIds,
                   };
           submitData = {
             ...buildPayloadForUpdate(
@@ -764,7 +777,7 @@ export function ActivityPage({
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
-      duration: 6000,
+      duration: 7000,
     });
   };
 
@@ -1122,6 +1135,7 @@ export function ActivityPage({
             key={formUiEpoch}
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
+            activityId={id}
             readOnly={readOnly}
             reviewerChangedPaths={reviewerChangedPaths}
             leadTeamField={{

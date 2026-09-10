@@ -562,13 +562,13 @@ export function ActivityScheduleSection({
                 {getActivityFieldLabel(field.name)}
                 <ActivityFieldInfoIcon
                   fieldKey="schedulingNotes"
-                  ariaLabel="About scheduling notes"
+                  ariaLabel="About scheduling and approval notes"
                 />
               </>
             </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
-                placeholder="Enter scheduling considerations"
+                placeholder="Enter scheduling and approval considerations"
                 readOnly={readOnly}
                 rows={4}
                 maxLength={ACTIVITY_SCHEDULING_NOTES_MAX_LENGTH}

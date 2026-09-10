@@ -178,13 +178,13 @@ export function TeamEditModal({
 
     if (missingFields.length > 0) {
       const detail = `Required fields missing: ${missingFields.join(', ')}`;
-      toast.error('Submission failed', { description: detail, duration: 6000 });
+      toast.error('Submission failed', { description: detail, duration: 7000 });
       return;
     }
     if (hasAbbreviationConflict) {
       toast.error('Submission failed', {
         description: 'Abbreviation must be unique across all teams.',
-        duration: 6000,
+        duration: 7000,
       });
       return;
     }
