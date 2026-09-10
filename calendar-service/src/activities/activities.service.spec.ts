@@ -294,6 +294,13 @@ describe('ActivitiesService', () => {
 
   const mockNotificationsService = {
     notifyActivityCreateOrStatusChange: vi.fn().mockResolvedValue(undefined),
+    notifyActivityStatusChangedToChanged: vi.fn().mockResolvedValue(undefined),
+    notifyActivityStatusChangedToAudience: vi.fn().mockResolvedValue(undefined),
+    notifyActivitySharedWithTeamsChanged: vi.fn().mockResolvedValue(undefined),
+    notifyActivityUpdated: vi.fn().mockResolvedValue(undefined),
+    getActivityAudienceForHardDelete: vi.fn().mockResolvedValue([]),
+    notifyActivityHardDeleted: vi.fn().mockResolvedValue(undefined),
+    notifyActivityHistoryNoteAdded: vi.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -1796,6 +1803,14 @@ describe('ActivitiesService', () => {
       expect(
         mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
       ).toBe('reviewed');
+      expect(
+        mockNotificationsService.notifyActivityStatusChangedToAudience
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 1,
+        status: 'reviewed',
+        includeWatchlisters: false,
+      });
     });
 
     it('should set status to reviewed on update when user has activities.review and markAsReviewed is true', async () => {
@@ -2013,6 +2028,16 @@ describe('ActivitiesService', () => {
               innerJoin: vi.fn().mockReturnThis(),
             };
           }
+          const isSharedWithTeamQuery =
+            keys.length === 1 && 'teamId' in selectArg;
+          if (isSharedWithTeamQuery) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+            };
+          }
           const isStatusNameQuery = keys.length === 1 && 'name' in selectArg;
           return {
             from: vi.fn().mockReturnThis(),
@@ -2068,6 +2093,13 @@ describe('ActivitiesService', () => {
         });
 
         expect(result.activityStatusId).toBe(reviewedStatusId);
+        expect(
+          mockNotificationsService.notifyActivitySharedWithTeamsChanged
+        ).toHaveBeenCalledWith({
+          activityId: 1,
+          actorUserId: 1,
+          teamIds: [42],
+        });
       });
 
       it('keeps status Reviewed when only visibility changes', async () => {
@@ -2096,6 +2128,9 @@ describe('ActivitiesService', () => {
         });
 
         expect(result.activityStatusId).toBe(reviewedStatusId);
+        expect(
+          mockNotificationsService.notifyActivityUpdated
+        ).not.toHaveBeenCalled();
       });
 
       it('treats representatives as the non-exempt field in full save payloads', async () => {
@@ -2194,6 +2229,13 @@ describe('ActivitiesService', () => {
           'reviewed',
           changedStatusId
         );
+        mockActivityHistoryService.generateChangeList.mockReturnValue([
+          {
+            field: 'title',
+            oldValue: 'Before',
+            newValue: 'After',
+          },
+        ]);
 
         const result = await service.update(
           1,
@@ -2209,6 +2251,97 @@ describe('ActivitiesService', () => {
         );
 
         expect(result.activityStatusId).toBe(changedStatusId);
+        expect(
+          mockNotificationsService.notifyActivityUpdated
+        ).toHaveBeenCalledWith({
+          activityId: 1,
+          actorUserId: 1,
+          changedFields: ['title'],
+        });
+      });
+
+      it('notifies status-changed recipients when status transitions to Changed', async () => {
+        const existingActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+          title: 'Before',
+        });
+        const updatedActivity = createMockActivity({
+          id: 1,
+          activityStatusId: changedStatusId,
+          title: 'After',
+        });
+
+        mockDatabaseService.db.transaction = makeTxMock(updatedActivity);
+        mockDatabaseService.db.select = mockSelectForReviewedGate(
+          existingActivity,
+          updatedActivity,
+          'reviewed',
+          changedStatusId
+        );
+
+        await service.update(
+          1,
+          {
+            title: 'After',
+          },
+          1,
+          {
+            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+            roleName: 'Editor',
+          }
+        );
+
+        expect(
+          mockNotificationsService.notifyActivityStatusChangedToChanged
+        ).toHaveBeenCalledWith({
+          activityId: 1,
+          actorUserId: 1,
+        });
+      });
+
+      it('skips generic update notification for admin actor', async () => {
+        const existingActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+          title: 'Before',
+        });
+        const updatedActivity = createMockActivity({
+          id: 1,
+          activityStatusId: changedStatusId,
+          title: 'After',
+        });
+
+        mockDatabaseService.db.transaction = makeTxMock(updatedActivity);
+        mockDatabaseService.db.select = mockSelectForReviewedGate(
+          existingActivity,
+          updatedActivity,
+          'reviewed',
+          changedStatusId
+        );
+        mockActivityHistoryService.generateChangeList.mockReturnValue([
+          {
+            field: 'title',
+            oldValue: 'Before',
+            newValue: 'After',
+          },
+        ]);
+
+        await service.update(
+          1,
+          {
+            title: 'After',
+          },
+          1,
+          {
+            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+            roleName: SYSTEM_ROLES.ADMIN,
+          }
+        );
+
+        expect(
+          mockNotificationsService.notifyActivityUpdated
+        ).not.toHaveBeenCalled();
       });
     });
 
@@ -2351,6 +2484,66 @@ describe('ActivitiesService', () => {
     });
   });
 
+  describe('updateSharedWith', () => {
+    it('notifies team members when shared-with teams change', async () => {
+      const response = createMockActivityResponse({ id: 1 });
+      vi.spyOn(service, 'findOne').mockResolvedValue(response);
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        const selectArg = (args[0] ?? {}) as Record<string, unknown>;
+        if ('teamId' in selectArg) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue([{ teamId: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      mockDatabaseService.db.transaction = vi.fn((callback) => {
+        const tx = {};
+        return callback(tx);
+      });
+
+      await service.updateSharedWith(1, [2, 3], 7);
+
+      expect(
+        mockNotificationsService.notifyActivitySharedWithTeamsChanged
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 7,
+        teamIds: [2, 3],
+      });
+    });
+
+    it('does not notify when shared-with teams are unchanged', async () => {
+      const response = createMockActivityResponse({ id: 1 });
+      vi.spyOn(service, 'findOne').mockResolvedValue(response);
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        const selectArg = (args[0] ?? {}) as Record<string, unknown>;
+        if ('teamId' in selectArg) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue([{ teamId: 2 }, { teamId: 3 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      mockDatabaseService.db.transaction = vi.fn((callback) => {
+        const tx = {};
+        return callback(tx);
+      });
+
+      await service.updateSharedWith(1, [2, 3], 7);
+
+      expect(
+        mockNotificationsService.notifyActivitySharedWithTeamsChanged
+      ).not.toHaveBeenCalled();
+    });
+  });
+
   describe('requestDelete', () => {
     it('should set status to delete_requested and record history', async () => {
       const existingActivity = createMockActivity({
@@ -2411,6 +2604,14 @@ describe('ActivitiesService', () => {
       expect(
         mockActivitiesGateway.broadcastActivityUpdated
       ).toHaveBeenCalledWith(1);
+      expect(
+        mockNotificationsService.notifyActivityStatusChangedToAudience
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 10,
+        status: 'delete_requested',
+        includeWatchlisters: false,
+      });
     });
 
     it('should throw ConflictException when status is already delete_requested', async () => {
@@ -2794,6 +2995,13 @@ describe('ActivitiesService', () => {
       expect(
         mockActivityHistoryService.getHistoryEntryById
       ).toHaveBeenCalledWith(25);
+      expect(
+        mockNotificationsService.notifyActivityHistoryNoteAdded
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 10,
+        note: 'A note for history',
+      });
       expect(result.actionType).toBe('note_added');
       expect(result.notes).toBe('A note for history');
     });
@@ -3081,6 +3289,18 @@ describe('ActivitiesService', () => {
         ...ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES,
       ]);
       expect(
+        mockNotificationsService.getActivityAudienceForHardDelete
+      ).toHaveBeenCalledWith(1);
+      expect(
+        mockNotificationsService.notifyActivityHardDeleted
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 10,
+        displayId: existingActivity.displayId,
+        title: existingActivity.title,
+        recipientUserIds: [],
+      });
+      expect(
         mockActivitiesGateway.broadcastActivityUpdated
       ).toHaveBeenCalledWith(1);
     });
@@ -3343,6 +3563,14 @@ describe('ActivitiesService', () => {
       expect(
         mockActivitiesGateway.broadcastActivityUpdated
       ).toHaveBeenCalledWith(1);
+      expect(
+        mockNotificationsService.notifyActivityStatusChangedToAudience
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 10,
+        status: 'deleted',
+        includeWatchlisters: true,
+      });
     });
 
     it('should clear the review snapshot before updating status', async () => {

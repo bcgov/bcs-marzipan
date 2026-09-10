@@ -151,6 +151,33 @@ export class ActivitiesService {
     return buildEffectiveReviewExemptKeys(fromDb);
   }
 
+  private toReviewExemptComparableField(field: string): string {
+    if (field === 'sharedWith') {
+      return 'sharedWithTeamIds';
+    }
+
+    return field;
+  }
+
+  private resolveNotificationChangedFields(
+    changes: Array<{ field: string; oldValue: unknown; newValue: unknown }>,
+    reviewExemptFieldKeys: ReadonlySet<string>
+  ): string[] {
+    const ignoredFields = new Set<string>([
+      'activityStatusId',
+      'lastUpdatedBy',
+      'lastUpdatedDateTime',
+      'timestamp',
+    ]);
+
+    return [...new Set(changes.map((change) => change.field))]
+      .map((field) => this.toReviewExemptComparableField(field))
+      .filter(
+        (field) =>
+          !ignoredFields.has(field) && !reviewExemptFieldKeys.has(field)
+      );
+  }
+
   private async assertCanEditDuringLockout(
     userId: number,
     permissions?: string[]
@@ -2356,6 +2383,21 @@ export class ActivitiesService {
         )
       );
 
+    const existingSharedTeamIds =
+      sharedWithTeamIds === undefined
+        ? undefined
+        : (
+            await this.databaseService.db
+              .select({ teamId: activitySharedWithTeams.teamId })
+              .from(activitySharedWithTeams)
+              .where(
+                and(
+                  eq(activitySharedWithTeams.activityId, id),
+                  eq(activitySharedWithTeams.isActive, true)
+                )
+              )
+          ).map((row) => row.teamId);
+
     // Validate comms contacts belong to the (possibly updated) lead team
     const effectiveLeadTeamId =
       (activityUpdateData as Partial<Activity>).leadTeamId ??
@@ -2853,6 +2895,13 @@ export class ActivitiesService {
       });
     }
 
+    const reviewExemptFieldKeys =
+      await this.getEffectiveReviewExemptFieldKeys();
+    const notificationChangedFields = this.resolveNotificationChangedFields(
+      allChanges,
+      reviewExemptFieldKeys
+    );
+
     // Debug: log detected changes
     try {
       this.logger.debug(
@@ -2915,10 +2964,42 @@ export class ActivitiesService {
     });
 
     if (currentStatusName !== newStatusName) {
-      await this.notificationsService.notifyActivityCreateOrStatusChange({
+      if (newStatusName === 'changed') {
+        await this.notificationsService.notifyActivityStatusChangedToChanged({
+          activityId: id,
+          actorUserId: userId,
+        });
+      } else if (newStatusName === 'reviewed') {
+        await this.notificationsService.notifyActivityStatusChangedToAudience({
+          activityId: id,
+          actorUserId: userId,
+          status: 'reviewed',
+          includeWatchlisters: false,
+        });
+      }
+    }
+
+    const sharedWithChanged =
+      sharedWithTeamIds !== undefined &&
+      !isDeepEqual(existingSharedTeamIds ?? [], sharedWithTeamIds);
+
+    if (sharedWithChanged) {
+      await this.notificationsService.notifyActivitySharedWithTeamsChanged({
         activityId: id,
         actorUserId: userId,
-        changeType: 'status_changed',
+        teamIds: sharedWithTeamIds,
+      });
+    }
+
+    const isAdminIncognitoActor =
+      context?.roleName === SYSTEM_ROLES.ADMIN ||
+      context?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+
+    if (!isAdminIncognitoActor && notificationChangedFields.length > 0) {
+      await this.notificationsService.notifyActivityUpdated({
+        activityId: id,
+        actorUserId: userId,
+        changedFields: notificationChangedFields,
       });
     }
 
@@ -3060,7 +3141,12 @@ export class ActivitiesService {
     }
 
     // Verify activity exists so we return 404 for non-existent IDs (auth already enforced above)
-    await this.findOne(id, { dataScope: { bypass: true, teamIds: [] } });
+    const existingActivity = await this.findOne(id, {
+      dataScope: { bypass: true, teamIds: [] },
+    });
+
+    const hardDeleteRecipientUserIds =
+      await this.notificationsService.getActivityAudienceForHardDelete(id);
 
     await this.assertCanEditDuringLockout(userId, context?.permissions);
 
@@ -3120,6 +3206,14 @@ export class ActivitiesService {
         );
 
       await tx.delete(activities).where(eq(activities.id, id));
+    });
+
+    await this.notificationsService.notifyActivityHardDeleted({
+      activityId: id,
+      actorUserId: userId,
+      displayId: existingActivity.displayId,
+      title: existingActivity.title,
+      recipientUserIds: hardDeleteRecipientUserIds,
     });
 
     this.activitiesGateway.broadcastActivityUpdated(id);
@@ -3373,6 +3467,12 @@ export class ActivitiesService {
       );
     }
 
+    await this.notificationsService.notifyActivityHistoryNoteAdded({
+      activityId: id,
+      actorUserId: userId,
+      note: trimmedNote,
+    });
+
     return hydratedEntry;
   }
 
@@ -3553,6 +3653,13 @@ export class ActivitiesService {
 
     this.activitiesGateway.broadcastActivityUpdated(id);
 
+    await this.notificationsService.notifyActivityStatusChangedToAudience({
+      activityId: id,
+      actorUserId: userId,
+      status: 'deleted',
+      includeWatchlisters: true,
+    });
+
     return dto;
   }
 
@@ -3684,6 +3791,13 @@ export class ActivitiesService {
     });
 
     this.activitiesGateway.broadcastActivityUpdated(id);
+
+    await this.notificationsService.notifyActivityStatusChangedToAudience({
+      activityId: id,
+      actorUserId: userId,
+      status: 'delete_requested',
+      includeWatchlisters: false,
+    });
 
     return dto;
   }
@@ -4030,6 +4144,12 @@ export class ActivitiesService {
         [{ field: 'sharedWith', oldValue: existingTeamIds, newValue: teamIds }],
         'Activity shared with teams updated'
       );
+
+      await this.notificationsService.notifyActivitySharedWithTeamsChanged({
+        activityId: id,
+        actorUserId: userId,
+        teamIds,
+      });
     }
 
     // Return updated activity
