@@ -653,7 +653,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               <span
                 className={cn(
                   'inline-flex items-center gap-2',
-                  showChangedBadges && 'min-h-[18px]'
+                  showChangedBadges && 'min-h-4.5'
                 )}
               >
                 {getActivityFieldLabel('venueName')}
