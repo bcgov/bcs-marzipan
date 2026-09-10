@@ -18,6 +18,7 @@ import {
   isSamePacificCalendarDay,
 } from '@/lib/datetime-utils';
 import { formatDisplayValue } from '@/lib/formatDisplayValue';
+import { cn } from '@/lib/utils';
 
 type ActivityPageHeaderProps = {
   displayId: string;
@@ -98,13 +99,10 @@ export function ActivityPageHeader({
       ? null
       : (sortedFlags.find((flag) => flag.assigneeId === currentUserId) ?? null);
   const flaggedLabel = sortedFlags.map((f) => f.assigneeName).join(', ');
+  const needsWideFlagButton =
+    isFlagged && (visibleStackedFlags.length > 1 || overflowFlagCount > 0);
 
   const iconButtonClassName = 'shrink-0';
-  // Stacked badges show a per-avatar ring on hover; suppress the ghost button's
-  // own hover background so it doesn't show as a grey block around the last
-  // (unobscured) avatar.
-  const multiFlagButtonClassName =
-    'group mr-3 h-10 shrink-0 px-2 pr-4 hover:bg-transparent';
   const headerActionIconClassName = 'text-muted-foreground size-4';
   const timestampClassName = 'text-muted-foreground text-xs sm:text-sm';
   const showActionButtons =
@@ -189,12 +187,18 @@ export function ActivityPageHeader({
               }
               onClick={() => setAssignModalOpen(true)}
               disabled={isFlagPending}
-              className={
-                isFlagged ? multiFlagButtonClassName : iconButtonClassName
-              }
+              className={cn(
+                iconButtonClassName,
+                needsWideFlagButton && 'w-auto px-1'
+              )}
             >
-              {isFlagged ? (
-                <span className="flex items-center pr-1.5">
+              {!isFlagged ? (
+                <ActivityFlagIcon
+                  assigneeName={null}
+                  assigneeFlagColour={null}
+                />
+              ) : needsWideFlagButton ? (
+                <span className="flex items-center">
                   {visibleStackedFlags.map((flag, index) => (
                     <span
                       key={`${flag.teamId}:${flag.assigneeId}`}
@@ -222,8 +226,8 @@ export function ActivityPageHeader({
                 </span>
               ) : (
                 <ActivityFlagIcon
-                  assigneeName={null}
-                  assigneeFlagColour={null}
+                  assigneeName={sortedFlags[0].assigneeName}
+                  assigneeFlagColour={sortedFlags[0].assigneeFlagColour}
                 />
               )}
             </Button>
