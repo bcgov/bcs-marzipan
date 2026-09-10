@@ -10,8 +10,7 @@ import {
   startCountdownLoadingToast,
 } from './countdown-loading-toast';
 import { getRecurringLockoutInlineMessage } from './recurring-lockout-inline-message';
-
-const DISCARD_TOAST_DURATION_MS = 7000;
+import { TOAST_DURATION_MS } from './toast-durations';
 
 export type LockoutCountdownToastHandle = {
   dispose: () => void;
@@ -43,7 +42,7 @@ export function showLockoutChangesDiscardedToast(
   toast.warning('Unsaved changes discarded', {
     id: `lockout-discarded-${activityId}`,
     description: `${getRecurringLockoutInlineMessage(schedule)}`,
-    duration: DISCARD_TOAST_DURATION_MS,
+    duration: TOAST_DURATION_MS.error,
   });
 }
 

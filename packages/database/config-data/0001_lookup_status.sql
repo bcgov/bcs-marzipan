@@ -339,7 +339,7 @@ INSERT INTO reports (id, name, display_name, sort_order, is_active, visibility, 
   (
     5,
     'custom',
-    'Custom',
+    'Excel',
     5,
     true,
     'team',

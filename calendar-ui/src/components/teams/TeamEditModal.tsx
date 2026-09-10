@@ -35,6 +35,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import { TOAST_DURATION_MS } from '@/lib/toast-durations';
+import {
+  resolveTeamDisplayName,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 import type { OptionItem } from '@/schemas/types';
 
 interface TeamEditModalProps {
@@ -123,21 +128,34 @@ export function TeamEditModal({
   }, [open, isCreate, detail]);
 
   const createMutation = useMutation({
-    mutationFn: createTeam,
-    onSuccess: () => {
+    mutationFn: ({
+      body,
+    }: {
+      body: Parameters<typeof createTeam>[0];
+      teamLabel: string;
+    }) => createTeam(body),
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
-      toast.success('Team created', { id: 'team-created' });
+      showEntityToast('success', 'Created team', {
+        description: variables.teamLabel,
+        id: 'team-created',
+      });
       onSaved();
       onClose();
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, variables) => {
       if (isDuplicateAbbreviationError(err)) {
         setHasServerAbbreviationConflict(true);
         return;
       }
       const message =
         err instanceof ApiError ? err.detail : 'Failed to create team';
-      toast.error(message, { id: 'team-created' });
+      showEntityToast('error', 'Could not create team', {
+        description: variables?.teamLabel
+          ? `${variables.teamLabel} — ${message}`
+          : message,
+        id: 'team-created',
+      });
     },
   });
 
@@ -148,10 +166,14 @@ export function TeamEditModal({
     }: {
       id: number;
       body: Parameters<typeof updateTeam>[1];
+      teamLabel: string;
     }) => updateTeam(id, body),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
-      toast.success('Team updated', { id: `team-updated-${variables.id}` });
+      showEntityToast('success', 'Updated team', {
+        description: variables.teamLabel,
+        id: `team-updated-${variables.id}`,
+      });
       onSaved();
       onClose();
     },
@@ -162,7 +184,10 @@ export function TeamEditModal({
       }
       const message =
         err instanceof ApiError ? err.detail : 'Failed to update team';
-      toast.error(message, {
+      showEntityToast('error', 'Could not update team', {
+        description: variables?.teamLabel
+          ? `${variables.teamLabel} — ${message}`
+          : message,
         id: variables ? `team-updated-${variables.id}` : undefined,
       });
     },
@@ -178,30 +203,43 @@ export function TeamEditModal({
 
     if (missingFields.length > 0) {
       const detail = `Required fields missing: ${missingFields.join(', ')}`;
-      toast.error('Submission failed', { description: detail, duration: 7000 });
+      toast.error('Submission failed', {
+        description: detail,
+        duration: TOAST_DURATION_MS.error,
+      });
       return;
     }
     if (hasAbbreviationConflict) {
       toast.error('Submission failed', {
         description: 'Abbreviation must be unique across all teams.',
-        duration: 7000,
+        duration: TOAST_DURATION_MS.error,
       });
       return;
     }
+    const teamLabel = resolveTeamDisplayName({
+      displayName: trimmedDisplay,
+      name: trimmedDisplay,
+      abbreviation: trimmedAbbrev,
+    });
+
     if (isCreate) {
       const nameForCreate = trimmedDisplay;
       createMutation.mutate({
-        name: nameForCreate,
-        abbreviation: trimmedAbbrev,
-        displayName: trimmedDisplay || undefined,
-        description: description.trim() || undefined,
-        isActive,
-        ministryId: ministryId != null ? parseInt(ministryId, 10) : undefined,
+        teamLabel,
+        body: {
+          name: nameForCreate,
+          abbreviation: trimmedAbbrev,
+          displayName: trimmedDisplay || undefined,
+          description: description.trim() || undefined,
+          isActive,
+          ministryId: ministryId != null ? parseInt(ministryId, 10) : undefined,
+        },
       });
     } else if (team) {
       const nameForUpdate = trimmedDisplay;
       updateMutation.mutate({
         id: team.id,
+        teamLabel,
         body: {
           name: nameForUpdate,
           abbreviation: trimmedAbbrev,

@@ -61,6 +61,8 @@ export function addCalendarMonths(
 /**
  * 30/60/90 preset window: `monthCount` full calendar months starting from the
  * first day of the Pacific month containing `pacificToday`.
+ *
+ * @deprecated Prefer {@link thirtySixtyNinetyDayDateRangeFromPacificDate} for UI presets.
  */
 export function thirtySixtyNinetyDateRangeFromPacificDate(
   monthCount: number,
@@ -74,9 +76,30 @@ export function thirtySixtyNinetyDateRangeFromPacificDate(
   };
 }
 
+export type ThirtySixtyNinetyDayCount = 30 | 60 | 90;
+
+export const THIRTY_SIXTY_NINETY_DAY_COUNTS = [30, 60, 90] as const;
+
+/**
+ * 30/60/90 preset window: `dayCount` inclusive days starting from the first
+ * day of the Pacific month containing `pacificToday`.
+ */
+export function thirtySixtyNinetyDayDateRangeFromPacificDate(
+  dayCount: ThirtySixtyNinetyDayCount,
+  pacificToday: CalendarDateString
+): CalendarMonthDateRange {
+  const start = firstDayOfCalendarMonth(pacificToday);
+  return {
+    start,
+    end: addCalendarDays(start, dayCount - 1),
+  };
+}
+
 /**
  * Default 30/60/90 report window: `monthCount` full calendar months starting
  * from the first day of the current Pacific month.
+ *
+ * @deprecated Prefer {@link defaultThirtySixtyNinetyDayDateRange}.
  */
 export function defaultThirtySixtyNinetyDateRange(
   monthCount = 3,
@@ -87,6 +110,18 @@ export function defaultThirtySixtyNinetyDateRange(
     throw new Error('Unable to resolve current Pacific calendar date');
   }
   return thirtySixtyNinetyDateRangeFromPacificDate(monthCount, today);
+}
+
+/** Default 30/60/90 report window: `dayCount` inclusive days from month start. */
+export function defaultThirtySixtyNinetyDayDateRange(
+  dayCount: ThirtySixtyNinetyDayCount = 60,
+  now: Date = new Date()
+): CalendarMonthDateRange {
+  const today = pacificCalendarDateFromInstant(now);
+  if (today == null) {
+    throw new Error('Unable to resolve current Pacific calendar date');
+  }
+  return thirtySixtyNinetyDayDateRangeFromPacificDate(dayCount, today);
 }
 
 /**

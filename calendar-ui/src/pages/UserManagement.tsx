@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
@@ -17,6 +16,10 @@ import { UserCreateModal } from '@/components/users/UserCreateModal';
 import { UsersTabContent } from '@/components/users/UsersTabContent';
 import { useAuth } from '@/hooks/useAuth';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import {
+  resolveTeamDisplayName,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 
 export function Users() {
   const [activeTab, setActiveTab] = useState<'users' | 'teams'>('users');
@@ -43,15 +46,21 @@ export function Users() {
   const canDeleteTeam = hasPermission(PERMISSIONS.TEAMS.DELETE);
 
   const deactivateTeamMutation = useMutation({
-    mutationFn: (teamId: number) => updateTeam(teamId, { isActive: false }),
-    onSuccess: (_data, teamId) => {
+    mutationFn: (team: TeamListItem) =>
+      updateTeam(team.id, { isActive: false }),
+    onSuccess: (_data, team) => {
       void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
-      toast.success('Team deactivated', { id: `team-deactivated-${teamId}` });
+      showEntityToast('success', 'Team deactivated', {
+        description: resolveTeamDisplayName(team),
+        id: `team-deactivated-${team.id}`,
+      });
     },
-    onError: (err: Error, teamId) => {
-      toast.error(err.message || 'Deactivate failed', {
-        id:
-          typeof teamId === 'number' ? `team-deactivated-${teamId}` : undefined,
+    onError: (err: Error, team) => {
+      showEntityToast('error', 'Could not deactivate team', {
+        description: team
+          ? `${resolveTeamDisplayName(team)} — ${err.message || 'Deactivate failed'}`
+          : err.message || 'Deactivate failed',
+        id: team ? `team-deactivated-${team.id}` : undefined,
       });
     },
   });
@@ -104,7 +113,7 @@ export function Users() {
               onAddTeam={() => setShowCreateTeam(true)}
               onEditTeam={setTeamToEdit}
               onViewHistory={setTeamHistoryTeam}
-              onDeactivate={(team) => deactivateTeamMutation.mutate(team.id)}
+              onDeactivate={(team) => deactivateTeamMutation.mutate(team)}
             />
           )}
         </TabsContent>

@@ -5,9 +5,11 @@ import {
   addCalendarMonths,
   buildCalendarMonthSections,
   defaultThirtySixtyNinetyDateRange,
+  defaultThirtySixtyNinetyDayDateRange,
   firstDayOfCalendarMonth,
   lastDayOfCalendarMonth,
   thirtySixtyNinetyDateRangeFromPacificDate,
+  thirtySixtyNinetyDayDateRangeFromPacificDate,
 } from './buildCalendarMonthSections';
 
 const MAY_FIRST = toCalendarDateString('2026-05-01');
@@ -76,6 +78,46 @@ describe('buildCalendarMonthSections', () => {
         endDate: '2026-07-31',
       })
     ).toEqual([]);
+  });
+});
+
+describe('thirtySixtyNinetyDayDateRangeFromPacificDate', () => {
+  it('returns inclusive day windows from the Pacific month start', () => {
+    expect(
+      thirtySixtyNinetyDayDateRangeFromPacificDate(
+        30,
+        toCalendarDateString('2026-05-27')
+      )
+    ).toEqual({
+      start: '2026-05-01',
+      end: '2026-05-30',
+    });
+    expect(
+      thirtySixtyNinetyDayDateRangeFromPacificDate(
+        60,
+        toCalendarDateString('2026-05-27')
+      )
+    ).toEqual({
+      start: '2026-05-01',
+      end: '2026-06-29',
+    });
+    expect(
+      thirtySixtyNinetyDayDateRangeFromPacificDate(
+        90,
+        toCalendarDateString('2026-05-27')
+      )
+    ).toEqual({
+      start: '2026-05-01',
+      end: '2026-07-29',
+    });
+  });
+
+  it('defaultThirtySixtyNinetyDayDateRange matches preset for the same Pacific day', () => {
+    const anchor = new Date('2026-05-27T12:00:00.000Z');
+    expect(defaultThirtySixtyNinetyDayDateRange(60, anchor)).toEqual({
+      start: '2026-05-01',
+      end: '2026-06-29',
+    });
   });
 });
 

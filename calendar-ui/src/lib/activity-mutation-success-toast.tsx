@@ -1,8 +1,7 @@
 import { toast } from 'sonner';
 
+import { TOAST_DURATION_MS } from '@/lib/toast-durations';
 import { cn } from '@/lib/utils';
-
-export const ACTIVITY_MUTATION_SUCCESS_TOAST_DURATION_MS = 5000;
 
 export type ActivityMutationSuccessKind = 'created' | 'updated' | 'cloned';
 
@@ -74,7 +73,7 @@ export function showActivityMutationSuccessToast(
     </div>,
     {
       id: toastId,
-      duration: ACTIVITY_MUTATION_SUCCESS_TOAST_DURATION_MS,
+      duration: TOAST_DURATION_MS.success,
       classNames: {
         content: 'min-w-0 flex-1',
       },
