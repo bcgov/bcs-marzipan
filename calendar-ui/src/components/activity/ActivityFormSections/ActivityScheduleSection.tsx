@@ -1,4 +1,4 @@
-import { format, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 
@@ -37,12 +37,7 @@ import {
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
-import {
-  getPresetAnchorToday,
-  parseIsoDateLocal,
-  PRESETS_FUTURE_FROM_ANCHOR,
-  PRESETS_PAST_FROM_ANCHOR,
-} from '@/lib/scheduled-date-presets';
+import { parseIsoDateLocal } from '@/lib/scheduled-date-presets';
 import { cn } from '@/lib/utils';
 
 import { useActivityEdit } from '../activity-edit-context';
@@ -112,9 +107,6 @@ export function ActivityScheduleSection({
   const endStr = String(endDateValue ?? '');
   const startTimeStr = String(startTimeValue ?? '').trim();
   const endTimeStr = String(endTimeValue ?? '').trim();
-
-  const endPresetAnchor = () =>
-    startStr ? startOfDay(parseIsoDateLocal(startStr)) : startOfDay(new Date());
 
   const startButtonLabel = startStr
     ? format(parseIsoDateLocal(startStr), 'MMM d, yyyy')
@@ -203,8 +195,6 @@ export function ActivityScheduleSection({
                       triggerMuted={!startStr}
                       readOnly={readOnly}
                       popoverTitle="Select start date"
-                      presets={PRESETS_PAST_FROM_ANCHOR}
-                      getPresetAnchor={getPresetAnchorToday}
                       triggerAriaLabel="Activity start date"
                       triggerVariant="form"
                       headerRight={
@@ -243,10 +233,6 @@ export function ActivityScheduleSection({
                     {getActivityFieldLabel(field.name)}
                   </FormLabel>
                   <FormControl className="min-w-0 flex-1" data-field="endDate">
-                    {/**
-                     * End-date presets are relative to the selected start date when set;
-                     * otherwise the anchor is today (calendar-style default).
-                     */}
                     <ScheduledDatePopoverField
                       value={field.value ?? ''}
                       onChange={(iso) =>
@@ -260,8 +246,6 @@ export function ActivityScheduleSection({
                       triggerMuted={!endStr}
                       readOnly={readOnly}
                       popoverTitle="Select end date"
-                      presets={PRESETS_FUTURE_FROM_ANCHOR}
-                      getPresetAnchor={endPresetAnchor}
                       isDateDisabled={isEndBeforeStart}
                       triggerAriaLabel="Activity end date"
                       triggerVariant="form"

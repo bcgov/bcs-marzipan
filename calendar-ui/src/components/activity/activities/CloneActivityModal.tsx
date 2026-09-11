@@ -1,4 +1,4 @@
-import { format, startOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 
 import { CORP_PACIFIC_LABEL } from '@corpcal/shared';
@@ -35,12 +35,7 @@ import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popove
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { TimePicker } from '@/components/ui/time-picker';
-import {
-  getPresetAnchorToday,
-  parseIsoDateLocal,
-  PRESETS_FUTURE_FROM_ANCHOR,
-  PRESETS_PAST_FROM_ANCHOR,
-} from '@/lib/scheduled-date-presets';
+import { parseIsoDateLocal } from '@/lib/scheduled-date-presets';
 
 import { useAuth } from '../../../hooks/useAuth';
 import type { FormLookupData } from '../../../hooks/useFormLookups';
@@ -209,9 +204,6 @@ export function CloneActivityModal({
   const startTimeStr = String(startTime ?? '').trim();
   const endTimeStr = String(endTime ?? '').trim();
 
-  const endPresetAnchor = () =>
-    startStr ? startOfDay(parseIsoDateLocal(startStr)) : startOfDay(new Date());
-
   const startButtonLabel = startStr
     ? format(parseIsoDateLocal(startStr), 'MMM d, yyyy')
     : 'Select start date';
@@ -331,8 +323,6 @@ export function CloneActivityModal({
                     triggerMuted={!startStr}
                     readOnly={false}
                     popoverTitle="Select start date"
-                    presets={PRESETS_PAST_FROM_ANCHOR}
-                    getPresetAnchor={getPresetAnchorToday}
                     triggerAriaLabel="Activity start date"
                     triggerVariant="form"
                     headerRight={
@@ -364,8 +354,6 @@ export function CloneActivityModal({
                     triggerMuted={!endStr}
                     readOnly={false}
                     popoverTitle="Select end date"
-                    presets={PRESETS_FUTURE_FROM_ANCHOR}
-                    getPresetAnchor={endPresetAnchor}
                     isDateDisabled={isEndBeforeStart}
                     triggerAriaLabel="Activity end date"
                     triggerVariant="form"

@@ -4,11 +4,6 @@ import { useCallback, useMemo } from 'react';
 import { isDateRangeActive, type DateRangeValue } from '@corpcal/shared';
 import { Button } from '@/components/ui/button';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
-import {
-  getPresetAnchorToday,
-  PRESETS_FUTURE_FROM_ANCHOR,
-  PRESETS_PAST_FROM_ANCHOR,
-} from '@/lib/scheduled-date-presets';
 import { cn } from '@/lib/utils';
 
 export type { DateRangeValue };
@@ -118,8 +113,6 @@ export function ScheduledDateRangeFields({
           label={startLabel}
           triggerMuted={!value.startDate && !value.noStartDate}
           popoverTitle="Select start date"
-          presets={PRESETS_PAST_FROM_ANCHOR}
-          getPresetAnchor={getPresetAnchorToday}
           isDateDisabled={isStartDisabled}
           headerRight={
             <Button
@@ -143,8 +136,6 @@ export function ScheduledDateRangeFields({
           label={endLabel}
           triggerMuted={!value.endDate && !value.noEndDate}
           popoverTitle="Select end date"
-          presets={PRESETS_FUTURE_FROM_ANCHOR}
-          getPresetAnchor={getPresetAnchorToday}
           isDateDisabled={isEndDisabled}
           headerRight={
             <Button
