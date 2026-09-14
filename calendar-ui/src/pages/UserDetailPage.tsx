@@ -1,14 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import {
-  ArrowLeft,
-  CheckCircle,
-  Edit,
-  Key,
-  Mail,
-  Phone,
-  XCircle,
-} from 'lucide-react';
+import { ArrowLeft, Edit, Key, Mail, Phone } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -17,11 +9,12 @@ import {
   PERMISSIONS as SHARED_PERMISSIONS,
   SYSTEM_ROLE_IDS,
 } from '@corpcal/shared';
-import type { UserDetail } from '@corpcal/shared/api/types';
-import { fetchRolesPermissionsMap } from '@/api/lookupsApi';
+import type {
+  UserDetail,
+  UserPermissionOverrideInput,
+} from '@corpcal/shared/api/types';
 import {
   addUserToTeam,
-  fetchRolePermissions,
   fetchRoles,
   fetchTeams,
   fetchUser,
@@ -52,19 +45,14 @@ import {
 } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { UserChangeLogTabContent } from '@/components/users/UserChangeLogTabContent';
 import { UserEditModal } from '@/components/users/UserEditModal';
+import { UserRolePermissionsSection } from '@/components/users/UserRolePermissionsSection';
+import { UserRoleSelect } from '@/components/users/UserRoleSelect';
 import { UserTransferTabContent } from '@/components/users/UserTransferTabContent';
 import { useAuth } from '@/hooks/useAuth';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
@@ -158,9 +146,16 @@ export default function UserDetailPage() {
     allSelectableTeamIds.length > 0 &&
     allSelectableTeamIds.every((id) => localTeamIds.includes(id));
 
+  const [permissionOverrideInputs, setPermissionOverrideInputs] = useState<
+    UserPermissionOverrideInput[]
+  >([]);
+
   const mutation = useMutation({
-    mutationFn: (payload: { roleId?: number; notes?: string | null }) =>
-      updateUser(userId, payload),
+    mutationFn: (payload: {
+      roleId?: number;
+      notes?: string | null;
+      permissionOverrides?: UserPermissionOverrideInput[];
+    }) => updateUser(userId, payload),
     onSuccess: () => {
       invalidateUserCaches(queryClient, userId);
     },
@@ -236,103 +231,6 @@ export default function UserDetailPage() {
       return true;
     });
   }, [roles, currentUserIsSystemAdmin]);
-
-  const selectedRoleName =
-    roles.find((r) => r.id === selectedRoleId)?.name ?? '';
-
-  const [rolePermissionRows, setRolePermissionRows] = useState<
-    {
-      displayName?: string | null;
-      description?: string | null;
-      key?: string;
-      hasPermission?: boolean;
-    }[]
-  >([]);
-  // rolePermissionRows holds the permission rows for the selected role
-  const [rolesPermissionsMap, setRolesPermissionsMap] = useState<
-    Record<
-      number,
-      {
-        displayName?: string | null;
-        description?: string | null;
-        hasPermission: boolean;
-      }[]
-    >
-  >({});
-
-  const {
-    data: rolesPermissionsMapData,
-    isSuccess: rolesPermissionsMapLoaded,
-  } = useQuery<Record<string, any[]>>({
-    queryKey: ['roles', 'permissions', 'map'],
-    queryFn: fetchRolesPermissionsMap,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // populate local cache from bulk endpoint when available
-  useEffect(() => {
-    if (!rolesPermissionsMapLoaded || !rolesPermissionsMapData) return;
-    const normalized: Record<number, any[]> = {};
-    for (const k of Object.keys(rolesPermissionsMapData)) {
-      const numeric = Number(k);
-      normalized[numeric] = rolesPermissionsMapData[k];
-    }
-    setRolesPermissionsMap(normalized);
-  }, [rolesPermissionsMapLoaded, rolesPermissionsMapData]);
-
-  // Note: do not prefetch permissions for all roles — fetch only for the
-  // currently selected role to avoid unnecessary parallel requests.
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!selectedRoleId) return;
-
-    // Use cached map when available, otherwise fetch single role permissions.
-    const cached = rolesPermissionsMap[selectedRoleId];
-    if (cached) {
-      const rows = cached as any[];
-      setRolePermissionRows(rows);
-      return;
-    }
-
-    void fetchRolePermissions(selectedRoleId)
-      .then((rows) => {
-        if (cancelled) return;
-        setRolePermissionRows(rows);
-        setRolesPermissionsMap(
-          (m) => ({ ...m, [selectedRoleId]: rows }) as any
-        );
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setRolePermissionRows([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedRoleId, selectedRoleName, rolesPermissionsMap]);
-
-  const permissionRows = rolePermissionRows;
-  const visibleRows = permissionRows;
-
-  // Memoize rendered permission items to avoid unnecessary re-renders
-  const renderedPermissionItems = useMemo(() => {
-    return visibleRows.map((r, i) => (
-      <div key={r.key ?? i} className="flex items-start gap-2">
-        {r.hasPermission ? (
-          <CheckCircle
-            className="h-6 w-6 shrink-0 text-green-600"
-            aria-hidden
-          />
-        ) : (
-          <XCircle className="h-6 w-6 shrink-0 text-red-600" aria-hidden />
-        )}
-        <span className="leading-tight">
-          {r.displayName ?? r.description ?? r.key}
-        </span>
-      </div>
-    ));
-  }, [visibleRows]);
 
   const resolveTeamLabel = (teamId: number): string =>
     teamOptions.find((option) => parseInt(option.value, 10) === teamId)
@@ -435,9 +333,16 @@ export default function UserDetailPage() {
   const handleSave = async () => {
     if (!userDetail) return;
 
-    const body: { roleId?: number; notes?: string | null } = {};
+    const body: {
+      roleId?: number;
+      notes?: string | null;
+      permissionOverrides?: UserPermissionOverrideInput[];
+    } = {};
     if (selectedRoleId != null) body.roleId = selectedRoleId;
     body.notes = localNotes || null;
+    if (permissionOverrideInputs.length > 0) {
+      body.permissionOverrides = permissionOverrideInputs;
+    }
 
     const serverDirectLoginEnabled = Boolean(userDetail.directLoginEnabled);
 
@@ -580,26 +485,22 @@ export default function UserDetailPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Role</Label>
-                  <Select
+                  <UserRoleSelect
+                    roles={availableRoles}
                     value={selectedRoleId ? String(selectedRoleId) : ''}
-                    onValueChange={(v) => setSelectedRoleId(Number(v) || null)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableRoles.map((r) => (
-                        <SelectItem key={r.id} value={String(r.id)}>
-                          {r.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {visibleRows.length > 0 && (
-                    <div className="mt-2 grid grid-cols-1 gap-2 p-2 text-sm text-slate-700 sm:grid-cols-2">
-                      {renderedPermissionItems}
-                    </div>
-                  )}
+                    onValueChange={(value) =>
+                      setSelectedRoleId(Number(value) || null)
+                    }
+                    disabled={!canEdit}
+                    triggerClassName="w-full"
+                  />
+                  <UserRolePermissionsSection
+                    roleId={selectedRoleId}
+                    savedRoleId={userDetail.roleId}
+                    existingOverrides={userDetail.permissionOverrides}
+                    canEdit={canEdit}
+                    onChange={setPermissionOverrideInputs}
+                  />
                 </div>
 
                 <div>

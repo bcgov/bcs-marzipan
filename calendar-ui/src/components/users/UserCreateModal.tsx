@@ -5,7 +5,10 @@ import { useForm, type Resolver } from 'react-hook-form';
 import { z } from 'zod';
 import { useEffect, useRef, useState } from 'react';
 
-import type { CreateUserBody } from '@corpcal/shared/api/types';
+import type {
+  CreateUserBody,
+  UserPermissionOverrideInput,
+} from '@corpcal/shared/api/types';
 import {
   USER_DISPLAY_NAME_MAX_LENGTH,
   USER_JOB_TITLE_MAX_LENGTH,
@@ -43,14 +46,9 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
+import { UserRolePermissionsSection } from '@/components/users/UserRolePermissionsSection';
+import { UserRoleSelect } from '@/components/users/UserRoleSelect';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import {
   formatUserCreatedDescription,
@@ -123,6 +121,9 @@ export function UserCreateModal({
   const teamsAnchorRef = useComboboxAnchor();
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const [isTeamsComboboxOpen, setIsTeamsComboboxOpen] = useState(false);
+  const [permissionOverrideInputs, setPermissionOverrideInputs] = useState<
+    UserPermissionOverrideInput[]
+  >([]);
   const queryClient = useQueryClient();
 
   const form = useForm<CreateUserFormData>({
@@ -159,6 +160,7 @@ export function UserCreateModal({
         ),
       });
       form.reset(defaultValues);
+      setPermissionOverrideInputs([]);
       onSaved?.();
       onClose();
     },
@@ -221,6 +223,9 @@ export function UserCreateModal({
             role: 'member' as const,
           })),
         }),
+      ...(permissionOverrideInputs.length > 0 && {
+        permissionOverrides: permissionOverrideInputs,
+      }),
     };
     const displayLabel =
       data.displayName?.trim() ||
@@ -365,10 +370,11 @@ export function UserCreateModal({
               control={form.control}
               name="roleId"
               render={({ field }) => {
-                const selectedRole = roles.find(
-                  (r) => String(r.id) === field.value
-                );
-                const roleDescription = selectedRole?.description?.trim();
+                const parsedRoleId = parseInt(field.value, 10);
+                const selectedRoleId = Number.isNaN(parsedRoleId)
+                  ? null
+                  : parsedRoleId;
+
                 return (
                   <FormItem>
                     <FormLabel showDirtyIndicator={false}>
@@ -380,25 +386,17 @@ export function UserCreateModal({
                         *
                       </span>
                     </FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl data-field={field.name}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {roles.map((r) => (
-                          <SelectItem key={r.id} value={String(r.id)}>
-                            {r.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {roleDescription && (
-                      <div className="bg-muted/50 text-muted-foreground rounded-md border px-3 py-2 text-sm">
-                        {roleDescription}
-                      </div>
-                    )}
+                    <FormControl data-field={field.name}>
+                      <UserRoleSelect
+                        roles={roles}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      />
+                    </FormControl>
+                    <UserRolePermissionsSection
+                      roleId={selectedRoleId}
+                      onChange={setPermissionOverrideInputs}
+                    />
                     <FormMessage />
                   </FormItem>
                 );

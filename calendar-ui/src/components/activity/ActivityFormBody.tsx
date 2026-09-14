@@ -65,7 +65,7 @@ type ActivityFormBodyProps = {
 export function ActivityFormBody({
   lookups,
   commsContactCandidates,
-  activityId,
+  activityId: _activityId,
   readOnly = false,
   showChangedBadges = true,
   reviewerChangedPaths,
@@ -208,7 +208,6 @@ export function ActivityFormBody({
               />
 
               <ActivitySharingSection
-                activityId={activityId}
                 sharedWithTeams={lookups.sharedWithTeams}
                 quickShareGroups={lookups.quickShareGroups}
               />
