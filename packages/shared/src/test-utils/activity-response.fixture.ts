@@ -98,6 +98,7 @@ export function createMockActivityResponse(
     translationsRequired: [],
     representativesAttending: [],
     sharedWith: [],
+    sharedWithTeamIds: [],
     commsContacts: [],
     leadOrg: null,
     eventPlannerDetails: [],
