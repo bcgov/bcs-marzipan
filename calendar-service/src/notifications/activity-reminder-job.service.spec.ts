@@ -1,0 +1,173 @@
+import { Logger } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+
+import { DatabaseService } from '../database/database.service';
+import { ApplicationSettingsService } from '../locks/application-settings.service';
+import { ActivityReminderJobService } from './activity-reminder-job.service';
+import { NotificationsService } from './notifications.service';
+
+describe('ActivityReminderJobService', () => {
+  let service: ActivityReminderJobService;
+
+  const applicationSettings = {
+    getActivityReminderSettings: vi.fn().mockResolvedValue({
+      leadDays: 7,
+      staleDays: 14,
+    }),
+  };
+
+  const notificationsService = {
+    notifyActivityReminderPostDated: vi.fn().mockResolvedValue([1]),
+    notifyActivityReminderDateStatusNotConfirmed: vi
+      .fn()
+      .mockResolvedValue([2]),
+    notifyActivityReminderNullTime: vi.fn().mockResolvedValue([3]),
+    notifyActivityReminderTimeStatusNotConfirmed: vi
+      .fn()
+      .mockResolvedValue([4]),
+    notifyActivityReminderUpcoming: vi.fn().mockResolvedValue([5]),
+    notifyActivityReminderStale: vi.fn().mockResolvedValue([6]),
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ActivityReminderJobService,
+        {
+          provide: ApplicationSettingsService,
+          useValue: applicationSettings,
+        },
+        {
+          provide: NotificationsService,
+          useValue: notificationsService,
+        },
+        {
+          provide: DatabaseService,
+          useValue: { db: {} },
+        },
+      ],
+    }).compile();
+
+    service = module.get(ActivityReminderJobService);
+  });
+
+  it('returns in_flight when a batch is already running', async () => {
+    (service as unknown as { inFlight: boolean }).inFlight = true;
+
+    const result = await service.runBatch();
+
+    expect(result).toEqual({
+      sent: 0,
+      skipped: true,
+      skipReason: 'in_flight',
+      counts: {
+        reminderPostDated: 0,
+        reminderDateStatusNotConfirmed: 0,
+        reminderNullTime: 0,
+        reminderTimeStatusNotConfirmed: 0,
+        reminderUpcoming: 0,
+        reminderStale: 0,
+      },
+    });
+  });
+
+  it('sends reminder notifications for each candidate bucket', async () => {
+    vi.spyOn(service as any, 'findPostDatedCandidateIds').mockResolvedValue([
+      11,
+    ]);
+    vi.spyOn(
+      service as any,
+      'findDateStatusNotConfirmedCandidateIds'
+    ).mockResolvedValue([12]);
+    vi.spyOn(service as any, 'findNullTimeCandidateIds').mockResolvedValue([
+      13,
+    ]);
+    vi.spyOn(
+      service as any,
+      'findTimeStatusNotConfirmedCandidateIds'
+    ).mockResolvedValue([14]);
+    vi.spyOn(service as any, 'findUpcomingCandidateIds').mockResolvedValue([
+      15,
+    ]);
+    vi.spyOn(service as any, 'findStaleCandidateIds').mockResolvedValue([16]);
+    vi.spyOn(service as any, 'filterAlreadyReminded')
+      .mockResolvedValueOnce([11])
+      .mockResolvedValueOnce([12])
+      .mockResolvedValueOnce([13])
+      .mockResolvedValueOnce([14])
+      .mockResolvedValueOnce([15])
+      .mockResolvedValueOnce([16]);
+
+    const result = await service.runBatch();
+
+    expect(result.skipped).toBe(false);
+    expect(result.sent).toBe(6);
+    expect(result.counts).toEqual({
+      reminderPostDated: 1,
+      reminderDateStatusNotConfirmed: 1,
+      reminderNullTime: 1,
+      reminderTimeStatusNotConfirmed: 1,
+      reminderUpcoming: 1,
+      reminderStale: 1,
+    });
+
+    expect(
+      notificationsService.notifyActivityReminderPostDated
+    ).toHaveBeenCalledWith(expect.objectContaining({ activityId: 11 }));
+    expect(
+      notificationsService.notifyActivityReminderDateStatusNotConfirmed
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ activityId: 12, leadDays: 7 })
+    );
+    expect(
+      notificationsService.notifyActivityReminderNullTime
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ activityId: 13, leadDays: 7 })
+    );
+    expect(
+      notificationsService.notifyActivityReminderTimeStatusNotConfirmed
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ activityId: 14, leadDays: 7 })
+    );
+    expect(
+      notificationsService.notifyActivityReminderUpcoming
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ activityId: 15, leadDays: 7 })
+    );
+    expect(
+      notificationsService.notifyActivityReminderStale
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ activityId: 16, staleDays: 14 })
+    );
+  });
+
+  it('returns error when settings load fails', async () => {
+    const errorSpy = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    applicationSettings.getActivityReminderSettings.mockRejectedValueOnce(
+      new Error('boom')
+    );
+
+    try {
+      const result = await service.runBatch();
+      expect(result).toEqual({
+        sent: 0,
+        skipped: true,
+        skipReason: 'error',
+        counts: {
+          reminderPostDated: 0,
+          reminderDateStatusNotConfirmed: 0,
+          reminderNullTime: 0,
+          reminderTimeStatusNotConfirmed: 0,
+          reminderUpcoming: 0,
+          reminderStale: 0,
+        },
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+});
