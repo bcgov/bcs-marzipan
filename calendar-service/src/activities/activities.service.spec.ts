@@ -1421,6 +1421,24 @@ describe('ActivitiesService', () => {
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
     });
 
+    it('throws ConflictException when ifUnmodifiedSince is stale', async () => {
+      mockDatabaseService.db.select = createMockSelect([
+        createMockActivity({
+          id: 1,
+          lastUpdatedDateTime: new Date('2025-01-02T12:00:00.000Z'),
+        }),
+      ]);
+      const updateDto = createMockUpdateRequest({
+        title: 'Stale save',
+        ifUnmodifiedSince: '2025-01-01T12:00:00.000Z',
+      });
+
+      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+        ConflictException
+      );
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
     it('should update an activity and return a valid ActivityResponse', async () => {
       const existingActivity = createMockActivity({ id: 1 });
       const updatedActivity = createMockActivity({
@@ -2979,7 +2997,7 @@ describe('ActivitiesService', () => {
         new Map([[1, []]])
       );
       mockDataFetcherService.fetchSharedWithTeamsForActivities.mockResolvedValue(
-        new Map([[1, []]])
+        { namesMap: new Map([[1, []]]), idsMap: new Map([[1, []]]) }
       );
       mockDataFetcherService.fetchCommsContactsForActivities.mockResolvedValue(
         new Map([[1, []]])
@@ -3347,6 +3365,7 @@ describe('ActivitiesService', () => {
       findOneSpy = vi
         .spyOn(service, 'findOne')
         .mockResolvedValue(createMockActivityResponse({ id: 10 }));
+      mockLocksService.getLockForEntity.mockResolvedValue(null);
     });
 
     /** Distinguishes the existence-check select({ id }) from the shared-teams select({ teamId }). */
@@ -3447,6 +3466,51 @@ describe('ActivitiesService', () => {
         BadRequestException
       );
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws HttpException 423 when activity is locked by another user', async () => {
+      mockSelectsFor([{ id: 10 }], [{ teamId: 1 }, { teamId: 2 }]);
+      mockLocksService.getLockForEntity.mockResolvedValue({
+        userId: 50,
+        username: 'other-editor',
+      });
+
+      let thrown: unknown;
+      try {
+        await service.unshareTeam(10, 2, 99);
+      } catch (e) {
+        thrown = e;
+      }
+
+      expect(thrown).toBeInstanceOf(HttpException);
+      expect((thrown as HttpException).getStatus()).toBe(HttpStatus.LOCKED);
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('bulkUnshareTeam', () => {
+    it('reports updated and skipped results per activity', async () => {
+      const removeSpy = vi
+        .spyOn(service as any, 'removeSharedWithTeam')
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(
+          new BadRequestException(
+            'This activity is not currently shared with that team.'
+          )
+        );
+
+      const result = await service.bulkUnshareTeam([10, 11], 2, 99);
+
+      expect(removeSpy).toHaveBeenCalledTimes(2);
+      expect(result.summary).toEqual({ updated: 1, skipped: 1 });
+      expect(result.results).toEqual([
+        { activityId: 10, status: 'updated' },
+        {
+          activityId: 11,
+          status: 'skipped',
+          reason: 'This activity is not currently shared with that team.',
+        },
+      ]);
     });
   });
 

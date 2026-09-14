@@ -401,11 +401,64 @@ describe('PolicyService', () => {
       vi.spyOn(policyService, 'getRoleName').mockResolvedValue(
         SYSTEM_ROLES.ADMIN
       );
+      vi.spyOn(policyService, 'getUserPermissionOverrides').mockResolvedValue(
+        []
+      );
 
       const result = await policyService.getEffectivePermissionsForUser(1);
       expect(result.permissions).toContain('activities.view');
       expect(result.permissions).toContain('activities.edit');
       expect(result.bypass).toBe(true);
+    });
+
+    it('should apply user grants and remove explicit denials', async () => {
+      mockDatabaseService.db = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi
+                  .fn()
+                  .mockReturnValue(Promise.resolve([{ roleId: 2 }])),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PolicyService,
+          {
+            provide: DatabaseService,
+            useValue: mockDatabaseService,
+          },
+        ],
+      }).compile();
+
+      const policyService = module.get<PolicyService>(PolicyService);
+      vi.spyOn(policyService, 'getTeamIdsForUser').mockResolvedValue([]);
+      vi.spyOn(policyService as any, 'getPermissionsForRole').mockResolvedValue(
+        ['activities.view', 'activities.unshare']
+      );
+      vi.spyOn(policyService, 'getPermissionsForTeams').mockResolvedValue([]);
+      vi.spyOn(policyService, 'getRoleName').mockResolvedValue(
+        SYSTEM_ROLES.EDITOR
+      );
+      vi.spyOn(policyService, 'getUserPermissionOverrides').mockResolvedValue([
+        { key: 'activities.unshare', displayName: 'Unshare', effect: 'deny' },
+        {
+          key: 'activities.unshare.all',
+          displayName: 'Unshare all',
+          effect: 'grant',
+        },
+      ]);
+
+      const result = await policyService.getEffectivePermissionsForUser(1);
+      expect(result.permissions).toContain('activities.view');
+      expect(result.permissions).not.toContain('activities.unshare');
+      expect(result.permissions).toContain('activities.unshare.all');
+      expect(result.bypass).toBe(false);
     });
   });
 });

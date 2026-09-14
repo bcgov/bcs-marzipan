@@ -325,6 +325,30 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({
+    summary: 'Get permissions that can be granted or denied per user',
+    description:
+      'Returns the permissions flagged allow_user_override, used by the user management UI to set individual grants and denials.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Overridable permissions retrieved',
+  })
+  @Get('permissions/overridable')
+  @RequirePermission('users.edit')
+  async getOverridablePermissions(): Promise<{
+    success: boolean;
+    data: {
+      id: number;
+      key: string;
+      displayName: string;
+      description: string | null;
+    }[];
+  }> {
+    const data = await this.lookupsService.getOverridablePermissions();
+    return { success: true, data };
+  }
+
   private ensureSystemAdmin(user: AuthUser): void {
     // Prefer RBAC permission check instead of hard-coded role id
     if (

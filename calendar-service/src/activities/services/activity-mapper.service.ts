@@ -45,6 +45,7 @@ export type ActivityMapperRelatedData = {
   translationsRequired?: string[];
   representativesAttending?: string[];
   sharedWith?: string[];
+  sharedWithTeamIds?: number[];
   commsContacts?: Array<{
     userId: number;
     name: string;
@@ -214,6 +215,7 @@ export class ActivityMapperService {
       leadTeamId: activity.leadTeamId,
       leadMinistryId: activity.leadMinistryId ?? null,
       sharedWith: relatedData?.sharedWith ?? [],
+      sharedWithTeamIds: relatedData?.sharedWithTeamIds ?? [],
       commsContacts: relatedData?.commsContacts ?? [],
 
       // Computed lookup names
@@ -318,6 +320,10 @@ export class ActivityMapperService {
       leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
       leadTeamId: activity.leadTeamId,
       leadMinistryId: activity.leadMinistryId ?? null,
+      sharedWithTeamIds: relatedData?.sharedWithTeamIds ?? [],
+      visibility:
+        (activity.visibility as Visibility) ??
+        (DEFAULT_VISIBILITY satisfies Visibility),
       commsContacts: relatedData?.commsContacts ?? [],
       eventPlanners: relatedData?.eventPlanners ?? [],
       eventPlannerLeadIds: relatedData?.eventPlannerLeadIds ?? [],

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
 
 import {
@@ -10,8 +10,10 @@ import {
   roles,
   teamPermissions,
   teams,
+  userPermissions,
   users,
   userTeams,
+  type UserPermissionEffect,
 } from '@corpcal/database/schema';
 import { ROLES_BYPASS_DATA_SCOPING } from '@corpcal/shared';
 
@@ -76,6 +78,154 @@ export class PolicyService {
   }
 
   /**
+   * Load active per-user permission overrides (grants and denials).
+   * Overrides are exceptions to role inheritance; see getEffectivePermissionsForUser.
+   */
+  async getUserPermissionOverrides(userId: number): Promise<
+    {
+      key: string;
+      displayName: string;
+      effect: UserPermissionEffect;
+    }[]
+  > {
+    const rows = await this.databaseService.db
+      .select({
+        key: permissions.key,
+        displayName: permissions.displayName,
+        effect: userPermissions.effect,
+      })
+      .from(userPermissions)
+      .innerJoin(permissions, eq(userPermissions.permissionId, permissions.id))
+      .where(
+        and(
+          eq(userPermissions.userId, userId),
+          eq(userPermissions.isActive, true)
+        )
+      )
+      .orderBy(permissions.sortOrder);
+
+    return rows.map((r) => ({
+      key: r.key,
+      displayName: r.displayName,
+      effect: r.effect as UserPermissionEffect,
+    }));
+  }
+
+  /**
+   * Permissions admins may grant or deny for an individual user.
+   * `system.*` keys are excluded defensively even if flagged in the database.
+   */
+  async getOverridablePermissions(): Promise<
+    {
+      id: number;
+      key: string;
+      displayName: string;
+      description: string | null;
+    }[]
+  > {
+    const rows = await this.databaseService.db
+      .select({
+        id: permissions.id,
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+      })
+      .from(permissions)
+      .where(eq(permissions.allowUserOverride, true))
+      .orderBy(permissions.sortOrder);
+
+    return rows.filter((r) => !r.key.startsWith('system.'));
+  }
+
+  /**
+   * Replace a user's permission overrides with the supplied set.
+   * Keys not flagged allow_user_override (or under `system.`) are rejected.
+   * Returns the applied changes so callers can write an audit trail.
+   */
+  async syncUserPermissionOverrides(
+    userId: number,
+    requested: { permissionKey: string; effect: UserPermissionEffect | null }[],
+    actorUserId: number
+  ): Promise<
+    {
+      permissionKey: string;
+      oldValue: UserPermissionEffect | null;
+      newValue: UserPermissionEffect | null;
+    }[]
+  > {
+    if (requested.length === 0) return [];
+
+    const overridable = await this.getOverridablePermissions();
+    const idByKey = new Map(overridable.map((p) => [p.key, p.id]));
+
+    const invalidKeys = requested
+      .map((r) => r.permissionKey)
+      .filter((key) => !idByKey.has(key));
+    if (invalidKeys.length > 0) {
+      throw new BadRequestException(
+        `These permissions cannot be set per user: ${invalidKeys.join(', ')}`
+      );
+    }
+
+    const existing = await this.getUserPermissionOverrides(userId);
+    const existingByKey = new Map(existing.map((o) => [o.key, o.effect]));
+
+    const changes: {
+      permissionKey: string;
+      oldValue: UserPermissionEffect | null;
+      newValue: UserPermissionEffect | null;
+    }[] = [];
+    const now = new Date();
+
+    for (const item of requested) {
+      const permissionId = idByKey.get(item.permissionKey);
+      if (permissionId === undefined) continue;
+
+      const oldValue = existingByKey.get(item.permissionKey) ?? null;
+      if (oldValue === item.effect) continue;
+
+      if (item.effect === null) {
+        await this.databaseService.db
+          .delete(userPermissions)
+          .where(
+            and(
+              eq(userPermissions.userId, userId),
+              eq(userPermissions.permissionId, permissionId)
+            )
+          );
+      } else {
+        await this.databaseService.db
+          .insert(userPermissions)
+          .values({
+            userId,
+            permissionId,
+            effect: item.effect,
+            isActive: true,
+            createdBy: actorUserId,
+            updatedBy: actorUserId,
+          })
+          .onConflictDoUpdate({
+            target: [userPermissions.userId, userPermissions.permissionId],
+            set: {
+              effect: item.effect,
+              isActive: true,
+              updatedAt: now,
+              updatedBy: actorUserId,
+            },
+          });
+      }
+
+      changes.push({
+        permissionKey: item.permissionKey,
+        oldValue,
+        newValue: item.effect,
+      });
+    }
+
+    return changes;
+  }
+
+  /**
    * Load active team IDs for a user (from user_teams where isActive = true).
    * Used for authorization/scoping decisions. Only active memberships grant access.
    */
@@ -102,7 +252,10 @@ export class PolicyService {
   }
 
   /**
-   * Effective permissions and bypass for a user (user role + all team roles + team_permissions).
+   * Effective permissions and bypass for a user.
+   * Sources are unioned (user role + all team roles + team_permissions + user grants),
+   * then per-user denials are subtracted. An explicit deny beats a grant from any source.
+   * Overrides tune permission keys only; bypass still derives from role names.
    */
   async getEffectivePermissionsForUser(
     userId: number
@@ -123,13 +276,23 @@ export class PolicyService {
     }
 
     const userRoleId = userRow.roleId;
-    const [userPerms, teamPerms, userRoleName] = await Promise.all([
+    const [userPerms, teamPerms, userRoleName, overrides] = await Promise.all([
       this.getPermissionsForRole(userRoleId),
       this.getPermissionsForTeams(teamIds),
       this.getRoleName(userRoleId),
+      this.getUserPermissionOverrides(userId),
     ]);
 
-    const permissions = [...new Set<string>([...userPerms, ...teamPerms])];
+    const granted = overrides
+      .filter((o) => o.effect === 'grant')
+      .map((o) => o.key);
+    const denied = new Set(
+      overrides.filter((o) => o.effect === 'deny').map((o) => o.key)
+    );
+
+    const permissions = [
+      ...new Set<string>([...userPerms, ...teamPerms, ...granted]),
+    ].filter((key) => !denied.has(key));
 
     let bypass = this.bypassesDataScoping(userRoleName ?? '');
 
