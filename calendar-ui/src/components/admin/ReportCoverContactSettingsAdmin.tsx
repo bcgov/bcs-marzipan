@@ -65,6 +65,7 @@ export function ReportCoverContactSettingsAdmin(): ReactElement | null {
     <AdminSection
       title="Calendar admin contact"
       description="Configure contact phone and text for reports and help sections."
+      sectionId="report-cover-contact"
       isLoading={isLoading}
       headerAction={
         <Button

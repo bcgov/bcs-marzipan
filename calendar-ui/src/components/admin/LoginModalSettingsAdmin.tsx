@@ -180,6 +180,7 @@ function LoginModalSettingsAdminInner() {
       <AdminSection
         title="Login modal"
         description="Configure a notice modal shown to users the first time they sign in each session."
+        sectionId="login-modal"
         isLoading={isLoading}
         headerAction={
           canManage ? (

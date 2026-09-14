@@ -507,6 +507,7 @@ export function CategoriesAdmin() {
     <GenericLookupAdmin<Category>
       title="Categories"
       description="Manage activity categories"
+      sectionId="categories"
       entityType="Category"
       apiEndpoint="/lookups/categories"
       queryKey={lookupQueryKeys.categoriesAdmin()}
@@ -549,6 +550,7 @@ export function CitiesAdmin() {
     <GenericLookupAdmin<City>
       title="Cities"
       description="Manage city locations"
+      sectionId="cities"
       entityType="City"
       apiEndpoint="/lookups/cities"
       queryKey={lookupQueryKeys.cities()}
@@ -583,6 +585,7 @@ export function CommsMaterialsAdmin() {
     <GenericLookupAdmin<CommsMaterial>
       title="Communications materials"
       description="Manage communication material types"
+      sectionId="comms"
       entityType="Communications Material"
       apiEndpoint="/lookups/comms-materials"
       queryKey={lookupQueryKeys.commsMaterials()}
@@ -597,6 +600,7 @@ export function GovernmentRepresentativesAdmin() {
     <GenericLookupAdmin<GovernmentRepresentative>
       title="Government representatives"
       description="Manage government representatives. Ministers can be assigned from the Ministries section when creating or editing a ministry."
+      sectionId="representatives"
       entityType="Government Representative"
       apiEndpoint="/lookups/government-representatives"
       queryKey={lookupQueryKeys.governmentRepresentatives()}
@@ -630,6 +634,7 @@ export function TagsAdmin() {
     <GenericLookupAdmin<Tag>
       title="Tags"
       description="Manage activity tags"
+      sectionId="tags"
       entityType="Tag"
       apiEndpoint="/lookups/tags"
       queryKey={lookupQueryKeys.tagsAdmin()}
@@ -674,6 +679,7 @@ export function MinistryGroupsAdmin() {
     <GenericLookupAdmin<MinistryGroupListItem>
       title="Ministry groups"
       description="Named groups for activity “Shared with teams” shortcuts. Assign ministries to a group in the Ministries section."
+      sectionId="ministry-groups"
       entityType="Ministry group"
       apiEndpoint="/lookups/ministry-groups"
       queryKey={lookupQueryKeys.ministryGroups()}
@@ -792,6 +798,7 @@ export function MinistriesAdmin() {
     <GenericLookupAdmin<MinistryAdminItem>
       title="Ministries"
       description="Manage BC government ministries. Choose a minister from existing government representatives or create a new one; the list below stays in sync."
+      sectionId="ministries"
       entityType="Ministry"
       apiEndpoint="/lookups/ministries"
       queryKey={lookupQueryKeys.ministries()}
@@ -817,6 +824,7 @@ export function ActivityStatusesAdmin() {
     <GenericLookupAdmin<ActivityStatus>
       title="Activity statuses"
       description="Manage activity status types"
+      sectionId="statuses"
       entityType="Activity Status"
       apiEndpoint="/lookups/activity-statuses"
       queryKey={lookupQueryKeys.activityStatuses()}
@@ -831,6 +839,7 @@ export function ThemesAdmin() {
     <GenericLookupAdmin<ThemeLookupItem>
       title="Themes"
       description="Manage activity themes"
+      sectionId="themes"
       entityType="Theme"
       apiEndpoint="/lookups/themes"
       queryKey={lookupQueryKeys.themes()}
@@ -883,6 +892,7 @@ export function VenuePresetsAdmin() {
     <GenericLookupAdmin<VenuePreset>
       title="Venue presets"
       description="Manage venue presets for the activity form"
+      sectionId="venue-presets"
       entityType="Venue Preset"
       apiEndpoint="/lookups/venue-presets"
       queryKey={lookupQueryKeys.venuePresets()}

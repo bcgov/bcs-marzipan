@@ -118,6 +118,7 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
     <AdminSection
       title="Permission Visibility"
       description="Toggle permission visibility in user management form (does not affect actual permissions)."
+      sectionId="permissions-visibility"
     >
       <div className="mb-3 flex items-center gap-2">
         <input

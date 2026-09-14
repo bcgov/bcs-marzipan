@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { SettingsSectionId } from '@/contexts/SettingsSectionContext';
 import {
   ClientValidationError,
   showErrorToast,
@@ -52,6 +53,7 @@ export interface RenderModalContentProps {
 interface GenericLookupAdminProps<T extends BaseLookupItem> {
   title: string;
   description: string;
+  sectionId: SettingsSectionId;
   entityType: string;
   apiEndpoint: string;
   /**
@@ -95,6 +97,7 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
 export function GenericLookupAdmin<T extends BaseLookupItem>({
   title,
   description,
+  sectionId,
   entityType,
   apiEndpoint,
   queryKey,
@@ -380,6 +383,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     <AdminSection
       title={title}
       description={description}
+      sectionId={sectionId}
       onAdd={handleOpenModal}
       addButtonLabel={`Add ${entityType}`}
       isLoading={isLoading}

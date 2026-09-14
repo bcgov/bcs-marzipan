@@ -1,6 +1,10 @@
 import { ChevronDown, Plus } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
 
+import {
+  useSettingsSectionOptional,
+  type SettingsSectionId,
+} from '@/contexts/SettingsSectionContext';
 import { cn } from '@/lib/utils';
 
 import { Button } from '../ui/button';
@@ -8,6 +12,8 @@ import { Button } from '../ui/button';
 interface AdminSectionProps {
   title: string;
   description?: string;
+  sectionId?: SettingsSectionId;
+  defaultOpen?: boolean;
   onAdd?: () => void;
   addButtonLabel?: string;
   children: ReactNode;
@@ -25,6 +31,8 @@ interface AdminSectionProps {
 export function AdminSection({
   title,
   description,
+  sectionId,
+  defaultOpen = false,
   onAdd,
   addButtonLabel = 'Add new',
   children,
@@ -32,8 +40,22 @@ export function AdminSection({
   isLoading = false,
   headerAction,
 }: AdminSectionProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const settingsSection = useSettingsSectionOptional();
+  const isContextManaged = sectionId != null && settingsSection != null;
+  const [localOpen, setLocalOpen] = useState(defaultOpen);
   const contentId = useId();
+
+  const isOpen = isContextManaged
+    ? settingsSection.isSectionOpen(sectionId)
+    : localOpen;
+
+  const handleToggle = () => {
+    if (isContextManaged) {
+      settingsSection.toggleSection(sectionId);
+      return;
+    }
+    setLocalOpen((open) => !open);
+  };
 
   return (
     <div
@@ -49,7 +71,7 @@ export function AdminSection({
               type="button"
               aria-controls={contentId}
               aria-expanded={isOpen}
-              onClick={() => setIsOpen((open) => !open)}
+              onClick={handleToggle}
               className="flex w-full items-start gap-3 text-left focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               <ChevronDown

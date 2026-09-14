@@ -368,6 +368,7 @@ function RecurringLockoutBannerSettingsAdminInner() {
     <AdminSection
       title="Recurring edit lockout"
       description="Configure a daily lockout window and warning banners. Users without bypass permission cannot edit activities during lockout."
+      sectionId="recurring-lockout-banner"
       isLoading={isLoading}
       headerAction={
         <div className="flex items-center gap-2">
