@@ -340,7 +340,7 @@ export class LookupsController {
     description: 'Overridable permissions retrieved',
   })
   @Get('permissions/overridable')
-  @RequirePermission('users.edit')
+  @RequirePermission('users.manage_roles')
   async getOverridablePermissions(): Promise<{
     success: boolean;
     data: {

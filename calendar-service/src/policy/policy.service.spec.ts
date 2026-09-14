@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { vi } from 'vitest';
 
@@ -459,6 +460,140 @@ describe('PolicyService', () => {
       expect(result.permissions).not.toContain('activities.unshare');
       expect(result.permissions).toContain('activities.unshare.all');
       expect(result.bypass).toBe(false);
+    });
+  });
+
+  describe('syncUserPermissionOverrides', () => {
+    let policyService: PolicyService;
+    let mockDelete: ReturnType<typeof vi.fn>;
+    let mockInsert: ReturnType<typeof vi.fn>;
+    let mockTransaction: ReturnType<typeof vi.fn>;
+
+    beforeEach(async () => {
+      mockDelete = vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+      mockInsert = vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+      const mockTx = {
+        delete: mockDelete,
+        insert: mockInsert,
+      };
+      mockTransaction = vi.fn((callback: (tx: typeof mockTx) => unknown) =>
+        Promise.resolve(callback(mockTx))
+      );
+
+      mockDatabaseService.db = {
+        transaction: mockTransaction,
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          PolicyService,
+          {
+            provide: DatabaseService,
+            useValue: mockDatabaseService,
+          },
+        ],
+      }).compile();
+
+      policyService = module.get<PolicyService>(PolicyService);
+      vi.spyOn(policyService, 'getOverridablePermissions').mockResolvedValue([
+        {
+          id: 14,
+          key: 'activities.unshare',
+          displayName: 'Unshare activities',
+          description: null,
+        },
+      ]);
+      vi.spyOn(policyService, 'getUserPermissionOverrides').mockResolvedValue(
+        []
+      );
+    });
+
+    it('should return an empty array when requested is empty', async () => {
+      const result = await policyService.syncUserPermissionOverrides(1, [], 99);
+
+      expect(result).toEqual([]);
+      expect(mockTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should reject keys that are not overridable', async () => {
+      await expect(
+        policyService.syncUserPermissionOverrides(
+          1,
+          [{ permissionKey: 'system.manage_permissions', effect: 'grant' }],
+          99
+        )
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should apply a grant inside a single transaction', async () => {
+      const result = await policyService.syncUserPermissionOverrides(
+        1,
+        [{ permissionKey: 'activities.unshare', effect: 'grant' }],
+        99
+      );
+
+      expect(mockTransaction).toHaveBeenCalledTimes(1);
+      expect(mockInsert).toHaveBeenCalledTimes(1);
+      expect(result).toEqual([
+        {
+          permissionKey: 'activities.unshare',
+          oldValue: null,
+          newValue: 'grant',
+        },
+      ]);
+    });
+
+    it('should clear an existing override when effect is null', async () => {
+      vi.spyOn(policyService, 'getUserPermissionOverrides').mockResolvedValue([
+        {
+          key: 'activities.unshare',
+          displayName: 'Unshare activities',
+          effect: 'deny',
+        },
+      ]);
+
+      const result = await policyService.syncUserPermissionOverrides(
+        1,
+        [{ permissionKey: 'activities.unshare', effect: null }],
+        99
+      );
+
+      expect(mockTransaction).toHaveBeenCalledTimes(1);
+      expect(mockDelete).toHaveBeenCalledTimes(1);
+      expect(result).toEqual([
+        {
+          permissionKey: 'activities.unshare',
+          oldValue: 'deny',
+          newValue: null,
+        },
+      ]);
+    });
+
+    it('should skip unchanged overrides without opening a transaction', async () => {
+      vi.spyOn(policyService, 'getUserPermissionOverrides').mockResolvedValue([
+        {
+          key: 'activities.unshare',
+          displayName: 'Unshare activities',
+          effect: 'deny',
+        },
+      ]);
+
+      const result = await policyService.syncUserPermissionOverrides(
+        1,
+        [{ permissionKey: 'activities.unshare', effect: 'deny' }],
+        99
+      );
+
+      expect(result).toEqual([]);
+      expect(mockTransaction).not.toHaveBeenCalled();
     });
   });
 });

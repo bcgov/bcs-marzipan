@@ -18,7 +18,8 @@ export type UserRoleFieldProps = {
   triggerClassName?: string;
   savedRoleId?: number | null;
   existingOverrides?: UserPermissionOverride[];
-  canEdit?: boolean;
+  /** When false, override toggles render read-only (requires users.manage_roles). */
+  canEditOverrides?: boolean;
   onPermissionChange: (overrides: UserPermissionOverrideInput[]) => void;
   className?: string;
 };
@@ -33,7 +34,7 @@ export function UserRoleField({
   triggerClassName,
   savedRoleId,
   existingOverrides,
-  canEdit = true,
+  canEditOverrides = false,
   onPermissionChange,
   className,
 }: UserRoleFieldProps) {
@@ -56,7 +57,7 @@ export function UserRoleField({
         roleId={roleId}
         savedRoleId={savedRoleId}
         existingOverrides={existingOverrides}
-        canEdit={canEdit}
+        canEditOverrides={canEditOverrides}
         onChange={onPermissionChange}
       />
     </div>
