@@ -46,6 +46,7 @@ export const BASE_ACTIVITY: ActivityResponse = {
   translationsRequired: [],
   representativesAttending: [],
   sharedWith: [],
+  sharedWithTeamIds: [],
   commsContacts: [],
   leadOrg: 'Ministry of Housing',
   eventPlannerDetails: [],

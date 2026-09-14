@@ -59,6 +59,9 @@ export const activityListItemSchema = z.object({
   leadTeamDisplayName: activityComputedFieldsSchema.shape.leadTeamDisplayName,
   leadTeamId: activityDbFieldsSchema.shape.leadTeamId,
   leadMinistryId: activityDbFieldsSchema.shape.leadMinistryId,
+  /** Needed by list bulk actions to tell which of the user's teams can be unshared. */
+  sharedWithTeamIds: activityComputedFieldsSchema.shape.sharedWithTeamIds,
+  visibility: activityDbFieldsSchema.shape.visibility,
   commsContacts: commsContactSchema.array().default([]),
   eventPlanners: activityComputedFieldsSchema.shape.eventPlanners,
   eventPlannerLeadIds: activityComputedFieldsSchema.shape.eventPlannerLeadIds,
@@ -141,6 +144,8 @@ export function activityResponseToListItem(
     leadTeamDisplayName: activity.leadTeamDisplayName ?? null,
     leadTeamId: activity.leadTeamId,
     leadMinistryId: activity.leadMinistryId,
+    sharedWithTeamIds: activity.sharedWithTeamIds ?? [],
+    visibility: activity.visibility,
     commsContacts: activity.commsContacts,
     eventPlanners: activity.eventPlanners ?? [],
     eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],

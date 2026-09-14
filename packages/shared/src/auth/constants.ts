@@ -103,6 +103,8 @@ export const PERMISSIONS = {
     BYPASS_RECURRING_LOCKOUT: 'activities.bypass_recurring_lockout',
     /** Remove your own team from an activity's Shared With list. Does not grant broader edit access. */
     UNSHARE: 'activities.unshare',
+    /** Remove any team (not just your own) from an activity's Shared With list. Admin workflow. */
+    UNSHARE_ALL: 'activities.unshare.all',
   },
   DRAFTS: {
     VIEW: 'drafts.view',

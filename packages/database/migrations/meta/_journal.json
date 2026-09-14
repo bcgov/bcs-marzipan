@@ -29,6 +29,13 @@
       "when": 1788458326005,
       "tag": "0003_20260309_notifications_foundation_and_api",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789171887103,
+      "tag": "0004_20260911_user_permissions_and_override",
+      "breakpoints": true
     }
   ]
 }
