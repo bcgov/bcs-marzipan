@@ -316,6 +316,7 @@ export function BannerSettingsAdmin() {
     <AdminSection
       title="System banner"
       description="Manage the dismissible info banner shown at the top of the app for all signed-in users."
+      sectionId="banner"
       isLoading={isLoading}
       headerAction={
         canManage ? (

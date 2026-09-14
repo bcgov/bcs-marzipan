@@ -129,6 +129,7 @@ export function ReviewExemptFieldsSettingsAdmin(): ReactElement | null {
     <AdminSection
       title="Review-exempt activity fields"
       description={DESCRIPTION}
+      sectionId="review-exempt-fields"
       isLoading={isLoading}
       headerAction={
         <Button

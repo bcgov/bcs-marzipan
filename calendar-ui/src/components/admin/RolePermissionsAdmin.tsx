@@ -117,6 +117,7 @@ export function RolePermissionsAdminSection() {
     <AdminSection
       title="Role permissions"
       description="Manage permissions assigned to system roles. System permissions are fixed and cannot be changed here."
+      sectionId="role-permissions"
       headerAction={
         selectedRoleId !== undefined && (
           <div className="flex items-center gap-2">

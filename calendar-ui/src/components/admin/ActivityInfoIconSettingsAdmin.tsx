@@ -173,6 +173,7 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
     <AdminSection
       title="Activity info icons"
       description={DESCRIPTION}
+      sectionId="activity-info-icons"
       isLoading={isLoading}
       headerAction={
         <Button

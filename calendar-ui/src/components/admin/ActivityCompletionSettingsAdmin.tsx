@@ -205,6 +205,7 @@ export function ActivityCompletionSettingsAdmin(): ReactElement | null {
       <AdminSection
         title="Activity completion automation"
         description="Configure how frequently reviewed activities with confirmed date and time are automatically moved to Completed status after their end time."
+        sectionId="activity-completion"
         isLoading={isLoading}
         headerAction={
           <div className="flex items-center gap-2">

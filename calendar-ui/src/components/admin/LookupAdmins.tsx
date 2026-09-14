@@ -543,6 +543,7 @@ export function CategoriesAdmin() {
     <GenericLookupAdmin<Category>
       title="Categories"
       description="Manage activity categories"
+      sectionId="categories"
       entityType="Category"
       apiEndpoint="/lookups/categories"
       enableManualSort
@@ -586,6 +587,7 @@ export function CitiesAdmin() {
     <GenericLookupAdmin<City>
       title="Cities"
       description="Manage city locations"
+      sectionId="cities"
       entityType="City"
       apiEndpoint="/lookups/cities"
       queryKey={lookupQueryKeys.cities()}
@@ -621,6 +623,7 @@ export function CommsMaterialsAdmin() {
     <GenericLookupAdmin<CommsMaterial>
       title="Communications materials"
       description="Manage communication material types"
+      sectionId="comms"
       entityType="Communications Material"
       apiEndpoint="/lookups/comms-materials"
       enableManualSort
@@ -636,6 +639,7 @@ export function TranslationLanguagesAdmin() {
     <GenericLookupAdmin<TranslationLanguage>
       title="Translation languages"
       description="Manage languages available for activity translations"
+      sectionId="translation-languages"
       entityType="Translation Language"
       apiEndpoint="/lookups/translation-languages"
       enableManualSort
@@ -664,6 +668,7 @@ export function GovernmentRepresentativesAdmin() {
     <GenericLookupAdmin<GovernmentRepresentative>
       title="Government representatives"
       description="Manage government representatives. Ministers can be assigned from the Ministries section when creating or editing a ministry."
+      sectionId="representatives"
       entityType="Government Representative"
       apiEndpoint="/lookups/government-representatives"
       enableManualSort
@@ -698,6 +703,7 @@ export function TagsAdmin() {
     <GenericLookupAdmin<Tag>
       title="Tags"
       description="Manage activity tags"
+      sectionId="tags"
       entityType="Tag"
       apiEndpoint="/lookups/tags"
       enableManualSort
@@ -743,6 +749,7 @@ export function MinistryGroupsAdmin() {
     <GenericLookupAdmin<MinistryGroupListItem>
       title="Ministry groups"
       description="Named groups for activity “Shared with teams” shortcuts. Assign ministries to a group in the Ministries section."
+      sectionId="ministry-groups"
       entityType="Ministry group"
       apiEndpoint="/lookups/ministry-groups"
       enableManualSort
@@ -862,6 +869,7 @@ export function MinistriesAdmin() {
     <GenericLookupAdmin<MinistryAdminItem>
       title="Ministries"
       description="Manage BC government ministries. Choose a minister from existing government representatives or create a new one; the list below stays in sync."
+      sectionId="ministries"
       entityType="Ministry"
       apiEndpoint="/lookups/ministries"
       enableManualSort
@@ -888,6 +896,7 @@ export function ActivityStatusesAdmin() {
     <GenericLookupAdmin<ActivityStatus>
       title="Activity statuses"
       description="Manage activity status types"
+      sectionId="statuses"
       entityType="Activity Status"
       apiEndpoint="/lookups/activity-statuses"
       enableManualSort
@@ -903,6 +912,7 @@ export function ThemesAdmin() {
     <GenericLookupAdmin<ThemeLookupItem>
       title="Themes"
       description="Manage activity themes"
+      sectionId="themes"
       entityType="Theme"
       apiEndpoint="/lookups/themes"
       enableManualSort
@@ -956,6 +966,7 @@ export function VenuePresetsAdmin() {
     <GenericLookupAdmin<VenuePreset>
       title="Venue presets"
       description="Manage venue presets for the activity form"
+      sectionId="venue-presets"
       entityType="Venue Preset"
       apiEndpoint="/lookups/venue-presets"
       enableManualSort
