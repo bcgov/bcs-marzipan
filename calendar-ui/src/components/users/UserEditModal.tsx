@@ -21,8 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { UserRolePermissionsSection } from '@/components/users/UserRolePermissionsSection';
-import { UserRoleSelect } from '@/components/users/UserRoleSelect';
+import { UserRoleField } from '@/components/users/UserRoleField';
 import { useAuth } from '@/hooks/useAuth';
 import {
   resolveUserDisplayName,
@@ -261,16 +260,14 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
 
             <div className="space-y-2">
               <Label>Role</Label>
-              <UserRoleSelect
+              <UserRoleField
                 roles={availableRoles}
                 value={roleId}
                 onValueChange={setRoleId}
-              />
-              <UserRolePermissionsSection
                 roleId={selectedRoleId}
                 savedRoleId={detail?.roleId}
                 existingOverrides={detail?.permissionOverrides}
-                onChange={setPermissionOverrideInputs}
+                onPermissionChange={setPermissionOverrideInputs}
               />
             </div>
 

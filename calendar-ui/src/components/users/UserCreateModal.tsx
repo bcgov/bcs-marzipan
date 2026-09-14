@@ -47,8 +47,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
-import { UserRolePermissionsSection } from '@/components/users/UserRolePermissionsSection';
-import { UserRoleSelect } from '@/components/users/UserRoleSelect';
+import { UserRoleField } from '@/components/users/UserRoleField';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import {
   formatUserCreatedDescription,
@@ -387,16 +386,14 @@ export function UserCreateModal({
                       </span>
                     </FormLabel>
                     <FormControl data-field={field.name}>
-                      <UserRoleSelect
+                      <UserRoleField
                         roles={roles}
                         value={field.value}
                         onValueChange={field.onChange}
+                        roleId={selectedRoleId}
+                        onPermissionChange={setPermissionOverrideInputs}
                       />
                     </FormControl>
-                    <UserRolePermissionsSection
-                      roleId={selectedRoleId}
-                      onChange={setPermissionOverrideInputs}
-                    />
                     <FormMessage />
                   </FormItem>
                 );

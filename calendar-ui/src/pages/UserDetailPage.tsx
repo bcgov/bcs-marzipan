@@ -51,8 +51,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { UserChangeLogTabContent } from '@/components/users/UserChangeLogTabContent';
 import { UserEditModal } from '@/components/users/UserEditModal';
-import { UserRolePermissionsSection } from '@/components/users/UserRolePermissionsSection';
-import { UserRoleSelect } from '@/components/users/UserRoleSelect';
+import { UserRoleField } from '@/components/users/UserRoleField';
 import { UserTransferTabContent } from '@/components/users/UserTransferTabContent';
 import { useAuth } from '@/hooks/useAuth';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
@@ -482,25 +481,115 @@ export default function UserDetailPage() {
             </div>
 
             <TabsContent value="account" className="mt-0 space-y-6">
-              <div className="space-y-4">
+              <div className="max-w-2xl space-y-6 bg-transparent p-0">
                 <div>
                   <Label>Role</Label>
-                  <UserRoleSelect
+                  <UserRoleField
                     roles={availableRoles}
                     value={selectedRoleId ? String(selectedRoleId) : ''}
                     onValueChange={(value) =>
                       setSelectedRoleId(Number(value) || null)
                     }
+                    roleId={selectedRoleId}
                     disabled={!canEdit}
                     triggerClassName="w-full"
-                  />
-                  <UserRolePermissionsSection
-                    roleId={selectedRoleId}
                     savedRoleId={userDetail.roleId}
                     existingOverrides={userDetail.permissionOverrides}
                     canEdit={canEdit}
-                    onChange={setPermissionOverrideInputs}
+                    onPermissionChange={setPermissionOverrideInputs}
                   />
+                </div>
+
+                <div>
+                  <Label className="text-base font-semibold">Teams</Label>
+                  <div className="mt-2">
+                    <Combobox
+                      items={teamOptions}
+                      multiple
+                      value={selectedTeamOptions}
+                      onValueChange={(selected: OptionItem[]) => {
+                        void handleTeamSelectionChange(selected);
+                      }}
+                      itemToStringValue={(o: OptionItem) => o.label}
+                      disabled={
+                        !canEdit ||
+                        isProcessingTeamRemove ||
+                        teamRemovalModal != null
+                      }
+                    >
+                      <ComboboxChips
+                        ref={teamsComboboxAnchorRef}
+                        className="w-full"
+                      >
+                        <ComboboxValue>
+                          {(values: OptionItem[]) => (
+                            <>
+                              {values.map((option) => (
+                                <ComboboxChip key={option.value}>
+                                  {option.label}
+                                </ComboboxChip>
+                              ))}
+                              <ComboboxChipsInput placeholder="Select teams..." />
+                            </>
+                          )}
+                        </ComboboxValue>
+                      </ComboboxChips>
+                      <ComboboxContent
+                        anchor={teamsComboboxAnchorRef}
+                        className="popover-list-scroll flex max-h-[min(var(--popover-list-max-height),24rem)] flex-col overflow-x-hidden overflow-y-auto p-0"
+                      >
+                        <div className="bg-popover px-1 py-1">
+                          <TeamsComboboxSelectAllRow
+                            allSelected={allTeamsSelected}
+                            disabled={!canEdit || teamOptions.length === 0}
+                            onToggleSelectAll={() => {
+                              if (allTeamsSelected) {
+                                toast.error(
+                                  'Remove one team at a time using the team chips.'
+                                );
+                                return;
+                              }
+                              setLocalTeamIds(allSelectableTeamIds);
+                            }}
+                          />
+                          {teamOptions.length > 0 ? (
+                            <ComboboxSeparator className="my-1" />
+                          ) : null}
+                          <ComboboxEmpty>No teams found.</ComboboxEmpty>
+                          <ComboboxList className="max-h-none scroll-py-1 overflow-visible p-0 data-empty:p-0">
+                            {(option: OptionItem) => (
+                              <ComboboxItem key={option.value} value={option}>
+                                {option.label}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxList>
+                        </div>
+                      </ComboboxContent>
+                    </Combobox>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="font-semibold">User colour</div>
+
+                  <div className="mt-2 flex items-center gap-3">
+                    <Input
+                      type="color"
+                      aria-label="User colour"
+                      value={flagColour || '#0F6CBD'}
+                      onChange={(e) => setFlagColour(e.target.value)}
+                      onBlur={() => {
+                        if (!canEdit || flagColour === null) return;
+                        if (flagColour !== (userDetail?.flagColour ?? null))
+                          settingsMutation.mutate({ flagColour });
+                      }}
+                      disabled={!canEdit}
+                      className="h-10 w-16 cursor-pointer p-1"
+                    />
+                    <div className="text-sm text-slate-500">
+                      Flag colour for this user
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -512,164 +601,74 @@ export default function UserDetailPage() {
                     className="h-40"
                   />
                 </div>
-              </div>
 
-              <div className="max-w-2xl bg-transparent p-0">
-                <div className="font-semibold">User colour</div>
+                <div>
+                  <div className="font-semibold">Direct login</div>
 
-                <div className="mt-2 flex items-center gap-3">
-                  <Input
-                    type="color"
-                    aria-label="User colour"
-                    value={flagColour || '#0F6CBD'}
-                    onChange={(e) => setFlagColour(e.target.value)}
-                    onBlur={() => {
-                      if (!canEdit || flagColour === null) return;
-                      if (flagColour !== (userDetail?.flagColour ?? null))
-                        settingsMutation.mutate({ flagColour });
-                    }}
-                    disabled={!canEdit}
-                    className="h-10 w-16 cursor-pointer p-1"
-                  />
-                  <div className="text-sm text-slate-500">
-                    Flag colour for this user
-                  </div>
-                </div>
-              </div>
-
-              <div className="max-w-2xl bg-transparent p-0">
-                <Label className="text-base font-semibold">Teams</Label>
-                <div className="mt-2">
-                  <Combobox
-                    items={teamOptions}
-                    multiple
-                    value={selectedTeamOptions}
-                    onValueChange={(selected: OptionItem[]) => {
-                      void handleTeamSelectionChange(selected);
-                    }}
-                    itemToStringValue={(o: OptionItem) => o.label}
-                    disabled={
-                      !canEdit ||
-                      isProcessingTeamRemove ||
-                      teamRemovalModal != null
-                    }
-                  >
-                    <ComboboxChips
-                      ref={teamsComboboxAnchorRef}
-                      className="w-full"
-                    >
-                      <ComboboxValue>
-                        {(values: OptionItem[]) => (
-                          <>
-                            {values.map((option) => (
-                              <ComboboxChip key={option.value}>
-                                {option.label}
-                              </ComboboxChip>
-                            ))}
-                            <ComboboxChipsInput placeholder="Select teams..." />
-                          </>
-                        )}
-                      </ComboboxValue>
-                    </ComboboxChips>
-                    <ComboboxContent
-                      anchor={teamsComboboxAnchorRef}
-                      className="popover-list-scroll flex max-h-[min(var(--popover-list-max-height),24rem)] flex-col overflow-x-hidden overflow-y-auto p-0"
-                    >
-                      <div className="bg-popover px-1 py-1">
-                        <TeamsComboboxSelectAllRow
-                          allSelected={allTeamsSelected}
-                          disabled={!canEdit || teamOptions.length === 0}
-                          onToggleSelectAll={() => {
-                            if (allTeamsSelected) {
-                              toast.error(
-                                'Remove one team at a time using the team chips.'
-                              );
-                              return;
-                            }
-                            setLocalTeamIds(allSelectableTeamIds);
-                          }}
-                        />
-                        {teamOptions.length > 0 ? (
-                          <ComboboxSeparator className="my-1" />
-                        ) : null}
-                        <ComboboxEmpty>No teams found.</ComboboxEmpty>
-                        <ComboboxList className="max-h-none scroll-py-1 overflow-visible p-0 data-empty:p-0">
-                          {(option: OptionItem) => (
-                            <ComboboxItem key={option.value} value={option}>
-                              {option.label}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </div>
-                    </ComboboxContent>
-                  </Combobox>
-                </div>
-              </div>
-
-              <div className="max-w-2xl bg-transparent p-0">
-                <div className="font-semibold">Direct login</div>
-
-                <div className="mt-2 flex items-center gap-3">
-                  <div>
-                    <Switch
-                      checked={directLoginEnabled}
-                      onCheckedChange={(v) => setDirectLoginEnabled(Boolean(v))}
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    Enable direct login
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      if (!canEdit) return;
-                      setResetCodeResult({ code: '', expiresInHours: 0 });
-                      resetMutation.mutate();
-                    }}
-                    disabled={!canEdit || resetMutation.status === 'pending'}
-                    className="flex items-center gap-2 text-slate-500"
-                  >
-                    <Key className="h-4 w-4" aria-hidden />
-                    Generate temporary password
-                  </Button>
-
-                  {resetCodeResult?.code && (
-                    <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-2">
-                      <code className="font-mono text-sm break-all select-all">
-                        {resetCodeResult.code}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          void (async () => {
-                            try {
-                              if (
-                                resetCodeResult?.code &&
-                                navigator?.clipboard?.writeText
-                              ) {
-                                await navigator.clipboard.writeText(
-                                  resetCodeResult.code
-                                );
-                                toast.success('Copied to clipboard');
-                              } else {
-                                toast.error('Clipboard not available');
-                              }
-                            } catch {
-                              toast.error('Failed to copy to clipboard');
-                            }
-                          })();
-                        }}
-                        aria-label="Copy reset code"
-                      >
-                        Copy
-                      </Button>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div>
+                      <Switch
+                        checked={directLoginEnabled}
+                        onCheckedChange={(v) =>
+                          setDirectLoginEnabled(Boolean(v))
+                        }
+                        disabled={!canEdit}
+                      />
                     </div>
-                  )}
+                    <div className="text-sm text-slate-500">
+                      Enable direct login
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (!canEdit) return;
+                        setResetCodeResult({ code: '', expiresInHours: 0 });
+                        resetMutation.mutate();
+                      }}
+                      disabled={!canEdit || resetMutation.status === 'pending'}
+                      className="flex items-center gap-2 text-slate-500"
+                    >
+                      <Key className="h-4 w-4" aria-hidden />
+                      Generate temporary password
+                    </Button>
+
+                    {resetCodeResult?.code && (
+                      <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-2">
+                        <code className="font-mono text-sm break-all select-all">
+                          {resetCodeResult.code}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            void (async () => {
+                              try {
+                                if (
+                                  resetCodeResult?.code &&
+                                  navigator?.clipboard?.writeText
+                                ) {
+                                  await navigator.clipboard.writeText(
+                                    resetCodeResult.code
+                                  );
+                                  toast.success('Copied to clipboard');
+                                } else {
+                                  toast.error('Clipboard not available');
+                                }
+                              } catch {
+                                toast.error('Failed to copy to clipboard');
+                              }
+                            })();
+                          }}
+                          aria-label="Copy reset code"
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

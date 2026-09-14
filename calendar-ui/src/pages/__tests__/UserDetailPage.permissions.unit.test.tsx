@@ -74,7 +74,7 @@ describe('UserDetailPage permissions (unit)', () => {
     );
 
     const trigger = await screen.findByRole('button', {
-      name: /view permissions/i,
+      name: /show permissions/i,
     });
     fireEvent.click(trigger);
 

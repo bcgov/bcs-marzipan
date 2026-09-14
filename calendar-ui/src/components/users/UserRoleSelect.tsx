@@ -1,3 +1,5 @@
+import { Info } from 'lucide-react';
+
 import type { RoleOption } from '@corpcal/shared/api/types';
 import {
   Select,
@@ -26,6 +28,10 @@ export function UserRoleSelect({
 }: UserRoleSelectProps) {
   const selectedRole = roles.find((role) => String(role.id) === value);
   const roleDescription = selectedRole?.description?.trim();
+  const roleSummary =
+    selectedRole && roleDescription
+      ? `${selectedRole.name} role ${roleDescription.charAt(0).toLowerCase()}${roleDescription.slice(1)}`
+      : null;
 
   return (
     <div className="space-y-2">
@@ -41,9 +47,10 @@ export function UserRoleSelect({
           ))}
         </SelectContent>
       </Select>
-      {roleDescription ? (
-        <div className="bg-muted/50 text-muted-foreground rounded-md border px-3 py-2 text-sm">
-          {roleDescription}
+      {roleSummary ? (
+        <div className="text-muted-foreground flex items-start gap-2 text-sm">
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>{roleSummary}</span>
         </div>
       ) : null}
     </div>
