@@ -2,6 +2,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DatabaseService } from '../../database/database.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { ActivityFlagsService } from './activity-flags.service';
 import { ActivityHistoryService } from './activity-history.service';
 
@@ -10,6 +11,10 @@ describe('ActivityFlagsService', () => {
 
   const mockHistoryService = {
     recordChange: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const mockNotificationsService = {
+    notifyActivityFlagAssignmentChanged: vi.fn().mockResolvedValue(undefined),
   };
 
   /**
@@ -97,6 +102,7 @@ describe('ActivityFlagsService', () => {
         ActivityFlagsService,
         { provide: DatabaseService, useValue: { db: mockDb } },
         { provide: ActivityHistoryService, useValue: mockHistoryService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 
@@ -159,6 +165,14 @@ describe('ActivityFlagsService', () => {
         undefined,
         expect.any(Object)
       );
+      expect(
+        mockNotificationsService.notifyActivityFlagAssignmentChanged
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 3,
+        addedAssigneeIds: [2],
+        removedAssigneeIds: [],
+      });
     });
 
     it('records flag_assigned and flag_removed when replacing one assignee with another', async () => {
@@ -203,6 +217,14 @@ describe('ActivityFlagsService', () => {
         undefined,
         expect.any(Object)
       );
+      expect(
+        mockNotificationsService.notifyActivityFlagAssignmentChanged
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 3,
+        addedAssigneeIds: [2],
+        removedAssigneeIds: [4],
+      });
     });
   });
 
@@ -333,6 +355,14 @@ describe('ActivityFlagsService', () => {
         'flag_removed',
         [{ field: 'flag.assigneeName', oldValue: 'John Doe', newValue: null }]
       );
+      expect(
+        mockNotificationsService.notifyActivityFlagAssignmentChanged
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 3,
+        addedAssigneeIds: [],
+        removedAssigneeIds: [2, 4],
+      });
     });
 
     it('is a no-op (no delete, no history) when no flag existed', async () => {

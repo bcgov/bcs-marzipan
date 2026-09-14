@@ -66,14 +66,37 @@ type ActivityIdentity = {
   id: number;
   title: string;
   displayId: string | null;
+  createdBy: number;
+  lastUpdatedBy: number;
+};
+
+type TeamIdentity = {
+  id: number;
+  name: string;
+  displayName: string | null;
+  ministryId: number | null;
 };
 
 const ACTIVITY_HARD_DELETED_EVENT_TYPE =
   'calendar.activity.hard_deleted' as NotificationEventType;
 const ACTIVITY_NOTE_ADDED_EVENT_TYPE =
   'calendar.activity.note_added' as NotificationEventType;
+const ACTIVITY_FLAG_ASSIGNMENT_CHANGED_EVENT_TYPE =
+  'calendar.activity.flag_assignment_changed' as NotificationEventType;
+const ACTIVITIES_TRANSFERRED_EVENT_TYPE =
+  'calendar.activities.transferred' as NotificationEventType;
+const USER_CREATED_EVENT_TYPE =
+  'calendar.user.created' as NotificationEventType;
+const USER_UPDATED_EVENT_TYPE =
+  'calendar.user.updated' as NotificationEventType;
+const TEAM_UPDATED_EVENT_TYPE =
+  'calendar.team.updated' as NotificationEventType;
 const HARD_DELETED_CHANGE_TYPE = 'hard_deleted' as NotificationChangeType;
 const NOTE_ADDED_CHANGE_TYPE = 'note_added' as NotificationChangeType;
+const FLAG_ASSIGNMENT_CHANGED_CHANGE_TYPE =
+  'flag_assignment_changed' as NotificationChangeType;
+const TRANSFERRED_CHANGE_TYPE = 'transferred' as NotificationChangeType;
+const USER_ENTITY_TYPE = 'user' as NotificationEntityType;
 
 @Injectable()
 export class NotificationsService {
@@ -121,6 +144,8 @@ export class NotificationsService {
         id: activities.id,
         title: activities.title,
         displayId: activities.displayId,
+        createdBy: activities.createdBy,
+        lastUpdatedBy: activities.lastUpdatedBy,
       })
       .from(activities)
       .where(eq(activities.id, activityId))
@@ -129,8 +154,44 @@ export class NotificationsService {
     return activityRow ?? null;
   }
 
+  private async resolveTeamIdentity(
+    teamId: number
+  ): Promise<TeamIdentity | null> {
+    const [teamRow] = await this.databaseService.db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        displayName: teams.displayName,
+        ministryId: teams.ministryId,
+      })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    return teamRow ?? null;
+  }
+
   private formatActivityLabel(activity: ActivityIdentity): string {
     return `${activity.displayId ?? `Activity ${activity.id}`} - ${activity.title}`;
+  }
+
+  private async resolveUserLabel(userId: number): Promise<string> {
+    const [userRow] = await this.databaseService.db
+      .select({
+        displayName: users.adDisplayName,
+        username: users.adUsername,
+        email: users.adEmail,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    return (
+      userRow?.displayName ??
+      userRow?.username ??
+      userRow?.email ??
+      `User ${userId}`
+    );
   }
 
   private async getAdminUserIds(): Promise<number[]> {
@@ -142,6 +203,24 @@ export class NotificationsService {
         and(
           eq(users.isActive, true),
           inArray(roles.name, ['Admin', 'System Admin'])
+        )
+      );
+
+    return rows.map((row) => row.id);
+  }
+
+  private async resolveActiveTeamMemberUserIds(
+    teamId: number
+  ): Promise<number[]> {
+    const rows = await this.databaseService.db
+      .select({ id: userTeams.userId })
+      .from(userTeams)
+      .innerJoin(users, eq(users.id, userTeams.userId))
+      .where(
+        and(
+          eq(userTeams.teamId, teamId),
+          eq(userTeams.isActive, true),
+          eq(users.isActive, true)
         )
       );
 
@@ -296,6 +375,200 @@ export class NotificationsService {
       },
       actorUserId: input.actorUserId,
       recipientUserIds,
+    });
+  }
+
+  async notifyActivityFlagAssignmentChanged(input: {
+    activityId: number;
+    actorUserId: number;
+    addedAssigneeIds: number[];
+    removedAssigneeIds: number[];
+  }): Promise<number[]> {
+    const activity = await this.resolveActivityIdentity(input.activityId);
+    if (!activity) {
+      return [];
+    }
+
+    const uniqueAdded = [...new Set(input.addedAssigneeIds)].filter(
+      (id) => Number.isInteger(id) && id > 0
+    );
+    const uniqueRemoved = [...new Set(input.removedAssigneeIds)].filter(
+      (id) => Number.isInteger(id) && id > 0
+    );
+
+    const allRecipients = new Set<number>();
+
+    if (uniqueAdded.length > 0) {
+      const assignedRecipients = await this.createEventWithRecipients({
+        eventType: ACTIVITY_FLAG_ASSIGNMENT_CHANGED_EVENT_TYPE,
+        entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
+        entityId: activity.id,
+        changeType: FLAG_ASSIGNMENT_CHANGED_CHANGE_TYPE,
+        summary: `You were assigned to review activity: ${this.formatActivityLabel(activity)}`,
+        details: {
+          activityId: activity.id,
+          displayId: activity.displayId,
+          title: activity.title,
+          action: 'assigned',
+          assigneeIds: uniqueAdded,
+        },
+        actorUserId: input.actorUserId,
+        recipientUserIds: uniqueAdded,
+      });
+      assignedRecipients.forEach((id) => allRecipients.add(id));
+    }
+
+    if (uniqueRemoved.length > 0) {
+      const unassignedRecipients = await this.createEventWithRecipients({
+        eventType: ACTIVITY_FLAG_ASSIGNMENT_CHANGED_EVENT_TYPE,
+        entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
+        entityId: activity.id,
+        changeType: FLAG_ASSIGNMENT_CHANGED_CHANGE_TYPE,
+        summary: `You were unassigned from reviewing activity: ${this.formatActivityLabel(activity)}`,
+        details: {
+          activityId: activity.id,
+          displayId: activity.displayId,
+          title: activity.title,
+          action: 'unassigned',
+          assigneeIds: uniqueRemoved,
+        },
+        actorUserId: input.actorUserId,
+        recipientUserIds: uniqueRemoved,
+      });
+      unassignedRecipients.forEach((id) => allRecipients.add(id));
+    }
+
+    return Array.from(allRecipients);
+  }
+
+  async notifyActivitiesTransferred(input: {
+    actorUserId: number;
+    fromUserId: number;
+    toUserId: number;
+    transferredCount: number;
+    activityIds: number[];
+    includeAdmins?: boolean;
+  }): Promise<number[]> {
+    if (input.transferredCount <= 0) {
+      return [];
+    }
+
+    const [fromUserLabel, toUserLabel, adminUserIds] = await Promise.all([
+      this.resolveUserLabel(input.fromUserId),
+      this.resolveUserLabel(input.toUserId),
+      input.includeAdmins === true
+        ? this.getAdminUserIds()
+        : Promise.resolve([] as number[]),
+    ]);
+
+    const recipientUserIds = [
+      input.fromUserId,
+      input.toUserId,
+      ...adminUserIds,
+    ];
+    const plural = input.transferredCount === 1 ? 'activity' : 'activities';
+
+    return this.createEventWithRecipients({
+      eventType: ACTIVITIES_TRANSFERRED_EVENT_TYPE,
+      entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
+      entityId: input.activityIds[0] ?? 0,
+      changeType: TRANSFERRED_CHANGE_TYPE,
+      summary: `${input.transferredCount} ${plural} comms assignment${input.transferredCount === 1 ? ' was' : 's were'} transferred from ${fromUserLabel} to ${toUserLabel}`,
+      details: {
+        fromUserId: input.fromUserId,
+        toUserId: input.toUserId,
+        transferredCount: input.transferredCount,
+        activityIds: input.activityIds,
+      },
+      actorUserId: input.actorUserId,
+      recipientUserIds,
+    });
+  }
+
+  async notifyUserCreated(input: {
+    userId: number;
+    actorUserId: number;
+  }): Promise<number[]> {
+    const userLabel = await this.resolveUserLabel(input.userId);
+    const adminUserIds = await this.getAdminUserIds();
+
+    return this.createEventWithRecipients({
+      eventType: USER_CREATED_EVENT_TYPE,
+      entityType: USER_ENTITY_TYPE,
+      entityId: input.userId,
+      changeType: NOTIFICATION_CHANGE_TYPES.CREATE,
+      summary: `User created: ${userLabel}`,
+      details: {
+        userId: input.userId,
+      },
+      actorUserId: input.actorUserId,
+      recipientUserIds: adminUserIds,
+    });
+  }
+
+  async notifyUserUpdated(input: {
+    userId: number;
+    actorUserId: number;
+    changedFields: string[];
+    summary: string;
+    details?: Record<string, unknown>;
+    includeSubjectUser?: boolean;
+    includeAdmins?: boolean;
+  }): Promise<number[]> {
+    const recipientUserIds: number[] = [];
+    if (input.includeSubjectUser !== false) {
+      recipientUserIds.push(input.userId);
+    }
+    if (input.includeAdmins !== false) {
+      recipientUserIds.push(...(await this.getAdminUserIds()));
+    }
+
+    return this.createEventWithRecipients({
+      eventType: USER_UPDATED_EVENT_TYPE,
+      entityType: USER_ENTITY_TYPE,
+      entityId: input.userId,
+      changeType: NOTIFICATION_CHANGE_TYPES.UPDATED,
+      summary: input.summary,
+      details: {
+        userId: input.userId,
+        changedFields: input.changedFields,
+        ...(input.details ?? {}),
+      },
+      actorUserId: input.actorUserId,
+      recipientUserIds,
+    });
+  }
+
+  async notifyTeamUpdated(input: {
+    teamId: number;
+    actorUserId: number;
+    changedFields: string[];
+  }): Promise<number[]> {
+    const team = await this.resolveTeamIdentity(input.teamId);
+    if (!team) {
+      return [];
+    }
+
+    const [adminUserIds, memberUserIds] = await Promise.all([
+      this.getAdminUserIds(),
+      this.resolveActiveTeamMemberUserIds(input.teamId),
+    ]);
+
+    return this.createEventWithRecipients({
+      eventType: TEAM_UPDATED_EVENT_TYPE,
+      entityType: NOTIFICATION_ENTITY_TYPES.TEAM,
+      entityId: team.id,
+      changeType: NOTIFICATION_CHANGE_TYPES.UPDATED,
+      summary: `Team updated: ${team.displayName ?? team.name}`,
+      details: {
+        teamId: team.id,
+        changedFields: input.changedFields,
+        name: team.name,
+        displayName: team.displayName,
+        ministryId: team.ministryId,
+      },
+      actorUserId: input.actorUserId,
+      recipientUserIds: [...adminUserIds, ...memberUserIds],
     });
   }
 
@@ -947,46 +1220,314 @@ export class NotificationsService {
     });
   }
 
+  async notifyActivityReminderPostDated(input: {
+    activityId: number;
+    actorUserId: number;
+  }): Promise<number[]> {
+    const activity = await this.resolveActivityIdentity(input.activityId);
+    if (!activity) {
+      return [];
+    }
+
+    const [adminUserIds, commsRows] = await Promise.all([
+      this.getAdminUserIds(),
+      this.databaseService.db
+        .select({ id: activityCommsContacts.userId })
+        .from(activityCommsContacts)
+        .innerJoin(users, eq(users.id, activityCommsContacts.userId))
+        .where(
+          and(
+            eq(activityCommsContacts.activityId, input.activityId),
+            eq(activityCommsContacts.isActive, true),
+            eq(users.isActive, true)
+          )
+        ),
+    ]);
+
+    return this.createEventWithRecipients({
+      eventType: NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_POST_DATED,
+      entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
+      entityId: activity.id,
+      changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
+      summary: `Reminder: post-dated activity is incomplete: ${this.formatActivityLabel(activity)}`,
+      details: {
+        activityId: activity.id,
+        displayId: activity.displayId,
+        title: activity.title,
+        reminderType: 'post_dated',
+      },
+      actorUserId: input.actorUserId,
+      recipientUserIds: [
+        activity.createdBy,
+        activity.lastUpdatedBy,
+        ...adminUserIds,
+        ...commsRows.map((row) => row.id),
+      ],
+    });
+  }
+
+  async notifyActivityReminderDateStatusNotConfirmed(input: {
+    activityId: number;
+    actorUserId: number;
+    leadDays: number;
+  }): Promise<number[]> {
+    const activity = await this.resolveActivityIdentity(input.activityId);
+    if (!activity) {
+      return [];
+    }
+
+    const commsRows = await this.databaseService.db
+      .select({ id: activityCommsContacts.userId })
+      .from(activityCommsContacts)
+      .innerJoin(users, eq(users.id, activityCommsContacts.userId))
+      .where(
+        and(
+          eq(activityCommsContacts.activityId, input.activityId),
+          eq(activityCommsContacts.isActive, true),
+          eq(users.isActive, true)
+        )
+      );
+
+    return this.createEventWithRecipients({
+      eventType:
+        NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_DATESTATUS_NOT_CONFIRMED,
+      entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
+      entityId: activity.id,
+      changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
+      summary: `Reminder: date status not confirmed (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
+      details: {
+        activityId: activity.id,
+        displayId: activity.displayId,
+        title: activity.title,
+        reminderType: 'datestatus_not_confirmed',
+        leadDays: input.leadDays,
+      },
+      actorUserId: input.actorUserId,
+      recipientUserIds: commsRows.map((row) => row.id),
+    });
+  }
+
+  async notifyActivityReminderNullTime(input: {
+    activityId: number;
+    actorUserId: number;
+    leadDays: number;
+  }): Promise<number[]> {
+    const activity = await this.resolveActivityIdentity(input.activityId);
+    if (!activity) {
+      return [];
+    }
+
+    const commsRows = await this.databaseService.db
+      .select({ id: activityCommsContacts.userId })
+      .from(activityCommsContacts)
+      .innerJoin(users, eq(users.id, activityCommsContacts.userId))
+      .where(
+        and(
+          eq(activityCommsContacts.activityId, input.activityId),
+          eq(activityCommsContacts.isActive, true),
+          eq(users.isActive, true)
+        )
+      );
+
+    return this.createEventWithRecipients({
+      eventType: NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_NULL_TIME,
+      entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
+      entityId: activity.id,
+      changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
+      summary: `Reminder: activity time missing (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
+      details: {
+        activityId: activity.id,
+        displayId: activity.displayId,
+        title: activity.title,
+        reminderType: 'null_time',
+        leadDays: input.leadDays,
+      },
+      actorUserId: input.actorUserId,
+      recipientUserIds: commsRows.map((row) => row.id),
+    });
+  }
+
+  async notifyActivityReminderTimeStatusNotConfirmed(input: {
+    activityId: number;
+    actorUserId: number;
+    leadDays: number;
+  }): Promise<number[]> {
+    const activity = await this.resolveActivityIdentity(input.activityId);
+    if (!activity) {
+      return [];
+    }
+
+    const commsRows = await this.databaseService.db
+      .select({ id: activityCommsContacts.userId })
+      .from(activityCommsContacts)
+      .innerJoin(users, eq(users.id, activityCommsContacts.userId))
+      .where(
+        and(
+          eq(activityCommsContacts.activityId, input.activityId),
+          eq(activityCommsContacts.isActive, true),
+          eq(users.isActive, true)
+        )
+      );
+
+    return this.createEventWithRecipients({
+      eventType:
+        NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_TIMESTATUS_NOT_CONFIRMED,
+      entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
+      entityId: activity.id,
+      changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
+      summary: `Reminder: time status not confirmed (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
+      details: {
+        activityId: activity.id,
+        displayId: activity.displayId,
+        title: activity.title,
+        reminderType: 'timestatus_not_confirmed',
+        leadDays: input.leadDays,
+      },
+      actorUserId: input.actorUserId,
+      recipientUserIds: commsRows.map((row) => row.id),
+    });
+  }
+
+  async notifyActivityReminderUpcoming(input: {
+    activityId: number;
+    actorUserId: number;
+    leadDays: number;
+  }): Promise<number[]> {
+    const activity = await this.resolveActivityIdentity(input.activityId);
+    if (!activity) {
+      return [];
+    }
+
+    const [commsRows, watchRows] = await Promise.all([
+      this.databaseService.db
+        .select({ id: activityCommsContacts.userId })
+        .from(activityCommsContacts)
+        .innerJoin(users, eq(users.id, activityCommsContacts.userId))
+        .where(
+          and(
+            eq(activityCommsContacts.activityId, input.activityId),
+            eq(activityCommsContacts.isActive, true),
+            eq(users.isActive, true)
+          )
+        ),
+      this.databaseService.db
+        .select({ id: userActivityFavourites.userId })
+        .from(userActivityFavourites)
+        .innerJoin(users, eq(users.id, userActivityFavourites.userId))
+        .where(
+          and(
+            eq(userActivityFavourites.activityId, input.activityId),
+            eq(users.isActive, true)
+          )
+        ),
+    ]);
+
+    return this.createEventWithRecipients({
+      eventType: NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_UPCOMING,
+      entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
+      entityId: activity.id,
+      changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
+      summary: `Reminder: upcoming activity (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
+      details: {
+        activityId: activity.id,
+        displayId: activity.displayId,
+        title: activity.title,
+        reminderType: 'upcoming',
+        leadDays: input.leadDays,
+      },
+      actorUserId: input.actorUserId,
+      recipientUserIds: [
+        ...commsRows.map((row) => row.id),
+        ...watchRows.map((row) => row.id),
+      ],
+    });
+  }
+
+  async notifyActivityReminderStale(input: {
+    activityId: number;
+    actorUserId: number;
+    staleDays: number;
+  }): Promise<number[]> {
+    const activity = await this.resolveActivityIdentity(input.activityId);
+    if (!activity) {
+      return [];
+    }
+
+    const [adminUserIds, commsRows] = await Promise.all([
+      this.getAdminUserIds(),
+      this.databaseService.db
+        .select({ id: activityCommsContacts.userId })
+        .from(activityCommsContacts)
+        .innerJoin(users, eq(users.id, activityCommsContacts.userId))
+        .where(
+          and(
+            eq(activityCommsContacts.activityId, input.activityId),
+            eq(activityCommsContacts.isActive, true),
+            eq(users.isActive, true)
+          )
+        ),
+    ]);
+
+    return this.createEventWithRecipients({
+      eventType: NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_STALE,
+      entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
+      entityId: activity.id,
+      changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
+      summary: `Reminder: stale activity (${input.staleDays} day threshold): ${this.formatActivityLabel(activity)}`,
+      details: {
+        activityId: activity.id,
+        displayId: activity.displayId,
+        title: activity.title,
+        reminderType: 'stale',
+        staleDays: input.staleDays,
+      },
+      actorUserId: input.actorUserId,
+      recipientUserIds: [...adminUserIds, ...commsRows.map((row) => row.id)],
+    });
+  }
+
   async notifyUserAddedToTeam(input: {
     userId: number;
     teamId: number;
     actorUserId: number;
     membershipRole: string;
   }): Promise<number[]> {
-    const [[targetUser], [teamRow], ownerRows] = await Promise.all([
-      this.databaseService.db
-        .select({
-          id: users.id,
-          adDisplayName: users.adDisplayName,
-          adUsername: users.adUsername,
-          adEmail: users.adEmail,
-          isActive: users.isActive,
-        })
-        .from(users)
-        .where(eq(users.id, input.userId))
-        .limit(1),
-      this.databaseService.db
-        .select({
-          id: teams.id,
-          name: teams.name,
-          displayName: teams.displayName,
-        })
-        .from(teams)
-        .where(eq(teams.id, input.teamId))
-        .limit(1),
-      this.databaseService.db
-        .select({ id: users.id })
-        .from(userTeams)
-        .innerJoin(users, eq(users.id, userTeams.userId))
-        .where(
-          and(
-            eq(userTeams.teamId, input.teamId),
-            eq(userTeams.role, 'owner'),
-            eq(userTeams.isActive, true),
-            eq(users.isActive, true)
-          )
-        ),
-    ]);
+    const [[targetUser], [teamRow], ownerRows, adminUserIds] =
+      await Promise.all([
+        this.databaseService.db
+          .select({
+            id: users.id,
+            adDisplayName: users.adDisplayName,
+            adUsername: users.adUsername,
+            adEmail: users.adEmail,
+            isActive: users.isActive,
+          })
+          .from(users)
+          .where(eq(users.id, input.userId))
+          .limit(1),
+        this.databaseService.db
+          .select({
+            id: teams.id,
+            name: teams.name,
+            displayName: teams.displayName,
+          })
+          .from(teams)
+          .where(eq(teams.id, input.teamId))
+          .limit(1),
+        this.databaseService.db
+          .select({ id: users.id })
+          .from(userTeams)
+          .innerJoin(users, eq(users.id, userTeams.userId))
+          .where(
+            and(
+              eq(userTeams.teamId, input.teamId),
+              eq(userTeams.role, 'owner'),
+              eq(userTeams.isActive, true),
+              eq(users.isActive, true)
+            )
+          ),
+        this.getAdminUserIds(),
+      ]);
 
     if (!targetUser || !teamRow || !targetUser.isActive) {
       return [];
@@ -999,7 +1540,11 @@ export class NotificationsService {
       `User ${targetUser.id}`;
 
     const teamLabel = teamRow.displayName ?? teamRow.name;
-    const recipientUserIds = [targetUser.id, ...ownerRows.map((r) => r.id)];
+    const recipientUserIds = [
+      targetUser.id,
+      ...ownerRows.map((r) => r.id),
+      ...adminUserIds,
+    ];
 
     return this.createEventWithRecipients({
       eventType: NOTIFICATION_EVENT_TYPES.CALENDAR_TEAM_MEMBER_ADDED,

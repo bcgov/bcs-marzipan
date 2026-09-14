@@ -181,6 +181,12 @@ export class UsersService {
 
     const created = await this.findOne(userId);
     if (!created) throw new NotFoundException('User not found');
+
+    await this.notificationsService.notifyUserCreated({
+      userId,
+      actorUserId: createdByUserId,
+    });
+
     return created;
   }
 
@@ -417,6 +423,18 @@ export class UsersService {
         'settings_updated',
         changes
       );
+
+      if (changes.some((change) => change.field === 'directLoginEnabled')) {
+        await this.notificationsService.notifyUserUpdated({
+          userId: id,
+          actorUserId: changedByUserId,
+          changedFields: ['directLoginEnabled'],
+          summary: 'User direct login setting updated',
+          details: {
+            directLoginEnabled: dto.directLoginEnabled,
+          },
+        });
+      }
     }
 
     const updated = await this.findOne(id);
@@ -535,6 +553,28 @@ export class UsersService {
       actionType,
       changes.length ? changes : undefined
     );
+
+    const notifyFields = changes
+      .map((change) => change.field)
+      .filter((field) => field === 'roleId' || field === 'isActive');
+    if (notifyFields.length > 0) {
+      const summary = notifyFields.includes('isActive')
+        ? dto.isActive === false
+          ? 'User account deactivated'
+          : 'User account activated'
+        : 'User role updated';
+
+      await this.notificationsService.notifyUserUpdated({
+        userId: id,
+        actorUserId: changedByUserId,
+        changedFields: notifyFields,
+        summary,
+        details: {
+          roleId: dto.roleId,
+          isActive: dto.isActive,
+        },
+      });
+    }
 
     const updated = await this.findOne(id);
     if (!updated) throw new NotFoundException('User not found');
@@ -734,6 +774,28 @@ export class UsersService {
       dto?.notes ?? null
     );
 
+    await this.notificationsService.notifyUserUpdated({
+      userId,
+      actorUserId: changedByUserId,
+      changedFields: ['team'],
+      summary: 'User removed from team',
+      details: {
+        teamId,
+        transferredCount,
+      },
+    });
+
+    if (transferredCount > 0 && targetUserId != null) {
+      await this.notificationsService.notifyActivitiesTransferred({
+        actorUserId: changedByUserId,
+        fromUserId: userId,
+        toUserId: targetUserId,
+        transferredCount,
+        activityIds: scopedRows.map((row) => row.activityId),
+        includeAdmins: true,
+      });
+    }
+
     return { transferredCount };
   }
 
@@ -773,6 +835,17 @@ export class UsersService {
       ],
       dto.notes ?? null
     );
+
+    await this.notificationsService.notifyUserUpdated({
+      userId,
+      actorUserId: changedByUserId,
+      changedFields: ['teamRole'],
+      summary: 'User team role updated',
+      details: {
+        teamId,
+        role: dto.role,
+      },
+    });
   }
 
   async getUserHistory(userId: number): Promise<UserHistoryEntry[]> {
@@ -1406,6 +1479,15 @@ export class UsersService {
       ],
       dto.notes ?? null
     );
+
+    await this.notificationsService.notifyActivitiesTransferred({
+      actorUserId: changedByUserId,
+      fromUserId: sourceUserId,
+      toUserId: dto.targetUserId,
+      transferredCount,
+      activityIds,
+      includeAdmins: true,
+    });
 
     return { transferredCount };
   }
