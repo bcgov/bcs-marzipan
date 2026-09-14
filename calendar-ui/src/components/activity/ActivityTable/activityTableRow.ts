@@ -79,6 +79,10 @@ export interface ActivityTableRow {
 
   // Flags (team-scoped assignments)
   flags: ActivityFlagResponse[];
+
+  /** Shared-with team IDs for bulk unshare eligibility. */
+  sharedWithTeamIds: number[];
+  visibility: string | null;
 }
 
 /**
@@ -177,6 +181,8 @@ export function mapActivityToTableRow(
             (v): v is string => typeof v === 'string'
           )
         : undefined,
+    sharedWithTeamIds: activity.sharedWithTeamIds ?? [],
+    visibility: activity.visibility ?? null,
 
     // Flags
     flags: activity.flags ?? [],

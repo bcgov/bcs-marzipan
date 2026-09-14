@@ -7,6 +7,8 @@ import type {
 import {
   serializeFilterActivitiesQueryParams,
   type AddActivityHistoryNoteRequest,
+  type BulkUnshareActivitiesRequest,
+  type BulkUnshareActivitiesResult,
   type BulkUpdateActivitiesRequest,
   type CloneActivityRequest,
   type CreateActivityRequest,
@@ -161,6 +163,22 @@ export async function unshareActivityTeam(
   const res = await api.delete<{ success: boolean; data: ActivityResponse }>(
     `/activities/${id}/shared-with/${teamId}`
   );
+  return res.data.data;
+}
+
+/**
+ * Remove one team from several activities' Shared With lists.
+ * POST /activities/bulk-unshare
+ * Activities that are not shared with the team, or are locked by another user,
+ * are reported as skipped rather than failing the whole request.
+ */
+export async function bulkUnshareActivities(
+  body: BulkUnshareActivitiesRequest
+): Promise<BulkUnshareActivitiesResult> {
+  const res = await api.post<{
+    success: boolean;
+    data: BulkUnshareActivitiesResult;
+  }>('/activities/bulk-unshare', body, { timeout: 30_000 });
   return res.data.data;
 }
 

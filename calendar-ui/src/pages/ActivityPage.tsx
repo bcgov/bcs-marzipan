@@ -34,6 +34,7 @@ import { EditActivityConfirmModal } from '@/components/activity/activities/EditA
 import { RequestDeleteActivityModal } from '@/components/activity/activities/RequestDeleteActivityModal';
 import { ReviewActionButtonLabel } from '@/components/activity/activities/ReviewActionButtonLabel';
 import { ReviewActivityModal } from '@/components/activity/activities/ReviewActivityModal';
+import { UnshareActivityModal } from '@/components/activity/activities/UnshareActivityModal';
 import {
   FormErrorFallback,
   LockBanner,
@@ -66,6 +67,7 @@ import {
   useRestoreActivity,
   useSoftDeleteActivity,
   useSyncActivityFlags,
+  useUnshareActivityTeam,
   useUpdateActivity,
 } from '../hooks/useCalendar';
 import {
@@ -102,6 +104,10 @@ import {
 import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
 import { revertActivityEditSession } from '../lib/revert-activity-edit-session';
 import { TOAST_DURATION_MS } from '../lib/toast-durations';
+import {
+  getUnshareableTeamsForActivity,
+  resolveUnsharePermissions,
+} from '../lib/unshare-helpers';
 
 const logger = createLogger('ActivityPage');
 
@@ -339,6 +345,8 @@ export function ActivityPage({
   const removeAssigneeFlagMutation = useRemoveAssigneeActivityFlag({
     onSuccess: () => void refreshActivity(),
   });
+  const unshareMutation = useUnshareActivityTeam();
+  const [unshareModalOpen, setUnshareModalOpen] = useState(false);
 
   const handleRequestForceHandoff = useCallback(async () => {
     setForceHandoffPending(true);
@@ -490,6 +498,73 @@ export function ActivityPage({
   const hasEditLock = lockState === 'owned';
   const isLockedByOther = lockState === 'locked-by-other';
   const showLockoutNotice = isBlockedByRecurringLockout && !isLockedByOther;
+
+  const unsharePermissions = resolveUnsharePermissions(
+    hasPermission,
+    user?.roleName
+  );
+  const canUnshareActivity =
+    unsharePermissions.hasUnshare || unsharePermissions.hasUnshareAll;
+  const eligibleUnshareTeams = useMemo(
+    () =>
+      getUnshareableTeamsForActivity(
+        {
+          sharedWithTeamIds: activity.sharedWithTeamIds,
+          visibility: activity.visibility,
+        },
+        lookups.sharedWithTeams,
+        user?.teamIds ?? [],
+        unsharePermissions.hasUnshare,
+        unsharePermissions.hasUnshareAll,
+        unsharePermissions.isAdminOrSysAdmin
+      ),
+    [
+      activity.sharedWithTeamIds,
+      activity.visibility,
+      lookups.sharedWithTeams,
+      user?.teamIds,
+      unsharePermissions,
+    ]
+  );
+  const showUnshareHeaderAction =
+    !canEditActivity && canUnshareActivity && eligibleUnshareTeams.length > 0;
+  const unshareDisabled = isLockedByOther || isBlockedByRecurringLockout;
+  const unshareDisabledReason = isLockedByOther
+    ? 'Cannot unshare while activity is being edited.'
+    : isBlockedByRecurringLockout
+      ? lockoutInlineMessage || 'Editing is temporarily locked.'
+      : undefined;
+
+  const handleUnshareConfirm = useCallback(
+    (teamId: number) => {
+      const team =
+        eligibleUnshareTeams.find((entry) => entry.id === teamId) ?? null;
+      unshareMutation.mutate(
+        { id, teamId },
+        {
+          onSuccess: () => {
+            const current = form.getValues('sharedWithTeamIds') ?? [];
+            form.setValue(
+              'sharedWithTeamIds',
+              current.filter((entryId) => entryId !== teamId),
+              { shouldDirty: false }
+            );
+            toast.success(`Removed ${team?.name ?? 'team'} from Shared With`);
+            setUnshareModalOpen(false);
+            void refreshActivity();
+          },
+          onError: (error) => {
+            showErrorToast(
+              error,
+              `Could not remove ${team?.name ?? 'team'} from Shared With`
+            );
+          },
+        }
+      );
+    },
+    [eligibleUnshareTeams, form, id, refreshActivity, unshareMutation]
+  );
+
   const [lockBannerSentinel, setLockBannerSentinel] =
     useState<HTMLDivElement | null>(null);
   const [lockoutBannerSentinel, setLockoutBannerSentinel] =
@@ -692,6 +767,13 @@ export function ActivityPage({
           };
         }
 
+        if (activity.lastUpdatedDateTime) {
+          submitData = {
+            ...submitData,
+            ifUnmodifiedSince: activity.lastUpdatedDateTime,
+          };
+        }
+
         const updated = await updateMutation.mutateAsync({
           id,
           data: submitData,
@@ -753,6 +835,7 @@ export function ActivityPage({
       updateMutation,
       form,
       activity.title,
+      activity.lastUpdatedDateTime,
       canViewActivity,
       applyExternalLockReleased,
       navigate,
@@ -1070,6 +1153,35 @@ export function ActivityPage({
         isFavourite={isFavourite(id)}
         onFavouriteToggle={() => toggleFavourite(id)}
         isFavouriteToggling={isFavouriteToggling}
+        unshareAction={
+          showUnshareHeaderAction
+            ? {
+                teamLabel:
+                  eligibleUnshareTeams.length === 1
+                    ? eligibleUnshareTeams[0].name
+                    : '…',
+                disabled: unshareDisabled,
+                disabledReason: unshareDisabledReason,
+                onClick: () => setUnshareModalOpen(true),
+                isPending: unshareMutation.isPending,
+              }
+            : undefined
+        }
+      />
+      <UnshareActivityModal
+        open={unshareModalOpen}
+        onOpenChange={setUnshareModalOpen}
+        mode="single"
+        activityIds={[id]}
+        activities={[
+          {
+            sharedWithTeamIds: activity.sharedWithTeamIds,
+            visibility: activity.visibility,
+          },
+        ]}
+        eligibleTeams={eligibleUnshareTeams}
+        onConfirm={handleUnshareConfirm}
+        isPending={unshareMutation.isPending}
       />
       {isLockedByOther && (
         <div ref={setLockBannerSentinel}>

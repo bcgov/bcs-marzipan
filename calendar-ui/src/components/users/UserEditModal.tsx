@@ -7,8 +7,9 @@ import type {
   UpdateUserBody,
   UserDetail,
   UserListItem,
+  UserPermissionOverrideInput,
 } from '@corpcal/shared/api/types';
-import { fetchUser, updateUser } from '@/api/usersApi';
+import { fetchRoles, fetchUser, updateUser } from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,6 +21,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { UserRolePermissionsSection } from '@/components/users/UserRolePermissionsSection';
+import { UserRoleSelect } from '@/components/users/UserRoleSelect';
 import { useAuth } from '@/hooks/useAuth';
 import {
   resolveUserDisplayName,
@@ -51,6 +54,9 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
   const [phone, setPhone] = useState<string | null>('');
   const [jobTitle, setJobTitle] = useState<string | null>('');
   const [isActive, setIsActive] = useState<boolean>(true);
+  const [permissionOverrideInputs, setPermissionOverrideInputs] = useState<
+    UserPermissionOverrideInput[]
+  >([]);
 
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
@@ -65,6 +71,24 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
     queryFn: () => fetchUser(user.id),
     enabled: !!user.id,
   });
+
+  const { data: roles = [] } = useQuery({
+    queryKey: ['roles'],
+    queryFn: fetchRoles,
+  });
+
+  const currentUserIsSystemAdmin =
+    currentUser?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
+
+  const availableRoles = roles.filter((role) => {
+    if (!currentUserIsSystemAdmin && role.id === SYSTEM_ROLE_IDS.SYSTEM_ADMIN) {
+      return false;
+    }
+    return true;
+  });
+
+  const parsedRoleId = parseInt(roleId, 10);
+  const selectedRoleId = Number.isNaN(parsedRoleId) ? null : parsedRoleId;
 
   useEffect(() => {
     if (detail) {
@@ -138,6 +162,10 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
       body.email = normalizedEmail;
       body.phone = (phone ?? '').trim() || null;
       body.jobTitle = (jobTitle ?? '').trim() || null;
+    }
+
+    if (permissionOverrideInputs.length > 0) {
+      body.permissionOverrides = permissionOverrideInputs;
     }
 
     const combinedName = [firstName, lastName]
@@ -228,6 +256,21 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
                 readOnly={!canEditProfile}
                 disabled={!canEditProfile}
                 className={canEditProfile ? undefined : 'bg-slate-50'}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <UserRoleSelect
+                roles={availableRoles}
+                value={roleId}
+                onValueChange={setRoleId}
+              />
+              <UserRolePermissionsSection
+                roleId={selectedRoleId}
+                savedRoleId={detail?.roleId}
+                existingOverrides={detail?.permissionOverrides}
+                onChange={setPermissionOverrideInputs}
               />
             </div>
 

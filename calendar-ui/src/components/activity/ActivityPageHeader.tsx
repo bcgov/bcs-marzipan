@@ -1,4 +1,4 @@
-import { History, Star } from 'lucide-react';
+import { History, Star, UserX } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
@@ -50,6 +50,13 @@ type ActivityPageHeaderProps = {
   isFavourite?: boolean;
   onFavouriteToggle?: () => void;
   isFavouriteToggling?: boolean;
+  unshareAction?: {
+    teamLabel: string;
+    disabled: boolean;
+    disabledReason?: string;
+    onClick: () => void;
+    isPending: boolean;
+  };
 };
 
 /**
@@ -73,6 +80,7 @@ export function ActivityPageHeader({
   isFavourite,
   onFavouriteToggle,
   isFavouriteToggling,
+  unshareAction,
 }: ActivityPageHeaderProps): ReactElement {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
 
@@ -106,7 +114,11 @@ export function ActivityPageHeader({
   const headerActionIconClassName = 'text-muted-foreground size-4';
   const timestampClassName = 'text-muted-foreground text-xs sm:text-sm';
   const showActionButtons =
-    canFlag || isFlagged || onFavouriteToggle || onHistoryClick;
+    canFlag ||
+    isFlagged ||
+    unshareAction != null ||
+    onFavouriteToggle ||
+    onHistoryClick;
 
   return (
     <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 sm:gap-x-12 sm:gap-y-1">
@@ -253,6 +265,31 @@ export function ActivityPageHeader({
                 assigneeName={currentUserFlag.assigneeName}
                 assigneeFlagColour={currentUserFlag.assigneeFlagColour}
               />
+            </Button>
+          )}
+          {unshareAction && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              title={
+                unshareAction.disabled && unshareAction.disabledReason
+                  ? unshareAction.disabledReason
+                  : `Unshare ${unshareAction.teamLabel}`
+              }
+              aria-label={
+                unshareAction.disabled && unshareAction.disabledReason
+                  ? unshareAction.disabledReason
+                  : `Unshare ${unshareAction.teamLabel}`
+              }
+              onClick={unshareAction.onClick}
+              disabled={unshareAction.disabled || unshareAction.isPending}
+              className={cn(iconButtonClassName, 'px-2')}
+            >
+              <UserX className={headerActionIconClassName} aria-hidden />
+              <span className="ml-1.5 hidden sm:inline">
+                Unshare {unshareAction.teamLabel}
+              </span>
             </Button>
           )}
           {onFavouriteToggle && (
