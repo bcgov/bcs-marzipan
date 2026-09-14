@@ -2,6 +2,7 @@ import { createZodDto } from 'nestjs-zod';
 
 import {
   addActivityHistoryNoteRequestSchema,
+  bulkUnshareActivitiesRequestSchema,
   bulkUpdateActivitiesRequestSchema,
   cloneActivityRequestSchema,
   createActivityRequestSchema,
@@ -40,6 +41,11 @@ export class UpdateActivityDto extends createZodDto(
 /** DTO for the Admin/System Admin activity-list bulk actions. */
 export class BulkUpdateActivitiesDto extends createZodDto(
   bulkUpdateActivitiesRequestSchema
+) {}
+
+/** DTO for removing one team from several activities' Shared With lists. */
+export class BulkUnshareActivitiesDto extends createZodDto(
+  bulkUnshareActivitiesRequestSchema
 ) {}
 
 /**

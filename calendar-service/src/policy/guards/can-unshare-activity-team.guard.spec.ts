@@ -114,6 +114,22 @@ describe('CanUnshareActivityTeamGuard', () => {
     expect(guard.canActivate(ctx)).toBe(true);
   });
 
+  it('should return true when user has activities.unshare.all for any team', () => {
+    const user: AuthUser = {
+      id: 5,
+      username: 'user',
+      displayName: 'User',
+      email: 'user@example.com',
+      roleId: 2,
+      roleName: 'Editor',
+      permissions: [PERMISSIONS.ACTIVITIES.UNSHARE_ALL],
+      teamIds: [7],
+    };
+    const ctx = createMockContext(user, { id: '1', teamId: '99' });
+
+    expect(guard.canActivate(ctx)).toBe(true);
+  });
+
   it('should throw ForbiddenException when user does not belong to the team being unshared', () => {
     const user: AuthUser = {
       id: 5,

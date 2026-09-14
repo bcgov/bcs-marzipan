@@ -32,6 +32,7 @@ import type {
   UserDetail,
   UserHistoryEntry,
   UserListItem,
+  UserPermissionOverrideInput,
 } from '@corpcal/shared/api/types';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
@@ -39,6 +40,7 @@ import { ActivityUtilsService } from '../activities/services/activity-utils.serv
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PolicyService } from '../policy/policy.service';
 import { TeamsService } from '../teams/teams.service';
 import { sortByStaffName } from './staff-name-sort';
 
@@ -65,8 +67,40 @@ export class UsersService {
     private readonly activityHistoryService: ActivityHistoryService,
     private readonly activityUtilsService: ActivityUtilsService,
     private readonly teamsService: TeamsService,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly policyService: PolicyService
   ) {}
+
+  /**
+   * Apply per-user permission overrides and record one history entry per changed key.
+   * Invalid keys are rejected by PolicyService before anything is written.
+   */
+  private async applyPermissionOverrides(
+    userId: number,
+    overrides: UserPermissionOverrideInput[] | undefined,
+    changedByUserId: number
+  ): Promise<void> {
+    if (!overrides || overrides.length === 0) return;
+
+    const applied = await this.policyService.syncUserPermissionOverrides(
+      userId,
+      overrides,
+      changedByUserId
+    );
+
+    if (applied.length === 0) return;
+
+    await this.recordUserHistory(
+      userId,
+      changedByUserId,
+      'permission_override_changed',
+      applied.map((change) => ({
+        field: `permission:${change.permissionKey}`,
+        oldValue: change.oldValue,
+        newValue: change.newValue,
+      }))
+    );
+  }
 
   private async recordUserHistory(
     userId: number,
@@ -178,6 +212,12 @@ export class UsersService {
         );
       }
     }
+
+    await this.applyPermissionOverrides(
+      userId,
+      dto.permissionOverrides,
+      createdByUserId
+    );
 
     const created = await this.findOne(userId);
     if (!created) throw new NotFoundException('User not found');
@@ -343,7 +383,14 @@ export class UsersService {
         : [];
     const teamNameMap = new Map(teamNameRows.map((t) => [t.id, t.name]));
 
+    const overrides = await this.policyService.getUserPermissionOverrides(id);
+
     return {
+      permissionOverrides: overrides.map((o) => ({
+        permissionKey: o.key,
+        displayName: o.displayName,
+        effect: o.effect,
+      })),
       ...u,
       flagColour: u.flagColour ?? null,
       directLoginEnabled: u.directLoginEnabled ?? undefined,
@@ -529,7 +576,17 @@ export class UsersService {
       });
     }
 
-    if (Object.keys(updates).length === 0) return existing;
+    await this.applyPermissionOverrides(
+      id,
+      dto.permissionOverrides,
+      changedByUserId
+    );
+
+    if (Object.keys(updates).length === 0) {
+      const refreshed = await this.findOne(id);
+      if (!refreshed) throw new NotFoundException('User not found');
+      return refreshed;
+    }
 
     updates.lastUpdatedBy = changedByUserId;
     updates.lastUpdatedDateTime = new Date();
