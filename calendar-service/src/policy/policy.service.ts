@@ -175,7 +175,12 @@ export class PolicyService {
       oldValue: UserPermissionEffect | null;
       newValue: UserPermissionEffect | null;
     }[] = [];
-    const now = new Date();
+    const pendingWrites: {
+      permissionKey: string;
+      permissionId: number;
+      oldValue: UserPermissionEffect | null;
+      newValue: UserPermissionEffect | null;
+    }[] = [];
 
     for (const item of requested) {
       const permissionId = idByKey.get(item.permissionKey);
@@ -184,43 +189,58 @@ export class PolicyService {
       const oldValue = existingByKey.get(item.permissionKey) ?? null;
       if (oldValue === item.effect) continue;
 
-      if (item.effect === null) {
-        await this.databaseService.db
-          .delete(userPermissions)
-          .where(
-            and(
-              eq(userPermissions.userId, userId),
-              eq(userPermissions.permissionId, permissionId)
-            )
-          );
-      } else {
-        await this.databaseService.db
-          .insert(userPermissions)
-          .values({
-            userId,
-            permissionId,
-            effect: item.effect,
-            isActive: true,
-            createdBy: actorUserId,
-            updatedBy: actorUserId,
-          })
-          .onConflictDoUpdate({
-            target: [userPermissions.userId, userPermissions.permissionId],
-            set: {
-              effect: item.effect,
-              isActive: true,
-              updatedAt: now,
-              updatedBy: actorUserId,
-            },
-          });
-      }
-
-      changes.push({
+      pendingWrites.push({
         permissionKey: item.permissionKey,
+        permissionId,
         oldValue,
         newValue: item.effect,
       });
     }
+
+    if (pendingWrites.length === 0) return [];
+
+    const now = new Date();
+
+    await this.databaseService.db.transaction(async (tx) => {
+      for (const item of pendingWrites) {
+        if (item.newValue === null) {
+          await tx
+            .delete(userPermissions)
+            .where(
+              and(
+                eq(userPermissions.userId, userId),
+                eq(userPermissions.permissionId, item.permissionId)
+              )
+            );
+        } else {
+          await tx
+            .insert(userPermissions)
+            .values({
+              userId,
+              permissionId: item.permissionId,
+              effect: item.newValue,
+              isActive: true,
+              createdBy: actorUserId,
+              updatedBy: actorUserId,
+            })
+            .onConflictDoUpdate({
+              target: [userPermissions.userId, userPermissions.permissionId],
+              set: {
+                effect: item.newValue,
+                isActive: true,
+                updatedAt: now,
+                updatedBy: actorUserId,
+              },
+            });
+        }
+
+        changes.push({
+          permissionKey: item.permissionKey,
+          oldValue: item.oldValue,
+          newValue: item.newValue,
+        });
+      }
+    });
 
     return changes;
   }

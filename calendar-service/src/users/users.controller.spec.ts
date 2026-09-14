@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import type { AuthUser } from '@corpcal/shared';
@@ -22,7 +22,12 @@ const mockUser: AuthUser = {
   email: 'test@gov.bc.ca',
   roleId: 5,
   roleName: 'Admin',
-  permissions: ['users.view', 'users.edit', 'users.transfer_activities'],
+  permissions: [
+    'users.view',
+    'users.edit',
+    'users.manage_roles',
+    'users.transfer_activities',
+  ],
   teamIds: [],
 };
 
@@ -96,6 +101,26 @@ describe('UsersController', () => {
   });
 
   describe('create', () => {
+    it('should reject permission overrides without users.manage_roles', async () => {
+      const dto = {
+        email: 'newuser@gov.bc.ca',
+        idirUsername: 'JNEWUSER',
+        roleId: 2,
+        permissionOverrides: [
+          { permissionKey: 'activities.unshare', effect: 'grant' as const },
+        ],
+      };
+      const userWithoutManageRoles: AuthUser = {
+        ...mockUser,
+        permissions: ['users.view', 'users.create'],
+      };
+
+      await expect(
+        controller.create(dto, userWithoutManageRoles)
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockUsersService.create).not.toHaveBeenCalled();
+    });
+
     it('should create user and return 201 with data', async () => {
       const dto = {
         email: 'newuser@gov.bc.ca',
@@ -211,6 +236,23 @@ describe('UsersController', () => {
   });
 
   describe('update', () => {
+    it('should reject permission overrides without users.manage_roles', async () => {
+      const dto = {
+        permissionOverrides: [
+          { permissionKey: 'activities.unshare', effect: 'deny' as const },
+        ],
+      };
+      const userWithoutManageRoles: AuthUser = {
+        ...mockUser,
+        permissions: ['users.view', 'users.edit'],
+      };
+
+      await expect(
+        controller.update(1, dto, userWithoutManageRoles)
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+
     it('should update user and return updated detail', async () => {
       const dto = { roleId: 2, isActive: true };
       const updated = createMockUserDetail({ id: 1, roleId: 2 });

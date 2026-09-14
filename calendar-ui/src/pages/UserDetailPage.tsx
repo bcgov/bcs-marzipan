@@ -213,6 +213,7 @@ export default function UserDetailPage() {
   });
 
   const canEdit = hasPermission(SHARED_PERMISSIONS.USERS.EDIT);
+  const canEditOverrides = hasPermission(SHARED_PERMISSIONS.USERS.MANAGE_ROLES);
   const canTransferActivities = hasPermission(
     SHARED_PERMISSIONS.USERS.TRANSFER_ACTIVITIES
   );
@@ -495,7 +496,7 @@ export default function UserDetailPage() {
                     triggerClassName="w-full"
                     savedRoleId={userDetail.roleId}
                     existingOverrides={userDetail.permissionOverrides}
-                    canEdit={canEdit}
+                    canEditOverrides={canEditOverrides}
                     onPermissionChange={setPermissionOverrideInputs}
                   />
                 </div>

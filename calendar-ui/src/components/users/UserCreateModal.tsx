@@ -5,6 +5,7 @@ import { useForm, type Resolver } from 'react-hook-form';
 import { z } from 'zod';
 import { useEffect, useRef, useState } from 'react';
 
+import { PERMISSIONS } from '@corpcal/shared';
 import type {
   CreateUserBody,
   UserPermissionOverrideInput,
@@ -48,6 +49,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { UserRoleField } from '@/components/users/UserRoleField';
+import { useAuth } from '@/hooks/useAuth';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import {
   formatUserCreatedDescription,
@@ -117,6 +119,8 @@ export function UserCreateModal({
   onClose,
   onSaved,
 }: UserCreateModalProps) {
+  const { hasPermission } = useAuth();
+  const canEditOverrides = hasPermission(PERMISSIONS.USERS.MANAGE_ROLES);
   const teamsAnchorRef = useComboboxAnchor();
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const [isTeamsComboboxOpen, setIsTeamsComboboxOpen] = useState(false);
@@ -391,6 +395,7 @@ export function UserCreateModal({
                         value={field.value}
                         onValueChange={field.onChange}
                         roleId={selectedRoleId}
+                        canEditOverrides={canEditOverrides}
                         onPermissionChange={setPermissionOverrideInputs}
                       />
                     </FormControl>

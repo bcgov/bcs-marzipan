@@ -52,7 +52,7 @@ export type UserRolePermissionsSectionProps = {
   /** Role persisted on the server; omit for create flows. */
   savedRoleId?: number | null;
   existingOverrides?: UserPermissionOverride[];
-  canEdit?: boolean;
+  canEditOverrides?: boolean;
   onChange: (overrides: UserPermissionOverrideInput[]) => void;
 };
 
@@ -60,7 +60,7 @@ export function UserRolePermissionsSection({
   roleId,
   savedRoleId,
   existingOverrides,
-  canEdit = true,
+  canEditOverrides = false,
   onChange,
 }: UserRolePermissionsSectionProps) {
   const [expanded, setExpanded] = useState(false);
@@ -76,6 +76,7 @@ export function UserRolePermissionsSection({
   } = useQuery({
     queryKey: lookupQueryKeys.overridablePermissions(),
     queryFn: fetchOverridablePermissions,
+    enabled: canEditOverrides,
   });
 
   const {
@@ -211,7 +212,8 @@ export function UserRolePermissionsSection({
                     );
                     const customized =
                       row.allowUserOverride && isPermissionCustomized(override);
-                    const switchInteractive = canEdit && row.allowUserOverride;
+                    const switchInteractive =
+                      canEditOverrides && row.allowUserOverride;
 
                     return (
                       <div

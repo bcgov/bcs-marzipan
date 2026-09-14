@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import type {
   UpdateUserBody,
   UserDetail,
@@ -58,7 +58,8 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
   >([]);
 
   const queryClient = useQueryClient();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, hasPermission } = useAuth();
+  const canEditOverrides = hasPermission(PERMISSIONS.USERS.MANAGE_ROLES);
 
   // Editing personal profile details is limited to admins / sys-admins.
   const canEditProfile =
@@ -267,6 +268,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
                 roleId={selectedRoleId}
                 savedRoleId={detail?.roleId}
                 existingOverrides={detail?.permissionOverrides}
+                canEditOverrides={canEditOverrides}
                 onPermissionChange={setPermissionOverrideInputs}
               />
             </div>
