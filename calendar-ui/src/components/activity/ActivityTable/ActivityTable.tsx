@@ -2108,7 +2108,7 @@ export function ActivityTable({
       </Button>
     ) : null;
 
-  const bulkActions = canBulkUpdateActivities ? (
+  const bulkActions = canBulkSelect ? (
     <div className="flex items-center gap-5 pb-1 pl-4">
       {bulkSelectionSummary}
       <DropdownMenu>
@@ -2123,75 +2123,68 @@ export function ActivityTable({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-52">
-          {canUnshare && (
+          {canBulkUpdateActivities ? (
+            <>
+              <DropdownMenuItem
+                onSelect={() => {
+                  [...selectedActivityIds]
+                    .filter((id) => !watchlistIds.includes(id))
+                    .forEach((id) => toggleFavourite(id));
+                }}
+              >
+                Add to watchlist
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
+                Flag
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
+                Issue
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
+                    Update pitch status
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              {canBulkShareActivities && (
+                <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
+                  Shared with
+                </DropdownMenuItem>
+              )}
+              {canUnshare && (
+                <DropdownMenuItem
+                  onSelect={() => setUnshareModalOpen(true)}
+                  disabled={eligibleBulkUnshareTeams.length === 0}
+                >
+                  Unshare
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
+                Tags
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
+                Review
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => setBulkDialog('delete')}
+              >
+                Delete
+              </DropdownMenuItem>
+            </>
+          ) : canUnshare ? (
             <DropdownMenuItem
               onSelect={() => setUnshareModalOpen(true)}
               disabled={eligibleBulkUnshareTeams.length === 0}
             >
               Unshare
             </DropdownMenuItem>
-          )}
-          <DropdownMenuItem
-            onSelect={() => {
-              [...selectedActivityIds]
-                .filter((id) => !watchlistIds.includes(id))
-                .forEach((id) => toggleFavourite(id));
-            }}
-          >
-            Add to watchlist
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
-            Flag
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
-            Issue
-          </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
-                Update pitch status
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          {canBulkShareActivities && (
-            <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
-              Shared with
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
-            Tags
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
-            Review
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={() => setBulkDialog('delete')}
-          >
-            Delete
-          </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
-      {bulkClearSelectionButton}
-    </div>
-  ) : canUnshare ? (
-    <div className="flex items-center gap-5 pb-1 pl-4">
-      {bulkSelectionSummary}
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        disabled={
-          selectedActivityCount === 0 ||
-          bulkActionPending ||
-          eligibleBulkUnshareTeams.length === 0
-        }
-        onClick={() => setUnshareModalOpen(true)}
-      >
-        Unshare
-      </Button>
       {bulkClearSelectionButton}
     </div>
   ) : null;
