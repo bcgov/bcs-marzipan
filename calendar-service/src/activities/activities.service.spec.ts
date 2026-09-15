@@ -3396,7 +3396,15 @@ describe('ActivitiesService', () => {
         [{ id: 10 }],
         [{ teamId: 1 }, { teamId: 2 }, { teamId: 3 }]
       );
-      mockDatabaseService.db.transaction = vi.fn((callback) => callback({}));
+      const mockTxUpdate = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+      const mockTx = { update: mockTxUpdate };
+      mockDatabaseService.db.transaction = vi.fn((callback) =>
+        callback(mockTx)
+      );
       const ctx = {
         user: { id: 99, roleName: 'Editor', permissions: [], teamIds: [2] },
         dataScope: { bypass: false, teamIds: [2] },
@@ -3405,7 +3413,7 @@ describe('ActivitiesService', () => {
       const result = await service.unshareTeam(10, 2, 99, ctx as never);
 
       expect(mockJunctionService.updateJunctionRecords).toHaveBeenCalledWith(
-        {},
+        mockTx,
         expect.anything(),
         10,
         [1, 3],
@@ -3414,6 +3422,7 @@ describe('ActivitiesService', () => {
         99,
         expect.any(Date)
       );
+      expect(mockTxUpdate).toHaveBeenCalledTimes(1);
       expect(mockActivityHistoryService.recordChange).toHaveBeenCalledWith(
         10,
         99,
@@ -3439,7 +3448,15 @@ describe('ActivitiesService', () => {
 
     it('still forces a bypass data scope when called without a request context', async () => {
       mockSelectsFor([{ id: 10 }], [{ teamId: 1 }, { teamId: 2 }]);
-      mockDatabaseService.db.transaction = vi.fn((callback) => callback({}));
+      mockDatabaseService.db.transaction = vi.fn((callback) =>
+        callback({
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue(undefined),
+            }),
+          }),
+        })
+      );
 
       await service.unshareTeam(10, 2, 99);
 

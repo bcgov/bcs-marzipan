@@ -17,6 +17,7 @@ import {
 } from '@corpcal/database/schema';
 import { ROLES_BYPASS_DATA_SCOPING } from '@corpcal/shared';
 
+import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 
 @Injectable()
@@ -138,22 +139,13 @@ export class PolicyService {
   }
 
   /**
-   * Replace a user's permission overrides with the supplied set.
-   * Keys not flagged allow_user_override (or under `system.`) are rejected.
-   * Returns the applied changes so callers can write an audit trail.
+   * Reject permission keys that are not flagged allow_user_override (or under `system.`).
+   * Call before mutating user rows so invalid payloads fail without partial writes.
    */
-  async syncUserPermissionOverrides(
-    userId: number,
-    requested: { permissionKey: string; effect: UserPermissionEffect | null }[],
-    actorUserId: number
-  ): Promise<
-    {
-      permissionKey: string;
-      oldValue: UserPermissionEffect | null;
-      newValue: UserPermissionEffect | null;
-    }[]
-  > {
-    if (requested.length === 0) return [];
+  async validateUserPermissionOverrideKeys(
+    requested: { permissionKey: string }[]
+  ): Promise<void> {
+    if (requested.length === 0) return;
 
     const overridable = await this.getOverridablePermissions();
     const idByKey = new Map(overridable.map((p) => [p.key, p.id]));
@@ -166,6 +158,31 @@ export class PolicyService {
         `These permissions cannot be set per user: ${invalidKeys.join(', ')}`
       );
     }
+  }
+
+  /**
+   * Replace a user's permission overrides with the supplied set.
+   * Keys not flagged allow_user_override (or under `system.`) are rejected.
+   * Returns the applied changes so callers can write an audit trail.
+   */
+  async syncUserPermissionOverrides(
+    userId: number,
+    requested: { permissionKey: string; effect: UserPermissionEffect | null }[],
+    actorUserId: number,
+    executor?: DrizzleDbExecutor
+  ): Promise<
+    {
+      permissionKey: string;
+      oldValue: UserPermissionEffect | null;
+      newValue: UserPermissionEffect | null;
+    }[]
+  > {
+    if (requested.length === 0) return [];
+
+    await this.validateUserPermissionOverrideKeys(requested);
+
+    const overridable = await this.getOverridablePermissions();
+    const idByKey = new Map(overridable.map((p) => [p.key, p.id]));
 
     const existing = await this.getUserPermissionOverrides(userId);
     const existingByKey = new Map(existing.map((o) => [o.key, o.effect]));
@@ -201,7 +218,7 @@ export class PolicyService {
 
     const now = new Date();
 
-    await this.databaseService.db.transaction(async (tx) => {
+    const applyWrites = async (tx: DrizzleDbExecutor): Promise<void> => {
       for (const item of pendingWrites) {
         if (item.newValue === null) {
           await tx
@@ -240,7 +257,13 @@ export class PolicyService {
           newValue: item.newValue,
         });
       }
-    });
+    };
+
+    if (executor) {
+      await applyWrites(executor);
+    } else {
+      await this.databaseService.db.transaction(applyWrites);
+    }
 
     return changes;
   }

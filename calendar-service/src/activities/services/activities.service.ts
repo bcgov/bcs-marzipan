@@ -2277,7 +2277,8 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
-    this.assertNotModifiedSince(oldActivity, dto.ifUnmodifiedSince);
+    const ifUnmodifiedSince = dto.ifUnmodifiedSince;
+    this.assertNotModifiedSince(oldActivity, ifUnmodifiedSince);
 
     await this.assertCanEditDuringLockout(userId, context?.permissions);
 
@@ -2547,6 +2548,13 @@ export class ActivitiesService {
     }
 
     // Use transaction to ensure atomicity of activity and junction table updates
+    const concurrencyToken =
+      ifUnmodifiedSince &&
+      oldActivity.lastUpdatedDateTime &&
+      !Number.isNaN(new Date(ifUnmodifiedSince).getTime())
+        ? new Date(ifUnmodifiedSince)
+        : null;
+
     const updated = await this.databaseService.db.transaction(async (tx) => {
       const effectiveLeadTeamId =
         dto.leadTeamId !== undefined ? dto.leadTeamId : oldActivity.leadTeamId;
@@ -2610,11 +2618,27 @@ export class ActivitiesService {
           });
       }
 
+      const updateConditions = [eq(activities.id, id)];
+      if (concurrencyToken) {
+        updateConditions.push(
+          eq(activities.lastUpdatedDateTime, concurrencyToken)
+        );
+      }
+
       const [updatedActivity] = await tx
         .update(activities)
         .set(updateData)
-        .where(eq(activities.id, id))
+        .where(and(...updateConditions))
         .returning();
+
+      if (!updatedActivity) {
+        if (concurrencyToken) {
+          throw new ConflictException(
+            'This activity was updated by someone else. Refresh to see the latest changes before saving.'
+          );
+        }
+        throw new NotFoundException(`Activity with ID ${id} not found`);
+      }
 
       // Debug: log the DB row returned from update
       try {
@@ -4353,6 +4377,14 @@ export class ActivitiesService {
         userId,
         now
       );
+
+      await tx
+        .update(activities)
+        .set({
+          lastUpdatedDateTime: now,
+          lastUpdatedBy: userId,
+        })
+        .where(eq(activities.id, id));
     });
 
     await this.activityHistoryService.recordChange(
