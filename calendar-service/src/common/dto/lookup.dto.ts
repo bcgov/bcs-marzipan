@@ -16,6 +16,7 @@ import {
   createResponseWrapperSchema,
   createTagRequestSchema,
   createThemeRequestSchema,
+  createTranslationLanguageRequestSchema,
   createVenuePresetRequestSchema,
   governmentRepresentativeResponseSchema,
   lookupItemSchema,
@@ -23,6 +24,7 @@ import {
   ministryResponseSchema,
   tagResponseSchema,
   themeResponseSchema,
+  translationLanguageResponseSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
   updateCityRequestSchema,
@@ -32,6 +34,7 @@ import {
   updateMinistryRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
+  updateTranslationLanguageRequestSchema,
   updateVenuePresetRequestSchema,
   venuePresetItemSchema,
 } from '@corpcal/shared/schemas';
@@ -217,6 +220,38 @@ export class CommsMaterialResponseDto extends createZodDto(
  */
 export class CommsMaterialResponseWrapperDto extends createZodDto(
   createResponseWrapperSchema(commsMaterialsResponseSchema)
+) {}
+
+// ============================================
+// Translation Language DTOs
+// ============================================
+
+/**
+ * DTO for creating a new translation language
+ */
+export class CreateTranslationLanguageDto extends createZodDto(
+  createTranslationLanguageRequestSchema
+) {}
+
+/**
+ * DTO for updating a translation language
+ */
+export class UpdateTranslationLanguageDto extends createZodDto(
+  updateTranslationLanguageRequestSchema
+) {}
+
+/**
+ * DTO for translation language response
+ */
+export class TranslationLanguageResponseDto extends createZodDto(
+  translationLanguageResponseSchema
+) {}
+
+/**
+ * DTO for wrapped translation language response
+ */
+export class TranslationLanguageResponseWrapperDto extends createZodDto(
+  createResponseWrapperSchema(translationLanguageResponseSchema)
 ) {}
 
 // ============================================

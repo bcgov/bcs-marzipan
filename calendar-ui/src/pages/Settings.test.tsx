@@ -50,6 +50,7 @@ vi.mock('@/components/admin/LookupAdmins', () => ({
   MinistryGroupsAdmin: () => <div>MinistryGroups</div>,
   TagsAdmin: () => <div>Tags</div>,
   ThemesAdmin: () => <div>Themes</div>,
+  TranslationLanguagesAdmin: () => <div>TranslationLanguages</div>,
   PermissionsVisibilityAdminSection: () => <div>PermissionsVisibility</div>,
   VenuePresetsAdmin: () => <div>VenuePresets</div>,
 }));
