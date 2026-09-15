@@ -716,11 +716,8 @@ export function ActivityPage({
           return;
         }
         logger.error('Failed to update activity', err);
-        const message =
-          getRecurringEditLockoutErrorMessage(err) ??
-          (err instanceof ApiError && err.status === 409
-            ? 'The entry is locked by another user. Your changes could not be saved.'
-            : 'Your changes could not be saved.');
+        // Backend detail already distinguishes no-lock-held vs locked-by-other (423) cases.
+        const message = getRecurringEditLockoutErrorMessage(err);
         showErrorToast(err, message);
       } finally {
         setIsSubmitting(false);
