@@ -30,6 +30,7 @@ import type {
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { sortByStaffName } from '../users/staff-name-sort';
 
 @Injectable()
@@ -37,7 +38,8 @@ export class TeamsService {
   constructor(
     private readonly databaseService: DatabaseService,
     @Inject(forwardRef(() => ActivityDisplayIdSyncService))
-    private readonly activityDisplayIdSyncService: ActivityDisplayIdSyncService
+    private readonly activityDisplayIdSyncService: ActivityDisplayIdSyncService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   private async recordTeamHistory(
@@ -571,6 +573,19 @@ export class TeamsService {
 
     const updated = await this.findOne(id);
     if (!updated) throw new NotFoundException('Team not found');
+
+    const notifyFields = changes
+      .map((change) => change.field)
+      .filter((field) => field === 'name' || field === 'ministryId');
+
+    if (notifyFields.length > 0) {
+      await this.notificationsService.notifyTeamUpdated({
+        teamId: id,
+        actorUserId: lastUpdatedBy,
+        changedFields: notifyFields,
+      });
+    }
+
     return updated;
   }
 

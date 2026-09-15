@@ -11,6 +11,7 @@ import {
   createMockUpdateTeamBody,
 } from '../common/test-utils';
 import { DatabaseService } from '../database/database.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TeamsService } from './teams.service';
 
 describe('TeamsService', () => {
@@ -69,6 +70,10 @@ describe('TeamsService', () => {
       .mockResolvedValue({ updatedCount: 0 }),
   };
 
+  const mockNotificationsService = {
+    notifyTeamUpdated: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -80,6 +85,10 @@ describe('TeamsService', () => {
         {
           provide: ActivityDisplayIdSyncService,
           useValue: mockActivityDisplayIdSyncService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
         },
       ],
     }).compile();
@@ -365,9 +374,55 @@ describe('TeamsService', () => {
 
       expect(result).not.toBeNull();
       expect(result.name).toBe('Updated Name');
+      expect(mockNotificationsService.notifyTeamUpdated).toHaveBeenCalledWith({
+        teamId: 1,
+        actorUserId: 1,
+        changedFields: ['name'],
+      });
       expect(
         mockActivityDisplayIdSyncService.refreshAfterTeamAbbreviationChange
       ).not.toHaveBeenCalled();
+    });
+
+    it('notifies on ministry association changes', async () => {
+      const teamRow = {
+        id: 1,
+        name: 'Team One',
+        displayName: 'Team One',
+        abbreviation: 'ONE',
+        description: null,
+        sortOrder: 0,
+        isActive: true,
+        roleId: null,
+        ministryId: null,
+      };
+      const updatedTeamRow = { ...teamRow, ministryId: 3 };
+      const memberRows: { userId: number; role: string }[] = [];
+      const ministryNameRows = [{ displayName: 'Ministry Three' }];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([teamRow], 'limit'))
+        .mockReturnValueOnce(createChain(memberRows, 'where'))
+        .mockReturnValueOnce(createChain([], 'limit'))
+        .mockReturnValueOnce(createChain([updatedTeamRow], 'limit'))
+        .mockReturnValueOnce(createChain(memberRows, 'where'))
+        .mockReturnValueOnce(createChain(ministryNameRows, 'limit'));
+
+      mockDatabaseService.db.update = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+
+      await service.update(1, createMockUpdateTeamBody({ ministryId: 3 }), 9);
+
+      expect(mockNotificationsService.notifyTeamUpdated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          teamId: 1,
+          actorUserId: 9,
+          changedFields: expect.arrayContaining(['ministryId']),
+        })
+      );
     });
 
     it('should throw ConflictException when renaming to an existing team name', async () => {

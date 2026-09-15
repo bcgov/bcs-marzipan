@@ -46,6 +46,9 @@ export const users = pgTable(
     // Additional user info
     phone: varchar('phone', { length: 50 }),
     notes: text('notes'),
+    enableEmailNotification: boolean('enable_email_notification')
+      .notNull()
+      .default(true),
 
     // Audit fields
     lastLoginDateTime: timestamp('last_login_date_time', {

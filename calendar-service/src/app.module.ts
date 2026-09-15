@@ -23,6 +23,7 @@ import { LoginModalModule } from './login-modal/login-modal.module';
 import { LookAheadResetModule } from './look-ahead-reset/look-ahead-reset.module';
 import { LookAheadModule } from './look-ahead/look-ahead.module';
 import { LookupsModule } from './lookups/lookups.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PermissionsGuard } from './policy/guards/permissions.guard';
 import { RolesGuard } from './policy/guards/roles.guard';
 import { DataScopeInterceptor } from './policy/interceptors/data-scope.interceptor';
@@ -70,6 +71,7 @@ function resolveRootEnvPath(): string {
     UsersModule,
     TeamsModule,
     FavouritesModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [
