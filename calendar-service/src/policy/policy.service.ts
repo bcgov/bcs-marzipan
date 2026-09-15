@@ -82,14 +82,18 @@ export class PolicyService {
    * Load active per-user permission overrides (grants and denials).
    * Overrides are exceptions to role inheritance; see getEffectivePermissionsForUser.
    */
-  async getUserPermissionOverrides(userId: number): Promise<
+  async getUserPermissionOverrides(
+    userId: number,
+    executor?: DrizzleDbExecutor
+  ): Promise<
     {
       key: string;
       displayName: string;
       effect: UserPermissionEffect;
     }[]
   > {
-    const rows = await this.databaseService.db
+    const db = executor ?? this.databaseService.db;
+    const rows = await db
       .select({
         key: permissions.key,
         displayName: permissions.displayName,
@@ -116,7 +120,7 @@ export class PolicyService {
    * Permissions admins may grant or deny for an individual user.
    * `system.*` keys are excluded defensively even if flagged in the database.
    */
-  async getOverridablePermissions(): Promise<
+  async getOverridablePermissions(executor?: DrizzleDbExecutor): Promise<
     {
       id: number;
       key: string;
@@ -124,7 +128,8 @@ export class PolicyService {
       description: string | null;
     }[]
   > {
-    const rows = await this.databaseService.db
+    const db = executor ?? this.databaseService.db;
+    const rows = await db
       .select({
         id: permissions.id,
         key: permissions.key,
@@ -143,11 +148,12 @@ export class PolicyService {
    * Call before mutating user rows so invalid payloads fail without partial writes.
    */
   async validateUserPermissionOverrideKeys(
-    requested: { permissionKey: string }[]
+    requested: { permissionKey: string }[],
+    executor?: DrizzleDbExecutor
   ): Promise<void> {
     if (requested.length === 0) return;
 
-    const overridable = await this.getOverridablePermissions();
+    const overridable = await this.getOverridablePermissions(executor);
     const idByKey = new Map(overridable.map((p) => [p.key, p.id]));
 
     const invalidKeys = requested
@@ -179,12 +185,12 @@ export class PolicyService {
   > {
     if (requested.length === 0) return [];
 
-    await this.validateUserPermissionOverrideKeys(requested);
+    await this.validateUserPermissionOverrideKeys(requested, executor);
 
-    const overridable = await this.getOverridablePermissions();
+    const overridable = await this.getOverridablePermissions(executor);
     const idByKey = new Map(overridable.map((p) => [p.key, p.id]));
 
-    const existing = await this.getUserPermissionOverrides(userId);
+    const existing = await this.getUserPermissionOverrides(userId, executor);
     const existingByKey = new Map(existing.map((o) => [o.key, o.effect]));
 
     const changes: {
