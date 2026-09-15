@@ -1,5 +1,4 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
@@ -26,11 +25,18 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  formatMemberAddedDescription,
+  formatTeamLabel,
+  resolveUserDisplayName,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 import { invalidateUserCaches } from '@/lib/userQueryKeys';
 
 interface AddTeamMemberModalProps {
   open: boolean;
   teamId: number;
+  teamName: string;
   existingMemberIds: number[];
   onClose: () => void;
   onAdded: () => void;
@@ -39,6 +45,7 @@ interface AddTeamMemberModalProps {
 export function AddTeamMemberModal({
   open,
   teamId,
+  teamName,
   existingMemberIds,
   onClose,
   onAdded,
@@ -91,15 +98,37 @@ export function AddTeamMemberModal({
         })
       );
       const results = await Promise.allSettled(promises);
-      const succeeded = results.filter((r) => r.status === 'fulfilled').length;
-      const failed = results.length - succeeded;
-      if (succeeded > 0) {
-        toast.success(`${succeeded} member${succeeded > 1 ? 's' : ''} added`, {
-          id: `team-member-added-${teamId}`,
-        });
+      const succeededUsers = selectedUsers.filter(
+        (_user, index) => results[index]?.status === 'fulfilled'
+      );
+      const failedUsers = selectedUsers.filter(
+        (_user, index) => results[index]?.status === 'rejected'
+      );
+      const resolvedTeamName = formatTeamLabel({ name: teamName, id: teamId });
+
+      if (succeededUsers.length > 0) {
+        const memberNames = succeededUsers.map((user) =>
+          resolveUserDisplayName(user)
+        );
+        showEntityToast(
+          'success',
+          succeededUsers.length === 1 ? 'Member added' : 'Members added',
+          {
+            description: formatMemberAddedDescription(
+              memberNames,
+              resolvedTeamName
+            ),
+            id: `team-member-added-${teamId}`,
+          }
+        );
       }
-      if (failed > 0) {
-        toast.error(`${failed} failed to add`, {
+      if (failedUsers.length > 0) {
+        const failedNames = formatMemberAddedDescription(
+          failedUsers.map((user) => resolveUserDisplayName(user)),
+          resolvedTeamName
+        );
+        showEntityToast('error', 'Could not add members', {
+          description: failedNames,
           id: `team-member-add-failed-${teamId}`,
         });
       }
@@ -111,7 +140,9 @@ export function AddTeamMemberModal({
       onAdded();
       onClose();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to add members');
+      showEntityToast('error', 'Could not add members', {
+        description: err?.message || 'Failed to add members',
+      });
     } finally {
       setIsSubmitting(false);
     }

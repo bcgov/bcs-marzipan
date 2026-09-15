@@ -23,6 +23,7 @@ import {
   ScheduledDateRangeFields,
   type DateRangeValue,
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
+import { HistoryDayRangeTabs } from '@/components/history/HistoryDayRangeTabs';
 import { PageHeader } from '@/components/layout';
 import { ErrorState } from '@/components/shared';
 import { TablePagination } from '@/components/table/TablePagination';
@@ -57,7 +58,6 @@ import {
   formatLongDate,
   formatPacificHistoryListDayHeading,
   isTimestampInPacificDateFilter,
-  pacificInclusiveCalendarRangeEndingToday,
 } from '@/lib/datetime-utils';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
@@ -745,38 +745,6 @@ export function GlobalHistory() {
     return [...groups.entries()];
   }, [filteredEntries]);
 
-  // Derive which quick-select preset is active from the current dateRange.
-  // Returns null when no preset matches (including on initial load with no date set).
-  const activePreset = useMemo(() => {
-    if (!isDateRangeActive(dateRange)) return null;
-    const now = new Date();
-    const todayRange = pacificInclusiveCalendarRangeEndingToday(1, now);
-    if (
-      todayRange &&
-      dateRange.startDate === todayRange.startDate &&
-      dateRange.endDate === todayRange.endDate
-    ) {
-      return 'today';
-    }
-    const last7 = pacificInclusiveCalendarRangeEndingToday(7, now);
-    if (
-      last7 &&
-      dateRange.startDate === last7.startDate &&
-      dateRange.endDate === last7.endDate
-    ) {
-      return 'last7';
-    }
-    const last30 = pacificInclusiveCalendarRangeEndingToday(30, now);
-    if (
-      last30 &&
-      dateRange.startDate === last30.startDate &&
-      dateRange.endDate === last30.endDate
-    ) {
-      return 'last30';
-    }
-    return null;
-  }, [dateRange]);
-
   return (
     <>
       <PageHeader title="History" />
@@ -834,79 +802,11 @@ export function GlobalHistory() {
         />
       </div>
 
-      {/* Quick-select date presets */}
-      <div className="mb-4 flex items-center gap-2">
-        {(
-          [
-            {
-              key: 'today',
-              label: 'Today',
-              getRange: () => {
-                const r = pacificInclusiveCalendarRangeEndingToday(1);
-                return {
-                  ...(r ?? { startDate: '', endDate: '' }),
-                  noStartDate: false,
-                  noEndDate: false,
-                };
-              },
-            },
-            {
-              key: 'last7',
-              label: 'Last 7 days',
-              getRange: () => {
-                const r = pacificInclusiveCalendarRangeEndingToday(7);
-                return {
-                  ...(r ?? { startDate: '', endDate: '' }),
-                  noStartDate: false,
-                  noEndDate: false,
-                };
-              },
-            },
-            {
-              key: 'last30',
-              label: 'Last 30 days',
-              getRange: () => {
-                const r = pacificInclusiveCalendarRangeEndingToday(30);
-                return {
-                  ...(r ?? { startDate: '', endDate: '' }),
-                  noStartDate: false,
-                  noEndDate: false,
-                };
-              },
-            },
-          ] as const
-        ).map(({ key, label, getRange }) => {
-          const isActive = activePreset === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() =>
-                isActive
-                  ? setDateRange(EMPTY_DATE_RANGE)
-                  : setDateRange(getRange())
-              }
-              className={
-                isActive
-                  ? 'rounded bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700 ring-1 ring-blue-300'
-                  : 'rounded bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200'
-              }
-              aria-pressed={isActive}
-            >
-              {label}
-            </button>
-          );
-        })}
-        {activePreset !== null && (
-          <button
-            type="button"
-            className="rounded px-2 py-1 text-sm text-slate-500 hover:underline"
-            onClick={() => setDateRange(EMPTY_DATE_RANGE)}
-          >
-            Clear
-          </button>
-        )}
-      </div>
+      <HistoryDayRangeTabs
+        value={dateRange}
+        onChange={setDateRange}
+        className="mb-4"
+      />
 
       {historyQuery.isLoading ? (
         <div className="text-sm text-slate-500">Loading history...</div>

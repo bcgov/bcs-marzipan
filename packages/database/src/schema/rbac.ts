@@ -58,6 +58,12 @@ export const permissions = pgTable('permissions', {
   showInUserManagement: boolean('show_in_user_management')
     .notNull()
     .default(false),
+  /**
+   * When true, admins may grant or deny this permission for an individual user
+   * (see user_permissions), overriding what their role template provides.
+   * Distinct from showInUserManagement, which only controls role matrix display.
+   */
+  allowUserOverride: boolean('allow_user_override').notNull().default(false),
   resource: varchar('resource', { length: 100 }), // Optional: extracted from key for querying
   action: varchar('action', { length: 50 }), // Optional: extracted from key for querying
   scope: varchar('scope', { length: 100 }), // Optional: scope/context (e.g. field, filter, report, etc.)
@@ -106,6 +112,45 @@ export const rolePermissions = pgTable(
   (table) => [primaryKey({ columns: [table.roleId, table.permissionId] })]
 );
 
+/**
+ * Permission effects for per-user overrides. `deny` wins over `grant` when both exist.
+ */
+export const USER_PERMISSION_EFFECTS = ['grant', 'deny'] as const;
+
+export type UserPermissionEffect = (typeof USER_PERMISSION_EFFECTS)[number];
+
+/**
+ * UserPermissions junction table - Per-user permission overrides relative to role inheritance.
+ * `grant` adds a permission the user's roles do not include; `deny` removes an inherited one.
+ * Only permissions flagged permissions.allow_user_override may be overridden.
+ */
+export const userPermissions = pgTable(
+  'user_permissions',
+  {
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    permissionId: integer('permission_id')
+      .notNull()
+      .references(() => permissions.id, { onDelete: 'cascade' }),
+    effect: varchar('effect', { length: 10 }).notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdBy: integer('created_by').references((): AnyPgColumn => users.id, {
+      onDelete: 'set null',
+    }),
+    updatedBy: integer('updated_by').references((): AnyPgColumn => users.id, {
+      onDelete: 'set null',
+    }),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.permissionId] })]
+);
+
 export const rolesRelations = relations(roles, ({ one, many }) => ({
   rolePermissions: many(rolePermissions),
   creator: one(users, {
@@ -122,6 +167,7 @@ export const rolesRelations = relations(roles, ({ one, many }) => ({
 
 export const permissionsRelations = relations(permissions, ({ one, many }) => ({
   rolePermissions: many(rolePermissions),
+  userPermissions: many(userPermissions),
   creator: one(users, {
     fields: [permissions.createdBy],
     references: [users.id],
@@ -154,6 +200,31 @@ export const rolePermissionsRelations = relations(
       fields: [rolePermissions.updatedBy],
       references: [users.id],
       relationName: 'rolePermissionUpdater',
+    }),
+  })
+);
+
+export const userPermissionsRelations = relations(
+  userPermissions,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userPermissions.userId],
+      references: [users.id],
+      relationName: 'userPermissionUser',
+    }),
+    permission: one(permissions, {
+      fields: [userPermissions.permissionId],
+      references: [permissions.id],
+    }),
+    creator: one(users, {
+      fields: [userPermissions.createdBy],
+      references: [users.id],
+      relationName: 'userPermissionCreator',
+    }),
+    updater: one(users, {
+      fields: [userPermissions.updatedBy],
+      references: [users.id],
+      relationName: 'userPermissionUpdater',
     }),
   })
 );

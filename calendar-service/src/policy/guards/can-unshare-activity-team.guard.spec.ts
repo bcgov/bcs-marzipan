@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS, SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
 
 import { CanUnshareActivityTeamGuard } from './can-unshare-activity-team.guard';
+
 describe('CanUnshareActivityTeamGuard', () => {
   const guard = new CanUnshareActivityTeamGuard();
 
@@ -109,6 +110,22 @@ describe('CanUnshareActivityTeamGuard', () => {
       teamIds: [7],
     };
     const ctx = createMockContext(user, { id: '1', teamId: '7' });
+
+    expect(guard.canActivate(ctx)).toBe(true);
+  });
+
+  it('should return true when user has activities.unshare.all for any team', () => {
+    const user: AuthUser = {
+      id: 5,
+      username: 'user',
+      displayName: 'User',
+      email: 'user@example.com',
+      roleId: 2,
+      roleName: 'Editor',
+      permissions: [PERMISSIONS.ACTIVITIES.UNSHARE_ALL],
+      teamIds: [7],
+    };
+    const ctx = createMockContext(user, { id: '1', teamId: '99' });
 
     expect(guard.canActivate(ctx)).toBe(true);
   });

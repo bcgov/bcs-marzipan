@@ -153,6 +153,7 @@ export const activityComputedFieldsSchema = z.object({
   translationsRequired: z.array(z.string()).default([]).optional(),
   representativesAttending: z.array(z.string()).default([]), // Representative display names
   sharedWith: z.array(z.string()).default([]), // Team names the activity is shared with
+  sharedWithTeamIds: z.array(z.number().int()).default([]), // Team IDs matching sharedWith, for membership checks (e.g. unshare eligibility)
   commsContacts: z
     .array(
       z.object({

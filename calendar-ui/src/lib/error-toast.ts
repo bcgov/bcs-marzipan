@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 
 import { ApiError, NetworkError } from '../api/errors';
+import { TOAST_DURATION_MS } from './toast-durations';
 
 /**
  * Error Toast Helper
@@ -108,7 +109,7 @@ export function showErrorToast(error: unknown, customMessage?: string): void {
   let title = 'Error';
   let message = 'An error occurred';
   let variant: 'error' | 'warning' = 'error';
-  let duration = 7000;
+  let duration = TOAST_DURATION_MS.error;
 
   if (error instanceof ApiError) {
     // Handle API errors with appropriate messaging
@@ -147,7 +148,7 @@ export function showErrorToast(error: unknown, customMessage?: string): void {
       customMessage ||
       'Unable to connect to server. Please check your connection and try again.';
     variant = 'warning';
-    duration = 7000;
+    duration = TOAST_DURATION_MS.error;
 
     if (import.meta.env.DEV && error.correlationId) {
       message += ` (ID: ${error.correlationId})`;
@@ -170,12 +171,15 @@ export function showErrorToast(error: unknown, customMessage?: string): void {
  * Show a success toast notification
  */
 export function showSuccessToast(message: string, title = 'Success'): void {
-  toast.success(title, { description: message, duration: 5000 });
+  toast.success(title, {
+    description: message,
+    duration: TOAST_DURATION_MS.success,
+  });
 }
 
 /**
  * Show an info toast notification
  */
 export function showInfoToast(message: string, title = 'Info'): void {
-  toast.info(title, { description: message, duration: 5000 });
+  toast.info(title, { description: message, duration: TOAST_DURATION_MS.info });
 }

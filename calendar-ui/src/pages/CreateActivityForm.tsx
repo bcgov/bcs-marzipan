@@ -48,6 +48,7 @@ import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 import { getRecurringEditLockoutErrorMessage } from '../lib/recurring-edit-lockout-error';
 import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
+import { TOAST_DURATION_MS } from '../lib/toast-durations';
 
 const logger = createLogger('CreateActivityForm');
 
@@ -215,7 +216,7 @@ export const CreateActivityForm: FC = () => {
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
-      duration: 7000,
+      duration: TOAST_DURATION_MS.error,
     });
   };
 

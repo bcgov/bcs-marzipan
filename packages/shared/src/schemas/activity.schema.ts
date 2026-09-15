@@ -461,6 +461,15 @@ export const createActivityRequestSchema = createBaseSchema
  */
 export const updateActivityRequestSchema = createBaseSchema
   .partial()
+  .extend({
+    /**
+     * Optimistic concurrency token: the `lastUpdatedDateTime` the client loaded.
+     * When supplied and the activity has changed since, the save is rejected with
+     * 409 instead of silently overwriting the newer state (e.g. a team that was
+     * unshared while the editor held the form open).
+     */
+    ifUnmodifiedSince: z.string().datetime().optional(),
+  })
   .refine(updateLeadContactRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,
     path: [...LEAD_CONTACT_REFINE_PATH],
@@ -544,6 +553,35 @@ export const bulkUpdateActivitiesRequestSchema = z
   });
 
 /**
+ * Bulk unshare request: removes one team from several activities' Shared With lists.
+ * Separate from bulkUpdateActivitiesRequestSchema because unsharing requires only
+ * activities.unshare, not the edit permissions the other bulk operations need.
+ */
+export const bulkUnshareActivitiesRequestSchema = z.object({
+  activityIds: z.array(z.number().int().positive()).min(1).max(100),
+  teamId: z.number().int().positive(),
+});
+
+/**
+ * Per-activity outcome for a bulk unshare. Activities that were not shared with the
+ * team, or are locked by another user, are reported as `skipped` with a reason
+ * rather than failing the whole batch.
+ */
+export const bulkUnshareActivitiesResultSchema = z.object({
+  results: z.array(
+    z.object({
+      activityId: z.number().int(),
+      status: z.enum(['updated', 'skipped']),
+      reason: z.string().optional(),
+    })
+  ),
+  summary: z.object({
+    updated: z.number().int(),
+    skipped: z.number().int(),
+  }),
+});
+
+/**
  * Schema for soft deleting an activity
  * Requires a reason to be provided for audit and admin review purposes
  */
@@ -616,6 +654,12 @@ export type CreateActivityRequest = z.infer<typeof createActivityRequestSchema>;
 export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
 export type BulkUpdateActivitiesRequest = z.infer<
   typeof bulkUpdateActivitiesRequestSchema
+>;
+export type BulkUnshareActivitiesRequest = z.infer<
+  typeof bulkUnshareActivitiesRequestSchema
+>;
+export type BulkUnshareActivitiesResult = z.infer<
+  typeof bulkUnshareActivitiesResultSchema
 >;
 export type SoftDeleteRequest = z.infer<typeof softDeleteRequestSchema>;
 export type RequestDeleteRequest = z.infer<typeof requestDeleteRequestSchema>;

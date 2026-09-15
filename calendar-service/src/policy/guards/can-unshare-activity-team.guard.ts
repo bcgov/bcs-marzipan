@@ -6,13 +6,33 @@ import {
   Injectable,
 } from '@nestjs/common';
 
-import { SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLES, type AuthUser } from '@corpcal/shared';
+
+/**
+ * True when the user may remove `teamId` from an activity's Shared With list.
+ * Membership on the team is required unless the user has activities.unshare.all
+ * or a bypass role. Lead-team / comms-contact status is deliberately not required:
+ * unsharing opts a team out of a share, it does not manage the full list.
+ */
+export function canUnshareTeam(user: AuthUser, teamId: number): boolean {
+  if (
+    user.roleName === SYSTEM_ROLES.ADMIN ||
+    user.roleName === SYSTEM_ROLES.SYSTEM_ADMIN
+  ) {
+    return true;
+  }
+
+  if (user.permissions?.includes(PERMISSIONS.ACTIVITIES.UNSHARE_ALL)) {
+    return true;
+  }
+
+  return Array.isArray(user.teamIds) && user.teamIds.includes(teamId);
+}
 
 /**
  * Guard for removing a single team from an activity's Shared With list.
- * Requires activities.unshare (enforced by @RequirePermission) and membership on the
- * team being removed (or a bypass role). Does not require lead-team/comms-contact
- * status — this only lets a user remove their own team's share, not manage the full list.
+ * Permission (activities.unshare or activities.unshare.all) is enforced by the
+ * route decorator; this guard enforces which team may be removed.
  */
 @Injectable()
 export class CanUnshareActivityTeamGuard implements CanActivate {
@@ -34,16 +54,7 @@ export class CanUnshareActivityTeamGuard implements CanActivate {
       throw new BadRequestException('Invalid team ID');
     }
 
-    const isBypass =
-      user.roleName === SYSTEM_ROLES.ADMIN ||
-      user.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
-    if (isBypass) {
-      return true;
-    }
-
-    const isOwnTeam =
-      Array.isArray(user.teamIds) && user.teamIds.includes(teamId);
-    if (isOwnTeam) {
+    if (canUnshareTeam(user, teamId)) {
       return true;
     }
 

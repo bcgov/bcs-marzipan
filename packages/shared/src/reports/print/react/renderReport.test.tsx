@@ -72,6 +72,7 @@ const BASE_ACTIVITY: ActivityResponse = {
   translationsRequired: ['FR', 'PUN'],
   representativesAttending: [],
   sharedWith: [],
+  sharedWithTeamIds: [],
   commsContacts: [],
   leadOrg: 'Ministry of Housing',
   eventPlannerDetails: [

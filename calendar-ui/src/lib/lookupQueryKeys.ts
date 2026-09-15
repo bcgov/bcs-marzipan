@@ -63,6 +63,10 @@ export const lookupQueryKeys = {
   /** Reports list (single source of truth for Settings/Reports page and activity form). */
   reports: () => ['lookups', 'reports'] as const,
 
+  /** Permissions admins may grant or deny per user. */
+  overridablePermissions: () =>
+    ['lookups', 'permissions', 'overridable'] as const,
+
   /**
    * Team options from `GET /users/teams` (`fetchTeams`). Shared prefix with lookups
    * so global `['lookups']` invalidation refreshes team pickers after lookup/seed work.

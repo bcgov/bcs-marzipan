@@ -4,7 +4,7 @@ import {
 } from '@corpcal/shared';
 import { defaultLookAheadDateRange } from '@corpcal/shared/reports/look-ahead';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
-import { defaultThirtySixtyNinetyDateRange } from '@corpcal/shared/reports/thirty-sixty-ninety';
+import { defaultThirtySixtyNinetyDayDateRange } from '@corpcal/shared/reports/thirty-sixty-ninety';
 import type { ActivityTablePreferences } from '@/lib/reportsTablePreferencesParams';
 
 const DEFAULT_SORT_KEY = 'startDate';
@@ -22,7 +22,7 @@ export function buildDefaultLookAheadFilterDateRange(): DateRangeValue {
 }
 
 export function buildDefaultReportMonthFilterDateRange(): DateRangeValue {
-  const preset = defaultThirtySixtyNinetyDateRange(3);
+  const preset = defaultThirtySixtyNinetyDayDateRange(60);
   return {
     startDate: preset.start,
     endDate: preset.end,

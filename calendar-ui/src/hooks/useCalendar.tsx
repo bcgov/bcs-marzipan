@@ -8,6 +8,7 @@ import type {
 } from '@corpcal/shared/api/types';
 import type {
   AddActivityHistoryNoteRequest,
+  BulkUnshareActivitiesRequest,
   BulkUpdateActivitiesRequest,
   RequestDeleteRequest,
   RestoreRequest,
@@ -18,6 +19,7 @@ import type {
 
 import {
   addActivityHistoryNote,
+  bulkUnshareActivities,
   bulkUpdateActivities,
   createActivity,
   deleteActivity,
@@ -243,10 +245,39 @@ export function useUnshareActivityTeam() {
   return useMutation({
     mutationFn: ({ id, teamId }: { id: number; teamId: number }) =>
       unshareActivityTeam(id, teamId),
-    onSuccess: (_, vars) => {
+    onSuccess: (data, vars) => {
+      qc.setQueryData(['activity', vars.id], data);
       void qc.invalidateQueries({ queryKey: ['activities'] });
-      void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
       scheduleLiveActivityRefresh(qc, { source: 'local', activityId: vars.id });
+    },
+    onError: (error) => {
+      const status = (error as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 404) {
+        toast.warning(
+          'Activity was already updated. Refresh to see the latest state.'
+        );
+      }
+    },
+  });
+}
+
+/** Remove one team from several activities' Shared With lists. */
+export function useBulkUnshareActivities() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BulkUnshareActivitiesRequest) =>
+      bulkUnshareActivities(body),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      for (const row of result.results) {
+        if (row.status === 'updated') {
+          scheduleLiveActivityRefresh(qc, {
+            source: 'local',
+            activityId: row.activityId,
+          });
+        }
+      }
     },
   });
 }
