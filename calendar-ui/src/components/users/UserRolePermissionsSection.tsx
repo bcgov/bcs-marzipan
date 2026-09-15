@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { CircleAlert, Loader2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import type {
   UserPermissionOverride,
@@ -144,7 +144,7 @@ export function UserRolePermissionsSection({
   const isLoading =
     isLoadingOverridable || (roleId != null && isLoadingRolePermissions);
   const overrideCount = countActiveOverrides(overrideEffects);
-  const panelId = 'user-role-permissions-panel';
+  const panelId = useId();
 
   if (roleId == null) {
     return null;

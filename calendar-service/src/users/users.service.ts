@@ -78,14 +78,16 @@ export class UsersService {
   private async applyPermissionOverrides(
     userId: number,
     overrides: UserPermissionOverrideInput[] | undefined,
-    changedByUserId: number
+    changedByUserId: number,
+    executor?: DrizzleDbExecutor
   ): Promise<void> {
     if (!overrides || overrides.length === 0) return;
 
     const applied = await this.policyService.syncUserPermissionOverrides(
       userId,
       overrides,
-      changedByUserId
+      changedByUserId,
+      executor
     );
 
     if (applied.length === 0) return;
@@ -98,7 +100,9 @@ export class UsersService {
         field: `permission:${change.permissionKey}`,
         oldValue: change.oldValue,
         newValue: change.newValue,
-      }))
+      })),
+      null,
+      executor
     );
   }
 
@@ -107,15 +111,63 @@ export class UsersService {
     changedByUserId: number,
     actionType: string,
     changes?: HistoryChange[],
-    notes?: string | null
+    notes?: string | null,
+    executor?: DrizzleDbExecutor
   ): Promise<void> {
-    await this.databaseService.db.insert(userHistory).values({
+    const db = executor ?? this.databaseService.db;
+    await db.insert(userHistory).values({
       userId,
       changedByUserId,
       actionType,
       changes: changes ? changes : null,
       notes: notes ?? null,
     });
+  }
+
+  private async addUserToTeamInTx(
+    tx: DrizzleDbExecutor,
+    userId: number,
+    dto: AddUserToTeamBody,
+    changedByUserId: number
+  ): Promise<void> {
+    const [existing] = await tx
+      .select()
+      .from(userTeams)
+      .where(
+        and(eq(userTeams.userId, userId), eq(userTeams.teamId, dto.teamId))
+      )
+      .limit(1);
+
+    if (existing?.isActive) {
+      throw new ConflictException('User is already in this team');
+    }
+
+    if (existing && !existing.isActive) {
+      await tx
+        .update(userTeams)
+        .set({ isActive: true, role: dto.role, timestamp: new Date() })
+        .where(
+          and(eq(userTeams.userId, userId), eq(userTeams.teamId, dto.teamId))
+        );
+    } else {
+      await tx.insert(userTeams).values({
+        userId,
+        teamId: dto.teamId,
+        role: dto.role,
+      });
+    }
+
+    await this.recordUserHistory(
+      userId,
+      changedByUserId,
+      'team_added',
+      [
+        { field: 'teamId', oldValue: null, newValue: dto.teamId },
+        { field: 'teamRole', oldValue: null, newValue: dto.role },
+      ],
+      dto.notes ?? null,
+      tx
+    );
   }
 
   async create(
@@ -166,32 +218,12 @@ export class UsersService {
       throw new BadRequestException('Invalid role');
     }
 
-    const [inserted] = await this.databaseService.db
-      .insert(users)
-      .values({
-        roleId: dto.roleId,
-        adUsername: normalizedIdirUsername,
-        adEmail: normalizedEmail,
-        adDisplayName: dto.displayName?.trim() || null,
-        adJobTitle: dto.adJobTitle?.trim() || null,
-        adPhone: dto.adPhone?.trim() || null,
-        isActive: true,
-        status: 'pending',
-        createdBy: createdByUserId,
-        createdDateTime: new Date(),
-      })
-      .returning({ id: users.id });
+    const uniqueTeams =
+      dto.teams && dto.teams.length > 0
+        ? Array.from(new Map(dto.teams.map((t) => [t.teamId, t])).values())
+        : [];
 
-    const userId = inserted.id;
-
-    await this.recordUserHistory(userId, createdByUserId, 'created', [
-      { field: 'roleId', oldValue: null, newValue: dto.roleId },
-    ]);
-
-    if (dto.teams && dto.teams.length > 0) {
-      const uniqueTeams = Array.from(
-        new Map(dto.teams.map((t) => [t.teamId, t])).values()
-      );
+    if (uniqueTeams.length > 0) {
       const teamIds = uniqueTeams.map((t) => t.teamId);
       const existingTeams = await this.databaseService.db
         .select({ id: teams.id })
@@ -204,20 +236,58 @@ export class UsersService {
           `Invalid team ID(s): ${missing.join(', ')}`
         );
       }
+    }
+
+    await this.policyService.validateUserPermissionOverrideKeys(
+      dto.permissionOverrides ?? []
+    );
+
+    const userId = await this.databaseService.db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(users)
+        .values({
+          roleId: dto.roleId,
+          adUsername: normalizedIdirUsername,
+          adEmail: normalizedEmail,
+          adDisplayName: dto.displayName?.trim() || null,
+          adJobTitle: dto.adJobTitle?.trim() || null,
+          adPhone: dto.adPhone?.trim() || null,
+          isActive: true,
+          status: 'pending',
+          createdBy: createdByUserId,
+          createdDateTime: new Date(),
+        })
+        .returning({ id: users.id });
+
+      const newUserId = inserted.id;
+
+      await this.recordUserHistory(
+        newUserId,
+        createdByUserId,
+        'created',
+        [{ field: 'roleId', oldValue: null, newValue: dto.roleId }],
+        null,
+        tx
+      );
+
       for (const teamEntry of uniqueTeams) {
-        await this.addUserToTeam(
-          userId,
+        await this.addUserToTeamInTx(
+          tx,
+          newUserId,
           { teamId: teamEntry.teamId, role: teamEntry.role },
           createdByUserId
         );
       }
-    }
 
-    await this.applyPermissionOverrides(
-      userId,
-      dto.permissionOverrides,
-      createdByUserId
-    );
+      await this.applyPermissionOverrides(
+        newUserId,
+        dto.permissionOverrides,
+        createdByUserId,
+        tx
+      );
+
+      return newUserId;
+    });
 
     const created = await this.findOne(userId);
     if (!created) throw new NotFoundException('User not found');
@@ -576,40 +646,56 @@ export class UsersService {
       });
     }
 
-    await this.applyPermissionOverrides(
-      id,
-      dto.permissionOverrides,
-      changedByUserId
-    );
+    const permissionOverrides = dto.permissionOverrides;
+    const shouldSyncOverrides = permissionOverrides !== undefined;
+    const hasUserUpdates = Object.keys(updates).length > 0;
 
-    if (Object.keys(updates).length === 0) {
+    if (shouldSyncOverrides && permissionOverrides.length > 0) {
+      await this.policyService.validateUserPermissionOverrideKeys(
+        permissionOverrides
+      );
+    }
+
+    if (!hasUserUpdates && !shouldSyncOverrides) {
       const refreshed = await this.findOne(id);
       if (!refreshed) throw new NotFoundException('User not found');
       return refreshed;
     }
 
-    updates.lastUpdatedBy = changedByUserId;
-    updates.lastUpdatedDateTime = new Date();
+    await this.databaseService.db.transaction(async (tx) => {
+      if (shouldSyncOverrides) {
+        await this.applyPermissionOverrides(
+          id,
+          permissionOverrides,
+          changedByUserId,
+          tx
+        );
+      }
 
-    await this.databaseService.db
-      .update(users)
-      .set(updates)
-      .where(eq(users.id, id));
+      if (hasUserUpdates) {
+        updates.lastUpdatedBy = changedByUserId;
+        updates.lastUpdatedDateTime = new Date();
 
-    const actionType =
-      updates.isActive === false
-        ? 'deactivated'
-        : updates.isActive === true
-          ? 'activated'
-          : updates.roleId !== undefined
-            ? 'role_changed'
-            : 'updated';
-    await this.recordUserHistory(
-      id,
-      changedByUserId,
-      actionType,
-      changes.length ? changes : undefined
-    );
+        await tx.update(users).set(updates).where(eq(users.id, id));
+
+        const actionType =
+          updates.isActive === false
+            ? 'deactivated'
+            : updates.isActive === true
+              ? 'activated'
+              : updates.roleId !== undefined
+                ? 'role_changed'
+                : 'updated';
+        await this.recordUserHistory(
+          id,
+          changedByUserId,
+          actionType,
+          changes.length ? changes : undefined,
+          null,
+          tx
+        );
+      }
+    });
 
     const notifyFields = changes
       .map((change) => change.field)

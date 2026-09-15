@@ -89,6 +89,7 @@ describe('UsersService', () => {
   };
 
   const mockPolicyService = {
+    validateUserPermissionOverrideKeys: vi.fn().mockResolvedValue(undefined),
     syncUserPermissionOverrides: vi.fn().mockResolvedValue([]),
     getUserPermissionOverrides: vi.fn().mockResolvedValue([]),
   };
@@ -132,8 +133,14 @@ describe('UsersService', () => {
     mockActivityUtilsService.computeDisplayIdFromLeadContext.mockReturnValue(
       'TEAM-000001'
     );
+    mockPolicyService.validateUserPermissionOverrideKeys.mockResolvedValue(
+      undefined
+    );
     mockPolicyService.syncUserPermissionOverrides.mockResolvedValue([]);
     mockPolicyService.getUserPermissionOverrides.mockResolvedValue([]);
+    mockDatabaseService.db.transaction = vi.fn((callback) =>
+      callback(mockDatabaseService.db)
+    );
   });
 
   describe('create', () => {
@@ -189,17 +196,11 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain(teamRows, 'where'))
         .mockReturnValueOnce(createChain(teamNameRows, 'where'));
 
-      mockDatabaseService.db.insert = vi
-        .fn()
-        .mockImplementationOnce(() => ({
-          values: vi.fn().mockReturnValue({
-            returning: vi.fn().mockResolvedValue([{ id: 1 }]),
-          }),
-        }))
-        .mockImplementationOnce(() => ({
-          values: vi.fn().mockResolvedValue(undefined),
-        }))
-        .mockReturnThis();
+      mockDatabaseService.db.insert = vi.fn().mockImplementation(() => ({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+        }),
+      }));
 
       const result = await service.create(
         {
@@ -216,7 +217,8 @@ describe('UsersService', () => {
       expect(result.adEmail).toBe('newuser@gov.bc.ca');
       expect(result.adUsername).toBe('JNEWUSER');
       expect(result.roleId).toBe(2);
-      expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(2);
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalledTimes(1);
+      expect(mockDatabaseService.db.insert).toHaveBeenCalled();
       expect(mockNotificationsService.notifyUserCreated).toHaveBeenCalledWith({
         userId: 1,
         actorUserId: 1,
@@ -526,7 +528,8 @@ describe('UsersService', () => {
 
       expect(
         mockPolicyService.syncUserPermissionOverrides
-      ).toHaveBeenCalledWith(1, overrides, 1);
+      ).toHaveBeenCalledWith(1, overrides, 1, mockDatabaseService.db);
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalledTimes(1);
       expect(result?.permissionOverrides).toEqual([
         {
           permissionKey: 'activities.unshare',
