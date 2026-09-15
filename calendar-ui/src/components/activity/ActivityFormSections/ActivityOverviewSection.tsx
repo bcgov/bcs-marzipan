@@ -66,11 +66,7 @@ import {
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
-import {
-  getPresetAnchorToday,
-  parseIsoDateLocal,
-  PRESETS_FUTURE_SHORT,
-} from '@/lib/scheduled-date-presets';
+import { parseIsoDateLocal } from '@/lib/scheduled-date-presets';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
@@ -750,6 +746,9 @@ export const ActivityOverviewSection: React.FC<
                   />
                 </>
               </FormLabel>
+              <p className="text-muted-foreground text-xs">
+                Details not for Look Ahead
+              </p>
             </div>
           </FormItem>
         )}
@@ -923,8 +922,6 @@ export const ActivityOverviewSection: React.FC<
                       readOnly={pitchDateScope.readOnly}
                       disabled={pitchDateScope.fieldScopeDisabled}
                       popoverTitle="Select pitch date"
-                      presets={PRESETS_FUTURE_SHORT}
-                      getPresetAnchor={getPresetAnchorToday}
                       headerRight={
                         raw &&
                         !pitchDateScope.readOnly &&

@@ -79,6 +79,12 @@ describe('hydration-profile', () => {
     }
   });
 
+  it('list profile includes sharedWith for bulk unshare eligibility', () => {
+    expect(profileIncludesRelation(HYDRATION_PROFILES.list, 'sharedWith')).toBe(
+      true
+    );
+  });
+
   it('detail profile includes all relations', () => {
     expect(HYDRATION_PROFILES.detail.relations.size).toBeGreaterThan(
       HYDRATION_PROFILES.list.relations.size

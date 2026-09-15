@@ -39,6 +39,7 @@ import {
   ActivityFlagOverflowIcon,
 } from '@/components/activity/activities/ActivityFlagIcon';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
+import { UnshareActivityModal } from '@/components/activity/activities/UnshareActivityModal';
 import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
@@ -110,6 +111,7 @@ import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences
 import { useAuth } from '@/hooks/useAuth';
 import {
   useActivityList,
+  useBulkUnshareActivities,
   useBulkUpdateActivities,
   useSyncActivityFlags,
 } from '@/hooks/useCalendar';
@@ -164,6 +166,10 @@ import {
   sanitizeSavedFilterPayload,
   type ValidFilterLookups,
 } from '@/lib/savedFilterSanitize';
+import {
+  getUnshareableTeamsForBulk,
+  resolveUnsharePermissions,
+} from '@/lib/unshare-helpers';
 import { cn } from '@/lib/utils';
 
 import { ActivityTableEmptyState } from './ActivityTableEmptyState';
@@ -1020,9 +1026,17 @@ export function ActivityTable({
   const canBulkUpdateActivities = hasPermission(
     PERMISSIONS.ACTIVITIES.BULK_UPDATE
   );
+  const unsharePermissions = resolveUnsharePermissions(
+    hasPermission,
+    user?.roleName
+  );
+  const canUnshare =
+    unsharePermissions.hasUnshare || unsharePermissions.hasUnshareAll;
+  const canBulkSelect = canBulkUpdateActivities || canUnshare;
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const canBulkShareActivities = canSeeDeleted;
   const showReviewHighlights = canSeeDeleted;
 
   const {
@@ -1093,7 +1107,9 @@ export function ActivityTable({
   const [selectedFlagTeamId, setSelectedFlagTeamId] = useState('');
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([]);
   const [deleteReason, setDeleteReason] = useState('');
+  const [unshareModalOpen, setUnshareModalOpen] = useState(false);
   const bulkUpdateActivitiesMutation = useBulkUpdateActivities();
+  const bulkUnshareMutation = useBulkUnshareActivities();
   const { favouriteActivityIds: watchlistIds, toggle: toggleFavourite } =
     useFavourites();
 
@@ -1459,7 +1475,59 @@ export function ActivityTable({
   }, [sortedActivityIds]);
 
   const selectedActivityCount = selectedActivityIds.size;
-  const bulkActionPending = bulkUpdateActivitiesMutation.isPending;
+  const bulkActionPending =
+    bulkUpdateActivitiesMutation.isPending || bulkUnshareMutation.isPending;
+
+  const selectedActivities = useMemo(
+    () => sortedData.filter((row) => selectedActivityIds.has(row.id)),
+    [sortedData, selectedActivityIds]
+  );
+
+  const eligibleBulkUnshareTeams = useMemo(
+    () =>
+      getUnshareableTeamsForBulk(
+        selectedActivities.map((row) => ({
+          sharedWithTeamIds: row.sharedWithTeamIds,
+          visibility: row.visibility,
+        })),
+        teams.map((team) => ({
+          id: team.id,
+          name: team.name,
+          displayName: team.name,
+        })),
+        user?.teamIds ?? [],
+        unsharePermissions.hasUnshare,
+        unsharePermissions.hasUnshareAll,
+        unsharePermissions.isAdminOrSysAdmin
+      ),
+    [selectedActivities, teams, user?.teamIds, unsharePermissions]
+  );
+
+  const handleBulkUnshareConfirm = useCallback(
+    async (teamId: number) => {
+      const activityIds = [...selectedActivityIds];
+      if (activityIds.length === 0) return;
+      try {
+        const result = await bulkUnshareMutation.mutateAsync({
+          activityIds,
+          teamId,
+        });
+        setSelectedActivityIds(new Set());
+        setUnshareModalOpen(false);
+        toast.success(
+          `${result.summary.updated} activit${result.summary.updated === 1 ? 'y' : 'ies'} unshared.`
+        );
+        if (result.summary.skipped > 0) {
+          toast.info(
+            `${result.summary.skipped} activit${result.summary.skipped === 1 ? 'y was' : 'ies were'} skipped.`
+          );
+        }
+      } catch (error) {
+        toast.error(getFriendlyErrorMessage(error));
+      }
+    },
+    [bulkUnshareMutation, selectedActivityIds]
+  );
 
   const toggleActivitySelected = useCallback(
     (activityId: number, selected: boolean) => {
@@ -1651,7 +1719,7 @@ export function ActivityTable({
         id: 'overview',
         header: () => (
           <div className="flex items-center gap-2">
-            {canBulkUpdateActivities && (
+            {canBulkSelect && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -1733,7 +1801,7 @@ export function ActivityTable({
           <OverviewCell
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
-            canSelect={canBulkUpdateActivities}
+            canSelect={canBulkSelect}
             isSelected={selectedActivityIds.has(row.original.id)}
             onSelectedChange={(selected) =>
               toggleActivitySelected(row.original.id, selected)
@@ -1874,7 +1942,7 @@ export function ActivityTable({
       syncFlagsMutation,
       selectedActivityIds,
       toggleActivitySelected,
-      canBulkUpdateActivities,
+      canBulkSelect,
       selectedActivityCount,
       sortedData,
       sortedActivityIds,
@@ -2013,7 +2081,7 @@ export function ActivityTable({
       count={sortedData.length}
       singularLabel="activity"
       pluralLabel="activities"
-      showCount={!canBulkUpdateActivities}
+      showCount={!canBulkSelect}
       filters={eventTableFilters}
       appliedSavedFilterName={appliedSavedFilterName}
       appliedFilterTypeLabels={appliedFilterTypeLabels}
@@ -2022,11 +2090,27 @@ export function ActivityTable({
     />
   );
 
-  const bulkActions = (
+  const bulkSelectionSummary = (
+    <span className="text-sm font-medium">
+      {selectedActivityCount} of {sortedData.length} activities selected
+    </span>
+  );
+
+  const bulkClearSelectionButton =
+    selectedActivityCount > 0 ? (
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        onClick={() => setSelectedActivityIds(new Set())}
+      >
+        Clear selection
+      </Button>
+    ) : null;
+
+  const bulkActions = canBulkSelect ? (
     <div className="flex items-center gap-5 pb-1 pl-4">
-      <span className="text-sm font-medium">
-        {selectedActivityCount} of {sortedData.length} activities selected
-      </span>
+      {bulkSelectionSummary}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -2039,59 +2123,71 @@ export function ActivityTable({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-52">
-          <DropdownMenuItem
-            onSelect={() => {
-              [...selectedActivityIds]
-                .filter((id) => !watchlistIds.includes(id))
-                .forEach((id) => toggleFavourite(id));
-            }}
-          >
-            Add to watchlist
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
-            Flag
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
-            Issue
-          </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
-                Update pitch status
+          {canBulkUpdateActivities ? (
+            <>
+              <DropdownMenuItem
+                onSelect={() => {
+                  [...selectedActivityIds]
+                    .filter((id) => !watchlistIds.includes(id))
+                    .forEach((id) => toggleFavourite(id));
+                }}
+              >
+                Add to watchlist
               </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
-            Shared with
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
-            Tags
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
-            Review
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={() => setBulkDialog('delete')}
-          >
-            Delete
-          </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
+                Flag
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
+                Issue
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
+                    Update pitch status
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              {canBulkShareActivities && (
+                <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
+                  Shared with
+                </DropdownMenuItem>
+              )}
+              {canUnshare && (
+                <DropdownMenuItem
+                  onSelect={() => setUnshareModalOpen(true)}
+                  disabled={eligibleBulkUnshareTeams.length === 0}
+                >
+                  Unshare
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
+                Tags
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
+                Review
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => setBulkDialog('delete')}
+              >
+                Delete
+              </DropdownMenuItem>
+            </>
+          ) : canUnshare ? (
+            <DropdownMenuItem
+              onSelect={() => setUnshareModalOpen(true)}
+              disabled={eligibleBulkUnshareTeams.length === 0}
+            >
+              Unshare
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
-      {selectedActivityCount > 0 && (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => setSelectedActivityIds(new Set())}
-        >
-          Clear selection
-        </Button>
-      )}
+      {bulkClearSelectionButton}
     </div>
-  );
+  ) : null;
 
   // Loading state
   if (loading) {
@@ -2180,7 +2276,7 @@ export function ActivityTable({
       <div className="min-w-0 space-y-4">
         {filterBar}
         {filterSummary}
-        {canBulkUpdateActivities && bulkActions}
+        {canBulkSelect && bulkActions}
         <ActivityTableLayout
           scrollRef={tableScrollRef}
           count={sortedData.length}
@@ -2372,13 +2468,14 @@ export function ActivityTable({
                 {bulkDialog === 'issue' &&
                   'Mark selected activities as issues?'}
                 {bulkDialog === 'tags' && 'Replace tags'}
-                {bulkDialog === 'sharing' && 'Replace shared-with teams'}
+                {bulkDialog === 'sharing' && 'Add shared-with teams'}
                 {bulkDialog === 'flag' && 'Flag selected activities'}
                 {bulkDialog === 'delete' && 'Delete selected activities?'}
               </DialogTitle>
               <DialogDescription>
-                This updates {selectedActivityCount} selected activit
-                {selectedActivityCount === 1 ? 'y' : 'ies'}.
+                {bulkDialog === 'sharing'
+                  ? `Adds teams to the Shared with list for ${selectedActivityCount} selected activit${selectedActivityCount === 1 ? 'y' : 'ies'} without removing existing shares.`
+                  : `This updates ${selectedActivityCount} selected activit${selectedActivityCount === 1 ? 'y' : 'ies'}.`}
               </DialogDescription>
             </DialogHeader>
             {bulkDialog === 'pitch' && (
@@ -2515,6 +2612,20 @@ export function ActivityTable({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <UnshareActivityModal
+          open={unshareModalOpen}
+          onOpenChange={setUnshareModalOpen}
+          mode="bulk"
+          activityIds={[...selectedActivityIds]}
+          activities={selectedActivities.map((row) => ({
+            sharedWithTeamIds: row.sharedWithTeamIds,
+            visibility: row.visibility,
+          }))}
+          eligibleTeams={eligibleBulkUnshareTeams}
+          onConfirm={(teamId) => void handleBulkUnshareConfirm(teamId)}
+          isPending={bulkUnshareMutation.isPending}
+        />
       </div>
     </TooltipProvider>
   );

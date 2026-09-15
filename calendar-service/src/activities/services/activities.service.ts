@@ -67,6 +67,7 @@ import {
   type ActivityFormData,
   type ActivityHistoryEntry,
   type ActivityResponse,
+  type BulkUnshareActivitiesResult,
   type CloneActivityRequest,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
@@ -751,7 +752,8 @@ export class ActivitiesService {
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
-      sharedWith: related.sharedWithMap.get(id) ?? [],
+      sharedWith: related.sharedWithResult.namesMap.get(id) ?? [],
+      sharedWithTeamIds: related.sharedWithResult.idsMap.get(id) ?? [],
       commsContacts,
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
@@ -805,6 +807,14 @@ export class ActivitiesService {
     return { namesMap: new Map(), idsMap: new Map() };
   }
 
+  /** Empty shape for the shared-with fetcher (names for display, IDs for membership checks). */
+  private emptySharedWithResult(): {
+    namesMap: Map<number, string[]>;
+    idsMap: Map<number, number[]>;
+  } {
+    return { namesMap: new Map(), idsMap: new Map() };
+  }
+
   private async fetchRelatedForActivityIds(
     activityIds: number[],
     activityRows: Activity[],
@@ -822,7 +832,7 @@ export class ActivitiesService {
         commsMaterialsMap: new Map(),
         translationsRequiredMap: new Map(),
         representativesAttendingMap: new Map(),
-        sharedWithMap: new Map(),
+        sharedWithResult: this.emptySharedWithResult(),
         commsContactsMap: new Map(),
         leadOrgNamesMap: new Map(),
         eventPlannerDetailsMap: new Map(),
@@ -854,7 +864,7 @@ export class ActivitiesService {
       commsMaterialsMap,
       translationsRequiredMap,
       representativesAttendingMap,
-      sharedWithMap,
+      sharedWithResult,
       commsContactsMap,
       leadOrgNamesMap,
       eventPlannerDetailsMap,
@@ -906,7 +916,7 @@ export class ActivitiesService {
         : Promise.resolve(new Map()),
       needs('sharedWith')
         ? this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds)
-        : Promise.resolve(new Map()),
+        : Promise.resolve(this.emptySharedWithResult()),
       needs('commsContacts')
         ? this.dataFetcherService.fetchCommsContactsForActivities(activityIds)
         : Promise.resolve(
@@ -993,7 +1003,7 @@ export class ActivitiesService {
       commsMaterialsMap,
       translationsRequiredMap,
       representativesAttendingMap,
-      sharedWithMap,
+      sharedWithResult,
       commsContactsMap,
       leadOrgNamesMap,
       eventPlannerDetailsMap,
@@ -1843,7 +1853,7 @@ export class ActivitiesService {
         commsContacts.map((c) => c.userId),
         ctx.ctx.user.id,
         ctx.ctx.user.teamIds,
-        ctx.dataScope?.bypass ?? false
+        this.isEditBypassRole(ctx.ctx.user.roleName)
       );
 
     return {
@@ -1860,7 +1870,9 @@ export class ActivitiesService {
         ctx.related.translationsRequiredMap.get(activity.id) ?? [],
       representativesAttending:
         ctx.related.representativesAttendingMap.get(activity.id) ?? [],
-      sharedWith: ctx.related.sharedWithMap.get(activity.id) ?? [],
+      sharedWith: ctx.related.sharedWithResult.namesMap.get(activity.id) ?? [],
+      sharedWithTeamIds:
+        ctx.related.sharedWithResult.idsMap.get(activity.id) ?? [],
       commsContacts,
       eventPlannerDetails:
         ctx.related.eventPlannerDetailsMap.get(activity.id) ?? [],
@@ -1910,6 +1922,17 @@ export class ActivitiesService {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Mirrors CanEditActivityGuard's bypass check (Admin/System Admin only).
+   * Not the same as data-scope view bypass, which also covers Advanced
+   * Viewer/Advanced Editor and would falsely report canEdit for them.
+   */
+  private isEditBypassRole(roleName: string | undefined): boolean {
+    return (
+      roleName === SYSTEM_ROLES.ADMIN || roleName === SYSTEM_ROLES.SYSTEM_ADMIN
+    );
   }
 
   /**
@@ -1969,7 +1992,7 @@ export class ActivitiesService {
         commsContacts.map((c) => c.userId),
         ctx.user.id,
         ctx.user.teamIds,
-        dataScope?.bypass ?? false
+        this.isEditBypassRole(ctx.user.roleName)
       );
 
     const response = this.mapFetchedActivityToResponseDto(activity, related, {
@@ -2053,6 +2076,19 @@ export class ActivitiesService {
       );
     }
 
+    // Bulk sharing grants other teams visibility across many activities at once,
+    // so it stays an admin action. Individual activities use the form's Shared with field.
+    if (dto.operation === 'sharedWith') {
+      const isAdmin =
+        context.roleName === SYSTEM_ROLES.ADMIN ||
+        context.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+      if (!isAdmin) {
+        throw new ForbiddenException(
+          'Only admins can bulk share activities with teams.'
+        );
+      }
+    }
+
     const results: ActivityResponse[] = [];
     for (const activityId of dto.activityIds) {
       if (
@@ -2077,17 +2113,24 @@ export class ActivitiesService {
             )
           );
           break;
-        case 'pitchStatus':
+        case 'pitchStatus': {
+          const { pitchRequiredStatusId } = dto;
+          if (pitchRequiredStatusId === undefined) {
+            throw new BadRequestException(
+              'pitchRequiredStatusId is required for the pitchStatus operation.'
+            );
+          }
           results.push(
             await this.update(
               activityId,
-              { pitchRequiredStatusId: dto.pitchRequiredStatusId! },
+              { pitchRequiredStatusId },
               userId,
               context,
               { bypassEditLock: true }
             )
           );
           break;
+        }
         case 'issue':
           results.push(
             await this.update(activityId, { isIssue: true }, userId, context, {
@@ -2095,37 +2138,91 @@ export class ActivitiesService {
             })
           );
           break;
-        case 'tags':
-          results.push(await this.updateTags(activityId, dto.tagIds!, userId));
+        case 'tags': {
+          const { tagIds } = dto;
+          if (tagIds === undefined) {
+            throw new BadRequestException(
+              'tagIds is required for the tags operation.'
+            );
+          }
+          results.push(await this.updateTags(activityId, tagIds, userId));
           break;
-        case 'sharedWith':
+        }
+        case 'sharedWith': {
+          const { teamIds } = dto;
+          if (teamIds === undefined) {
+            throw new BadRequestException(
+              'teamIds is required for the sharedWith operation.'
+            );
+          }
+          // Bulk sharing adds teams rather than replacing the list, so one
+          // activity's existing shares are not silently dropped.
           results.push(
-            await this.updateSharedWith(activityId, dto.teamIds!, userId)
+            await this.addSharedWithTeams(activityId, teamIds, userId)
           );
           break;
-        case 'flag':
+        }
+        case 'flag': {
+          const { flagTeamId, assigneeIds } = dto;
+          if (flagTeamId === undefined || assigneeIds === undefined) {
+            throw new BadRequestException(
+              'flagTeamId and assigneeIds are required for the flag operation.'
+            );
+          }
           await this.flagsService.syncFlags(
             activityId,
-            dto.flagTeamId!,
-            dto.assigneeIds!,
+            flagTeamId,
+            assigneeIds,
             userId
           );
           this.activitiesGateway.broadcastActivityUpdated(activityId);
           results.push(await this.findOne(activityId));
           break;
-        case 'delete':
+        }
+        case 'delete': {
+          const { deleteReason } = dto;
+          if (deleteReason === undefined) {
+            throw new BadRequestException(
+              'deleteReason is required for the delete operation.'
+            );
+          }
           results.push(
-            await this.softDelete(
-              activityId,
-              dto.deleteReason!,
-              userId,
-              context
-            )
+            await this.softDelete(activityId, deleteReason, userId, context)
           );
           break;
+        }
       }
     }
     return results;
+  }
+
+  /**
+   * Optimistic concurrency check. Rejects a save when the activity changed after the
+   * timestamp the client loaded, so an editor cannot overwrite a concurrent change
+   * (for example a team that unshared itself while the form was open).
+   */
+  private assertNotModifiedSince(
+    activity: Pick<Activity, 'lastUpdatedDateTime'>,
+    ifUnmodifiedSince: string | undefined
+  ): void {
+    if (!ifUnmodifiedSince) return;
+
+    const expected = new Date(ifUnmodifiedSince).getTime();
+    if (Number.isNaN(expected)) {
+      throw new BadRequestException('ifUnmodifiedSince must be a valid date.');
+    }
+
+    const current = activity.lastUpdatedDateTime
+      ? new Date(activity.lastUpdatedDateTime).getTime()
+      : null;
+    if (current === null || Number.isNaN(current)) return;
+
+    // Timestamps round-trip through JSON at millisecond precision; allow equality.
+    if (current > expected) {
+      throw new ConflictException(
+        'This activity was updated by someone else. Refresh to see the latest changes before saving.'
+      );
+    }
   }
 
   /** Matches CanEditActivityGuard for bulk operations that bypass its route guard. */
@@ -2180,6 +2277,9 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
+    const ifUnmodifiedSince = dto.ifUnmodifiedSince;
+    this.assertNotModifiedSince(oldActivity, ifUnmodifiedSince);
+
     await this.assertCanEditDuringLockout(userId, context?.permissions);
 
     const existingLock = options?.bypassEditLock
@@ -2217,13 +2317,19 @@ export class ActivitiesService {
       }
     }
 
-    // Reject update when activity is delete_requested or deleted
     const currentStatusName = await this.getActivityStatusNameById(
       oldActivity.activityStatusId
     );
+    const canEditWhenBlocked =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ??
+      false;
+
+    // Reject update when activity is delete_requested or deleted unless caller
+    // may edit blocked activities (mirrors UI canEditWhenBlocked / clone guard).
     if (
-      currentStatusName === 'delete_requested' ||
-      currentStatusName === 'deleted'
+      (currentStatusName === 'delete_requested' ||
+        currentStatusName === 'deleted') &&
+      !canEditWhenBlocked
     ) {
       throw new ConflictException(
         `Activity cannot be updated when status is '${currentStatusName}'. Restore the activity first.`
@@ -2250,6 +2356,7 @@ export class ActivitiesService {
       markAsReviewed: _markAsReviewedIgnored,
       markAsCompleted: _markAsCompletedIgnored,
       commsContactLeadId: _commsContactLeadIdUiIgnored,
+      ifUnmodifiedSince: _ifUnmodifiedSinceIgnored,
       ...activityUpdateData
     } = dto;
 
@@ -2261,7 +2368,11 @@ export class ActivitiesService {
 
     let newStatusName: ActivityStatusName;
 
-    if (dto.markAsCompleted === true) {
+    if (currentStatusName === 'delete_requested' && canEditWhenBlocked) {
+      newStatusName = 'delete_requested';
+    } else if (currentStatusName === 'deleted' && canEditWhenBlocked) {
+      newStatusName = 'deleted';
+    } else if (dto.markAsCompleted === true) {
       if (!canComplete) {
         throw new ForbiddenException(
           'You do not have permission to complete activities.'
@@ -2437,6 +2548,13 @@ export class ActivitiesService {
     }
 
     // Use transaction to ensure atomicity of activity and junction table updates
+    const concurrencyToken =
+      ifUnmodifiedSince &&
+      oldActivity.lastUpdatedDateTime &&
+      !Number.isNaN(new Date(ifUnmodifiedSince).getTime())
+        ? new Date(ifUnmodifiedSince)
+        : null;
+
     const updated = await this.databaseService.db.transaction(async (tx) => {
       const effectiveLeadTeamId =
         dto.leadTeamId !== undefined ? dto.leadTeamId : oldActivity.leadTeamId;
@@ -2500,11 +2618,27 @@ export class ActivitiesService {
           });
       }
 
+      const updateConditions = [eq(activities.id, id)];
+      if (concurrencyToken) {
+        updateConditions.push(
+          eq(activities.lastUpdatedDateTime, concurrencyToken)
+        );
+      }
+
       const [updatedActivity] = await tx
         .update(activities)
         .set(updateData)
-        .where(eq(activities.id, id))
+        .where(and(...updateConditions))
         .returning();
+
+      if (!updatedActivity) {
+        if (concurrencyToken) {
+          throw new ConflictException(
+            'This activity was updated by someone else. Refresh to see the latest changes before saving.'
+          );
+        }
+        throw new NotFoundException(`Activity with ID ${id} not found`);
+      }
 
       // Debug: log the DB row returned from update
       try {
@@ -2679,7 +2813,7 @@ export class ActivitiesService {
       commsMaterials,
       translationsRequired,
       representativesAttending,
-      sharedWith,
+      sharedWithResult,
       commsContacts,
       leadOrgNamesMap,
       eventPlannerDetailsMap,
@@ -2742,7 +2876,8 @@ export class ActivitiesService {
       commsMaterials: commsMaterials.get(id) ?? [],
       translationsRequired: translationsRequired.get(id) ?? [],
       representativesAttending: representativesAttending.get(id) ?? [],
-      sharedWith: sharedWith.get(id) ?? [],
+      sharedWith: sharedWithResult.namesMap.get(id) ?? [],
+      sharedWithTeamIds: sharedWithResult.idsMap.get(id) ?? [],
       commsContacts: commsContacts.get(id) ?? [],
       eventPlannerDetails,
       eventPlanners: eventPlannerDetails.map((d) => d.name),
@@ -3515,7 +3650,8 @@ export class ActivitiesService {
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
-      sharedWith: related.sharedWithMap.get(id) ?? [],
+      sharedWith: related.sharedWithResult.namesMap.get(id) ?? [],
+      sharedWithTeamIds: related.sharedWithResult.idsMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
@@ -3647,7 +3783,8 @@ export class ActivitiesService {
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
-      sharedWith: related.sharedWithMap.get(id) ?? [],
+      sharedWith: related.sharedWithResult.namesMap.get(id) ?? [],
+      sharedWithTeamIds: related.sharedWithResult.idsMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
@@ -3771,7 +3908,8 @@ export class ActivitiesService {
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
-      sharedWith: related.sharedWithMap.get(id) ?? [],
+      sharedWith: related.sharedWithResult.namesMap.get(id) ?? [],
+      sharedWithTeamIds: related.sharedWithResult.idsMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
@@ -4018,5 +4156,253 @@ export class ActivitiesService {
 
     // Return updated activity
     return this.findOne(id);
+  }
+
+  /**
+   * Add teams to an activity's Shared With list, keeping the teams already there.
+   * Used by the bulk share action, where replacing the list would drop shares the
+   * selected activities each had for other teams.
+   */
+  async addSharedWithTeams(
+    id: number,
+    teamIds: number[],
+    userId: number
+  ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
+    // Verify activity exists
+    await this.findOne(id);
+
+    const existingShared = await this.databaseService.db
+      .select({ teamId: activitySharedWithTeams.teamId })
+      .from(activitySharedWithTeams)
+      .where(
+        and(
+          eq(activitySharedWithTeams.activityId, id),
+          eq(activitySharedWithTeams.isActive, true)
+        )
+      );
+    const existingTeamIds = existingShared.map((s) => s.teamId);
+    const mergedTeamIds = [...new Set([...existingTeamIds, ...teamIds])];
+
+    if (mergedTeamIds.length === existingTeamIds.length) {
+      return this.findOne(id);
+    }
+
+    const now = new Date();
+    await this.databaseService.db.transaction(async (tx) => {
+      await this.junctionService.updateJunctionRecords(
+        tx,
+        activitySharedWithTeams,
+        id,
+        mergedTeamIds,
+        (teamId: number) => ({ teamId }),
+        'teamId',
+        userId,
+        now
+      );
+    });
+
+    await this.activityHistoryService.recordChange(
+      id,
+      userId,
+      'updated',
+      [
+        {
+          field: 'sharedWith',
+          oldValue: existingTeamIds,
+          newValue: mergedTeamIds,
+        },
+      ],
+      'Activity shared with additional teams'
+    );
+
+    this.activitiesGateway.notifyActivityUpdate(id);
+
+    return this.findOne(id);
+  }
+
+  /**
+   * Remove a single team from an activity's Shared With list.
+   * Used by the activities.unshare action, which lets a team member remove their own
+   * team's share without granting broader edit access to the activity.
+   */
+  async unshareTeam(
+    id: number,
+    teamId: number,
+    userId: number,
+    ctx?: RequestContextType
+  ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+    await this.removeSharedWithTeam(id, teamId, userId);
+
+    // Keep the caller's user context (for canEdit/reviewer fields) but force
+    // bypass: the caller may only be a shared-with team member, which
+    // findOne's default visibility scoping would otherwise hide.
+    return this.findOne(id, {
+      ...ctx,
+      dataScope: { bypass: true, teamIds: ctx?.dataScope?.teamIds ?? [] },
+    });
+  }
+
+  /**
+   * Remove one team from several activities' Shared With lists.
+   * Per-activity failures are reported rather than aborting the batch, so a
+   * selection containing activities that are locked or not shared with the team
+   * still unshares the rest. Caller authorization for `teamId` is enforced by the
+   * controller guard; the recurring lockout is checked once for the whole batch.
+   */
+  async bulkUnshareTeam(
+    activityIds: number[],
+    teamId: number,
+    userId: number
+  ): Promise<BulkUnshareActivitiesResult> {
+    await this.assertCanEditDuringLockout(userId);
+
+    const results: BulkUnshareActivitiesResult['results'] = [];
+
+    for (const activityId of activityIds) {
+      try {
+        await this.removeSharedWithTeam(activityId, teamId, userId);
+        results.push({ activityId, status: 'updated' });
+      } catch (err: unknown) {
+        // Expected per-activity outcomes (not shared with the team, missing,
+        // locked by another user) are reported as skipped so the rest proceed.
+        const isExpected =
+          err instanceof BadRequestException ||
+          err instanceof NotFoundException ||
+          (err instanceof HttpException && err.getStatus() === 423);
+        if (!isExpected) throw err;
+
+        results.push({
+          activityId,
+          status: 'skipped',
+          reason:
+            err instanceof HttpException
+              ? this.extractHttpExceptionMessage(err)
+              : 'Could not be unshared.',
+        });
+      }
+    }
+
+    return {
+      results,
+      summary: {
+        updated: results.filter((r) => r.status === 'updated').length,
+        skipped: results.filter((r) => r.status === 'skipped').length,
+      },
+    };
+  }
+
+  /** Human-readable message from a Nest exception response (string or object body). */
+  private extractHttpExceptionMessage(err: HttpException): string {
+    const response = err.getResponse();
+    if (typeof response === 'string') return response;
+    const message = (response as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+    if (Array.isArray(message)) return message.join(', ');
+    return err.message;
+  }
+
+  /**
+   * Shared write path for single and bulk unshare: validates the activity exists,
+   * is shared with the team, and is not being edited by someone else, then removes
+   * the junction row, records history, and notifies clients.
+   */
+  private async removeSharedWithTeam(
+    id: number,
+    teamId: number,
+    userId: number
+  ): Promise<void> {
+    // Plain existence check (not scoped via findOne's data-scope visibility rules):
+    // the caller may only be a shared-with team member, not visible under default scoping.
+    const [existingActivity] = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+    if (!existingActivity) {
+      throw new NotFoundException(`Activity #${id} not found`);
+    }
+
+    // Unshare writes the same junction table an in-progress editor saves, so a
+    // lock held by another user would let their stale form re-add the team.
+    const existingLock = await this.locksService.getLockForEntity(
+      'activity',
+      id
+    );
+    if (existingLock && existingLock.userId !== userId) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.LOCKED,
+          message: 'Cannot unshare while activity is being edited.',
+          locked: true,
+          lockedBy: {
+            userId: existingLock.userId,
+            username: existingLock.username,
+          },
+        },
+        HttpStatus.LOCKED
+      );
+    }
+
+    const existingShared = await this.databaseService.db
+      .select({ teamId: activitySharedWithTeams.teamId })
+      .from(activitySharedWithTeams)
+      .where(
+        and(
+          eq(activitySharedWithTeams.activityId, id),
+          eq(activitySharedWithTeams.isActive, true)
+        )
+      );
+    const existingTeamIds = existingShared.map((s) => s.teamId);
+
+    if (!existingTeamIds.includes(teamId)) {
+      throw new BadRequestException(
+        'This activity is not currently shared with that team.'
+      );
+    }
+
+    const newTeamIds = existingTeamIds.filter((t) => t !== teamId);
+    const now = new Date();
+
+    await this.databaseService.db.transaction(async (tx) => {
+      await this.junctionService.updateJunctionRecords(
+        tx,
+        activitySharedWithTeams,
+        id,
+        newTeamIds,
+        (teamId: number) => ({ teamId }),
+        'teamId',
+        userId,
+        now
+      );
+
+      await tx
+        .update(activities)
+        .set({
+          lastUpdatedDateTime: now,
+          lastUpdatedBy: userId,
+        })
+        .where(eq(activities.id, id));
+    });
+
+    await this.activityHistoryService.recordChange(
+      id,
+      userId,
+      'updated',
+      [
+        {
+          field: 'sharedWith',
+          oldValue: existingTeamIds,
+          newValue: newTeamIds,
+        },
+      ],
+      'Activity unshared from team'
+    );
+
+    // Notify detail viewers as well as the activity list: an editor viewing this
+    // activity must see the new shared-with set rather than saving a stale one.
+    this.activitiesGateway.notifyActivityUpdate(id);
   }
 }

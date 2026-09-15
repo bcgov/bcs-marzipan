@@ -6,6 +6,7 @@ import { CanDeleteActivityGuard } from './guards/can-delete-activity.guard';
 import { CanEditActivityGuard } from './guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from './guards/can-request-delete-activity.guard';
 import { CanRestoreActivityGuard } from './guards/can-restore-activity.guard';
+import { CanUnshareActivityTeamGuard } from './guards/can-unshare-activity-team.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { DataScopeInterceptor } from './interceptors/data-scope.interceptor';
@@ -22,6 +23,7 @@ import { PolicyService } from './policy.service';
     CanEditActivityGuard,
     CanRequestDeleteActivityGuard,
     CanRestoreActivityGuard,
+    CanUnshareActivityTeamGuard,
     DataScopeInterceptor,
   ],
   exports: [
@@ -33,6 +35,7 @@ import { PolicyService } from './policy.service';
     CanEditActivityGuard,
     CanRequestDeleteActivityGuard,
     CanRestoreActivityGuard,
+    CanUnshareActivityTeamGuard,
     DataScopeInterceptor,
   ],
 })

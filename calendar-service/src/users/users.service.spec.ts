@@ -15,6 +15,7 @@ import {
   createMockUpdateUserTeamRoleBody,
 } from '../common/test-utils';
 import { DatabaseService } from '../database/database.service';
+import { PolicyService } from '../policy/policy.service';
 import { TeamsService } from '../teams/teams.service';
 import { UsersService } from './users.service';
 
@@ -79,6 +80,12 @@ describe('UsersService', () => {
     getEligibleCommsUserIds: vi.fn().mockResolvedValue(new Set<number>()),
   };
 
+  const mockPolicyService = {
+    validateUserPermissionOverrideKeys: vi.fn().mockResolvedValue(undefined),
+    syncUserPermissionOverrides: vi.fn().mockResolvedValue([]),
+    getUserPermissionOverrides: vi.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -99,6 +106,10 @@ describe('UsersService', () => {
           provide: TeamsService,
           useValue: mockTeamsService,
         },
+        {
+          provide: PolicyService,
+          useValue: mockPolicyService,
+        },
       ],
     }).compile();
 
@@ -109,6 +120,14 @@ describe('UsersService', () => {
     );
     mockActivityUtilsService.computeDisplayIdFromLeadContext.mockReturnValue(
       'TEAM-000001'
+    );
+    mockPolicyService.validateUserPermissionOverrideKeys.mockResolvedValue(
+      undefined
+    );
+    mockPolicyService.syncUserPermissionOverrides.mockResolvedValue([]);
+    mockPolicyService.getUserPermissionOverrides.mockResolvedValue([]);
+    mockDatabaseService.db.transaction = vi.fn((callback) =>
+      callback(mockDatabaseService.db)
     );
   });
 
@@ -165,17 +184,11 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain(teamRows, 'where'))
         .mockReturnValueOnce(createChain(teamNameRows, 'where'));
 
-      mockDatabaseService.db.insert = vi
-        .fn()
-        .mockImplementationOnce(() => ({
-          values: vi.fn().mockReturnValue({
-            returning: vi.fn().mockResolvedValue([{ id: 1 }]),
-          }),
-        }))
-        .mockImplementationOnce(() => ({
-          values: vi.fn().mockResolvedValue(undefined),
-        }))
-        .mockReturnThis();
+      mockDatabaseService.db.insert = vi.fn().mockImplementation(() => ({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+        }),
+      }));
 
       const result = await service.create(
         {
@@ -192,7 +205,8 @@ describe('UsersService', () => {
       expect(result.adEmail).toBe('newuser@gov.bc.ca');
       expect(result.adUsername).toBe('JNEWUSER');
       expect(result.roleId).toBe(2);
-      expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(2);
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalledTimes(1);
+      expect(mockDatabaseService.db.insert).toHaveBeenCalled();
     });
   });
 
@@ -376,6 +390,67 @@ describe('UsersService', () => {
       await expect(
         service.update(1, { email: null } as unknown as UpdateUserBody, 1)
       ).rejects.toThrow(BadRequestException);
+      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+    });
+
+    it('should sync permission overrides when provided', async () => {
+      const userRow = {
+        id: 1,
+        adUsername: 'u1',
+        adDisplayName: 'User One',
+        adEmail: 'u1@test.com',
+        roleId: 1,
+        isActive: true,
+        notes: null,
+      };
+      const roleRow = [{ name: 'Editor' }];
+      const teamRows: { teamId: number; role: string }[] = [];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'))
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'));
+
+      mockPolicyService.syncUserPermissionOverrides.mockResolvedValue([
+        {
+          permissionKey: 'activities.unshare',
+          oldValue: null,
+          newValue: 'deny',
+        },
+      ]);
+      mockPolicyService.getUserPermissionOverrides.mockResolvedValue([
+        {
+          key: 'activities.unshare',
+          displayName: 'Unshare activities',
+          effect: 'deny',
+        },
+      ]);
+
+      const overrides = [
+        { permissionKey: 'activities.unshare', effect: 'deny' as const },
+      ];
+
+      const result = await service.update(
+        1,
+        { permissionOverrides: overrides },
+        1
+      );
+
+      expect(
+        mockPolicyService.syncUserPermissionOverrides
+      ).toHaveBeenCalledWith(1, overrides, 1, mockDatabaseService.db);
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalledTimes(1);
+      expect(result?.permissionOverrides).toEqual([
+        {
+          permissionKey: 'activities.unshare',
+          displayName: 'Unshare activities',
+          effect: 'deny',
+        },
+      ]);
       expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
     });
   });

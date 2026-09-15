@@ -165,6 +165,10 @@ vi.mock('@/hooks/useCalendar', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useBulkUnshareActivities: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useSyncActivityFlags: () => ({
     mutate: vi.fn(),
     isPending: false,

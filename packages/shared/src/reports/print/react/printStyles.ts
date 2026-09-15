@@ -291,13 +291,19 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   font-size: 1em;
   color: var(--print-ink);
 }
+.corpcal-print-release-value {
+  font-size: 1em;
+  font-weight: 400;
+  color: var(--print-ink);
+}
 .corpcal-print-meta {
   font-size: 1em;
   color: var(--print-ink-muted);
 }
+.corpcal-print-root .corpcal-print-release-translation,
 .corpcal-print-root .corpcal-print-meta-look-ahead-green {
   font-size: 1em;
-  font-weight: 500;
+  font-weight: 400;
   /* Literal first: guaranteed contrast on table + zebra if a custom property chain fails. */
   color: #2e5a34;
   color: var(--print-look-ahead-accent-green);
