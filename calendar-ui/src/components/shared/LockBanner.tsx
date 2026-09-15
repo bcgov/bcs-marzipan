@@ -59,12 +59,13 @@ export function LockBannerContent({
         {showForce && (
           <Button
             type="button"
-            size="sm"
+            size="lg"
             variant="outline"
+            className="font-semibold"
             onClick={onRequestTakeLock}
             disabled={requestTakeLockPending}
           >
-            Force unlock
+            Unlock
           </Button>
         )}
       </div>
