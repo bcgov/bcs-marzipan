@@ -42,7 +42,7 @@ export function resolveThirtySixtyNinetyQueryWindow(
   const defaultRange =
     fromRaw || toRaw
       ? undefined
-      : defaultThirtySixtyNinetyDayDateRange(90, now);
+      : defaultThirtySixtyNinetyDayDateRange(60, now);
 
   const normalized = normalizeReportActivityDateRange({
     startDateFrom: fromRaw ? toCalendarDate(fromRaw) : undefined,
