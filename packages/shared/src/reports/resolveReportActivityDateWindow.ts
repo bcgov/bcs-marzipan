@@ -4,7 +4,10 @@ import {
   type NormalizedReportDateRange,
   type ReportDateRange,
 } from './normalizeReportActivityDateRange';
-import { defaultThirtySixtyNinetyDayDateRange } from './thirty-sixty-ninety/buildCalendarMonthSections';
+import {
+  DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT,
+  defaultThirtySixtyNinetyTabDateRange,
+} from './thirty-sixty-ninety/buildCalendarMonthSections';
 
 /** Default bounded date window when a report type has no user or section dates. */
 export function defaultReportDateRange(
@@ -15,10 +18,10 @@ export function defaultReportDateRange(
   if (name === 'look-ahead' || name === 'exec') {
     return defaultLookAheadDateRange(now);
   }
-  if (name === 'thirty-sixty-ninety') {
-    return defaultThirtySixtyNinetyDayDateRange(60, now);
-  }
-  return defaultThirtySixtyNinetyDayDateRange(90, now);
+  return defaultThirtySixtyNinetyTabDateRange(
+    DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT,
+    now
+  );
 }
 
 export interface ResolveReportActivityDateWindowInput {

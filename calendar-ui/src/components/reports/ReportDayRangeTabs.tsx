@@ -1,35 +1,39 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT,
   pacificCalendarDateFromInstant,
-  thirtySixtyNinetyDayDateRangeFromPacificDate,
+  THIRTY_SIXTY_NINETY_TAB_DAY_COUNTS,
+  thirtySixtyNinetyTabDateRangeFromPacificDate,
   type CalendarDateString,
-  type ThirtySixtyNinetyDayCount,
+  type ThirtySixtyNinetyTabDayCount,
 } from '@corpcal/shared/reports/thirty-sixty-ninety';
 import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
 
-const DAY_COUNTS = [30, 60, 90] as const;
 const PACIFIC_DATE_CHECK_MS = 60_000;
 
-function dayRangePreset(
-  dayCount: ThirtySixtyNinetyDayCount,
+function tabRangePreset(
+  tabDayCount: ThirtySixtyNinetyTabDayCount,
   pacificToday: CalendarDateString
 ) {
-  return thirtySixtyNinetyDayDateRangeFromPacificDate(dayCount, pacificToday);
+  return thirtySixtyNinetyTabDateRangeFromPacificDate(
+    tabDayCount,
+    pacificToday
+  );
 }
 
-function activeDayCountFromRange(
+function activeTabDayCountFromRange(
   startDate: string,
   endDate: string,
   pacificToday: CalendarDateString
-): ThirtySixtyNinetyDayCount | null {
+): ThirtySixtyNinetyTabDayCount | null {
   if (!startDate || !endDate) return null;
-  for (const count of DAY_COUNTS) {
-    const preset = dayRangePreset(count, pacificToday);
+  for (const tabDayCount of THIRTY_SIXTY_NINETY_TAB_DAY_COUNTS) {
+    const preset = tabRangePreset(tabDayCount, pacificToday);
     if (preset.start === startDate && preset.end === endDate) {
-      return count;
+      return tabDayCount;
     }
   }
   return null;
@@ -43,7 +47,8 @@ export interface ReportDayRangeTabsProps {
 }
 
 /**
- * Quick-pick day windows for 30/60/90, Planning, and Excel reports (Pacific month start).
+ * Quick-pick tabs for 30/60/90, Planning, and Excel reports. Labels are day
+ * counts; each tab resolves to full calendar months from the Pacific month start.
  */
 export function ReportDayRangeTabs({
   preferences,
@@ -65,10 +70,10 @@ export function ReportDayRangeTabs({
     return () => window.clearInterval(id);
   }, []);
 
-  const applyDayCount = useCallback(
-    (dayCount: ThirtySixtyNinetyDayCount) => {
+  const applyTabDayCount = useCallback(
+    (tabDayCount: ThirtySixtyNinetyTabDayCount) => {
       if (!pacificToday) return;
-      const preset = dayRangePreset(dayCount, pacificToday);
+      const preset = tabRangePreset(tabDayCount, pacificToday);
       setPreferences({
         filterState: {
           ...preferences.filterState,
@@ -91,34 +96,37 @@ export function ReportDayRangeTabs({
     if (prevPacificToday.slice(0, 7) === pacificToday.slice(0, 7)) return;
     if (!isDateRangeActive(dateRange)) return;
 
-    const matchedOnPreviousMonth = activeDayCountFromRange(
+    const matchedOnPreviousMonth = activeTabDayCountFromRange(
       dateRange.startDate,
       dateRange.endDate,
       prevPacificToday
     );
     if (matchedOnPreviousMonth != null) {
-      applyDayCount(matchedOnPreviousMonth);
+      applyTabDayCount(matchedOnPreviousMonth);
     }
-  }, [applyDayCount, dateRange, pacificToday]);
+  }, [applyTabDayCount, dateRange, pacificToday]);
 
-  const activeCount = useMemo(() => {
-    if (!pacificToday) return 60;
+  const activeTabDayCount = useMemo(() => {
+    if (!pacificToday) return DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT;
     return (
-      activeDayCountFromRange(
+      activeTabDayCountFromRange(
         dateRange.startDate,
         dateRange.endDate,
         pacificToday
-      ) ?? (isDateRangeActive(dateRange) ? null : 60)
+      ) ??
+      (isDateRangeActive(dateRange)
+        ? null
+        : DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT)
     );
   }, [dateRange, pacificToday]);
 
   return (
     <Tabs
-      value={activeCount == null ? '' : String(activeCount)}
+      value={activeTabDayCount == null ? '' : String(activeTabDayCount)}
       onValueChange={(value) => {
         const parsed = Number.parseInt(value, 10);
         if (parsed === 30 || parsed === 60 || parsed === 90) {
-          applyDayCount(parsed);
+          applyTabDayCount(parsed);
         }
       }}
       className="w-auto"

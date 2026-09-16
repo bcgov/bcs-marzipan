@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import {
   buildCalendarMonthSections,
-  defaultThirtySixtyNinetyDayDateRange,
+  defaultThirtySixtyNinetyTabDateRange,
   resolveThirtySixtyNinetyQueryWindow,
 } from '@corpcal/shared/reports/thirty-sixty-ninety';
 import { reportDataQuerySchema } from '@corpcal/shared/schemas';
@@ -69,8 +69,8 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     activitiesService.findAll.mockResolvedValue([]);
   });
 
-  it('builds calendar month sections from the default 60-day window', async () => {
-    const expectedRange = defaultThirtySixtyNinetyDayDateRange(60);
+  it('builds calendar month sections from the default 60-tab window', async () => {
+    const expectedRange = defaultThirtySixtyNinetyTabDateRange();
     const expectedSectionCount = buildCalendarMonthSections({
       startDate: expectedRange.start,
       endDate: expectedRange.end,

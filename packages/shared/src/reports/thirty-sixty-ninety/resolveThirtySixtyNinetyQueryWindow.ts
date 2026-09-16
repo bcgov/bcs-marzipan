@@ -5,7 +5,8 @@ import {
 } from '../../datetime/types';
 import { normalizeReportActivityDateRange } from '../normalizeReportActivityDateRange';
 import {
-  defaultThirtySixtyNinetyDayDateRange,
+  DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT,
+  defaultThirtySixtyNinetyTabDateRange,
   type CalendarMonthDateRange,
 } from './buildCalendarMonthSections';
 
@@ -42,7 +43,10 @@ export function resolveThirtySixtyNinetyQueryWindow(
   const defaultRange =
     fromRaw || toRaw
       ? undefined
-      : defaultThirtySixtyNinetyDayDateRange(60, now);
+      : defaultThirtySixtyNinetyTabDateRange(
+          DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT,
+          now
+        );
 
   const normalized = normalizeReportActivityDateRange({
     startDateFrom: fromRaw ? toCalendarDate(fromRaw) : undefined,

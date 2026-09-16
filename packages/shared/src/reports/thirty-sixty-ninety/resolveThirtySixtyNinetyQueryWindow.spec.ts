@@ -21,15 +21,15 @@ describe('resolveThirtySixtyNinetyQueryWindow', () => {
     });
   });
 
-  it('defaults to the 60-day Pacific preset when no bounds are provided', () => {
+  it('defaults to the 60-tab (two-month) Pacific preset when no bounds are provided', () => {
     const window = resolveThirtySixtyNinetyQueryWindow({}, ANCHOR);
 
     expect(window.sectionRange).toEqual({
       start: '2026-05-01',
-      end: '2026-06-29',
+      end: '2026-06-30',
     });
     expect(window.queryStartDateFrom).toBe('2026-05-01');
-    expect(window.queryStartDateTo).toBe('2026-06-29');
+    expect(window.queryStartDateTo).toBe('2026-06-30');
   });
 
   it('infers a bounded future window when only start is provided', () => {
