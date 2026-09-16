@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
 import { LocksModule } from '../locks/locks.module';
 import { LookAheadPolicyModule } from '../look-ahead/look-ahead-policy.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PolicyModule } from '../policy/policy.module';
 import { TeamsModule } from '../teams/teams.module';
 import { ActivitiesController } from './activities.controller';
@@ -27,6 +28,7 @@ import { ActivityUtilsService } from './services/activity-utils.service';
     PolicyModule,
     forwardRef(() => TeamsModule),
     LookAheadPolicyModule,
+    forwardRef(() => NotificationsModule),
   ],
   providers: [
     ActivityResponseRedactionInterceptor,

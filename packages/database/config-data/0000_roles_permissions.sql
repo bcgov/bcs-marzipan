@@ -70,6 +70,7 @@ INSERT INTO permissions (key, display_name, category, subcategory, description, 
   ('teams.create', 'Create teams', 'Teams', 'Basic', NULL, 'teams', NULL, 'create', 51),
   ('teams.edit', 'Edit teams', 'Teams', 'Basic', NULL, 'teams', NULL, 'edit', 52),
   ('teams.delete', 'Delete teams', 'Teams', 'Basic', NULL, 'teams', NULL, 'delete', 53),
+  ('notifications.view', 'View notifications', 'Notifications', 'Basic', NULL, 'notifications', NULL, 'view', 54),
   ('settings.view', 'View settings', 'Settings', 'Basic', NULL, 'settings', NULL, 'view', 60),
   ('settings.manage', 'Manage settings', 'Settings', 'Basic', NULL, 'settings', NULL, 'manage', 61),
   ('settings.manage.activity_complete', 'Manage activity completion automation', 'Settings', 'Admin', NULL, 'settings', NULL, 'manage', 62),
@@ -88,6 +89,14 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE p.key IN ('savedFilters.view','savedFilters.create','savedFilters.edit','savedFilters.delete')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- 2b. Notifications read access for all system roles
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE p.key = 'notifications.view'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- 3. Viewer (view only, scoped)

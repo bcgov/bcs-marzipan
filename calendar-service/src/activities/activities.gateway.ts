@@ -322,6 +322,19 @@ export class ActivitiesGateway
     this.server.to(`user:${userId}`).emit('lockHandoffResolved', payload);
   }
 
+  /**
+   * User-targeted notification invalidation signal.
+   * Clients should refetch notification APIs when this event is received.
+   */
+  notifyNotificationsChanged(userIds: number[]): void {
+    const deduped = [...new Set(userIds)];
+    for (const userId of deduped) {
+      this.server
+        .to(`user:${userId}`)
+        .emit('notificationsChanged', { userId, at: new Date().toISOString() });
+    }
+  }
+
   broadcastLoginModalSettingsUpdated(): void {
     this.logger.log('Broadcasting login modal settings updated');
     this.server.emit('loginModalSettingsUpdated');

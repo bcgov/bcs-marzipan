@@ -6,22 +6,30 @@ import {
   ACTIVITY_COMPLETION_BUFFER_KEY,
   ACTIVITY_COMPLETION_SCHEDULE_KEY,
   ACTIVITY_INFO_ICON_SETTINGS_KEY,
+  ACTIVITY_REMINDER_LEAD_DAYS_KEY,
+  ACTIVITY_REMINDER_STALE_DAYS_KEY,
   ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_KEY_SET,
   ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS_SETTING,
   activityInfoIconSettingsSchema,
   COMPLETION_BUFFER_OPTIONS,
   COMPLETION_SCHEDULES,
   DEFAULT_ACTIVITY_INFO_ICON_SETTINGS,
+  DEFAULT_ACTIVITY_REMINDER_LEAD_DAYS,
+  DEFAULT_ACTIVITY_REMINDER_STALE_DAYS,
   DEFAULT_COMPLETION_BUFFER_MINUTES,
   DEFAULT_COMPLETION_SCHEDULE,
   DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
   deriveLookAheadResetCronMode,
+  invalidStoredActivityReminderDays,
   invalidStoredLookAheadResetWindowDays,
   LOOK_AHEAD_RESET_CRON_ENABLED_KEY,
   LOOK_AHEAD_RESET_CRON_PAUSED_FOR_DATE_KEY,
   LOOK_AHEAD_RESET_WINDOW_DAYS_KEY,
+  MAX_ACTIVITY_REMINDER_DAYS,
   MAX_LOOK_AHEAD_RESET_WINDOW_DAYS,
+  MIN_ACTIVITY_REMINDER_DAYS,
   MIN_LOOK_AHEAD_RESET_WINDOW_DAYS,
+  normalizeActivityReminderDays,
   normalizeLookAheadResetWindowDays,
   pacificCalendarDateFromUtcMs,
   parseLookAheadResetCronEnabled,
@@ -148,6 +156,93 @@ export class ApplicationSettingsService {
     await Promise.all([
       upsert(ACTIVITY_COMPLETION_SCHEDULE_KEY, schedule),
       upsert(ACTIVITY_COMPLETION_BUFFER_KEY, String(bufferMinutes)),
+    ]);
+  }
+
+  // --------------------------------------------------------------------------
+  // Activity reminder settings
+  // --------------------------------------------------------------------------
+
+  async getActivityReminderSettings(
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<{
+    leadDays: number;
+    staleDays: number;
+  }> {
+    const rows = await executor
+      .select()
+      .from(applicationSettings)
+      .where(
+        inArray(applicationSettings.key, [
+          ACTIVITY_REMINDER_LEAD_DAYS_KEY,
+          ACTIVITY_REMINDER_STALE_DAYS_KEY,
+        ])
+      );
+
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+    const rawLeadDays = map.get(ACTIVITY_REMINDER_LEAD_DAYS_KEY);
+    const rawStaleDays = map.get(ACTIVITY_REMINDER_STALE_DAYS_KEY);
+
+    if (invalidStoredActivityReminderDays(rawLeadDays)) {
+      this.logger.warn(
+        `Invalid ${ACTIVITY_REMINDER_LEAD_DAYS_KEY}=${rawLeadDays}, using default`
+      );
+    }
+    if (invalidStoredActivityReminderDays(rawStaleDays)) {
+      this.logger.warn(
+        `Invalid ${ACTIVITY_REMINDER_STALE_DAYS_KEY}=${rawStaleDays}, using default`
+      );
+    }
+
+    return {
+      leadDays: normalizeActivityReminderDays(
+        rawLeadDays,
+        DEFAULT_ACTIVITY_REMINDER_LEAD_DAYS
+      ),
+      staleDays: normalizeActivityReminderDays(
+        rawStaleDays,
+        DEFAULT_ACTIVITY_REMINDER_STALE_DAYS
+      ),
+    };
+  }
+
+  async setActivityReminderSettings(input: {
+    leadDays: number;
+    staleDays: number;
+  }): Promise<void> {
+    if (
+      !Number.isFinite(input.leadDays) ||
+      input.leadDays < MIN_ACTIVITY_REMINDER_DAYS ||
+      input.leadDays > MAX_ACTIVITY_REMINDER_DAYS
+    ) {
+      throw new BadRequestException(
+        `leadDays must be between ${MIN_ACTIVITY_REMINDER_DAYS} and ${MAX_ACTIVITY_REMINDER_DAYS}`
+      );
+    }
+
+    if (
+      !Number.isFinite(input.staleDays) ||
+      input.staleDays < MIN_ACTIVITY_REMINDER_DAYS ||
+      input.staleDays > MAX_ACTIVITY_REMINDER_DAYS
+    ) {
+      throw new BadRequestException(
+        `staleDays must be between ${MIN_ACTIVITY_REMINDER_DAYS} and ${MAX_ACTIVITY_REMINDER_DAYS}`
+      );
+    }
+
+    const now = new Date();
+    const upsert = (key: string, value: string) =>
+      this.databaseService.db
+        .insert(applicationSettings)
+        .values({ key, value, updatedAt: now })
+        .onConflictDoUpdate({
+          target: applicationSettings.key,
+          set: { value, updatedAt: now },
+        });
+
+    await Promise.all([
+      upsert(ACTIVITY_REMINDER_LEAD_DAYS_KEY, String(input.leadDays)),
+      upsert(ACTIVITY_REMINDER_STALE_DAYS_KEY, String(input.staleDays)),
     ]);
   }
 

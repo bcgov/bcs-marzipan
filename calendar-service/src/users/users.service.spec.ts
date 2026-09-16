@@ -15,6 +15,7 @@ import {
   createMockUpdateUserTeamRoleBody,
 } from '../common/test-utils';
 import { DatabaseService } from '../database/database.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { TeamsService } from '../teams/teams.service';
 import { UsersService } from './users.service';
 
@@ -79,6 +80,13 @@ describe('UsersService', () => {
     getEligibleCommsUserIds: vi.fn().mockResolvedValue(new Set<number>()),
   };
 
+  const mockNotificationsService = {
+    notifyUserAddedToTeam: vi.fn().mockResolvedValue(undefined),
+    notifyActivitiesTransferred: vi.fn().mockResolvedValue(undefined),
+    notifyUserCreated: vi.fn().mockResolvedValue(undefined),
+    notifyUserUpdated: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -98,6 +106,10 @@ describe('UsersService', () => {
         {
           provide: TeamsService,
           useValue: mockTeamsService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
         },
       ],
     }).compile();
@@ -193,6 +205,70 @@ describe('UsersService', () => {
       expect(result.adUsername).toBe('JNEWUSER');
       expect(result.roleId).toBe(2);
       expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(2);
+      expect(mockNotificationsService.notifyUserCreated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+      });
+    });
+  });
+
+  describe('updateUserSettings', () => {
+    it('notifies the user and admins when direct login changes', async () => {
+      vi.spyOn(service, 'findOne')
+        .mockResolvedValueOnce({
+          id: 1,
+          adUsername: 'u1',
+          adDisplayName: 'User One',
+          adEmail: 'u1@gov.bc.ca',
+          roleId: 2,
+          roleName: 'Editor',
+          isActive: true,
+          notes: null,
+          flagColour: null,
+          directLoginEnabled: false,
+          jobTitle: null,
+          phone: null,
+          lastLoginDateTime: null,
+          teams: [],
+        })
+        .mockResolvedValueOnce({
+          id: 1,
+          adUsername: 'u1',
+          adDisplayName: 'User One',
+          adEmail: 'u1@gov.bc.ca',
+          roleId: 2,
+          roleName: 'Editor',
+          isActive: true,
+          notes: null,
+          flagColour: null,
+          directLoginEnabled: true,
+          jobTitle: null,
+          phone: null,
+          lastLoginDateTime: null,
+          teams: [],
+        });
+
+      mockDatabaseService.db.insert = vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+
+      await service.updateUserSettings(
+        1,
+        { flagColour: null, directLoginEnabled: true },
+        7
+      );
+
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 7,
+        changedFields: ['directLoginEnabled'],
+        summary: 'User direct login setting updated',
+        details: {
+          directLoginEnabled: true,
+        },
+      });
     });
   });
 
@@ -327,6 +403,16 @@ describe('UsersService', () => {
 
       expect(result).not.toBeNull();
       expect(result.roleId).toBe(2);
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+        changedFields: ['roleId'],
+        summary: 'User role updated',
+        details: {
+          roleId: 2,
+          isActive: undefined,
+        },
+      });
     });
 
     it('should reject non-BC Gov email updates', async () => {
@@ -518,6 +604,16 @@ describe('UsersService', () => {
       expect(mockDatabaseService.db.delete).toHaveBeenCalledTimes(1);
       expect(mockDatabaseService.db.update).toHaveBeenCalledTimes(1);
       expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(1);
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+        changedFields: ['team'],
+        summary: 'User removed from team',
+        details: {
+          teamId: 2,
+          transferredCount: 0,
+        },
+      });
     });
 
     it('should throw BadRequestException when scoped comms exist but no targetUserId given', async () => {
@@ -579,6 +675,16 @@ describe('UsersService', () => {
         undefined,
         mockDatabaseService.db
       );
+      expect(
+        mockNotificationsService.notifyActivitiesTransferred
+      ).toHaveBeenCalledWith({
+        actorUserId: 1,
+        fromUserId: 1,
+        toUserId: 2,
+        transferredCount: 2,
+        activityIds: [10, 11],
+        includeAdmins: true,
+      });
     });
   });
 
@@ -633,6 +739,16 @@ describe('UsersService', () => {
         )
       ).resolves.toBeUndefined();
       expect(mockDatabaseService.db.update).toHaveBeenCalled();
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+        changedFields: ['teamRole'],
+        summary: 'User team role updated',
+        details: {
+          teamId: 2,
+          role: 'owner',
+        },
+      });
     });
   });
 
@@ -960,6 +1076,16 @@ describe('UsersService', () => {
         undefined,
         mockDatabaseService.db
       );
+      expect(
+        mockNotificationsService.notifyActivitiesTransferred
+      ).toHaveBeenCalledWith({
+        actorUserId: 1,
+        fromUserId: 1,
+        toUserId: 2,
+        transferredCount: 2,
+        activityIds: [10, 11],
+        includeAdmins: true,
+      });
     });
 
     it('should reactivate an existing inactive target comms row when merging', async () => {
