@@ -37,6 +37,7 @@ import type {
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
 import { ActivityUtilsService } from '../activities/services/activity-utils.service';
+import { AuthService } from '../auth/auth.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -68,7 +69,8 @@ export class UsersService {
     private readonly activityUtilsService: ActivityUtilsService,
     private readonly teamsService: TeamsService,
     private readonly notificationsService: NotificationsService,
-    private readonly policyService: PolicyService
+    private readonly policyService: PolicyService,
+    private readonly authService: AuthService
   ) {}
 
   /**
@@ -662,6 +664,8 @@ export class UsersService {
       return refreshed;
     }
 
+    const roleChanged = updates.roleId !== undefined;
+
     await this.databaseService.db.transaction(async (tx) => {
       if (shouldSyncOverrides) {
         await this.applyPermissionOverrides(
@@ -694,6 +698,12 @@ export class UsersService {
           null,
           tx
         );
+      }
+
+      // Force re-login so the next JWT reflects the updated permissions/role;
+      // existing tokens would otherwise keep the stale grants until expiry.
+      if (shouldSyncOverrides || roleChanged) {
+        await this.authService.invalidateUserSessions(id, tx);
       }
     });
 

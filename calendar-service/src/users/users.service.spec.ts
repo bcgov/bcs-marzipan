@@ -9,6 +9,7 @@ import type { UpdateUserBody } from '@corpcal/shared/api/types';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
 import { ActivityUtilsService } from '../activities/services/activity-utils.service';
+import { AuthService } from '../auth/auth.service';
 import {
   createMockAddUserToTeamBody,
   createMockTransferActivitiesBody,
@@ -94,6 +95,10 @@ describe('UsersService', () => {
     getUserPermissionOverrides: vi.fn().mockResolvedValue([]),
   };
 
+  const mockAuthService = {
+    invalidateUserSessions: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -122,6 +127,10 @@ describe('UsersService', () => {
           provide: PolicyService,
           useValue: mockPolicyService,
         },
+        {
+          provide: AuthService,
+          useValue: mockAuthService,
+        },
       ],
     }).compile();
 
@@ -138,6 +147,7 @@ describe('UsersService', () => {
     );
     mockPolicyService.syncUserPermissionOverrides.mockResolvedValue([]);
     mockPolicyService.getUserPermissionOverrides.mockResolvedValue([]);
+    mockAuthService.invalidateUserSessions.mockResolvedValue(undefined);
     mockDatabaseService.db.transaction = vi.fn((callback) =>
       callback(mockDatabaseService.db)
     );
