@@ -348,6 +348,8 @@ export class LookupsController {
       key: string;
       displayName: string;
       description: string | null;
+      category: string;
+      sortOrder: number;
     }[];
   }> {
     const data = await this.lookupsService.getOverridablePermissions();

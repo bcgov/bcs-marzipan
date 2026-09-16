@@ -146,12 +146,13 @@ export class PolicyService {
   /**
    * Reject permission keys that are not flagged allow_user_override (or under `system.`).
    * Call before mutating user rows so invalid payloads fail without partial writes.
+   * Returns the key->id map so callers can reuse it instead of re-querying.
    */
   async validateUserPermissionOverrideKeys(
     requested: { permissionKey: string }[],
     executor?: DrizzleDbExecutor
-  ): Promise<void> {
-    if (requested.length === 0) return;
+  ): Promise<Map<string, number>> {
+    if (requested.length === 0) return new Map();
 
     const overridable = await this.getOverridablePermissions(executor);
     const idByKey = new Map(overridable.map((p) => [p.key, p.id]));
@@ -164,6 +165,8 @@ export class PolicyService {
         `These permissions cannot be set per user: ${invalidKeys.join(', ')}`
       );
     }
+
+    return idByKey;
   }
 
   /**
@@ -185,10 +188,10 @@ export class PolicyService {
   > {
     if (requested.length === 0) return [];
 
-    await this.validateUserPermissionOverrideKeys(requested, executor);
-
-    const overridable = await this.getOverridablePermissions(executor);
-    const idByKey = new Map(overridable.map((p) => [p.key, p.id]));
+    const idByKey = await this.validateUserPermissionOverrideKeys(
+      requested,
+      executor
+    );
 
     const existing = await this.getUserPermissionOverrides(userId, executor);
     const existingByKey = new Map(existing.map((o) => [o.key, o.effect]));
