@@ -424,6 +424,36 @@ export async function fetchAllPermissions(): Promise<
   return res.data.data;
 }
 
+export type OverridablePermission = {
+  id: number;
+  key: string;
+  displayName: string;
+  description: string | null;
+  category: string;
+  sortOrder: number;
+};
+
+export type RolePermissionRow = {
+  key: string;
+  displayName?: string | null;
+  description?: string | null;
+  category: string;
+  sortOrder: number;
+  allowUserOverride: boolean;
+  hasPermission: boolean;
+};
+
+/** Permissions that admins may grant or deny for an individual user. */
+export async function fetchOverridablePermissions(): Promise<
+  OverridablePermission[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: OverridablePermission[];
+  }>(`/lookups/permissions/overridable`);
+  return res.data.data;
+}
+
 export async function fetchRolesPermissionsMap(): Promise<
   Record<number, any[]>
 > {
