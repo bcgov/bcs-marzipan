@@ -15,7 +15,7 @@ export function defaultReportDateRange(
   if (name === 'look-ahead' || name === 'exec') {
     return defaultLookAheadDateRange(now);
   }
-  return defaultThirtySixtyNinetyDayDateRange(60, now);
+  return defaultThirtySixtyNinetyDayDateRange(90, now);
 }
 
 export interface ResolveReportActivityDateWindowInput {
