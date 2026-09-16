@@ -254,6 +254,7 @@ describe('UsersService', () => {
           phone: null,
           lastLoginDateTime: null,
           teams: [],
+          permissionOverrides: [],
         })
         .mockResolvedValueOnce({
           id: 1,
@@ -270,6 +271,7 @@ describe('UsersService', () => {
           phone: null,
           lastLoginDateTime: null,
           teams: [],
+          permissionOverrides: [],
         });
 
       mockDatabaseService.db.insert = vi.fn().mockReturnValue({
