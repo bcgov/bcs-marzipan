@@ -4,6 +4,7 @@ import {
   SeedRunner,
   type SeedOptions,
   type SeedResult,
+  type SeedScope,
 } from '@corpcal/database';
 
 import { AppLogger } from '../common/logger/logger.service';
@@ -12,7 +13,7 @@ import { DATABASE_CLIENT, type Database } from './database.provider';
 /**
  * Seed Service
  * Handles seeding the database with initial lookup table data.
- * The seed SQL files are located in packages/database/seeds/
+ * SQL config/seed files are located in packages/database/config-data/ and packages/database/seeds/
  *
  * This service is a thin NestJS wrapper around the SeedRunner from @corpcal/database.
  */
@@ -31,24 +32,48 @@ export class SeedService {
   }
 
   /**
-   * Seeds the database with lookup table data.
+   * Seeds the database with both config-data and seed SQL files.
    * This method is idempotent - it can be run multiple times safely.
    * The SQL files use ON CONFLICT DO NOTHING to prevent duplicate inserts.
    *
-   * Seed files are automatically discovered from packages/database/seeds/
+   * SQL files are automatically discovered from packages/database/config-data/ and packages/database/seeds/
    * and executed in order based on their numeric prefix.
    *
    * @param options - Optional seeding options (force, dryRun)
    * @returns Promise<boolean> - true if seeding was successful, false otherwise
    */
   async seed(options: SeedOptions = {}): Promise<boolean> {
-    this.logger.log('Starting database seeding...', 'SeedService');
+    return this.seedByScope('all', options);
+  }
+
+  /**
+   * Seeds only config-data SQL files.
+   */
+  async seedConfigData(options: SeedOptions = {}): Promise<boolean> {
+    return this.seedByScope('config', options);
+  }
+
+  /**
+   * Seeds only seed SQL files (fixtures/test-like data).
+   */
+  async seedData(options: SeedOptions = {}): Promise<boolean> {
+    return this.seedByScope('seed', options);
+  }
+
+  private async seedByScope(
+    scope: SeedScope,
+    options: SeedOptions = {}
+  ): Promise<boolean> {
+    this.logger.log(
+      `Starting database seeding (scope: ${scope})...`,
+      'SeedService'
+    );
 
     try {
       const seedsPath = this.seedRunner.getSeedsPath();
       this.logger.log(`Seeds directory: ${seedsPath}`, 'SeedService');
 
-      const results = await this.seedRunner.run(options);
+      const results = await this.seedRunner.run({ ...options, scope });
 
       if (results.length === 0) {
         this.logger.warn(

@@ -1,0 +1,64 @@
+name: Deploy to Emerald (Main Launcher)
+
+# Launches the real deploy workflow from a selected ref.
+# Keep this workflow on main so operators can always start a run from main,
+# while iterating on deploy logic in a feature branch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_ref:
+        description: Branch or tag containing deploy-emerald.yaml to run
+        required: true
+        type: string
+        default: main
+      environment:
+        description: Target Emerald environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+      branch:
+        description: Branch to check out and build (optional)
+        required: false
+        type: string
+      image_tag:
+        description: Image tag to deploy (optional)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  dispatch:
+    name: Dispatch deploy-emerald from selected ref
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-emerald.yaml',
+              ref: '${{ inputs.workflow_ref }}',
+              inputs: {
+                environment: '${{ inputs.environment }}',
+                branch: '${{ inputs.branch }}',
+                image_tag: '${{ inputs.image_tag }}'
+              }
+            });
+
+      - name: Summary
+        run: |
+          echo "## Deploy Launcher" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Workflow file: deploy-emerald.yaml" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Workflow ref: ${{ inputs.workflow_ref }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Environment: ${{ inputs.environment }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Build branch: ${{ inputs.branch }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Image tag: ${{ inputs.image_tag }}" >> "$GITHUB_STEP_SUMMARY"

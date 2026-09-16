@@ -99,6 +99,8 @@ export const PERMISSIONS = {
     COMPLETE: 'activities.complete',
     /** Assign (flag) an activity to a team member for follow-up. Team-scoped. */
     FLAG: 'activities.flag',
+    /** Edit activities during the recurring daily lockout window. */
+    BYPASS_RECURRING_LOCKOUT: 'activities.bypass_recurring_lockout',
   },
   DRAFTS: {
     VIEW: 'drafts.view',
@@ -155,6 +157,8 @@ export const PERMISSIONS = {
      * System Admin only.
      */
     MANAGE_ACTIVITY_INFO_ICONS: 'settings.manage.activity_info_icons',
+    /** Configure recurring edit lockout window and warning banner. */
+    MANAGE_RECURRING_LOCKOUT: 'settings.manage.recurring_lockout',
   },
   SYSTEM: {
     VIEW_LOGS: 'system.view_logs',

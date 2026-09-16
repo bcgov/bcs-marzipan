@@ -1,19 +1,89 @@
 import { Injectable } from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
 
-import { bannerSettings } from '@corpcal/database';
+import {
+  bannerSettings,
+  recurringLockoutBannerSettings,
+} from '@corpcal/database/schema';
+import {
+  getRecurringLockoutBannerPhase,
+  resolveRecurringLockoutBannerContent,
+  type RecurringLockoutBannerScheduleSlice,
+} from '@corpcal/shared';
 import type {
+  ActiveRecurringLockoutBanner,
+  ActiveRecurringLockoutBannerResponse,
   BannerSettings,
+  RecurringLockoutBannerSettings,
   UpsertBannerSettingsBody,
+  UpsertRecurringLockoutBannerSettingsBody,
+} from '@corpcal/shared/api/types';
+import {
+  DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
+  DEFAULT_RECURRING_EDIT_LOCKOUT_COUNTDOWN_LEAD_MINUTES,
 } from '@corpcal/shared/schemas';
 
+import { ActivitiesGateway } from '../activities/activities.gateway';
 import { DatabaseService } from '../database/database.service';
+import { ApplicationSettingsService } from '../locks/application-settings.service';
 
 type BannerSettingsRow = typeof bannerSettings.$inferSelect;
+type RecurringLockoutBannerSettingsRow =
+  typeof recurringLockoutBannerSettings.$inferSelect;
 
 @Injectable()
 export class BannerService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly activitiesGateway: ActivitiesGateway,
+    private readonly applicationSettings: ApplicationSettingsService
+  ) {}
+
+  async getCurrentRecurringLockoutBannerSettings(): Promise<RecurringLockoutBannerSettings | null> {
+    const row = await this.getLatestRecurringLockoutBannerRow();
+    return row ? this.mapRecurringLockoutRow(row) : null;
+  }
+
+  async getActiveRecurringLockoutBanner(): Promise<ActiveRecurringLockoutBanner | null> {
+    const response = await this.getActiveRecurringLockoutBannerState();
+    return response.banner;
+  }
+
+  async getActiveRecurringLockoutBannerState(): Promise<ActiveRecurringLockoutBannerResponse> {
+    const row = await this.getLatestRecurringLockoutBannerRow();
+
+    if (!row) {
+      return { banner: null, schedule: null };
+    }
+
+    const schedule = this.toBannerScheduleSlice(row);
+    const phase = getRecurringLockoutBannerPhase(schedule);
+
+    if (phase == null) {
+      return { banner: null, schedule };
+    }
+
+    const mapped = this.mapRecurringLockoutRow(row);
+    const { contactEmail } =
+      await this.applicationSettings.getLookAheadReportCoverContact();
+    const content = resolveRecurringLockoutBannerContent({
+      phase,
+      leadContent: mapped.leadContent,
+      activeContent: mapped.activeContent,
+      startTimeOfDay: mapped.startTimeOfDay,
+      endTimeOfDay: mapped.endTimeOfDay,
+      contactEmail,
+    });
+
+    return {
+      banner: {
+        ...mapped,
+        content,
+        phase,
+      },
+      schedule,
+    };
+  }
 
   async getCurrentBannerSettings(): Promise<BannerSettings | null> {
     const row = await this.getLatestBannerRow();
@@ -61,6 +131,8 @@ export class BannerService {
 
     const existing = await this.getLatestBannerRow();
 
+    let result: BannerSettings;
+
     if (existing) {
       const [updated] = await this.databaseService.db
         .update(bannerSettings)
@@ -68,19 +140,77 @@ export class BannerService {
         .where(eq(bannerSettings.id, existing.id))
         .returning();
 
-      return this.mapRow(updated);
+      result = this.mapRow(updated);
+    } else {
+      const [created] = await this.databaseService.db
+        .insert(bannerSettings)
+        .values({
+          ...payload,
+          createdDateTime: now,
+          createdBy: userId,
+        })
+        .returning();
+
+      result = this.mapRow(created);
     }
 
-    const [created] = await this.databaseService.db
-      .insert(bannerSettings)
-      .values({
-        ...payload,
-        createdDateTime: now,
-        createdBy: userId,
-      })
-      .returning();
+    setImmediate(() => {
+      this.activitiesGateway.broadcastSystemBannerSettingsUpdated();
+    });
 
-    return this.mapRow(created);
+    return result;
+  }
+
+  async upsertRecurringLockoutBannerSettings(
+    body: UpsertRecurringLockoutBannerSettingsBody,
+    userId: number
+  ): Promise<RecurringLockoutBannerSettings> {
+    const now = new Date();
+    const payload = {
+      isActive: body.isActive,
+      leadContent: body.leadContent.trim(),
+      activeContent: body.activeContent.trim(),
+      backgroundColor: body.backgroundColor,
+      textColor: body.textColor,
+      variant: body.variant,
+      startTimeOfDay: body.startTimeOfDay,
+      endTimeOfDay: body.endTimeOfDay,
+      bannerLeadMinutes: body.bannerLeadMinutes,
+      editCountdownLeadMinutes: body.editCountdownLeadMinutes,
+      lastUpdatedDateTime: now,
+      lastUpdatedBy: userId,
+    };
+
+    const existing = await this.getLatestRecurringLockoutBannerRow();
+
+    let result: RecurringLockoutBannerSettings;
+
+    if (existing) {
+      const [updated] = await this.databaseService.db
+        .update(recurringLockoutBannerSettings)
+        .set(payload)
+        .where(eq(recurringLockoutBannerSettings.id, existing.id))
+        .returning();
+
+      result = this.mapRecurringLockoutRow(updated);
+    } else {
+      const [created] = await this.databaseService.db
+        .insert(recurringLockoutBannerSettings)
+        .values({
+          ...payload,
+          createdDateTime: now,
+          createdBy: userId,
+        })
+        .returning();
+
+      result = this.mapRecurringLockoutRow(created);
+    }
+
+    setImmediate(() => {
+      this.activitiesGateway.broadcastRecurringLockoutBannerSettingsUpdated();
+    });
+
+    return result;
   }
 
   private async getLatestBannerRow(): Promise<BannerSettingsRow | null> {
@@ -94,6 +224,35 @@ export class BannerService {
       .limit(1);
 
     return row ?? null;
+  }
+
+  private async getLatestRecurringLockoutBannerRow(): Promise<RecurringLockoutBannerSettingsRow | null> {
+    const [row] = await this.databaseService.db
+      .select()
+      .from(recurringLockoutBannerSettings)
+      .orderBy(
+        desc(recurringLockoutBannerSettings.lastUpdatedDateTime),
+        desc(recurringLockoutBannerSettings.id)
+      )
+      .limit(1);
+
+    return row ?? null;
+  }
+
+  private toBannerScheduleSlice(
+    row: RecurringLockoutBannerSettingsRow
+  ): RecurringLockoutBannerScheduleSlice {
+    return {
+      isActive: row.isActive,
+      startTimeOfDay: row.startTimeOfDay,
+      endTimeOfDay: row.endTimeOfDay,
+      bannerLeadMinutes: Number.isInteger(row.bannerLeadMinutes)
+        ? Math.max(0, Number(row.bannerLeadMinutes))
+        : DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
+      editCountdownLeadMinutes: Number.isInteger(row.editCountdownLeadMinutes)
+        ? Math.max(1, Number(row.editCountdownLeadMinutes))
+        : DEFAULT_RECURRING_EDIT_LOCKOUT_COUNTDOWN_LEAD_MINUTES,
+    };
   }
 
   private mapRow(row: BannerSettingsRow): BannerSettings {
@@ -123,6 +282,38 @@ export class BannerService {
       isDismissible: row.isDismissible,
       startDateTime: row.startDateTime?.toISOString() ?? null,
       endDateTime: row.endDateTime?.toISOString() ?? null,
+      createdDateTime: row.createdDateTime.toISOString(),
+      lastUpdatedDateTime: row.lastUpdatedDateTime.toISOString(),
+    };
+  }
+
+  private mapRecurringLockoutRow(
+    row: RecurringLockoutBannerSettingsRow
+  ): RecurringLockoutBannerSettings {
+    const allowedVariants = ['info', 'warning', 'success'] as const;
+
+    const variant =
+      typeof row.variant === 'string' &&
+      (allowedVariants as readonly string[]).includes(row.variant)
+        ? (row.variant as RecurringLockoutBannerSettings['variant'])
+        : 'warning';
+
+    return {
+      id: row.id,
+      isActive: row.isActive,
+      leadContent: row.leadContent,
+      activeContent: row.activeContent,
+      backgroundColor: row.backgroundColor,
+      textColor: row.textColor,
+      variant,
+      startTimeOfDay: row.startTimeOfDay,
+      endTimeOfDay: row.endTimeOfDay,
+      bannerLeadMinutes: Number.isInteger(row.bannerLeadMinutes)
+        ? Math.max(0, Number(row.bannerLeadMinutes))
+        : DEFAULT_RECURRING_EDIT_LOCKOUT_BANNER_LEAD_MINUTES,
+      editCountdownLeadMinutes: Number.isInteger(row.editCountdownLeadMinutes)
+        ? Math.max(1, Number(row.editCountdownLeadMinutes))
+        : DEFAULT_RECURRING_EDIT_LOCKOUT_COUNTDOWN_LEAD_MINUTES,
       createdDateTime: row.createdDateTime.toISOString(),
       lastUpdatedDateTime: row.lastUpdatedDateTime.toISOString(),
     };

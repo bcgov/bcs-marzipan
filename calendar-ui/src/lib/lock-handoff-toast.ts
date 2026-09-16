@@ -1,5 +1,10 @@
 import { toast } from 'sonner';
 
+import {
+  formatCountdownRemaining,
+  startCountdownLoadingToast,
+} from './countdown-loading-toast';
+
 export type LockHandoffPendingPayload = {
   activityId: number;
   graceEndsAt: string;
@@ -50,27 +55,45 @@ export function startLockHandoffCountdownToast(
   const toastId = `lock-handoff-${payload.activityId}-${payload.graceEndsAt}`;
   const cancelledInfoToastId = `${toastId}-cancelled-info`;
   const endMs = new Date(payload.graceEndsAt).getTime();
-  const baseMessage =
+  const title =
     payload.role === 'holder'
-      ? `${payload.counterpartUsername} has requested to edit this activity. Please save your changes.\nAny unsaved changes will be lost.`
-      : `Requesting the current editor to save their changes. The activity will be unlocked after the timer ends.`;
+      ? `${payload.counterpartUsername} has requested to edit this activity. Please save your changes.`
+      : 'Requesting the current editor to save their changes.';
+  const countdownDescriptionPrefix =
+    payload.role === 'holder'
+      ? 'Unsaved changes will be lost in'
+      : 'The activity will be unlocked in';
 
-  /** Browser interval handle (`number` in DOM; avoid `NodeJS.Timeout` merge issues). */
-  let intervalId: number | null = null;
+  let countdownHandle: ReturnType<typeof startCountdownLoadingToast> | null =
+    null;
   let disposed = false;
   let completed = false;
 
-  const clearTick = (): void => {
-    if (intervalId != null) {
-      window.clearInterval(intervalId);
-      intervalId = null;
-    }
+  const stopCountdown = (): void => {
+    countdownHandle?.dispose();
+    countdownHandle = null;
   };
+
+  countdownHandle = startCountdownLoadingToast({
+    toastId,
+    endMs,
+    variant: payload.role === 'holder' ? 'warning' : 'loading',
+    getContent: (secondsLeft) => {
+      if (payload.role === 'requester' && secondsLeft <= 0) {
+        return { title: 'Unlocking activity...' };
+      }
+      return {
+        title,
+        description: `${countdownDescriptionPrefix} ${formatCountdownRemaining(secondsLeft)}.`,
+      };
+    },
+    onExpired: payload.role === 'requester' ? () => false : undefined,
+  });
 
   const notifyLockAcquired = (): void => {
     if (disposed || completed || payload.role !== 'requester') return;
     completed = true;
-    clearTick();
+    stopCountdown();
     toast.success('Success! The activity is ready to edit.', {
       id: toastId,
       duration: SUCCESS_TOAST_DURATION_MS,
@@ -80,8 +103,7 @@ export function startLockHandoffCountdownToast(
   const notifyHandoffCancelled = (): void => {
     if (disposed || completed) return;
     completed = true;
-    clearTick();
-    toast.dismiss(toastId);
+    stopCountdown();
     const message =
       payload.role === 'holder'
         ? 'The unlock request has been cancelled. You can continue editing the activity.'
@@ -94,57 +116,15 @@ export function startLockHandoffCountdownToast(
 
   const dismissLoadingOnly = (): void => {
     if (disposed || completed) return;
-    clearTick();
-    toast.dismiss(toastId);
+    stopCountdown();
   };
 
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
-    clearTick();
-    toast.dismiss(toastId);
+    stopCountdown();
     toast.dismiss(cancelledInfoToastId);
   };
-
-  const runHolder = (): void => {
-    const s = Math.max(0, Math.ceil((endMs - Date.now()) / 1000));
-    toast.loading(`${baseMessage} (${s}s)`, {
-      id: toastId,
-      duration: Infinity,
-    });
-    if (s <= 0) {
-      clearTick();
-      toast.dismiss(toastId);
-    }
-  };
-
-  const runRequester = (): void => {
-    const s = Math.max(0, Math.ceil((endMs - Date.now()) / 1000));
-    if (s > 0) {
-      toast.loading(`${baseMessage} (${s}s)`, {
-        id: toastId,
-        duration: Infinity,
-      });
-    } else {
-      clearTick();
-      toast.loading('Unlocking activity...', {
-        id: toastId,
-        duration: Infinity,
-      });
-    }
-  };
-
-  const run = (): void => {
-    if (disposed || completed) return;
-    if (payload.role === 'holder') {
-      runHolder();
-    } else {
-      runRequester();
-    }
-  };
-
-  run();
-  intervalId = window.setInterval(run, 1000);
 
   return {
     dispose,

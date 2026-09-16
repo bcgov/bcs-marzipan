@@ -5,11 +5,16 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      run_seeds:
-        description: 'Run seed data after migrations'
+      seed_scope:
+        description: 'Which seed data to run after migrations'
         required: false
-        default: false
-        type: boolean
+        default: none
+        type: choice
+        options:
+          - none
+          - config
+          - seed
+          - all
 
 jobs:
   deploy:
@@ -72,7 +77,9 @@ jobs:
             --timeout=300s
 
       - name: Run DB seeds
-        if: ${{ inputs.run_seeds == true }}
+        if: ${{ inputs.seed_scope != 'none' }}
+        env:
+          SEED_SCOPE: ${{ inputs.seed_scope }}
         run: |
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${TOOLS_NAMESPACE}
@@ -86,7 +93,7 @@ jobs:
             -n ${DEV_NAMESPACE} \
             --ignore-not-found
 
-          envsubst '${DEV_NAMESPACE} ${APP_VERSION}' < openshift/deploy/base/database/migration/calendar-db-seed-job.yaml \
+          envsubst '${DEV_NAMESPACE} ${APP_VERSION} ${SEED_SCOPE}' < openshift/deploy/base/database/migration/calendar-db-seed-job.yaml \
             | oc apply -n ${DEV_NAMESPACE} -f -
 
           oc wait --for=condition=complete job/calendar-db-seed \

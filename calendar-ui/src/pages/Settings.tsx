@@ -5,6 +5,7 @@ import {
   Eraser,
   FileText,
   FolderTree,
+  Globe,
   Info,
   ListChecks,
   Lock,
@@ -12,16 +13,19 @@ import {
   MapPin,
   Megaphone,
   Palette,
+  PencilOff,
   Share2,
   Tag,
   Timer,
   Users,
 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import {
   ActivityInfoIconSettingsAdmin,
   BannerSettingsAdmin,
+  RecurringLockoutBannerSettingsAdmin,
 } from '@/components/admin';
 import { ActivityCompletionSettingsAdmin } from '@/components/admin/ActivityCompletionSettingsAdmin';
 import { EditLockIdleSettingsAdmin } from '@/components/admin/EditLockIdleSettingsAdmin';
@@ -38,6 +42,7 @@ import {
   PermissionsVisibilityAdminSection,
   TagsAdmin,
   ThemesAdmin,
+  TranslationLanguagesAdmin,
   VenuePresetsAdmin,
 } from '@/components/admin/LookupAdmins';
 import { ReportCoverContactSettingsAdmin } from '@/components/admin/ReportCoverContactSettingsAdmin';
@@ -47,6 +52,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 type Section =
   | 'banner'
+  | 'recurring-lockout-banner'
   | 'login-modal'
   | 'edit-lock-idle'
   | 'activity-completion'
@@ -63,6 +69,7 @@ type Section =
   | 'ministries'
   | 'statuses'
   | 'themes'
+  | 'translation-languages'
   | 'venue-presets'
   | 'permissions-visibility';
 
@@ -74,6 +81,37 @@ type Section =
 export function Settings() {
   const { user } = useAuth();
   const isSystemAdmin = user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
+  const canManageRecurringLockout = Boolean(
+    user?.permissions?.includes(PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT)
+  );
+  const [showBackToNavigation, setShowBackToNavigation] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const content = contentRef.current;
+    let scrollContainer: HTMLElement | null = null;
+
+    for (
+      let parent = content?.parentElement;
+      parent;
+      parent = parent.parentElement
+    ) {
+      const overflowY = window.getComputedStyle(parent).overflowY;
+      if (overflowY === 'auto' || overflowY === 'scroll') {
+        scrollContainer = parent;
+        break;
+      }
+    }
+
+    const scrollTarget: Window | HTMLElement = scrollContainer ?? window;
+    const handleScroll = () =>
+      setShowBackToNavigation(
+        (scrollContainer?.scrollTop ?? window.scrollY) > 240
+      );
+    handleScroll();
+    scrollTarget.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollTarget.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const sections = [
     {
@@ -81,6 +119,12 @@ export function Settings() {
       label: 'System banner',
       icon: Megaphone,
       show: isSystemAdmin,
+    },
+    {
+      id: 'recurring-lockout-banner' as Section,
+      label: 'Recurring edit lockout',
+      icon: PencilOff,
+      show: canManageRecurringLockout,
     },
     {
       id: 'login-modal' as Section,
@@ -144,6 +188,11 @@ export function Settings() {
     { id: 'tags' as Section, label: 'Tags', icon: Tag },
     { id: 'statuses' as Section, label: 'Activity statuses', icon: Activity },
     { id: 'themes' as Section, label: 'Themes', icon: Palette },
+    {
+      id: 'translation-languages' as Section,
+      label: 'Translation languages',
+      icon: Globe,
+    },
     { id: 'venue-presets' as Section, label: 'Venue Presets', icon: Bookmark },
     {
       id: 'permissions-visibility' as Section,
@@ -169,7 +218,7 @@ export function Settings() {
     <>
       <PageHeader title="Settings and configuration" />
 
-      <div>
+      <div ref={contentRef} className="pb-20">
         {/* Quick Navigation */}
         <nav
           id="quick-navigation"
@@ -209,6 +258,10 @@ export function Settings() {
         <div className="space-y-8">
           <div id="section-banner">
             <BannerSettingsAdmin />
+          </div>
+
+          <div id="section-recurring-lockout-banner">
+            <RecurringLockoutBannerSettingsAdmin />
           </div>
 
           <div id="section-login-modal">
@@ -275,6 +328,10 @@ export function Settings() {
             <ThemesAdmin />
           </div>
 
+          <div id="section-translation-languages">
+            <TranslationLanguagesAdmin />
+          </div>
+
           <div id="section-venue-presets">
             <VenuePresetsAdmin />
           </div>
@@ -282,6 +339,28 @@ export function Settings() {
           <div id="section-permissions-visibility">
             <PermissionsVisibilityAdminSection />
           </div>
+        </div>
+      </div>
+      <div
+        className={`fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_12px_rgba(15,23,42,0.08)] backdrop-blur transition-transform duration-200 ${
+          showBackToNavigation ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        aria-hidden={!showBackToNavigation}
+      >
+        <div className="mx-auto flex max-w-7xl justify-end">
+          <button
+            type="button"
+            tabIndex={showBackToNavigation ? 0 : -1}
+            onClick={() =>
+              document.getElementById('quick-navigation')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+              })
+            }
+            className="rounded-md px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
+          >
+            Back to quick navigation
+          </button>
         </div>
       </div>
     </>

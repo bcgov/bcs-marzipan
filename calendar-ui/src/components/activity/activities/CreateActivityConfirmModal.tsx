@@ -29,6 +29,8 @@ interface CreateActivityConfirmModalProps {
   leadTeamOptions?: TeamListItem[];
   onConfirm: (notes?: string, markAsReviewed?: boolean) => void;
   isSubmitting: boolean;
+  /** When true, confirm is disabled (e.g. recurring edit lockout became active). */
+  confirmDisabled?: boolean;
   /** When true, show "Mark as reviewed" checkbox (admin/sysAdmin only). */
   showMarkAsReviewed?: boolean;
 }
@@ -236,6 +238,7 @@ export function CreateActivityConfirmModal({
   leadTeamOptions,
   onConfirm,
   isSubmitting,
+  confirmDisabled = false,
   showMarkAsReviewed = false,
 }: CreateActivityConfirmModalProps) {
   const [notes, setNotes] = useState('');
@@ -357,7 +360,11 @@ export function CreateActivityConfirmModal({
           >
             Go back
           </Button>
-          <Button type="button" onClick={handleConfirm} disabled={isSubmitting}>
+          <Button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isSubmitting || confirmDisabled}
+          >
             {isSubmitting ? 'Submitting...' : 'Confirm'}
           </Button>
         </DialogFooter>

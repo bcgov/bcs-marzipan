@@ -16,6 +16,7 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
+  activityEventPlanners,
   activityHistory,
   activityReportSettings,
   activityRepresentatives,
@@ -30,6 +31,7 @@ import {
   commsMaterials,
   dateStatuses,
   deletionAudit,
+  editLocks,
   ministries,
   pitchRequiredStatuses,
   teams,
@@ -80,7 +82,6 @@ import {
   buildReviewSnapshot,
   diffReviewFields,
   getEmptyReviewBaseline,
-  getForbiddenLookupIds,
   isDeepEqual,
   mapResponseToFormData,
   normalizeVenueAddressForForm,
@@ -93,6 +94,7 @@ import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 import { ApplicationSettingsService } from '../../locks/application-settings.service';
 import { LocksService } from '../../locks/locks.service';
+import { RecurringLockoutService } from '../../locks/recurring-lockout.service';
 import { LookAheadPolicyService } from '../../look-ahead/look-ahead-policy.service';
 import {
   resolveDataScope,
@@ -135,7 +137,8 @@ export class ActivitiesService {
     private readonly policyService: PolicyService,
     private readonly teamsService: TeamsService,
     private readonly flagsService: ActivityFlagsService,
-    private readonly lookAheadPolicy: LookAheadPolicyService
+    private readonly lookAheadPolicy: LookAheadPolicyService,
+    private readonly recurringLockoutService: RecurringLockoutService
   ) {}
 
   private async getEffectiveReviewExemptFieldKeys(
@@ -144,6 +147,16 @@ export class ActivitiesService {
     const fromDb =
       await this.applicationSettings.getReviewExemptFieldKeys(executor);
     return buildEffectiveReviewExemptKeys(fromDb);
+  }
+
+  private async assertCanEditDuringLockout(
+    userId: number,
+    permissions?: string[]
+  ): Promise<void> {
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(
+      userId,
+      permissions
+    );
   }
 
   /**
@@ -188,6 +201,40 @@ export class ActivitiesService {
     };
   }
 
+  private getForbiddenLookupIds(
+    submittedIds: number[],
+    existingIds: number[] | undefined,
+    userTeamIds: number[] | undefined,
+    lookupsById: ReadonlyMap<number, { visibility: string; teamIds?: number[] }>
+  ): number[] {
+    const existingSet = new Set(existingIds ?? []);
+    const userTeamSet = new Set(userTeamIds ?? []);
+
+    const isSelectable = (id: number): boolean => {
+      if (existingSet.has(id)) {
+        return true;
+      }
+
+      const lookup = lookupsById.get(id);
+      if (!lookup) {
+        return false;
+      }
+
+      if (lookup.visibility !== 'team') {
+        return true;
+      }
+
+      const allowedTeamIds = lookup.teamIds ?? [];
+      if (allowedTeamIds.length === 0 || userTeamSet.size === 0) {
+        return false;
+      }
+
+      return allowedTeamIds.some((teamId) => userTeamSet.has(teamId));
+    };
+
+    return submittedIds.filter((id) => !isSelectable(id));
+  }
+
   /**
    * Validates submitted tag IDs are selectable for the user's teams, allowing
    * grandfathered tags already on the activity on update.
@@ -206,7 +253,7 @@ export class ActivitiesService {
     const scopeById = await getTagScopeById(this.databaseService.db, [
       ...new Set([...tagIds, ...(existingTagIds ?? [])]),
     ]);
-    const forbidden = getForbiddenLookupIds(
+    const forbidden = this.getForbiddenLookupIds(
       tagIds,
       existingTagIds,
       teamIds,
@@ -237,7 +284,7 @@ export class ActivitiesService {
     const scopeById = await getCategoryScopeById(this.databaseService.db, [
       ...new Set([...categoryIds, ...(existingCategoryIds ?? [])]),
     ]);
-    const forbidden = getForbiddenLookupIds(
+    const forbidden = this.getForbiddenLookupIds(
       categoryIds,
       existingCategoryIds,
       teamIds,
@@ -1181,6 +1228,8 @@ export class ActivitiesService {
       extraCreateChanges?: HistoryChange[];
     }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
+
     // Extract junction table IDs, venue address, and status/options from the DTO
     // activityStatusId is ignored (backend sets from markAsReviewed + activities.review permission)
     const {
@@ -2131,6 +2180,8 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with ID ${id} not found`);
     }
 
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
+
     const existingLock = options?.bypassEditLock
       ? null
       : await this.locksService.getLockForEntity('activity', id);
@@ -2886,6 +2937,8 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId, context.permissions);
+
     const source = await this.findOne(sourceId);
 
     const lookups = await this.getReviewDiffLookups();
@@ -2962,7 +3015,8 @@ export class ActivitiesService {
   /**
    * Remove an activity (hard delete).
    * When context.permissions does not include activities.delete.any, user must be comms contact or lead-team member for the activity.
-   * Writes to deletion_audit, then deletes all child rows and the activity in a single transaction.
+   * Writes to deletion_audit, deletes child rows and polymorphic edit locks,
+   * then deletes the activity in a single transaction (see activity-hard-delete.coverage).
    */
   async remove(
     id: number,
@@ -2992,6 +3046,8 @@ export class ActivitiesService {
     // Verify activity exists so we return 404 for non-existent IDs (auth already enforced above)
     await this.findOne(id, { dataScope: { bypass: true, teamIds: [] } });
 
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
+
     const reason = options?.reason ?? undefined;
 
     await this.databaseService.db.transaction(async (tx) => {
@@ -3002,7 +3058,7 @@ export class ActivitiesService {
         reason: reason ?? null,
       });
 
-      // Delete all child rows that reference this activity (order does not matter for these tables)
+      // Delete child rows that reference this activity (order does not matter for these tables).
       await tx
         .delete(activityHistory)
         .where(eq(activityHistory.activityId, id));
@@ -3015,6 +3071,9 @@ export class ActivitiesService {
       await tx
         .delete(activityCommsMaterials)
         .where(eq(activityCommsMaterials.activityId, id));
+      await tx
+        .delete(activityEventPlanners)
+        .where(eq(activityEventPlanners.activityId, id));
       await tx
         .delete(activityReportSettings)
         .where(eq(activityReportSettings.activityId, id));
@@ -3036,6 +3095,13 @@ export class ActivitiesService {
         .delete(activitySubscriptions)
         .where(eq(activitySubscriptions.activityId, id));
       await tx.delete(venueAddresses).where(eq(venueAddresses.activityId, id));
+
+      // Polymorphic lock rows have no activities.id FK — must delete explicitly.
+      await tx
+        .delete(editLocks)
+        .where(
+          and(eq(editLocks.entityType, 'activity'), eq(editLocks.entityId, id))
+        );
 
       await tx.delete(activities).where(eq(activities.id, id));
     });
@@ -3256,6 +3322,8 @@ export class ActivitiesService {
   }
 
   async addHistoryNote(id: number, note: string, userId: number) {
+    await this.assertCanEditDuringLockout(userId);
+
     const trimmedNote = note.trim();
     if (trimmedNote.length === 0) {
       throw new BadRequestException('Note is required');
@@ -3298,6 +3366,8 @@ export class ActivitiesService {
    * In a full implementation, this would restore from a published snapshot
    */
   async cancelChanges(id: number, userId: number): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     // Verify activity exists
     const currentActivity = await this.findOne(id);
 
@@ -3340,6 +3410,8 @@ export class ActivitiesService {
     userId: number,
     context?: { permissions?: string[]; teamIds?: number[] }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
+
     // Validate reason is provided and not empty
     // Required for audit and admin review purposes
     if (!reason || reason.trim().length === 0) {
@@ -3478,6 +3550,8 @@ export class ActivitiesService {
     reason: string,
     userId: number
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     if (!reason || reason.trim().length === 0) {
       throw new BadRequestException(
         'A reason is required when requesting delete'
@@ -3609,6 +3683,8 @@ export class ActivitiesService {
     note: string | undefined,
     _context?: { roleName: string }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     const [existing] = await this.databaseService.db
       .select()
       .from(activities)
@@ -3740,6 +3816,8 @@ export class ActivitiesService {
     categoryIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     // Verify activity exists
     await this.findOne(id);
 
@@ -3799,6 +3877,8 @@ export class ActivitiesService {
     themeIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     // Verify activity exists
     await this.findOne(id);
 
@@ -3848,6 +3928,8 @@ export class ActivitiesService {
     tagIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     // Verify activity exists
     await this.findOne(id);
 
@@ -3896,6 +3978,8 @@ export class ActivitiesService {
     teamIds: number[],
     userId: number
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     // Verify activity exists
     await this.findOne(id);
 

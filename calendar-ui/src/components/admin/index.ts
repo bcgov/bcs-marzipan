@@ -1,6 +1,7 @@
 export { AdminSection } from './AdminSection';
 export { AdminModal } from './AdminModal';
 export { BannerSettingsAdmin } from './BannerSettingsAdmin';
+export { RecurringLockoutBannerSettingsAdmin } from './RecurringLockoutBannerSettingsAdmin';
 export { ActivityInfoIconSettingsAdmin } from './ActivityInfoIconSettingsAdmin';
 export { LoginModalSettingsAdmin } from './LoginModalSettingsAdmin';
 export { LookupForm, type FormField } from './LookupForm';

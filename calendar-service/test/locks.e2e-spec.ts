@@ -14,6 +14,7 @@ import { DatabaseService } from '../src/database/database.service';
 import { LocksService } from '../src/locks/locks.service';
 import {
   createAuthRequest,
+  createMockActivityRequest,
   createMockUpdateRequest,
   e2eLogin,
 } from './test-helpers';
@@ -24,6 +25,8 @@ const HOLDER_LOGIN = 'wei.zhang';
 const REQUESTER_LOGIN = 'thomas.garcia';
 /** Second admin for duplicate handoff conflict (seed: xiaoling.wang, id 19). */
 const SECOND_ADMIN_LOGIN = 'xiaoling.wang';
+/** System admin used to manage recurring lockout settings (seed: daniel.robinson, id 20). */
+const SYSTEM_ADMIN_LOGIN = 'daniel.robinson';
 
 describe('LocksController (API integration)', () => {
   let app: INestApplication;
@@ -32,6 +35,7 @@ describe('LocksController (API integration)', () => {
   let adminToken: string;
   let holderToken: string;
   let secondAdminToken: string;
+  let systemAdminToken: string;
   /** Shared activity from seeded DB (POST /activities may fail validation in some envs). */
   let activityId: number;
 
@@ -50,6 +54,7 @@ describe('LocksController (API integration)', () => {
     adminToken = await e2eLogin(app, REQUESTER_LOGIN);
     holderToken = await e2eLogin(app, HOLDER_LOGIN);
     secondAdminToken = await e2eLogin(app, SECOND_ADMIN_LOGIN);
+    systemAdminToken = await e2eLogin(app, SYSTEM_ADMIN_LOGIN);
 
     const listRes = await createAuthRequest(app, adminToken)
       .get('/activities')
@@ -115,6 +120,99 @@ describe('LocksController (API integration)', () => {
 
       expect(conflict.body).toMatchObject({ status: 423 });
       expect(conflict.body.detail).toContain('another user');
+    });
+
+    it('blocks users without bypass permission during recurring lockout window but allows users with bypass permission', async () => {
+      const existingSettingsRes = await createAuthRequest(app, systemAdminToken)
+        .get('/banner/recurring-lockout/settings')
+        .expect(200);
+
+      const previousSettings =
+        existingSettingsRes.body?.data != null
+          ? existingSettingsRes.body.data
+          : null;
+
+      const lockoutBody = {
+        isActive: true,
+        leadContent:
+          'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
+        activeContent:
+          'Updates to activities are locked out until <lockEndTime> PT.',
+        backgroundColor: '#E6A635',
+        textColor: '#000000',
+        variant: 'warning',
+        startTimeOfDay: '00:00',
+        endTimeOfDay: '23:59',
+        bannerLeadMinutes: 30,
+      };
+
+      try {
+        await createAuthRequest(app, systemAdminToken)
+          .put('/banner/recurring-lockout/settings')
+          .send(lockoutBody)
+          .expect(200);
+
+        const blocked = await createAuthRequest(app, holderToken)
+          .post('/locks')
+          .send({ entityType: 'activity', entityId: activityId })
+          .expect(403);
+
+        expect(String(blocked.body.detail ?? '')).toContain('lockout window');
+
+        const blockedCreate = await createAuthRequest(app, holderToken)
+          .post('/activities')
+          .send(
+            createMockActivityRequest({
+              title: `Lockout create blocked ${Date.now()}`,
+            })
+          )
+          .expect(403);
+
+        expect(String(blockedCreate.body.detail ?? '')).toContain(
+          'lockout window'
+        );
+
+        const adminAcquire = await createAuthRequest(app, adminToken)
+          .post('/locks')
+          .send({ entityType: 'activity', entityId: activityId })
+          .expect(201);
+
+        await createAuthRequest(app, adminToken)
+          .patch(`/activities/${activityId}`)
+          .send(
+            createMockUpdateRequest({
+              title: `Lockout bypass patch ${Date.now()}`,
+            })
+          )
+          .expect(200);
+
+        await createAuthRequest(app, adminToken)
+          .delete(`/locks/${adminAcquire.body.id as number}`)
+          .expect(204);
+      } finally {
+        const restoreBody = {
+          isActive: false,
+          leadContent:
+            previousSettings?.leadContent ??
+            'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
+          activeContent:
+            previousSettings?.activeContent ??
+            'Updates to activities are locked out until <lockEndTime> PT.',
+          backgroundColor: previousSettings?.backgroundColor ?? '#E6A635',
+          textColor: previousSettings?.textColor ?? '#000000',
+          variant: previousSettings?.variant ?? 'warning',
+          startTimeOfDay: previousSettings?.startTimeOfDay ?? '15:00',
+          endTimeOfDay: previousSettings?.endTimeOfDay ?? '23:59',
+          bannerLeadMinutes: previousSettings?.bannerLeadMinutes ?? 30,
+          editCountdownLeadMinutes:
+            previousSettings?.editCountdownLeadMinutes ?? 3,
+        };
+
+        await createAuthRequest(app, systemAdminToken)
+          .put('/banner/recurring-lockout/settings')
+          .send(restoreBody)
+          .expect(200);
+      }
     });
   });
 

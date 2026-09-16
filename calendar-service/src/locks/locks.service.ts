@@ -172,6 +172,7 @@ export class LocksService {
             {
               statusCode: HttpStatus.LOCKED,
               message: 'This activity is being edited by another user.',
+              reason: 'locked_by_other',
               locked: true,
               lockedBy: {
                 userId: existing.userId,

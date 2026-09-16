@@ -50,6 +50,7 @@ export interface ProblemDetails {
   detail: string;
   instance: string;
   correlationId: string;
+  reason?: string;
   errors?: Array<{ path: string; message: string; code?: string }>;
   timestamp?: string;
   stack?: string; // Only in development
@@ -66,6 +67,7 @@ export class ApiError extends Error {
   public readonly detail: string;
   public readonly correlationId: string;
   public readonly instance: string;
+  public readonly reason?: string;
   public readonly errors?: Array<{
     path: string;
     message: string;
@@ -81,6 +83,7 @@ export class ApiError extends Error {
     this.detail = problemDetails.detail;
     this.correlationId = problemDetails.correlationId;
     this.instance = problemDetails.instance;
+    this.reason = problemDetails.reason;
     this.errors = problemDetails.errors;
     this.timestamp = problemDetails.timestamp;
 
@@ -197,6 +200,10 @@ export function parseErrorResponse(error: unknown): ProblemDetails | null {
     detail,
     instance: getString(config, 'url', ''),
     correlationId: getString(headers, 'x-correlation-id', 'unknown'),
+    reason:
+      isRecord(data) && typeof data.reason === 'string'
+        ? data.reason
+        : undefined,
   };
 }
 
