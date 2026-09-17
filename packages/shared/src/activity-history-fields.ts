@@ -26,7 +26,11 @@ export const ACTIVITY_HISTORY_OMITTED_REGISTRY_TRACKED_FIELDS = [
   'commsContactLeadId',
 ] as const satisfies readonly string[];
 
-/** Legacy stored field keys mapped to canonical filter/display keys. */
+/**
+ * Legacy stored field keys mapped to canonical filter/display keys.
+ * The `changed_field_keys` backfill migration mirrors this mapping inline;
+ * keep both in sync when aliases or non-tracked keys change.
+ */
 export const ACTIVITY_HISTORY_FIELD_ALIASES: Readonly<
   Record<string, readonly string[]>
 > = {

@@ -10,14 +10,17 @@ export function historyDetailsBadgeLabel(
   changeCount: number,
   hasNote: boolean
 ): string {
-  const hasChanges = changeCount > 0;
+  return historyDetailsBadgeLabels(changeCount, hasNote).join(' and ');
+}
 
-  if (hasNote && hasChanges) {
-    return `Note and ${historyChangeLabel(changeCount)}`;
-  }
-  if (hasNote) return 'Note';
-  if (hasChanges) return historyChangeLabel(changeCount);
-  return '';
+export function historyDetailsBadgeLabels(
+  changeCount: number,
+  hasNote: boolean
+): string[] {
+  const labels: string[] = [];
+  if (hasNote) labels.push('Note');
+  if (changeCount > 0) labels.push(historyChangeLabel(changeCount));
+  return labels;
 }
 
 export function historyDetailsShowLabel(

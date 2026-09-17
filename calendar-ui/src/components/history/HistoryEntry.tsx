@@ -1,16 +1,12 @@
 import { Link } from 'react-router-dom';
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { CORP_PACIFIC_TIME_ZONE, formatExactDate } from '@/lib/datetime-utils';
-
-import { historyActorInitials } from './history-format';
 import type {
   HistoryEntryViewModel,
   HistoryListVariant,
 } from './history-types';
 import { HistoryChangeList } from './HistoryChangeList';
 import { HistoryNote } from './HistoryNote';
+import { HistoryRecencyDateTime } from './HistoryRecencyDateTime';
 
 type HistoryEntryProps = {
   entry: HistoryEntryViewModel;
@@ -56,36 +52,28 @@ export function HistoryEntry({
   onChangesExpandedChange,
 }: HistoryEntryProps) {
   const isCompact = variant === 'compact';
-  const timestamp = new Date(entry.timestamp);
-  const formattedTimestamp = Number.isNaN(timestamp.getTime())
-    ? ''
-    : formatExactDate(timestamp, {
-        includeTime: true,
-        timeZone: CORP_PACIFIC_TIME_ZONE,
-        appendPacificTimeAbbrev: true,
-      });
 
   return (
-    <article className="bg-background border-border flex min-w-0 items-start gap-3 rounded-md border px-2 py-1.5">
-      <Avatar size="sm" title={entry.actor.name} className="mt-0.5">
-        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-          {historyActorInitials(entry.actor)}
-        </AvatarFallback>
-      </Avatar>
-
-      <div className="@container min-w-0 flex-1">
+    <article className="bg-background border-border min-w-0 rounded-md border px-2 py-1.5">
+      <div className="@container min-w-0">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 gap-y-0.5 text-sm leading-5 @md:grid-cols-[auto_minmax(0,1fr)_auto]">
-          <div className="col-start-1 row-start-1 flex min-w-0 items-baseline gap-x-2 overflow-hidden">
-            <span className="text-foreground shrink-0 font-medium">
+          <div className="col-start-1 row-start-1 min-w-0">
+            <span
+              className="text-foreground block truncate font-medium"
+              title={entry.actor.name}
+            >
               {entry.actor.name}
             </span>
             {entry.team ? (
-              <Badge variant="outline-subtle" className="shrink-0">
+              <span
+                className="text-muted-foreground block truncate text-xs"
+                title={entry.team}
+              >
                 {entry.team}
-              </Badge>
+              </span>
             ) : null}
             {!entry.subject ? (
-              <span className="text-muted-foreground shrink-0">
+              <span className="text-muted-foreground block">
                 {entry.actionLabel}
               </span>
             ) : null}
@@ -95,14 +83,10 @@ export function HistoryEntry({
               <HistorySubjectLine entry={entry} />
             </span>
           ) : null}
-          {formattedTimestamp ? (
-            <time
-              dateTime={entry.timestamp}
-              className="text-muted-foreground col-start-2 row-start-1 shrink-0 text-xs sm:text-sm @md:col-start-3"
-            >
-              {formattedTimestamp}
-            </time>
-          ) : null}
+          <HistoryRecencyDateTime
+            timestamp={entry.timestamp}
+            className="col-start-2 row-start-1 shrink-0 @md:col-start-3"
+          />
         </div>
 
         {!isCompact && entry.notes ? (

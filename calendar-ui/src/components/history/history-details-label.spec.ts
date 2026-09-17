@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   historyDetailsBadgeLabel,
+  historyDetailsBadgeLabels,
   historyDetailsHasDisclosure,
   historyDetailsHideLabel,
   historyDetailsShowLabel,
@@ -20,6 +21,15 @@ describe('historyDetailsBadgeLabel', () => {
   it('combines note and changes with "and"', () => {
     expect(historyDetailsBadgeLabel(1, true)).toBe('Note and 1 change');
     expect(historyDetailsBadgeLabel(2, true)).toBe('Note and 2 changes');
+  });
+});
+
+describe('historyDetailsBadgeLabels', () => {
+  it('returns separate labels for note and changes', () => {
+    expect(historyDetailsBadgeLabels(0, false)).toEqual([]);
+    expect(historyDetailsBadgeLabels(1, false)).toEqual(['1 change']);
+    expect(historyDetailsBadgeLabels(0, true)).toEqual(['Note']);
+    expect(historyDetailsBadgeLabels(2, true)).toEqual(['Note', '2 changes']);
   });
 });
 

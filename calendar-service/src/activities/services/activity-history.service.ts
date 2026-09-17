@@ -42,6 +42,7 @@ import {
   type FieldScopeUser,
 } from '@corpcal/shared/utils';
 
+import { parseMonthDaySearchToPacificDateKey } from '../../common/utils/parse-history-search-date';
 import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 
@@ -667,35 +668,12 @@ export class ActivityHistoryService {
             whereClauses.push(lte(activityHistory.timestamp, endIso));
           }
         } else if (monthDayMatch) {
-          const monthName = monthDayMatch[1];
-          const day = parseInt(monthDayMatch[2], 10);
-          const year = monthDayMatch[3]
-            ? parseInt(monthDayMatch[3], 10)
-            : new Date().getFullYear();
-          const parsed = new Date(`${monthName} ${day} ${year}`);
-          if (!Number.isNaN(parsed.getTime())) {
-            const startIso = new Date(
-              Date.UTC(
-                parsed.getFullYear(),
-                parsed.getMonth(),
-                parsed.getDate(),
-                0,
-                0,
-                0,
-                0
-              )
-            );
-            const endIso = new Date(
-              Date.UTC(
-                parsed.getFullYear(),
-                parsed.getMonth(),
-                parsed.getDate(),
-                23,
-                59,
-                59,
-                999
-              )
-            );
+          const dateKey = parseMonthDaySearchToPacificDateKey(raw);
+          const startIso = dateKey
+            ? pacificCalendarDayStartInstant(dateKey)
+            : null;
+          const endIso = dateKey ? pacificCalendarDayEndInstant(dateKey) : null;
+          if (startIso && endIso) {
             whereClauses.push(gte(activityHistory.timestamp, startIso));
             whereClauses.push(lte(activityHistory.timestamp, endIso));
           }

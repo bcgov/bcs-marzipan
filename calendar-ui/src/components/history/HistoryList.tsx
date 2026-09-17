@@ -1,10 +1,6 @@
 import { ListChevronsDownUp, ListChevronsUpDown } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import {
-  HISTORY_RECENCY_BUCKETS,
-  pacificHistoryRecencyBucket,
-} from '@/lib/datetime-utils';
 import { cn } from '@/lib/utils';
 
 import { historyDetailsHasDisclosure } from './history-details-label';
@@ -98,26 +94,6 @@ export function HistoryList({
     setExpandedChanges((current) => pruneIdSet(current, validIds));
   }, [validIds]);
 
-  const groups = useMemo(() => {
-    const grouped = new Map(
-      HISTORY_RECENCY_BUCKETS.map((bucket) => [
-        bucket,
-        [] as HistoryEntryViewModel[],
-      ])
-    );
-    const now = new Date();
-    entries.forEach((entry) => {
-      const bucket = pacificHistoryRecencyBucket(
-        new Date(entry.timestamp),
-        now
-      );
-      grouped.get(bucket)?.push(entry);
-    });
-    return HISTORY_RECENCY_BUCKETS.map(
-      (bucket) => [bucket, grouped.get(bucket) ?? []] as const
-    ).filter(([, bucketEntries]) => bucketEntries.length > 0);
-  }, [entries]);
-
   const allInlineNotesExpanded =
     inlineNoteIds.length === 0 ||
     inlineNoteIds.every((id) => expandedNotes.has(id));
@@ -154,40 +130,26 @@ export function HistoryList({
     </button>
   ) : null;
 
-  const groupSections = groups.map(([heading, groupEntries]) => (
-    <section key={heading} aria-labelledby={`history-${heading}`}>
-      <h2
-        id={`history-${heading}`}
-        className="text-muted-foreground bg-background sticky top-0 z-10 mb-3 py-1 text-sm font-semibold tracking-wide"
-      >
-        {heading}
-      </h2>
-      <div className="space-y-2">
-        {groupEntries.map((entry) => (
-          <HistoryEntry
-            key={entry.id}
-            entry={entry}
-            variant={variant}
-            notesExpanded={expandedNotes.has(entry.id)}
-            changesExpanded={expandedChanges.has(entry.id)}
-            onNotesExpandedChange={(expanded) =>
-              setExpandedNotes((current) =>
-                updateIdSet(current, entry.id, expanded)
-              )
-            }
-            onChangesExpandedChange={(expanded) =>
-              setExpandedChanges((current) =>
-                updateIdSet(current, entry.id, expanded)
-              )
-            }
-          />
-        ))}
-      </div>
-    </section>
+  const entryList = entries.map((entry) => (
+    <HistoryEntry
+      key={entry.id}
+      entry={entry}
+      variant={variant}
+      notesExpanded={expandedNotes.has(entry.id)}
+      changesExpanded={expandedChanges.has(entry.id)}
+      onNotesExpandedChange={(expanded) =>
+        setExpandedNotes((current) => updateIdSet(current, entry.id, expanded))
+      }
+      onChangesExpandedChange={(expanded) =>
+        setExpandedChanges((current) =>
+          updateIdSet(current, entry.id, expanded)
+        )
+      }
+    />
   ));
 
   const groupsNode = (
-    <div className={cn('space-y-4', className)}>{groupSections}</div>
+    <div className={cn('space-y-2', className)}>{entryList}</div>
   );
 
   if (children) {
@@ -201,7 +163,7 @@ export function HistoryList({
           {expandAllButton}
         </div>
       ) : null}
-      {groupSections}
+      <div className="space-y-2">{entryList}</div>
     </div>
   );
 }

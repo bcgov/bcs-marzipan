@@ -3489,6 +3489,7 @@ export class ActivitiesService {
           endDate: todayDateStr,
           page: 1,
           pageSize: 50,
+          viewer: this.toHistoryViewer(ctx),
         }
       );
 

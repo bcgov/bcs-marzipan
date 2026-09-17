@@ -183,6 +183,13 @@ describe('ActivitiesService', () => {
   const mockActivityHistoryService = {
     recordChange: vi.fn().mockResolvedValue(undefined),
     getActivityHistory: vi.fn().mockResolvedValue([]),
+    getActivityHistoryForActivityIdsPaged: vi.fn().mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 50,
+      hasNext: false,
+      totalItems: 0,
+    }),
     getHistoryEntryById: vi.fn().mockResolvedValue(null),
     getLastPublishedState: vi.fn().mockResolvedValue(null),
     getPreviousStatusIdBeforeDelete: vi.fn().mockResolvedValue(null),
@@ -663,6 +670,105 @@ describe('ActivitiesService', () => {
 
     it('is true when the caller is an explicit edit bypass role', () => {
       expect(svc().computeCanEdit(1, [], 5, [2], true)).toBe(true);
+    });
+  });
+
+  describe('getGlobalHistory', () => {
+    it('passes viewer to history paging for field redaction', async () => {
+      const ctx = {
+        user: {
+          id: 7,
+          permissions: [],
+          roleName: 'Viewer',
+        },
+        dataScope: { bypass: true, teamIds: [] },
+      };
+
+      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
+      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
+
+      await service.getGlobalHistory(ctx);
+
+      expect(
+        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged
+      ).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({
+          viewer: { permissions: [], roleName: 'Viewer' },
+        })
+      );
+    });
+  });
+
+  describe('getGlobalHistoryPaged', () => {
+    it('forces empty changedFields when requested fields are not viewable', async () => {
+      const ctx = {
+        user: {
+          id: 7,
+          permissions: [],
+          roleName: 'Viewer',
+        },
+        dataScope: { bypass: true, teamIds: [] },
+      };
+
+      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
+      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
+
+      await service.getGlobalHistoryPaged(
+        {
+          page: 1,
+          pageSize: 25,
+          changedFields: ['notes'],
+        },
+        ctx
+      );
+
+      expect(
+        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged
+      ).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({
+          changedFields: [],
+        })
+      );
+    });
+
+    it('passes viewer and resolved changedFields to history paging', async () => {
+      const ctx = {
+        user: {
+          id: 7,
+          permissions: ['activities.notes.view'],
+          roleName: 'Editor',
+        },
+        dataScope: { bypass: true, teamIds: [] },
+      };
+
+      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
+      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
+
+      await service.getGlobalHistoryPaged(
+        {
+          page: 1,
+          pageSize: 25,
+          changedFields: ['title', 'notes'],
+        },
+        ctx
+      );
+
+      expect(
+        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged
+      ).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({
+          page: 1,
+          pageSize: 25,
+          changedFields: ['title', 'notes'],
+          viewer: {
+            permissions: ['activities.notes.view'],
+            roleName: 'Editor',
+          },
+        })
+      );
     });
   });
 

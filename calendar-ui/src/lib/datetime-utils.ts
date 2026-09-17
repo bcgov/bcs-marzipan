@@ -91,6 +91,26 @@ export function pacificActivityHistoryRecencyBucket(
   return 'Earlier';
 }
 
+export type PacificRelativeCalendarDay = 'today' | 'yesterday' | 'other';
+
+/**
+ * Compares an instant's Pacific calendar day to `now` for relative UI labels.
+ */
+export function pacificRelativeCalendarDay(
+  entryInstant: Date,
+  now: Date = new Date()
+): PacificRelativeCalendarDay {
+  const entryKey = pacificCalendarDateFromInstant(entryInstant);
+  const todayKey = pacificCalendarDateFromInstant(now);
+  if (entryKey == null || todayKey == null) return 'other';
+  if (entryKey === todayKey) return 'today';
+
+  const yesterdayKey = addCalendarDays(todayKey, -1);
+  if (entryKey === yesterdayKey) return 'yesterday';
+
+  return 'other';
+}
+
 /**
  * Compact audit-list grouping based on corporate Pacific calendar dates.
  * "This week" preserves the existing rolling seven-day history window after
@@ -100,17 +120,38 @@ export function pacificHistoryRecencyBucket(
   entryInstant: Date,
   now: Date = new Date()
 ): HistoryRecencyBucket {
+  const relative = pacificRelativeCalendarDay(entryInstant, now);
+  if (relative === 'today') return 'Today';
+  if (relative === 'yesterday') return 'Yesterday';
+
   const entryKey = pacificCalendarDateFromInstant(entryInstant);
   const todayKey = pacificCalendarDateFromInstant(now);
   if (entryKey == null || todayKey == null) return 'Earlier';
-  if (entryKey === todayKey) return 'Today';
 
   const yesterdayKey = addCalendarDays(todayKey, -1);
-  if (entryKey === yesterdayKey) return 'Yesterday';
-
   const weekStartKey = addCalendarDays(todayKey, -7);
   if (entryKey >= weekStartKey && entryKey < yesterdayKey) return 'This week';
   return 'Earlier';
+}
+
+/**
+ * Pacific date label with recency words: Today, Yesterday, or a compact weekday
+ * date (e.g. Wed, Sep 15) without year.
+ */
+export function formatPacificRecencyDate(
+  timestamp: Date,
+  now: Date = new Date()
+): string {
+  const relative = pacificRelativeCalendarDay(timestamp, now);
+  if (relative === 'today') return 'Today';
+  if (relative === 'yesterday') return 'Yesterday';
+
+  return timestamp.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: CORP_PACIFIC_TIME_ZONE,
+  });
 }
 
 /**
@@ -121,7 +162,7 @@ export function formatPacificHistoryListDayHeading(
   timestamp: Date,
   now: Date = new Date()
 ): string {
-  if (isSamePacificCalendarDay(timestamp, now)) {
+  if (pacificRelativeCalendarDay(timestamp, now) === 'today') {
     return 'Today';
   }
   return formatLongDate(timestamp, { timeZone: CORP_PACIFIC_TIME_ZONE });
@@ -178,6 +219,24 @@ export function pacificInclusiveCalendarRangeEndingToday(
 export function formatPacificTimeWithAbbrev(date: Date): string {
   const clock = formatTime(date, { timeZone: CORP_PACIFIC_TIME_ZONE });
   return clock === '' ? '' : `${clock}${PACIFIC_TIME_ABBREV_SUFFIX}`;
+}
+
+export type PacificRecencyDateTimeLines = {
+  dateLine: string;
+  timeLine: string;
+};
+
+/**
+ * Two-line Pacific timestamp for compact UI: recency date + time with PT suffix.
+ */
+export function formatPacificRecencyDateTime(
+  timestamp: Date,
+  now: Date = new Date()
+): PacificRecencyDateTimeLines {
+  return {
+    dateLine: formatPacificRecencyDate(timestamp, now),
+    timeLine: formatPacificTimeWithAbbrev(timestamp),
+  };
 }
 
 const RELATIVE_INTERVALS: [number, string, string][] = [

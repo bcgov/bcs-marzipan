@@ -1,11 +1,24 @@
 export { HistoryChangeList } from './HistoryChangeList';
 export { HistoryEntry } from './HistoryEntry';
 export { HistoryList } from './HistoryList';
+export { HistoryResponsiveEntries } from './HistoryResponsiveEntries';
+export { HistoryTable, HISTORY_TABLE_COLUMN_COUNT } from './HistoryTable';
 export { HistoryListToolbar } from './HistoryListToolbar';
 export { HistoryListEmptyState } from './HistoryListEmptyState';
-export { HistoryListLoading, HistoryListSkeleton } from './HistoryListSkeleton';
+export {
+  HistoryListLoading,
+  HistoryListSkeleton,
+  HistoryTableLoading,
+  HistoryTableSkeleton,
+} from './HistoryListSkeleton';
 export { HistoryNote } from './HistoryNote';
 export { HistorySearchInput } from './HistorySearchInput';
+export {
+  createDefaultGlobalHistoryDateRange,
+  DEFAULT_GLOBAL_HISTORY_DAY_COUNT,
+  isDefaultGlobalHistoryDateRange,
+  isGlobalHistoryDateRangeActive,
+} from './default-history-date-range';
 export { HISTORY_LIST_CONTENT_CLASSNAME } from './history-list-layout';
 export { HistoryFieldFilterPanel } from './HistoryFieldFilterPanel';
 export { HistoryMultiSelectFilter } from './HistoryMultiSelectFilter';
@@ -31,6 +44,7 @@ export {
 } from './history-filter-detail';
 export { normalizeTransitionChanges } from './history-format';
 export {
+  formatActivityDisplayId,
   toActivityHistoryViewModel,
   toGlobalActivityHistoryViewModel,
 } from './activity-history-adapter';

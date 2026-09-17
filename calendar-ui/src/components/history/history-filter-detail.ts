@@ -7,6 +7,7 @@ import {
 import type { TableSummaryFilterDetailLine } from '@/components/table/TableSummaryBar';
 import { getHistoryFieldLabel } from '@/lib/activity-history-format';
 
+import { isDefaultGlobalHistoryDateRange } from './default-history-date-range';
 import { getHistoryActionLabel } from './history-action-labels';
 import type { HistorySummaryTab } from './history-summary-bar';
 
@@ -133,7 +134,11 @@ export function buildGlobalHistoryFilterDetailLines({
     lines.unshift({ label: 'Scope', value: 'My team' });
   }
 
-  if (dateRange && isDateRangeActive(dateRange)) {
+  if (
+    dateRange &&
+    isDateRangeActive(dateRange) &&
+    !isDefaultGlobalHistoryDateRange(dateRange)
+  ) {
     lines.push({
       label: 'Date',
       value: formatHistoryDateRangeValue(dateRange),

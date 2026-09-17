@@ -7,8 +7,10 @@ export type HistoryActorViewModel = {
 };
 
 export type HistorySubjectViewModel = {
+  /** Combined label for card layouts (display id + title). */
   label: string;
-  title?: string;
+  displayId: string;
+  title: string;
   href?: string;
   state?: unknown;
 };

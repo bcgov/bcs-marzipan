@@ -21,6 +21,17 @@ type ActivityAdapterOptions = {
   formatValue?: (field: string, value: unknown) => string;
 };
 
+export function formatActivityDisplayId(activity: {
+  id: number;
+  displayId: string | null;
+}): string {
+  if (activity.displayId?.trim()) {
+    return activity.displayId.trim();
+  }
+
+  return `MIN-${String(activity.id).padStart(6, '0')}`;
+}
+
 function activityActor(entry: ActivityHistoryEntry) {
   const name =
     entry.actor?.displayName ||
@@ -62,16 +73,16 @@ export function toGlobalActivityHistoryViewModel(
   } = {}
 ): HistoryEntryViewModel {
   const base = toActivityHistoryViewModel(entry, options);
+  const displayId = formatActivityDisplayId(entry.activity);
+  const title = entry.activity.title.trim();
+
   return {
     ...base,
     team: options.team,
     subject: {
-      label: [
-        entry.activity.displayId || `Activity ${entry.activity.id}`,
-        entry.activity.title,
-      ]
-        .filter(Boolean)
-        .join(' '),
+      label: [displayId, title].filter(Boolean).join(' '),
+      displayId,
+      title,
       href: `/activity/${entry.activity.id}`,
       state: options.subjectState,
     },

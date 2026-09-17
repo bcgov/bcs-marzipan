@@ -31,17 +31,19 @@ import {
 import {
   buildGlobalHistoryFilterDetailLines,
   buildHistoryAppliedFilterTypeLabels,
+  createDefaultGlobalHistoryDateRange,
   GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,
-  HISTORY_LIST_CONTENT_CLASSNAME,
   HistoryFieldFilterPanel,
-  HistoryList,
   HistoryListEmptyState,
   HistoryListLoading,
   HistoryListToolbar,
   HistoryMultiSelectFilter,
+  HistoryResponsiveEntries,
   HistorySearchInput,
   historySummaryHasActiveFilters,
   historySummaryHasClearableFilters,
+  HistoryTableLoading,
+  isGlobalHistoryDateRangeActive,
   resolveHistoryEmptyVariant,
   toGlobalActivityHistoryViewModel,
 } from '@/components/history';
@@ -73,25 +75,8 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
-import {
-  formatHistoryFieldValue,
-  getActionText,
-} from '@/lib/activity-history-format';
-import {
-  CORP_PACIFIC_TIME_ZONE,
-  formatExactDate,
-  formatLongDate,
-  formatPacificHistoryListDayHeading,
-  isTimestampInPacificDateFilter,
-} from '@/lib/datetime-utils';
+import { formatHistoryFieldValue } from '@/lib/activity-history-format';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
-
-const EMPTY_DATE_RANGE: DateRangeValue = {
-  startDate: '',
-  endDate: '',
-  noStartDate: false,
-  noEndDate: false,
-};
 
 const MAX_CHANGE_VALUE_LENGTH = 120;
 
@@ -168,50 +153,6 @@ export function getActorInitials(entry: GlobalActivityHistoryEntry): string {
     .join('');
 }
 
-export function isEntryInDateRange(
-  entry: GlobalActivityHistoryEntry,
-  range: DateRangeValue
-): boolean {
-  if (!isDateRangeActive(range)) {
-    return true;
-  }
-
-  return isTimestampInPacificDateFilter(new Date(entry.timestamp), range);
-}
-
-export function matchesSearch(
-  entry: GlobalActivityHistoryEntry,
-  query: string
-): boolean {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return true;
-  }
-
-  const timestamp = new Date(entry.timestamp);
-  const haystacks = [
-    getActorDisplayName(entry),
-    entry.actor?.username,
-    entry.actionType,
-    getActionText(entry.actionType),
-    entry.activity.displayId,
-    entry.activity.title,
-    entry.notes,
-    formatPacificHistoryListDayHeading(timestamp),
-    formatLongDate(timestamp, { timeZone: CORP_PACIFIC_TIME_ZONE }),
-    formatExactDate(timestamp, {
-      includeTime: true,
-      timeZone: CORP_PACIFIC_TIME_ZONE,
-      appendPacificTimeAbbrev: true,
-    }),
-    ...entry.activity.categories,
-  ]
-    .filter((value): value is string => typeof value === 'string')
-    .map((value) => value.toLowerCase());
-
-  return haystacks.some((value) => value.includes(normalizedQuery));
-}
-
 function DateFilter({
   value,
   onChange,
@@ -228,7 +169,7 @@ function DateFilter({
           label="Date"
           active={active}
           count={active ? 1 : 0}
-          onClear={() => onChange(EMPTY_DATE_RANGE)}
+          onClear={() => onChange(createDefaultGlobalHistoryDateRange())}
           clearAriaLabel="Clear date filter"
         />
       </PopoverTrigger>
@@ -255,7 +196,9 @@ export function GlobalHistory() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<HistoryTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateRange, setDateRange] = useState<DateRangeValue>(EMPTY_DATE_RANGE);
+  const [dateRange, setDateRange] = useState<DateRangeValue>(() =>
+    createDefaultGlobalHistoryDateRange()
+  );
   const [selectedActionTypes, setSelectedActionTypes] = useState<string[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -574,68 +517,94 @@ export function GlobalHistory() {
     [premierRequestedQuery.data]
   );
 
-  const formatChangeValue = (field: string, value: unknown): string => {
-    let formattedValue: string;
+  const historyLinkState = useMemo(
+    () => activityFormLinkState(location).state,
+    [location]
+  );
 
-    if (typeof value === 'number') {
-      switch (field) {
-        case 'activityStatusId':
-          formattedValue = activityStatusLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'createdBy':
-        case 'lastUpdatedBy':
-        case 'eventPlannerLeadId':
-        case 'commsContactLeadId':
-          formattedValue = userLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'leadTeamId':
-          formattedValue = leadTeamLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'leadMinistryId':
-          formattedValue = ministryLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'leadOrgId':
-          formattedValue = organizationLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'dateStatusId':
-          formattedValue = dateStatusLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'timeStatusId':
-          formattedValue = timeStatusLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'pitchRequiredStatusId':
-          formattedValue =
-            pitchRequiredStatusLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'translationsRequiredStatusId':
-          formattedValue =
-            translationRequiredStatusLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'newsReleaseOriginId':
-          formattedValue =
-            newsReleaseOriginLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'newsReleaseDistributionId':
-          formattedValue =
-            newsReleaseDistributionLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'premierRequestedId':
-          formattedValue = premierRequestedLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        default:
-          break;
+  const formatChangeValue = useCallback(
+    (field: string, value: unknown): string => {
+      let formattedValue: string;
+
+      if (typeof value === 'number') {
+        switch (field) {
+          case 'activityStatusId':
+            formattedValue = activityStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'createdBy':
+          case 'lastUpdatedBy':
+          case 'eventPlannerLeadId':
+          case 'commsContactLeadId':
+            formattedValue = userLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'leadTeamId':
+            formattedValue = leadTeamLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'leadMinistryId':
+            formattedValue = ministryLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'leadOrgId':
+            formattedValue = organizationLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'dateStatusId':
+            formattedValue = dateStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'timeStatusId':
+            formattedValue = timeStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'pitchRequiredStatusId':
+            formattedValue =
+              pitchRequiredStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'translationsRequiredStatusId':
+            formattedValue =
+              translationRequiredStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'newsReleaseOriginId':
+            formattedValue =
+              newsReleaseOriginLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'newsReleaseDistributionId':
+            formattedValue =
+              newsReleaseDistributionLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'premierRequestedId':
+            formattedValue =
+              premierRequestedLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          default:
+            break;
+        }
       }
-    }
 
-    return truncateChangeLogValue(formatHistoryFieldValue(field, value));
-  };
+      return truncateChangeLogValue(formatHistoryFieldValue(field, value));
+    },
+    [
+      activityStatusLabelMap,
+      dateStatusLabelMap,
+      leadTeamLabelMap,
+      ministryLabelMap,
+      newsReleaseDistributionLabelMap,
+      newsReleaseOriginLabelMap,
+      organizationLabelMap,
+      pitchRequiredStatusLabelMap,
+      premierRequestedLabelMap,
+      timeStatusLabelMap,
+      translationRequiredStatusLabelMap,
+      userLabelMap,
+    ]
+  );
 
-  const historyEntries = entries.map((entry) =>
-    toGlobalActivityHistoryViewModel(entry, {
-      team: leadTeamLabelMap.get(entry.activity.leadTeamId),
-      subjectState: activityFormLinkState(location).state,
-      formatValue: formatChangeValue,
-    })
+  const historyEntries = useMemo(
+    () =>
+      entries.map((entry) =>
+        toGlobalActivityHistoryViewModel(entry, {
+          team: leadTeamLabelMap.get(entry.activity.leadTeamId),
+          subjectState: historyLinkState,
+          formatValue: formatChangeValue,
+        })
+      ),
+    [entries, formatChangeValue, historyLinkState, leadTeamLabelMap]
   );
 
   const recordCount = historyQuery.data?.totalItems ?? 0;
@@ -666,7 +635,7 @@ export function GlobalHistory() {
 
   const hasActiveFilters = historySummaryHasActiveFilters({
     searchQuery,
-    dateRangeActive: isDateRangeActive(dateRange),
+    dateRangeActive: isGlobalHistoryDateRangeActive(dateRange),
     activeTab,
     selectedActionTypes,
     selectedUserIds,
@@ -677,7 +646,7 @@ export function GlobalHistory() {
 
   const clearAllFilters = useCallback(() => {
     setSearchQuery('');
-    setDateRange(EMPTY_DATE_RANGE);
+    setDateRange(createDefaultGlobalHistoryDateRange());
     setSelectedActionTypes([]);
     setSelectedUserIds([]);
     setSelectedCategories([]);
@@ -826,7 +795,12 @@ export function GlobalHistory() {
         {historyQuery.isLoading ? (
           <>
             <HistoryListToolbar summary={renderCountSummary()} />
-            <HistoryListLoading />
+            <div className="md:hidden">
+              <HistoryListLoading />
+            </div>
+            <TableScrollContainer className="hidden md:flex">
+              <HistoryTableLoading />
+            </TableScrollContainer>
           </>
         ) : historyQuery.isError ? (
           <ErrorState
@@ -853,20 +827,11 @@ export function GlobalHistory() {
           </>
         ) : (
           <>
-            <HistoryList
+            <HistoryResponsiveEntries
               entries={historyEntries}
-              variant="compact"
-              className={HISTORY_LIST_CONTENT_CLASSNAME}
-            >
-              {({ expandAll, groups }) => (
-                <div className="min-w-0">
-                  <HistoryListToolbar summary={renderCountSummary(expandAll)} />
-                  <TableScrollContainer ref={tableScrollRef}>
-                    {groups}
-                  </TableScrollContainer>
-                </div>
-              )}
-            </HistoryList>
+              tableScrollRef={tableScrollRef}
+              renderCountSummary={renderCountSummary}
+            />
             <TablePagination
               totalItems={historyQuery.data?.totalItems ?? 0}
               page={page}

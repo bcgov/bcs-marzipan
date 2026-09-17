@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  formatActivityDisplayId,
   toActivityHistoryViewModel,
   toGlobalActivityHistoryViewModel,
 } from './activity-history-adapter';
@@ -78,9 +79,23 @@ describe('history adapters', () => {
     expect(result.actionLabel).toBe('Updated');
     expect(result.subject).toEqual({
       label: 'ACT-10 Announcement',
+      displayId: 'ACT-10',
+      title: 'Announcement',
       href: '/activity/10',
       state: { from: '/history' },
     });
+  });
+
+  it('formats missing display ids as MIN-000001 style values', () => {
+    expect(formatActivityDisplayId({ id: 1, displayId: null })).toBe(
+      'MIN-000001'
+    );
+    expect(formatActivityDisplayId({ id: 42, displayId: '  ' })).toBe(
+      'MIN-000042'
+    );
+    expect(formatActivityDisplayId({ id: 10, displayId: 'MIN-000010' })).toBe(
+      'MIN-000010'
+    );
   });
 
   it('preserves sentence-aware user changes', () => {

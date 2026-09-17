@@ -98,9 +98,11 @@ describe('GlobalHistory component', () => {
       expect(fetchGlobalActivityHistoryPaged).toHaveBeenCalled();
     });
     expect(await screen.findByText('Showing 1 record')).toBeInTheDocument();
-    expect(
-      await screen.findByRole('link', { name: /ACT-11 Event 11/i })
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'ACT-11' })).toHaveAttribute(
+      'href',
+      '/activity/11'
+    );
+    expect(screen.getByText('Event 11')).toBeInTheDocument();
 
     const search = screen.getByRole('textbox', { name: /search history/i });
     fireEvent.change(search, { target: { value: 'no-match' } });

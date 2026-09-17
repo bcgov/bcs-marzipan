@@ -10,6 +10,8 @@ import {
   formatInstantPacificTime,
   formatLongDate,
   formatPacificHistoryListDayHeading,
+  formatPacificRecencyDate,
+  formatPacificRecencyDateTime,
   formatRelativeTime,
   formatTime,
   formatTime12h,
@@ -17,6 +19,7 @@ import {
   isTimestampInPacificDateFilter,
   pacificActivityHistoryRecencyBucket,
   pacificInclusiveCalendarRangeEndingToday,
+  pacificRelativeCalendarDay,
 } from './datetime-utils';
 
 describe('formatRelativeTime', () => {
@@ -387,6 +390,69 @@ describe('Pacific history grouping / filters', () => {
           nowPacificJan15
         )
       ).toBe('Earlier');
+    });
+  });
+
+  describe('pacificRelativeCalendarDay', () => {
+    it('returns today, yesterday, or other relative to Pacific calendar days', () => {
+      expect(
+        pacificRelativeCalendarDay(
+          new Date('2026-01-15T10:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('today');
+      expect(
+        pacificRelativeCalendarDay(
+          new Date('2026-01-14T12:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('yesterday');
+      expect(
+        pacificRelativeCalendarDay(
+          new Date('2026-01-10T12:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('other');
+    });
+  });
+
+  describe('formatPacificRecencyDate', () => {
+    it('returns Today and Yesterday for relative Pacific calendar days', () => {
+      expect(
+        formatPacificRecencyDate(
+          new Date('2026-01-15T10:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Today');
+      expect(
+        formatPacificRecencyDate(
+          new Date('2026-01-14T12:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Yesterday');
+    });
+
+    it('returns a compact weekday date without year otherwise', () => {
+      expect(
+        formatPacificRecencyDate(
+          new Date('2026-01-10T12:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Sat, Jan 10');
+    });
+  });
+
+  describe('formatPacificRecencyDateTime', () => {
+    it('returns recency date and Pacific time lines', () => {
+      expect(
+        formatPacificRecencyDateTime(
+          new Date('2026-01-15T10:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toEqual({
+        dateLine: 'Today',
+        timeLine: '3:00 am PT',
+      });
     });
   });
 

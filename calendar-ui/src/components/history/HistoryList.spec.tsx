@@ -33,6 +33,8 @@ describe('HistoryList', () => {
               team: 'Corporate Communications',
               subject: {
                 label: 'ACT-123 Cabinet announcement',
+                displayId: 'ACT-123',
+                title: 'Cabinet announcement',
                 href: '/activity/123',
               },
               changes: [

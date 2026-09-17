@@ -416,39 +416,43 @@ export default function ActivityHistory({
   const noteButtonDisabled =
     trimmedNote.length === 0 || trimmedNote.length > MAX_NOTE_LENGTH;
 
-  const noteButton = canAddNote ? (
-    addNoteDisabled && addNoteDisabledReason ? (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2"
-              disabled
-            >
-              <Plus className="h-4 w-4" />
-              Note
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>{addNoteDisabledReason}</TooltipContent>
-      </Tooltip>
-    ) : (
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-8 px-2"
-        disabled={addNoteDisabled}
-        onClick={() => setNoteModalOpen(true)}
-      >
-        <Plus className="h-4 w-4" />
-        New note
-      </Button>
-    )
-  ) : null;
+  const noteButton = useMemo(
+    () =>
+      canAddNote ? (
+        addNoteDisabled && addNoteDisabledReason ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2"
+                  disabled
+                >
+                  <Plus className="h-4 w-4" />
+                  Note
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{addNoteDisabledReason}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2"
+            disabled={addNoteDisabled}
+            onClick={() => setNoteModalOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            New note
+          </Button>
+        )
+      ) : null,
+    [addNoteDisabled, addNoteDisabledReason, canAddNote]
+  );
 
   const appliedFilterTypeLabels = useMemo(
     () =>

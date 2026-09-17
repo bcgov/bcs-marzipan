@@ -3,6 +3,8 @@ import {
   type DateRangeValue,
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 
+import { isDefaultGlobalHistoryDateRange } from './default-history-date-range';
+
 export type HistorySummaryTab = 'all' | 'mine' | 'team';
 
 type HistorySummaryFilterState = {
@@ -37,7 +39,11 @@ export function buildHistoryAppliedFilterTypeLabels({
   if (searchQuery.trim()) {
     labels.push('Search');
   }
-  if (dateRange && isDateRangeActive(dateRange)) {
+  if (
+    dateRange &&
+    isDateRangeActive(dateRange) &&
+    !isDefaultGlobalHistoryDateRange(dateRange)
+  ) {
     labels.push('Date');
   }
   if (selectedActionTypes.length > 0) {

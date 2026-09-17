@@ -132,6 +132,61 @@ describe('ActivityHistoryService', () => {
     });
   });
 
+  describe('getActivityHistory', () => {
+    it('redacts scoped fields for restricted viewers', async () => {
+      const historyEntries = [
+        {
+          id: 1,
+          activityId: 10,
+          userId: 2,
+          actionType: 'updated',
+          changes: [
+            { field: 'title', oldValue: 'A', newValue: 'B' },
+            { field: 'notes', oldValue: 'secret', newValue: 'updated' },
+          ],
+          notes: null,
+          timestamp: new Date('2026-01-01T12:00:00.000Z'),
+        },
+      ];
+
+      let selectCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCount += 1;
+        if (selectCount === 1) {
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                orderBy: vi.fn().mockResolvedValue(historyEntries),
+              }),
+            }),
+          };
+        }
+
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: 2,
+                adDisplayName: 'Alice',
+                adUsername: 'alice',
+              },
+            ]),
+          }),
+        };
+      });
+
+      const result = await service.getActivityHistory(10, {
+        permissions: [],
+        roleName: 'Viewer',
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.changes).toEqual([
+        { field: 'title', oldValue: 'A', newValue: 'B' },
+      ]);
+    });
+  });
+
   describe('getPreviousStatusIdBeforeDelete', () => {
     it('should return oldValue from most recent delete_requested entry when changes contain activityStatusId', async () => {
       const changes = [
