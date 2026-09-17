@@ -90,6 +90,27 @@ export function pacificCivilToInstantMs(
   return Number.isNaN(ms) ? null : ms;
 }
 
+/**
+ * Start of a Pacific calendar day as a UTC instant (inclusive lower bound).
+ */
+export function pacificCalendarDayStartInstant(
+  date: CalendarDateString | string
+): Date | null {
+  const ms = pacificCivilToInstantMs(date, '00:00:00');
+  return ms == null ? null : new Date(ms);
+}
+
+/**
+ * End of a Pacific calendar day as a UTC instant (inclusive upper bound).
+ */
+export function pacificCalendarDayEndInstant(
+  date: CalendarDateString | string
+): Date | null {
+  const nextDay = addCalendarDays(date, 1);
+  const nextStartMs = pacificCivilToInstantMs(nextDay, '00:00:00');
+  return nextStartMs == null ? null : new Date(nextStartMs - 1);
+}
+
 function toUtcMs(
   instant: string | number | Date | null | undefined
 ): number | null {

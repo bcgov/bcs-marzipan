@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   addCalendarDays,
   pacificCalendarDateFromInstant,
+  pacificCalendarDayEndInstant,
+  pacificCalendarDayStartInstant,
   pacificCivilToInstantMs,
   pacificDayKey,
 } from './calendar';
@@ -91,5 +93,28 @@ describe('pacificCivilToInstantMs', () => {
     expect(pacificCivilToInstantMs(null, '09:30')).toBeNull();
     expect(pacificCivilToInstantMs('2026-04-27', null)).toBeNull();
     expect(pacificCivilToInstantMs('not-a-date', '09:30')).toBeNull();
+  });
+});
+
+describe('pacificCalendarDayStartInstant', () => {
+  it('returns start of Pacific calendar day in UTC', () => {
+    expect(pacificCalendarDayStartInstant('2026-08-27')?.toISOString()).toBe(
+      '2026-08-27T07:00:00.000Z'
+    );
+  });
+});
+
+describe('pacificCalendarDayEndInstant', () => {
+  it('returns end of Pacific calendar day in UTC', () => {
+    expect(pacificCalendarDayEndInstant('2026-08-27')?.toISOString()).toBe(
+      '2026-08-28T06:59:59.999Z'
+    );
+  });
+
+  it('includes late-evening Pacific instants on the same calendar day', () => {
+    const end = pacificCalendarDayEndInstant('2026-08-27');
+    const lateEveningPacific = new Date('2026-08-28T04:45:09.714Z');
+    expect(end).not.toBeNull();
+    expect(lateEveningPacific.getTime()).toBeLessThanOrEqual(end!.getTime());
   });
 });

@@ -14,6 +14,10 @@ import {
   users,
 } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
+import {
+  pacificCalendarDayEndInstant,
+  pacificCalendarDayStartInstant,
+} from '@corpcal/shared';
 import type {
   ActivityHistoryEntry,
   HistoryChange,
@@ -529,15 +533,19 @@ export class ActivityHistoryService {
     }
 
     if (opts.startDate) {
-      // startDate expected in YYYY-MM-DD
-      const startIso = new Date(`${opts.startDate}T00:00:00.000Z`);
-      whereClauses.push(gte(activityHistory.timestamp, startIso));
+      // startDate expected in YYYY-MM-DD (Pacific calendar day)
+      const startIso = pacificCalendarDayStartInstant(opts.startDate);
+      if (startIso) {
+        whereClauses.push(gte(activityHistory.timestamp, startIso));
+      }
     }
 
     if (opts.endDate) {
-      // include the end date up to end of day
-      const endIso = new Date(`${opts.endDate}T23:59:59.999Z`);
-      whereClauses.push(lte(activityHistory.timestamp, endIso));
+      // include the end date through end of Pacific calendar day
+      const endIso = pacificCalendarDayEndInstant(opts.endDate);
+      if (endIso) {
+        whereClauses.push(lte(activityHistory.timestamp, endIso));
+      }
     }
 
     if (opts.query) {
@@ -549,10 +557,12 @@ export class ActivityHistoryService {
           /^([A-Za-z]+)\s+(\d{1,2})(?:,?\s*(\d{4}))?$/
         );
         if (isoMatch) {
-          const startIso = new Date(`${raw}T00:00:00.000Z`);
-          const endIso = new Date(`${raw}T23:59:59.999Z`);
-          whereClauses.push(gte(activityHistory.timestamp, startIso));
-          whereClauses.push(lte(activityHistory.timestamp, endIso));
+          const startIso = pacificCalendarDayStartInstant(raw);
+          const endIso = pacificCalendarDayEndInstant(raw);
+          if (startIso && endIso) {
+            whereClauses.push(gte(activityHistory.timestamp, startIso));
+            whereClauses.push(lte(activityHistory.timestamp, endIso));
+          }
         } else if (monthDayMatch) {
           const monthName = monthDayMatch[1];
           const day = parseInt(monthDayMatch[2], 10);
