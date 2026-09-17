@@ -1,12 +1,25 @@
-import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchActivityHistory } from '@/api/activitiesApi';
-import { HistoryList, toActivityHistoryViewModel } from '@/components/history';
+import {
+  buildHistoryAppliedFilterTypeLabels,
+  HISTORY_LIST_CONTENT_CLASSNAME,
+  HistoryList,
+  HistoryListEmptyState,
+  HistoryListLoading,
+  HistoryListToolbar,
+  HistorySearchInput,
+  toActivityHistoryViewModel,
+} from '@/components/history';
 import { ErrorState } from '@/components/shared';
+import {
+  tableContainer,
+  tableScrollWrapper,
+} from '@/components/table/tableConstants';
+import { TableSummaryBar } from '@/components/table/TableSummaryBar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,6 +29,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAddActivityHistoryNote } from '@/hooks/useCalendar';
@@ -49,6 +68,7 @@ import {
 import { LOAD_HISTORY_MESSAGE, LOAD_HISTORY_TITLE } from '@/lib/error-messages';
 import { showErrorToast } from '@/lib/error-toast';
 import { createLogger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
 
 const logger = createLogger('ActivityHistory');
 
@@ -89,12 +109,14 @@ function matchesSearch(
 
 export default function ActivityHistory({
   activityId,
+  displayId,
   open,
   onOpenChange,
   dateStatuses,
   venueStatuses: venueStatusesProp,
 }: {
   activityId: number;
+  displayId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dateStatuses?: DateStatusLookupItem[];
@@ -297,73 +319,99 @@ export default function ActivityHistory({
   const noteButtonDisabled =
     trimmedNote.length === 0 || trimmedNote.length > MAX_NOTE_LENGTH;
 
+  const recordSummaryBar = !loadError ? (
+    <TableSummaryBar
+      count={loading ? 0 : filteredEntries.length}
+      singularLabel="record"
+      pluralLabel="records"
+      appliedFilterTypeLabels={buildHistoryAppliedFilterTypeLabels({
+        searchQuery,
+      })}
+      onClearFilters={searchQuery.trim() ? () => setSearchQuery('') : undefined}
+    />
+  ) : null;
+
+  const showHistoryList =
+    !loading && !loadError && entries.length > 0 && filteredEntries.length > 0;
+
   return (
     <>
-      <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/40" />
-          <DialogPrimitive.Content
-            className={
-              'bg-background fixed top-0 right-0 z-50 h-full w-full max-w-xl translate-x-full transform p-6 transition duration-200 ease-in-out data-[state=open]:translate-x-0'
-            }
-          >
-            <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 hover:opacity-100">
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </DialogPrimitive.Close>
+      <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+        <DrawerContent
+          className={cn(
+            'flex h-full flex-col',
+            'data-[vaul-drawer-direction=right]:w-full',
+            'data-[vaul-drawer-direction=right]:max-w-xl',
+            'data-[vaul-drawer-direction=right]:sm:max-w-xl'
+          )}
+        >
+          <DrawerHeader className="shrink-0 text-left">
+            <DrawerTitle>
+              History
+              {displayId != null && displayId.length > 0 ? (
+                <> {displayId}</>
+              ) : null}
+            </DrawerTitle>
+          </DrawerHeader>
 
-            <div className="border-b border-slate-200 pb-4">
-              <div className="pr-8">
-                <p className="text-[11px] font-semibold tracking-[0.16em] text-slate-500 uppercase">
-                  Activity timeline
-                </p>
-                <h2 className="mt-1 text-[28px] font-semibold tracking-tight text-slate-900">
-                  History
-                </h2>
-                <p className="mt-1.5 max-w-sm text-sm leading-6 text-slate-500">
-                  {entries.length === 0
-                    ? 'Track updates, reviews, and notes for this activity.'
-                    : `${entries.length} event${entries.length === 1 ? '' : 's'} recorded for this activity.`}
-                </p>
-              </div>
-              <div className="mt-4 flex items-center gap-3">
-                <input
-                  placeholder="Search"
-                  aria-label="Search history"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  className="bg-background w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setNoteModalOpen(true)}
-                >
-                  + Add note
-                </Button>
-              </div>
+          <div className="shrink-0 px-4 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <HistorySearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="input"
+                className="shrink-0"
+                onClick={() => setNoteModalOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Note
+              </Button>
             </div>
+          </div>
 
-            <div className="mt-4 overflow-auto" style={{ maxHeight: '80vh' }}>
-              {loading ? (
-                <div>Loading history...</div>
-              ) : loadError ? (
-                <ErrorState
-                  title={LOAD_HISTORY_TITLE}
-                  message={LOAD_HISTORY_MESSAGE}
-                  onRetry={() => void loadHistory()}
-                />
-              ) : entries.length === 0 ? (
-                <div>No history found.</div>
-              ) : filteredEntries.length === 0 ? (
-                <div>No matching history found.</div>
-              ) : (
-                <HistoryList entries={historyEntries} />
-              )}
-            </div>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
+          <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
+            {!showHistoryList ? recordSummaryBar : null}
+            {loading ? (
+              <HistoryListLoading />
+            ) : loadError ? (
+              <ErrorState
+                title={LOAD_HISTORY_TITLE}
+                message={LOAD_HISTORY_MESSAGE}
+                onRetry={() => void loadHistory()}
+              />
+            ) : entries.length === 0 ? (
+              <div className={cn(tableContainer, 'min-h-0 flex-1')}>
+                <HistoryListEmptyState variant="no-data" />
+              </div>
+            ) : filteredEntries.length === 0 ? (
+              <div className={cn(tableContainer, 'min-h-0 flex-1')}>
+                <HistoryListEmptyState variant="no-search-match" />
+              </div>
+            ) : (
+              <HistoryList
+                entries={historyEntries}
+                className={HISTORY_LIST_CONTENT_CLASSNAME}
+              >
+                {({ expandAll, groups }) => (
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    <HistoryListToolbar
+                      summary={recordSummaryBar}
+                      expandAll={expandAll}
+                    />
+                    <div className={cn(tableContainer, 'min-h-0 flex-1')}>
+                      <div className={tableScrollWrapper}>{groups}</div>
+                    </div>
+                  </div>
+                )}
+              </HistoryList>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       <Dialog open={noteModalOpen} onOpenChange={setNoteModalOpen}>
         <DialogContent className="sm:max-w-lg">

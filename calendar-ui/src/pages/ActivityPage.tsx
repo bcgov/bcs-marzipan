@@ -1066,6 +1066,11 @@ export function ActivityPage({
       ? computeFormChanges(initialFormDataRef.current, form.getValues())
       : [];
 
+  const reviewModalChanges =
+    showReviewModal && initialFormDataRef.current
+      ? computeFormChanges(initialFormDataRef.current, form.getValues())
+      : [];
+
   const displayId =
     activity.displayId ??
     buildActivityDisplayId(TEAM_PREFIX_FALLBACK, activity.id);
@@ -1377,6 +1382,7 @@ export function ActivityPage({
       </Form>
       <ActivityHistory
         activityId={id}
+        displayId={displayId}
         open={historyOpen}
         onOpenChange={(v) => setHistoryOpen(!!v)}
         dateStatuses={lookups.dateStatuses}
@@ -1402,6 +1408,7 @@ export function ActivityPage({
       <ReviewActivityModal
         open={showReviewModal}
         onOpenChange={setShowReviewModal}
+        changes={reviewModalChanges}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
         onConfirm={(notes, markAsCompleted, unassignMe) =>

@@ -37,12 +37,12 @@ describe('HistoryList', () => {
               },
               changes: [
                 {
-                  key: 'title-0',
+                  key: 'status-0',
                   kind: 'transition',
-                  field: 'title',
-                  label: 'Title',
-                  oldValue: 'Old title',
-                  newValue: 'New title',
+                  field: 'status',
+                  label: 'Status',
+                  oldValue: 'Draft',
+                  newValue: 'Published',
                 },
               ],
             }),
@@ -59,7 +59,7 @@ describe('HistoryList', () => {
     expect(
       screen.getByRole('button', { name: 'Show 1 change' })
     ).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText('Old title')).not.toBeInTheDocument();
+    expect(screen.queryByText('Draft')).not.toBeInTheDocument();
   });
 
   it('expands changes independently per item and across the list', async () => {
@@ -138,12 +138,12 @@ describe('HistoryList', () => {
               notes: 'Compact note text',
               changes: [
                 {
-                  key: 'title-0',
+                  key: 'status-0',
                   kind: 'transition',
-                  field: 'title',
-                  label: 'Title',
-                  oldValue: 'Old title',
-                  newValue: 'New title',
+                  field: 'status',
+                  label: 'Status',
+                  oldValue: 'Draft',
+                  newValue: 'Published',
                 },
               ],
             }),
@@ -154,7 +154,7 @@ describe('HistoryList', () => {
     );
 
     expect(screen.queryByText('Compact note text')).not.toBeInTheDocument();
-    expect(screen.queryByText('Old title')).not.toBeInTheDocument();
+    expect(screen.queryByText('Draft')).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Expand all' })
     ).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe('HistoryList', () => {
       screen.getByRole('button', { name: 'Show note and 1 change' })
     );
     expect(screen.getByText('Compact note text')).toBeInTheDocument();
-    expect(screen.getByText('Old title')).toBeInTheDocument();
+    expect(screen.getByText('Draft')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Hide note and 1 change' })
     ).toBeInTheDocument();
@@ -186,12 +186,12 @@ describe('HistoryList', () => {
               notes: 'Compact note text',
               changes: [
                 {
-                  key: 'title-0',
+                  key: 'status-0',
                   kind: 'transition',
-                  field: 'title',
-                  label: 'Title',
-                  oldValue: 'Old title',
-                  newValue: 'New title',
+                  field: 'status',
+                  label: 'Status',
+                  oldValue: 'Draft',
+                  newValue: 'Published',
                 },
               ],
             }),
@@ -202,7 +202,7 @@ describe('HistoryList', () => {
 
     await user.click(screen.getByRole('button', { name: 'Expand all' }));
     expect(screen.getByText('Compact note text')).toBeInTheDocument();
-    expect(screen.getByText('Old title')).toBeInTheDocument();
+    expect(screen.getByText('Draft')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Hide note and 1 change' })
     ).toBeInTheDocument();
