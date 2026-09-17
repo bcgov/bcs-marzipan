@@ -51,6 +51,7 @@ import { PageHeader } from '@/components/layout';
 import { ErrorState } from '@/components/shared';
 import { ContentSection } from '@/components/table/ContentSection';
 import { FilterSection } from '@/components/table/FilterSection';
+import { GLOBAL_HISTORY_TABLE_SCROLL_HEIGHT } from '@/components/table/tableConstants';
 import { TablePagination } from '@/components/table/TablePagination';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import {
@@ -764,7 +765,10 @@ export function GlobalHistory() {
             <div className="md:hidden">
               <HistoryListLoading />
             </div>
-            <TableScrollContainer className="hidden md:flex">
+            <TableScrollContainer
+              className="hidden md:flex"
+              scrollHeight={GLOBAL_HISTORY_TABLE_SCROLL_HEIGHT}
+            >
               <HistoryTableLoading />
             </TableScrollContainer>
           </>
@@ -777,7 +781,9 @@ export function GlobalHistory() {
         ) : historyEntries.length === 0 ? (
           <>
             <HistoryListToolbar summary={renderCountSummary()} />
-            <TableScrollContainer>
+            <TableScrollContainer
+              scrollHeight={GLOBAL_HISTORY_TABLE_SCROLL_HEIGHT}
+            >
               <HistoryListEmptyState
                 variant={
                   isDateRangeActive(dateRange) && !hasActiveFilters

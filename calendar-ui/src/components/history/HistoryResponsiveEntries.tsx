@@ -1,5 +1,6 @@
 import { type ReactNode, type RefObject } from 'react';
 
+import { GLOBAL_HISTORY_TABLE_SCROLL_HEIGHT } from '@/components/table/tableConstants';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -37,7 +38,10 @@ export function HistoryResponsiveEntries({
         {({ expandAll, groups }) => (
           <div className="min-w-0">
             <HistoryListToolbar summary={renderCountSummary(expandAll)} />
-            <TableScrollContainer ref={tableScrollRef}>
+            <TableScrollContainer
+              ref={tableScrollRef}
+              scrollHeight={GLOBAL_HISTORY_TABLE_SCROLL_HEIGHT}
+            >
               {groups}
             </TableScrollContainer>
           </div>
@@ -51,7 +55,10 @@ export function HistoryResponsiveEntries({
       {({ expandAll, table }) => (
         <div className="min-w-0">
           <HistoryListToolbar summary={renderCountSummary(expandAll)} />
-          <TableScrollContainer ref={tableScrollRef}>
+          <TableScrollContainer
+            ref={tableScrollRef}
+            scrollHeight={GLOBAL_HISTORY_TABLE_SCROLL_HEIGHT}
+          >
             {table}
           </TableScrollContainer>
         </div>
