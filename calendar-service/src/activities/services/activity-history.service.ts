@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   and,
+  arrayOverlaps,
   asc,
   desc,
   eq,
@@ -34,7 +35,7 @@ import type {
 } from '@corpcal/shared/api/types';
 import {
   ACTIVITY_HISTORY_NON_TRACKED_FIELDS,
-  expandHistoryFieldKeysForMatch,
+  extractChangedFieldKeys,
   isDeepEqual,
   normalizeHistoryChanges,
   redactActivityHistoryChanges,
@@ -211,6 +212,7 @@ export class ActivityHistoryService {
     // these new columns yet, so cast the values to `any` to avoid type errors
     // while the DB migration is staged separately.
     const normalizedChanges = this.normalizeChangesForStorage(changes);
+    const changedFieldKeys = extractChangedFieldKeys(normalizedChanges);
 
     const [historyEntry] = await db
       .insert(activityHistory)
@@ -219,6 +221,7 @@ export class ActivityHistoryService {
         userId,
         actionType,
         changes: normalizedChanges ? (normalizedChanges as unknown) : null,
+        changedFieldKeys,
         notes: notes || null,
         activityTitle: activityRow?.title ?? null,
         activityDisplayId: activityRow?.displayId ?? null,
@@ -348,6 +351,7 @@ export class ActivityHistoryService {
         userId: actorUserId,
         actionType: 'updated',
         changes: normalizedChanges ? normalizedChanges : null,
+        changedFieldKeys: extractChangedFieldKeys(normalizedChanges),
         notes: notes || null,
         activityTitle: act?.title ?? null,
         activityDisplayId: act?.displayId ?? null,
@@ -449,6 +453,7 @@ export class ActivityHistoryService {
         userId: actorUserId,
         actionType: 'updated',
         changes: null,
+        changedFieldKeys: null,
         notes: notes || null,
         activityTitle: act?.title ?? null,
         activityDisplayId: entry.newDisplayId,
@@ -620,23 +625,9 @@ export class ActivityHistoryService {
       if (opts.changedFields.length === 0) {
         whereClauses.push(sql`false`);
       } else {
-        const expandedFields = expandHistoryFieldKeysForMatch(
-          opts.changedFields
+        whereClauses.push(
+          arrayOverlaps(activityHistory.changedFieldKeys, opts.changedFields)
         );
-        if (expandedFields.length > 0) {
-          whereClauses.push(
-            sql`EXISTS (
-            SELECT 1
-            FROM jsonb_array_elements(${activityHistory.changes}) AS elem
-            WHERE elem->>'field' IN (${sql.join(
-              expandedFields.map((field) => sql`${field}`),
-              sql`, `
-            )})
-          )`
-          );
-        } else {
-          whereClauses.push(sql`false`);
-        }
       }
     }
 

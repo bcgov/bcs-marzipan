@@ -45,6 +45,93 @@ describe('ActivityHistoryService', () => {
     service = module.get<ActivityHistoryService>(ActivityHistoryService);
   });
 
+  describe('recordChange', () => {
+    const createRecordChangeSelectMock = () => {
+      let selectCount = 0;
+      return vi.fn().mockImplementation(() => {
+        selectCount += 1;
+        const callIndex = selectCount;
+        const limit = vi
+          .fn()
+          .mockResolvedValue(
+            callIndex === 1
+              ? [{ title: 'Activity', displayId: 'A-001' }]
+              : callIndex === 2
+                ? [{ displayName: 'Alice', username: 'alice' }]
+                : []
+          );
+        const where = vi.fn().mockImplementation(() => {
+          if (callIndex <= 2) {
+            return { limit };
+          }
+          return Promise.resolve([]);
+        });
+        return {
+          from: vi.fn().mockReturnValue({
+            leftJoin: vi.fn().mockReturnValue({ where }),
+            where,
+          }),
+        };
+      });
+    };
+
+    it('stores canonical changedFieldKeys when field changes are present', async () => {
+      const returning = vi.fn().mockResolvedValue([{ id: 99 }]);
+      const values = vi.fn().mockReturnValue({ returning });
+      const insert = vi.fn().mockReturnValue({ values });
+
+      mockDb.select = createRecordChangeSelectMock();
+      (mockDb as { insert: ReturnType<typeof vi.fn> }).insert = insert;
+
+      await service.recordChange(
+        1,
+        2,
+        'updated',
+        [
+          { field: 'categories', oldValue: [1], newValue: [2] },
+          { field: 'title', oldValue: 'Old', newValue: 'New' },
+        ],
+        'Batch note'
+      );
+
+      expect(values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          changedFieldKeys: ['categoryIds', 'title'],
+          changes: [
+            {
+              field: 'categoryIds',
+              oldValue: [1],
+              newValue: [2],
+            },
+            {
+              field: 'title',
+              oldValue: 'Old',
+              newValue: 'New',
+            },
+          ],
+        })
+      );
+    });
+
+    it('stores null changedFieldKeys for note-only entries', async () => {
+      const returning = vi.fn().mockResolvedValue([{ id: 100 }]);
+      const values = vi.fn().mockReturnValue({ returning });
+      const insert = vi.fn().mockReturnValue({ values });
+
+      mockDb.select = createRecordChangeSelectMock();
+      (mockDb as { insert: ReturnType<typeof vi.fn> }).insert = insert;
+
+      await service.recordChange(1, 2, 'note_added', undefined, 'Note only');
+
+      expect(values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          changedFieldKeys: null,
+          changes: null,
+        })
+      );
+    });
+  });
+
   describe('getPreviousStatusIdBeforeDelete', () => {
     it('should return oldValue from most recent delete_requested entry when changes contain activityStatusId', async () => {
       const changes = [

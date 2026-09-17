@@ -681,7 +681,7 @@ describe('ActivitiesService', () => {
       expect(findOneSpy).toHaveBeenCalledWith(25, ctx);
       expect(
         mockActivityHistoryService.getActivityHistory
-      ).toHaveBeenCalledWith(25);
+      ).toHaveBeenCalledWith(25, undefined);
       expect(result).toHaveLength(1);
     });
   });
@@ -3167,7 +3167,7 @@ describe('ActivitiesService', () => {
       );
       expect(
         mockActivityHistoryService.getHistoryEntryById
-      ).toHaveBeenCalledWith(25);
+      ).toHaveBeenCalledWith(25, undefined);
       expect(
         mockNotificationsService.notifyActivityHistoryNoteAdded
       ).toHaveBeenCalledWith({

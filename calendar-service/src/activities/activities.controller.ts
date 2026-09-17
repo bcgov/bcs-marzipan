@@ -45,6 +45,10 @@ import {
   restoreRequestSchema,
   softDeleteRequestSchema,
   updateActivityRequestSchema,
+  updateCategoriesSchema,
+  updateSharedWithSchema,
+  updateTagsSchema,
+  updateThemesSchema,
   type AddActivityHistoryNoteRequest,
   type BulkUnshareActivitiesRequest,
   type BulkUnshareActivitiesResult,
@@ -72,6 +76,10 @@ import {
   RestoreDto,
   SoftDeleteDto,
   UpdateActivityDto,
+  UpdateCategoriesDto,
+  UpdateSharedWithDto,
+  UpdateTagsDto,
+  UpdateThemesDto,
 } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';

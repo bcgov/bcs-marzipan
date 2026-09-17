@@ -4,6 +4,7 @@ import {
   ACTIVITY_HISTORY_NON_TRACKED_FIELDS,
   buildActivityHistoryFieldFilterSections,
   expandHistoryFieldKeysForMatch,
+  extractChangedFieldKeys,
   getViewableActivityHistoryFieldKeys,
   historyEntryMatchesFieldFilter,
   normalizeHistoryChanges,
@@ -44,6 +45,25 @@ describe('activity-history-fields', () => {
     ]);
     expect(result).toHaveLength(1);
     expect(result[0]?.field).toBe('categoryIds');
+  });
+
+  it('extracts canonical changed field keys for storage and filtering', () => {
+    expect(
+      extractChangedFieldKeys([
+        { field: 'categories', oldValue: [1], newValue: [2] },
+        { field: 'title', oldValue: 'A', newValue: 'B' },
+      ])
+    ).toEqual(['categoryIds', 'title']);
+
+    expect(
+      extractChangedFieldKeys([
+        { field: 'lastUpdatedBy', oldValue: 1, newValue: 2 },
+        { field: 'displayId', oldValue: 'X', newValue: 'Y' },
+      ])
+    ).toBeNull();
+
+    expect(extractChangedFieldKeys(null)).toBeNull();
+    expect(extractChangedFieldKeys([])).toBeNull();
   });
 
   it('redacts scoped fields the user cannot view', () => {

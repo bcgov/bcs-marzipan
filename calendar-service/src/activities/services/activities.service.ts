@@ -3220,7 +3220,22 @@ export class ActivitiesService {
     dto.markAsReviewed = body.markAsReviewed === true;
     dto.activityHistoryNotes = body.activityHistoryNotes;
 
-    const created = await this.create(dto, userId, context);
+    const sourceProvenance: HistoryChange[] = [
+      {
+        field: 'clonedFromActivityId',
+        oldValue: null,
+        newValue: source.id,
+      },
+      {
+        field: 'clonedFromDisplayId',
+        oldValue: null,
+        newValue: source.displayId ?? null,
+      },
+    ];
+
+    const created = await this.create(dto, userId, context, {
+      extraCreateChanges: sourceProvenance,
+    });
 
     return created;
   }

@@ -226,6 +226,14 @@ export function getActivityHistoryFieldLabel(field: string): string {
   return getActivityFieldLabel(field);
 }
 
+export function extractChangedFieldKeys(
+  changes: HistoryChange[] | null | undefined
+): string[] | null {
+  const normalized = normalizeHistoryChanges(changes);
+  if (normalized.length === 0) return null;
+  return normalized.map((change) => change.field);
+}
+
 export function normalizeHistoryChanges(
   changes: HistoryChange[] | null | undefined
 ): HistoryChange[] {

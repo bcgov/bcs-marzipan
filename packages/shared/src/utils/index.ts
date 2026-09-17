@@ -19,6 +19,7 @@ export {
   ACTIVITY_HISTORY_NON_TRACKED_FIELDS,
   buildActivityHistoryFieldFilterSections,
   expandHistoryFieldKeysForMatch,
+  extractChangedFieldKeys,
   getActivityHistoryFieldLabel,
   getViewableActivityHistoryFieldKeys,
   historyEntryMatchesFieldFilter,
