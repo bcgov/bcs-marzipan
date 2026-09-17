@@ -10,6 +10,16 @@ export {
   HISTORY_LIST_CONTENT_CLASSNAME,
   HISTORY_LIST_HORIZONTAL_PADDING_CLASSNAME,
 } from './history-list-layout';
+export { HistoryFieldFilterPanel } from './HistoryFieldFilterPanel';
+export { HistoryMultiSelectFilter } from './HistoryMultiSelectFilter';
+export {
+  buildHistoryActorFilterOptions,
+  historyEntryMatchesActionTypes,
+  historyEntryMatchesChangedFields,
+  historyEntryMatchesUserIds,
+  historySummaryHasActiveFilters,
+  resolveHistoryEmptyVariant,
+} from './history-filters';
 export {
   getHistoryActionLabel,
   GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,

@@ -34,10 +34,13 @@ export interface FilterSearchableListProps {
   options?: FilterSearchableListOption[];
   /** Grouped list with section headings (takes precedence over `options`). */
   sections?: FilterSearchableListSection[];
-  /** Required for checkbox rows; ignored when `renderOption` is set. */
+  /** Required for checkbox rows; ignored when `renderOption` or `onToggleValue` is set. */
   selectedIds?: number[];
-  /** Required for checkbox rows; ignored when `renderOption` is set. */
+  /** Required for checkbox rows; ignored when `renderOption` or `onToggleValue` is set. */
   onToggle?: (id: number) => void;
+  /** String-value multi-select (e.g. history field keys). Takes precedence over numeric ids. */
+  selectedValues?: string[];
+  onToggleValue?: (value: string) => void;
   searchPlaceholder?: string;
   searchAriaLabel?: string;
   emptyMessage?: string;
@@ -75,6 +78,8 @@ export function FilterSearchableList({
   sections,
   selectedIds = [],
   onToggle,
+  selectedValues = [],
+  onToggleValue,
   searchPlaceholder = 'Search...',
   searchAriaLabel = 'Search',
   emptyMessage = 'No results',
@@ -116,14 +121,31 @@ export function FilterSearchableList({
     [filteredSections]
   );
 
+  const useStringSelection = onToggleValue != null;
+
   const handleToggle = useCallback(
     (value: string) => {
+      if (useStringSelection) {
+        onToggleValue?.(value);
+        return;
+      }
       if (!onToggle) return;
       const id = parseInt(value, 10);
       if (!Number.isFinite(id)) return;
       onToggle(id);
     },
-    [onToggle]
+    [onToggle, onToggleValue, useStringSelection]
+  );
+
+  const isOptionSelected = useCallback(
+    (value: string) => {
+      if (useStringSelection) {
+        return selectedValues.includes(value);
+      }
+      const id = parseInt(value, 10);
+      return Number.isFinite(id) && selectedIds.includes(id);
+    },
+    [selectedIds, selectedValues, useStringSelection]
   );
 
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -138,7 +160,10 @@ export function FilterSearchableList({
     }
   }, []);
 
-  const hasSelection = !renderOption && selectedIds.length > 0;
+  const hasSelection =
+    !renderOption && useStringSelection
+      ? selectedValues.length > 0
+      : !renderOption && selectedIds.length > 0;
   const useSectionHeadings =
     sections != null && sections.length > 0 && !renderOption;
 
@@ -214,8 +239,7 @@ export function FilterSearchableList({
                 </div>
               ) : null}
               {section.options.map((opt) => {
-                const id = parseInt(opt.value, 10);
-                const checked = Number.isFinite(id) && selectedIds.includes(id);
+                const checked = isOptionSelected(opt.value);
                 const isFirst = globalOptionIndex === 0;
                 globalOptionIndex += 1;
                 return (
@@ -223,9 +247,7 @@ export function FilterSearchableList({
                     key={opt.value}
                     ref={isFirst ? firstItemRef : undefined}
                     checked={checked}
-                    onCheckedChange={() =>
-                      Number.isFinite(id) && handleToggle(opt.value)
-                    }
+                    onCheckedChange={() => handleToggle(opt.value)}
                     onKeyDown={isFirst ? handleFirstItemKeyDown : undefined}
                   >
                     {opt.label}

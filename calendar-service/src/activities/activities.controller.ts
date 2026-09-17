@@ -45,10 +45,6 @@ import {
   restoreRequestSchema,
   softDeleteRequestSchema,
   updateActivityRequestSchema,
-  updateCategoriesSchema,
-  updateSharedWithSchema,
-  updateTagsSchema,
-  updateThemesSchema,
   type AddActivityHistoryNoteRequest,
   type BulkUnshareActivitiesRequest,
   type BulkUnshareActivitiesResult,
@@ -76,10 +72,6 @@ import {
   RestoreDto,
   SoftDeleteDto,
   UpdateActivityDto,
-  UpdateCategoriesDto,
-  UpdateSharedWithDto,
-  UpdateTagsDto,
-  UpdateThemesDto,
 } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -296,6 +288,7 @@ export class ActivitiesController {
     @Query('actionTypes') actionTypes?: string,
     @Query('categories') categories?: string,
     @Query('leadTeamIds') leadTeamIds?: string,
+    @Query('changedFields') changedFields?: string,
     @RequestContext() ctx?: RequestContextType
   ): Promise<{
     success: boolean;
@@ -337,6 +330,7 @@ export class ActivitiesController {
     const parsedActionTypes = parseCommaSeparatedStrings(actionTypes);
     const parsedCategories = parseCommaSeparatedStrings(categories);
     const parsedLeadTeamIds = parseCommaSeparatedIds(leadTeamIds);
+    const parsedChangedFields = parseCommaSeparatedStrings(changedFields);
 
     // If any pagination, explicit dates, a query, filters, or an explicit order are provided, return a paged response
     const hasPagingOrDate =
@@ -350,7 +344,8 @@ export class ActivitiesController {
       userIds !== undefined ||
       actionTypes !== undefined ||
       categories !== undefined ||
-      leadTeamIds !== undefined;
+      leadTeamIds !== undefined ||
+      changedFields !== undefined;
 
     if (!hasPagingOrDate) {
       const result = await this.activitiesService.getGlobalHistory(ctx);
@@ -376,6 +371,8 @@ export class ActivitiesController {
           parsedCategories.length > 0 ? parsedCategories : undefined,
         leadTeamIds:
           parsedLeadTeamIds.length > 0 ? parsedLeadTeamIds : undefined,
+        changedFields:
+          parsedChangedFields.length > 0 ? parsedChangedFields : undefined,
       },
       ctx
     );
@@ -780,7 +777,8 @@ export class ActivitiesController {
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(addActivityHistoryNoteRequestSchema))
     body: AddActivityHistoryNoteRequest,
-    @CurrentUser() user: AuthUser
+    @CurrentUser() user: AuthUser,
+    @RequestContext() ctx: RequestContextType
   ): Promise<{
     success: boolean;
     data: Awaited<ReturnType<ActivitiesService['addHistoryNote']>>;
@@ -788,7 +786,8 @@ export class ActivitiesController {
     const result = await this.activitiesService.addHistoryNote(
       id,
       body.note,
-      user.id
+      user.id,
+      ctx
     );
     return {
       success: true,

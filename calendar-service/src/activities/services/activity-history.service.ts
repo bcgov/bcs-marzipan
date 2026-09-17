@@ -32,7 +32,14 @@ import type {
   ActivityHistoryEntry,
   HistoryChange,
 } from '@corpcal/shared/api/types';
-import { isDeepEqual } from '@corpcal/shared/utils';
+import {
+  ACTIVITY_HISTORY_NON_TRACKED_FIELDS,
+  expandHistoryFieldKeysForMatch,
+  isDeepEqual,
+  normalizeHistoryChanges,
+  redactActivityHistoryChanges,
+  type FieldScopeUser,
+} from '@corpcal/shared/utils';
 
 import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
@@ -89,6 +96,24 @@ export class ActivityHistoryService {
     );
   }
 
+  private normalizeChangesForStorage(
+    changes?: HistoryChange[]
+  ): HistoryChange[] | undefined {
+    if (!changes || changes.length === 0) return undefined;
+    const normalized = normalizeHistoryChanges(changes);
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
+  private shouldIncludeHistoryEntry(
+    entry: { actionType: string; notes: string | null },
+    redactedChanges: HistoryChange[]
+  ): boolean {
+    if (redactedChanges.length > 0) return true;
+    if (entry.notes?.trim()) return true;
+    if (entry.actionType === 'note_added') return true;
+    return false;
+  }
+
   private mapEntriesToResponse(
     entries: Array<{
       id: number;
@@ -99,26 +124,38 @@ export class ActivityHistoryService {
       notes: string | null;
       timestamp: Date | string;
     }>,
-    userMap: Map<number, { displayName: string; username: string | null }>
+    userMap: Map<number, { displayName: string; username: string | null }>,
+    viewer?: FieldScopeUser
   ): ActivityHistoryEntry[] {
-    return entries.map((entry) => {
+    return entries.flatMap((entry) => {
       const actor = userMap.get(entry.userId);
       const displayName = actor?.displayName ?? `User ${entry.userId}`;
 
-      return {
-        ...entry,
-        changes: (entry.changes as ActivityHistoryEntry['changes']) ?? null,
-        timestamp:
-          entry.timestamp instanceof Date
-            ? entry.timestamp.toISOString()
-            : String(entry.timestamp),
-        actor: {
-          id: entry.userId,
-          displayName,
-          username: actor?.username ?? null,
+      const rawChanges = (entry.changes as HistoryChange[] | null) ?? null;
+      const changes = viewer
+        ? redactActivityHistoryChanges(rawChanges, viewer)
+        : normalizeHistoryChanges(rawChanges);
+
+      if (viewer && !this.shouldIncludeHistoryEntry(entry, changes)) {
+        return [];
+      }
+
+      return [
+        {
+          ...entry,
+          changes: changes.length > 0 ? changes : null,
+          timestamp:
+            entry.timestamp instanceof Date
+              ? entry.timestamp.toISOString()
+              : String(entry.timestamp),
+          actor: {
+            id: entry.userId,
+            displayName,
+            username: actor?.username ?? null,
+          },
+          userName: displayName,
         },
-        userName: displayName,
-      };
+      ];
     });
   }
 
@@ -173,13 +210,15 @@ export class ActivityHistoryService {
     // Insert denormalized fields. The TypeScript DB schema may not include
     // these new columns yet, so cast the values to `any` to avoid type errors
     // while the DB migration is staged separately.
+    const normalizedChanges = this.normalizeChangesForStorage(changes);
+
     const [historyEntry] = await db
       .insert(activityHistory)
       .values({
         activityId,
         userId,
         actionType,
-        changes: changes ? (changes as unknown) : null,
+        changes: normalizedChanges ? (normalizedChanges as unknown) : null,
         notes: notes || null,
         activityTitle: activityRow?.title ?? null,
         activityDisplayId: activityRow?.displayId ?? null,
@@ -303,11 +342,12 @@ export class ActivityHistoryService {
           newValue: entry.newLookAheadStatus,
         },
       ];
+      const normalizedChanges = this.normalizeChangesForStorage(changes);
       return {
         activityId: entry.activityId,
         userId: actorUserId,
         actionType: 'updated',
-        changes: changes,
+        changes: normalizedChanges ? normalizedChanges : null,
         notes: notes || null,
         activityTitle: act?.title ?? null,
         activityDisplayId: act?.displayId ?? null,
@@ -404,18 +444,11 @@ export class ActivityHistoryService {
     const valueRows = entries.map((entry) => {
       const act = activityMap.get(entry.activityId);
       const tagParts = namesByActivity.get(entry.activityId) ?? [];
-      const changes: HistoryChange[] = [
-        {
-          field: 'displayId',
-          oldValue: entry.oldDisplayId,
-          newValue: entry.newDisplayId,
-        },
-      ];
       return {
         activityId: entry.activityId,
         userId: actorUserId,
         actionType: 'updated',
-        changes: changes,
+        changes: null,
         notes: notes || null,
         activityTitle: act?.title ?? null,
         activityDisplayId: entry.newDisplayId,
@@ -432,7 +465,8 @@ export class ActivityHistoryService {
    * Get all history entries for an activity, ordered by most recent first
    */
   async getActivityHistory(
-    activityId: number
+    activityId: number,
+    viewer?: FieldScopeUser
   ): Promise<ActivityHistoryEntry[]> {
     const historyEntries = await this.databaseService.db
       .select({
@@ -451,11 +485,12 @@ export class ActivityHistoryService {
     const userIds = [...new Set(historyEntries.map((e) => e.userId))];
     const userMap = await this.getUserMap(userIds);
 
-    return this.mapEntriesToResponse(historyEntries, userMap);
+    return this.mapEntriesToResponse(historyEntries, userMap, viewer);
   }
 
   async getActivityHistoryForActivityIds(
-    activityIds: number[]
+    activityIds: number[],
+    viewer?: FieldScopeUser
   ): Promise<ActivityHistoryEntry[]> {
     if (activityIds.length === 0) {
       return [];
@@ -478,7 +513,7 @@ export class ActivityHistoryService {
     const userIds = [...new Set(historyEntries.map((entry) => entry.userId))];
     const userMap = await this.getUserMap(userIds);
 
-    return this.mapEntriesToResponse(historyEntries, userMap);
+    return this.mapEntriesToResponse(historyEntries, userMap, viewer);
   }
 
   async getActivityHistoryForActivityIdsPaged(
@@ -497,6 +532,8 @@ export class ActivityHistoryService {
       actionTypes?: string[];
       categoryNames?: string[];
       leadTeamIds?: number[];
+      changedFields?: string[];
+      viewer?: FieldScopeUser;
     }
   ): Promise<{
     items: ActivityHistoryEntry[];
@@ -577,6 +614,30 @@ export class ActivityHistoryService {
 
     if (opts.leadTeamIds?.length) {
       whereClauses.push(inArray(activities.leadTeamId, opts.leadTeamIds));
+    }
+
+    if (opts.changedFields !== undefined) {
+      if (opts.changedFields.length === 0) {
+        whereClauses.push(sql`false`);
+      } else {
+        const expandedFields = expandHistoryFieldKeysForMatch(
+          opts.changedFields
+        );
+        if (expandedFields.length > 0) {
+          whereClauses.push(
+            sql`EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(${activityHistory.changes}) AS elem
+            WHERE elem->>'field' IN (${sql.join(
+              expandedFields.map((field) => sql`${field}`),
+              sql`, `
+            )})
+          )`
+          );
+        } else {
+          whereClauses.push(sql`false`);
+        }
+      }
     }
 
     if (opts.categoryNames?.length) {
@@ -822,7 +883,7 @@ export class ActivityHistoryService {
     ];
     const userMap = await this.getUserMap(userIds);
 
-    const items = this.mapEntriesToResponse(pageItems, userMap);
+    const items = this.mapEntriesToResponse(pageItems, userMap, opts.viewer);
     return {
       items,
       page,
@@ -833,7 +894,10 @@ export class ActivityHistoryService {
     };
   }
 
-  async getHistoryEntryById(id: number): Promise<ActivityHistoryEntry | null> {
+  async getHistoryEntryById(
+    id: number,
+    viewer?: FieldScopeUser
+  ): Promise<ActivityHistoryEntry | null> {
     const [entry] = await this.databaseService.db
       .select({
         id: activityHistory.id,
@@ -853,7 +917,7 @@ export class ActivityHistoryService {
     }
 
     const userMap = await this.getUserMap([entry.userId]);
-    return this.mapEntriesToResponse([entry], userMap)[0] ?? null;
+    return this.mapEntriesToResponse([entry], userMap, viewer)[0] ?? null;
   }
 
   /**
@@ -1080,14 +1144,8 @@ export class ActivityHistoryService {
       const oldValue = oldActivity[key];
       const newValue = newActivity[key];
 
-      // Skip audit fields and internal fields
-      if (
-        key === 'id' ||
-        key === 'createdDateTime' ||
-        key === 'lastUpdatedDateTime' ||
-        key === 'rowVersion' ||
-        key === 'displayId'
-      ) {
+      // Skip audit fields, internal fields, and non-tracked history keys
+      if (ACTIVITY_HISTORY_NON_TRACKED_FIELDS.has(key)) {
         continue;
       }
 

@@ -5,13 +5,22 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchActivityHistory } from '@/api/activitiesApi';
 import {
+  buildHistoryActorFilterOptions,
   buildHistoryAppliedFilterTypeLabels,
+  GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,
   HISTORY_LIST_CONTENT_CLASSNAME,
+  historyEntryMatchesActionTypes,
+  historyEntryMatchesChangedFields,
+  historyEntryMatchesUserIds,
+  HistoryFieldFilterPanel,
   HistoryList,
   HistoryListEmptyState,
   HistoryListLoading,
   HistoryListToolbar,
+  HistoryMultiSelectFilter,
   HistorySearchInput,
+  historySummaryHasActiveFilters,
+  resolveHistoryEmptyVariant,
   toActivityHistoryViewModel,
 } from '@/components/history';
 import { ErrorState } from '@/components/shared';
@@ -37,6 +46,7 @@ import {
 } from '@/components/ui/drawer';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/useAuth';
 import { useAddActivityHistoryNote } from '@/hooks/useCalendar';
 import {
   useActivityStatuses,
@@ -126,9 +136,21 @@ export default function ActivityHistory({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedActionTypes, setSelectedActionTypes] = useState<string[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
   const addNoteMutation = useAddActivityHistoryNote();
+  const { user } = useAuth();
+
+  const historyViewer = useMemo(
+    () =>
+      user
+        ? { permissions: user.permissions, roleName: user.roleName }
+        : { permissions: [], roleName: 'Viewer' },
+    [user]
+  );
 
   const activityStatusesQuery = useActivityStatuses();
   const timeStatusesQuery = useTimeStatuses();
@@ -283,9 +305,42 @@ export default function ActivityHistory({
 
   const filteredEntries = useMemo(
     () =>
-      entries.filter((entry) => matchesSearch(entry, searchQuery, lookupMaps)),
-    [entries, searchQuery, lookupMaps]
+      entries.filter(
+        (entry) =>
+          matchesSearch(entry, searchQuery, lookupMaps) &&
+          historyEntryMatchesActionTypes(entry, selectedActionTypes) &&
+          historyEntryMatchesUserIds(entry, selectedUserIds) &&
+          historyEntryMatchesChangedFields(entry, selectedFields, historyViewer)
+      ),
+    [
+      entries,
+      historyViewer,
+      lookupMaps,
+      searchQuery,
+      selectedActionTypes,
+      selectedFields,
+      selectedUserIds,
+    ]
   );
+
+  const actorFilterOptions = useMemo(
+    () => buildHistoryActorFilterOptions(entries),
+    [entries]
+  );
+
+  const hasActiveFilters = historySummaryHasActiveFilters({
+    searchQuery,
+    selectedActionTypes,
+    selectedUserIds,
+    selectedFields,
+  });
+
+  const clearAllFilters = useCallback(() => {
+    setSearchQuery('');
+    setSelectedActionTypes([]);
+    setSelectedUserIds([]);
+    setSelectedFields([]);
+  }, []);
   const historyEntries = useMemo(
     () =>
       filteredEntries.map((entry) =>
@@ -326,8 +381,11 @@ export default function ActivityHistory({
       pluralLabel="records"
       appliedFilterTypeLabels={buildHistoryAppliedFilterTypeLabels({
         searchQuery,
+        selectedActionTypes,
+        selectedUserIds,
+        selectedFields,
       })}
-      onClearFilters={searchQuery.trim() ? () => setSearchQuery('') : undefined}
+      onClearFilters={hasActiveFilters ? clearAllFilters : undefined}
     />
   ) : null;
 
@@ -346,30 +404,60 @@ export default function ActivityHistory({
           )}
         >
           <DrawerHeader className="shrink-0 text-left">
-            <DrawerTitle>
-              History
-              {displayId != null && displayId.length > 0 ? (
-                <> {displayId}</>
-              ) : null}
-            </DrawerTitle>
-          </DrawerHeader>
-
-          <div className="shrink-0 px-4 pb-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <HistorySearchInput
-                value={searchQuery}
-                onChange={setSearchQuery}
-              />
+            <div className="flex items-start justify-between gap-3">
+              <DrawerTitle>
+                History
+                {displayId != null && displayId.length > 0 ? (
+                  <> {displayId}</>
+                ) : null}
+              </DrawerTitle>
               <Button
                 type="button"
                 variant="outline"
-                size="input"
+                size="icon"
                 className="shrink-0"
+                aria-label="Add note"
                 onClick={() => setNoteModalOpen(true)}
               >
                 <Plus className="h-4 w-4" />
-                Note
               </Button>
+            </div>
+          </DrawerHeader>
+
+          <div className="shrink-0 space-y-3 px-4 pb-4">
+            <HistorySearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              className="max-w-none min-w-0"
+            />
+            <div className="flex flex-wrap items-center gap-3">
+              <HistoryMultiSelectFilter
+                label="Update type"
+                options={GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS}
+                selectedValues={selectedActionTypes}
+                onChange={setSelectedActionTypes}
+              />
+              <HistoryMultiSelectFilter
+                label="Updated by"
+                options={actorFilterOptions}
+                selectedValues={selectedUserIds}
+                onChange={setSelectedUserIds}
+                searchPlaceholder="Search users"
+              />
+              <HistoryMultiSelectFilter
+                label="Field"
+                options={[]}
+                selectedValues={selectedFields}
+                onChange={setSelectedFields}
+                renderPanel
+                panel={
+                  <HistoryFieldFilterPanel
+                    viewer={historyViewer}
+                    selectedFields={selectedFields}
+                    onSelectedFieldsChange={setSelectedFields}
+                  />
+                }
+              />
             </div>
           </div>
 
@@ -389,7 +477,13 @@ export default function ActivityHistory({
               </div>
             ) : filteredEntries.length === 0 ? (
               <div className={cn(tableContainer, 'min-h-0 flex-1')}>
-                <HistoryListEmptyState variant="no-search-match" />
+                <HistoryListEmptyState
+                  variant={resolveHistoryEmptyVariant(
+                    entries.length > 0,
+                    hasActiveFilters,
+                    searchQuery
+                  )}
+                />
               </div>
             ) : (
               <HistoryList

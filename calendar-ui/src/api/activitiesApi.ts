@@ -224,6 +224,7 @@ export async function fetchGlobalActivityHistoryPaged(params?: {
   actionTypes?: string[];
   categories?: string[];
   leadTeamIds?: number[];
+  changedFields?: string[];
 }): Promise<PagedResult<GlobalActivityHistoryEntry>> {
   const serializedParams: Record<string, string | number | undefined> = {};
   if (params == null) {

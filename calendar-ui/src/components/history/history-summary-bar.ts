@@ -11,6 +11,7 @@ type HistorySummaryFilterState = {
   selectedUserIds?: string[];
   selectedCategories?: string[];
   selectedLeadTeamIds?: string[];
+  selectedFields?: string[];
 };
 
 export function buildHistoryAppliedFilterTypeLabels({
@@ -21,6 +22,7 @@ export function buildHistoryAppliedFilterTypeLabels({
   selectedUserIds = [],
   selectedCategories = [],
   selectedLeadTeamIds = [],
+  selectedFields = [],
 }: HistorySummaryFilterState): string[] {
   const labels: string[] = [];
 
@@ -36,8 +38,11 @@ export function buildHistoryAppliedFilterTypeLabels({
   if (selectedActionTypes.length > 0) {
     labels.push('Update type');
   }
-  if (activeTab === 'all' && selectedUserIds.length > 0) {
+  if (selectedUserIds.length > 0) {
     labels.push('Updated by');
+  }
+  if (selectedFields.length > 0) {
+    labels.push('Field');
   }
   if (selectedCategories.length > 0) {
     labels.push('Category');

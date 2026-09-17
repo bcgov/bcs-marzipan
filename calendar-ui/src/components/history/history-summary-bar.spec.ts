@@ -25,6 +25,8 @@ describe('history-summary-bar', () => {
           noEndDate: false,
         },
         selectedActionTypes: ['updated'],
+        selectedUserIds: ['1'],
+        selectedFields: ['title'],
         selectedCategories: ['Media'],
         selectedLeadTeamIds: ['1'],
       })
@@ -33,6 +35,8 @@ describe('history-summary-bar', () => {
       'Search',
       'Date',
       'Update type',
+      'Updated by',
+      'Field',
       'Category',
       'Team',
     ]);

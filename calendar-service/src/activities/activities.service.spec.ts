@@ -3782,7 +3782,7 @@ describe('ActivitiesService', () => {
 
   describe('bulkUpdate', () => {
     it('rejects tag updates for a user with shared-with-only access', async () => {
-      const updateTagsSpy = vi.spyOn(service, 'updateTags');
+      const updateSpy = vi.spyOn(service, 'update');
       mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
       mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
 
@@ -3800,7 +3800,7 @@ describe('ActivitiesService', () => {
         'You may only edit activities where you are a comms contact or lead-team member.'
       );
 
-      expect(updateTagsSpy).not.toHaveBeenCalled();
+      expect(updateSpy).not.toHaveBeenCalled();
       expect(mockPolicyService.isCommsContactForActivity).toHaveBeenCalledWith(
         1,
         2

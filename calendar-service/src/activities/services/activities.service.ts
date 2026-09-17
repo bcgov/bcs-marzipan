@@ -85,11 +85,14 @@ import {
   buildReviewSnapshot,
   diffReviewFields,
   getEmptyReviewBaseline,
+  getViewableActivityHistoryFieldKeys,
   isDeepEqual,
   mapResponseToFormData,
+  normalizeHistoryFieldKey,
   normalizeVenueAddressForForm,
   plainTextFromActivityRichField,
   tipTapDocJsonFromPlainText,
+  type FieldScopeUser,
   type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
 
@@ -3217,22 +3220,7 @@ export class ActivitiesService {
     dto.markAsReviewed = body.markAsReviewed === true;
     dto.activityHistoryNotes = body.activityHistoryNotes;
 
-    const sourceProvenance: HistoryChange[] = [
-      {
-        field: 'clonedFromActivityId',
-        oldValue: null,
-        newValue: source.id,
-      },
-      {
-        field: 'clonedFromDisplayId',
-        oldValue: null,
-        newValue: source.displayId ?? null,
-      },
-    ];
-
-    const created = await this.create(dto, userId, context, {
-      extraCreateChanges: sourceProvenance,
-    });
+    const created = await this.create(dto, userId, context);
 
     return created;
   }
@@ -3352,10 +3340,42 @@ export class ActivitiesService {
   /**
    * Get activity history
    */
+  private toHistoryViewer(
+    ctx?: RequestContextType
+  ): FieldScopeUser | undefined {
+    if (!ctx?.user) return undefined;
+    return {
+      permissions: ctx.user.permissions,
+      roleName: ctx.user.roleName,
+    };
+  }
+
+  private resolveViewableChangedFields(
+    requested: string[] | undefined,
+    ctx?: RequestContextType
+  ): string[] | undefined {
+    const viewer = this.toHistoryViewer(ctx);
+    if (!viewer || !requested?.length) return undefined;
+    const viewable = new Set(getViewableActivityHistoryFieldKeys(viewer));
+    const canonical = [
+      ...new Set(
+        requested
+          .map((field) => normalizeHistoryFieldKey(field))
+          .filter(
+            (field): field is string => field != null && viewable.has(field)
+          )
+      ),
+    ];
+    return canonical;
+  }
+
   async getHistory(id: number, ctx?: RequestContextType) {
     // Verify activity exists and is visible to the caller
     await this.findOne(id, ctx);
-    return this.activityHistoryService.getActivityHistory(id);
+    return this.activityHistoryService.getActivityHistory(
+      id,
+      this.toHistoryViewer(ctx)
+    );
   }
 
   /**
@@ -3491,6 +3511,7 @@ export class ActivitiesService {
       actionTypes?: string[];
       categoryNames?: string[];
       leadTeamIds?: number[];
+      changedFields?: string[];
     },
     ctx?: RequestContextType
   ): Promise<{
@@ -3530,6 +3551,11 @@ export class ActivitiesService {
       opts.endDate ??
       (opts.startDate === undefined ? defaultEndDate : undefined);
 
+    const changedFields = this.resolveViewableChangedFields(
+      opts.changedFields,
+      ctx
+    );
+
     const historyPage =
       await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
         visibleActivityIds,
@@ -3545,6 +3571,11 @@ export class ActivitiesService {
           actionTypes: opts.actionTypes,
           categoryNames: opts.categoryNames,
           leadTeamIds: opts.leadTeamIds,
+          changedFields:
+            opts.changedFields?.length && changedFields?.length === 0
+              ? []
+              : changedFields,
+          viewer: this.toHistoryViewer(ctx),
         }
       );
 
@@ -3569,7 +3600,12 @@ export class ActivitiesService {
     };
   }
 
-  async addHistoryNote(id: number, note: string, userId: number) {
+  async addHistoryNote(
+    id: number,
+    note: string,
+    userId: number,
+    ctx?: RequestContextType
+  ) {
     await this.assertCanEditDuringLockout(userId);
 
     const trimmedNote = note.trim();
@@ -3596,7 +3632,8 @@ export class ActivitiesService {
     );
 
     const hydratedEntry = await this.activityHistoryService.getHistoryEntryById(
-      createdEntry.id
+      createdEntry.id,
+      this.toHistoryViewer(ctx)
     );
 
     if (!hydratedEntry) {

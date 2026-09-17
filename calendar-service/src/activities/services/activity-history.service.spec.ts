@@ -356,7 +356,7 @@ describe('ActivityHistoryService', () => {
       ]);
     });
 
-    it('should skip all audit fields', () => {
+    it('should skip audit and non-tracked history fields', () => {
       const changes = service.generateChangeList(
         {
           id: 1,
@@ -364,6 +364,8 @@ describe('ActivityHistoryService', () => {
           lastUpdatedDateTime: 'b',
           rowVersion: 1,
           displayId: 'X-001',
+          lastUpdatedBy: 1,
+          createdBy: 2,
         },
         {
           id: 2,
@@ -371,6 +373,8 @@ describe('ActivityHistoryService', () => {
           lastUpdatedDateTime: 'd',
           rowVersion: 2,
           displayId: 'X-002',
+          lastUpdatedBy: 3,
+          createdBy: 4,
         }
       );
       expect(changes).toEqual([]);

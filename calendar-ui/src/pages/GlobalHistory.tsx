@@ -16,7 +16,6 @@ import {
   fetchTimeStatuses,
   fetchTranslationRequiredStatuses,
 } from '@/api/lookupsApi';
-import { FilterCheckboxItem } from '@/components/activity/ActivityTable/FilterCheckboxItem';
 import {
   isDateRangeActive,
   ScheduledDateRangeFields,
@@ -26,12 +25,16 @@ import {
   buildHistoryAppliedFilterTypeLabels,
   GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,
   HISTORY_LIST_CONTENT_CLASSNAME,
+  HistoryFieldFilterPanel,
   HistoryList,
   HistoryListEmptyState,
   HistoryListLoading,
   HistoryListToolbar,
+  HistoryMultiSelectFilter,
   HistorySearchInput,
+  historySummaryHasActiveFilters,
   historySummaryHasClearableFilters,
+  resolveHistoryEmptyVariant,
   toGlobalActivityHistoryViewModel,
 } from '@/components/history';
 import { HistoryDayRangeTabs } from '@/components/history/HistoryDayRangeTabs';
@@ -40,7 +43,6 @@ import { ErrorState } from '@/components/shared';
 import { TablePagination } from '@/components/table/TablePagination';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
 import { TableSummaryBar } from '@/components/table/TableSummaryBar';
-import { Input } from '@/components/ui/input';
 import {
   Popover,
   PopoverContent,
@@ -197,89 +199,6 @@ export function matchesSearch(
   return haystacks.some((value) => value.includes(normalizedQuery));
 }
 
-function SearchableMultiSelectFilter({
-  label,
-  options,
-  selectedValues,
-  onChange,
-  searchPlaceholder,
-}: {
-  label: string;
-  options: FilterOption[];
-  selectedValues: string[];
-  onChange: (values: string[]) => void;
-  searchPlaceholder?: string;
-}) {
-  const [query, setQuery] = useState('');
-
-  const filteredOptions = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) {
-      return options;
-    }
-
-    return options.filter((option) =>
-      option.label.toLowerCase().includes(normalized)
-    );
-  }, [options, query]);
-
-  const toggleValue = (value: string) => {
-    if (selectedValues.includes(value)) {
-      onChange(selectedValues.filter((item) => item !== value));
-      return;
-    }
-
-    onChange([...selectedValues, value]);
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <FilterTrigger
-          label={label}
-          active={selectedValues.length > 0}
-          count={selectedValues.length}
-          onClear={() => onChange([])}
-          clearAriaLabel={`Clear ${label} filter`}
-        />
-      </PopoverTrigger>
-      <PopoverContent className="w-70 p-0" align="start">
-        <div className="p-3">
-          <div className="mb-3 text-xs font-medium tracking-wide text-slate-500 uppercase">
-            {label}
-          </div>
-          {searchPlaceholder ? (
-            <Input
-              type="text"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={searchPlaceholder}
-              className="mb-3"
-            />
-          ) : null}
-          <div className="max-h-64 space-y-1 overflow-auto">
-            {filteredOptions.length === 0 ? (
-              <div className="py-2 text-center text-sm text-slate-500">
-                No results
-              </div>
-            ) : (
-              filteredOptions.map((option) => (
-                <FilterCheckboxItem
-                  key={option.value}
-                  checked={selectedValues.includes(option.value)}
-                  onCheckedChange={() => toggleValue(option.value)}
-                >
-                  {option.label}
-                </FilterCheckboxItem>
-              ))
-            )}
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 function DateFilter({
   value,
   onChange,
@@ -328,9 +247,24 @@ export function GlobalHistory() {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedLeadTeamIds, setSelectedLeadTeamIds] = useState<string[]>([]);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const tableScrollRef = useRef<HTMLDivElement>(null);
+
+  const historyViewer = useMemo(
+    () =>
+      user
+        ? { permissions: user.permissions, roleName: user.roleName }
+        : { permissions: [], roleName: 'Viewer' },
+    [user]
+  );
+
+  useEffect(() => {
+    if (activeTab === 'mine') {
+      setSelectedUserIds([]);
+    }
+  }, [activeTab]);
 
   // Reset to page 1 whenever any filter changes
   useEffect(() => {
@@ -344,6 +278,7 @@ export function GlobalHistory() {
     selectedUserIds,
     selectedCategories,
     selectedLeadTeamIds,
+    selectedFields,
   ]);
 
   const globalHistoryQueryParams = useMemo(
@@ -372,6 +307,7 @@ export function GlobalHistory() {
               .map((id) => Number(id))
               .filter((id) => !Number.isNaN(id))
           : undefined,
+      changedFields: selectedFields.length > 0 ? selectedFields : undefined,
     }),
     [
       activeTab,
@@ -382,6 +318,7 @@ export function GlobalHistory() {
       searchQuery,
       selectedActionTypes,
       selectedCategories,
+      selectedFields,
       selectedLeadTeamIds,
       selectedUserIds,
       user?.id,
@@ -692,6 +629,7 @@ export function GlobalHistory() {
         selectedUserIds,
         selectedCategories,
         selectedLeadTeamIds,
+        selectedFields,
       }),
     [
       activeTab,
@@ -699,10 +637,22 @@ export function GlobalHistory() {
       searchQuery,
       selectedActionTypes,
       selectedCategories,
+      selectedFields,
       selectedLeadTeamIds,
       selectedUserIds,
     ]
   );
+
+  const hasActiveFilters = historySummaryHasActiveFilters({
+    searchQuery,
+    dateRangeActive: isDateRangeActive(dateRange),
+    activeTab,
+    selectedActionTypes,
+    selectedUserIds,
+    selectedCategories,
+    selectedLeadTeamIds,
+    selectedFields,
+  });
 
   const clearAllFilters = useCallback(() => {
     setSearchQuery('');
@@ -711,6 +661,7 @@ export function GlobalHistory() {
     setSelectedUserIds([]);
     setSelectedCategories([]);
     setSelectedLeadTeamIds([]);
+    setSelectedFields([]);
     setActiveTab('all');
   }, []);
 
@@ -722,6 +673,7 @@ export function GlobalHistory() {
     selectedUserIds,
     selectedCategories,
     selectedLeadTeamIds,
+    selectedFields,
   });
 
   const recordSummaryBar = !historyQuery.isError ? (
@@ -758,26 +710,42 @@ export function GlobalHistory() {
       <div className="mb-2 flex flex-wrap items-center gap-3">
         <HistorySearchInput value={searchQuery} onChange={setSearchQuery} />
         <DateFilter value={dateRange} onChange={setDateRange} />
-        <SearchableMultiSelectFilter
+        <HistoryMultiSelectFilter
           label="Update type"
           options={actionTypeOptions}
           selectedValues={selectedActionTypes}
           onChange={setSelectedActionTypes}
         />
-        <SearchableMultiSelectFilter
-          label="Updated by"
-          options={userOptions}
-          selectedValues={selectedUserIds}
-          onChange={setSelectedUserIds}
-          searchPlaceholder="Search users"
+        {activeTab === 'all' ? (
+          <HistoryMultiSelectFilter
+            label="Updated by"
+            options={userOptions}
+            selectedValues={selectedUserIds}
+            onChange={setSelectedUserIds}
+            searchPlaceholder="Search users"
+          />
+        ) : null}
+        <HistoryMultiSelectFilter
+          label="Field"
+          options={[]}
+          selectedValues={selectedFields}
+          onChange={setSelectedFields}
+          renderPanel
+          panel={
+            <HistoryFieldFilterPanel
+              viewer={historyViewer}
+              selectedFields={selectedFields}
+              onSelectedFieldsChange={setSelectedFields}
+            />
+          }
         />
-        <SearchableMultiSelectFilter
+        <HistoryMultiSelectFilter
           label="Category"
           options={categoryOptions}
           selectedValues={selectedCategories}
           onChange={setSelectedCategories}
         />
-        <SearchableMultiSelectFilter
+        <HistoryMultiSelectFilter
           label="Team"
           options={leadTeamOptions}
           selectedValues={selectedLeadTeamIds}
@@ -807,9 +775,13 @@ export function GlobalHistory() {
           <TableScrollContainer>
             <HistoryListEmptyState
               variant={
-                isDateRangeActive(dateRange)
+                isDateRangeActive(dateRange) && !hasActiveFilters
                   ? 'no-timeframe'
-                  : 'no-filter-match'
+                  : resolveHistoryEmptyVariant(
+                      (historyQuery.data?.totalItems ?? 0) > 0,
+                      hasActiveFilters,
+                      searchQuery
+                    )
               }
             />
           </TableScrollContainer>
