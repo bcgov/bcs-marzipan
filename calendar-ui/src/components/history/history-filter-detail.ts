@@ -5,7 +5,6 @@ import {
   type DateRangeValue,
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import type { TableSummaryFilterDetailLine } from '@/components/table/TableSummaryBar';
-import { getHistoryFieldLabel } from '@/lib/activity-history-format';
 
 import { isDefaultGlobalHistoryDateRange } from './default-history-date-range';
 import { getHistoryActionLabel } from './history-action-labels';
@@ -50,7 +49,6 @@ type ActivityHistoryFilterDetailState = {
   searchQuery?: string;
   selectedActionTypes?: string[];
   selectedUserIds?: string[];
-  selectedFields?: string[];
   actorFilterOptions?: Array<{ value: string; label: string }>;
 };
 
@@ -58,7 +56,6 @@ export function buildActivityHistoryFilterDetailLines({
   searchQuery = '',
   selectedActionTypes = [],
   selectedUserIds = [],
-  selectedFields = [],
   actorFilterOptions = [],
 }: ActivityHistoryFilterDetailState): TableSummaryFilterDetailLine[] {
   const lines: TableSummaryFilterDetailLine[] = [];
@@ -83,14 +80,6 @@ export function buildActivityHistoryFilterDetailLines({
       ),
     });
   }
-  if (selectedFields.length > 0) {
-    lines.push({
-      label: 'Field',
-      value: joinDetailValues(
-        selectedFields.map((field) => getHistoryFieldLabel(field))
-      ),
-    });
-  }
 
   return lines;
 }
@@ -111,7 +100,6 @@ export function buildGlobalHistoryFilterDetailLines({
   dateRange,
   selectedActionTypes = [],
   selectedUserIds = [],
-  selectedFields = [],
   selectedCategories = [],
   selectedLeadTeamIds = [],
   actorFilterOptions = [],
@@ -123,7 +111,6 @@ export function buildGlobalHistoryFilterDetailLines({
     searchQuery,
     selectedActionTypes,
     selectedUserIds,
-    selectedFields,
     actorFilterOptions:
       actorFilterOptions.length > 0 ? actorFilterOptions : userOptions,
   });

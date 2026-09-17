@@ -20,12 +20,10 @@ export {
   isGlobalHistoryDateRangeActive,
 } from './default-history-date-range';
 export { HISTORY_LIST_CONTENT_CLASSNAME } from './history-list-layout';
-export { HistoryFieldFilterPanel } from './HistoryFieldFilterPanel';
 export { HistoryMultiSelectFilter } from './HistoryMultiSelectFilter';
 export {
   buildHistoryActorFilterOptions,
   historyEntryMatchesActionTypes,
-  historyEntryMatchesChangedFields,
   historyEntryMatchesUserIds,
   historySummaryHasActiveFilters,
   resolveHistoryEmptyVariant,

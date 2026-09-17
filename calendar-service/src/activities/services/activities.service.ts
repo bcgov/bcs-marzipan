@@ -42,7 +42,6 @@ import {
 } from '@corpcal/database/schema';
 import type { Activity, Category } from '@corpcal/database/types';
 import {
-  addCalendarDays,
   buildEffectiveReviewExemptKeys,
   DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
   HYDRATION_PROFILES,
@@ -85,10 +84,8 @@ import {
   buildReviewSnapshot,
   diffReviewFields,
   getEmptyReviewBaseline,
-  getViewableActivityHistoryFieldKeys,
   isDeepEqual,
   mapResponseToFormData,
-  normalizeHistoryFieldKey,
   normalizeVenueAddressForForm,
   plainTextFromActivityRichField,
   tipTapDocJsonFromPlainText,
@@ -3365,25 +3362,6 @@ export class ActivitiesService {
     };
   }
 
-  private resolveViewableChangedFields(
-    requested: string[] | undefined,
-    ctx?: RequestContextType
-  ): string[] | undefined {
-    const viewer = this.toHistoryViewer(ctx);
-    if (!viewer || !requested?.length) return undefined;
-    const viewable = new Set(getViewableActivityHistoryFieldKeys(viewer));
-    const canonical = [
-      ...new Set(
-        requested
-          .map((field) => normalizeHistoryFieldKey(field))
-          .filter(
-            (field): field is string => field != null && viewable.has(field)
-          )
-      ),
-    ];
-    return canonical;
-  }
-
   async getHistory(id: number, ctx?: RequestContextType) {
     // Verify activity exists and is visible to the caller
     await this.findOne(id, ctx);
@@ -3527,7 +3505,6 @@ export class ActivitiesService {
       actionTypes?: string[];
       categoryNames?: string[];
       leadTeamIds?: number[];
-      changedFields?: string[];
     },
     ctx?: RequestContextType
   ): Promise<{
@@ -3552,25 +3529,17 @@ export class ActivitiesService {
     const page = Math.max(1, opts.page ?? 1);
     const pageSize = Math.max(1, opts.pageSize ?? 50);
 
-    // Apply a default 30-day Pacific window when neither bound is provided to prevent
-    // unbounded history scans and expensive COUNT(*) over all-time data.
+    // Default to today (Pacific) when neither bound is provided to match global history UI
+    // and prevent unbounded history scans.
     const todayPacific = pacificCalendarDateFromInstant(Date.now());
-    const defaultEndDate =
+    const defaultDate =
       todayPacific ??
       `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}-${String(new Date().getUTCDate()).padStart(2, '0')}`;
-    const defaultStartDate = addCalendarDays(defaultEndDate, -30);
 
     const startDate =
-      opts.startDate ??
-      (opts.endDate === undefined ? defaultStartDate : undefined);
+      opts.startDate ?? (opts.endDate === undefined ? defaultDate : undefined);
     const endDate =
-      opts.endDate ??
-      (opts.startDate === undefined ? defaultEndDate : undefined);
-
-    const changedFields = this.resolveViewableChangedFields(
-      opts.changedFields,
-      ctx
-    );
+      opts.endDate ?? (opts.startDate === undefined ? defaultDate : undefined);
 
     const historyPage =
       await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
@@ -3587,10 +3556,6 @@ export class ActivitiesService {
           actionTypes: opts.actionTypes,
           categoryNames: opts.categoryNames,
           leadTeamIds: opts.leadTeamIds,
-          changedFields:
-            opts.changedFields?.length && changedFields?.length === 0
-              ? []
-              : changedFields,
           viewer: this.toHistoryViewer(ctx),
         }
       );

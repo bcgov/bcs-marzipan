@@ -296,7 +296,6 @@ export class ActivitiesController {
     @Query('actionTypes') actionTypes?: string,
     @Query('categories') categories?: string,
     @Query('leadTeamIds') leadTeamIds?: string,
-    @Query('changedFields') changedFields?: string,
     @RequestContext() ctx?: RequestContextType
   ): Promise<{
     success: boolean;
@@ -338,7 +337,6 @@ export class ActivitiesController {
     const parsedActionTypes = parseCommaSeparatedStrings(actionTypes);
     const parsedCategories = parseCommaSeparatedStrings(categories);
     const parsedLeadTeamIds = parseCommaSeparatedIds(leadTeamIds);
-    const parsedChangedFields = parseCommaSeparatedStrings(changedFields);
 
     // If any pagination, explicit dates, a query, filters, or an explicit order are provided, return a paged response
     const hasPagingOrDate =
@@ -352,8 +350,7 @@ export class ActivitiesController {
       userIds !== undefined ||
       actionTypes !== undefined ||
       categories !== undefined ||
-      leadTeamIds !== undefined ||
-      changedFields !== undefined;
+      leadTeamIds !== undefined;
 
     if (!hasPagingOrDate) {
       const result = await this.activitiesService.getGlobalHistory(ctx);
@@ -379,8 +376,6 @@ export class ActivitiesController {
           parsedCategories.length > 0 ? parsedCategories : undefined,
         leadTeamIds:
           parsedLeadTeamIds.length > 0 ? parsedLeadTeamIds : undefined,
-        changedFields:
-          parsedChangedFields.length > 0 ? parsedChangedFields : undefined,
       },
       ctx
     );

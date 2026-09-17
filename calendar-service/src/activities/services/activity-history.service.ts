@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
   and,
-  arrayOverlaps,
   asc,
   desc,
   eq,
@@ -35,7 +34,6 @@ import type {
 } from '@corpcal/shared/api/types';
 import {
   ACTIVITY_HISTORY_NON_TRACKED_FIELDS,
-  extractChangedFieldKeys,
   isDeepEqual,
   normalizeHistoryChanges,
   redactActivityHistoryChanges,
@@ -106,6 +104,13 @@ export class ActivityHistoryService {
     return normalized.length > 0 ? normalized : undefined;
   }
 
+  /**
+   * Whether a history row should appear in API responses for a scoped viewer.
+   *
+   * Intentionally omits "shell" entries that would have no useful detail after
+   * field redaction (no viewable changes, no audit note, not a timeline note).
+   * See docs/AUTH_AND_RBAC.md — "Activity history visibility and field redaction".
+   */
   private shouldIncludeHistoryEntry(
     entry: { actionType: string; notes: string | null },
     redactedChanges: HistoryChange[]
@@ -116,6 +121,10 @@ export class ActivityHistoryService {
     return false;
   }
 
+  /**
+   * Maps DB rows to API entries, redacting field changes the viewer cannot see
+   * and dropping rows with nothing useful left to show (see shouldIncludeHistoryEntry).
+   */
   private mapEntriesToResponse(
     entries: Array<{
       id: number;
@@ -213,7 +222,6 @@ export class ActivityHistoryService {
     // these new columns yet, so cast the values to `any` to avoid type errors
     // while the DB migration is staged separately.
     const normalizedChanges = this.normalizeChangesForStorage(changes);
-    const changedFieldKeys = extractChangedFieldKeys(normalizedChanges);
 
     const [historyEntry] = await db
       .insert(activityHistory)
@@ -222,7 +230,6 @@ export class ActivityHistoryService {
         userId,
         actionType,
         changes: normalizedChanges ? (normalizedChanges as unknown) : null,
-        changedFieldKeys,
         notes: notes || null,
         activityTitle: activityRow?.title ?? null,
         activityDisplayId: activityRow?.displayId ?? null,
@@ -352,7 +359,6 @@ export class ActivityHistoryService {
         userId: actorUserId,
         actionType: 'updated',
         changes: normalizedChanges ? normalizedChanges : null,
-        changedFieldKeys: extractChangedFieldKeys(normalizedChanges),
         notes: notes || null,
         activityTitle: act?.title ?? null,
         activityDisplayId: act?.displayId ?? null,
@@ -454,7 +460,6 @@ export class ActivityHistoryService {
         userId: actorUserId,
         actionType: 'updated',
         changes: null,
-        changedFieldKeys: null,
         notes: notes || null,
         activityTitle: act?.title ?? null,
         activityDisplayId: entry.newDisplayId,
@@ -538,7 +543,6 @@ export class ActivityHistoryService {
       actionTypes?: string[];
       categoryNames?: string[];
       leadTeamIds?: number[];
-      changedFields?: string[];
       viewer?: FieldScopeUser;
     }
   ): Promise<{
@@ -620,16 +624,6 @@ export class ActivityHistoryService {
 
     if (opts.leadTeamIds?.length) {
       whereClauses.push(inArray(activities.leadTeamId, opts.leadTeamIds));
-    }
-
-    if (opts.changedFields !== undefined) {
-      if (opts.changedFields.length === 0) {
-        whereClauses.push(sql`false`);
-      } else {
-        whereClauses.push(
-          arrayOverlaps(activityHistory.changedFieldKeys, opts.changedFields)
-        );
-      }
     }
 
     if (opts.categoryNames?.length) {

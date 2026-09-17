@@ -30,7 +30,6 @@ export const activityHistory = pgTable(
       .references(() => users.id),
     actionType: varchar('action_type', { length: 50 }).notNull(), // 'created', 'updated', 'deleted', `activity_status_changed`, etc.
     changes: jsonb('changes'), // Array of change objects: [{field, oldValue, newValue}]
-    changedFieldKeys: text('changed_field_keys').array(), // Canonical keys for indexed field filtering
     notes: text('notes'), // Optional user notes
     timestamp: timestamp('timestamp', { withTimezone: true })
       .notNull()
@@ -56,10 +55,6 @@ export const activityHistory = pgTable(
     index('idx_activity_history_notes_trgm').using(
       'gin',
       sql`lower(${table.notes}) gin_trgm_ops`
-    ),
-    index('idx_activity_history_changed_field_keys_gin').using(
-      'gin',
-      table.changedFieldKeys
     ),
   ]
 );

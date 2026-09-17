@@ -1,9 +1,7 @@
 import {
   ACTIVITY_FORM_SECTION_FIELDS,
   ACTIVITY_FORM_SECTION_IDS,
-  ACTIVITY_FORM_SECTION_LABELS,
   ACTIVITY_FORM_SECTION_REGISTRY_OMITTED_KEYS,
-  type ActivityFormSectionId,
 } from './activity-form-sections';
 import {
   ACTIVITY_FIELD_SCOPE_CONFIG,
@@ -27,9 +25,8 @@ export const ACTIVITY_HISTORY_OMITTED_REGISTRY_TRACKED_FIELDS = [
 ] as const satisfies readonly string[];
 
 /**
- * Legacy stored field keys mapped to canonical filter/display keys.
- * The `changed_field_keys` backfill migration mirrors this mapping inline;
- * keep both in sync when aliases or non-tracked keys change.
+ * Legacy stored field keys mapped to canonical display keys.
+ * Keep aliases in sync when non-tracked keys change.
  */
 export const ACTIVITY_HISTORY_FIELD_ALIASES: Readonly<
   Record<string, readonly string[]>
@@ -78,12 +75,12 @@ for (const key of ACTIVITY_HISTORY_ONLY_TRACKED_FIELDS) {
   CANONICAL_FIELD_ORDER.push(key);
 }
 
-export const ACTIVITY_HISTORY_FILTER_FIELD_KEYS: readonly string[] = [
+const ACTIVITY_HISTORY_TRACKED_FIELD_KEYS: readonly string[] = [
   ...new Set(CANONICAL_FIELD_ORDER),
 ];
 
 const ALIAS_TO_CANONICAL = new Map<string, string>();
-for (const canonical of ACTIVITY_HISTORY_FILTER_FIELD_KEYS) {
+for (const canonical of ACTIVITY_HISTORY_TRACKED_FIELD_KEYS) {
   ALIAS_TO_CANONICAL.set(canonical, canonical);
 }
 for (const [canonical, aliases] of Object.entries(
@@ -102,12 +99,6 @@ for (const scope of ACTIVITY_FIELD_SCOPES) {
   }
 }
 
-export type ActivityHistoryFieldFilterSection = {
-  id: ActivityFormSectionId | 'other';
-  heading: string;
-  fieldKeys: readonly string[];
-};
-
 export interface FieldScopeUser {
   permissions: string[];
   roleName: string;
@@ -122,23 +113,6 @@ export function normalizeHistoryFieldKey(field: string): string | null {
   return ALIAS_TO_CANONICAL.get(trimmed) ?? null;
 }
 
-export function expandHistoryFieldKeysForMatch(
-  canonicalFields: readonly string[]
-): string[] {
-  const expanded = new Set<string>();
-  for (const canonical of canonicalFields) {
-    const aliases = ACTIVITY_HISTORY_FIELD_ALIASES[canonical];
-    if (aliases) {
-      for (const alias of aliases) {
-        expanded.add(alias);
-      }
-    } else {
-      expanded.add(canonical);
-    }
-  }
-  return [...expanded];
-}
-
 export function canViewHistoryField(
   field: string,
   user: FieldScopeUser
@@ -150,92 +124,9 @@ export function canViewHistoryField(
   return canViewActivityFieldScope(user, scope);
 }
 
-export function getViewableActivityHistoryFieldKeys(
-  user: FieldScopeUser
-): readonly string[] {
-  return ACTIVITY_HISTORY_FILTER_FIELD_KEYS.filter((field) =>
-    canViewHistoryField(field, user)
-  );
-}
-
-const OMITTED_REGISTRY_FIELD_SECTION: Partial<
-  Record<
-    (typeof ACTIVITY_HISTORY_OMITTED_REGISTRY_TRACKED_FIELDS)[number],
-    ActivityFormSectionId
-  >
-> = {
-  activityStatusId: 'overview',
-  leadMinistryId: 'overview',
-  commsContactLeadId: 'comms',
-};
-
-export function buildActivityHistoryFieldFilterSections(
-  user: FieldScopeUser
-): ActivityHistoryFieldFilterSection[] {
-  const viewable = new Set(getViewableActivityHistoryFieldKeys(user));
-  const sectionsById = new Map<ActivityFormSectionId | 'other', string[]>();
-
-  for (const sectionId of ACTIVITY_FORM_SECTION_IDS) {
-    sectionsById.set(sectionId, []);
-  }
-  sectionsById.set('other', []);
-
-  for (const sectionId of ACTIVITY_FORM_SECTION_IDS) {
-    for (const key of ACTIVITY_FORM_SECTION_FIELDS[sectionId]) {
-      const fieldKey = String(key);
-      if (viewable.has(fieldKey)) {
-        sectionsById.get(sectionId)?.push(fieldKey);
-      }
-    }
-  }
-
-  for (const key of ACTIVITY_HISTORY_OMITTED_REGISTRY_TRACKED_FIELDS) {
-    if (!viewable.has(key)) continue;
-    const sectionId = OMITTED_REGISTRY_FIELD_SECTION[key] ?? 'other';
-    sectionsById.get(sectionId)?.push(key);
-  }
-
-  for (const key of ACTIVITY_HISTORY_ONLY_TRACKED_FIELDS) {
-    if (viewable.has(key)) {
-      sectionsById.get('other')?.push(key);
-    }
-  }
-
-  const sections: ActivityHistoryFieldFilterSection[] = [];
-  for (const sectionId of ACTIVITY_FORM_SECTION_IDS) {
-    const fieldKeys = sectionsById.get(sectionId) ?? [];
-    if (fieldKeys.length > 0) {
-      sections.push({
-        id: sectionId,
-        heading: ACTIVITY_FORM_SECTION_LABELS[sectionId],
-        fieldKeys,
-      });
-    }
-  }
-
-  const otherKeys = sectionsById.get('other') ?? [];
-  if (otherKeys.length > 0) {
-    sections.push({
-      id: 'other',
-      heading: 'Other',
-      fieldKeys: otherKeys,
-    });
-  }
-
-  return sections;
-}
-
 export function getActivityHistoryFieldLabel(field: string): string {
   if (field === 'flag.assigneeName') return 'Flagged for review';
   return getActivityFieldLabel(field);
-}
-
-export function extractChangedFieldKeys(
-  changes: HistoryChange[] | null | undefined
-): string[] | null {
-  const normalized = normalizeHistoryChanges(changes);
-  if (normalized.length === 0) return null;
-  return normalized.map((change) => change.field);
 }
 
 export function normalizeHistoryChanges(
@@ -257,37 +148,17 @@ export function normalizeHistoryChanges(
   return [...byField.values()];
 }
 
+/**
+ * Returns only history field changes the viewer may see (same scope rules as
+ * activity response redaction). Rows that become empty after this filter may
+ * be omitted entirely from API responses; see docs/AUTH_AND_RBAC.md.
+ */
 export function redactActivityHistoryChanges(
   changes: HistoryChange[] | null | undefined,
   user: FieldScopeUser
 ): HistoryChange[] {
   return normalizeHistoryChanges(changes).filter((change) =>
     canViewHistoryField(change.field, user)
-  );
-}
-
-export function historyEntryHasMatchingFieldChange(
-  changes: HistoryChange[] | null | undefined,
-  selectedCanonicalFields: readonly string[],
-  user: FieldScopeUser
-): boolean {
-  if (selectedCanonicalFields.length === 0) return true;
-  const selected = new Set(selectedCanonicalFields);
-  const normalized = redactActivityHistoryChanges(changes, user);
-  return normalized.some((change) => selected.has(change.field));
-}
-
-export function historyEntryMatchesFieldFilter(
-  changes: HistoryChange[] | null | undefined,
-  selectedCanonicalFields: readonly string[],
-  user: FieldScopeUser
-): boolean {
-  if (selectedCanonicalFields.length === 0) return true;
-  if (!changes || changes.length === 0) return false;
-  return historyEntryHasMatchingFieldChange(
-    changes,
-    selectedCanonicalFields,
-    user
   );
 }
 

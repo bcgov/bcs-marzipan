@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ACTIVITY_HISTORY_NON_TRACKED_FIELDS,
-  buildActivityHistoryFieldFilterSections,
-  expandHistoryFieldKeysForMatch,
-  extractChangedFieldKeys,
-  getViewableActivityHistoryFieldKeys,
-  historyEntryMatchesFieldFilter,
   normalizeHistoryChanges,
   normalizeHistoryFieldKey,
   redactActivityHistoryChanges,
@@ -47,25 +42,6 @@ describe('activity-history-fields', () => {
     expect(result[0]?.field).toBe('categoryIds');
   });
 
-  it('extracts canonical changed field keys for storage and filtering', () => {
-    expect(
-      extractChangedFieldKeys([
-        { field: 'categories', oldValue: [1], newValue: [2] },
-        { field: 'title', oldValue: 'A', newValue: 'B' },
-      ])
-    ).toEqual(['categoryIds', 'title']);
-
-    expect(
-      extractChangedFieldKeys([
-        { field: 'lastUpdatedBy', oldValue: 1, newValue: 2 },
-        { field: 'displayId', oldValue: 'X', newValue: 'Y' },
-      ])
-    ).toBeNull();
-
-    expect(extractChangedFieldKeys(null)).toBeNull();
-    expect(extractChangedFieldKeys([])).toBeNull();
-  });
-
   it('redacts scoped fields the user cannot view', () => {
     const changes = [
       { field: 'title', oldValue: 'A', newValue: 'B' },
@@ -77,39 +53,5 @@ describe('activity-history-fields', () => {
     expect(redactActivityHistoryChanges(changes, editorWithNotes)).toHaveLength(
       2
     );
-  });
-
-  it('expands canonical keys for legacy stored aliases', () => {
-    expect(expandHistoryFieldKeysForMatch(['categoryIds'])).toEqual([
-      'categoryIds',
-      'categories',
-    ]);
-  });
-
-  it('matches field filter with OR semantics on viewable changes', () => {
-    const changes = [{ field: 'categories', oldValue: [1], newValue: [2] }];
-    expect(
-      historyEntryMatchesFieldFilter(changes, ['categoryIds'], editorWithNotes)
-    ).toBe(true);
-    expect(
-      historyEntryMatchesFieldFilter(changes, ['title'], editorWithNotes)
-    ).toBe(false);
-    expect(historyEntryMatchesFieldFilter(changes, [], editorWithNotes)).toBe(
-      true
-    );
-    expect(
-      historyEntryMatchesFieldFilter(null, ['title'], editorWithNotes)
-    ).toBe(false);
-  });
-
-  it('builds section-grouped filter keys respecting RBAC', () => {
-    const sections =
-      buildActivityHistoryFieldFilterSections(viewerWithoutNotes);
-    const allKeys = sections.flatMap((section) => section.fieldKeys);
-    expect(allKeys).toContain('title');
-    expect(allKeys).not.toContain('notes');
-    expect(
-      getViewableActivityHistoryFieldKeys(viewerWithoutNotes)
-    ).not.toContain('notes');
   });
 });

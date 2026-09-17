@@ -193,17 +193,6 @@ export async function fetchActivityHistory(
   return Array.isArray(res.data) ? res.data : [];
 }
 
-export async function fetchGlobalActivityHistory(): Promise<
-  GlobalActivityHistoryEntry[]
-> {
-  const res = await api.get<{
-    success: boolean;
-    data: GlobalActivityHistoryEntry[];
-  }>('/activities/global-history');
-  if (res.data && res.data.data) return res.data.data;
-  return Array.isArray(res.data) ? res.data : [];
-}
-
 export type PagedResult<T> = {
   items: T[];
   page: number;
@@ -224,7 +213,6 @@ export async function fetchGlobalActivityHistoryPaged(params?: {
   actionTypes?: string[];
   categories?: string[];
   leadTeamIds?: number[];
-  changedFields?: string[];
 }): Promise<PagedResult<GlobalActivityHistoryEntry>> {
   const serializedParams: Record<string, string | number | undefined> = {};
   if (params == null) {

@@ -16,6 +16,7 @@ import {
   PERMISSIONS,
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
+  type AuthUser,
 } from '@corpcal/shared';
 import {
   activityResponseSchema,
@@ -34,6 +35,7 @@ import { LocksService } from '../locks/locks.service';
 import { RecurringLockoutService } from '../locks/recurring-lockout.service';
 import { LookAheadPolicyService } from '../look-ahead/look-ahead-policy.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { RequestContext } from '../policy/dto/user-context.dto';
 import {
   getCategoryScopeById,
   getTagScopeById,
@@ -88,6 +90,24 @@ function mockLookupScopeMaps(
 
 /** mapToResponseDto tests exercise mapping only, not team visibility rules. */
 const BYPASS_FIND_ONE_CTX = { dataScope: { bypass: true, teamIds: [] } };
+
+function createHistoryRequestContext(
+  user: Pick<AuthUser, 'id' | 'permissions' | 'roleName'>
+): RequestContext {
+  return {
+    user: {
+      id: user.id,
+      username: 'test.user',
+      displayName: 'Test User',
+      email: 'test@example.com',
+      roleId: 1,
+      roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: [],
+    },
+    dataScope: { bypass: true, teamIds: [] },
+  };
+}
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
@@ -675,14 +695,11 @@ describe('ActivitiesService', () => {
 
   describe('getGlobalHistory', () => {
     it('passes viewer to history paging for field redaction', async () => {
-      const ctx = {
-        user: {
-          id: 7,
-          permissions: [],
-          roleName: 'Viewer',
-        },
-        dataScope: { bypass: true, teamIds: [] },
-      };
+      const ctx = createHistoryRequestContext({
+        id: 7,
+        permissions: [],
+        roleName: 'Viewer',
+      });
 
       vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
       vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
@@ -701,15 +718,12 @@ describe('ActivitiesService', () => {
   });
 
   describe('getGlobalHistoryPaged', () => {
-    it('forces empty changedFields when requested fields are not viewable', async () => {
-      const ctx = {
-        user: {
-          id: 7,
-          permissions: [],
-          roleName: 'Viewer',
-        },
-        dataScope: { bypass: true, teamIds: [] },
-      };
+    it('passes viewer to history paging', async () => {
+      const ctx = createHistoryRequestContext({
+        id: 7,
+        permissions: ['activities.notes.view'],
+        roleName: 'Editor',
+      });
 
       vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
       vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
@@ -718,39 +732,6 @@ describe('ActivitiesService', () => {
         {
           page: 1,
           pageSize: 25,
-          changedFields: ['notes'],
-        },
-        ctx
-      );
-
-      expect(
-        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged
-      ).toHaveBeenCalledWith(
-        null,
-        expect.objectContaining({
-          changedFields: [],
-        })
-      );
-    });
-
-    it('passes viewer and resolved changedFields to history paging', async () => {
-      const ctx = {
-        user: {
-          id: 7,
-          permissions: ['activities.notes.view'],
-          roleName: 'Editor',
-        },
-        dataScope: { bypass: true, teamIds: [] },
-      };
-
-      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
-      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
-
-      await service.getGlobalHistoryPaged(
-        {
-          page: 1,
-          pageSize: 25,
-          changedFields: ['title', 'notes'],
         },
         ctx
       );
@@ -762,13 +743,31 @@ describe('ActivitiesService', () => {
         expect.objectContaining({
           page: 1,
           pageSize: 25,
-          changedFields: ['title', 'notes'],
           viewer: {
             permissions: ['activities.notes.view'],
             roleName: 'Editor',
           },
         })
       );
+    });
+
+    it('defaults to today-only Pacific window when no dates are provided', async () => {
+      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
+      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
+
+      await service.getGlobalHistoryPaged({
+        page: 1,
+        pageSize: 25,
+      });
+
+      const call =
+        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged.mock
+          .calls[0];
+      const opts = call?.[1] as { startDate?: string; endDate?: string };
+
+      expect(opts?.startDate).toBeDefined();
+      expect(opts?.endDate).toBeDefined();
+      expect(opts?.startDate).toBe(opts?.endDate);
     });
   });
 

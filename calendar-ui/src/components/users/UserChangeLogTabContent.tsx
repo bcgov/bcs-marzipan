@@ -4,6 +4,9 @@ import { useMemo } from 'react';
 
 import { fetchRoles, fetchTeams, fetchUserHistory } from '@/api/usersApi';
 import { HistoryList, toUserHistoryViewModel } from '@/components/history';
+import { ErrorState } from '@/components/shared';
+import { LOAD_HISTORY_MESSAGE, LOAD_HISTORY_TITLE } from '@/lib/error-messages';
+import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { userQueryKeys } from '@/lib/userQueryKeys';
 
@@ -26,7 +29,13 @@ export function UserChangeLogTabContent({
     enabled: userId > 0,
   });
 
-  const { data: history = [], isLoading } = useQuery({
+  const {
+    data: history = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: userQueryKeys.history(userId),
     queryFn: () => fetchUserHistory(userId),
     enabled: userId > 0,
@@ -65,6 +74,16 @@ export function UserChangeLogTabContent({
       <div className="flex justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        title={LOAD_HISTORY_TITLE}
+        message={getFriendlyErrorMessage(error) || LOAD_HISTORY_MESSAGE}
+        onRetry={() => void refetch()}
+      />
     );
   }
 

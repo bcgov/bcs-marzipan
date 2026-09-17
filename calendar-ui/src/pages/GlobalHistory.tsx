@@ -33,7 +33,6 @@ import {
   buildHistoryAppliedFilterTypeLabels,
   createDefaultGlobalHistoryDateRange,
   GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,
-  HistoryFieldFilterPanel,
   HistoryListEmptyState,
   HistoryListLoading,
   HistoryListToolbar,
@@ -203,20 +202,11 @@ export function GlobalHistory() {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedLeadTeamIds, setSelectedLeadTeamIds] = useState<string[]>([]);
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
   const userTeamIds = useMemo(() => user?.teamIds ?? [], [user?.teamIds]);
-
-  const historyViewer = useMemo(
-    () =>
-      user
-        ? { permissions: user.permissions, roleName: user.roleName }
-        : { permissions: [], roleName: 'Viewer' },
-    [user]
-  );
 
   useEffect(() => {
     if (activeTab === 'mine') {
@@ -239,7 +229,6 @@ export function GlobalHistory() {
     selectedUserIds,
     selectedCategories,
     selectedLeadTeamIds,
-    selectedFields,
   ]);
 
   const globalHistoryQueryParams = useMemo(
@@ -270,7 +259,6 @@ export function GlobalHistory() {
                 .map((id) => Number(id))
                 .filter((id) => !Number.isNaN(id))
             : undefined,
-      changedFields: selectedFields.length > 0 ? selectedFields : undefined,
     }),
     [
       activeTab,
@@ -281,7 +269,6 @@ export function GlobalHistory() {
       searchQuery,
       selectedActionTypes,
       selectedCategories,
-      selectedFields,
       selectedLeadTeamIds,
       selectedUserIds,
       user?.id,
@@ -619,7 +606,6 @@ export function GlobalHistory() {
         selectedUserIds,
         selectedCategories,
         selectedLeadTeamIds,
-        selectedFields,
       }),
     [
       activeTab,
@@ -627,7 +613,6 @@ export function GlobalHistory() {
       searchQuery,
       selectedActionTypes,
       selectedCategories,
-      selectedFields,
       selectedLeadTeamIds,
       selectedUserIds,
     ]
@@ -641,7 +626,6 @@ export function GlobalHistory() {
     selectedUserIds,
     selectedCategories,
     selectedLeadTeamIds,
-    selectedFields,
   });
 
   const clearAllFilters = useCallback(() => {
@@ -651,7 +635,6 @@ export function GlobalHistory() {
     setSelectedUserIds([]);
     setSelectedCategories([]);
     setSelectedLeadTeamIds([]);
-    setSelectedFields([]);
     setActiveTab('all');
   }, []);
 
@@ -663,7 +646,6 @@ export function GlobalHistory() {
     selectedUserIds,
     selectedCategories,
     selectedLeadTeamIds,
-    selectedFields,
   });
 
   const filterDetailLines = useMemo(
@@ -674,7 +656,6 @@ export function GlobalHistory() {
         dateRange,
         selectedActionTypes,
         selectedUserIds,
-        selectedFields,
         selectedCategories,
         selectedLeadTeamIds,
         categoryOptions,
@@ -689,7 +670,6 @@ export function GlobalHistory() {
       searchQuery,
       selectedActionTypes,
       selectedCategories,
-      selectedFields,
       selectedLeadTeamIds,
       selectedUserIds,
       userOptions,
@@ -747,20 +727,6 @@ export function GlobalHistory() {
               searchPlaceholder="Search users"
             />
           ) : null}
-          <HistoryMultiSelectFilter
-            label="Field"
-            options={[]}
-            selectedValues={selectedFields}
-            onChange={setSelectedFields}
-            renderPanel
-            panel={
-              <HistoryFieldFilterPanel
-                viewer={historyViewer}
-                selectedFields={selectedFields}
-                onSelectedFieldsChange={setSelectedFields}
-              />
-            }
-          />
           <HistoryMultiSelectFilter
             label="Category"
             options={categoryOptions}

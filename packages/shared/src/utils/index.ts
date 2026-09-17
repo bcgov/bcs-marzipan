@@ -15,18 +15,11 @@ export * from './report-settings';
 export * from './redact-activity-response';
 export {
   ACTIVITY_HISTORY_FIELD_ALIASES,
-  ACTIVITY_HISTORY_FILTER_FIELD_KEYS,
   ACTIVITY_HISTORY_NON_TRACKED_FIELDS,
-  buildActivityHistoryFieldFilterSections,
-  expandHistoryFieldKeysForMatch,
-  extractChangedFieldKeys,
   getActivityHistoryFieldLabel,
-  getViewableActivityHistoryFieldKeys,
-  historyEntryMatchesFieldFilter,
   normalizeHistoryChanges,
   normalizeHistoryFieldKey,
   redactActivityHistoryChanges,
-  type ActivityHistoryFieldFilterSection,
   type FieldScopeUser,
 } from '../activity-history-fields';
 export { isActivityListItemPayload } from '../schemas/activity-list-item.schema';

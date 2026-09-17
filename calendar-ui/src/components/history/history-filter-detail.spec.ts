@@ -12,14 +12,12 @@ describe('history-filter-detail', () => {
         searchQuery: 'cabinet',
         selectedActionTypes: ['updated'],
         selectedUserIds: ['1'],
-        selectedFields: ['title'],
         actorFilterOptions: [{ value: '1', label: 'Alice Tester' }],
       })
     ).toEqual([
       { label: 'Search', value: 'cabinet' },
       { label: 'Type', value: 'Updated' },
       { label: 'Updated by', value: 'Alice Tester' },
-      { label: 'Field', value: 'Title' },
     ]);
   });
 

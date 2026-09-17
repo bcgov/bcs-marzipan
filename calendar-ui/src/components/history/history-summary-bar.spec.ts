@@ -26,7 +26,6 @@ describe('history-summary-bar', () => {
         },
         selectedActionTypes: ['updated'],
         selectedUserIds: ['1'],
-        selectedFields: ['title'],
         selectedCategories: ['Media'],
         selectedLeadTeamIds: ['1'],
       })
@@ -36,7 +35,6 @@ describe('history-summary-bar', () => {
       'Date',
       'Type',
       'Updated by',
-      'Field',
       'Category',
       'Team',
     ]);

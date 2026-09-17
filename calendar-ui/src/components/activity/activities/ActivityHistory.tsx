@@ -17,9 +17,7 @@ import {
   GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,
   HISTORY_LIST_CONTENT_CLASSNAME,
   historyEntryMatchesActionTypes,
-  historyEntryMatchesChangedFields,
   historyEntryMatchesUserIds,
-  HistoryFieldFilterPanel,
   HistoryList,
   HistoryListEmptyState,
   HistoryListLoading,
@@ -64,7 +62,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAuth } from '@/hooks/useAuth';
 import { useAddActivityHistoryNote } from '@/hooks/useCalendar';
 import {
   useActivityStatuses,
@@ -162,20 +159,9 @@ export default function ActivityHistory({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedActionTypes, setSelectedActionTypes] = useState<string[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
   const addNoteMutation = useAddActivityHistoryNote();
-  const { user } = useAuth();
-
-  const historyViewer = useMemo(
-    () =>
-      user
-        ? { permissions: user.permissions, roleName: user.roleName }
-        : { permissions: [], roleName: 'Viewer' },
-    [user]
-  );
-
   const activityStatusesQuery = useActivityStatuses();
   const timeStatusesQuery = useTimeStatuses();
   const venueStatusesQuery = useVenueStatuses();
@@ -332,18 +318,9 @@ export default function ActivityHistory({
         (entry) =>
           matchesSearch(entry, searchQuery, lookupMaps) &&
           historyEntryMatchesActionTypes(entry, selectedActionTypes) &&
-          historyEntryMatchesUserIds(entry, selectedUserIds) &&
-          historyEntryMatchesChangedFields(entry, selectedFields, historyViewer)
+          historyEntryMatchesUserIds(entry, selectedUserIds)
       ),
-    [
-      entries,
-      historyViewer,
-      lookupMaps,
-      searchQuery,
-      selectedActionTypes,
-      selectedFields,
-      selectedUserIds,
-    ]
+    [entries, lookupMaps, searchQuery, selectedActionTypes, selectedUserIds]
   );
 
   const actorFilterOptions = useMemo(
@@ -355,14 +332,12 @@ export default function ActivityHistory({
     searchQuery,
     selectedActionTypes,
     selectedUserIds,
-    selectedFields,
   });
 
   const clearAllFilters = useCallback(() => {
     setSearchQuery('');
     setSelectedActionTypes([]);
     setSelectedUserIds([]);
-    setSelectedFields([]);
   }, []);
 
   const filterDetailLines = useMemo(
@@ -371,16 +346,9 @@ export default function ActivityHistory({
         searchQuery,
         selectedActionTypes,
         selectedUserIds,
-        selectedFields,
         actorFilterOptions,
       }),
-    [
-      actorFilterOptions,
-      searchQuery,
-      selectedActionTypes,
-      selectedFields,
-      selectedUserIds,
-    ]
+    [actorFilterOptions, searchQuery, selectedActionTypes, selectedUserIds]
   );
 
   const historyEntries = useMemo(
@@ -460,16 +428,14 @@ export default function ActivityHistory({
         searchQuery,
         selectedActionTypes,
         selectedUserIds,
-        selectedFields,
       }),
-    [searchQuery, selectedActionTypes, selectedFields, selectedUserIds]
+    [searchQuery, selectedActionTypes, selectedUserIds]
   );
 
   const showClearFilters = historySummaryHasClearableFilters({
     searchQuery,
     selectedActionTypes,
     selectedUserIds,
-    selectedFields,
   });
 
   const renderCountSummary = useCallback(
@@ -526,20 +492,6 @@ export default function ActivityHistory({
                 selectedValues={selectedUserIds}
                 onChange={setSelectedUserIds}
                 searchPlaceholder="Search users"
-              />
-              <HistoryMultiSelectFilter
-                label="Field"
-                options={[]}
-                selectedValues={selectedFields}
-                onChange={setSelectedFields}
-                renderPanel
-                panel={
-                  <HistoryFieldFilterPanel
-                    viewer={historyViewer}
-                    selectedFields={selectedFields}
-                    onSelectedFieldsChange={setSelectedFields}
-                  />
-                }
               />
             </div>
             <TableFilterSummary

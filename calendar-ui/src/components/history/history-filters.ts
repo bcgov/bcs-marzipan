@@ -1,8 +1,4 @@
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
-import {
-  historyEntryMatchesFieldFilter,
-  type FieldScopeUser,
-} from '@corpcal/shared/utils';
 
 export function historyEntryMatchesActionTypes(
   entry: ActivityHistoryEntry,
@@ -18,14 +14,6 @@ export function historyEntryMatchesUserIds(
 ): boolean {
   if (selectedUserIds.length === 0) return true;
   return selectedUserIds.includes(String(entry.userId));
-}
-
-export function historyEntryMatchesChangedFields(
-  entry: ActivityHistoryEntry,
-  selectedFields: string[],
-  viewer: FieldScopeUser
-): boolean {
-  return historyEntryMatchesFieldFilter(entry.changes, selectedFields, viewer);
 }
 
 export function buildHistoryActorFilterOptions(
@@ -49,7 +37,6 @@ export function historySummaryHasActiveFilters(state: {
   searchQuery?: string;
   selectedActionTypes?: string[];
   selectedUserIds?: string[];
-  selectedFields?: string[];
   dateRangeActive?: boolean;
   activeTab?: 'all' | 'mine' | 'team';
   selectedCategories?: string[];
@@ -60,7 +47,6 @@ export function historySummaryHasActiveFilters(state: {
   if (state.dateRangeActive) return true;
   if ((state.selectedActionTypes?.length ?? 0) > 0) return true;
   if ((state.selectedUserIds?.length ?? 0) > 0) return true;
-  if ((state.selectedFields?.length ?? 0) > 0) return true;
   if ((state.selectedCategories?.length ?? 0) > 0) return true;
   if ((state.selectedLeadTeamIds?.length ?? 0) > 0) return true;
   return false;
