@@ -3434,64 +3434,6 @@ export class ActivitiesService {
     });
   }
 
-  async getGlobalHistory(ctx?: RequestContextType): Promise<{
-    items: GlobalActivityHistoryEntry[];
-    page: number;
-    pageSize: number;
-    hasNext: boolean;
-    totalItems: number;
-  }> {
-    const visibleActivityIds = await this.getVisibleActivityIds(ctx);
-    // null = admin/bypass (all visible); empty array = no visible activities
-    if (visibleActivityIds !== null && visibleActivityIds.length === 0) {
-      return {
-        items: [],
-        page: 1,
-        pageSize: 50,
-        hasNext: false,
-        totalItems: 0,
-      };
-    }
-
-    // Default scope: today in corp Pacific
-    const todayPacific = pacificCalendarDateFromInstant(Date.now());
-    const todayDateStr =
-      todayPacific ??
-      `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}-${String(new Date().getUTCDate()).padStart(2, '0')}`;
-
-    const historyPage =
-      await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
-        visibleActivityIds,
-        {
-          startDate: todayDateStr,
-          endDate: todayDateStr,
-          page: 1,
-          pageSize: 50,
-          viewer: this.toHistoryViewer(ctx),
-        }
-      );
-
-    if (historyPage.items.length === 0) {
-      return {
-        items: [],
-        page: 1,
-        pageSize: 50,
-        hasNext: false,
-        totalItems: 0,
-      };
-    }
-
-    const items = await this.enrichHistoryPage(historyPage.items);
-
-    return {
-      items,
-      page: 1,
-      pageSize: 50,
-      hasNext: historyPage.hasNext,
-      totalItems: historyPage.totalItems ?? 0,
-    };
-  }
-
   async getGlobalHistoryPaged(
     opts: {
       startDate?: string;

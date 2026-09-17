@@ -338,28 +338,6 @@ export class ActivitiesController {
     const parsedCategories = parseCommaSeparatedStrings(categories);
     const parsedLeadTeamIds = parseCommaSeparatedIds(leadTeamIds);
 
-    // If any pagination, explicit dates, a query, filters, or an explicit order are provided, return a paged response
-    const hasPagingOrDate =
-      startDate !== undefined ||
-      endDate !== undefined ||
-      page !== undefined ||
-      pageSize !== undefined ||
-      query !== undefined ||
-      order !== undefined ||
-      userId !== undefined ||
-      userIds !== undefined ||
-      actionTypes !== undefined ||
-      categories !== undefined ||
-      leadTeamIds !== undefined;
-
-    if (!hasPagingOrDate) {
-      const result = await this.activitiesService.getGlobalHistory(ctx);
-      return {
-        success: true,
-        data: result,
-      };
-    }
-
     const result = await this.activitiesService.getGlobalHistoryPaged(
       {
         startDate,

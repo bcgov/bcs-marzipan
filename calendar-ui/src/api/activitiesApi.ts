@@ -215,12 +215,8 @@ export async function fetchGlobalActivityHistoryPaged(params?: {
   leadTeamIds?: number[];
 }): Promise<PagedResult<GlobalActivityHistoryEntry>> {
   const serializedParams: Record<string, string | number | undefined> = {};
-  if (params == null) {
-    const res = await api.get('/activities/global-history', { params: {} });
-    return normalizeGlobalHistoryPagedResponse(res.data);
-  }
 
-  for (const [key, value] of Object.entries(params)) {
+  for (const [key, value] of Object.entries(params ?? {})) {
     if (value === undefined) continue;
     if (Array.isArray(value)) {
       serializedParams[key] = value.join(',');

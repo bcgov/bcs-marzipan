@@ -693,7 +693,7 @@ describe('ActivitiesService', () => {
     });
   });
 
-  describe('getGlobalHistory', () => {
+  describe('getGlobalHistoryPaged', () => {
     it('passes viewer to history paging for field redaction', async () => {
       const ctx = createHistoryRequestContext({
         id: 7,
@@ -704,7 +704,7 @@ describe('ActivitiesService', () => {
       vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
       vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
 
-      await service.getGlobalHistory(ctx);
+      await service.getGlobalHistoryPaged({}, ctx);
 
       expect(
         mockActivityHistoryService.getActivityHistoryForActivityIdsPaged
@@ -715,9 +715,7 @@ describe('ActivitiesService', () => {
         })
       );
     });
-  });
 
-  describe('getGlobalHistoryPaged', () => {
     it('passes viewer to history paging', async () => {
       const ctx = createHistoryRequestContext({
         id: 7,
