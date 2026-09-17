@@ -119,7 +119,7 @@ export function FreeformCombobox({
   sections,
   value,
   onChange,
-  placeholder = 'Select an option...',
+  placeholder = 'Select or type...',
   searchPlaceholder = 'Search...',
   emptyMessage = 'No results found.',
   freeformLabel = 'Other',

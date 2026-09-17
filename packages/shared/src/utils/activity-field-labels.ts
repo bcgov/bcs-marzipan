@@ -73,7 +73,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   strategy: 'Strategy',
   isIssue: 'Issue',
   isAllDay: 'All day',
-  isConfidential: 'Confidential',
+  isConfidential: 'Confidential (details not for look ahead)',
   venueAddress: 'Venue address',
   startDate: 'Start date',
   endDate: 'End date',
@@ -101,7 +101,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   venueName: 'Venue',
   addressLine1: 'Address',
   addressLine2: 'Address details',
-  city: 'City',
+  city: 'City/town/area',
   provinceOrState: 'Province/state',
   country: 'Country',
 };

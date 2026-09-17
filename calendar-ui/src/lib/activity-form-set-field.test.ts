@@ -16,6 +16,15 @@ import {
 } from './activity-form-set-field';
 
 describe('setActivityFormFieldValue', () => {
+  it('prefills British Columbia and Canada as the default venue location', () => {
+    const values = getDefaultFormValues();
+
+    expect(values.venueAddress).toMatchObject({
+      provinceOrState: 'British Columbia',
+      country: 'Canada',
+    });
+  });
+
   it('calls setValue with ACTIVITY_FIELD_SET_OPTS and triggers field validation', () => {
     const { result } = renderHook(() =>
       useForm<ActivityFormData>({

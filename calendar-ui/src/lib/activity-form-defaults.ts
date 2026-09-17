@@ -30,8 +30,8 @@ export function getDefaultFormValues(): Partial<ActivityFormData> {
       addressLine1: null,
       addressLine2: null,
       city: null,
-      provinceOrState: null,
-      country: null,
+      provinceOrState: 'British Columbia',
+      country: 'Canada',
     },
   };
 }

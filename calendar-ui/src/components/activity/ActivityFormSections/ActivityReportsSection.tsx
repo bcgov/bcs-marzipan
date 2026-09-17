@@ -88,7 +88,7 @@ export const ActivityReportsSection: React.FC = () => {
                         setActivityFormFieldValue(form, field.name, json)
                       }
                       onBlur={field.onBlur}
-                      placeholder="Enter executive summary"
+                      placeholder=""
                       maxLength={ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH}
                       readOnly={lookAheadScope.readOnly}
                       disabled={lookAheadScope.fieldScopeDisabled}

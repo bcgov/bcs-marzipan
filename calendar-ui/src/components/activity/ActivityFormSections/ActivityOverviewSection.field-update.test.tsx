@@ -149,6 +149,17 @@ function ActivityOverviewSectionHarness({
 }
 
 describe('ActivityOverviewSection field updates after hydration', () => {
+  it('renders summary and significance as plain textareas', () => {
+    render(<ActivityOverviewSectionHarness />);
+
+    expect(
+      screen.getByRole('textbox', { name: /Summary/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('textbox', { name: /Significance/i })
+    ).toBeInTheDocument();
+  });
+
   it('marks isIssue dirty when the Issue checkbox is clicked', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;

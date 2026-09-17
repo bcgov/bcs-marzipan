@@ -55,7 +55,6 @@ import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
-import { RichTextField } from '@/components/ui/rich-text-field';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -235,8 +234,8 @@ function LeadOrganizationField({
                 }))}
                 value={comboboxValue}
                 onChange={handleChange}
-                placeholder="Select lead organization"
-                searchPlaceholder="Search organizations..."
+                placeholder=""
+                searchPlaceholder=""
                 emptyMessage="No organizations found."
                 freeformLabel="New org"
                 freeformDescription=""
@@ -395,10 +394,7 @@ function LeadTeamField({
                 itemToStringValue={(o: OptionItem) => o.label}
                 readOnly={readOnly}
               >
-                <ComboboxInput
-                  placeholder="Select lead team"
-                  disabled={showOptionsLoading}
-                />
+                <ComboboxInput placeholder="" disabled={showOptionsLoading} />
                 <ComboboxContent>
                   <ComboboxEmpty>
                     {showOptionsLoading
@@ -599,7 +595,7 @@ export const ActivityOverviewSection: React.FC<
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Select categories..." />
+                          <ComboboxChipsInput placeholder="" />
                         </>
                       )}
                     </ComboboxValue>
@@ -657,7 +653,7 @@ export const ActivityOverviewSection: React.FC<
             <FormControl data-field={field.name}>
               <Textarea
                 rows={2}
-                placeholder="Enter activity title"
+                placeholder=""
                 readOnly={readOnly}
                 {...field}
                 value={field.value ?? ''}
@@ -683,18 +679,14 @@ export const ActivityOverviewSection: React.FC<
                 />
               </>
             </FormLabel>
-            <FormControl>
-              <RichTextField
-                name={field.name}
-                value={field.value ?? ''}
-                onChange={(json) =>
-                  setActivityFormFieldValue(form, field.name, json)
-                }
-                onBlur={field.onBlur}
-                placeholder="Enter activity summary"
-                maxLength={ACTIVITY_SUMMARY_MAX_LENGTH}
+            <FormControl data-field={field.name}>
+              <Textarea
+                rows={4}
+                placeholder=""
                 readOnly={readOnly}
-                data-field={field.name}
+                {...field}
+                value={field.value ?? ''}
+                maxLength={ACTIVITY_SUMMARY_MAX_LENGTH}
               />
             </FormControl>
             <FormMessage />
@@ -750,9 +742,6 @@ export const ActivityOverviewSection: React.FC<
                   />
                 </>
               </FormLabel>
-              <p className="text-muted-foreground text-xs">
-                Details not for Look Ahead
-              </p>
             </div>
           </FormItem>
         )}
@@ -800,18 +789,14 @@ export const ActivityOverviewSection: React.FC<
                 />
               </>
             </FormLabel>
-            <FormControl>
-              <RichTextField
-                name={field.name}
-                value={field.value ?? ''}
-                onChange={(json) =>
-                  setActivityFormFieldValue(form, field.name, json)
-                }
-                onBlur={field.onBlur}
-                placeholder="Enter significance"
-                maxLength={ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH}
+            <FormControl data-field={field.name}>
+              <Textarea
+                rows={4}
+                placeholder=""
                 readOnly={readOnly}
-                data-field={field.name}
+                {...field}
+                value={field.value ?? ''}
+                maxLength={ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH}
               />
             </FormControl>
             <FormMessage />
@@ -871,7 +856,7 @@ export const ActivityOverviewSection: React.FC<
                         !pitchStatusScope.fieldScopeDisabled
                       }
                     >
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue placeholder="" />
                     </FormSelectTrigger>
                   </FormControl>
                 </ActivityFieldScopePermissionTooltip>
@@ -978,7 +963,7 @@ export const ActivityOverviewSection: React.FC<
                 <ActivityFieldScopePermissionTooltip scope="notes">
                   <FormControl data-field={field.name}>
                     <Textarea
-                      placeholder="Enter notes"
+                      placeholder=""
                       readOnly={notesScope.readOnly}
                       disabled={notesScope.fieldScopeDisabled}
                       rows={4}
@@ -1047,7 +1032,7 @@ export const ActivityOverviewSection: React.FC<
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Select tags..." />
+                          <ComboboxChipsInput placeholder="" />
                         </>
                       )}
                     </ComboboxValue>

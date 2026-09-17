@@ -316,7 +316,7 @@ export function ActivityScheduleSection({
                       className={STATUS_SELECT_MIN_WIDTH}
                       aria-label={getActivityFieldLabel(statusField.name)}
                     >
-                      <SelectValue placeholder="Date status" />
+                      <SelectValue placeholder="" />
                     </FormSelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -515,7 +515,7 @@ export function ActivityScheduleSection({
                       className={STATUS_SELECT_MIN_WIDTH}
                       aria-label={getActivityFieldLabel(statusField.name)}
                     >
-                      <SelectValue placeholder="Time status" />
+                      <SelectValue placeholder="" />
                     </FormSelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -568,7 +568,7 @@ export function ActivityScheduleSection({
             </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
-                placeholder="Enter scheduling and approval considerations"
+                placeholder=""
                 readOnly={readOnly}
                 rows={4}
                 maxLength={ACTIVITY_SCHEDULING_NOTES_MAX_LENGTH}

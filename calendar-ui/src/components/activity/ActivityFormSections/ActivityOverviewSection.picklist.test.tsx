@@ -135,12 +135,12 @@ function PicklistHarness({
 }
 
 async function openCategoryPicklist(user: ReturnType<typeof userEvent.setup>) {
-  const input = screen.getByPlaceholderText('Select categories...');
+  const input = screen.getByRole('combobox', { name: /Categories/i });
   await user.click(input);
 }
 
 async function openTagPicklist(user: ReturnType<typeof userEvent.setup>) {
-  const input = screen.getByPlaceholderText('Select tags...');
+  const input = screen.getByRole('combobox', { name: /Tags/i });
   await user.click(input);
 }
 
