@@ -39,6 +39,7 @@ describe('HistoryList', () => {
                 {
                   key: 'title-0',
                   kind: 'transition',
+                  field: 'title',
                   label: 'Title',
                   oldValue: 'Old title',
                   newValue: 'New title',
@@ -55,10 +56,9 @@ describe('HistoryList', () => {
     expect(
       screen.getByRole('link', { name: 'ACT-123 Cabinet announcement' })
     ).toHaveAttribute('href', '/activity/123');
-    expect(screen.getByRole('button', { name: '1 change' })).toHaveAttribute(
-      'aria-expanded',
-      'false'
-    );
+    expect(
+      screen.getByRole('button', { name: 'Show 1 change' })
+    ).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('Old title')).not.toBeInTheDocument();
   });
 
@@ -92,21 +92,17 @@ describe('HistoryList', () => {
     );
 
     const changeButtons = screen.getAllByRole('button', {
-      name: '1 change',
+      name: 'Show 1 change',
     });
     await user.click(changeButtons[0]);
     expect(screen.getByText('First change')).toBeInTheDocument();
     expect(screen.queryByText('Second change')).not.toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole('button', { name: 'Expand all changes' })
-    );
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
     expect(screen.getByText('First change')).toBeInTheDocument();
     expect(screen.getByText('Second change')).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole('button', { name: 'Collapse all changes' })
-    );
+    await user.click(screen.getByRole('button', { name: 'Collapse all' }));
     expect(screen.queryByText('First change')).not.toBeInTheDocument();
     expect(screen.queryByText('Second change')).not.toBeInTheDocument();
   });
@@ -124,10 +120,91 @@ describe('HistoryList', () => {
       </MemoryRouter>
     );
 
-    await user.click(screen.getByRole('button', { name: 'Expand all notes' }));
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
 
     expect(
       screen.queryByRole('button', { name: 'Show less' })
     ).not.toBeInTheDocument();
+  });
+
+  it('shows note and changes in a combined disclosure in compact variant', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <HistoryList
+          variant="compact"
+          entries={[
+            entry(1, {
+              notes: 'Compact note text',
+              changes: [
+                {
+                  key: 'title-0',
+                  kind: 'transition',
+                  field: 'title',
+                  label: 'Title',
+                  oldValue: 'Old title',
+                  newValue: 'New title',
+                },
+              ],
+            }),
+            entry(2, { notes: 'Note only entry' }),
+          ]}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText('Compact note text')).not.toBeInTheDocument();
+    expect(screen.queryByText('Old title')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Expand all' })
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Show note and 1 change' })
+    );
+    expect(screen.getByText('Compact note text')).toBeInTheDocument();
+    expect(screen.getByText('Old title')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Hide note and 1 change' })
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Show note' }));
+    expect(screen.getByText('Note only entry')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Hide note' })
+    ).toBeInTheDocument();
+  });
+
+  it('expands notes and changes together from the main expand-all button', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <HistoryList
+          variant="compact"
+          entries={[
+            entry(1, {
+              notes: 'Compact note text',
+              changes: [
+                {
+                  key: 'title-0',
+                  kind: 'transition',
+                  field: 'title',
+                  label: 'Title',
+                  oldValue: 'Old title',
+                  newValue: 'New title',
+                },
+              ],
+            }),
+          ]}
+        />
+      </MemoryRouter>
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    expect(screen.getByText('Compact note text')).toBeInTheDocument();
+    expect(screen.getByText('Old title')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Hide note and 1 change' })
+    ).toBeInTheDocument();
   });
 });

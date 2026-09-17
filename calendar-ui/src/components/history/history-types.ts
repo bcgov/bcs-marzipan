@@ -17,6 +17,7 @@ export type HistoryChangeViewModel =
   | {
       key: string;
       kind: 'transition';
+      field: string;
       label: string;
       oldValue: string;
       newValue: string;
@@ -26,6 +27,8 @@ export type HistoryChangeViewModel =
       kind: 'message';
       message: string;
     };
+
+export type HistoryListVariant = 'default' | 'compact';
 
 export type HistoryEntryViewModel = {
   id: number;

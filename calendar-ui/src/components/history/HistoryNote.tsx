@@ -2,6 +2,8 @@ import { useLayoutEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/utils';
 
+import { HistoryNoteIcon, HistoryNoteLeading } from './HistoryNoteIcon';
+
 type HistoryNoteProps = {
   text: string;
   expanded: boolean;
@@ -36,32 +38,40 @@ export function HistoryNote({
   return (
     <div
       className={cn(
-        'text-foreground min-w-0 text-sm leading-5',
-        !expanded && 'flex items-baseline gap-1'
+        'text-foreground flex min-w-0 gap-1.5 text-[13px] leading-4.5',
+        expanded ? 'items-start' : 'items-center'
       )}
     >
-      <span
-        ref={textRef}
+      {expanded ? <HistoryNoteLeading /> : <HistoryNoteIcon />}
+      <div
         className={cn(
-          'min-w-0',
-          expanded ? 'block whitespace-pre-wrap' : 'flex-1 truncate'
+          'min-w-0 flex-1',
+          !expanded && 'flex items-baseline gap-1'
         )}
       >
-        {text}
-      </span>
-      {collapsible && (
-        <button
-          type="button"
-          aria-expanded={expanded}
-          onClick={() => onExpandedChange(!expanded)}
+        <span
+          ref={textRef}
           className={cn(
-            'text-primary cursor-pointer font-medium hover:underline',
-            expanded ? 'mt-0.5 block' : 'shrink-0'
+            'min-w-0',
+            expanded ? 'block whitespace-pre-wrap' : 'flex-1 truncate'
           )}
         >
-          {expanded ? 'Show less' : 'Show more'}
-        </button>
-      )}
+          {text}
+        </span>
+        {collapsible && (
+          <button
+            type="button"
+            aria-expanded={expanded}
+            onClick={() => onExpandedChange(!expanded)}
+            className={cn(
+              'text-primary cursor-pointer font-medium hover:underline',
+              expanded ? 'mt-0.5 block' : 'shrink-0'
+            )}
+          >
+            {expanded ? 'Show less' : 'Show more'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

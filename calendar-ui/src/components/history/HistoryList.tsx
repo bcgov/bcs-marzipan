@@ -6,11 +6,16 @@ import {
 } from '@/lib/datetime-utils';
 import { cn } from '@/lib/utils';
 
-import type { HistoryEntryViewModel } from './history-types';
+import { historyDetailsHasDisclosure } from './history-details-label';
+import type {
+  HistoryEntryViewModel,
+  HistoryListVariant,
+} from './history-types';
 import { HistoryEntry } from './HistoryEntry';
 
 type HistoryListProps = {
   entries: HistoryEntryViewModel[];
+  variant?: HistoryListVariant;
   className?: string;
 };
 
@@ -33,22 +38,49 @@ function pruneIdSet(current: Set<number>, validIds: Set<number>): Set<number> {
   return next;
 }
 
-export function HistoryList({ entries, className }: HistoryListProps) {
+function entryHasInlineNotes(
+  entry: HistoryEntryViewModel,
+  variant: HistoryListVariant
+): boolean {
+  return variant === 'default' && Boolean(entry.notes?.trim());
+}
+
+function entryHasDisclosure(
+  entry: HistoryEntryViewModel,
+  variant: HistoryListVariant
+): boolean {
+  if (variant === 'compact') {
+    return historyDetailsHasDisclosure(
+      entry.changes.length,
+      Boolean(entry.notes?.trim())
+    );
+  }
+  return entry.changes.length > 0;
+}
+
+export function HistoryList({
+  entries,
+  variant = 'default',
+  className,
+}: HistoryListProps) {
   const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
   const [expandedChanges, setExpandedChanges] = useState<Set<number>>(
     new Set()
   );
 
-  const noteIds = useMemo(
-    () => entries.filter((entry) => entry.notes).map((entry) => entry.id),
-    [entries]
-  );
-  const changeIds = useMemo(
+  const inlineNoteIds = useMemo(
     () =>
       entries
-        .filter((entry) => entry.changes.length > 0)
+        .filter((entry) => entryHasInlineNotes(entry, variant))
         .map((entry) => entry.id),
-    [entries]
+    [entries, variant]
+  );
+  const disclosureIds = useMemo(
+    () =>
+      entries
+        .filter((entry) => entryHasDisclosure(entry, variant))
+        .map((entry) => entry.id),
+    [entries, variant]
   );
   const validIds = useMemo(
     () => new Set(entries.map((entry) => entry.id)),
@@ -80,59 +112,54 @@ export function HistoryList({ entries, className }: HistoryListProps) {
     ).filter(([, bucketEntries]) => bucketEntries.length > 0);
   }, [entries]);
 
-  const allNotesExpanded =
-    noteIds.length > 0 && noteIds.every((id) => expandedNotes.has(id));
-  const allChangesExpanded =
-    changeIds.length > 0 && changeIds.every((id) => expandedChanges.has(id));
+  const allInlineNotesExpanded =
+    inlineNoteIds.length === 0 ||
+    inlineNoteIds.every((id) => expandedNotes.has(id));
+  const allDisclosuresExpanded =
+    disclosureIds.length === 0 ||
+    disclosureIds.every((id) => expandedChanges.has(id));
+  const allExpanded = allInlineNotesExpanded && allDisclosuresExpanded;
+  const hasExpandableContent =
+    inlineNoteIds.length > 0 || disclosureIds.length > 0;
+
+  const toggleAllExpanded = () => {
+    if (allExpanded) {
+      setExpandedNotes(new Set());
+      setExpandedChanges(new Set());
+      return;
+    }
+    setExpandedNotes(new Set(inlineNoteIds));
+    setExpandedChanges(new Set(disclosureIds));
+  };
 
   return (
     <div className={cn('space-y-4', className)}>
-      {(noteIds.length > 0 || changeIds.length > 0) && (
+      {hasExpandableContent ? (
         <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-          {noteIds.length > 0 && (
-            <button
-              type="button"
-              onClick={() =>
-                setExpandedNotes(
-                  allNotesExpanded ? new Set() : new Set(noteIds)
-                )
-              }
-              className="text-primary text-xs font-medium hover:underline"
-            >
-              {allNotesExpanded ? 'Collapse all notes' : 'Expand all notes'}
-            </button>
-          )}
-          {changeIds.length > 0 && (
-            <button
-              type="button"
-              onClick={() =>
-                setExpandedChanges(
-                  allChangesExpanded ? new Set() : new Set(changeIds)
-                )
-              }
-              className="text-primary text-xs font-medium hover:underline"
-            >
-              {allChangesExpanded
-                ? 'Collapse all changes'
-                : 'Expand all changes'}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={toggleAllExpanded}
+            className="text-primary text-xs font-medium hover:underline"
+          >
+            {allExpanded ? 'Collapse all' : 'Expand all'}
+          </button>
         </div>
-      )}
+      ) : null}
 
       {groups.map(([heading, groupEntries]) => (
         <section key={heading} aria-labelledby={`history-${heading}`}>
           <h2
             id={`history-${heading}`}
-            className="text-muted-foreground border-border mb-1 border-b pb-1 text-xs font-semibold tracking-wide uppercase"
+            className="text-muted-foreground mb-1 text-sm font-semibold tracking-wide"
           >
             {heading}
           </h2>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {groupEntries.map((entry) => (
               <HistoryEntry
                 key={entry.id}
                 entry={entry}
+                variant={variant}
                 notesExpanded={expandedNotes.has(entry.id)}
                 changesExpanded={expandedChanges.has(entry.id)}
                 onNotesExpandedChange={(expanded) =>
