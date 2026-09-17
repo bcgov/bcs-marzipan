@@ -5,7 +5,6 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { History, MoreHorizontal, Pencil } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -32,13 +31,6 @@ import {
   TableFilterSummary,
 } from '@/components/table/TableSummaryBar';
 import { TeamManagementFilters } from '@/components/teams/TeamManagementFilters';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import {
@@ -49,7 +41,7 @@ import {
 
 const SKELETON_ROW_COUNT = 8;
 const SKELETON_DELAY_MS = 300;
-const TABLE_COLUMN_COUNT = 7;
+const TABLE_COLUMN_COUNT = 6;
 
 const DEFAULT_SORT_KEY = 'displayName';
 const DEFAULT_SORT_DIRECTION = 'asc' as const;
@@ -77,16 +69,6 @@ function compareTeams(
   }
 }
 
-interface TeamsTabContentProps {
-  canCreate: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  onAddTeam: () => void;
-  onEditTeam: (team: TeamListItem) => void;
-  onViewHistory: (team: TeamListItem) => void;
-  onDeactivate?: (team: TeamListItem) => void;
-}
-
 function statusBadge(isActive: boolean) {
   return (
     <span
@@ -101,15 +83,7 @@ function statusBadge(isActive: boolean) {
   );
 }
 
-export function TeamsTabContent({
-  // canCreate,
-  canEdit,
-  canDelete,
-  // onAddTeam,
-  onEditTeam,
-  onViewHistory,
-  onDeactivate,
-}: TeamsTabContentProps) {
+export function TeamsTabContent() {
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState('');
   const [sortKey, setSortKey] = useState<TeamSortKey | null>(DEFAULT_SORT_KEY);
@@ -266,13 +240,12 @@ export function TeamsTabContent({
             aria-colcount={TABLE_COLUMN_COUNT}
           >
             <colgroup>
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '26%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '11%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '28%' }} />
               <col style={{ width: '12%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
             </colgroup>
             <thead className={tableThead}>
               <tr>
@@ -310,7 +283,6 @@ export function TeamsTabContent({
                 </th>
                 <th className={tableTh}>Ministry</th>
                 <th className={tableTh}>Status</th>
-                <th className={tableTh}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -334,9 +306,6 @@ export function TeamsTabContent({
                     </td>
                     <td className={tableTd}>
                       <Skeleton className="h-5 w-14" />
-                    </td>
-                    <td className={tableTd}>
-                      <Skeleton className="h-8 w-8 rounded" />
                     </td>
                   </tr>
                 ))
@@ -393,44 +362,6 @@ export function TeamsTabContent({
                         {team.ministryName ?? '-'}
                       </td>
                       <td className={tableTd}>{statusBadge(team.isActive)}</td>
-                      <td className={tableTd}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              aria-label="Actions"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {canEdit && (
-                              <DropdownMenuItem
-                                onClick={() => onEditTeam(team)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem
-                              onClick={() => onViewHistory(team)}
-                            >
-                              <History className="h-4 w-4" />
-                              View history
-                            </DropdownMenuItem>
-                            {canDelete && team.isActive && onDeactivate && (
-                              <DropdownMenuItem
-                                onClick={() => onDeactivate(team)}
-                                variant="destructive"
-                              >
-                                Deactivate
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
                     </tr>
                   );
                 })

@@ -1,18 +1,25 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Edit, Loader2, Search } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
-import { fetchTeamById } from '@/api/teamsApi';
+import { fetchTeamById, updateTeam } from '@/api/teamsApi';
 import { fetchUserActivityCounts, fetchUsers } from '@/api/usersApi';
 import { PageContainer } from '@/components/layout';
 import AddTeamMemberModal from '@/components/teams/AddTeamMemberModal';
 import RemoveTeamMemberModal from '@/components/teams/RemoveTeamMemberModal';
+import { TeamChangeLogTabContent } from '@/components/teams/TeamChangeLogTabContent';
 import { TeamEditModal } from '@/components/teams/TeamEditModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
+import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import {
+  resolveTeamDisplayName,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 
 interface RemovableTeamMember {
   userId: number;
@@ -81,7 +88,33 @@ export function TeamDetails() {
   const [memberToRemove, setMemberToRemove] =
     useState<RemovableTeamMember | null>(null);
   const [memberSearch, setMemberSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'members' | 'change-log'>(
+    'members'
+  );
   const { hasPermission } = useAuth();
+  const canEditTeam = hasPermission(PERMISSIONS.TEAMS.EDIT);
+  const canDeleteTeam = hasPermission(PERMISSIONS.TEAMS.DELETE);
+
+  const deactivateTeamMutation = useMutation({
+    mutationFn: () => updateTeam(id, { isActive: false }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
+      void queryClient.invalidateQueries({ queryKey: ['team', id] });
+      showEntityToast('success', 'Team deactivated', {
+        description: team ? resolveTeamDisplayName(team) : undefined,
+        id: `team-deactivated-${id}`,
+      });
+      void navigate('/users?tab=teams');
+    },
+    onError: (err: Error) => {
+      showEntityToast('error', 'Could not deactivate team', {
+        description: team
+          ? `${resolveTeamDisplayName(team)} — ${err.message || 'Deactivate failed'}`
+          : err.message || 'Deactivate failed',
+        id: `team-deactivated-${id}`,
+      });
+    },
+  });
 
   if (isLoading) {
     return (
@@ -152,17 +185,30 @@ export function TeamDetails() {
               >
                 {team.displayName ?? team.name}
               </h2>
-              {hasPermission(PERMISSIONS.TEAMS.EDIT) ? (
-                <div className="absolute top-1 right-0">
-                  <Button
-                    size="sm"
-                    onClick={() => setShowEditTeam(true)}
-                    className="focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:ring-2"
-                    aria-label="Edit team"
-                  >
-                    <Edit className="h-4 w-4" aria-hidden />
-                    Edit
-                  </Button>
+              {canEditTeam || (canDeleteTeam && team.isActive) ? (
+                <div className="absolute top-1 right-0 flex items-center gap-2">
+                  {canEditTeam ? (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowEditTeam(true)}
+                      className="focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:ring-2"
+                      aria-label="Edit team"
+                    >
+                      <Edit className="h-4 w-4" aria-hidden />
+                      Edit
+                    </Button>
+                  ) : null}
+                  {canDeleteTeam && team.isActive ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => deactivateTeamMutation.mutate()}
+                      disabled={deactivateTeamMutation.isPending}
+                      className="focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:ring-2"
+                    >
+                      Deactivate
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -227,142 +273,165 @@ export function TeamDetails() {
             </div>
           </div>
 
-          <div className="max-w-5xl">
-            <div className="flex items-center justify-between">
-              <h3
-                style={{
-                  color: 'var(--NeutralForeground1-Rest, #000000)',
-                  fontFamily: 'var(--Typescale-Title-3-font-family, "BC Sans")',
-                  fontSize: 'var(--Typescale-Title-3-font-size, 24px)',
-                  fontStyle: 'normal',
-                  fontWeight: 700,
-                  lineHeight: 'var(--Typescale-Title-3-line-height, 32px)',
-                }}
-              >
-                Team members
-              </h3>
-              {hasPermission(PERMISSIONS.USERS.EDIT) ? (
-                <Button size="sm" onClick={() => setShowAddMember(true)}>
-                  + Add member
-                </Button>
-              ) : null}
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(value as 'members' | 'change-log')
+            }
+            className="space-y-4"
+          >
+            <div className="mb-0">
+              <TabsList className="mb-0" variant="line" size="med">
+                <TabsTrigger value="members">Team members</TabsTrigger>
+                <TabsTrigger value="change-log">Change log</TabsTrigger>
+              </TabsList>
             </div>
 
-            <div className="mt-3 space-y-3">
-              <div className="relative max-w-sm">
-                <Search
-                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
-                  aria-hidden
-                />
-                <Input
-                  placeholder="Search"
-                  value={memberSearch}
-                  onChange={(e) => setMemberSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <p className="text-slate-700">
-                Showing {filteredMembers.length} users
-              </p>
-            </div>
+            <TabsContent value="members" className="mt-0">
+              <div className="max-w-5xl">
+                <div className="flex items-center justify-between">
+                  <h3
+                    style={{
+                      color: 'var(--NeutralForeground1-Rest, #000000)',
+                      fontFamily:
+                        'var(--Typescale-Title-3-font-family, "BC Sans")',
+                      fontSize: 'var(--Typescale-Title-3-font-size, 24px)',
+                      fontStyle: 'normal',
+                      fontWeight: 700,
+                      lineHeight: 'var(--Typescale-Title-3-line-height, 32px)',
+                    }}
+                  >
+                    Team members
+                  </h3>
+                  {hasPermission(PERMISSIONS.USERS.EDIT) ? (
+                    <Button size="sm" onClick={() => setShowAddMember(true)}>
+                      + Add member
+                    </Button>
+                  ) : null}
+                </div>
 
-            <div className="mt-3 overflow-x-auto rounded-md border">
-              <table className="w-full text-left">
-                <thead className="bg-slate-50 text-sm text-slate-700">
-                  <tr>
-                    <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Email</th>
-                    <th className="px-3 py-2">Role</th>
-                    <th className="px-3 py-2">Teams</th>
-                    <th className="px-3 py-2">Activities</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">Last updated</th>
-                    <th className="px-3 py-2"> </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMembers.length > 0 ? (
-                    filteredMembers.map((m) => (
-                      <tr key={m.userId} className="border-t">
-                        <td className="px-3 py-2">
-                          {m.userName ?? `User ${m.userId}`}
-                        </td>
-                        <td className="px-3 py-2 text-slate-700">
-                          {userById.get(m.userId)?.adEmail ?? '-'}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className="rounded-md border px-2 py-1 text-sm text-slate-700">
-                            {m.role}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className="rounded-md bg-slate-100 px-2 py-1 text-sm text-slate-700">
-                            {team.displayName ?? team.name}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-slate-700">
-                          {(() => {
-                            if (
-                              isMemberActivityCountsLoading ||
-                              isMemberActivityCountsFetching
-                            ) {
-                              return '...';
-                            }
-                            if (isMemberActivityCountsError) return '-';
-                            return `${String(
-                              memberActivityCounts?.get(m.userId) ?? 0
-                            )} active`;
-                          })()}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`rounded px-2 py-0.5 text-xs font-medium ${
-                              userIsActiveById.get(m.userId)
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {userIsActiveById.get(m.userId)
-                              ? 'Active'
-                              : 'Inactive'}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-slate-700">
-                          {formatMemberLastUpdated(m)}
-                        </td>
-                        <td className="px-3 py-2">
-                          {hasPermission(PERMISSIONS.USERS.EDIT) ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:ring-2"
-                              onClick={() =>
-                                setMemberToRemove({
-                                  userId: m.userId,
-                                  userName: m.userName ?? `User ${m.userId}`,
-                                })
-                              }
-                            >
-                              Remove
-                            </Button>
-                          ) : null}
-                        </td>
+                <div className="mt-3 space-y-3">
+                  <div className="relative max-w-sm">
+                    <Search
+                      className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
+                      aria-hidden
+                    />
+                    <Input
+                      placeholder="Search"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <p className="text-slate-700">
+                    Showing {filteredMembers.length} users
+                  </p>
+                </div>
+
+                <div className="mt-3 overflow-x-auto rounded-md border">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 text-sm text-slate-700">
+                      <tr>
+                        <th className="px-3 py-2">Name</th>
+                        <th className="px-3 py-2">Email</th>
+                        <th className="px-3 py-2">Role</th>
+                        <th className="px-3 py-2">Teams</th>
+                        <th className="px-3 py-2">Activities</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2">Last updated</th>
+                        <th className="px-3 py-2"> </th>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td
-                        colSpan={8}
-                        className="px-3 py-6 text-center text-slate-500"
-                      >
-                        No members
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                    </thead>
+                    <tbody>
+                      {filteredMembers.length > 0 ? (
+                        filteredMembers.map((m) => (
+                          <tr key={m.userId} className="border-t">
+                            <td className="px-3 py-2">
+                              {m.userName ?? `User ${m.userId}`}
+                            </td>
+                            <td className="px-3 py-2 text-slate-700">
+                              {userById.get(m.userId)?.adEmail ?? '-'}
+                            </td>
+                            <td className="px-3 py-2">
+                              <span className="rounded-md border px-2 py-1 text-sm text-slate-700">
+                                {m.role}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2">
+                              <span className="rounded-md bg-slate-100 px-2 py-1 text-sm text-slate-700">
+                                {team.displayName ?? team.name}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-slate-700">
+                              {(() => {
+                                if (
+                                  isMemberActivityCountsLoading ||
+                                  isMemberActivityCountsFetching
+                                ) {
+                                  return '...';
+                                }
+                                if (isMemberActivityCountsError) return '-';
+                                return `${String(
+                                  memberActivityCounts?.get(m.userId) ?? 0
+                                )} active`;
+                              })()}
+                            </td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`rounded px-2 py-0.5 text-xs font-medium ${
+                                  userIsActiveById.get(m.userId)
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-slate-100 text-slate-700'
+                                }`}
+                              >
+                                {userIsActiveById.get(m.userId)
+                                  ? 'Active'
+                                  : 'Inactive'}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-slate-700">
+                              {formatMemberLastUpdated(m)}
+                            </td>
+                            <td className="px-3 py-2">
+                              {hasPermission(PERMISSIONS.USERS.EDIT) ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:ring-2"
+                                  onClick={() =>
+                                    setMemberToRemove({
+                                      userId: m.userId,
+                                      userName:
+                                        m.userName ?? `User ${m.userId}`,
+                                    })
+                                  }
+                                >
+                                  Remove
+                                </Button>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={8}
+                            className="px-3 py-6 text-center text-slate-500"
+                          >
+                            No members
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="change-log" className="mt-0">
+              <TeamChangeLogTabContent teamId={team.id} />
+            </TabsContent>
+          </Tabs>
         </div>
       </PageContainer>
       <TeamEditModal
