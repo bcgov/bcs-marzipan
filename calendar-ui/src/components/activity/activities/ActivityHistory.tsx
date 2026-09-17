@@ -1,10 +1,17 @@
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchActivityHistory } from '@/api/activitiesApi';
 import {
+  buildActivityHistoryFilterDetailLines,
   buildHistoryActorFilterOptions,
   buildHistoryAppliedFilterTypeLabels,
   GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,
@@ -20,15 +27,21 @@ import {
   HistoryMultiSelectFilter,
   HistorySearchInput,
   historySummaryHasActiveFilters,
+  historySummaryHasClearableFilters,
   resolveHistoryEmptyVariant,
   toActivityHistoryViewModel,
 } from '@/components/history';
 import { ErrorState } from '@/components/shared';
+import { ContentSection } from '@/components/table/ContentSection';
+import { FilterSection } from '@/components/table/FilterSection';
 import {
   tableContainer,
   tableScrollWrapper,
 } from '@/components/table/tableConstants';
-import { TableSummaryBar } from '@/components/table/TableSummaryBar';
+import {
+  TableContentSummary,
+  TableFilterSummary,
+} from '@/components/table/TableSummaryBar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -46,6 +59,11 @@ import {
 } from '@/components/ui/drawer';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import { useAddActivityHistoryNote } from '@/hooks/useCalendar';
 import {
@@ -124,6 +142,9 @@ export default function ActivityHistory({
   onOpenChange,
   dateStatuses,
   venueStatuses: venueStatusesProp,
+  canAddNote = false,
+  addNoteDisabled = false,
+  addNoteDisabledReason,
 }: {
   activityId: number;
   displayId?: string;
@@ -131,6 +152,9 @@ export default function ActivityHistory({
   onOpenChange: (open: boolean) => void;
   dateStatuses?: DateStatusLookupItem[];
   venueStatuses?: Array<{ id: number; name: string; displayName?: string }>;
+  canAddNote?: boolean;
+  addNoteDisabled?: boolean;
+  addNoteDisabledReason?: string;
 }) {
   const [entries, setEntries] = useState<ActivityHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -183,7 +207,6 @@ export default function ActivityHistory({
     const dateStatusMap = new Map<number | string, string>();
     dateStatuses?.forEach((s) => dateStatusMap.set(s.id, s.label));
 
-    // Prefer prop-supplied venue statuses; fall back to query data
     const venueStatusMap = new Map<number | string, string>();
     if (venueStatusesProp) {
       venueStatusesProp.forEach((s) =>
@@ -341,6 +364,25 @@ export default function ActivityHistory({
     setSelectedUserIds([]);
     setSelectedFields([]);
   }, []);
+
+  const filterDetailLines = useMemo(
+    () =>
+      buildActivityHistoryFilterDetailLines({
+        searchQuery,
+        selectedActionTypes,
+        selectedUserIds,
+        selectedFields,
+        actorFilterOptions,
+      }),
+    [
+      actorFilterOptions,
+      searchQuery,
+      selectedActionTypes,
+      selectedFields,
+      selectedUserIds,
+    ]
+  );
+
   const historyEntries = useMemo(
     () =>
       filteredEntries.map((entry) =>
@@ -352,7 +394,7 @@ export default function ActivityHistory({
   const trimmedNote = noteText.trim();
 
   const handleAddNote = async () => {
-    if (!trimmedNote || addNoteMutation.isPending) {
+    if (!trimmedNote || addNoteMutation.isPending || addNoteDisabled) {
       return;
     }
 
@@ -374,23 +416,71 @@ export default function ActivityHistory({
   const noteButtonDisabled =
     trimmedNote.length === 0 || trimmedNote.length > MAX_NOTE_LENGTH;
 
-  const recordSummaryBar = !loadError ? (
-    <TableSummaryBar
-      count={loading ? 0 : filteredEntries.length}
-      singularLabel="record"
-      pluralLabel="records"
-      appliedFilterTypeLabels={buildHistoryAppliedFilterTypeLabels({
+  const noteButton = canAddNote ? (
+    addNoteDisabled && addNoteDisabledReason ? (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2"
+              disabled
+            >
+              <Plus className="h-4 w-4" />
+              Note
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{addNoteDisabledReason}</TooltipContent>
+      </Tooltip>
+    ) : (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-8 px-2"
+        disabled={addNoteDisabled}
+        onClick={() => setNoteModalOpen(true)}
+      >
+        <Plus className="h-4 w-4" />
+        New note
+      </Button>
+    )
+  ) : null;
+
+  const appliedFilterTypeLabels = useMemo(
+    () =>
+      buildHistoryAppliedFilterTypeLabels({
         searchQuery,
         selectedActionTypes,
         selectedUserIds,
         selectedFields,
-      })}
-      onClearFilters={hasActiveFilters ? clearAllFilters : undefined}
-    />
-  ) : null;
+      }),
+    [searchQuery, selectedActionTypes, selectedFields, selectedUserIds]
+  );
 
-  const showHistoryList =
-    !loading && !loadError && entries.length > 0 && filteredEntries.length > 0;
+  const showClearFilters = historySummaryHasClearableFilters({
+    searchQuery,
+    selectedActionTypes,
+    selectedUserIds,
+    selectedFields,
+  });
+
+  const renderCountSummary = useCallback(
+    (countTrailing?: ReactNode) =>
+      !loadError ? (
+        <TableContentSummary
+          count={loading ? 0 : filteredEntries.length}
+          singularLabel="record"
+          pluralLabel="records"
+          countTrailing={countTrailing}
+          actions={noteButton}
+        />
+      ) : null,
+    [filteredEntries.length, loadError, loading, noteButton]
+  );
 
   return (
     <>
@@ -400,39 +490,28 @@ export default function ActivityHistory({
             'flex h-full flex-col',
             'data-[vaul-drawer-direction=right]:w-full',
             'data-[vaul-drawer-direction=right]:max-w-xl',
-            'data-[vaul-drawer-direction=right]:sm:max-w-xl'
+            'data-[vaul-drawer-direction=right]:sm:max-w-xl',
+            'data-[vaul-drawer-direction=right]:lg:max-w-2xl'
           )}
         >
           <DrawerHeader className="shrink-0 text-left">
-            <div className="flex items-start justify-between gap-3">
-              <DrawerTitle>
-                History
-                {displayId != null && displayId.length > 0 ? (
-                  <> {displayId}</>
-                ) : null}
-              </DrawerTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0"
-                aria-label="Add note"
-                onClick={() => setNoteModalOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
+            <DrawerTitle>
+              History
+              {displayId != null && displayId.length > 0 ? (
+                <> {displayId}</>
+              ) : null}
+            </DrawerTitle>
           </DrawerHeader>
 
-          <div className="shrink-0 space-y-3 px-4 pb-4">
-            <HistorySearchInput
-              value={searchQuery}
-              onChange={setSearchQuery}
-              className="max-w-none min-w-0"
-            />
-            <div className="flex flex-wrap items-center gap-3">
+          <FilterSection className="shrink-0 px-4">
+            <div className="flex min-w-0 items-center gap-3 overflow-x-auto">
+              <HistorySearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                className="max-w-none min-w-[180px] shrink-0"
+              />
               <HistoryMultiSelectFilter
-                label="Update type"
+                label="Type"
                 options={GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS}
                 selectedValues={selectedActionTypes}
                 onChange={setSelectedActionTypes}
@@ -459,12 +538,21 @@ export default function ActivityHistory({
                 }
               />
             </div>
-          </div>
+            <TableFilterSummary
+              appliedFilterTypeLabels={appliedFilterTypeLabels}
+              filterDetailLines={filterDetailLines}
+              onClearFilters={
+                !loadError && showClearFilters ? clearAllFilters : undefined
+              }
+            />
+          </FilterSection>
 
-          <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-            {!showHistoryList ? recordSummaryBar : null}
+          <ContentSection className="flex min-h-0 flex-1 flex-col px-4 pb-4">
             {loading ? (
-              <HistoryListLoading />
+              <>
+                <HistoryListToolbar summary={renderCountSummary()} />
+                <HistoryListLoading />
+              </>
             ) : loadError ? (
               <ErrorState
                 title={LOAD_HISTORY_TITLE}
@@ -472,19 +560,25 @@ export default function ActivityHistory({
                 onRetry={() => void loadHistory()}
               />
             ) : entries.length === 0 ? (
-              <div className={cn(tableContainer, 'min-h-0 flex-1')}>
-                <HistoryListEmptyState variant="no-data" />
-              </div>
+              <>
+                <HistoryListToolbar summary={renderCountSummary()} />
+                <div className={cn(tableContainer, 'min-h-0 flex-1')}>
+                  <HistoryListEmptyState variant="no-data" />
+                </div>
+              </>
             ) : filteredEntries.length === 0 ? (
-              <div className={cn(tableContainer, 'min-h-0 flex-1')}>
-                <HistoryListEmptyState
-                  variant={resolveHistoryEmptyVariant(
-                    entries.length > 0,
-                    hasActiveFilters,
-                    searchQuery
-                  )}
-                />
-              </div>
+              <>
+                <HistoryListToolbar summary={renderCountSummary()} />
+                <div className={cn(tableContainer, 'min-h-0 flex-1')}>
+                  <HistoryListEmptyState
+                    variant={resolveHistoryEmptyVariant(
+                      entries.length > 0,
+                      hasActiveFilters,
+                      searchQuery
+                    )}
+                  />
+                </div>
+              </>
             ) : (
               <HistoryList
                 entries={historyEntries}
@@ -493,8 +587,7 @@ export default function ActivityHistory({
                 {({ expandAll, groups }) => (
                   <div className="flex min-h-0 flex-1 flex-col">
                     <HistoryListToolbar
-                      summary={recordSummaryBar}
-                      expandAll={expandAll}
+                      summary={renderCountSummary(expandAll)}
                     />
                     <div className={cn(tableContainer, 'min-h-0 flex-1')}>
                       <div className={tableScrollWrapper}>{groups}</div>
@@ -503,7 +596,7 @@ export default function ActivityHistory({
                 )}
               </HistoryList>
             )}
-          </div>
+          </ContentSection>
         </DrawerContent>
       </Drawer>
 

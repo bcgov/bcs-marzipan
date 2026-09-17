@@ -34,7 +34,7 @@ describe('history-summary-bar', () => {
       'My history',
       'Search',
       'Date',
-      'Update type',
+      'Type',
       'Updated by',
       'Field',
       'Category',

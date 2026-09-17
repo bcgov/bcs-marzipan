@@ -6,10 +6,7 @@ export { HistoryListEmptyState } from './HistoryListEmptyState';
 export { HistoryListLoading, HistoryListSkeleton } from './HistoryListSkeleton';
 export { HistoryNote } from './HistoryNote';
 export { HistorySearchInput } from './HistorySearchInput';
-export {
-  HISTORY_LIST_CONTENT_CLASSNAME,
-  HISTORY_LIST_HORIZONTAL_PADDING_CLASSNAME,
-} from './history-list-layout';
+export { HISTORY_LIST_CONTENT_CLASSNAME } from './history-list-layout';
 export { HistoryFieldFilterPanel } from './HistoryFieldFilterPanel';
 export { HistoryMultiSelectFilter } from './HistoryMultiSelectFilter';
 export {
@@ -28,6 +25,10 @@ export {
   buildHistoryAppliedFilterTypeLabels,
   historySummaryHasClearableFilters,
 } from './history-summary-bar';
+export {
+  buildActivityHistoryFilterDetailLines,
+  buildGlobalHistoryFilterDetailLines,
+} from './history-filter-detail';
 export { normalizeTransitionChanges } from './history-format';
 export {
   toActivityHistoryViewModel,

@@ -1387,6 +1387,9 @@ export function ActivityPage({
         onOpenChange={(v) => setHistoryOpen(!!v)}
         dateStatuses={lookups.dateStatuses}
         venueStatuses={lookups.venueStatuses}
+        canAddNote={mayEditFormFields}
+        addNoteDisabled={isLockedByOther || isBlockedByRecurringLockout}
+        addNoteDisabledReason="Cannot add note. Activity is being editted by another user."
       />
       <DiscardActivityChangesDialog
         open={showLeaveConfirm}

@@ -7,7 +7,6 @@ import {
 } from '@/components/table/SortDropdown';
 import { FILTER_PANEL_MIN_WIDTH } from '@/components/table/tableConstants';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -126,12 +125,6 @@ export function UserManagementFilters({
     },
     [onRoleIdsChange]
   );
-
-  const hasDropdownFiltersActive = teamIds.length > 0 || roleIds.length > 0;
-  const handleClearDropdownFilters = useCallback(() => {
-    onTeamIdsChange([]);
-    onRoleIdsChange([]);
-  }, [onTeamIdsChange, onRoleIdsChange]);
 
   const [searchInput, setSearchInput] = useState(keyword);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -275,18 +268,6 @@ export function UserManagementFilters({
             selectedValues={roleSelectedValues}
             onChange={handleRoleIdsChange}
           />
-          {hasDropdownFiltersActive && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="animate-in fade-in ml-4 duration-200"
-              onClick={handleClearDropdownFilters}
-              aria-label="Clear all filters"
-            >
-              Clear all filters
-            </Button>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <SortDropdown

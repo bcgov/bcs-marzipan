@@ -1,6 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
 import {
@@ -22,6 +29,7 @@ import {
   type DateRangeValue,
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import {
+  buildGlobalHistoryFilterDetailLines,
   buildHistoryAppliedFilterTypeLabels,
   GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,
   HISTORY_LIST_CONTENT_CLASSNAME,
@@ -40,9 +48,14 @@ import {
 import { HistoryDayRangeTabs } from '@/components/history/HistoryDayRangeTabs';
 import { PageHeader } from '@/components/layout';
 import { ErrorState } from '@/components/shared';
+import { ContentSection } from '@/components/table/ContentSection';
+import { FilterSection } from '@/components/table/FilterSection';
 import { TablePagination } from '@/components/table/TablePagination';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
-import { TableSummaryBar } from '@/components/table/TableSummaryBar';
+import {
+  TableContentSummary,
+  TableFilterSummary,
+} from '@/components/table/TableSummaryBar';
 import {
   Popover,
   PopoverContent,
@@ -84,7 +97,7 @@ const MAX_CHANGE_VALUE_LENGTH = 120;
 
 const HISTORY_FILTER_LOOKUP_STALE_MS = 5 * 60 * 1000;
 
-type HistoryTab = 'all' | 'mine';
+type HistoryTab = 'all' | 'mine' | 'team';
 
 type FilterOption = {
   value: string;
@@ -252,6 +265,8 @@ export function GlobalHistory() {
   const [pageSize, setPageSize] = useState(50);
   const tableScrollRef = useRef<HTMLDivElement>(null);
 
+  const userTeamIds = useMemo(() => user?.teamIds ?? [], [user?.teamIds]);
+
   const historyViewer = useMemo(
     () =>
       user
@@ -263,6 +278,9 @@ export function GlobalHistory() {
   useEffect(() => {
     if (activeTab === 'mine') {
       setSelectedUserIds([]);
+    }
+    if (activeTab === 'team') {
+      setSelectedLeadTeamIds([]);
     }
   }, [activeTab]);
 
@@ -302,11 +320,13 @@ export function GlobalHistory() {
       categories:
         selectedCategories.length > 0 ? selectedCategories : undefined,
       leadTeamIds:
-        selectedLeadTeamIds.length > 0
-          ? selectedLeadTeamIds
-              .map((id) => Number(id))
-              .filter((id) => !Number.isNaN(id))
-          : undefined,
+        activeTab === 'team' && userTeamIds.length > 0
+          ? userTeamIds
+          : activeTab === 'all' && selectedLeadTeamIds.length > 0
+            ? selectedLeadTeamIds
+                .map((id) => Number(id))
+                .filter((id) => !Number.isNaN(id))
+            : undefined,
       changedFields: selectedFields.length > 0 ? selectedFields : undefined,
     }),
     [
@@ -322,6 +342,7 @@ export function GlobalHistory() {
       selectedLeadTeamIds,
       selectedUserIds,
       user?.id,
+      userTeamIds,
     ]
   );
 
@@ -676,20 +697,48 @@ export function GlobalHistory() {
     selectedFields,
   });
 
-  const recordSummaryBar = !historyQuery.isError ? (
-    <TableSummaryBar
-      count={historyQuery.isLoading ? 0 : recordCount}
-      singularLabel="record"
-      pluralLabel="records"
-      appliedFilterTypeLabels={appliedFilterTypeLabels}
-      onClearFilters={showClearFilters ? clearAllFilters : undefined}
-    />
-  ) : null;
+  const filterDetailLines = useMemo(
+    () =>
+      buildGlobalHistoryFilterDetailLines({
+        searchQuery,
+        activeTab,
+        dateRange,
+        selectedActionTypes,
+        selectedUserIds,
+        selectedFields,
+        selectedCategories,
+        selectedLeadTeamIds,
+        categoryOptions,
+        leadTeamOptions,
+        userOptions,
+      }),
+    [
+      activeTab,
+      categoryOptions,
+      dateRange,
+      leadTeamOptions,
+      searchQuery,
+      selectedActionTypes,
+      selectedCategories,
+      selectedFields,
+      selectedLeadTeamIds,
+      selectedUserIds,
+      userOptions,
+    ]
+  );
 
-  const showHistoryList =
-    !historyQuery.isLoading &&
-    !historyQuery.isError &&
-    historyEntries.length > 0;
+  const renderCountSummary = useCallback(
+    (countTrailing?: ReactNode) =>
+      !historyQuery.isError ? (
+        <TableContentSummary
+          count={historyQuery.isLoading ? 0 : recordCount}
+          singularLabel="record"
+          pluralLabel="records"
+          countTrailing={countTrailing}
+        />
+      ) : null,
+    [historyQuery.isError, historyQuery.isLoading, recordCount]
+  );
 
   return (
     <>
@@ -702,69 +751,83 @@ export function GlobalHistory() {
         <div className="mb-4">
           <TabsList className="mb-0" variant="line" size="med">
             <TabsTrigger value="all">All</TabsTrigger>
+            {userTeamIds.length > 0 ? (
+              <TabsTrigger value="team">My team</TabsTrigger>
+            ) : null}
             <TabsTrigger value="mine">My history</TabsTrigger>
           </TabsList>
         </div>
       </Tabs>
 
-      <div className="mb-2 flex flex-wrap items-center gap-3">
-        <HistorySearchInput value={searchQuery} onChange={setSearchQuery} />
-        <DateFilter value={dateRange} onChange={setDateRange} />
-        <HistoryMultiSelectFilter
-          label="Update type"
-          options={actionTypeOptions}
-          selectedValues={selectedActionTypes}
-          onChange={setSelectedActionTypes}
-        />
-        {activeTab === 'all' ? (
+      <FilterSection>
+        <div className="flex flex-wrap items-center gap-3">
+          <HistorySearchInput value={searchQuery} onChange={setSearchQuery} />
+          <DateFilter value={dateRange} onChange={setDateRange} />
           <HistoryMultiSelectFilter
-            label="Updated by"
-            options={userOptions}
-            selectedValues={selectedUserIds}
-            onChange={setSelectedUserIds}
-            searchPlaceholder="Search users"
+            label="Type"
+            options={actionTypeOptions}
+            selectedValues={selectedActionTypes}
+            onChange={setSelectedActionTypes}
           />
-        ) : null}
-        <HistoryMultiSelectFilter
-          label="Field"
-          options={[]}
-          selectedValues={selectedFields}
-          onChange={setSelectedFields}
-          renderPanel
-          panel={
-            <HistoryFieldFilterPanel
-              viewer={historyViewer}
-              selectedFields={selectedFields}
-              onSelectedFieldsChange={setSelectedFields}
+          {activeTab === 'all' ? (
+            <HistoryMultiSelectFilter
+              label="Updated by"
+              options={userOptions}
+              selectedValues={selectedUserIds}
+              onChange={setSelectedUserIds}
+              searchPlaceholder="Search users"
             />
+          ) : null}
+          <HistoryMultiSelectFilter
+            label="Field"
+            options={[]}
+            selectedValues={selectedFields}
+            onChange={setSelectedFields}
+            renderPanel
+            panel={
+              <HistoryFieldFilterPanel
+                viewer={historyViewer}
+                selectedFields={selectedFields}
+                onSelectedFieldsChange={setSelectedFields}
+              />
+            }
+          />
+          <HistoryMultiSelectFilter
+            label="Category"
+            options={categoryOptions}
+            selectedValues={selectedCategories}
+            onChange={setSelectedCategories}
+          />
+          {activeTab === 'all' ? (
+            <HistoryMultiSelectFilter
+              label="Team"
+              options={leadTeamOptions}
+              selectedValues={selectedLeadTeamIds}
+              onChange={setSelectedLeadTeamIds}
+              searchPlaceholder="Search teams"
+            />
+          ) : null}
+        </div>
+
+        <HistoryDayRangeTabs value={dateRange} onChange={setDateRange} />
+
+        <TableFilterSummary
+          appliedFilterTypeLabels={appliedFilterTypeLabels}
+          filterDetailLines={filterDetailLines}
+          onClearFilters={
+            !historyQuery.isError && showClearFilters
+              ? clearAllFilters
+              : undefined
           }
         />
-        <HistoryMultiSelectFilter
-          label="Category"
-          options={categoryOptions}
-          selectedValues={selectedCategories}
-          onChange={setSelectedCategories}
-        />
-        <HistoryMultiSelectFilter
-          label="Team"
-          options={leadTeamOptions}
-          selectedValues={selectedLeadTeamIds}
-          onChange={setSelectedLeadTeamIds}
-          searchPlaceholder="Search teams"
-        />
-      </div>
+      </FilterSection>
 
-      <HistoryDayRangeTabs
-        value={dateRange}
-        onChange={setDateRange}
-        className="mb-4"
-      />
-
-      <div className="min-w-0">
-        {!showHistoryList ? recordSummaryBar : null}
-
+      <ContentSection className="min-w-0">
         {historyQuery.isLoading ? (
-          <HistoryListLoading />
+          <>
+            <HistoryListToolbar summary={renderCountSummary()} />
+            <HistoryListLoading />
+          </>
         ) : historyQuery.isError ? (
           <ErrorState
             title="Unable to load history"
@@ -772,19 +835,22 @@ export function GlobalHistory() {
             onRetry={() => void historyQuery.refetch()}
           />
         ) : historyEntries.length === 0 ? (
-          <TableScrollContainer>
-            <HistoryListEmptyState
-              variant={
-                isDateRangeActive(dateRange) && !hasActiveFilters
-                  ? 'no-timeframe'
-                  : resolveHistoryEmptyVariant(
-                      (historyQuery.data?.totalItems ?? 0) > 0,
-                      hasActiveFilters,
-                      searchQuery
-                    )
-              }
-            />
-          </TableScrollContainer>
+          <>
+            <HistoryListToolbar summary={renderCountSummary()} />
+            <TableScrollContainer>
+              <HistoryListEmptyState
+                variant={
+                  isDateRangeActive(dateRange) && !hasActiveFilters
+                    ? 'no-timeframe'
+                    : resolveHistoryEmptyVariant(
+                        (historyQuery.data?.totalItems ?? 0) > 0,
+                        hasActiveFilters,
+                        searchQuery
+                      )
+                }
+              />
+            </TableScrollContainer>
+          </>
         ) : (
           <>
             <HistoryList
@@ -794,10 +860,7 @@ export function GlobalHistory() {
             >
               {({ expandAll, groups }) => (
                 <div className="min-w-0">
-                  <HistoryListToolbar
-                    summary={recordSummaryBar}
-                    expandAll={expandAll}
-                  />
+                  <HistoryListToolbar summary={renderCountSummary(expandAll)} />
                   <TableScrollContainer ref={tableScrollRef}>
                     {groups}
                   </TableScrollContainer>
@@ -818,7 +881,7 @@ export function GlobalHistory() {
             />
           </>
         )}
-      </div>
+      </ContentSection>
     </>
   );
 }

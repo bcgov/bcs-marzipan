@@ -179,7 +179,14 @@ vi.mock('@/components/reports/ReportFiltersBar', () => ({
 }));
 
 vi.mock('@/components/reports/ReportTableSummaryBar', () => ({
-  ReportTableSummaryBar: () => null,
+  useReportTableSummaryState: () => ({
+    appliedFilterTypeLabels: [],
+    filterDetailLines: [],
+    onClearFilters: undefined,
+    filters: [],
+    singularLabel: 'activity',
+    pluralLabel: 'activities',
+  }),
 }));
 
 vi.mock('@/components/reports/CustomReportPreviewSection', () => ({

@@ -8,13 +8,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { pacificInclusiveCalendarRangeEndingToday } from '@/lib/datetime-utils';
 import { cn } from '@/lib/utils';
 
-const EMPTY_DATE_RANGE: DateRangeValue = {
-  startDate: '',
-  endDate: '',
-  noStartDate: false,
-  noEndDate: false,
-};
-
 const HISTORY_DAY_RANGE_PRESETS = [
   { key: 'today', label: 'Today', dayCount: 1 },
   { key: 'last7', label: 'Last 7 days', dayCount: 7 },
@@ -84,37 +77,19 @@ export function HistoryDayRangeTabs({
     [onChange]
   );
 
-  const handleTabChange = useCallback(
-    (next: string) => {
-      if (next === 'today' || next === 'last7' || next === 'last30') {
-        applyPreset(next);
-      }
-    },
-    [applyPreset]
-  );
-
-  const handlePresetClick = useCallback(
-    (key: HistoryDayRangePresetKey) => {
-      if (activePreset === key) {
-        onChange(EMPTY_DATE_RANGE);
-      }
-    },
-    [activePreset, onChange]
-  );
-
   return (
     <Tabs
       value={activePreset ?? ''}
-      onValueChange={handleTabChange}
+      onValueChange={(next) => {
+        if (next === 'today' || next === 'last7' || next === 'last30') {
+          applyPreset(next);
+        }
+      }}
       className={cn('w-auto', className)}
     >
       <TabsList size="sm" aria-label={ariaLabel}>
         {HISTORY_DAY_RANGE_PRESETS.map(({ key, label }) => (
-          <TabsTrigger
-            key={key}
-            value={key}
-            onClick={() => handlePresetClick(key)}
-          >
+          <TabsTrigger key={key} value={key}>
             {label}
           </TabsTrigger>
         ))}

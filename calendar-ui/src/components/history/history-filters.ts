@@ -51,11 +51,11 @@ export function historySummaryHasActiveFilters(state: {
   selectedUserIds?: string[];
   selectedFields?: string[];
   dateRangeActive?: boolean;
-  activeTab?: 'all' | 'mine';
+  activeTab?: 'all' | 'mine' | 'team';
   selectedCategories?: string[];
   selectedLeadTeamIds?: string[];
 }): boolean {
-  if (state.activeTab === 'mine') return true;
+  if (state.activeTab === 'mine' || state.activeTab === 'team') return true;
   if (state.searchQuery?.trim()) return true;
   if (state.dateRangeActive) return true;
   if ((state.selectedActionTypes?.length ?? 0) > 0) return true;

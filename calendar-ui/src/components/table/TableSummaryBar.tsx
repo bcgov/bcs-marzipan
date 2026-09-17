@@ -1,5 +1,5 @@
 import { Info, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -34,6 +34,9 @@ export interface TableSummaryFilterDetailLine {
 }
 
 const HOVER_CLOSE_DELAY_MS = 150;
+
+const FILTER_POPOVER_SCROLL_CLASSNAME =
+  'popover-list-scroll max-h-[min(var(--popover-list-max-height),var(--radix-popover-content-available-height))] overflow-y-auto';
 
 function usePrefersHover(): boolean {
   const [value, setValue] = useState(() =>
@@ -94,7 +97,7 @@ function FilterDetailPopover({
   );
 
   const triggerClassName =
-    'text-stone-500 hover:text-stone-700 focus-visible:ring-ring/50 relative z-10 -mr-1.5 inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 outline-none focus-visible:ring-[3px]';
+    'text-stone-500 hover:text-stone-700 focus-visible:ring-ring/50 relative z-10 inline-flex size-4 shrink-0 cursor-pointer items-center justify-start rounded-sm border-0 bg-transparent p-0 outline-none focus-visible:ring-[3px]';
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -107,7 +110,7 @@ function FilterDetailPopover({
           onMouseEnter={handleHoverOpen}
           onMouseLeave={handleHoverScheduleClose}
         >
-          <Info className="size-3.5 shrink-0" aria-hidden />
+          <Info className="size-4 shrink-0" aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -139,29 +142,319 @@ function FilterDetailPopover({
   );
 }
 
-interface TableSummaryBarProps {
-  count: number;
-  singularLabel: string;
-  pluralLabel?: string;
-  /** When false, renders filter/reset controls without the item-count label. */
-  showCount?: boolean;
-  filters?: BooleanFilter[];
-  /** Shown after the count when a saved filter is the active selection. */
+function buildFilterSummaryText(
+  appliedSavedFilterName: string | null,
+  appliedFilterTypeLabels: string[],
+  maxVisibleFilterTypes: number
+): {
+  filterParenthetical: string;
+  savedFilterParenthetical: string;
+  showAdHocFilterSummary: boolean;
+  showSavedFilterSummary: boolean;
+} {
+  const maxTypes = Math.max(1, maxVisibleFilterTypes);
+  const typeLabels =
+    appliedSavedFilterName != null ? [] : appliedFilterTypeLabels;
+  const visibleTypeCount = Math.min(typeLabels.length, maxTypes);
+  const overflowTypeCount = typeLabels.length - visibleTypeCount;
+  const filteringOnText =
+    typeLabels.length === 0
+      ? ''
+      : overflowTypeCount > 0
+        ? `${typeLabels.slice(0, visibleTypeCount).join(', ')}, +${overflowTypeCount} more`
+        : typeLabels.join(', ');
+  const filterParenthetical =
+    typeLabels.length === 0 ? '' : `Filtering by: ${filteringOnText}`;
+  const savedFilterParenthetical =
+    appliedSavedFilterName != null
+      ? `Filtering by: ${appliedSavedFilterName}`
+      : '';
+
+  return {
+    filterParenthetical,
+    savedFilterParenthetical,
+    showAdHocFilterSummary:
+      appliedSavedFilterName == null && typeLabels.length > 0,
+    showSavedFilterSummary: appliedSavedFilterName != null,
+  };
+}
+
+function FilterSummaryWithPopover({
+  summaryText,
+  filterDetailLines,
+  filterPopoverScrollClassName,
+  ariaLabel,
+}: {
+  summaryText: string;
+  filterDetailLines: TableSummaryFilterDetailLine[];
+  filterPopoverScrollClassName: string;
+  ariaLabel: string;
+}) {
+  return (
+    <span
+      className="inline-flex max-w-full min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 leading-normal"
+      aria-live="polite"
+    >
+      <FilterDetailPopover
+        lines={filterDetailLines}
+        scrollClassName={filterPopoverScrollClassName}
+        ariaLabel={ariaLabel}
+      />
+      <span className="min-w-0 wrap-break-word">{summaryText}</span>
+    </span>
+  );
+}
+
+function FilterSummaryContent({
+  filterParenthetical,
+  savedFilterParenthetical,
+  showSavedFilterSummary,
+  showAdHocFilterSummary,
+  filterDetailLines,
+  filterPopoverScrollClassName,
+  appliedSavedFilterName,
+  onClearFilters,
+}: {
+  filterParenthetical: string;
+  savedFilterParenthetical: string;
+  showSavedFilterSummary: boolean;
+  showAdHocFilterSummary: boolean;
+  filterDetailLines: TableSummaryFilterDetailLine[];
+  filterPopoverScrollClassName: string;
+  appliedSavedFilterName: string | null;
+  onClearFilters?: () => void;
+}) {
+  const showFilterRow =
+    showSavedFilterSummary || showAdHocFilterSummary || onClearFilters != null;
+  const showSummaryText = showSavedFilterSummary || showAdHocFilterSummary;
+
+  if (!showFilterRow) {
+    return null;
+  }
+
+  return (
+    <div className="flex min-h-6 min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+      {showSummaryText && filterDetailLines.length > 0 ? (
+        <FilterSummaryWithPopover
+          summaryText={
+            showSavedFilterSummary
+              ? savedFilterParenthetical
+              : filterParenthetical
+          }
+          filterDetailLines={filterDetailLines}
+          filterPopoverScrollClassName={filterPopoverScrollClassName}
+          ariaLabel={
+            showSavedFilterSummary
+              ? `Filtering by ${appliedSavedFilterName}. Show filter details.`
+              : `${filterParenthetical} Show filter details.`
+          }
+        />
+      ) : null}
+      {onClearFilters ? (
+        <button
+          type="button"
+          onClick={onClearFilters}
+          className="text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-normal transition-colors outline-none focus-visible:ring-[3px]"
+          aria-label="Reset all"
+        >
+          <X className="size-3 shrink-0" aria-hidden />
+          Reset all
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+export interface TableFilterSummaryProps {
+  /** Shown when a saved filter is the active selection. */
   appliedSavedFilterName?: string | null;
-  /**
-   * Active filter dimension labels (e.g. Category, Date). Ignored when
-   * `appliedSavedFilterName` is set. Hidden on small screens; use `onClearFilters` for mobile.
-   */
+  /** Active filter dimension labels (e.g. Category, Date). Ignored when `appliedSavedFilterName` is set. */
   appliedFilterTypeLabels?: string[];
   /** Defaults to 3; remainder summarized as “+n more”. */
   maxVisibleFilterTypes?: number;
-  /** When set, renders a compact “Reset all filters” control for all breakpoints. */
+  /** When set, renders a compact “Reset all” control for all breakpoints. */
   onClearFilters?: () => void;
   /**
    * When non-empty, an info control before the summary opens a read-only popover with one row
    * per active dimension (values may be truncated per activity table rules).
    */
   filterDetailLines?: TableSummaryFilterDetailLine[];
+  className?: string;
+}
+
+export function TableFilterSummary({
+  appliedSavedFilterName = null,
+  appliedFilterTypeLabels = [],
+  maxVisibleFilterTypes = DEFAULT_MAX_VISIBLE_FILTER_TYPES,
+  onClearFilters,
+  filterDetailLines = [],
+  className,
+}: TableFilterSummaryProps) {
+  const {
+    filterParenthetical,
+    savedFilterParenthetical,
+    showAdHocFilterSummary,
+    showSavedFilterSummary,
+  } = buildFilterSummaryText(
+    appliedSavedFilterName,
+    appliedFilterTypeLabels,
+    maxVisibleFilterTypes
+  );
+  const effectiveDetailLines =
+    filterDetailLines.length > 0
+      ? filterDetailLines
+      : appliedSavedFilterName
+        ? [{ label: 'Saved filter', value: appliedSavedFilterName }]
+        : [];
+
+  return (
+    <div className={cn('text-foreground min-h-6 shrink-0 text-xs', className)}>
+      <FilterSummaryContent
+        filterParenthetical={filterParenthetical}
+        savedFilterParenthetical={savedFilterParenthetical}
+        showSavedFilterSummary={showSavedFilterSummary}
+        showAdHocFilterSummary={showAdHocFilterSummary}
+        filterDetailLines={effectiveDetailLines}
+        filterPopoverScrollClassName={FILTER_POPOVER_SCROLL_CLASSNAME}
+        appliedSavedFilterName={appliedSavedFilterName}
+        onClearFilters={onClearFilters}
+      />
+    </div>
+  );
+}
+
+export function TableSummaryBooleanFilters({
+  filters,
+  className,
+}: {
+  filters: BooleanFilter[];
+  className?: string;
+}) {
+  if (filters.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={cn('flex flex-wrap items-center gap-4', className)}>
+      {filters.map((filter) => {
+        const isDisabled = filter.disabled === true;
+        const labelClassName = cn(
+          'text-foreground flex items-center gap-2 text-sm',
+          isDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+        );
+        const labelContent = (
+          <>
+            <Checkbox
+              checked={filter.checked}
+              onCheckedChange={(v) => filter.onCheckedChange(v === true)}
+              aria-label={filter.label}
+              className="border-input"
+              disabled={isDisabled}
+            />
+            {filter.label}
+          </>
+        );
+        return (
+          <span key={filter.id}>
+            {isDisabled && filter.disabledTooltip ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className={labelClassName}>{labelContent}</label>
+                </TooltipTrigger>
+                <TooltipContent>{filter.disabledTooltip}</TooltipContent>
+              </Tooltip>
+            ) : (
+              <label className={labelClassName}>{labelContent}</label>
+            )}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+export interface TableContentSummaryProps {
+  count: number;
+  singularLabel: string;
+  pluralLabel?: string;
+  /** When false, omits the default “Showing N …” label (use `leading` instead). */
+  showCount?: boolean;
+  /** Replaces or supplements the default count label (e.g. bulk selection summary). */
+  leading?: ReactNode;
+  filters?: BooleanFilter[];
+  /** Rendered beside the count label (e.g. Expand all). */
+  countTrailing?: ReactNode;
+  /** Right-aligned controls on the count row (e.g. Note button). */
+  actions?: ReactNode;
+  className?: string;
+}
+
+export function TableContentSummary({
+  count,
+  singularLabel,
+  pluralLabel,
+  showCount = true,
+  leading,
+  filters = [],
+  countTrailing,
+  actions,
+  className,
+}: TableContentSummaryProps) {
+  const label =
+    count === 1 ? singularLabel : (pluralLabel ?? singularLabel + 's');
+
+  const showCountRow =
+    showCount ||
+    leading != null ||
+    countTrailing != null ||
+    actions != null ||
+    filters.length > 0;
+
+  if (!showCountRow) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        'text-foreground flex min-h-9 flex-wrap items-center justify-between gap-4 text-sm',
+        className
+      )}
+    >
+      <span className="inline-flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        {leading ??
+          (showCount ? (
+            <span className="shrink-0 leading-normal font-medium">
+              Showing {count} {label}
+            </span>
+          ) : null)}
+        {countTrailing ? (
+          <span className="inline-flex shrink-0 items-center">
+            {countTrailing}
+          </span>
+        ) : null}
+      </span>
+      <span className="inline-flex shrink-0 items-center gap-4">
+        <TableSummaryBooleanFilters filters={filters} />
+        {actions ? (
+          <span className="inline-flex items-center">{actions}</span>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
+interface TableSummaryBarProps extends TableFilterSummaryProps {
+  count: number;
+  singularLabel: string;
+  pluralLabel?: string;
+  /** When false, renders filter/reset controls without the item-count label. */
+  showCount?: boolean;
+  filters?: BooleanFilter[];
+  /** Rendered beside the count label on the second row (e.g. Expand all). */
+  countTrailing?: ReactNode;
+  /** Right-aligned controls on the count row (e.g. Note button). */
+  actions?: ReactNode;
   className?: string;
 }
 
@@ -176,140 +469,33 @@ export function TableSummaryBar({
   maxVisibleFilterTypes = DEFAULT_MAX_VISIBLE_FILTER_TYPES,
   onClearFilters,
   filterDetailLines = [],
+  countTrailing,
+  actions,
   className,
 }: TableSummaryBarProps) {
-  const label =
-    count === 1 ? singularLabel : (pluralLabel ?? singularLabel + 's');
-
-  const maxTypes = Math.max(1, maxVisibleFilterTypes);
-  const typeLabels =
-    appliedSavedFilterName != null ? [] : appliedFilterTypeLabels;
-  const visibleTypeCount = Math.min(typeLabels.length, maxTypes);
-  const overflowTypeCount = typeLabels.length - visibleTypeCount;
-  const filteringOnText =
-    typeLabels.length === 0
-      ? ''
-      : overflowTypeCount > 0
-        ? `${typeLabels.slice(0, visibleTypeCount).join(', ')}, +${overflowTypeCount} more`
-        : typeLabels.join(', ');
-  const filterParenthetical =
-    typeLabels.length === 0 ? '' : `Filtered by: ${filteringOnText}`;
-  const savedFilterParenthetical =
-    appliedSavedFilterName != null
-      ? `Filtered by: ${appliedSavedFilterName}`
-      : '';
-  const hasFilterDetailPopover = filterDetailLines.length > 0;
-  const showAdHocFilterSummary = !appliedSavedFilterName && filteringOnText;
-  const showSavedFilterSummary = appliedSavedFilterName != null;
-
-  const filterPopoverScrollClassName =
-    'popover-list-scroll max-h-[min(var(--popover-list-max-height),var(--radix-popover-content-available-height))] overflow-y-auto';
-
   return (
     <div
       className={cn(
-        'text-foreground mb-0 flex min-h-9 flex-wrap items-center justify-between gap-4 text-sm',
+        'text-foreground mb-0 flex flex-col gap-1 text-sm',
         className
       )}
     >
-      <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="inline-flex min-h-9 min-w-0 flex-wrap items-center gap-x-1">
-          {showCount && (
-            <span className="shrink-0 leading-normal">
-              Showing {count} {label}
-            </span>
-          )}
-          {showSavedFilterSummary ? (
-            hasFilterDetailPopover ? (
-              <span
-                className="inline-flex max-w-full min-w-0 flex-wrap items-center gap-x-0 gap-y-1 leading-normal"
-                aria-live="polite"
-              >
-                <FilterDetailPopover
-                  lines={filterDetailLines}
-                  scrollClassName={filterPopoverScrollClassName}
-                  ariaLabel={`Filtered by ${appliedSavedFilterName}. Show filter details.`}
-                />
-                <span className="min-w-0 wrap-break-word">
-                  {savedFilterParenthetical}
-                </span>
-              </span>
-            ) : (
-              <span className="leading-normal" aria-live="polite">
-                {savedFilterParenthetical}
-              </span>
-            )
-          ) : showAdHocFilterSummary ? (
-            hasFilterDetailPopover ? (
-              <span className="inline-flex max-w-full min-w-0 flex-wrap items-center gap-x-0 gap-y-1 leading-normal">
-                <FilterDetailPopover
-                  lines={filterDetailLines}
-                  scrollClassName={filterPopoverScrollClassName}
-                  ariaLabel={`${filterParenthetical} Show filter details.`}
-                />
-                <span className="min-w-0 wrap-break-word">
-                  {filterParenthetical}
-                </span>
-              </span>
-            ) : (
-              <>
-                <span className="sr-only md:hidden">{filterParenthetical}</span>
-                <span className="hidden min-w-0 leading-normal md:inline">
-                  {filterParenthetical}
-                </span>
-              </>
-            )
-          ) : null}
-        </span>
-        {onClearFilters ? (
-          <button
-            type="button"
-            onClick={onClearFilters}
-            className="text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-sm font-normal transition-colors outline-none focus-visible:ring-[3px]"
-            aria-label="Reset all filters"
-          >
-            <X className="size-3 shrink-0" aria-hidden />
-            Reset all filters
-          </button>
-        ) : null}
-      </span>
-      {filters.length > 0 && (
-        <div className="flex flex-wrap items-center gap-4">
-          {filters.map((filter) => {
-            const isDisabled = filter.disabled === true;
-            const labelClassName = cn(
-              'text-foreground flex items-center gap-2 text-sm',
-              isDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-            );
-            const labelContent = (
-              <>
-                <Checkbox
-                  checked={filter.checked}
-                  onCheckedChange={(v) => filter.onCheckedChange(v === true)}
-                  aria-label={filter.label}
-                  className="border-input"
-                  disabled={isDisabled}
-                />
-                {filter.label}
-              </>
-            );
-            return (
-              <span key={filter.id}>
-                {isDisabled && filter.disabledTooltip ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <label className={labelClassName}>{labelContent}</label>
-                    </TooltipTrigger>
-                    <TooltipContent>{filter.disabledTooltip}</TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <label className={labelClassName}>{labelContent}</label>
-                )}
-              </span>
-            );
-          })}
-        </div>
-      )}
+      <TableFilterSummary
+        appliedSavedFilterName={appliedSavedFilterName}
+        appliedFilterTypeLabels={appliedFilterTypeLabels}
+        maxVisibleFilterTypes={maxVisibleFilterTypes}
+        onClearFilters={onClearFilters}
+        filterDetailLines={filterDetailLines}
+      />
+      <TableContentSummary
+        count={count}
+        singularLabel={singularLabel}
+        pluralLabel={pluralLabel}
+        showCount={showCount}
+        filters={filters}
+        countTrailing={countTrailing}
+        actions={actions}
+      />
     </div>
   );
 }

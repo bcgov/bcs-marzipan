@@ -1,3 +1,4 @@
+import { ListChevronsDownUp, ListChevronsUpDown } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import {
@@ -21,7 +22,7 @@ type HistoryListProps = {
 };
 
 const expandAllButtonClassName =
-  'text-primary text-sm font-medium hover:underline';
+  'text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-sm font-normal transition-colors outline-none focus-visible:ring-[3px]';
 
 function updateIdSet(
   current: Set<number>,
@@ -142,7 +143,13 @@ export function HistoryList({
       type="button"
       onClick={toggleAllExpanded}
       className={expandAllButtonClassName}
+      aria-label={allExpanded ? 'Collapse all' : 'Expand all'}
     >
+      {allExpanded ? (
+        <ListChevronsDownUp className="size-3.5 shrink-0" aria-hidden />
+      ) : (
+        <ListChevronsUpDown className="size-3.5 shrink-0" aria-hidden />
+      )}
       {allExpanded ? 'Collapse all' : 'Expand all'}
     </button>
   ) : null;

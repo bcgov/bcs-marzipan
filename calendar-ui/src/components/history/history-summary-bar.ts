@@ -3,10 +3,12 @@ import {
   type DateRangeValue,
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 
+export type HistorySummaryTab = 'all' | 'mine' | 'team';
+
 type HistorySummaryFilterState = {
   searchQuery?: string;
   dateRange?: DateRangeValue;
-  activeTab?: 'all' | 'mine';
+  activeTab?: HistorySummaryTab;
   selectedActionTypes?: string[];
   selectedUserIds?: string[];
   selectedCategories?: string[];
@@ -29,6 +31,9 @@ export function buildHistoryAppliedFilterTypeLabels({
   if (activeTab === 'mine') {
     labels.push('My history');
   }
+  if (activeTab === 'team') {
+    labels.push('My team');
+  }
   if (searchQuery.trim()) {
     labels.push('Search');
   }
@@ -36,7 +41,7 @@ export function buildHistoryAppliedFilterTypeLabels({
     labels.push('Date');
   }
   if (selectedActionTypes.length > 0) {
-    labels.push('Update type');
+    labels.push('Type');
   }
   if (selectedUserIds.length > 0) {
     labels.push('Updated by');
