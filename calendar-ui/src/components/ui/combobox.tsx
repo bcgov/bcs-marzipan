@@ -96,6 +96,7 @@ function ComboboxInput({
   disabled = false,
   showTrigger = true,
   showClear = false,
+  placeholder,
   ...props
 }: ComboboxPrimitive.Input.Props & {
   showTrigger?: boolean;
@@ -106,6 +107,7 @@ function ComboboxInput({
     <InputGroup className={cn('w-auto', className)} data-field={dataField}>
       <ComboboxPrimitive.Input
         render={<InputGroupInput disabled={disabled} />}
+        {...(placeholder !== '' ? { placeholder } : {})}
         {...props}
       />
       <InputGroupAddon align="inline-end">
@@ -329,6 +331,7 @@ function ComboboxChip({
 function ComboboxChipsInput({
   className,
   children: _children,
+  placeholder,
   ...props
 }: ComboboxPrimitive.Input.Props) {
   const readOnly = React.useContext(ComboboxReadOnlyContext);
@@ -340,6 +343,7 @@ function ComboboxChipsInput({
         readOnly && READ_ONLY_STATIC_PLACEHOLDER,
         className
       )}
+      {...(placeholder !== '' ? { placeholder } : {})}
       {...props}
     />
   );
