@@ -49,7 +49,11 @@ export interface ActivityTableRow {
   leadMinistry: string | null;
   /** Ministry acronym for table display; falls back to leadMinistry when absent */
   leadMinistryAbbreviation: string | null;
+  /** Lead team display name, shown beside the comms lead in grid layouts. */
+  leadTeamDisplayName: string | null;
   commsLeadName: string | null;
+  /** Lead comms contact phone; null when the user has no phone on record. */
+  commsLeadPhone: string | null;
   commsContactsCount: number;
   /** Event planner display names */
   eventPlanners: string[];
@@ -80,6 +84,8 @@ export interface ActivityTableRow {
   // Flags (team-scoped assignments)
   flags: ActivityFlagResponse[];
 
+  /** Shared-with team display names for the grid shares indicator. */
+  sharedWith: string[];
   /** Shared-with team IDs for bulk unshare eligibility. */
   sharedWithTeamIds: number[];
   visibility: string | null;
@@ -153,7 +159,9 @@ export function mapActivityToTableRow(
     leadOrg: activity.leadOrg,
     leadMinistry: activity.leadMinistry,
     leadMinistryAbbreviation: activity.leadMinistryAbbreviation ?? null,
+    leadTeamDisplayName: activity.leadTeamDisplayName ?? null,
     commsLeadName: commsLead?.name ?? null,
+    commsLeadPhone: commsLead?.phone ?? null,
     commsContactsCount: activity.commsContacts.length,
     eventPlanners: activity.eventPlanners ?? [],
     eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],
@@ -181,6 +189,7 @@ export function mapActivityToTableRow(
             (v): v is string => typeof v === 'string'
           )
         : undefined,
+    sharedWith: activity.sharedWith ?? [],
     sharedWithTeamIds: activity.sharedWithTeamIds ?? [],
     visibility: activity.visibility ?? null,
 

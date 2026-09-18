@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import {
-  ActivityTable,
+  ActivityTableShell,
   type ActivityTableActiveSavedFilter,
 } from '@/components/activity/ActivityTable';
 import { PageHeader } from '@/components/layout';
@@ -276,9 +276,9 @@ export const ActivityListPage = () => {
 
         <div className="mt-0 min-w-0">
           {activeTab === 'recent' ? (
-            <ActivityTable />
+            <ActivityTableShell />
           ) : (
-            <ActivityTable
+            <ActivityTableShell
               {...tableProps}
               activeSavedFilter={activeSavedFilter}
               onActiveSavedFilterChange={setActiveSavedFilter}

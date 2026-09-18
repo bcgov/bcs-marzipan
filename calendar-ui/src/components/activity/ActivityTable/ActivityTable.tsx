@@ -10,29 +10,21 @@ import {
 } from '@tanstack/react-table';
 import {
   Calendar,
-  ChevronDown,
   Clock,
   Languages,
-  Loader2,
   MapPin,
   NotebookText,
   Star,
   Users,
 } from 'lucide-react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
 import {
-  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
 } from 'react';
 
-import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
-import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { sanitizeLegendSwatchHexColor } from '@corpcal/shared/schemas';
 import { contrastingBlackOrWhiteForegroundHex } from '@corpcal/shared/utils';
 import {
@@ -40,19 +32,11 @@ import {
   ActivityFlagOverflowIcon,
 } from '@/components/activity/activities/ActivityFlagIcon';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
-import { UnshareActivityModal } from '@/components/activity/activities/UnshareActivityModal';
-import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
   ColumnSortDropdown,
 } from '@/components/table/ColumnSortDropdown';
-import { ContentSection } from '@/components/table/ContentSection';
-import { FilterSection } from '@/components/table/FilterSection';
 import { SortableColumnHeader } from '@/components/table/SortableColumnHeader';
-import type {
-  SortColumnConfig,
-  SortLevel,
-} from '@/components/table/SortDropdown';
 import { SortIndicator } from '@/components/table/SortIndicator';
 import {
   getActivityColumnSizes,
@@ -62,98 +46,30 @@ import {
   tableTh,
   tableThead,
 } from '@/components/table/tableConstants';
-import { TablePagination } from '@/components/table/TablePagination';
 import {
   handleTableRowClick,
   handleTableRowKeyDown,
 } from '@/components/table/tableRowNavigation';
-import {
-  TableContentSummary,
-  TableFilterSummary,
-} from '@/components/table/TableSummaryBar';
 import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CopyableText } from '@/components/ui/copyable-text';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { getLookAheadStatusLabel } from '@/constants/form-options';
-import { useActivityListScrollRestore } from '@/hooks/useActivityListScrollRestore';
-import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
-import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
-import { useAuth } from '@/hooks/useAuth';
 import {
-  useActivityList,
-  useBulkUnshareActivities,
-  useBulkUpdateActivities,
-  useSyncActivityFlags,
-} from '@/hooks/useCalendar';
-import { useFavourites } from '@/hooks/useFavourites';
+  useActivityTableCore,
+  type ActivityTableActiveSavedFilter,
+  type ActivityTableCoreOptions,
+} from '@/hooks/useActivityTableCore';
 import {
-  useLiveActivityRowHighlights,
-  useLiveActivitySyncContext,
-} from '@/hooks/useLiveActivitySyncContext';
-import {
-  getLookAheadSectionLabelFromRows,
   getLookAheadSectionLegendColorFromRows,
   useLookAheadSectionRows,
 } from '@/hooks/useLookAheadSectionRows';
-import {
-  useCategories,
-  usePitchRequiredStatuses,
-  useTags,
-  useTeams,
-  useTranslationLanguages,
-  useUsers,
-} from '@/hooks/useLookups';
-import { useSavedFilters } from '@/hooks/useSavedFilters';
-import { buildValidFilterLookupsFromOptions } from '@/lib/activity-filter-lookups';
-import {
-  canResolveTranslationLanguageFilter,
-  filterActivityRowsByFilters,
-  filterActivityRowsByKeyword,
-  type ActivityListQueryParams,
-  type FilterActivityRowsContext,
-} from '@/lib/activity-query-utils';
-import {
-  buildActivityTableBooleanFilters,
-  buildActivityTableFilterSummaryDetails,
-  resolveEffectiveArchiveFilterVisibility,
-} from '@/lib/activity-table-summary-bar-state';
-import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
 import {
   CORP_PACIFIC_TIME_ZONE,
   formatDateRange,
@@ -162,34 +78,25 @@ import {
   formatTime12h,
   parseDateOnlyString,
 } from '@/lib/datetime-utils';
-import { getFriendlyErrorMessage } from '@/lib/error-toast';
-import {
-  hasMinistryTabLeadTeamFilterConflict,
-  MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE,
-} from '@/lib/ministry-tab-lead-filter-conflict';
-import { REVIEW_HIGHLIGHT_BG } from '@/lib/review-highlight';
-import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
-import {
-  sanitizeSavedFilterPayload,
-  type ValidFilterLookups,
-} from '@/lib/savedFilterSanitize';
-import {
-  getUnshareableTeamsForBulk,
-  resolveUnsharePermissions,
-} from '@/lib/unshare-helpers';
 import { cn } from '@/lib/utils';
 
-import { ActivityTableEmptyState } from './ActivityTableEmptyState';
+import { ActivityBulkSelectHeader } from './ActivityBulkSelectHeader';
+import { ActivityTableFrame } from './ActivityTableFrame';
+import type { ActivityTableRow } from './activityTableRow';
 import {
-  ActivityTableFilters,
-  hasAnyActivityTableFilterActive,
-} from './ActivityTableFilters';
-import { ActivityTableLayout } from './ActivityTableLayout';
+  formatRepresentativeBadgeText,
+  LIST_REVIEW_HIGHLIGHT_BG,
+  rowHasAnyChangedPath,
+  rowHasChangedPath,
+  toSentenceCase,
+} from './activityTableRowDisplay';
 import {
-  mapActivityToTableRow,
-  type ActivityTableRow,
-} from './activityTableRow';
-import { compareActivityRowsByLevels } from './activityTableSort';
+  ACTIVITY_SORT_COLUMNS,
+  STATUS_COLUMN_SORT_KEYS,
+} from './activityTableSortColumns';
+import { formatLookAheadBadgeLabel } from './cells/formatLookAheadBadgeLabel';
+
+export type { ActivityTableActiveSavedFilter };
 
 /**
  * Table width: The table uses table-fixed layout; its width is the sum of column
@@ -199,66 +106,6 @@ import { compareActivityRowsByLevels } from './activityTableSort';
  * The page is wrapped by Layout > PageContainer (max-w-[104rem], px-12), so content width
  * is also capped there; any table width beyond that scrolls inside TableScrollContainer.
  */
-
-const DEFAULT_SORT_KEY = 'startDate';
-const DEFAULT_SORT_DIRECTION = 'asc' as const;
-
-const ACTIVITY_SORT_COLUMNS: SortColumnConfig[] = [
-  { id: 'activityId', label: 'Activity ID', defaultDirection: 'asc' },
-  {
-    id: 'activityStatus',
-    label: 'Status',
-    defaultDirection: 'asc',
-    tieBreakers: [
-      { key: 'startDate', direction: 'asc' },
-      { key: 'startTime', direction: 'asc' },
-    ],
-  },
-  {
-    id: 'lookAheadStatus',
-    label: 'LA Status',
-    defaultDirection: 'asc',
-    tieBreakers: [
-      { key: 'startDate', direction: 'asc' },
-      { key: 'startTime', direction: 'asc' },
-    ],
-  },
-  {
-    id: 'startDate',
-    label: 'Date',
-    defaultDirection: 'asc',
-    directionLabels: { asc: 'Soonest', desc: 'Latest' },
-    tieBreakers: [{ key: 'startTime', direction: 'asc' }],
-  },
-  { id: 'lastUpdated', label: 'Last updated', defaultDirection: 'desc' },
-  { id: 'createdDateTime', label: 'Date created', defaultDirection: 'desc' },
-];
-
-/** Status column can be sorted by activity status, last updated, or date created. */
-const STATUS_COLUMN_SORT_KEYS = [
-  'activityStatus',
-  'lastUpdated',
-  'createdDateTime',
-] as const;
-
-function rowHasChangedPath(row: ActivityTableRow, path: string): boolean {
-  const changed = row.changedFieldsSinceReview ?? [];
-  return changed.some((changedPath: string) => {
-    if (changedPath === path) {
-      return true;
-    }
-    return (
-      changedPath.startsWith(`${path}.`) || path.startsWith(`${changedPath}.`)
-    );
-  });
-}
-
-function rowHasAnyChangedPath(
-  row: ActivityTableRow,
-  paths: readonly string[]
-): boolean {
-  return paths.some((path) => rowHasChangedPath(row, path));
-}
 
 function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
   const isPinned = column.getIsPinned();
@@ -276,31 +123,6 @@ function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
         ? 'var(--sticky-bg, #fff)'
         : undefined,
   };
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Format representative name for badge: ministers show as "Minister &lt;LastName&gt;", others as-is.
- */
-function formatRepresentativeBadgeText(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return name;
-  const isMinister = /minister/i.test(trimmed) || /^hon\.?\s/i.test(trimmed);
-  if (isMinister) {
-    const parts = trimmed.split(/\s+/);
-    const lastName = parts[parts.length - 1];
-    return lastName ? `Minister ${lastName}` : name;
-  }
-  return name;
-}
-
-/** Sentence case for lookup display values: first letter upper, rest lower. */
-function toSentenceCase(s: string): string {
-  if (!s) return s;
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
 // ---------------------------------------------------------------------------
@@ -512,7 +334,7 @@ function OverviewCell({
         className={cn(
           'mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900',
           titleChanged && 'rounded-sm px-1',
-          titleChanged && REVIEW_HIGHLIGHT_BG
+          titleChanged && LIST_REVIEW_HIGHLIGHT_BG
         )}
         title={row.title}
       >
@@ -523,7 +345,7 @@ function OverviewCell({
           className={cn(
             'mb-2 text-[13px] text-slate-600',
             pitchChanged && 'inline-block rounded-sm px-1',
-            pitchChanged && REVIEW_HIGHLIGHT_BG
+            pitchChanged && LIST_REVIEW_HIGHLIGHT_BG
           )}
         >
           Pitch: {toSentenceCase(pitchLabel)}
@@ -539,7 +361,7 @@ function OverviewCell({
               className: cn(
                 'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
                 categoriesChanged && 'border-transparent',
-                categoriesChanged && REVIEW_HIGHLIGHT_BG
+                categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
               ),
             })
           )}
@@ -588,14 +410,12 @@ function SummaryCell({
   }, [expanded, needsTruncation]);
 
   const { rows: lookAheadSectionRows } = useLookAheadSectionRows();
-  const status = row.lookAheadStatus;
   const section = row.lookAheadSection;
-  const lookAheadLabel =
-    status && status !== 'none'
-      ? section
-        ? `LA ${getLookAheadStatusLabel(status)}: ${getLookAheadSectionLabelFromRows(lookAheadSectionRows, section)}`
-        : `LA ${getLookAheadStatusLabel(status)}`
-      : null;
+  const lookAheadLabel = formatLookAheadBadgeLabel(
+    row.lookAheadStatus,
+    section,
+    lookAheadSectionRows
+  );
 
   const summaryBadgeGroupItems = useMemo((): BadgeGroupItem[] => {
     const sectionLegendColor = sanitizeLegendSwatchHexColor(
@@ -661,7 +481,7 @@ function SummaryCell({
           className={cn(
             'text-[14px] leading-[1.4] wrap-anywhere',
             summaryChanged && 'rounded-sm px-1',
-            summaryChanged && REVIEW_HIGHLIGHT_BG,
+            summaryChanged && LIST_REVIEW_HIGHLIGHT_BG,
             !expanded && 'line-clamp-5'
           )}
         >
@@ -735,7 +555,7 @@ function SchedulingCell({
           variant: 'primary' as const,
           className: cn(
             'h-auto min-h-5 text-xs text-white',
-            premierChanged && REVIEW_HIGHLIGHT_BG,
+            premierChanged && LIST_REVIEW_HIGHLIGHT_BG,
             premierChanged && 'border-transparent text-slate-900'
           ),
         },
@@ -763,7 +583,7 @@ function SchedulingCell({
             variant="outline"
             className={cn(
               'h-auto min-h-5 border-slate-200 text-xs text-slate-600',
-              dateStatusChanged && REVIEW_HIGHLIGHT_BG,
+              dateStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
               dateStatusChanged && 'border-transparent'
             )}
           >
@@ -786,7 +606,7 @@ function SchedulingCell({
             variant="outline"
             className={cn(
               'h-5 border-slate-200 text-xs text-slate-600',
-              timeStatusChanged && REVIEW_HIGHLIGHT_BG,
+              timeStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
               timeStatusChanged && 'border-transparent'
             )}
           >
@@ -985,738 +805,47 @@ function StatusCell({
 // Main table component
 // ---------------------------------------------------------------------------
 
-/** Active saved-filter preset shown in the summary bar and Saved filters menu. */
-export type ActivityTableActiveSavedFilter = {
-  id: number;
-  name: string;
+export type ActivityTableProps = ActivityTableCoreOptions & {
+  /** Rendered beside the bulk actions row (grid layout toggle). */
+  toolbarTrailing?: React.ReactNode;
 };
 
-export interface ActivityTableProps {
-  /** When set, only activities with any of these lead teams are shown (e.g. ministry tab). */
-  leadTeamIds?: number[];
-  /** When set, only activities where any of these users is comms contact lead are shown. */
-  commsContactLeadUserIds?: number[];
-  /** When set, only activities shared with any of these teams are shown. */
-  sharedWithTeamIds?: number[];
-  /** When set, only activities whose IDs are in this list are shown (favourites tab). */
-  favouriteActivityIds?: number[];
-  /** IDs currently in the user's watchlist; used to show the watchlist star indicator. */
-  watchlistActivityIds?: number[];
-  /** When set, only activities flag-assigned to any of these users are shown. */
-  flagAssigneeUserIds?: number[];
-  /**
-   * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
-   * is considered applied (e.g. single ActivityTable across activity list tabs).
-   */
-  activeSavedFilter?: ActivityTableActiveSavedFilter | null;
-  onActiveSavedFilterChange?: (
-    value: ActivityTableActiveSavedFilter | null
-  ) => void;
-}
-
+/**
+ * Grid C: the original activity list layout. Column structure is unchanged;
+ * shared orchestration lives in {@link useActivityTableCore} and shared chrome
+ * in {@link ActivityTableFrame}.
+ */
 export function ActivityTable({
-  leadTeamIds,
-  commsContactLeadUserIds,
-  sharedWithTeamIds,
-  favouriteActivityIds,
-  watchlistActivityIds,
-  flagAssigneeUserIds,
-  activeSavedFilter: activeSavedFilterFromParent,
-  onActiveSavedFilterChange,
+  toolbarTrailing,
+  ...coreOptions
 }: ActivityTableProps = {}) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isActivityListRoute = location.pathname === '/';
-  const { user, hasPermission } = useAuth();
-  const canBulkUpdateActivities = hasPermission(
-    PERMISSIONS.ACTIVITIES.BULK_UPDATE
-  );
-  const unsharePermissions = resolveUnsharePermissions(
-    hasPermission,
-    user?.roleName
-  );
-  const canUnshare =
-    unsharePermissions.hasUnshare || unsharePermissions.hasUnshareAll;
-  const canBulkSelect = canBulkUpdateActivities || canUnshare;
-  const canSeeDeleted =
-    user?.roleName === SYSTEM_ROLES.ADMIN ||
-    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
-  const canBulkShareActivities = canSeeDeleted;
-  const showReviewHighlights = canSeeDeleted;
-
+  const core = useActivityTableCore(coreOptions);
   const {
+    canBulkSelect,
+    canFlag,
+    showReviewHighlights,
     pitchFieldVisibility,
-    statusArchiveIds,
-    statusOptions,
-    pitchRequiredStatusOptions,
-    tagOptions,
-    leadTeamOptions,
-    commsContactOptions,
-    eventPlannerOptions,
-    translationOptions,
-    translationStatusOptions,
-    filterSummaryContext: filterSummaryContextForBar,
-    hasActivityStatuses,
-  } = useActivityTableFilterLookups(canSeeDeleted);
+    sortedData,
+    userMap,
+    effectiveSortKey,
+    effectiveSortDirection,
+    handleSortChange,
+    handleHeaderSort,
+    pagination,
+    onPaginationChange,
+    selectedActivityIds,
+    toggleActivitySelected,
+    watchlistActivityIdSet,
+    syncFlagsMutation,
+    newRowIds,
+    remoteHighlightIds,
+    openActivityWithScroll,
+  } = core;
 
-  const tableScrollRef = useRef<HTMLDivElement>(null);
-  const { preferences, setPreferences } =
-    useActivityTablePreferences(canSeeDeleted);
-  const savedFiltersHook = useSavedFilters();
-  const [currentSearchParams] = useSearchParams();
-  const defaultAppliedRef = useRef(false);
-  const defaultSuppressedByClearRef = useRef(false);
-  const [internalActiveSavedFilter, setInternalActiveSavedFilter] =
-    useState<ActivityTableActiveSavedFilter | null>(null);
-
-  const savedFilterSelectionControlled = onActiveSavedFilterChange != null;
-  const activeSavedFilter = savedFilterSelectionControlled
-    ? (activeSavedFilterFromParent ?? null)
-    : internalActiveSavedFilter;
-
-  const setActiveSavedFilter = useCallback(
-    (value: ActivityTableActiveSavedFilter | null) => {
-      if (savedFilterSelectionControlled) {
-        onActiveSavedFilterChange?.(value);
-      } else {
-        setInternalActiveSavedFilter(value);
-      }
-    },
-    [savedFilterSelectionControlled, onActiveSavedFilterChange]
-  );
-
-  useEffect(() => {
-    if (activeSavedFilter == null) return;
-    const stillThere = savedFiltersHook.savedFilters.some(
-      (f) => f.id === activeSavedFilter.id
-    );
-    if (!stillThere) setActiveSavedFilter(null);
-  }, [activeSavedFilter, savedFiltersHook.savedFilters, setActiveSavedFilter]);
-
-  const sortKey = preferences.sortKey;
-  const sortDirection = preferences.sortDirection;
-  const showCompleted = preferences.showCompleted;
-  const showDeleted = preferences.showDeleted;
-  const searchKeyword = preferences.searchKeyword;
-  const filterState = preferences.filterState;
-  const [pageIndex, setPageIndex] = useState(0);
-  const [selectedActivityIds, setSelectedActivityIds] = useState<Set<number>>(
-    new Set()
-  );
-  const [bulkDialog, setBulkDialog] = useState<
-    'review' | 'pitch' | 'issue' | 'tags' | 'sharing' | 'flag' | 'delete' | null
-  >(null);
-  const [selectedPitchStatusId, setSelectedPitchStatusId] = useState('');
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
-  const [selectedFlagTeamId, setSelectedFlagTeamId] = useState('');
-  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([]);
-  const [deleteReason, setDeleteReason] = useState('');
-  const [unshareModalOpen, setUnshareModalOpen] = useState(false);
-  const bulkUpdateActivitiesMutation = useBulkUpdateActivities();
-  const bulkUnshareMutation = useBulkUnshareActivities();
-  const { favouriteActivityIds: watchlistIds, toggle: toggleFavourite } =
-    useFavourites();
-
-  const { data: categoriesForFilter = [] } = useCategories();
-  const { data: pitchRequiredStatuses = [] } = usePitchRequiredStatuses();
-  const { data: tags = [] } = useTags();
-  const { data: teams = [] } = useTeams();
-  const {
-    data: translationLanguagesForFilter = [],
-    isLoading: isTranslationLanguagesLoading,
-  } = useTranslationLanguages();
-  const categoryOptions = useMemo(
-    () =>
-      categoriesForFilter
-        .filter((c) => c.isActive)
-        .map((c) => ({
-          value: String(c.id),
-          label: c.displayName ?? c.name,
-        })),
-    [categoriesForFilter]
-  );
-
-  const bulkPitchStatusOptions = useMemo(
-    () =>
-      pitchRequiredStatuses.map((status) => ({
-        value: String(status.id),
-        label: status.displayName,
-      })),
-    [pitchRequiredStatuses]
-  );
-
-  const translationLanguageOptionsForFilter = useMemo(
-    () =>
-      translationLanguagesForFilter.map((l) => ({
-        value: String(l.id),
-        label: l.shortcode ?? l.displayName ?? String(l.id),
-      })),
-    [translationLanguagesForFilter]
-  );
-
-  const validFilterLookupsForDefaultApply = useMemo(
-    (): ValidFilterLookups =>
-      buildValidFilterLookupsFromOptions({
-        statusOptions,
-        categoryOptions,
-        tagOptions,
-        commsContactOptions,
-        eventPlannerOptions,
-        leadTeamOptions,
-        translationStatusOptions,
-        translationOptions,
-      }),
-    [
-      statusOptions,
-      categoryOptions,
-      tagOptions,
-      commsContactOptions,
-      eventPlannerOptions,
-      leadTeamOptions,
-      translationStatusOptions,
-      translationOptions,
-    ]
-  );
-
-  const ministryTabLeadTeamId =
-    leadTeamIds?.length === 1 ? leadTeamIds[0] : undefined;
-
-  const leadFilterConflictsWithMinistryTab = useMemo(
-    () =>
-      hasMinistryTabLeadTeamFilterConflict(
-        ministryTabLeadTeamId,
-        filterState.leadTeamIds
-      ),
-    [ministryTabLeadTeamId, filterState.leadTeamIds]
-  );
-
-  const savedFilterDefaultLookupsReady =
-    hasActivityStatuses && !savedFiltersHook.isLoading;
-
-  useEffect(() => {
-    const decision = getSavedFilterAutoApplyDecision({
-      lookupsReady: savedFilterDefaultLookupsReady,
-      defaultAlreadyApplied: defaultAppliedRef.current,
-      suppressedByClear: defaultSuppressedByClearRef.current,
-      hasKnownUrlParams: hasAnyKnownParam(currentSearchParams),
-      hasRestoredActivePreferences:
-        hasAnyActivityTableFilterActive(filterState, pitchFieldVisibility) ||
-        searchKeyword.trim().length > 0,
-      hasDefaultFilter: savedFiltersHook.defaultFilter != null,
-    });
-
-    if (decision.shouldMarkContextApplied) {
-      defaultAppliedRef.current = true;
-    }
-
-    if (decision.shouldClearActiveSavedFilter) {
-      setActiveSavedFilter(null);
-    }
-
-    if (!decision.shouldApplyDefault) {
-      return;
-    }
-
-    const defaultFilter = savedFiltersHook.defaultFilter;
-    if (!defaultFilter) {
-      return;
-    }
-    const {
-      filterState: sanitized,
-      searchKeyword: kw,
-      hadInvalidValues,
-    } = sanitizeSavedFilterPayload(
-      defaultFilter,
-      validFilterLookupsForDefaultApply
-    );
-    setPreferences({ filterState: sanitized, searchKeyword: kw });
-    setActiveSavedFilter({
-      id: defaultFilter.id,
-      name: defaultFilter.name,
-    });
-    if (hadInvalidValues) {
-      toast.warning(
-        'Some filter values are no longer available and were skipped.'
-      );
-    }
-  }, [
-    savedFiltersHook.defaultFilter,
-    savedFiltersHook.isLoading,
-    currentSearchParams,
-    filterState,
-    searchKeyword,
-    setPreferences,
-    setActiveSavedFilter,
-    validFilterLookupsForDefaultApply,
-    savedFilterDefaultLookupsReady,
-    pitchFieldVisibility,
-  ]);
-
-  const { hasStatusFilter, effectiveShowCompleted, effectiveShowDeleted } =
-    resolveEffectiveArchiveFilterVisibility(
-      filterState,
-      statusArchiveIds,
-      showCompleted,
-      showDeleted,
-      canSeeDeleted
-    );
-
-  const pagination = useMemo(
-    () => ({ pageIndex, pageSize: preferences.pageSize }),
-    [pageIndex, preferences.pageSize]
-  );
+  const columnHelper = createColumnHelper<ActivityTableRow>();
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
     left: ['overview'],
   });
-
-  const activityFilters = useMemo((): ActivityListQueryParams => {
-    return {
-      includeCompleted: effectiveShowCompleted,
-      includeDeleted: effectiveShowDeleted,
-      ...(leadTeamIds !== undefined &&
-        leadTeamIds.length > 0 && { leadTeamIds }),
-      ...(commsContactLeadUserIds !== undefined &&
-        commsContactLeadUserIds.length > 0 && { commsContactLeadUserIds }),
-      ...(sharedWithTeamIds !== undefined &&
-        sharedWithTeamIds.length > 0 && { sharedWithTeamIds }),
-      ...(flagAssigneeUserIds !== undefined &&
-        flagAssigneeUserIds.length > 0 && { flagAssigneeUserIds }),
-    };
-  }, [
-    effectiveShowCompleted,
-    effectiveShowDeleted,
-    leadTeamIds,
-    commsContactLeadUserIds,
-    sharedWithTeamIds,
-    flagAssigneeUserIds,
-  ]);
-
-  const sameNumericArray = (
-    a: number[] | undefined,
-    b: number[] | undefined
-  ): boolean =>
-    (a == null && b == null) ||
-    (a != null &&
-      b != null &&
-      a.length === b.length &&
-      a.every((id, i) => id === b[i]));
-
-  // Reset to first page when user changes filters so results match expectations
-  const prevFiltersRef = useRef(activityFilters);
-  useEffect(() => {
-    const prev = prevFiltersRef.current;
-    const same =
-      prev.includeCompleted === activityFilters.includeCompleted &&
-      prev.includeDeleted === activityFilters.includeDeleted &&
-      sameNumericArray(prev.leadTeamIds, activityFilters.leadTeamIds) &&
-      sameNumericArray(
-        prev.commsContactLeadUserIds,
-        activityFilters.commsContactLeadUserIds
-      ) &&
-      sameNumericArray(
-        prev.sharedWithTeamIds,
-        activityFilters.sharedWithTeamIds
-      ) &&
-      sameNumericArray(
-        prev.flagAssigneeUserIds,
-        activityFilters.flagAssigneeUserIds
-      );
-    if (!same) {
-      prevFiltersRef.current = activityFilters;
-      setPageIndex(0);
-    }
-  }, [activityFilters]);
-
-  // Reset to first page when search keyword or filter state changes
-  const prevSearchKeywordRef = useRef(searchKeyword);
-  const prevFilterStateRef = useRef(filterState);
-  useEffect(() => {
-    if (prevSearchKeywordRef.current !== searchKeyword) {
-      prevSearchKeywordRef.current = searchKeyword;
-      setPageIndex(0);
-    }
-  }, [searchKeyword]);
-  useEffect(() => {
-    if (
-      JSON.stringify(prevFilterStateRef.current) !== JSON.stringify(filterState)
-    ) {
-      prevFilterStateRef.current = filterState;
-      setPageIndex(0);
-    }
-  }, [filterState]);
-
-  const { isSocketConnected } = useLiveActivitySyncContext();
-
-  const activitiesQuery = useActivityList(activityFilters, {
-    suppressPollingWhileLive: isSocketConnected,
-  });
-
-  const tableRemoteHighlightIds = useLiveActivityRowHighlights(
-    activitiesQuery.isFetching
-  );
-
-  const usersQuery = useUsers();
-  const loading = activitiesQuery.isPending && !activitiesQuery.data;
-  const error = activitiesQuery.isError ? activitiesQuery.error : null;
-
-  const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
-  const syncFlagsMutation = useSyncActivityFlags();
-
-  const onPaginationChangeStable = useCallback(
-    (
-      updaterOrValue:
-        | ((prev: typeof pagination) => typeof pagination)
-        | typeof pagination
-    ) => {
-      const prev = pagination;
-      const next =
-        typeof updaterOrValue === 'function'
-          ? updaterOrValue(prev)
-          : updaterOrValue;
-      if (next.pageSize !== prev.pageSize) {
-        setPreferences({ pageSize: next.pageSize });
-        setPageIndex(0);
-      } else {
-        setPageIndex(next.pageIndex);
-      }
-    },
-    [pagination, setPreferences]
-  );
-  const setPagination = onPaginationChangeStable;
-
-  const userMap = useMemo(() => {
-    const map = new Map<string, { name: string; jobTitle?: string | null }>();
-    const users = usersQuery.data ?? [];
-    users.forEach((u) => {
-      const displayName = u.name || u.email || String(u.id);
-      map.set(String(u.id), {
-        name: displayName,
-        jobTitle: u.jobTitle ?? null,
-      });
-    });
-    return map;
-  }, [usersQuery.data]);
-
-  const data = useMemo(
-    () => (activitiesQuery.data ?? []).map(mapActivityToTableRow),
-    [activitiesQuery.data]
-  );
-
-  const filterContext = useMemo((): FilterActivityRowsContext | undefined => {
-    const hasTranslationStatus = translationStatusOptions.length > 0;
-    const hasTranslationLanguages =
-      translationLanguageOptionsForFilter.length > 0;
-    if (!hasTranslationStatus && !hasTranslationLanguages) return undefined;
-    return {
-      ...(hasTranslationStatus && {
-        translationRequiredStatusOptions: translationStatusOptions,
-      }),
-      ...(hasTranslationLanguages && {
-        translationLanguageOptions: translationLanguageOptionsForFilter,
-      }),
-    };
-  }, [translationStatusOptions, translationLanguageOptionsForFilter]);
-
-  const filteredData = useMemo(() => {
-    const translationLanguageFilterPending =
-      filterState.translationLanguageIds.length > 0 &&
-      (isTranslationLanguagesLoading ||
-        !canResolveTranslationLanguageFilter(filterState, filterContext));
-
-    if (translationLanguageFilterPending) {
-      return [];
-    }
-
-    const afterKeyword = filterActivityRowsByKeyword(data, searchKeyword);
-    const afterFilters = filterActivityRowsByFilters(
-      afterKeyword,
-      filterState,
-      filterContext
-    );
-    if (favouriteActivityIds !== undefined) {
-      const favouriteSet = new Set(favouriteActivityIds);
-      return afterFilters.filter((row) => favouriteSet.has(row.id));
-    }
-    return afterFilters;
-  }, [
-    data,
-    searchKeyword,
-    filterState,
-    filterContext,
-    favouriteActivityIds,
-    isTranslationLanguagesLoading,
-  ]);
-
-  const effectiveSortKey = sortKey ?? DEFAULT_SORT_KEY;
-  const effectiveSortDirection =
-    sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION;
-  const sortedData = useMemo(() => {
-    const activeColumn = ACTIVITY_SORT_COLUMNS.find(
-      (c) => c.id === effectiveSortKey
-    );
-    const sortLevels: SortLevel[] = [
-      { key: effectiveSortKey, direction: effectiveSortDirection },
-      ...(activeColumn?.tieBreakers ?? []),
-    ];
-    return [...filteredData].sort((a, b) =>
-      compareActivityRowsByLevels(a, b, sortLevels)
-    );
-  }, [filteredData, effectiveSortKey, effectiveSortDirection]);
-
-  const sortedActivityIds = useMemo(
-    () => sortedData.map((row) => row.id),
-    [sortedData]
-  );
-
-  useEffect(() => {
-    const visibleIds = new Set(sortedActivityIds);
-    setSelectedActivityIds((current) => {
-      const next = new Set(
-        [...current].filter((activityId) => visibleIds.has(activityId))
-      );
-      return next.size === current.size ? current : next;
-    });
-  }, [sortedActivityIds]);
-
-  const selectedActivityCount = selectedActivityIds.size;
-  const bulkActionPending =
-    bulkUpdateActivitiesMutation.isPending || bulkUnshareMutation.isPending;
-
-  const selectedActivities = useMemo(
-    () => sortedData.filter((row) => selectedActivityIds.has(row.id)),
-    [sortedData, selectedActivityIds]
-  );
-
-  const eligibleBulkUnshareTeams = useMemo(
-    () =>
-      getUnshareableTeamsForBulk(
-        selectedActivities.map((row) => ({
-          sharedWithTeamIds: row.sharedWithTeamIds,
-          visibility: row.visibility,
-        })),
-        teams.map((team) => ({
-          id: team.id,
-          name: team.name,
-          displayName: team.name,
-        })),
-        user?.teamIds ?? [],
-        unsharePermissions.hasUnshare,
-        unsharePermissions.hasUnshareAll,
-        unsharePermissions.isAdminOrSysAdmin
-      ),
-    [selectedActivities, teams, user?.teamIds, unsharePermissions]
-  );
-
-  const handleBulkUnshareConfirm = useCallback(
-    async (teamId: number) => {
-      const activityIds = [...selectedActivityIds];
-      if (activityIds.length === 0) return;
-      try {
-        const result = await bulkUnshareMutation.mutateAsync({
-          activityIds,
-          teamId,
-        });
-        setSelectedActivityIds(new Set());
-        setUnshareModalOpen(false);
-        toast.success(
-          `${result.summary.updated} activit${result.summary.updated === 1 ? 'y' : 'ies'} unshared.`
-        );
-        if (result.summary.skipped > 0) {
-          toast.info(
-            `${result.summary.skipped} activit${result.summary.skipped === 1 ? 'y was' : 'ies were'} skipped.`
-          );
-        }
-      } catch (error) {
-        toast.error(getFriendlyErrorMessage(error));
-      }
-    },
-    [bulkUnshareMutation, selectedActivityIds]
-  );
-
-  const toggleActivitySelected = useCallback(
-    (activityId: number, selected: boolean) => {
-      setSelectedActivityIds((current) => {
-        const next = new Set(current);
-        if (selected) {
-          next.add(activityId);
-        } else {
-          next.delete(activityId);
-        }
-        return next;
-      });
-    },
-    []
-  );
-
-  const handleBulkReview = useCallback(async () => {
-    const activityIds = [...selectedActivityIds];
-    try {
-      await bulkUpdateActivitiesMutation.mutateAsync({
-        activityIds,
-        operation: 'review',
-      });
-      setSelectedActivityIds(new Set());
-      setBulkDialog(null);
-      toast.success(
-        `${activityIds.length} activit${activityIds.length === 1 ? 'y was' : 'ies were'} marked reviewed.`
-      );
-    } catch (error) {
-      toast.error(getFriendlyErrorMessage(error));
-    }
-  }, [selectedActivityIds, bulkUpdateActivitiesMutation]);
-
-  const handleBulkSetPitchStatus = useCallback(async () => {
-    const pitchRequiredStatusId = Number(selectedPitchStatusId);
-    if (!Number.isFinite(pitchRequiredStatusId)) return;
-    const activityIds = [...selectedActivityIds];
-    try {
-      await bulkUpdateActivitiesMutation.mutateAsync({
-        activityIds,
-        operation: 'pitchStatus',
-        pitchRequiredStatusId,
-      });
-      setSelectedActivityIds(new Set());
-      setBulkDialog(null);
-      setSelectedPitchStatusId('');
-      toast.success(
-        `Pitch status updated for ${activityIds.length} activit${activityIds.length === 1 ? 'y' : 'ies'}.`
-      );
-    } catch (error) {
-      toast.error(getFriendlyErrorMessage(error));
-    }
-  }, [
-    selectedActivityIds,
-    selectedPitchStatusId,
-    bulkUpdateActivitiesMutation,
-  ]);
-
-  const handleBulkOperation = useCallback(async () => {
-    const activityIds = [...selectedActivityIds];
-    if (!bulkDialog || activityIds.length === 0) return;
-    if (bulkDialog === 'review') {
-      await handleBulkReview();
-      return;
-    }
-    if (bulkDialog === 'pitch') {
-      await handleBulkSetPitchStatus();
-      return;
-    }
-    const operation = bulkDialog === 'sharing' ? 'sharedWith' : bulkDialog;
-    try {
-      await bulkUpdateActivitiesMutation.mutateAsync({
-        activityIds,
-        operation,
-        ...(bulkDialog === 'tags' && { tagIds: selectedTagIds }),
-        ...(bulkDialog === 'sharing' && { teamIds: selectedTeamIds }),
-        ...(bulkDialog === 'flag' && {
-          flagTeamId: Number(selectedFlagTeamId),
-          assigneeIds: selectedAssigneeIds,
-        }),
-        ...(bulkDialog === 'delete' && { deleteReason }),
-      });
-      setSelectedActivityIds(new Set());
-      setBulkDialog(null);
-      toast.success(
-        `Updated ${activityIds.length} selected activit${activityIds.length === 1 ? 'y' : 'ies'}.`
-      );
-    } catch (error) {
-      toast.error(getFriendlyErrorMessage(error));
-    }
-  }, [
-    bulkDialog,
-    bulkUpdateActivitiesMutation,
-    deleteReason,
-    handleBulkReview,
-    handleBulkSetPitchStatus,
-    selectedActivityIds,
-    selectedAssigneeIds,
-    selectedFlagTeamId,
-    selectedTagIds,
-    selectedTeamIds,
-  ]);
-
-  const { openActivityWithScroll } = useActivityListScrollRestore({
-    enabled: isActivityListRoute,
-    location,
-    navigate,
-    scrollRef: tableScrollRef,
-    pageIndex,
-    setPageIndex,
-    pageSize: pagination.pageSize,
-    loading,
-    sortedActivityIds,
-  });
-
-  const watchlistActivityIdSet = useMemo(
-    () => new Set(watchlistActivityIds ?? []),
-    [watchlistActivityIds]
-  );
-
-  // Track which row ids we have seen so we can animate only newly arrived rows on refetch
-  const seenIdsRef = useRef<Set<number>>(new Set());
-  const [newRowIds, setNewRowIds] = useState<Set<number>>(new Set());
-
-  useEffect(() => {
-    const currentIds = data.map((r) => r.id);
-    const currentSet = new Set(currentIds);
-    const newlyAdded = currentIds.filter((id) => !seenIdsRef.current.has(id));
-    seenIdsRef.current = currentSet;
-    if (newlyAdded.length > 0) {
-      setNewRowIds((prev) => new Set([...prev, ...newlyAdded]));
-      const timeout = window.setTimeout(() => {
-        setNewRowIds((prev) => {
-          const next = new Set(prev);
-          newlyAdded.forEach((id) => next.delete(id));
-          return next;
-        });
-      }, 400);
-      return () => window.clearTimeout(timeout);
-    }
-  }, [data]);
-
-  const handleSortChange = useCallback(
-    (key: string | null, direction: 'asc' | 'desc') => {
-      setPreferences({
-        sortKey: key ?? DEFAULT_SORT_KEY,
-        sortDirection: direction,
-      });
-    },
-    [setPreferences]
-  );
-
-  const handleHeaderSort = useCallback(
-    (columnSortKeyOrKeys: string | string[]) => {
-      const keys = Array.isArray(columnSortKeyOrKeys)
-        ? columnSortKeyOrKeys
-        : [columnSortKeyOrKeys];
-      const isActive = keys.includes(effectiveSortKey);
-      if (isActive) {
-        handleSortChange(
-          effectiveSortKey,
-          effectiveSortDirection === 'asc' ? 'desc' : 'asc'
-        );
-      } else {
-        const primaryKey = keys[0];
-        const col = ACTIVITY_SORT_COLUMNS.find((c) => c.id === primaryKey);
-        handleSortChange(primaryKey, col?.defaultDirection ?? 'asc');
-      }
-    },
-    [effectiveSortKey, effectiveSortDirection, handleSortChange]
-  );
-
-  const columnHelper = createColumnHelper<ActivityTableRow>();
-
-  const selectActivityIds = useCallback((activityIds: number[]) => {
-    const maxSelection = 100;
-    const nextIds = activityIds.slice(0, maxSelection);
-    setSelectedActivityIds(new Set(nextIds));
-    if (activityIds.length > maxSelection) {
-      toast.warning(
-        `Bulk actions are limited to ${maxSelection} activities at a time.`
-      );
-    }
-  }, []);
 
   const columns = useMemo(
     () => [
@@ -1724,73 +853,7 @@ export function ActivityTable({
         id: 'overview',
         header: () => (
           <div className="flex items-center gap-2">
-            {canBulkSelect && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    data-no-row-nav
-                    className="inline-flex size-6 items-center justify-center gap-0.5"
-                    aria-label="Select activities"
-                  >
-                    <Checkbox
-                      aria-hidden="true"
-                      readOnly
-                      checked={
-                        sortedData.length > 0 &&
-                        selectedActivityCount === sortedData.length
-                      }
-                    />
-                    <ChevronDown className="size-3" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem
-                    onSelect={() => selectActivityIds(sortedActivityIds)}
-                  >
-                    All activities ({sortedData.length})
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() =>
-                      selectActivityIds(
-                        sortedData
-                          .slice(
-                            pagination.pageIndex * pagination.pageSize,
-                            (pagination.pageIndex + 1) * pagination.pageSize
-                          )
-                          .map((row) => row.id)
-                      )
-                    }
-                  >
-                    This page (
-                    {Math.min(
-                      pagination.pageSize,
-                      Math.max(
-                        sortedData.length -
-                          pagination.pageIndex * pagination.pageSize,
-                        0
-                      )
-                    )}
-                    )
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() =>
-                      selectActivityIds(
-                        sortedData
-                          .filter(
-                            (row) =>
-                              row.leadTeamId != null &&
-                              (user?.teamIds ?? []).includes(row.leadTeamId)
-                          )
-                          .map((row) => row.id)
-                      )
-                    }
-                  >
-                    My teams
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            {canBulkSelect && <ActivityBulkSelectHeader core={core} />}
             <SortableColumnHeader
               title="Overview"
               sortColumnId="activityId"
@@ -1936,6 +999,7 @@ export function ActivityTable({
     ],
     [
       columnHelper,
+      core,
       userMap,
       effectiveSortKey,
       effectiveSortDirection,
@@ -1948,12 +1012,6 @@ export function ActivityTable({
       selectedActivityIds,
       toggleActivitySelected,
       canBulkSelect,
-      selectedActivityCount,
-      sortedData,
-      sortedActivityIds,
-      selectActivityIds,
-      pagination,
-      user?.teamIds,
     ]
   );
 
@@ -1961,7 +1019,7 @@ export function ActivityTable({
     data: sortedData,
     columns,
     state: { pagination, columnPinning },
-    onPaginationChange: onPaginationChangeStable,
+    onPaginationChange,
     onColumnPinningChange: (updater) =>
       setColumnPinning((prev) =>
         typeof updater === 'function' ? updater(prev) : updater
@@ -1974,642 +1032,124 @@ export function ActivityTable({
     meta: { userMap, handleHeaderSort },
   });
 
-  const eventTableFilters = useMemo(
-    () =>
-      buildActivityTableBooleanFilters({
-        hasStatusFilter,
-        effectiveShowCompleted,
-        effectiveShowDeleted,
-        canSeeDeleted,
-        onShowCompletedChange: (checked) => {
-          setActiveSavedFilter(null);
-          setPreferences({ showCompleted: checked });
-        },
-        onShowDeletedChange: (checked) => {
-          setActiveSavedFilter(null);
-          setPreferences({ showDeleted: checked });
-        },
-      }),
-    [
-      hasStatusFilter,
-      effectiveShowCompleted,
-      effectiveShowDeleted,
-      canSeeDeleted,
-      setPreferences,
-      setActiveSavedFilter,
-    ]
-  );
-
-  const handleFilterStateChange = useCallback(
-    (nextFilterState: typeof filterState) => {
-      setActiveSavedFilter(null);
-      setPreferences({ filterState: nextFilterState });
-    },
-    [setPreferences, setActiveSavedFilter]
-  );
-
-  const appliedSavedFilterName = useMemo(() => {
-    if (activeSavedFilter == null) return null;
-    const fromList = savedFiltersHook.savedFilters.find(
-      (f) => f.id === activeSavedFilter.id
-    );
-    return fromList?.name ?? activeSavedFilter.name;
-  }, [activeSavedFilter, savedFiltersHook.savedFilters]);
-
-  const { appliedFilterTypeLabels, filterDetailLines, hasActiveCriteria } =
-    useMemo(
-      () =>
-        buildActivityTableFilterSummaryDetails({
-          filterState,
-          searchKeyword,
-          filterSummaryContext: filterSummaryContextForBar,
-          pitchFieldVisibility,
-        }),
-      [
-        filterState,
-        searchKeyword,
-        filterSummaryContextForBar,
-        pitchFieldVisibility,
-      ]
-    );
-
-  const handleClearAllCriteria = useCallback(() => {
-    defaultSuppressedByClearRef.current = true;
-    defaultAppliedRef.current = false;
-    setActiveSavedFilter(null);
-    setPreferences({
-      filterState: DEFAULT_ACTIVITY_FILTER_STATE,
-      searchKeyword: '',
-    });
-  }, [setPreferences, setActiveSavedFilter]);
-
-  const tableSummaryOnClearFilters = hasActiveCriteria
-    ? handleClearAllCriteria
-    : undefined;
-
-  const filterBar = (
-    <ActivityTableFilters
-      filterState={filterState}
-      onFilterStateChange={handleFilterStateChange}
-      searchKeyword={searchKeyword}
-      onSearchKeywordChange={(value: string) => {
-        setActiveSavedFilter(null);
-        setPreferences({ searchKeyword: value });
-      }}
-      sortKey={sortKey}
-      sortDirection={sortDirection}
-      onSortChange={handleSortChange}
-      defaultSortKey={DEFAULT_SORT_KEY}
-      defaultSortDirection={DEFAULT_SORT_DIRECTION}
-      sortColumns={ACTIVITY_SORT_COLUMNS}
-      categoryOptions={categoryOptions}
-      pitchRequiredStatusOptions={pitchRequiredStatusOptions}
-      statusOptions={statusOptions}
-      tagOptions={tagOptions}
-      translationStatusOptions={translationStatusOptions}
-      translationOptions={translationOptions}
-      leadTeamOptions={leadTeamOptions}
-      commsContactOptions={commsContactOptions}
-      eventPlannerOptions={eventPlannerOptions}
-      pitchFieldVisibility={pitchFieldVisibility}
-      savedFilters={savedFiltersHook}
-      activeSavedFilterId={activeSavedFilter?.id ?? null}
-      onApplySavedFilter={(filterState, searchKeyword, appliedFrom) => {
-        setActiveSavedFilter(appliedFrom);
-        setPreferences({ filterState, searchKeyword });
-      }}
-      onResetAll={handleClearAllCriteria}
-      hasClearableFilters={hasActiveCriteria}
-    />
-  );
-
-  const filterSummary = (
-    <TableFilterSummary
-      appliedSavedFilterName={appliedSavedFilterName}
-      appliedFilterTypeLabels={appliedFilterTypeLabels}
-      filterDetailLines={filterDetailLines}
-      onClearFilters={tableSummaryOnClearFilters}
-    />
-  );
-
-  const filterSection = (
-    <FilterSection>
-      {filterBar}
-      {filterSummary}
-    </FilterSection>
-  );
-
-  const bulkClearSelectionButton =
-    selectedActivityCount > 0 ? (
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        onClick={() => setSelectedActivityIds(new Set())}
-      >
-        Clear selection
-      </Button>
-    ) : null;
-
-  const bulkSelectionLeading =
-    canBulkSelect && selectedActivityCount > 0 ? (
-      <span className="inline-flex flex-wrap items-center gap-5">
-        <span className="font-medium">
-          {selectedActivityCount} of {sortedData.length} activities selected
-        </span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={bulkActionPending}
-            >
-              Batch actions <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-52">
-            {canBulkUpdateActivities ? (
-              <>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    [...selectedActivityIds]
-                      .filter((id) => !watchlistIds.includes(id))
-                      .forEach((id) => toggleFavourite(id));
-                  }}
-                >
-                  Add to watchlist
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
-                  Flag
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
-                  Issue
-                </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
-                      Update pitch status
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                {canBulkShareActivities && (
-                  <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
-                    Shared with
-                  </DropdownMenuItem>
-                )}
-                {canUnshare && (
-                  <DropdownMenuItem
-                    onSelect={() => setUnshareModalOpen(true)}
-                    disabled={eligibleBulkUnshareTeams.length === 0}
-                  >
-                    Unshare
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
-                  Tags
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
-                  Review
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onSelect={() => setBulkDialog('delete')}
-                >
-                  Delete
-                </DropdownMenuItem>
-              </>
-            ) : canUnshare ? (
-              <DropdownMenuItem
-                onSelect={() => setUnshareModalOpen(true)}
-                disabled={eligibleBulkUnshareTeams.length === 0}
-              >
-                Unshare
-              </DropdownMenuItem>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {bulkClearSelectionButton}
-      </span>
-    ) : null;
-
-  const activityListFooter = (
-    <TableContentSummary
-      count={sortedData.length}
-      singularLabel="activity"
-      pluralLabel="activities"
-      showCount={bulkSelectionLeading == null}
-      leading={bulkSelectionLeading}
-      filters={eventTableFilters}
-    />
-  );
-
-  const renderTableShell = (children: ReactNode) => (
-    <div className="min-w-0">
-      {filterSection}
-      <ContentSection>
-        {activityListFooter}
-        <ActivityTableLayout scrollRef={tableScrollRef}>
-          {children}
-        </ActivityTableLayout>
-      </ContentSection>
-    </div>
-  );
-
-  // Loading state
-  if (loading) {
-    return renderTableShell(
-      <div className="flex flex-col items-center justify-center gap-3 py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-        <span className="text-sm text-slate-600">Loading activities...</span>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="p-10">
-        <ErrorState
-          title="Failed to load activities"
-          message={getFriendlyErrorMessage(error)}
-          onRetry={() => void activitiesQuery.refetch()}
-        />
-      </div>
-    );
-  }
-
-  // Empty state (no activities from server)
-  if (data.length === 0) {
-    return renderTableShell(
-      <ActivityTableEmptyState
-        variant={
-          favouriteActivityIds !== undefined
-            ? 'no-favourites'
-            : hasActiveCriteria
-              ? 'no-filter-match'
-              : 'no-data'
-        }
-        onClearFilters={
-          hasActiveCriteria && favouriteActivityIds === undefined
-            ? handleClearAllCriteria
-            : undefined
-        }
-      />
-    );
-  }
-
-  const pageRows = table.getRowModel().rows;
-
-  // Single return so ActivityTableLayout stays mounted when switching to empty-search state.
   return (
-    <TooltipProvider delayDuration={400}>
-      <div className="min-w-0">
-        {filterSection}
-        <ContentSection>
-          {activityListFooter}
-          <ActivityTableLayout scrollRef={tableScrollRef}>
-            {filteredData.length === 0 ? (
-              <ActivityTableEmptyState
-                variant={
-                  favouriteActivityIds !== undefined
-                    ? 'no-favourites'
-                    : leadFilterConflictsWithMinistryTab ||
-                        (hasActiveCriteria && searchKeyword.trim() === '')
-                      ? 'no-filter-match'
-                      : searchKeyword.trim() !== ''
-                        ? 'no-search-match'
-                        : hasActiveCriteria
-                          ? 'no-filter-match'
-                          : 'no-data'
-                }
-                conflictNote={
-                  leadFilterConflictsWithMinistryTab
-                    ? MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE
-                    : undefined
-                }
-                onClearFilters={
-                  hasActiveCriteria && favouriteActivityIds === undefined
-                    ? handleClearAllCriteria
-                    : undefined
-                }
-              />
-            ) : (
-              <table
-                className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
-                role="grid"
-                aria-colcount={columns.length}
-              >
-                <thead className={tableThead}>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => {
-                        const pinStyles = getCommonPinningStyles(header.column);
-                        const { backgroundColor: _pinBg, ...headerPinStyles } =
-                          pinStyles;
-                        const meta = header.column.columnDef.meta;
-                        const isSortable =
-                          meta?.sortKey != null ||
-                          (meta?.sortKeys?.length ?? 0) > 0;
-                        const sortPayload = meta?.sortKeys ?? meta?.sortKey;
-                        const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
-                        return (
-                          <th
-                            key={header.id}
-                            className={cn(tableTh, hasMultiSort && 'group')}
-                            style={{
-                              width: header.getSize(),
-                              minWidth:
-                                header.column.columnDef.minSize ??
-                                header.getSize(),
-                              maxWidth:
-                                header.column.columnDef.maxSize ??
-                                header.getSize(),
-                              cursor: isSortable ? 'pointer' : 'default',
-                              ...headerPinStyles,
-                            }}
-                            onClick={(e) => {
-                              if (
-                                (e.target as HTMLElement).closest(
-                                  `[${COLUMN_SORT_DROPDOWN_DATA_ATTR}]`
-                                )
-                              ) {
-                                return;
-                              }
-                              const onHeaderSort =
-                                table.options.meta?.handleHeaderSort;
-                              if (sortPayload != null && onHeaderSort)
-                                onHeaderSort(sortPayload);
-                            }}
-                          >
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody>
-                  {pageRows.map((row) => {
-                    const isNewRow = newRowIds.has(row.original.id);
-                    const isHighlightRow = tableRemoteHighlightIds.has(
-                      row.original.id
-                    );
-                    return (
-                      <tr
-                        key={row.id}
-                        data-activity-id={row.original.id}
-                        role="button"
-                        aria-label={`Open activity ${row.original.title}`}
-                        className={cn(
-                          `group/row ${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`,
-                          isNewRow && 'animate-in fade-in-0 duration-300',
-                          isHighlightRow && 'live-row-highlight'
+    <ActivityTableFrame core={core} toolbarTrailing={toolbarTrailing}>
+      <table
+        className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
+        role="grid"
+        aria-colcount={columns.length}
+      >
+        <thead className={tableThead}>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                const pinStyles = getCommonPinningStyles(header.column);
+                const { backgroundColor: _pinBg, ...headerPinStyles } =
+                  pinStyles;
+                const meta = header.column.columnDef.meta;
+                const isSortable =
+                  meta?.sortKey != null || (meta?.sortKeys?.length ?? 0) > 0;
+                const sortPayload = meta?.sortKeys ?? meta?.sortKey;
+                const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
+                return (
+                  <th
+                    key={header.id}
+                    className={cn(tableTh, hasMultiSort && 'group')}
+                    style={{
+                      width: header.getSize(),
+                      minWidth:
+                        header.column.columnDef.minSize ?? header.getSize(),
+                      maxWidth:
+                        header.column.columnDef.maxSize ?? header.getSize(),
+                      cursor: isSortable ? 'pointer' : 'default',
+                      ...headerPinStyles,
+                    }}
+                    onClick={(e) => {
+                      if (
+                        (e.target as HTMLElement).closest(
+                          `[${COLUMN_SORT_DROPDOWN_DATA_ATTR}]`
+                        )
+                      ) {
+                        return;
+                      }
+                      const onHeaderSort = table.options.meta?.handleHeaderSort;
+                      if (sortPayload != null && onHeaderSort)
+                        onHeaderSort(sortPayload);
+                    }}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
                         )}
-                        tabIndex={0}
-                        onClick={(e) => {
-                          handleTableRowClick(e, () => {
-                            openActivityWithScroll(row.original.id);
-                          });
-                        }}
-                        onKeyDown={(e) => {
-                          handleTableRowKeyDown(e, () => {
-                            openActivityWithScroll(row.original.id);
-                          });
-                        }}
-                      >
-                        {row.getVisibleCells().map((cell) => {
-                          const pinStyles = getCommonPinningStyles(cell.column);
-                          const isOverview = cell.column.id === 'overview';
-                          return (
-                            <td
-                              key={cell.id}
-                              className={`${tableTd} border-b border-slate-100 ${
-                                isOverview
-                                  ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
-                                  : ''
-                              }`}
-                              style={{
-                                width: cell.column.getSize(),
-                                minWidth:
-                                  cell.column.columnDef.minSize ??
-                                  cell.column.getSize(),
-                                maxWidth:
-                                  cell.column.columnDef.maxSize ??
-                                  cell.column.getSize(),
-                                ...pinStyles,
-                              }}
-                            >
-                              {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext()
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </ActivityTableLayout>
-        </ContentSection>
-
-        {filteredData.length > 0 && (
-          <TablePagination
-            totalItems={sortedData.length}
-            page={pagination.pageIndex + 1}
-            pageSize={pagination.pageSize}
-            onPageChange={(page) =>
-              setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))
-            }
-            onPageSizeChange={(pageSize) =>
-              setPagination((prev) => ({ ...prev, pageSize, pageIndex: 0 }))
-            }
-            scrollContainerRef={tableScrollRef}
-          />
-        )}
-
-        <Dialog
-          open={bulkDialog !== null}
-          onOpenChange={(open) => !open && setBulkDialog(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {bulkDialog === 'review' &&
-                  'Mark selected activities reviewed?'}
-                {bulkDialog === 'pitch' && 'Set pitch status'}
-                {bulkDialog === 'issue' &&
-                  'Mark selected activities as issues?'}
-                {bulkDialog === 'tags' && 'Replace tags'}
-                {bulkDialog === 'sharing' && 'Add shared-with teams'}
-                {bulkDialog === 'flag' && 'Flag selected activities'}
-                {bulkDialog === 'delete' && 'Delete selected activities?'}
-              </DialogTitle>
-              <DialogDescription>
-                {bulkDialog === 'sharing'
-                  ? `Adds teams to the Shared with list for ${selectedActivityCount} selected activit${selectedActivityCount === 1 ? 'y' : 'ies'} without removing existing shares.`
-                  : `This updates ${selectedActivityCount} selected activit${selectedActivityCount === 1 ? 'y' : 'ies'}.`}
-              </DialogDescription>
-            </DialogHeader>
-            {bulkDialog === 'pitch' && (
-              <Select
-                value={selectedPitchStatusId}
-                onValueChange={setSelectedPitchStatusId}
-              >
-                <SelectTrigger aria-label="Pitch status">
-                  <SelectValue placeholder="Choose a pitch status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {bulkPitchStatusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            {bulkDialog === 'tags' && (
-              <div className="max-h-56 space-y-2 overflow-y-auto">
-                {tags.map((tag) => (
-                  <label
-                    key={tag.id}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <Checkbox
-                      checked={selectedTagIds.includes(tag.id)}
-                      onCheckedChange={(checked) =>
-                        setSelectedTagIds((current) =>
-                          checked === true
-                            ? [...current, tag.id]
-                            : current.filter((id) => id !== tag.id)
-                        )
-                      }
-                    />
-                    {tag.displayName ?? tag.label ?? String(tag.id)}
-                  </label>
-                ))}
-              </div>
-            )}
-            {bulkDialog === 'sharing' && (
-              <div className="max-h-56 space-y-2 overflow-y-auto">
-                {teams.map((team) => (
-                  <label
-                    key={team.id}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <Checkbox
-                      checked={selectedTeamIds.includes(team.id)}
-                      onCheckedChange={(checked) =>
-                        setSelectedTeamIds((current) =>
-                          checked === true
-                            ? [...current, team.id]
-                            : current.filter((id) => id !== team.id)
-                        )
-                      }
-                    />
-                    {team.name}
-                  </label>
-                ))}
-              </div>
-            )}
-            {bulkDialog === 'flag' && (
-              <div className="space-y-3">
-                <Select
-                  value={selectedFlagTeamId}
-                  onValueChange={(value) => {
-                    setSelectedFlagTeamId(value);
-                    setSelectedAssigneeIds([]);
-                  }}
-                >
-                  <SelectTrigger aria-label="Flag team">
-                    <SelectValue placeholder="Choose one of your teams" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teams
-                      .filter((team) => (user?.teamIds ?? []).includes(team.id))
-                      .map((team) => (
-                        <SelectItem key={team.id} value={String(team.id)}>
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {selectedFlagTeamId && user && (
-                  <div className="max-h-48 space-y-2 overflow-y-auto">
-                    <label className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={selectedAssigneeIds.includes(user.id)}
-                        onCheckedChange={(checked) =>
-                          setSelectedAssigneeIds(
-                            checked === true ? [user.id] : []
-                          )
-                        }
-                      />
-                      Assign to me ({user.displayName})
-                    </label>
-                  </div>
+                  </th>
+                );
+              })}
+            </tr>
+          ))}
+        </thead>
+        <tbody>
+          {table.getRowModel().rows.map((row) => {
+            const isNewRow = newRowIds.has(row.original.id);
+            const isHighlightRow = remoteHighlightIds.has(row.original.id);
+            return (
+              <tr
+                key={row.id}
+                data-activity-id={row.original.id}
+                role="button"
+                aria-label={`Open activity ${row.original.title}`}
+                className={cn(
+                  `group/row ${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`,
+                  isNewRow && 'animate-in fade-in-0 duration-300',
+                  isHighlightRow && 'live-row-highlight'
                 )}
-              </div>
-            )}
-            {bulkDialog === 'delete' && (
-              <Textarea
-                value={deleteReason}
-                onChange={(event) => setDeleteReason(event.target.value)}
-                placeholder="Provide a reason for deleting these activities"
-                maxLength={1000}
-              />
-            )}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={bulkActionPending}
-                onClick={() => setBulkDialog(null)}
+                tabIndex={0}
+                onClick={(e) => {
+                  handleTableRowClick(e, () => {
+                    openActivityWithScroll(row.original.id);
+                  });
+                }}
+                onKeyDown={(e) => {
+                  handleTableRowKeyDown(e, () => {
+                    openActivityWithScroll(row.original.id);
+                  });
+                }}
               >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                disabled={
-                  bulkActionPending ||
-                  (bulkDialog === 'pitch' && !selectedPitchStatusId) ||
-                  (bulkDialog === 'flag' &&
-                    (!selectedFlagTeamId ||
-                      selectedAssigneeIds.length === 0)) ||
-                  (bulkDialog === 'delete' && deleteReason.trim().length < 10)
-                }
-                onClick={() => void handleBulkOperation()}
-              >
-                {bulkActionPending ? 'Updating...' : 'Confirm'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <UnshareActivityModal
-          open={unshareModalOpen}
-          onOpenChange={setUnshareModalOpen}
-          mode="bulk"
-          activityIds={[...selectedActivityIds]}
-          activities={selectedActivities.map((row) => ({
-            sharedWithTeamIds: row.sharedWithTeamIds,
-            visibility: row.visibility,
-          }))}
-          eligibleTeams={eligibleBulkUnshareTeams}
-          onConfirm={(teamId) => void handleBulkUnshareConfirm(teamId)}
-          isPending={bulkUnshareMutation.isPending}
-        />
-      </div>
-    </TooltipProvider>
+                {row.getVisibleCells().map((cell) => {
+                  const pinStyles = getCommonPinningStyles(cell.column);
+                  const isOverview = cell.column.id === 'overview';
+                  return (
+                    <td
+                      key={cell.id}
+                      className={`${tableTd} border-b border-slate-100 ${
+                        isOverview
+                          ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                          : ''
+                      }`}
+                      style={{
+                        width: cell.column.getSize(),
+                        minWidth:
+                          cell.column.columnDef.minSize ??
+                          cell.column.getSize(),
+                        maxWidth:
+                          cell.column.columnDef.maxSize ??
+                          cell.column.getSize(),
+                        ...pinStyles,
+                      }}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </ActivityTableFrame>
   );
 }
