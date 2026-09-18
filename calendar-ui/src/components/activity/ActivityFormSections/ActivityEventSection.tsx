@@ -685,6 +685,8 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 placeholder=""
                 searchPlaceholder=""
                 emptyMessage="No venues found."
+                freeformBadgeLabel="Add custom venue"
+                listFooterHint="Custom venue names allowed"
               />
             </FormControl>
             <FormField
@@ -827,8 +829,8 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   value={cityComboboxValueFromVenue(currentVenue, citiesList)}
                   onChange={handleCityComboboxChange}
                   emptyMessage="No cities found."
-                  freeformLabel="Other"
-                  freeformDescription="Enter a city not in the list"
+                  freeformBadgeLabel="Add custom city"
+                  listFooterHint="Custom city names allowed"
                 />
               </FormControl>
               <FormMessage />
@@ -1003,14 +1005,13 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   placeholder=""
                   searchPlaceholder=""
                   emptyMessage="No event planners found."
-                  freeformLabel="Other"
-                  freeformDescription="Can't find the event planner?"
+                  freeformBadgeLabel="Add custom event planner"
+                  listFooterHint="Custom event planner names allowed"
                   multiple
                   useChips
                   onSetLead={setLead}
                 />
               </FormControl>
-
               <FormMessage />
             </FormItem>
           );
