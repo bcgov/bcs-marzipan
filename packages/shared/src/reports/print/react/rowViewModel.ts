@@ -281,9 +281,13 @@ function isConfirmedStatusDisplay(value: string): boolean {
   return value.trim().toLowerCase() === 'confirmed';
 }
 
+function formatUnconfirmedStatus(value: string): string {
+  return value.trim().toLowerCase() === 'not confirmed' ? 'TBC' : value;
+}
+
 /**
- * Look Ahead / Exec Look Ahead print: when a date/time is shown and status is
- * not Confirmed, append `TBC`; omit status when no date/time value is present.
+ * Look Ahead / Exec Look Ahead print: when a date/time is shown, preserve an
+ * explicit non-Confirmed status; omit Confirmed and missing statuses.
  */
 function lookAheadDateStatusForPrint(
   raw: string,
@@ -292,7 +296,7 @@ function lookAheadDateStatusForPrint(
   if (!hasStartDate) return '';
   const t = raw.trim();
   if (!t || isConfirmedStatusDisplay(t)) return '';
-  return 'TBC';
+  return formatUnconfirmedStatus(t);
 }
 
 function lookAheadTimeStatusForPrint(
@@ -302,7 +306,7 @@ function lookAheadTimeStatusForPrint(
   if (!hasTimeDisplay) return '';
   const t = raw.trim();
   if (!t || isConfirmedStatusDisplay(t)) return '';
-  return 'TBC';
+  return formatUnconfirmedStatus(t);
 }
 
 function shouldUseLookAheadDateTimeStatusRules(
@@ -324,9 +328,8 @@ function shouldUseLookAheadDateTimeStatusRules(
  * `@default dateCellStyle` — `'shortWithYear'` keeps legacy callers/tests stable;
  * rollup `{@link PrintReportDocument}` passes `'shortNoYear'` (Look Ahead date rules).
  *
- * When `variant` is `lookAhead` or `execLookAhead`, Confirmed date/time status
- * is omitted; any other non-empty status becomes `TBC` when a date/time value
- * is present (no date/time value means no status label).
+ * When `variant` is a rollup report, Confirmed date/time status is omitted;
+ * any other non-empty status is displayed when a date/time value is present.
  */
 export function toPrintRowViewModel(
   activity: ActivityListItem,

@@ -46,6 +46,15 @@ describe('activity-relation-registry', () => {
       true
     );
   });
+
+  it('includes date and time status relations for every report', () => {
+    const profile = resolveReportHydrationProfile({
+      effectiveFields: ['title', 'startDate', 'startTime'],
+    });
+
+    expect(profileIncludesRelation(profile, 'dateStatus')).toBe(true);
+    expect(profileIncludesRelation(profile, 'timeStatus')).toBe(true);
+  });
 });
 
 describe('hydration-profile', () => {
