@@ -107,17 +107,16 @@ function HistoryTableSkeletonRow() {
       >
         <Skeleton className="h-4 w-24" />
       </td>
-      <td className={tableTd}>
-        <Skeleton className="h-5 w-20 rounded-full" />
-      </td>
       <td className={cn(tableTd, HISTORY_TABLE_COLUMN_LAYOUT.date.className)}>
         <div className="space-y-1">
           <Skeleton className="h-4 w-20" />
           <Skeleton className="h-4 w-16" />
         </div>
       </td>
-      <td className={cn(tableTd, HISTORY_TABLE_COLUMN_LAYOUT.expand.className)}>
-        <Skeleton className="mx-auto size-4" />
+      <td
+        className={cn(tableTd, HISTORY_TABLE_COLUMN_LAYOUT.details.className)}
+      >
+        <Skeleton className="h-5 w-28 rounded-full" />
       </td>
     </tr>
   );
@@ -163,7 +162,6 @@ export function HistoryTableSkeleton({
           >
             Activity ID
           </th>
-          <th className={tableTh}>Details</th>
           <th
             className={cn(tableTh, HISTORY_TABLE_COLUMN_LAYOUT.date.className)}
           >
@@ -172,10 +170,10 @@ export function HistoryTableSkeleton({
           <th
             className={cn(
               tableTh,
-              HISTORY_TABLE_COLUMN_LAYOUT.expand.className
+              HISTORY_TABLE_COLUMN_LAYOUT.details.className
             )}
           >
-            <span className="sr-only">Expand row</span>
+            Details
           </th>
         </tr>
       </thead>
