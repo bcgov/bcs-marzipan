@@ -15,9 +15,25 @@ import type { ReactElement } from 'react';
 export function RichTextFieldMock({
   value,
   name,
+  toolbar = 'full',
 }: {
   value: string;
   name: string;
+  toolbar?: 'full' | 'links';
 }): ReactElement {
-  return <input type="hidden" name={name} value={value} readOnly />;
+  return (
+    <>
+      {toolbar === 'links' ? (
+        <div role="toolbar" aria-label="Text formatting">
+          <button type="button" aria-label="Clear formatting">
+            Clear
+          </button>
+          <button type="button" aria-label="Link">
+            Link
+          </button>
+        </div>
+      ) : null}
+      <input type="hidden" name={name} value={value} readOnly />
+    </>
+  );
 }

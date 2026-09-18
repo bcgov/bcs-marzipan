@@ -40,8 +40,7 @@ import {
  * | Field                              | Baseline sentinel       |
  * | ---------------------------------- | ----------------------- |
  * | notes, schedulingNotes, strategy   | `''`                    |
- * | significance, summary | `''` |
- * | executiveSummary | `EMPTY_RICH_TEXT_DOC` |
+ * | significance, executiveSummary, summary | `EMPTY_RICH_TEXT_DOC` |
  *
  * Canonical-only (no hydrate override):
  *

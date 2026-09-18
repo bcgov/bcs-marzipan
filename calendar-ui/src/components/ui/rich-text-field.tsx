@@ -22,9 +22,12 @@ import { Separator } from '@/components/ui/separator';
 import {
   getActivityRichTextEditorExtensions,
   getSetContentArgs,
+  type ActivityRichTextEditorProfile,
 } from '@/lib/activity-rich-text-extensions';
 import { coalesceRichTextFormStorageValue } from '@/lib/normalize-activity-rich-text-form';
 import { cn } from '@/lib/utils';
+
+export type RichTextFieldToolbar = 'full' | 'links';
 
 export type RichTextFieldProps = {
   id?: string;
@@ -37,6 +40,10 @@ export type RichTextFieldProps = {
   readOnly?: boolean;
   disabled?: boolean;
   className?: string;
+  /** TipTap extension set; `links` disables bold/italic/lists in the editor. */
+  editorProfile?: ActivityRichTextEditorProfile;
+  /** `full` shows all formatting controls; `links` shows clear format and link only. */
+  toolbar?: RichTextFieldToolbar;
   'data-field'?: string;
 };
 
@@ -105,6 +112,8 @@ export function RichTextField({
   readOnly = false,
   disabled = false,
   className,
+  editorProfile = 'full',
+  toolbar = 'full',
   'data-field': dataField,
 }: RichTextFieldProps) {
   const editable = !readOnly && !disabled;
@@ -115,8 +124,12 @@ export function RichTextField({
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const extensions = useMemo(
-    () => getActivityRichTextEditorExtensions({ placeholder }),
-    [placeholder]
+    () =>
+      getActivityRichTextEditorExtensions({
+        placeholder,
+        profile: editorProfile,
+      }),
+    [placeholder, editorProfile]
   );
   const coalescedValue = useMemo(
     () => coalesceRichTextFormStorageValue(value),
@@ -383,75 +396,101 @@ export function RichTextField({
             role="toolbar"
             aria-label="Text formatting"
           >
-            <Button
-              type="button"
-              variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-7 px-2"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => editor.chain().focus().toggleBold().run()}
-              aria-pressed={editor.isActive('bold')}
-              aria-label="Bold"
-            >
-              <Bold className="size-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant={editor.isActive('italic') ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-7 px-2"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => editor.chain().focus().toggleItalic().run()}
-              aria-pressed={editor.isActive('italic')}
-              aria-label="Italic"
-            >
-              <Italic className="size-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() =>
-                editor.chain().focus().unsetAllMarks().clearNodes().run()
-              }
-              aria-label="Clear formatting"
-            >
-              <RemoveFormatting className="size-3.5" />
-            </Button>
-            <Separator
-              orientation="vertical"
-              className="mx-1 h-5 data-[orientation=vertical]:h-5"
-            />
-            <Button
-              type="button"
-              variant={editor.isActive('bulletList') ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-7 px-2"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => editor.chain().focus().toggleBulletList().run()}
-              aria-pressed={editor.isActive('bulletList')}
-              aria-label="Bulleted list"
-            >
-              <List className="size-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant={editor.isActive('orderedList') ? 'secondary' : 'ghost'}
-              size="sm"
-              className="h-7 px-2"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => editor.chain().focus().toggleOrderedList().run()}
-              aria-pressed={editor.isActive('orderedList')}
-              aria-label="Numbered list"
-            >
-              <ListOrdered className="size-3.5" />
-            </Button>
-            <Separator
-              orientation="vertical"
-              className="mx-1 h-5 data-[orientation=vertical]:h-5"
-            />
+            {toolbar === 'full' ? (
+              <>
+                <Button
+                  type="button"
+                  variant={editor.isActive('bold') ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 px-2"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => editor.chain().focus().toggleBold().run()}
+                  aria-pressed={editor.isActive('bold')}
+                  aria-label="Bold"
+                >
+                  <Bold className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant={editor.isActive('italic') ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 px-2"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => editor.chain().focus().toggleItalic().run()}
+                  aria-pressed={editor.isActive('italic')}
+                  aria-label="Italic"
+                >
+                  <Italic className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() =>
+                    editor.chain().focus().unsetAllMarks().clearNodes().run()
+                  }
+                  aria-label="Clear formatting"
+                >
+                  <RemoveFormatting className="size-3.5" />
+                </Button>
+                <Separator
+                  orientation="vertical"
+                  className="mx-1 h-5 data-[orientation=vertical]:h-5"
+                />
+                <Button
+                  type="button"
+                  variant={
+                    editor.isActive('bulletList') ? 'secondary' : 'ghost'
+                  }
+                  size="sm"
+                  className="h-7 px-2"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() =>
+                    editor.chain().focus().toggleBulletList().run()
+                  }
+                  aria-pressed={editor.isActive('bulletList')}
+                  aria-label="Bulleted list"
+                >
+                  <List className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant={
+                    editor.isActive('orderedList') ? 'secondary' : 'ghost'
+                  }
+                  size="sm"
+                  className="h-7 px-2"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() =>
+                    editor.chain().focus().toggleOrderedList().run()
+                  }
+                  aria-pressed={editor.isActive('orderedList')}
+                  aria-label="Numbered list"
+                >
+                  <ListOrdered className="size-3.5" />
+                </Button>
+                <Separator
+                  orientation="vertical"
+                  className="mx-1 h-5 data-[orientation=vertical]:h-5"
+                />
+              </>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() =>
+                  editor.chain().focus().unsetAllMarks().clearNodes().run()
+                }
+                aria-label="Clear formatting"
+              >
+                <RemoveFormatting className="size-3.5" />
+              </Button>
+            )}
             <Button
               type="button"
               variant={editor.isActive('link') ? 'secondary' : 'ghost'}

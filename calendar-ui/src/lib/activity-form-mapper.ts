@@ -5,7 +5,6 @@ import type {
 import {
   buildReviewDiffLookups,
   mapResponseToFormData,
-  plainTextFromActivityRichField,
 } from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
@@ -33,11 +32,7 @@ export function activityToFormData(
   lookups: FormLookupData
 ): ActivityFormData {
   const mapped = mapResponseToFormData(activity, buildFormLookups(lookups));
-  const base = normalizeActivityRichTextFormFields({
-    ...mapped,
-    summary: plainTextFromActivityRichField(mapped.summary),
-    significance: plainTextFromActivityRichField(mapped.significance),
-  });
+  const base = normalizeActivityRichTextFormFields(mapped);
   const reps = lookups.governmentRepresentatives;
   if (!reps?.length) {
     return base;

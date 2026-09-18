@@ -59,7 +59,7 @@ describe('buildPayloadForCreate', () => {
   it('strips UI sentinels from optional fields before sending to API', () => {
     const formValues = minimalForm({
       notes: '',
-      significance: '',
+      significance: EMPTY_RICH_TEXT_DOC,
       executiveSummary: EMPTY_RICH_TEXT_DOC,
     });
 
@@ -102,7 +102,7 @@ describe('buildPayloadForUpdate', () => {
       notes: '',
       schedulingNotes: '',
       strategy: '',
-      significance: '',
+      significance: EMPTY_RICH_TEXT_DOC,
     });
 
     const payload = buildPayloadForUpdate(formValues, formValues);

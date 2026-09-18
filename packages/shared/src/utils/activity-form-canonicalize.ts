@@ -2,7 +2,10 @@ import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ActivityFormData } from '../schemas/activity.schema';
 import { normalizeEventPlannerFormEntries } from './activity-form-event-planner-normalize';
 import { normalizeVenueAddressForForm } from './activity-form-mapper';
-import { isActivityRichTextEffectivelyEmpty } from './activity-rich-text';
+import {
+  EMPTY_RICH_TEXT_DOC,
+  isActivityRichTextEffectivelyEmpty,
+} from './activity-rich-text';
 
 function isNullishOrEmptyString(v: unknown): boolean {
   return v === null || v === undefined || v === '';
@@ -56,8 +59,16 @@ export function canonicalizeActivityFormData(
 ): ActivityFormData {
   return {
     ...data,
-    summary: canonOptString(data.summary) ?? '',
-    significance: canonOptString(data.significance),
+    summary:
+      isNullishOrEmptyString(data.summary) ||
+      isActivityRichTextEffectivelyEmpty(data.summary)
+        ? EMPTY_RICH_TEXT_DOC
+        : data.summary,
+    significance:
+      isNullishOrEmptyString(data.significance) ||
+      isActivityRichTextEffectivelyEmpty(data.significance)
+        ? undefined
+        : data.significance,
     schedulingNotes: canonOptString(data.schedulingNotes),
     strategy: canonOptString(data.strategy),
     notes: canonOptString(data.notes),
