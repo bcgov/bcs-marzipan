@@ -73,7 +73,7 @@ export type CloneModalScheduleFieldKey =
 
 /**
  * Source fields that must never be carried over to a clone. Mirrors the
- * scopes listed in the product spec: look ahead, pitch, translations, and
+ * scopes listed in the product spec: Look Ahead, pitch, translations, and
  * pitchDate are always reset to their create-time defaults.
  */
 export const CLONE_NEVER_COPIED_FIELD_KEYS = [

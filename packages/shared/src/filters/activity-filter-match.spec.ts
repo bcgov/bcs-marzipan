@@ -240,7 +240,7 @@ describe('activityMatchesFilterState', () => {
     });
   });
 
-  describe('look ahead', () => {
+  describe('Look Ahead', () => {
     it('filters by status (OR within)', () => {
       expect(matchIds(state({ lookAheadStatusValues: ['new'] }))).toEqual([
         1, 4,

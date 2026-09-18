@@ -184,7 +184,7 @@ The ReportRow component dynamically maps activity fields into columns:
    - Don't need to read across multiple places
 
 3. **Status Visibility**
-   - Comms lead, activity status, look-ahead status all visible
+   - Comms lead, activity status, Look Ahead status all visible
    - Critical metadata in dedicated column
 
 4. **No Cognitive Overhead**

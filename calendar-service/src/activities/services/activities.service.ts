@@ -3140,7 +3140,7 @@ export class ActivitiesService {
    * The source activity's field values are mapped into a `CreateActivityRequest`
    * payload, then transformed per the clone rules:
    * - Schedule fields and title come from the request body (user re-enters them).
-   * - Never-copied fields (look ahead, pitch, translations, pitchDate, executive
+   * - Never-copied fields (Look Ahead, pitch, translations, pitchDate, executive
    *   summary) are reset to create-time defaults.
    * - Optional `includeFieldPaths` acts as an allow-list across the advanced
    *   field inventory; fields not in the list are dropped so `create` applies

@@ -384,7 +384,7 @@ export class ApplicationSettingsService {
   }
 
   // --------------------------------------------------------------------------
-  // Look-ahead PDF cover contact (phone / email on exported cover page)
+  // Look Ahead PDF cover contact (phone / email on exported cover page)
   // --------------------------------------------------------------------------
 
   async getLookAheadReportCoverContact(

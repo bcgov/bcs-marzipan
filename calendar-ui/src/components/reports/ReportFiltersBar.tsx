@@ -599,7 +599,7 @@ export function ReportFiltersBar({
     <div
       className="flex flex-col"
       role="search"
-      aria-label="Filter report activities by date, category, lead team, comms contact, status, look ahead, tags, translations, pitch, event planner, and keyword"
+      aria-label="Filter report activities by date, category, lead team, comms contact, status, Look Ahead, tags, translations, pitch, event planner, and keyword"
     >
       <div className="flex flex-nowrap items-center justify-between gap-8">
         <div className="flex min-w-0 flex-1 items-center gap-2">
