@@ -1,5 +1,5 @@
 /**
- * Look-ahead feature module (shared).
+ * Look Ahead feature module (shared).
  *
  * Public API for callers in calendar-service, calendar-ui, and shared print/PDF
  * code. Implementation files (resolver, policy constants) live alongside this

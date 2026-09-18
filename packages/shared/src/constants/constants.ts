@@ -21,7 +21,7 @@ export type Visibility = (typeof VISIBILITY)[number];
 // ============================================================================
 
 /**
- * Look Ahead Status - Status of activity in look-ahead reports
+ * Look Ahead Status - Status of activity in Look Ahead reports
  */
 export const LOOK_AHEAD_STATUS = ['none', 'new', 'changed'] as const;
 export type LookAheadStatus = (typeof LOOK_AHEAD_STATUS)[number];
@@ -183,7 +183,7 @@ export const ACTIVITY_TEAM_SHARING_CACHE_SECONDS = DYNAMIC_LOOKUP_CACHE_SECONDS;
 export const DEFAULT_STATUS = 'unknown' as const;
 
 /**
- * Default look ahead status
+ * Default Look Ahead status
  */
 export const DEFAULT_LOOK_AHEAD_STATUS = 'none' as const;
 

@@ -319,7 +319,7 @@ INSERT INTO reports (id, name, display_name, sort_order, is_active, visibility, 
     true,
     'team',
     '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "summary", "significance", "category", "isIssue", "newsReleaseOrigin", "lookAheadStatus", "lookAheadSection", "lastUpdatedDateTime"], "printTemplate": "lookAheadV2", "sections": [{"id": "events", "name": "Events", "uiDisplayName": "Events", "reportDisplayName": "Events, speeches and releases (inside government)", "legendColor": "#A3C4E1", "order": 1, "filter": {"lookAheadSection": "events"}, "printPerDayColumnHeaderRepeat": true}, {"id": "issues", "name": "Issues", "uiDisplayName": "Issues", "reportDisplayName": "Issues and reports", "legendColor": "#ccc0d9", "order": 2, "filter": {"lookAheadSection": "issues"}}, {"id": "news", "name": "News", "uiDisplayName": "In the news", "reportDisplayName": "In the news (outside government)", "legendColor": "#e8f3a9", "order": 3, "filter": {"lookAheadSection": "news"}}, {"id": "awareness", "name": "Awareness", "uiDisplayName": "Awareness", "reportDisplayName": "Awareness dates", "legendColor": "#eaf1dd", "order": 4, "filter": {"lookAheadSection": "awareness"}, "printOmitReleaseColumn": true}, {"id": "longTerm", "name": "Long-term", "uiDisplayName": "Long-term", "reportDisplayName": "Long-term outlook", "legendColor": "#edf2f8", "order": 5, "filter": {"lookAheadSection": "longTerm"}, "printOmitReleaseColumn": true}]}'::jsonb,
-    'Executive look ahead report with the same section layout as Look Ahead',
+    'Executive Look Ahead report with the same section layout as Look Ahead',
     999,
     999
   ),

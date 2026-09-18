@@ -27,7 +27,7 @@ export type PrintReportVariant =
 /** How activity start/end dates render in rollup table column 1. */
 export type PrintDateCellStyle = 'shortWithYear' | 'shortNoYear';
 
-/** Look-ahead status badge variants. `'none'` is normalised to `null`. */
+/** Look Ahead status badge variants. `'none'` is normalised to `null`. */
 export type LookAheadBadge = 'new' | 'changed' | null;
 
 /** Structural flags shown at the top of column 3. */

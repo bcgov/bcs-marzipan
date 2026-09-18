@@ -69,7 +69,7 @@ import {
 } from './print-assets';
 import { filterActivityResponsesBySearchKeyword } from './report-activity-search';
 
-/** Look-ahead family reports that use the shared letter-size cover in PDF export only. */
+/** Look Ahead family reports that use the shared letter-size cover in PDF export only. */
 const REPORT_TYPES_WITH_LOOK_AHEAD_COVER = new Set(['look-ahead', 'exec']);
 
 /** Reports that use the shared confidential header band in PDF body export. */
@@ -213,7 +213,7 @@ export class ReportsService {
     const dataUrl = buildLookAheadReportCoverDataUrl();
     if (!dataUrl) {
       this.logger.warn(
-        'Look-ahead cover image missing from @corpcal/shared assets/reports; PDF export continues without a cover page.'
+        'Look Ahead cover image missing from @corpcal/shared assets/reports; PDF export continues without a cover page.'
       );
       return '';
     }

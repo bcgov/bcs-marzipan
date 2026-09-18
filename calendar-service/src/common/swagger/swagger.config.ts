@@ -134,7 +134,7 @@ export function setupSwagger(
     .addTag('drafts', 'Form draft save and restore')
     .addTag('auth', 'Authentication')
     .addTag('reports', 'Reporting')
-    .addTag('look-ahead', 'Look-ahead report data')
+    .addTag('look-ahead', 'Look Ahead report data')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

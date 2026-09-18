@@ -618,7 +618,7 @@ export function ActivityTableFilters({
     <div
       className="mb-4 flex flex-nowrap items-center justify-between gap-8"
       role="search"
-      aria-label="Filter activities by date, category, lead team, comms contact, status, look ahead, tags, translations, pitch, event planner, and keyword"
+      aria-label="Filter activities by date, category, lead team, comms contact, status, Look Ahead, tags, translations, pitch, event planner, and keyword"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <div className="relative max-w-md min-w-[240px] shrink-0">

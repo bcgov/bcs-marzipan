@@ -467,12 +467,12 @@ describe('ReportsPage placeholder data handling', () => {
     mockReports.splice(0, mockReports.length, {
       id: 1,
       name: 'look-ahead',
-      displayName: 'Look-ahead Report',
+      displayName: 'Look Ahead',
     });
     settledReportData = makeReportData(
       'Initial activity',
       'look-ahead',
-      'Look-ahead Report'
+      'Look Ahead'
     );
     mockFetchReportData.mockReset();
     mockFetchReportData.mockResolvedValue(settledReportData);
