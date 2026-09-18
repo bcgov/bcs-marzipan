@@ -197,6 +197,13 @@ export class ReportsService {
     const raw = this.configService.get<string>('PUBLIC_APP_BASE_URL');
     const trimmed = raw?.trim();
     if (trimmed && trimmed.length > 0) return trimTrailingSlashes(trimmed);
+
+    if (this.configService.get<string>('NODE_ENV') === 'production') {
+      throw new Error(
+        'PUBLIC_APP_BASE_URL must be configured in production to generate report activity links.'
+      );
+    }
+
     return 'http://localhost:3000';
   }
 

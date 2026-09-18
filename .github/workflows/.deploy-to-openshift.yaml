@@ -125,6 +125,7 @@ jobs:
           export NAMESPACE="${{ vars.NAMESPACE }}"
           export GIT_BRANCH="${{ inputs.git-branch }}"
           export GIT_RUN_ID="${{ github.run_id }}"
+          export PUBLIC_APP_BASE_URL="${{ vars.PUBLIC_APP_BASE_URL }}"
 
           if  [ "${{ vars.NAMESPACE }}" == "" ]; then
             echo "namespace is not set. aborting..."

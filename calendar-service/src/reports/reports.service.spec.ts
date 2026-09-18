@@ -231,3 +231,44 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     });
   });
 });
+
+describe('ReportsService public application URL', () => {
+  const configService = {
+    get: vi.fn(),
+  };
+
+  const service = new ReportsService(
+    { db: {} } as never,
+    {} as never,
+    {} as never,
+    configService as never,
+    {} as never,
+    {} as never
+  );
+
+  beforeEach(() => {
+    configService.get.mockReset();
+  });
+
+  it('uses the configured public application URL without trailing slashes', () => {
+    configService.get.mockImplementation((key: string) =>
+      key === 'PUBLIC_APP_BASE_URL'
+        ? ' https://calendar.example.gov.bc.ca/ '
+        : undefined
+    );
+
+    expect(service['getPublicAppBaseUrl']()).toBe(
+      'https://calendar.example.gov.bc.ca'
+    );
+  });
+
+  it('fails in production when the public application URL is not configured', () => {
+    configService.get.mockImplementation((key: string) =>
+      key === 'NODE_ENV' ? 'production' : undefined
+    );
+
+    expect(() => service['getPublicAppBaseUrl']()).toThrow(
+      /PUBLIC_APP_BASE_URL must be configured/
+    );
+  });
+});
