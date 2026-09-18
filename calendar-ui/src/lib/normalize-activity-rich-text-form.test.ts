@@ -36,15 +36,15 @@ describe('normalizeActivityRichTextFormValue', () => {
 });
 
 describe('normalizeActivityRichTextFormFields', () => {
-  it('only coalesces executiveSummary to EMPTY_RICH_TEXT_DOC', () => {
+  it('sets summary, significance, and executiveSummary to EMPTY_RICH_TEXT_DOC when empty', () => {
     const data = normalizeActivityRichTextFormFields({
       title: 't',
       summary: '',
       significance: undefined,
       executiveSummary: undefined,
     } as never);
-    expect(data.summary).toBe('');
-    expect(data.significance).toBeUndefined();
+    expect(data.summary).toBe(EMPTY_RICH_TEXT_DOC);
+    expect(data.significance).toBe(EMPTY_RICH_TEXT_DOC);
     expect(data.executiveSummary).toBe(EMPTY_RICH_TEXT_DOC);
   });
 });

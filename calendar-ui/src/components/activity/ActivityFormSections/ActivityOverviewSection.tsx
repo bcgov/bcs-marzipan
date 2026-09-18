@@ -55,6 +55,7 @@ import {
   FreeformCombobox,
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
+import { RichTextField } from '@/components/ui/rich-text-field';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -680,13 +681,17 @@ export const ActivityOverviewSection: React.FC<
               </>
             </FormLabel>
             <FormControl data-field={field.name}>
-              <Textarea
-                rows={4}
-                placeholder=""
-                readOnly={readOnly}
-                {...field}
+              <RichTextField
+                name={field.name}
                 value={field.value ?? ''}
+                onChange={(json) =>
+                  setActivityFormFieldValue(form, field.name, json)
+                }
+                onBlur={field.onBlur}
                 maxLength={ACTIVITY_SUMMARY_MAX_LENGTH}
+                readOnly={readOnly}
+                editorProfile="links"
+                toolbar="links"
               />
             </FormControl>
             <FormMessage />
@@ -790,13 +795,17 @@ export const ActivityOverviewSection: React.FC<
               </>
             </FormLabel>
             <FormControl data-field={field.name}>
-              <Textarea
-                rows={4}
-                placeholder=""
-                readOnly={readOnly}
-                {...field}
+              <RichTextField
+                name={field.name}
                 value={field.value ?? ''}
+                onChange={(json) =>
+                  setActivityFormFieldValue(form, field.name, json)
+                }
+                onBlur={field.onBlur}
                 maxLength={ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH}
+                readOnly={readOnly}
+                editorProfile="links"
+                toolbar="links"
               />
             </FormControl>
             <FormMessage />

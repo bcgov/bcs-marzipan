@@ -1,7 +1,9 @@
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { EMPTY_RICH_TEXT_DOC } from '@corpcal/shared/utils';
 
-function emptyStringBaseline(value: string | undefined | null): string {
+function emptyStringBaseline(
+  value: string | undefined | null
+): ActivityFormData['notes'] {
   return value ?? '';
 }
 
@@ -19,8 +21,6 @@ export const UI_BASELINE_EMPTY_STRING_FIELDS = [
   'notes',
   'schedulingNotes',
   'strategy',
-  'significance',
-  'summary',
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
 /**
@@ -28,7 +28,9 @@ export const UI_BASELINE_EMPTY_STRING_FIELDS = [
  * `undefined`, but TipTap `onChange` stores `EMPTY_RICH_TEXT_DOC` JSON.
  */
 export const UI_BASELINE_EMPTY_RICH_TEXT_FIELDS = [
+  'significance',
   'executiveSummary',
+  'summary',
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
 export type UiBaselineSentinelField =
@@ -53,9 +55,9 @@ export const UI_BASELINE_FIELD_SENTINELS: {
   notes: emptyStringBaseline,
   schedulingNotes: emptyStringBaseline,
   strategy: emptyStringBaseline,
-  significance: emptyStringBaseline,
+  significance: emptyRichTextBaseline,
   executiveSummary: emptyRichTextBaseline,
-  summary: emptyStringBaseline,
+  summary: emptyRichTextBaseline,
 };
 
 /** Expected empty baseline per sentinel field (for tests and docs). */
@@ -65,9 +67,9 @@ export const UI_BASELINE_SENTINEL_VALUES: {
   notes: '',
   schedulingNotes: '',
   strategy: '',
-  significance: '',
+  significance: EMPTY_RICH_TEXT_DOC,
   executiveSummary: EMPTY_RICH_TEXT_DOC,
-  summary: '',
+  summary: EMPTY_RICH_TEXT_DOC,
 };
 
 /**
