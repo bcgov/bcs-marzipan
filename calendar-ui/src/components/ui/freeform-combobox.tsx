@@ -2,6 +2,7 @@ import { Check, ChevronDown, X } from 'lucide-react';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -54,8 +55,10 @@ export type FreeformComboboxValueWithLead = FreeformComboboxItemWithLead | null;
 type ListEntry =
   | { kind: 'option'; value: string; label: string }
   | { kind: 'freeform'; value: string; label: string }
-  | { kind: 'clear' }
   | { kind: 'separator' };
+
+const FREEFORM_BADGE_CLASSES =
+  'bg-primary/15 text-primary shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium';
 
 export interface FreeformComboboxProps {
   /** Flat options (default). Ignored for listing when `sections` is set. */
@@ -74,10 +77,13 @@ export interface FreeformComboboxProps {
   placeholder?: string;
   searchPlaceholder?: string;
   emptyMessage?: string;
-  /** Label shown for the freeform/other option (defaults to "Other") */
-  freeformLabel?: string;
-  /** Description shown for the freeform option */
-  freeformDescription?: string;
+  /** Badge text shown after the typed value in the freeform dropdown row */
+  freeformBadgeLabel?: string;
+  /**
+   * Sticky hint at the bottom of the dropdown when the list is idle (no custom
+   * row yet). Hidden once the user types a non-matching value.
+   */
+  listFooterHint?: string;
   className?: string;
   disabled?: boolean;
   /**
@@ -114,6 +120,15 @@ function nextSelectableIndex(
   return current;
 }
 
+function findExactMatchOption(
+  flatOptions: FreeformComboboxOption[],
+  trimmed: string
+): FreeformComboboxOption | undefined {
+  return flatOptions.find(
+    (o) => o.label.toLowerCase() === trimmed.toLowerCase()
+  );
+}
+
 export function FreeformCombobox({
   options: optionsProp,
   sections,
@@ -122,8 +137,8 @@ export function FreeformCombobox({
   placeholder = '',
   searchPlaceholder = 'Search...',
   emptyMessage = 'No results found.',
-  freeformLabel = 'Other',
-  freeformDescription = 'Use custom value',
+  freeformBadgeLabel = 'Add custom value',
+  listFooterHint,
   className,
   disabled = false,
   readOnly = false,
@@ -144,9 +159,15 @@ export function FreeformCombobox({
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [liveMessage, setLiveMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const draftEditedRef = useRef(false);
+  const skipCommitRef = useRef(false);
+  const freeformAnnouncedRef = useRef(false);
+  const prevShowFreeformRef = useRef(false);
+  const wasOpenRef = useRef(false);
 
   const values = multiple
     ? (value as FreeformComboboxItemWithLead[])
@@ -155,6 +176,7 @@ export function FreeformCombobox({
     (v): v is FreeformComboboxItemWithLead => v != null
   );
   const hasSelection = selectedList.length > 0;
+  const showTriggerClear = hasSelection && !readOnly && !disabled && !multiple;
 
   const getDisplayLabel = useCallback(
     (v: FreeformComboboxValue): string => {
@@ -168,27 +190,33 @@ export function FreeformCombobox({
     [flatOptions]
   );
 
+  const trimmedInput = inputValue.trim();
   const filteredOptions = useMemo(
     () =>
       flatOptions.filter((o) =>
-        o.label.toLowerCase().includes(inputValue.trim().toLowerCase())
+        o.label.toLowerCase().includes(trimmedInput.toLowerCase())
       ),
-    [flatOptions, inputValue]
+    [flatOptions, trimmedInput]
   );
 
   const filteredSections = useMemo(() => {
     if (!sections?.length) return null;
-    const q = inputValue.trim().toLowerCase();
+    const q = trimmedInput.toLowerCase();
     return sections.map((s) => ({
       id: s.id,
       options: s.options.filter((o) => o.label.toLowerCase().includes(q)),
     }));
-  }, [sections, inputValue]);
+  }, [sections, trimmedInput]);
 
-  const hasExactMatch = flatOptions.some(
-    (o) => o.label.toLowerCase() === inputValue.trim().toLowerCase()
+  const exactMatchOption = useMemo(
+    () =>
+      trimmedInput.length > 0
+        ? findExactMatchOption(flatOptions, trimmedInput)
+        : undefined,
+    [flatOptions, trimmedInput]
   );
-  const showFreeform = inputValue.trim().length > 0 && !hasExactMatch;
+  const showFreeform = trimmedInput.length > 0 && !exactMatchOption;
+  const showListFooter = Boolean(listFooterHint) && !showFreeform;
 
   const listEntries: ListEntry[] = useMemo(() => {
     const entries: ListEntry[] = [];
@@ -218,27 +246,16 @@ export function FreeformCombobox({
     if (showFreeform) {
       entries.push({
         kind: 'freeform',
-        value: inputValue.trim(),
-        label: `${freeformLabel}: "${inputValue.trim()}"`,
+        value: trimmedInput,
+        label: trimmedInput,
       });
     }
-    if (hasSelection) {
-      entries.push({ kind: 'clear' });
-    }
     return entries;
-  }, [
-    filteredSections,
-    filteredOptions,
-    showFreeform,
-    inputValue,
-    freeformLabel,
-    hasSelection,
-  ]);
+  }, [filteredSections, filteredOptions, showFreeform, trimmedInput]);
 
   const isSelected = useCallback(
     (entry: ListEntry): boolean => {
       if (entry.kind === 'separator') return false;
-      if (entry.kind === 'clear') return false;
       if (entry.kind === 'option') {
         return selectedList.some(
           (v) => v.type === 'option' && v.value === entry.value
@@ -251,28 +268,115 @@ export function FreeformCombobox({
     [selectedList]
   );
 
+  const resetDraft = useCallback(() => {
+    draftEditedRef.current = false;
+    setInputValue('');
+    freeformAnnouncedRef.current = false;
+  }, []);
+
+  const commitItem = useCallback(
+    (newItem: FreeformComboboxItemWithLead, closeOnSingle = true) => {
+      if (multiple) {
+        const alreadySelected = selectedList.some(
+          (item) => item.type === newItem.type && item.value === newItem.value
+        );
+        if (alreadySelected) {
+          resetDraft();
+          return;
+        }
+        onChange([...selectedList, newItem]);
+      } else {
+        onChange(newItem);
+        if (closeOnSingle) setOpen(false);
+      }
+      resetDraft();
+    },
+    [multiple, onChange, selectedList, resetDraft]
+  );
+
+  const commitDraft = useCallback(() => {
+    if (!draftEditedRef.current) return;
+    if (trimmedInput.length === 0) return;
+
+    const exact = findExactMatchOption(flatOptions, trimmedInput);
+    if (exact) {
+      commitItem({ type: 'option', value: exact.value }, true);
+      return;
+    }
+    commitItem({ type: 'freeform', value: trimmedInput }, true);
+  }, [trimmedInput, flatOptions, commitItem]);
+
+  const handleClose = useCallback(() => {
+    if (skipCommitRef.current) {
+      resetDraft();
+      return;
+    }
+    commitDraft();
+    resetDraft();
+  }, [commitDraft, resetDraft]);
+
+  const closePopover = useCallback(() => {
+    handleClose();
+    setOpen(false);
+  }, [handleClose]);
+
+  const clearSelection = useCallback(() => {
+    onChange(null);
+    resetDraft();
+    setOpen(false);
+  }, [onChange, resetDraft]);
+
   useEffect(() => {
     if (isLocked) {
       setOpen(false);
     }
   }, [isLocked]);
 
+  useLayoutEffect(() => {
+    const justOpened = open && !wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!justOpened || isLocked) return;
+    draftEditedRef.current = false;
+    freeformAnnouncedRef.current = false;
+    setHighlightedIndex(0);
+  }, [open, isLocked]);
+
   useEffect(() => {
     if (!open || isLocked) return;
-    setHighlightedIndex(0);
-    setInputValue('');
     inputRef.current?.focus();
   }, [open, isLocked]);
 
   useEffect(() => {
-    setHighlightedIndex((i) => {
-      if (listEntries.length === 0) return 0;
-      const clamped = Math.min(i, listEntries.length - 1);
-      if (listEntries[clamped]?.kind !== 'separator') return clamped;
+    if (!open) return;
+
+    let targetIndex = 0;
+    if (showFreeform) {
+      const freeformIdx = listEntries.findIndex((e) => e.kind === 'freeform');
+      if (freeformIdx >= 0) targetIndex = freeformIdx;
+    } else if (exactMatchOption) {
+      const matchIdx = listEntries.findIndex(
+        (e) => e.kind === 'option' && e.value === exactMatchOption.value
+      );
+      if (matchIdx >= 0) targetIndex = matchIdx;
+    } else {
       const first = listEntries.findIndex((e) => e.kind !== 'separator');
-      return first >= 0 ? first : 0;
-    });
-  }, [listEntries]);
+      targetIndex = first >= 0 ? first : 0;
+    }
+
+    setHighlightedIndex(targetIndex);
+  }, [listEntries, showFreeform, exactMatchOption, open]);
+
+  useEffect(() => {
+    if (
+      showFreeform &&
+      !prevShowFreeformRef.current &&
+      !freeformAnnouncedRef.current
+    ) {
+      setLiveMessage('Allows custom values');
+      freeformAnnouncedRef.current = true;
+    }
+    prevShowFreeformRef.current = showFreeform;
+  }, [showFreeform]);
 
   const scrollHighlightIntoView = useCallback(() => {
     const list = listRef.current;
@@ -284,55 +388,13 @@ export function FreeformCombobox({
     (entry: ListEntry) => {
       if (isLocked) return;
       if (entry.kind === 'separator') return;
-      if (entry.kind === 'clear') {
-        onChange(null);
-        setInputValue('');
-        if (!multiple) setOpen(false);
-        return;
-      }
       if (entry.kind === 'freeform') {
-        const newItem: FreeformComboboxItemWithLead = {
-          type: 'freeform',
-          value: entry.value,
-        };
-        if (multiple) {
-          const alreadySelected = selectedList.some(
-            (item) => item.type === newItem.type && item.value === newItem.value
-          );
-          if (alreadySelected) {
-            setInputValue('');
-            return;
-          }
-          const next = [...selectedList, newItem];
-          onChange(next);
-        } else {
-          onChange(newItem);
-          setOpen(false);
-        }
-        setInputValue('');
+        commitItem({ type: 'freeform', value: entry.value });
         return;
       }
-      const newItem: FreeformComboboxItemWithLead = {
-        type: 'option',
-        value: entry.value,
-      };
-      if (multiple) {
-        const alreadySelected = selectedList.some(
-          (item) => item.type === newItem.type && item.value === newItem.value
-        );
-        if (alreadySelected) {
-          setInputValue('');
-          return;
-        }
-        const next = [...selectedList, newItem];
-        onChange(next);
-      } else {
-        onChange(newItem);
-        setOpen(false);
-      }
-      setInputValue('');
+      commitItem({ type: 'option', value: entry.value });
     },
-    [multiple, onChange, selectedList, isLocked]
+    [commitItem, isLocked]
   );
 
   const removeItem = useCallback(
@@ -342,6 +404,15 @@ export function FreeformCombobox({
       onChange(next.length ? next : null);
     },
     [selectedList, onChange, isLocked]
+  );
+
+  const handleInputChange = useCallback(
+    (nextValue: string) => {
+      draftEditedRef.current = true;
+      setInputValue(nextValue);
+      if (!open) setOpen(true);
+    },
+    [open]
   );
 
   const handleKeyDown = useCallback(
@@ -356,6 +427,8 @@ export function FreeformCombobox({
       }
       if (e.key === 'Escape') {
         e.preventDefault();
+        skipCommitRef.current = true;
+        resetDraft();
         setOpen(false);
         return;
       }
@@ -387,6 +460,7 @@ export function FreeformCombobox({
       selectEntry,
       scrollHighlightIntoView,
       isLocked,
+      resetDraft,
     ]
   );
 
@@ -427,9 +501,7 @@ export function FreeformCombobox({
               {onSetLead && (
                 <>
                   {isLead && (
-                    <span className="bg-primary/15 text-primary shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium">
-                      Lead
-                    </span>
+                    <span className={FREEFORM_BADGE_CLASSES}>Lead</span>
                   )}
                   {!isLocked && !isLead && (
                     <button
@@ -474,7 +546,16 @@ export function FreeformCombobox({
           selectedList.length === 0 ? placeholder : searchPlaceholder
         }
         value={open ? inputValue : ''}
-        onChange={(e) => setInputValue(e.target.value)}
+        onChange={(e) => handleInputChange(e.target.value)}
+        onBlur={() => {
+          if (!open) return;
+          if (skipCommitRef.current) {
+            skipCommitRef.current = false;
+            setOpen(false);
+            return;
+          }
+          closePopover();
+        }}
         onKeyDown={handleKeyDown}
         disabled={disabled}
         readOnly={readOnly}
@@ -515,8 +596,16 @@ export function FreeformCombobox({
         value={inputDisplayValue}
         onChange={(e) => {
           if (readOnly) return;
-          setInputValue(e.target.value);
-          setOpen(true);
+          handleInputChange(e.target.value);
+        }}
+        onBlur={() => {
+          if (!open) return;
+          if (skipCommitRef.current) {
+            skipCommitRef.current = false;
+            setOpen(false);
+            return;
+          }
+          closePopover();
         }}
         onKeyDown={handleKeyDown}
         disabled={disabled}
@@ -531,22 +620,44 @@ export function FreeformCombobox({
       />
       <InputGroupAddon align="inline-end">
         {!readOnly ? (
-          <InputGroupButton
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            disabled={disabled}
-            tabIndex={isLocked && !disabled ? -1 : undefined}
-            aria-disabled={isLocked}
-            className={cn(isLocked && !disabled && 'pointer-events-none')}
-            onClick={() => {
-              if (isLocked) return;
-              setOpen((o) => !o);
-            }}
-            aria-label={open ? 'Close' : 'Open'}
-          >
-            <ChevronDown className="text-muted-foreground size-4" />
-          </InputGroupButton>
+          <>
+            {showTriggerClear ? (
+              <InputGroupButton
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                data-slot="combobox-clear"
+                disabled={disabled}
+                aria-label="Clear"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  clearSelection();
+                }}
+              >
+                <X className="pointer-events-none size-4" />
+              </InputGroupButton>
+            ) : null}
+            <InputGroupButton
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              disabled={disabled}
+              tabIndex={isLocked && !disabled ? -1 : undefined}
+              aria-disabled={isLocked}
+              className={cn(
+                'group-has-data-[slot=combobox-clear]/input-group:hidden',
+                isLocked && !disabled && 'pointer-events-none'
+              )}
+              onClick={() => {
+                if (isLocked) return;
+                setOpen((o) => !o);
+              }}
+              aria-label={open ? 'Close' : 'Open'}
+            >
+              <ChevronDown className="text-muted-foreground size-4" />
+            </InputGroupButton>
+          </>
         ) : null}
       </InputGroupAddon>
     </InputGroup>
@@ -554,11 +665,18 @@ export function FreeformCombobox({
 
   return (
     <div className={cn('w-full min-w-0', className)}>
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {liveMessage}
+      </div>
       <Popover
         open={open}
         onOpenChange={(next) => {
           if (isLocked) {
             setOpen(false);
+            return;
+          }
+          if (!next && open) {
+            closePopover();
             return;
           }
           setOpen(next);
@@ -572,6 +690,11 @@ export function FreeformCombobox({
               readOnly && !disabled && READ_ONLY_STATIC_TRIGGER,
               !isLocked && 'cursor-text'
             )}
+            onPointerDown={(e) => {
+              if (isLocked) return;
+              // Radix toggles the popover closed when the trigger is clicked while open.
+              if (open) e.preventDefault();
+            }}
           >
             {triggerContent}
           </div>
@@ -581,6 +704,10 @@ export function FreeformCombobox({
           align="start"
           sideOffset={6}
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onEscapeKeyDown={() => {
+            skipCommitRef.current = true;
+            resetDraft();
+          }}
           onInteractOutside={(e) => {
             if (triggerRef.current?.contains(e.target as Node)) {
               e.preventDefault();
@@ -589,7 +716,7 @@ export function FreeformCombobox({
         >
           <div
             className={cn(
-              'bg-popover text-popover-foreground ring-foreground/10 max-h-[var(--popover-list-max-height)] overflow-hidden rounded-md shadow-md ring-1'
+              'bg-popover text-popover-foreground ring-foreground/10 flex max-h-[var(--popover-list-max-height)] flex-col overflow-hidden rounded-md shadow-md ring-1'
             )}
           >
             {listEntries.length === 0 ? (
@@ -601,13 +728,12 @@ export function FreeformCombobox({
                 ref={listRef}
                 id="freeform-combobox-list"
                 role="listbox"
-                className="popover-list-scroll max-h-[var(--popover-list-max-height)] scroll-py-1 overflow-y-auto p-1"
+                className="popover-list-scroll min-h-0 flex-1 scroll-py-1 overflow-y-auto p-1"
                 aria-multiselectable={multiple}
               >
                 {listEntries.map((entry, index) => {
                   const highlighted = index === highlightedIndex;
                   const selected = isSelected(entry);
-                  const isClear = entry.kind === 'clear';
                   if (entry.kind === 'separator') {
                     return (
                       <li
@@ -620,50 +746,58 @@ export function FreeformCombobox({
                       </li>
                     );
                   }
+                  const isFreeform = entry.kind === 'freeform';
                   return (
                     <li
                       key={
                         entry.kind === 'option'
                           ? entry.value
-                          : entry.kind === 'freeform'
-                            ? `freeform-${entry.value}`
-                            : 'clear'
+                          : `freeform-${entry.value}`
                       }
                       id={`freeform-combobox-option-${index}`}
                       role="option"
                       aria-selected={selected}
+                      aria-label={
+                        isFreeform
+                          ? `${entry.label}. ${freeformBadgeLabel}`
+                          : undefined
+                      }
                       data-highlighted={highlighted}
                       className={cn(
                         'relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none select-none',
-                        highlighted && 'bg-accent text-accent-foreground',
-                        isClear && 'text-muted-foreground'
+                        highlighted && 'bg-accent text-accent-foreground'
                       )}
+                      onMouseDown={(e) => e.preventDefault()}
                       onPointerMove={() => setHighlightedIndex(index)}
                       onClick={() => selectEntry(entry)}
                     >
-                      {isClear ? (
-                        <span>Clear selection</span>
-                      ) : (
-                        <>
-                          <Check
-                            className={cn(
-                              'size-4 shrink-0',
-                              selected ? 'opacity-100' : 'opacity-0'
-                            )}
-                          />
-                          <span>{entry.label}</span>
-                          {entry.kind === 'freeform' && (
-                            <span className="text-muted-foreground ml-1 text-xs">
-                              {freeformDescription}
-                            </span>
-                          )}
-                        </>
-                      )}
+                      <Check
+                        className={cn(
+                          'size-4 shrink-0',
+                          selected ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                      <span className="min-w-0 truncate">{entry.label}</span>
+                      {isFreeform ? (
+                        <span className={FREEFORM_BADGE_CLASSES}>
+                          {freeformBadgeLabel}
+                        </span>
+                      ) : null}
                     </li>
                   );
                 })}
               </ul>
             )}
+            {showListFooter ? (
+              <div
+                role="note"
+                className="text-muted-foreground border-border shrink-0 cursor-text border-t px-3 py-2 text-xs"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => inputRef.current?.focus()}
+              >
+                {listFooterHint}
+              </div>
+            ) : null}
           </div>
         </PopoverContent>
       </Popover>

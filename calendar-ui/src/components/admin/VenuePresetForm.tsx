@@ -266,8 +266,8 @@ export function VenuePresetForm({
             onChange={handleCityComboboxChange}
             searchPlaceholder="Search cities..."
             emptyMessage="No cities found."
-            freeformLabel="Other"
-            freeformDescription="Enter a city not in the list"
+            freeformBadgeLabel="Add custom city"
+            listFooterHint="Custom city names allowed"
             readOnly={isSubmitting}
           />
         </div>

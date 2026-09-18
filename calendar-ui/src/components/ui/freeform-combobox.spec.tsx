@@ -30,6 +30,10 @@ describe('FreeformCombobox', () => {
     await user.click(screen.getByRole('button', { name: 'Open' }));
   }
 
+  function freeformOption(name: string | RegExp) {
+    return screen.getByRole('option', { name });
+  }
+
   describe('Rendering', () => {
     it('renders with custom placeholder', () => {
       render(
@@ -93,7 +97,6 @@ describe('FreeformCombobox', () => {
 
     it('readOnly hides the dropdown chevron and does not show the option list', () => {
       render(<FreeformCombobox {...defaultProps} readOnly />);
-      // Interactive mode renders a chevron with aria-label Open/Close; read-only omits it.
       expect(
         screen.queryByRole('button', { name: 'Open' })
       ).not.toBeInTheDocument();
@@ -127,11 +130,12 @@ describe('FreeformCombobox', () => {
       await openPopover(user);
 
       await waitFor(() => {
-        expect(screen.getByText('Option 1')).toBeInTheDocument();
+        expect(
+          screen.getByRole('option', { name: 'Option 1' })
+        ).toBeInTheDocument();
       });
 
-      const option1 = screen.getByText('Option 1');
-      await user.click(option1);
+      await user.click(screen.getByRole('option', { name: 'Option 1' }));
 
       expect(onChange).toHaveBeenCalledWith({
         type: 'option',
@@ -155,11 +159,12 @@ describe('FreeformCombobox', () => {
       await openPopover(user);
 
       await waitFor(() => {
-        expect(screen.getByText('Option 1')).toBeInTheDocument();
+        expect(
+          screen.getByRole('option', { name: 'Option 1' })
+        ).toBeInTheDocument();
       });
 
-      const option1 = screen.getByText('Option 1');
-      await user.click(option1);
+      await user.click(screen.getByRole('option', { name: 'Option 1' }));
 
       expect(onChange).toHaveBeenCalledWith({
         type: 'option',
@@ -189,14 +194,8 @@ describe('FreeformCombobox', () => {
       await openPopover(user);
 
       await waitFor(() => {
-        const options = screen.getAllByText('Option 2');
-        const optionInDropdown = options.find((el) =>
-          el.closest('[role="option"]')
-        );
-        expect(optionInDropdown).toBeInTheDocument();
-        const checkIcon = optionInDropdown
-          ?.closest('[role="option"]')
-          ?.querySelector('svg');
+        const option = screen.getByRole('option', { name: 'Option 2' });
+        const checkIcon = option.querySelector('svg');
         expect(checkIcon).toBeInTheDocument();
         expect(checkIcon).toHaveClass('opacity-100');
       });
@@ -216,8 +215,9 @@ describe('FreeformCombobox', () => {
       await user.type(comboboxInput, 'Custom Text');
 
       await waitFor(() => {
-        expect(screen.getByText(/Other:/)).toBeInTheDocument();
-        expect(screen.getByText(/Custom Text/)).toBeInTheDocument();
+        expect(
+          freeformOption(/Custom Text.*Add custom value/i)
+        ).toBeInTheDocument();
       });
     });
 
@@ -234,11 +234,12 @@ describe('FreeformCombobox', () => {
       await user.type(comboboxInput, 'My Custom Value');
 
       await waitFor(() => {
-        expect(screen.getByText(/Other:/)).toBeInTheDocument();
+        expect(
+          freeformOption(/My Custom Value.*Add custom value/i)
+        ).toBeInTheDocument();
       });
 
-      const freeformOption = screen.getByText(/Other:/);
-      await user.click(freeformOption);
+      await user.click(freeformOption(/My Custom Value.*Add custom value/i));
 
       expect(onChange).toHaveBeenCalledWith({
         type: 'freeform',
@@ -258,10 +259,14 @@ describe('FreeformCombobox', () => {
       await user.type(comboboxInput, 'Option 1');
 
       await waitFor(() => {
-        expect(screen.getByText('Option 1')).toBeInTheDocument();
+        expect(
+          screen.getByRole('option', { name: 'Option 1' })
+        ).toBeInTheDocument();
       });
 
-      expect(screen.queryByText(/Other:/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('option', { name: /Add custom value/i })
+      ).not.toBeInTheDocument();
     });
 
     it('trims freeform value before calling onChange', async () => {
@@ -276,11 +281,12 @@ describe('FreeformCombobox', () => {
       await user.type(comboboxInput, '  Trimmed Value  ');
 
       await waitFor(() => {
-        expect(screen.getByText(/Other:/)).toBeInTheDocument();
+        expect(
+          freeformOption(/Trimmed Value.*Add custom value/i)
+        ).toBeInTheDocument();
       });
 
-      const freeformOption = screen.getByText(/Other:/);
-      await user.click(freeformOption);
+      await user.click(freeformOption(/Trimmed Value.*Add custom value/i));
 
       expect(onChange).toHaveBeenCalledWith({
         type: 'freeform',
@@ -288,14 +294,13 @@ describe('FreeformCombobox', () => {
       });
     });
 
-    it('uses custom freeform label and description', async () => {
+    it('uses custom freeform badge label', async () => {
       const user = userEvent.setup();
 
       render(
         <FreeformCombobox
           {...defaultProps}
-          freeformLabel="Custom"
-          freeformDescription="Enter custom value"
+          freeformBadgeLabel="Add custom widget"
         />
       );
 
@@ -305,8 +310,22 @@ describe('FreeformCombobox', () => {
       await user.type(comboboxInput, 'Test');
 
       await waitFor(() => {
-        expect(screen.getByText(/Custom:/)).toBeInTheDocument();
-        expect(screen.getByText('Enter custom value')).toBeInTheDocument();
+        expect(freeformOption(/Test.*Add custom widget/i)).toBeInTheDocument();
+      });
+    });
+
+    it('announces custom values via aria-live when freeform row appears', async () => {
+      const user = userEvent.setup();
+
+      render(<FreeformCombobox {...defaultProps} />);
+
+      await openPopover(user);
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Custom Text');
+
+      await waitFor(() => {
+        expect(screen.getByText('Allows custom values')).toBeInTheDocument();
       });
     });
   });
@@ -323,9 +342,15 @@ describe('FreeformCombobox', () => {
       await user.type(comboboxInput, 'Option 2');
 
       await waitFor(() => {
-        expect(screen.getByText('Option 2')).toBeInTheDocument();
-        expect(screen.queryByText('Option 1')).not.toBeInTheDocument();
-        expect(screen.queryByText('Option 3')).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('option', { name: 'Option 2' })
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole('option', { name: 'Option 1' })
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('option', { name: 'Option 3' })
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -370,14 +395,15 @@ describe('FreeformCombobox', () => {
       await user.type(comboboxInput, 'option 1');
 
       await waitFor(() => {
-        expect(screen.getByText('Option 1')).toBeInTheDocument();
+        expect(
+          screen.getByRole('option', { name: 'Option 1' })
+        ).toBeInTheDocument();
       });
     });
   });
 
-  describe('Clear Selection', () => {
-    it('shows clear option when a value is selected', async () => {
-      const user = userEvent.setup();
+  describe('Trigger Clear', () => {
+    it('shows clear button when a value is selected in single-select mode', () => {
       const value: FreeformComboboxValue = {
         type: 'option',
         value: 'option1',
@@ -385,14 +411,10 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} value={value} />);
 
-      await openPopover(user);
-
-      await waitFor(() => {
-        expect(screen.getByText('Clear selection')).toBeInTheDocument();
-      });
+      expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
     });
 
-    it('calls onChange with null when clear is selected', async () => {
+    it('calls onChange with null when clear button is clicked', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
       const value: FreeformComboboxValue = {
@@ -404,30 +426,274 @@ describe('FreeformCombobox', () => {
         <FreeformCombobox {...defaultProps} value={value} onChange={onChange} />
       );
 
-      await openPopover(user);
-
-      await waitFor(() => {
-        expect(screen.getByText('Clear selection')).toBeInTheDocument();
-      });
-
-      const clearOption = screen.getByText('Clear selection');
-      await user.click(clearOption);
+      await user.click(screen.getByRole('button', { name: 'Clear' }));
 
       expect(onChange).toHaveBeenCalledWith(null);
     });
 
-    it('does not show clear option when no value is selected', async () => {
+    it('does not show clear button when no value is selected', () => {
+      render(<FreeformCombobox {...defaultProps} />);
+
+      expect(
+        screen.queryByRole('button', { name: 'Clear' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not show clear button in multi-select chip mode', () => {
+      const value: FreeformComboboxItemWithLead[] = [
+        { type: 'option', value: 'option1' },
+      ];
+
+      render(<FreeformCombobox {...defaultProps} multiple value={value} />);
+
+      expect(
+        screen.queryByRole('button', { name: 'Clear' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not show clear selection in the dropdown', async () => {
+      const user = userEvent.setup();
+      const value: FreeformComboboxValue = {
+        type: 'option',
+        value: 'option1',
+      };
+
+      render(<FreeformCombobox {...defaultProps} value={value} />);
+
+      await openPopover(user);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('option', { name: 'Option 1' })
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('Clear selection')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('List footer hint', () => {
+    it('shows sticky footer when open and input is idle', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <FreeformCombobox
+          {...defaultProps}
+          listFooterHint="Custom widget names allowed"
+        />
+      );
+
+      await openPopover(user);
+
+      expect(screen.getByRole('note')).toHaveTextContent(
+        'Custom widget names allowed'
+      );
+    });
+
+    it('hides footer when user types a non-matching value', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <FreeformCombobox
+          {...defaultProps}
+          listFooterHint="Custom widget names allowed"
+        />
+      );
+
+      await openPopover(user);
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Custom Text');
+
+      await waitFor(() => {
+        expect(screen.queryByRole('note')).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows footer when list is empty and no custom row is shown', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <FreeformCombobox
+          {...defaultProps}
+          options={[]}
+          listFooterHint="Custom widget names allowed"
+        />
+      );
+
+      await openPopover(user);
+
+      expect(screen.getByRole('note')).toHaveTextContent(
+        'Custom widget names allowed'
+      );
+    });
+
+    it('does not show footer when listFooterHint is omitted', async () => {
       const user = userEvent.setup();
 
       render(<FreeformCombobox {...defaultProps} />);
 
       await openPopover(user);
 
+      expect(screen.queryByRole('note')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Commit on blur', () => {
+    it('commits freeform value when typing non-match and tabbing away', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <div>
+          <FreeformCombobox {...defaultProps} onChange={onChange} />
+          <button type="button">Next field</button>
+        </div>
+      );
+
+      await openPopover(user);
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'My Custom Org');
+      await user.click(screen.getByRole('button', { name: 'Next field' }));
+
       await waitFor(() => {
-        expect(screen.getByText('Option 1')).toBeInTheDocument();
+        expect(onChange).toHaveBeenCalledWith({
+          type: 'freeform',
+          value: 'My Custom Org',
+        });
+      });
+    });
+
+    it('commits preset when typed text exactly matches a label on blur', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <div>
+          <FreeformCombobox {...defaultProps} onChange={onChange} />
+          <button type="button">Next field</button>
+        </div>
+      );
+
+      await openPopover(user);
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Option 2');
+      await user.click(screen.getByRole('button', { name: 'Next field' }));
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith({
+          type: 'option',
+          value: 'option2',
+        });
+      });
+    });
+
+    it('does not commit when opening and closing without typing', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(<FreeformCombobox {...defaultProps} onChange={onChange} />);
+
+      await openPopover(user);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('option', { name: 'Option 1' })
+        ).toBeInTheDocument();
       });
 
-      expect(screen.queryByText('Clear selection')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Close' }));
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('does not commit when draft is cleared before blur', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <div>
+          <FreeformCombobox {...defaultProps} onChange={onChange} />
+          <button type="button">Next field</button>
+        </div>
+      );
+
+      await openPopover(user);
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Temporary');
+      await user.clear(comboboxInput);
+      await user.click(screen.getByRole('button', { name: 'Next field' }));
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Keyboard', () => {
+    it('commits highlighted freeform row on Enter', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(<FreeformCombobox {...defaultProps} onChange={onChange} />);
+
+      await openPopover(user);
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Custom Enter Value');
+      await user.keyboard('{Enter}');
+
+      expect(onChange).toHaveBeenCalledWith({
+        type: 'freeform',
+        value: 'Custom Enter Value',
+      });
+    });
+
+    it('discards draft on Escape without calling onChange', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(<FreeformCombobox {...defaultProps} onChange={onChange} />);
+
+      await openPopover(user);
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Discarded Value');
+      await user.keyboard('{Escape}');
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Stale draft state', () => {
+    it('shows full preset list after escaping an abandoned draft on reopen', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(<FreeformCombobox {...defaultProps} onChange={onChange} />);
+
+      await openPopover(user);
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Unsaved Custom');
+      await user.keyboard('{Escape}');
+
+      expect(onChange).not.toHaveBeenCalled();
+
+      await openPopover(user);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('option', { name: 'Option 1' })
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('option', { name: 'Option 2' })
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('option', { name: 'Option 3' })
+        ).toBeInTheDocument();
+      });
     });
   });
 
@@ -462,7 +728,6 @@ describe('FreeformCombobox', () => {
 
       render(<FreeformCombobox {...defaultProps} value={value} />);
 
-      // Shows the raw value when option is not in the list
       expect(screen.getByRole('combobox')).toHaveDisplayValue('nonexistent');
     });
 
@@ -483,7 +748,9 @@ describe('FreeformCombobox', () => {
       await user.type(comboboxInput, '   ');
 
       await waitFor(() => {
-        expect(screen.queryByText(/Other:/)).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('option', { name: /Add custom value/i })
+        ).not.toBeInTheDocument();
       });
     });
   });

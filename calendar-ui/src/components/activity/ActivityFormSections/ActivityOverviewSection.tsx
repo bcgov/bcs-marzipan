@@ -238,8 +238,8 @@ function LeadOrganizationField({
                 placeholder=""
                 searchPlaceholder=""
                 emptyMessage="No organizations found."
-                freeformLabel="New org"
-                freeformDescription=""
+                freeformBadgeLabel="Add custom organization"
+                listFooterHint="Custom organization names allowed"
               />
             </FormControl>
             <FormMessage />
