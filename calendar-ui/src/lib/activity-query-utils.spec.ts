@@ -59,6 +59,8 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     lastUpdatedBy: 0,
     createdDateTime: '',
     flags: [],
+    sharedWithTeamIds: [],
+    visibility: null,
     ...overrides,
   };
 }

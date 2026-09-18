@@ -63,7 +63,7 @@ export const ActivityReportsSection: React.FC = () => {
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.reports}>
       {canViewLookAhead && (
         <>
-          <ActivityFormHeading>Look ahead</ActivityFormHeading>
+          <ActivityFormHeading>Look Ahead</ActivityFormHeading>
 
           <FormField
             control={form.control}
@@ -88,7 +88,6 @@ export const ActivityReportsSection: React.FC = () => {
                         setActivityFormFieldValue(form, field.name, json)
                       }
                       onBlur={field.onBlur}
-                      placeholder="Enter executive summary"
                       maxLength={ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH}
                       readOnly={lookAheadScope.readOnly}
                       disabled={lookAheadScope.fieldScopeDisabled}
@@ -111,7 +110,7 @@ export const ActivityReportsSection: React.FC = () => {
                     {getActivityFieldLabel(field.name)}
                     <ActivityFieldInfoIcon
                       fieldKey="lookAheadStatus"
-                      ariaLabel="About look ahead status"
+                      ariaLabel="About Look Ahead status"
                     />
                   </>
                 </FormLabel>
@@ -165,7 +164,7 @@ export const ActivityReportsSection: React.FC = () => {
                     {getActivityFieldLabel(field.name)}
                     <ActivityFieldInfoIcon
                       fieldKey="lookAheadSection"
-                      ariaLabel="About look ahead section"
+                      ariaLabel="About Look Ahead section"
                     />
                   </>
                 </FormLabel>

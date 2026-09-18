@@ -6,21 +6,21 @@ export const PRINT_SECTION_COLUMN_HEADERS = [
   'Date & time',
   'Activity details',
   'Release',
-  'Activity',
+  'CC ID',
 ] as const;
 
 const THIRTY_SIXTY_NINETY_COLUMN_HEADERS = [
   'Date & time',
   'Activity details',
   'Comms & strategy',
-  'Activity',
+  'CC ID',
 ] as const;
 
 const PLANNING_COLUMN_HEADERS = [
   'Date & time',
   'Activity details',
   'Significance',
-  'Activity',
+  'CC ID',
 ] as const;
 
 const RELEASE_COLUMN_HEADER = 'Release';

@@ -9,12 +9,15 @@ import type { UpdateUserBody } from '@corpcal/shared/api/types';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
 import { ActivityUtilsService } from '../activities/services/activity-utils.service';
+import { AuthService } from '../auth/auth.service';
 import {
   createMockAddUserToTeamBody,
   createMockTransferActivitiesBody,
   createMockUpdateUserTeamRoleBody,
 } from '../common/test-utils';
 import { DatabaseService } from '../database/database.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PolicyService } from '../policy/policy.service';
 import { TeamsService } from '../teams/teams.service';
 import { UsersService } from './users.service';
 
@@ -79,6 +82,23 @@ describe('UsersService', () => {
     getEligibleCommsUserIds: vi.fn().mockResolvedValue(new Set<number>()),
   };
 
+  const mockNotificationsService = {
+    notifyUserAddedToTeam: vi.fn().mockResolvedValue(undefined),
+    notifyActivitiesTransferred: vi.fn().mockResolvedValue(undefined),
+    notifyUserCreated: vi.fn().mockResolvedValue(undefined),
+    notifyUserUpdated: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const mockPolicyService = {
+    validateUserPermissionOverrideKeys: vi.fn().mockResolvedValue(undefined),
+    syncUserPermissionOverrides: vi.fn().mockResolvedValue([]),
+    getUserPermissionOverrides: vi.fn().mockResolvedValue([]),
+  };
+
+  const mockAuthService = {
+    invalidateUserSessions: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -99,6 +119,18 @@ describe('UsersService', () => {
           provide: TeamsService,
           useValue: mockTeamsService,
         },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
+        },
+        {
+          provide: PolicyService,
+          useValue: mockPolicyService,
+        },
+        {
+          provide: AuthService,
+          useValue: mockAuthService,
+        },
       ],
     }).compile();
 
@@ -109,6 +141,15 @@ describe('UsersService', () => {
     );
     mockActivityUtilsService.computeDisplayIdFromLeadContext.mockReturnValue(
       'TEAM-000001'
+    );
+    mockPolicyService.validateUserPermissionOverrideKeys.mockResolvedValue(
+      undefined
+    );
+    mockPolicyService.syncUserPermissionOverrides.mockResolvedValue([]);
+    mockPolicyService.getUserPermissionOverrides.mockResolvedValue([]);
+    mockAuthService.invalidateUserSessions.mockResolvedValue(undefined);
+    mockDatabaseService.db.transaction = vi.fn((callback) =>
+      callback(mockDatabaseService.db)
     );
   });
 
@@ -165,17 +206,11 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain(teamRows, 'where'))
         .mockReturnValueOnce(createChain(teamNameRows, 'where'));
 
-      mockDatabaseService.db.insert = vi
-        .fn()
-        .mockImplementationOnce(() => ({
-          values: vi.fn().mockReturnValue({
-            returning: vi.fn().mockResolvedValue([{ id: 1 }]),
-          }),
-        }))
-        .mockImplementationOnce(() => ({
-          values: vi.fn().mockResolvedValue(undefined),
-        }))
-        .mockReturnThis();
+      mockDatabaseService.db.insert = vi.fn().mockImplementation(() => ({
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+        }),
+      }));
 
       const result = await service.create(
         {
@@ -192,7 +227,74 @@ describe('UsersService', () => {
       expect(result.adEmail).toBe('newuser@gov.bc.ca');
       expect(result.adUsername).toBe('JNEWUSER');
       expect(result.roleId).toBe(2);
-      expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(2);
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalledTimes(1);
+      expect(mockDatabaseService.db.insert).toHaveBeenCalled();
+      expect(mockNotificationsService.notifyUserCreated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+      });
+    });
+  });
+
+  describe('updateUserSettings', () => {
+    it('notifies the user and admins when direct login changes', async () => {
+      vi.spyOn(service, 'findOne')
+        .mockResolvedValueOnce({
+          id: 1,
+          adUsername: 'u1',
+          adDisplayName: 'User One',
+          adEmail: 'u1@gov.bc.ca',
+          roleId: 2,
+          roleName: 'Editor',
+          isActive: true,
+          notes: null,
+          flagColour: null,
+          directLoginEnabled: false,
+          jobTitle: null,
+          phone: null,
+          lastLoginDateTime: null,
+          teams: [],
+          permissionOverrides: [],
+        })
+        .mockResolvedValueOnce({
+          id: 1,
+          adUsername: 'u1',
+          adDisplayName: 'User One',
+          adEmail: 'u1@gov.bc.ca',
+          roleId: 2,
+          roleName: 'Editor',
+          isActive: true,
+          notes: null,
+          flagColour: null,
+          directLoginEnabled: true,
+          jobTitle: null,
+          phone: null,
+          lastLoginDateTime: null,
+          teams: [],
+          permissionOverrides: [],
+        });
+
+      mockDatabaseService.db.insert = vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnValue({
+          onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+
+      await service.updateUserSettings(
+        1,
+        { flagColour: null, directLoginEnabled: true },
+        7
+      );
+
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 7,
+        changedFields: ['directLoginEnabled'],
+        summary: 'User direct login setting updated',
+        details: {
+          directLoginEnabled: true,
+        },
+      });
     });
   });
 
@@ -327,6 +429,16 @@ describe('UsersService', () => {
 
       expect(result).not.toBeNull();
       expect(result.roleId).toBe(2);
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+        changedFields: ['roleId'],
+        summary: 'User role updated',
+        details: {
+          roleId: 2,
+          isActive: undefined,
+        },
+      });
     });
 
     it('should reject non-BC Gov email updates', async () => {
@@ -376,6 +488,67 @@ describe('UsersService', () => {
       await expect(
         service.update(1, { email: null } as unknown as UpdateUserBody, 1)
       ).rejects.toThrow(BadRequestException);
+      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+    });
+
+    it('should sync permission overrides when provided', async () => {
+      const userRow = {
+        id: 1,
+        adUsername: 'u1',
+        adDisplayName: 'User One',
+        adEmail: 'u1@test.com',
+        roleId: 1,
+        isActive: true,
+        notes: null,
+      };
+      const roleRow = [{ name: 'Editor' }];
+      const teamRows: { teamId: number; role: string }[] = [];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'))
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'));
+
+      mockPolicyService.syncUserPermissionOverrides.mockResolvedValue([
+        {
+          permissionKey: 'activities.unshare',
+          oldValue: null,
+          newValue: 'deny',
+        },
+      ]);
+      mockPolicyService.getUserPermissionOverrides.mockResolvedValue([
+        {
+          key: 'activities.unshare',
+          displayName: 'Unshare activities',
+          effect: 'deny',
+        },
+      ]);
+
+      const overrides = [
+        { permissionKey: 'activities.unshare', effect: 'deny' as const },
+      ];
+
+      const result = await service.update(
+        1,
+        { permissionOverrides: overrides },
+        1
+      );
+
+      expect(
+        mockPolicyService.syncUserPermissionOverrides
+      ).toHaveBeenCalledWith(1, overrides, 1, mockDatabaseService.db);
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalledTimes(1);
+      expect(result?.permissionOverrides).toEqual([
+        {
+          permissionKey: 'activities.unshare',
+          displayName: 'Unshare activities',
+          effect: 'deny',
+        },
+      ]);
       expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
     });
   });
@@ -518,6 +691,16 @@ describe('UsersService', () => {
       expect(mockDatabaseService.db.delete).toHaveBeenCalledTimes(1);
       expect(mockDatabaseService.db.update).toHaveBeenCalledTimes(1);
       expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(1);
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+        changedFields: ['team'],
+        summary: 'User removed from team',
+        details: {
+          teamId: 2,
+          transferredCount: 0,
+        },
+      });
     });
 
     it('should throw BadRequestException when scoped comms exist but no targetUserId given', async () => {
@@ -579,6 +762,16 @@ describe('UsersService', () => {
         undefined,
         mockDatabaseService.db
       );
+      expect(
+        mockNotificationsService.notifyActivitiesTransferred
+      ).toHaveBeenCalledWith({
+        actorUserId: 1,
+        fromUserId: 1,
+        toUserId: 2,
+        transferredCount: 2,
+        activityIds: [10, 11],
+        includeAdmins: true,
+      });
     });
   });
 
@@ -633,6 +826,16 @@ describe('UsersService', () => {
         )
       ).resolves.toBeUndefined();
       expect(mockDatabaseService.db.update).toHaveBeenCalled();
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+        changedFields: ['teamRole'],
+        summary: 'User team role updated',
+        details: {
+          teamId: 2,
+          role: 'owner',
+        },
+      });
     });
   });
 
@@ -960,6 +1163,16 @@ describe('UsersService', () => {
         undefined,
         mockDatabaseService.db
       );
+      expect(
+        mockNotificationsService.notifyActivitiesTransferred
+      ).toHaveBeenCalledWith({
+        actorUserId: 1,
+        fromUserId: 1,
+        toUserId: 2,
+        transferredCount: 2,
+        activityIds: [10, 11],
+        includeAdmins: true,
+      });
     });
 
     it('should reactivate an existing inactive target comms row when merging', async () => {

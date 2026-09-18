@@ -235,11 +235,11 @@ function LeadOrganizationField({
                 }))}
                 value={comboboxValue}
                 onChange={handleChange}
-                placeholder="Select lead organization"
-                searchPlaceholder="Search organizations..."
+                placeholder=""
+                searchPlaceholder=""
                 emptyMessage="No organizations found."
-                freeformLabel="New org"
-                freeformDescription=""
+                freeformBadgeLabel="Add custom organization"
+                listFooterHint="Custom organization names allowed"
               />
             </FormControl>
             <FormMessage />
@@ -395,10 +395,7 @@ function LeadTeamField({
                 itemToStringValue={(o: OptionItem) => o.label}
                 readOnly={readOnly}
               >
-                <ComboboxInput
-                  placeholder="Select lead team"
-                  disabled={showOptionsLoading}
-                />
+                <ComboboxInput placeholder="" disabled={showOptionsLoading} />
                 <ComboboxContent>
                   <ComboboxEmpty>
                     {showOptionsLoading
@@ -599,7 +596,7 @@ export const ActivityOverviewSection: React.FC<
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Select categories..." />
+                          <ComboboxChipsInput placeholder="" />
                         </>
                       )}
                     </ComboboxValue>
@@ -657,7 +654,7 @@ export const ActivityOverviewSection: React.FC<
             <FormControl data-field={field.name}>
               <Textarea
                 rows={2}
-                placeholder="Enter activity title"
+                placeholder=""
                 readOnly={readOnly}
                 {...field}
                 value={field.value ?? ''}
@@ -683,7 +680,7 @@ export const ActivityOverviewSection: React.FC<
                 />
               </>
             </FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <RichTextField
                 name={field.name}
                 value={field.value ?? ''}
@@ -691,10 +688,10 @@ export const ActivityOverviewSection: React.FC<
                   setActivityFormFieldValue(form, field.name, json)
                 }
                 onBlur={field.onBlur}
-                placeholder="Enter activity summary"
                 maxLength={ACTIVITY_SUMMARY_MAX_LENGTH}
                 readOnly={readOnly}
-                data-field={field.name}
+                editorProfile="links"
+                toolbar="links"
               />
             </FormControl>
             <FormMessage />
@@ -797,7 +794,7 @@ export const ActivityOverviewSection: React.FC<
                 />
               </>
             </FormLabel>
-            <FormControl>
+            <FormControl data-field={field.name}>
               <RichTextField
                 name={field.name}
                 value={field.value ?? ''}
@@ -805,10 +802,10 @@ export const ActivityOverviewSection: React.FC<
                   setActivityFormFieldValue(form, field.name, json)
                 }
                 onBlur={field.onBlur}
-                placeholder="Enter significance"
                 maxLength={ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH}
                 readOnly={readOnly}
-                data-field={field.name}
+                editorProfile="links"
+                toolbar="links"
               />
             </FormControl>
             <FormMessage />
@@ -868,7 +865,7 @@ export const ActivityOverviewSection: React.FC<
                         !pitchStatusScope.fieldScopeDisabled
                       }
                     >
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue placeholder="" />
                     </FormSelectTrigger>
                   </FormControl>
                 </ActivityFieldScopePermissionTooltip>
@@ -975,7 +972,7 @@ export const ActivityOverviewSection: React.FC<
                 <ActivityFieldScopePermissionTooltip scope="notes">
                   <FormControl data-field={field.name}>
                     <Textarea
-                      placeholder="Enter notes"
+                      placeholder=""
                       readOnly={notesScope.readOnly}
                       disabled={notesScope.fieldScopeDisabled}
                       rows={4}
@@ -1044,7 +1041,7 @@ export const ActivityOverviewSection: React.FC<
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Select tags..." />
+                          <ComboboxChipsInput placeholder="" />
                         </>
                       )}
                     </ComboboxValue>

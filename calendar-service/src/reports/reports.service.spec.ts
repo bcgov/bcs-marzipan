@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ActivityResponse } from '@corpcal/shared/api/types';
 import {
-  defaultThirtySixtyNinetyDateRange,
+  buildCalendarMonthSections,
+  defaultThirtySixtyNinetyTabDateRange,
   resolveThirtySixtyNinetyQueryWindow,
 } from '@corpcal/shared/reports/thirty-sixty-ninety';
 import { reportDataQuerySchema } from '@corpcal/shared/schemas';
@@ -68,8 +69,12 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     activitiesService.findAll.mockResolvedValue([]);
   });
 
-  it('builds calendar month sections from the default three-month window', async () => {
-    const expectedRange = defaultThirtySixtyNinetyDateRange(3);
+  it('builds calendar month sections from the default 60-tab window', async () => {
+    const expectedRange = defaultThirtySixtyNinetyTabDateRange();
+    const expectedSectionCount = buildCalendarMonthSections({
+      startDate: expectedRange.start,
+      endDate: expectedRange.end,
+    }).length;
 
     const result = await service.getReportData(
       'thirty-sixty-ninety',
@@ -77,12 +82,12 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       ctx
     );
 
-    expect(result.sections).toHaveLength(3);
-    expect(result.sections.map((section) => section.name)).toEqual([
-      expect.stringMatching(/^[A-Z][a-z]+ \d{4}$/),
-      expect.stringMatching(/^[A-Z][a-z]+ \d{4}$/),
-      expect.stringMatching(/^[A-Z][a-z]+ \d{4}$/),
-    ]);
+    expect(result.sections).toHaveLength(expectedSectionCount);
+    expect(result.sections.map((section) => section.name)).toEqual(
+      Array.from({ length: expectedSectionCount }, () =>
+        expect.stringMatching(/^[A-Z][a-z]+ \d{4}$/)
+      )
+    );
     expect(activitiesService.findAll).toHaveBeenCalledTimes(1);
     expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
       startDateFrom: expectedRange.start,
@@ -224,5 +229,46 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       activityStatusIds: [3],
       categoryIds: [1, 2],
     });
+  });
+});
+
+describe('ReportsService public application URL', () => {
+  const configService = {
+    get: vi.fn(),
+  };
+
+  const service = new ReportsService(
+    { db: {} } as never,
+    {} as never,
+    {} as never,
+    configService as never,
+    {} as never,
+    {} as never
+  );
+
+  beforeEach(() => {
+    configService.get.mockReset();
+  });
+
+  it('uses the configured public application URL without trailing slashes', () => {
+    configService.get.mockImplementation((key: string) =>
+      key === 'PUBLIC_APP_BASE_URL'
+        ? ' https://calendar.example.gov.bc.ca/ '
+        : undefined
+    );
+
+    expect(service['getPublicAppBaseUrl']()).toBe(
+      'https://calendar.example.gov.bc.ca'
+    );
+  });
+
+  it('fails in production when the public application URL is not configured', () => {
+    configService.get.mockImplementation((key: string) =>
+      key === 'NODE_ENV' ? 'production' : undefined
+    );
+
+    expect(() => service['getPublicAppBaseUrl']()).toThrow(
+      /PUBLIC_APP_BASE_URL must be configured/
+    );
   });
 });

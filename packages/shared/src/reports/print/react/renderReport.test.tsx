@@ -72,6 +72,7 @@ const BASE_ACTIVITY: ActivityResponse = {
   translationsRequired: ['FR', 'PUN'],
   representativesAttending: [],
   sharedWith: [],
+  sharedWithTeamIds: [],
   commsContacts: [],
   leadOrg: 'Ministry of Housing',
   eventPlannerDetails: [
@@ -781,7 +782,7 @@ describe('renderPrintReportFragmentHtml', () => {
     ).toBe(1);
     expect((html.match(/>Release<\/th>/g) ?? []).length).toBe(1);
     expect(html).toContain('>Activity details</th>');
-    expect(html).toContain('>Activity</th>');
+    expect(html).toContain('>CC ID</th>');
   });
 
   it('honours an explicit printPerDayColumnHeaderRepeat: true on a non-events section', () => {

@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
@@ -24,6 +25,7 @@ import {
 import type { Category } from '@corpcal/database/types';
 import {
   HYDRATION_PROFILES,
+  isCalendarDateString,
   PERMISSIONS,
   type AuthUser,
 } from '@corpcal/shared';
@@ -34,6 +36,7 @@ import type {
 } from '@corpcal/shared/api';
 import {
   addActivityHistoryNoteRequestSchema,
+  bulkUnshareActivitiesRequestSchema,
   bulkUpdateActivitiesRequestSchema,
   cloneActivityRequestSchema,
   createActivityRequestSchema,
@@ -48,6 +51,8 @@ import {
   updateTagsSchema,
   updateThemesSchema,
   type AddActivityHistoryNoteRequest,
+  type BulkUnshareActivitiesRequest,
+  type BulkUnshareActivitiesResult,
   type BulkUpdateActivitiesRequest,
   type CloneActivityRequest,
   type CreateActivityRequest,
@@ -64,6 +69,7 @@ import {
   ActivityArrayResponseWrapperDto,
   ActivityResponseWrapperDto,
   AddActivityHistoryNoteDto,
+  BulkUnshareActivitiesDto,
   BulkUpdateActivitiesDto,
   CloneActivityDto,
   CreateActivityDto,
@@ -78,14 +84,26 @@ import {
 } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import {
+  parseCommaSeparatedIds,
+  tryParseStrictPositiveInt,
+} from '../common/utils/parse-query-ids';
+import { parseCommaSeparatedStrings } from '../common/utils/parse-query-strings';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
-import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import {
+  RequireAnyPermission,
+  RequirePermission,
+} from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { CanCloneActivityGuard } from '../policy/guards/can-clone-activity.guard';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
 import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-delete-activity.guard';
 import { CanRestoreActivityGuard } from '../policy/guards/can-restore-activity.guard';
+import {
+  CanUnshareActivityTeamGuard,
+  canUnshareTeam,
+} from '../policy/guards/can-unshare-activity-team.guard';
 import { ActivityResponseRedactionInterceptor } from './interceptors/activity-response-redaction.interceptor';
 import { ActivitiesService } from './services/activities.service';
 import { hasActivityFindAllFilterFields } from './services/activity-find-all-filters';
@@ -277,6 +295,11 @@ export class ActivitiesController {
     @Query('pageSize') pageSize?: string,
     @Query('query') query?: string,
     @Query('order') order?: string,
+    @Query('userId') userId?: string,
+    @Query('userIds') userIds?: string,
+    @Query('actionTypes') actionTypes?: string,
+    @Query('categories') categories?: string,
+    @Query('leadTeamIds') leadTeamIds?: string,
     @RequestContext() ctx?: RequestContextType
   ): Promise<{
     success: boolean;
@@ -289,15 +312,19 @@ export class ActivitiesController {
     };
   }> {
     const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-    if (startDate !== undefined && !DATE_RE.test(startDate)) {
-      throw new BadRequestException(
-        'startDate must be a valid date in YYYY-MM-DD format'
-      );
+    if (startDate !== undefined) {
+      if (!DATE_RE.test(startDate) || !isCalendarDateString(startDate)) {
+        throw new BadRequestException(
+          'startDate must be a valid date in YYYY-MM-DD format'
+        );
+      }
     }
-    if (endDate !== undefined && !DATE_RE.test(endDate)) {
-      throw new BadRequestException(
-        'endDate must be a valid date in YYYY-MM-DD format'
-      );
+    if (endDate !== undefined) {
+      if (!DATE_RE.test(endDate) || !isCalendarDateString(endDate)) {
+        throw new BadRequestException(
+          'endDate must be a valid date in YYYY-MM-DD format'
+        );
+      }
     }
     if (order !== undefined && order !== 'asc' && order !== 'desc') {
       throw new BadRequestException('order must be "asc" or "desc"');
@@ -309,22 +336,15 @@ export class ActivitiesController {
       ? Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(pageSize, 10) || 50))
       : 50;
 
-    // If any pagination, explicit dates, a query, or an explicit order are provided, return a paged response
-    const hasPagingOrDate =
-      startDate !== undefined ||
-      endDate !== undefined ||
-      page !== undefined ||
-      pageSize !== undefined ||
-      query !== undefined ||
-      order !== undefined;
-
-    if (!hasPagingOrDate) {
-      const result = await this.activitiesService.getGlobalHistory(ctx);
-      return {
-        success: true,
-        data: result,
-      };
+    const parsedUserId = tryParseStrictPositiveInt(userId);
+    if (parsedUserId === null) {
+      throw new BadRequestException('userId must be a valid positive integer');
     }
+
+    const parsedUserIds = parseCommaSeparatedIds(userIds);
+    const parsedActionTypes = parseCommaSeparatedStrings(actionTypes);
+    const parsedCategories = parseCommaSeparatedStrings(categories);
+    const parsedLeadTeamIds = parseCommaSeparatedIds(leadTeamIds);
 
     const result = await this.activitiesService.getGlobalHistoryPaged(
       {
@@ -334,6 +354,14 @@ export class ActivitiesController {
         pageSize: parsedPageSize,
         query,
         order: order,
+        userId: parsedUserId,
+        userIds: parsedUserIds.length > 0 ? parsedUserIds : undefined,
+        actionTypes:
+          parsedActionTypes.length > 0 ? parsedActionTypes : undefined,
+        categoryNames:
+          parsedCategories.length > 0 ? parsedCategories : undefined,
+        leadTeamIds:
+          parsedLeadTeamIds.length > 0 ? parsedLeadTeamIds : undefined,
       },
       ctx
     );
@@ -444,6 +472,47 @@ export class ActivitiesController {
       permissions: user.permissions,
       teamIds: user.teamIds,
     });
+    return { success: true, data: result };
+  }
+
+  @ApiOperation({
+    summary: 'Bulk unshare activities from a team',
+    description:
+      "Removes one team from several activities' Shared With lists. Requires activities.unshare and membership of the team (or activities.unshare.all). Activities that are not shared with the team, or are locked by another user, are reported as skipped rather than failing the batch.",
+  })
+  @ApiBody({ type: BulkUnshareActivitiesDto })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Per-activity outcomes and a summary of updated/skipped counts',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Caller may not unshare the requested team',
+  })
+  @RequireAnyPermission(
+    PERMISSIONS.ACTIVITIES.UNSHARE,
+    PERMISSIONS.ACTIVITIES.UNSHARE_ALL
+  )
+  @Post('bulk-unshare')
+  async bulkUnshare(
+    @Body(new ZodValidationPipe(bulkUnshareActivitiesRequestSchema))
+    body: BulkUnshareActivitiesRequest,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: BulkUnshareActivitiesResult }> {
+    // Team eligibility is enforced here rather than by CanUnshareActivityTeamGuard,
+    // which reads teamId from the route params.
+    if (!canUnshareTeam(user, body.teamId)) {
+      throw new ForbiddenException(
+        'You may only unshare an activity from a team you belong to.'
+      );
+    }
+
+    const result = await this.activitiesService.bulkUnshareTeam(
+      body.activityIds,
+      body.teamId,
+      user.id
+    );
     return { success: true, data: result };
   }
 
@@ -656,11 +725,14 @@ export class ActivitiesController {
   })
   @RequirePermission('activities.view')
   @Get(':id/history')
-  async getHistory(@Param('id', ParseIntPipe) id: number): Promise<{
+  async getHistory(
+    @Param('id', ParseIntPipe) id: number,
+    @RequestContext() ctx: RequestContextType
+  ): Promise<{
     success: boolean;
     data: Awaited<ReturnType<ActivitiesService['getHistory']>>;
   }> {
-    const result = await this.activitiesService.getHistory(id);
+    const result = await this.activitiesService.getHistory(id, ctx);
     return {
       success: true,
       data: result,
@@ -694,7 +766,8 @@ export class ActivitiesController {
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(addActivityHistoryNoteRequestSchema))
     body: AddActivityHistoryNoteRequest,
-    @CurrentUser() user: AuthUser
+    @CurrentUser() user: AuthUser,
+    @RequestContext() ctx: RequestContextType
   ): Promise<{
     success: boolean;
     data: Awaited<ReturnType<ActivitiesService['addHistoryNote']>>;
@@ -702,7 +775,8 @@ export class ActivitiesController {
     const result = await this.activitiesService.addHistoryNote(
       id,
       body.note,
-      user.id
+      user.id,
+      ctx
     );
     return {
       success: true,
@@ -961,6 +1035,60 @@ export class ActivitiesController {
       id,
       body.teamIds,
       user.id
+    );
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @ApiOperation({
+    summary: 'Unshare an activity from a team',
+    description:
+      "Removes a single team from an activity's Shared With list. Only the team's own members (or a bypass role) may remove it.",
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Activity ID',
+    example: 1,
+  })
+  @ApiParam({
+    name: 'teamId',
+    type: Number,
+    description: 'Team ID to remove from the Shared With list',
+    example: 1,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Activity unshared from team successfully',
+    type: ActivityResponseWrapperDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Activity is not currently shared with that team',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Activity not found',
+  })
+  @RequireAnyPermission(
+    PERMISSIONS.ACTIVITIES.UNSHARE,
+    PERMISSIONS.ACTIVITIES.UNSHARE_ALL
+  )
+  @UseGuards(CanUnshareActivityTeamGuard)
+  @Delete(':id/shared-with/:teamId')
+  async unshareTeam(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @CurrentUser() user: AuthUser,
+    @RequestContext() ctx: RequestContextType
+  ): Promise<{ success: boolean; data: ActivityResponse }> {
+    const result = await this.activitiesService.unshareTeam(
+      id,
+      teamId,
+      user.id,
+      ctx
     );
     return {
       success: true,

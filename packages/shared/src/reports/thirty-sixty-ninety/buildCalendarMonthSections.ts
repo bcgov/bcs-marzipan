@@ -58,9 +58,39 @@ export function addCalendarMonths(
   return `${newYear}-${String(newMonth).padStart(2, '0')}-01` as CalendarDateString;
 }
 
+/** UI tab labels for 30/60/90 report quick picks (each maps to calendar months). */
+export type ThirtySixtyNinetyTabDayCount = 30 | 60 | 90;
+
+/** @deprecated Use {@link ThirtySixtyNinetyTabDayCount}. */
+export type ThirtySixtyNinetyDayCount = ThirtySixtyNinetyTabDayCount;
+
+export const THIRTY_SIXTY_NINETY_TAB_DAY_COUNTS = [30, 60, 90] as const;
+
+/** @deprecated Use {@link THIRTY_SIXTY_NINETY_TAB_DAY_COUNTS}. */
+export const THIRTY_SIXTY_NINETY_DAY_COUNTS =
+  THIRTY_SIXTY_NINETY_TAB_DAY_COUNTS;
+
+export const DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT = 60 as const;
+
+/** Maps UI tab labels to full calendar-month counts (30→1, 60→2, 90→3). */
+export const THIRTY_SIXTY_NINETY_TAB_TO_MONTH_COUNT: Record<
+  ThirtySixtyNinetyTabDayCount,
+  number
+> = {
+  30: 1,
+  60: 2,
+  90: 3,
+};
+
+export function monthCountForThirtySixtyNinetyTab(
+  tabDayCount: ThirtySixtyNinetyTabDayCount
+): number {
+  return THIRTY_SIXTY_NINETY_TAB_TO_MONTH_COUNT[tabDayCount];
+}
+
 /**
- * 30/60/90 preset window: `monthCount` full calendar months starting from the
- * first day of the Pacific month containing `pacificToday`.
+ * Preset window: `monthCount` full calendar months starting from the first day
+ * of the Pacific month containing `pacificToday`.
  */
 export function thirtySixtyNinetyDateRangeFromPacificDate(
   monthCount: number,
@@ -75,11 +105,39 @@ export function thirtySixtyNinetyDateRangeFromPacificDate(
 }
 
 /**
- * Default 30/60/90 report window: `monthCount` full calendar months starting
- * from the first day of the current Pacific month.
+ * Resolves a 30/60/90 UI tab to a calendar-month preset anchored on the
+ * Pacific month containing `pacificToday`.
  */
+export function thirtySixtyNinetyTabDateRangeFromPacificDate(
+  tabDayCount: ThirtySixtyNinetyTabDayCount,
+  pacificToday: CalendarDateString
+): CalendarMonthDateRange {
+  return thirtySixtyNinetyDateRangeFromPacificDate(
+    monthCountForThirtySixtyNinetyTab(tabDayCount),
+    pacificToday
+  );
+}
+
+/**
+ * @deprecated Prefer {@link thirtySixtyNinetyTabDateRangeFromPacificDate}.
+ * Inclusive-day presets from month start; superseded by calendar-month tabs.
+ */
+export function thirtySixtyNinetyDayDateRangeFromPacificDate(
+  dayCount: ThirtySixtyNinetyTabDayCount,
+  pacificToday: CalendarDateString
+): CalendarMonthDateRange {
+  const start = firstDayOfCalendarMonth(pacificToday);
+  return {
+    start,
+    end: addCalendarDays(start, dayCount - 1),
+  };
+}
+
+/** Default report window: `monthCount` full calendar months from month start. */
 export function defaultThirtySixtyNinetyDateRange(
-  monthCount = 3,
+  monthCount = monthCountForThirtySixtyNinetyTab(
+    DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT
+  ),
   now: Date = new Date()
 ): CalendarMonthDateRange {
   const today = pacificCalendarDateFromInstant(now);
@@ -87,6 +145,33 @@ export function defaultThirtySixtyNinetyDateRange(
     throw new Error('Unable to resolve current Pacific calendar date');
   }
   return thirtySixtyNinetyDateRangeFromPacificDate(monthCount, today);
+}
+
+/** Default report window for the active 30/60/90 tab (60 → two calendar months). */
+export function defaultThirtySixtyNinetyTabDateRange(
+  tabDayCount: ThirtySixtyNinetyTabDayCount = DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT,
+  now: Date = new Date()
+): CalendarMonthDateRange {
+  const today = pacificCalendarDateFromInstant(now);
+  if (today == null) {
+    throw new Error('Unable to resolve current Pacific calendar date');
+  }
+  return thirtySixtyNinetyTabDateRangeFromPacificDate(tabDayCount, today);
+}
+
+/**
+ * @deprecated Prefer {@link defaultThirtySixtyNinetyTabDateRange}.
+ * Inclusive-day default from month start.
+ */
+export function defaultThirtySixtyNinetyDayDateRange(
+  dayCount: ThirtySixtyNinetyTabDayCount = DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT,
+  now: Date = new Date()
+): CalendarMonthDateRange {
+  const today = pacificCalendarDateFromInstant(now);
+  if (today == null) {
+    throw new Error('Unable to resolve current Pacific calendar date');
+  }
+  return thirtySixtyNinetyDayDateRangeFromPacificDate(dayCount, today);
 }
 
 /**

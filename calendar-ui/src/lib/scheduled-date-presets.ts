@@ -1,11 +1,4 @@
-import {
-  addDays,
-  addMonths,
-  format,
-  startOfDay,
-  subDays,
-  subMonths,
-} from 'date-fns';
+import { addDays, format, startOfDay, subDays } from 'date-fns';
 
 /**
  * Preset anchor is always interpreted at host-local start-of-day. This is
@@ -56,14 +49,14 @@ export const PRESETS_PAST_FROM_ANCHOR: ScheduledDatePreset[] = [
       format(subDays(startOfDay(anchor), 14), 'yyyy-MM-dd'),
   },
   {
-    label: '1 month ago',
+    label: '30 days ago',
     toIsoDate: (anchor) =>
-      format(subMonths(startOfDay(anchor), 1), 'yyyy-MM-dd'),
+      format(subDays(startOfDay(anchor), 30), 'yyyy-MM-dd'),
   },
   {
-    label: '3 months ago',
+    label: '90 days ago',
     toIsoDate: (anchor) =>
-      format(subMonths(startOfDay(anchor), 3), 'yyyy-MM-dd'),
+      format(subDays(startOfDay(anchor), 90), 'yyyy-MM-dd'),
   },
 ];
 
@@ -83,14 +76,14 @@ export const PRESETS_FUTURE_FROM_ANCHOR: ScheduledDatePreset[] = [
       format(addDays(startOfDay(anchor), 14), 'yyyy-MM-dd'),
   },
   {
-    label: '1 month out',
+    label: '30 days out',
     toIsoDate: (anchor) =>
-      format(addMonths(startOfDay(anchor), 1), 'yyyy-MM-dd'),
+      format(addDays(startOfDay(anchor), 30), 'yyyy-MM-dd'),
   },
   {
-    label: '3 months out',
+    label: '90 days out',
     toIsoDate: (anchor) =>
-      format(addMonths(startOfDay(anchor), 3), 'yyyy-MM-dd'),
+      format(addDays(startOfDay(anchor), 90), 'yyyy-MM-dd'),
   },
 ];
 

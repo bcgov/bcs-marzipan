@@ -28,6 +28,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from 'react';
 
 import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
@@ -39,11 +40,14 @@ import {
   ActivityFlagOverflowIcon,
 } from '@/components/activity/activities/ActivityFlagIcon';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
+import { UnshareActivityModal } from '@/components/activity/activities/UnshareActivityModal';
 import { ErrorState } from '@/components/shared';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
   ColumnSortDropdown,
 } from '@/components/table/ColumnSortDropdown';
+import { ContentSection } from '@/components/table/ContentSection';
+import { FilterSection } from '@/components/table/FilterSection';
 import { SortableColumnHeader } from '@/components/table/SortableColumnHeader';
 import type {
   SortColumnConfig,
@@ -63,7 +67,10 @@ import {
   handleTableRowClick,
   handleTableRowKeyDown,
 } from '@/components/table/tableRowNavigation';
-import { TableSummaryBar } from '@/components/table/TableSummaryBar';
+import {
+  TableContentSummary,
+  TableFilterSummary,
+} from '@/components/table/TableSummaryBar';
 import { ActivityRichTextContent } from '@/components/ui/activity-rich-text-content';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
@@ -110,6 +117,7 @@ import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences
 import { useAuth } from '@/hooks/useAuth';
 import {
   useActivityList,
+  useBulkUnshareActivities,
   useBulkUpdateActivities,
   useSyncActivityFlags,
 } from '@/hooks/useCalendar';
@@ -159,11 +167,16 @@ import {
   hasMinistryTabLeadTeamFilterConflict,
   MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE,
 } from '@/lib/ministry-tab-lead-filter-conflict';
+import { REVIEW_HIGHLIGHT_BG } from '@/lib/review-highlight';
 import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
 import {
   sanitizeSavedFilterPayload,
   type ValidFilterLookups,
 } from '@/lib/savedFilterSanitize';
+import {
+  getUnshareableTeamsForBulk,
+  resolveUnsharePermissions,
+} from '@/lib/unshare-helpers';
 import { cn } from '@/lib/utils';
 
 import { ActivityTableEmptyState } from './ActivityTableEmptyState';
@@ -227,8 +240,6 @@ const STATUS_COLUMN_SORT_KEYS = [
   'lastUpdated',
   'createdDateTime',
 ] as const;
-
-const LIST_REVIEW_HIGHLIGHT_BG = 'bg-[#FFDDB3]';
 
 function rowHasChangedPath(row: ActivityTableRow, path: string): boolean {
   const changed = row.changedFieldsSinceReview ?? [];
@@ -501,7 +512,7 @@ function OverviewCell({
         className={cn(
           'mb-1 line-clamp-4 text-[16px] font-semibold wrap-anywhere text-slate-900',
           titleChanged && 'rounded-sm px-1',
-          titleChanged && LIST_REVIEW_HIGHLIGHT_BG
+          titleChanged && REVIEW_HIGHLIGHT_BG
         )}
         title={row.title}
       >
@@ -512,7 +523,7 @@ function OverviewCell({
           className={cn(
             'mb-2 text-[13px] text-slate-600',
             pitchChanged && 'inline-block rounded-sm px-1',
-            pitchChanged && LIST_REVIEW_HIGHLIGHT_BG
+            pitchChanged && REVIEW_HIGHLIGHT_BG
           )}
         >
           Pitch: {toSentenceCase(pitchLabel)}
@@ -528,7 +539,7 @@ function OverviewCell({
               className: cn(
                 'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
                 categoriesChanged && 'border-transparent',
-                categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
+                categoriesChanged && REVIEW_HIGHLIGHT_BG
               ),
             })
           )}
@@ -650,7 +661,7 @@ function SummaryCell({
           className={cn(
             'text-[14px] leading-[1.4] wrap-anywhere',
             summaryChanged && 'rounded-sm px-1',
-            summaryChanged && LIST_REVIEW_HIGHLIGHT_BG,
+            summaryChanged && REVIEW_HIGHLIGHT_BG,
             !expanded && 'line-clamp-5'
           )}
         >
@@ -724,7 +735,7 @@ function SchedulingCell({
           variant: 'primary' as const,
           className: cn(
             'h-auto min-h-5 text-xs text-white',
-            premierChanged && LIST_REVIEW_HIGHLIGHT_BG,
+            premierChanged && REVIEW_HIGHLIGHT_BG,
             premierChanged && 'border-transparent text-slate-900'
           ),
         },
@@ -752,7 +763,7 @@ function SchedulingCell({
             variant="outline"
             className={cn(
               'h-auto min-h-5 border-slate-200 text-xs text-slate-600',
-              dateStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
+              dateStatusChanged && REVIEW_HIGHLIGHT_BG,
               dateStatusChanged && 'border-transparent'
             )}
           >
@@ -775,7 +786,7 @@ function SchedulingCell({
             variant="outline"
             className={cn(
               'h-5 border-slate-200 text-xs text-slate-600',
-              timeStatusChanged && LIST_REVIEW_HIGHLIGHT_BG,
+              timeStatusChanged && REVIEW_HIGHLIGHT_BG,
               timeStatusChanged && 'border-transparent'
             )}
           >
@@ -1020,9 +1031,17 @@ export function ActivityTable({
   const canBulkUpdateActivities = hasPermission(
     PERMISSIONS.ACTIVITIES.BULK_UPDATE
   );
+  const unsharePermissions = resolveUnsharePermissions(
+    hasPermission,
+    user?.roleName
+  );
+  const canUnshare =
+    unsharePermissions.hasUnshare || unsharePermissions.hasUnshareAll;
+  const canBulkSelect = canBulkUpdateActivities || canUnshare;
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const canBulkShareActivities = canSeeDeleted;
   const showReviewHighlights = canSeeDeleted;
 
   const {
@@ -1093,7 +1112,9 @@ export function ActivityTable({
   const [selectedFlagTeamId, setSelectedFlagTeamId] = useState('');
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([]);
   const [deleteReason, setDeleteReason] = useState('');
+  const [unshareModalOpen, setUnshareModalOpen] = useState(false);
   const bulkUpdateActivitiesMutation = useBulkUpdateActivities();
+  const bulkUnshareMutation = useBulkUnshareActivities();
   const { favouriteActivityIds: watchlistIds, toggle: toggleFavourite } =
     useFavourites();
 
@@ -1459,7 +1480,59 @@ export function ActivityTable({
   }, [sortedActivityIds]);
 
   const selectedActivityCount = selectedActivityIds.size;
-  const bulkActionPending = bulkUpdateActivitiesMutation.isPending;
+  const bulkActionPending =
+    bulkUpdateActivitiesMutation.isPending || bulkUnshareMutation.isPending;
+
+  const selectedActivities = useMemo(
+    () => sortedData.filter((row) => selectedActivityIds.has(row.id)),
+    [sortedData, selectedActivityIds]
+  );
+
+  const eligibleBulkUnshareTeams = useMemo(
+    () =>
+      getUnshareableTeamsForBulk(
+        selectedActivities.map((row) => ({
+          sharedWithTeamIds: row.sharedWithTeamIds,
+          visibility: row.visibility,
+        })),
+        teams.map((team) => ({
+          id: team.id,
+          name: team.name,
+          displayName: team.name,
+        })),
+        user?.teamIds ?? [],
+        unsharePermissions.hasUnshare,
+        unsharePermissions.hasUnshareAll,
+        unsharePermissions.isAdminOrSysAdmin
+      ),
+    [selectedActivities, teams, user?.teamIds, unsharePermissions]
+  );
+
+  const handleBulkUnshareConfirm = useCallback(
+    async (teamId: number) => {
+      const activityIds = [...selectedActivityIds];
+      if (activityIds.length === 0) return;
+      try {
+        const result = await bulkUnshareMutation.mutateAsync({
+          activityIds,
+          teamId,
+        });
+        setSelectedActivityIds(new Set());
+        setUnshareModalOpen(false);
+        toast.success(
+          `${result.summary.updated} activit${result.summary.updated === 1 ? 'y' : 'ies'} unshared.`
+        );
+        if (result.summary.skipped > 0) {
+          toast.info(
+            `${result.summary.skipped} activit${result.summary.skipped === 1 ? 'y was' : 'ies were'} skipped.`
+          );
+        }
+      } catch (error) {
+        toast.error(getFriendlyErrorMessage(error));
+      }
+    },
+    [bulkUnshareMutation, selectedActivityIds]
+  );
 
   const toggleActivitySelected = useCallback(
     (activityId: number, selected: boolean) => {
@@ -1651,7 +1724,7 @@ export function ActivityTable({
         id: 'overview',
         header: () => (
           <div className="flex items-center gap-2">
-            {canBulkUpdateActivities && (
+            {canBulkSelect && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -1733,7 +1806,7 @@ export function ActivityTable({
           <OverviewCell
             row={row.original}
             canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
-            canSelect={canBulkUpdateActivities}
+            canSelect={canBulkSelect}
             isSelected={selectedActivityIds.has(row.original.id)}
             onSelectedChange={(selected) =>
               toggleActivitySelected(row.original.id, selected)
@@ -1874,7 +1947,7 @@ export function ActivityTable({
       syncFlagsMutation,
       selectedActivityIds,
       toggleActivitySelected,
-      canBulkUpdateActivities,
+      canBulkSelect,
       selectedActivityCount,
       sortedData,
       sortedActivityIds,
@@ -2005,16 +2078,13 @@ export function ActivityTable({
         setActiveSavedFilter(appliedFrom);
         setPreferences({ filterState, searchKeyword });
       }}
+      onResetAll={handleClearAllCriteria}
+      hasClearableFilters={hasActiveCriteria}
     />
   );
 
   const filterSummary = (
-    <TableSummaryBar
-      count={sortedData.length}
-      singularLabel="activity"
-      pluralLabel="activities"
-      showCount={!canBulkUpdateActivities}
-      filters={eventTableFilters}
+    <TableFilterSummary
       appliedSavedFilterName={appliedSavedFilterName}
       appliedFilterTypeLabels={appliedFilterTypeLabels}
       filterDetailLines={filterDetailLines}
@@ -2022,102 +2092,138 @@ export function ActivityTable({
     />
   );
 
-  const bulkActions = (
-    <div className="flex items-center gap-5 pb-1 pl-4">
-      <span className="text-sm font-medium">
-        {selectedActivityCount} of {sortedData.length} activities selected
-      </span>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={selectedActivityCount === 0 || bulkActionPending}
-          >
-            Batch actions <ChevronDown />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-52">
-          <DropdownMenuItem
-            onSelect={() => {
-              [...selectedActivityIds]
-                .filter((id) => !watchlistIds.includes(id))
-                .forEach((id) => toggleFavourite(id));
-            }}
-          >
-            Add to watchlist
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
-            Flag
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
-            Issue
-          </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
-                Update pitch status
+  const filterSection = (
+    <FilterSection>
+      {filterBar}
+      {filterSummary}
+    </FilterSection>
+  );
+
+  const bulkClearSelectionButton =
+    selectedActivityCount > 0 ? (
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        onClick={() => setSelectedActivityIds(new Set())}
+      >
+        Clear selection
+      </Button>
+    ) : null;
+
+  const bulkSelectionLeading =
+    canBulkSelect && selectedActivityCount > 0 ? (
+      <span className="inline-flex flex-wrap items-center gap-5">
+        <span className="font-medium">
+          {selectedActivityCount} of {sortedData.length} activities selected
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={bulkActionPending}
+            >
+              Batch actions <ChevronDown />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52">
+            {canBulkUpdateActivities ? (
+              <>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    [...selectedActivityIds]
+                      .filter((id) => !watchlistIds.includes(id))
+                      .forEach((id) => toggleFavourite(id));
+                  }}
+                >
+                  Add to watchlist
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
+                  Flag
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
+                  Issue
+                </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
+                      Update pitch status
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                {canBulkShareActivities && (
+                  <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
+                    Shared with
+                  </DropdownMenuItem>
+                )}
+                {canUnshare && (
+                  <DropdownMenuItem
+                    onSelect={() => setUnshareModalOpen(true)}
+                    disabled={eligibleBulkUnshareTeams.length === 0}
+                  >
+                    Unshare
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
+                  Tags
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
+                  Review
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setBulkDialog('delete')}
+                >
+                  Delete
+                </DropdownMenuItem>
+              </>
+            ) : canUnshare ? (
+              <DropdownMenuItem
+                onSelect={() => setUnshareModalOpen(true)}
+                disabled={eligibleBulkUnshareTeams.length === 0}
+              >
+                Unshare
               </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
-            Shared with
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
-            Tags
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
-            Review
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={() => setBulkDialog('delete')}
-          >
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {selectedActivityCount > 0 && (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => setSelectedActivityIds(new Set())}
-        >
-          Clear selection
-        </Button>
-      )}
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {bulkClearSelectionButton}
+      </span>
+    ) : null;
+
+  const activityListFooter = (
+    <TableContentSummary
+      count={sortedData.length}
+      singularLabel="activity"
+      pluralLabel="activities"
+      showCount={bulkSelectionLeading == null}
+      leading={bulkSelectionLeading}
+      filters={eventTableFilters}
+    />
+  );
+
+  const renderTableShell = (children: ReactNode) => (
+    <div className="min-w-0">
+      {filterSection}
+      <ContentSection>
+        {activityListFooter}
+        <ActivityTableLayout scrollRef={tableScrollRef}>
+          {children}
+        </ActivityTableLayout>
+      </ContentSection>
     </div>
   );
 
   // Loading state
   if (loading) {
-    return (
-      <div className="min-w-0 space-y-4">
-        {filterBar}
-        {filterSummary}
-        <ActivityTableLayout
-          scrollRef={tableScrollRef}
-          count={0}
-          singularLabel="activity"
-          pluralLabel="activities"
-          filters={eventTableFilters}
-          appliedSavedFilterName={appliedSavedFilterName}
-          appliedFilterTypeLabels={appliedFilterTypeLabels}
-          filterDetailLines={filterDetailLines}
-          onClearFilters={tableSummaryOnClearFilters}
-          showSummary={false}
-        >
-          <div className="flex flex-col items-center justify-center gap-3 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-            <span className="text-sm text-slate-600">
-              Loading activities...
-            </span>
-          </div>
-        </ActivityTableLayout>
+    return renderTableShell(
+      <div className="flex flex-col items-center justify-center gap-3 py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <span className="text-sm text-slate-600">Loading activities...</span>
       </div>
     );
   }
@@ -2137,38 +2243,21 @@ export function ActivityTable({
 
   // Empty state (no activities from server)
   if (data.length === 0) {
-    return (
-      <div className="min-w-0 space-y-4">
-        {filterBar}
-        {filterSummary}
-        <ActivityTableLayout
-          scrollRef={tableScrollRef}
-          count={0}
-          singularLabel="activity"
-          pluralLabel="activities"
-          filters={eventTableFilters}
-          appliedSavedFilterName={appliedSavedFilterName}
-          appliedFilterTypeLabels={appliedFilterTypeLabels}
-          filterDetailLines={filterDetailLines}
-          onClearFilters={tableSummaryOnClearFilters}
-          showSummary={false}
-        >
-          <ActivityTableEmptyState
-            variant={
-              favouriteActivityIds !== undefined
-                ? 'no-favourites'
-                : hasActiveCriteria
-                  ? 'no-filter-match'
-                  : 'no-data'
-            }
-            onClearFilters={
-              hasActiveCriteria && favouriteActivityIds === undefined
-                ? handleClearAllCriteria
-                : undefined
-            }
-          />
-        </ActivityTableLayout>
-      </div>
+    return renderTableShell(
+      <ActivityTableEmptyState
+        variant={
+          favouriteActivityIds !== undefined
+            ? 'no-favourites'
+            : hasActiveCriteria
+              ? 'no-filter-match'
+              : 'no-data'
+        }
+        onClearFilters={
+          hasActiveCriteria && favouriteActivityIds === undefined
+            ? handleClearAllCriteria
+            : undefined
+        }
+      />
     );
   }
 
@@ -2177,172 +2266,162 @@ export function ActivityTable({
   // Single return so ActivityTableLayout stays mounted when switching to empty-search state.
   return (
     <TooltipProvider delayDuration={400}>
-      <div className="min-w-0 space-y-4">
-        {filterBar}
-        {filterSummary}
-        {canBulkUpdateActivities && bulkActions}
-        <ActivityTableLayout
-          scrollRef={tableScrollRef}
-          count={sortedData.length}
-          singularLabel="activity"
-          pluralLabel="activities"
-          filters={eventTableFilters}
-          appliedSavedFilterName={appliedSavedFilterName}
-          appliedFilterTypeLabels={appliedFilterTypeLabels}
-          filterDetailLines={filterDetailLines}
-          onClearFilters={tableSummaryOnClearFilters}
-          showSummary={false}
-        >
-          {filteredData.length === 0 ? (
-            <ActivityTableEmptyState
-              variant={
-                favouriteActivityIds !== undefined
-                  ? 'no-favourites'
-                  : leadFilterConflictsWithMinistryTab ||
-                      (hasActiveCriteria && searchKeyword.trim() === '')
-                    ? 'no-filter-match'
-                    : searchKeyword.trim() !== ''
-                      ? 'no-search-match'
-                      : hasActiveCriteria
-                        ? 'no-filter-match'
-                        : 'no-data'
-              }
-              conflictNote={
-                leadFilterConflictsWithMinistryTab
-                  ? MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE
-                  : undefined
-              }
-              onClearFilters={
-                hasActiveCriteria && favouriteActivityIds === undefined
-                  ? handleClearAllCriteria
-                  : undefined
-              }
-            />
-          ) : (
-            <table
-              className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
-              role="grid"
-              aria-colcount={columns.length}
-            >
-              <thead className={tableThead}>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      const pinStyles = getCommonPinningStyles(header.column);
-                      const { backgroundColor: _pinBg, ...headerPinStyles } =
-                        pinStyles;
-                      const meta = header.column.columnDef.meta;
-                      const isSortable =
-                        meta?.sortKey != null ||
-                        (meta?.sortKeys?.length ?? 0) > 0;
-                      const sortPayload = meta?.sortKeys ?? meta?.sortKey;
-                      const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
-                      return (
-                        <th
-                          key={header.id}
-                          className={cn(tableTh, hasMultiSort && 'group')}
-                          style={{
-                            width: header.getSize(),
-                            minWidth:
-                              header.column.columnDef.minSize ??
-                              header.getSize(),
-                            maxWidth:
-                              header.column.columnDef.maxSize ??
-                              header.getSize(),
-                            cursor: isSortable ? 'pointer' : 'default',
-                            ...headerPinStyles,
-                          }}
-                          onClick={(e) => {
-                            if (
-                              (e.target as HTMLElement).closest(
-                                `[${COLUMN_SORT_DROPDOWN_DATA_ATTR}]`
-                              )
-                            ) {
-                              return;
-                            }
-                            const onHeaderSort =
-                              table.options.meta?.handleHeaderSort;
-                            if (sortPayload != null && onHeaderSort)
-                              onHeaderSort(sortPayload);
-                          }}
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {pageRows.map((row) => {
-                  const isNewRow = newRowIds.has(row.original.id);
-                  const isHighlightRow = tableRemoteHighlightIds.has(
-                    row.original.id
-                  );
-                  return (
-                    <tr
-                      key={row.id}
-                      data-activity-id={row.original.id}
-                      role="button"
-                      aria-label={`Open activity ${row.original.title}`}
-                      className={cn(
-                        `group/row ${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`,
-                        isNewRow && 'animate-in fade-in-0 duration-300',
-                        isHighlightRow && 'live-row-highlight'
-                      )}
-                      tabIndex={0}
-                      onClick={(e) => {
-                        handleTableRowClick(e, () => {
-                          openActivityWithScroll(row.original.id);
-                        });
-                      }}
-                      onKeyDown={(e) => {
-                        handleTableRowKeyDown(e, () => {
-                          openActivityWithScroll(row.original.id);
-                        });
-                      }}
-                    >
-                      {row.getVisibleCells().map((cell) => {
-                        const pinStyles = getCommonPinningStyles(cell.column);
-                        const isOverview = cell.column.id === 'overview';
+      <div className="min-w-0">
+        {filterSection}
+        <ContentSection>
+          {activityListFooter}
+          <ActivityTableLayout scrollRef={tableScrollRef}>
+            {filteredData.length === 0 ? (
+              <ActivityTableEmptyState
+                variant={
+                  favouriteActivityIds !== undefined
+                    ? 'no-favourites'
+                    : leadFilterConflictsWithMinistryTab ||
+                        (hasActiveCriteria && searchKeyword.trim() === '')
+                      ? 'no-filter-match'
+                      : searchKeyword.trim() !== ''
+                        ? 'no-search-match'
+                        : hasActiveCriteria
+                          ? 'no-filter-match'
+                          : 'no-data'
+                }
+                conflictNote={
+                  leadFilterConflictsWithMinistryTab
+                    ? MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE
+                    : undefined
+                }
+                onClearFilters={
+                  hasActiveCriteria && favouriteActivityIds === undefined
+                    ? handleClearAllCriteria
+                    : undefined
+                }
+              />
+            ) : (
+              <table
+                className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
+                role="grid"
+                aria-colcount={columns.length}
+              >
+                <thead className={tableThead}>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        const pinStyles = getCommonPinningStyles(header.column);
+                        const { backgroundColor: _pinBg, ...headerPinStyles } =
+                          pinStyles;
+                        const meta = header.column.columnDef.meta;
+                        const isSortable =
+                          meta?.sortKey != null ||
+                          (meta?.sortKeys?.length ?? 0) > 0;
+                        const sortPayload = meta?.sortKeys ?? meta?.sortKey;
+                        const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
                         return (
-                          <td
-                            key={cell.id}
-                            className={`${tableTd} border-b border-slate-100 ${
-                              isOverview
-                                ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
-                                : ''
-                            }`}
+                          <th
+                            key={header.id}
+                            className={cn(tableTh, hasMultiSort && 'group')}
                             style={{
-                              width: cell.column.getSize(),
+                              width: header.getSize(),
                               minWidth:
-                                cell.column.columnDef.minSize ??
-                                cell.column.getSize(),
+                                header.column.columnDef.minSize ??
+                                header.getSize(),
                               maxWidth:
-                                cell.column.columnDef.maxSize ??
-                                cell.column.getSize(),
-                              ...pinStyles,
+                                header.column.columnDef.maxSize ??
+                                header.getSize(),
+                              cursor: isSortable ? 'pointer' : 'default',
+                              ...headerPinStyles,
+                            }}
+                            onClick={(e) => {
+                              if (
+                                (e.target as HTMLElement).closest(
+                                  `[${COLUMN_SORT_DROPDOWN_DATA_ATTR}]`
+                                )
+                              ) {
+                                return;
+                              }
+                              const onHeaderSort =
+                                table.options.meta?.handleHeaderSort;
+                              if (sortPayload != null && onHeaderSort)
+                                onHeaderSort(sortPayload);
                             }}
                           >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </td>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                          </th>
                         );
                       })}
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </ActivityTableLayout>
+                  ))}
+                </thead>
+                <tbody>
+                  {pageRows.map((row) => {
+                    const isNewRow = newRowIds.has(row.original.id);
+                    const isHighlightRow = tableRemoteHighlightIds.has(
+                      row.original.id
+                    );
+                    return (
+                      <tr
+                        key={row.id}
+                        data-activity-id={row.original.id}
+                        role="button"
+                        aria-label={`Open activity ${row.original.title}`}
+                        className={cn(
+                          `group/row ${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`,
+                          isNewRow && 'animate-in fade-in-0 duration-300',
+                          isHighlightRow && 'live-row-highlight'
+                        )}
+                        tabIndex={0}
+                        onClick={(e) => {
+                          handleTableRowClick(e, () => {
+                            openActivityWithScroll(row.original.id);
+                          });
+                        }}
+                        onKeyDown={(e) => {
+                          handleTableRowKeyDown(e, () => {
+                            openActivityWithScroll(row.original.id);
+                          });
+                        }}
+                      >
+                        {row.getVisibleCells().map((cell) => {
+                          const pinStyles = getCommonPinningStyles(cell.column);
+                          const isOverview = cell.column.id === 'overview';
+                          return (
+                            <td
+                              key={cell.id}
+                              className={`${tableTd} border-b border-slate-100 ${
+                                isOverview
+                                  ? 'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                                  : ''
+                              }`}
+                              style={{
+                                width: cell.column.getSize(),
+                                minWidth:
+                                  cell.column.columnDef.minSize ??
+                                  cell.column.getSize(),
+                                maxWidth:
+                                  cell.column.columnDef.maxSize ??
+                                  cell.column.getSize(),
+                                ...pinStyles,
+                              }}
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </ActivityTableLayout>
+        </ContentSection>
 
         {filteredData.length > 0 && (
           <TablePagination
@@ -2372,13 +2451,14 @@ export function ActivityTable({
                 {bulkDialog === 'issue' &&
                   'Mark selected activities as issues?'}
                 {bulkDialog === 'tags' && 'Replace tags'}
-                {bulkDialog === 'sharing' && 'Replace shared-with teams'}
+                {bulkDialog === 'sharing' && 'Add shared-with teams'}
                 {bulkDialog === 'flag' && 'Flag selected activities'}
                 {bulkDialog === 'delete' && 'Delete selected activities?'}
               </DialogTitle>
               <DialogDescription>
-                This updates {selectedActivityCount} selected activit
-                {selectedActivityCount === 1 ? 'y' : 'ies'}.
+                {bulkDialog === 'sharing'
+                  ? `Adds teams to the Shared with list for ${selectedActivityCount} selected activit${selectedActivityCount === 1 ? 'y' : 'ies'} without removing existing shares.`
+                  : `This updates ${selectedActivityCount} selected activit${selectedActivityCount === 1 ? 'y' : 'ies'}.`}
               </DialogDescription>
             </DialogHeader>
             {bulkDialog === 'pitch' && (
@@ -2515,6 +2595,20 @@ export function ActivityTable({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <UnshareActivityModal
+          open={unshareModalOpen}
+          onOpenChange={setUnshareModalOpen}
+          mode="bulk"
+          activityIds={[...selectedActivityIds]}
+          activities={selectedActivities.map((row) => ({
+            sharedWithTeamIds: row.sharedWithTeamIds,
+            visibility: row.visibility,
+          }))}
+          eligibleTeams={eligibleBulkUnshareTeams}
+          onConfirm={(teamId) => void handleBulkUnshareConfirm(teamId)}
+          isPending={bulkUnshareMutation.isPending}
+        />
       </div>
     </TooltipProvider>
   );

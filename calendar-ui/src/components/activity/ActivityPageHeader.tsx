@@ -1,4 +1,4 @@
-import { History, Star } from 'lucide-react';
+import { History, Star, UserX } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
@@ -18,6 +18,7 @@ import {
   isSamePacificCalendarDay,
 } from '@/lib/datetime-utils';
 import { formatDisplayValue } from '@/lib/formatDisplayValue';
+import { cn } from '@/lib/utils';
 
 type ActivityPageHeaderProps = {
   displayId: string;
@@ -49,6 +50,13 @@ type ActivityPageHeaderProps = {
   isFavourite?: boolean;
   onFavouriteToggle?: () => void;
   isFavouriteToggling?: boolean;
+  unshareAction?: {
+    teamLabel: string;
+    disabled: boolean;
+    disabledReason?: string;
+    onClick: () => void;
+    isPending: boolean;
+  };
 };
 
 /**
@@ -72,6 +80,7 @@ export function ActivityPageHeader({
   isFavourite,
   onFavouriteToggle,
   isFavouriteToggling,
+  unshareAction,
 }: ActivityPageHeaderProps): ReactElement {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
 
@@ -98,13 +107,18 @@ export function ActivityPageHeader({
       ? null
       : (sortedFlags.find((flag) => flag.assigneeId === currentUserId) ?? null);
   const flaggedLabel = sortedFlags.map((f) => f.assigneeName).join(', ');
+  const needsWideFlagButton =
+    isFlagged && (visibleStackedFlags.length > 1 || overflowFlagCount > 0);
 
   const iconButtonClassName = 'shrink-0';
-  const multiFlagButtonClassName = 'mr-3 h-10 shrink-0 px-2 pr-4';
   const headerActionIconClassName = 'text-muted-foreground size-4';
   const timestampClassName = 'text-muted-foreground text-xs sm:text-sm';
   const showActionButtons =
-    canFlag || isFlagged || onFavouriteToggle || onHistoryClick;
+    canFlag ||
+    isFlagged ||
+    unshareAction != null ||
+    onFavouriteToggle ||
+    onHistoryClick;
 
   return (
     <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 sm:gap-x-12 sm:gap-y-1">
@@ -185,12 +199,18 @@ export function ActivityPageHeader({
               }
               onClick={() => setAssignModalOpen(true)}
               disabled={isFlagPending}
-              className={
-                isFlagged ? multiFlagButtonClassName : iconButtonClassName
-              }
+              className={cn(
+                iconButtonClassName,
+                needsWideFlagButton && 'w-auto px-1'
+              )}
             >
-              {isFlagged ? (
-                <span className="flex items-center pr-1.5">
+              {!isFlagged ? (
+                <ActivityFlagIcon
+                  assigneeName={null}
+                  assigneeFlagColour={null}
+                />
+              ) : needsWideFlagButton ? (
+                <span className="flex items-center">
                   {visibleStackedFlags.map((flag, index) => (
                     <span
                       key={`${flag.teamId}:${flag.assigneeId}`}
@@ -218,8 +238,8 @@ export function ActivityPageHeader({
                 </span>
               ) : (
                 <ActivityFlagIcon
-                  assigneeName={null}
-                  assigneeFlagColour={null}
+                  assigneeName={sortedFlags[0].assigneeName}
+                  assigneeFlagColour={sortedFlags[0].assigneeFlagColour}
                 />
               )}
             </Button>
@@ -245,6 +265,31 @@ export function ActivityPageHeader({
                 assigneeName={currentUserFlag.assigneeName}
                 assigneeFlagColour={currentUserFlag.assigneeFlagColour}
               />
+            </Button>
+          )}
+          {unshareAction && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              title={
+                unshareAction.disabled && unshareAction.disabledReason
+                  ? unshareAction.disabledReason
+                  : `Unshare ${unshareAction.teamLabel}`
+              }
+              aria-label={
+                unshareAction.disabled && unshareAction.disabledReason
+                  ? unshareAction.disabledReason
+                  : `Unshare ${unshareAction.teamLabel}`
+              }
+              onClick={unshareAction.onClick}
+              disabled={unshareAction.disabled || unshareAction.isPending}
+              className={cn(iconButtonClassName, 'px-2')}
+            >
+              <UserX className={headerActionIconClassName} aria-hidden />
+              <span className="ml-1.5 hidden sm:inline">
+                Unshare {unshareAction.teamLabel}
+              </span>
             </Button>
           )}
           {onFavouriteToggle && (

@@ -493,6 +493,26 @@ List and detail activity responses run `redactActivityResponse` in the activitie
 
 Some scopes **do not** enforce a view permission: **translations**, **pitch required status**, and **pitch date** are always included for users who can access the activity; editing them still requires the corresponding `activities.<scope>.edit` grants where applicable.
 
+#### Activity history visibility and field redaction
+
+Activity history (`GET /activities/:id/history`, global history) applies two layers of access control:
+
+1. **Activity visibility** — History is returned only for activities the caller can already see (same team/visibility rules as list and detail). Per-activity history calls `findOne` first; global history filters by visible activity IDs.
+
+2. **Field-level redaction** — Each history entry’s `changes` array is filtered with the same field-scope rules as activity responses (`redactActivityHistoryChanges` / `canViewHistoryField`). Users see diffs only for fields they are allowed to view; other field changes are removed from the payload.
+
+**Omitting empty entries (intentional):** After redaction, an entry is **not returned at all** when the caller would have nothing useful to read: no viewable field changes remain, there is no audit note on the history row, and the action is not `note_added`. Empty shell rows (action type + actor + timestamp with no details) are deliberately omitted — they add noise without revealing permitted information.
+
+Entries are still returned when at least one of the following applies:
+
+- One or more field changes remain after redaction (partial diffs are fine).
+- The history row has a non-empty audit `notes` value (standalone context the actor chose to record).
+- The action type is `note_added` (timeline note with no field changes).
+
+The full audit log remains in the database for operators with broader access; this behavior governs **read** responses only.
+
+Implementation: `ActivityHistoryService.mapEntriesToResponse` and `shouldIncludeHistoryEntry` in `calendar-service`; field keys and scope mapping in `packages/shared/src/activity-history-fields.ts`.
+
 #### Using dataScope in controllers and services
 
 Controllers obtain `dataScope` via the `@RequestContext()` decorator and pass it into services:

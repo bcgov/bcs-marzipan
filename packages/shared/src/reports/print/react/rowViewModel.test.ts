@@ -65,6 +65,7 @@ const BASE_ACTIVITY: ActivityResponse = {
   translationsRequired: [],
   representativesAttending: [],
   sharedWith: [],
+  sharedWithTeamIds: [],
   commsContacts: [],
   leadOrg: null,
   eventPlannerDetails: [],

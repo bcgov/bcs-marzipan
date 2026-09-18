@@ -21,7 +21,7 @@ describe('buildReportClearFilterState', () => {
     expect(cleared.tagIds).toEqual([]);
   });
 
-  it('uses month baseline for thirty-sixty-ninety', () => {
+  it('uses month-tab baseline for thirty-sixty-ninety', () => {
     const baseline = buildDefaultPreferencesForReport(
       'thirty-sixty-ninety',
       false

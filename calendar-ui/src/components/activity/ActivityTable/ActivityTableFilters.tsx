@@ -119,6 +119,10 @@ export interface ActivityTableFiltersProps {
     appliedFrom: { id: number; name: string }
   ) => void;
   activeSavedFilterId?: number | null;
+  /** Resets search, saved filter selection, and filter state to the view baseline. */
+  onResetAll?: () => void;
+  /** When true, overflow filter trigger shows a clear-all control wired to `onResetAll`. */
+  hasClearableFilters?: boolean;
   /** When omitted, derived from the current user (for tests). */
   pitchFieldVisibility?: {
     canViewPitchStatus: boolean;
@@ -168,6 +172,8 @@ export function ActivityTableFilters({
   savedFilters,
   onApplySavedFilter,
   activeSavedFilterId = null,
+  onResetAll,
+  hasClearableFilters = false,
   pitchFieldVisibility: pitchFieldVisibilityProp,
 }: ActivityTableFiltersProps) {
   const { user } = useAuth();
@@ -286,32 +292,6 @@ export function ActivityTableFilters({
     },
     [filterState, onFilterStateChange]
   );
-
-  /** Clears all filter state only. Search keyword is intentionally left unchanged so users can adjust filters without losing their search. If search is later moved to the left with filters, consider extending this to also call onSearchKeywordChange(''). */
-  const handleClearAllFilters = useCallback(() => {
-    onFilterStateChange({
-      dateRange: {
-        startDate: '',
-        endDate: '',
-        noStartDate: false,
-        noEndDate: false,
-      },
-      categoryIds: [],
-      activityStatusIds: [],
-      pitchRequiredStatusNames: [],
-      pitchDateFilter: { kind: 'any' },
-      lookAheadStatusValues: [],
-      lookAheadSectionValues: [],
-      dateConfirmedFilter: 'any',
-      timeConfirmedFilter: 'any',
-      tagIds: [],
-      leadTeamIds: [],
-      commsContactLeadUserIds: [],
-      eventPlannerLeadIds: [],
-      translationRequiredStatusIds: [],
-      translationLanguageIds: [],
-    });
-  }, [onFilterStateChange]);
 
   const handleTagIdsChange = useCallback(
     (tagIds: number[]) => {
@@ -616,9 +596,9 @@ export function ActivityTableFilters({
 
   return (
     <div
-      className="mb-4 flex flex-nowrap items-center justify-between gap-8"
+      className="flex flex-nowrap items-center justify-between gap-8"
       role="search"
-      aria-label="Filter activities by date, category, lead team, comms contact, status, look ahead, tags, translations, pitch, event planner, and keyword"
+      aria-label="Filter activities by date, category, lead team, comms contact, status, Look Ahead, tags, translations, pitch, event planner, and keyword"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <div className="relative max-w-md min-w-[240px] shrink-0">
@@ -645,7 +625,7 @@ export function ActivityTableFilters({
         <ResponsiveFilterRow
           slots={filterSlots}
           overflowTriggerClassName="h-10"
-          onClearAll={handleClearAllFilters}
+          onClearAll={hasClearableFilters ? onResetAll : undefined}
           savedFilters={savedFilters}
           filterState={filterState}
           searchKeyword={searchKeyword}

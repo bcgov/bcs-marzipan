@@ -18,7 +18,7 @@ import {
  * The form has three layers that all describe "empty" differently:
  * 1. API → form mapping uses `?? undefined`.
  * 2. {@link canonicalizeActivityFormData} (compare/diff oracle) collapses empty
- *    optional text to `undefined`, normalises summary to `EMPTY_RICH_TEXT_DOC`,
+ *    optional text to `undefined`, normalises rich text to its canonical form,
  *    nested venue keys to `null`, etc.
  * 3. UI bindings (Textarea, Radix Select, Radix RadioGroup, Checkbox, nested
  *    venue Input) expect concrete sentinels (`''`, `undefined`, `null`, `false`,

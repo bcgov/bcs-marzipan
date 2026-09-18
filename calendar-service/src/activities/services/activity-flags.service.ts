@@ -16,6 +16,7 @@ import {
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 
 import { DatabaseService } from '../../database/database.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import { sortByStaffName } from '../../users/staff-name-sort';
 import { ActivityHistoryService } from './activity-history.service';
 
@@ -27,7 +28,8 @@ import { ActivityHistoryService } from './activity-history.service';
 export class ActivityFlagsService {
   constructor(
     private readonly databaseService: DatabaseService,
-    private readonly activityHistoryService: ActivityHistoryService
+    private readonly activityHistoryService: ActivityHistoryService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   /**
@@ -296,6 +298,13 @@ export class ActivityFlagsService {
       }
     });
 
+    await this.notificationsService.notifyActivityFlagAssignmentChanged({
+      activityId,
+      actorUserId: assignedById,
+      addedAssigneeIds: toAdd,
+      removedAssigneeIds: toRemove,
+    });
+
     return {
       addedAssigneeIds: toAdd,
       removedAssigneeIds: toRemove,
@@ -348,6 +357,13 @@ export class ActivityFlagsService {
         [{ field: 'flag.assigneeName', oldValue: row.name, newValue: null }]
       );
     }
+
+    await this.notificationsService.notifyActivityFlagAssignmentChanged({
+      activityId,
+      actorUserId: removedById,
+      addedAssigneeIds: [],
+      removedAssigneeIds: existing.map((row) => row.assigneeId),
+    });
   }
 
   /**
@@ -398,6 +414,13 @@ export class ActivityFlagsService {
       'flag_removed',
       [{ field: 'flag.assigneeName', oldValue: assigneeName, newValue: null }]
     );
+
+    await this.notificationsService.notifyActivityFlagAssignmentChanged({
+      activityId,
+      actorUserId: removedById,
+      addedAssigneeIds: [],
+      removedAssigneeIds: [assigneeId],
+    });
   }
 
   /**

@@ -34,6 +34,7 @@ import { EditActivityConfirmModal } from '@/components/activity/activities/EditA
 import { RequestDeleteActivityModal } from '@/components/activity/activities/RequestDeleteActivityModal';
 import { ReviewActionButtonLabel } from '@/components/activity/activities/ReviewActionButtonLabel';
 import { ReviewActivityModal } from '@/components/activity/activities/ReviewActivityModal';
+import { UnshareActivityModal } from '@/components/activity/activities/UnshareActivityModal';
 import {
   FormErrorFallback,
   LockBanner,
@@ -66,6 +67,7 @@ import {
   useRestoreActivity,
   useSoftDeleteActivity,
   useSyncActivityFlags,
+  useUnshareActivityTeam,
   useUpdateActivity,
 } from '../hooks/useCalendar';
 import {
@@ -101,6 +103,11 @@ import {
 } from '../lib/recurring-edit-lockout-error';
 import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
 import { revertActivityEditSession } from '../lib/revert-activity-edit-session';
+import { TOAST_DURATION_MS } from '../lib/toast-durations';
+import {
+  getUnshareableTeamsForActivity,
+  resolveUnsharePermissions,
+} from '../lib/unshare-helpers';
 
 const logger = createLogger('ActivityPage');
 
@@ -338,6 +345,8 @@ export function ActivityPage({
   const removeAssigneeFlagMutation = useRemoveAssigneeActivityFlag({
     onSuccess: () => void refreshActivity(),
   });
+  const unshareMutation = useUnshareActivityTeam();
+  const [unshareModalOpen, setUnshareModalOpen] = useState(false);
 
   const handleRequestForceHandoff = useCallback(async () => {
     setForceHandoffPending(true);
@@ -420,12 +429,12 @@ export function ActivityPage({
         if (payload.role === 'holder') {
           toast.info(
             `Edit access was transferred to ${payload.counterpartUsername}.`,
-            { duration: 6000 }
+            { duration: TOAST_DURATION_MS.info }
           );
         } else {
           toast.success('The activity is ready to edit.', {
             id: `lock-handoff-success-${payload.activityId}`,
-            duration: 5000,
+            duration: TOAST_DURATION_MS.success,
           });
           void refreshLockFromServer();
         }
@@ -434,7 +443,7 @@ export function ActivityPage({
       if (payload.outcome === 'aborted_no_holder_lock') {
         toast.warning(
           'Lock transfer could not complete. The activity is no longer held by the original editor.',
-          { duration: 8000 }
+          { duration: TOAST_DURATION_MS.error }
         );
       }
     },
@@ -489,6 +498,73 @@ export function ActivityPage({
   const hasEditLock = lockState === 'owned';
   const isLockedByOther = lockState === 'locked-by-other';
   const showLockoutNotice = isBlockedByRecurringLockout && !isLockedByOther;
+
+  const unsharePermissions = resolveUnsharePermissions(
+    hasPermission,
+    user?.roleName
+  );
+  const canUnshareActivity =
+    unsharePermissions.hasUnshare || unsharePermissions.hasUnshareAll;
+  const eligibleUnshareTeams = useMemo(
+    () =>
+      getUnshareableTeamsForActivity(
+        {
+          sharedWithTeamIds: activity.sharedWithTeamIds,
+          visibility: activity.visibility,
+        },
+        lookups.sharedWithTeams,
+        user?.teamIds ?? [],
+        unsharePermissions.hasUnshare,
+        unsharePermissions.hasUnshareAll,
+        unsharePermissions.isAdminOrSysAdmin
+      ),
+    [
+      activity.sharedWithTeamIds,
+      activity.visibility,
+      lookups.sharedWithTeams,
+      user?.teamIds,
+      unsharePermissions,
+    ]
+  );
+  const showUnshareHeaderAction =
+    !canEditActivity && canUnshareActivity && eligibleUnshareTeams.length > 0;
+  const unshareDisabled = isLockedByOther || isBlockedByRecurringLockout;
+  const unshareDisabledReason = isLockedByOther
+    ? 'Cannot unshare while activity is being edited.'
+    : isBlockedByRecurringLockout
+      ? lockoutInlineMessage || 'Editing is temporarily locked.'
+      : undefined;
+
+  const handleUnshareConfirm = useCallback(
+    (teamId: number) => {
+      const team =
+        eligibleUnshareTeams.find((entry) => entry.id === teamId) ?? null;
+      unshareMutation.mutate(
+        { id, teamId },
+        {
+          onSuccess: () => {
+            const current = form.getValues('sharedWithTeamIds') ?? [];
+            form.setValue(
+              'sharedWithTeamIds',
+              current.filter((entryId) => entryId !== teamId),
+              { shouldDirty: false }
+            );
+            toast.success(`Removed ${team?.name ?? 'team'} from Shared With`);
+            setUnshareModalOpen(false);
+            void refreshActivity();
+          },
+          onError: (error) => {
+            showErrorToast(
+              error,
+              `Could not remove ${team?.name ?? 'team'} from Shared With`
+            );
+          },
+        }
+      );
+    },
+    [eligibleUnshareTeams, form, id, refreshActivity, unshareMutation]
+  );
+
   const [lockBannerSentinel, setLockBannerSentinel] =
     useState<HTMLDivElement | null>(null);
   const [lockoutBannerSentinel, setLockoutBannerSentinel] =
@@ -533,8 +609,15 @@ export function ActivityPage({
     if (acquireFailureReason === 'time-lockout') {
       return RECURRING_EDIT_LOCKOUT_UI_MESSAGE;
     }
-    return EDIT_LOCK_CONFLICT_TOAST;
-  }, [acquireFailureReason]);
+    if (acquireFailureReason === 'other') {
+      // Distinct from a real lock conflict: request failed for an unrelated
+      // reason (network/server error), so don't claim someone else is editing.
+      return 'Could not start editing this activity. Please try again.';
+    }
+    return lockedByUsername
+      ? `Cannot edit. ${lockedByUsername} has started editing this activity.`
+      : EDIT_LOCK_CONFLICT_TOAST;
+  }, [acquireFailureReason, lockedByUsername]);
 
   const onEditLockAcquireConflict = useCallback(() => {
     toast.error(getEditLockAcquireToastMessage());
@@ -655,6 +738,8 @@ export function ActivityPage({
                   requiredTranslationStatusId,
                   includeRepresentatives:
                     !!form.formState.dirtyFields.representatives,
+                  includeSharedWithTeamIds:
+                    !!form.formState.dirtyFields.sharedWithTeamIds,
                 }
               : mode.kind === 'completeWithSave'
                 ? {
@@ -662,11 +747,15 @@ export function ActivityPage({
                     requiredTranslationStatusId,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
+                    includeSharedWithTeamIds:
+                      !!form.formState.dirtyFields.sharedWithTeamIds,
                   }
                 : {
                     requiredTranslationStatusId,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
+                    includeSharedWithTeamIds:
+                      !!form.formState.dirtyFields.sharedWithTeamIds,
                   };
           submitData = {
             ...buildPayloadForUpdate(
@@ -675,6 +764,13 @@ export function ActivityPage({
               opts
             ),
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+          };
+        }
+
+        if (activity.lastUpdatedDateTime) {
+          submitData = {
+            ...submitData,
+            ifUnmodifiedSince: activity.lastUpdatedDateTime,
           };
         }
 
@@ -734,6 +830,7 @@ export function ActivityPage({
       updateMutation,
       form,
       activity.title,
+      activity.lastUpdatedDateTime,
       canViewActivity,
       applyExternalLockReleased,
       navigate,
@@ -761,7 +858,7 @@ export function ActivityPage({
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
-      duration: 6000,
+      duration: TOAST_DURATION_MS.error,
     });
   };
 
@@ -969,6 +1066,11 @@ export function ActivityPage({
       ? computeFormChanges(initialFormDataRef.current, form.getValues())
       : [];
 
+  const reviewModalChanges =
+    showReviewModal && initialFormDataRef.current
+      ? computeFormChanges(initialFormDataRef.current, form.getValues())
+      : [];
+
   const displayId =
     activity.displayId ??
     buildActivityDisplayId(TEAM_PREFIX_FALLBACK, activity.id);
@@ -1051,6 +1153,35 @@ export function ActivityPage({
         isFavourite={isFavourite(id)}
         onFavouriteToggle={() => toggleFavourite(id)}
         isFavouriteToggling={isFavouriteToggling}
+        unshareAction={
+          showUnshareHeaderAction
+            ? {
+                teamLabel:
+                  eligibleUnshareTeams.length === 1
+                    ? eligibleUnshareTeams[0].name
+                    : '…',
+                disabled: unshareDisabled,
+                disabledReason: unshareDisabledReason,
+                onClick: () => setUnshareModalOpen(true),
+                isPending: unshareMutation.isPending,
+              }
+            : undefined
+        }
+      />
+      <UnshareActivityModal
+        open={unshareModalOpen}
+        onOpenChange={setUnshareModalOpen}
+        mode="single"
+        activityIds={[id]}
+        activities={[
+          {
+            sharedWithTeamIds: activity.sharedWithTeamIds,
+            visibility: activity.visibility,
+          },
+        ]}
+        eligibleTeams={eligibleUnshareTeams}
+        onConfirm={handleUnshareConfirm}
+        isPending={unshareMutation.isPending}
       />
       {isLockedByOther && (
         <div ref={setLockBannerSentinel}>
@@ -1119,6 +1250,7 @@ export function ActivityPage({
             key={formUiEpoch}
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
+            activityId={id}
             readOnly={readOnly}
             reviewerChangedPaths={reviewerChangedPaths}
             leadTeamField={{
@@ -1250,10 +1382,20 @@ export function ActivityPage({
       </Form>
       <ActivityHistory
         activityId={id}
+        displayId={displayId}
         open={historyOpen}
         onOpenChange={(v) => setHistoryOpen(!!v)}
         dateStatuses={lookups.dateStatuses}
         venueStatuses={lookups.venueStatuses}
+        canAddNote={mayEditFormFields}
+        addNoteDisabled={isLockedByOther || isBlockedByRecurringLockout}
+        addNoteDisabledReason={
+          isLockedByOther
+            ? 'Cannot add note. Activity is being edited by another user.'
+            : isBlockedByRecurringLockout
+              ? lockoutInlineMessage || 'Editing is temporarily locked.'
+              : undefined
+        }
       />
       <DiscardActivityChangesDialog
         open={showLeaveConfirm}
@@ -1275,6 +1417,7 @@ export function ActivityPage({
       <ReviewActivityModal
         open={showReviewModal}
         onOpenChange={setShowReviewModal}
+        changes={reviewModalChanges}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
         onConfirm={(notes, markAsCompleted, unassignMe) =>

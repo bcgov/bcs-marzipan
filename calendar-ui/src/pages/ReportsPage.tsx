@@ -20,13 +20,22 @@ import { EditReportModal } from '@/components/reports/EditReportModal';
 import { LookAheadDayRangeTabs } from '@/components/reports/LookAheadDayRangeTabs';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
 import { ReportAppliedDateRange } from '@/components/reports/ReportAppliedDateRange';
+import { ReportDayRangeTabs } from '@/components/reports/ReportDayRangeTabs';
 import { ReportFiltersBar } from '@/components/reports/ReportFiltersBar';
 import { ReportLargeRangeWarning } from '@/components/reports/ReportLargeRangeWarning';
-import { ReportMonthRangeTabs } from '@/components/reports/ReportMonthRangeTabs';
-import { ReportTableSummaryBar } from '@/components/reports/ReportTableSummaryBar';
+import { useReportTableSummaryState } from '@/components/reports/ReportTableSummaryBar';
 import { StatusMessage } from '@/components/shared';
+import { ContentSection } from '@/components/table/ContentSection';
+import {
+  FilterSection,
+  FilterSectionActionsRow,
+} from '@/components/table/FilterSection';
 import { REPORT_PRINT_PREVIEW_SCROLL_HEIGHT } from '@/components/table/tableConstants';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
+import {
+  TableContentSummary,
+  TableFilterSummary,
+} from '@/components/table/TableSummaryBar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -137,7 +146,7 @@ function reportUsesDayRangeTabs(reportName: string): boolean {
   return reportName === 'look-ahead' || reportName === 'exec';
 }
 
-function reportUsesMonthRangeTabs(reportName: string): boolean {
+function reportUsesStandardDayRangeTabs(reportName: string): boolean {
   return (
     reportName === 'thirty-sixty-ninety' ||
     reportName === 'planning' ||
@@ -571,7 +580,27 @@ export function ReportsPage() {
 
   const exportConfig = getExportConfig(activeReport);
 
-  const printPreviewRowTrailing =
+  const reportTableSummary = useReportTableSummaryState({
+    reportName: activeReport || 'planning',
+    preferences,
+    setPreferences: setReportPreferences,
+    canSeeDeleted,
+    onClearSavedFilter: savedFiltersState.handleClearPanelFilters,
+  });
+
+  const reportDayRangeTabs = reportUsesDayRangeTabs(activeReport) ? (
+    <LookAheadDayRangeTabs
+      preferences={preferences}
+      setPreferences={setReportPreferences}
+    />
+  ) : reportUsesStandardDayRangeTabs(activeReport) ? (
+    <ReportDayRangeTabs
+      preferences={preferences}
+      setPreferences={setReportPreferences}
+    />
+  ) : undefined;
+
+  const reportActionsRowTrailing =
     activeReport === 'custom' ? (
       <Button
         type="button"
@@ -649,7 +678,7 @@ export function ReportsPage() {
             usesReportPreviewShell(activeReport) ? 'space-y-0' : 'space-y-4'
           )}
         >
-          <div className="flex flex-col gap-4">
+          <FilterSection>
             <ReportFiltersBar
               reportName={activeReport}
               preferences={preferences}
@@ -666,141 +695,145 @@ export function ReportsPage() {
                 savedFiltersState.parseSavedFilterForDraft
               }
               validFilterLookups={savedFiltersState.validFilterLookups}
-              printPreviewRowLeading={
-                reportUsesDayRangeTabs(activeReport) ? (
-                  <LookAheadDayRangeTabs
-                    preferences={preferences}
-                    setPreferences={setReportPreferences}
-                  />
-                ) : reportUsesMonthRangeTabs(activeReport) ? (
-                  <ReportMonthRangeTabs
-                    preferences={preferences}
-                    setPreferences={setReportPreferences}
-                  />
-                ) : undefined
-              }
-              printPreviewRowTrailing={printPreviewRowTrailing}
+              onResetAll={reportTableSummary.onClearFilters}
+              hasClearableFilters={reportTableSummary.onClearFilters != null}
+            />
+            <FilterSectionActionsRow
+              leading={reportDayRangeTabs}
+              trailing={reportActionsRowTrailing}
             />
             {activeReport ? (
-              <ReportTableSummaryBar
-                reportName={activeReport}
-                preferences={preferences}
-                setPreferences={setReportPreferences}
-                canSeeDeleted={canSeeDeleted}
-                activityCount={displayActivityCount}
+              <TableFilterSummary
+                appliedFilterTypeLabels={
+                  reportTableSummary.appliedFilterTypeLabels
+                }
+                filterDetailLines={reportTableSummary.filterDetailLines}
+                onClearFilters={reportTableSummary.onClearFilters}
                 appliedSavedFilterName={
                   savedFiltersState.appliedSavedFilterName
                 }
-                onClearSavedFilter={savedFiltersState.handleClearPanelFilters}
               />
             ) : null}
-          </div>
+          </FilterSection>
 
-          {reports.map((report) => (
-            <TabsContent
-              key={report.id}
-              value={report.name}
-              className="mt-0 outline-none data-[state=inactive]:hidden"
-            >
-              {activeReport === report.name &&
-              usesReportPreviewShell(report.name) ? (
-                <div className="flex min-h-0 flex-col">
-                  <div className="border-border flex h-9 shrink-0 items-center justify-between gap-4 border-t">
-                    <ReportAppliedDateRange
-                      dateRange={resolvedReportDateRange}
-                    />
-                    <div className="flex shrink-0 items-center gap-4">
-                      <ReportLargeRangeWarning
-                        showLargeRangeWarning={showLargeRangeWarning}
-                        wasClamped={wasDateRangeClamped}
-                      />
-                      {isFullscreenPrintPreview(report.name) ? (
-                        <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={previewSheetWidthMode === 'print'}
-                            onCheckedChange={(checked) =>
-                              setPreviewSheetWidthMode(
-                                checked ? 'print' : 'full'
-                              )
-                            }
-                            aria-label="Print width"
-                            className="border-input"
+          {activeReport ? (
+            <ContentSection>
+              <TableContentSummary
+                count={displayActivityCount}
+                singularLabel={reportTableSummary.singularLabel}
+                pluralLabel={reportTableSummary.pluralLabel}
+                filters={reportTableSummary.filters}
+              />
+
+              {reports.map((report) => (
+                <TabsContent
+                  key={report.id}
+                  value={report.name}
+                  className="mt-0 outline-none data-[state=inactive]:hidden"
+                >
+                  {activeReport === report.name &&
+                  usesReportPreviewShell(report.name) ? (
+                    <div className="flex min-h-0 flex-col">
+                      <div className="border-border flex h-9 shrink-0 items-center justify-between gap-4 border-t">
+                        <ReportAppliedDateRange
+                          dateRange={resolvedReportDateRange}
+                        />
+                        <div className="flex shrink-0 items-center gap-4">
+                          <ReportLargeRangeWarning
+                            showLargeRangeWarning={showLargeRangeWarning}
+                            wasClamped={wasDateRangeClamped}
                           />
-                          Print width
-                        </label>
-                      ) : null}
-                    </div>
-                  </div>
-                  {isPreviewLoading ? (
-                    <ReportPreviewEmptyState
-                      ref={reportPreviewScrollRef}
-                      message="Loading report..."
-                      className={reportPreviewScrollClassName}
-                    />
-                  ) : report.name === 'custom' ? (
-                    displayData?.sections[0] ? (
-                      <CustomReportPreviewSection
-                        section={displayData.sections[0]}
-                        config={customReportFields}
-                        onFieldsChange={setCustomReportFields}
-                        onPaginationChange={handleCustomReportPaginationChange}
-                        highlightedActivityIds={reportHighlightSet}
-                        scrollContainerRef={reportPreviewScrollRef}
-                      />
-                    ) : (
-                      <ReportPreviewEmptyState
-                        ref={reportPreviewScrollRef}
-                        message="No activities to display"
-                        className={reportPreviewScrollClassName}
-                      />
-                    )
-                  ) : displayData ? (
-                    <TableScrollContainer
-                      ref={reportPreviewScrollRef}
-                      scrollHeight={REPORT_PRINT_PREVIEW_SCROLL_HEIGHT}
-                      scrollAriaLabel="Report preview"
-                      scrollClassName="flex flex-col"
-                      className={reportPreviewScrollClassName}
-                    >
-                      <div
-                        className="flex w-full flex-1 flex-col px-6 pt-0 pb-6"
-                        onClickCapture={handleReportPreviewClickCapture}
-                      >
-                        <div
-                          className={
-                            previewSheetWidthMode === 'full'
-                              ? 'report-print-preview-root min-w-0'
-                              : 'report-print-preview-root'
-                          }
-                          style={
-                            (previewSheetWidthMode === 'full'
-                              ? {
-                                  '--corpcal-print-root-max-width': 'none',
+                          {isFullscreenPrintPreview(report.name) ? (
+                            <label className="text-foreground flex shrink-0 cursor-pointer items-center gap-2 text-sm">
+                              <Checkbox
+                                checked={previewSheetWidthMode === 'print'}
+                                onCheckedChange={(checked) =>
+                                  setPreviewSheetWidthMode(
+                                    checked ? 'print' : 'full'
+                                  )
                                 }
-                              : {
-                                  minWidth: previewSheetLayoutWidthPx,
-                                }) as CSSProperties
-                          }
-                        >
-                          <PrintReportPreview
-                            reportTypeName={report.name}
-                            data={displayData}
-                            highlightActivityIds={reportHighlightSet}
-                          />
+                                aria-label="Print width"
+                                className="border-input"
+                              />
+                              Print width
+                            </label>
+                          ) : null}
                         </div>
                       </div>
-                    </TableScrollContainer>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center py-12">
-                  <p className="text-muted-foreground">
-                    Select filters and the report will load automatically
-                  </p>
-                </div>
-              )}
-            </TabsContent>
-          ))}
+                      {isPreviewLoading ? (
+                        <ReportPreviewEmptyState
+                          ref={reportPreviewScrollRef}
+                          message="Loading report..."
+                          className={reportPreviewScrollClassName}
+                        />
+                      ) : report.name === 'custom' ? (
+                        displayData?.sections[0] ? (
+                          <CustomReportPreviewSection
+                            section={displayData.sections[0]}
+                            config={customReportFields}
+                            onFieldsChange={setCustomReportFields}
+                            onPaginationChange={
+                              handleCustomReportPaginationChange
+                            }
+                            highlightedActivityIds={reportHighlightSet}
+                            scrollContainerRef={reportPreviewScrollRef}
+                          />
+                        ) : (
+                          <ReportPreviewEmptyState
+                            ref={reportPreviewScrollRef}
+                            message="No activities to display"
+                            className={reportPreviewScrollClassName}
+                          />
+                        )
+                      ) : displayData ? (
+                        <TableScrollContainer
+                          ref={reportPreviewScrollRef}
+                          scrollHeight={REPORT_PRINT_PREVIEW_SCROLL_HEIGHT}
+                          scrollAriaLabel="Report preview"
+                          scrollClassName="flex flex-col"
+                          className={reportPreviewScrollClassName}
+                        >
+                          <div
+                            className="flex w-full flex-1 flex-col px-6 pt-0 pb-6"
+                            onClickCapture={handleReportPreviewClickCapture}
+                          >
+                            <div
+                              className={
+                                previewSheetWidthMode === 'full'
+                                  ? 'report-print-preview-root min-w-0'
+                                  : 'report-print-preview-root'
+                              }
+                              style={
+                                (previewSheetWidthMode === 'full'
+                                  ? {
+                                      '--corpcal-print-root-max-width': 'none',
+                                    }
+                                  : {
+                                      minWidth: previewSheetLayoutWidthPx,
+                                    }) as CSSProperties
+                              }
+                            >
+                              <PrintReportPreview
+                                reportTypeName={report.name}
+                                data={displayData}
+                                highlightActivityIds={reportHighlightSet}
+                              />
+                            </div>
+                          </div>
+                        </TableScrollContainer>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-muted-foreground">
+                        Select filters and the report will load automatically
+                      </p>
+                    </div>
+                  )}
+                </TabsContent>
+              ))}
+            </ContentSection>
+          ) : null}
         </div>
       </Tabs>
 

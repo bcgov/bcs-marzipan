@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 function Textarea({
   className,
   readOnly,
+  placeholder,
   ...props
 }: React.ComponentProps<'textarea'>) {
   return (
@@ -19,6 +20,7 @@ function Textarea({
         className
       )}
       readOnly={readOnly}
+      {...(placeholder !== '' ? { placeholder } : {})}
       {...props}
     />
   );

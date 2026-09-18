@@ -155,17 +155,30 @@ const ActivityLink = Link.extend({
   },
 });
 
-const starterKitCompact = StarterKit.configure({
-  blockquote: false,
-  codeBlock: false,
-  code: false,
-  heading: false,
-  horizontalRule: false,
-  strike: false,
-  underline: false,
-  trailingNode: false,
-  link: false,
-});
+export type ActivityRichTextEditorProfile = 'full' | 'links';
+
+function starterKitForProfile(profile: ActivityRichTextEditorProfile) {
+  return StarterKit.configure({
+    blockquote: false,
+    codeBlock: false,
+    code: false,
+    heading: false,
+    horizontalRule: false,
+    strike: false,
+    underline: false,
+    trailingNode: false,
+    link: false,
+    ...(profile === 'links'
+      ? {
+          bold: false,
+          italic: false,
+          bulletList: false,
+          orderedList: false,
+          listItem: false,
+        }
+      : {}),
+  });
+}
 
 function linkMark() {
   return ActivityLink.configure({
@@ -181,15 +194,17 @@ const markdownExtension = Markdown.configure({});
 
 /** Extensions for generateHTML / MarkdownManager (no placeholder). */
 export function getActivityRichTextHtmlExtensions(): Extensions {
-  return [starterKitCompact, linkMark(), markdownExtension];
+  return [starterKitForProfile('full'), linkMark(), markdownExtension];
 }
 
-/** Full editor extensions including placeholder. */
+/** Editor extensions including placeholder. */
 export function getActivityRichTextEditorExtensions(options: {
   placeholder: string;
+  profile?: ActivityRichTextEditorProfile;
 }): Extensions {
+  const profile = options.profile ?? 'full';
   return [
-    starterKitCompact,
+    starterKitForProfile(profile),
     linkMark(),
     markdownExtension,
     Placeholder.configure({ placeholder: options.placeholder }),
