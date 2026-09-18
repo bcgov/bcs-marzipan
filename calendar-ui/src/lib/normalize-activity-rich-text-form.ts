@@ -50,21 +50,15 @@ export function coalesceRichTextFormStorageValue(
   return normalizeActivityRichTextFormValue(value) ?? EMPTY_RICH_TEXT_DOC;
 }
 
-/** Normalizes summary, significance, and executive summary for edit-form hydration. */
+/** Normalizes the remaining rich-text field for edit-form hydration. */
 export function normalizeActivityRichTextFormFields(
   data: ActivityFormData
 ): ActivityFormData {
-  const summaryNorm = normalizeActivityRichTextFormValue(data.summary);
-  const significanceNorm = normalizeActivityRichTextFormValue(
-    data.significance
-  );
   const executiveSummaryNorm = normalizeActivityRichTextFormValue(
     data.executiveSummary
   );
   return {
     ...data,
-    summary: summaryNorm ?? EMPTY_RICH_TEXT_DOC,
-    significance: significanceNorm ?? EMPTY_RICH_TEXT_DOC,
     executiveSummary: executiveSummaryNorm ?? EMPTY_RICH_TEXT_DOC,
   };
 }

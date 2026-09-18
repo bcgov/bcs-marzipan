@@ -8,10 +8,7 @@ import {
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
-import {
-  canonicalizeActivityFormData,
-  EMPTY_RICH_TEXT_DOC,
-} from '@corpcal/shared/utils';
+import { canonicalizeActivityFormData } from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
 import { hydrateActivityFormData } from './activity-form-hydrate';
@@ -148,8 +145,6 @@ describe('hydrateActivityFormData', () => {
     expect(canonicalOnly.notes).toBeUndefined();
     expect(canonicalOnly.significance).toBeUndefined();
     expect(applyUiBaselineSentinels(canonicalOnly).notes).toBe('');
-    expect(applyUiBaselineSentinels(canonicalOnly).significance).toBe(
-      EMPTY_RICH_TEXT_DOC
-    );
+    expect(applyUiBaselineSentinels(canonicalOnly).significance).toBe('');
   });
 });

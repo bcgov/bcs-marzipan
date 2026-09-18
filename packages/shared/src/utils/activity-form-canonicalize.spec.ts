@@ -85,7 +85,7 @@ describe('canonicalizeActivityFormData', () => {
     expect(dirty.representatives).toEqual([{ representativeId: 1 }]);
   });
 
-  it('stabilizes summary null, undefined, and empty string to the same value', () => {
+  it('stabilizes summary null, undefined, and empty string to empty text', () => {
     const withUndefined = canonicalizeActivityFormData(
       minimalForm({ summary: undefined })
     );
@@ -97,9 +97,9 @@ describe('canonicalizeActivityFormData', () => {
     const withEmpty = canonicalizeActivityFormData(
       minimalForm({ summary: '' })
     );
-    expect(withUndefined.summary).toBe(EMPTY_RICH_TEXT_DOC);
-    expect(withNull.summary).toBe(EMPTY_RICH_TEXT_DOC);
-    expect(withEmpty.summary).toBe(EMPTY_RICH_TEXT_DOC);
+    expect(withUndefined.summary).toBe('');
+    expect(withNull.summary).toBe('');
+    expect(withEmpty.summary).toBe('');
     expect(isDeepEqual(withUndefined.summary, withEmpty.summary)).toBe(true);
   });
 });
@@ -111,7 +111,7 @@ describe('prepareActivityFormDataForSubmit', () => {
         notes: '',
         schedulingNotes: '',
         strategy: '',
-        significance: EMPTY_RICH_TEXT_DOC,
+        significance: '',
         executiveSummary: EMPTY_RICH_TEXT_DOC,
       })
     );

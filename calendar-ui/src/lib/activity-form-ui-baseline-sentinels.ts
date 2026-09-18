@@ -21,6 +21,8 @@ export const UI_BASELINE_EMPTY_STRING_FIELDS = [
   'notes',
   'schedulingNotes',
   'strategy',
+  'significance',
+  'summary',
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
 /**
@@ -28,9 +30,7 @@ export const UI_BASELINE_EMPTY_STRING_FIELDS = [
  * `undefined`, but TipTap `onChange` stores `EMPTY_RICH_TEXT_DOC` JSON.
  */
 export const UI_BASELINE_EMPTY_RICH_TEXT_FIELDS = [
-  'significance',
   'executiveSummary',
-  'summary',
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
 export type UiBaselineSentinelField =
@@ -55,9 +55,9 @@ export const UI_BASELINE_FIELD_SENTINELS: {
   notes: emptyStringBaseline,
   schedulingNotes: emptyStringBaseline,
   strategy: emptyStringBaseline,
-  significance: emptyRichTextBaseline,
+  significance: emptyStringBaseline,
   executiveSummary: emptyRichTextBaseline,
-  summary: emptyRichTextBaseline,
+  summary: emptyStringBaseline,
 };
 
 /** Expected empty baseline per sentinel field (for tests and docs). */
@@ -67,9 +67,9 @@ export const UI_BASELINE_SENTINEL_VALUES: {
   notes: '',
   schedulingNotes: '',
   strategy: '',
-  significance: EMPTY_RICH_TEXT_DOC,
+  significance: '',
   executiveSummary: EMPTY_RICH_TEXT_DOC,
-  summary: EMPTY_RICH_TEXT_DOC,
+  summary: '',
 };
 
 /**
