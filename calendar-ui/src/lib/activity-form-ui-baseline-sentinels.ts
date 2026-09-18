@@ -1,9 +1,7 @@
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { EMPTY_RICH_TEXT_DOC } from '@corpcal/shared/utils';
 
-function emptyStringBaseline(
-  value: string | undefined | null
-): ActivityFormData['notes'] {
+function emptyStringBaseline(value: string | undefined | null): string {
   return value ?? '';
 }
 
