@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ReportDataResponse } from '../../../api/report-data';
 import { toCalendarDateString } from '../../../datetime/types';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
+import { EMPTY_RICH_TEXT_DOC } from '../../../utils/activity-rich-text';
 import { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
 import { buildReportPdfFooterTemplateHtml } from './buildReportPdfFooterTemplate';
 import {
@@ -175,6 +176,32 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toContain('<strong>Minister announces housing investment</strong>');
     expect(html).toContain('Overview summary for this activity.');
     expect(html).not.toContain('Investment of $500M');
+  });
+
+  it('renders the title and overview summary when executive summary is an empty rich-text document', () => {
+    const activityWithoutExecutiveSummary = {
+      ...BASE_ACTIVITY,
+      executiveSummary: EMPTY_RICH_TEXT_DOC,
+      summary: 'Overview summary for this activity.',
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [
+        {
+          ...FIXTURE.sections[0],
+          activities: [activityWithoutExecutiveSummary],
+        },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+    });
+
+    expect(html).toContain(
+      '<strong>Minister announces housing investment</strong>'
+    );
+    expect(html).toContain('Overview summary for this activity.');
   });
 
   it('renders event lead below executive summary when an event planner lead exists', () => {

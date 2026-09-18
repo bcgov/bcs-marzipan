@@ -1,5 +1,6 @@
 import { pacificDayKey } from '../../../datetime';
 import type { ActivityListItem } from '../../../schemas/activity-list-item.schema';
+import { isActivityRichTextEffectivelyEmpty } from '../../../utils/activity-rich-text';
 import { trimTrailingSlashes } from '../../../utils/trimTrailingSlashes';
 import { getCommsContactLeadDisplayName } from '../../reportTypeConfig';
 import {
@@ -160,6 +161,10 @@ function joinActivityUrl(baseUrl: string, activityId: number): string {
 function toNonEmpty(value: string | null | undefined): string | null {
   const trimmed = (value ?? '').trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function toNonEmptyRichText(value: string | null | undefined): string | null {
+  return isActivityRichTextEffectivelyEmpty(value) ? null : (value ?? null);
 }
 
 const norm = (s: string | null | undefined) => s?.trim().toLowerCase() ?? '';
@@ -405,8 +410,8 @@ export function toPrintRowViewModel(
       address: buildVenueAddressLine(activity.venueAddress ?? null),
     },
     title: activity.title?.trim() ?? '',
-    summaryStored: toNonEmpty(activity.summary),
-    executiveSummaryStored: toNonEmpty(activity.executiveSummary),
+    summaryStored: toNonEmptyRichText(activity.summary),
+    executiveSummaryStored: toNonEmptyRichText(activity.executiveSummary),
     significanceStored: toNonEmpty(activity.significance),
     strategyStored: toNonEmpty(activity.strategy),
     commsMaterials: activity.commsMaterials ?? [],
