@@ -50,6 +50,7 @@ export type ActivityMapperRelatedData = {
     userId: number;
     name: string;
     isLead: boolean;
+    phone?: string | null;
   }>;
   eventPlannerDetails?: EventPlannerDetail[];
   eventPlanners?: string[];
@@ -320,6 +321,7 @@ export class ActivityMapperService {
       leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
       leadTeamId: activity.leadTeamId,
       leadMinistryId: activity.leadMinistryId ?? null,
+      sharedWith: relatedData?.sharedWith ?? [],
       sharedWithTeamIds: relatedData?.sharedWithTeamIds ?? [],
       visibility:
         (activity.visibility as Visibility) ??

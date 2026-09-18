@@ -10,6 +10,8 @@ const commsContactSchema = z.object({
   userId: z.number().int(),
   name: z.string(),
   isLead: z.boolean(),
+  /** Contact phone (user record phone, falling back to AD phone). */
+  phone: z.string().nullable().optional(),
 });
 
 /** Discriminator for list/report bulk payloads vs full {@link ActivityResponse}. */
@@ -59,6 +61,8 @@ export const activityListItemSchema = z.object({
   leadTeamDisplayName: activityComputedFieldsSchema.shape.leadTeamDisplayName,
   leadTeamId: activityDbFieldsSchema.shape.leadTeamId,
   leadMinistryId: activityDbFieldsSchema.shape.leadMinistryId,
+  /** Shared-with team display names, for the list table shares indicator. */
+  sharedWith: activityComputedFieldsSchema.shape.sharedWith,
   /** Needed by list bulk actions to tell which of the user's teams can be unshared. */
   sharedWithTeamIds: activityComputedFieldsSchema.shape.sharedWithTeamIds,
   visibility: activityDbFieldsSchema.shape.visibility,
@@ -144,6 +148,7 @@ export function activityResponseToListItem(
     leadTeamDisplayName: activity.leadTeamDisplayName ?? null,
     leadTeamId: activity.leadTeamId,
     leadMinistryId: activity.leadMinistryId,
+    sharedWith: activity.sharedWith ?? [],
     sharedWithTeamIds: activity.sharedWithTeamIds ?? [],
     visibility: activity.visibility,
     commsContacts: activity.commsContacts,

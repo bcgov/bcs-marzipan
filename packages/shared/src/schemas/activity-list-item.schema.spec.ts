@@ -4,6 +4,7 @@ import { createMockActivityListItem } from '../test-utils/activity-list-item.fix
 import { createMockActivityResponse } from '../test-utils/activity-response.fixture';
 import {
   ACTIVITY_LIST_ITEM_SHAPE,
+  activityListItemSchema,
   isActivityListItemPayload,
 } from './activity-list-item.schema';
 
@@ -40,5 +41,26 @@ describe('isActivityListItemPayload', () => {
     expect(isActivityListItemPayload(null)).toBe(false);
     expect(isActivityListItemPayload(undefined)).toBe(false);
     expect(isActivityListItemPayload('x')).toBe(false);
+  });
+});
+
+describe('activityListItemSchema', () => {
+  it('parses sharedWith and comms contact phone on list items', () => {
+    const parsed = activityListItemSchema.parse(
+      createMockActivityListItem({
+        sharedWith: ['Comms Team'],
+        commsContacts: [
+          {
+            userId: 1,
+            name: 'Jane Smith',
+            isLead: true,
+            phone: '604-555-0100',
+          },
+        ],
+      })
+    );
+
+    expect(parsed.sharedWith).toEqual(['Comms Team']);
+    expect(parsed.commsContacts[0]?.phone).toBe('604-555-0100');
   });
 });
