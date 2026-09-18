@@ -27,6 +27,7 @@ jobs:
       TOOLS_NAMESPACE: ${{ secrets.OPENSHIFT_TOOLS_NAMESPACE }}
       DEV_NAMESPACE: ${{ secrets.OPENSHIFT_DEV_NAMESPACE }}
       APP_VERSION: ${{ vars.APP_VERSION }}
+      PUBLIC_APP_BASE_URL: ${{ vars.PUBLIC_APP_BASE_URL }}
 
     steps:
       - name: Checkout code
