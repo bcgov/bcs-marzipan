@@ -9,7 +9,13 @@
  * does not scroll. Tune this single offset if parent scroll appears after layout changes.
  */
 /** Compact {@link PageHeader} (mb-4, title only); reduce if parent scroll appears. */
-const TABLE_SCROLL_PAGE_OFFSET = '22.5rem';
+const TABLE_SCROLL_PAGE_OFFSET = '23rem';
+
+/**
+ * Global History adds scope tabs (mb-4) and a day-range row in {@link FilterSection}
+ * above the shared filter/content summary chrome.
+ */
+const GLOBAL_HISTORY_TABLE_SCROLL_PAGE_OFFSET = '26.5rem';
 
 /** Upper bound for the scroll area on very tall viewports. */
 const TABLE_SCROLL_VIEWPORT_MAX = '1200px';
@@ -17,10 +23,22 @@ const TABLE_SCROLL_VIEWPORT_MAX = '1200px';
 /** Print preview toolbar (h-9) below the same chrome as data tables. */
 const REPORT_PRINT_PREVIEW_TOOLBAR = '2.25rem';
 
+function buildTableScrollHeight(pageOffset: string): string {
+  const viewportHeight = `calc(100svh - var(--header-height, 3.5rem) - ${pageOffset})`;
+  return `max(240px, min(${TABLE_SCROLL_VIEWPORT_MAX}, ${viewportHeight}))`;
+}
+
 const TABLE_SCROLL_VIEWPORT_HEIGHT = `calc(100svh - var(--header-height, 3.5rem) - ${TABLE_SCROLL_PAGE_OFFSET})`;
 
 /** Scroll area height for data tables. Used by TableScrollContainer so Users table and EventTable (Calendar Entries) share the same height and behavior. */
-export const TABLE_SCROLL_HEIGHT = `max(240px, min(${TABLE_SCROLL_VIEWPORT_MAX}, ${TABLE_SCROLL_VIEWPORT_HEIGHT}))`;
+export const TABLE_SCROLL_HEIGHT = buildTableScrollHeight(
+  TABLE_SCROLL_PAGE_OFFSET
+);
+
+/** Scroll area height for Global History; reserves extra space for scope tabs and day-range quick picks. */
+export const GLOBAL_HISTORY_TABLE_SCROLL_HEIGHT = buildTableScrollHeight(
+  GLOBAL_HISTORY_TABLE_SCROLL_PAGE_OFFSET
+);
 
 /** Print preview scroll height; same viewport reserve as {@link TABLE_SCROLL_HEIGHT} minus the preview toolbar row (h-9). */
 export const REPORT_PRINT_PREVIEW_SCROLL_HEIGHT = `max(240px, min(${TABLE_SCROLL_VIEWPORT_MAX}, calc(${TABLE_SCROLL_VIEWPORT_HEIGHT} - ${REPORT_PRINT_PREVIEW_TOOLBAR})))`;

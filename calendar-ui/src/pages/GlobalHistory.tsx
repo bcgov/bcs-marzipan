@@ -1,7 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
 import {
@@ -17,19 +23,41 @@ import {
   fetchTimeStatuses,
   fetchTranslationRequiredStatuses,
 } from '@/api/lookupsApi';
-import { FilterCheckboxItem } from '@/components/activity/ActivityTable/FilterCheckboxItem';
 import {
   isDateRangeActive,
   ScheduledDateRangeFields,
   type DateRangeValue,
 } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
+import {
+  buildGlobalHistoryFilterDetailLines,
+  buildHistoryAppliedFilterTypeLabels,
+  createDefaultGlobalHistoryDateRange,
+  GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,
+  HistoryListEmptyState,
+  HistoryListLoading,
+  HistoryListToolbar,
+  HistoryMultiSelectFilter,
+  HistoryResponsiveEntries,
+  HistorySearchInput,
+  historySummaryHasActiveFilters,
+  historySummaryHasClearableFilters,
+  HistoryTableLoading,
+  isGlobalHistoryDateRangeActive,
+  resolveHistoryEmptyVariant,
+  toGlobalActivityHistoryViewModel,
+} from '@/components/history';
 import { HistoryDayRangeTabs } from '@/components/history/HistoryDayRangeTabs';
 import { PageHeader } from '@/components/layout';
 import { ErrorState } from '@/components/shared';
+import { ContentSection } from '@/components/table/ContentSection';
+import { FilterSection } from '@/components/table/FilterSection';
+import { GLOBAL_HISTORY_TABLE_SCROLL_HEIGHT } from '@/components/table/tableConstants';
 import { TablePagination } from '@/components/table/TablePagination';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Input } from '@/components/ui/input';
+import {
+  TableContentSummary,
+  TableFilterSummary,
+} from '@/components/table/TableSummaryBar';
 import {
   Popover,
   PopoverContent,
@@ -47,32 +75,14 @@ import {
   useUsers,
 } from '@/hooks/useLookups';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
-import {
-  formatHistoryFieldValue,
-  getActionText,
-  getHistoryFieldLabel,
-} from '@/lib/activity-history-format';
-import {
-  CORP_PACIFIC_TIME_ZONE,
-  formatExactDate,
-  formatLongDate,
-  formatPacificHistoryListDayHeading,
-  isTimestampInPacificDateFilter,
-} from '@/lib/datetime-utils';
+import { formatHistoryFieldValue } from '@/lib/activity-history-format';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
-
-const EMPTY_DATE_RANGE: DateRangeValue = {
-  startDate: '',
-  endDate: '',
-  noStartDate: false,
-  noEndDate: false,
-};
 
 const MAX_CHANGE_VALUE_LENGTH = 120;
 
 const HISTORY_FILTER_LOOKUP_STALE_MS = 5 * 60 * 1000;
 
-type HistoryTab = 'all' | 'mine';
+type HistoryTab = 'all' | 'mine' | 'team';
 
 type FilterOption = {
   value: string;
@@ -143,133 +153,6 @@ export function getActorInitials(entry: GlobalActivityHistoryEntry): string {
     .join('');
 }
 
-export function isEntryInDateRange(
-  entry: GlobalActivityHistoryEntry,
-  range: DateRangeValue
-): boolean {
-  if (!isDateRangeActive(range)) {
-    return true;
-  }
-
-  return isTimestampInPacificDateFilter(new Date(entry.timestamp), range);
-}
-
-export function matchesSearch(
-  entry: GlobalActivityHistoryEntry,
-  query: string
-): boolean {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return true;
-  }
-
-  const timestamp = new Date(entry.timestamp);
-  const haystacks = [
-    getActorDisplayName(entry),
-    entry.actor?.username,
-    entry.actionType,
-    getActionText(entry.actionType),
-    entry.activity.displayId,
-    entry.activity.title,
-    entry.notes,
-    formatPacificHistoryListDayHeading(timestamp),
-    formatLongDate(timestamp, { timeZone: CORP_PACIFIC_TIME_ZONE }),
-    formatExactDate(timestamp, {
-      includeTime: true,
-      timeZone: CORP_PACIFIC_TIME_ZONE,
-      appendPacificTimeAbbrev: true,
-    }),
-    ...entry.activity.categories,
-  ]
-    .filter((value): value is string => typeof value === 'string')
-    .map((value) => value.toLowerCase());
-
-  return haystacks.some((value) => value.includes(normalizedQuery));
-}
-
-function SearchableMultiSelectFilter({
-  label,
-  options,
-  selectedValues,
-  onChange,
-  searchPlaceholder,
-}: {
-  label: string;
-  options: FilterOption[];
-  selectedValues: string[];
-  onChange: (values: string[]) => void;
-  searchPlaceholder?: string;
-}) {
-  const [query, setQuery] = useState('');
-
-  const filteredOptions = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) {
-      return options;
-    }
-
-    return options.filter((option) =>
-      option.label.toLowerCase().includes(normalized)
-    );
-  }, [options, query]);
-
-  const toggleValue = (value: string) => {
-    if (selectedValues.includes(value)) {
-      onChange(selectedValues.filter((item) => item !== value));
-      return;
-    }
-
-    onChange([...selectedValues, value]);
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <FilterTrigger
-          label={label}
-          active={selectedValues.length > 0}
-          count={selectedValues.length}
-          onClear={() => onChange([])}
-          clearAriaLabel={`Clear ${label} filter`}
-        />
-      </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0" align="start">
-        <div className="p-3">
-          <div className="mb-3 text-xs font-medium tracking-wide text-slate-500 uppercase">
-            {label}
-          </div>
-          {searchPlaceholder ? (
-            <Input
-              type="text"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={searchPlaceholder}
-              className="mb-3"
-            />
-          ) : null}
-          <div className="max-h-64 space-y-1 overflow-auto">
-            {filteredOptions.length === 0 ? (
-              <div className="py-2 text-center text-sm text-slate-500">
-                No results
-              </div>
-            ) : (
-              filteredOptions.map((option) => (
-                <FilterCheckboxItem
-                  key={option.value}
-                  checked={selectedValues.includes(option.value)}
-                  onCheckedChange={() => toggleValue(option.value)}
-                >
-                  {option.label}
-                </FilterCheckboxItem>
-              ))
-            )}
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 function DateFilter({
   value,
   onChange,
@@ -286,7 +169,7 @@ function DateFilter({
           label="Date"
           active={active}
           count={active ? 1 : 0}
-          onClear={() => onChange(EMPTY_DATE_RANGE)}
+          onClear={() => onChange(createDefaultGlobalHistoryDateRange())}
           clearAriaLabel="Clear date filter"
         />
       </PopoverTrigger>
@@ -313,17 +196,27 @@ export function GlobalHistory() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<HistoryTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateRange, setDateRange] = useState<DateRangeValue>(EMPTY_DATE_RANGE);
+  const [dateRange, setDateRange] = useState<DateRangeValue>(() =>
+    createDefaultGlobalHistoryDateRange()
+  );
   const [selectedActionTypes, setSelectedActionTypes] = useState<string[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedLeadTeamIds, setSelectedLeadTeamIds] = useState<string[]>([]);
-  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(
-    () => new Set()
-  );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const tableScrollRef = useRef<HTMLDivElement>(null);
+
+  const userTeamIds = useMemo(() => user?.teamIds ?? [], [user?.teamIds]);
+
+  useEffect(() => {
+    if (activeTab === 'mine') {
+      setSelectedUserIds([]);
+    }
+    if (activeTab === 'team') {
+      setSelectedLeadTeamIds([]);
+    }
+  }, [activeTab]);
 
   // Reset to page 1 whenever any filter changes
   useEffect(() => {
@@ -339,25 +232,55 @@ export function GlobalHistory() {
     selectedLeadTeamIds,
   ]);
 
-  const historyQuery = useQuery({
-    queryKey: [
-      'activities',
-      'global-history',
+  const globalHistoryQueryParams = useMemo(
+    () => ({
       page,
       pageSize,
-      dateRange.startDate,
+      startDate: dateRange.startDate || undefined,
+      endDate: dateRange.endDate || undefined,
+      query: searchQuery || undefined,
+      order: 'desc' as const,
+      userId:
+        activeTab === 'mine' && user?.id != null ? Number(user.id) : undefined,
+      userIds:
+        activeTab === 'all' && selectedUserIds.length > 0
+          ? selectedUserIds
+              .map((id) => Number(id))
+              .filter((id) => !Number.isNaN(id))
+          : undefined,
+      actionTypes:
+        selectedActionTypes.length > 0 ? selectedActionTypes : undefined,
+      categories:
+        selectedCategories.length > 0 ? selectedCategories : undefined,
+      leadTeamIds:
+        activeTab === 'team' && userTeamIds.length > 0
+          ? userTeamIds
+          : activeTab === 'all' && selectedLeadTeamIds.length > 0
+            ? selectedLeadTeamIds
+                .map((id) => Number(id))
+                .filter((id) => !Number.isNaN(id))
+            : undefined,
+    }),
+    [
+      activeTab,
       dateRange.endDate,
+      dateRange.startDate,
+      page,
+      pageSize,
       searchQuery,
-    ],
+      selectedActionTypes,
+      selectedCategories,
+      selectedLeadTeamIds,
+      selectedUserIds,
+      user?.id,
+      userTeamIds,
+    ]
+  );
+
+  const historyQuery = useQuery({
+    queryKey: ['activities', 'global-history', globalHistoryQueryParams],
     queryFn: (): Promise<PagedResult<GlobalActivityHistoryEntry>> =>
-      fetchGlobalActivityHistoryPaged({
-        page,
-        pageSize,
-        startDate: dateRange.startDate || undefined,
-        endDate: dateRange.endDate || undefined,
-        query: searchQuery || undefined,
-        order: 'desc',
-      }),
+      fetchGlobalActivityHistoryPaged(globalHistoryQueryParams),
     placeholderData: (prev) => prev,
   });
 
@@ -421,47 +344,28 @@ export function GlobalHistory() {
     [historyQuery.data]
   );
 
-  const actionTypeOptions = useMemo<FilterOption[]>(() => {
-    const values = [...new Set(entries.map((entry) => entry.actionType))];
-    return values
-      .sort((a, b) => getActionText(a).localeCompare(getActionText(b)))
-      .map((value) => ({ value, label: getActionText(value) }));
-  }, [entries]);
+  const actionTypeOptions = GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS;
 
   const userOptions = useMemo<FilterOption[]>(() => {
-    const seen = new Map<string, string>();
-    entries.forEach((entry) => {
-      seen.set(String(entry.userId), getActorDisplayName(entry));
-    });
-
-    return [...seen.entries()]
-      .sort((a, b) => a[1].localeCompare(b[1]))
-      .map(([value, label]) => ({ value, label }));
-  }, [entries]);
+    return (usersQuery.data ?? [])
+      .map((entry) => ({
+        value: String(entry.id),
+        label: entry.label || entry.name,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [usersQuery.data]);
 
   const categoryOptions = useMemo<FilterOption[]>(() => {
-    const categories =
-      categoriesQuery.data?.map((category) => {
+    return (categoriesQuery.data ?? [])
+      .map((category) => {
         const displayValue = category.displayName || category.name;
-
         return {
           value: displayValue,
           label: displayValue,
         };
-      }) ?? [];
-
-    if (categories.length > 0) {
-      return [
-        ...new Map(
-          categories.map((category) => [category.value, category])
-        ).values(),
-      ].sort((a, b) => a.label.localeCompare(b.label));
-    }
-
-    return [...new Set(entries.flatMap((entry) => entry.activity.categories))]
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: value }));
-  }, [categoriesQuery.data, entries]);
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [categoriesQuery.data]);
 
   const leadTeamOptions = useMemo<FilterOption[]>(() => {
     return (teamsQuery.data ?? [])
@@ -601,149 +505,190 @@ export function GlobalHistory() {
     [premierRequestedQuery.data]
   );
 
-  const toggleExpandedEntry = (entryId: number) => {
-    setExpandedEntries((prev) => {
-      const next = new Set(prev);
-      if (next.has(entryId)) {
-        next.delete(entryId);
-      } else {
-        next.add(entryId);
-      }
-      return next;
-    });
-  };
+  const historyLinkState = useMemo(
+    () => activityFormLinkState(location).state,
+    [location]
+  );
 
-  const formatChangeValue = (field: string, value: unknown): string => {
-    let formattedValue: string;
+  const formatChangeValue = useCallback(
+    (field: string, value: unknown): string => {
+      let formattedValue: string;
 
-    if (typeof value === 'number') {
-      switch (field) {
-        case 'activityStatusId':
-          formattedValue = activityStatusLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'createdBy':
-        case 'lastUpdatedBy':
-        case 'eventPlannerLeadId':
-        case 'commsContactLeadId':
-          formattedValue = userLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'leadTeamId':
-          formattedValue = leadTeamLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'leadMinistryId':
-          formattedValue = ministryLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'leadOrgId':
-          formattedValue = organizationLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'dateStatusId':
-          formattedValue = dateStatusLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'timeStatusId':
-          formattedValue = timeStatusLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'pitchRequiredStatusId':
-          formattedValue =
-            pitchRequiredStatusLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'translationsRequiredStatusId':
-          formattedValue =
-            translationRequiredStatusLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'newsReleaseOriginId':
-          formattedValue =
-            newsReleaseOriginLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'newsReleaseDistributionId':
-          formattedValue =
-            newsReleaseDistributionLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        case 'premierRequestedId':
-          formattedValue = premierRequestedLabelMap.get(value) || String(value);
-          return truncateChangeLogValue(formattedValue);
-        default:
-          break;
-      }
-    }
-
-    return truncateChangeLogValue(formatHistoryFieldValue(field, value));
-  };
-
-  const filteredEntries = useMemo(() => {
-    return entries.filter((entry) => {
-      if (activeTab === 'mine' && entry.userId !== user?.id) {
-        return false;
+      if (typeof value === 'number') {
+        switch (field) {
+          case 'activityStatusId':
+            formattedValue = activityStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'createdBy':
+          case 'lastUpdatedBy':
+          case 'eventPlannerLeadId':
+          case 'commsContactLeadId':
+            formattedValue = userLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'leadTeamId':
+            formattedValue = leadTeamLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'leadMinistryId':
+            formattedValue = ministryLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'leadOrgId':
+            formattedValue = organizationLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'dateStatusId':
+            formattedValue = dateStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'timeStatusId':
+            formattedValue = timeStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'pitchRequiredStatusId':
+            formattedValue =
+              pitchRequiredStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'translationsRequiredStatusId':
+            formattedValue =
+              translationRequiredStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'newsReleaseOriginId':
+            formattedValue =
+              newsReleaseOriginLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'newsReleaseDistributionId':
+            formattedValue =
+              newsReleaseDistributionLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'premierRequestedId':
+            formattedValue =
+              premierRequestedLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          default:
+            break;
+        }
       }
 
-      if (!matchesSearch(entry, searchQuery)) {
-        return false;
-      }
+      return truncateChangeLogValue(formatHistoryFieldValue(field, value));
+    },
+    [
+      activityStatusLabelMap,
+      dateStatusLabelMap,
+      leadTeamLabelMap,
+      ministryLabelMap,
+      newsReleaseDistributionLabelMap,
+      newsReleaseOriginLabelMap,
+      organizationLabelMap,
+      pitchRequiredStatusLabelMap,
+      premierRequestedLabelMap,
+      timeStatusLabelMap,
+      translationRequiredStatusLabelMap,
+      userLabelMap,
+    ]
+  );
 
-      if (!isEntryInDateRange(entry, dateRange)) {
-        return false;
-      }
+  const historyEntries = useMemo(
+    () =>
+      entries.map((entry) =>
+        toGlobalActivityHistoryViewModel(entry, {
+          team: leadTeamLabelMap.get(entry.activity.leadTeamId),
+          subjectState: historyLinkState,
+          formatValue: formatChangeValue,
+        })
+      ),
+    [entries, formatChangeValue, historyLinkState, leadTeamLabelMap]
+  );
 
-      if (
-        selectedActionTypes.length > 0 &&
-        !selectedActionTypes.includes(entry.actionType)
-      ) {
-        return false;
-      }
+  const recordCount = historyQuery.data?.totalItems ?? 0;
 
-      if (
-        selectedUserIds.length > 0 &&
-        !selectedUserIds.includes(String(entry.userId))
-      ) {
-        return false;
-      }
+  const appliedFilterTypeLabels = useMemo(
+    () =>
+      buildHistoryAppliedFilterTypeLabels({
+        searchQuery,
+        dateRange,
+        activeTab,
+        selectedActionTypes,
+        selectedUserIds,
+        selectedCategories,
+        selectedLeadTeamIds,
+      }),
+    [
+      activeTab,
+      dateRange,
+      searchQuery,
+      selectedActionTypes,
+      selectedCategories,
+      selectedLeadTeamIds,
+      selectedUserIds,
+    ]
+  );
 
-      if (
-        selectedCategories.length > 0 &&
-        !entry.activity.categories.some((category) =>
-          selectedCategories.includes(category)
-        )
-      ) {
-        return false;
-      }
-
-      if (
-        selectedLeadTeamIds.length > 0 &&
-        !selectedLeadTeamIds.includes(String(entry.activity.leadTeamId))
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [
-    activeTab,
-    dateRange,
-    entries,
+  const hasActiveFilters = historySummaryHasActiveFilters({
     searchQuery,
+    dateRangeActive: isGlobalHistoryDateRangeActive(dateRange),
+    activeTab,
     selectedActionTypes,
+    selectedUserIds,
     selectedCategories,
     selectedLeadTeamIds,
+  });
+
+  const clearAllFilters = useCallback(() => {
+    setSearchQuery('');
+    setDateRange(createDefaultGlobalHistoryDateRange());
+    setSelectedActionTypes([]);
+    setSelectedUserIds([]);
+    setSelectedCategories([]);
+    setSelectedLeadTeamIds([]);
+    setActiveTab('all');
+  }, []);
+
+  const showClearFilters = historySummaryHasClearableFilters({
+    searchQuery,
+    dateRange,
+    activeTab,
+    selectedActionTypes,
     selectedUserIds,
-    user?.id,
-  ]);
+    selectedCategories,
+    selectedLeadTeamIds,
+  });
 
-  const groupedEntries = useMemo(() => {
-    const groups = new Map<string, GlobalActivityHistoryEntry[]>();
+  const filterDetailLines = useMemo(
+    () =>
+      buildGlobalHistoryFilterDetailLines({
+        searchQuery,
+        activeTab,
+        dateRange,
+        selectedActionTypes,
+        selectedUserIds,
+        selectedCategories,
+        selectedLeadTeamIds,
+        categoryOptions,
+        leadTeamOptions,
+        userOptions,
+      }),
+    [
+      activeTab,
+      categoryOptions,
+      dateRange,
+      leadTeamOptions,
+      searchQuery,
+      selectedActionTypes,
+      selectedCategories,
+      selectedLeadTeamIds,
+      selectedUserIds,
+      userOptions,
+    ]
+  );
 
-    filteredEntries.forEach((entry) => {
-      const heading = formatPacificHistoryListDayHeading(
-        new Date(entry.timestamp)
-      );
-      const group = groups.get(heading);
-      if (group) {
-        group.push(entry);
-      } else {
-        groups.set(heading, [entry]);
-      }
-    });
-
-    return [...groups.entries()];
-  }, [filteredEntries]);
+  const renderCountSummary = useCallback(
+    (countTrailing?: ReactNode) =>
+      !historyQuery.isError ? (
+        <TableContentSummary
+          count={historyQuery.isLoading ? 0 : recordCount}
+          singularLabel="record"
+          pluralLabel="records"
+          countTrailing={countTrailing}
+        />
+      ) : null,
+    [historyQuery.isError, historyQuery.isLoading, recordCount]
+  );
 
   return (
     <>
@@ -756,223 +701,124 @@ export function GlobalHistory() {
         <div className="mb-4">
           <TabsList className="mb-0" variant="line" size="med">
             <TabsTrigger value="all">All</TabsTrigger>
+            {userTeamIds.length > 0 ? (
+              <TabsTrigger value="team">My team</TabsTrigger>
+            ) : null}
             <TabsTrigger value="mine">My history</TabsTrigger>
           </TabsList>
         </div>
       </Tabs>
 
-      <div className="mb-2 flex flex-wrap items-center gap-3">
-        <div className="relative w-60 max-w-60 min-w-60">
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search"
-            className="pr-3 pl-8"
-            aria-label="Search history"
+      <FilterSection>
+        <div className="flex flex-wrap items-center gap-3">
+          <HistorySearchInput value={searchQuery} onChange={setSearchQuery} />
+          <DateFilter value={dateRange} onChange={setDateRange} />
+          <HistoryMultiSelectFilter
+            label="Type"
+            options={actionTypeOptions}
+            selectedValues={selectedActionTypes}
+            onChange={setSelectedActionTypes}
           />
+          {activeTab === 'all' ? (
+            <HistoryMultiSelectFilter
+              label="Updated by"
+              options={userOptions}
+              selectedValues={selectedUserIds}
+              onChange={setSelectedUserIds}
+              searchPlaceholder="Search users"
+            />
+          ) : null}
+          <HistoryMultiSelectFilter
+            label="Category"
+            options={categoryOptions}
+            selectedValues={selectedCategories}
+            onChange={setSelectedCategories}
+          />
+          {activeTab === 'all' ? (
+            <HistoryMultiSelectFilter
+              label="Team"
+              options={leadTeamOptions}
+              selectedValues={selectedLeadTeamIds}
+              onChange={setSelectedLeadTeamIds}
+              searchPlaceholder="Search teams"
+            />
+          ) : null}
         </div>
-        <DateFilter value={dateRange} onChange={setDateRange} />
-        <SearchableMultiSelectFilter
-          label="Update type"
-          options={actionTypeOptions}
-          selectedValues={selectedActionTypes}
-          onChange={setSelectedActionTypes}
+
+        <HistoryDayRangeTabs value={dateRange} onChange={setDateRange} />
+
+        <TableFilterSummary
+          appliedFilterTypeLabels={appliedFilterTypeLabels}
+          filterDetailLines={filterDetailLines}
+          onClearFilters={
+            !historyQuery.isError && showClearFilters
+              ? clearAllFilters
+              : undefined
+          }
         />
-        <SearchableMultiSelectFilter
-          label="Updated by"
-          options={userOptions}
-          selectedValues={selectedUserIds}
-          onChange={setSelectedUserIds}
-          searchPlaceholder="Search users"
-        />
-        <SearchableMultiSelectFilter
-          label="Category"
-          options={categoryOptions}
-          selectedValues={selectedCategories}
-          onChange={setSelectedCategories}
-        />
-        <SearchableMultiSelectFilter
-          label="Team"
-          options={leadTeamOptions}
-          selectedValues={selectedLeadTeamIds}
-          onChange={setSelectedLeadTeamIds}
-          searchPlaceholder="Search teams"
-        />
-      </div>
+      </FilterSection>
 
-      <HistoryDayRangeTabs
-        value={dateRange}
-        onChange={setDateRange}
-        className="mb-4"
-      />
-
-      {historyQuery.isLoading ? (
-        <div className="text-sm text-slate-500">Loading history...</div>
-      ) : historyQuery.isError ? (
-        <ErrorState
-          title="Unable to load history"
-          message="Try again or refresh the page."
-          onRetry={() => void historyQuery.refetch()}
-        />
-      ) : groupedEntries.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          {isDateRangeActive(dateRange) ? (
-            <div>No changes in the selected timeframe.</div>
-          ) : (
-            <div>No matching history found.</div>
-          )}
-        </div>
-      ) : (
-        <>
-          <TableScrollContainer ref={tableScrollRef}>
-            <div className="space-y-8 p-5">
-              {groupedEntries.map(([heading, dayEntries]) => (
-                <section key={heading} className="space-y-4">
-                  <h2 className="text-base font-normal text-slate-700">
-                    {heading}
-                  </h2>
-                  <div className="space-y-[2.5px]">
-                    {dayEntries.map((entry) => {
-                      const timestamp = new Date(entry.timestamp);
-                      const teamName = leadTeamLabelMap.get(
-                        entry.activity.leadTeamId
-                      );
-                      const hasChanges = (entry.changes?.length ?? 0) > 0;
-                      const isExpanded = expandedEntries.has(entry.id);
-
-                      return (
-                        <article
-                          key={entry.id}
-                          className="flex items-start justify-between gap-6 rounded-lg bg-white"
-                        >
-                          <div className="flex min-w-0 flex-1 gap-3">
-                            <Avatar
-                              className="h-9 w-9"
-                              title={getActorDisplayName(entry)}
-                            >
-                              <AvatarFallback className="bg-indigo-100 text-xs font-semibold text-indigo-700">
-                                {getActorInitials(entry)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 space-y-1.5">
-                              <div className="flex min-h-9 flex-wrap items-center gap-2 text-sm text-slate-700">
-                                <span className="font-medium text-slate-900">
-                                  {getActorDisplayName(entry)}
-                                </span>
-                                {teamName ? (
-                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                                    {teamName}
-                                  </span>
-                                ) : null}
-                                <span>
-                                  {getActionText(
-                                    entry.actionType
-                                  ).toLowerCase()}
-                                </span>
-                                <Link
-                                  to={`/activity/${entry.activity.id}`}
-                                  {...activityFormLinkState(location)}
-                                  className="font-medium text-blue-700 hover:underline"
-                                >
-                                  {entry.activity.displayId ||
-                                    `Activity ${entry.activity.id}`}
-                                </Link>
-                              </div>
-
-                              <div className="text-sm font-bold text-slate-900">
-                                {entry.activity.title}
-                              </div>
-
-                              {entry.notes ? (
-                                <div className="text-sm text-slate-700">
-                                  {entry.notes}
-                                </div>
-                              ) : null}
-
-                              {hasChanges ? (
-                                <div className="space-y-1 pt-1">
-                                  {isExpanded ? (
-                                    <>
-                                      {entry.changes?.map((change, index) => (
-                                        <div
-                                          key={`${entry.id}-${index}`}
-                                          className="text-foreground text-sm"
-                                        >
-                                          <span className="text-foreground font-medium">
-                                            {getHistoryFieldLabel(change.field)}
-                                            :
-                                          </span>{' '}
-                                          <span className="text-muted-foreground">
-                                            {formatChangeValue(
-                                              change.field,
-                                              change.oldValue
-                                            )}
-                                          </span>{' '}
-                                          <span aria-hidden>→</span>{' '}
-                                          <span>
-                                            {formatChangeValue(
-                                              change.field,
-                                              change.newValue
-                                            )}
-                                          </span>
-                                        </div>
-                                      ))}
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          toggleExpandedEntry(entry.id)
-                                        }
-                                        className="text-sm font-medium text-blue-700 hover:underline"
-                                      >
-                                        Show less
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        toggleExpandedEntry(entry.id)
-                                      }
-                                      className="text-sm font-medium text-blue-700 hover:underline"
-                                    >
-                                      Show more
-                                    </button>
-                                  )}
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                          <div className="shrink-0 text-sm text-slate-500">
-                            {formatExactDate(timestamp, {
-                              includeTime: true,
-                              timeZone: CORP_PACIFIC_TIME_ZONE,
-                              appendPacificTimeAbbrev: true,
-                            })}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
+      <ContentSection className="min-w-0">
+        {historyQuery.isLoading ? (
+          <>
+            <HistoryListToolbar summary={renderCountSummary()} />
+            <div className="md:hidden">
+              <HistoryListLoading />
             </div>
-          </TableScrollContainer>
-          <TablePagination
-            totalItems={historyQuery.data?.totalItems ?? 0}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={(p) => setPage(p)}
-            onPageSizeChange={(ps) => {
-              setPageSize(ps);
-              setPage(1);
-            }}
-            scrollContainerRef={tableScrollRef}
-            aria-label="History pagination"
+            <TableScrollContainer
+              className="hidden md:flex"
+              scrollHeight={GLOBAL_HISTORY_TABLE_SCROLL_HEIGHT}
+            >
+              <HistoryTableLoading />
+            </TableScrollContainer>
+          </>
+        ) : historyQuery.isError ? (
+          <ErrorState
+            title="Unable to load history"
+            message="Try again or refresh the page."
+            onRetry={() => void historyQuery.refetch()}
           />
-        </>
-      )}
+        ) : historyEntries.length === 0 ? (
+          <>
+            <HistoryListToolbar summary={renderCountSummary()} />
+            <TableScrollContainer
+              scrollHeight={GLOBAL_HISTORY_TABLE_SCROLL_HEIGHT}
+            >
+              <HistoryListEmptyState
+                variant={
+                  isDateRangeActive(dateRange) && !hasActiveFilters
+                    ? 'no-timeframe'
+                    : resolveHistoryEmptyVariant(
+                        (historyQuery.data?.totalItems ?? 0) > 0,
+                        hasActiveFilters,
+                        searchQuery
+                      )
+                }
+              />
+            </TableScrollContainer>
+          </>
+        ) : (
+          <>
+            <HistoryResponsiveEntries
+              entries={historyEntries}
+              tableScrollRef={tableScrollRef}
+              renderCountSummary={renderCountSummary}
+            />
+            <TablePagination
+              totalItems={historyQuery.data?.totalItems ?? 0}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={(p) => setPage(p)}
+              onPageSizeChange={(ps) => {
+                setPageSize(ps);
+                setPage(1);
+              }}
+              scrollContainerRef={tableScrollRef}
+              aria-label="History pagination"
+            />
+          </>
+        )}
+      </ContentSection>
     </>
   );
 }

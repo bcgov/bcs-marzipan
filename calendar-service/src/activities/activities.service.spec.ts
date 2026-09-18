@@ -16,6 +16,7 @@ import {
   PERMISSIONS,
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
+  type AuthUser,
 } from '@corpcal/shared';
 import {
   activityResponseSchema,
@@ -34,6 +35,7 @@ import { LocksService } from '../locks/locks.service';
 import { RecurringLockoutService } from '../locks/recurring-lockout.service';
 import { LookAheadPolicyService } from '../look-ahead/look-ahead-policy.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { RequestContext } from '../policy/dto/user-context.dto';
 import {
   getCategoryScopeById,
   getTagScopeById,
@@ -88,6 +90,24 @@ function mockLookupScopeMaps(
 
 /** mapToResponseDto tests exercise mapping only, not team visibility rules. */
 const BYPASS_FIND_ONE_CTX = { dataScope: { bypass: true, teamIds: [] } };
+
+function createHistoryRequestContext(
+  user: Pick<AuthUser, 'id' | 'permissions' | 'roleName'>
+): RequestContext {
+  return {
+    user: {
+      id: user.id,
+      username: 'test.user',
+      displayName: 'Test User',
+      email: 'test@example.com',
+      roleId: 1,
+      roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: [],
+    },
+    dataScope: { bypass: true, teamIds: [] },
+  };
+}
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
@@ -183,6 +203,13 @@ describe('ActivitiesService', () => {
   const mockActivityHistoryService = {
     recordChange: vi.fn().mockResolvedValue(undefined),
     getActivityHistory: vi.fn().mockResolvedValue([]),
+    getActivityHistoryForActivityIdsPaged: vi.fn().mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 50,
+      hasNext: false,
+      totalItems: 0,
+    }),
     getHistoryEntryById: vi.fn().mockResolvedValue(null),
     getLastPublishedState: vi.fn().mockResolvedValue(null),
     getPreviousStatusIdBeforeDelete: vi.fn().mockResolvedValue(null),
@@ -663,6 +690,102 @@ describe('ActivitiesService', () => {
 
     it('is true when the caller is an explicit edit bypass role', () => {
       expect(svc().computeCanEdit(1, [], 5, [2], true)).toBe(true);
+    });
+  });
+
+  describe('getGlobalHistoryPaged', () => {
+    it('passes viewer to history paging for field redaction', async () => {
+      const ctx = createHistoryRequestContext({
+        id: 7,
+        permissions: [],
+        roleName: 'Viewer',
+      });
+
+      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
+      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
+
+      await service.getGlobalHistoryPaged({}, ctx);
+
+      expect(
+        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged
+      ).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({
+          viewer: { permissions: [], roleName: 'Viewer' },
+        })
+      );
+    });
+
+    it('passes viewer to history paging', async () => {
+      const ctx = createHistoryRequestContext({
+        id: 7,
+        permissions: ['activities.notes.view'],
+        roleName: 'Editor',
+      });
+
+      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
+      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
+
+      await service.getGlobalHistoryPaged(
+        {
+          page: 1,
+          pageSize: 25,
+        },
+        ctx
+      );
+
+      expect(
+        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged
+      ).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({
+          page: 1,
+          pageSize: 25,
+          viewer: {
+            permissions: ['activities.notes.view'],
+            roleName: 'Editor',
+          },
+        })
+      );
+    });
+
+    it('defaults to today-only Pacific window when no dates are provided', async () => {
+      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
+      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
+
+      await service.getGlobalHistoryPaged({
+        page: 1,
+        pageSize: 25,
+      });
+
+      const call =
+        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged.mock
+          .calls[0];
+      const opts = call?.[1] as { startDate?: string; endDate?: string };
+
+      expect(opts?.startDate).toBeDefined();
+      expect(opts?.endDate).toBeDefined();
+      expect(opts?.startDate).toBe(opts?.endDate);
+    });
+  });
+
+  describe('getHistory', () => {
+    it('passes request context to findOne for visibility checks', async () => {
+      const ctx = BYPASS_FIND_ONE_CTX;
+      const findOneSpy = vi
+        .spyOn(service, 'findOne')
+        .mockResolvedValue(createMockActivityResponse());
+      mockActivityHistoryService.getActivityHistory.mockResolvedValueOnce([
+        { id: 1, activityId: 25, userId: 1, actionType: 'updated' },
+      ]);
+
+      const result = await service.getHistory(25, ctx);
+
+      expect(findOneSpy).toHaveBeenCalledWith(25, ctx);
+      expect(
+        mockActivityHistoryService.getActivityHistory
+      ).toHaveBeenCalledWith(25, undefined);
+      expect(result).toHaveLength(1);
     });
   });
 
@@ -3147,7 +3270,7 @@ describe('ActivitiesService', () => {
       );
       expect(
         mockActivityHistoryService.getHistoryEntryById
-      ).toHaveBeenCalledWith(25);
+      ).toHaveBeenCalledWith(25, undefined);
       expect(
         mockNotificationsService.notifyActivityHistoryNoteAdded
       ).toHaveBeenCalledWith({
@@ -3762,7 +3885,7 @@ describe('ActivitiesService', () => {
 
   describe('bulkUpdate', () => {
     it('rejects tag updates for a user with shared-with-only access', async () => {
-      const updateTagsSpy = vi.spyOn(service, 'updateTags');
+      const updateSpy = vi.spyOn(service, 'update');
       mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
       mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
 
@@ -3780,7 +3903,7 @@ describe('ActivitiesService', () => {
         'You may only edit activities where you are a comms contact or lead-team member.'
       );
 
-      expect(updateTagsSpy).not.toHaveBeenCalled();
+      expect(updateSpy).not.toHaveBeenCalled();
       expect(mockPolicyService.isCommsContactForActivity).toHaveBeenCalledWith(
         1,
         2

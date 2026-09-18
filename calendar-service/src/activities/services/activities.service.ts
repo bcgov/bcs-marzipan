@@ -47,6 +47,7 @@ import {
   HYDRATION_PROFILES,
   isManualCompleteEligible,
   normalizeActivityStatusLabel,
+  pacificCalendarDateFromInstant,
   PERMISSIONS,
   PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
   profileIncludesRelation,
@@ -88,6 +89,7 @@ import {
   normalizeVenueAddressForForm,
   plainTextFromActivityRichField,
   tipTapDocJsonFromPlainText,
+  type FieldScopeUser,
   type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
 
@@ -1598,7 +1600,7 @@ export class ActivitiesService {
       userId,
       'created',
       createdChanges,
-      activityHistoryNotes || 'Activity created'
+      activityHistoryNotes?.trim() || undefined
     );
 
     // When created as Reviewed, persist the review snapshot so the diff starts empty.
@@ -3053,15 +3055,6 @@ export class ActivitiesService {
       : reviewedByUser
         ? 'reviewed'
         : 'updated';
-    const defaultHistoryNote = completedByUser
-      ? allChanges.length > 0
-        ? 'Activity completed and updated'
-        : 'Activity completed'
-      : reviewedByUser
-        ? allChanges.length > 0
-          ? 'Activity reviewed and updated'
-          : 'Activity reviewed'
-        : 'Activity updated';
 
     // Record all activity changes in a single history entry
     await this.activityHistoryService.recordChange(
@@ -3069,7 +3062,7 @@ export class ActivitiesService {
       userId,
       historyActionType,
       allChanges.length > 0 ? allChanges : undefined,
-      activityHistoryNotes || defaultHistoryNote
+      activityHistoryNotes?.trim() || undefined
     );
 
     // When status becomes Reviewed, capture the current state as the review snapshot.
@@ -3359,10 +3352,23 @@ export class ActivitiesService {
   /**
    * Get activity history
    */
-  async getHistory(id: number) {
-    // Verify activity exists
-    await this.findOne(id);
-    return this.activityHistoryService.getActivityHistory(id);
+  private toHistoryViewer(
+    ctx?: RequestContextType
+  ): FieldScopeUser | undefined {
+    if (!ctx?.user) return undefined;
+    return {
+      permissions: ctx.user.permissions,
+      roleName: ctx.user.roleName,
+    };
+  }
+
+  async getHistory(id: number, ctx?: RequestContextType) {
+    // Verify activity exists and is visible to the caller
+    await this.findOne(id, ctx);
+    return this.activityHistoryService.getActivityHistory(
+      id,
+      this.toHistoryViewer(ctx)
+    );
   }
 
   /**
@@ -3428,61 +3434,6 @@ export class ActivitiesService {
     });
   }
 
-  async getGlobalHistory(ctx?: RequestContextType): Promise<{
-    items: GlobalActivityHistoryEntry[];
-    page: number;
-    pageSize: number;
-    hasNext: boolean;
-    totalItems: number;
-  }> {
-    const visibleActivityIds = await this.getVisibleActivityIds(ctx);
-    // null = admin/bypass (all visible); empty array = no visible activities
-    if (visibleActivityIds !== null && visibleActivityIds.length === 0) {
-      return {
-        items: [],
-        page: 1,
-        pageSize: 50,
-        hasNext: false,
-        totalItems: 0,
-      };
-    }
-
-    // Default scope: today (server local date)
-    const now = new Date();
-    const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-    const historyPage =
-      await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
-        visibleActivityIds,
-        {
-          startDate: todayDateStr,
-          endDate: todayDateStr,
-          page: 1,
-          pageSize: 50,
-        }
-      );
-
-    if (historyPage.items.length === 0) {
-      return {
-        items: [],
-        page: 1,
-        pageSize: 50,
-        hasNext: false,
-        totalItems: 0,
-      };
-    }
-
-    const items = await this.enrichHistoryPage(historyPage.items);
-
-    return {
-      items,
-      page: 1,
-      pageSize: 50,
-      hasNext: historyPage.hasNext,
-      totalItems: historyPage.totalItems ?? 0,
-    };
-  }
-
   async getGlobalHistoryPaged(
     opts: {
       startDate?: string;
@@ -3491,6 +3442,11 @@ export class ActivitiesService {
       pageSize?: number;
       query?: string;
       order?: 'asc' | 'desc';
+      userId?: number;
+      userIds?: number[];
+      actionTypes?: string[];
+      categoryNames?: string[];
+      leadTeamIds?: number[];
     },
     ctx?: RequestContextType
   ): Promise<{
@@ -3515,22 +3471,17 @@ export class ActivitiesService {
     const page = Math.max(1, opts.page ?? 1);
     const pageSize = Math.max(1, opts.pageSize ?? 50);
 
-    // Apply a default 30-day window when neither bound is provided to prevent
-    // unbounded history scans and expensive COUNT(*) over all-time data.
-    const now = new Date();
-    const formatDate = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const defaultEndDate = formatDate(now);
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const defaultStartDate = formatDate(thirtyDaysAgo);
+    // Default to today (Pacific) when neither bound is provided to match global history UI
+    // and prevent unbounded history scans.
+    const todayPacific = pacificCalendarDateFromInstant(Date.now());
+    const defaultDate =
+      todayPacific ??
+      `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}-${String(new Date().getUTCDate()).padStart(2, '0')}`;
 
     const startDate =
-      opts.startDate ??
-      (opts.endDate === undefined ? defaultStartDate : undefined);
+      opts.startDate ?? (opts.endDate === undefined ? defaultDate : undefined);
     const endDate =
-      opts.endDate ??
-      (opts.startDate === undefined ? defaultEndDate : undefined);
+      opts.endDate ?? (opts.startDate === undefined ? defaultDate : undefined);
 
     const historyPage =
       await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
@@ -3542,6 +3493,12 @@ export class ActivitiesService {
           pageSize,
           query: opts.query,
           order: opts.order,
+          userId: opts.userId,
+          userIds: opts.userIds,
+          actionTypes: opts.actionTypes,
+          categoryNames: opts.categoryNames,
+          leadTeamIds: opts.leadTeamIds,
+          viewer: this.toHistoryViewer(ctx),
         }
       );
 
@@ -3550,7 +3507,7 @@ export class ActivitiesService {
         items: [],
         page,
         pageSize,
-        hasNext: false,
+        hasNext: historyPage.hasNext,
         totalItems: historyPage.totalItems ?? 0,
       };
     }
@@ -3566,7 +3523,12 @@ export class ActivitiesService {
     };
   }
 
-  async addHistoryNote(id: number, note: string, userId: number) {
+  async addHistoryNote(
+    id: number,
+    note: string,
+    userId: number,
+    ctx?: RequestContextType
+  ) {
     await this.assertCanEditDuringLockout(userId);
 
     const trimmedNote = note.trim();
@@ -3593,7 +3555,8 @@ export class ActivitiesService {
     );
 
     const hydratedEntry = await this.activityHistoryService.getHistoryEntryById(
-      createdEntry.id
+      createdEntry.id,
+      this.toHistoryViewer(ctx)
     );
 
     if (!hydratedEntry) {

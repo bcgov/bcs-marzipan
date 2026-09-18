@@ -90,6 +90,41 @@ export function pacificCivilToInstantMs(
   return Number.isNaN(ms) ? null : ms;
 }
 
+/**
+ * Start of a Pacific calendar day as a UTC instant (inclusive lower bound).
+ */
+export function pacificCalendarDayStartInstant(
+  date: CalendarDateString | string
+): Date | null {
+  const ms = pacificCivilToInstantMs(date, '00:00:00');
+  return ms == null ? null : new Date(ms);
+}
+
+/**
+ * Start of the next Pacific calendar day as a UTC instant (exclusive upper bound).
+ */
+export function pacificCalendarNextDayStartInstant(
+  date: CalendarDateString | string
+): Date | null {
+  if (!isCalendarDateString(date)) return null;
+  const nextDay = addCalendarDays(date, 1);
+  const nextStartMs = pacificCivilToInstantMs(nextDay, '00:00:00');
+  return nextStartMs == null ? null : new Date(nextStartMs);
+}
+
+/**
+ * End of a Pacific calendar day as a UTC instant (inclusive upper bound).
+ *
+ * Prefer `pacificCalendarNextDayStartInstant` with a `<` predicate in queries
+ * so sub-millisecond timestamps are not excluded.
+ */
+export function pacificCalendarDayEndInstant(
+  date: CalendarDateString | string
+): Date | null {
+  const nextStart = pacificCalendarNextDayStartInstant(date);
+  return nextStart == null ? null : new Date(nextStart.getTime() - 1);
+}
+
 function toUtcMs(
   instant: string | number | Date | null | undefined
 ): number | null {

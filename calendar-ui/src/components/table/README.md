@@ -102,12 +102,29 @@ Use `table-fixed` plus a `<colgroup>` with percentage widths so column widths do
 
 Set `TABLE_COLUMN_COUNT` to the number of columns and use it for empty-state `colSpan`.
 
-### 6. Structure order (exemplar: Users tab)
+### 6. Structure order (filter + content sections)
 
-1. **Filters** – e.g. `UserManagementFilters` / `TeamManagementFilters`: keyword, dropdowns, sort.
-2. **TableSummaryBar** – “Showing N users” and optional checkboxes (e.g. “Show inactive”).
-3. **Table container** – fixed height, scroll div, table with sticky header and percentage cols.
-4. **TablePagination** – only when there is at least one item; wire `onPageChange` / `onPageSizeChange` and pass `scrollContainerRef={tableScrollRef}` for scroll-to-top on page/size change.
+Use the shared layout primitives for every filterable table or list:
+
+1. **`FilterSection`** – filter inputs, optional date quick picks, then **`TableFilterSummary`** (“Filtering by…” + info popover + Reset all). The summary row always reserves `min-h-9` so content below does not shift when filters become active.
+2. **`ContentSection`** – **`TableContentSummary`** (“Showing N items”, boolean toggles, view actions), then the scroll container / table.
+3. **`TablePagination`** – only when there is at least one item; wire `onPageChange` / `onPageSizeChange` and pass `scrollContainerRef={tableScrollRef}` for scroll-to-top on page/size change.
+
+Exemplar (Users tab):
+
+```tsx
+<FilterSection>
+  <UserManagementFilters ... />
+  <TableFilterSummary appliedFilterTypeLabels={...} onClearFilters={...} />
+</FilterSection>
+<ContentSection>
+  <TableContentSummary count={...} filters={[showInactiveToggle]} />
+  <TableScrollContainer ref={tableScrollRef}>...</TableScrollContainer>
+  <TablePagination ... />
+</ContentSection>
+```
+
+`TableSummaryBar` remains available as a composition of filter + count rows when both belong in one block.
 
 ### 7. Sort
 
@@ -157,10 +174,14 @@ Nested links (e.g. team chips in the Users table) should include **`data-no-row-
 
 ## Related components
 
-| Component            | Purpose                                                                       |
-| -------------------- | ----------------------------------------------------------------------------- |
-| `tableRowNavigation` | Shared click/keyboard handlers for navigable table rows                       |
-| `TablePagination`    | Page nav, page-size selector, optional `scrollContainerRef` for scroll-to-top |
-| `TableSummaryBar`    | “Showing N items” + optional boolean filters                                  |
-| `SortIndicator`      | Arrow in header for active sort column                                        |
-| `SortDropdown`       | Used inside filter bars for sort selection                                    |
+| Component             | Purpose                                                                       |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `tableRowNavigation`  | Shared click/keyboard handlers for navigable table rows                       |
+| `TablePagination`     | Page nav, page-size selector, optional `scrollContainerRef` for scroll-to-top |
+| `FilterSection`       | Wrapper for filter inputs, quick picks, and `TableFilterSummary`              |
+| `ContentSection`      | Wrapper for count row and scrollable table content                            |
+| `TableFilterSummary`  | “Filtering by…” row + info popover + Reset all (12px text)                    |
+| `TableContentSummary` | “Showing N items” + optional boolean filters and actions                      |
+| `TableSummaryBar`     | Composition of `TableFilterSummary` + `TableContentSummary`                   |
+| `SortIndicator`       | Arrow in header for active sort column                                        |
+| `SortDropdown`        | Used inside filter bars for sort selection                                    |

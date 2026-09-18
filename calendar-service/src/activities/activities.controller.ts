@@ -25,6 +25,7 @@ import {
 import type { Category } from '@corpcal/database/types';
 import {
   HYDRATION_PROFILES,
+  isCalendarDateString,
   PERMISSIONS,
   type AuthUser,
 } from '@corpcal/shared';
@@ -83,6 +84,11 @@ import {
 } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import {
+  parseCommaSeparatedIds,
+  tryParseStrictPositiveInt,
+} from '../common/utils/parse-query-ids';
+import { parseCommaSeparatedStrings } from '../common/utils/parse-query-strings';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
 import {
   RequireAnyPermission,
@@ -289,6 +295,11 @@ export class ActivitiesController {
     @Query('pageSize') pageSize?: string,
     @Query('query') query?: string,
     @Query('order') order?: string,
+    @Query('userId') userId?: string,
+    @Query('userIds') userIds?: string,
+    @Query('actionTypes') actionTypes?: string,
+    @Query('categories') categories?: string,
+    @Query('leadTeamIds') leadTeamIds?: string,
     @RequestContext() ctx?: RequestContextType
   ): Promise<{
     success: boolean;
@@ -301,15 +312,19 @@ export class ActivitiesController {
     };
   }> {
     const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-    if (startDate !== undefined && !DATE_RE.test(startDate)) {
-      throw new BadRequestException(
-        'startDate must be a valid date in YYYY-MM-DD format'
-      );
+    if (startDate !== undefined) {
+      if (!DATE_RE.test(startDate) || !isCalendarDateString(startDate)) {
+        throw new BadRequestException(
+          'startDate must be a valid date in YYYY-MM-DD format'
+        );
+      }
     }
-    if (endDate !== undefined && !DATE_RE.test(endDate)) {
-      throw new BadRequestException(
-        'endDate must be a valid date in YYYY-MM-DD format'
-      );
+    if (endDate !== undefined) {
+      if (!DATE_RE.test(endDate) || !isCalendarDateString(endDate)) {
+        throw new BadRequestException(
+          'endDate must be a valid date in YYYY-MM-DD format'
+        );
+      }
     }
     if (order !== undefined && order !== 'asc' && order !== 'desc') {
       throw new BadRequestException('order must be "asc" or "desc"');
@@ -321,22 +336,15 @@ export class ActivitiesController {
       ? Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(pageSize, 10) || 50))
       : 50;
 
-    // If any pagination, explicit dates, a query, or an explicit order are provided, return a paged response
-    const hasPagingOrDate =
-      startDate !== undefined ||
-      endDate !== undefined ||
-      page !== undefined ||
-      pageSize !== undefined ||
-      query !== undefined ||
-      order !== undefined;
-
-    if (!hasPagingOrDate) {
-      const result = await this.activitiesService.getGlobalHistory(ctx);
-      return {
-        success: true,
-        data: result,
-      };
+    const parsedUserId = tryParseStrictPositiveInt(userId);
+    if (parsedUserId === null) {
+      throw new BadRequestException('userId must be a valid positive integer');
     }
+
+    const parsedUserIds = parseCommaSeparatedIds(userIds);
+    const parsedActionTypes = parseCommaSeparatedStrings(actionTypes);
+    const parsedCategories = parseCommaSeparatedStrings(categories);
+    const parsedLeadTeamIds = parseCommaSeparatedIds(leadTeamIds);
 
     const result = await this.activitiesService.getGlobalHistoryPaged(
       {
@@ -346,6 +354,14 @@ export class ActivitiesController {
         pageSize: parsedPageSize,
         query,
         order: order,
+        userId: parsedUserId,
+        userIds: parsedUserIds.length > 0 ? parsedUserIds : undefined,
+        actionTypes:
+          parsedActionTypes.length > 0 ? parsedActionTypes : undefined,
+        categoryNames:
+          parsedCategories.length > 0 ? parsedCategories : undefined,
+        leadTeamIds:
+          parsedLeadTeamIds.length > 0 ? parsedLeadTeamIds : undefined,
       },
       ctx
     );
@@ -709,11 +725,14 @@ export class ActivitiesController {
   })
   @RequirePermission('activities.view')
   @Get(':id/history')
-  async getHistory(@Param('id', ParseIntPipe) id: number): Promise<{
+  async getHistory(
+    @Param('id', ParseIntPipe) id: number,
+    @RequestContext() ctx: RequestContextType
+  ): Promise<{
     success: boolean;
     data: Awaited<ReturnType<ActivitiesService['getHistory']>>;
   }> {
-    const result = await this.activitiesService.getHistory(id);
+    const result = await this.activitiesService.getHistory(id, ctx);
     return {
       success: true,
       data: result,
@@ -747,7 +766,8 @@ export class ActivitiesController {
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(addActivityHistoryNoteRequestSchema))
     body: AddActivityHistoryNoteRequest,
-    @CurrentUser() user: AuthUser
+    @CurrentUser() user: AuthUser,
+    @RequestContext() ctx: RequestContextType
   ): Promise<{
     success: boolean;
     data: Awaited<ReturnType<ActivitiesService['addHistoryNote']>>;
@@ -755,7 +775,8 @@ export class ActivitiesController {
     const result = await this.activitiesService.addHistoryNote(
       id,
       body.note,
-      user.id
+      user.id,
+      ctx
     );
     return {
       success: true,
