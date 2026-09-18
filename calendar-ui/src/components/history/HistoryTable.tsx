@@ -7,11 +7,7 @@ import {
   type ExpandedState,
   type Row,
 } from '@tanstack/react-table';
-import {
-  ChevronDown,
-  ListChevronsDownUp,
-  ListChevronsUpDown,
-} from 'lucide-react';
+import { ListChevronsDownUp, ListChevronsUpDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   Fragment,
@@ -32,7 +28,6 @@ import {
 import { cn } from '@/lib/utils';
 
 import {
-  historyDetailsBadgeLabels,
   historyDetailsHasDisclosure,
   historyDetailsHideLabel,
   historyDetailsShowLabel,
@@ -48,16 +43,15 @@ import { HistoryBadgeTrigger } from './HistoryBadgeTrigger';
 import { HistoryChangeList } from './HistoryChangeList';
 import { HistoryRecencyDateTime } from './HistoryRecencyDateTime';
 
-export const HISTORY_TABLE_COLUMN_COUNT = 7;
+export const HISTORY_TABLE_COLUMN_COUNT = 6;
 
 export type HistoryTableColumnId =
   | 'user'
   | 'type'
   | 'title'
   | 'activityId'
-  | 'details'
   | 'date'
-  | 'expand';
+  | 'details';
 
 type HistoryTableColumnLayoutEntry = {
   width: string;
@@ -79,9 +73,8 @@ export const HISTORY_TABLE_COLUMN_LAYOUT: Record<
   },
   title: { width: '31%' },
   activityId: { width: '10%', minWidth: '6.5rem', className: 'min-w-[6.5rem]' },
-  details: { width: '18%' },
   date: { width: '12%', minWidth: '7rem', className: 'min-w-[7rem]' },
-  expand: { width: '5%', minWidth: '2.5rem', className: 'min-w-[2.5rem]' },
+  details: { width: '18%', minWidth: '8rem', className: 'min-w-[8rem]' },
 };
 
 export const HISTORY_TABLE_COLUMN_ORDER: readonly HistoryTableColumnId[] = [
@@ -89,9 +82,8 @@ export const HISTORY_TABLE_COLUMN_ORDER: readonly HistoryTableColumnId[] = [
   'type',
   'title',
   'activityId',
-  'details',
   'date',
-  'expand',
+  'details',
 ];
 
 export function isHistoryTableColumnId(
@@ -202,56 +194,19 @@ function DetailsBadgeCell({
     return <span className="text-muted-foreground text-sm">—</span>;
   }
 
-  const badgeLabels = historyDetailsBadgeLabels(entry.changes.length, hasNote);
   const triggerLabel = expanded
     ? historyDetailsHideLabel(entry.changes.length, hasNote)
     : historyDetailsShowLabel(entry.changes.length, hasNote);
 
   return (
-    <div className="flex min-w-0 flex-wrap gap-x-1.5 gap-y-0.5" data-no-row-nav>
-      {badgeLabels.map((label) => (
-        <HistoryBadgeTrigger
-          key={label}
-          label={label}
-          expanded={expanded}
-          aria-label={triggerLabel}
-          aria-expanded={expanded}
-          onClick={onToggle}
-        />
-      ))}
-    </div>
-  );
-}
-
-function ExpandCell({
-  entry,
-  expanded,
-  onToggle,
-}: {
-  entry: HistoryEntryViewModel;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const hasDisclosure = entryHasDisclosure(entry);
-
-  if (!hasDisclosure) {
-    return null;
-  }
-
-  return (
-    <button
-      type="button"
-      className="text-muted-foreground hover:text-foreground hover:bg-accent focus-visible:ring-ring/50 inline-flex size-8 shrink-0 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-[3px]"
-      aria-label={expanded ? 'Collapse row' : 'Expand row'}
+    <HistoryBadgeTrigger
+      label={triggerLabel}
+      expanded={expanded}
+      aria-label={triggerLabel}
       aria-expanded={expanded}
       data-no-row-nav
       onClick={onToggle}
-    >
-      <ChevronDown
-        className={cn('size-4 transition-transform', expanded && 'rotate-180')}
-        aria-hidden
-      />
-    </button>
+    />
   );
 }
 
@@ -271,7 +226,7 @@ function ExpandedDetailsPanel({ entry }: { entry: HistoryEntryViewModel }) {
       changes={entry.changes}
       note={entry.notes}
       previewLimit={Number.MAX_SAFE_INTEGER}
-      className="py-1"
+      className="pt-1 pb-1"
     />
   );
 }
@@ -300,7 +255,11 @@ function HistoryDataRow({
       {row.getVisibleCells().map((cell) => (
         <td
           key={cell.id}
-          className={cn(tableTd, historyTableColumnClassName(cell.column.id))}
+          className={cn(
+            tableTd,
+            expanded && 'pb-1',
+            historyTableColumnClassName(cell.column.id)
+          )}
         >
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
@@ -415,21 +374,6 @@ export function HistoryTable({
         },
       },
       {
-        id: 'details',
-        header: 'Details',
-        cell: ({ row }) => {
-          if (!isHistoryTableEntryRow(row.original)) return null;
-          const entry = row.original.entry;
-          return (
-            <DetailsBadgeCell
-              entry={entry}
-              expanded={row.getIsExpanded()}
-              onToggle={row.getToggleExpandedHandler()}
-            />
-          );
-        },
-      },
-      {
         id: 'date',
         header: 'Date',
         cell: ({ row }) => {
@@ -438,13 +382,13 @@ export function HistoryTable({
         },
       },
       {
-        id: 'expand',
-        header: () => <span className="sr-only">Expand row</span>,
+        id: 'details',
+        header: 'Details',
         cell: ({ row }) => {
           if (!isHistoryTableEntryRow(row.original)) return null;
           const entry = row.original.entry;
           return (
-            <ExpandCell
+            <DetailsBadgeCell
               entry={entry}
               expanded={row.getIsExpanded()}
               onToggle={row.getToggleExpandedHandler()}
@@ -558,7 +502,7 @@ export function HistoryTable({
                 >
                   <td
                     colSpan={HISTORY_TABLE_COLUMN_COUNT}
-                    className="px-8 py-2 pb-3 align-top"
+                    className="px-8 pt-1 pb-3 align-top"
                   >
                     <ExpandedDetailsPanel entry={entry} />
                   </td>
