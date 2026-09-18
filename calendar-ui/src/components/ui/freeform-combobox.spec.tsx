@@ -34,6 +34,10 @@ describe('FreeformCombobox', () => {
     return screen.getByRole('option', { name });
   }
 
+  async function openChipPopover(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('textbox'));
+  }
+
   describe('Rendering', () => {
     it('renders with custom placeholder', () => {
       render(
@@ -609,6 +613,34 @@ describe('FreeformCombobox', () => {
       expect(onChange).not.toHaveBeenCalled();
     });
 
+    it('does not call onChange when blur re-commits the same single-select value', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const value: FreeformComboboxValue = {
+        type: 'option',
+        value: 'option1',
+      };
+
+      render(
+        <div>
+          <FreeformCombobox
+            {...defaultProps}
+            value={value}
+            onChange={onChange}
+          />
+          <button type="button">Next field</button>
+        </div>
+      );
+
+      await openPopover(user);
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Option 1');
+      await user.click(screen.getByRole('button', { name: 'Next field' }));
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
     it('does not commit when draft is cleared before blur', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
@@ -625,6 +657,102 @@ describe('FreeformCombobox', () => {
       const comboboxInput = screen.getByRole('combobox');
       await user.type(comboboxInput, 'Temporary');
       await user.clear(comboboxInput);
+      await user.click(screen.getByRole('button', { name: 'Next field' }));
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Commit on blur (multi-select)', () => {
+    it('appends freeform value on blur in chip mode', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const value: FreeformComboboxItemWithLead[] = [
+        { type: 'option', value: 'option1' },
+      ];
+
+      render(
+        <div>
+          <FreeformCombobox
+            {...defaultProps}
+            multiple
+            value={value}
+            onChange={onChange}
+          />
+          <button type="button">Next field</button>
+        </div>
+      );
+
+      await openChipPopover(user);
+
+      const chipInput = screen.getByRole('textbox');
+      await user.type(chipInput, 'Custom Planner');
+      await user.click(screen.getByRole('button', { name: 'Next field' }));
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([
+          { type: 'option', value: 'option1' },
+          { type: 'freeform', value: 'Custom Planner' },
+        ]);
+      });
+    });
+
+    it('appends exact preset match on blur in chip mode', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const value: FreeformComboboxItemWithLead[] = [
+        { type: 'option', value: 'option1' },
+      ];
+
+      render(
+        <div>
+          <FreeformCombobox
+            {...defaultProps}
+            multiple
+            value={value}
+            onChange={onChange}
+          />
+          <button type="button">Next field</button>
+        </div>
+      );
+
+      await openChipPopover(user);
+
+      const chipInput = screen.getByRole('textbox');
+      await user.type(chipInput, 'Option 2');
+      await user.click(screen.getByRole('button', { name: 'Next field' }));
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([
+          { type: 'option', value: 'option1' },
+          { type: 'option', value: 'option2' },
+        ]);
+      });
+    });
+
+    it('does not append duplicate selection on blur in chip mode', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const value: FreeformComboboxItemWithLead[] = [
+        { type: 'option', value: 'option1' },
+      ];
+
+      render(
+        <div>
+          <FreeformCombobox
+            {...defaultProps}
+            multiple
+            value={value}
+            onChange={onChange}
+          />
+          <button type="button">Next field</button>
+        </div>
+      );
+
+      await openChipPopover(user);
+
+      const chipInput = screen.getByRole('textbox');
+      await user.type(chipInput, 'Option 1');
       await user.click(screen.getByRole('button', { name: 'Next field' }));
 
       expect(onChange).not.toHaveBeenCalled();
@@ -663,6 +791,37 @@ describe('FreeformCombobox', () => {
       await user.keyboard('{Escape}');
 
       expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('commits draft on blur after Escape and reopen', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <div>
+          <FreeformCombobox {...defaultProps} onChange={onChange} />
+          <button type="button">Next field</button>
+        </div>
+      );
+
+      await openPopover(user);
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.type(comboboxInput, 'Discarded Value');
+      await user.keyboard('{Escape}');
+
+      expect(onChange).not.toHaveBeenCalled();
+
+      await openPopover(user);
+      await user.type(comboboxInput, 'Saved Value');
+      await user.click(screen.getByRole('button', { name: 'Next field' }));
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith({
+          type: 'freeform',
+          value: 'Saved Value',
+        });
+      });
     });
   });
 

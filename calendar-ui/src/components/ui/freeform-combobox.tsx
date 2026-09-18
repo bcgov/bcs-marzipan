@@ -165,6 +165,7 @@ export function FreeformCombobox({
   const triggerRef = useRef<HTMLDivElement>(null);
   const draftEditedRef = useRef(false);
   const skipCommitRef = useRef(false);
+  const closingRef = useRef(false);
   const freeformAnnouncedRef = useRef(false);
   const prevShowFreeformRef = useRef(false);
   const wasOpenRef = useRef(false);
@@ -270,7 +271,9 @@ export function FreeformCombobox({
 
   const resetDraft = useCallback(() => {
     draftEditedRef.current = false;
+    skipCommitRef.current = false;
     setInputValue('');
+    setLiveMessage('');
     freeformAnnouncedRef.current = false;
   }, []);
 
@@ -286,6 +289,16 @@ export function FreeformCombobox({
         }
         onChange([...selectedList, newItem]);
       } else {
+        const current = selectedList[0];
+        if (
+          current &&
+          current.type === newItem.type &&
+          current.value === newItem.value
+        ) {
+          resetDraft();
+          if (closeOnSingle) setOpen(false);
+          return;
+        }
         onChange(newItem);
         if (closeOnSingle) setOpen(false);
       }
@@ -316,6 +329,8 @@ export function FreeformCombobox({
   }, [commitDraft, resetDraft]);
 
   const closePopover = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
     handleClose();
     setOpen(false);
   }, [handleClose]);
@@ -337,6 +352,8 @@ export function FreeformCombobox({
     wasOpenRef.current = open;
     if (!justOpened || isLocked) return;
     draftEditedRef.current = false;
+    skipCommitRef.current = false;
+    closingRef.current = false;
     freeformAnnouncedRef.current = false;
     setHighlightedIndex(0);
   }, [open, isLocked]);
@@ -549,11 +566,6 @@ export function FreeformCombobox({
         onChange={(e) => handleInputChange(e.target.value)}
         onBlur={() => {
           if (!open) return;
-          if (skipCommitRef.current) {
-            skipCommitRef.current = false;
-            setOpen(false);
-            return;
-          }
           closePopover();
         }}
         onKeyDown={handleKeyDown}
@@ -600,11 +612,6 @@ export function FreeformCombobox({
         }}
         onBlur={() => {
           if (!open) return;
-          if (skipCommitRef.current) {
-            skipCommitRef.current = false;
-            setOpen(false);
-            return;
-          }
           closePopover();
         }}
         onKeyDown={handleKeyDown}
