@@ -544,6 +544,30 @@ describe('FreeformCombobox', () => {
   });
 
   describe('Commit on blur', () => {
+    it('commits freeform value when typing into closed control without clicking Open', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <div>
+          <FreeformCombobox {...defaultProps} onChange={onChange} />
+          <button type="button">Next field</button>
+        </div>
+      );
+
+      const comboboxInput = screen.getByRole('combobox');
+      await user.click(comboboxInput);
+      await user.type(comboboxInput, 'Typed Without Open');
+      await user.click(screen.getByRole('button', { name: 'Next field' }));
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith({
+          type: 'freeform',
+          value: 'Typed Without Open',
+        });
+      });
+    });
+
     it('commits freeform value when typing non-match and tabbing away', async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();

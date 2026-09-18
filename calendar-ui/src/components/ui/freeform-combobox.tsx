@@ -351,8 +351,10 @@ export function FreeformCombobox({
     const justOpened = open && !wasOpenRef.current;
     wasOpenRef.current = open;
     if (!justOpened || isLocked) return;
-    draftEditedRef.current = false;
-    skipCommitRef.current = false;
+    // Typing while closed sets draftEditedRef before open; preserve it so blur commits.
+    if (!draftEditedRef.current) {
+      skipCommitRef.current = false;
+    }
     closingRef.current = false;
     freeformAnnouncedRef.current = false;
     setHighlightedIndex(0);
