@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ReportResponse } from '../schemas/lookup.schema';
 import { createMockActivityListItem } from '../test-utils';
+import { EMPTY_RICH_TEXT_DOC } from '../utils/activity-rich-text';
 import {
   buildReportExportTable,
   serializeReportTableToCsv,
@@ -101,6 +102,26 @@ describe('reportExportFormat', () => {
               title: 'T1',
               summary: 'Overview summary',
               executiveSummary: null,
+            }),
+          ],
+        },
+      ],
+    });
+
+    expect(table.rows[0][4]).toBe('T1 – Overview summary');
+  });
+
+  it('falls back when executive summary is an empty rich-text document', () => {
+    const table = buildReportExportTable({
+      report: minimalReport,
+      sections: [
+        {
+          name: 'Sec A',
+          activities: [
+            createMockActivityListItem({
+              title: 'T1',
+              summary: 'Overview summary',
+              executiveSummary: EMPTY_RICH_TEXT_DOC,
             }),
           ],
         },

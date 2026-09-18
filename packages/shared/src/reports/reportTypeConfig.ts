@@ -1,4 +1,5 @@
 import type { ActivityListItem, ReportResponse } from '../api/types';
+import { isActivityRichTextEffectivelyEmpty } from '../utils/activity-rich-text';
 
 export type ReportType = 'LOOK_AHEAD' | 'EXEC' | '30_60_90' | 'PLANNING';
 
@@ -148,13 +149,19 @@ export function getEffectiveReportDetailText(
   activity: ActivityListItem,
   effectiveFields: readonly string[]
 ): string | null {
+  const executiveSummary = isActivityRichTextEffectivelyEmpty(
+    activity.executiveSummary
+  )
+    ? null
+    : activity.executiveSummary;
+
   if (effectiveFields.includes('executiveSummary')) {
-    return activity.executiveSummary || activity.summary || null;
+    return executiveSummary ?? activity.summary ?? null;
   }
   if (effectiveFields.includes('summary')) {
     return activity.summary ?? null;
   }
-  return activity.executiveSummary ?? null;
+  return executiveSummary;
 }
 
 /** Display name of the comms contact flagged as lead. */

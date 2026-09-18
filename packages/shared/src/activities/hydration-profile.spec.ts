@@ -26,7 +26,8 @@ describe('activity-relation-registry', () => {
     ]);
     expect(relations.has('categories')).toBe(true);
     expect(relations.has('tags')).toBe(true);
-    expect(relations.has('commsContacts')).toBe(true);
+    expect(relations.has('eventPlannerDetails')).toBe(true);
+    expect(relations.has('commsContacts')).toBe(false);
     expect(relations.has('leadMinistry')).toBe(true);
     expect(relations.has('leadMinistryAbbreviation')).toBe(true);
   });
