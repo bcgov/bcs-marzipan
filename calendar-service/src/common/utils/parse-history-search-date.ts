@@ -19,11 +19,14 @@ export function parseMonthDaySearchToPacificDateKey(
     : now.getUTCFullYear();
   const year = monthDayMatch[3] ? parseInt(monthDayMatch[3], 10) : defaultYear;
 
-  const probe = new Date(`${monthName} ${day}, ${year} 12:00:00 UTC`);
-  if (Number.isNaN(probe.getTime())) return null;
+  const monthProbe = new Date(`${monthName} 1, ${year} 12:00:00 UTC`);
+  if (Number.isNaN(monthProbe.getTime())) return null;
 
-  const y = probe.getUTCFullYear();
-  const m = String(probe.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(probe.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const monthIndex = monthProbe.getUTCMonth();
+  const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  if (day < 1 || day > daysInMonth) return null;
+
+  const m = String(monthIndex + 1).padStart(2, '0');
+  const d = String(day).padStart(2, '0');
+  return `${year}-${m}-${d}`;
 }

@@ -3507,7 +3507,7 @@ export class ActivitiesService {
         items: [],
         page,
         pageSize,
-        hasNext: false,
+        hasNext: historyPage.hasNext,
         totalItems: historyPage.totalItems ?? 0,
       };
     }

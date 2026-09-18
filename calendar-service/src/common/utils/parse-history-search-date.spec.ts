@@ -21,4 +21,9 @@ describe('parseMonthDaySearchToPacificDateKey', () => {
   it('returns null for invalid month/day text', () => {
     expect(parseMonthDaySearchToPacificDateKey('Not a date')).toBeNull();
   });
+
+  it('returns null for impossible calendar dates', () => {
+    expect(parseMonthDaySearchToPacificDateKey('February 31, 2026')).toBeNull();
+    expect(parseMonthDaySearchToPacificDateKey('Feb 31, 2026')).toBeNull();
+  });
 });

@@ -25,6 +25,7 @@ import {
 import type { Category } from '@corpcal/database/types';
 import {
   HYDRATION_PROFILES,
+  isCalendarDateString,
   PERMISSIONS,
   type AuthUser,
 } from '@corpcal/shared';
@@ -83,7 +84,10 @@ import {
 } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
+import {
+  parseCommaSeparatedIds,
+  tryParseStrictPositiveInt,
+} from '../common/utils/parse-query-ids';
 import { parseCommaSeparatedStrings } from '../common/utils/parse-query-strings';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
 import {
@@ -308,15 +312,19 @@ export class ActivitiesController {
     };
   }> {
     const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-    if (startDate !== undefined && !DATE_RE.test(startDate)) {
-      throw new BadRequestException(
-        'startDate must be a valid date in YYYY-MM-DD format'
-      );
+    if (startDate !== undefined) {
+      if (!DATE_RE.test(startDate) || !isCalendarDateString(startDate)) {
+        throw new BadRequestException(
+          'startDate must be a valid date in YYYY-MM-DD format'
+        );
+      }
     }
-    if (endDate !== undefined && !DATE_RE.test(endDate)) {
-      throw new BadRequestException(
-        'endDate must be a valid date in YYYY-MM-DD format'
-      );
+    if (endDate !== undefined) {
+      if (!DATE_RE.test(endDate) || !isCalendarDateString(endDate)) {
+        throw new BadRequestException(
+          'endDate must be a valid date in YYYY-MM-DD format'
+        );
+      }
     }
     if (order !== undefined && order !== 'asc' && order !== 'desc') {
       throw new BadRequestException('order must be "asc" or "desc"');
@@ -328,9 +336,9 @@ export class ActivitiesController {
       ? Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(pageSize, 10) || 50))
       : 50;
 
-    const parsedUserId = userId ? parseInt(userId, 10) : undefined;
-    if (userId !== undefined && Number.isNaN(parsedUserId)) {
-      throw new BadRequestException('userId must be a valid number');
+    const parsedUserId = tryParseStrictPositiveInt(userId);
+    if (parsedUserId === null) {
+      throw new BadRequestException('userId must be a valid positive integer');
     }
 
     const parsedUserIds = parseCommaSeparatedIds(userIds);

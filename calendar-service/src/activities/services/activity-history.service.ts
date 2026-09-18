@@ -1,15 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  exists,
-  gte,
-  inArray,
-  lte,
-  sql,
-} from 'drizzle-orm';
+import { and, asc, desc, eq, exists, gte, inArray, lt, sql } from 'drizzle-orm';
 
 import {
   activities,
@@ -25,8 +15,8 @@ import {
 } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
 import {
-  pacificCalendarDayEndInstant,
   pacificCalendarDayStartInstant,
+  pacificCalendarNextDayStartInstant,
 } from '@corpcal/shared';
 import type {
   ActivityHistoryEntry,
@@ -603,10 +593,9 @@ export class ActivityHistoryService {
     }
 
     if (opts.endDate) {
-      // include the end date through end of Pacific calendar day
-      const endIso = pacificCalendarDayEndInstant(opts.endDate);
-      if (endIso) {
-        whereClauses.push(lte(activityHistory.timestamp, endIso));
+      const nextDayStart = pacificCalendarNextDayStartInstant(opts.endDate);
+      if (nextDayStart) {
+        whereClauses.push(lt(activityHistory.timestamp, nextDayStart));
       }
     }
 
@@ -656,20 +645,22 @@ export class ActivityHistoryService {
         );
         if (isoMatch) {
           const startIso = pacificCalendarDayStartInstant(raw);
-          const endIso = pacificCalendarDayEndInstant(raw);
-          if (startIso && endIso) {
+          const nextDayStart = pacificCalendarNextDayStartInstant(raw);
+          if (startIso && nextDayStart) {
             whereClauses.push(gte(activityHistory.timestamp, startIso));
-            whereClauses.push(lte(activityHistory.timestamp, endIso));
+            whereClauses.push(lt(activityHistory.timestamp, nextDayStart));
           }
         } else if (monthDayMatch) {
           const dateKey = parseMonthDaySearchToPacificDateKey(raw);
           const startIso = dateKey
             ? pacificCalendarDayStartInstant(dateKey)
             : null;
-          const endIso = dateKey ? pacificCalendarDayEndInstant(dateKey) : null;
-          if (startIso && endIso) {
+          const nextDayStart = dateKey
+            ? pacificCalendarNextDayStartInstant(dateKey)
+            : null;
+          if (startIso && nextDayStart) {
             whereClauses.push(gte(activityHistory.timestamp, startIso));
-            whereClauses.push(lte(activityHistory.timestamp, endIso));
+            whereClauses.push(lt(activityHistory.timestamp, nextDayStart));
           }
         } else {
           const q = raw.toLowerCase();
@@ -782,6 +773,61 @@ export class ActivityHistoryService {
       finalWhereExpr = finalWhereExpr
         ? and(finalWhereExpr as Parameters<typeof and>[0], cursorCondition)
         : cursorCondition;
+    }
+
+    const fetchRawBatch = (
+      batchOffset: number,
+      batchLimit: number
+    ): Promise<RawHistoryRow[]> =>
+      (qBuilder as any)
+        .where(finalWhereExpr)
+        .orderBy(...orderByExpr)
+        .limit(batchLimit)
+        .offset(batchOffset);
+
+    if (opts.viewer && !useKeyset) {
+      const targetStart = (page - 1) * pageSize;
+      const targetEnd = page * pageSize;
+      const batchSize = Math.max(pageSize, 50);
+      let dbOffset = 0;
+      let visibleCount = 0;
+      const pageEntries: ActivityHistoryEntry[] = [];
+
+      while (true) {
+        const rawBatch: RawHistoryRow[] = await fetchRawBatch(
+          dbOffset,
+          batchSize
+        );
+        if (rawBatch.length === 0) break;
+
+        const batchUserIds = [
+          ...new Set(rawBatch.map((entry) => entry.userId)),
+        ];
+        const batchUserMap = await this.getUserMap(batchUserIds);
+        const visibleBatch = this.mapEntriesToResponse(
+          rawBatch,
+          batchUserMap,
+          opts.viewer
+        );
+
+        for (const entry of visibleBatch) {
+          if (visibleCount >= targetStart && visibleCount < targetEnd) {
+            pageEntries.push(entry);
+          }
+          visibleCount += 1;
+        }
+
+        dbOffset += rawBatch.length;
+        if (rawBatch.length < batchSize) break;
+      }
+
+      return {
+        items: pageEntries,
+        page,
+        pageSize,
+        hasNext: visibleCount > targetEnd,
+        totalItems: visibleCount,
+      };
     }
 
     const query = (qBuilder as any)

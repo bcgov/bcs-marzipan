@@ -24,6 +24,7 @@ export {
   addCalendarDays,
   pacificCalendarDateFromInstant,
   pacificCalendarDayEndInstant,
+  pacificCalendarNextDayStartInstant,
   pacificCalendarDayStartInstant,
   pacificCivilToInstantMs,
   pacificDayKey,

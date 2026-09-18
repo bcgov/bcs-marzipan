@@ -756,6 +756,39 @@ describe('ActivityHistoryService', () => {
       expect(mockDb.select).toHaveBeenCalled();
     });
 
+    it('paginates visible rows after RBAC filtering for scoped viewers', async () => {
+      installPagedHistoryDbMock(mockDb, {
+        rows: [
+          sampleRow({
+            id: 1,
+            changes: [
+              { field: 'notes', oldValue: 'secret', newValue: 'updated' },
+            ],
+          }),
+          sampleRow({
+            id: 2,
+            changes: [{ field: 'title', oldValue: 'A', newValue: 'B' }],
+          }),
+        ],
+        totalCount: 2,
+        users: [{ id: 2, adDisplayName: 'Alice', adUsername: 'alice' }],
+      });
+
+      const result = await service.getActivityHistoryForActivityIdsPaged([10], {
+        page: 1,
+        pageSize: 1,
+        viewer: {
+          permissions: [],
+          roleName: 'Viewer',
+        },
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.id).toBe(2);
+      expect(result.hasNext).toBe(false);
+      expect(result.totalItems).toBe(1);
+    });
+
     it('redacts scoped fields for restricted viewers in paged results', async () => {
       installPagedHistoryDbMock(mockDb, {
         rows: [

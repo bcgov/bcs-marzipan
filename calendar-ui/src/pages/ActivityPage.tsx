@@ -1389,7 +1389,13 @@ export function ActivityPage({
         venueStatuses={lookups.venueStatuses}
         canAddNote={mayEditFormFields}
         addNoteDisabled={isLockedByOther || isBlockedByRecurringLockout}
-        addNoteDisabledReason="Cannot add note. Activity is being editted by another user."
+        addNoteDisabledReason={
+          isLockedByOther
+            ? 'Cannot add note. Activity is being edited by another user.'
+            : isBlockedByRecurringLockout
+              ? lockoutInlineMessage || 'Editing is temporarily locked.'
+              : undefined
+        }
       />
       <DiscardActivityChangesDialog
         open={showLeaveConfirm}
