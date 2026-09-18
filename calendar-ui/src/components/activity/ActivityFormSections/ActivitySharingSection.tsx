@@ -285,7 +285,7 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Add teams" />
+                          <ComboboxChipsInput placeholder="" />
                         </>
                       )}
                     </ComboboxValue>

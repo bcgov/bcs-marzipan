@@ -516,7 +516,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select premier requested option" />
+                  <SelectValue placeholder="" />
                 </FormSelectTrigger>
               </FormControl>
               <SelectContent>
@@ -593,7 +593,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                             </ComboboxChip>
                           ))}
                           <ComboboxChipsInput
-                            placeholder="Search representatives"
+                            placeholder=""
                             onInput={(event) =>
                               setRepresentativeSearch(event.currentTarget.value)
                             }
@@ -682,8 +682,8 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   venueStatusIdWatched
                 )}
                 onChange={handleVenueNameComboboxChange}
-                placeholder="Venue TBD or a venue name…"
-                searchPlaceholder="Search venue status or venues…"
+                placeholder=""
+                searchPlaceholder=""
                 emptyMessage="No venues found."
               />
             </FormControl>
@@ -793,7 +793,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                       raw.trim() === '' ? null : raw
                     );
                   }}
-                  placeholder="Floor, room, etc."
+                  placeholder=""
                 />
               </FormControl>
               <FormMessage />
@@ -1000,8 +1000,8 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   options={eventPlannerOptions}
                   value={comboboxValue}
                   onChange={handleChange}
-                  placeholder="Select event planners"
-                  searchPlaceholder="Search event planners..."
+                  placeholder=""
+                  searchPlaceholder=""
                   emptyMessage="No event planners found."
                   freeformLabel="Other"
                   freeformDescription="Can't find the event planner?"

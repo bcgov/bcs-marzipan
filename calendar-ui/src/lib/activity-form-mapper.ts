@@ -31,9 +31,8 @@ export function activityToFormData(
   activity: ActivityResponse,
   lookups: FormLookupData
 ): ActivityFormData {
-  const base = normalizeActivityRichTextFormFields(
-    mapResponseToFormData(activity, buildFormLookups(lookups))
-  );
+  const mapped = mapResponseToFormData(activity, buildFormLookups(lookups));
+  const base = normalizeActivityRichTextFormFields(mapped);
   const reps = lookups.governmentRepresentatives;
   if (!reps?.length) {
     return base;

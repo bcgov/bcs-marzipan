@@ -31,14 +31,6 @@ describe('FreeformCombobox', () => {
   }
 
   describe('Rendering', () => {
-    it('renders with placeholder when no value is selected', () => {
-      render(<FreeformCombobox {...defaultProps} />);
-      expect(screen.getByRole('combobox')).toHaveAttribute(
-        'placeholder',
-        'Select an option...'
-      );
-    });
-
     it('renders with custom placeholder', () => {
       render(
         <FreeformCombobox {...defaultProps} placeholder="Choose an option" />

@@ -224,7 +224,6 @@ export function VenuePresetForm({
           </Label>
           <AddressAutocomplete
             id="venue-preset-address-line1"
-            placeholder="Start typing an address..."
             value={formData.addressLine1 ?? ''}
             onAddressSelect={handleAddressSelect}
             disabled={isSubmitting}
