@@ -248,15 +248,26 @@ function ActivityDetailsCell({
 
       {narrativeIsExecutiveSummaryInline(variant) ? (
         <>
-          <div className="corpcal-print-exec-summary-inline corpcal-print-narrative-head">
-            <PrintRichText
-              value={row.executiveSummaryStored}
-              className="corpcal-print-rich corpcal-print-rich-inline"
-            />
-          </div>
-          {showEventLead && row.commsContactLead ? (
+          {row.executiveSummaryStored ? (
+            <div className="corpcal-print-exec-summary-inline corpcal-print-narrative-head">
+              <PrintRichText
+                value={row.executiveSummaryStored}
+                className="corpcal-print-rich corpcal-print-rich-inline"
+              />
+            </div>
+          ) : (
+            <div className="corpcal-print-exec-summary-inline corpcal-print-narrative-head">
+              {row.title ? <strong>{row.title}</strong> : null}
+              {row.title && row.summaryStored ? ' ' : null}
+              <PrintRichText
+                value={row.summaryStored}
+                className="corpcal-print-rich corpcal-print-rich-inline"
+              />
+            </div>
+          )}
+          {showEventLead && row.eventPlannerLead ? (
             <div className="corpcal-print-meta-faint">
-              Event lead: {row.commsContactLead}
+              Event lead: {row.eventPlannerLead}
             </div>
           ) : null}
         </>

@@ -235,7 +235,7 @@ describe('toPrintRowViewModel', () => {
     expect(asChanged.dateTime.lookAheadStatus).toBe('changed');
   });
 
-  it('maps date/time status for look-ahead print variants (Confirmed hidden, else TBC when date/time present)', () => {
+  it('maps date/time status for look-ahead print variants', () => {
     const unsettled = {
       ...BASE_ACTIVITY,
       dateStatus: 'Tentative',
@@ -246,15 +246,29 @@ describe('toPrintRowViewModel', () => {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'lookAhead',
     });
-    expect(lookAhead.dateTime.dateStatus).toBe('TBC');
-    expect(lookAhead.dateTime.timeStatus).toBe('TBC');
+    expect(lookAhead.dateTime.dateStatus).toBe('Tentative');
+    expect(lookAhead.dateTime.timeStatus).toBe('Proposed');
+
+    const notConfirmed = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        dateStatus: 'Not confirmed',
+        timeStatus: 'Not confirmed',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(notConfirmed.dateTime.dateStatus).toBe('TBC');
+    expect(notConfirmed.dateTime.timeStatus).toBe('TBC');
 
     const execLa = toPrintRowViewModel(unsettled, {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'execLookAhead',
     });
-    expect(execLa.dateTime.dateStatus).toBe('TBC');
-    expect(execLa.dateTime.timeStatus).toBe('TBC');
+    expect(execLa.dateTime.dateStatus).toBe('Tentative');
+    expect(execLa.dateTime.timeStatus).toBe('Proposed');
 
     const confirmed = toPrintRowViewModel(
       {
@@ -292,8 +306,18 @@ describe('toPrintRowViewModel', () => {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'thirtySixtyNinety',
     });
-    expect(thirty.dateTime.dateStatus).toBe('TBC');
-    expect(thirty.dateTime.timeStatus).toBe('TBC');
+    expect(thirty.dateTime.dateStatus).toBe('Tentative');
+    expect(thirty.dateTime.timeStatus).toBe('Proposed');
+
+    const missingStatus = toPrintRowViewModel(
+      { ...BASE_ACTIVITY, dateStatus: undefined, timeStatus: undefined },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(missingStatus.dateTime.dateStatus).toBe('');
+    expect(missingStatus.dateTime.timeStatus).toBe('');
   });
 
   it('derives FYI flag from the category list', () => {

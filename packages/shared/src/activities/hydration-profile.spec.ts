@@ -26,7 +26,8 @@ describe('activity-relation-registry', () => {
     ]);
     expect(relations.has('categories')).toBe(true);
     expect(relations.has('tags')).toBe(true);
-    expect(relations.has('commsContacts')).toBe(true);
+    expect(relations.has('eventPlannerDetails')).toBe(true);
+    expect(relations.has('commsContacts')).toBe(false);
     expect(relations.has('leadMinistry')).toBe(true);
     expect(relations.has('leadMinistryAbbreviation')).toBe(true);
   });
@@ -45,6 +46,15 @@ describe('activity-relation-registry', () => {
     expect(relationsForSearchKeyword('briefing').has('commsContacts')).toBe(
       true
     );
+  });
+
+  it('includes date and time status relations for every report', () => {
+    const profile = resolveReportHydrationProfile({
+      effectiveFields: ['title', 'startDate', 'startTime'],
+    });
+
+    expect(profileIncludesRelation(profile, 'dateStatus')).toBe(true);
+    expect(profileIncludesRelation(profile, 'timeStatus')).toBe(true);
   });
 });
 

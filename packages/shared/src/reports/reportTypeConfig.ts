@@ -1,4 +1,5 @@
 import type { ActivityListItem, ReportResponse } from '../api/types';
+import { isActivityRichTextEffectivelyEmpty } from '../utils/activity-rich-text';
 
 export type ReportType = 'LOOK_AHEAD' | 'EXEC' | '30_60_90' | 'PLANNING';
 
@@ -139,7 +140,8 @@ export function getEffectiveReportFields(
 
 /**
  * Minimal content selection helper:
- * - Prefer `executiveSummary` if present in effective fields.
+ * - Prefer a populated `executiveSummary` if present in effective fields.
+ * - Fall back to the overview `summary` when the executive summary is empty.
  * - Otherwise use `summary` if present in effective fields.
  * - Otherwise default to `executiveSummary` to preserve current behavior.
  */
@@ -147,20 +149,34 @@ export function getEffectiveReportDetailText(
   activity: ActivityListItem,
   effectiveFields: readonly string[]
 ): string | null {
+  const executiveSummary = isActivityRichTextEffectivelyEmpty(
+    activity.executiveSummary
+  )
+    ? null
+    : activity.executiveSummary;
+
   if (effectiveFields.includes('executiveSummary')) {
-    return activity.executiveSummary ?? null;
+    return executiveSummary ?? activity.summary ?? null;
   }
   if (effectiveFields.includes('summary')) {
     return activity.summary ?? null;
   }
-  return activity.executiveSummary ?? null;
+  return executiveSummary;
 }
 
-/** Display name of the comms contact flagged as lead (report field `event_lead`). */
+/** Display name of the comms contact flagged as lead. */
 export function getCommsContactLeadDisplayName(
   activity: ActivityListItem
 ): string | null {
   const raw = activity.commsContacts?.find((c) => c.isLead)?.name?.trim();
+  return raw && raw.length > 0 ? raw : null;
+}
+
+/** Display name of the event planner flagged as lead (report field `event_lead`). */
+export function getEventPlannerLeadDisplayName(
+  activity: ActivityListItem
+): string | null {
+  const raw = activity.eventPlannerDetails?.find((p) => p.isLead)?.name?.trim();
   return raw && raw.length > 0 ? raw : null;
 }
 
