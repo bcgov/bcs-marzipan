@@ -1,11 +1,11 @@
 import '@testing-library/jest-dom';
 
 import { cleanup } from '@testing-library/react';
-import { afterEach, beforeAll, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 
 const originalConsoleWarn = console.warn;
 
-beforeAll(() => {
+beforeEach(() => {
   // jsdom does not implement the browser Navigation API used by some router/UI libraries.
   // Provide a no-op stub and silence the noisy jsdom warning it emits during tests.
   const navigationStub = {
