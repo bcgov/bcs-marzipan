@@ -31,13 +31,21 @@ beforeEach(() => {
     value: navigationStub,
   });
 
-  vi.spyOn(console, 'warn').mockImplementation((...args) => {
-    const message = args.map((arg) => String(arg)).join(' ');
-    if (message.includes('Not implemented: navigation to another Document')) {
-      return;
-    }
-    originalConsoleWarn(...args);
-  });
+const originalConsoleError = console.error;
+vi.spyOn(console, 'warn').mockImplementation((...args) => {
+  const message = args.map((arg) => String(arg)).join(' ');
+  if (message.includes('Not implemented: navigation to another Document')) {
+    return;
+  }
+  originalConsoleWarn(...args);
+});
+vi.spyOn(console, 'error').mockImplementation((...args) => {
+  const message = args.map((arg) => String(arg)).join(' ');
+  if (message.includes('Not implemented: navigation to another Document')) {
+    return;
+  }
+  originalConsoleError(...args);
+});
 });
 
 // Mock ResizeObserver (required by cmdk and other libraries)
