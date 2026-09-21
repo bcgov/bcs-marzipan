@@ -14,7 +14,7 @@ data:
   AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN}
   POST_LOGIN_REDIRECT_URL: ${POST_LOGIN_REDIRECT_URL}
   PUBLIC_APP_BASE_URL: ${PUBLIC_APP_BASE_URL}
-  CORS_ALLOWED_ORIGINS: 'https://calendar-ui-d8b00f-dev.apps.silver.devops.gov.bc.ca,http://localhost:3000,http://localhost:4173,http://localhost:8080'
+  CORS_ALLOWED_ORIGINS: 'https://silver-dev-calendar.digital.gcpe.gov.bc.ca,http://localhost:3000,http://localhost:4173,http://localhost:8080'
   RATE_LIMIT_MAX: '200'
   RATE_LIMIT_AUTH_MAX: '5'
   RATE_LIMIT_STORE: memory

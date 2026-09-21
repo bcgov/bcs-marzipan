@@ -39,16 +39,17 @@ spec:
               protocol: TCP
               containerPort: 8080
           env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: VITE_API_BASE_URL
               valueFrom:
                 configMapKeyRef:
                   name: calendar-ui-config
                   key: VITE_API_BASE_URL
             - name: API_PROXY_UPSTREAM
-              valueFrom:
-                configMapKeyRef:
-                  name: calendar-ui-config
-                  key: API_PROXY_UPSTREAM
+              value: http://calendar-service.$(POD_NAMESPACE).svc.cluster.local:3001
             - name: NODE_ENV
               valueFrom:
                 configMapKeyRef:
