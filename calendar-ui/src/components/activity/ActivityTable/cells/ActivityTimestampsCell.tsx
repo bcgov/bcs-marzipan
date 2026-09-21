@@ -9,17 +9,33 @@ import { cn } from '@/lib/utils';
 import type { ActivityTableRow } from '../activityTableRow';
 import { getInitialsFromName } from '../activityTableRowDisplay';
 
-function UpdatedByAvatar({
+/** Matches comms lead avatar in {@link LeadContactLine}. */
+const COMPACT_AVATAR_CLASS = 'size-[18px]';
+const COMPACT_AVATAR_FALLBACK_CLASS = 'text-[10px] leading-none';
+
+function UserAvatar({
   userMap,
-  lastUpdatedBy,
+  userId,
+  fallbackName,
+  compact = false,
 }: {
   userMap: Map<string, { name: string; jobTitle?: string | null }>;
-  lastUpdatedBy: number;
+  userId: number;
+  fallbackName: string;
+  compact?: boolean;
 }) {
-  const userName = userMap.get(String(lastUpdatedBy))?.name || 'Unknown';
+  const userName = userMap.get(String(userId))?.name || fallbackName;
   return (
-    <Avatar size="sm" title={userName}>
-      <AvatarFallback>{getInitialsFromName(userName)}</AvatarFallback>
+    <Avatar
+      className={compact ? COMPACT_AVATAR_CLASS : undefined}
+      size={compact ? undefined : 'sm'}
+      title={userName}
+    >
+      <AvatarFallback
+        className={compact ? COMPACT_AVATAR_FALLBACK_CLASS : undefined}
+      >
+        {getInitialsFromName(userName)}
+      </AvatarFallback>
     </Avatar>
   );
 }
@@ -50,17 +66,39 @@ export function ActivityTimestampsCell({
     timeZone: CORP_PACIFIC_TIME_ZONE,
   });
 
+  const editLock = row.editLock;
+  const editorDisplayName =
+    editLock != null
+      ? (userMap.get(String(editLock.userId))?.name ?? editLock.username)
+      : null;
+
   return (
     <div
-      className={cn('flex flex-col gap-0 text-xs text-slate-500', className)}
+      className={cn('text-foreground flex flex-col gap-0 text-xs', className)}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-0">
         <span>Updated {updatedDate}</span>
         {showUpdatedByAvatar ? (
-          <UpdatedByAvatar
+          <UserAvatar
             userMap={userMap}
-            lastUpdatedBy={row.lastUpdatedBy}
+            userId={row.lastUpdatedBy}
+            fallbackName="Unknown"
           />
+        ) : null}
+        {editLock != null && editorDisplayName != null ? (
+          <span className="inline-flex max-w-full min-w-0 flex-wrap items-center gap-x-1 text-slate-500">
+            <span aria-hidden>(</span>
+            <UserAvatar
+              userMap={userMap}
+              userId={editLock.userId}
+              fallbackName={editLock.username}
+              compact
+            />
+            <span className="min-w-0 truncate">
+              {editorDisplayName} is editing
+            </span>
+            <span aria-hidden>)</span>
+          </span>
         ) : null}
       </div>
       <span>Created {createdDate}</span>

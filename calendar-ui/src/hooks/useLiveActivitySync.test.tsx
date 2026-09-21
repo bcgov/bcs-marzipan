@@ -105,6 +105,31 @@ describe('useLiveActivitySync', () => {
     });
   });
 
+  describe('activityLockChanged', () => {
+    it('debounces invalidateQueries when activityLockChanged fires', async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+      render(
+        <Providers queryClient={queryClient}>
+          <TestWrapper />
+        </Providers>
+      );
+      getFakeSocket().emitEvent('activityLockChanged', {
+        activityId: 1,
+        locked: true,
+        lockedBy: { userId: 2, username: 'Editor' },
+      });
+
+      await vi.advanceTimersByTimeAsync(LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS + 1);
+      expect(invalidateSpy).toHaveBeenCalled();
+
+      invalidateSpy.mockRestore();
+    });
+  });
+
   describe('activityUpdated', () => {
     it('debounces invalidateQueries when activityUpdated fires', async () => {
       const queryClient = new QueryClient({
@@ -152,6 +177,10 @@ describe('useLiveActivitySync', () => {
       );
       expect(socket.off).toHaveBeenCalledWith(
         'activityUpdated',
+        expect.any(Function)
+      );
+      expect(socket.off).toHaveBeenCalledWith(
+        'activityLockChanged',
         expect.any(Function)
       );
       expect(socket.disconnect).toHaveBeenCalled();

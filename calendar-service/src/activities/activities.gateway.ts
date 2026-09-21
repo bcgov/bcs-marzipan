@@ -274,6 +274,10 @@ export class ActivitiesGateway
         this.server.to(clientId).emit('lockAcquired', { activityId, lockedBy });
       }
     }
+    this.broadcastActivityLockChanged(activityId, {
+      locked: true,
+      lockedBy,
+    });
   }
 
   notifyLockReleased(activityId: number) {
@@ -285,6 +289,21 @@ export class ActivitiesGateway
         this.server.to(clientId).emit('lockReleased', { activityId });
       }
     }
+    this.broadcastActivityLockChanged(activityId, { locked: false });
+  }
+
+  /** Notifies activity list subscribers when an edit lock is acquired or released. */
+  broadcastActivityLockChanged(
+    activityId: number,
+    payload: {
+      locked: boolean;
+      lockedBy?: { userId: number; username: string };
+    }
+  ): void {
+    this.server.to('activities-table').emit('activityLockChanged', {
+      activityId,
+      ...payload,
+    });
   }
 
   /**

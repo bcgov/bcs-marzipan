@@ -277,6 +277,11 @@ describe('ActivitiesService', () => {
 
   // Mock locks service (added when ActivitiesService started using LocksService)
   const mockLocksService = {
+    getActiveActivityLocksForIds: vi
+      .fn()
+      .mockResolvedValue(
+        new Map<number, { userId: number; username: string }>()
+      ),
     getLockForEntity: vi.fn().mockResolvedValue(null),
     releaseLock: vi.fn().mockResolvedValue(null),
     releaseLockOrFinalizePendingHandoff: vi

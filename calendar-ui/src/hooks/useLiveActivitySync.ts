@@ -60,6 +60,7 @@ export function useLiveActivitySync(): { isSocketConnected: boolean } {
 
     socket.on('activityCreated', handleRemoteTableEvent);
     socket.on('activityUpdated', handleRemoteTableEvent);
+    socket.on('activityLockChanged', handleRemoteTableEvent);
 
     return () => {
       socket.emit('unsubscribeFromActivities');
@@ -68,6 +69,7 @@ export function useLiveActivitySync(): { isSocketConnected: boolean } {
       socket.io.off('reconnect', subscribe);
       socket.off('activityCreated', handleRemoteTableEvent);
       socket.off('activityUpdated', handleRemoteTableEvent);
+      socket.off('activityLockChanged', handleRemoteTableEvent);
       socket.disconnect();
       setIsSocketConnected(false);
     };

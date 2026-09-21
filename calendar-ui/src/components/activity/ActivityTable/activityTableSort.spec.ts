@@ -50,6 +50,7 @@ const mockRow = (overrides: Partial<ActivityTableRow>): ActivityTableRow => ({
   lastUpdatedDateTime: new Date().toISOString(),
   lastUpdatedBy: 1,
   createdDateTime: new Date().toISOString(),
+  editLock: null,
   flags: [],
   sharedWith: [],
   sharedWithTeamIds: [],

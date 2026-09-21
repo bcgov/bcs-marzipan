@@ -49,4 +49,13 @@ describe('mapActivityToTableRow', () => {
     expect(row.commsLeadPhone).toBeNull();
     expect(row.leadTeamDisplayName).toBeNull();
   });
+
+  it('maps editLock when present on list items', () => {
+    const row = mapActivityToTableRow(
+      createMockActivityListItem({
+        editLock: { userId: 42, username: 'Editor User' },
+      })
+    );
+    expect(row.editLock).toEqual({ userId: 42, username: 'Editor User' });
+  });
 });

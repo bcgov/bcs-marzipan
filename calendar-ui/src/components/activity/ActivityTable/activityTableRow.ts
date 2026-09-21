@@ -80,6 +80,8 @@ export interface ActivityTableRow {
   lastUpdatedDateTime: string;
   lastUpdatedBy: number;
   createdDateTime: string;
+  /** Holder of the activity edit lock, when present (activity list API). */
+  editLock: { userId: number; username: string } | null;
 
   // Flags (team-scoped assignments)
   flags: ActivityFlagResponse[];
@@ -182,6 +184,7 @@ export function mapActivityToTableRow(
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
     createdDateTime: activity.createdDateTime,
+    editLock: 'editLock' in activity ? (activity.editLock ?? null) : null,
     changedFieldsSinceReview:
       'changedFieldsSinceReview' in activity &&
       Array.isArray(activity.changedFieldsSinceReview)

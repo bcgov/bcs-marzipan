@@ -54,6 +54,7 @@ const mockRow: ActivityTableRow = {
   lastUpdatedDateTime: '2026-07-20T10:00:00.000Z',
   lastUpdatedBy: 1,
   createdDateTime: '2026-07-19T10:00:00.000Z',
+  editLock: null,
   flags: [],
   sharedWith: ['Comms Team'],
   sharedWithTeamIds: [10],
