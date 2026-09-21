@@ -8,25 +8,27 @@ const originalConsoleWarn = console.warn;
 beforeAll(() => {
   // jsdom does not implement the browser Navigation API used by some router/UI libraries.
   // Provide a no-op stub and silence the noisy jsdom warning it emits during tests.
+  const navigationStub = {
+    currentEntry: { url: window.location.href },
+    canGoBack: false,
+    canGoForward: false,
+    entries: vi.fn(() => []),
+    navigate: vi.fn(),
+    reload: vi.fn(),
+    traverseTo: vi.fn(),
+    updateCurrentEntry: vi.fn(),
+  };
+
   Object.defineProperty(window, 'navigation', {
     configurable: true,
     writable: true,
-    value: {
-      currentEntry: { url: window.location.href },
-      canGoBack: false,
-      canGoForward: false,
-      entries: vi.fn(() => []),
-      navigate: vi.fn(),
-      reload: vi.fn(),
-      traverseTo: vi.fn(),
-      updateCurrentEntry: vi.fn(),
-    },
+    value: navigationStub,
   });
 
   Object.defineProperty(document, 'navigation', {
     configurable: true,
     writable: true,
-    value: window.navigation,
+    value: navigationStub,
   });
 
   vi.spyOn(console, 'warn').mockImplementation((...args) => {
