@@ -54,6 +54,7 @@ interface CreateEventParams {
   details: Record<string, unknown> | null;
   actorUserId: number;
   recipientUserIds: number[];
+  executor?: DrizzleDbExecutor;
 }
 
 interface EmailRecipient {
@@ -137,9 +138,10 @@ export class NotificationsService {
   }
 
   private async resolveActivityIdentity(
-    activityId: number
+    activityId: number,
+    executor: DrizzleDbExecutor = this.databaseService.db
   ): Promise<ActivityIdentity | null> {
-    const [activityRow] = await this.databaseService.db
+    const [activityRow] = await executor
       .select({
         id: activities.id,
         title: activities.title,
@@ -194,8 +196,10 @@ export class NotificationsService {
     );
   }
 
-  private async getAdminUserIds(): Promise<number[]> {
-    const rows = await this.databaseService.db
+  private async getAdminUserIds(
+    executor: DrizzleDbExecutor = this.databaseService.db
+  ): Promise<number[]> {
+    const rows = await executor
       .select({ id: users.id })
       .from(users)
       .innerJoin(roles, eq(roles.id, users.roleId))
@@ -573,13 +577,14 @@ export class NotificationsService {
   }
 
   private async resolveEmailRecipients(
-    userIds: number[]
+    userIds: number[],
+    executor: DrizzleDbExecutor = this.databaseService.db
   ): Promise<EmailRecipient[]> {
     if (userIds.length === 0) {
       return [];
     }
 
-    const rows = await this.databaseService.db
+    const rows = await executor
       .select({
         userId: users.id,
         email: users.adEmail,
@@ -832,13 +837,13 @@ export class NotificationsService {
       return [];
     }
 
-    await this.databaseService.db.transaction(async (tx) => {
+    const persistEventAndRecipients = async (executor: DrizzleDbExecutor) => {
       const actorUsername = await this.resolveActorUsername(
         params.actorUserId,
-        tx
+        executor
       );
 
-      const [eventRow] = await tx
+      const [eventRow] = await executor
         .insert(notificationEvents)
         .values({
           eventType: params.eventType,
@@ -852,7 +857,7 @@ export class NotificationsService {
         })
         .returning({ id: notificationEvents.id });
 
-      await tx
+      await executor
         .insert(notificationRecipients)
         .values(
           dedupedRecipients.map((userId) => ({
@@ -862,14 +867,23 @@ export class NotificationsService {
           }))
         )
         .onConflictDoNothing();
-    });
+    };
+
+    if (params.executor) {
+      await persistEventAndRecipients(params.executor);
+    } else {
+      await this.databaseService.db.transaction(async (tx) => {
+        await persistEventAndRecipients(tx);
+      });
+    }
 
     this.activitiesGateway.notifyNotificationsChanged(dedupedRecipients);
 
     try {
+      const emailExecutor = params.executor ?? this.databaseService.db;
       const [actorUsername, recipients] = await Promise.all([
-        this.resolveActorUsername(params.actorUserId, this.databaseService.db),
-        this.resolveEmailRecipients(dedupedRecipients),
+        this.resolveActorUsername(params.actorUserId, emailExecutor),
+        this.resolveEmailRecipients(dedupedRecipients, emailExecutor),
       ]);
 
       await this.notificationEmailService.sendNotificationEventEmail({
@@ -974,7 +988,10 @@ export class NotificationsService {
         : 'Activity status changed';
 
     return this.createEventWithRecipients({
-      eventType: NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_CREATE,
+      eventType:
+        input.changeType === 'create'
+          ? NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_CREATE
+          : NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_STATUS_CHANGED,
       entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
       entityId: input.activityId,
       changeType:
@@ -1223,15 +1240,20 @@ export class NotificationsService {
   async notifyActivityReminderPostDated(input: {
     activityId: number;
     actorUserId: number;
+    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const activity = await this.resolveActivityIdentity(input.activityId);
+    const executor = input.executor ?? this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(
+      input.activityId,
+      executor
+    );
     if (!activity) {
       return [];
     }
 
     const [adminUserIds, commsRows] = await Promise.all([
-      this.getAdminUserIds(),
-      this.databaseService.db
+      this.getAdminUserIds(executor),
+      executor
         .select({ id: activityCommsContacts.userId })
         .from(activityCommsContacts)
         .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1257,6 +1279,7 @@ export class NotificationsService {
         reminderType: 'post_dated',
       },
       actorUserId: input.actorUserId,
+      executor,
       recipientUserIds: [
         activity.createdBy,
         activity.lastUpdatedBy,
@@ -1270,13 +1293,18 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     leadDays: number;
+    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const activity = await this.resolveActivityIdentity(input.activityId);
+    const executor = input.executor ?? this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(
+      input.activityId,
+      executor
+    );
     if (!activity) {
       return [];
     }
 
-    const commsRows = await this.databaseService.db
+    const commsRows = await executor
       .select({ id: activityCommsContacts.userId })
       .from(activityCommsContacts)
       .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1303,6 +1331,7 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
+      executor,
       recipientUserIds: commsRows.map((row) => row.id),
     });
   }
@@ -1311,13 +1340,18 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     leadDays: number;
+    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const activity = await this.resolveActivityIdentity(input.activityId);
+    const executor = input.executor ?? this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(
+      input.activityId,
+      executor
+    );
     if (!activity) {
       return [];
     }
 
-    const commsRows = await this.databaseService.db
+    const commsRows = await executor
       .select({ id: activityCommsContacts.userId })
       .from(activityCommsContacts)
       .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1343,6 +1377,7 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
+      executor,
       recipientUserIds: commsRows.map((row) => row.id),
     });
   }
@@ -1351,13 +1386,18 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     leadDays: number;
+    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const activity = await this.resolveActivityIdentity(input.activityId);
+    const executor = input.executor ?? this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(
+      input.activityId,
+      executor
+    );
     if (!activity) {
       return [];
     }
 
-    const commsRows = await this.databaseService.db
+    const commsRows = await executor
       .select({ id: activityCommsContacts.userId })
       .from(activityCommsContacts)
       .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1384,6 +1424,7 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
+      executor,
       recipientUserIds: commsRows.map((row) => row.id),
     });
   }
@@ -1392,14 +1433,19 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     leadDays: number;
+    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const activity = await this.resolveActivityIdentity(input.activityId);
+    const executor = input.executor ?? this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(
+      input.activityId,
+      executor
+    );
     if (!activity) {
       return [];
     }
 
     const [commsRows, watchRows] = await Promise.all([
-      this.databaseService.db
+      executor
         .select({ id: activityCommsContacts.userId })
         .from(activityCommsContacts)
         .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1410,7 +1456,7 @@ export class NotificationsService {
             eq(users.isActive, true)
           )
         ),
-      this.databaseService.db
+      executor
         .select({ id: userActivityFavourites.userId })
         .from(userActivityFavourites)
         .innerJoin(users, eq(users.id, userActivityFavourites.userId))
@@ -1436,6 +1482,7 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
+      executor,
       recipientUserIds: [
         ...commsRows.map((row) => row.id),
         ...watchRows.map((row) => row.id),
@@ -1447,15 +1494,20 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     staleDays: number;
+    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const activity = await this.resolveActivityIdentity(input.activityId);
+    const executor = input.executor ?? this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(
+      input.activityId,
+      executor
+    );
     if (!activity) {
       return [];
     }
 
     const [adminUserIds, commsRows] = await Promise.all([
-      this.getAdminUserIds(),
-      this.databaseService.db
+      this.getAdminUserIds(executor),
+      executor
         .select({ id: activityCommsContacts.userId })
         .from(activityCommsContacts)
         .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1482,6 +1534,7 @@ export class NotificationsService {
         staleDays: input.staleDays,
       },
       actorUserId: input.actorUserId,
+      executor,
       recipientUserIds: [...adminUserIds, ...commsRows.map((row) => row.id)],
     });
   }

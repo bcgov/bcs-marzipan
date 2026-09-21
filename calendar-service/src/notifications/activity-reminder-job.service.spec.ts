@@ -8,6 +8,9 @@ import { NotificationsService } from './notifications.service';
 
 describe('ActivityReminderJobService', () => {
   let service: ActivityReminderJobService;
+  let databaseService: {
+    db: { transaction: ReturnType<typeof vi.fn> };
+  };
 
   const applicationSettings = {
     getActivityReminderSettings: vi.fn().mockResolvedValue({
@@ -32,6 +35,19 @@ describe('ActivityReminderJobService', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
+    const mockTx = {
+      execute: vi.fn().mockResolvedValue([{ acquired: true }]),
+    };
+    databaseService = {
+      db: {
+        transaction: vi
+          .fn()
+          .mockImplementation((fn: (tx: unknown) => unknown) =>
+            Promise.resolve(fn(mockTx))
+          ),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ActivityReminderJobService,
@@ -45,7 +61,7 @@ describe('ActivityReminderJobService', () => {
         },
         {
           provide: DatabaseService,
-          useValue: { db: {} },
+          useValue: databaseService,
         },
       ],
     }).compile();
@@ -104,6 +120,11 @@ describe('ActivityReminderJobService', () => {
 
     expect(result.skipped).toBe(false);
     expect(result.sent).toBe(6);
+    expect(
+      applicationSettings.getActivityReminderSettings
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ execute: expect.any(Function) })
+    );
     expect(result.counts).toEqual({
       reminderPostDated: 1,
       reminderDateStatusNotConfirmed: 1,
@@ -141,6 +162,34 @@ describe('ActivityReminderJobService', () => {
     ).toHaveBeenCalledWith(
       expect.objectContaining({ activityId: 16, staleDays: 14 })
     );
+  });
+
+  it('returns advisory_lock when another pod holds the reminder lock', async () => {
+    databaseService.db.transaction.mockImplementationOnce(
+      (fn: (tx: unknown) => unknown) =>
+        Promise.resolve(
+          fn({ execute: vi.fn().mockResolvedValue([{ acquired: false }]) })
+        )
+    );
+
+    const result = await service.runBatch();
+
+    expect(result).toEqual({
+      sent: 0,
+      skipped: true,
+      skipReason: 'advisory_lock',
+      counts: {
+        reminderPostDated: 0,
+        reminderDateStatusNotConfirmed: 0,
+        reminderNullTime: 0,
+        reminderTimeStatusNotConfirmed: 0,
+        reminderUpcoming: 0,
+        reminderStale: 0,
+      },
+    });
+    expect(
+      applicationSettings.getActivityReminderSettings
+    ).not.toHaveBeenCalled();
   });
 
   it('returns error when settings load fails', async () => {
