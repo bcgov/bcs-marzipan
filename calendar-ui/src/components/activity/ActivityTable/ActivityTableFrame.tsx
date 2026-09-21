@@ -3,8 +3,13 @@ import type { ReactNode } from 'react';
 
 import { UnshareActivityModal } from '@/components/activity/activities/UnshareActivityModal';
 import { ErrorState } from '@/components/shared';
+import { ContentSection } from '@/components/table/ContentSection';
+import { FilterSection } from '@/components/table/FilterSection';
 import { TablePagination } from '@/components/table/TablePagination';
-import { TableSummaryBar } from '@/components/table/TableSummaryBar';
+import {
+  TableContentSummary,
+  TableFilterSummary,
+} from '@/components/table/TableSummaryBar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -49,8 +54,6 @@ import {
 
 export interface ActivityTableFrameProps {
   core: ActivityTableCore;
-  /** Rendered next to the bulk actions row (grid layout toggle). */
-  toolbarTrailing?: ReactNode;
   /** The grid's table element; rendered only when there are rows to show. */
   children: ReactNode;
 }
@@ -62,7 +65,6 @@ export interface ActivityTableFrameProps {
  */
 export function ActivityTableFrame({
   core,
-  toolbarTrailing,
   children,
 }: ActivityTableFrameProps) {
   const {
@@ -169,16 +171,13 @@ export function ActivityTableFrame({
       savedFilters={savedFiltersHook}
       activeSavedFilterId={activeSavedFilter?.id ?? null}
       onApplySavedFilter={handleApplySavedFilter}
+      onResetAll={handleClearAllCriteria}
+      hasClearableFilters={hasActiveCriteria}
     />
   );
 
   const filterSummary = (
-    <TableSummaryBar
-      count={sortedData.length}
-      singularLabel="activity"
-      pluralLabel="activities"
-      showCount={!canBulkSelect}
-      filters={booleanFilters}
+    <TableFilterSummary
       appliedSavedFilterName={appliedSavedFilterName}
       appliedFilterTypeLabels={appliedFilterTypeLabels}
       filterDetailLines={filterDetailLines}
@@ -186,32 +185,132 @@ export function ActivityTableFrame({
     />
   );
 
-  const layoutProps = {
-    scrollRef: tableScrollRef,
-    count: sortedData.length,
-    singularLabel: 'activity',
-    pluralLabel: 'activities',
-    filters: booleanFilters,
-    appliedSavedFilterName,
-    appliedFilterTypeLabels,
-    filterDetailLines,
-    onClearFilters: tableSummaryOnClearFilters,
-    showSummary: false,
-  };
+  const filterSection = (
+    <FilterSection>
+      {filterBar}
+      {filterSummary}
+    </FilterSection>
+  );
+
+  const bulkClearSelectionButton =
+    selectedActivityCount > 0 ? (
+      <Button type="button" size="sm" variant="ghost" onClick={clearSelection}>
+        Clear selection
+      </Button>
+    ) : null;
+
+  const bulkSelectionLeading =
+    canBulkSelect && selectedActivityCount > 0 ? (
+      <span className="inline-flex flex-wrap items-center gap-5">
+        <span className="font-medium">
+          {selectedActivityCount} of {sortedData.length} activities selected
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={bulkActionPending}
+            >
+              Batch actions <ChevronDown />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52">
+            {canBulkUpdateActivities ? (
+              <>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    [...selectedActivityIds]
+                      .filter((id) => !watchlistIds.includes(id))
+                      .forEach((id) => toggleFavourite(id));
+                  }}
+                >
+                  Add to watchlist
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
+                  Flag
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
+                  Issue
+                </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
+                      Update pitch status
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                {canBulkShareActivities && (
+                  <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
+                    Shared with
+                  </DropdownMenuItem>
+                )}
+                {canUnshare && (
+                  <DropdownMenuItem
+                    onSelect={() => setUnshareModalOpen(true)}
+                    disabled={eligibleBulkUnshareTeams.length === 0}
+                  >
+                    Unshare
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
+                  Tags
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
+                  Review
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setBulkDialog('delete')}
+                >
+                  Delete
+                </DropdownMenuItem>
+              </>
+            ) : canUnshare ? (
+              <DropdownMenuItem
+                onSelect={() => setUnshareModalOpen(true)}
+                disabled={eligibleBulkUnshareTeams.length === 0}
+              >
+                Unshare
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {bulkClearSelectionButton}
+      </span>
+    ) : null;
+
+  const activityListFooter = (
+    <TableContentSummary
+      count={sortedData.length}
+      singularLabel="activity"
+      pluralLabel="activities"
+      showCount={bulkSelectionLeading == null}
+      leading={bulkSelectionLeading}
+      filters={booleanFilters}
+    />
+  );
+
+  const renderTableShell = (shellChildren: ReactNode) => (
+    <div className="min-w-0">
+      {filterSection}
+      <ContentSection>
+        {activityListFooter}
+        <ActivityTableLayout scrollRef={tableScrollRef}>
+          {shellChildren}
+        </ActivityTableLayout>
+      </ContentSection>
+    </div>
+  );
 
   if (loading) {
-    return (
-      <div className="min-w-0 space-y-4">
-        {filterBar}
-        {filterSummary}
-        <ActivityTableLayout {...layoutProps} count={0}>
-          <div className="flex flex-col items-center justify-center gap-3 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-            <span className="text-sm text-slate-600">
-              Loading activities...
-            </span>
-          </div>
-        </ActivityTableLayout>
+    return renderTableShell(
+      <div className="flex flex-col items-center justify-center gap-3 py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <span className="text-sm text-slate-600">Loading activities...</span>
       </div>
     );
   }
@@ -229,163 +328,61 @@ export function ActivityTableFrame({
   }
 
   if (data.length === 0) {
-    return (
-      <div className="min-w-0 space-y-4">
-        {filterBar}
-        {filterSummary}
-        <ActivityTableLayout {...layoutProps} count={0}>
-          <ActivityTableEmptyState
-            variant={
-              favouriteActivityIds !== undefined
-                ? 'no-favourites'
-                : hasActiveCriteria
-                  ? 'no-filter-match'
-                  : 'no-data'
-            }
-            onClearFilters={
-              hasActiveCriteria && favouriteActivityIds === undefined
-                ? handleClearAllCriteria
-                : undefined
-            }
-          />
-        </ActivityTableLayout>
-      </div>
+    return renderTableShell(
+      <ActivityTableEmptyState
+        variant={
+          favouriteActivityIds !== undefined
+            ? 'no-favourites'
+            : hasActiveCriteria
+              ? 'no-filter-match'
+              : 'no-data'
+        }
+        onClearFilters={
+          hasActiveCriteria && favouriteActivityIds === undefined
+            ? handleClearAllCriteria
+            : undefined
+        }
+      />
     );
   }
 
-  const bulkActions = canBulkSelect ? (
-    <div className="flex items-center gap-5 pb-1 pl-4">
-      <span className="text-sm font-medium">
-        {selectedActivityCount} of {sortedData.length} activities selected
-      </span>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={selectedActivityCount === 0 || bulkActionPending}
-          >
-            Batch actions <ChevronDown />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-52">
-          {canBulkUpdateActivities ? (
-            <>
-              <DropdownMenuItem
-                onSelect={() => {
-                  [...selectedActivityIds]
-                    .filter((id) => !watchlistIds.includes(id))
-                    .forEach((id) => toggleFavourite(id));
-                }}
-              >
-                Add to watchlist
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
-                Flag
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
-                Issue
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
-                    Update pitch status
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              {canBulkShareActivities && (
-                <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
-                  Shared with
-                </DropdownMenuItem>
-              )}
-              {canUnshare && (
-                <DropdownMenuItem
-                  onSelect={() => setUnshareModalOpen(true)}
-                  disabled={eligibleBulkUnshareTeams.length === 0}
-                >
-                  Unshare
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
-                Tags
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
-                Review
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                onSelect={() => setBulkDialog('delete')}
-              >
-                Delete
-              </DropdownMenuItem>
-            </>
-          ) : canUnshare ? (
-            <DropdownMenuItem
-              onSelect={() => setUnshareModalOpen(true)}
-              disabled={eligibleBulkUnshareTeams.length === 0}
-            >
-              Unshare
-            </DropdownMenuItem>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {selectedActivityCount > 0 ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={clearSelection}
-        >
-          Clear selection
-        </Button>
-      ) : null}
-    </div>
-  ) : null;
-
   return (
     <TooltipProvider delayDuration={400}>
-      <div className="min-w-0 space-y-4">
-        {filterBar}
-        {filterSummary}
-        {(bulkActions || toolbarTrailing) && (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {bulkActions ?? <span />}
-            {toolbarTrailing}
-          </div>
-        )}
-        <ActivityTableLayout {...layoutProps}>
-          {filteredData.length === 0 ? (
-            <ActivityTableEmptyState
-              variant={
-                favouriteActivityIds !== undefined
-                  ? 'no-favourites'
-                  : leadFilterConflictsWithMinistryTab ||
-                      (hasActiveCriteria && searchKeyword.trim() === '')
-                    ? 'no-filter-match'
-                    : searchKeyword.trim() !== ''
-                      ? 'no-search-match'
-                      : hasActiveCriteria
-                        ? 'no-filter-match'
-                        : 'no-data'
-              }
-              conflictNote={
-                leadFilterConflictsWithMinistryTab
-                  ? MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE
-                  : undefined
-              }
-              onClearFilters={
-                hasActiveCriteria && favouriteActivityIds === undefined
-                  ? handleClearAllCriteria
-                  : undefined
-              }
-            />
-          ) : (
-            children
-          )}
-        </ActivityTableLayout>
+      <div className="min-w-0">
+        {filterSection}
+        <ContentSection>
+          {activityListFooter}
+          <ActivityTableLayout scrollRef={tableScrollRef}>
+            {filteredData.length === 0 ? (
+              <ActivityTableEmptyState
+                variant={
+                  favouriteActivityIds !== undefined
+                    ? 'no-favourites'
+                    : leadFilterConflictsWithMinistryTab ||
+                        (hasActiveCriteria && searchKeyword.trim() === '')
+                      ? 'no-filter-match'
+                      : searchKeyword.trim() !== ''
+                        ? 'no-search-match'
+                        : hasActiveCriteria
+                          ? 'no-filter-match'
+                          : 'no-data'
+                }
+                conflictNote={
+                  leadFilterConflictsWithMinistryTab
+                    ? MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE
+                    : undefined
+                }
+                onClearFilters={
+                  hasActiveCriteria && favouriteActivityIds === undefined
+                    ? handleClearAllCriteria
+                    : undefined
+                }
+              />
+            ) : (
+              children
+            )}
+          </ActivityTableLayout>
+        </ContentSection>
 
         {filteredData.length > 0 && (
           <TablePagination

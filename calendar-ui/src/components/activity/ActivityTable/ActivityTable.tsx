@@ -805,20 +805,14 @@ function StatusCell({
 // Main table component
 // ---------------------------------------------------------------------------
 
-export type ActivityTableProps = ActivityTableCoreOptions & {
-  /** Rendered beside the bulk actions row (grid layout toggle). */
-  toolbarTrailing?: React.ReactNode;
-};
+export type ActivityTableProps = ActivityTableCoreOptions;
 
 /**
  * Grid C: the original activity list layout. Column structure is unchanged;
  * shared orchestration lives in {@link useActivityTableCore} and shared chrome
  * in {@link ActivityTableFrame}.
  */
-export function ActivityTable({
-  toolbarTrailing,
-  ...coreOptions
-}: ActivityTableProps = {}) {
+export function ActivityTable(coreOptions: ActivityTableProps = {}) {
   const core = useActivityTableCore(coreOptions);
   const {
     canBulkSelect,
@@ -1033,7 +1027,7 @@ export function ActivityTable({
   });
 
   return (
-    <ActivityTableFrame core={core} toolbarTrailing={toolbarTrailing}>
+    <ActivityTableFrame core={core}>
       <table
         className={`${tableTable} min-w-[640px] border-separate border-spacing-0`}
         role="grid"

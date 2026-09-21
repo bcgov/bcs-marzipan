@@ -34,13 +34,11 @@ import {
 import { GridStatusColumnHeader } from './GridStatusColumnHeader';
 
 export interface ActivityTableGridAProps extends ActivityTableCoreOptions {
-  toolbarTrailing?: React.ReactNode;
   layoutPreferences: UseActivityGridLayoutPreferencesResult;
 }
 
 /** Grid A: compact rows with overview icons, summary, scheduling, materials, and status metadata. */
 export function ActivityTableGridA({
-  toolbarTrailing,
   layoutPreferences,
   ...coreOptions
 }: ActivityTableGridAProps) {
@@ -226,7 +224,7 @@ export function ActivityTableGridA({
     });
 
   return (
-    <ActivityTableFrame core={core} toolbarTrailing={toolbarTrailing}>
+    <ActivityTableFrame core={core}>
       <ActivityGridTable
         table={table}
         columnOrder={columnOrder}
