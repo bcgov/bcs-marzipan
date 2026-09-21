@@ -3,12 +3,11 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  root: __dirname,
   plugins: [react()] as any,
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: [path.resolve(__dirname, './src/test/setup.ts')],
+    setupFiles: ['./src/test/setup.ts'],
     css: true,
     coverage: {
       reportsDirectory: path.resolve(__dirname, '../coverage/ui'),
