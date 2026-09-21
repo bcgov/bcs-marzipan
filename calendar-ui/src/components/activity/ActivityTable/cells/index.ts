@@ -8,6 +8,7 @@ export { LookAheadStatusBadge } from './LookAheadStatusBadge';
 export { MaterialsCellCompact } from './MaterialsCellCompact';
 export { OverflowTextList } from './OverflowTextList';
 export { OverviewIconsCell } from './OverviewIconsCell';
+export { OverviewPitchLine } from './OverviewPitchLine';
 export { SelectCheckboxCell } from './SelectCheckboxCell';
 export { SchedulingCellCompact } from './SchedulingCellCompact';
 export { SharedWithPopover } from './SharedWithPopover';

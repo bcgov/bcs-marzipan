@@ -69,16 +69,27 @@ export function TitleSummaryCell({
     </button>
   );
 
+  const showConfidential = row.isConfidential;
+  const showIssue = row.isIssue;
+
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1">
       <div
         className={cn(
-          'line-clamp-2 text-[14px] font-semibold wrap-anywhere text-slate-900',
+          'line-clamp-2 text-[14px] leading-tight font-semibold wrap-anywhere text-slate-900',
           titleChanged && 'rounded-sm px-1',
           titleChanged && LIST_REVIEW_HIGHLIGHT_BG
         )}
         title={row.title}
       >
+        {showConfidential && (
+          <span className="text-corpcal-text-alert uppercase">
+            CONFIDENTIAL{' '}
+          </span>
+        )}
+        {showIssue && (
+          <span className="text-corpcal-text-alert uppercase">ISSUE </span>
+        )}
         {row.title}
       </div>
 

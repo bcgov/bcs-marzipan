@@ -24,12 +24,16 @@
     --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
     --muted-foreground: oklch(0.556 0 0);
+    /* Secondary icons (grid metadata, activity actions); alias allows future tuning */
+    --icon-muted-foreground: var(--muted-foreground);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.985 0 0);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
+    /* Unchecked checkbox outline — stronger than --input for visibility */
+    --checkbox-border: oklch(0.708 0 0);
     --ring: oklch(0.708 0 0);
     --chart-1: oklch(0.646 0.222 41.116);
     --chart-2: oklch(0.6 0.118 184.704);
@@ -87,6 +91,9 @@
     /* Flag / assignment feature */
     --fluent-success-foreground-inverted: #13a10e;
     --flag-button-icon: var(--fluent-success-foreground-inverted);
+
+    /* Changed-field / review diff highlight (activity list, inline diffs) */
+    --review-highlight: var(--color-amber-200);
     /* Sync with REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS in @corpcal/shared/reports/reportPrintDimensions. */
     --corpcal-report-sheet-content-max-width: 933px;
   }
@@ -138,6 +145,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-checkbox-border: var(--checkbox-border);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
@@ -149,6 +157,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
+  --color-icon-muted-foreground: var(--icon-muted-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
@@ -167,6 +176,7 @@
   --color-status-purple: var(--status-purple);
   --color-required-field-indicator: var(--required-field-indicator);
   --color-corpcal-text-alert: var(--corpcal-text-alert);
+  --color-review-highlight: var(--review-highlight);
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);

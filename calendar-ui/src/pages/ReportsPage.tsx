@@ -753,7 +753,6 @@ export function ReportsPage() {
                                   )
                                 }
                                 aria-label="Print width"
-                                className="border-input"
                               />
                               Print width
                             </label>

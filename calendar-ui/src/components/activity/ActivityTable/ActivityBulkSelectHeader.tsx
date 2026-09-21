@@ -15,7 +15,8 @@ export interface ActivityBulkSelectHeaderProps {
 
 /**
  * Header control that selects all activities, the current page, or the rows
- * led by one of the user's teams. Shared by every grid layout.
+ * led by one of the user's teams. Checkbox is centered in the select column;
+ * the menu chevron sits to the right without shifting checkbox alignment.
  */
 export function ActivityBulkSelectHeader({
   core,
@@ -34,24 +35,28 @@ export function ActivityBulkSelectHeader({
     Math.max(sortedData.length - pagination.pageIndex * pagination.pageSize, 0)
   );
 
+  const allSelected =
+    sortedData.length > 0 && selectedActivityCount === sortedData.length;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
           data-no-row-nav
-          className="inline-flex size-6 items-center justify-center gap-0.5"
+          className="relative inline-flex size-4 shrink-0 items-center justify-center border-0 bg-transparent p-0"
           aria-label="Select activities"
         >
           <Checkbox
-            aria-hidden="true"
+            aria-hidden
             readOnly
-            checked={
-              sortedData.length > 0 &&
-              selectedActivityCount === sortedData.length
-            }
+            checked={allSelected}
+            className="pointer-events-none"
           />
-          <ChevronDown className="size-3" />
+          <ChevronDown
+            className="pointer-events-none absolute top-1/2 left-full ml-px size-3 shrink-0 -translate-y-1/2 text-slate-600"
+            aria-hidden
+          />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">

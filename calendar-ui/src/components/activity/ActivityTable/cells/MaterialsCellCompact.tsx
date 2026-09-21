@@ -2,6 +2,7 @@ import { Languages, NotebookText } from 'lucide-react';
 
 import type { ActivityTableRow } from '../activityTableRow';
 import { toSentenceCase } from '../activityTableRowDisplay';
+import { ACTIVITY_GRID_ROW_ICON_TOP_CLASS } from './activityGridRowIcons';
 import { OverflowTextList } from './OverflowTextList';
 
 const MATERIALS_MAX_LINES = 2;
@@ -35,11 +36,7 @@ export function MaterialsCellCompact({ row }: MaterialsCellCompactProps) {
     <div className="flex flex-col gap-1 text-[13px]">
       {hasMaterials && (
         <div className="flex items-start gap-1.5">
-          <NotebookText
-            size={16}
-            strokeWidth={1.5}
-            className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
-          />
+          <NotebookText className={ACTIVITY_GRID_ROW_ICON_TOP_CLASS} />
           <OverflowTextList
             items={row.commsMaterials}
             maxLines={MATERIALS_MAX_LINES}
@@ -50,11 +47,7 @@ export function MaterialsCellCompact({ row }: MaterialsCellCompactProps) {
 
       {(hasLanguages || showStatusLabel) && (
         <div className="flex items-start gap-1.5">
-          <Languages
-            size={16}
-            strokeWidth={1.5}
-            className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
-          />
+          <Languages className={ACTIVITY_GRID_ROW_ICON_TOP_CLASS} />
           <div className="flex min-w-0 flex-1 flex-col gap-0">
             {showStatusLabel && status && (
               <span className="text-slate-600">{toSentenceCase(status)}</span>

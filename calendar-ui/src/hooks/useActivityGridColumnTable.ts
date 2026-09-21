@@ -12,9 +12,13 @@ import {
 } from '@tanstack/react-table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { GRID_A_PINNED_COLUMN_IDS } from '@/components/activity/ActivityTable/activityGridPinnedColumns';
 import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 import type { ActivityTableCore } from '@/hooks/useActivityTableCore';
-import { reconcileColumnOrder } from '@/lib/activityTableLayoutPreferences';
+import {
+  enforceLeadingColumnOrder,
+  reconcileColumnOrder,
+} from '@/lib/activityTableLayoutPreferences';
 
 import type { UseActivityGridLayoutPreferencesResult } from './useActivityGridLayoutPreferences';
 
@@ -37,8 +41,8 @@ export interface UseActivityGridColumnTableOptions {
 
 /**
  * Wires a grid layout's columns to TanStack Table with drag-to-reorder and
- * drag-to-resize, persisting both in sessionStorage. The select
- * column is excluded from reordering so bulk selection stays in place.
+ * drag-to-resize, persisting both in sessionStorage. Select and overview
+ * stay pinned on the left and are excluded from reordering.
  */
 export function useActivityGridColumnTable({
   columns,
@@ -60,13 +64,19 @@ export function useActivityGridColumnTable({
   const storedSizing = getColumnSizing();
 
   const [columnOrder, setColumnOrderState] = useState<ColumnOrderState>(() =>
-    reconcileColumnOrder(storedOrder, defaultColumnOrder)
+    enforceLeadingColumnOrder(
+      reconcileColumnOrder(storedOrder, defaultColumnOrder),
+      GRID_A_PINNED_COLUMN_IDS
+    )
   );
 
   const defaultOrderSignature = defaultColumnOrder.join(',');
   useEffect(() => {
     setColumnOrderState((current) =>
-      reconcileColumnOrder(current, defaultColumnOrder)
+      enforceLeadingColumnOrder(
+        reconcileColumnOrder(current, defaultColumnOrder),
+        GRID_A_PINNED_COLUMN_IDS
+      )
     );
     // defaultColumnOrder is rebuilt each render; compare by signature instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,7 +107,7 @@ export function useActivityGridColumnTable({
   );
 
   const columnPinning = useMemo<ColumnPinningState>(
-    () => ({ left: [SELECT_COLUMN_ID] }),
+    () => ({ left: [...GRID_A_PINNED_COLUMN_IDS] }),
     []
   );
 
@@ -125,18 +135,26 @@ export function useActivityGridColumnTable({
 
   /** Column ids that participate in header drag-and-drop (select stays fixed). */
   const draggableColumnIds = useMemo(
-    () => columnOrder.filter((id) => id !== SELECT_COLUMN_ID),
+    () =>
+      columnOrder.filter(
+        (id) => !(GRID_A_PINNED_COLUMN_IDS as readonly string[]).includes(id)
+      ),
     [columnOrder]
   );
 
   const moveColumn = useCallback(
     (activeId: string, overId: string) => {
       if (activeId === overId) return;
+      const pinnedSet = new Set<string>(GRID_A_PINNED_COLUMN_IDS);
+      if (pinnedSet.has(activeId) || pinnedSet.has(overId)) return;
       setColumnOrderState((prev) => {
         const fromIndex = prev.indexOf(activeId);
         const toIndex = prev.indexOf(overId);
         if (fromIndex === -1 || toIndex === -1) return prev;
-        const next = arrayMove(prev, fromIndex, toIndex);
+        const next = enforceLeadingColumnOrder(
+          arrayMove(prev, fromIndex, toIndex),
+          GRID_A_PINNED_COLUMN_IDS
+        );
         setColumnOrder(next);
         return next;
       });

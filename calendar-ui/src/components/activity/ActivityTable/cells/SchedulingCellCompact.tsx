@@ -15,6 +15,10 @@ import {
   rowHasAnyChangedPath,
   toSentenceCase,
 } from '../activityTableRowDisplay';
+import {
+  ACTIVITY_GRID_ROW_ICON_CLASS,
+  ACTIVITY_GRID_ROW_ICON_TOP_CLASS,
+} from './activityGridRowIcons';
 
 export interface SchedulingCellCompactProps {
   row: ActivityTableRow;
@@ -68,7 +72,7 @@ export function SchedulingCellCompact({
 
       {row.startDate && (
         <div className="flex items-center gap-1.5">
-          <Calendar className="h-4 w-4 shrink-0 text-slate-500" />
+          <Calendar className={ACTIVITY_GRID_ROW_ICON_CLASS} />
           <span>{dateRangeText}</span>
           <Badge
             variant="outline"
@@ -85,7 +89,7 @@ export function SchedulingCellCompact({
 
       {(row.allDay || row.startTime || row.timeStatus) && (
         <div className="flex items-center gap-1.5">
-          <Clock className="h-4 w-4 shrink-0 text-slate-500" />
+          <Clock className={ACTIVITY_GRID_ROW_ICON_CLASS} />
           <span>
             {row.allDay
               ? 'All day'
@@ -108,7 +112,7 @@ export function SchedulingCellCompact({
 
       {row.venue && (
         <div className="flex items-start gap-1">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+          <MapPin className={ACTIVITY_GRID_ROW_ICON_TOP_CLASS} />
           <span className="line-clamp-2">{row.venue}</span>
         </div>
       )}

@@ -11,11 +11,11 @@ export const GRID_A_COLUMN_ORDER = [
 
 export const GRID_A_COLUMN_WIDTHS: Record<string, number> = {
   select: 44,
-  overview: 254,
+  overview: 260,
   summary: 400,
   scheduling: 306,
   materials: 221,
-  status: 251,
+  status: 320,
 };
 
 /** TanStack column size props using persisted width when available. */
@@ -25,7 +25,8 @@ export function gridColumnSize(
   storedSizing: Record<string, number>
 ) {
   const minSize = defaultWidths[columnId] ?? 80;
-  const size = storedSizing[columnId] ?? minSize;
+  const stored = storedSizing[columnId];
+  const size = stored != null && stored >= minSize ? stored : minSize;
   return {
     size,
     minSize,

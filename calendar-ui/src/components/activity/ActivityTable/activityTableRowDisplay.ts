@@ -1,7 +1,9 @@
+import { REVIEW_HIGHLIGHT_BG } from '@/lib/review-highlight';
+
 import type { ActivityTableRow } from './activityTableRow';
 
 /** Background applied to fields changed since the last review (admin reviewers only). */
-export const LIST_REVIEW_HIGHLIGHT_BG = 'bg-[#FFDDB3]';
+export const LIST_REVIEW_HIGHLIGHT_BG = REVIEW_HIGHLIGHT_BG;
 
 export function rowHasChangedPath(
   row: ActivityTableRow,

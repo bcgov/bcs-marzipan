@@ -4,15 +4,19 @@ import type { ReactElement } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
+export type ActivityFlagIconSize = 'default' | 'compact';
+
 type ActivityFlagIconProps = {
   assigneeName?: string | null;
   assigneeFlagColour?: string | null;
   className?: string;
+  size?: ActivityFlagIconSize;
 };
 
 type ActivityFlagOverflowIconProps = {
   extraCount: number;
   className?: string;
+  size?: ActivityFlagIconSize;
 };
 
 function getAssigneeInitials(assigneeName: string): string {
@@ -24,23 +28,51 @@ function getAssigneeInitials(assigneeName: string): string {
     .toUpperCase();
 }
 
-const iconContainerClassName =
-  'relative inline-flex size-6 shrink-0 items-center justify-center';
+function sizeClasses(size: ActivityFlagIconSize) {
+  if (size === 'compact') {
+    return {
+      container: 'size-[18px]',
+      emptyFlag: 'size-[18px]',
+      flagBadge: 'size-2',
+      initials: 'text-[7px] font-medium',
+      overflowText: 'text-[6px] font-semibold',
+      avatarClassName: 'size-[18px] border border-white/70',
+    };
+  }
+  return {
+    container: 'size-6',
+    emptyFlag: 'size-4',
+    flagBadge: 'size-2.5',
+    initials: 'text-[8px] font-medium',
+    overflowText: 'text-[7px] font-semibold',
+    avatarClassName: 'size-full border border-white/70',
+  };
+}
 
 /**
  * Shared activity flag affordance used in the activity list and activity page header.
- * Icon content is always laid out in a 24px positioning box so the badge anchor
- * stays consistent regardless of the outer button size.
+ * Icon content is laid out in a fixed positioning box so the badge anchor stays consistent.
  */
 export function ActivityFlagIcon({
   assigneeName,
   assigneeFlagColour,
   className,
+  size = 'default',
 }: ActivityFlagIconProps): ReactElement {
+  const sizes = sizeClasses(size);
+  const iconContainerClassName = cn(
+    'relative inline-flex shrink-0 items-center justify-center',
+    sizes.container,
+    className
+  );
+
   if (!assigneeName) {
     return (
-      <span className={cn(iconContainerClassName, className)}>
-        <Flag className="text-muted-foreground size-4" aria-hidden />
+      <span className={iconContainerClassName}>
+        <Flag
+          className={cn('text-icon-muted-foreground', sizes.emptyFlag)}
+          aria-hidden
+        />
       </span>
     );
   }
@@ -48,18 +80,14 @@ export function ActivityFlagIcon({
   const flagColour = assigneeFlagColour ?? 'var(--flag-button-icon)';
 
   return (
-    <span className={cn(iconContainerClassName, className)}>
-      {/* group-hover so every stacked avatar highlights together on hover, not just the topmost (last) one hiding the others' overlap. */}
-      <Avatar
-        size="sm"
-        className="group-hover:ring-ring size-full border border-white/70 transition-shadow group-hover:z-20 group-hover:ring-2"
-      >
-        <AvatarFallback className="text-[8px] font-medium">
+    <span className={iconContainerClassName}>
+      <Avatar size="sm" className={sizes.avatarClassName}>
+        <AvatarFallback className={sizes.initials}>
           {getAssigneeInitials(assigneeName)}
         </AvatarFallback>
       </Avatar>
       <Flag
-        className="absolute -right-0.5 -bottom-0.5 size-2.5"
+        className={cn('absolute -right-0.5 -bottom-0.5', sizes.flagBadge)}
         style={{ fill: flagColour, color: flagColour }}
         aria-hidden
       />
@@ -70,11 +98,19 @@ export function ActivityFlagIcon({
 export function ActivityFlagOverflowIcon({
   extraCount,
   className,
+  size = 'default',
 }: ActivityFlagOverflowIconProps): ReactElement {
+  const sizes = sizeClasses(size);
   return (
-    <span className={cn(iconContainerClassName, className)}>
-      <Avatar size="sm" className="size-full border border-white/70">
-        <AvatarFallback className="text-[7px] font-semibold">
+    <span
+      className={cn(
+        'relative inline-flex shrink-0 items-center justify-center',
+        sizes.container,
+        className
+      )}
+    >
+      <Avatar size="sm" className={sizes.avatarClassName}>
+        <AvatarFallback className={sizes.overflowText}>
           +{extraCount}
         </AvatarFallback>
       </Avatar>

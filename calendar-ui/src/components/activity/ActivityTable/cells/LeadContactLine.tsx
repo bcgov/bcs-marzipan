@@ -35,8 +35,8 @@ export function LeadContactLine({
       {variant === 'labelled' && (
         <>
           <span className="text-slate-500">Lead:</span>
-          <Avatar size="sm" title={row.commsLeadName}>
-            <AvatarFallback>
+          <Avatar className="size-[18px]" title={row.commsLeadName}>
+            <AvatarFallback className="text-[10px] leading-none">
               {getInitialsFromName(row.commsLeadName)}
             </AvatarFallback>
           </Avatar>

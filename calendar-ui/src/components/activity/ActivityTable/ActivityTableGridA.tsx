@@ -23,15 +23,16 @@ import {
   ActivityStatusCell,
   ActivityTimestampsCell,
   CategoryBadgesCell,
-  ConfidentialIssueLabels,
   LeadContactLine,
   MaterialsCellCompact,
   OverviewIconsCell,
+  OverviewPitchLine,
   SchedulingCellCompact,
   SelectCheckboxCell,
   TitleSummaryCell,
 } from './cells';
 import { GridStatusColumnHeader } from './GridStatusColumnHeader';
+import { GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS } from './selectColumnLayout';
 
 export interface ActivityTableGridAProps extends ActivityTableCoreOptions {
   layoutPreferences: UseActivityGridLayoutPreferencesResult;
@@ -57,6 +58,7 @@ export function ActivityTableGridA({
     toggleFavourite,
     isFavouriteToggling,
     userMap,
+    pitchFieldVisibility,
   } = core;
 
   const storedSizing = layoutPreferences.getColumnSizing();
@@ -67,8 +69,13 @@ export function ActivityTableGridA({
     () => [
       columnHelper.display({
         id: 'select',
+        enableResizing: false,
         header: () =>
-          canBulkSelect ? <ActivityBulkSelectHeader core={core} /> : null,
+          canBulkSelect ? (
+            <div className={GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS}>
+              <ActivityBulkSelectHeader core={core} />
+            </div>
+          ) : null,
         ...gridColumnSize('select', GRID_A_COLUMN_WIDTHS, storedSizing),
         cell: ({ row }) =>
           canBulkSelect ? (
@@ -116,9 +123,10 @@ export function ActivityTableGridA({
               }
               flagPending={syncFlagsMutation.isPending}
             />
-            <ConfidentialIssueLabels
-              isConfidential={row.original.isConfidential}
-              isIssue={row.original.isIssue}
+            <OverviewPitchLine
+              row={row.original}
+              canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+              showReviewHighlights={showReviewHighlights}
             />
             <CategoryBadgesCell
               row={row.original}
@@ -188,9 +196,13 @@ export function ActivityTableGridA({
         ...gridColumnSize('status', GRID_A_COLUMN_WIDTHS, storedSizing),
         cell: ({ row }) => (
           <div className="flex flex-col gap-1">
-            <ActivityStatusCell row={row.original} orientation="stacked" />
+            <ActivityStatusCell row={row.original} orientation="inline" />
             <LeadContactLine row={row.original} variant="labelled" />
-            <ActivityTimestampsCell row={row.original} userMap={userMap} />
+            <ActivityTimestampsCell
+              row={row.original}
+              userMap={userMap}
+              showUpdatedByAvatar={false}
+            />
           </div>
         ),
       }),
@@ -212,6 +224,7 @@ export function ActivityTableGridA({
       toggleFavourite,
       isFavouriteToggling,
       userMap,
+      pitchFieldVisibility.canViewPitchStatus,
     ]
   );
 

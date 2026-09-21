@@ -23,7 +23,7 @@ export function ActivityStatusCell({
         'flex gap-1',
         orientation === 'stacked'
           ? 'flex-col items-start'
-          : 'flex-wrap items-center',
+          : 'flex-nowrap items-center',
         className
       )}
     >

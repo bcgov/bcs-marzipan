@@ -181,6 +181,7 @@ vi.mock('@/hooks/useLookAheadSectionRows', () => ({
   }),
   getLookAheadSectionLabelFromRows: () => 'Events',
   getLookAheadSectionLegendColorFromRows: () => '#ff0000',
+  getLookAheadSectionReportLabelFromRows: () => 'Events',
 }));
 
 describe('ActivityTable grids', () => {

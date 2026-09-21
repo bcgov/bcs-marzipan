@@ -15,6 +15,10 @@ import { CSS } from '@dnd-kit/utilities';
 import { flexRender, type Header, type Table } from '@tanstack/react-table';
 import type { CSSProperties, MouseEvent } from 'react';
 
+import {
+  GRID_A_OVERVIEW_COLUMN_ID,
+  GRID_A_PINNED_COLUMN_IDS,
+} from '@/components/activity/ActivityTable/activityGridPinnedColumns';
 import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 import {
   tableBodyRow,
@@ -32,33 +36,51 @@ import type { ActivityTableCore } from '@/hooks/useActivityTableCore';
 import { cn } from '@/lib/utils';
 
 import { isGridHeaderSortBlocked } from './GridStatusColumnHeader';
+import { GRID_A_SELECT_COLUMN_CELL_CLASS } from './selectColumnLayout';
 
-function getPinnedColumnStyles(
-  isPinned: boolean,
-  startOffset = 0
+function getGridPinnedLeftOffset(
+  columnId: string,
+  selectColumnWidth: number
+): number | undefined {
+  if (columnId === SELECT_COLUMN_ID) return 0;
+  if (columnId === GRID_A_OVERVIEW_COLUMN_ID) return selectColumnWidth;
+  return undefined;
+}
+
+function isGridPinnedColumn(columnId: string): boolean {
+  return (GRID_A_PINNED_COLUMN_IDS as readonly string[]).includes(columnId);
+}
+
+function getGridPinnedStickyStyle(
+  columnId: string,
+  selectColumnWidth: number,
+  layer: 'header' | 'body'
 ): CSSProperties {
-  if (!isPinned) return {};
+  const left = getGridPinnedLeftOffset(columnId, selectColumnWidth);
+  if (left === undefined) return {};
   return {
     position: 'sticky',
-    left: startOffset,
-    zIndex: 2,
-    backgroundColor: 'var(--sticky-bg, #fff)',
+    left,
+    zIndex: layer === 'header' ? 11 : 2,
   };
 }
 
 interface SortableGridHeaderProps {
   header: Header<ActivityTableRow, unknown>;
   dragDisabled: boolean;
+  selectColumnWidth: number;
   onHeaderClick?: (event: MouseEvent<HTMLTableCellElement>) => void;
 }
 
 function SortableGridHeader({
   header,
   dragDisabled,
+  selectColumnWidth,
   onHeaderClick,
 }: SortableGridHeaderProps) {
   const columnId = header.column.id;
   const isSelect = columnId === SELECT_COLUMN_ID;
+  const isPinned = isGridPinnedColumn(columnId);
   const {
     attributes,
     listeners,
@@ -67,7 +89,7 @@ function SortableGridHeader({
     transition,
     isDragging,
     isOver,
-  } = useSortable({ id: columnId, disabled: dragDisabled || isSelect });
+  } = useSortable({ id: columnId, disabled: dragDisabled || isPinned });
 
   const meta = header.column.columnDef.meta;
   const hasMultiSort = (meta?.sortKeys?.length ?? 0) > 0;
@@ -79,7 +101,7 @@ function SortableGridHeader({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.75 : undefined,
-    ...getPinnedColumnStyles(isSelect),
+    ...getGridPinnedStickyStyle(columnId, selectColumnWidth, 'header'),
   };
 
   return (
@@ -88,6 +110,8 @@ function SortableGridHeader({
       className={cn(
         tableTh,
         'relative wrap-break-word whitespace-normal',
+        isSelect && GRID_A_SELECT_COLUMN_CELL_CLASS,
+        isPinned && 'bg-accent',
         hasMultiSort && 'group',
         isDragging && 'z-20 bg-slate-200/80',
         isOver && !isDragging && 'ring-primary/40 ring-2 ring-inset'
@@ -95,42 +119,50 @@ function SortableGridHeader({
       style={style}
       onClick={onHeaderClick}
     >
-      <div className="flex min-w-0 items-stretch">
-        <button
-          type="button"
-          className={cn(
-            'min-w-0 flex-1 cursor-grab border-0 bg-transparent py-0 pr-2 pl-0 text-left wrap-break-word whitespace-normal text-inherit active:cursor-grabbing',
-            (dragDisabled || isSelect) && 'cursor-default'
-          )}
-          {...(dragDisabled || isSelect ? {} : { ...attributes, ...listeners })}
-        >
-          {header.isPlaceholder
-            ? null
-            : flexRender(header.column.columnDef.header, header.getContext())}
-        </button>
-        {header.column.getCanResize() ? (
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-label={`Resize ${header.column.id} column`}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              header.getResizeHandler()(e);
-            }}
-            onTouchStart={(e) => {
-              e.stopPropagation();
-              header.getResizeHandler()(e);
-            }}
+      {isSelect ? (
+        header.isPlaceholder ? null : (
+          flexRender(header.column.columnDef.header, header.getContext())
+        )
+      ) : (
+        <div className="flex min-w-0 items-stretch">
+          <button
+            type="button"
             className={cn(
-              'relative z-10 w-1.5 shrink-0 touch-none self-stretch select-none',
-              'cursor-col-resize',
-              header.column.getIsResizing()
-                ? 'bg-primary/40'
-                : 'hover:bg-border bg-transparent'
+              'min-w-0 flex-1 cursor-grab border-0 bg-transparent py-0 pr-2 pl-0 text-left wrap-break-word whitespace-normal text-inherit active:cursor-grabbing',
+              (dragDisabled || isPinned) && 'cursor-default'
             )}
-          />
-        ) : null}
-      </div>
+            {...(dragDisabled || isPinned
+              ? {}
+              : { ...attributes, ...listeners })}
+          >
+            {header.isPlaceholder
+              ? null
+              : flexRender(header.column.columnDef.header, header.getContext())}
+          </button>
+          {header.column.getCanResize() ? (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={`Resize ${header.column.id} column`}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                header.getResizeHandler()(e);
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                header.getResizeHandler()(e);
+              }}
+              className={cn(
+                'relative z-10 w-1.5 shrink-0 touch-none self-stretch select-none',
+                'cursor-col-resize',
+                header.column.getIsResizing()
+                  ? 'bg-primary/40'
+                  : 'hover:bg-border bg-transparent'
+              )}
+            />
+          ) : null}
+        </div>
+      )}
     </th>
   );
 }
@@ -145,7 +177,7 @@ export interface ActivityGridTableProps {
 
 /**
  * Drag-and-drop, resizable activity grid table used by Grid A.
- * The select column stays pinned on the left and is not draggable.
+ * Select and overview columns stay pinned on the left and are not draggable.
  */
 export function ActivityGridTable({
   table,
@@ -155,6 +187,14 @@ export function ActivityGridTable({
   core,
 }: ActivityGridTableProps) {
   const { newRowIds, remoteHighlightIds, openActivityWithScroll } = core;
+
+  const selectColumnWidth =
+    table.getColumn(SELECT_COLUMN_ID)?.getSize() ??
+    table
+      .getHeaderGroups()[0]
+      ?.headers.find((h) => h.column.id === SELECT_COLUMN_ID)
+      ?.getSize() ??
+    44;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -181,7 +221,11 @@ export function ActivityGridTable({
         )}
         role="grid"
         aria-colcount={columnOrder.length}
-        style={{ tableLayout: 'fixed', width: table.getTotalSize() }}
+        style={{
+          tableLayout: 'fixed',
+          width: table.getTotalSize(),
+          minWidth: '100%',
+        }}
       >
         <thead className={tableThead}>
           {headerGroup ? (
@@ -205,6 +249,7 @@ export function ActivityGridTable({
                     <SortableGridHeader
                       key={header.id}
                       header={header}
+                      selectColumnWidth={selectColumnWidth}
                       dragDisabled={!draggableColumnIds.includes(columnId)}
                       onHeaderClick={
                         isSortable
@@ -259,6 +304,7 @@ export function ActivityGridTable({
                     .find((c) => c.column.id === columnId);
                   if (!cell) return null;
                   const isSelect = columnId === SELECT_COLUMN_ID;
+                  const isPinned = isGridPinnedColumn(columnId);
 
                   return (
                     <td
@@ -266,8 +312,9 @@ export function ActivityGridTable({
                       className={cn(
                         tableTd,
                         'border-b border-slate-100',
-                        isSelect &&
-                          'bg-white/95 group-hover/row:bg-slate-50/50 supports-backdrop-filter:bg-white/80'
+                        isSelect && GRID_A_SELECT_COLUMN_CELL_CLASS,
+                        isPinned &&
+                          'bg-white group-hover/row:bg-slate-50 group-focus-visible/row:bg-slate-50'
                       )}
                       style={{
                         width: cell.column.getSize(),
@@ -277,7 +324,11 @@ export function ActivityGridTable({
                         maxWidth:
                           cell.column.columnDef.maxSize ??
                           cell.column.getSize(),
-                        ...getPinnedColumnStyles(isSelect, 0),
+                        ...getGridPinnedStickyStyle(
+                          columnId,
+                          selectColumnWidth,
+                          'body'
+                        ),
                       }}
                     >
                       {flexRender(

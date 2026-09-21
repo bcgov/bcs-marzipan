@@ -19,7 +19,7 @@ const Checkbox = React.forwardRef<
     ref={ref}
     data-readonly={readOnly ? '' : undefined}
     className={cn(
-      'peer border-input ring-offset-background focus-visible:ring-ring h-4 w-4 shrink-0 rounded-sm border focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-[#0F6CBD]',
+      'peer border-checkbox-border ring-offset-background focus-visible:ring-ring h-4 w-4 shrink-0 rounded-sm border focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-[#0F6CBD]',
       readOnly && 'opacity-100!',
       className
     )}

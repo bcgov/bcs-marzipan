@@ -1,17 +1,21 @@
 import { Star } from 'lucide-react';
-import { useMemo } from 'react';
 
 import {
-  ActivityFlagIcon,
-  ActivityFlagOverflowIcon,
-} from '@/components/activity/activities/ActivityFlagIcon';
+  ActivityFlagAssigneeStack,
+  activityFlagAssigneeTooltip,
+  uniqueActivityFlagsByAssignee,
+} from '@/components/activity/activities/ActivityFlagAssigneeStack';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
-import { CopyableText } from '@/components/ui/copyable-text';
+import {
+  GRID_A_OVERVIEW_ACTION_HITBOX_CLASS,
+  GRID_A_OVERVIEW_ACTION_ICON_CLASS,
+  GRID_A_OVERVIEW_ACTIONS_ROW_CLASS,
+  gridOverviewFlagTriggerClassName,
+} from '@/components/activity/ActivityTable/overviewIconsLayout';
 
 import type { ActivityTableRow } from '../activityTableRow';
+import { ActivityDisplayIdCopy } from './ActivityDisplayIdCopy';
 import { SharedWithPopover } from './SharedWithPopover';
-
-const MAX_VISIBLE_FLAG_ICONS = 3;
 
 export interface OverviewIconsCellProps {
   row: ActivityTableRow;
@@ -29,8 +33,7 @@ export interface OverviewIconsCellProps {
 }
 
 /**
- * Compact identity row for Grid A: activity ID, flag
- * assignments, watchlist toggle, and a read-only shares indicator.
+ * Compact identity row for Grid A: activity ID, watchlist, shares, and flag (rightmost).
  */
 export function OverviewIconsCell({
   row,
@@ -42,69 +45,26 @@ export function OverviewIconsCell({
   flagPending,
 }: OverviewIconsCellProps) {
   const displayIdText = row.displayId ?? String(row.id);
-
-  const assignedFlags = useMemo(() => {
-    const uniqueFlags = new Map<number, ActivityTableRow['flags'][number]>();
-    row.flags.forEach((flag) => {
-      if (!uniqueFlags.has(flag.assigneeId)) {
-        uniqueFlags.set(flag.assigneeId, flag);
-      }
-    });
-    return Array.from(uniqueFlags.values());
-  }, [row.flags]);
-
-  const visibleAssignedFlags = assignedFlags.slice(0, MAX_VISIBLE_FLAG_ICONS);
-  const overflowAssignedCount = Math.max(
-    assignedFlags.length - MAX_VISIBLE_FLAG_ICONS,
-    0
-  );
-  const assignedTooltip = assignedFlags
-    .map((flag) => flag.assigneeName)
-    .join(', ');
+  const assignedFlags = uniqueActivityFlagsByAssignee(row.flags);
   const hasAssignedUsers = assignedFlags.length > 0;
+  const assignedTooltip = activityFlagAssigneeTooltip(row.flags);
+  const showFlagControl = canFlag || hasAssignedUsers;
 
-  const flagIcons = (
-    <div className="flex items-center">
-      {visibleAssignedFlags.map((flag, index) => (
-        <span
-          key={`${flag.teamId}:${flag.assigneeId}`}
-          className={index > 0 ? '-ml-0.5' : undefined}
-          style={{ zIndex: index + 1 }}
-        >
-          <ActivityFlagIcon
-            assigneeName={flag.assigneeName}
-            assigneeFlagColour={flag.assigneeFlagColour}
-          />
-        </span>
-      ))}
-      {overflowAssignedCount > 0 ? (
-        <span
-          className={visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined}
-          style={{ zIndex: visibleAssignedFlags.length + 1 }}
-        >
-          <ActivityFlagOverflowIcon extraCount={overflowAssignedCount} />
-        </span>
-      ) : null}
-    </div>
-  );
+  const overviewFlagTriggerClassName =
+    gridOverviewFlagTriggerClassName(hasAssignedUsers);
 
-  return (
-    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-xs font-semibold text-slate-900">
-      <span
-        data-no-row-nav
-        onClick={(e) => e.stopPropagation()}
-        className="inline-flex"
-      >
-        <CopyableText
-          text={displayIdText}
-          copyLabel="Copy activity ID"
-          variant="minimal"
-          copiedTooltipContent="Activity ID copied"
-        >
-          {displayIdText}
-        </CopyableText>
-      </span>
+  const flagStackTrigger = hasAssignedUsers ? (
+    <span
+      title={assignedTooltip}
+      aria-label={assignedTooltip}
+      className="inline-flex"
+    >
+      <ActivityFlagAssigneeStack flags={row.flags} reverseStackOrder />
+    </span>
+  ) : undefined;
 
+  const flagSlot = showFlagControl ? (
+    <span className="inline-flex min-h-6 shrink-0 items-center justify-center">
       {hasAssignedUsers && canFlag ? (
         <ActivityFlagPopover
           activityId={row.id}
@@ -112,15 +72,8 @@ export function OverviewIconsCell({
           readOnly={!canFlag}
           onSync={onFlagSync}
           isPending={flagPending}
-          triggerContent={
-            <span
-              title={assignedTooltip}
-              aria-label={assignedTooltip}
-              className="inline-flex"
-            >
-              {flagIcons}
-            </span>
-          }
+          triggerClassName={overviewFlagTriggerClassName}
+          triggerContent={flagStackTrigger}
         />
       ) : hasAssignedUsers ? (
         <span
@@ -128,9 +81,9 @@ export function OverviewIconsCell({
           onClick={(e) => e.stopPropagation()}
           title={assignedTooltip}
           aria-label={assignedTooltip}
-          className="inline-flex"
+          className="inline-flex min-h-6 min-w-6 items-center justify-center"
         >
-          {flagIcons}
+          {flagStackTrigger}
         </span>
       ) : canFlag ? (
         <ActivityFlagPopover
@@ -139,32 +92,55 @@ export function OverviewIconsCell({
           readOnly={!canFlag}
           onSync={onFlagSync}
           isPending={flagPending}
+          triggerClassName={overviewFlagTriggerClassName}
         />
       ) : null}
+    </span>
+  ) : null;
 
-      <button
-        type="button"
+  return (
+    <div className="flex min-w-0 items-center gap-4 text-xs font-semibold text-slate-900">
+      <span
         data-no-row-nav
-        onClick={(e) => {
-          e.stopPropagation();
-          onFavouriteToggle();
-        }}
-        disabled={favouriteToggling}
-        title={isFavourite ? 'Remove from watchlist' : 'Add to watchlist'}
-        aria-label={isFavourite ? 'Remove from watchlist' : 'Add to watchlist'}
-        aria-pressed={isFavourite}
-        className="hover:bg-muted focus-visible:ring-ring inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        onClick={(e) => e.stopPropagation()}
+        className="shrink-0"
       >
-        <Star
-          className={
-            isFavourite ? 'size-4 text-amber-500' : 'size-4 text-slate-400'
-          }
-          fill={isFavourite ? 'currentColor' : 'none'}
-          aria-hidden
-        />
-      </button>
+        <ActivityDisplayIdCopy displayId={displayIdText} variant="subtle" />
+      </span>
 
-      <SharedWithPopover teamNames={row.sharedWith} />
+      <div className={GRID_A_OVERVIEW_ACTIONS_ROW_CLASS}>
+        <button
+          type="button"
+          data-no-row-nav
+          onClick={(e) => {
+            e.stopPropagation();
+            onFavouriteToggle();
+          }}
+          disabled={favouriteToggling}
+          title={isFavourite ? 'Remove from watchlist' : 'Add to watchlist'}
+          aria-label={
+            isFavourite ? 'Remove from watchlist' : 'Add to watchlist'
+          }
+          aria-pressed={isFavourite}
+          className={GRID_A_OVERVIEW_ACTION_HITBOX_CLASS}
+        >
+          <Star
+            className={
+              isFavourite
+                ? `${GRID_A_OVERVIEW_ACTION_ICON_CLASS} text-amber-500`
+                : `${GRID_A_OVERVIEW_ACTION_ICON_CLASS} text-icon-muted-foreground`
+            }
+            fill={isFavourite ? 'currentColor' : 'none'}
+            aria-hidden
+          />
+        </button>
+        <SharedWithPopover
+          teamNames={row.sharedWith}
+          reserveSpace
+          gridOverviewActions
+        />
+        {flagSlot}
+      </div>
     </div>
   );
 }

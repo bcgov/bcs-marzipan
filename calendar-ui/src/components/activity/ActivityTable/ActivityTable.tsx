@@ -28,10 +28,13 @@ import {
 import { sanitizeLegendSwatchHexColor } from '@corpcal/shared/schemas';
 import { contrastingBlackOrWhiteForegroundHex } from '@corpcal/shared/utils';
 import {
-  ActivityFlagIcon,
-  ActivityFlagOverflowIcon,
-} from '@/components/activity/activities/ActivityFlagIcon';
+  ActivityFlagAssigneeStack,
+  activityFlagAssigneeTooltip,
+  uniqueActivityFlagsByAssignee,
+} from '@/components/activity/activities/ActivityFlagAssigneeStack';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
+import { ActivityDisplayIdCopy } from '@/components/activity/ActivityTable/cells/ActivityDisplayIdCopy';
+import { gridOverviewFlagTriggerClassName } from '@/components/activity/ActivityTable/overviewIconsLayout';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
   ColumnSortDropdown,
@@ -55,7 +58,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { BadgeGroup, type BadgeGroupItem } from '@/components/ui/badge-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CopyableText } from '@/components/ui/copyable-text';
 import {
   Tooltip,
   TooltipContent,
@@ -94,6 +96,10 @@ import {
   ACTIVITY_SORT_COLUMNS,
   STATUS_COLUMN_SORT_KEYS,
 } from './activityTableSortColumns';
+import {
+  ACTIVITY_GRID_ROW_ICON_CLASS,
+  ACTIVITY_GRID_ROW_ICON_TOP_CLASS,
+} from './cells/activityGridRowIcons';
 import { formatLookAheadBadgeLabel } from './cells/formatLookAheadBadgeLabel';
 
 export type { ActivityTableActiveSavedFilter };
@@ -171,21 +177,18 @@ function OverviewCell({
     rowHasAnyChangedPath(row, ['pitchDate', 'pitchRequiredStatusId']);
   const categoriesChanged =
     showReviewHighlights && rowHasChangedPath(row, 'categoryIds');
-  const assignedFlags = useMemo(() => {
-    const uniqueFlags = new Map<number, ActivityTableRow['flags'][number]>();
-    row.flags.forEach((flag) => {
-      if (!uniqueFlags.has(flag.assigneeId)) {
-        uniqueFlags.set(flag.assigneeId, flag);
-      }
-    });
-    return Array.from(uniqueFlags.values());
-  }, [row.flags]);
+  const assignedFlags = uniqueActivityFlagsByAssignee(row.flags);
   const hasAssignedUsers = assignedFlags.length > 0;
-  const visibleAssignedFlags = assignedFlags.slice(0, 3);
-  const overflowAssignedCount = Math.max(assignedFlags.length - 3, 0);
-  const assignedTooltip = assignedFlags
-    .map((flag) => flag.assigneeName)
-    .join(', ');
+  const assignedTooltip = activityFlagAssigneeTooltip(row.flags);
+  const flagStackTrigger = hasAssignedUsers ? (
+    <span
+      title={assignedTooltip}
+      aria-label={assignedTooltip}
+      className="inline-flex"
+    >
+      <ActivityFlagAssigneeStack flags={row.flags} reverseStackOrder />
+    </span>
+  ) : undefined;
 
   return (
     <div>
@@ -207,14 +210,7 @@ function OverviewCell({
           onClick={(e) => e.stopPropagation()}
           className="inline-flex"
         >
-          <CopyableText
-            text={displayIdText}
-            copyLabel="Copy activity ID"
-            variant="minimal"
-            copiedTooltipContent="Activity ID copied"
-          >
-            {displayIdText}
-          </CopyableText>
+          <ActivityDisplayIdCopy displayId={displayIdText} variant="minimal" />
         </span>
         {isFavourite && (
           <span
@@ -236,40 +232,8 @@ function OverviewCell({
             readOnly={!canFlag}
             onSync={onFlagSync}
             isPending={flagPending}
-            triggerContent={
-              <span
-                title={assignedTooltip}
-                aria-label={assignedTooltip}
-                className="inline-flex"
-              >
-                <div className="flex items-center">
-                  {visibleAssignedFlags.map((flag, index) => (
-                    <span
-                      key={`${flag.teamId}:${flag.assigneeId}`}
-                      className={index > 0 ? '-ml-0.5' : undefined}
-                      style={{ zIndex: index + 1 }}
-                    >
-                      <ActivityFlagIcon
-                        assigneeName={flag.assigneeName}
-                        assigneeFlagColour={flag.assigneeFlagColour}
-                      />
-                    </span>
-                  ))}
-                  {overflowAssignedCount > 0 ? (
-                    <span
-                      className={
-                        visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined
-                      }
-                      style={{ zIndex: visibleAssignedFlags.length + 1 }}
-                    >
-                      <ActivityFlagOverflowIcon
-                        extraCount={overflowAssignedCount}
-                      />
-                    </span>
-                  ) : null}
-                </div>
-              </span>
-            }
+            triggerClassName={gridOverviewFlagTriggerClassName(true)}
+            triggerContent={flagStackTrigger}
           />
         ) : hasAssignedUsers ? (
           <span
@@ -279,32 +243,7 @@ function OverviewCell({
             aria-label={assignedTooltip}
             className="inline-flex"
           >
-            <div className="flex items-center">
-              {visibleAssignedFlags.map((flag, index) => (
-                <span
-                  key={`${flag.teamId}:${flag.assigneeId}`}
-                  className={index > 0 ? '-ml-0.5' : undefined}
-                  style={{ zIndex: index + 1 }}
-                >
-                  <ActivityFlagIcon
-                    assigneeName={flag.assigneeName}
-                    assigneeFlagColour={flag.assigneeFlagColour}
-                  />
-                </span>
-              ))}
-              {overflowAssignedCount > 0 ? (
-                <span
-                  className={
-                    visibleAssignedFlags.length > 0 ? '-ml-0.5' : undefined
-                  }
-                  style={{ zIndex: visibleAssignedFlags.length + 1 }}
-                >
-                  <ActivityFlagOverflowIcon
-                    extraCount={overflowAssignedCount}
-                  />
-                </span>
-              ) : null}
-            </div>
+            {flagStackTrigger}
           </span>
         ) : canFlag && onFlagSync ? (
           <ActivityFlagPopover
@@ -313,6 +252,7 @@ function OverviewCell({
             readOnly={!canFlag}
             onSync={onFlagSync}
             isPending={flagPending}
+            triggerClassName={gridOverviewFlagTriggerClassName(false)}
           />
         ) : null}
       </div>
@@ -577,7 +517,7 @@ function SchedulingCell({
     <div className="text-[13px]">
       {row.startDate && (
         <div className="mb-1.5 flex items-center gap-1.5">
-          <Calendar className="h-4 w-4 shrink-0 text-slate-500" />
+          <Calendar className={ACTIVITY_GRID_ROW_ICON_CLASS} />
           <span>{dateRangeText}</span>
           <Badge
             variant="outline"
@@ -594,7 +534,7 @@ function SchedulingCell({
 
       {(row.allDay || row.startTime || row.timeStatus) && (
         <div className="mb-1.5 flex items-center gap-1.5">
-          <Clock className="h-4 w-4 shrink-0 text-slate-500" />
+          <Clock className={ACTIVITY_GRID_ROW_ICON_CLASS} />
           <span>
             {row.allDay
               ? 'All day'
@@ -617,7 +557,7 @@ function SchedulingCell({
 
       {row.venue && (
         <div className="mb-1.5 flex items-start gap-1">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+          <MapPin className={ACTIVITY_GRID_ROW_ICON_TOP_CLASS} />
           <span>{row.venue}</span>
         </div>
       )}
@@ -625,7 +565,7 @@ function SchedulingCell({
       {badgeGroupItems.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <div className="flex items-start gap-1.5">
-            <Users className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+            <Users className={ACTIVITY_GRID_ROW_ICON_TOP_CLASS} />
             <BadgeGroup
               items={badgeGroupItems}
               maxLines={2}
@@ -734,11 +674,7 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
     <div className="flex flex-col gap-2 text-[13px]">
       {showTranslationBlock && (
         <div className="flex items-start gap-1.5">
-          <Languages
-            size={16}
-            strokeWidth={1.5}
-            className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
-          />
+          <Languages className={ACTIVITY_GRID_ROW_ICON_TOP_CLASS} />
           <div className="flex flex-col gap-0.5">
             {translationLine1 && <span>{translationLine1}</span>}
             {translationLine2 && (
@@ -749,11 +685,7 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
       )}
       {hasMaterials && (
         <div className="flex items-start gap-1.5">
-          <NotebookText
-            size={16}
-            strokeWidth={1.5}
-            className="mt-0.5 h-4 w-4 shrink-0 text-slate-500"
-          />
+          <NotebookText className={ACTIVITY_GRID_ROW_ICON_TOP_CLASS} />
           <span>{row.commsMaterials.join(', ')}</span>
         </div>
       )}

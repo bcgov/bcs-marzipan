@@ -118,3 +118,16 @@ export function reconcileColumnOrder(
   }
   return result;
 }
+
+/**
+ * Keep leading columns (e.g. pinned select + overview) at the start regardless
+ * of drag order or stale session data.
+ */
+export function enforceLeadingColumnOrder(
+  order: string[],
+  leading: readonly string[]
+): string[] {
+  const leadingSet = new Set(leading);
+  const rest = order.filter((id) => !leadingSet.has(id));
+  return [...leading, ...rest];
+}
