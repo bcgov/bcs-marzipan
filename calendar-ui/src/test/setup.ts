@@ -1,7 +1,42 @@
 import '@testing-library/jest-dom';
 
 import { cleanup } from '@testing-library/react';
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeAll, vi } from 'vitest';
+
+const originalConsoleWarn = console.warn;
+
+beforeAll(() => {
+  // jsdom does not implement the browser Navigation API used by some router/UI libraries.
+  // Provide a no-op stub and silence the noisy jsdom warning it emits during tests.
+  Object.defineProperty(window, 'navigation', {
+    configurable: true,
+    writable: true,
+    value: {
+      currentEntry: { url: window.location.href },
+      canGoBack: false,
+      canGoForward: false,
+      entries: vi.fn(() => []),
+      navigate: vi.fn(),
+      reload: vi.fn(),
+      traverseTo: vi.fn(),
+      updateCurrentEntry: vi.fn(),
+    },
+  });
+
+  Object.defineProperty(document, 'navigation', {
+    configurable: true,
+    writable: true,
+    value: window.navigation,
+  });
+
+  vi.spyOn(console, 'warn').mockImplementation((...args) => {
+    const message = args.map((arg) => String(arg)).join(' ');
+    if (message.includes('Not implemented: navigation to another Document')) {
+      return;
+    }
+    originalConsoleWarn(...args);
+  });
+});
 
 // Mock ResizeObserver (required by cmdk and other libraries)
 global.ResizeObserver = class ResizeObserver {
