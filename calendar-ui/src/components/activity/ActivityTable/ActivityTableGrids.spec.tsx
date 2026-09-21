@@ -201,9 +201,7 @@ describe('ActivityTable grids', () => {
     expect(
       screen.getByRole('columnheader', { name: /Scheduling/i })
     ).toBeTruthy();
-    expect(
-      screen.getByRole('columnheader', { name: /Materials/i })
-    ).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: /Comms/i })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: /Status/i })).toBeTruthy();
     expect(screen.getByText('Grid test activity')).toBeTruthy();
   });
@@ -217,9 +215,7 @@ describe('ActivityTableShell', () => {
   it('renders Grid A by default', () => {
     render(<ActivityTableShell />);
 
-    expect(
-      screen.getByRole('columnheader', { name: /Materials/i })
-    ).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: /Comms/i })).toBeTruthy();
     expect(
       screen.queryByRole('radiogroup', { name: 'Activity table layout' })
     ).toBeNull();

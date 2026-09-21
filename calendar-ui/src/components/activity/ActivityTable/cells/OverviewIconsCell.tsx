@@ -1,4 +1,5 @@
 import { Star } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   ActivityFlagAssigneeStack,
@@ -7,14 +8,18 @@ import {
 } from '@/components/activity/activities/ActivityFlagAssigneeStack';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
 import {
+  ACTIVITY_OVERVIEW_ICON_MUTED_CLASS,
+  ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS,
   GRID_A_OVERVIEW_ACTION_HITBOX_CLASS,
   GRID_A_OVERVIEW_ACTION_ICON_CLASS,
   GRID_A_OVERVIEW_ACTIONS_ROW_CLASS,
   gridOverviewFlagTriggerClassName,
 } from '@/components/activity/ActivityTable/overviewIconsLayout';
+import { cn } from '@/lib/utils';
 
 import type { ActivityTableRow } from '../activityTableRow';
 import { ActivityDisplayIdCopy } from './ActivityDisplayIdCopy';
+import { GRID_A_SHARE_COUNT_BADGE_MIN_ROW_WIDTH_PX } from './sharedWithIndicatorCopy';
 import { SharedWithPopover } from './SharedWithPopover';
 
 export interface OverviewIconsCellProps {
@@ -52,6 +57,28 @@ export function OverviewIconsCell({
 
   const overviewFlagTriggerClassName =
     gridOverviewFlagTriggerClassName(hasAssignedUsers);
+
+  const actionsRowRef = useRef<HTMLDivElement>(null);
+  const [showShareCountBadge, setShowShareCountBadge] = useState(true);
+
+  useEffect(() => {
+    const el = actionsRowRef.current;
+    if (!el) return;
+
+    const update = (width: number) => {
+      setShowShareCountBadge(
+        width >= GRID_A_SHARE_COUNT_BADGE_MIN_ROW_WIDTH_PX
+      );
+    };
+
+    update(el.getBoundingClientRect().width);
+
+    const observer = new ResizeObserver(([entry]) => {
+      update(entry.contentRect.width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const flagStackTrigger = hasAssignedUsers ? (
     <span
@@ -108,7 +135,7 @@ export function OverviewIconsCell({
         <ActivityDisplayIdCopy displayId={displayIdText} variant="subtle" />
       </span>
 
-      <div className={GRID_A_OVERVIEW_ACTIONS_ROW_CLASS}>
+      <div ref={actionsRowRef} className={GRID_A_OVERVIEW_ACTIONS_ROW_CLASS}>
         <button
           type="button"
           data-no-row-nav
@@ -125,18 +152,21 @@ export function OverviewIconsCell({
           className={GRID_A_OVERVIEW_ACTION_HITBOX_CLASS}
         >
           <Star
-            className={
+            className={cn(
+              GRID_A_OVERVIEW_ACTION_ICON_CLASS,
               isFavourite
-                ? `${GRID_A_OVERVIEW_ACTION_ICON_CLASS} text-amber-500`
-                : `${GRID_A_OVERVIEW_ACTION_ICON_CLASS} text-icon-muted-foreground`
-            }
+                ? ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS
+                : ACTIVITY_OVERVIEW_ICON_MUTED_CLASS
+            )}
             fill={isFavourite ? 'currentColor' : 'none'}
             aria-hidden
           />
         </button>
         <SharedWithPopover
           teamNames={row.sharedWith}
-          reserveSpace
+          visibility={row.visibility}
+          leadTeamDisplayName={row.leadTeamDisplayName}
+          showShareCountBadge={showShareCountBadge}
           gridOverviewActions
         />
         {flagSlot}

@@ -1,19 +1,20 @@
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { User } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 import type { ActivityTableRow } from '../activityTableRow';
-import { getInitialsFromName } from '../activityTableRowDisplay';
+import { ACTIVITY_GRID_ROW_ICON_TOP_CLASS } from './activityGridRowIcons';
 
 export interface LeadContactLineProps {
   row: ActivityTableRow;
-  /** Prefix the line with "Lead: " and show the avatar (Grid A status column). */
+  /** Prefix the line with "Lead: " (Comms column). */
   variant?: 'labelled' | 'plain';
   className?: string;
 }
 
 /**
- * Lead comms contact, rendered as "Lead: JS Jane Smith HLTH Comms" in Grid A
- * and "Jane Smith HLTH Comms" when rendered without the lead prefix.
+ * Lead comms contact: user icon and "Lead: …" in the Comms column, or name only
+ * when plain.
  */
 export function LeadContactLine({
   row,
@@ -25,26 +26,31 @@ export function LeadContactLine({
   const teamLabel = row.leadTeamDisplayName;
   const additionalComms = row.commsContactsCount - 1;
 
-  return (
-    <div
-      className={cn(
-        'flex flex-wrap items-center gap-x-1 gap-y-0 text-xs text-slate-600',
-        className
-      )}
-    >
+  const textBlock = (
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-0 text-xs text-slate-600">
       {variant === 'labelled' && (
-        <>
-          <span className="text-slate-500">Lead:</span>
-          <Avatar className="size-[18px]" title={row.commsLeadName}>
-            <AvatarFallback className="text-[10px] leading-none">
-              {getInitialsFromName(row.commsLeadName)}
-            </AvatarFallback>
-          </Avatar>
-        </>
+        <span className="shrink-0 text-slate-500">Lead:</span>
       )}
       <span className="font-medium text-slate-900">{row.commsLeadName}</span>
       {teamLabel && <span>{teamLabel}</span>}
       {additionalComms > 0 && <span>+{additionalComms}</span>}
+    </div>
+  );
+
+  if (variant === 'plain') {
+    return (
+      <div
+        className={cn('flex flex-wrap items-center gap-x-1 gap-y-0', className)}
+      >
+        {textBlock}
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn('flex items-start gap-1.5', className)}>
+      <User className={ACTIVITY_GRID_ROW_ICON_TOP_CLASS} aria-hidden />
+      {textBlock}
     </div>
   );
 }

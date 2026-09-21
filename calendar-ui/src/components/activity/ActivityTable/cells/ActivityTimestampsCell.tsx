@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import type { ActivityTableRow } from '../activityTableRow';
 import { getInitialsFromName } from '../activityTableRowDisplay';
 
-/** Matches comms lead avatar in {@link LeadContactLine}. */
+/** Compact avatar for inline “updated by” / editor rows in Grid A status column. */
 const COMPACT_AVATAR_CLASS = 'size-[18px]';
 const COMPACT_AVATAR_FALLBACK_CLASS = 'text-[10px] leading-none';
 

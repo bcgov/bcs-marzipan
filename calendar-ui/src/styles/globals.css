@@ -26,6 +26,8 @@
     --muted-foreground: oklch(0.556 0 0);
     /* Secondary icons (grid metadata, activity actions); alias allows future tuning */
     --icon-muted-foreground: var(--muted-foreground);
+    /* Active/selected row action icons (watchlist, shares); alias allows future tuning */
+    --icon-active-foreground: var(--foreground);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
@@ -158,6 +160,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-icon-muted-foreground: var(--icon-muted-foreground);
+  --color-icon-active-foreground: var(--icon-active-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);

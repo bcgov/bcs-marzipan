@@ -23,7 +23,6 @@ import {
   ActivityStatusCell,
   ActivityTimestampsCell,
   CategoryBadgesCell,
-  LeadContactLine,
   MaterialsCellCompact,
   OverviewIconsCell,
   OverviewPitchLine,
@@ -38,7 +37,7 @@ export interface ActivityTableGridAProps extends ActivityTableCoreOptions {
   layoutPreferences: UseActivityGridLayoutPreferencesResult;
 }
 
-/** Grid A: compact rows with overview icons, summary, scheduling, materials, and status metadata. */
+/** Grid A: compact rows with overview icons, summary, scheduling, comms, and status metadata. */
 export function ActivityTableGridA({
   layoutPreferences,
   ...coreOptions
@@ -123,11 +122,6 @@ export function ActivityTableGridA({
               }
               flagPending={syncFlagsMutation.isPending}
             />
-            <OverviewPitchLine
-              row={row.original}
-              canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
-              showReviewHighlights={showReviewHighlights}
-            />
             <CategoryBadgesCell
               row={row.original}
               showReviewHighlights={showReviewHighlights}
@@ -177,7 +171,7 @@ export function ActivityTableGridA({
       }),
       columnHelper.display({
         id: 'materials',
-        header: 'Materials',
+        header: 'Comms',
         ...gridColumnSize('materials', GRID_A_COLUMN_WIDTHS, storedSizing),
         cell: ({ row }) => <MaterialsCellCompact row={row.original} />,
       }),
@@ -197,7 +191,11 @@ export function ActivityTableGridA({
         cell: ({ row }) => (
           <div className="flex flex-col gap-1">
             <ActivityStatusCell row={row.original} orientation="inline" />
-            <LeadContactLine row={row.original} variant="labelled" />
+            <OverviewPitchLine
+              row={row.original}
+              canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+              showReviewHighlights={showReviewHighlights}
+            />
             <ActivityTimestampsCell
               row={row.original}
               userMap={userMap}

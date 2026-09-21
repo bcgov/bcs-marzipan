@@ -6,6 +6,23 @@ export const GRID_A_OVERVIEW_ACTION_HITBOX_CLASS =
 
 export const GRID_A_OVERVIEW_ACTION_ICON_CLASS = 'size-4';
 
+export const ACTIVITY_OVERVIEW_ICON_MUTED_CLASS = 'text-icon-muted-foreground';
+
+/** Share icon when the activity has explicit shares (filled). */
+export const ACTIVITY_OVERVIEW_ICON_ACTIVE_CLASS =
+  'text-icon-active-foreground';
+
+/** Watchlist star when favourited (filled). */
+export const ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS = 'text-amber-500';
+
+/** Compact count badge on 16–24px share icons (notification-style red). */
+export const ACTIVITY_SHARE_COUNT_BADGE_CLASS =
+  'pointer-events-none absolute -right-0.5 -bottom-0.5 flex h-3 min-w-3 items-center justify-center rounded-full bg-red-600 px-0.5 text-[8px] font-semibold leading-none text-white';
+
+/** Activity page header action row (size-9 ghost icon buttons). */
+export const ACTIVITY_HEADER_ACTION_HITBOX_CLASS =
+  'hover:bg-accent focus-visible:ring-ring inline-flex size-9 shrink-0 cursor-default items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none';
+
 /** Actions grow right from a fixed left edge (star) for row-to-row alignment. */
 export const GRID_A_OVERVIEW_ACTIONS_ROW_CLASS =
   'flex min-w-0 flex-1 items-center justify-start gap-1.5';

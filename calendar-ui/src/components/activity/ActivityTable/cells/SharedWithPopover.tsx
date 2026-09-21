@@ -1,83 +1,123 @@
 import { Users } from 'lucide-react';
 
 import {
+  ACTIVITY_HEADER_ACTION_HITBOX_CLASS,
+  ACTIVITY_OVERVIEW_ICON_ACTIVE_CLASS,
+  ACTIVITY_OVERVIEW_ICON_MUTED_CLASS,
+  ACTIVITY_SHARE_COUNT_BADGE_CLASS,
   GRID_A_OVERVIEW_ACTION_HITBOX_CLASS,
   GRID_A_OVERVIEW_ACTION_ICON_CLASS,
 } from '@/components/activity/ActivityTable/overviewIconsLayout';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+
+import {
+  formatSharedWithCountBadge,
+  sharedWithAriaLabel,
+  sharedWithTooltipLines,
+} from './sharedWithIndicatorCopy';
 
 export interface SharedWithPopoverProps {
   /** Team display names the activity is shared with. */
   teamNames: string[];
-  /** Keep a fixed slot when there are no shares (Grid A icon alignment). */
-  reserveSpace?: boolean;
-  /** Grid A overview: 18px icon in a 24px hit target. */
+  visibility?: string | null;
+  leadTeamDisplayName?: string | null;
+  /** When false, omits the lower-right share count badge (narrow overview row). */
+  showShareCountBadge?: boolean;
+  /** Grid A overview: Users icon in a 24px hit target. */
   gridOverviewActions?: boolean;
+  /** Activity page header: Users icon in a size-9 hit target. */
+  headerActions?: boolean;
 }
 
 /**
- * Read-only shares indicator. Only rendered when the activity has shares;
- * clicking the icon lists the teams. Editing shares is not offered here yet.
+ * Read-only shares and visibility indicator (tooltip on hover).
  */
 export function SharedWithPopover({
   teamNames,
-  reserveSpace = false,
+  visibility = null,
+  leadTeamDisplayName = null,
+  showShareCountBadge = true,
   gridOverviewActions = false,
+  headerActions = false,
 }: SharedWithPopoverProps) {
-  if (teamNames.length === 0) {
-    return reserveSpace ? (
-      <span className="inline-block size-6 shrink-0" aria-hidden />
-    ) : null;
-  }
+  const shareCount = teamNames.length;
+  const hasShares = shareCount > 0;
+  const ariaLabel = sharedWithAriaLabel(
+    teamNames,
+    visibility,
+    leadTeamDisplayName
+  );
+  const tooltipLines = sharedWithTooltipLines(
+    teamNames,
+    visibility,
+    leadTeamDisplayName
+  );
+  const badgeText = formatSharedWithCountBadge(shareCount);
 
-  const label = `Shared with ${teamNames.length} team${teamNames.length === 1 ? '' : 's'}`;
+  const hitboxClass = headerActions
+    ? ACTIVITY_HEADER_ACTION_HITBOX_CLASS
+    : gridOverviewActions
+      ? GRID_A_OVERVIEW_ACTION_HITBOX_CLASS
+      : 'hover:bg-muted focus-visible:ring-ring inline-flex size-5 shrink-0 cursor-default items-center justify-center rounded border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:outline-none';
+
+  const iconClass =
+    gridOverviewActions || headerActions
+      ? GRID_A_OVERVIEW_ACTION_ICON_CLASS
+      : 'size-4';
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        <span
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
-          title={label}
-          aria-label={label}
+          tabIndex={0}
+          aria-label={ariaLabel}
           className={cn(
-            'text-icon-muted-foreground',
-            gridOverviewActions
-              ? GRID_A_OVERVIEW_ACTION_HITBOX_CLASS
-              : 'hover:bg-muted focus-visible:ring-ring inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:outline-none'
+            hitboxClass,
+            'relative',
+            hasShares
+              ? ACTIVITY_OVERVIEW_ICON_ACTIVE_CLASS
+              : ACTIVITY_OVERVIEW_ICON_MUTED_CLASS
           )}
         >
           <Users
-            className={
-              gridOverviewActions ? GRID_A_OVERVIEW_ACTION_ICON_CLASS : 'size-4'
-            }
+            className={iconClass}
+            fill={hasShares ? 'currentColor' : 'none'}
             aria-hidden
           />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
+          {showShareCountBadge && hasShares ? (
+            <span className={ACTIVITY_SHARE_COUNT_BADGE_CLASS} aria-hidden>
+              {badgeText}
+            </span>
+          ) : null}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="max-w-xs text-xs"
         data-no-row-nav
         onClick={(e) => e.stopPropagation()}
-        align="start"
-        className="w-56 p-2"
       >
-        <p className="px-1 pb-1 text-xs font-medium text-slate-500">
-          Shared with
-        </p>
-        <ul className="space-y-0.5">
-          {teamNames.map((teamName) => (
-            <li key={teamName} className="px-1 py-0.5 text-sm text-slate-900">
-              {teamName}
-            </li>
+        <div className="flex flex-col gap-0.5">
+          {tooltipLines.map((line, index) => (
+            <p
+              key={`${index}-${line}`}
+              className={cn(
+                index >= 2 && 'text-slate-600',
+                index === 0 && 'font-medium text-slate-900'
+              )}
+            >
+              {line}
+            </p>
           ))}
-        </ul>
-      </PopoverContent>
-    </Popover>
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }

@@ -11,16 +11,18 @@ export interface OverviewPitchLineProps {
   row: ActivityTableRow;
   canViewPitchStatus: boolean;
   showReviewHighlights: boolean;
+  className?: string;
 }
 
 /**
- * Overview pitch status or date. Status is shown when the user can view it;
- * otherwise falls back to pitch date when present.
+ * Pitch status or date (no label prefix). Shown in the status column above
+ * last updated. Status when the user can view it; otherwise pitch date.
  */
 export function OverviewPitchLine({
   row,
   canViewPitchStatus,
   showReviewHighlights,
+  className,
 }: OverviewPitchLineProps) {
   const pitchLabel =
     (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
@@ -36,12 +38,13 @@ export function OverviewPitchLine({
   return (
     <div
       className={cn(
-        'text-[13px] text-slate-600',
-        pitchChanged && 'inline-block rounded-sm px-1',
-        pitchChanged && LIST_REVIEW_HIGHLIGHT_BG
+        'w-fit max-w-full text-xs text-slate-600',
+        pitchChanged && 'rounded-sm px-1',
+        pitchChanged && LIST_REVIEW_HIGHLIGHT_BG,
+        className
       )}
     >
-      Pitch: {toSentenceCase(pitchLabel)}
+      {toSentenceCase(pitchLabel)}
     </div>
   );
 }

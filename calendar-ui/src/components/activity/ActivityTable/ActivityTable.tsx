@@ -34,7 +34,12 @@ import {
 } from '@/components/activity/activities/ActivityFlagAssigneeStack';
 import { ActivityFlagPopover } from '@/components/activity/activities/ActivityFlagPopover';
 import { ActivityDisplayIdCopy } from '@/components/activity/ActivityTable/cells/ActivityDisplayIdCopy';
-import { gridOverviewFlagTriggerClassName } from '@/components/activity/ActivityTable/overviewIconsLayout';
+import { LeadContactLine } from '@/components/activity/ActivityTable/cells/LeadContactLine';
+import { OverviewPitchLine } from '@/components/activity/ActivityTable/cells/OverviewPitchLine';
+import {
+  ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS,
+  gridOverviewFlagTriggerClassName,
+} from '@/components/activity/ActivityTable/overviewIconsLayout';
 import {
   COLUMN_SORT_DROPDOWN_DATA_ATTR,
   ColumnSortDropdown,
@@ -140,7 +145,6 @@ function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
  */
 function OverviewCell({
   row,
-  canViewPitchStatus,
   canSelect,
   isSelected,
   onSelectedChange,
@@ -151,7 +155,6 @@ function OverviewCell({
   showReviewHighlights,
 }: {
   row: ActivityTableRow;
-  canViewPitchStatus: boolean;
   canSelect: boolean;
   isSelected: boolean;
   onSelectedChange: (selected: boolean) => void;
@@ -166,15 +169,8 @@ function OverviewCell({
   flagPending?: boolean;
   showReviewHighlights: boolean;
 }) {
-  const pitchLabel =
-    (canViewPitchStatus ? row.pitchRequiredStatus : null) ??
-    row.pitchDate ??
-    null;
   const displayIdText = row.displayId ?? String(row.id);
   const titleChanged = showReviewHighlights && rowHasChangedPath(row, 'title');
-  const pitchChanged =
-    showReviewHighlights &&
-    rowHasAnyChangedPath(row, ['pitchDate', 'pitchRequiredStatusId']);
   const categoriesChanged =
     showReviewHighlights && rowHasChangedPath(row, 'categoryIds');
   const assignedFlags = uniqueActivityFlagsByAssignee(row.flags);
@@ -219,7 +215,7 @@ function OverviewCell({
             className="inline-flex"
           >
             <Star
-              className="size-5 text-amber-500"
+              className={cn('size-5', ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS)}
               fill="currentColor"
               aria-hidden
             />
@@ -280,17 +276,6 @@ function OverviewCell({
       >
         {row.title}
       </div>
-      {pitchLabel && (
-        <div
-          className={cn(
-            'mb-2 text-[13px] text-slate-600',
-            pitchChanged && 'inline-block rounded-sm px-1',
-            pitchChanged && LIST_REVIEW_HIGHLIGHT_BG
-          )}
-        >
-          Pitch: {toSentenceCase(pitchLabel)}
-        </div>
-      )}
       {row.activityCategories.length > 0 && (
         <BadgeGroup
           items={row.activityCategories.map(
@@ -590,8 +575,6 @@ function LeadsCell({ row }: { row: ActivityTableRow }) {
     lines.push({ label: 'Lead org', value: row.leadOrg });
   if (leadMinistryDisplay)
     lines.push({ label: 'Lead ministry', value: leadMinistryDisplay });
-  if (row.commsLeadName)
-    lines.push({ label: 'Comms contact', value: row.commsLeadName });
   if (row.eventPlanners?.length)
     lines.push({
       label: 'Event planners',
@@ -602,22 +585,12 @@ function LeadsCell({ row }: { row: ActivityTableRow }) {
     return <span className="text-slate-400">&mdash;</span>;
   }
 
-  const additionalComms = row.commsContactsCount - 1;
-
   return (
     <div className="flex flex-col gap-1.5 text-[13px]">
       {lines.map(({ label, value }) => (
         <div key={label}>
           <span className="text-slate-500">{label}: </span>
           <span className="font-medium">{value}</span>
-          {label === 'Comms contact' && additionalComms > 0 && (
-            <Badge
-              variant="outline"
-              className="ml-1 h-auto min-h-5 text-xs text-slate-600"
-            >
-              +{additionalComms}
-            </Badge>
-          )}
         </div>
       ))}
     </div>
@@ -666,12 +639,15 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
   const showTranslationBlock =
     translationLine1 != null || translationLine2 != null;
 
-  if (!showTranslationBlock && !hasMaterials) {
+  const hasCommsLead = row.commsLeadName != null;
+
+  if (!showTranslationBlock && !hasMaterials && !hasCommsLead) {
     return <span className="text-slate-400">&mdash;</span>;
   }
 
   return (
     <div className="flex flex-col gap-2 text-[13px]">
+      {hasCommsLead && <LeadContactLine row={row} variant="labelled" />}
       {showTranslationBlock && (
         <div className="flex items-start gap-1.5">
           <Languages className={ACTIVITY_GRID_ROW_ICON_TOP_CLASS} />
@@ -696,9 +672,13 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
 function StatusCell({
   row,
   userMap,
+  canViewPitchStatus,
+  showReviewHighlights,
 }: {
   row: ActivityTableRow;
   userMap: Map<string, { name: string; jobTitle?: string | null }>;
+  canViewPitchStatus: boolean;
+  showReviewHighlights: boolean;
 }) {
   const lastUpdatedUser = userMap.get(String(row.lastUpdatedBy));
   const userName = lastUpdatedUser?.name || 'Unknown';
@@ -722,6 +702,12 @@ function StatusCell({
       <Badge variant={getActivityStatusBadgeVariant(row.activityStatus)}>
         {row.activityStatus}
       </Badge>
+      <OverviewPitchLine
+        row={row}
+        canViewPitchStatus={canViewPitchStatus}
+        showReviewHighlights={showReviewHighlights}
+        className="mt-1"
+      />
       <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
         <span>Updated {updatedDate}</span>
         <Avatar size="sm" title={userName}>
@@ -794,7 +780,6 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         cell: ({ row }) => (
           <OverviewCell
             row={row.original}
-            canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
             canSelect={canBulkSelect}
             isSelected={selectedActivityIds.has(row.original.id)}
             onSelectedChange={(selected) =>
@@ -869,7 +854,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
 
       columnHelper.display({
         id: 'materials',
-        header: 'Materials',
+        header: 'Comms',
         ...getActivityColumnSizes('materials'),
         cell: ({ row }) => <MaterialsCell row={row.original} />,
       }),
@@ -920,7 +905,14 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         },
         meta: { sortKeys: [...STATUS_COLUMN_SORT_KEYS] },
         ...getActivityColumnSizes('status'),
-        cell: ({ row }) => <StatusCell row={row.original} userMap={userMap} />,
+        cell: ({ row }) => (
+          <StatusCell
+            row={row.original}
+            userMap={userMap}
+            canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+            showReviewHighlights={showReviewHighlights}
+          />
+        ),
       }),
     ],
     [
