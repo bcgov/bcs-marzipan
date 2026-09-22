@@ -60,6 +60,7 @@ import {
 } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import {
+  activityListItemSchema,
   CLONE_ADVANCED_FIELD_PATHS,
   CLONE_ALLOWED_INCLUDE_PATHS,
   CLONE_MODAL_SCHEDULE_FIELD_KEYS,
@@ -1701,10 +1702,14 @@ export class ActivitiesService {
     options?: {
       profile?: ActivityHydrationProfile;
       outputShape?: 'list' | 'detail';
+      /** When true with list output, attaches active edit locks (activity list page only). */
+      includeEditLocks?: boolean;
     }
   ): Promise<ActivityListItem[] | ActivityResponse[]> {
     const profile = options?.profile ?? HYDRATION_PROFILES.detail;
     const outputShape = options?.outputShape ?? 'detail';
+    const includeEditLocks =
+      options?.includeEditLocks === true && outputShape === 'list';
     let activityResults: Activity[];
 
     // Resolve status IDs for default exclusions
@@ -1788,17 +1793,27 @@ export class ActivitiesService {
     const shouldFetchReviewExemptFieldKeys = canReview && !isListOutput;
     const userTeamIds = ctx?.user?.teamIds ?? [];
     const fetchFlags = profile.includeFlags === true && userTeamIds.length > 0;
-    const [related, reviewLookups, reviewExemptFieldKeys, flagsMap] =
-      await Promise.all([
-        this.fetchRelatedForActivityIds(activityIds, activityResults, profile),
-        canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
-        shouldFetchReviewExemptFieldKeys
-          ? this.getEffectiveReviewExemptFieldKeys()
-          : Promise.resolve(undefined),
-        fetchFlags
-          ? this.flagsService.fetchFlagsForActivities(activityIds, userTeamIds)
-          : Promise.resolve(new Map<number, ActivityFlagResponse[]>()),
-      ]);
+    const [
+      related,
+      reviewLookups,
+      reviewExemptFieldKeys,
+      flagsMap,
+      editLockMap,
+    ] = await Promise.all([
+      this.fetchRelatedForActivityIds(activityIds, activityResults, profile),
+      canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
+      shouldFetchReviewExemptFieldKeys
+        ? this.getEffectiveReviewExemptFieldKeys()
+        : Promise.resolve(undefined),
+      fetchFlags
+        ? this.flagsService.fetchFlagsForActivities(activityIds, userTeamIds)
+        : Promise.resolve(new Map<number, ActivityFlagResponse[]>()),
+      includeEditLocks
+        ? this.locksService.getActiveActivityLocksForIds(activityIds)
+        : Promise.resolve(
+            new Map<number, { userId: number; username: string }>()
+          ),
+    ]);
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
       related.categoriesResult;
 
@@ -1828,7 +1843,14 @@ export class ActivitiesService {
               new Set<string>()
             );
         }
-        return this.mapperService.mapToListItemDto(activity, relatedData);
+        const item = this.mapperService.mapToListItemDto(activity, relatedData);
+        if (!includeEditLocks) {
+          return item;
+        }
+        return activityListItemSchema.parse({
+          ...item,
+          editLock: editLockMap.get(activity.id) ?? null,
+        });
       });
     }
 

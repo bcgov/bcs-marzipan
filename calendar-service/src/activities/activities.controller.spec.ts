@@ -28,6 +28,7 @@ const findAllListOptions = {
     includeReviewDiff: true,
   },
   outputShape: 'list' as const,
+  includeEditLocks: true,
 };
 
 const mockUser: AuthUser = {

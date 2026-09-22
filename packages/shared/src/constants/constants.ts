@@ -136,6 +136,35 @@ export function buildActivityDisplayId(
 }
 
 /**
+ * Last six digits of a numeric string (leading segment of displayId or bare id).
+ * Example: `1222222` → `222222`, `1000000` → `000000`.
+ */
+export function formatActivityDisplayIdNumericSegmentForUi(
+  numericSegment: string
+): string {
+  const digits = numericSegment.replace(/\D/g, '');
+  if (digits.length === 0) {
+    return numericSegment.slice(-6).padStart(6, '0');
+  }
+  return digits.slice(-6).padStart(6, '0');
+}
+
+/**
+ * UI label for activity displayId: keeps the prefix, shows only the last six
+ * digits of the numeric suffix. Copy/search/sort should use the full stored value.
+ */
+export function formatActivityDisplayIdForUi(displayId: string): string {
+  const trimmed = displayId.trim();
+  const dashIndex = trimmed.indexOf('-');
+  if (dashIndex === -1) {
+    return formatActivityDisplayIdNumericSegmentForUi(trimmed);
+  }
+  const prefix = trimmed.slice(0, dashIndex);
+  const suffix = trimmed.slice(dashIndex + 1);
+  return `${prefix}-${formatActivityDisplayIdNumericSegmentForUi(suffix)}`;
+}
+
+/**
  * Current version of the reviewedFieldSnapshot JSON shape.
  * Bump when adding/removing tracked fields or changing normalisation rules.
  * On read, snapshots with an older version can be ignored (treated as "no snapshot")

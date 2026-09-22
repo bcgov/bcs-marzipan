@@ -42,6 +42,8 @@ INSERT INTO permissions (key, display_name, category, subcategory, description, 
   ('activities.delete.any', 'Delete any team''s activities', 'Activities', 'Admin', NULL, 'activities', NULL, 'delete', 11),
   ('activities.complete', 'Complete activities', 'Activities', 'Admin', NULL, 'activities', NULL, 'complete', 12),
   ('activities.flag', 'Flag / assign activities', 'Activities', 'Assignment', 'Assign an activity to a team member for follow-up. Visible within the team.', 'activities', NULL, 'flag', 13),
+  ('activities.unshare', 'Unshare activities', 'Activities', 'Sharing', 'Remove your own team from an activity''s Shared With list.', 'activities', NULL, 'unshare', 14),
+  ('activities.unshare.all', 'Unshare activities for any team', 'Activities', 'Sharing', 'Remove any team from an activity''s Shared With list, not just your own.', 'activities', NULL, 'unshare', 15),
   ('activities.lock.forceHandoff', 'Force unlock', 'Activities', 'Edit lock', 'Force unlock of a locked activity.', 'activities', 'lock', 'forceHandoff', 50),
   ('activities.bulkUpdate','Bulk update activities','Activities', 'Workflow', 'Mark multiple activities reviewed or update their pitch status from the activity list', 'activities', NULL, 'bulkUpdate', 12),
   ('drafts.view', 'View drafts', 'Drafts', 'Basic', NULL, 'drafts', NULL, 'view', 10),
@@ -140,7 +142,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Admin' AND p.key IN (
-  'activities.view','activities.create','activities.edit','activities.delete','activities.requestDelete','activities.create.any','activities.delete.any','activities.approve','activities.review','activities.publish','activities.unpublish',
+  'activities.view','activities.create','activities.edit','activities.delete','activities.requestDelete','activities.create.any','activities.delete.any','activities.approve','activities.review','activities.publish','activities.unpublish','activities.unshare','activities.unshare.all',
   'drafts.view','drafts.create','drafts.edit','drafts.delete','drafts.recover',
   'reports.view','reports.export','reports.create_custom',
   'lookups.view','lookups.manage',
@@ -244,7 +246,19 @@ WHERE key IN (
   'activities.delete',
   'activities.delete.any',
   'activities.edit',
+  'activities.unshare',
   'reports.view',
   'reports.export',
   'reports.create_custom'
 );
+
+-- Enable allow_user_override for permissions admins may grant/deny per user.
+-- Keep this list deliberately small: overrides are exceptions to role templates.
+UPDATE permissions SET allow_user_override = true
+WHERE key IN (
+  'activities.unshare'
+);
+
+-- Permissions that must never be overridable per user, even if mis-seeded above.
+UPDATE permissions SET allow_user_override = false
+WHERE key LIKE 'system.%';

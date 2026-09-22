@@ -4,6 +4,7 @@ import type { Socket } from 'socket.io';
 
 import { AuthService } from '../auth/auth.service';
 import { LocksService } from '../locks/locks.service';
+import { PolicyService } from '../policy/policy.service';
 import {
   ACTIVITIES_LAST_AUTH_SOCKET_DEBOUNCE_MS,
   ActivitiesGateway,
@@ -36,6 +37,13 @@ describe('ActivitiesGateway', () => {
           useValue: {
             releaseLocksAndCancelHandoffsAfterLastWsDisconnect:
               releaseLocksAfterLastWs,
+          },
+        },
+        {
+          provide: PolicyService,
+          useValue: {
+            hasPermission: (permissions: string[], key: string) =>
+              permissions.includes(key),
           },
         },
       ],
