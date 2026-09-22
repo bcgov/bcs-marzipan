@@ -27,6 +27,8 @@ import {
 export interface SharedWithPopoverProps {
   /** Team display names the activity is shared with. */
   teamNames: string[];
+  /** Team ids parallel to `teamNames` when available (stable list keys). */
+  teamIds?: number[];
   visibility?: string | null;
   leadTeamDisplayName?: string | null;
   /** When false, omits the lower-right share count badge (narrow overview row). */
@@ -40,8 +42,22 @@ export interface SharedWithPopoverProps {
 /**
  * Read-only shares and visibility indicator (opens a popover on click).
  */
+function sharedWithListEntries(
+  teamNames: string[],
+  teamIds?: number[]
+): { key: string; name: string }[] {
+  return teamNames.map((name, index) => ({
+    name,
+    key:
+      teamIds?.[index] != null
+        ? String(teamIds[index])
+        : `${name}-${String(index)}`,
+  }));
+}
+
 export function SharedWithPopover({
   teamNames,
+  teamIds,
   visibility = null,
   leadTeamDisplayName = null,
   showShareCountBadge = true,
@@ -63,6 +79,7 @@ export function SharedWithPopover({
     leadTeamDisplayName
   );
   const badgeText = formatSharedWithCountBadge(shareCount);
+  const sharedTeams = sharedWithListEntries(teamNames, teamIds);
 
   const hitboxClass = headerActions
     ? ACTIVITY_HEADER_ACTION_HITBOX_CLASS
@@ -118,9 +135,9 @@ export function SharedWithPopover({
             className="popover-list-scroll text-foreground max-h-[min(var(--popover-list-max-height),var(--radix-popover-content-available-height))] list-none space-y-1 overflow-y-auto border-t px-3 py-2 text-sm"
             aria-label="Shared teams"
           >
-            {teamNames.map((name) => (
-              <li key={name} className="truncate">
-                {name}
+            {sharedTeams.map((team) => (
+              <li key={team.key} className="truncate">
+                {team.name}
               </li>
             ))}
           </ul>

@@ -164,6 +164,7 @@ export function OverviewIconsCell({
         </button>
         <SharedWithPopover
           teamNames={row.sharedWith}
+          teamIds={row.sharedWithTeamIds}
           visibility={row.visibility}
           leadTeamDisplayName={row.leadTeamDisplayName}
           showShareCountBadge={showShareCountBadge}

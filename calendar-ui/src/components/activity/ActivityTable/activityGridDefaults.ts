@@ -1,3 +1,5 @@
+import { GRID_A_SELECT_COLUMN_WIDTH_PX } from './selectColumnLayout';
+
 /** Default column order and minimum widths (px) for Grid A. */
 
 export const GRID_A_COLUMN_ORDER = [
@@ -10,7 +12,7 @@ export const GRID_A_COLUMN_ORDER = [
 ] as const;
 
 export const GRID_A_COLUMN_WIDTHS: Record<string, number> = {
-  select: 44,
+  select: GRID_A_SELECT_COLUMN_WIDTH_PX,
   overview: 260,
   summary: 400,
   scheduling: 306,

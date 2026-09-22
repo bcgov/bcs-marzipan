@@ -32,7 +32,6 @@ import {
   TitleSummaryCell,
 } from './cells';
 import { GridStatusColumnHeader } from './GridStatusColumnHeader';
-import { GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS } from './selectColumnLayout';
 
 export type { ActivityTableActiveSavedFilter };
 
@@ -74,11 +73,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         ...gridColumnSize('select', GRID_A_COLUMN_WIDTHS, storedSizing),
         enableResizing: false,
         header: () =>
-          canBulkSelect ? (
-            <div className={GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS}>
-              <ActivityBulkSelectHeader core={core} />
-            </div>
-          ) : null,
+          canBulkSelect ? <ActivityBulkSelectHeader core={core} /> : null,
         cell: ({ row }) =>
           canBulkSelect ? (
             <SelectCheckboxCell

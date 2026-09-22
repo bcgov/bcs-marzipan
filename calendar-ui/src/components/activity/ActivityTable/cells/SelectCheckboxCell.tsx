@@ -1,6 +1,9 @@
 import { Checkbox } from '@/components/ui/checkbox';
 
-import { GRID_A_SELECT_CHECKBOX_ROW_ALIGN_CLASS } from '../selectColumnLayout';
+import {
+  GRID_A_SELECT_CHECKBOX_HIT_CLASS,
+  GRID_A_SELECT_CHECKBOX_ROW_ALIGN_CLASS,
+} from '../selectColumnLayout';
 
 export interface SelectCheckboxCellProps {
   /** Shown in the accessible label so screen readers identify the row. */
@@ -20,7 +23,7 @@ export function SelectCheckboxCell({
       <span
         data-no-row-nav
         onClick={(e) => e.stopPropagation()}
-        className="inline-flex size-6 items-center justify-center"
+        className={GRID_A_SELECT_CHECKBOX_HIT_CLASS}
       >
         <Checkbox
           aria-label={`Select activity ${activityLabel}`}

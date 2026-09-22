@@ -76,6 +76,19 @@ export function ActivityTimestampsCell({
     <div
       className={cn('text-foreground flex flex-col gap-0 text-xs', className)}
     >
+      {editLock != null && editorDisplayName != null ? (
+        <div className="inline-flex max-w-full min-w-0 items-center gap-x-1 font-medium text-amber-700">
+          <UserAvatar
+            userMap={userMap}
+            userId={editLock.userId}
+            fallbackName={editLock.username}
+            compact
+          />
+          <span className="min-w-0 truncate">
+            {editorDisplayName} is editing
+          </span>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-x-1 gap-y-0">
         <span>Updated {updatedDate}</span>
         {showUpdatedByAvatar ? (
@@ -84,21 +97,6 @@ export function ActivityTimestampsCell({
             userId={row.lastUpdatedBy}
             fallbackName="Unknown"
           />
-        ) : null}
-        {editLock != null && editorDisplayName != null ? (
-          <span className="inline-flex max-w-full min-w-0 flex-wrap items-center gap-x-1 text-slate-500">
-            <span aria-hidden>(</span>
-            <UserAvatar
-              userMap={userMap}
-              userId={editLock.userId}
-              fallbackName={editLock.username}
-              compact
-            />
-            <span className="min-w-0 truncate">
-              {editorDisplayName} is editing
-            </span>
-            <span aria-hidden>)</span>
-          </span>
         ) : null}
       </div>
       <span>Created {createdDate}</span>
