@@ -15,8 +15,8 @@ export interface OverviewPitchLineProps {
 }
 
 /**
- * Pitch status or date (no label prefix). Shown in the status column above
- * last updated. Status when the user can view it; otherwise pitch date.
+ * Overview pitch status or date. Status is shown when the user can view it;
+ * otherwise falls back to pitch date when present.
  */
 export function OverviewPitchLine({
   row,
@@ -38,13 +38,13 @@ export function OverviewPitchLine({
   return (
     <div
       className={cn(
-        'w-fit max-w-full text-xs text-slate-600',
-        pitchChanged && 'rounded-sm px-1',
+        'text-[13px] text-slate-600',
+        pitchChanged && 'inline-block rounded-sm px-1',
         pitchChanged && LIST_REVIEW_HIGHLIGHT_BG,
         className
       )}
     >
-      {toSentenceCase(pitchLabel)}
+      Pitch: {toSentenceCase(pitchLabel)}
     </div>
   );
 }

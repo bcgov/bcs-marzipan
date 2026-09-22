@@ -27,9 +27,9 @@ export function LeadContactLine({
   const additionalComms = row.commsContactsCount - 1;
 
   const textBlock = (
-    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-0 text-xs text-slate-600">
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-0 text-[13px] text-slate-600">
       {variant === 'labelled' && (
-        <span className="shrink-0 text-slate-500">Lead:</span>
+        <span className="shrink-0 font-medium text-slate-900">Lead:</span>
       )}
       <span className="font-medium text-slate-900">{row.commsLeadName}</span>
       {teamLabel && <span>{teamLabel}</span>}

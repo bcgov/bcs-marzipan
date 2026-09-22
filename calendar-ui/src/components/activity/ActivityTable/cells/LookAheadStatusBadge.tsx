@@ -1,4 +1,5 @@
 import { sanitizeLegendSwatchHexColor } from '@corpcal/shared/schemas';
+import { contrastingBlackOrWhiteForegroundHex } from '@corpcal/shared/utils';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
@@ -27,9 +28,9 @@ function lookAheadInlineStatusSuffix(status: string): string | null {
 }
 
 /**
- * Compact look-ahead indicator for Grid A status column: outline badge with
- * section swatch and "LA" (+ New/Changed when applicable). Full section
- * name and status appear in a tooltip on hover.
+ * Compact look-ahead indicator for Grid A status column: filled badge using
+ * the section legend colour and "LA" (+ New/Changed when applicable). Full
+ * section name and status appear in a tooltip on hover.
  */
 export function LookAheadStatusBadge({
   status,
@@ -57,6 +58,11 @@ export function LookAheadStatusBadge({
     ? `${tooltipSection} — ${statusLabel}`
     : statusLabel;
 
+  const fillColor = legendColor ?? '#e2e8f0';
+  const foregroundColor = legendColor
+    ? contrastingBlackOrWhiteForegroundHex(legendColor)
+    : '#1e293b';
+
   return (
     <Tooltip delayDuration={300}>
       <TooltipTrigger asChild>
@@ -66,22 +72,15 @@ export function LookAheadStatusBadge({
         >
           <Badge
             variant="outline"
-            className="h-auto min-h-5 max-w-full gap-1.5 py-0.5 pr-2 pl-1.5 text-xs font-bold text-slate-800"
+            className="h-auto min-h-5 max-w-full border-transparent px-2 py-0.5 text-xs font-bold"
+            style={{
+              backgroundColor: fillColor,
+              color: foregroundColor,
+            }}
           >
-            <span
-              className="size-3.5 shrink-0 rounded-full border border-slate-200/80"
-              style={
-                legendColor
-                  ? { backgroundColor: legendColor }
-                  : { backgroundColor: '#e2e8f0' }
-              }
-              aria-hidden
-            />
             <span className="truncate">
               LA
-              {inlineSuffix ? (
-                <span className="text-slate-900">{` ${inlineSuffix}`}</span>
-              ) : null}
+              {inlineSuffix ? ` ${inlineSuffix}` : null}
             </span>
           </Badge>
         </span>

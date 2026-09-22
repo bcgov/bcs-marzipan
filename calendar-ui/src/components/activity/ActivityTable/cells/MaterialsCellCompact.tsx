@@ -36,9 +36,7 @@ export function MaterialsCellCompact({ row }: MaterialsCellCompactProps) {
 
   return (
     <div className="flex flex-col gap-1 text-[13px]">
-      {hasCommsLead && (
-        <LeadContactLine row={row} variant="labelled" className="text-[13px]" />
-      )}
+      {hasCommsLead && <LeadContactLine row={row} variant="labelled" />}
       {hasMaterials && (
         <div className="flex items-start gap-1.5">
           <NotebookText className={ACTIVITY_GRID_ROW_ICON_TOP_CLASS} />

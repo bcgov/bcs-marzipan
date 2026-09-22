@@ -145,6 +145,7 @@ function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
  */
 function OverviewCell({
   row,
+  canViewPitchStatus,
   canSelect,
   isSelected,
   onSelectedChange,
@@ -155,6 +156,7 @@ function OverviewCell({
   showReviewHighlights,
 }: {
   row: ActivityTableRow;
+  canViewPitchStatus: boolean;
   canSelect: boolean;
   isSelected: boolean;
   onSelectedChange: (selected: boolean) => void;
@@ -276,6 +278,12 @@ function OverviewCell({
       >
         {row.title}
       </div>
+      <OverviewPitchLine
+        row={row}
+        canViewPitchStatus={canViewPitchStatus}
+        showReviewHighlights={showReviewHighlights}
+        className="mb-2"
+      />
       {row.activityCategories.length > 0 && (
         <BadgeGroup
           items={row.activityCategories.map(
@@ -672,13 +680,9 @@ function MaterialsCell({ row }: { row: ActivityTableRow }) {
 function StatusCell({
   row,
   userMap,
-  canViewPitchStatus,
-  showReviewHighlights,
 }: {
   row: ActivityTableRow;
   userMap: Map<string, { name: string; jobTitle?: string | null }>;
-  canViewPitchStatus: boolean;
-  showReviewHighlights: boolean;
 }) {
   const lastUpdatedUser = userMap.get(String(row.lastUpdatedBy));
   const userName = lastUpdatedUser?.name || 'Unknown';
@@ -702,12 +706,6 @@ function StatusCell({
       <Badge variant={getActivityStatusBadgeVariant(row.activityStatus)}>
         {row.activityStatus}
       </Badge>
-      <OverviewPitchLine
-        row={row}
-        canViewPitchStatus={canViewPitchStatus}
-        showReviewHighlights={showReviewHighlights}
-        className="mt-1"
-      />
       <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
         <span>Updated {updatedDate}</span>
         <Avatar size="sm" title={userName}>
@@ -780,6 +778,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         cell: ({ row }) => (
           <OverviewCell
             row={row.original}
+            canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
             canSelect={canBulkSelect}
             isSelected={selectedActivityIds.has(row.original.id)}
             onSelectedChange={(selected) =>
@@ -905,14 +904,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         },
         meta: { sortKeys: [...STATUS_COLUMN_SORT_KEYS] },
         ...getActivityColumnSizes('status'),
-        cell: ({ row }) => (
-          <StatusCell
-            row={row.original}
-            userMap={userMap}
-            canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
-            showReviewHighlights={showReviewHighlights}
-          />
-        ),
+        cell: ({ row }) => <StatusCell row={row.original} userMap={userMap} />,
       }),
     ],
     [

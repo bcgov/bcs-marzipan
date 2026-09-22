@@ -122,6 +122,11 @@ export function ActivityTableGridA({
               }
               flagPending={syncFlagsMutation.isPending}
             />
+            <OverviewPitchLine
+              row={row.original}
+              canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
+              showReviewHighlights={showReviewHighlights}
+            />
             <CategoryBadgesCell
               row={row.original}
               showReviewHighlights={showReviewHighlights}
@@ -191,11 +196,6 @@ export function ActivityTableGridA({
         cell: ({ row }) => (
           <div className="flex flex-col gap-1">
             <ActivityStatusCell row={row.original} orientation="inline" />
-            <OverviewPitchLine
-              row={row.original}
-              canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
-              showReviewHighlights={showReviewHighlights}
-            />
             <ActivityTimestampsCell
               row={row.original}
               userMap={userMap}
@@ -222,7 +222,7 @@ export function ActivityTableGridA({
       toggleFavourite,
       isFavouriteToggling,
       userMap,
-      pitchFieldVisibility.canViewPitchStatus,
+      pitchFieldVisibility,
     ]
   );
 
