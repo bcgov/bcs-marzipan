@@ -16,7 +16,7 @@ export const ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS = 'text-amber-500';
 
 /** Compact count badge on share icons when the activity has shares. */
 export const ACTIVITY_SHARE_COUNT_BADGE_CLASS =
-  'pointer-events-none absolute -right-0.5 -bottom-0.5 flex h-3 min-w-3 items-center justify-center rounded-full bg-primary px-0.5 text-[8px] font-semibold leading-none text-primary-foreground';
+  'pointer-events-none absolute -right-0.5 -bottom-0.5 flex h-3 min-w-3 translate-x-1 translate-y-1 items-center justify-center rounded-full bg-primary px-0.5 text-[8px] font-semibold leading-none text-primary-foreground';
 
 /** Activity page header action row (size-9 ghost icon buttons). */
 export const ACTIVITY_HEADER_ACTION_HITBOX_CLASS =

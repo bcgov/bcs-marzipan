@@ -112,12 +112,14 @@ export function SharedWithPopover({
               : ACTIVITY_OVERVIEW_ICON_MUTED_CLASS
           )}
         >
-          <Users className={iconClass} fill="none" aria-hidden />
-          {showShareCountBadge && hasShares ? (
-            <span className={ACTIVITY_SHARE_COUNT_BADGE_CLASS} aria-hidden>
-              {badgeText}
-            </span>
-          ) : null}
+          <span className="relative inline-flex shrink-0">
+            <Users className={iconClass} fill="none" aria-hidden />
+            {showShareCountBadge && hasShares ? (
+              <span className={ACTIVITY_SHARE_COUNT_BADGE_CLASS} aria-hidden>
+                {badgeText}
+              </span>
+            ) : null}
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent
