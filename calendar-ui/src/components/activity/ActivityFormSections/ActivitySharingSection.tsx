@@ -1,4 +1,4 @@
-import { CheckIcon, Globe, Lock } from 'lucide-react';
+import { CheckIcon, Globe, GlobeOff } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useMemo, type FC } from 'react';
 
@@ -198,7 +198,7 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
               <p className="text-muted-foreground flex items-start gap-2 text-sm">
                 {isRestricted ? (
                   <>
-                    <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <GlobeOff className="mt-0.5 size-4 shrink-0" aria-hidden />
                     <span>
                       This activity is visible only to {leadTeamName}, shares,
                       and exec.

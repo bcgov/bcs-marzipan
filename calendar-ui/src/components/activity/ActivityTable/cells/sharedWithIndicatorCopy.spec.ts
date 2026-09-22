@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   formatSharedWithCountBadge,
   sharedWithAriaLabel,
+  sharedWithFormVisibilityDescription,
+  sharedWithPopoverTitle,
   sharedWithTeamsLine,
-  sharedWithTooltipLines,
   sharedWithVisibilityLine,
 } from './sharedWithIndicatorCopy';
 
@@ -25,13 +26,16 @@ describe('sharedWithIndicatorCopy', () => {
     expect(sharedWithTeamsLine(['A', 'B'])).toBe('Shared with 2 teams');
   });
 
-  it('builds tooltip lines with team names when multiple shares', () => {
-    expect(sharedWithTooltipLines(['A', 'B'], 'global', null)).toEqual([
-      'Visible to all calendar users',
-      'Shared with 2 teams',
-      'A',
-      'B',
-    ]);
+  it('formats popover title and form visibility copy', () => {
+    expect(sharedWithPopoverTitle(0)).toBe('Not shared');
+    expect(sharedWithPopoverTitle(1)).toBe('Shared with 1 team');
+    expect(sharedWithPopoverTitle(4)).toBe('Shared with 4 teams');
+    expect(sharedWithFormVisibilityDescription('global', null)).toBe(
+      'This activity is visible to all calendar users.'
+    );
+    expect(sharedWithFormVisibilityDescription('team', 'HLTH Comms')).toBe(
+      'This activity is visible only to HLTH Comms, shares, and exec.'
+    );
   });
 
   it('caps badge count at 99+', () => {
@@ -41,10 +45,13 @@ describe('sharedWithIndicatorCopy', () => {
 
   it('builds aria labels', () => {
     expect(sharedWithAriaLabel([], 'global', null)).toBe(
-      'Visible to all calendar users. Not shared.'
+      'This activity is visible to all calendar users. Not shared. Open sharing details.'
     );
     expect(sharedWithAriaLabel(['Comms Team'], 'team', 'HLTH Comms')).toBe(
-      'Restricted to HLTH Comms. Shared with Comms Team.'
+      'This activity is visible only to HLTH Comms, shares, and exec. Shared with 1 team. Open sharing details.'
+    );
+    expect(sharedWithAriaLabel(['A', 'B'], 'global', null)).toBe(
+      'This activity is visible to all calendar users. Shared with 2 teams. Open sharing details.'
     );
   });
 });

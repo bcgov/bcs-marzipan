@@ -1,4 +1,5 @@
-import { Users } from 'lucide-react';
+import { Globe, GlobeOff, Users } from 'lucide-react';
+import { useState } from 'react';
 
 import {
   ACTIVITY_HEADER_ACTION_HITBOX_CLASS,
@@ -9,16 +10,18 @@ import {
   GRID_A_OVERVIEW_ACTION_ICON_CLASS,
 } from '@/components/activity/ActivityTable/overviewIconsLayout';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 import {
   formatSharedWithCountBadge,
+  isTeamRestrictedVisibility,
   sharedWithAriaLabel,
-  sharedWithTooltipLines,
+  sharedWithFormVisibilityDescription,
+  sharedWithPopoverTitle,
 } from './sharedWithIndicatorCopy';
 
 export interface SharedWithPopoverProps {
@@ -35,7 +38,7 @@ export interface SharedWithPopoverProps {
 }
 
 /**
- * Read-only shares and visibility indicator (tooltip on hover).
+ * Read-only shares and visibility indicator (opens a popover on click).
  */
 export function SharedWithPopover({
   teamNames,
@@ -45,14 +48,16 @@ export function SharedWithPopover({
   gridOverviewActions = false,
   headerActions = false,
 }: SharedWithPopoverProps) {
+  const [open, setOpen] = useState(false);
   const shareCount = teamNames.length;
   const hasShares = shareCount > 0;
-  const ariaLabel = sharedWithAriaLabel(
-    teamNames,
+  const isRestricted = isTeamRestrictedVisibility(visibility);
+  const popoverTitle = sharedWithPopoverTitle(shareCount);
+  const visibilityDescription = sharedWithFormVisibilityDescription(
     visibility,
     leadTeamDisplayName
   );
-  const tooltipLines = sharedWithTooltipLines(
+  const ariaLabel = sharedWithAriaLabel(
     teamNames,
     visibility,
     leadTeamDisplayName
@@ -70,14 +75,18 @@ export function SharedWithPopover({
       ? GRID_A_OVERVIEW_ACTION_ICON_CLASS
       : 'size-4';
 
+  const VisibilityIcon = isRestricted ? GlobeOff : Globe;
+
   return (
-    <Tooltip delayDuration={300}>
-      <TooltipTrigger asChild>
-        <span
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
-          tabIndex={0}
           aria-label={ariaLabel}
+          aria-expanded={open}
+          aria-haspopup="dialog"
           className={cn(
             hitboxClass,
             'relative',
@@ -86,38 +95,43 @@ export function SharedWithPopover({
               : ACTIVITY_OVERVIEW_ICON_MUTED_CLASS
           )}
         >
-          <Users
-            className={iconClass}
-            fill={hasShares ? 'currentColor' : 'none'}
-            aria-hidden
-          />
+          <Users className={iconClass} fill="none" aria-hidden />
           {showShareCountBadge && hasShares ? (
             <span className={ACTIVITY_SHARE_COUNT_BADGE_CLASS} aria-hidden>
               {badgeText}
             </span>
           ) : null}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-72 overflow-x-hidden p-0"
+        align="start"
         side="top"
-        className="max-w-xs text-xs"
         data-no-row-nav
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col gap-0.5">
-          {tooltipLines.map((line, index) => (
-            <p
-              key={`${index}-${line}`}
-              className={cn(
-                index >= 2 && 'text-slate-600',
-                index === 0 && 'font-medium text-slate-900'
-              )}
-            >
-              {line}
-            </p>
-          ))}
+        <p className="px-3 pt-3 pb-2 text-sm font-medium text-slate-900">
+          {popoverTitle}
+        </p>
+        {hasShares ? (
+          <ul
+            className="popover-list-scroll text-foreground max-h-[min(var(--popover-list-max-height),var(--radix-popover-content-available-height))] list-none space-y-1 overflow-y-auto border-t px-3 py-2 text-sm"
+            aria-label="Shared teams"
+          >
+            {teamNames.map((name) => (
+              <li key={name} className="truncate">
+                {name}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="border-t px-3 py-2">
+          <p className="text-muted-foreground flex items-start gap-2 text-xs">
+            <VisibilityIcon className="mt-px size-3.5 shrink-0" aria-hidden />
+            <span>{visibilityDescription}</span>
+          </p>
         </div>
-      </TooltipContent>
-    </Tooltip>
+      </PopoverContent>
+    </Popover>
   );
 }

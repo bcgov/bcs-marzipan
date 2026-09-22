@@ -16,7 +16,7 @@ const minimalVariantClasses =
   'justify-start text-left p-0 min-h-0 h-auto gap-1.5 hover:bg-transparent active:bg-transparent';
 
 const subtleVariantClasses =
-  'inline h-auto min-h-0 justify-start gap-0 p-0 font-inherit text-inherit hover:bg-transparent hover:text-(--fluent-primary) active:bg-transparent';
+  'inline h-auto min-h-0 justify-start gap-0 p-0 font-inherit text-inherit hover:bg-transparent hover:underline active:bg-transparent';
 
 type CopyableTextProps = {
   /** Text to copy to the clipboard. */
@@ -32,7 +32,7 @@ type CopyableTextProps = {
   /**
    * - default: standard button look with hover highlight and padding.
    * - minimal: left-aligned, no hover highlight, no extra padding (e.g. for inline use in tables).
-   * - subtle: plain text with hover colour, no icon; tooltip describes copy on hover.
+   * - subtle: plain text with hover underline, no icon; tooltip describes copy on hover.
    */
   variant?: 'default' | 'minimal' | 'subtle';
   /** Content shown in the tooltip after copying. Defaults to "Copied". */
