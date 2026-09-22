@@ -12,7 +12,8 @@ const sectionRows: LookAheadSectionRow[] = [
     uiLabel: 'Events',
     reportLegendLabel: 'Events',
     legendColor: '#ff0000',
-    printDayHeaderColor: null,
+    printPerDayColumnHeaderRepeat: null,
+    printOmitReleaseColumn: null,
   },
 ];
 

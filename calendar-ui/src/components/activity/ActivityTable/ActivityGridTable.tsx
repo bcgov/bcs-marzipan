@@ -176,7 +176,7 @@ export interface ActivityGridTableProps {
 }
 
 /**
- * Drag-and-drop, resizable activity grid table used by Grid A.
+ * Drag-and-drop, resizable activity list table.
  * Select and overview columns stay pinned on the left and are not draggable.
  */
 export function ActivityGridTable({
