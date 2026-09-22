@@ -104,7 +104,7 @@ jobs:
             Array(doc.dig('spec', 'template', 'spec', 'containers')).each do |container|
               Array(container['env']).each do |env|
                 next unless env.is_a?(Hash)
-                if env.key?('value') && env.key?('valueFrom')
+                if env.key?('value') && env.key?('valueFrom') && !env['value'].to_s.empty?
                   raise "Invalid env entry for #{env['name']}: contains both value and valueFrom"
                 end
               end
