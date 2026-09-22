@@ -70,11 +70,32 @@ describe('ActivityTimestampsCell', () => {
         userMap={userMap}
       />
     );
-    expect(screen.getByText(/Alex Editor is editing/)).toBeInTheDocument();
+    expect(screen.getByTitle('Alex Editor is editing')).toBeInTheDocument();
+    expect(screen.getByText('Alex Editor')).toBeInTheDocument();
+    expect(screen.getByText('is editing')).toBeInTheDocument();
   });
 
   it('omits editing line when editLock is null', () => {
     render(<ActivityTimestampsCell row={baseRow} userMap={new Map()} />);
     expect(screen.queryByText(/is editing/)).not.toBeInTheDocument();
+  });
+
+  it('keeps " is editing" visible and exposes full name on the editor label', () => {
+    const longName =
+      'Alexandra Montgomery-Thompson With An Exceptionally Long Display Name';
+    const userMap = new Map([['99', { name: longName, jobTitle: null }]]);
+    render(
+      <ActivityTimestampsCell
+        row={{
+          ...baseRow,
+          editLock: { userId: 99, username: 'alex' },
+        }}
+        userMap={userMap}
+      />
+    );
+    expect(screen.getByText('is editing')).toBeInTheDocument();
+    expect(screen.getByTitle(`${longName} is editing`)).toHaveTextContent(
+      longName
+    );
   });
 });

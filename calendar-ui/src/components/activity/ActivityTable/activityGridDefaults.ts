@@ -17,7 +17,7 @@ export const GRID_A_COLUMN_WIDTHS: Record<string, number> = {
   summary: 400,
   scheduling: 306,
   materials: 221,
-  status: 320,
+  status: 268,
 };
 
 /** TanStack column size props using persisted width when available. */

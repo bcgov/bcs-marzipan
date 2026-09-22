@@ -72,20 +72,34 @@ export function ActivityTimestampsCell({
       ? (userMap.get(String(editLock.userId))?.name ?? editLock.username)
       : null;
 
+  const editingLineLabel =
+    editLock != null && editorDisplayName != null
+      ? `${editorDisplayName} is editing`
+      : null;
+
   return (
     <div
-      className={cn('text-foreground flex flex-col gap-0 text-xs', className)}
+      className={cn(
+        'text-foreground flex w-full min-w-0 flex-col gap-0 text-xs',
+        className
+      )}
     >
       {editLock != null && editorDisplayName != null ? (
-        <div className="inline-flex max-w-full min-w-0 items-center gap-x-1 font-medium text-amber-700">
+        <div
+          className="flex w-full min-w-0 items-center gap-x-1 font-medium text-amber-700"
+          title={editingLineLabel ?? undefined}
+        >
           <UserAvatar
             userMap={userMap}
             userId={editLock.userId}
             fallbackName={editLock.username}
             compact
           />
-          <span className="min-w-0 truncate">
-            {editorDisplayName} is editing
+          <span className="flex min-w-0 flex-1 items-baseline gap-x-0 overflow-hidden">
+            <span className="min-w-0 truncate" title={editorDisplayName}>
+              {editorDisplayName}
+            </span>
+            <span className="shrink-0"> is editing</span>
           </span>
         </div>
       ) : null}
