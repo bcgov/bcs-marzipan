@@ -50,7 +50,6 @@ export type ActivityMapperRelatedData = {
     userId: number;
     name: string;
     isLead: boolean;
-    phone?: string | null;
   }>;
   eventPlannerDetails?: EventPlannerDetail[];
   eventPlanners?: string[];

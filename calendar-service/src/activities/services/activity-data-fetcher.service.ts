@@ -732,7 +732,7 @@ export class ActivityDataFetcherService {
 
   /**
    * Fetch comms contacts for multiple activities
-   * Returns user info including userId, display name, isLead flag, and phone
+   * Returns user info including userId, display name, and isLead flag
    */
   async fetchCommsContactsForActivities(activityIds: number[]): Promise<
     Map<
@@ -741,7 +741,6 @@ export class ActivityDataFetcherService {
         userId: number;
         name: string;
         isLead: boolean;
-        phone: string | null;
       }>
     >
   > {
@@ -758,10 +757,6 @@ export class ActivityDataFetcherService {
             'userName'
           ),
         isLead: activityCommsContacts.isLead,
-        phone: sql<string | null>`NULLIF(
-          TRIM(COALESCE(NULLIF(TRIM(${users.phone}), ''), ${users.adPhone}, '')),
-          ''
-        )`.as('phone'),
       })
       .from(activityCommsContacts)
       .innerJoin(users, eq(activityCommsContacts.userId, users.id))
@@ -779,7 +774,6 @@ export class ActivityDataFetcherService {
         userId: number;
         name: string;
         isLead: boolean;
-        phone: string | null;
       }>
     >();
     for (const row of results) {
@@ -788,7 +782,6 @@ export class ActivityDataFetcherService {
         userId: row.userId,
         name: row.userName,
         isLead: row.isLead,
-        phone: row.phone ?? null,
       });
       map.set(row.activityId, existing);
     }

@@ -160,8 +160,6 @@ export const activityComputedFieldsSchema = z.object({
         userId: z.number().int(),
         name: z.string(),
         isLead: z.boolean(),
-        /** Contact phone (user record phone, falling back to AD phone). */
-        phone: z.string().nullable().optional(),
       })
     )
     .default([]), // All comms contacts with isLead flag

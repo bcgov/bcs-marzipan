@@ -38,6 +38,17 @@ export function OverflowTextList({
 
   useEffect(() => {
     const el = contentRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(() => {
+      setVisibleCount(items.length);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [items.length, itemsSignature]);
+
+  useEffect(() => {
+    const el = contentRef.current;
     if (!el || visibleCount <= 1) return;
     const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 16;
     const maxHeight = lineHeight * maxLines + 1;

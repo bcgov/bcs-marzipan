@@ -125,10 +125,9 @@ function SortableGridHeader({
         )
       ) : (
         <div className="flex min-w-0 items-stretch">
-          <button
-            type="button"
+          <div
             className={cn(
-              'min-w-0 flex-1 cursor-grab border-0 bg-transparent py-0 pr-2 pl-0 text-left wrap-break-word whitespace-normal text-inherit active:cursor-grabbing',
+              'min-w-0 flex-1 cursor-grab py-0 pr-2 pl-0 text-left wrap-break-word whitespace-normal active:cursor-grabbing',
               (dragDisabled || isPinned) && 'cursor-default'
             )}
             {...(dragDisabled || isPinned
@@ -138,7 +137,7 @@ function SortableGridHeader({
             {header.isPlaceholder
               ? null
               : flexRender(header.column.columnDef.header, header.getContext())}
-          </button>
+          </div>
           {header.column.getCanResize() ? (
             <div
               role="separator"

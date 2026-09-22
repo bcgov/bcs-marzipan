@@ -37,9 +37,16 @@ export function TitleSummaryCell({
 
   useEffect(() => {
     const el = contentRef.current;
-    if (el) {
+    if (!el) return;
+
+    const measure = () => {
       setNeedsTruncation(summaryContentNeedsTruncation(el));
-    }
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [row.summary]);
 
   useEffect(() => {

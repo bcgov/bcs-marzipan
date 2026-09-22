@@ -52,8 +52,6 @@ export interface ActivityTableRow {
   /** Lead team display name, shown beside the comms lead in grid layouts. */
   leadTeamDisplayName: string | null;
   commsLeadName: string | null;
-  /** Lead comms contact phone; null when the user has no phone on record. */
-  commsLeadPhone: string | null;
   commsContactsCount: number;
   /** Event planner display names */
   eventPlanners: string[];
@@ -163,7 +161,6 @@ export function mapActivityToTableRow(
     leadMinistryAbbreviation: activity.leadMinistryAbbreviation ?? null,
     leadTeamDisplayName: activity.leadTeamDisplayName ?? null,
     commsLeadName: commsLead?.name ?? null,
-    commsLeadPhone: commsLead?.phone ?? null,
     commsContactsCount: activity.commsContacts.length,
     eventPlanners: activity.eventPlanners ?? [],
     eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],

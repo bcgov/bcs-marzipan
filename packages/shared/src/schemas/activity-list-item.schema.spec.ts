@@ -45,7 +45,7 @@ describe('isActivityListItemPayload', () => {
 });
 
 describe('activityListItemSchema', () => {
-  it('parses sharedWith and comms contact phone on list items', () => {
+  it('parses sharedWith and comms contacts on list items', () => {
     const parsed = activityListItemSchema.parse(
       createMockActivityListItem({
         sharedWith: ['Comms Team'],
@@ -54,13 +54,12 @@ describe('activityListItemSchema', () => {
             userId: 1,
             name: 'Jane Smith',
             isLead: true,
-            phone: '604-555-0100',
           },
         ],
       })
     );
 
     expect(parsed.sharedWith).toEqual(['Comms Team']);
-    expect(parsed.commsContacts[0]?.phone).toBe('604-555-0100');
+    expect(parsed.commsContacts[0]?.name).toBe('Jane Smith');
   });
 });

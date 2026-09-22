@@ -14,7 +14,7 @@ const Checkbox = React.forwardRef<
      */
     readOnly?: boolean;
   }
->(({ className, readOnly, disabled, checked, tabIndex, ...props }, ref) => (
+>(({ className, readOnly, disabled, checked, ...props }, ref) => (
   <CheckboxPrimitive.Root
     ref={ref}
     data-readonly={readOnly ? '' : undefined}
@@ -22,12 +22,11 @@ const Checkbox = React.forwardRef<
       'group peer border-checkbox-border ring-offset-background focus-visible:ring-ring h-4 w-4 shrink-0 rounded-sm border focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
       'data-[state=checked]:border-[#0F6CBD] data-[state=checked]:bg-[#0F6CBD]',
       'data-[state=indeterminate]:border-[#0F6CBD] data-[state=indeterminate]:bg-[#0F6CBD]',
-      readOnly && 'pointer-events-none opacity-100!',
+      readOnly && 'opacity-100!',
       className
     )}
     checked={checked}
-    disabled={readOnly ? false : disabled}
-    tabIndex={readOnly ? -1 : tabIndex}
+    disabled={readOnly || disabled}
     {...props}
   >
     <CheckboxPrimitive.Indicator

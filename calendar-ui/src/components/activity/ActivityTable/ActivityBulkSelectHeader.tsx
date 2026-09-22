@@ -12,6 +12,7 @@ import type { ActivityTableCore } from '@/hooks/useActivityTableCore';
 import {
   GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS,
   GRID_A_SELECT_CHECKBOX_HEADER_TRIGGER_CLASS,
+  GRID_A_SELECT_CHECKBOX_HIT_CLASS,
 } from './selectColumnLayout';
 
 export interface ActivityBulkSelectHeaderProps {
@@ -20,8 +21,8 @@ export interface ActivityBulkSelectHeaderProps {
 
 /**
  * Header control that selects all activities, the current page, or the rows
- * led by one of the user's teams. Checkbox aligns with row checkboxes; chevron
- * opens the menu to the right on the same trigger.
+ * led by one of the user's teams. Checkbox toggles all sorted rows; chevron
+ * opens scoped selection menu.
  */
 export function ActivityBulkSelectHeader({
   core,
@@ -31,6 +32,7 @@ export function ActivityBulkSelectHeader({
     sortedActivityIds,
     selectedActivityCount,
     selectActivityIds,
+    clearSelection,
     pagination,
     user,
   } = core;
@@ -50,8 +52,28 @@ export function ActivityBulkSelectHeader({
       ? 'indeterminate'
       : false;
 
+  const handleHeaderCheckboxChange = (value: boolean | 'indeterminate') => {
+    if (value === true) {
+      selectActivityIds(sortedActivityIds);
+    } else {
+      clearSelection();
+    }
+  };
+
   return (
-    <div className={GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS}>
+    <div className={`${GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS} gap-px`}>
+      <span
+        data-no-row-nav
+        onClick={(e) => e.stopPropagation()}
+        className={GRID_A_SELECT_CHECKBOX_HIT_CLASS}
+      >
+        <Checkbox
+          aria-label="Select all activities"
+          checked={headerCheckboxChecked}
+          disabled={sortedData.length === 0}
+          onCheckedChange={handleHeaderCheckboxChange}
+        />
+      </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -60,12 +82,6 @@ export function ActivityBulkSelectHeader({
             className={GRID_A_SELECT_CHECKBOX_HEADER_TRIGGER_CLASS}
             aria-label="Select activities menu"
           >
-            <Checkbox
-              aria-hidden
-              readOnly
-              checked={headerCheckboxChecked}
-              className="pointer-events-none shrink-0"
-            />
             <ChevronDown
               className="size-3 shrink-0 text-slate-600"
               aria-hidden
