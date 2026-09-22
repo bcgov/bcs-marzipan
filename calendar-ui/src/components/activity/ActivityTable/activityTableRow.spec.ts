@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { createMockActivityListItem } from '@corpcal/shared/test-utils/activity-list-item.fixture';
 
-import { mapActivityToTableRow } from './activityTableRow';
+import {
+  mapActivityToTableRow,
+  resolveCommsContactName,
+} from './activityTableRow';
 
 describe('mapActivityToTableRow', () => {
   it('maps sharedWith, leadTeamDisplayName, and comms lead name', () => {
@@ -30,7 +33,21 @@ describe('mapActivityToTableRow', () => {
     expect(row.sharedWithTeamIds).toEqual([10, 20]);
     expect(row.leadTeamDisplayName).toBe('HLTH Comms');
     expect(row.commsLeadName).toBe('Jane Smith');
-    expect(row.commsContactsCount).toBe(2);
+    expect(row.commsContactName).toBe('Jane Smith');
+  });
+
+  it('uses the first listed contact when no comms lead is designated', () => {
+    const row = mapActivityToTableRow(
+      createMockActivityListItem({
+        commsContacts: [
+          { userId: 6, name: 'Backup Contact', isLead: false },
+          { userId: 7, name: 'Second Contact', isLead: false },
+        ],
+      })
+    );
+
+    expect(row.commsLeadName).toBeNull();
+    expect(row.commsContactName).toBe('Backup Contact');
   });
 
   it('defaults sharedWith to empty array when absent', () => {
@@ -44,6 +61,15 @@ describe('mapActivityToTableRow', () => {
 
     expect(row.sharedWith).toEqual([]);
     expect(row.leadTeamDisplayName).toBeNull();
+  });
+
+  it('resolveCommsContactName prefers lead over other contacts', () => {
+    expect(
+      resolveCommsContactName([
+        { userId: 1, name: 'Other', isLead: false },
+        { userId: 2, name: 'Lead Person', isLead: true },
+      ])
+    ).toBe('Lead Person');
   });
 
   it('maps editLock when present on list items', () => {

@@ -34,7 +34,7 @@ const baseRow: ActivityTableRow = {
   leadMinistryAbbreviation: null,
   leadTeamDisplayName: null,
   commsLeadName: null,
-  commsContactsCount: 0,
+  commsContactName: null,
   eventPlanners: [],
   eventPlannerLeadIds: [],
   leadTeamId: null,

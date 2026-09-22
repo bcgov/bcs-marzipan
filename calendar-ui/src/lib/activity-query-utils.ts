@@ -33,7 +33,7 @@ function activityTableRowToSearchableInput(
     leadOrg: row.leadOrg,
     leadMinistryAbbreviation: row.leadMinistryAbbreviation,
     leadMinistry: row.leadMinistry,
-    commsLeadName: row.commsLeadName,
+    commsLeadName: row.commsContactName ?? row.commsLeadName,
     eventPlanners: row.eventPlanners ?? [],
     activityStatus: row.activityStatus,
     representatives: row.activityRepresentatives,
