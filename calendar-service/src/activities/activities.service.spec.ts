@@ -597,8 +597,8 @@ describe('ActivitiesService', () => {
       expect(result).toHaveProperty('lookAheadSection');
       expect(result).toHaveProperty('createdDateTime');
       expect(result).toHaveProperty('createdBy');
-      expect(result).toHaveProperty('lastUpdatedDateTime');
-      expect(result).toHaveProperty('lastUpdatedBy');
+      expect(result).toHaveProperty('publicLastUpdatedDateTime');
+      expect(result).toHaveProperty('publicLastUpdatedBy');
     });
 
     it('should ensure enum fields match schema constraints', async () => {
@@ -649,7 +649,7 @@ describe('ActivitiesService', () => {
       expect(result.createdDateTime).toMatch(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
       );
-      expect(result.lastUpdatedDateTime).toMatch(
+      expect(result.publicLastUpdatedDateTime).toMatch(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
       );
     });
@@ -716,7 +716,9 @@ describe('ActivitiesService', () => {
       ).toHaveBeenCalledWith(
         null,
         expect.objectContaining({
-          viewer: { permissions: [], roleName: 'Viewer' },
+          startDate: expect.any(String),
+          endDate: expect.any(String),
+          viewer: { userId: 7, permissions: [], roleName: 'Viewer' },
         })
       );
     });
@@ -746,7 +748,10 @@ describe('ActivitiesService', () => {
         expect.objectContaining({
           page: 1,
           pageSize: 25,
+          startDate: expect.any(String),
+          endDate: expect.any(String),
           viewer: {
+            userId: 7,
             permissions: ['activities.notes.view'],
             roleName: 'Editor',
           },
@@ -1991,6 +1996,7 @@ describe('ActivitiesService', () => {
         actorUserId: 1,
         status: 'reviewed',
         includeWatchlisters: false,
+        historyAudience: 'public',
       });
     });
 
@@ -2280,6 +2286,7 @@ describe('ActivitiesService', () => {
           activityId: 1,
           actorUserId: 1,
           teamIds: [42],
+          historyAudience: 'public',
         });
       });
 
@@ -2438,6 +2445,7 @@ describe('ActivitiesService', () => {
           activityId: 1,
           actorUserId: 1,
           changedFields: ['title'],
+          historyAudience: 'public',
         });
       });
 
@@ -2478,10 +2486,11 @@ describe('ActivitiesService', () => {
         ).toHaveBeenCalledWith({
           activityId: 1,
           actorUserId: 1,
+          historyAudience: 'public',
         });
       });
 
-      it('skips generic update notification for admin actor', async () => {
+      it('sends generic update notification for admin actor when fields change', async () => {
         const existingActivity = createMockActivity({
           id: 1,
           activityStatusId: reviewedStatusId,
@@ -2522,7 +2531,12 @@ describe('ActivitiesService', () => {
 
         expect(
           mockNotificationsService.notifyActivityUpdated
-        ).not.toHaveBeenCalled();
+        ).toHaveBeenCalledWith({
+          activityId: 1,
+          actorUserId: 1,
+          changedFields: ['title'],
+          historyAudience: 'public',
+        });
       });
     });
 
@@ -2782,7 +2796,12 @@ describe('ActivitiesService', () => {
       });
 
       mockDatabaseService.db.transaction = vi.fn((callback) => {
-        const tx = {};
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
         return callback(tx);
       });
 
@@ -2794,6 +2813,7 @@ describe('ActivitiesService', () => {
         activityId: 1,
         actorUserId: 7,
         teamIds: [2, 3],
+        historyAudience: 'public',
       });
     });
 
@@ -2813,7 +2833,12 @@ describe('ActivitiesService', () => {
       });
 
       mockDatabaseService.db.transaction = vi.fn((callback) => {
-        const tx = {};
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
         return callback(tx);
       });
 
@@ -3247,6 +3272,15 @@ describe('ActivitiesService', () => {
         where: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue([{ id: 1 }]),
       }));
+      mockDatabaseService.db.transaction = vi.fn((callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return callback(tx);
+      });
       mockActivityHistoryService.recordChange.mockResolvedValueOnce({ id: 25 });
       mockActivityHistoryService.getHistoryEntryById.mockResolvedValueOnce({
         id: 25,
@@ -3271,7 +3305,8 @@ describe('ActivitiesService', () => {
         10,
         'note_added',
         undefined,
-        'A note for history'
+        'A note for history',
+        expect.objectContaining({ audience: 'public', tx: expect.anything() })
       );
       expect(
         mockActivityHistoryService.getHistoryEntryById
@@ -3282,6 +3317,7 @@ describe('ActivitiesService', () => {
         activityId: 1,
         actorUserId: 10,
         note: 'A note for history',
+        historyAudience: 'public',
       });
       expect(result.actionType).toBe('note_added');
       expect(result.notes).toBe('A note for history');
@@ -3791,7 +3827,8 @@ describe('ActivitiesService', () => {
             newValue: [1, 3],
           },
         ],
-        'Activity unshared from team'
+        'Activity unshared from team',
+        { audience: 'public' }
       );
       // Final fetch keeps the caller's user context (so canEdit/reviewer
       // fields still populate) but forces bypass: the caller may only be a

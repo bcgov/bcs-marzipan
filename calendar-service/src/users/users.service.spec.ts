@@ -760,7 +760,7 @@ describe('UsersService', () => {
         'comms_lead_transferred',
         expect.any(Array),
         undefined,
-        mockDatabaseService.db
+        expect.objectContaining({ tx: expect.anything() })
       );
       expect(
         mockNotificationsService.notifyActivitiesTransferred
@@ -1161,7 +1161,7 @@ describe('UsersService', () => {
         'comms_lead_transferred',
         expect.any(Array),
         undefined,
-        mockDatabaseService.db
+        expect.objectContaining({ tx: expect.anything() })
       );
       expect(
         mockNotificationsService.notifyActivitiesTransferred

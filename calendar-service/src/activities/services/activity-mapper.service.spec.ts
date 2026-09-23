@@ -160,12 +160,17 @@ describe('ActivityMapperService', () => {
       const activity = createMockActivity({
         createdDateTime: created,
         lastUpdatedDateTime: updated,
+        publicLastUpdatedDateTime: updated,
       });
 
       const result = mapper.mapToResponseDto(activity);
 
       expect(result.createdDateTime).toBe('2026-04-27T15:30:00.000Z');
-      expect(result.lastUpdatedDateTime).toBe('2026-04-27T16:45:00.000Z');
+      expect(result.publicLastUpdatedDateTime).toBe('2026-04-27T16:45:00.000Z');
+      expect('lastUpdatedDateTime' in result).toBe(false);
+
+      const editable = mapper.mapToResponseDto(activity, { canEdit: true });
+      expect(editable.lastUpdatedDateTime).toBe('2026-04-27T16:45:00.000Z');
     });
   });
 });
