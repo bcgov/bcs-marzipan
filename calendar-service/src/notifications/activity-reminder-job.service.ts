@@ -32,7 +32,10 @@ import {
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
-import { NotificationsService } from './notifications.service';
+import {
+  NotificationsService,
+  type PendingNotificationSideEffect,
+} from './notifications.service';
 
 type ReminderEventType =
   | typeof NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_POST_DATED
@@ -175,7 +178,8 @@ export class ActivityReminderJobService {
     this.inFlight = true;
 
     try {
-      return await this.databaseService.db.transaction(async (tx) => {
+      const pendingSideEffects: PendingNotificationSideEffect[] = [];
+      const result = await this.databaseService.db.transaction(async (tx) => {
         const [lockResult] = await tx.execute(
           sql`SELECT pg_try_advisory_xact_lock(${ACTIVITY_REMINDER_JOB_ADVISORY_CLASS}::integer, ${ACTIVITY_REMINDER_JOB_ADVISORY_KEY}::integer) AS acquired`
         );
@@ -201,6 +205,7 @@ export class ActivityReminderJobService {
           staleDays,
           today,
           windowEnd,
+          deferredSideEffects: pendingSideEffects,
         });
 
         const sent =
@@ -213,6 +218,14 @@ export class ActivityReminderJobService {
 
         return { sent, skipped: false, counts };
       });
+
+      if (pendingSideEffects.length > 0) {
+        await this.notificationsService.deliverPendingNotificationSideEffects(
+          pendingSideEffects
+        );
+      }
+
+      return result;
     } catch (error) {
       this.logger.error(
         'Activity reminder job failed',
@@ -262,6 +275,7 @@ export class ActivityReminderJobService {
       staleDays: number;
       today: string;
       windowEnd: string;
+      deferredSideEffects: PendingNotificationSideEffect[];
     }
   ): Promise<ReminderRunCounts> {
     const counts: ReminderRunCounts = { ...EMPTY_COUNTS };
@@ -327,6 +341,7 @@ export class ActivityReminderJobService {
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           executor: tx,
+          deferredSideEffects: input.deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderPostDated += 1;
     }
@@ -339,6 +354,7 @@ export class ActivityReminderJobService {
             actorUserId: CALENDAR_SYSTEM_USER_ID,
             leadDays: input.leadDays,
             executor: tx,
+            deferredSideEffects: input.deferredSideEffects,
           }
         );
       if (recipients.length > 0) counts.reminderDateStatusNotConfirmed += 1;
@@ -351,6 +367,7 @@ export class ActivityReminderJobService {
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           leadDays: input.leadDays,
           executor: tx,
+          deferredSideEffects: input.deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderNullTime += 1;
     }
@@ -363,6 +380,7 @@ export class ActivityReminderJobService {
             actorUserId: CALENDAR_SYSTEM_USER_ID,
             leadDays: input.leadDays,
             executor: tx,
+            deferredSideEffects: input.deferredSideEffects,
           }
         );
       if (recipients.length > 0) counts.reminderTimeStatusNotConfirmed += 1;
@@ -375,6 +393,7 @@ export class ActivityReminderJobService {
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           leadDays: input.leadDays,
           executor: tx,
+          deferredSideEffects: input.deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderUpcoming += 1;
     }
@@ -386,6 +405,7 @@ export class ActivityReminderJobService {
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           staleDays: input.staleDays,
           executor: tx,
+          deferredSideEffects: input.deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderStale += 1;
     }

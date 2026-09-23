@@ -20,7 +20,20 @@ describe('ActivityReminderJobService', () => {
   };
 
   const notificationsService = {
-    notifyActivityReminderPostDated: vi.fn().mockResolvedValue([1]),
+    notifyActivityReminderPostDated: vi
+      .fn()
+      .mockImplementation(({ deferredSideEffects }) => {
+        deferredSideEffects?.push({
+          recipientUserIds: [1],
+          eventType: 'calendar.activity.reminder.post_dated',
+          entityType: 'activity',
+          entityId: 11,
+          summary: 'Reminder',
+          details: null,
+          actorUserId: 999,
+        });
+        return Promise.resolve([1]);
+      }),
     notifyActivityReminderDateStatusNotConfirmed: vi
       .fn()
       .mockResolvedValue([2]),
@@ -30,6 +43,7 @@ describe('ActivityReminderJobService', () => {
       .mockResolvedValue([4]),
     notifyActivityReminderUpcoming: vi.fn().mockResolvedValue([5]),
     notifyActivityReminderStale: vi.fn().mockResolvedValue([6]),
+    deliverPendingNotificationSideEffects: vi.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -135,8 +149,16 @@ describe('ActivityReminderJobService', () => {
     });
 
     expect(
+      notificationsService.deliverPendingNotificationSideEffects
+    ).toHaveBeenCalledTimes(1);
+    expect(
       notificationsService.notifyActivityReminderPostDated
-    ).toHaveBeenCalledWith(expect.objectContaining({ activityId: 11 }));
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activityId: 11,
+        deferredSideEffects: expect.any(Array),
+      })
+    );
     expect(
       notificationsService.notifyActivityReminderDateStatusNotConfirmed
     ).toHaveBeenCalledWith(
@@ -190,6 +212,9 @@ describe('ActivityReminderJobService', () => {
     expect(
       applicationSettings.getActivityReminderSettings
     ).not.toHaveBeenCalled();
+    expect(
+      notificationsService.deliverPendingNotificationSideEffects
+    ).not.toHaveBeenCalled();
   });
 
   it('returns error when settings load fails', async () => {
@@ -215,6 +240,9 @@ describe('ActivityReminderJobService', () => {
           reminderStale: 0,
         },
       });
+      expect(
+        notificationsService.deliverPendingNotificationSideEffects
+      ).not.toHaveBeenCalled();
     } finally {
       errorSpy.mockRestore();
     }
