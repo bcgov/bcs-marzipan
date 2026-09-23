@@ -156,6 +156,15 @@ export const activities = pgTable(
     })
       .notNull()
       .defaultNow(),
+    /** Last update visible to clients without edit access (bumps only on public-audience saves). */
+    publicLastUpdatedBy: integer('public_last_updated_by')
+      .notNull()
+      .references(() => users.id),
+    publicLastUpdatedDateTime: timestamp('public_last_updated_date_time', {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
     rowVersion: bigint('row_version', { mode: 'number' }).notNull().default(0), // Optimistic concurrency control
   },
   (table) => [

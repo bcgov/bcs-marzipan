@@ -31,6 +31,8 @@ export const activityHistory = pgTable(
     actionType: varchar('action_type', { length: 50 }).notNull(), // 'created', 'updated', 'deleted', `activity_status_changed`, etc.
     changes: jsonb('changes'), // Array of change objects: [{field, oldValue, newValue}]
     notes: text('notes'), // Optional user notes
+    /** Who may see this history row in API (field values on the activity are always immediate). */
+    audience: varchar('audience', { length: 20 }).notNull().default('public'),
     timestamp: timestamp('timestamp', { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -4,6 +4,7 @@ export * from './activity-completion';
 export * from './activity-reminders';
 export * from './activity-form-sections';
 export * from './activity-history-fields';
+export * from './history-audience';
 export * from './datetime';
 export * from './filters/activityFilterStateToQueryParams';
 export * from './filters/activity-filter-active';

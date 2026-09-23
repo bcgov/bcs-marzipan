@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { historyAudienceSchema } from '../history-audience';
+
 /**
  * Shared History Change Schema
  *
@@ -42,6 +44,8 @@ export const activityHistoryEntrySchema = z.object({
   timestamp: z.string(),
   actor: historyActorSchema.optional(),
   userName: z.string().optional(),
+  /** Present when the viewer may see non-public history tiers; omitted for public-only UX. */
+  audience: historyAudienceSchema.optional(),
 });
 
 export type ActivityHistoryEntry = z.infer<typeof activityHistoryEntrySchema>;

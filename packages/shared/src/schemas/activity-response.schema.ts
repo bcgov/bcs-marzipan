@@ -93,9 +93,13 @@ export const activityDbFieldsSchema = z.object({
 
   // Audit fields (transformed to ISO strings for API)
   createdBy: z.number().int(),
-  lastUpdatedBy: z.number().int(),
+  /** Operational last update; included when the viewer may edit (concurrency). */
+  lastUpdatedBy: z.number().int().optional(),
   createdDateTime: z.string().datetime(),
-  lastUpdatedDateTime: z.string().datetime(),
+  lastUpdatedDateTime: z.string().datetime().optional(),
+  /** Client-visible last update (public-audience saves only). */
+  publicLastUpdatedBy: z.number().int(),
+  publicLastUpdatedDateTime: z.string().datetime(),
 });
 
 /**

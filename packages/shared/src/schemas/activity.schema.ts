@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
+import { historyAudienceSchema } from '../history-audience';
 import {
   ACTIVITY_RICH_TEXT_MAX_BYTES,
   isActivityRichTextStorageRefine,
@@ -469,6 +470,7 @@ export const updateActivityRequestSchema = createBaseSchema
      * unshared while the editor held the form open).
      */
     ifUnmodifiedSince: z.string().datetime().optional(),
+    historyAudience: historyAudienceSchema.optional(),
   })
   .refine(updateLeadContactRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,
@@ -621,6 +623,7 @@ export const addActivityHistoryNoteRequestSchema = z.object({
     .min(1, 'Note is required')
     .max(1000, 'Note must not exceed 1000 characters')
     .trim(),
+  historyAudience: historyAudienceSchema.optional(),
 });
 
 /**

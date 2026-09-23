@@ -21,6 +21,25 @@ import {
   activityResponseSchema,
 } from '@corpcal/shared/schemas';
 
+function mapActivityAuditTimestamps(activity: Activity) {
+  const createdDateTime =
+    activity.createdDateTime?.toISOString() ?? new Date().toISOString();
+  const operationalLastUpdatedDateTime =
+    activity.lastUpdatedDateTime?.toISOString() ?? createdDateTime;
+  const publicLastUpdatedDateTime =
+    activity.publicLastUpdatedDateTime?.toISOString() ??
+    operationalLastUpdatedDateTime;
+  return {
+    createdDateTime,
+    createdBy: activity.createdBy ?? 0,
+    lastUpdatedDateTime: operationalLastUpdatedDateTime,
+    lastUpdatedBy: activity.lastUpdatedBy ?? 0,
+    publicLastUpdatedDateTime,
+    publicLastUpdatedBy:
+      activity.publicLastUpdatedBy ?? activity.lastUpdatedBy ?? 0,
+  };
+}
+
 /** Related rows joined when mapping an activity to API shapes. */
 export type ActivityMapperRelatedData = {
   categories?: string[];
@@ -246,14 +265,7 @@ export class ActivityMapperService {
       flags: relatedData?.flags ?? [],
 
       // Meta
-      createdDateTime:
-        activity.createdDateTime?.toISOString() ?? new Date().toISOString(),
-      createdBy: activity.createdBy ?? 0,
-      lastUpdatedDateTime:
-        activity.lastUpdatedDateTime?.toISOString() ??
-        activity.createdDateTime?.toISOString() ??
-        new Date().toISOString(),
-      lastUpdatedBy: activity.lastUpdatedBy ?? 0,
+      ...mapActivityAuditTimestamps(activity),
     };
 
     return dto;
@@ -339,13 +351,7 @@ export class ActivityMapperService {
       newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
       activityStatus: relatedData?.activityStatus ?? DEFAULT_STATUS,
       activityStatusId: activity.activityStatusId ?? 0,
-      lastUpdatedDateTime:
-        activity.lastUpdatedDateTime?.toISOString() ??
-        activity.createdDateTime?.toISOString() ??
-        new Date().toISOString(),
-      lastUpdatedBy: activity.lastUpdatedBy ?? 0,
-      createdDateTime:
-        activity.createdDateTime?.toISOString() ?? new Date().toISOString(),
+      ...mapActivityAuditTimestamps(activity),
       ...(relatedData?.canEdit !== undefined && {
         canEdit: relatedData.canEdit,
       }),

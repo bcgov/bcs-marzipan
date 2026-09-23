@@ -89,6 +89,9 @@ export const activityListItemSchema = z.object({
   activityStatusId: activityDbFieldsSchema.shape.activityStatusId,
   lastUpdatedDateTime: activityDbFieldsSchema.shape.lastUpdatedDateTime,
   lastUpdatedBy: activityDbFieldsSchema.shape.lastUpdatedBy,
+  publicLastUpdatedDateTime:
+    activityDbFieldsSchema.shape.publicLastUpdatedDateTime,
+  publicLastUpdatedBy: activityDbFieldsSchema.shape.publicLastUpdatedBy,
   createdDateTime: activityDbFieldsSchema.shape.createdDateTime,
   canEdit: activityComputedFieldsSchema.shape.canEdit,
   changedFieldsSinceReview: z.array(z.string()).optional(),
@@ -173,6 +176,8 @@ export function activityResponseToListItem(
     activityStatusId: activity.activityStatusId,
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
+    publicLastUpdatedDateTime: activity.publicLastUpdatedDateTime,
+    publicLastUpdatedBy: activity.publicLastUpdatedBy,
     createdDateTime: activity.createdDateTime,
     canEdit: activity.canEdit,
     changedFieldsSinceReview: activity.changedFieldsSinceReview,

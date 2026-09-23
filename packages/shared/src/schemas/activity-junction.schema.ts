@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { historyAudienceSchema } from '../history-audience';
+
 /**
  * Activity Junction Table Update Schemas
  *
@@ -12,6 +14,7 @@ import { z } from 'zod';
  */
 export const updateCategoriesSchema = z.object({
   categoryIds: z.array(z.number().int()),
+  historyAudience: historyAudienceSchema.optional(),
 });
 
 /**
@@ -19,6 +22,7 @@ export const updateCategoriesSchema = z.object({
  */
 export const updateThemesSchema = z.object({
   themeIds: z.array(z.number().int()),
+  historyAudience: historyAudienceSchema.optional(),
 });
 
 /**
@@ -27,6 +31,7 @@ export const updateThemesSchema = z.object({
  */
 export const updateTagsSchema = z.object({
   tagIds: z.array(z.number().int()),
+  historyAudience: historyAudienceSchema.optional(),
 });
 
 /**
@@ -34,6 +39,7 @@ export const updateTagsSchema = z.object({
  */
 export const updateSharedWithSchema = z.object({
   teamIds: z.array(z.number().int()),
+  historyAudience: historyAudienceSchema.optional(),
 });
 
 /**

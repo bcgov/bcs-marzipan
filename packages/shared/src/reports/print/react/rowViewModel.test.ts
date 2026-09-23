@@ -58,6 +58,8 @@ const BASE_ACTIVITY: ActivityResponse = {
   lastUpdatedBy: 1,
   createdDateTime: '2026-04-20T00:00:00.000Z',
   lastUpdatedDateTime: '2026-04-20T09:15:00.000Z',
+  publicLastUpdatedBy: 1,
+  publicLastUpdatedDateTime: '2026-04-20T09:15:00.000Z',
   category: [],
   categoryIds: [],
   tags: [],

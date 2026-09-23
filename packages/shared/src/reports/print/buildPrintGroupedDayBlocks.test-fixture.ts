@@ -39,6 +39,8 @@ export const BASE_ACTIVITY: ActivityResponse = {
   lastUpdatedBy: 1,
   createdDateTime: '2026-04-20T00:00:00.000Z',
   lastUpdatedDateTime: '2026-04-26T17:05:00.000Z',
+  publicLastUpdatedBy: 1,
+  publicLastUpdatedDateTime: '2026-04-26T17:05:00.000Z',
   category: ['Announcement'],
   categoryIds: [1],
   tags: [],

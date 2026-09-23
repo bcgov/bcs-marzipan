@@ -105,6 +105,10 @@ export const PERMISSIONS = {
     UNSHARE: 'activities.unshare',
     /** Remove any team (not just your own) from an activity's Shared With list. Admin workflow. */
     UNSHARE_ALL: 'activities.unshare.all',
+    /** View activity history rows saved with internal audience; required to set internal on save. */
+    HISTORY_AUDIENCE_INTERNAL: 'activities.history.audience.internal',
+    /** View own private history rows; required to set private on save. System Admin sees all private. */
+    HISTORY_AUDIENCE_PRIVATE: 'activities.history.audience.private',
   },
   DRAFTS: {
     VIEW: 'drafts.view',
