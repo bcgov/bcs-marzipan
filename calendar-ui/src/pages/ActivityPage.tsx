@@ -892,11 +892,13 @@ export function ActivityPage({
     });
   };
 
-  const handleReviewConfirm = async (
-    notes?: string,
-    markAsCompleted?: boolean,
-    unassignMe?: boolean
-  ) => {
+  const handleReviewConfirm = async (payload: {
+    notes?: string;
+    historyAudience?: import('@corpcal/shared').HistoryAudience;
+    markAsCompleted?: boolean;
+    unassignMe?: boolean;
+  }) => {
+    const { notes, historyAudience, markAsCompleted, unassignMe } = payload;
     if (unassignMe && user?.id != null) {
       const myFlags = (activity.flags ?? []).filter(
         (flag) => flag.assigneeId === user.id
@@ -946,10 +948,11 @@ export function ActivityPage({
             kind: 'completeWithSave',
             validatedData: data,
             notes,
+            historyAudience,
           });
         }, onError)();
       } else {
-        await runSubmitUpdate({ kind: 'completeOnly', notes });
+        await runSubmitUpdate({ kind: 'completeOnly', notes, historyAudience });
       }
       return;
     }
@@ -959,24 +962,33 @@ export function ActivityPage({
           kind: 'reviewWithSave',
           validatedData: data,
           notes,
+          historyAudience,
         });
       }, onError)();
     } else {
-      await runSubmitUpdate({ kind: 'reviewOnly', notes });
+      await runSubmitUpdate({ kind: 'reviewOnly', notes, historyAudience });
     }
   };
 
-  const handleCompleteConfirm = async (notes?: string) => {
+  const handleCompleteConfirm = async (value: {
+    notes?: string;
+    historyAudience?: import('@corpcal/shared').HistoryAudience;
+  }) => {
     if (isDirty) {
       await form.handleSubmit(async (data) => {
         await runSubmitUpdate({
           kind: 'completeWithSave',
           validatedData: data,
-          notes,
+          notes: value.notes,
+          historyAudience: value.historyAudience,
         });
       }, onError)();
     } else {
-      await runSubmitUpdate({ kind: 'completeOnly', notes });
+      await runSubmitUpdate({
+        kind: 'completeOnly',
+        notes: value.notes,
+        historyAudience: value.historyAudience,
+      });
     }
   };
 
@@ -1454,9 +1466,8 @@ export function ActivityPage({
         changes={reviewModalChanges}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes, markAsCompleted, unassignMe) =>
-          void handleReviewConfirm(notes, markAsCompleted, unassignMe)
-        }
+        onConfirm={(payload) => void handleReviewConfirm(payload)}
+        permissions={user?.permissions ?? []}
         displayId={displayId}
         showMarkAsCompletedOption={actionFlags.showCompleteAction}
         activityEndedAtLabel={reviewModalActivityEndedAtLabel}
@@ -1469,7 +1480,8 @@ export function ActivityPage({
         onOpenChange={setShowCompleteModal}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes) => void handleCompleteConfirm(notes)}
+        onConfirm={(value) => void handleCompleteConfirm(value)}
+        permissions={user?.permissions ?? []}
         displayId={displayId}
       />
       <RequestDeleteActivityModal

@@ -8,12 +8,11 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { HistoryAudience } from '@corpcal/shared';
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchActivityHistory } from '@/api/activitiesApi';
 import {
-  defaultHistoryAudienceForUser,
   HistoryAudienceSelector,
+  useHistoryAudienceWhenOpen,
 } from '@/components/activity/activities/HistoryAudienceSelector';
 import {
   buildActivityHistoryFilterDetailLines,
@@ -167,9 +166,9 @@ export default function ActivityHistory({
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [noteHistoryAudience, setNoteHistoryAudience] =
-    useState<HistoryAudience>('public');
   const { user } = useAuth();
+  const [noteHistoryAudience, setNoteHistoryAudience] =
+    useHistoryAudienceWhenOpen(noteModalOpen, user?.permissions ?? []);
   const addNoteMutation = useAddActivityHistoryNote();
   const activityStatusesQuery = useActivityStatuses();
   const timeStatusesQuery = useTimeStatuses();
@@ -421,12 +420,7 @@ export default function ActivityHistory({
             size="sm"
             className="h-8 px-2"
             disabled={addNoteDisabled}
-            onClick={() => {
-              setNoteHistoryAudience(
-                defaultHistoryAudienceForUser(user?.permissions ?? [])
-              );
-              setNoteModalOpen(true);
-            }}
+            onClick={() => setNoteModalOpen(true)}
           >
             <Plus className="h-4 w-4" />
             New note

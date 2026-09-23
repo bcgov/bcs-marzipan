@@ -13,9 +13,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 
 import { ActivityFormChangesList } from './ActivityFormChangesList';
+import { ActivityHistorySaveFields } from './ActivityHistorySaveFields';
+import {
+  useHistoryAudienceWhenOpen,
+  type ReviewActivityConfirmPayload,
+} from './HistoryAudienceSelector';
 
 interface ReviewActivityModalProps {
   open: boolean;
@@ -25,12 +29,9 @@ interface ReviewActivityModalProps {
   /** When true, copy mentions saving pending edits before updating status. */
   isDirty: boolean;
   isSubmitting: boolean;
-  onConfirm: (
-    notes?: string,
-    markAsCompleted?: boolean,
-    unassignMe?: boolean
-  ) => void;
+  onConfirm: (payload: ReviewActivityConfirmPayload) => void;
   displayId?: string;
+  permissions: string[];
   /** When true, show optional "Mark as completed" (activities.complete + eligibility). */
   showMarkAsCompletedOption?: boolean;
   /** Formatted end from saved activity; woven into description when completion is offered. */
@@ -47,16 +48,26 @@ export function ReviewActivityModal({
   isSubmitting,
   onConfirm,
   displayId,
+  permissions,
   showMarkAsCompletedOption = false,
   activityEndedAtLabel = null,
   showUnassignMeOption = false,
 }: ReviewActivityModalProps) {
   const [notes, setNotes] = useState('');
+  const [historyAudience, setHistoryAudience] = useHistoryAudienceWhenOpen(
+    open,
+    permissions
+  );
   const [markAsCompleted, setMarkAsCompleted] = useState(false);
   const [unassignMe, setUnassignMe] = useState(false);
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined, markAsCompleted, unassignMe);
+    onConfirm({
+      notes: notes.trim() || undefined,
+      historyAudience,
+      markAsCompleted,
+      unassignMe,
+    });
   };
 
   const handleOpenChange = (value: boolean) => {
@@ -155,17 +166,14 @@ export function ReviewActivityModal({
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="review-confirm-notes">Add a note (optional)</Label>
-            <Textarea
-              id="review-confirm-notes"
-              placeholder="Give additional context about your changes."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              maxLength={1000}
-            />
-          </div>
+          <ActivityHistorySaveFields
+            permissions={permissions}
+            historyAudience={historyAudience}
+            onHistoryAudienceChange={setHistoryAudience}
+            notes={notes}
+            onNotesChange={setNotes}
+            idPrefix="review-confirm"
+          />
         </div>
 
         <DialogFooter>

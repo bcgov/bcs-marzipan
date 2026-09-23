@@ -10,16 +10,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+
+import { ActivityHistorySaveFields } from './ActivityHistorySaveFields';
+import {
+  useHistoryAudienceWhenOpen,
+  type HistoryAudienceConfirmValue,
+} from './HistoryAudienceSelector';
 
 interface CompleteActivityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isDirty: boolean;
   isSubmitting: boolean;
-  onConfirm: (notes?: string) => void;
+  onConfirm: (value: HistoryAudienceConfirmValue) => void;
   displayId?: string;
+  permissions: string[];
 }
 
 export function CompleteActivityModal({
@@ -29,11 +34,19 @@ export function CompleteActivityModal({
   isSubmitting,
   onConfirm,
   displayId,
+  permissions,
 }: CompleteActivityModalProps) {
   const [notes, setNotes] = useState('');
+  const [historyAudience, setHistoryAudience] = useHistoryAudienceWhenOpen(
+    open,
+    permissions
+  );
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined);
+    onConfirm({
+      notes: notes.trim() || undefined,
+      historyAudience,
+    });
   };
 
   const handleOpenChange = (value: boolean) => {
@@ -64,17 +77,15 @@ export function CompleteActivityModal({
           </p>
         )}
 
-        <div className="space-y-2">
-          <Label htmlFor="complete-confirm-notes">Add a note (optional)</Label>
-          <Textarea
-            id="complete-confirm-notes"
-            placeholder="Optional context for the activity history."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            maxLength={1000}
-          />
-        </div>
+        <ActivityHistorySaveFields
+          permissions={permissions}
+          historyAudience={historyAudience}
+          onHistoryAudienceChange={setHistoryAudience}
+          notes={notes}
+          onNotesChange={setNotes}
+          idPrefix="complete-confirm"
+          notesPlaceholder="Optional context for the activity history."
+        />
 
         <DialogFooter>
           <Button

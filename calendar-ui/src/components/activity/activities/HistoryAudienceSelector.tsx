@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 import {
   canSelectHistoryAudience,
   hasHistoryAudienceInternalPermission,
@@ -19,11 +21,34 @@ export type HistoryAudienceConfirmValue = {
   historyAudience?: HistoryAudience;
 };
 
+export type ReviewActivityConfirmPayload = HistoryAudienceConfirmValue & {
+  markAsCompleted?: boolean;
+  unassignMe?: boolean;
+};
+
 export function defaultHistoryAudienceForUser(
   permissions: string[]
 ): HistoryAudience {
   const resolved = resolveHistoryAudience(undefined, permissions);
   return resolved.ok ? resolved.audience : 'public';
+}
+
+/** Resets audience to the server default whenever a confirm dialog opens. */
+export function useHistoryAudienceWhenOpen(
+  open: boolean,
+  permissions: string[]
+): [HistoryAudience, (value: HistoryAudience) => void] {
+  const [historyAudience, setHistoryAudience] = useState<HistoryAudience>(() =>
+    defaultHistoryAudienceForUser(permissions)
+  );
+
+  useEffect(() => {
+    if (open) {
+      setHistoryAudience(defaultHistoryAudienceForUser(permissions));
+    }
+  }, [open, permissions]);
+
+  return [historyAudience, setHistoryAudience];
 }
 
 interface HistoryAudienceSelectorProps {

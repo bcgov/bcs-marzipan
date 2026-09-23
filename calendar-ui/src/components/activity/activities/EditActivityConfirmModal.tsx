@@ -1,7 +1,6 @@
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import type { HistoryAudience } from '@corpcal/shared';
 import type { HistoryChange } from '@corpcal/shared/api/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,13 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 
 import { ActivityFormChangesList } from './ActivityFormChangesList';
+import { ActivityHistorySaveFields } from './ActivityHistorySaveFields';
 import {
-  defaultHistoryAudienceForUser,
-  HistoryAudienceSelector,
+  useHistoryAudienceWhenOpen,
   type HistoryAudienceConfirmValue,
 } from './HistoryAudienceSelector';
 
@@ -40,15 +37,10 @@ export function EditActivityConfirmModal({
   permissions,
 }: EditActivityConfirmModalProps) {
   const [notes, setNotes] = useState('');
-  const [historyAudience, setHistoryAudience] = useState<HistoryAudience>(() =>
-    defaultHistoryAudienceForUser(permissions)
+  const [historyAudience, setHistoryAudience] = useHistoryAudienceWhenOpen(
+    open,
+    permissions
   );
-
-  useEffect(() => {
-    if (open) {
-      setHistoryAudience(defaultHistoryAudienceForUser(permissions));
-    }
-  }, [open, permissions]);
 
   const handleConfirm = () => {
     onConfirm({
@@ -82,24 +74,15 @@ export function EditActivityConfirmModal({
             changes={changes}
           />
 
-          <div className="mt-4 space-y-4">
-            <HistoryAudienceSelector
+          <div className="mt-4">
+            <ActivityHistorySaveFields
               permissions={permissions}
-              value={historyAudience}
-              onChange={setHistoryAudience}
-              id="edit-confirm-history-audience"
+              historyAudience={historyAudience}
+              onHistoryAudienceChange={setHistoryAudience}
+              notes={notes}
+              onNotesChange={setNotes}
+              idPrefix="edit-confirm"
             />
-            <div className="space-y-2">
-              <Label htmlFor="edit-confirm-notes">Add a note (optional)</Label>
-              <Textarea
-                id="edit-confirm-notes"
-                placeholder="Give additional context about your changes."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                maxLength={1000}
-              />
-            </div>
           </div>
         </div>
 
