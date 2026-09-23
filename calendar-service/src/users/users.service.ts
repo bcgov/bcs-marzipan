@@ -1356,7 +1356,7 @@ export class UsersService {
           'lead_team_changed',
           [{ field: 'leadTeamId', oldValue: fromTeamId, newValue: toTeamId }],
           trimmedNotes,
-          tx
+          { tx }
         );
 
         actionTaken = true;
@@ -1383,7 +1383,7 @@ export class UsersService {
             },
           ],
           trimmedNotes,
-          tx
+          { tx }
         );
         actionTaken = true;
       } else if (includeNonLead) {

@@ -77,7 +77,9 @@ export interface ActivityTableRow {
   activityStatusId: number;
   /** Dotted field paths changed since last review (admin/system admin reviewers). */
   changedFieldsSinceReview?: string[];
+  /** Public last-updated instant (grid display/sort; not operational concurrency). */
   lastUpdatedDateTime: string;
+  /** User id for {@link lastUpdatedDateTime} (public last-updated). */
   lastUpdatedBy: number;
   createdDateTime: string;
   /** Holder of the activity edit lock, when present (activity list API). */
@@ -189,8 +191,8 @@ export function mapActivityToTableRow(
     // Status
     activityStatus: activity.activityStatus,
     activityStatusId: activity.activityStatusId ?? 0,
-    lastUpdatedDateTime: activity.lastUpdatedDateTime,
-    lastUpdatedBy: activity.lastUpdatedBy,
+    lastUpdatedDateTime: activity.publicLastUpdatedDateTime,
+    lastUpdatedBy: activity.publicLastUpdatedBy,
     createdDateTime: activity.createdDateTime,
     editLock: 'editLock' in activity ? (activity.editLock ?? null) : null,
     changedFieldsSinceReview:

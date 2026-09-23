@@ -52,10 +52,18 @@ export function toActivityHistoryViewModel(
     ((field: string, value: unknown) =>
       formatHistoryFieldValue(field, value, options.lookupMaps));
 
+  const audienceBadge =
+    entry.audience === 'internal'
+      ? 'Internal'
+      : entry.audience === 'private'
+        ? 'Private'
+        : undefined;
+
   return {
     id: entry.id,
     actor: activityActor(entry),
     actionLabel: getActionText(entry.actionType),
+    audienceBadge,
     changes: normalizeTransitionChanges(entry.changes, {
       getLabel: getHistoryFieldLabel,
       formatValue,

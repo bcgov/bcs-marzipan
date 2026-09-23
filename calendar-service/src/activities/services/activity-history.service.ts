@@ -15,8 +15,13 @@ import {
 } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
 import {
+  canViewHistoryAudience,
   pacificCalendarDayStartInstant,
   pacificCalendarNextDayStartInstant,
+  PERMISSIONS,
+  shouldIncludeAudienceInHistoryResponse,
+  SYSTEM_ROLES,
+  type HistoryAudience,
 } from '@corpcal/shared';
 import type {
   ActivityHistoryEntry,
@@ -43,7 +48,13 @@ type RawHistoryRow = {
   actionType: string;
   changes: unknown;
   notes: string | null;
+  audience: string;
   timestamp: Date | string;
+};
+
+export type RecordChangeOptions = {
+  tx?: DrizzleDbExecutor;
+  audience?: HistoryAudience;
 };
 
 /**
@@ -52,6 +63,29 @@ type RawHistoryRow = {
 @Injectable()
 export class ActivityHistoryService {
   constructor(private readonly databaseService: DatabaseService) {}
+
+  /** SQL visibility for history audience tiers (global/per-activity queries). */
+  private historyAudienceVisibilityCondition(
+    viewer?: FieldScopeUser
+  ): ReturnType<typeof sql> | undefined {
+    if (!viewer?.userId) {
+      return undefined;
+    }
+    if (viewer.roleName === SYSTEM_ROLES.SYSTEM_ADMIN) {
+      return undefined;
+    }
+    const canViewInternal = viewer.permissions.includes(
+      PERMISSIONS.ACTIVITIES.HISTORY_AUDIENCE_INTERNAL
+    );
+    return sql`(
+      ${activityHistory.audience} = 'public'
+      OR (${activityHistory.audience} = 'internal' AND ${canViewInternal})
+      OR (
+        ${activityHistory.audience} = 'private'
+        AND ${activityHistory.userId} = ${viewer.userId}
+      )
+    )`;
+  }
 
   private async getUserMap(userIds: number[]): Promise<
     Map<
@@ -123,12 +157,36 @@ export class ActivityHistoryService {
       actionType: string;
       changes: unknown;
       notes: string | null;
+      audience: string;
       timestamp: Date | string;
     }>,
     userMap: Map<number, { displayName: string; username: string | null }>,
     viewer?: FieldScopeUser
   ): ActivityHistoryEntry[] {
+    const includeAudienceField =
+      viewer != null &&
+      shouldIncludeAudienceInHistoryResponse(viewer.permissions);
+
     return entries.flatMap((entry) => {
+      if (viewer?.userId != null) {
+        const audience = entry.audience as HistoryAudience;
+        if (
+          !canViewHistoryAudience(
+            {
+              userId: viewer.userId,
+              permissions: viewer.permissions,
+              roleName: viewer.roleName,
+            },
+            {
+              audience,
+              userId: entry.userId,
+            }
+          )
+        ) {
+          return [];
+        }
+      }
+
       const actor = userMap.get(entry.userId);
       const displayName = actor?.displayName ?? `User ${entry.userId}`;
 
@@ -141,10 +199,21 @@ export class ActivityHistoryService {
         return [];
       }
 
+      const audienceForResponse =
+        includeAudienceField &&
+        entry.audience !== 'public' &&
+        (entry.audience === 'internal' || entry.audience === 'private')
+          ? (entry.audience as HistoryAudience)
+          : undefined;
+
       return [
         {
-          ...entry,
+          id: entry.id,
+          activityId: entry.activityId,
+          userId: entry.userId,
+          actionType: entry.actionType,
           changes: changes.length > 0 ? changes : null,
+          notes: entry.notes,
           timestamp:
             entry.timestamp instanceof Date
               ? entry.timestamp.toISOString()
@@ -155,6 +224,7 @@ export class ActivityHistoryService {
             username: actor?.username ?? null,
           },
           userName: displayName,
+          ...(audienceForResponse ? { audience: audienceForResponse } : {}),
         },
       ];
     });
@@ -175,9 +245,10 @@ export class ActivityHistoryService {
     actionType: string,
     changes?: HistoryChange[],
     notes?: string,
-    tx?: DrizzleDbExecutor
+    options?: RecordChangeOptions
   ): Promise<ActivityHistory> {
-    const db = tx ?? this.databaseService.db;
+    const db = options?.tx ?? this.databaseService.db;
+    const audience = options?.audience ?? 'public';
     // Fetch denormalized fields in the caller to avoid expensive triggers on write
     const [activityRow] = await db
       .select({ title: activities.title, displayId: activities.displayId })
@@ -221,6 +292,7 @@ export class ActivityHistoryService {
         actionType,
         changes: normalizedChanges ? (normalizedChanges as unknown) : null,
         notes: notes || null,
+        audience,
         activityTitle: activityRow?.title ?? null,
         activityDisplayId: activityRow?.displayId ?? null,
         actorDisplayName: userRow?.displayName ?? null,
@@ -469,6 +541,7 @@ export class ActivityHistoryService {
     activityId: number,
     viewer?: FieldScopeUser
   ): Promise<ActivityHistoryEntry[]> {
+    const audienceCondition = this.historyAudienceVisibilityCondition(viewer);
     const historyEntries = await this.databaseService.db
       .select({
         id: activityHistory.id,
@@ -477,10 +550,15 @@ export class ActivityHistoryService {
         actionType: activityHistory.actionType,
         changes: activityHistory.changes,
         notes: activityHistory.notes,
+        audience: activityHistory.audience,
         timestamp: activityHistory.timestamp,
       })
       .from(activityHistory)
-      .where(eq(activityHistory.activityId, activityId))
+      .where(
+        audienceCondition
+          ? and(eq(activityHistory.activityId, activityId), audienceCondition)
+          : eq(activityHistory.activityId, activityId)
+      )
       .orderBy(desc(activityHistory.timestamp));
 
     const userIds = [...new Set(historyEntries.map((e) => e.userId))];
@@ -505,6 +583,7 @@ export class ActivityHistoryService {
         actionType: activityHistory.actionType,
         changes: activityHistory.changes,
         notes: activityHistory.notes,
+        audience: activityHistory.audience,
         timestamp: activityHistory.timestamp,
       })
       .from(activityHistory)
@@ -582,6 +661,13 @@ export class ActivityHistoryService {
     const whereClauses: unknown[] = [];
     if (activityIds !== null) {
       whereClauses.push(inArray(activityHistory.activityId, activityIds));
+    }
+
+    const audienceCondition = this.historyAudienceVisibilityCondition(
+      opts.viewer
+    );
+    if (audienceCondition) {
+      whereClauses.push(audienceCondition);
     }
 
     if (opts.startDate) {
@@ -724,6 +810,7 @@ export class ActivityHistoryService {
         actionType: activityHistory.actionType,
         changes: activityHistory.changes,
         notes: activityHistory.notes,
+        audience: activityHistory.audience,
         timestamp: activityHistory.timestamp,
       })
       .from(activityHistory);
@@ -907,6 +994,7 @@ export class ActivityHistoryService {
     id: number,
     viewer?: FieldScopeUser
   ): Promise<ActivityHistoryEntry | null> {
+    const audienceCondition = this.historyAudienceVisibilityCondition(viewer);
     const [entry] = await this.databaseService.db
       .select({
         id: activityHistory.id,
@@ -915,10 +1003,15 @@ export class ActivityHistoryService {
         actionType: activityHistory.actionType,
         changes: activityHistory.changes,
         notes: activityHistory.notes,
+        audience: activityHistory.audience,
         timestamp: activityHistory.timestamp,
       })
       .from(activityHistory)
-      .where(eq(activityHistory.id, id))
+      .where(
+        audienceCondition
+          ? and(eq(activityHistory.id, id), audienceCondition)
+          : eq(activityHistory.id, id)
+      )
       .limit(1);
 
     if (!entry) {

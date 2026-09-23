@@ -777,7 +777,8 @@ export class ActivitiesController {
       id,
       body.note,
       user.id,
-      ctx
+      ctx,
+      body.historyAudience
     );
     return {
       success: true,
@@ -894,13 +895,17 @@ export class ActivitiesController {
   async updateCategories(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateCategoriesSchema))
-    body: { categoryIds: number[] },
+    body: import('@corpcal/shared/schemas').UpdateCategoriesRequest,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     const result = await this.activitiesService.updateCategories(
       id,
       body.categoryIds,
-      user.id
+      user.id,
+      {
+        historyAudience: body.historyAudience,
+        permissions: user.permissions,
+      }
     );
     return {
       success: true,
@@ -939,13 +944,17 @@ export class ActivitiesController {
   async updateThemes(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateThemesSchema))
-    body: { themeIds: number[] },
+    body: import('@corpcal/shared/schemas').UpdateThemesRequest,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     const result = await this.activitiesService.updateThemes(
       id,
       body.themeIds,
-      user.id
+      user.id,
+      {
+        historyAudience: body.historyAudience,
+        permissions: user.permissions,
+      }
     );
     return {
       success: true,
@@ -984,13 +993,17 @@ export class ActivitiesController {
   async updateTags(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateTagsSchema))
-    body: { tagIds: number[] },
+    body: import('@corpcal/shared/schemas').UpdateTagsRequest,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     const result = await this.activitiesService.updateTags(
       id,
       body.tagIds,
-      user.id
+      user.id,
+      {
+        historyAudience: body.historyAudience,
+        permissions: user.permissions,
+      }
     );
     return {
       success: true,
@@ -1029,13 +1042,17 @@ export class ActivitiesController {
   async updateSharedWith(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(updateSharedWithSchema))
-    body: { teamIds: number[] },
+    body: import('@corpcal/shared/schemas').UpdateSharedWithRequest,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: ActivityResponse }> {
     const result = await this.activitiesService.updateSharedWith(
       id,
       body.teamIds,
-      user.id
+      user.id,
+      {
+        historyAudience: body.historyAudience,
+        permissions: user.permissions,
+      }
     );
     return {
       success: true,

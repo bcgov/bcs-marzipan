@@ -102,6 +102,8 @@ for (const scope of ACTIVITY_FIELD_SCOPES) {
 export interface FieldScopeUser {
   permissions: string[];
   roleName: string;
+  /** Required for private history audience visibility checks. */
+  userId?: number;
 }
 
 export function normalizeHistoryFieldKey(field: string): string | null {

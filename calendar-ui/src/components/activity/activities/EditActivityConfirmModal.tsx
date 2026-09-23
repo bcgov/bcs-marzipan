@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import type { HistoryAudience } from '@corpcal/shared';
 import type { HistoryChange } from '@corpcal/shared/api/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,13 +16,19 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 import { ActivityFormChangesList } from './ActivityFormChangesList';
+import {
+  defaultHistoryAudienceForUser,
+  HistoryAudienceSelector,
+  type HistoryAudienceConfirmValue,
+} from './HistoryAudienceSelector';
 
 interface EditActivityConfirmModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   changes: HistoryChange[];
-  onConfirm: (notes?: string) => void;
+  onConfirm: (value: HistoryAudienceConfirmValue) => void;
   isSubmitting: boolean;
+  permissions: string[];
 }
 
 export function EditActivityConfirmModal({
@@ -30,11 +37,24 @@ export function EditActivityConfirmModal({
   changes,
   onConfirm,
   isSubmitting,
+  permissions,
 }: EditActivityConfirmModalProps) {
   const [notes, setNotes] = useState('');
+  const [historyAudience, setHistoryAudience] = useState<HistoryAudience>(() =>
+    defaultHistoryAudienceForUser(permissions)
+  );
+
+  useEffect(() => {
+    if (open) {
+      setHistoryAudience(defaultHistoryAudienceForUser(permissions));
+    }
+  }, [open, permissions]);
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined);
+    onConfirm({
+      notes: notes.trim() || undefined,
+      historyAudience,
+    });
   };
 
   const handleOpenChange = (value: boolean) => {
@@ -62,16 +82,24 @@ export function EditActivityConfirmModal({
             changes={changes}
           />
 
-          <div className="mt-4 space-y-2">
-            <Label htmlFor="edit-confirm-notes">Add a note (optional)</Label>
-            <Textarea
-              id="edit-confirm-notes"
-              placeholder="Give additional context about your changes."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              maxLength={1000}
+          <div className="mt-4 space-y-4">
+            <HistoryAudienceSelector
+              permissions={permissions}
+              value={historyAudience}
+              onChange={setHistoryAudience}
+              id="edit-confirm-history-audience"
             />
+            <div className="space-y-2">
+              <Label htmlFor="edit-confirm-notes">Add a note (optional)</Label>
+              <Textarea
+                id="edit-confirm-notes"
+                placeholder="Give additional context about your changes."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                maxLength={1000}
+              />
+            </div>
           </div>
         </div>
 

@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 
+import { Badge } from '@/components/ui/badge';
+
 import type {
   HistoryEntryViewModel,
   HistoryListVariant,
@@ -75,6 +77,14 @@ export function HistoryEntry({
             {!entry.subject ? (
               <span className="text-muted-foreground block">
                 {entry.actionLabel}
+                {entry.audienceBadge ? (
+                  <Badge
+                    variant="outline"
+                    className="ml-2 align-middle text-xs"
+                  >
+                    {entry.audienceBadge}
+                  </Badge>
+                ) : null}
               </span>
             ) : null}
           </div>

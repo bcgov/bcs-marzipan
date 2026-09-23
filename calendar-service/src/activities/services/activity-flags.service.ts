@@ -271,7 +271,7 @@ export class ActivityFlagsService {
             },
           ],
           undefined,
-          tx
+          { tx }
         );
       }
 
@@ -293,7 +293,7 @@ export class ActivityFlagsService {
             },
           ],
           undefined,
-          tx
+          { tx }
         );
       }
     });

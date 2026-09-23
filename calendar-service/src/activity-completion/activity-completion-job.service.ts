@@ -238,7 +238,7 @@ export class ActivityCompletionJobService {
           },
         ],
         'Automated: activity completed by scheduled job',
-        tx
+        { tx }
       );
     }
 

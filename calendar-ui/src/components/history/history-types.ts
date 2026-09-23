@@ -37,6 +37,8 @@ export type HistoryEntryViewModel = {
   actor: HistoryActorViewModel;
   team?: string | null;
   actionLabel: string;
+  /** Non-public history tier label when API exposes audience. */
+  audienceBadge?: string;
   subject?: HistorySubjectViewModel;
   changes: HistoryChangeViewModel[];
   notes?: string | null;

@@ -36,6 +36,13 @@
       "when": 1789171887103,
       "tag": "0004_20260911_user_permissions_and_override",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790187294609,
+      "tag": "0005_20260923_activity_history_audience_public_last_updated",
+      "breakpoints": true
     }
   ]
 }

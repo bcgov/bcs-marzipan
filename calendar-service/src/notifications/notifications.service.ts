@@ -26,10 +26,12 @@ import {
   userTeams,
 } from '@corpcal/database/schema';
 import {
+  canViewHistoryAudience,
   NOTIFICATION_CHANGE_TYPES,
   NOTIFICATION_ENTITY_TYPES,
   NOTIFICATION_EVENT_TYPES,
   NOTIFICATION_RECIPIENT_STATUSES,
+  type HistoryAudience,
   type NotificationChangeType,
   type NotificationEntityType,
   type NotificationEventType,
@@ -43,6 +45,7 @@ import type {
 import { ActivitiesGateway } from '../activities/activities.gateway';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
+import { PolicyService } from '../policy/policy.service';
 import { NotificationEmailService } from './notification-email.service';
 
 interface CreateEventParams {
@@ -106,8 +109,55 @@ export class NotificationsService {
     private readonly databaseService: DatabaseService,
     @Inject(forwardRef(() => ActivitiesGateway))
     private readonly activitiesGateway: ActivitiesGateway,
-    private readonly notificationEmailService: NotificationEmailService
+    private readonly notificationEmailService: NotificationEmailService,
+    private readonly policyService: PolicyService
   ) {}
+
+  /** Drop recipients who cannot view the save's history audience tier. */
+  async filterRecipientsByHistoryAudience(
+    recipientUserIds: number[],
+    audience: HistoryAudience,
+    historyActorUserId: number
+  ): Promise<number[]> {
+    if (audience === 'public' || recipientUserIds.length === 0) {
+      return recipientUserIds;
+    }
+
+    const uniqueIds = [...new Set(recipientUserIds)];
+    const userRows = await this.databaseService.db
+      .select({ id: users.id, roleId: users.roleId })
+      .from(users)
+      .where(inArray(users.id, uniqueIds));
+
+    const roleIds = [...new Set(userRows.map((row) => row.roleId))];
+    const roleRows =
+      roleIds.length > 0
+        ? await this.databaseService.db
+            .select({ id: roles.id, name: roles.name })
+            .from(roles)
+            .where(inArray(roles.id, roleIds))
+        : [];
+    const roleNameById = new Map(roleRows.map((row) => [row.id, row.name]));
+
+    const filtered: number[] = [];
+    for (const row of userRows) {
+      const { permissions } =
+        await this.policyService.getEffectivePermissionsForUser(row.id);
+      if (
+        canViewHistoryAudience(
+          {
+            userId: row.id,
+            permissions,
+            roleName: roleNameById.get(row.roleId) ?? '',
+          },
+          { audience, userId: historyActorUserId }
+        )
+      ) {
+        filtered.push(row.id);
+      }
+    }
+    return filtered;
+  }
 
   private async resolveActorUsername(
     actorUserId: number,
@@ -273,17 +323,24 @@ export class NotificationsService {
     actorUserId: number;
     status: 'reviewed' | 'delete_requested' | 'deleted';
     includeWatchlisters?: boolean;
+    historyAudience?: HistoryAudience;
   }): Promise<number[]> {
     const activity = await this.resolveActivityIdentity(input.activityId);
     if (!activity) {
       return [];
     }
 
-    const recipientUserIds = await this.resolveActivityAudienceUserIds({
+    let recipientUserIds = await this.resolveActivityAudienceUserIds({
       activityId: input.activityId,
       includeCommsContacts: true,
       includeWatchlisters: input.includeWatchlisters === true,
     });
+
+    recipientUserIds = await this.filterRecipientsByHistoryAudience(
+      recipientUserIds,
+      input.historyAudience ?? 'public',
+      input.actorUserId
+    );
 
     const statusLabel =
       input.status === 'delete_requested'
@@ -349,17 +406,24 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     note: string;
+    historyAudience?: HistoryAudience;
   }): Promise<number[]> {
     const activity = await this.resolveActivityIdentity(input.activityId);
     if (!activity) {
       return [];
     }
 
-    const recipientUserIds = await this.resolveActivityAudienceUserIds({
+    let recipientUserIds = await this.resolveActivityAudienceUserIds({
       activityId: input.activityId,
       includeCommsContacts: true,
       includeWatchlisters: false,
     });
+
+    recipientUserIds = await this.filterRecipientsByHistoryAudience(
+      recipientUserIds,
+      input.historyAudience ?? 'public',
+      input.actorUserId
+    );
 
     return this.createEventWithRecipients({
       eventType: ACTIVITY_NOTE_ADDED_EVENT_TYPE,
@@ -997,6 +1061,7 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     teamIds: number[];
+    historyAudience?: HistoryAudience;
   }): Promise<number[]> {
     const dedupedTeamIds = [...new Set(input.teamIds)].filter(
       (teamId) => Number.isInteger(teamId) && teamId > 0
@@ -1045,7 +1110,12 @@ export class NotificationsService {
 
     const allRecipients = new Set<number>();
     for (const teamRow of teamRows) {
-      const recipientUserIds = membersByTeamId.get(teamRow.id) ?? [];
+      let recipientUserIds = membersByTeamId.get(teamRow.id) ?? [];
+      recipientUserIds = await this.filterRecipientsByHistoryAudience(
+        recipientUserIds,
+        input.historyAudience ?? 'public',
+        input.actorUserId
+      );
       const teamLabel = teamRow.teamDisplayName ?? teamRow.teamName;
       const ministryLabel = teamRow.ministryDisplayName
         ? ` (${teamRow.ministryDisplayName})`
@@ -1079,6 +1149,7 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     changedFields: string[];
+    historyAudience?: HistoryAudience;
   }): Promise<number[]> {
     if (input.changedFields.length === 0) {
       return [];
@@ -1114,11 +1185,17 @@ export class NotificationsService {
         ),
     ]);
 
-    const recipientUserIds = [
+    let recipientUserIds = [
       ...adminUserIds,
       ...commsRows.map((row) => row.id),
       ...flagRows.map((row) => row.id),
     ];
+
+    recipientUserIds = await this.filterRecipientsByHistoryAudience(
+      recipientUserIds,
+      input.historyAudience ?? 'public',
+      input.actorUserId
+    );
 
     return this.createEventWithRecipients({
       eventType: NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_UPDATED,
@@ -1140,6 +1217,7 @@ export class NotificationsService {
   async notifyActivityStatusChangedToChanged(input: {
     activityId: number;
     actorUserId: number;
+    historyAudience?: HistoryAudience;
   }): Promise<number[]> {
     const activity = await this.resolveActivityIdentity(input.activityId);
     if (!activity) {
@@ -1198,10 +1276,16 @@ export class NotificationsService {
       reviewerRows = [...reviewerUserRoleRows, ...reviewerTeamRoleRows];
     }
 
-    const recipientUserIds = [
+    let recipientUserIds = [
       ...adminUserIds,
       ...reviewerRows.map((row) => row.id),
     ];
+
+    recipientUserIds = await this.filterRecipientsByHistoryAudience(
+      recipientUserIds,
+      input.historyAudience ?? 'public',
+      input.actorUserId
+    );
 
     return this.createEventWithRecipients({
       eventType: NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_STATUS_CHANGED,

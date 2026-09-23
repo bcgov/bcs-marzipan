@@ -4,6 +4,7 @@ import { ActivitiesModule } from '../activities/activities.module';
 import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
 import { LocksModule } from '../locks/locks.module';
+import { PolicyModule } from '../policy/policy.module';
 import { ActivityReminderJobService } from './activity-reminder-job.service';
 import { ActivityReminderSettingsController } from './activity-reminder-settings.controller';
 import { NotificationEmailService } from './notification-email.service';
@@ -15,6 +16,7 @@ import { NotificationsService } from './notifications.service';
     DatabaseModule,
     AuthModule,
     LocksModule,
+    PolicyModule,
     forwardRef(() => ActivitiesModule),
   ],
   controllers: [NotificationsController, ActivityReminderSettingsController],

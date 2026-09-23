@@ -693,21 +693,33 @@ export function ActivityPage({
   };
 
   type SubmitActivityMode =
-    | { kind: 'update'; validatedData: ActivityFormData; notes?: string }
-    | { kind: 'reviewOnly'; notes?: string }
+    | {
+        kind: 'update';
+        validatedData: ActivityFormData;
+        notes?: string;
+        historyAudience?: import('@corpcal/shared').HistoryAudience;
+      }
+    | {
+        kind: 'reviewOnly';
+        notes?: string;
+        historyAudience?: import('@corpcal/shared').HistoryAudience;
+      }
     | {
         kind: 'reviewWithSave';
         validatedData: ActivityFormData;
         notes?: string;
+        historyAudience?: import('@corpcal/shared').HistoryAudience;
       }
     | {
         kind: 'completeOnly';
         notes?: string;
+        historyAudience?: import('@corpcal/shared').HistoryAudience;
       }
     | {
         kind: 'completeWithSave';
         validatedData: ActivityFormData;
         notes?: string;
+        historyAudience?: import('@corpcal/shared').HistoryAudience;
       };
 
   const runSubmitUpdate = useCallback(
@@ -721,14 +733,21 @@ export function ActivityPage({
       try {
         let submitData: UpdateActivityRequest;
 
+        const historyAudienceField =
+          mode.historyAudience != null
+            ? { historyAudience: mode.historyAudience }
+            : {};
+
         if (mode.kind === 'reviewOnly') {
           submitData = {
             ...buildMarkReviewedOnlyPayload(mode.notes),
+            ...historyAudienceField,
           };
         } else if (mode.kind === 'completeOnly') {
           submitData = {
             markAsCompleted: true,
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+            ...historyAudienceField,
           };
         } else {
           const opts: UpdatePayloadOptions =
@@ -764,13 +783,16 @@ export function ActivityPage({
               opts
             ),
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+            ...historyAudienceField,
           };
         }
 
-        if (activity.lastUpdatedDateTime) {
+        const concurrencyToken =
+          activity.lastUpdatedDateTime ?? activity.publicLastUpdatedDateTime;
+        if (concurrencyToken) {
           submitData = {
             ...submitData,
-            ifUnmodifiedSince: activity.lastUpdatedDateTime,
+            ifUnmodifiedSince: concurrencyToken,
           };
         }
 
@@ -840,9 +862,17 @@ export function ActivityPage({
     ]
   );
 
-  const handleConfirmedSubmit = async (notes?: string) => {
+  const handleConfirmedSubmit = async (value: {
+    notes?: string;
+    historyAudience?: import('@corpcal/shared').HistoryAudience;
+  }) => {
     if (!validatedData) return;
-    await runSubmitUpdate({ kind: 'update', validatedData, notes });
+    await runSubmitUpdate({
+      kind: 'update',
+      validatedData,
+      notes: value.notes,
+      historyAudience: value.historyAudience,
+    });
   };
 
   const onError = (errors: FieldErrors<ActivityFormData>) => {
@@ -1118,7 +1148,7 @@ export function ActivityPage({
         categories={categories}
         leadMinistry={activity.leadMinistry ?? null}
         activityStatus={activity.activityStatus ?? null}
-        lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
+        lastUpdatedDateTime={activity.publicLastUpdatedDateTime ?? null}
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={() => setHistoryOpen(true)}
         flags={activity.flags ?? []}
@@ -1414,8 +1444,9 @@ export function ActivityPage({
           if (!open) setValidatedData(null);
         }}
         changes={confirmModalChanges}
-        onConfirm={(notes) => void handleConfirmedSubmit(notes)}
+        onConfirm={(value) => void handleConfirmedSubmit(value)}
         isSubmitting={isSubmitting}
+        permissions={user?.permissions ?? []}
       />
       <ReviewActivityModal
         open={showReviewModal}

@@ -51,12 +51,14 @@ import {
   PERMISSIONS,
   PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
   profileIncludesRelation,
+  resolveHistoryAudience,
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
   type ActivityHydrationProfile,
   type ActivityListItem,
   type ActivityStatusName,
   type EventPlannerDetail,
+  type HistoryAudience,
 } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import {
@@ -112,6 +114,7 @@ import {
 import { PolicyService } from '../../policy/policy.service';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
+import { buildActivityTimestampUpdate } from '../utils/activity-audience-write';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import {
   buildActivityFindAllConditions,
@@ -1411,6 +1414,8 @@ export class ActivitiesService {
         | 'lastUpdatedBy'
         | 'createdDateTime'
         | 'lastUpdatedDateTime'
+        | 'publicLastUpdatedBy'
+        | 'publicLastUpdatedDateTime'
         | 'rowVersion'
       > & {
         displayId: null;
@@ -1418,6 +1423,8 @@ export class ActivitiesService {
         lastUpdatedBy: number;
         createdDateTime: Date;
         lastUpdatedDateTime: Date;
+        publicLastUpdatedBy: number;
+        publicLastUpdatedDateTime: Date;
       } = {
         ...activityRowForInsert,
         activityStatusId: initialStatusId,
@@ -1426,6 +1433,8 @@ export class ActivitiesService {
         lastUpdatedBy: userId,
         createdDateTime: now,
         lastUpdatedDateTime: now,
+        publicLastUpdatedBy: userId,
+        publicLastUpdatedDateTime: now,
       };
 
       // Insert the activity
@@ -2165,7 +2174,7 @@ export class ActivitiesService {
           results.push(
             await this.update(
               activityId,
-              { markAsReviewed: true },
+              { markAsReviewed: true, historyAudience: 'public' },
               userId,
               context,
               { bypassEditLock: true }
@@ -2182,7 +2191,7 @@ export class ActivitiesService {
           results.push(
             await this.update(
               activityId,
-              { pitchRequiredStatusId },
+              { pitchRequiredStatusId, historyAudience: 'public' },
               userId,
               context,
               { bypassEditLock: true }
@@ -2192,9 +2201,13 @@ export class ActivitiesService {
         }
         case 'issue':
           results.push(
-            await this.update(activityId, { isIssue: true }, userId, context, {
-              bypassEditLock: true,
-            })
+            await this.update(
+              activityId,
+              { isIssue: true, historyAudience: 'public' },
+              userId,
+              context,
+              { bypassEditLock: true }
+            )
           );
           break;
         case 'tags': {
@@ -2204,7 +2217,12 @@ export class ActivitiesService {
               'tagIds is required for the tags operation.'
             );
           }
-          results.push(await this.updateTags(activityId, tagIds, userId));
+          results.push(
+            await this.updateTags(activityId, tagIds, userId, {
+              historyAudience: 'public',
+              permissions: context.permissions,
+            })
+          );
           break;
         }
         case 'sharedWith': {
@@ -2416,8 +2434,14 @@ export class ActivitiesService {
       markAsCompleted: _markAsCompletedIgnored,
       commsContactLeadId: _commsContactLeadIdUiIgnored,
       ifUnmodifiedSince: _ifUnmodifiedSinceIgnored,
+      historyAudience: historyAudienceInput,
       ...activityUpdateData
     } = dto;
+
+    const saveHistoryAudience = this.resolveSaveHistoryAudience(
+      historyAudienceInput,
+      context?.permissions
+    );
 
     // Compute new status. Do not use DTO activityStatusId.
     const canReview =
@@ -2487,15 +2511,12 @@ export class ActivitiesService {
 
     // Build update payload: activityUpdateData contains only core activity fields (junction/venue were destructured out).
     // Cast is intentional: UpdateActivityRequest and Activity must stay in sync; only activity table columns are updated.
+    const now = new Date();
     const updateData: Partial<Activity> = {
       ...(activityUpdateData as Partial<Activity>),
       activityStatusId: computedStatusId,
-      lastUpdatedDateTime: new Date(),
+      ...buildActivityTimestampUpdate(saveHistoryAudience, userId, now),
     };
-
-    const now = new Date();
-    // Ensure lastUpdatedBy is set for audit/history
-    updateData.lastUpdatedBy = userId;
 
     // Capture existing related data for history (before transaction)
     const venueRows = await this.databaseService.db
@@ -3084,7 +3105,8 @@ export class ActivitiesService {
       userId,
       historyActionType,
       allChanges.length > 0 ? allChanges : undefined,
-      activityHistoryNotes?.trim() || undefined
+      activityHistoryNotes?.trim() || undefined,
+      { audience: saveHistoryAudience }
     );
 
     // When status becomes Reviewed, capture the current state as the review snapshot.
@@ -3118,6 +3140,7 @@ export class ActivitiesService {
         await this.notificationsService.notifyActivityStatusChangedToChanged({
           activityId: id,
           actorUserId: userId,
+          historyAudience: saveHistoryAudience,
         });
       } else if (newStatusName === 'reviewed') {
         await this.notificationsService.notifyActivityStatusChangedToAudience({
@@ -3125,6 +3148,7 @@ export class ActivitiesService {
           actorUserId: userId,
           status: 'reviewed',
           includeWatchlisters: false,
+          historyAudience: saveHistoryAudience,
         });
       }
     }
@@ -3138,18 +3162,16 @@ export class ActivitiesService {
         activityId: id,
         actorUserId: userId,
         teamIds: sharedWithTeamIds,
+        historyAudience: saveHistoryAudience,
       });
     }
 
-    const isAdminIncognitoActor =
-      context?.roleName === SYSTEM_ROLES.ADMIN ||
-      context?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
-
-    if (!isAdminIncognitoActor && notificationChangedFields.length > 0) {
+    if (notificationChangedFields.length > 0) {
       await this.notificationsService.notifyActivityUpdated({
         activityId: id,
         actorUserId: userId,
         changedFields: notificationChangedFields,
+        historyAudience: saveHistoryAudience,
       });
     }
 
@@ -3379,9 +3401,24 @@ export class ActivitiesService {
   ): FieldScopeUser | undefined {
     if (!ctx?.user) return undefined;
     return {
+      userId: ctx.user.id,
       permissions: ctx.user.permissions,
       roleName: ctx.user.roleName,
     };
+  }
+
+  private resolveSaveHistoryAudience(
+    input: HistoryAudience | undefined,
+    permissions: string[] | undefined
+  ): HistoryAudience {
+    const result = resolveHistoryAudience(input, permissions ?? []);
+    if (!result.ok) {
+      if (result.code === 'forbidden') {
+        throw new ForbiddenException(result.message);
+      }
+      throw new BadRequestException(result.message);
+    }
+    return result.audience;
   }
 
   async getHistory(id: number, ctx?: RequestContextType) {
@@ -3549,9 +3586,10 @@ export class ActivitiesService {
     id: number,
     note: string,
     userId: number,
-    ctx?: RequestContextType
+    ctx?: RequestContextType,
+    historyAudienceInput?: HistoryAudience
   ) {
-    await this.assertCanEditDuringLockout(userId);
+    await this.assertCanEditDuringLockout(userId, ctx?.user?.permissions);
 
     const trimmedNote = note.trim();
     if (trimmedNote.length === 0) {
@@ -3568,12 +3606,28 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with id ${id} not found`);
     }
 
-    const createdEntry = await this.activityHistoryService.recordChange(
-      id,
-      userId,
-      'note_added',
-      undefined,
-      trimmedNote
+    const audience = this.resolveSaveHistoryAudience(
+      historyAudienceInput,
+      ctx?.user?.permissions
+    );
+    const now = new Date();
+
+    const createdEntry = await this.databaseService.db.transaction(
+      async (tx) => {
+        await tx
+          .update(activities)
+          .set(buildActivityTimestampUpdate(audience, userId, now))
+          .where(eq(activities.id, id));
+
+        return this.activityHistoryService.recordChange(
+          id,
+          userId,
+          'note_added',
+          undefined,
+          trimmedNote,
+          { audience, tx }
+        );
+      }
     );
 
     const hydratedEntry = await this.activityHistoryService.getHistoryEntryById(
@@ -3591,6 +3645,7 @@ export class ActivitiesService {
       activityId: id,
       actorUserId: userId,
       note: trimmedNote,
+      historyAudience: audience,
     });
 
     return hydratedEntry;
@@ -3705,8 +3760,7 @@ export class ActivitiesService {
         .update(activities)
         .set({
           activityStatusId: deletedStatus.id,
-          lastUpdatedDateTime: new Date(),
-          lastUpdatedBy: userId,
+          ...buildActivityTimestampUpdate('public', userId, new Date()),
         })
         .where(eq(activities.id, id))
         .returning();
@@ -3723,7 +3777,7 @@ export class ActivitiesService {
           },
         ],
         reason.trim(),
-        tx
+        { tx, audience: 'public' }
       );
 
       return updatedActivity;
@@ -3846,8 +3900,7 @@ export class ActivitiesService {
         .update(activities)
         .set({
           activityStatusId: deleteRequestedStatus.id,
-          lastUpdatedDateTime: new Date(),
-          lastUpdatedBy: userId,
+          ...buildActivityTimestampUpdate('public', userId, new Date()),
         })
         .where(eq(activities.id, id))
         .returning();
@@ -3864,7 +3917,7 @@ export class ActivitiesService {
           },
         ],
         reason.trim(),
-        tx
+        { tx, audience: 'public' }
       );
 
       return updatedActivity;
@@ -3971,8 +4024,7 @@ export class ActivitiesService {
         .update(activities)
         .set({
           activityStatusId: previousStatusId,
-          lastUpdatedDateTime: new Date(),
-          lastUpdatedBy: userId,
+          ...buildActivityTimestampUpdate('public', userId, new Date()),
         })
         .where(eq(activities.id, id))
         .returning();
@@ -3989,7 +4041,7 @@ export class ActivitiesService {
           },
         ],
         note?.trim() || 'Activity restored',
-        tx
+        { tx, audience: 'public' }
       );
 
       return updatedActivity;
@@ -4067,11 +4119,14 @@ export class ActivitiesService {
   async updateCategories(
     id: number,
     categoryIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      historyAudience?: HistoryAudience;
+      permissions?: string[];
+    }
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
-    // Verify activity exists
     await this.findOne(id);
 
     if (categoryIds.length === 0) {
@@ -4079,9 +4134,12 @@ export class ActivitiesService {
     }
     await this.utilsService.validateCategoryIds(categoryIds);
 
+    const audience = this.resolveSaveHistoryAudience(
+      options?.historyAudience,
+      options?.permissions
+    );
     const now = new Date();
 
-    // Get existing category IDs for history
     const existingCategories = await this.databaseService.db
       .select({ categoryId: activityCategories.categoryId })
       .from(activityCategories)
@@ -4094,14 +4152,17 @@ export class ActivitiesService {
         activityCategories,
         id,
         categoryIds,
-        (id: number) => ({ categoryId: id }),
+        (categoryId: number) => ({ categoryId }),
         'categoryId',
         userId,
         now
       );
+      await tx
+        .update(activities)
+        .set(buildActivityTimestampUpdate(audience, userId, now))
+        .where(eq(activities.id, id));
     });
 
-    // Record change in history only if categories actually changed
     if (!isDeepEqual(existingCategoryIds, categoryIds)) {
       await this.activityHistoryService.recordChange(
         id,
@@ -4114,11 +4175,11 @@ export class ActivitiesService {
             newValue: categoryIds,
           },
         ],
-        'Activity categories updated'
+        'Activity categories updated',
+        { audience }
       );
     }
 
-    // Return updated activity
     return this.findOne(id);
   }
 
@@ -4128,16 +4189,23 @@ export class ActivitiesService {
   async updateThemes(
     id: number,
     themeIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      historyAudience?: HistoryAudience;
+      permissions?: string[];
+    }
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);
 
+    const audience = this.resolveSaveHistoryAudience(
+      options?.historyAudience,
+      options?.permissions
+    );
     const now = new Date();
 
-    // Capture existing themes for history
     const existingThemes = await this.databaseService.db
       .select({ themeId: activityThemes.themeId })
       .from(activityThemes)
@@ -4150,25 +4218,28 @@ export class ActivitiesService {
         activityThemes,
         id,
         themeIds,
-        (id: number) => ({ themeId: id }),
+        (themeId: number) => ({ themeId }),
         'themeId',
         userId,
         now
       );
+      await tx
+        .update(activities)
+        .set(buildActivityTimestampUpdate(audience, userId, now))
+        .where(eq(activities.id, id));
     });
 
-    // Record change in history only if themes actually changed
     if (!isDeepEqual(existingThemeIds, themeIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,
         'updated',
         [{ field: 'themes', oldValue: existingThemeIds, newValue: themeIds }],
-        'Activity themes updated'
+        'Activity themes updated',
+        { audience }
       );
     }
 
-    // Return updated activity
     return this.findOne(id);
   }
 
@@ -4179,16 +4250,23 @@ export class ActivitiesService {
   async updateTags(
     id: number,
     tagIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      historyAudience?: HistoryAudience;
+      permissions?: string[];
+    }
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);
 
+    const audience = this.resolveSaveHistoryAudience(
+      options?.historyAudience,
+      options?.permissions
+    );
     const now = new Date();
 
-    // Capture existing tags for history
     const existingTags = await this.databaseService.db
       .select({ tagId: activityTags.tagId })
       .from(activityTags)
@@ -4201,25 +4279,28 @@ export class ActivitiesService {
         activityTags,
         id,
         tagIds,
-        (id: number) => ({ tagId: id }),
+        (tagId: number) => ({ tagId }),
         'tagId',
         userId,
         now
       );
+      await tx
+        .update(activities)
+        .set(buildActivityTimestampUpdate(audience, userId, now))
+        .where(eq(activities.id, id));
     });
 
-    // Record change in history only if tags actually changed
     if (!isDeepEqual(existingTagIds, tagIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,
         'updated',
         [{ field: 'tags', oldValue: existingTagIds, newValue: tagIds }],
-        'Activity tags updated'
+        'Activity tags updated',
+        { audience }
       );
     }
 
-    // Return updated activity
     return this.findOne(id);
   }
 
@@ -4229,16 +4310,23 @@ export class ActivitiesService {
   async updateSharedWith(
     id: number,
     teamIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      historyAudience?: HistoryAudience;
+      permissions?: string[];
+    }
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
     // Verify activity exists
     await this.findOne(id);
 
+    const audience = this.resolveSaveHistoryAudience(
+      options?.historyAudience,
+      options?.permissions
+    );
     const now = new Date();
 
-    // Capture existing shared-with teams for history
     const existingShared = await this.databaseService.db
       .select({ teamId: activitySharedWithTeams.teamId })
       .from(activitySharedWithTeams)
@@ -4251,31 +4339,35 @@ export class ActivitiesService {
         activitySharedWithTeams,
         id,
         teamIds,
-        (id: number) => ({ teamId: id }),
+        (teamId: number) => ({ teamId }),
         'teamId',
         userId,
         now
       );
+      await tx
+        .update(activities)
+        .set(buildActivityTimestampUpdate(audience, userId, now))
+        .where(eq(activities.id, id));
     });
 
-    // Record change in history only if shared-with teams actually changed
     if (!isDeepEqual(existingTeamIds, teamIds)) {
       await this.activityHistoryService.recordChange(
         id,
         userId,
         'updated',
         [{ field: 'sharedWith', oldValue: existingTeamIds, newValue: teamIds }],
-        'Activity shared with teams updated'
+        'Activity shared with teams updated',
+        { audience }
       );
 
       await this.notificationsService.notifyActivitySharedWithTeamsChanged({
         activityId: id,
         actorUserId: userId,
         teamIds,
+        historyAudience: audience,
       });
     }
 
-    // Return updated activity
     return this.findOne(id);
   }
 
@@ -4311,6 +4403,7 @@ export class ActivitiesService {
     }
 
     const now = new Date();
+    const audience: HistoryAudience = 'public';
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -4322,6 +4415,10 @@ export class ActivitiesService {
         userId,
         now
       );
+      await tx
+        .update(activities)
+        .set(buildActivityTimestampUpdate(audience, userId, now))
+        .where(eq(activities.id, id));
     });
 
     await this.activityHistoryService.recordChange(
@@ -4335,7 +4432,8 @@ export class ActivitiesService {
           newValue: mergedTeamIds,
         },
       ],
-      'Activity shared with additional teams'
+      'Activity shared with additional teams',
+      { audience }
     );
 
     this.activitiesGateway.notifyActivityUpdate(id);
@@ -4501,10 +4599,7 @@ export class ActivitiesService {
 
       await tx
         .update(activities)
-        .set({
-          lastUpdatedDateTime: now,
-          lastUpdatedBy: userId,
-        })
+        .set(buildActivityTimestampUpdate('public', userId, now))
         .where(eq(activities.id, id));
     });
 
@@ -4519,7 +4614,8 @@ export class ActivitiesService {
           newValue: newTeamIds,
         },
       ],
-      'Activity unshared from team'
+      'Activity unshared from team',
+      { audience: 'public' }
     );
 
     // Notify detail viewers as well as the activity list: an editor viewing this

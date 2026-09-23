@@ -21,7 +21,10 @@ import {
   activityResponseSchema,
 } from '@corpcal/shared/schemas';
 
-function mapActivityAuditTimestamps(activity: Activity) {
+function mapActivityAuditTimestamps(
+  activity: Activity,
+  includeOperationalLastUpdated: boolean
+) {
   const createdDateTime =
     activity.createdDateTime?.toISOString() ?? new Date().toISOString();
   const operationalLastUpdatedDateTime =
@@ -29,14 +32,20 @@ function mapActivityAuditTimestamps(activity: Activity) {
   const publicLastUpdatedDateTime =
     activity.publicLastUpdatedDateTime?.toISOString() ??
     operationalLastUpdatedDateTime;
+  const publicLastUpdatedBy =
+    activity.publicLastUpdatedBy ?? activity.lastUpdatedBy ?? 0;
+
   return {
     createdDateTime,
     createdBy: activity.createdBy ?? 0,
-    lastUpdatedDateTime: operationalLastUpdatedDateTime,
-    lastUpdatedBy: activity.lastUpdatedBy ?? 0,
     publicLastUpdatedDateTime,
-    publicLastUpdatedBy:
-      activity.publicLastUpdatedBy ?? activity.lastUpdatedBy ?? 0,
+    publicLastUpdatedBy,
+    ...(includeOperationalLastUpdated
+      ? {
+          lastUpdatedDateTime: operationalLastUpdatedDateTime,
+          lastUpdatedBy: activity.lastUpdatedBy ?? 0,
+        }
+      : {}),
   };
 }
 
@@ -265,7 +274,7 @@ export class ActivityMapperService {
       flags: relatedData?.flags ?? [],
 
       // Meta
-      ...mapActivityAuditTimestamps(activity),
+      ...mapActivityAuditTimestamps(activity, relatedData?.canEdit === true),
     };
 
     return dto;
@@ -351,7 +360,7 @@ export class ActivityMapperService {
       newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
       activityStatus: relatedData?.activityStatus ?? DEFAULT_STATUS,
       activityStatusId: activity.activityStatusId ?? 0,
-      ...mapActivityAuditTimestamps(activity),
+      ...mapActivityAuditTimestamps(activity, relatedData?.canEdit === true),
       ...(relatedData?.canEdit !== undefined && {
         canEdit: relatedData.canEdit,
       }),

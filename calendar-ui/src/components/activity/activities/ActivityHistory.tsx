@@ -8,8 +8,13 @@ import {
   type ReactNode,
 } from 'react';
 
+import type { HistoryAudience } from '@corpcal/shared';
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchActivityHistory } from '@/api/activitiesApi';
+import {
+  defaultHistoryAudienceForUser,
+  HistoryAudienceSelector,
+} from '@/components/activity/activities/HistoryAudienceSelector';
 import {
   buildActivityHistoryFilterDetailLines,
   buildHistoryActorFilterOptions,
@@ -62,6 +67,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useAuth } from '@/hooks/useAuth';
 import { useAddActivityHistoryNote } from '@/hooks/useCalendar';
 import {
   useActivityStatuses,
@@ -161,6 +167,9 @@ export default function ActivityHistory({
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const [noteHistoryAudience, setNoteHistoryAudience] =
+    useState<HistoryAudience>('public');
+  const { user } = useAuth();
   const addNoteMutation = useAddActivityHistoryNote();
   const activityStatusesQuery = useActivityStatuses();
   const timeStatusesQuery = useTimeStatuses();
@@ -369,7 +378,7 @@ export default function ActivityHistory({
     try {
       await addNoteMutation.mutateAsync({
         id: activityId,
-        body: { note: trimmedNote },
+        body: { note: trimmedNote, historyAudience: noteHistoryAudience },
       });
       toast.success('Note added');
       setNoteText('');
@@ -412,7 +421,12 @@ export default function ActivityHistory({
             size="sm"
             className="h-8 px-2"
             disabled={addNoteDisabled}
-            onClick={() => setNoteModalOpen(true)}
+            onClick={() => {
+              setNoteHistoryAudience(
+                defaultHistoryAudienceForUser(user?.permissions ?? [])
+              );
+              setNoteModalOpen(true);
+            }}
           >
             <Plus className="h-4 w-4" />
             New note
@@ -565,19 +579,27 @@ export default function ActivityHistory({
               itself.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="activity-history-note">Note</Label>
-            <Textarea
-              id="activity-history-note"
-              placeholder="Add context for future readers."
-              value={noteText}
-              onChange={(event) => setNoteText(event.target.value)}
-              rows={4}
-              maxLength={MAX_NOTE_LENGTH}
+          <div className="space-y-4">
+            <HistoryAudienceSelector
+              permissions={user?.permissions ?? []}
+              value={noteHistoryAudience}
+              onChange={setNoteHistoryAudience}
+              id="activity-history-note-audience"
             />
-            <p className="text-muted-foreground text-xs">
-              {trimmedNote.length} / {MAX_NOTE_LENGTH}
-            </p>
+            <div className="space-y-2">
+              <Label htmlFor="activity-history-note">Note</Label>
+              <Textarea
+                id="activity-history-note"
+                placeholder="Add context for future readers."
+                value={noteText}
+                onChange={(event) => setNoteText(event.target.value)}
+                rows={4}
+                maxLength={MAX_NOTE_LENGTH}
+              />
+              <p className="text-muted-foreground text-xs">
+                {trimmedNote.length} / {MAX_NOTE_LENGTH}
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button
