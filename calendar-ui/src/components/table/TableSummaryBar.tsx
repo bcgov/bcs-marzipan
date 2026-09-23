@@ -348,7 +348,6 @@ export function TableSummaryBooleanFilters({
               checked={filter.checked}
               onCheckedChange={(v) => filter.onCheckedChange(v === true)}
               aria-label={filter.label}
-              className="border-input"
               disabled={isDisabled}
             />
             {filter.label}

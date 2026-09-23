@@ -1,15 +1,22 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
+
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { ActivityPageHeader } from './ActivityPageHeader';
+
+function renderHeader(ui: ReactElement) {
+  return render(<TooltipProvider>{ui}</TooltipProvider>);
+}
 
 describe('ActivityPageHeader unshare action', () => {
   it('renders Unshare button between flag and favourite actions', async () => {
     const user = userEvent.setup();
     const onUnshare = vi.fn();
 
-    render(
+    renderHeader(
       <ActivityPageHeader
         displayId="TEAM-000001"
         title="Sample activity"
@@ -31,7 +38,7 @@ describe('ActivityPageHeader unshare action', () => {
   });
 
   it('disables unshare when locked and shows the reason', () => {
-    render(
+    renderHeader(
       <ActivityPageHeader
         displayId="TEAM-000001"
         title="Sample activity"

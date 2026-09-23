@@ -277,6 +277,11 @@ describe('ActivitiesService', () => {
 
   // Mock locks service (added when ActivitiesService started using LocksService)
   const mockLocksService = {
+    getActiveActivityLocksForIds: vi
+      .fn()
+      .mockResolvedValue(
+        new Map<number, { userId: number; username: string }>()
+      ),
     getLockForEntity: vi.fn().mockResolvedValue(null),
     releaseLock: vi.fn().mockResolvedValue(null),
     releaseLockOrFinalizePendingHandoff: vi
@@ -4473,6 +4478,80 @@ describe('ActivitiesService', () => {
       expect(nonAdminResult[0]).not.toHaveProperty('changedFieldsSinceReview');
       expect(buildResponseSpy).not.toHaveBeenCalled();
       expect(mapToResponseSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findAll list output edit locks', () => {
+    it('attaches editLock when includeEditLocks is true and skips lock fetch otherwise', async () => {
+      const activity = createMockActivity();
+
+      mockDatabaseService.db.select = vi.fn((selection?: unknown) => {
+        if (selection === undefined) {
+          return {
+            from: vi.fn().mockResolvedValue([activity]),
+          };
+        }
+
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        };
+      });
+
+      mockLocksService.getActiveActivityLocksForIds.mockResolvedValue(
+        new Map([[activity.id, { userId: 42, username: 'Editor User' }]])
+      );
+
+      const withLocks = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: 'User',
+            permissions: [],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: HYDRATION_PROFILES.list,
+          includeEditLocks: true,
+        }
+      );
+
+      expect(
+        mockLocksService.getActiveActivityLocksForIds
+      ).toHaveBeenCalledWith([activity.id]);
+      expect(withLocks[0]).toMatchObject({
+        id: activity.id,
+        editLock: { userId: 42, username: 'Editor User' },
+      });
+
+      mockLocksService.getActiveActivityLocksForIds.mockClear();
+
+      const withoutLocks = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: 'User',
+            permissions: [],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: HYDRATION_PROFILES.list,
+        }
+      );
+
+      expect(
+        mockLocksService.getActiveActivityLocksForIds
+      ).not.toHaveBeenCalled();
+      expect(withoutLocks[0]).not.toHaveProperty('editLock');
     });
   });
 

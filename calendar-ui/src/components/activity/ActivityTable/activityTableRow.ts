@@ -49,8 +49,12 @@ export interface ActivityTableRow {
   leadMinistry: string | null;
   /** Ministry acronym for table display; falls back to leadMinistry when absent */
   leadMinistryAbbreviation: string | null;
+  /** Lead team display name (used outside the Comms column). */
+  leadTeamDisplayName: string | null;
+  /** Designated comms lead name when present. */
   commsLeadName: string | null;
-  commsContactsCount: number;
+  /** Comms lead name, or first listed contact when no lead is designated. */
+  commsContactName: string | null;
   /** Event planner display names */
   eventPlanners: string[];
   /** Event planner lookup IDs for client-side filtering */
@@ -76,10 +80,14 @@ export interface ActivityTableRow {
   lastUpdatedDateTime: string;
   lastUpdatedBy: number;
   createdDateTime: string;
+  /** Holder of the activity edit lock, when present (activity list API). */
+  editLock: { userId: number; username: string } | null;
 
   // Flags (team-scoped assignments)
   flags: ActivityFlagResponse[];
 
+  /** Shared-with team display names for the grid shares indicator. */
+  sharedWith: string[];
   /** Shared-with team IDs for bulk unshare eligibility. */
   sharedWithTeamIds: number[];
   visibility: string | null;
@@ -109,6 +117,14 @@ function formatVenueAddress(
   return parts.length > 0 ? parts.join(', ') : null;
 }
 
+/** Comms column contact: lead when set, otherwise the first listed contact. */
+export function resolveCommsContactName(
+  contacts: ActivityListItem['commsContacts']
+): string | null {
+  const lead = contacts.find((c) => c.isLead);
+  return lead?.name ?? contacts[0]?.name ?? null;
+}
+
 /**
  * Map an activity list item or full API response to an ActivityTableRow.
  */
@@ -116,6 +132,7 @@ export function mapActivityToTableRow(
   activity: ActivityListItem | ActivityResponse
 ): ActivityTableRow {
   const commsLead = activity.commsContacts.find((c) => c.isLead);
+  const commsContactName = resolveCommsContactName(activity.commsContacts);
 
   return {
     id: activity.id,
@@ -153,8 +170,9 @@ export function mapActivityToTableRow(
     leadOrg: activity.leadOrg,
     leadMinistry: activity.leadMinistry,
     leadMinistryAbbreviation: activity.leadMinistryAbbreviation ?? null,
+    leadTeamDisplayName: activity.leadTeamDisplayName ?? null,
     commsLeadName: commsLead?.name ?? null,
-    commsContactsCount: activity.commsContacts.length,
+    commsContactName,
     eventPlanners: activity.eventPlanners ?? [],
     eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],
     leadTeamId: activity.leadTeamId ?? null,
@@ -174,6 +192,7 @@ export function mapActivityToTableRow(
     lastUpdatedDateTime: activity.lastUpdatedDateTime,
     lastUpdatedBy: activity.lastUpdatedBy,
     createdDateTime: activity.createdDateTime,
+    editLock: 'editLock' in activity ? (activity.editLock ?? null) : null,
     changedFieldsSinceReview:
       'changedFieldsSinceReview' in activity &&
       Array.isArray(activity.changedFieldsSinceReview)
@@ -181,6 +200,7 @@ export function mapActivityToTableRow(
             (v): v is string => typeof v === 'string'
           )
         : undefined,
+    sharedWith: activity.sharedWith ?? [],
     sharedWithTeamIds: activity.sharedWithTeamIds ?? [],
     visibility: activity.visibility ?? null,
 

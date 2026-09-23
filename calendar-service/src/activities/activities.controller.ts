@@ -244,6 +244,7 @@ export class ActivitiesController {
         includeReviewDiff: true,
       },
       outputShape: 'list',
+      includeEditLocks: true,
     });
     return {
       success: true,
