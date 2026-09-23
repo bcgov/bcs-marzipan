@@ -320,6 +320,7 @@ export class ActivityMapperService {
       leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
       leadTeamId: activity.leadTeamId,
       leadMinistryId: activity.leadMinistryId ?? null,
+      sharedWith: relatedData?.sharedWith ?? [],
       sharedWithTeamIds: relatedData?.sharedWithTeamIds ?? [],
       visibility:
         (activity.visibility as Visibility) ??

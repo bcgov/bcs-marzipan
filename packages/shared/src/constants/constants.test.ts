@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeActivityStatusLabel } from './constants';
+import {
+  formatActivityDisplayIdForUi,
+  formatActivityDisplayIdNumericSegmentForUi,
+  normalizeActivityStatusLabel,
+} from './constants';
+
+describe('formatActivityDisplayIdForUi', () => {
+  it('shows the last six digits of the numeric segment', () => {
+    expect(formatActivityDisplayIdNumericSegmentForUi('1222222')).toBe(
+      '222222'
+    );
+    expect(formatActivityDisplayIdForUi('HLTH-1222222')).toBe('HLTH-222222');
+    expect(formatActivityDisplayIdForUi('TEAM-000001')).toBe('TEAM-000001');
+  });
+});
 
 describe('normalizeActivityStatusLabel', () => {
   it('normalizes display names and internal names consistently', () => {

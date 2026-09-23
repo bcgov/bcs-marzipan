@@ -1,12 +1,20 @@
 import { History, Star, UserX } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 
+import { formatActivityDisplayIdForUi } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import {
-  ActivityFlagIcon,
-  ActivityFlagOverflowIcon,
-} from '@/components/activity/activities/ActivityFlagIcon';
+  ActivityFlagAssigneeStack,
+  activityFlagAssigneeTooltip,
+  uniqueActivityFlagsByAssignee,
+} from '@/components/activity/activities/ActivityFlagAssigneeStack';
+import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
 import { AssignActivityModal } from '@/components/activity/activities/AssignActivityModal';
+import { SharedWithPopover } from '@/components/activity/ActivityTable/cells/SharedWithPopover';
+import {
+  ACTIVITY_OVERVIEW_ICON_MUTED_CLASS,
+  ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS,
+} from '@/components/activity/ActivityTable/overviewIconsLayout';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CopyableText } from '@/components/ui/copyable-text';
@@ -50,6 +58,10 @@ type ActivityPageHeaderProps = {
   isFavourite?: boolean;
   onFavouriteToggle?: () => void;
   isFavouriteToggling?: boolean;
+  /** Shared-with team display names for the header shares indicator. */
+  sharedWith?: string[];
+  visibility?: string | null;
+  leadTeamDisplayName?: string | null;
   unshareAction?: {
     teamLabel: string;
     disabled: boolean;
@@ -80,6 +92,9 @@ export function ActivityPageHeader({
   isFavourite,
   onFavouriteToggle,
   isFavouriteToggling,
+  sharedWith,
+  visibility,
+  leadTeamDisplayName,
   unshareAction,
 }: ActivityPageHeaderProps): ReactElement {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -98,38 +113,40 @@ export function ActivityPageHeader({
   }
 
   const sortedFlags = flags ?? [];
-  const stackedFlags = [...sortedFlags].reverse();
-  const visibleStackedFlags = stackedFlags.slice(0, 3);
-  const overflowFlagCount = Math.max(stackedFlags.length - 3, 0);
-  const isFlagged = sortedFlags.length > 0;
+  const assignedFlags = uniqueActivityFlagsByAssignee(sortedFlags);
+  const isFlagged = assignedFlags.length > 0;
   const currentUserFlag =
     currentUserId == null
       ? null
       : (sortedFlags.find((flag) => flag.assigneeId === currentUserId) ?? null);
-  const flaggedLabel = sortedFlags.map((f) => f.assigneeName).join(', ');
-  const needsWideFlagButton =
-    isFlagged && (visibleStackedFlags.length > 1 || overflowFlagCount > 0);
+  const flaggedLabel = activityFlagAssigneeTooltip(sortedFlags);
+  const needsWideFlagButton = isFlagged && assignedFlags.length > 1;
+  const displayIdUiLabel = formatActivityDisplayIdForUi(displayId);
 
   const iconButtonClassName = 'shrink-0';
-  const headerActionIconClassName = 'text-muted-foreground size-4';
+  const headerActionIconClassName = 'text-icon-muted-foreground size-4';
   const timestampClassName = 'text-muted-foreground text-xs sm:text-sm';
+  const showSharingIndicator = sharedWith != null;
   const showActionButtons =
     canFlag ||
     isFlagged ||
     unshareAction != null ||
     onFavouriteToggle ||
-    onHistoryClick;
+    onHistoryClick ||
+    showSharingIndicator;
 
   return (
     <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 sm:gap-x-12 sm:gap-y-1">
       <div className="col-start-1 row-start-1 w-fit justify-self-start">
-        <CopyableText
-          text={displayId}
-          copyLabel="Copy display ID"
-          className="text-md text-muted-foreground hover:text-foreground -ml-2 px-2 py-1"
-        >
-          {displayId}
-        </CopyableText>
+        <span title={displayId}>
+          <CopyableText
+            text={displayId}
+            copyLabel="Copy display ID"
+            className="text-md text-muted-foreground hover:text-foreground -ml-2 px-2 py-1"
+          >
+            {displayIdUiLabel}
+          </CopyableText>
+        </span>
       </div>
 
       {statusDisplay !== '' ? (
@@ -209,37 +226,10 @@ export function ActivityPageHeader({
                   assigneeName={null}
                   assigneeFlagColour={null}
                 />
-              ) : needsWideFlagButton ? (
-                <span className="flex items-center">
-                  {visibleStackedFlags.map((flag, index) => (
-                    <span
-                      key={`${flag.teamId}:${flag.assigneeId}`}
-                      className={index > 0 ? '-ml-0.5' : undefined}
-                      style={{ zIndex: index + 1 }}
-                    >
-                      <ActivityFlagIcon
-                        assigneeName={flag.assigneeName}
-                        assigneeFlagColour={flag.assigneeFlagColour}
-                      />
-                    </span>
-                  ))}
-                  {overflowFlagCount > 0 ? (
-                    <span
-                      className={
-                        visibleStackedFlags.length > 0 ? '-ml-0.5' : undefined
-                      }
-                      style={{ zIndex: visibleStackedFlags.length + 1 }}
-                    >
-                      <ActivityFlagOverflowIcon
-                        extraCount={overflowFlagCount}
-                      />
-                    </span>
-                  ) : null}
-                </span>
               ) : (
-                <ActivityFlagIcon
-                  assigneeName={sortedFlags[0].assigneeName}
-                  assigneeFlagColour={sortedFlags[0].assigneeFlagColour}
+                <ActivityFlagAssigneeStack
+                  flags={sortedFlags}
+                  reverseStackOrder
                 />
               )}
             </Button>
@@ -292,19 +282,37 @@ export function ActivityPageHeader({
               </span>
             </Button>
           )}
+          {showSharingIndicator && (
+            <SharedWithPopover
+              teamNames={sharedWith}
+              visibility={visibility}
+              leadTeamDisplayName={leadTeamDisplayName}
+              headerActions
+            />
+          )}
           {onFavouriteToggle && (
             <Button
               type="button"
               variant="ghost"
               size="icon"
               title={isFavourite ? 'Remove from watchlist' : 'Add to watchlist'}
+              aria-label={
+                isFavourite ? 'Remove from watchlist' : 'Add to watchlist'
+              }
+              aria-pressed={isFavourite}
               onClick={onFavouriteToggle}
               disabled={isFavouriteToggling}
               className={iconButtonClassName}
             >
               <Star
-                className={headerActionIconClassName}
+                className={cn(
+                  headerActionIconClassName,
+                  isFavourite
+                    ? ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS
+                    : ACTIVITY_OVERVIEW_ICON_MUTED_CLASS
+                )}
                 fill={isFavourite ? 'currentColor' : 'none'}
+                aria-hidden
               />
             </Button>
           )}

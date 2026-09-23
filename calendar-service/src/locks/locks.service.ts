@@ -8,7 +8,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, gt, lt, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, lt, lte, or, sql } from 'drizzle-orm';
 
 import {
   editLockPendingHandoffs,
@@ -235,6 +235,38 @@ export class LocksService {
       }
       return inserted;
     });
+  }
+
+  /**
+   * Active edit locks for the given activity ids (non-expired session + idle).
+   */
+  async getActiveActivityLocksForIds(
+    activityIds: number[]
+  ): Promise<Map<number, { userId: number; username: string }>> {
+    const map = new Map<number, { userId: number; username: string }>();
+    if (activityIds.length === 0) {
+      return map;
+    }
+    const now = new Date();
+    const rows = await this.databaseService.db
+      .select({
+        entityId: editLocks.entityId,
+        userId: editLocks.userId,
+        username: editLocks.username,
+      })
+      .from(editLocks)
+      .where(
+        and(
+          eq(editLocks.entityType, 'activity'),
+          inArray(editLocks.entityId, activityIds),
+          gt(editLocks.expiresAt, now),
+          gt(editLocks.idleExpiresAt, now)
+        )
+      );
+    for (const row of rows) {
+      map.set(row.entityId, { userId: row.userId, username: row.username });
+    }
+    return map;
   }
 
   async getLockForEntity(

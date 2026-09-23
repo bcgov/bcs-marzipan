@@ -1153,6 +1153,9 @@ export function ActivityPage({
         isFavourite={isFavourite(id)}
         onFavouriteToggle={() => toggleFavourite(id)}
         isFavouriteToggling={isFavouriteToggling}
+        sharedWith={activity.sharedWith ?? []}
+        visibility={activity.visibility}
+        leadTeamDisplayName={activity.leadTeamDisplayName ?? null}
         unshareAction={
           showUnshareHeaderAction
             ? {
