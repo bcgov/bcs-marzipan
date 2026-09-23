@@ -228,6 +228,15 @@ Updates an existing activity. Only provided fields are updated (partial update).
 
 **Note:** Junction table records (categories, tags, etc.) are replaced entirely if provided.
 
+**Optional history fields (same as junction PUTs and history notes):**
+
+| Field             | Type   | Description                                                                                                                                                                                                |
+| ----------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `notes`           | string | Audit note stored on the history row                                                                                                                                                                       |
+| `historyAudience` | string | `public`, `internal`, or `private`. Requires matching permission for non-public values. When omitted, users with `activities.history.audience.internal` default to `internal`; others default to `public`. |
+
+Activity responses include `publicLastUpdatedBy` and `publicLastUpdatedDateTime` for all viewers with activity access. `lastUpdatedBy` and `lastUpdatedDateTime` are present only when the response includes `canEdit: true` (operational timestamps for editors).
+
 ---
 
 ### Soft Delete Activity

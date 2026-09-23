@@ -10,6 +10,7 @@ type PagedHistoryRow = {
   actionType: string;
   changes: unknown;
   notes: string | null;
+  audience: string;
   timestamp: Date | string;
 };
 
@@ -219,6 +220,30 @@ describe('ActivityHistoryService', () => {
       );
     });
 
+    it('persists history audience on insert', async () => {
+      const returning = vi.fn().mockResolvedValue([{ id: 101 }]);
+      const values = vi.fn().mockReturnValue({ returning });
+      const insert = vi.fn().mockReturnValue({ values });
+
+      mockDb.select = createRecordChangeSelectMock();
+      mockDb.insert = insert;
+
+      await service.recordChange(
+        1,
+        2,
+        'updated',
+        [{ field: 'title', oldValue: 'A', newValue: 'B' }],
+        undefined,
+        { audience: 'internal' }
+      );
+
+      expect(values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          audience: 'internal',
+        })
+      );
+    });
+
     it('stores null changes for note-only entries', async () => {
       const returning = vi.fn().mockResolvedValue([{ id: 100 }]);
       const values = vi.fn().mockReturnValue({ returning });
@@ -250,6 +275,7 @@ describe('ActivityHistoryService', () => {
             { field: 'notes', oldValue: 'secret', newValue: 'updated' },
           ],
           notes: null,
+          audience: 'public',
           timestamp: new Date('2026-01-01T12:00:00.000Z'),
         },
       ];
@@ -289,6 +315,71 @@ describe('ActivityHistoryService', () => {
       expect(result[0]?.changes).toEqual([
         { field: 'title', oldValue: 'A', newValue: 'B' },
       ]);
+    });
+
+    it('omits internal-audience rows for viewers without internal permission', async () => {
+      const historyEntries = [
+        {
+          id: 1,
+          activityId: 10,
+          userId: 2,
+          actionType: 'updated',
+          changes: [{ field: 'title', oldValue: 'A', newValue: 'B' }],
+          notes: null,
+          audience: 'public',
+          timestamp: new Date('2026-01-01T12:00:00.000Z'),
+        },
+        {
+          id: 2,
+          activityId: 10,
+          userId: 3,
+          actionType: 'updated',
+          changes: [{ field: 'title', oldValue: 'B', newValue: 'C' }],
+          notes: null,
+          audience: 'internal',
+          timestamp: new Date('2026-01-02T12:00:00.000Z'),
+        },
+      ];
+
+      let selectCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCount += 1;
+        if (selectCount === 1) {
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                orderBy: vi.fn().mockResolvedValue(historyEntries),
+              }),
+            }),
+          };
+        }
+
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: 2,
+                adDisplayName: 'Bob',
+                adUsername: 'bob',
+              },
+              {
+                id: 3,
+                adDisplayName: 'Carol',
+                adUsername: 'carol',
+              },
+            ]),
+          }),
+        };
+      });
+
+      const result = await service.getActivityHistory(10, {
+        userId: 5,
+        permissions: [],
+        roleName: 'Viewer',
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.id).toBe(1);
     });
   });
 
@@ -697,6 +788,7 @@ describe('ActivityHistoryService', () => {
       actionType: 'updated',
       changes: [{ field: 'title', oldValue: 'A', newValue: 'B' }],
       notes: null,
+      audience: 'public',
       timestamp: new Date('2026-03-20T20:00:00.000Z'),
       ...overrides,
     });

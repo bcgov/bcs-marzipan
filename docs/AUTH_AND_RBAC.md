@@ -495,13 +495,24 @@ Some scopes **do not** enforce a view permission: **translations**, **pitch requ
 
 #### Activity history visibility and field redaction
 
-Activity history (`GET /activities/:id/history`, global history) applies two layers of access control:
+Activity history (`GET /activities/:id/history`, global history) applies **three** layers of access control, in order:
 
 1. **Activity visibility** — History is returned only for activities the caller can already see (same team/visibility rules as list and detail). Per-activity history calls `findOne` first; global history filters by visible activity IDs.
 
-2. **Field-level redaction** — Each history entry’s `changes` array is filtered with the same field-scope rules as activity responses (`redactActivityHistoryChanges` / `canViewHistoryField`). Users see diffs only for fields they are allowed to view; other field changes are removed from the payload.
+2. **History audience tier** — Each row stores an `audience`: `public` (default), `internal`, or `private`. Viewers see a row only if they pass `canViewHistoryAudience` in `packages/shared/src/history-audience.ts`:
+   - **Public** — anyone who can see the activity.
+   - **Internal** — callers with `activities.history.audience.internal` (System Admin sees all tiers).
+   - **Private** — the history actor only, plus System Admin (not other admins by role alone).
 
-**Omitting empty entries (intentional):** After redaction, an entry is **not returned at all** when the caller would have nothing useful to read: no viewable field changes remain, there is no audit note on the history row, and the action is not `note_added`. Empty shell rows (action type + actor + timestamp with no details) are deliberately omitted — they add noise without revealing permitted information.
+   Saves and standalone notes may send optional `historyAudience` on `PATCH /activities/:id`, junction PUTs (categories, tags, shared-with, themes), and `POST /activities/:id/history/notes`. Callers without internal/private permissions always persist **public**; when omitted, users with `activities.history.audience.internal` default to **internal**, otherwise **public**. Bulk/system writes use **public** only.
+
+   Activity list/detail responses expose **`publicLastUpdatedBy`** / **`publicLastUpdatedDateTime`** for everyone who can view the activity. Operational **`lastUpdatedBy`** / **`lastUpdatedDateTime`** are included only when `canEdit` is true (same user-facing “last updated” as before for editors). Non-public saves bump operational timestamps only; public saves bump both operational and public timestamps.
+
+   Update notifications (activity updated, status changed, shared-with, notes) filter recipients by the save’s history audience so internal/private changes do not notify users who cannot read that tier in history.
+
+3. **Field-level redaction** — Each history entry’s `changes` array is filtered with the same field-scope rules as activity responses (`redactActivityHistoryChanges` / `canViewHistoryField`). Users see diffs only for fields they are allowed to view; other field changes are removed from the payload.
+
+**Omitting empty entries (intentional):** After audience filtering and redaction, an entry is **not returned at all** when the caller would have nothing useful to read: no viewable field changes remain, there is no audit note on the history row, and the action is not `note_added`. Empty shell rows (action type + actor + timestamp with no details) are deliberately omitted — they add noise without revealing permitted information.
 
 Entries are still returned when at least one of the following applies:
 
@@ -509,9 +520,13 @@ Entries are still returned when at least one of the following applies:
 - The history row has a non-empty audit `notes` value (standalone context the actor chose to record).
 - The action type is `note_added` (timeline note with no field changes).
 
+Users who may select non-public audiences see an optional `audience` field on history API entries when the row is internal or private (public rows omit the field).
+
 The full audit log remains in the database for operators with broader access; this behavior governs **read** responses only.
 
-Implementation: `ActivityHistoryService.mapEntriesToResponse` and `shouldIncludeHistoryEntry` in `calendar-service`; field keys and scope mapping in `packages/shared/src/activity-history-fields.ts`.
+Implementation: `ActivityHistoryService.mapEntriesToResponse`, `historyAudienceVisibilityCondition`, and `shouldIncludeHistoryEntry` in `calendar-service`; audience rules in `packages/shared/src/history-audience.ts`; field keys and scope mapping in `packages/shared/src/activity-history-fields.ts`.
+
+Permission keys (seeded in config-data): `activities.history.audience.internal`, `activities.history.audience.private`.
 
 #### Using dataScope in controllers and services
 
