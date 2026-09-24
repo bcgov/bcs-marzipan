@@ -370,7 +370,7 @@ export function toPrintRowViewModel(
   const startTime =
     activity.isAllDay === true
       ? 'All day'
-      : formatTime12h(activity.startDate, activity.startTime);
+      : formatTime12h(null, activity.startTime);
   const hasTimeDisplay = Boolean(startTime);
 
   return {
