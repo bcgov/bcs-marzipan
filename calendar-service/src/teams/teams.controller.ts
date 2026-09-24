@@ -12,7 +12,6 @@ import {
   ApiBody,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -26,11 +25,16 @@ import type {
 } from '@corpcal/shared/api/types';
 import {
   createTeamBodySchema,
+  teamDetailQuerySchema,
+  teamListQuerySchema,
   updateTeamBodySchema,
+  type TeamDetailQuery,
+  type TeamListQuery,
 } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import {
   RequireAnyPermission,
   RequirePermission,
@@ -54,12 +58,7 @@ export class TeamsController {
     summary: 'List teams',
     description: 'Returns all teams with member count and optional ministry.',
   })
-  @ApiQuery({
-    name: 'activeOnly',
-    required: false,
-    type: Boolean,
-    description: 'If true, return only active teams (default: true)',
-  })
+  @ApiZodQueries(teamListQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'List of teams',
@@ -67,9 +66,11 @@ export class TeamsController {
   })
   @Get()
   async findAll(
-    @Query('activeOnly') activeOnly?: string
+    @Query(new ZodValidationPipe(teamListQuerySchema))
+    query: TeamListQuery = {}
   ): Promise<{ success: boolean; data: TeamListItem[] }> {
-    const active = activeOnly === undefined || activeOnly === 'true';
+    const active =
+      query?.activeOnly === undefined || query.activeOnly === 'true';
     const data = await this.teamsService.findAll(active);
     return { success: true, data };
   }
@@ -142,13 +143,7 @@ export class TeamsController {
 
   @ApiOperation({ summary: 'Get team by ID' })
   @ApiParam({ name: 'id', description: 'Team ID' })
-  @ApiQuery({
-    name: 'includeInactiveMembers',
-    required: false,
-    type: 'boolean',
-    description:
-      'When true, includes team members with isActive=false (useful for assignment UI). Defaults to false.',
-  })
+  @ApiZodQueries(teamDetailQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'Team details. Returns data: null when team is not found.',
@@ -157,11 +152,12 @@ export class TeamsController {
   @Get(':id')
   async findOne(
     @Param('id', ParseIntPipe) id: number,
-    @Query('includeInactiveMembers') includeInactiveMembers?: string
+    @Query(new ZodValidationPipe(teamDetailQuerySchema))
+    query: TeamDetailQuery = {}
   ): Promise<{ success: boolean; data: TeamDetail | null }> {
     const data = await this.teamsService.findOne(
       id,
-      includeInactiveMembers === 'true'
+      query?.includeInactiveMembers === 'true'
     );
     return { success: true, data };
   }

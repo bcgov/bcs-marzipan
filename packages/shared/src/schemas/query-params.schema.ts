@@ -4,6 +4,7 @@ import {
   commaSeparatedIntArray,
   commaSeparatedStringArray,
   confirmedFilterEnum,
+  requiredCommaSeparatedIntArray,
 } from './query-param-helpers';
 
 /**
@@ -14,6 +15,9 @@ import {
  *
  * NOTE: Isolated in a separate file to prevent Zod v4 type inference issues
  * from affecting other schema type inferences (like z.infer on response schemas).
+ *
+ * Comma-separated ID lists use strict parsing: one invalid segment fails the
+ * whole param (see query-param-helpers.ts).
  */
 
 // ============================================
@@ -55,7 +59,7 @@ export type LookupQueryParams = z.infer<typeof lookupQueryParamsSchema>;
  * Tabs pass single-element arrays; multi-select filters pass multiple IDs (OR semantics).
  */
 export const filterActivitiesQuerySchema = z.object({
-  title: z.string().optional(),
+  title: z.string().optional().describe('Filter by title (partial match)'),
   startDateFrom: z.string().date().optional(),
   startDateTo: z.string().date().optional(),
   endDateFrom: z.string().date().optional(),
@@ -127,12 +131,14 @@ export const filterActivitiesQuerySchema = z.object({
     .string()
     .default('1')
     .transform(Number)
-    .pipe(z.number().int().positive()),
+    .pipe(z.number().int().positive())
+    .describe('Page number (default: 1)'),
   limit: z
     .string()
     .default('20')
     .transform(Number)
-    .pipe(z.number().int().positive().min(1).max(100)),
+    .pipe(z.number().int().positive().min(1).max(100))
+    .describe('Page size (default: 20, max: 100)'),
 });
 
 /** Parsed query shape; Zod transforms infer many keys as required `T | undefined`. */
@@ -207,3 +213,83 @@ export function reportDataQueryToActivityFindAllFilters(
     limit: 100,
   };
 }
+
+// ============================================
+// Teams / users / look-ahead query params
+// ============================================
+
+export const teamListQuerySchema = z.object({
+  activeOnly: z
+    .string()
+    .optional()
+    .describe('When `"true"` or omitted, return only active teams'),
+});
+
+export type TeamListQuery = z.infer<typeof teamListQuerySchema>;
+
+export const teamDetailQuerySchema = z.object({
+  includeInactiveMembers: z
+    .string()
+    .optional()
+    .describe(
+      'When `"true"`, includes team members with isActive=false (default: false)'
+    ),
+});
+
+export type TeamDetailQuery = z.infer<typeof teamDetailQuerySchema>;
+
+export const userListQuerySchema = z.object({
+  search: z
+    .string()
+    .optional()
+    .describe('Search by display name, username, or email'),
+  teamIds: commaSeparatedIntArray().describe(
+    'Filter users in any of these teams (comma-separated IDs)'
+  ),
+  roleIds: commaSeparatedIntArray().describe(
+    'Filter users with any of these roles (comma-separated IDs)'
+  ),
+});
+
+/** User list filters (all keys optional on the wire and in handlers). */
+export type UserListQuery = {
+  search?: string;
+  teamIds?: number[];
+  roleIds?: number[];
+};
+
+export const userActivityCountsQuerySchema = z.object({
+  userIds: requiredCommaSeparatedIntArray().describe(
+    'Comma-separated user IDs'
+  ),
+});
+
+export type UserActivityCountsQuery = z.infer<
+  typeof userActivityCountsQuerySchema
+>;
+
+export const userActivitiesQuerySchema = z.object({
+  fromTeamId: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe('Scope to activities where leadTeamId equals this team ID'),
+});
+
+export type UserActivitiesQuery = z.infer<typeof userActivitiesQuerySchema>;
+
+export const lookAheadQuerySchema = z.object({
+  startDate: z
+    .string()
+    .date()
+    .optional()
+    .describe('Filter activities with start date on or after (YYYY-MM-DD)'),
+  endDate: z
+    .string()
+    .date()
+    .optional()
+    .describe('Filter activities with start date on or before (YYYY-MM-DD)'),
+});
+
+export type LookAheadQuery = z.infer<typeof lookAheadQuerySchema>;

@@ -87,11 +87,13 @@ export function activityHistoryEnvelope(parsed) {
 
 /** Look Ahead GET */
 export function lookAheadEnvelope(parsed) {
+  const data = parsed?.data;
   return (
     parsed &&
-    typeof parsed === 'object' &&
-    Array.isArray(parsed.sections) &&
-    Object.prototype.hasOwnProperty.call(parsed, 'report')
+    parsed.success === true &&
+    data &&
+    Array.isArray(data.sections) &&
+    Object.prototype.hasOwnProperty.call(data, 'report')
   );
 }
 
@@ -117,20 +119,23 @@ export function lookAheadResetSettingsEnvelope(parsed) {
   );
 }
 
-/** GET /reports — array of report metadata */
-export function reportsListIsArray(parsed) {
-  return Array.isArray(parsed);
+/** GET /reports — wrapped array of report metadata */
+export function reportsListEnvelope(parsed) {
+  return parsed?.success === true && Array.isArray(parsed.data);
 }
 
-/** GET /reports/:id — may be null when not found */
+/** GET /reports/:id — wrapped report metadata; data may be null */
 export function reportByIdEnvelope(parsed) {
-  if (parsed === null) {
+  if (!parsed || parsed.success !== true) {
+    return false;
+  }
+  if (parsed.data === null) {
     return true;
   }
   return (
-    typeof parsed === 'object' &&
-    typeof parsed.id === 'number' &&
-    typeof parsed.name === 'string'
+    typeof parsed.data === 'object' &&
+    typeof parsed.data.id === 'number' &&
+    typeof parsed.data.name === 'string'
   );
 }
 
