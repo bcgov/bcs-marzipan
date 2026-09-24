@@ -53,7 +53,9 @@ jobs:
         run: |
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${TOOLS_NAMESPACE}
-          oc kustomize openshift/build | envsubst | oc apply -f -
+          oc kustomize openshift/build \
+            | envsubst '${APP_VERSION} ${TOOLS_NAMESPACE}' \
+            | oc apply -f -
 
       - name: Start binary build (calendar-service)
         run: |
@@ -75,11 +77,12 @@ jobs:
 
       - name: Deploy to Dev environment
         run: |
+          : "${JWT_SECRET:?JWT_SECRET must be set as a GitHub Actions secret before deploying}"
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${DEV_NAMESPACE}
 
           oc kustomize openshift/deploy/overlays/dev > rendered.yaml
-          envsubst < rendered.yaml > rendered-substituted.yaml
+          envsubst '${APP_VERSION} ${DEV_NAMESPACE} ${TOOLS_NAMESPACE} ${AUTH_COOKIE_DOMAIN} ${POST_LOGIN_REDIRECT_URL} ${PUBLIC_APP_BASE_URL} ${JWT_SECRET} ${AZURE_TENANT_ID} ${AZURE_CLIENT_ID} ${AZURE_CLIENT_SECRET} ${AZURE_REDIRECT_URI} ${RATE_LIMIT_REDIS_URL}' < rendered.yaml > rendered-substituted.yaml
 
           ruby - <<'RUBY'
           require 'yaml'
