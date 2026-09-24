@@ -1,9 +1,41 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  globalActivityHistoryPageSchema,
   teamHistoryEntrySchema,
   userHistoryEntrySchema,
 } from './history.schema';
+
+describe('globalActivityHistoryPageSchema', () => {
+  it('accepts a paginated global history page', () => {
+    const result = globalActivityHistoryPageSchema.parse({
+      items: [
+        {
+          id: 1,
+          activityId: 10,
+          userId: 2,
+          actionType: 'updated',
+          changes: null,
+          notes: null,
+          timestamp: '2025-01-15T12:00:00.000Z',
+          activity: {
+            id: 10,
+            displayId: 'MIN-000010',
+            title: 'Cabinet meeting',
+            leadTeamId: 3,
+            categories: ['Events'],
+          },
+        },
+      ],
+      page: 1,
+      pageSize: 50,
+      hasNext: false,
+      totalItems: 1,
+    });
+    expect(result.items).toHaveLength(1);
+    expect(result.totalItems).toBe(1);
+  });
+});
 
 describe('teamHistoryEntrySchema', () => {
   it('accepts valid team history entry', () => {

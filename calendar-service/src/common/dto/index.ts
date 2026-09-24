@@ -10,3 +10,5 @@ export * from './banner.dto';
 export * from './login-modal.dto';
 export * from './lookup.dto';
 export * from './health.dto';
+export * from './history.dto';
+export * from './notification.dto';

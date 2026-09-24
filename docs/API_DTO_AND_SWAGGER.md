@@ -36,13 +36,14 @@ When you add a new API area (a new controller or a new logical group of endpoint
 1. Add a corresponding **`.addTag('tagName', 'Short description')`** in `calendar-service/src/common/swagger/swagger.config.ts`.
 2. Use **`@ApiTags('tagName')`** on the controller so operations are grouped under that tag in Swagger UI.
 
-Existing tags: `activities`, `lookups`, `health`, `teams`, `users`, `drafts`, `auth`, `reports`, `look-ahead`.
+Existing tags: `activities`, `lookups`, `health`, `teams`, `users`, `drafts`, `auth`, `reports`, `look-ahead`, `locks`, `settings`, `notifications`, `banner`, `login-modal`, `activity-favourites`, `activity-saved-filters`.
 
 ## Reference implementations
 
 After the Swagger DTO work, the following modules follow the full pattern and can be used as references:
 
-- **Activities**: `activities.controller.ts`, `common/dto/activity.dto.ts`, `common/dto/activity-response.dto.ts`, `common/dto/activity-update.dto.ts`
+- **Activities**: `activities.controller.ts`, `common/dto/activity.dto.ts`, `common/dto/activity-response.dto.ts`, `common/dto/activity-update.dto.ts`, `common/dto/history.dto.ts`
+- **Notifications**: `notifications.controller.ts`, `common/dto/notification.dto.ts`
 - **Lookups**: `lookups.controller.ts`, `common/dto/lookup.dto.ts`
 - **Teams**: `teams.controller.ts`, `teams/dto/teams.dto.ts`
 - **Users**: `users.controller.ts`, `users/dto/users.dto.ts`

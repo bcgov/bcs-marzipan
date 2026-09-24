@@ -18,6 +18,7 @@ import {
   ApiBody,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -67,12 +68,15 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
   ActivityArrayResponseWrapperDto,
+  ActivityHistoryEntryResponseWrapperDto,
+  ActivityHistoryResponseWrapperDto,
   ActivityResponseWrapperDto,
   AddActivityHistoryNoteDto,
   BulkUnshareActivitiesDto,
   BulkUpdateActivitiesDto,
   CloneActivityDto,
   CreateActivityDto,
+  GlobalActivityHistoryPageResponseWrapperDto,
   RequestDeleteDto,
   RestoreDto,
   SoftDeleteDto,
@@ -283,9 +287,82 @@ export class ActivitiesController {
     description:
       'Retrieves activity history entries across all activities visible to the current user.',
   })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    type: String,
+    description:
+      'Inclusive start date (YYYY-MM-DD). Defaults to today (Pacific) when no bounds are set.',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    type: String,
+    description:
+      'Inclusive end date (YYYY-MM-DD). Defaults to today (Pacific) when no bounds are set.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (default: 1)',
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    description: 'Page size (default: 50, max: 100)',
+  })
+  @ApiQuery({
+    name: 'query',
+    required: false,
+    type: String,
+    description: 'Free-text search across history notes and change values',
+  })
+  @ApiQuery({
+    name: 'order',
+    required: false,
+    enum: ['asc', 'desc'],
+    description: 'Sort order by timestamp (default: desc)',
+  })
+  @ApiQuery({
+    name: 'userId',
+    required: false,
+    type: Number,
+    description: 'Filter to history rows created by this user ID',
+  })
+  @ApiQuery({
+    name: 'userIds',
+    required: false,
+    type: String,
+    description: 'Comma-separated user IDs (history authors)',
+  })
+  @ApiQuery({
+    name: 'actionTypes',
+    required: false,
+    type: String,
+    description: 'Comma-separated history action types',
+  })
+  @ApiQuery({
+    name: 'categories',
+    required: false,
+    type: String,
+    description: 'Comma-separated activity category names',
+  })
+  @ApiQuery({
+    name: 'leadTeamIds',
+    required: false,
+    type: String,
+    description: 'Comma-separated lead team IDs',
+  })
   @ApiResponse({
     status: 200,
     description: 'Global activity history retrieved successfully',
+    type: GlobalActivityHistoryPageResponseWrapperDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid query parameters',
   })
   @RequirePermission('activities.view')
   @Get('global-history')
@@ -718,7 +795,7 @@ export class ActivitiesController {
   @ApiResponse({
     status: 200,
     description: 'Activity history retrieved successfully',
-    type: ActivityArrayResponseWrapperDto,
+    type: ActivityHistoryResponseWrapperDto,
   })
   @ApiResponse({
     status: 404,
@@ -755,6 +832,7 @@ export class ActivitiesController {
   @ApiResponse({
     status: 201,
     description: 'Activity history note added successfully',
+    type: ActivityHistoryEntryResponseWrapperDto,
   })
   @ApiResponse({
     status: 404,
