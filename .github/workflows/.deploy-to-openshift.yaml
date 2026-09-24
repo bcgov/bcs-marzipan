@@ -115,7 +115,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Render + deploy to openshift
+      - name: Render + validate + deploy to openshift
         run: |
           export APP_NAME="${{ vars.APP_NAME }}"
           export APP_NAME_PREFIX="${{ vars.APP_NAME_PREFIX }}"
@@ -146,8 +146,31 @@ jobs:
           echo "Deploying to ${{ inputs.openshift-environment }}"
           export SERVICE_IMAGE="image-registry.openshift-image-registry.svc:5000/${{ vars.NAMESPACE }}/${{ env.SERVICE_IMAGE_STREAM_NAME }}"
           export UI_IMAGE="image-registry.openshift-image-registry.svc:5000/${{ vars.NAMESPACE }}/${{ env.UI_IMAGE_STREAM_NAME }}"
-          oc kustomize openshift/deploy/overlays/${{ inputs.openshift-environment }} | envsubst > rendered.yaml
-          oc apply -n "${{ vars.NAMESPACE }}" -f rendered.yaml
+
+          oc kustomize openshift/deploy/overlays/${{ inputs.openshift-environment }} > rendered.yaml
+          envsubst < rendered.yaml > rendered-substituted.yaml
+
+          ruby - <<'RUBY'
+          require 'yaml'
+
+          path = 'rendered-substituted.yaml'
+          YAML.load_stream(File.read(path)).each do |doc|
+            next unless doc.is_a?(Hash) && doc['kind'] == 'Deployment'
+
+            Array(doc.dig('spec', 'template', 'spec', 'containers')).each do |container|
+              Array(container['env']).each do |env|
+                next unless env.is_a?(Hash)
+                if env.key?('value') && env.key?('valueFrom') && !env['value'].to_s.empty?
+                  raise "Invalid env entry for #{env['name']}: contains both value and valueFrom"
+                end
+              end
+            end
+          end
+
+          puts 'Rendered manifest is valid'
+          RUBY
+
+          oc apply -n "${{ vars.NAMESPACE }}" -f rendered-substituted.yaml
 
           # Force a rollout of the application Deployment and wait for it to finish.
           # The image is referenced by a stable tag (not a digest) and the Deployment
