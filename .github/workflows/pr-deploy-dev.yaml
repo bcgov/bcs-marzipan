@@ -77,6 +77,29 @@ jobs:
         run: |
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${DEV_NAMESPACE}
-          oc kustomize openshift/deploy/overlays/dev | envsubst | oc apply -f -
+
+          oc kustomize openshift/deploy/overlays/dev > rendered.yaml
+          envsubst < rendered.yaml > rendered-substituted.yaml
+
+          ruby - <<'RUBY'
+          require 'yaml'
+
+          YAML.load_stream(File.read('rendered-substituted.yaml')).each do |doc|
+            next unless doc.is_a?(Hash) && doc['kind'] == 'Deployment'
+
+            Array(doc.dig('spec', 'template', 'spec', 'containers')).each do |container|
+              Array(container['env']).each do |env|
+                next unless env.is_a?(Hash)
+                if env.key?('value') && env.key?('valueFrom') && !env['value'].to_s.empty?
+                  raise "Invalid env entry for #{env['name']}: contains both value and valueFrom"
+                end
+              end
+            end
+          end
+
+          puts 'Rendered manifest is valid'
+          RUBY
+
+          oc apply -n ${DEV_NAMESPACE} -f rendered-substituted.yaml
           oc rollout restart deployment/calendar-service
           oc rollout restart deployment/calendar-ui
