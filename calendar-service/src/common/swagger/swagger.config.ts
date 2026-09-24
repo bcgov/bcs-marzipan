@@ -75,7 +75,10 @@ A comprehensive RESTful API for scheduling, managing, and tracking BC Government
 - **Venue Management**: Location tracking with venue addresses and scheduling considerations (in progress)
 - **Sharing & Visibility**: Granular sharing controls with ministry-level and user-level permissions (in progress)
 - **Reference Data**: Comprehensive lookup endpoints for categories, tags, ministries, languages, and statuses
-- **Audit Trail**: Complete activity history tracking with soft delete and reason logging
+- **Audit Trail**: Per-activity and global activity history, user/team change history, and standalone history notes
+- **Notifications**: In-app notifications with read/dismiss and bulk actions
+- **User Preferences**: Activity favourites and saved list filters
+- **Admin Settings**: Banners, login modal, locks, look-ahead reset, and related configuration endpoints
 
 ## Authentication
 
@@ -135,6 +138,13 @@ export function setupSwagger(
     .addTag('auth', 'Authentication')
     .addTag('reports', 'Reporting')
     .addTag('look-ahead', 'Look Ahead report data')
+    .addTag('locks', 'Activity and report lock management')
+    .addTag('settings', 'System and feature settings (admin)')
+    .addTag('notifications', 'In-app notifications for the current user')
+    .addTag('banner', 'Site banner and recurring lockout banner settings')
+    .addTag('login-modal', 'Login modal content and settings')
+    .addTag('activity-favourites', 'Per-user favourite activities')
+    .addTag('activity-saved-filters', 'Per-user saved activity list filters')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

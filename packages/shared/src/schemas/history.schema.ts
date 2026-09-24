@@ -67,6 +67,21 @@ export type GlobalActivityHistoryEntry = z.infer<
   typeof globalActivityHistoryEntrySchema
 >;
 
+/**
+ * Paginated global activity history (GET /activities/global-history).
+ */
+export const globalActivityHistoryPageSchema = z.object({
+  items: z.array(globalActivityHistoryEntrySchema),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1),
+  hasNext: z.boolean(),
+  totalItems: z.number().int().nonnegative(),
+});
+
+export type GlobalActivityHistoryPage = z.infer<
+  typeof globalActivityHistoryPageSchema
+>;
+
 // ============================================
 // User History
 // ============================================
