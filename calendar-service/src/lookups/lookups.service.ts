@@ -84,6 +84,11 @@ import {
   syncTagTeams,
 } from './lookups-team-sync.helper';
 
+export type VenuePresetAdminItem = VenuePresetItem & {
+  sortOrder: number;
+  isActive: boolean;
+};
+
 @Injectable()
 export class LookupsService {
   private readonly logger = new Logger(LookupsService.name);
@@ -818,9 +823,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active venue presets for the activity form.
+   * Get venue presets for the activity form or admin list.
+   * @param includeAll - When true (admin), returns all presets including inactive
    */
-  async getVenuePresets(): Promise<VenuePresetItem[]> {
+  async getVenuePresets(includeAll?: boolean): Promise<VenuePresetAdminItem[]> {
     const results = await this.databaseService.db
       .select({
         id: venuePresets.id,
@@ -830,11 +836,13 @@ export class LookupsService {
         city: venuePresets.city,
         provinceOrState: venuePresets.provinceOrState,
         country: venuePresets.country,
+        sortOrder: venuePresets.sortOrder,
+        isActive: venuePresets.isActive,
         isPinned: venuePresets.isPinned,
         pinnedSortOrder: venuePresets.pinnedSortOrder,
       })
       .from(venuePresets)
-      .where(eq(venuePresets.isActive, true))
+      .where(includeAll ? undefined : eq(venuePresets.isActive, true))
       .orderBy(venuePresets.sortOrder);
     return results.map((row) => ({
       id: row.id,
@@ -844,6 +852,8 @@ export class LookupsService {
       city: row.city,
       provinceOrState: row.provinceOrState,
       country: row.country,
+      sortOrder: row.sortOrder,
+      isActive: row.isActive,
       isPinned: row.isPinned,
       pinnedSortOrder: row.pinnedSortOrder,
     }));
@@ -903,7 +913,7 @@ export class LookupsService {
       pinnedSortOrder?: number;
     },
     currentUserId: number
-  ): Promise<VenuePresetItem> {
+  ): Promise<VenuePresetAdminItem> {
     await this.assertNoDuplicateAddress(data.addressLine1, data.addressLine2);
 
     const now = new Date();
@@ -934,6 +944,8 @@ export class LookupsService {
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
+      sortOrder: result.sortOrder,
+      isActive: result.isActive,
       isPinned: result.isPinned,
       pinnedSortOrder: result.pinnedSortOrder,
     };
@@ -957,7 +969,7 @@ export class LookupsService {
       pinnedSortOrder?: number;
     },
     currentUserId: number
-  ): Promise<VenuePresetItem> {
+  ): Promise<VenuePresetAdminItem> {
     if (data.addressLine1 !== undefined || data.addressLine2 !== undefined) {
       const current = await this.databaseService.db
         .select({
@@ -1014,6 +1026,8 @@ export class LookupsService {
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
+      sortOrder: result.sortOrder,
+      isActive: result.isActive,
       isPinned: result.isPinned,
       pinnedSortOrder: result.pinnedSortOrder,
     };

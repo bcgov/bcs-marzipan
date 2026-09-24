@@ -33,7 +33,6 @@ import type {
   MinistryLookupItem,
   OrganizationLookupItem,
   ThemeLookupItem,
-  VenuePresetItem,
 } from '@corpcal/shared/api/types';
 import {
   createActivityStatusRequestSchema,
@@ -106,7 +105,7 @@ import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { TeamsService } from '../teams/teams.service';
 import { lookupGetCacheControl } from './cache-control';
-import { LookupsService } from './lookups.service';
+import { LookupsService, type VenuePresetAdminItem } from './lookups.service';
 
 @ApiTags('lookups')
 @Controller('lookups')
@@ -1345,7 +1344,15 @@ export class LookupsController {
   @ApiOperation({
     summary: 'Get venue presets',
     description:
-      'Returns admin-defined venue presets for the activity form. Pinned presets are shown as badges.',
+      'Returns active admin-defined venue presets for the activity form. Admins with the `lookups.manage` permission can pass `includeAll=true` to retrieve all presets including inactive; this path sets `Cache-Control: no-store`.',
+  })
+  @ApiQuery({
+    name: 'includeAll',
+    required: false,
+    type: String,
+    enum: ['true'],
+    description:
+      'When set to `"true"` and the caller has the `lookups.manage` permission, returns all venue presets including inactive.',
   })
   @ApiResponse({
     status: 200,
@@ -1353,12 +1360,23 @@ export class LookupsController {
     type: VenuePresetArrayResponseWrapperDto,
   })
   @Get('venue-presets')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getVenuePresets(): Promise<{
+  async getVenuePresets(
+    @CurrentUser() user: AuthUser,
+    @Query('includeAll') includeAll?: string,
+    @Res({ passthrough: true }) res?: Response
+  ): Promise<{
     success: boolean;
-    data: VenuePresetItem[];
+    data: VenuePresetAdminItem[];
   }> {
-    const data = await this.lookupsService.getVenuePresets();
+    const shouldIncludeAll =
+      includeAll === 'true' && user.permissions.includes('lookups.manage');
+    res?.setHeader(
+      'Cache-Control',
+      shouldIncludeAll
+        ? 'no-store'
+        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+    );
+    const data = await this.lookupsService.getVenuePresets(shouldIncludeAll);
     return { success: true, data };
   }
 
@@ -1375,7 +1393,7 @@ export class LookupsController {
     @Body(new ZodValidationPipe(createVenuePresetRequestSchema))
     body: CreateVenuePresetDto,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: VenuePresetItem }> {
+  ): Promise<{ success: boolean; data: VenuePresetAdminItem }> {
     const data = await this.lookupsService.createVenuePreset(body, user.id);
     return { success: true, data };
   }
@@ -1395,7 +1413,7 @@ export class LookupsController {
     @Body(new ZodValidationPipe(updateVenuePresetRequestSchema))
     body: UpdateVenuePresetDto,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: VenuePresetItem }> {
+  ): Promise<{ success: boolean; data: VenuePresetAdminItem }> {
     const data = await this.lookupsService.updateVenuePreset(
       Number(id),
       body,
