@@ -7,7 +7,7 @@ import {
   Patch,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import {
@@ -16,6 +16,10 @@ import {
 } from '@corpcal/shared/schemas';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  ActivityInfoIconSettingsDto,
+  ActivityInfoIconSettingsResponseWrapperDto,
+} from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { ApplicationSettingsService } from './application-settings.service';
@@ -30,7 +34,11 @@ export class ActivityInfoIconsController {
 
   @Get()
   @ApiOperation({ summary: 'Get activity info icon field settings' })
-  @ApiResponse({ status: 200, description: 'Current settings' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current settings',
+    type: ActivityInfoIconSettingsResponseWrapperDto,
+  })
   @HttpCode(HttpStatus.OK)
   async getSettings(): Promise<{
     success: true;
@@ -42,7 +50,12 @@ export class ActivityInfoIconsController {
 
   @Patch()
   @ApiOperation({ summary: 'Update activity info icon field settings' })
-  @ApiResponse({ status: 200, description: 'Settings updated' })
+  @ApiBody({ type: ActivityInfoIconSettingsDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Settings updated',
+    type: ActivityInfoIconSettingsResponseWrapperDto,
+  })
   @HttpCode(HttpStatus.OK)
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_ACTIVITY_INFO_ICONS)
   async patchSettings(

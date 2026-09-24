@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -18,7 +17,6 @@ import {
   ApiBody,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -26,7 +24,6 @@ import {
 import type { Category } from '@corpcal/database/types';
 import {
   HYDRATION_PROFILES,
-  isCalendarDateString,
   PERMISSIONS,
   type AuthUser,
 } from '@corpcal/shared';
@@ -42,6 +39,7 @@ import {
   cloneActivityRequestSchema,
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
+  globalActivityHistoryQuerySchema,
   hardDeleteRequestBodySchema,
   requestDeleteRequestSchema,
   restoreRequestSchema,
@@ -58,6 +56,7 @@ import {
   type CloneActivityRequest,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
+  type GlobalActivityHistoryQuery,
   type HardDeleteRequest,
   type RequestDeleteRequest,
   type RestoreRequest,
@@ -88,11 +87,7 @@ import {
 } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import {
-  parseCommaSeparatedIds,
-  tryParseStrictPositiveInt,
-} from '../common/utils/parse-query-ids';
-import { parseCommaSeparatedStrings } from '../common/utils/parse-query-strings';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
 import {
   RequireAnyPermission,
@@ -230,6 +225,7 @@ export class ActivitiesController {
     status: 400,
     description: 'Validation failed',
   })
+  @ApiZodQueries(filterActivitiesQuerySchema)
   @RequirePermission('activities.view')
   @Get()
   async findAll(
@@ -287,74 +283,7 @@ export class ActivitiesController {
     description:
       'Retrieves activity history entries across all activities visible to the current user.',
   })
-  @ApiQuery({
-    name: 'startDate',
-    required: false,
-    type: String,
-    description:
-      'Inclusive start date (YYYY-MM-DD). Defaults to today (Pacific) when no bounds are set.',
-  })
-  @ApiQuery({
-    name: 'endDate',
-    required: false,
-    type: String,
-    description:
-      'Inclusive end date (YYYY-MM-DD). Defaults to today (Pacific) when no bounds are set.',
-  })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    type: Number,
-    description: 'Page number (default: 1)',
-  })
-  @ApiQuery({
-    name: 'pageSize',
-    required: false,
-    type: Number,
-    description: 'Page size (default: 50, max: 100)',
-  })
-  @ApiQuery({
-    name: 'query',
-    required: false,
-    type: String,
-    description: 'Free-text search across history notes and change values',
-  })
-  @ApiQuery({
-    name: 'order',
-    required: false,
-    enum: ['asc', 'desc'],
-    description: 'Sort order by timestamp (default: desc)',
-  })
-  @ApiQuery({
-    name: 'userId',
-    required: false,
-    type: Number,
-    description: 'Filter to history rows created by this user ID',
-  })
-  @ApiQuery({
-    name: 'userIds',
-    required: false,
-    type: String,
-    description: 'Comma-separated user IDs (history authors)',
-  })
-  @ApiQuery({
-    name: 'actionTypes',
-    required: false,
-    type: String,
-    description: 'Comma-separated history action types',
-  })
-  @ApiQuery({
-    name: 'categories',
-    required: false,
-    type: String,
-    description: 'Comma-separated activity category names',
-  })
-  @ApiQuery({
-    name: 'leadTeamIds',
-    required: false,
-    type: String,
-    description: 'Comma-separated lead team IDs',
-  })
+  @ApiZodQueries(globalActivityHistoryQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'Global activity history retrieved successfully',
@@ -367,17 +296,8 @@ export class ActivitiesController {
   @RequirePermission('activities.view')
   @Get('global-history')
   async getGlobalHistory(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
-    @Query('query') query?: string,
-    @Query('order') order?: string,
-    @Query('userId') userId?: string,
-    @Query('userIds') userIds?: string,
-    @Query('actionTypes') actionTypes?: string,
-    @Query('categories') categories?: string,
-    @Query('leadTeamIds') leadTeamIds?: string,
+    @Query(new ZodValidationPipe(globalActivityHistoryQuerySchema))
+    queryParams: GlobalActivityHistoryQuery,
     @RequestContext() ctx?: RequestContextType
   ): Promise<{
     success: boolean;
@@ -389,57 +309,19 @@ export class ActivitiesController {
       totalItems: number;
     };
   }> {
-    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-    if (startDate !== undefined) {
-      if (!DATE_RE.test(startDate) || !isCalendarDateString(startDate)) {
-        throw new BadRequestException(
-          'startDate must be a valid date in YYYY-MM-DD format'
-        );
-      }
-    }
-    if (endDate !== undefined) {
-      if (!DATE_RE.test(endDate) || !isCalendarDateString(endDate)) {
-        throw new BadRequestException(
-          'endDate must be a valid date in YYYY-MM-DD format'
-        );
-      }
-    }
-    if (order !== undefined && order !== 'asc' && order !== 'desc') {
-      throw new BadRequestException('order must be "asc" or "desc"');
-    }
-
-    const MAX_PAGE_SIZE = 100;
-    const parsedPage = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
-    const parsedPageSize = pageSize
-      ? Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(pageSize, 10) || 50))
-      : 50;
-
-    const parsedUserId = tryParseStrictPositiveInt(userId);
-    if (parsedUserId === null) {
-      throw new BadRequestException('userId must be a valid positive integer');
-    }
-
-    const parsedUserIds = parseCommaSeparatedIds(userIds);
-    const parsedActionTypes = parseCommaSeparatedStrings(actionTypes);
-    const parsedCategories = parseCommaSeparatedStrings(categories);
-    const parsedLeadTeamIds = parseCommaSeparatedIds(leadTeamIds);
-
     const result = await this.activitiesService.getGlobalHistoryPaged(
       {
-        startDate,
-        endDate,
-        page: parsedPage,
-        pageSize: parsedPageSize,
-        query,
-        order: order,
-        userId: parsedUserId,
-        userIds: parsedUserIds.length > 0 ? parsedUserIds : undefined,
-        actionTypes:
-          parsedActionTypes.length > 0 ? parsedActionTypes : undefined,
-        categoryNames:
-          parsedCategories.length > 0 ? parsedCategories : undefined,
-        leadTeamIds:
-          parsedLeadTeamIds.length > 0 ? parsedLeadTeamIds : undefined,
+        startDate: queryParams.startDate,
+        endDate: queryParams.endDate,
+        page: queryParams.page,
+        pageSize: queryParams.pageSize,
+        query: queryParams.query,
+        order: queryParams.order,
+        userId: queryParams.userId,
+        userIds: queryParams.userIds,
+        actionTypes: queryParams.actionTypes,
+        categoryNames: queryParams.categories,
+        leadTeamIds: queryParams.leadTeamIds,
       },
       ctx
     );

@@ -7,7 +7,7 @@ import {
   Patch,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import {
@@ -16,6 +16,10 @@ import {
 } from '@corpcal/shared/schemas';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  ReviewExemptFieldKeysSettingsDto,
+  ReviewExemptFieldKeysSettingsResponseWrapperDto,
+} from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { ApplicationSettingsService } from './application-settings.service';
@@ -32,7 +36,11 @@ export class ReviewExemptFieldsController {
   @ApiOperation({
     summary: 'Get admin-configurable review-exempt form field keys',
   })
-  @ApiResponse({ status: 200, description: 'Field keys' })
+  @ApiResponse({
+    status: 200,
+    description: 'Field keys',
+    type: ReviewExemptFieldKeysSettingsResponseWrapperDto,
+  })
   @HttpCode(HttpStatus.OK)
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_REVIEW_EXEMPT_FIELDS)
   async getSettings(): Promise<{
@@ -45,7 +53,12 @@ export class ReviewExemptFieldsController {
 
   @Patch()
   @ApiOperation({ summary: 'Update review-exempt form field keys' })
-  @ApiResponse({ status: 200, description: 'Updated keys' })
+  @ApiBody({ type: ReviewExemptFieldKeysSettingsDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Updated keys',
+    type: ReviewExemptFieldKeysSettingsResponseWrapperDto,
+  })
   @HttpCode(HttpStatus.OK)
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_REVIEW_EXEMPT_FIELDS)
   async patchSettings(

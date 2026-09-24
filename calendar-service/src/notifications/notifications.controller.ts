@@ -6,18 +6,13 @@ import {
   Patch,
   Query,
 } from '@nestjs/common';
-import {
-  ApiOperation,
-  ApiParam,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 import {
   notificationListQuerySchema,
   type NotificationBulkActionResult,
+  type NotificationListQuery,
   type NotificationPage,
 } from '@corpcal/shared/schemas';
 
@@ -29,6 +24,7 @@ import {
   UnreadNotificationCountResponseWrapperDto,
 } from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { NotificationsService } from './notifications.service';
 
@@ -43,24 +39,7 @@ export class NotificationsController {
     description:
       'By default returns unread notifications. Pass includeRead=true to include read notifications. Dismissed notifications are excluded.',
   })
-  @ApiQuery({
-    name: 'includeRead',
-    required: false,
-    type: Boolean,
-    description: 'When true, include read notifications (default: false)',
-  })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    type: Number,
-    description: 'Page number (default: 1)',
-  })
-  @ApiQuery({
-    name: 'pageSize',
-    required: false,
-    type: Number,
-    description: 'Page size (default: 20, max: 100)',
-  })
+  @ApiZodQueries(notificationListQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'Notifications retrieved',
@@ -70,7 +49,7 @@ export class NotificationsController {
   async list(
     @CurrentUser() user: AuthUser,
     @Query(new ZodValidationPipe(notificationListQuerySchema))
-    query: { includeRead?: boolean; page?: number; pageSize?: number }
+    query: NotificationListQuery
   ): Promise<{ success: true; data: NotificationPage }> {
     const data = await this.notificationsService.listForUser(user.id, {
       includeRead: query.includeRead ?? false,

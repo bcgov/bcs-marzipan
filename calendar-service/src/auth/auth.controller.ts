@@ -30,6 +30,7 @@ import {
   type AuthUser,
 } from '@corpcal/shared';
 
+import { LocalAuthConfigResponseDto } from '../common/dto';
 import { AuthService } from './auth.service';
 import { AzureOidcService } from './azure-oidc.service';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -93,7 +94,11 @@ export class AuthController {
     description:
       'Returns whether local (email/password) or mock login is configured',
   })
-  @ApiResponse({ status: 200, description: 'Local auth availability status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Local auth availability status',
+    type: LocalAuthConfigResponseDto,
+  })
   localConfig() {
     return {
       enabled: this.authService.isLocalAuthEnabled(),

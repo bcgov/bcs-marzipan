@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { lookAheadResetRunPreviewQuerySchema } from './look-ahead-reset.schema';
+import {
+  lookAheadResetManualRunRequestSchema,
+  lookAheadResetRunPreviewQuerySchema,
+} from './look-ahead-reset.schema';
+
+describe('lookAheadResetManualRunRequestSchema', () => {
+  it('applies defaults when the request body is absent', () => {
+    expect(lookAheadResetManualRunRequestSchema.parse(undefined)).toEqual({
+      scope: 'window',
+      includePast: false,
+      pauseScheduledTonight: false,
+    });
+  });
+});
 
 describe('lookAheadResetRunPreviewQuerySchema', () => {
   it('defaults includePast to false when omitted', () => {

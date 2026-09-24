@@ -1,7 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { type AuthUser } from '@corpcal/shared';
+import type { AuthUser } from '@corpcal/shared/auth/types';
 
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { LookAheadResetJobService } from './look-ahead-reset-job.service';
@@ -54,6 +54,7 @@ describe('LookAheadResetSettingsController', () => {
     const result = await controller.runNow(user, {
       scope: 'window',
       days: 7,
+      includePast: false,
       pauseScheduledTonight: true,
     });
 

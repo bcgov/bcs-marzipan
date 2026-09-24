@@ -14,7 +14,6 @@ import {
   ApiBody,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -23,14 +22,18 @@ import type { AuthUser } from '@corpcal/shared';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AppLogger } from '../common/logger/logger.service';
-import { ParseOptionalIntPipe } from '../common/pipes/parse-optional-int.pipe';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import {
   RequireAnyPermission,
   RequirePermission,
 } from '../policy/decorators/require-permission.decorator';
 import { DraftsService } from './drafts.service';
-import { saveDraftBodySchema } from './dto/draft.schema';
+import {
+  draftLookupQuerySchema,
+  saveDraftBodySchema,
+  type DraftLookupQuery,
+} from './dto/draft.schema';
 import {
   DraftResponseDto,
   DraftsListResponseDto,
@@ -100,29 +103,22 @@ export class DraftsController {
     status: 404,
     description: 'Draft not found',
   })
-  @ApiQuery({
-    name: 'formType',
-    required: true,
-    type: String,
-    description: 'Type of form (e.g., activity, event)',
-  })
-  @ApiQuery({
-    name: 'entityId',
-    required: false,
-    type: Number,
-    description: 'Entity ID being edited (omit for new items)',
-  })
+  @ApiZodQueries(draftLookupQuerySchema)
   @RequirePermission('drafts.view')
   @Get()
   async getDraft(
     @CurrentUser() user: AuthUser,
-    @Query('formType') formType: string,
-    @Query('entityId', new ParseOptionalIntPipe()) entityId?: number
+    @Query(new ZodValidationPipe(draftLookupQuerySchema))
+    query: DraftLookupQuery
   ): Promise<{ success: boolean; data: DraftResponseDto | null }> {
     this.logger.log(
-      `Getting draft for user ${user.id}, form ${formType}, entity ${entityId}`
+      `Getting draft for user ${user.id}, form ${query.formType}, entity ${query.entityId}`
     );
-    const data = await this.draftsService.getDraft(user.id, formType, entityId);
+    const data = await this.draftsService.getDraft(
+      user.id,
+      query.formType,
+      query.entityId
+    );
     return { success: true, data };
   }
 
@@ -198,18 +194,7 @@ export class DraftsController {
     description:
       'Deletes a draft by form type and optional entity ID. The current user is inferred from the JWT; only the owner can delete.',
   })
-  @ApiQuery({
-    name: 'formType',
-    required: true,
-    type: String,
-    description: 'Type of form',
-  })
-  @ApiQuery({
-    name: 'entityId',
-    required: false,
-    type: Number,
-    description: 'Entity ID (omit for new items)',
-  })
+  @ApiZodQueries(draftLookupQuerySchema)
   @ApiResponse({
     status: 204,
     description: 'Draft deleted successfully',
@@ -223,13 +208,17 @@ export class DraftsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteDraftByForm(
     @CurrentUser() user: AuthUser,
-    @Query('formType') formType: string,
-    @Query('entityId', new ParseOptionalIntPipe()) entityId?: number
+    @Query(new ZodValidationPipe(draftLookupQuerySchema))
+    query: DraftLookupQuery
   ): Promise<void> {
     this.logger.log(
-      `Deleting draft for user ${user.id}, form ${formType}, entity ${entityId}`
+      `Deleting draft for user ${user.id}, form ${query.formType}, entity ${query.entityId}`
     );
-    await this.draftsService.deleteDraftByForm(user.id, formType, entityId);
+    await this.draftsService.deleteDraftByForm(
+      user.id,
+      query.formType,
+      query.entityId
+    );
   }
 
   /**

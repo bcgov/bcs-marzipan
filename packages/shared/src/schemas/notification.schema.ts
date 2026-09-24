@@ -5,7 +5,7 @@ import {
   NOTIFICATION_ENTITY_TYPES,
   NOTIFICATION_EVENT_TYPES,
   NOTIFICATION_RECIPIENT_STATUSES,
-} from '../notifications';
+} from '../notification-constants';
 
 const notificationEventTypeSchema = z.enum([
   NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_CREATE,
@@ -81,9 +81,25 @@ export const notificationItemSchema = z.object({
 });
 
 export const notificationListQuerySchema = z.object({
-  includeRead: booleanFromQueryParam.optional().default(false),
-  page: z.coerce.number().int().min(1).optional().default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+  includeRead: booleanFromQueryParam
+    .optional()
+    .default(false)
+    .describe('When true, include read notifications'),
+  page: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .default(1)
+    .describe('Page number'),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .optional()
+    .default(20)
+    .describe('Page size (max 100)'),
 });
 
 export const notificationPageSchema = z.object({
@@ -103,7 +119,11 @@ export const notificationBulkActionResultSchema = z.object({
 });
 
 export type NotificationItem = z.infer<typeof notificationItemSchema>;
-export type NotificationListQuery = z.infer<typeof notificationListQuerySchema>;
+
+type ParsedNotificationListQuery = z.infer<typeof notificationListQuerySchema>;
+
+/** Notification list query; controller/tests may omit keys before Zod defaults apply. */
+export type NotificationListQuery = Partial<ParsedNotificationListQuery>;
 export type NotificationPage = z.infer<typeof notificationPageSchema>;
 export type UnreadNotificationCount = z.infer<
   typeof unreadNotificationCountSchema

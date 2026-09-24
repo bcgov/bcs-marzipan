@@ -56,7 +56,7 @@ import {
   loginModalSettingsEnvelope,
   lookupsArrayEnvelope,
   reportByIdEnvelope,
-  reportsListIsArray,
+  reportsListEnvelope,
   tryParseJson,
 } from '../api/validators.js';
 
@@ -253,15 +253,17 @@ export default function corpcalApiSmoke(data) {
       res,
       prefix: 'reports_list',
       maxMs,
-      validateWhenOk: reportsListIsArray,
+      validateWhenOk: reportsListEnvelope,
     });
+    const reports = parsed?.data;
     if (
       res.status === 200 &&
-      Array.isArray(parsed) &&
-      parsed.length > 0 &&
-      typeof parsed[0].id === 'number'
+      parsed?.success === true &&
+      Array.isArray(reports) &&
+      reports.length > 0 &&
+      typeof reports[0].id === 'number'
     ) {
-      sampleReportId = parsed[0].id;
+      sampleReportId = reports[0].id;
     }
   });
 
