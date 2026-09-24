@@ -175,44 +175,59 @@ export class ActivityReminderJobService {
     this.inFlight = true;
 
     try {
-      return await this.databaseService.db.transaction(async (tx) => {
-        const [lockResult] = await tx.execute(
-          sql`SELECT pg_try_advisory_xact_lock(${ACTIVITY_REMINDER_JOB_ADVISORY_CLASS}::integer, ${ACTIVITY_REMINDER_JOB_ADVISORY_KEY}::integer) AS acquired`
-        );
-        if (!(lockResult as { acquired: boolean }).acquired) {
-          this.logger.debug(
-            'Activity reminder job: another session holds the reminder advisory lock — skipping'
+      // Determine which activities to remind (queries only, no side effects)
+      const reminderBatch = await this.databaseService.db.transaction(
+        async (tx) => {
+          const [lockResult] = await tx.execute(
+            sql`SELECT pg_try_advisory_xact_lock(${ACTIVITY_REMINDER_JOB_ADVISORY_CLASS}::integer, ${ACTIVITY_REMINDER_JOB_ADVISORY_KEY}::integer) AS acquired`
           );
+          if (!(lockResult as { acquired: boolean }).acquired) {
+            this.logger.debug(
+              'Activity reminder job: another session holds the reminder advisory lock — skipping'
+            );
+            return null;
+          }
+
+          const { leadDays, staleDays } =
+            await this.applicationSettings.getActivityReminderSettings(tx);
+          const today = pacificCalendarDateFromUtcMs(Date.now());
+          const windowEnd = addCalendarDaysToIsoDate(today, leadDays);
+
+          // Collect candidates without sending notifications yet
           return {
-            sent: 0,
-            skipped: true,
-            skipReason: 'advisory_lock' as const,
-            counts: EMPTY_COUNTS,
+            leadDays,
+            staleDays,
+            today,
+            windowEnd,
+            timestamp: Date.now(),
           };
         }
+      );
 
-        const { leadDays, staleDays } =
-          await this.applicationSettings.getActivityReminderSettings(tx);
-        const today = pacificCalendarDateFromUtcMs(Date.now());
-        const windowEnd = addCalendarDaysToIsoDate(today, leadDays);
+      if (!reminderBatch) {
+        return {
+          sent: 0,
+          skipped: true,
+          skipReason: 'advisory_lock' as const,
+          counts: EMPTY_COUNTS,
+        };
+      }
 
-        const counts = await this.sendReminderNotifications(tx, {
-          leadDays,
-          staleDays,
-          today,
-          windowEnd,
-        });
+      // Send reminder notifications outside the transaction so side effects don't roll back
+      const counts = await this.sendReminderNotifications(
+        this.databaseService.db,
+        reminderBatch
+      );
 
-        const sent =
-          counts.reminderPostDated +
-          counts.reminderDateStatusNotConfirmed +
-          counts.reminderNullTime +
-          counts.reminderTimeStatusNotConfirmed +
-          counts.reminderUpcoming +
-          counts.reminderStale;
+      const sent =
+        counts.reminderPostDated +
+        counts.reminderDateStatusNotConfirmed +
+        counts.reminderNullTime +
+        counts.reminderTimeStatusNotConfirmed +
+        counts.reminderUpcoming +
+        counts.reminderStale;
 
-        return { sent, skipped: false, counts };
-      });
+      return { sent, skipped: false, counts };
     } catch (error) {
       this.logger.error(
         'Activity reminder job failed',
@@ -256,12 +271,13 @@ export class ActivityReminderJobService {
   }
 
   private async sendReminderNotifications(
-    tx: DrizzleDbExecutor,
+    executor: DrizzleDbExecutor,
     input: {
       leadDays: number;
       staleDays: number;
       today: string;
       windowEnd: string;
+      timestamp: number;
     }
   ): Promise<ReminderRunCounts> {
     const counts: ReminderRunCounts = { ...EMPTY_COUNTS };
@@ -272,53 +288,53 @@ export class ActivityReminderJobService {
       nullTime,
       timeStatusNotConfirmed,
     ] = await Promise.all([
-      this.findPostDatedCandidateIds(input.today, tx),
+      this.findPostDatedCandidateIds(input.today, executor),
       this.findDateStatusNotConfirmedCandidateIds(
         input.today,
         input.windowEnd,
-        tx
+        executor
       ),
-      this.findNullTimeCandidateIds(input.today, input.windowEnd, tx),
+      this.findNullTimeCandidateIds(input.today, input.windowEnd, executor),
       this.findTimeStatusNotConfirmedCandidateIds(
         input.today,
         input.windowEnd,
-        tx
+        executor
       ),
     ]);
     const [upcoming, stale] = await Promise.all([
-      this.findUpcomingCandidateIds(input.today, input.windowEnd, tx),
-      this.findStaleCandidateIds(input.staleDays, tx),
+      this.findUpcomingCandidateIds(input.today, input.windowEnd, executor),
+      this.findStaleCandidateIds(input.staleDays, executor),
     ]);
 
     const postDatedToSend = await this.filterAlreadyReminded(
       postDated,
       NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_POST_DATED,
-      tx
+      executor
     );
     const dateStatusToSend = await this.filterAlreadyReminded(
       dateStatusNotConfirmed,
       NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_DATESTATUS_NOT_CONFIRMED,
-      tx
+      executor
     );
     const nullTimeToSend = await this.filterAlreadyReminded(
       nullTime,
       NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_NULL_TIME,
-      tx
+      executor
     );
     const timeStatusToSend = await this.filterAlreadyReminded(
       timeStatusNotConfirmed,
       NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_TIMESTATUS_NOT_CONFIRMED,
-      tx
+      executor
     );
     const upcomingToSend = await this.filterAlreadyReminded(
       upcoming,
       NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_UPCOMING,
-      tx
+      executor
     );
     const staleToSend = await this.filterAlreadyReminded(
       stale,
       NOTIFICATION_EVENT_TYPES.CALENDAR_ACTIVITY_REMINDER_STALE,
-      tx
+      executor
     );
 
     for (const activityId of postDatedToSend) {
@@ -326,7 +342,6 @@ export class ActivityReminderJobService {
         await this.notificationsService.notifyActivityReminderPostDated({
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
-          executor: tx,
         });
       if (recipients.length > 0) counts.reminderPostDated += 1;
     }
@@ -338,7 +353,6 @@ export class ActivityReminderJobService {
             activityId,
             actorUserId: CALENDAR_SYSTEM_USER_ID,
             leadDays: input.leadDays,
-            executor: tx,
           }
         );
       if (recipients.length > 0) counts.reminderDateStatusNotConfirmed += 1;
@@ -350,7 +364,6 @@ export class ActivityReminderJobService {
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           leadDays: input.leadDays,
-          executor: tx,
         });
       if (recipients.length > 0) counts.reminderNullTime += 1;
     }
@@ -362,7 +375,6 @@ export class ActivityReminderJobService {
             activityId,
             actorUserId: CALENDAR_SYSTEM_USER_ID,
             leadDays: input.leadDays,
-            executor: tx,
           }
         );
       if (recipients.length > 0) counts.reminderTimeStatusNotConfirmed += 1;
@@ -374,7 +386,6 @@ export class ActivityReminderJobService {
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           leadDays: input.leadDays,
-          executor: tx,
         });
       if (recipients.length > 0) counts.reminderUpcoming += 1;
     }
@@ -385,7 +396,6 @@ export class ActivityReminderJobService {
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           staleDays: input.staleDays,
-          executor: tx,
         });
       if (recipients.length > 0) counts.reminderStale += 1;
     }

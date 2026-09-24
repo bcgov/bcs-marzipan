@@ -870,17 +870,20 @@ export class NotificationsService {
     };
 
     if (params.executor) {
+      // When called within an external transaction, persist only; defer side effects until commit
       await persistEventAndRecipients(params.executor);
     } else {
+      // When called standalone, persist in a transaction and defer side effects until after commit
       await this.databaseService.db.transaction(async (tx) => {
         await persistEventAndRecipients(tx);
       });
     }
 
+    // Side effects deferred until after transaction commit
     this.activitiesGateway.notifyNotificationsChanged(dedupedRecipients);
 
     try {
-      const emailExecutor = params.executor ?? this.databaseService.db;
+      const emailExecutor = this.databaseService.db;
       const [actorUsername, recipients] = await Promise.all([
         this.resolveActorUsername(params.actorUserId, emailExecutor),
         this.resolveEmailRecipients(dedupedRecipients, emailExecutor),
@@ -1240,20 +1243,16 @@ export class NotificationsService {
   async notifyActivityReminderPostDated(input: {
     activityId: number;
     actorUserId: number;
-    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const executor = input.executor ?? this.databaseService.db;
-    const activity = await this.resolveActivityIdentity(
-      input.activityId,
-      executor
-    );
+    const db = this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
     }
 
     const [adminUserIds, commsRows] = await Promise.all([
-      this.getAdminUserIds(executor),
-      executor
+      this.getAdminUserIds(db),
+      db
         .select({ id: activityCommsContacts.userId })
         .from(activityCommsContacts)
         .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1279,7 +1278,6 @@ export class NotificationsService {
         reminderType: 'post_dated',
       },
       actorUserId: input.actorUserId,
-      executor,
       recipientUserIds: [
         activity.createdBy,
         activity.lastUpdatedBy,
@@ -1293,18 +1291,14 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     leadDays: number;
-    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const executor = input.executor ?? this.databaseService.db;
-    const activity = await this.resolveActivityIdentity(
-      input.activityId,
-      executor
-    );
+    const db = this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
     }
 
-    const commsRows = await executor
+    const commsRows = await db
       .select({ id: activityCommsContacts.userId })
       .from(activityCommsContacts)
       .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1331,7 +1325,6 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
-      executor,
       recipientUserIds: commsRows.map((row) => row.id),
     });
   }
@@ -1340,18 +1333,14 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     leadDays: number;
-    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const executor = input.executor ?? this.databaseService.db;
-    const activity = await this.resolveActivityIdentity(
-      input.activityId,
-      executor
-    );
+    const db = this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
     }
 
-    const commsRows = await executor
+    const commsRows = await db
       .select({ id: activityCommsContacts.userId })
       .from(activityCommsContacts)
       .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1377,7 +1366,6 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
-      executor,
       recipientUserIds: commsRows.map((row) => row.id),
     });
   }
@@ -1386,18 +1374,14 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     leadDays: number;
-    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const executor = input.executor ?? this.databaseService.db;
-    const activity = await this.resolveActivityIdentity(
-      input.activityId,
-      executor
-    );
+    const db = this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
     }
 
-    const commsRows = await executor
+    const commsRows = await db
       .select({ id: activityCommsContacts.userId })
       .from(activityCommsContacts)
       .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1424,7 +1408,6 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
-      executor,
       recipientUserIds: commsRows.map((row) => row.id),
     });
   }
@@ -1433,19 +1416,15 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     leadDays: number;
-    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const executor = input.executor ?? this.databaseService.db;
-    const activity = await this.resolveActivityIdentity(
-      input.activityId,
-      executor
-    );
+    const db = this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
     }
 
     const [commsRows, watchRows] = await Promise.all([
-      executor
+      db
         .select({ id: activityCommsContacts.userId })
         .from(activityCommsContacts)
         .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1456,7 +1435,7 @@ export class NotificationsService {
             eq(users.isActive, true)
           )
         ),
-      executor
+      db
         .select({ id: userActivityFavourites.userId })
         .from(userActivityFavourites)
         .innerJoin(users, eq(users.id, userActivityFavourites.userId))
@@ -1482,7 +1461,6 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
-      executor,
       recipientUserIds: [
         ...commsRows.map((row) => row.id),
         ...watchRows.map((row) => row.id),
@@ -1494,20 +1472,16 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     staleDays: number;
-    executor?: DrizzleDbExecutor;
   }): Promise<number[]> {
-    const executor = input.executor ?? this.databaseService.db;
-    const activity = await this.resolveActivityIdentity(
-      input.activityId,
-      executor
-    );
+    const db = this.databaseService.db;
+    const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
     }
 
     const [adminUserIds, commsRows] = await Promise.all([
-      this.getAdminUserIds(executor),
-      executor
+      this.getAdminUserIds(db),
+      db
         .select({ id: activityCommsContacts.userId })
         .from(activityCommsContacts)
         .innerJoin(users, eq(users.id, activityCommsContacts.userId))
@@ -1534,7 +1508,6 @@ export class NotificationsService {
         staleDays: input.staleDays,
       },
       actorUserId: input.actorUserId,
-      executor,
       recipientUserIds: [...adminUserIds, ...commsRows.map((row) => row.id)],
     });
   }
