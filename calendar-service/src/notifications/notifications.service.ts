@@ -45,6 +45,16 @@ import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { NotificationEmailService } from './notification-email.service';
 
+export type PendingNotificationSideEffect = {
+  recipientUserIds: number[];
+  eventType: string;
+  entityType: string;
+  entityId: number;
+  summary: string;
+  details: Record<string, unknown> | null;
+  actorUserId: number;
+};
+
 interface CreateEventParams {
   eventType: string;
   entityType: string;
@@ -55,6 +65,7 @@ interface CreateEventParams {
   actorUserId: number;
   recipientUserIds: number[];
   executor?: DrizzleDbExecutor;
+  deferredSideEffects?: PendingNotificationSideEffect[];
 }
 
 interface EmailRecipient {
@@ -826,6 +837,64 @@ export class NotificationsService {
     return updated.length;
   }
 
+  async deliverPendingNotificationSideEffects(
+    pending: PendingNotificationSideEffect[]
+  ): Promise<void> {
+    for (const sideEffect of pending) {
+      await this.deliverNotificationSideEffects(sideEffect);
+    }
+  }
+
+  private async deliverNotificationSideEffects(
+    sideEffect: PendingNotificationSideEffect
+  ): Promise<void> {
+    const { recipientUserIds: dedupedRecipients } = sideEffect;
+    if (dedupedRecipients.length === 0) {
+      return;
+    }
+
+    this.activitiesGateway.notifyNotificationsChanged(dedupedRecipients);
+
+    try {
+      const [actorUsername, recipients] = await Promise.all([
+        this.resolveActorUsername(
+          sideEffect.actorUserId,
+          this.databaseService.db
+        ),
+        this.resolveEmailRecipients(dedupedRecipients, this.databaseService.db),
+      ]);
+
+      await this.notificationEmailService.sendNotificationEventEmail({
+        eventType: sideEffect.eventType,
+        entityType: sideEffect.entityType,
+        entityId: sideEffect.entityId,
+        summary: sideEffect.summary,
+        details: sideEffect.details,
+        actorUsername,
+        recipients,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to send notification email(s): ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  private buildPendingSideEffect(
+    params: CreateEventParams,
+    dedupedRecipients: number[]
+  ): PendingNotificationSideEffect {
+    return {
+      recipientUserIds: dedupedRecipients,
+      eventType: params.eventType,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      summary: params.summary,
+      details: params.details,
+      actorUserId: params.actorUserId,
+    };
+  }
+
   private async createEventWithRecipients(
     params: CreateEventParams
   ): Promise<number[]> {
@@ -869,36 +938,20 @@ export class NotificationsService {
         .onConflictDoNothing();
     };
 
+    const sideEffect = this.buildPendingSideEffect(params, dedupedRecipients);
+
     if (params.executor) {
       await persistEventAndRecipients(params.executor);
+      if (params.deferredSideEffects) {
+        params.deferredSideEffects.push(sideEffect);
+      } else {
+        await this.deliverNotificationSideEffects(sideEffect);
+      }
     } else {
       await this.databaseService.db.transaction(async (tx) => {
         await persistEventAndRecipients(tx);
       });
-    }
-
-    this.activitiesGateway.notifyNotificationsChanged(dedupedRecipients);
-
-    try {
-      const emailExecutor = params.executor ?? this.databaseService.db;
-      const [actorUsername, recipients] = await Promise.all([
-        this.resolveActorUsername(params.actorUserId, emailExecutor),
-        this.resolveEmailRecipients(dedupedRecipients, emailExecutor),
-      ]);
-
-      await this.notificationEmailService.sendNotificationEventEmail({
-        eventType: params.eventType,
-        entityType: params.entityType,
-        entityId: params.entityId,
-        summary: params.summary,
-        details: params.details,
-        actorUsername,
-        recipients,
-      });
-    } catch (error) {
-      this.logger.warn(
-        `Failed to send notification email(s): ${error instanceof Error ? error.message : String(error)}`
-      );
+      await this.deliverNotificationSideEffects(sideEffect);
     }
 
     return dedupedRecipients;
@@ -1241,6 +1294,7 @@ export class NotificationsService {
     activityId: number;
     actorUserId: number;
     executor?: DrizzleDbExecutor;
+    deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
     const executor = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(
@@ -1279,7 +1333,8 @@ export class NotificationsService {
         reminderType: 'post_dated',
       },
       actorUserId: input.actorUserId,
-      executor,
+      executor: input.executor,
+      deferredSideEffects: input.deferredSideEffects,
       recipientUserIds: [
         activity.createdBy,
         activity.lastUpdatedBy,
@@ -1294,6 +1349,7 @@ export class NotificationsService {
     actorUserId: number;
     leadDays: number;
     executor?: DrizzleDbExecutor;
+    deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
     const executor = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(
@@ -1331,7 +1387,8 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
-      executor,
+      executor: input.executor,
+      deferredSideEffects: input.deferredSideEffects,
       recipientUserIds: commsRows.map((row) => row.id),
     });
   }
@@ -1341,6 +1398,7 @@ export class NotificationsService {
     actorUserId: number;
     leadDays: number;
     executor?: DrizzleDbExecutor;
+    deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
     const executor = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(
@@ -1377,7 +1435,8 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
-      executor,
+      executor: input.executor,
+      deferredSideEffects: input.deferredSideEffects,
       recipientUserIds: commsRows.map((row) => row.id),
     });
   }
@@ -1387,6 +1446,7 @@ export class NotificationsService {
     actorUserId: number;
     leadDays: number;
     executor?: DrizzleDbExecutor;
+    deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
     const executor = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(
@@ -1424,7 +1484,8 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
-      executor,
+      executor: input.executor,
+      deferredSideEffects: input.deferredSideEffects,
       recipientUserIds: commsRows.map((row) => row.id),
     });
   }
@@ -1434,6 +1495,7 @@ export class NotificationsService {
     actorUserId: number;
     leadDays: number;
     executor?: DrizzleDbExecutor;
+    deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
     const executor = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(
@@ -1482,7 +1544,8 @@ export class NotificationsService {
         leadDays: input.leadDays,
       },
       actorUserId: input.actorUserId,
-      executor,
+      executor: input.executor,
+      deferredSideEffects: input.deferredSideEffects,
       recipientUserIds: [
         ...commsRows.map((row) => row.id),
         ...watchRows.map((row) => row.id),
@@ -1495,6 +1558,7 @@ export class NotificationsService {
     actorUserId: number;
     staleDays: number;
     executor?: DrizzleDbExecutor;
+    deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
     const executor = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(
@@ -1534,7 +1598,8 @@ export class NotificationsService {
         staleDays: input.staleDays,
       },
       actorUserId: input.actorUserId,
-      executor,
+      executor: input.executor,
+      deferredSideEffects: input.deferredSideEffects,
       recipientUserIds: [...adminUserIds, ...commsRows.map((row) => row.id)],
     });
   }
