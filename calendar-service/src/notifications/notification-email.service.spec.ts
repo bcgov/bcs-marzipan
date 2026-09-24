@@ -65,6 +65,31 @@ describe('NotificationEmailService', () => {
     expect(sendMailMock).toHaveBeenCalledTimes(2);
   });
 
+  it('falls back to notifications route for hard-deleted activity emails', async () => {
+    const service = new NotificationEmailService(
+      new ConfigService({
+        NOTIFICATIONS_EMAIL_ENABLED: 'true',
+        NOTIFICATIONS_EMAIL_FROM: 'calendar@gov.bc.ca',
+        NOTIFICATIONS_SMTP_HOST: 'smtp.example.local',
+        PUBLIC_APP_BASE_URL: 'https://calendar.example.gov.bc.ca',
+      })
+    );
+
+    await service.sendNotificationEventEmail({
+      eventType: 'calendar.activity.hard_deleted',
+      entityType: 'activity',
+      entityId: 42,
+      summary: 'Activity permanently deleted',
+      details: null,
+      actorUsername: 'actor',
+      recipients: [
+        { userId: 1, email: 'user1@gov.bc.ca', displayName: 'User One' },
+      ],
+    });
+
+    expect(sendMailMock).toHaveBeenCalledTimes(1);
+    expect(sendMailMock.mock.calls[0]?.[0]?.text).toContain('/notifications');
+  });
   it('builds user deep-link for team member notification emails', async () => {
     const service = new NotificationEmailService(
       new ConfigService({

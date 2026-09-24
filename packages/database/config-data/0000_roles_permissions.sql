@@ -98,7 +98,8 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
-WHERE p.key = 'notifications.view'
+WHERE r.is_system = true
+AND p.key = 'notifications.view'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- 3. Viewer (view only, scoped)
