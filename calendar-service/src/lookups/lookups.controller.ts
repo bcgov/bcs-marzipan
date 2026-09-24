@@ -1370,11 +1370,10 @@ export class LookupsController {
   }> {
     const shouldIncludeAll =
       includeAll === 'true' && user.permissions.includes('lookups.manage');
-    res?.setHeader(
-      'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+res?.setHeader(
+  'Cache-Control',
+  shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
+);
     );
     const data = await this.lookupsService.getVenuePresets(shouldIncludeAll);
     return { success: true, data };
