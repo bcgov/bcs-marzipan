@@ -948,7 +948,7 @@ export function VenuePresetsAdmin() {
       description="Manage venue presets for the activity form"
       entityType="Venue Preset"
       apiEndpoint="/lookups/venue-presets"
-      queryKey={lookupQueryKeys.venuePresets()}
+      queryKey={lookupQueryKeys.venuePresetsAdmin()}
       queryFn={fetchAllVenuePresets as () => Promise<VenuePreset[]>}
       formFields={venuePresetFields}
       additionalColumns={venuePresetAdditionalColumns}
