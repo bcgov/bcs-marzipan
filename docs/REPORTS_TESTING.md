@@ -201,17 +201,16 @@ The system ships with 5 preconfigured reports (accessible as tabs at the top):
 ## API Endpoints (Reference)
 
 ```bash
-# Get all reports
-GET /reports
+# Report definitions (metadata)
+GET /lookups/reports
 
-# Get report data
+# Report data
 GET /reports/data/{type}?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 
-# Export as CSV
+# Export
 GET /reports/export/{type}/csv?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
-
-# Export as PDF (client-side)
-POST /reports/export/{type}/pdf (with data from /reports/data/{type})
+GET /reports/export/{type}/xlsx?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+GET /reports/export/{type}/pdf?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 ```
 
 ## Performance Notes
