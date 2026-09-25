@@ -76,11 +76,11 @@ export class AuthController {
       'requiresPasswordSetup' in result ||
       'requiresPasswordReset' in result
     ) {
-      return result;
+      return { success: true as const, data: result };
     }
 
     this.setAuthCookie(req, res, result.accessToken, result.expiresIn);
-    return result;
+    return { success: true as const, data: result };
   }
 
   // ---------------------------------------------------------------------------
@@ -101,8 +101,11 @@ export class AuthController {
   })
   localConfig() {
     return {
-      enabled: this.authService.isLocalAuthEnabled(),
-      mockEnabled: this.authService.isMockEnabled(),
+      success: true as const,
+      data: {
+        enabled: this.authService.isLocalAuthEnabled(),
+        mockEnabled: this.authService.isMockEnabled(),
+      },
     };
   }
 
@@ -119,7 +122,8 @@ export class AuthController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.message ?? 'Invalid request');
     }
-    return this.authService.checkEmail(parsed.data.email);
+    const data = await this.authService.checkEmail(parsed.data.email);
+    return { success: true as const, data };
   }
 
   @Public()
@@ -138,10 +142,11 @@ export class AuthController {
     if (parsed.data.password !== parsed.data.confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }
-    return this.authService.setPassword(
+    const data = await this.authService.setPassword(
       parsed.data.email,
       parsed.data.password
     );
+    return { success: true as const, data };
   }
 
   @Public()
@@ -164,7 +169,7 @@ export class AuthController {
     if (!valid) {
       throw new UnauthorizedException('Invalid or expired reset code');
     }
-    return { valid: true };
+    return { success: true as const, data: { valid: true as const } };
   }
 
   @Public()
@@ -189,12 +194,13 @@ export class AuthController {
       ? req.headers.authorization.slice(7)
       : (req.cookies?.[ACCESS_TOKEN_COOKIE] as string | undefined);
 
-    return this.authService.changePassword({
+    const data = await this.authService.changePassword({
       tempToken: parsed.data.tempToken,
       currentPassword: parsed.data.currentPassword,
       newPassword: parsed.data.newPassword,
       bearerToken,
     });
+    return { success: true as const, data };
   }
 
   @Public()
@@ -205,7 +211,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Azure AD availability status' })
   azureConfig() {
-    return { enabled: this.azureOidcService.isConfigured() };
+    return {
+      success: true as const,
+      data: { enabled: this.azureOidcService.isConfigured() },
+    };
   }
 
   @Public()
@@ -386,7 +395,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Current user' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   me(@CurrentUser() user: AuthUser) {
-    return user;
+    return { success: true as const, data: user };
   }
 
   @Post('logout')
@@ -397,7 +406,7 @@ export class AuthController {
     description: 'Log out and clear auth cookie',
   })
   @ApiResponse({ status: 200, description: 'Logged out' })
-  logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     // Clear the httpOnly auth cookie
     res.clearCookie(ACCESS_TOKEN_COOKIE, this.getAuthCookieOptions(req));
 
@@ -406,20 +415,8 @@ export class AuthController {
       : (req.cookies?.[ACCESS_TOKEN_COOKIE] as string | undefined);
 
     const tokenHash = raw ? this.authService.hashToken(raw) : '';
-    return this.authService.logout(tokenHash);
-  }
-
-  // TODO: Implement refresh token.
-  @Post('refresh')
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Refresh token',
-    description: 'Not implemented; re-login to get new token',
-  })
-  @ApiResponse({ status: 501, description: 'Not implemented' })
-  refresh() {
-    return this.authService.refresh();
+    const data = await this.authService.logout(tokenHash);
+    return { success: true as const, data };
   }
 
   private setAuthCookie(

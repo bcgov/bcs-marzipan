@@ -148,7 +148,7 @@ describe('LocksController (API integration)', () => {
 
       try {
         await createAuthRequest(app, systemAdminToken)
-          .put('/banner/recurring-lockout/settings')
+          .patch('/banner/recurring-lockout/settings')
           .send(lockoutBody)
           .expect(200);
 
@@ -209,7 +209,7 @@ describe('LocksController (API integration)', () => {
         };
 
         await createAuthRequest(app, systemAdminToken)
-          .put('/banner/recurring-lockout/settings')
+          .patch('/banner/recurring-lockout/settings')
           .send(restoreBody)
           .expect(200);
       }
