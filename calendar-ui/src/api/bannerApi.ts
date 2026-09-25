@@ -41,7 +41,7 @@ export async function fetchRecurringLockoutBannerSettings(): Promise<RecurringLo
 export async function upsertBannerSettings(
   data: UpsertBannerSettingsBody
 ): Promise<BannerSettings> {
-  const res = await api.put<WrappedResponse<BannerSettings>>(
+  const res = await api.patch<WrappedResponse<BannerSettings>>(
     '/banner/settings',
     data
   );
@@ -51,7 +51,7 @@ export async function upsertBannerSettings(
 export async function upsertRecurringLockoutBannerSettings(
   data: UpsertRecurringLockoutBannerSettingsBody
 ): Promise<RecurringLockoutBannerSettings> {
-  const res = await api.put<WrappedResponse<RecurringLockoutBannerSettings>>(
+  const res = await api.patch<WrappedResponse<RecurringLockoutBannerSettings>>(
     '/banner/recurring-lockout/settings',
     data
   );
