@@ -174,29 +174,6 @@ Retrieves a single activity by its ID.
 
 ---
 
-### Get Activity Categories
-
-**GET** `/activities/categories`
-
-Retrieves all available activity categories.
-
-**Response:** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Event",
-      "displayName": "Event"
-    }
-  ]
-}
-```
-
----
-
 ### Update Activity
 
 **PATCH** `/activities/:id`
@@ -504,6 +481,25 @@ Reference data for dropdowns and filters. All responses follow the format: `{ "s
 
 **GET** `/lookups/event-planners`
 
+**Cache:** 1 hour
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Event Planner Name",
+      "displayName": "Event Planner Display Name",
+      "label": "Event Planner Display Name",
+      "value": 1
+    }
+  ]
+}
+```
+
+---
+
 ### Get permissions for all roles (bulk)
 
 **GET** `/lookups/roles/permissions`
@@ -559,58 +555,6 @@ Requires System Admin privileges (permission `system.manage_permissions`). Updat
 {
   "success": true,
   "data": { "id": 12, "key": "activities.create", "showInUserManagement": true }
-}
-```
-
----
-
-### Bulk update permission visibility (atomic)
-
-**PATCH** `/lookups/permissions/visibility`
-
-Requires System Admin privileges (`system.manage_permissions`). Accepts an array of `{ id, showInUserManagement }` objects and performs the updates in a single database transaction. An audit row is inserted for each change into `permission_visibility_audit`.
-
-**Request body:**
-
-```json
-[
-  { "id": 12, "showInUserManagement": true },
-  { "id": 15, "showInUserManagement": false }
-]
-```
-
-**Response:** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": [
-    { "id": 12, "key": "activities.create", "showInUserManagement": true },
-    { "id": 15, "key": "activities.edit", "showInUserManagement": false }
-  ]
-}
-```
-
-Behavior notes:
-
-- The endpoint validates the request body and returns `400` on validation errors.
-- All updates are performed atomically; if any update fails the transaction is rolled back.
-- Each change is recorded in `permission_visibility_audit(permission_id, changed_by, old_value, new_value, created_at)`.
-
-**Cache:** 1 hour
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Event Planner Name",
-      "displayName": "Event Planner Display Name",
-      "label": "Event Planner Display Name",
-      "value": 1
-    }
-  ]
 }
 ```
 
