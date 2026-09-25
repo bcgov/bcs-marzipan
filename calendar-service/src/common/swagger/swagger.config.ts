@@ -1,3 +1,4 @@
+import { createRequire } from 'module';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { INestApplication } from '@nestjs/common';
@@ -5,6 +6,8 @@ import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
+
+import calendarServicePackage from '../../../package.json';
 
 /**
  * Resolves the path to swagger-ui-dist static assets.
@@ -57,52 +60,74 @@ function getSwaggerUiDistPath(): string {
 }
 
 /**
+ * OpenAPI info.version — calendar-service/package.json (inlined when webpack builds).
+ */
+if (
+  calendarServicePackage.name !== 'calendar-service' ||
+  typeof calendarServicePackage.version !== 'string'
+) {
+  throw new Error(
+    'Swagger config must import version from calendar-service/package.json'
+  );
+}
+
+const CALENDAR_SERVICE_VERSION = calendarServicePackage.version;
+
+/** Brand CSS/JS emitted to dist/common/swagger by webpack (see webpack.config.js). */
+function getSwaggerBrandAssetsDir(): string {
+  return join(__dirname, 'common', 'swagger');
+}
+
+/** Shared package static assets (BC logo, BC Sans fonts) for Swagger UI. */
+function getSharedSwaggerAssetsDir(): string {
+  const require = createRequire(__filename);
+  const bcsansCssPath = require.resolve(
+    '@corpcal/shared/styles/bcsans-font-face.css'
+  );
+  return join(dirname(bcsansCssPath), '..', 'assets');
+}
+
+/**
  * API documentation description text.
  * This appears at the top of the Swagger UI interface.
- * @version 0.0.1
+ * OpenAPI `info.version` is {@link CALENDAR_SERVICE_VERSION} from calendar-service/package.json.
  * @author BC Government Corporate Calendar Team
  */
 const API_DESCRIPTION = `
-# Corporate Calendar Service API Documentation
+# Corporate Calendar API
 
-A comprehensive RESTful API for scheduling, managing, and tracking BC Government corporate activities, events, and reference data.
+REST API for BC Government Corporate Calendar activities, reference data, reports, and administration.
 
-## Features
+Endpoints are grouped by **tag** below (activities, lookups, teams, users, reports, look-ahead, locks, settings, and related areas).
 
-- **Activity Management**: Complete CRUD operations for calendar activities with event scheduling, status tracking, and metadata
-- **Ministry Integration**: Activity associations with government ministries and representatives
-- **Categorization & Tagging**: Flexible categorization system with tags, themes, and custom metadata
-- **Venue Management**: Location tracking with venue addresses and scheduling considerations (in progress)
-- **Sharing & Visibility**: Granular sharing controls with ministry-level and user-level permissions (in progress)
-- **Reference Data**: Comprehensive lookup endpoints for categories, tags, ministries, languages, and statuses
-- **Audit Trail**: Per-activity and global activity history, user/team change history, and standalone history notes
-- **Notifications**: In-app notifications with read/dismiss and bulk actions
-- **User Preferences**: Activity favourites and saved list filters
-- **Admin Settings**: Banners, login modal, locks, look-ahead reset, and related configuration endpoints
+## Authentication & authorization
 
-## Authentication
+- Most routes require a valid JWT. Send \`Authorization: Bearer <token>\` (API clients) or use the httpOnly session cookie set after login (browser clients).
+- Login supports **Azure AD** (OIDC) and **local auth** when enabled; see the **auth** tag for entrypoints and availability checks.
+- **Health** and **readiness** probes and most **auth** routes are public; everything else is protected by default.
+- Access within authenticated sessions is enforced with permission-based RBAC (**401** unauthenticated, **403** forbidden). Some **403** responses for locked activities or reports include lock metadata in the problem body.
 
-Currently, the API operates in development mode with optional API key authentication. In production, endpoints will be secured with:
-- Microsoft Azure Active Directory (Azure AD) authentication
-- API key authentication via \`X-API-Key\` header
-- Role-based access control (RBAC) for government staff
-- Session-based authentication for web clients
+## JSON response shape
 
-## Data Validation
+- Typical success responses: \`{ "success": true, "data": … }\` (or \`{ "success": true }\` when there is no payload).
+- **Exceptions:** \`GET /health\` and \`GET /ready\` return probe payloads without the wrapper; some **auth** flows return redirects or status signals instead of a wrapper; **reports** may return CSV, XLSX, or PDF file downloads.
 
-All endpoints use Zod schema validation ensuring:
-- Type-safe request/response handling
-- Consistent error messaging
-- Input sanitization and validation
+## Query parameters
 
-## Error Handling
+- List and filter endpoints often accept comma-separated ID lists (for example ministry or category filters). Invalid segments are handled strictly per schema—some params are dropped entirely when any segment is invalid; required ID params may return **400**.
+- OpenAPI query descriptions are generated from the same Zod schemas used at runtime where possible.
 
-The API follows consistent error response patterns:
-- **400 Bad Request**: Validation errors, malformed data
-- **404 Not Found**: Resource not found
-- **500 Internal Server Error**: System errors
+## Validation, errors & limits
 
-All errors return JSON responses with detailed error messages and validation details.
+- Request and response contracts are validated with **Zod** (shared schemas in \`@corpcal/shared\` where applicable).
+- Errors use **RFC 7807 Problem Details** (\`Content-Type: application/problem+json\`) with a **correlationId**; validation failures include an **errors** array with field paths and messages.
+- Common statuses: **400** validation, **401** auth required, **403** forbidden or lock conflict, **404** not found, **409** conflict, **429** rate limit, **500** / **503** server errors.
+- Requests are rate-limited globally; repeated abuse returns **429**. Clients may send **X-Correlation-ID**; it is echoed on responses for tracing.
+
+## Using this documentation
+
+- Operation-level schemas reflect Zod DTOs; for conventions (response wrappers, query patterns, auth exceptions), see \`docs/API_DTO_AND_SWAGGER.md\` in the repository.
+- Swagger UI **Try it out** does not send browser cookies automatically; use a Bearer token when exercising protected routes here.
 `;
 
 /**
@@ -126,20 +151,32 @@ export function setupSwagger(
   }
 
   const config = new DocumentBuilder()
-    .setTitle('Calendar Service API')
+    .setTitle('Corporate Calendar API')
     .setDescription(API_DESCRIPTION)
-    .setVersion('1.0.0')
-    .addTag('activities', 'Calendar activity management endpoints')
-    .addTag('lookups', 'Reference data lookup endpoints')
-    .addTag('health', 'Health check and readiness probe endpoints')
-    .addTag('teams', 'Team and membership management')
-    .addTag('users', 'User and role management')
-    .addTag('drafts', 'Form draft save and restore')
-    .addTag('auth', 'Authentication')
-    .addTag('reports', 'Reporting')
-    .addTag('look-ahead', 'Look Ahead report data')
-    .addTag('locks', 'Activity and report lock management')
-    .addTag('settings', 'System and feature settings (admin)')
+    .setVersion(CALENDAR_SERVICE_VERSION)
+    .addTag(
+      'activities',
+      'Activity CRUD, list filters, history, flags, and sharing'
+    )
+    .addTag(
+      'lookups',
+      'Reference data (categories, tags, ministries, and related lookups)'
+    )
+    .addTag('health', 'Liveness and readiness probes for OpenShift')
+    .addTag('teams', 'Teams, membership, and team change history')
+    .addTag('users', 'Users, roles, permissions, and user change history')
+    .addTag('drafts', 'Form draft save, restore, and lookup')
+    .addTag('auth', 'Login, session, Azure AD and local auth availability')
+    .addTag(
+      'reports',
+      'Report definitions, JSON data, and CSV/XLSX/PDF exports'
+    )
+    .addTag('look-ahead', 'Look Ahead report JSON data')
+    .addTag('locks', 'Collaborative edit locks for activities and reports')
+    .addTag(
+      'settings',
+      'Admin configuration under /settings (completion, look-ahead reset, reminders, review rules, report cover, info icons)'
+    )
     .addTag('notifications', 'In-app notifications for the current user')
     .addTag('banner', 'Site banner and recurring lockout banner settings')
     .addTag('login-modal', 'Login modal content and settings')
@@ -151,22 +188,43 @@ export function setupSwagger(
   // Clean up OpenAPI document to properly handle Zod schemas
   cleanupOpenApiDoc(document);
 
-  // Serve Swagger UI static assets from local node_modules
+  const expressApp = app as NestExpressApplication;
+
+  // Swagger UI dist (default CSS/JS)
   const swaggerUiDistPath = getSwaggerUiDistPath();
-  (app as NestExpressApplication).useStaticAssets(swaggerUiDistPath, {
+  expressApp.useStaticAssets(swaggerUiDistPath, {
     prefix: '/api/',
-    index: false, // Don't serve index.html from swagger-ui-dist
+    index: false,
+  });
+
+  const swaggerBrandAssetsDir = getSwaggerBrandAssetsDir();
+  if (!existsSync(join(swaggerBrandAssetsDir, 'swagger-ui-brand.css'))) {
+    throw new Error(
+      `Missing Swagger brand assets at ${swaggerBrandAssetsDir}. Rebuild calendar-service.`
+    );
+  }
+  expressApp.useStaticAssets(swaggerBrandAssetsDir, {
+    prefix: '/api/',
+    index: false,
+  });
+
+  expressApp.useStaticAssets(getSharedSwaggerAssetsDir(), {
+    prefix: '/api/swagger-assets/',
+    index: false,
   });
 
   // Setup Swagger UI with local assets
   SwaggerModule.setup('api', app, document, {
-    customSiteTitle: 'Calendar Service API Documentation',
-    customCss: '.swagger-ui .topbar { display: none }',
-    // Use local paths - SwaggerModule will generate HTML that references these
-    customCssUrl: '/api/swagger-ui.css',
+    swaggerOptions: {
+      docExpansion: 'none',
+    },
+    customSiteTitle: 'Corporate Calendar API Documentation',
+    customfavIcon: '/api/swagger-assets/logo/bc-logo.svg',
+    customCssUrl: ['/api/swagger-ui.css', '/api/swagger-ui-brand.css'],
     customJs: [
       '/api/swagger-ui-bundle.js',
       '/api/swagger-ui-standalone-preset.js',
+      '/api/swagger-ui-brand.js',
     ],
   });
 }
