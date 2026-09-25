@@ -7,7 +7,7 @@ import {
   HttpStatus,
   Param,
   ParseIntPipe,
-  Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import {
@@ -48,8 +48,8 @@ export class DraftsController {
   constructor(private readonly draftsService: DraftsService) {}
 
   /**
-   * Save or update a draft
-   * POST /drafts/save
+   * Save or update a draft (upsert)
+   * PUT /drafts
    */
   @ApiOperation({
     summary: 'Save or update a form draft',
@@ -63,7 +63,7 @@ export class DraftsController {
     type: DraftResponseDto,
   })
   @RequireAnyPermission('drafts.create', 'drafts.edit')
-  @Post('save')
+  @Put()
   async saveDraft(
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(saveDraftBodySchema)) saveDto: SaveDraftDto
@@ -219,29 +219,5 @@ export class DraftsController {
       query.formType,
       query.entityId
     );
-  }
-
-  /**
-   * Cleanup expired drafts (admin endpoint)
-   * POST /drafts/cleanup
-   */
-  @ApiOperation({
-    summary: 'Cleanup expired drafts',
-    description:
-      'Administrative endpoint to clean up expired drafts. Should be called by a scheduled job.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Cleanup completed',
-  })
-  @RequirePermission('drafts.delete')
-  @Post('cleanup')
-  async cleanupExpiredDrafts(): Promise<{
-    success: boolean;
-    deletedCount: number;
-  }> {
-    this.logger.log('Running manual cleanup of expired drafts');
-    const deletedCount = await this.draftsService.cleanupExpiredDrafts();
-    return { success: true, deletedCount };
   }
 }

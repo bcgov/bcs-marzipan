@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  ParseIntPipe,
-  Query,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 
@@ -13,14 +6,9 @@ import type { ReportDataResponse } from '@corpcal/shared/api/types';
 import {
   reportDataQuerySchema,
   type ReportDataQueryParams,
-  type ReportResponse,
 } from '@corpcal/shared/schemas';
 
-import {
-  ReportDataResponseWrapperDto,
-  ReportDetailResponseWrapperDto,
-  ReportListResponseWrapperDto,
-} from '../common/dto';
+import { ReportDataResponseWrapperDto } from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
@@ -33,21 +21,6 @@ import { ReportsService } from './reports.service';
 @RequirePermission('reports.view')
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
-
-  @Get()
-  @ApiOperation({ summary: 'Get all active reports' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of all active reports',
-    type: ReportListResponseWrapperDto,
-  })
-  async findAllReports(): Promise<{
-    success: true;
-    data: ReportResponse[];
-  }> {
-    const data = await this.reportsService.findAllReports();
-    return { success: true, data };
-  }
 
   @Get('data/:type')
   @ApiOperation({ summary: 'Get report data by type' })
@@ -155,23 +128,5 @@ export class ReportsController {
       'no-store, no-cache, must-revalidate, private'
     );
     res.send(buffer);
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a report by ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Report details',
-    type: ReportDetailResponseWrapperDto,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Report not found',
-  })
-  async findReportById(
-    @Param('id', ParseIntPipe) id: number
-  ): Promise<{ success: true; data: ReportResponse | null }> {
-    const data = await this.reportsService.findReportById(id);
-    return { success: true, data };
   }
 }

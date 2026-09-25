@@ -28,8 +28,15 @@ export function timingUnder(res, maxMs) {
   return res.timings.duration < maxMs;
 }
 
-/** Current user from GET /auth/me */
-export function authMeLooksValid(u) {
+/** Current user from GET /auth/me (wrapped or legacy flat body). */
+export function authMeLooksValid(parsed) {
+  const u =
+    parsed &&
+    parsed.success === true &&
+    parsed.data &&
+    typeof parsed.data === 'object'
+      ? parsed.data
+      : parsed;
   return (
     u &&
     typeof u.id === 'number' &&
@@ -85,8 +92,8 @@ export function activityHistoryEnvelope(parsed) {
   );
 }
 
-/** Look Ahead GET */
-export function lookAheadEnvelope(parsed) {
+/** GET /reports/data/look-ahead (and legacy look-ahead alias shape). */
+export function reportLookAheadDataEnvelope(parsed) {
   const data = parsed?.data;
   return (
     parsed &&
@@ -119,24 +126,9 @@ export function lookAheadResetSettingsEnvelope(parsed) {
   );
 }
 
-/** GET /reports — wrapped array of report metadata */
-export function reportsListEnvelope(parsed) {
+/** GET /lookups/reports — wrapped array of report metadata */
+export function lookupsReportsListEnvelope(parsed) {
   return parsed?.success === true && Array.isArray(parsed.data);
-}
-
-/** GET /reports/:id — wrapped report metadata; data may be null */
-export function reportByIdEnvelope(parsed) {
-  if (!parsed || parsed.success !== true) {
-    return false;
-  }
-  if (parsed.data === null) {
-    return true;
-  }
-  return (
-    typeof parsed.data === 'object' &&
-    typeof parsed.data.id === 'number' &&
-    typeof parsed.data.name === 'string'
-  );
 }
 
 /** GET /lookups/date-statuses — typical lookup array */

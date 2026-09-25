@@ -141,7 +141,7 @@ export const AddressAutocomplete = forwardRef<
     setError(null);
 
     try {
-      const response = await fetch('/api/lookups/address/find', {
+      const response = await fetch('/api/lookups/addresses/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ export const AddressAutocomplete = forwardRef<
     setError(null);
 
     try {
-      const response = await fetch('/api/lookups/address/retrieve', {
+      const response = await fetch('/api/lookups/addresses/resolve', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

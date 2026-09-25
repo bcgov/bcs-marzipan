@@ -10,7 +10,7 @@
  *   PERF_PASSWORD    optional; required for some AUTH_STRATEGY values
  *   PERF_BEARER_TOKEN optional JWT; when set, skips POST /auth/login (DEV or scripted tokens)
  *   API_KEY          forwarded as X-API-Key when set (service-specific usage)
- *   SKIP_LOOK_AHEAD  when "true", do not call look-ahead (permission or data constraints)
+ *   SKIP_LOOK_AHEAD  when "true", skip GET /reports/data/look-ahead (permission or data constraints)
  *   SMOKE_MAX_MS     per-request timing ceiling for checks (default 8000 smoke / 10000 standard)
  *   PERF_ACTIVITY_ID optional activity id for detail/history (skips list scrape when set)
  *   VUS              override default virtual users (standard profile)

@@ -22,7 +22,6 @@ This document describes the authentication and authorization system implemented 
 │  │  │ - POST /auth/login    │  │  │  │ - getPermissionsForRole()   │   │  │
 │  │  │ - GET  /auth/me       │  │  │  │ - getTeamIdsForUser()       │   │  │
 │  │  │ - POST /auth/logout   │  │  │  │ - hasPermission()           │   │  │
-│  │  │ - POST /auth/refresh  │  │  │  │ - bypassesDataScoping()     │   │  │
 │  │  └───────────────────────┘  │  │  └─────────────────────────────┘   │  │
 │  │  ┌───────────────────────┐  │  │  ┌─────────────────────────────┐   │  │
 │  │  │ AuthService           │  │  │  │ Guards                      │   │  │
@@ -266,7 +265,8 @@ CREATE TABLE user_teams (
 | GET    | /auth/azure/callback | Handles Azure AD callback                   | No            |
 | GET    | /auth/me             | Get current user & permissions              | Yes           |
 | POST   | /auth/logout         | Log out (client discards token)             | Yes           |
-| POST   | /auth/refresh        | Refresh token (not implemented)             | Yes           |
+
+JSON auth responses use `{ "success": true, "data": … }` except Azure redirect routes.
 
 ### Login Request/Response
 

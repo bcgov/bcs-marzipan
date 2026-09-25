@@ -33,22 +33,6 @@ export class ActivityFlagsService {
   ) {}
 
   /**
-   * Legacy single-assignee API.
-   *
-   * Preserves prior behaviour by syncing the full assignee set to exactly one
-   * assignee for the provided (activity, team).
-   */
-  async upsertFlag(
-    activityId: number,
-    teamId: number,
-    assigneeId: number,
-    assignedById: number,
-    note?: string
-  ): Promise<void> {
-    await this.syncFlags(activityId, teamId, [assigneeId], assignedById, note);
-  }
-
-  /**
    * Syncs assignees for a given (activity, team) pair to exactly match
    * the provided assignee list.
    */

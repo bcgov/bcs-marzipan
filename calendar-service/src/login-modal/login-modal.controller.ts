@@ -1,4 +1,10 @@
-import { Body, Controller, ForbiddenException, Get, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Patch,
+} from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -70,7 +76,7 @@ export class LoginModalController {
   })
   @ApiBody({ type: UpsertLoginModalSettingsDto })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE)
-  @Put('settings')
+  @Patch('settings')
   async upsertSettings(
     @Body(new ZodValidationPipe(upsertLoginModalSettingsRequestSchema))
     body: UpsertLoginModalSettingsDto,

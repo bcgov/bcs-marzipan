@@ -27,7 +27,7 @@ export interface DraftsListResponse {
 }
 
 /**
- * Save or update a draft
+ * Save or update a draft (current user from JWT).
  */
 export async function saveDraft(
   userId: number,
@@ -36,12 +36,9 @@ export async function saveDraft(
   logger.debug('Saving draft', { userId, formType: draftRequest.formType });
 
   try {
-    const res = await api.post<{ success: boolean; data: DraftResponse }>(
-      '/drafts/save',
-      draftRequest,
-      {
-        params: { userId },
-      }
+    const res = await api.put<{ success: boolean; data: DraftResponse }>(
+      '/drafts',
+      draftRequest
     );
     logger.debug('Draft saved successfully', { draftId: res.data.data.id });
     return res.data.data;
@@ -52,7 +49,7 @@ export async function saveDraft(
 }
 
 /**
- * Get a specific draft by form type and optional entity ID
+ * Get a specific draft by form type and optional entity ID (current user from JWT).
  */
 export async function getDraft(
   userId: number,
@@ -65,7 +62,7 @@ export async function getDraft(
     const res = await api.get<{ success: boolean; data: DraftResponse | null }>(
       '/drafts',
       {
-        params: { userId, formType, entityId },
+        params: { formType, entityId },
       }
     );
     return res.data.data;
@@ -76,17 +73,14 @@ export async function getDraft(
 }
 
 /**
- * Get all drafts for a user
+ * List all drafts for the current user (JWT).
  */
 export async function listDrafts(userId: number): Promise<DraftsListResponse> {
   logger.debug('Listing drafts', { userId });
 
   try {
     const res = await api.get<{ success: boolean; data: DraftsListResponse }>(
-      '/drafts/list',
-      {
-        params: { userId },
-      }
+      '/drafts/list'
     );
     return res.data.data;
   } catch (error) {
@@ -96,7 +90,7 @@ export async function listDrafts(userId: number): Promise<DraftsListResponse> {
 }
 
 /**
- * Delete a draft by ID
+ * Delete a draft by ID (current user from JWT).
  */
 export async function deleteDraft(
   userId: number,
@@ -105,9 +99,7 @@ export async function deleteDraft(
   logger.debug('Deleting draft', { userId, draftId });
 
   try {
-    await api.delete(`/drafts/${draftId}`, {
-      params: { userId },
-    });
+    await api.delete(`/drafts/${draftId}`);
     logger.debug('Draft deleted successfully', { draftId });
   } catch (error) {
     logger.error('Failed to delete draft', error);
@@ -116,7 +108,7 @@ export async function deleteDraft(
 }
 
 /**
- * Delete a draft by form type and entity ID
+ * Delete a draft by form type and entity ID (current user from JWT).
  */
 export async function deleteDraftByForm(
   userId: number,
@@ -126,11 +118,7 @@ export async function deleteDraftByForm(
   logger.debug('Deleting draft by form', { userId, formType, entityId });
 
   try {
-    // Build params object, only including entityId if it's defined
-    const params: { userId: number; formType: string; entityId?: number } = {
-      userId,
-      formType,
-    };
+    const params: { formType: string; entityId?: number } = { formType };
 
     if (entityId !== undefined) {
       params.entityId = entityId;
