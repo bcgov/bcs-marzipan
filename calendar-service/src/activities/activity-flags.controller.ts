@@ -70,9 +70,11 @@ export class ActivityFlagsController {
     body: UpsertActivityFlagsRequest,
     @CurrentUser() user: AuthUser
   ): Promise<{
-    success: boolean;
-    addedAssigneeIds: number[];
-    removedAssigneeIds: number[];
+    success: true;
+    data: {
+      addedAssigneeIds: number[];
+      removedAssigneeIds: number[];
+    };
   }> {
     if (!user.teamIds.includes(body.teamId)) {
       throw new ForbiddenException(
@@ -89,7 +91,7 @@ export class ActivityFlagsController {
       body.displayTeamPerAssignee
     );
     this.gateway.broadcastActivityUpdated(activityId);
-    return { success: true, ...delta };
+    return { success: true, data: delta };
   }
 
   @ApiOperation({

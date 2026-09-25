@@ -508,12 +508,14 @@ describe('ActivitiesController (API integration)', () => {
         .expect(200);
 
       expect(syncRes.body).toHaveProperty('success', true);
-      expect(Array.isArray(syncRes.body.addedAssigneeIds)).toBe(true);
-      expect(syncRes.body.addedAssigneeIds).toEqual(
+      expect(Array.isArray(syncRes.body.data.addedAssigneeIds)).toBe(true);
+      expect(syncRes.body.data.addedAssigneeIds).toEqual(
         expect.arrayContaining(assigneeIds)
       );
-      expect(syncRes.body.addedAssigneeIds).toHaveLength(assigneeIds.length);
-      expect(syncRes.body.removedAssigneeIds).toEqual([]);
+      expect(syncRes.body.data.addedAssigneeIds).toHaveLength(
+        assigneeIds.length
+      );
+      expect(syncRes.body.data.removedAssigneeIds).toEqual([]);
 
       const getRes = await createAuthRequest(app, accessToken)
         .get(`/activities/${flagTargetId}`)
