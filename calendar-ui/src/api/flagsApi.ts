@@ -1,20 +1,6 @@
-import type {
-  UpsertActivityFlagRequest,
-  UpsertActivityFlagsRequest,
-} from '@corpcal/shared/schemas';
+import type { UpsertActivityFlagsRequest } from '@corpcal/shared/schemas';
 
 import api from './axios';
-
-/**
- * Assign (flag) an activity for a team member.
- * PUT /activities/:id/flag
- */
-export async function upsertActivityFlag(
-  activityId: number,
-  body: UpsertActivityFlagRequest
-): Promise<void> {
-  await api.put(`/activities/${activityId}/flag`, body);
-}
 
 export interface SyncActivityFlagsResponse {
   success: boolean;

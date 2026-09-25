@@ -36,8 +36,8 @@ export async function saveDraft(
   logger.debug('Saving draft', { userId, formType: draftRequest.formType });
 
   try {
-    const res = await api.post<{ success: boolean; data: DraftResponse }>(
-      '/drafts/save',
+    const res = await api.put<{ success: boolean; data: DraftResponse }>(
+      '/drafts',
       draftRequest,
       {
         params: { userId },
