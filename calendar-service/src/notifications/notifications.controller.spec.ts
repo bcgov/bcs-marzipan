@@ -88,4 +88,42 @@ describe('NotificationsController', () => {
       pageSize: 20,
     });
   });
+
+  it('patchRecipient marks read when body.read is true', async () => {
+    const result = await controller.patchRecipient(mockUser, 42, {
+      read: true,
+    });
+
+    expect(mockNotificationsService.markRead).toHaveBeenCalledWith(42, 99);
+    expect(mockNotificationsService.dismiss).not.toHaveBeenCalled();
+    expect(result).toEqual({ success: true, data: { updated: true } });
+  });
+
+  it('patchRecipient dismisses when body.dismissed is true', async () => {
+    const result = await controller.patchRecipient(mockUser, 7, {
+      dismissed: true,
+    });
+
+    expect(mockNotificationsService.dismiss).toHaveBeenCalledWith(7, 99);
+    expect(mockNotificationsService.markRead).not.toHaveBeenCalled();
+    expect(result).toEqual({ success: true, data: { updated: true } });
+  });
+
+  it('markAllRead returns updated count from service', async () => {
+    mockNotificationsService.markAllRead.mockResolvedValue(3);
+
+    const result = await controller.markAllRead(mockUser);
+
+    expect(mockNotificationsService.markAllRead).toHaveBeenCalledWith(99);
+    expect(result).toEqual({ success: true, data: { updatedCount: 3 } });
+  });
+
+  it('dismissAll returns updated count from service', async () => {
+    mockNotificationsService.dismissAll.mockResolvedValue(2);
+
+    const result = await controller.dismissAll(mockUser);
+
+    expect(mockNotificationsService.dismissAll).toHaveBeenCalledWith(99);
+    expect(result).toEqual({ success: true, data: { updatedCount: 2 } });
+  });
 });
