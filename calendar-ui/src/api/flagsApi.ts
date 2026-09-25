@@ -2,8 +2,7 @@ import type { UpsertActivityFlagsRequest } from '@corpcal/shared/schemas';
 
 import api from './axios';
 
-export interface SyncActivityFlagsResponse {
-  success: boolean;
+export interface SyncActivityFlagsResult {
   addedAssigneeIds: number[];
   removedAssigneeIds: number[];
 }
@@ -15,12 +14,12 @@ export interface SyncActivityFlagsResponse {
 export async function syncActivityFlags(
   activityId: number,
   body: UpsertActivityFlagsRequest
-): Promise<SyncActivityFlagsResponse> {
-  const response = await api.put<SyncActivityFlagsResponse>(
-    `/activities/${activityId}/flags`,
-    body
-  );
-  return response.data;
+): Promise<SyncActivityFlagsResult> {
+  const response = await api.put<{
+    success: boolean;
+    data: SyncActivityFlagsResult;
+  }>(`/activities/${activityId}/flags`, body);
+  return response.data.data;
 }
 
 /**
