@@ -9,11 +9,13 @@ The Form Drafts feature provides automatic saving of in-progress forms, allowing
 **CRITICAL: The current implementation uses client-supplied `userId` query parameters for authentication, which is NOT secure for production use.**
 
 ### Current Security Issues:
+
 - Endpoints accept `userId` as a query parameter that can be modified by the client
 - An attacker can change the `userId` to access, modify, or delete other users' drafts
 - No server-side authentication or authorization is implemented
 
 ### Required Before Production:
+
 1. Implement proper authentication middleware to identify the authenticated user
 2. Extract `userId` from the authenticated session/token on the server side
 3. Remove `userId` from query parameters in client requests
@@ -21,7 +23,9 @@ The Form Drafts feature provides automatic saving of in-progress forms, allowing
 5. Add audit logging for draft operations
 
 ### Temporary Mitigation:
+
 This feature is currently intended for development/testing only. The API should be protected behind:
+
 - Network-level restrictions (not exposed publicly)
 - API gateway authentication
 - Rate limiting
@@ -74,21 +78,21 @@ calendar-service/src/drafts/
 
 #### API Endpoints
 
-| Method   | Endpoint                                                     | Description                   |
-| -------- | ------------------------------------------------------------ | ----------------------------- |
-| `POST`   | `/drafts/save?userId={id}`                                   | Save or update a draft        |
-| `GET`    | `/drafts?userId={id}&formType={type}&entityId={id?}`         | Get specific draft            |
-| `GET`    | `/drafts/list?userId={id}`                                   | List all user's drafts        |
-| `DELETE` | `/drafts/:id?userId={id}`                                    | Delete draft by ID            |
-| `DELETE` | `/drafts/by-form?userId={id}&formType={type}&entityId={id?}` | Delete draft by form type     |
-| `POST`   | `/drafts/cleanup`                                            | Admin: Cleanup expired drafts |
+| Method   | Endpoint                                                     | Description                     |
+| -------- | ------------------------------------------------------------ | ------------------------------- |
+| `PUT`    | `/drafts?userId={id}`                                        | Save or update a draft (upsert) |
+| `GET`    | `/drafts?userId={id}&formType={type}&entityId={id?}`         | Get specific draft              |
+| `GET`    | `/drafts/list?userId={id}`                                   | List all user's drafts          |
+| `DELETE` | `/drafts/:id?userId={id}`                                    | Delete draft by ID              |
+| `DELETE` | `/drafts/by-form?userId={id}&formType={type}&entityId={id?}` | Delete draft by form type       |
+| (cron)   | `DraftsCleanupService` daily 02:00                           | Cleanup expired drafts          |
 
 #### Example API Usage
 
 **Save a Draft:**
 
 ```bash
-curl -X POST 'http://localhost:3000/drafts/save?userId=1' \
+curl -X PUT 'http://localhost:3000/drafts?userId=1' \
   -H 'Content-Type: application/json' \
   -d '{
     "formType": "activity",
@@ -146,7 +150,8 @@ calendar-ui/src/
 **Usage Example:**
 
 ```tsx
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+
 import { useAutoSave } from '../hooks/useAutoSave';
 
 function CreateActivityForm() {
@@ -252,6 +257,7 @@ Currently, the feature uses a temporary `userId` parameter. When user authentica
 ```typescript
 // drafts.controller.ts
 import { UseGuards } from '@nestjs/common';
+
 import { AuthGuard } from '../auth/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
@@ -280,30 +286,7 @@ const { existingDraft } = useAutoSave(user.id, 'activity', formData);
 
 ## Scheduled Cleanup Job
 
-To automatically delete expired drafts, set up a cron job:
-
-### Option 1: NestJS Schedule (Recommended)
-
-```typescript
-// drafts.service.ts
-import { Cron, CronExpression } from '@nestjs/schedule';
-
-@Injectable()
-export class DraftsService {
-  @Cron(CronExpression.EVERY_DAY_AT_2AM)
-  async scheduledCleanup() {
-    const count = await this.cleanupExpiredDrafts();
-    this.logger.log(`Cleaned up ${count} expired drafts`);
-  }
-}
-```
-
-### Option 2: Manual Cron Job
-
-```bash
-# Run daily at 2 AM
-0 2 * * * curl -X POST http://localhost:3000/drafts/cleanup
-```
+Expired drafts are removed automatically by `DraftsCleanupService` in the calendar-service process. It runs daily at **02:00** server time (`@Cron('0 0 2 * * *')`), calls `DraftsService.cleanupExpiredDrafts()`, and skips overlapping runs with an in-process guard. See `docs/CALENDAR_SERVICE_SCHEDULED_JOBS.md` for the full scheduled-jobs list.
 
 ## Testing
 
@@ -343,6 +326,7 @@ describe('DraftsService', () => {
 ```typescript
 // useAutoSave.test.ts
 import { renderHook, waitFor } from '@testing-library/react';
+
 import { useAutoSave } from './useAutoSave';
 
 it('should autosave after debounce period', async () => {

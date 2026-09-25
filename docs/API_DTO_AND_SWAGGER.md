@@ -35,7 +35,7 @@ See existing modules for examples: `calendar-service/src/common/dto/activity.dto
 - **Exceptions (no wrapper):**
   - **Health / readiness:** `GET /health`, `GET /ready` — raw probe payloads for OpenShift (see `common/dto/health.dto.ts`).
   - **Binary exports:** report CSV, XLSX, PDF — file download responses; document with description-only `@ApiResponse`.
-  - **Auth (partial):** login, Azure OIDC redirects, and other cookie/session flows may return unions or non-wrapper shapes; document stable JSON endpoints with Zod DTOs where possible (see Auth exceptions below).
+  - **Auth redirects:** Azure OIDC browser entry/callback routes return redirects, not JSON wrappers.
 
 ## Query parameters (Pattern A / B)
 
@@ -62,10 +62,10 @@ HTTP query strings are always strings on the wire. Validation uses Zod in `@corp
 - When replacing manual query validation, add **parity tests** beside the schema (see `query-params.schema.spec.ts`).
 - `FilterActivitiesDto` in `activity.dto.ts` is **not** used for Swagger query expansion; use Pattern A with `filterActivitiesQuerySchema`.
 
-## Auth exceptions (Swagger)
+## Auth (Swagger)
 
-- Document **stable** JSON with Zod + `createZodDto` where responses are fixed (`GET auth/local/config`, `GET auth/me`, password setup bodies using shared schemas).
-- **Login** may return token payload or status signals (`requiresPasswordSetup`, etc.) — use description-only or multiple `@ApiResponse` entries rather than a single misleading DTO.
+- JSON auth endpoints use `{ success: true, data: … }`; **`data`** for login may be a full session payload or a status signal (`requiresPasswordSetup`, `requiresPasswordReset`).
+- Document stable config and password bodies with Zod + `createZodDto` where practical.
 - **Azure OIDC** callback/redirect routes — description-only; no request/response body schema.
 
 ## Tags

@@ -50,12 +50,12 @@ CREATE TABLE form_drafts (
 
 | Method | Endpoint                                             | Description            |
 | ------ | ---------------------------------------------------- | ---------------------- |
-| POST   | `/drafts/save?userId={id}`                           | Save/update draft      |
+| PUT    | `/drafts?userId={id}`                                | Save/update draft      |
 | GET    | `/drafts?userId={id}&formType={type}&entityId={id?}` | Get specific draft     |
 | GET    | `/drafts/list?userId={id}`                           | List all user drafts   |
 | DELETE | `/drafts/:id?userId={id}`                            | Delete by ID           |
 | DELETE | `/drafts/by-form?userId={id}&formType={type}`        | Delete by form type    |
-| POST   | `/drafts/cleanup`                                    | Cleanup expired drafts |
+| (cron) | `DraftsCleanupService` daily 02:00                   | Cleanup expired drafts |
 
 ### Key Files
 
