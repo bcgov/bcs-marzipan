@@ -370,77 +370,6 @@ export class LookupsService {
   }
 
   /**
-   * Bulk update permission visibility inside a single DB transaction.
-   * Returns the updated permission rows.
-   */
-  async bulkUpdatePermissionVisibility(
-    items: { id: number; showInUserManagement: boolean }[],
-    updatedBy?: number
-  ): Promise<{ id: number; key: string; showInUserManagement: boolean }[]> {
-    return this.databaseService.db.transaction(async (tx) => {
-      const results: {
-        id: number;
-        key: string;
-        showInUserManagement: boolean;
-      }[] = [];
-      for (const item of items) {
-        const pid = Number(item.id);
-        if (!Number.isInteger(pid)) continue;
-
-        const existing = await tx
-          .select({
-            id: permissions.id,
-            show: permissions.showInUserManagement,
-          })
-          .from(permissions)
-          .where(eq(permissions.id, pid))
-          .limit(1);
-
-        if (!existing || existing.length === 0) continue;
-
-        await tx
-          .update(permissions)
-          .set({
-            showInUserManagement: item.showInUserManagement,
-            updatedAt: sql`now()`,
-            updatedBy: updatedBy ?? null,
-          })
-          .where(eq(permissions.id, pid));
-
-        const [row] = await tx
-          .select({
-            id: permissions.id,
-            key: permissions.key,
-            showInUserManagement: permissions.showInUserManagement,
-          })
-          .from(permissions)
-          .where(eq(permissions.id, pid))
-          .limit(1);
-
-        results.push({
-          id: row.id,
-          key: row.key,
-          showInUserManagement: Boolean(row.showInUserManagement),
-        });
-
-        try {
-          await tx.insert(permissionVisibilityAudit).values({
-            permissionId: pid,
-            changedBy: updatedBy ?? null,
-            oldValue: Boolean(existing[0].show),
-            newValue: Boolean(item.showInUserManagement),
-          });
-        } catch (err) {
-          this.logger.warn(
-            `Failed to write permission visibility audit for permission ${pid} (bulk): ${String(err)}`
-          );
-        }
-      }
-      return results;
-    });
-  }
-
-  /**
    * Get all active users
    * Computes display name from adDisplayName or falls back to adUsername
    * Supports filtering by userIds to fetch specific users
@@ -1047,7 +976,7 @@ export class LookupsService {
       })
       .from(reports)
       .where(eq(reports.isActive, true))
-      .orderBy(reports.sortOrder);
+      .orderBy(reports.sortOrder, reports.displayName);
 
     return results.map((report) => {
       let config = null;

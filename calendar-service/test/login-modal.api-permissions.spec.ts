@@ -60,14 +60,14 @@ describe('Login modal API permissions', () => {
   describe('PUT /login-modal/settings', () => {
     it('forbids non-admin users from updating login modal settings', async () => {
       await createAuthRequest(app, nonAdminToken)
-        .put('/login-modal/settings')
+        .patch('/login-modal/settings')
         .send(upsertBody)
         .expect(403);
     });
 
     it('allows system admins to update login modal settings', async () => {
       const res = await createAuthRequest(app, systemAdminToken)
-        .put('/login-modal/settings')
+        .patch('/login-modal/settings')
         .send(upsertBody)
         .expect(200);
 

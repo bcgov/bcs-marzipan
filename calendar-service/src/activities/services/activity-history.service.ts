@@ -970,28 +970,6 @@ export class ActivityHistoryService {
   }
 
   /**
-   * Get the most recent published state of an activity
-   * Returns the activity state at the time of the last 'published' action
-   */
-  async getLastPublishedState(
-    activityId: number
-  ): Promise<ActivityHistory | null> {
-    const [publishedEntry] = await this.databaseService.db
-      .select()
-      .from(activityHistory)
-      .where(
-        and(
-          eq(activityHistory.activityId, activityId),
-          eq(activityHistory.actionType, 'published')
-        )
-      )
-      .orderBy(desc(activityHistory.timestamp))
-      .limit(1);
-
-    return publishedEntry || null;
-  }
-
-  /**
    * Resolves the userId values inside a comms-contacts array to display names,
    * returning `{ userName: string; isLead: boolean }[]` for human-readable
    * history storage.  Any userId not found in the DB falls back to `"User {id}"`.

@@ -31,12 +31,13 @@ export async function e2eLogin(
     .post('/auth/login')
     .send({ username })
     .expect(200);
-  if (typeof res.body?.accessToken !== 'string') {
+  const payload = res.body?.data ?? res.body;
+  if (typeof payload?.accessToken !== 'string') {
     throw new Error(
       'e2eLogin: expected accessToken in response. Ensure DB is seeded and AUTH_STRATEGY=mock.'
     );
   }
-  return res.body.accessToken as string;
+  return payload.accessToken as string;
 }
 
 /**

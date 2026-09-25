@@ -40,7 +40,7 @@ import {
   translationRequiredStatuses,
   venueAddresses,
 } from '@corpcal/database/schema';
-import type { Activity, Category } from '@corpcal/database/types';
+import type { Activity } from '@corpcal/database/types';
 import {
   buildEffectiveReviewExemptKeys,
   DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
@@ -3597,46 +3597,6 @@ export class ActivitiesService {
   }
 
   /**
-   * Cancel changes - revert activity to last published state
-   * This is a simplified implementation that reverts to the last saved state
-   * In a full implementation, this would restore from a published snapshot
-   */
-  async cancelChanges(id: number, userId: number): Promise<ActivityResponse> {
-    await this.assertCanEditDuringLockout(userId);
-
-    // Verify activity exists
-    const currentActivity = await this.findOne(id);
-
-    // Get the last published state from history
-    // For now, we'll use a simplified approach: get the activity as it was
-    // at the time of the last 'published' action, or use current state if none
-    const lastPublished =
-      await this.activityHistoryService.getLastPublishedState(id);
-
-    if (!lastPublished || !lastPublished.changes) {
-      // No published state found, return current activity
-      // In a full implementation, we might throw an error or create a baseline
-      return currentActivity;
-    }
-
-    // TODO: Implement full restore from published state
-    // For Phase 2, this is a placeholder that records the cancel action
-    // Full implementation would require storing complete activity snapshots
-
-    // Record the cancel action in history
-    await this.activityHistoryService.recordChange(
-      id,
-      userId,
-      'changes_cancelled',
-      undefined,
-      'Changes cancelled, reverted to last published state'
-    );
-
-    // Return current activity (full restore would happen here)
-    return currentActivity;
-  }
-
-  /**
    * Soft delete (set activityStatusId to 'deleted').
    * When context.permissions does not include activities.delete.any, user must be comms contact or lead-team member for the activity.
    */
@@ -4047,18 +4007,6 @@ export class ActivitiesService {
     this.activitiesGateway.broadcastActivityUpdated(id);
 
     return dto;
-  }
-
-  /**
-   * Fetch all active categories for legacy activity categories endpoint.
-   */
-  public async fetchCategories(_userTeams?: number[]): Promise<Category[]> {
-    const rows = await this.databaseService.db
-      .select()
-      .from(categories)
-      .where(eq(categories.isActive, true))
-      .orderBy(categories.name);
-    return rows;
   }
 
   /**

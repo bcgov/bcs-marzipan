@@ -41,7 +41,7 @@ describe('BannerController (API integration)', () => {
     };
 
     await createAuthRequest(app, nonAdminToken)
-      .put('/banner/settings')
+      .patch('/banner/settings')
       .send(body)
       .expect(403);
   });
@@ -58,7 +58,7 @@ describe('BannerController (API integration)', () => {
     };
 
     const res = await createAuthRequest(app, systemAdminToken)
-      .put('/banner/settings')
+      .patch('/banner/settings')
       .send(body)
       .expect(200);
 

@@ -211,7 +211,6 @@ describe('ActivitiesService', () => {
       totalItems: 0,
     }),
     getHistoryEntryById: vi.fn().mockResolvedValue(null),
-    getLastPublishedState: vi.fn().mockResolvedValue(null),
     getPreviousStatusIdBeforeDelete: vi.fn().mockResolvedValue(null),
     generateChangeList: vi.fn().mockReturnValue([]),
     buildEntityResolutionMaps: vi.fn().mockResolvedValue(new Map()),
