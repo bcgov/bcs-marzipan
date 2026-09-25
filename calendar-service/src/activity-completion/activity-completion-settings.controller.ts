@@ -9,7 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import {
   PERMISSIONS,
@@ -19,6 +19,12 @@ import {
 import { activityCompletionSettingsSchema } from '@corpcal/shared/schemas';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  ActivityCompletionBatchRunResponseWrapperDto,
+  ActivityCompletionPreviewResponseWrapperDto,
+  ActivityCompletionSettingsDto,
+  ActivityCompletionSettingsResponseWrapperDto,
+} from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
@@ -35,7 +41,11 @@ export class ActivityCompletionSettingsController {
 
   @Get()
   @ApiOperation({ summary: 'Get activity completion automation settings' })
-  @ApiResponse({ status: 200, description: 'Current settings' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current settings',
+    type: ActivityCompletionSettingsResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_ACTIVITY_COMPLETE)
   async getSettings() {
     const settings = await this.applicationSettings.getCompletionSettings();
@@ -44,7 +54,12 @@ export class ActivityCompletionSettingsController {
 
   @Patch()
   @ApiOperation({ summary: 'Update activity completion automation settings' })
-  @ApiResponse({ status: 200, description: 'Settings updated' })
+  @ApiBody({ type: ActivityCompletionSettingsDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Settings updated',
+    type: ActivityCompletionSettingsResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_ACTIVITY_COMPLETE)
   async patchSettings(
     @Body(new ZodValidationPipe(activityCompletionSettingsSchema))
@@ -68,7 +83,11 @@ export class ActivityCompletionSettingsController {
     summary:
       'Preview activities that would be completed by a manual run (saved settings)',
   })
-  @ApiResponse({ status: 200, description: 'Eligibility preview' })
+  @ApiResponse({
+    status: 200,
+    description: 'Eligibility preview',
+    type: ActivityCompletionPreviewResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_ACTIVITY_COMPLETE)
   async previewRun() {
     const data = await this.completionJob.previewEligibleActivities();
@@ -80,7 +99,11 @@ export class ActivityCompletionSettingsController {
   @ApiOperation({
     summary: 'Trigger activity completion job manually (admin)',
   })
-  @ApiResponse({ status: 200, description: 'Job executed' })
+  @ApiResponse({
+    status: 200,
+    description: 'Job executed',
+    type: ActivityCompletionBatchRunResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_ACTIVITY_COMPLETE)
   async runNow() {
     const result = await this.completionJob.runBatch();

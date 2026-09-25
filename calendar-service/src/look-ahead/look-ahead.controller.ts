@@ -1,6 +1,14 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
+import {
+  lookAheadQuerySchema,
+  type LookAheadQuery,
+} from '@corpcal/shared/schemas';
+
+import { LookAheadDataResponseWrapperDto } from '../common/dto';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
@@ -13,10 +21,16 @@ export class LookAheadController {
   constructor(private readonly lookAheadService: LookAheadService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get Look Ahead report data' })
+  @ApiOperation({
+    summary: 'Get Look Ahead report data',
+    description:
+      'Prefer GET /reports/data/look-ahead for the same data with report meta and filters.',
+  })
+  @ApiZodQueries(lookAheadQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'Report config and activities grouped by section',
+    type: LookAheadDataResponseWrapperDto,
   })
   @ApiResponse({
     status: 404,
@@ -24,12 +38,12 @@ export class LookAheadController {
   })
   async getLookAheadData(
     @RequestContext() ctx: RequestContextType,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
-  ): Promise<LookAheadResponse> {
-    return this.lookAheadService.getLookAheadData(ctx, {
-      startDate,
-      endDate,
+    @Query(new ZodValidationPipe(lookAheadQuerySchema)) query: LookAheadQuery
+  ): Promise<{ success: true; data: LookAheadResponse }> {
+    const data = await this.lookAheadService.getLookAheadData(ctx, {
+      startDate: query.startDate,
+      endDate: query.endDate,
     });
+    return { success: true, data };
   }
 }

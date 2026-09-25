@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -17,7 +16,6 @@ import {
   ApiBody,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -37,12 +35,18 @@ import {
   updateUserBodySchema,
   updateUserSettingsBodySchema,
   updateUserTeamRoleBodySchema,
+  userActivitiesQuerySchema,
+  userActivityCountsQuerySchema,
+  userListQuerySchema,
+  type UserActivitiesQuery,
+  type UserActivityCountsQuery,
+  type UserListQuery,
 } from '@corpcal/shared/schemas';
 
 import { AuthService } from '../auth/auth.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import {
   AddUserToTeamDto,
@@ -75,21 +79,7 @@ export class UsersController {
     description:
       'Returns all users with team memberships and roles. Optional search by name, email, username; filter by teamIds or roleIds (comma-separated).',
   })
-  @ApiQuery({
-    name: 'search',
-    required: false,
-    description: 'Search by display name, username, or email',
-  })
-  @ApiQuery({
-    name: 'teamIds',
-    required: false,
-    description: 'Filter users in any of these teams (comma-separated IDs)',
-  })
-  @ApiQuery({
-    name: 'roleIds',
-    required: false,
-    description: 'Filter users with any of these roles (comma-separated IDs)',
-  })
+  @ApiZodQueries(userListQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'List of users',
@@ -97,13 +87,13 @@ export class UsersController {
   })
   @Get()
   async findAll(
-    @Query('search') search?: string,
-    @Query('teamIds') teamIdsParam?: string,
-    @Query('roleIds') roleIdsParam?: string
+    @Query(new ZodValidationPipe(userListQuerySchema)) query: UserListQuery
   ): Promise<{ success: boolean; data: UserListItem[] }> {
-    const teamIds = parseCommaSeparatedIds(teamIdsParam);
-    const roleIds = parseCommaSeparatedIds(roleIdsParam);
-    const data = await this.usersService.findAll(search, teamIds, roleIds);
+    const data = await this.usersService.findAll(
+      query.search,
+      query.teamIds ?? [],
+      query.roleIds ?? []
+    );
     return { success: true, data };
   }
 
@@ -143,23 +133,23 @@ export class UsersController {
     description:
       'Returns activity counts for one or more users where they are a comms lead or contact. Excludes deleted activities.',
   })
-  @ApiQuery({
-    name: 'userIds',
-    required: true,
-    description: 'Comma-separated user IDs',
-  })
+  @ApiZodQueries(userActivityCountsQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'List of per-user activity counts',
     type: UserActivityCountsResponseWrapperDto,
   })
   @Get('activity-counts')
-  async getActivityCounts(@Query('userIds') userIdsParam: string): Promise<{
+  async getActivityCounts(
+    @Query(new ZodValidationPipe(userActivityCountsQuerySchema))
+    query: UserActivityCountsQuery
+  ): Promise<{
     success: boolean;
     data: { userId: number; activityCount: number }[];
   }> {
-    const userIds = parseCommaSeparatedIds(userIdsParam);
-    const data = await this.usersService.getActivityCountsForUsers(userIds);
+    const data = await this.usersService.getActivityCountsForUsers(
+      query.userIds
+    );
     return { success: true, data };
   }
 
@@ -171,11 +161,7 @@ export class UsersController {
       'the set used by the transfer-activities and team-removal flows.',
   })
   @ApiParam({ name: 'id', description: 'User ID' })
-  @ApiQuery({
-    name: 'fromTeamId',
-    required: false,
-    description: 'Scope to activities led by this team',
-  })
+  @ApiZodQueries(userActivitiesQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'List of activities (id, label, value, isLead)',
@@ -184,20 +170,16 @@ export class UsersController {
   @Get(':id/activities')
   async getActivities(
     @Param('id', ParseIntPipe) id: number,
-    @Query('fromTeamId') fromTeamIdParam?: string
+    @Query(new ZodValidationPipe(userActivitiesQuerySchema))
+    query: UserActivitiesQuery
   ): Promise<{
     success: boolean;
     data: { id: number; label: string; value: number; isLead: boolean }[];
   }> {
-    let fromTeamId: number | undefined;
-    if (fromTeamIdParam != null && fromTeamIdParam !== '') {
-      fromTeamId = Number(fromTeamIdParam);
-      if (!Number.isInteger(fromTeamId)) {
-        throw new BadRequestException('fromTeamId must be an integer');
-      }
-    }
-
-    const data = await this.usersService.getActivitiesForUser(id, fromTeamId);
+    const data = await this.usersService.getActivitiesForUser(
+      id,
+      query.fromTeamId
+    );
     return { success: true, data };
   }
 

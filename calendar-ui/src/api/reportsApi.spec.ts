@@ -14,7 +14,10 @@ describe('fetchReportData', () => {
   beforeEach(() => {
     mockGet.mockReset();
     mockGet.mockResolvedValue({
-      data: { report: { name: 'exec' }, sections: [] },
+      data: {
+        success: true,
+        data: { report: { name: 'exec' }, sections: [] },
+      },
     });
   });
 

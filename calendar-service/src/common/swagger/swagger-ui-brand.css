@@ -1,0 +1,202 @@
+/* BC Government Corporate Calendar — Swagger UI brand layer (loads after swagger-ui.css). */
+
+@font-face {
+  font-family: 'BCSans';
+  src: url('/api/swagger-assets/fonts/2023_01_01_BCSans-Regular_2f.woff2')
+    format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BCSans';
+  src: url('/api/swagger-assets/fonts/2023_01_01_BCSans-Bold_2f.woff2')
+    format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --corpcal-bc-blue: #013366;
+  --corpcal-bc-gold: #fcba19;
+  --corpcal-fluent-primary: #0f6cbd;
+  --corpcal-bg: #faf9f8;
+  --corpcal-surface: #ffffff;
+  --corpcal-text: #252423;
+  --corpcal-text-muted: #605e5c;
+  --corpcal-border: #e0dedc;
+  --corpcal-link: #0f6cbd;
+}
+
+html.dark-mode {
+  /* Match swagger-ui.css dark page background (#1c2022). */
+  --corpcal-bg: #1c2022;
+  --corpcal-surface: #2a2e30;
+  --corpcal-text: #e4e6e6;
+  --corpcal-text-muted: #b7bcbf;
+  --corpcal-border: #474543;
+  --corpcal-link: #91c4fa;
+}
+
+html,
+body {
+  background: var(--corpcal-bg) !important;
+}
+
+html.dark-mode .swagger-ui {
+  background: var(--corpcal-bg) !important;
+  color: var(--corpcal-text);
+}
+
+.swagger-ui {
+  font-family:
+    'BCSans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif !important;
+  color: var(--corpcal-text);
+}
+
+.swagger-ui .topbar {
+  display: none;
+}
+
+/* --- Header (injected by swagger-ui-brand.js) --- */
+
+/* Align with .swagger-ui .wrapper (max-width 1460px, 20px horizontal padding). */
+.corpcal-swagger-header {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1460px;
+  margin: 0 auto;
+  padding: 0.5rem 20px 0.125rem;
+  background: transparent;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+.corpcal-swagger-header__logo {
+  display: block;
+  width: 154.66px;
+  max-width: 100%;
+  height: auto;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  object-fit: contain;
+}
+
+/* --- Info panel --- */
+
+.swagger-ui .information-container.wrapper {
+  padding-top: 0.375rem;
+}
+
+.swagger-ui .info {
+  margin: 0.75rem 0 1rem;
+}
+
+.swagger-ui .info .title {
+  color: var(--corpcal-bc-blue);
+  font-family: inherit;
+}
+
+html.dark-mode .swagger-ui .info .title {
+  color: var(--corpcal-link);
+}
+
+.swagger-ui .info .title small {
+  background: var(--corpcal-fluent-primary);
+  color: #fff;
+}
+
+.swagger-ui .info a,
+.swagger-ui .info .link,
+.swagger-ui a {
+  color: var(--corpcal-link);
+}
+
+.swagger-ui .info p,
+.swagger-ui .info li,
+.swagger-ui .info table {
+  color: var(--corpcal-text);
+}
+
+.swagger-ui .info .markdown code,
+.swagger-ui .info .renderedMarkdown code {
+  background: color-mix(
+    in srgb,
+    var(--corpcal-fluent-primary) 12%,
+    transparent
+  );
+  color: var(--corpcal-bc-blue);
+}
+
+html.dark-mode .swagger-ui .info .markdown code,
+html.dark-mode .swagger-ui .info .renderedMarkdown code {
+  background: rgb(255 255 255 / 8%);
+  color: var(--corpcal-link);
+}
+
+/* --- Tag sections --- */
+
+.swagger-ui .opblock-tag {
+  border-bottom: 1px solid var(--corpcal-border);
+  color: var(--corpcal-bc-blue);
+  font-family: inherit;
+}
+
+html.dark-mode .swagger-ui .opblock-tag {
+  color: var(--corpcal-text);
+}
+
+.swagger-ui .opblock-tag small {
+  color: var(--corpcal-text-muted);
+}
+
+.swagger-ui .opblock .opblock-summary-method {
+  background: var(--corpcal-bc-blue);
+  font-family: inherit;
+}
+
+.swagger-ui .btn.authorize,
+.swagger-ui .btn.execute {
+  background: var(--corpcal-fluent-primary);
+  border-color: var(--corpcal-fluent-primary);
+}
+
+.swagger-ui .btn.authorize:hover,
+.swagger-ui .btn.execute:hover {
+  background: #0e5ca8;
+  border-color: #0e5ca8;
+}
+
+.swagger-ui .scheme-container {
+  background: var(--corpcal-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+html.dark-mode .swagger-ui .scheme-container {
+  background: var(--corpcal-surface);
+}
+
+/* Inline code in description lists (Swagger default padding overflows lines). */
+.swagger-ui .markdown code,
+.swagger-ui .renderedMarkdown code {
+  font-size: inherit;
+  font-weight: 500;
+  padding: 0.1em 0.35em;
+  line-height: inherit;
+  vertical-align: baseline;
+}
+
+.swagger-ui .info .markdown li,
+.swagger-ui .info .renderedMarkdown li {
+  line-height: 1.6;
+}

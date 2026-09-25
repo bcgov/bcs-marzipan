@@ -63,6 +63,7 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
   ActivityStatusResponseWrapperDto,
+  ActivityTeamSharingResponseWrapperDto,
   CategoryResponseWrapperDto,
   CityResponseWrapperDto,
   CommsMaterialResponseWrapperDto,
@@ -124,7 +125,11 @@ export class LookupsController {
     description:
       'Returns active teams (same list as GET /teams) plus quick-share group definitions.',
   })
-  @ApiResponse({ status: 200, description: 'Teams and quick-share config' })
+  @ApiResponse({
+    status: 200,
+    description: 'Teams and quick-share config',
+    type: ActivityTeamSharingResponseWrapperDto,
+  })
   @Get('activity-team-sharing')
   @Header('Cache-Control', lookupGetCacheControl())
   async getActivityTeamSharing(): Promise<{

@@ -2,6 +2,7 @@ import { createZodDto } from 'nestjs-zod';
 
 import {
   activityStatusResponseSchema,
+  activityTeamSharingResponseSchema,
   categoryResponseSchema,
   cityResponseSchema,
   commsMaterialsResponseSchema,
@@ -362,4 +363,8 @@ export class VenuePresetResponseWrapperDto extends createZodDto(
 
 export class VenuePresetArrayResponseWrapperDto extends createZodDto(
   createArrayResponseWrapperSchema(venuePresetItemSchema)
+) {}
+
+export class ActivityTeamSharingResponseWrapperDto extends createZodDto(
+  createResponseWrapperSchema(activityTeamSharingResponseSchema)
 ) {}

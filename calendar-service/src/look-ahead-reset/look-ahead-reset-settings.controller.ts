@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -12,19 +11,29 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { ZodIssue } from 'zod';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 import {
-  lookAheadResetManualRunBodySchema,
+  lookAheadResetManualRunRequestSchema,
   lookAheadResetRunPreviewQuerySchema,
   lookAheadResetSettingsPatchSchema,
+  type LookAheadResetManualRunBody,
+  type LookAheadResetRunPreviewQuery,
 } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  LookAheadResetBatchRunResponseWrapperDto,
+  LookAheadResetManualRunBodyDto,
+  LookAheadResetRollbackResponseWrapperDto,
+  LookAheadResetRunPreviewResponseWrapperDto,
+  LookAheadResetSettingsPatchDto,
+  LookAheadResetSettingsResponseWrapperDto,
+} from '../common/dto/settings.dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { LookAheadResetJobService } from './look-ahead-reset-job.service';
@@ -40,7 +49,11 @@ export class LookAheadResetSettingsController {
 
   @Get()
   @ApiOperation({ summary: 'Get Look Ahead reset settings' })
-  @ApiResponse({ status: 200, description: 'Current settings' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current settings',
+    type: LookAheadResetSettingsResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_LOOK_AHEAD_RESET)
   async getSettings() {
     const [windowDaysAfterToday, cronMode, rollbackAvailable, lastClear] =
@@ -66,7 +79,12 @@ export class LookAheadResetSettingsController {
   @ApiOperation({
     summary: 'Update Look Ahead reset window and/or scheduled job state',
   })
-  @ApiResponse({ status: 200, description: 'Settings updated' })
+  @ApiBody({ type: LookAheadResetSettingsPatchDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Settings updated',
+    type: LookAheadResetSettingsResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_LOOK_AHEAD_RESET)
   async patchSettings(
     @Body(new ZodValidationPipe(lookAheadResetSettingsPatchSchema))
@@ -108,26 +126,23 @@ export class LookAheadResetSettingsController {
     summary:
       'Preview activities that would be cleared on the next manual run (scope, days, includePast)',
   })
-  @ApiResponse({ status: 200, description: 'Eligibility preview' })
+  @ApiZodQueries(lookAheadResetRunPreviewQuerySchema)
+  @ApiResponse({
+    status: 200,
+    description: 'Eligibility preview',
+    type: LookAheadResetRunPreviewResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_LOOK_AHEAD_RESET)
-  async previewRun(@Query() rawQuery: Record<string, string | undefined>) {
-    const parsed = lookAheadResetRunPreviewQuerySchema.safeParse(rawQuery);
-    if (!parsed.success) {
-      throw new BadRequestException({
-        message: 'Validation failed',
-        errors: parsed.error.issues.map((issue: ZodIssue) => ({
-          path: issue.path.join('.'),
-          message: issue.message,
-        })),
-      });
-    }
-
+  async previewRun(
+    @Query(new ZodValidationPipe(lookAheadResetRunPreviewQuerySchema))
+    query: LookAheadResetRunPreviewQuery
+  ) {
     const persistedWindowDays =
       await this.applicationSettings.getLookAheadResetWindowDays();
     const data = await this.lookAheadResetJob.previewEligibleActivities({
-      scope: parsed.data.scope,
-      days: parsed.data.days,
-      includePast: parsed.data.includePast,
+      scope: query.scope,
+      days: query.days,
+      includePast: query.includePast,
       persistedWindowDays,
     });
     return { success: true, data };
@@ -136,30 +151,26 @@ export class LookAheadResetSettingsController {
   @Post('run')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Clear Look Ahead status manually (admin)' })
-  @ApiResponse({ status: 200, description: 'Job executed' })
+  @ApiBody({ type: LookAheadResetManualRunBodyDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Job executed',
+    type: LookAheadResetBatchRunResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_LOOK_AHEAD_RESET)
-  async runNow(@CurrentUser() user: AuthUser, @Body() rawBody: unknown) {
-    const parsed = lookAheadResetManualRunBodySchema.safeParse(
-      rawBody === null || rawBody === undefined ? {} : rawBody
-    );
-    if (!parsed.success) {
-      throw new BadRequestException({
-        message: 'Validation failed',
-        errors: parsed.error.issues.map((issue: ZodIssue) => ({
-          path: issue.path.join('.'),
-          message: issue.message,
-        })),
-      });
-    }
-
+  async runNow(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(lookAheadResetManualRunRequestSchema))
+    body: LookAheadResetManualRunBody
+  ) {
     const result = await this.lookAheadResetJob.runBatch({
       actorUserId: user.id,
       trigger: 'manual',
-      pauseScheduledTonight: parsed.data.pauseScheduledTonight,
+      pauseScheduledTonight: body.pauseScheduledTonight,
       manual: {
-        scope: parsed.data.scope,
-        days: parsed.data.days,
-        includePast: parsed.data.includePast,
+        scope: body.scope,
+        days: body.days,
+        includePast: body.includePast,
       },
     });
     if (result.skipReason === 'error') {
@@ -177,7 +188,11 @@ export class LookAheadResetSettingsController {
   @ApiOperation({
     summary: 'Restore Look Ahead statuses from before the last clear',
   })
-  @ApiResponse({ status: 200, description: 'Rollback executed' })
+  @ApiResponse({
+    status: 200,
+    description: 'Rollback executed',
+    type: LookAheadResetRollbackResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_LOOK_AHEAD_RESET)
   async rollback(@CurrentUser() user: AuthUser) {
     const available = await this.lookAheadResetJob.isRollbackAvailable();
