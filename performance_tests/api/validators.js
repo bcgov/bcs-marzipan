@@ -85,7 +85,7 @@ export function activityHistoryEnvelope(parsed) {
   );
 }
 
-/** Look-ahead GET */
+/** Look Ahead GET */
 export function lookAheadEnvelope(parsed) {
   return (
     parsed &&

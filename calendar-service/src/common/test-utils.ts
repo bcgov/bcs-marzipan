@@ -196,6 +196,7 @@ export const createMockUserDetail = (
   ...createMockUserListItem(),
   notes: null,
   flagColour: null,
+  permissionOverrides: [],
   ...overrides,
 });
 

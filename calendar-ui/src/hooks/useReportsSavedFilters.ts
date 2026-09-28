@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ActivityFilterState } from '@corpcal/shared';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
-import type { ActivityTableActiveSavedFilter } from '@/components/activity/ActivityTable/ActivityTable';
+import type { ActivityTableActiveSavedFilter } from '@/components/activity/ActivityTable';
 import { hasAnyActivityTableFilterActive } from '@/components/activity/ActivityTable/ActivityTableFilters';
 import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';

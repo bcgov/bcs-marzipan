@@ -1,5 +1,5 @@
 import { Search, X } from 'lucide-react';
-import { useCallback, useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import type { ActivityFilterState } from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
@@ -39,7 +39,6 @@ import analytics from '@/lib/analytics';
 import { formatLeadTeamSelectLabel } from '@/lib/lead-team-display-label';
 import {
   buildReportBaselineDateFilterPatch,
-  buildReportClearFilterState,
   hasReportClearableFiltersActive,
 } from '@/lib/report-filter-state';
 import type { ValidFilterLookups } from '@/lib/savedFilterSanitize';
@@ -50,10 +49,6 @@ export interface ReportFiltersBarProps {
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
   onSearchSubmitted?: () => void;
   onSearchCleared?: () => void;
-  /** Optional controls on the row below the search field (e.g. 30/60/90 month tabs). */
-  printPreviewRowLeading?: ReactNode;
-  /** Optional trailing controls on the same row (e.g. Customize, print preview). */
-  printPreviewRowTrailing?: ReactNode;
   savedFilters?: UseSavedFiltersReturn;
   onApplySavedFilter?: (
     filterState: ActivityFilterState,
@@ -67,6 +62,10 @@ export interface ReportFiltersBarProps {
     searchKeyword: string;
   };
   validFilterLookups?: ValidFilterLookups;
+  /** Resets search, saved filter selection, and filter state to the report baseline. */
+  onResetAll?: () => void;
+  /** When true, overflow filter trigger shows a clear-all control wired to `onResetAll`. */
+  hasClearableFilters?: boolean;
 }
 
 /**
@@ -79,14 +78,14 @@ export function ReportFiltersBar({
   setPreferences,
   onSearchSubmitted,
   onSearchCleared,
-  printPreviewRowLeading,
-  printPreviewRowTrailing,
   savedFilters,
   onApplySavedFilter,
   activeSavedFilterId = null,
   filterSummaryContext,
   parseSavedFilterForDraft,
   validFilterLookups,
+  onResetAll,
+  hasClearableFilters: hasClearableFiltersProp,
 }: ReportFiltersBarProps) {
   const { user } = useAuth();
   const canSeeDeleted =
@@ -266,16 +265,23 @@ export function ReportFiltersBar({
     [mergeFilterState]
   );
 
-  const handleClearAllFilters = useCallback(() => {
-    setPreferences({
-      filterState: buildReportClearFilterState(reportName),
-    });
-  }, [reportName, setPreferences]);
-
   const hasClearableFilters = useMemo(
     () =>
-      hasReportClearableFiltersActive(filterState, reportName, searchKeyword),
-    [filterState, reportName, searchKeyword]
+      hasClearableFiltersProp ??
+      hasReportClearableFiltersActive(
+        filterState,
+        reportName,
+        searchKeyword,
+        pitchFieldVisibility,
+        { includeSearchKeyword: true }
+      ),
+    [
+      filterState,
+      reportName,
+      searchKeyword,
+      pitchFieldVisibility,
+      hasClearableFiltersProp,
+    ]
   );
 
   const baselineDatePatch = useMemo(
@@ -593,9 +599,9 @@ export function ReportFiltersBar({
     <div
       className="flex flex-col"
       role="search"
-      aria-label="Filter report activities by date, category, lead team, comms contact, status, look ahead, tags, translations, pitch, event planner, and keyword"
+      aria-label="Filter report activities by date, category, lead team, comms contact, status, Look Ahead, tags, translations, pitch, event planner, and keyword"
     >
-      <div className="mb-4 flex flex-nowrap items-center justify-between gap-8">
+      <div className="flex flex-nowrap items-center justify-between gap-8">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <div className="relative max-w-md min-w-60 shrink-0">
             <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
@@ -629,7 +635,7 @@ export function ReportFiltersBar({
           <ResponsiveFilterRow
             slots={filterSlots}
             overflowTriggerClassName="h-10"
-            onClearAll={hasClearableFilters ? handleClearAllFilters : undefined}
+            onClearAll={hasClearableFilters ? onResetAll : undefined}
             savedFilters={savedFilters}
             filterState={filterState}
             searchKeyword={searchKeyword}
@@ -641,18 +647,6 @@ export function ReportFiltersBar({
           />
         </div>
       </div>
-      {printPreviewRowLeading || printPreviewRowTrailing ? (
-        <div className="mb-2 flex h-9 items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center">
-            {printPreviewRowLeading}
-          </div>
-          {printPreviewRowTrailing ? (
-            <div className="flex shrink-0 items-center gap-4">
-              {printPreviewRowTrailing}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -1,66 +1,23 @@
 import type { ReactNode, RefObject } from 'react';
 
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
-import {
-  TableSummaryBar,
-  type BooleanFilter,
-  type TableSummaryFilterDetailLine,
-} from '@/components/table/TableSummaryBar';
 
 export interface ActivityTableLayoutProps {
   /** Ref forwarded to the scroll container for scroll-to-top on pagination. */
   scrollRef: RefObject<HTMLDivElement | null>;
-  /** Summary bar. */
-  count: number;
-  singularLabel: string;
-  pluralLabel: string;
-  filters?: BooleanFilter[];
-  /** When set, summary bar appends “(filtering by: …)” after the count. */
-  appliedSavedFilterName?: string | null;
-  /** Active filter dimensions for “(filtering by: …)” (ignored when a saved filter name is set). */
-  appliedFilterTypeLabels?: string[];
-  /** Read-only filter rows for the summary bar detail popover (activity table). */
-  filterDetailLines?: TableSummaryFilterDetailLine[];
-  /** Clears panel filters only (not search); clears saved-filter selection in the parent. */
-  onClearFilters?: () => void;
-  /** When false, the caller renders the summary controls outside this layout. */
-  showSummary?: boolean;
   /** Content inside the scroll area (table, loading spinner, or empty state). */
   children: ReactNode;
 }
 
 /**
- * Shared layout shell for ActivityTable: summary bar and scroll container.
- * Search and sort live in ActivityTableFilters above this layout.
+ * Shared layout shell for ActivityTable: scroll container only.
+ * Filter and summary rows live in the parent above this layout.
  */
 export function ActivityTableLayout({
   scrollRef,
-  count,
-  singularLabel,
-  pluralLabel,
-  filters = [],
-  appliedSavedFilterName = null,
-  appliedFilterTypeLabels = [],
-  filterDetailLines = [],
-  onClearFilters,
-  showSummary = true,
   children,
 }: ActivityTableLayoutProps) {
   return (
-    <div className="min-w-0 space-y-4">
-      {showSummary && (
-        <TableSummaryBar
-          count={count}
-          singularLabel={singularLabel}
-          pluralLabel={pluralLabel}
-          filters={filters}
-          appliedSavedFilterName={appliedSavedFilterName}
-          appliedFilterTypeLabels={appliedFilterTypeLabels}
-          filterDetailLines={filterDetailLines}
-          onClearFilters={onClearFilters}
-        />
-      )}
-      <TableScrollContainer ref={scrollRef}>{children}</TableScrollContainer>
-    </div>
+    <TableScrollContainer ref={scrollRef}>{children}</TableScrollContainer>
   );
 }

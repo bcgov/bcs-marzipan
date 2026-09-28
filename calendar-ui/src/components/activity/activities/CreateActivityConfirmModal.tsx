@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { FormLookupData } from '@/hooks/useFormLookups';
 import { getHistoryFieldLabel } from '@/lib/activity-history-format';
+import { formatTime12h } from '@/lib/datetime-utils';
 
 interface CreateActivityConfirmModalProps {
   open: boolean;
@@ -139,6 +140,14 @@ function resolveDisplayValue(
   if (field === 'timeStatusId' && typeof value === 'number' && timeStatuses) {
     const status = timeStatuses.find((s) => s.id === value);
     return status?.label || status?.name || String(value);
+  }
+
+  if (
+    (field === 'startTime' || field === 'endTime') &&
+    typeof value === 'string'
+  ) {
+    const formatted = formatTime12h(value);
+    return formatted === '' ? '(empty)' : formatted;
   }
 
   if (field === 'venueStatusId' && typeof value === 'number') {

@@ -1,42 +1,45 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT,
   pacificCalendarDateFromInstant,
-  thirtySixtyNinetyDateRangeFromPacificDate,
+  THIRTY_SIXTY_NINETY_TAB_DAY_COUNTS,
+  thirtySixtyNinetyTabDateRangeFromPacificDate,
   type CalendarDateString,
+  type ThirtySixtyNinetyTabDayCount,
 } from '@corpcal/shared/reports/thirty-sixty-ninety';
 import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
 
-const MONTH_COUNTS = [1, 3, 6] as const;
 const PACIFIC_DATE_CHECK_MS = 60_000;
 
-export type ReportMonthCount = (typeof MONTH_COUNTS)[number];
-
-function monthRangePreset(
-  monthCount: ReportMonthCount,
+function tabRangePreset(
+  tabDayCount: ThirtySixtyNinetyTabDayCount,
   pacificToday: CalendarDateString
 ) {
-  return thirtySixtyNinetyDateRangeFromPacificDate(monthCount, pacificToday);
+  return thirtySixtyNinetyTabDateRangeFromPacificDate(
+    tabDayCount,
+    pacificToday
+  );
 }
 
-function activeMonthCountFromRange(
+function activeTabDayCountFromRange(
   startDate: string,
   endDate: string,
   pacificToday: CalendarDateString
-): ReportMonthCount | null {
+): ThirtySixtyNinetyTabDayCount | null {
   if (!startDate || !endDate) return null;
-  for (const count of MONTH_COUNTS) {
-    const preset = monthRangePreset(count, pacificToday);
+  for (const tabDayCount of THIRTY_SIXTY_NINETY_TAB_DAY_COUNTS) {
+    const preset = tabRangePreset(tabDayCount, pacificToday);
     if (preset.start === startDate && preset.end === endDate) {
-      return count;
+      return tabDayCount;
     }
   }
   return null;
 }
 
-export interface ReportMonthRangeTabsProps {
+export interface ReportDayRangeTabsProps {
   preferences: ActivityTablePreferences;
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
   /** Accessible label for the tab list. */
@@ -44,13 +47,14 @@ export interface ReportMonthRangeTabsProps {
 }
 
 /**
- * Quick-pick month windows for reports that anchor to the current Pacific month.
+ * Quick-pick tabs for 30/60/90, Planning, and Excel reports. Labels are day
+ * counts; each tab resolves to full calendar months from the Pacific month start.
  */
-export function ReportMonthRangeTabs({
+export function ReportDayRangeTabs({
   preferences,
   setPreferences,
-  ariaLabel = 'Report month range',
-}: ReportMonthRangeTabsProps) {
+  ariaLabel = 'Report day range',
+}: ReportDayRangeTabsProps) {
   const [clockTick, setClockTick] = useState(() => Date.now());
   const dateRange = preferences.filterState.dateRange;
   const pacificToday = useMemo(
@@ -66,10 +70,10 @@ export function ReportMonthRangeTabs({
     return () => window.clearInterval(id);
   }, []);
 
-  const applyMonthCount = useCallback(
-    (monthCount: ReportMonthCount) => {
+  const applyTabDayCount = useCallback(
+    (tabDayCount: ThirtySixtyNinetyTabDayCount) => {
       if (!pacificToday) return;
-      const preset = monthRangePreset(monthCount, pacificToday);
+      const preset = tabRangePreset(tabDayCount, pacificToday);
       setPreferences({
         filterState: {
           ...preferences.filterState,
@@ -92,42 +96,45 @@ export function ReportMonthRangeTabs({
     if (prevPacificToday.slice(0, 7) === pacificToday.slice(0, 7)) return;
     if (!isDateRangeActive(dateRange)) return;
 
-    const matchedOnPreviousMonth = activeMonthCountFromRange(
+    const matchedOnPreviousMonth = activeTabDayCountFromRange(
       dateRange.startDate,
       dateRange.endDate,
       prevPacificToday
     );
     if (matchedOnPreviousMonth != null) {
-      applyMonthCount(matchedOnPreviousMonth);
+      applyTabDayCount(matchedOnPreviousMonth);
     }
-  }, [applyMonthCount, dateRange, pacificToday]);
+  }, [applyTabDayCount, dateRange, pacificToday]);
 
-  const activeCount = useMemo(() => {
-    if (!pacificToday) return 3;
+  const activeTabDayCount = useMemo(() => {
+    if (!pacificToday) return DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT;
     return (
-      activeMonthCountFromRange(
+      activeTabDayCountFromRange(
         dateRange.startDate,
         dateRange.endDate,
         pacificToday
-      ) ?? (isDateRangeActive(dateRange) ? null : 3)
+      ) ??
+      (isDateRangeActive(dateRange)
+        ? null
+        : DEFAULT_THIRTY_SIXTY_NINETY_TAB_DAY_COUNT)
     );
   }, [dateRange, pacificToday]);
 
   return (
     <Tabs
-      value={activeCount == null ? '' : String(activeCount)}
+      value={activeTabDayCount == null ? '' : String(activeTabDayCount)}
       onValueChange={(value) => {
         const parsed = Number.parseInt(value, 10);
-        if (parsed === 1 || parsed === 3 || parsed === 6) {
-          applyMonthCount(parsed);
+        if (parsed === 30 || parsed === 60 || parsed === 90) {
+          applyTabDayCount(parsed);
         }
       }}
       className="w-auto"
     >
       <TabsList size="sm" aria-label={ariaLabel}>
-        <TabsTrigger value="1">1 month</TabsTrigger>
-        <TabsTrigger value="3">3 months</TabsTrigger>
-        <TabsTrigger value="6">6 months</TabsTrigger>
+        <TabsTrigger value="30">30 days</TabsTrigger>
+        <TabsTrigger value="60">60 days</TabsTrigger>
+        <TabsTrigger value="90">90 days</TabsTrigger>
       </TabsList>
     </Tabs>
   );

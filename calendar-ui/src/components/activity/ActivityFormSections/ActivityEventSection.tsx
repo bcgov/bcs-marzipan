@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useFormContext, useWatch, type UseFormReturn } from 'react-hook-form';
-import { useMemo, type FC } from 'react';
+import { useMemo, useState, type FC } from 'react';
 
 import type {
   CityLookupItem,
@@ -289,6 +289,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
   const { readOnly } = useActivityEdit();
   const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
+  const [representativeSearch, setRepresentativeSearch] = useState('');
   const leadTeamId = useWatch({
     control: form.control,
     name: 'leadTeamId',
@@ -466,6 +467,25 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
     [leadMinisterOptions, remainderRepresentativeOptions]
   );
 
+  const filteredLeadMinisterOptions = useMemo(
+    () =>
+      leadMinisterOptions.filter((option) =>
+        option.label
+          .toLowerCase()
+          .includes(representativeSearch.trim().toLowerCase())
+      ),
+    [leadMinisterOptions, representativeSearch]
+  );
+  const filteredRemainderRepresentativeOptions = useMemo(
+    () =>
+      remainderRepresentativeOptions.filter((option) =>
+        option.label
+          .toLowerCase()
+          .includes(representativeSearch.trim().toLowerCase())
+      ),
+    [remainderRepresentativeOptions, representativeSearch]
+  );
+
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.event}>
       <FormField
@@ -496,7 +516,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select premier requested option" />
+                  <SelectValue placeholder="" />
                 </FormSelectTrigger>
               </FormControl>
               <SelectContent>
@@ -524,7 +544,10 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             selectedValues.includes(o.value)
           );
           const representativeComboboxItems = mergeComboboxItems(
-            representativePickableOptions,
+            [
+              ...filteredLeadMinisterOptions,
+              ...filteredRemainderRepresentativeOptions,
+            ],
             selectedOptions
           );
 
@@ -545,6 +568,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected: OptionItem[]) => {
+                    setRepresentativeSearch('');
                     setActivityFormFieldValue(
                       form,
                       field.name,
@@ -568,7 +592,12 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Add representatives" />
+                          <ComboboxChipsInput
+                            placeholder=""
+                            onInput={(event) =>
+                              setRepresentativeSearch(event.currentTarget.value)
+                            }
+                          />
                         </>
                       )}
                     </ComboboxValue>
@@ -576,9 +605,9 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   <ComboboxContent anchor={representativesAnchorRef}>
                     <ComboboxEmpty>No representatives found.</ComboboxEmpty>
                     <ComboboxList>
-                      {leadMinisterOptions.length > 0 && (
+                      {filteredLeadMinisterOptions.length > 0 && (
                         <>
-                          <ComboboxGroup items={leadMinisterOptions}>
+                          <ComboboxGroup items={filteredLeadMinisterOptions}>
                             <ComboboxCollection>
                               {(option: OptionItem) => (
                                 <ComboboxItem key={option.value} value={option}>
@@ -590,7 +619,9 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                           <ComboboxSeparator />
                         </>
                       )}
-                      <ComboboxGroup items={remainderRepresentativeOptions}>
+                      <ComboboxGroup
+                        items={filteredRemainderRepresentativeOptions}
+                      >
                         <ComboboxCollection>
                           {(option: OptionItem) => (
                             <ComboboxItem key={option.value} value={option}>
@@ -622,7 +653,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               <span
                 className={cn(
                   'inline-flex items-center gap-2',
-                  showChangedBadges && 'min-h-[18px]'
+                  showChangedBadges && 'min-h-4.5'
                 )}
               >
                 {getActivityFieldLabel('venueName')}
@@ -651,9 +682,11 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   venueStatusIdWatched
                 )}
                 onChange={handleVenueNameComboboxChange}
-                placeholder="Venue TBD, TBC, or a venue name…"
-                searchPlaceholder="Search venue status or venues…"
+                placeholder=""
+                searchPlaceholder=""
                 emptyMessage="No venues found."
+                freeformBadgeLabel="Add custom venue"
+                listFooterHint="Custom venue names allowed"
               />
             </FormControl>
             <FormField
@@ -762,7 +795,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                       raw.trim() === '' ? null : raw
                     );
                   }}
-                  placeholder="Floor, room, etc."
+                  placeholder=""
                 />
               </FormControl>
               <FormMessage />
@@ -796,8 +829,8 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   value={cityComboboxValueFromVenue(currentVenue, citiesList)}
                   onChange={handleCityComboboxChange}
                   emptyMessage="No cities found."
-                  freeformLabel="Other"
-                  freeformDescription="Enter a city not in the list"
+                  freeformBadgeLabel="Add custom city"
+                  listFooterHint="Custom city names allowed"
                 />
               </FormControl>
               <FormMessage />
@@ -969,17 +1002,16 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   options={eventPlannerOptions}
                   value={comboboxValue}
                   onChange={handleChange}
-                  placeholder="Select event planners"
-                  searchPlaceholder="Search event planners..."
+                  placeholder=""
+                  searchPlaceholder=""
                   emptyMessage="No event planners found."
-                  freeformLabel="Other"
-                  freeformDescription="Can't find the event planner?"
+                  freeformBadgeLabel="Add custom event planner"
+                  listFooterHint="Custom event planner names allowed"
                   multiple
                   useChips
                   onSetLead={setLead}
                 />
               </FormControl>
-
               <FormMessage />
             </FormItem>
           );

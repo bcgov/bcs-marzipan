@@ -686,19 +686,22 @@ export class ActivityDataFetcherService {
   }
 
   /**
-   * Fetch shared with teams for multiple activities
-   * Returns team display names for UI display
+   * Fetch shared with teams for multiple activities.
+   * Returns display names for UI text and team IDs for membership checks
+   * (e.g. deciding whether a user's team can unshare the activity).
    */
-  async fetchSharedWithTeamsForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string[]>> {
+  async fetchSharedWithTeamsForActivities(activityIds: number[]): Promise<{
+    namesMap: Map<number, string[]>;
+    idsMap: Map<number, number[]>;
+  }> {
     if (activityIds.length === 0) {
-      return new Map();
+      return { namesMap: new Map(), idsMap: new Map() };
     }
 
     const results = await this.databaseService.db
       .select({
         activityId: activitySharedWithTeams.activityId,
+        teamId: activitySharedWithTeams.teamId,
         teamName: sql<string>`COALESCE(${teams.displayName}, ${teams.name})`.as(
           'teamName'
         ),
@@ -713,13 +716,18 @@ export class ActivityDataFetcherService {
         )
       );
 
-    const map = new Map<number, string[]>();
+    const namesMap = new Map<number, string[]>();
+    const idsMap = new Map<number, number[]>();
     for (const row of results) {
-      const existing = map.get(row.activityId) ?? [];
-      existing.push(row.teamName);
-      map.set(row.activityId, existing);
+      const names = namesMap.get(row.activityId) ?? [];
+      names.push(row.teamName);
+      namesMap.set(row.activityId, names);
+
+      const ids = idsMap.get(row.activityId) ?? [];
+      ids.push(row.teamId);
+      idsMap.set(row.activityId, ids);
     }
-    return map;
+    return { namesMap, idsMap };
   }
 
   /**

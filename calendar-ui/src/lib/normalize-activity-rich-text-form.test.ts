@@ -36,7 +36,7 @@ describe('normalizeActivityRichTextFormValue', () => {
 });
 
 describe('normalizeActivityRichTextFormFields', () => {
-  it('sets summary to EMPTY_RICH_TEXT_DOC when summary normalizes to empty', () => {
+  it('sets summary, significance, and executiveSummary to EMPTY_RICH_TEXT_DOC when empty', () => {
     const data = normalizeActivityRichTextFormFields({
       title: 't',
       summary: '',

@@ -1,5 +1,5 @@
-import { ArrowUp, Plus } from 'lucide-react';
-import { ReactNode } from 'react';
+import { ChevronDown, Plus } from 'lucide-react';
+import { useId, useState, type ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -32,12 +32,8 @@ export function AdminSection({
   isLoading = false,
   headerAction,
 }: AdminSectionProps) {
-  const scrollToTop = () => {
-    document.getElementById('quick-navigation')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    });
-  };
+  const [isOpen, setIsOpen] = useState(true);
+  const contentId = useId();
 
   return (
     <div
@@ -48,23 +44,39 @@ export function AdminSection({
     >
       <div className="border-b border-slate-200 p-4 sm:p-6">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">
-              {title}
-            </h2>
-            {description && (
-              <p className="mt-1 text-sm text-slate-600">{description}</p>
-            )}
+          <div className="min-w-0 flex-1">
+            <button
+              type="button"
+              aria-controls={contentId}
+              aria-expanded={isOpen}
+              onClick={() => setIsOpen((open) => !open)}
+              className="flex w-full items-start gap-3 text-left focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+            >
+              <ChevronDown
+                aria-hidden="true"
+                className={cn(
+                  'mt-0.5 h-5 w-5 shrink-0 text-slate-500 transition-transform',
+                  !isOpen && '-rotate-90'
+                )}
+              />
+              <span className="min-w-0">
+                <span
+                  role="heading"
+                  aria-level={2}
+                  className="block text-lg font-semibold text-slate-900 sm:text-xl"
+                >
+                  {title}
+                </span>
+                {description && (
+                  <span className="mt-1 block text-sm text-slate-600">
+                    {description}
+                  </span>
+                )}
+              </span>
+            </button>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             {headerAction}
-            <button
-              onClick={scrollToTop}
-              className="flex items-center gap-1 text-sm text-slate-600 transition-colors hover:text-slate-900"
-            >
-              <ArrowUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to quick navigation</span>
-            </button>
             {onAdd && (
               <Button
                 onClick={onAdd}
@@ -79,7 +91,9 @@ export function AdminSection({
           </div>
         </div>
       </div>
-      <div className="p-4 sm:p-6">{children}</div>
+      <div id={contentId} hidden={!isOpen} className="p-4 sm:p-6">
+        {children}
+      </div>
     </div>
   );
 }

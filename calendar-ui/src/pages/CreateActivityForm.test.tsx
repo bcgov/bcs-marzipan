@@ -67,7 +67,7 @@ vi.mock('../hooks/useActivityFormSubmitState', () => ({
 
 vi.mock('@/components/activity', () => ({
   ActivityFormBody: ({ readOnly }: { readOnly?: boolean }) => (
-    <textarea readOnly={readOnly} placeholder="Enter activity title" />
+    <textarea readOnly={readOnly} aria-label="Title" />
   ),
   ActivityFormMissingFieldsHint: () => null,
   ActivityFormStickyHeader: ({
@@ -100,7 +100,7 @@ describe('CreateActivityForm recurring lockout', () => {
     renderCreateForm();
 
     expect(screen.getByRole('alert')).toHaveTextContent(/locked until/i);
-    expect(screen.getByPlaceholderText('Enter activity title')).toHaveAttribute(
+    expect(screen.getByRole('textbox', { name: /Title/i })).toHaveAttribute(
       'readonly'
     );
     expect(screen.getByRole('button', { name: /^Submit$/i })).toBeDisabled();

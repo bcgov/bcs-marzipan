@@ -121,8 +121,9 @@ describe('ActivityReleaseSection permissions', () => {
   it('renders news release selects as readOnly when activity is view-only', async () => {
     render(<ActivityReleaseSectionHarness readOnly={true} />);
 
-    const placeholder = await screen.findByText(/Select news release origin/i);
-    const origin = placeholder.closest('button[role="combobox"]');
+    const origin = await screen.findByRole('combobox', {
+      name: /News release origin/i,
+    });
     expect(origin).toHaveAttribute('aria-readonly', 'true');
   });
 
@@ -135,9 +136,9 @@ describe('ActivityReleaseSection permissions', () => {
       />
     );
 
-    const input = await screen.findByPlaceholderText(
-      /Select translation languages/i
-    );
+    const input = await screen.findByRole('combobox', {
+      name: /Translation languages/i,
+    });
     expect(input).toBeDisabled();
   });
 });
@@ -152,7 +153,7 @@ describe('ActivityReleaseSection translation languages visibility', () => {
     );
 
     expect(
-      screen.queryByPlaceholderText(/Select translation languages/i)
+      screen.queryByRole('combobox', { name: /Translation languages/i })
     ).not.toBeInTheDocument();
   });
 
@@ -165,7 +166,7 @@ describe('ActivityReleaseSection translation languages visibility', () => {
     );
 
     expect(
-      await screen.findByPlaceholderText(/Select translation languages/i)
+      await screen.findByRole('combobox', { name: /Translation languages/i })
     ).toBeInTheDocument();
   });
 });

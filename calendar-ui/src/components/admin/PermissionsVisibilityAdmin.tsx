@@ -100,6 +100,8 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
       void queryClient.invalidateQueries({
         queryKey: ['roles', 'permissions', 'map'],
       });
+      // UserRolePermissionsSection loads per-role rows from ['roles', roleId, 'permissions'].
+      void queryClient.invalidateQueries({ queryKey: ['roles'] });
 
       toast.success('Permission visibility updated');
     },

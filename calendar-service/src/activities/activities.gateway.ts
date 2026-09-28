@@ -21,6 +21,7 @@ import { AuthService, type JwtPayload } from '../auth/auth.service';
 import { getCorsAllowedOrigins } from '../common/config/cors-allowed-origins';
 import { AppLogger } from '../common/logger/logger.service';
 import { LocksService } from '../locks/locks.service';
+import { PolicyService } from '../policy/policy.service';
 
 /**
  * After the last authenticated socket for a user disconnects, wait this long
@@ -82,9 +83,18 @@ export class ActivitiesGateway
   constructor(
     private readonly jwtService: JwtService,
     private readonly authService: AuthService,
+    private readonly policyService: PolicyService,
     @Inject(forwardRef(() => LocksService))
     private readonly locksService: LocksService
   ) {}
+
+  private canSubscribeToActivitiesTable(user: AuthUser | undefined): boolean {
+    if (!user) return false;
+    return this.policyService.hasPermission(
+      user.permissions,
+      'activities.view'
+    );
+  }
 
   onModuleDestroy(): void {
     for (const timer of this.pendingUserTeardownTimers.values()) {
@@ -211,6 +221,13 @@ export class ActivitiesGateway
 
   @SubscribeMessage('subscribeToActivities')
   handleSubscribeToActivities(client: Socket) {
+    const user = client.data.authUser as AuthUser | undefined;
+    if (!this.canSubscribeToActivitiesTable(user)) {
+      this.logger.debug(
+        `Client ${client.id} rejected subscribeToActivities (missing activities.view)`
+      );
+      return;
+    }
     this.logger.debug(
       `Client ${client.id} subscribed to activities table updates`
     );
@@ -274,6 +291,10 @@ export class ActivitiesGateway
         this.server.to(clientId).emit('lockAcquired', { activityId, lockedBy });
       }
     }
+    this.broadcastActivityLockChanged(activityId, {
+      locked: true,
+      lockedBy,
+    });
   }
 
   notifyLockReleased(activityId: number) {
@@ -285,6 +306,21 @@ export class ActivitiesGateway
         this.server.to(clientId).emit('lockReleased', { activityId });
       }
     }
+    this.broadcastActivityLockChanged(activityId, { locked: false });
+  }
+
+  /** Notifies activity list subscribers when an edit lock is acquired or released. */
+  broadcastActivityLockChanged(
+    activityId: number,
+    payload: {
+      locked: boolean;
+      lockedBy?: { userId: number; username: string };
+    }
+  ): void {
+    this.server.to('activities-table').emit('activityLockChanged', {
+      activityId,
+      ...payload,
+    });
   }
 
   /**

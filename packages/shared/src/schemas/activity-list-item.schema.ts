@@ -15,6 +15,14 @@ const commsContactSchema = z.object({
 /** Discriminator for list/report bulk payloads vs full {@link ActivityResponse}. */
 export const ACTIVITY_LIST_ITEM_SHAPE = 'list' as const;
 
+/** Active edit lock on an activity (activity list GET only). */
+export const activityListEditLockSchema = z.object({
+  userId: z.number().int(),
+  username: z.string(),
+});
+
+export type ActivityListEditLock = z.infer<typeof activityListEditLockSchema>;
+
 /**
  * Slim read model for activity list and report bulk endpoints.
  * Uses the same property names as {@link ActivityResponse} where fields overlap
@@ -59,6 +67,11 @@ export const activityListItemSchema = z.object({
   leadTeamDisplayName: activityComputedFieldsSchema.shape.leadTeamDisplayName,
   leadTeamId: activityDbFieldsSchema.shape.leadTeamId,
   leadMinistryId: activityDbFieldsSchema.shape.leadMinistryId,
+  /** Shared-with team display names, for the list table shares indicator. */
+  sharedWith: activityComputedFieldsSchema.shape.sharedWith,
+  /** Needed by list bulk actions to tell which of the user's teams can be unshared. */
+  sharedWithTeamIds: activityComputedFieldsSchema.shape.sharedWithTeamIds,
+  visibility: activityDbFieldsSchema.shape.visibility,
   commsContacts: commsContactSchema.array().default([]),
   eventPlanners: activityComputedFieldsSchema.shape.eventPlanners,
   eventPlannerLeadIds: activityComputedFieldsSchema.shape.eventPlannerLeadIds,
@@ -80,6 +93,8 @@ export const activityListItemSchema = z.object({
   canEdit: activityComputedFieldsSchema.shape.canEdit,
   changedFieldsSinceReview: z.array(z.string()).optional(),
   flags: activityComputedFieldsSchema.shape.flags,
+  /** Present on GET /activities list when another user (or self) holds the edit lock. */
+  editLock: activityListEditLockSchema.nullable().optional(),
 });
 
 export type ActivityListItem = z.infer<typeof activityListItemSchema>;
@@ -141,6 +156,9 @@ export function activityResponseToListItem(
     leadTeamDisplayName: activity.leadTeamDisplayName ?? null,
     leadTeamId: activity.leadTeamId,
     leadMinistryId: activity.leadMinistryId,
+    sharedWith: activity.sharedWith ?? [],
+    sharedWithTeamIds: activity.sharedWithTeamIds ?? [],
+    visibility: activity.visibility,
     commsContacts: activity.commsContacts,
     eventPlanners: activity.eventPlanners ?? [],
     eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],

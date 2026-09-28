@@ -130,6 +130,10 @@ export class UsersController {
     @Body(new ZodValidationPipe(createUserBodySchema)) dto: CreateUserDto,
     @CurrentUser() currentUser: AuthUser
   ): Promise<{ success: boolean; data: UserDetail }> {
+    this.assertCanManagePermissionOverrides(
+      currentUser,
+      dto.permissionOverrides
+    );
     const data = await this.usersService.create(dto, currentUser.id);
     return { success: true, data };
   }
@@ -242,8 +246,24 @@ export class UsersController {
         'Only admins and sys-admins can edit user profile details.'
       );
     }
+    this.assertCanManagePermissionOverrides(user, dto.permissionOverrides);
     const data = await this.usersService.update(id, dto, user.id);
     return { success: true, data };
+  }
+
+  private assertCanManagePermissionOverrides(
+    user: AuthUser,
+    permissionOverrides: UpdateUserDto['permissionOverrides']
+  ): void {
+    if (
+      permissionOverrides !== undefined &&
+      permissionOverrides.length > 0 &&
+      !user.permissions?.includes(PERMISSIONS.USERS.MANAGE_ROLES)
+    ) {
+      throw new ForbiddenException(
+        'You do not have permission to manage user permission overrides.'
+      );
+    }
   }
 
   private canEditProfile(user: AuthUser): boolean {

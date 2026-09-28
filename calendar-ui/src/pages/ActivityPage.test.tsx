@@ -506,14 +506,26 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(save).toBeDisabled();
   });
 
+  it('does not render placeholder text in the activity form', async () => {
+    renderActivityPage();
+
+    const titleField = await screen.findByRole('textbox', { name: /Title/i });
+    expect(titleField).not.toHaveAttribute('placeholder');
+    expect(
+      screen.queryByPlaceholderText(
+        /Enter activity title|Select categories|Select lead team|Select news release origin/i
+      )
+    ).not.toBeInTheDocument();
+  });
+
   it('shows Discard changes and enables Save after edits when lock is owned', async () => {
     mockLockState = 'owned';
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
@@ -614,9 +626,9 @@ describe('ActivityPage optimistic inline edit', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
@@ -628,9 +640,9 @@ describe('ActivityPage optimistic inline edit', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
@@ -643,9 +655,9 @@ describe('ActivityPage optimistic inline edit', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
@@ -658,9 +670,9 @@ describe('ActivityPage optimistic inline edit', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
@@ -675,9 +687,9 @@ describe('ActivityPage optimistic inline edit', () => {
   it('form controls are enabled for optimistic edit when user may edit', async () => {
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     expect(titleTextarea).not.toBeDisabled();
   });
 
@@ -689,9 +701,9 @@ describe('ActivityPage optimistic inline edit', () => {
       },
     });
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     expect(titleTextarea).toHaveAttribute('readonly');
   });
 
@@ -702,7 +714,7 @@ describe('ActivityPage optimistic inline edit', () => {
     await screen.findByText(/Lead team/);
     const lockBanner = screen.getByRole('alert');
     expect(lockBanner).toHaveTextContent(/Other User/);
-    const titleTextarea = screen.getByPlaceholderText('Enter activity title');
+    const titleTextarea = screen.getByRole('textbox', { name: /Title/i });
     expect(titleTextarea).toHaveAttribute('readonly');
   });
 
@@ -714,7 +726,7 @@ describe('ActivityPage optimistic inline edit', () => {
     const lockoutBanner = screen.getByRole('alert');
     expect(lockoutBanner).toHaveTextContent(/locked until/i);
     expect(lockoutBanner).toHaveTextContent(/read-only/i);
-    const titleTextarea = screen.getByPlaceholderText('Enter activity title');
+    const titleTextarea = screen.getByRole('textbox', { name: /Title/i });
     expect(titleTextarea).toHaveAttribute('readonly');
   });
 
@@ -731,7 +743,7 @@ describe('ActivityPage optimistic inline edit', () => {
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
-    const titleTextarea = screen.getByPlaceholderText('Enter activity title');
+    const titleTextarea = screen.getByRole('textbox', { name: /Title/i });
     expect(titleTextarea).not.toHaveAttribute('readonly');
   });
 
@@ -766,9 +778,9 @@ describe('ActivityPage optimistic inline edit', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
@@ -898,9 +910,9 @@ describe('ActivityPage clone button', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 

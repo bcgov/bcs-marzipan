@@ -109,8 +109,8 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | `translationRequiredStatusIds` | int[]                          | Translations-required status IDs (OR)                                                                                           |
 | `translationLanguageIds`       | int[]                          | Required translation language IDs (OR)                                                                                          |
 | `pitchRequiredStatusNames`     | string[]                       | Pitch-required status names (OR, case-insensitive)                                                                              |
-| `lookAheadStatusValues`        | string[]                       | Look-ahead status values (OR)                                                                                                   |
-| `lookAheadSectionValues`       | string[]                       | Look-ahead section bucket keys (OR)                                                                                             |
+| `lookAheadStatusValues`        | string[]                       | Look Ahead status values (OR)                                                                                                   |
+| `lookAheadSectionValues`       | string[]                       | Look Ahead section bucket keys (OR)                                                                                             |
 | `dateConfirmedFilter`          | `confirmed` \| `not_confirmed` | Date confirmation status                                                                                                        |
 | `timeConfirmedFilter`          | `confirmed` \| `not_confirmed` | Time confirmation status                                                                                                        |
 | `pitchDateNotScheduled`        | boolean (`true`)               | Activities with no pitch date                                                                                                   |

@@ -165,6 +165,10 @@ vi.mock('@/hooks/useCalendar', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useBulkUnshareActivities: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useSyncActivityFlags: () => ({
     mutate: vi.fn(),
     isPending: false,
@@ -186,6 +190,36 @@ vi.mock('./ActivityTableFilters', () => ({
   ActivityTableFilters: () => <div data-testid="activity-table-filters" />,
   hasAnyActivityTableFilterActive: () => false,
 }));
+
+vi.mock('@/hooks/useActivityGridLayoutPreferences', () => ({
+  useActivityGridLayoutPreferences: () => ({
+    getColumnOrder: vi.fn(() => []),
+    setColumnOrder: vi.fn(),
+    getColumnSizing: vi.fn(() => ({})),
+    setColumnSizing: vi.fn(),
+  }),
+}));
+
+describe('ActivityTable layout', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.sessionStorage.clear();
+  });
+
+  it('renders column headers', () => {
+    render(<ActivityTable />);
+
+    expect(
+      screen.getByRole('columnheader', { name: /Overview/i })
+    ).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: /Summary/i })).toBeTruthy();
+    expect(
+      screen.getByRole('columnheader', { name: /Scheduling/i })
+    ).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: /Comms/i })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: /Status/i })).toBeTruthy();
+  });
+});
 
 describe('ActivityTable scroll state capture', () => {
   beforeEach(() => {

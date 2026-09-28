@@ -40,7 +40,7 @@ describe('ActivityTableEmptyState', () => {
       screen.getByText('No activities match the current filters')
     ).toBeInTheDocument();
     const clearButton = screen.getByRole('button', {
-      name: /reset all filters/i,
+      name: /reset all/i,
     });
     await userEvent.click(clearButton);
     expect(onClearFilters).toHaveBeenCalledTimes(1);

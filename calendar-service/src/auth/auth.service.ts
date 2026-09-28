@@ -23,6 +23,7 @@ import {
   type CheckEmailResponse,
 } from '@corpcal/shared';
 
+import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
 import type { AuthResponseDto } from './dto/auth-response.dto';
@@ -677,6 +678,18 @@ export class AuthService {
       .delete(sessions)
       .where(eq(sessions.token, tokenHash));
     return { message: 'Logged out' };
+  }
+
+  /**
+   * Delete all active sessions for a user so JwtAuthGuard rejects their existing
+   * tokens, forcing re-login to pick up updated role/permission overrides.
+   */
+  async invalidateUserSessions(
+    userId: number,
+    executor?: DrizzleDbExecutor
+  ): Promise<void> {
+    const db = executor ?? this.databaseService.db;
+    await db.delete(sessions).where(eq(sessions.userId, userId));
   }
 
   refresh(): never {

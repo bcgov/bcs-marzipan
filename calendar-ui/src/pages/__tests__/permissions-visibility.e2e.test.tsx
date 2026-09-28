@@ -3,7 +3,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
-import { render, screen, waitFor } from '@/test/test-utils';
+import { PERMISSIONS } from '@corpcal/shared';
+import { fireEvent, render, screen, waitFor } from '@/test/test-utils';
 
 // Mocks: auth, lookupsApi, usersApi
 const mockUseAuth = vi.fn();
@@ -25,6 +26,7 @@ vi.mock('@/api/lookupsApi', () => {
         showInUserManagement: false,
       },
     ]),
+    fetchOverridablePermissions: vi.fn().mockResolvedValue([]),
     fetchRolesPermissionsMap: vi
       .fn()
       .mockImplementation(() => Promise.resolve(rolesPermissionsMap)),
@@ -38,6 +40,9 @@ vi.mock('@/api/lookupsApi', () => {
               key: 'perm.test',
               displayName: 'Test Permission',
               description: 'A test permission',
+              category: 'Activities',
+              sortOrder: 1,
+              allowUserOverride: false,
               hasPermission: true,
             },
           ],
@@ -68,9 +73,14 @@ vi.mock('@/api/usersApi', () => ({
     notes: null,
     directLoginEnabled: false,
     teams: [],
+    permissionOverrides: [],
   }),
   fetchRoles: vi.fn().mockResolvedValue([{ id: 2, name: 'Editor' }]),
-  fetchRolePermissions: vi.fn().mockResolvedValue([]),
+  fetchRolePermissions: vi
+    .fn()
+    .mockImplementation((roleId: number) =>
+      Promise.resolve(rolesPermissionsMap[roleId] ?? [])
+    ),
   fetchTeams: vi.fn().mockResolvedValue([]),
 }));
 
@@ -81,7 +91,7 @@ describe('Permissions visibility integration', () => {
     rolesPermissionsMap = {};
     mockUseAuth.mockReturnValue({
       user: { id: 1, roleId: 6 },
-      hasPermission: () => true,
+      hasPermission: (key: string) => key !== PERMISSIONS.USERS.MANAGE_ROLES,
     });
   });
 
@@ -122,7 +132,18 @@ describe('Permissions visibility integration', () => {
       timeout: 10000,
     });
 
-    // Ensure the UserDetailPage shows the permission somewhere on the page.
-    await screen.findByText('Test Permission', {}, { timeout: 10000 });
+    const trigger = await screen.findByRole('button', {
+      name: /show permissions/i,
+    });
+    fireEvent.click(trigger);
+
+    // Admin table and UserDetailPage permissions panel both list the permission.
+    await waitFor(
+      () =>
+        expect(
+          screen.getAllByText('Test Permission').length
+        ).toBeGreaterThanOrEqual(2),
+      { timeout: 10000 }
+    );
   }, 20000);
 });

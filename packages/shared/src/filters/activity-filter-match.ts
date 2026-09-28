@@ -96,7 +96,7 @@ export function activityMatchesFilterState(
     }
   }
 
-  // Look ahead status / section (OR within each; AND across the two).
+  // Look Ahead status / section (OR within each; AND across the two).
   if (filterState.lookAheadStatusValues.length > 0) {
     if (
       input.lookAheadStatus == null ||

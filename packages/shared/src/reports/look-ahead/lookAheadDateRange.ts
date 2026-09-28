@@ -20,7 +20,7 @@ function pacificTomorrow(now: Date): CalendarDateString {
 }
 
 /**
- * Look-ahead / exec preset: `dayCount` inclusive days starting tomorrow (Pacific).
+ * Look Ahead / exec preset: `dayCount` inclusive days starting tomorrow (Pacific).
  */
 export function lookAheadDateRangeFromTomorrow(
   dayCount: LookAheadDayCount,

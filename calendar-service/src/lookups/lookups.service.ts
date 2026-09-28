@@ -206,6 +206,9 @@ export class LookupsService {
       key: string;
       displayName: string | null;
       description: string | null;
+      category: string;
+      sortOrder: number;
+      allowUserOverride: boolean;
       hasPermission: boolean;
     }[]
   > {
@@ -215,6 +218,9 @@ export class LookupsService {
         key: permissions.key,
         displayName: permissions.displayName,
         description: permissions.description,
+        category: permissions.category,
+        sortOrder: permissions.sortOrder,
+        allowUserOverride: permissions.allowUserOverride,
         permissionId: permissions.id,
         rolePermissionActive: rolePermissions.isActive,
       })
@@ -235,6 +241,9 @@ export class LookupsService {
       key: r.key,
       displayName: r.displayName,
       description: r.description,
+      category: r.category,
+      sortOrder: r.sortOrder,
+      allowUserOverride: Boolean(r.allowUserOverride),
       hasPermission: Boolean(r.rolePermissionActive),
     }));
   }
@@ -250,6 +259,9 @@ export class LookupsService {
         key: string;
         displayName?: string | null;
         description?: string | null;
+        category: string;
+        sortOrder: number;
+        allowUserOverride: boolean;
         hasPermission: boolean;
       }[]
     >
@@ -263,6 +275,9 @@ export class LookupsService {
         key: permissions.key,
         displayName: permissions.displayName,
         description: permissions.description,
+        category: permissions.category,
+        sortOrder: permissions.sortOrder,
+        allowUserOverride: permissions.allowUserOverride,
         rolePermissionActive: rolePermissions.isActive,
       })
       .from(roles)
@@ -285,6 +300,9 @@ export class LookupsService {
         key: r.key,
         displayName: r.displayName,
         description: r.description,
+        category: r.category,
+        sortOrder: r.sortOrder,
+        allowUserOverride: Boolean(r.allowUserOverride),
         hasPermission: Boolean(r.rolePermissionActive),
       });
     }
@@ -581,6 +599,36 @@ export class LookupsService {
       description: r.description,
       showInUserManagement: Boolean(r.showInUserManagement),
     }));
+  }
+
+  /**
+   * Permissions admins may grant or deny for an individual user (user_permissions).
+   * `system.*` keys are excluded defensively even if flagged in the database.
+   */
+  async getOverridablePermissions(): Promise<
+    {
+      id: number;
+      key: string;
+      displayName: string;
+      description: string | null;
+      category: string;
+      sortOrder: number;
+    }[]
+  > {
+    const rows = await this.databaseService.db
+      .select({
+        id: permissions.id,
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+        category: permissions.category,
+        sortOrder: permissions.sortOrder,
+      })
+      .from(permissions)
+      .where(eq(permissions.allowUserOverride, true))
+      .orderBy(permissions.sortOrder);
+
+    return rows.filter((r) => !r.key.startsWith('system.'));
   }
 
   /**

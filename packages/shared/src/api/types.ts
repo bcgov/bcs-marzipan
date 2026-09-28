@@ -63,6 +63,9 @@ export type {
   UpdateUserTeamRoleBody,
   TransferActivitiesBody,
   RemoveUserFromTeamBody,
+  UserPermissionEffect,
+  UserPermissionOverride,
+  UserPermissionOverrideInput,
 } from '../schemas/user.schema';
 
 // Team CRUD API types

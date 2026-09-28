@@ -12,7 +12,10 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { fetchUsers } from '@/api/usersApi';
-import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
+import {
+  ActivityFlagIcon,
+  type ActivityFlagIconSize,
+} from '@/components/activity/activities/ActivityFlagIcon';
 import { FilterSearchableList } from '@/components/activity/ActivityTable/FilterSearchableList';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -23,6 +26,7 @@ import {
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
 
 interface TeamMemberOption {
   userId: number;
@@ -47,6 +51,9 @@ interface ActivityFlagPopoverProps {
   readOnly?: boolean;
   /** Optional custom trigger content (e.g., assigned avatar stack). */
   triggerContent?: ReactNode;
+  iconSize?: ActivityFlagIconSize;
+  /** Replaces default ghost trigger styling (e.g. Grid A overview action hitbox). */
+  triggerClassName?: string;
 }
 
 export function ActivityFlagPopover({
@@ -56,7 +63,10 @@ export function ActivityFlagPopover({
   isPending = false,
   readOnly = false,
   triggerContent,
+  iconSize = 'default',
+  triggerClassName,
 }: ActivityFlagPopoverProps) {
+  const isCompact = iconSize === 'compact';
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
@@ -251,6 +261,7 @@ export function ActivityFlagPopover({
         <ActivityFlagIcon
           assigneeName={iconFlag.assigneeName}
           assigneeFlagColour={iconFlag.assigneeFlagColour}
+          size={iconSize}
         />
       </span>
     );
@@ -262,7 +273,7 @@ export function ActivityFlagPopover({
         <Button
           type="button"
           variant="ghost"
-          size={triggerContent ? 'sm' : 'icon'}
+          size={triggerClassName ? 'icon-xs' : triggerContent ? 'sm' : 'icon'}
           aria-label={
             isFlagged
               ? 'Assigned — click to edit assignments'
@@ -272,12 +283,24 @@ export function ActivityFlagPopover({
           disabled={isPending || !primaryTeamId}
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
-          className={triggerContent ? 'h-6 shrink-0 px-1.5' : 'size-6 shrink-0'}
+          className={cn(
+            triggerClassName,
+            !triggerClassName &&
+              (triggerContent
+                ? cn(
+                    'shrink-0',
+                    isCompact
+                      ? 'h-6 min-h-6 w-auto min-w-6 px-0.5'
+                      : 'h-6 px-1.5'
+                  )
+                : 'size-6 shrink-0')
+          )}
         >
           {triggerContent ?? (
             <ActivityFlagIcon
               assigneeName={isFlagged ? (iconFlag?.assigneeName ?? null) : null}
               assigneeFlagColour={iconFlag?.assigneeFlagColour}
+              size={iconSize}
             />
           )}
         </Button>

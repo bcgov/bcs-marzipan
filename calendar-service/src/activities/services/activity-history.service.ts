@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, gte, inArray, lt, sql } from 'drizzle-orm';
 
 import {
   activities,
@@ -14,12 +14,23 @@ import {
   users,
 } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
+import {
+  pacificCalendarDayStartInstant,
+  pacificCalendarNextDayStartInstant,
+} from '@corpcal/shared';
 import type {
   ActivityHistoryEntry,
   HistoryChange,
 } from '@corpcal/shared/api/types';
-import { isDeepEqual } from '@corpcal/shared/utils';
+import {
+  ACTIVITY_HISTORY_NON_TRACKED_FIELDS,
+  isDeepEqual,
+  normalizeHistoryChanges,
+  redactActivityHistoryChanges,
+  type FieldScopeUser,
+} from '@corpcal/shared/utils';
 
+import { parseMonthDaySearchToPacificDateKey } from '../../common/utils/parse-history-search-date';
 import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 
@@ -75,6 +86,35 @@ export class ActivityHistoryService {
     );
   }
 
+  private normalizeChangesForStorage(
+    changes?: HistoryChange[]
+  ): HistoryChange[] | undefined {
+    if (!changes || changes.length === 0) return undefined;
+    const normalized = normalizeHistoryChanges(changes);
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
+  /**
+   * Whether a history row should appear in API responses for a scoped viewer.
+   *
+   * Intentionally omits "shell" entries that would have no useful detail after
+   * field redaction (no viewable changes, no audit note, not a timeline note).
+   * See docs/AUTH_AND_RBAC.md — "Activity history visibility and field redaction".
+   */
+  private shouldIncludeHistoryEntry(
+    entry: { actionType: string; notes: string | null },
+    redactedChanges: HistoryChange[]
+  ): boolean {
+    if (redactedChanges.length > 0) return true;
+    if (entry.notes?.trim()) return true;
+    if (entry.actionType === 'note_added') return true;
+    return false;
+  }
+
+  /**
+   * Maps DB rows to API entries, redacting field changes the viewer cannot see
+   * and dropping rows with nothing useful left to show (see shouldIncludeHistoryEntry).
+   */
   private mapEntriesToResponse(
     entries: Array<{
       id: number;
@@ -85,26 +125,38 @@ export class ActivityHistoryService {
       notes: string | null;
       timestamp: Date | string;
     }>,
-    userMap: Map<number, { displayName: string; username: string | null }>
+    userMap: Map<number, { displayName: string; username: string | null }>,
+    viewer?: FieldScopeUser
   ): ActivityHistoryEntry[] {
-    return entries.map((entry) => {
+    return entries.flatMap((entry) => {
       const actor = userMap.get(entry.userId);
       const displayName = actor?.displayName ?? `User ${entry.userId}`;
 
-      return {
-        ...entry,
-        changes: (entry.changes as ActivityHistoryEntry['changes']) ?? null,
-        timestamp:
-          entry.timestamp instanceof Date
-            ? entry.timestamp.toISOString()
-            : String(entry.timestamp),
-        actor: {
-          id: entry.userId,
-          displayName,
-          username: actor?.username ?? null,
+      const rawChanges = (entry.changes as HistoryChange[] | null) ?? null;
+      const changes = viewer
+        ? redactActivityHistoryChanges(rawChanges, viewer)
+        : normalizeHistoryChanges(rawChanges);
+
+      if (viewer && !this.shouldIncludeHistoryEntry(entry, changes)) {
+        return [];
+      }
+
+      return [
+        {
+          ...entry,
+          changes: changes.length > 0 ? changes : null,
+          timestamp:
+            entry.timestamp instanceof Date
+              ? entry.timestamp.toISOString()
+              : String(entry.timestamp),
+          actor: {
+            id: entry.userId,
+            displayName,
+            username: actor?.username ?? null,
+          },
+          userName: displayName,
         },
-        userName: displayName,
-      };
+      ];
     });
   }
 
@@ -159,13 +211,15 @@ export class ActivityHistoryService {
     // Insert denormalized fields. The TypeScript DB schema may not include
     // these new columns yet, so cast the values to `any` to avoid type errors
     // while the DB migration is staged separately.
+    const normalizedChanges = this.normalizeChangesForStorage(changes);
+
     const [historyEntry] = await db
       .insert(activityHistory)
       .values({
         activityId,
         userId,
         actionType,
-        changes: changes ? (changes as unknown) : null,
+        changes: normalizedChanges ? (normalizedChanges as unknown) : null,
         notes: notes || null,
         activityTitle: activityRow?.title ?? null,
         activityDisplayId: activityRow?.displayId ?? null,
@@ -289,11 +343,12 @@ export class ActivityHistoryService {
           newValue: entry.newLookAheadStatus,
         },
       ];
+      const normalizedChanges = this.normalizeChangesForStorage(changes);
       return {
         activityId: entry.activityId,
         userId: actorUserId,
         actionType: 'updated',
-        changes: changes,
+        changes: normalizedChanges ? normalizedChanges : null,
         notes: notes || null,
         activityTitle: act?.title ?? null,
         activityDisplayId: act?.displayId ?? null,
@@ -390,18 +445,11 @@ export class ActivityHistoryService {
     const valueRows = entries.map((entry) => {
       const act = activityMap.get(entry.activityId);
       const tagParts = namesByActivity.get(entry.activityId) ?? [];
-      const changes: HistoryChange[] = [
-        {
-          field: 'displayId',
-          oldValue: entry.oldDisplayId,
-          newValue: entry.newDisplayId,
-        },
-      ];
       return {
         activityId: entry.activityId,
         userId: actorUserId,
         actionType: 'updated',
-        changes: changes,
+        changes: null,
         notes: notes || null,
         activityTitle: act?.title ?? null,
         activityDisplayId: entry.newDisplayId,
@@ -418,7 +466,8 @@ export class ActivityHistoryService {
    * Get all history entries for an activity, ordered by most recent first
    */
   async getActivityHistory(
-    activityId: number
+    activityId: number,
+    viewer?: FieldScopeUser
   ): Promise<ActivityHistoryEntry[]> {
     const historyEntries = await this.databaseService.db
       .select({
@@ -437,11 +486,12 @@ export class ActivityHistoryService {
     const userIds = [...new Set(historyEntries.map((e) => e.userId))];
     const userMap = await this.getUserMap(userIds);
 
-    return this.mapEntriesToResponse(historyEntries, userMap);
+    return this.mapEntriesToResponse(historyEntries, userMap, viewer);
   }
 
   async getActivityHistoryForActivityIds(
-    activityIds: number[]
+    activityIds: number[],
+    viewer?: FieldScopeUser
   ): Promise<ActivityHistoryEntry[]> {
     if (activityIds.length === 0) {
       return [];
@@ -464,7 +514,7 @@ export class ActivityHistoryService {
     const userIds = [...new Set(historyEntries.map((entry) => entry.userId))];
     const userMap = await this.getUserMap(userIds);
 
-    return this.mapEntriesToResponse(historyEntries, userMap);
+    return this.mapEntriesToResponse(historyEntries, userMap, viewer);
   }
 
   async getActivityHistoryForActivityIdsPaged(
@@ -478,6 +528,12 @@ export class ActivityHistoryService {
       // optional keyset cursor: base64(JSON.stringify({ t: ISOString, id: number }))
       cursor?: string;
       order?: 'asc' | 'desc';
+      userId?: number;
+      userIds?: number[];
+      actionTypes?: string[];
+      categoryNames?: string[];
+      leadTeamIds?: number[];
+      viewer?: FieldScopeUser;
     }
   ): Promise<{
     items: ActivityHistoryEntry[];
@@ -529,15 +585,54 @@ export class ActivityHistoryService {
     }
 
     if (opts.startDate) {
-      // startDate expected in YYYY-MM-DD
-      const startIso = new Date(`${opts.startDate}T00:00:00.000Z`);
-      whereClauses.push(gte(activityHistory.timestamp, startIso));
+      // startDate expected in YYYY-MM-DD (Pacific calendar day)
+      const startIso = pacificCalendarDayStartInstant(opts.startDate);
+      if (startIso) {
+        whereClauses.push(gte(activityHistory.timestamp, startIso));
+      }
     }
 
     if (opts.endDate) {
-      // include the end date up to end of day
-      const endIso = new Date(`${opts.endDate}T23:59:59.999Z`);
-      whereClauses.push(lte(activityHistory.timestamp, endIso));
+      const nextDayStart = pacificCalendarNextDayStartInstant(opts.endDate);
+      if (nextDayStart) {
+        whereClauses.push(lt(activityHistory.timestamp, nextDayStart));
+      }
+    }
+
+    if (opts.userId != null) {
+      whereClauses.push(eq(activityHistory.userId, opts.userId));
+    }
+
+    if (opts.userIds?.length) {
+      whereClauses.push(inArray(activityHistory.userId, opts.userIds));
+    }
+
+    if (opts.actionTypes?.length) {
+      whereClauses.push(inArray(activityHistory.actionType, opts.actionTypes));
+    }
+
+    if (opts.leadTeamIds?.length) {
+      whereClauses.push(inArray(activities.leadTeamId, opts.leadTeamIds));
+    }
+
+    if (opts.categoryNames?.length) {
+      whereClauses.push(
+        exists(
+          this.databaseService.db
+            .select({ one: sql`1` })
+            .from(activityCategories)
+            .innerJoin(
+              categories,
+              eq(activityCategories.categoryId, categories.id)
+            )
+            .where(
+              and(
+                eq(activityCategories.activityId, activityHistory.activityId),
+                inArray(categories.displayName, opts.categoryNames)
+              )
+            )
+        )
+      );
     }
 
     if (opts.query) {
@@ -549,42 +644,23 @@ export class ActivityHistoryService {
           /^([A-Za-z]+)\s+(\d{1,2})(?:,?\s*(\d{4}))?$/
         );
         if (isoMatch) {
-          const startIso = new Date(`${raw}T00:00:00.000Z`);
-          const endIso = new Date(`${raw}T23:59:59.999Z`);
-          whereClauses.push(gte(activityHistory.timestamp, startIso));
-          whereClauses.push(lte(activityHistory.timestamp, endIso));
-        } else if (monthDayMatch) {
-          const monthName = monthDayMatch[1];
-          const day = parseInt(monthDayMatch[2], 10);
-          const year = monthDayMatch[3]
-            ? parseInt(monthDayMatch[3], 10)
-            : new Date().getFullYear();
-          const parsed = new Date(`${monthName} ${day} ${year}`);
-          if (!Number.isNaN(parsed.getTime())) {
-            const startIso = new Date(
-              Date.UTC(
-                parsed.getFullYear(),
-                parsed.getMonth(),
-                parsed.getDate(),
-                0,
-                0,
-                0,
-                0
-              )
-            );
-            const endIso = new Date(
-              Date.UTC(
-                parsed.getFullYear(),
-                parsed.getMonth(),
-                parsed.getDate(),
-                23,
-                59,
-                59,
-                999
-              )
-            );
+          const startIso = pacificCalendarDayStartInstant(raw);
+          const nextDayStart = pacificCalendarNextDayStartInstant(raw);
+          if (startIso && nextDayStart) {
             whereClauses.push(gte(activityHistory.timestamp, startIso));
-            whereClauses.push(lte(activityHistory.timestamp, endIso));
+            whereClauses.push(lt(activityHistory.timestamp, nextDayStart));
+          }
+        } else if (monthDayMatch) {
+          const dateKey = parseMonthDaySearchToPacificDateKey(raw);
+          const startIso = dateKey
+            ? pacificCalendarDayStartInstant(dateKey)
+            : null;
+          const nextDayStart = dateKey
+            ? pacificCalendarNextDayStartInstant(dateKey)
+            : null;
+          if (startIso && nextDayStart) {
+            whereClauses.push(gte(activityHistory.timestamp, startIso));
+            whereClauses.push(lt(activityHistory.timestamp, nextDayStart));
           }
         } else {
           const q = raw.toLowerCase();
@@ -636,6 +712,10 @@ export class ActivityHistoryService {
         ? and(...(whereClauses as Parameters<typeof and>))
         : whereClauses[0];
 
+    const needsActivitiesJoin =
+      Boolean(opts.query?.trim()) || (opts.leadTeamIds?.length ?? 0) > 0;
+    const needsUsersJoin = Boolean(opts.query?.trim());
+
     let qBuilder = this.databaseService.db
       .select({
         id: activityHistory.id,
@@ -648,11 +728,18 @@ export class ActivityHistoryService {
       })
       .from(activityHistory);
 
-    // If query included fields on activities or users, join those tables for filtering
-    if (opts.query) {
-      qBuilder = (qBuilder as any)
-        .leftJoin(activities, eq(activityHistory.activityId, activities.id))
-        .leftJoin(users, eq(activityHistory.userId, users.id));
+    if (needsActivitiesJoin) {
+      qBuilder = (qBuilder as any).leftJoin(
+        activities,
+        eq(activityHistory.activityId, activities.id)
+      );
+    }
+
+    if (needsUsersJoin) {
+      qBuilder = (qBuilder as any).leftJoin(
+        users,
+        eq(activityHistory.userId, users.id)
+      );
     }
 
     // determine ordering (default: desc)
@@ -688,6 +775,61 @@ export class ActivityHistoryService {
         : cursorCondition;
     }
 
+    const fetchRawBatch = (
+      batchOffset: number,
+      batchLimit: number
+    ): Promise<RawHistoryRow[]> =>
+      (qBuilder as any)
+        .where(finalWhereExpr)
+        .orderBy(...orderByExpr)
+        .limit(batchLimit)
+        .offset(batchOffset);
+
+    if (opts.viewer && !useKeyset) {
+      const targetStart = (page - 1) * pageSize;
+      const targetEnd = page * pageSize;
+      const batchSize = Math.max(pageSize, 50);
+      let dbOffset = 0;
+      let visibleCount = 0;
+      const pageEntries: ActivityHistoryEntry[] = [];
+
+      while (true) {
+        const rawBatch: RawHistoryRow[] = await fetchRawBatch(
+          dbOffset,
+          batchSize
+        );
+        if (rawBatch.length === 0) break;
+
+        const batchUserIds = [
+          ...new Set(rawBatch.map((entry) => entry.userId)),
+        ];
+        const batchUserMap = await this.getUserMap(batchUserIds);
+        const visibleBatch = this.mapEntriesToResponse(
+          rawBatch,
+          batchUserMap,
+          opts.viewer
+        );
+
+        for (const entry of visibleBatch) {
+          if (visibleCount >= targetStart && visibleCount < targetEnd) {
+            pageEntries.push(entry);
+          }
+          visibleCount += 1;
+        }
+
+        dbOffset += rawBatch.length;
+        if (rawBatch.length < batchSize) break;
+      }
+
+      return {
+        items: pageEntries,
+        page,
+        pageSize,
+        hasNext: visibleCount > targetEnd,
+        totalItems: visibleCount,
+      };
+    }
+
     const query = (qBuilder as any)
       .where(finalWhereExpr)
       .orderBy(...orderByExpr)
@@ -704,10 +846,17 @@ export class ActivityHistoryService {
       let countBuilder: any = this.databaseService.db
         .select({ count: sql<number>`count(*)::int` })
         .from(activityHistory as any);
-      if (opts.query) {
-        countBuilder = countBuilder
-          .leftJoin(activities, eq(activityHistory.activityId, activities.id))
-          .leftJoin(users, eq(activityHistory.userId, users.id));
+      if (needsActivitiesJoin) {
+        countBuilder = countBuilder.leftJoin(
+          activities,
+          eq(activityHistory.activityId, activities.id)
+        );
+      }
+      if (needsUsersJoin) {
+        countBuilder = countBuilder.leftJoin(
+          users,
+          eq(activityHistory.userId, users.id)
+        );
       }
       countBuilder = countBuilder.where(whereExpr);
 
@@ -743,7 +892,7 @@ export class ActivityHistoryService {
     ];
     const userMap = await this.getUserMap(userIds);
 
-    const items = this.mapEntriesToResponse(pageItems, userMap);
+    const items = this.mapEntriesToResponse(pageItems, userMap, opts.viewer);
     return {
       items,
       page,
@@ -754,7 +903,10 @@ export class ActivityHistoryService {
     };
   }
 
-  async getHistoryEntryById(id: number): Promise<ActivityHistoryEntry | null> {
+  async getHistoryEntryById(
+    id: number,
+    viewer?: FieldScopeUser
+  ): Promise<ActivityHistoryEntry | null> {
     const [entry] = await this.databaseService.db
       .select({
         id: activityHistory.id,
@@ -774,7 +926,7 @@ export class ActivityHistoryService {
     }
 
     const userMap = await this.getUserMap([entry.userId]);
-    return this.mapEntriesToResponse([entry], userMap)[0] ?? null;
+    return this.mapEntriesToResponse([entry], userMap, viewer)[0] ?? null;
   }
 
   /**
@@ -1001,14 +1153,8 @@ export class ActivityHistoryService {
       const oldValue = oldActivity[key];
       const newValue = newActivity[key];
 
-      // Skip audit fields and internal fields
-      if (
-        key === 'id' ||
-        key === 'createdDateTime' ||
-        key === 'lastUpdatedDateTime' ||
-        key === 'rowVersion' ||
-        key === 'displayId'
-      ) {
+      // Skip audit fields, internal fields, and non-tracked history keys
+      if (ACTIVITY_HISTORY_NON_TRACKED_FIELDS.has(key)) {
         continue;
       }
 

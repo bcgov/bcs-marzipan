@@ -26,7 +26,8 @@ describe('activity-relation-registry', () => {
     ]);
     expect(relations.has('categories')).toBe(true);
     expect(relations.has('tags')).toBe(true);
-    expect(relations.has('commsContacts')).toBe(true);
+    expect(relations.has('eventPlannerDetails')).toBe(true);
+    expect(relations.has('commsContacts')).toBe(false);
     expect(relations.has('leadMinistry')).toBe(true);
     expect(relations.has('leadMinistryAbbreviation')).toBe(true);
   });
@@ -45,6 +46,15 @@ describe('activity-relation-registry', () => {
     expect(relationsForSearchKeyword('briefing').has('commsContacts')).toBe(
       true
     );
+  });
+
+  it('includes date and time status relations for every report', () => {
+    const profile = resolveReportHydrationProfile({
+      effectiveFields: ['title', 'startDate', 'startTime'],
+    });
+
+    expect(profileIncludesRelation(profile, 'dateStatus')).toBe(true);
+    expect(profileIncludesRelation(profile, 'timeStatus')).toBe(true);
   });
 });
 
@@ -77,6 +87,12 @@ describe('hydration-profile', () => {
     for (const key of LIST_TABLE_DISPLAY_RELATION_KEYS) {
       expect(profileIncludesRelation(HYDRATION_PROFILES.list, key)).toBe(true);
     }
+  });
+
+  it('list profile includes sharedWith for bulk unshare eligibility', () => {
+    expect(profileIncludesRelation(HYDRATION_PROFILES.list, 'sharedWith')).toBe(
+      true
+    );
   });
 
   it('detail profile includes all relations', () => {

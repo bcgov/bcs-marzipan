@@ -31,10 +31,12 @@ function ActivitySharingSectionHarness({
   readOnly = false,
   defaultValues,
   onFormReady,
+  sharedWithTeams = [],
 }: {
   readOnly?: boolean;
   defaultValues?: Partial<ActivityFormData>;
   onFormReady?: (form: ReturnType<typeof useForm<ActivityFormData>>) => void;
+  sharedWithTeams?: import('./ActivitySharingSection').SharingTeamLookup[];
 }) {
   const form = useForm<ActivityFormData>({
     defaultValues: {
@@ -55,7 +57,10 @@ function ActivitySharingSectionHarness({
           canEditFieldScope: () => true,
         }}
       >
-        <ActivitySharingSection sharedWithTeams={[]} quickShareGroups={[]} />
+        <ActivitySharingSection
+          sharedWithTeams={sharedWithTeams}
+          quickShareGroups={[]}
+        />
       </ActivityEditProvider>
     </FormProvider>
   );
