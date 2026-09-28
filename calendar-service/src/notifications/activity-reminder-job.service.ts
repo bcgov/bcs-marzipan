@@ -326,7 +326,7 @@ export class ActivityReminderJobService {
         await this.notificationsService.notifyActivityReminderPostDated({
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
-          executor: tx,
+          executor,
         });
       if (recipients.length > 0) counts.reminderPostDated += 1;
     }
@@ -338,7 +338,7 @@ export class ActivityReminderJobService {
             activityId,
             actorUserId: CALENDAR_SYSTEM_USER_ID,
             leadDays: input.leadDays,
-            executor: tx,
+            executor,
           }
         );
       if (recipients.length > 0) counts.reminderDateStatusNotConfirmed += 1;
@@ -350,7 +350,7 @@ export class ActivityReminderJobService {
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           leadDays: input.leadDays,
-          executor: tx,
+          executor,
         });
       if (recipients.length > 0) counts.reminderNullTime += 1;
     }
@@ -362,7 +362,7 @@ export class ActivityReminderJobService {
             activityId,
             actorUserId: CALENDAR_SYSTEM_USER_ID,
             leadDays: input.leadDays,
-            executor: tx,
+            executor,
           }
         );
       if (recipients.length > 0) counts.reminderTimeStatusNotConfirmed += 1;
@@ -374,7 +374,7 @@ export class ActivityReminderJobService {
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           leadDays: input.leadDays,
-          executor: tx,
+          executor,
         });
       if (recipients.length > 0) counts.reminderUpcoming += 1;
     }
@@ -385,7 +385,7 @@ export class ActivityReminderJobService {
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           staleDays: input.staleDays,
-          executor: tx,
+          executor,
         });
       if (recipients.length > 0) counts.reminderStale += 1;
     }
