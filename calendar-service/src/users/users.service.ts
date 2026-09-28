@@ -726,6 +726,7 @@ export class UsersService {
           roleId: dto.roleId,
           isActive: dto.isActive,
         },
+        ...(dto.isActive === false ? { includeInactiveRecipients: true } : {}),
       });
     }
 
