@@ -18,6 +18,8 @@ vi.mock('@/api/lookupsApi', () => ({
       description: null,
       category: 'Activities',
       sortOrder: 1,
+      allowUserOverride: false,
+      hasPermission: true,
     },
   ]),
 }));

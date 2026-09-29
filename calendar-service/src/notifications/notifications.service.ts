@@ -958,6 +958,7 @@ export class NotificationsService {
     if (params.executor) {
       // When called within an external transaction, persist only; defer side effects until commit
       await persistEventAndRecipients(params.executor);
+      params.deferredSideEffects?.push(sideEffect);
     } else {
       // When called standalone, persist in a transaction and defer side effects until after commit
       await this.databaseService.db.transaction(async (tx) => {
