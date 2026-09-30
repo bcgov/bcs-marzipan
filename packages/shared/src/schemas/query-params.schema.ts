@@ -251,12 +251,8 @@ export const userListQuerySchema = z.object({
   ),
 });
 
-/** User list filters (all keys optional on the wire and in handlers). */
-export type UserListQuery = {
-  search?: string;
-  teamIds?: number[];
-  roleIds?: number[];
-};
+/** Transformed query fields infer as required `T | undefined`; all list filters are optional. */
+export type UserListQuery = Partial<z.infer<typeof userListQuerySchema>>;
 
 export const userActivityCountsQuerySchema = z.object({
   userIds: requiredCommaSeparatedIntArray().describe(
