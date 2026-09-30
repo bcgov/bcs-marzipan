@@ -1,16 +1,8 @@
 # Form Drafts Feature
 
-## Security Warning
+## Authentication
 
-**The current implementation is NOT production-ready due to security issues.**
-
-The API endpoints accept client-supplied `userId` query parameters, allowing an attacker to access, modify, or delete other users' drafts. Before production deployment:
-
-1. Implement proper authentication to identify the authenticated user on the server
-2. Extract `userId` from authenticated session/token (not from query parameters)
-3. Add authorization checks to ensure users can only access their own drafts
-
-**This feature is currently for development/testing only.**
+Draft API routes require JWT authentication. The server identifies the user from the token (`@CurrentUser()`); clients must not pass `userId` in query strings. Operations are gated by `drafts.create`, `drafts.edit`, `drafts.view`, and `drafts.delete` permissions.
 
 ---
 
@@ -48,14 +40,14 @@ CREATE TABLE form_drafts (
 
 ### API Endpoints
 
-| Method | Endpoint                                             | Description            |
-| ------ | ---------------------------------------------------- | ---------------------- |
-| PUT    | `/drafts?userId={id}`                                | Save/update draft      |
-| GET    | `/drafts?userId={id}&formType={type}&entityId={id?}` | Get specific draft     |
-| GET    | `/drafts/list?userId={id}`                           | List all user drafts   |
-| DELETE | `/drafts/:id?userId={id}`                            | Delete by ID           |
-| DELETE | `/drafts/by-form?userId={id}&formType={type}`        | Delete by form type    |
-| (cron) | `DraftsCleanupService` daily 02:00                   | Cleanup expired drafts |
+| Method | Endpoint                                         | Description            |
+| ------ | ------------------------------------------------ | ---------------------- |
+| PUT    | `/drafts`                                        | Save/update draft      |
+| GET    | `/drafts?formType={type}&entityId={id?}`         | Get specific draft     |
+| GET    | `/drafts/list`                                   | List all user drafts   |
+| DELETE | `/drafts/:id`                                    | Delete by ID           |
+| DELETE | `/drafts/by-form?formType={type}&entityId={id?}` | Delete by form type    |
+| (cron) | `DraftsCleanupService` daily 02:00               | Cleanup expired drafts |
 
 ### Key Files
 
@@ -96,7 +88,6 @@ function CreateActivityForm() {
   const [formData, setFormData] = useState({});
 
   const { existingDraft, isSaving, lastSaved, deleteDraft } = useAutoSave(
-    1, // userId (TODO: replace with auth)
     'activity',
     formData,
     undefined, // entityId
@@ -137,8 +128,6 @@ function CreateActivityForm() {
 
 ## Future Enhancements
 
-- User authentication: Replace userId parameter with JWT-based auth
-- Scheduled cleanup: Set up cron job for expired drafts
 - Show timestamp in recovery dialog for when draft was last saved
 - Add preview of draft data in the recovery dialog
 - Support multiple drafts per user per form type

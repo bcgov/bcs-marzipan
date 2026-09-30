@@ -30,7 +30,10 @@ import {
   type AuthUser,
 } from '@corpcal/shared';
 
-import { LocalAuthConfigResponseDto } from '../common/dto';
+import {
+  AzureAuthConfigResponseWrapperDto,
+  LocalAuthConfigResponseWrapperDto,
+} from '../common/dto';
 import { AuthService } from './auth.service';
 import { AzureOidcService } from './azure-oidc.service';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -97,7 +100,7 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Local auth availability status',
-    type: LocalAuthConfigResponseDto,
+    type: LocalAuthConfigResponseWrapperDto,
   })
   localConfig() {
     return {
@@ -209,7 +212,11 @@ export class AuthController {
     summary: 'Azure AD availability',
     description: 'Returns whether Azure AD login is configured and enabled',
   })
-  @ApiResponse({ status: 200, description: 'Azure AD availability status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Azure AD availability status',
+    type: AzureAuthConfigResponseWrapperDto,
+  })
   azureConfig() {
     return {
       success: true as const,

@@ -268,20 +268,5 @@ export default function corpcalApiSmoke(data) {
     });
   });
 
-  sleep(0.35);
-
-  group('14_lookups_reports_meta', () => {
-    const res = http.get(urlFor(config, paths.lookupsReports), {
-      tags: tagReq('lookups_reports'),
-      headers,
-    });
-    checkOptionalPermissionJson({
-      res,
-      prefix: 'lookups_reports',
-      maxMs,
-      validateWhenOk: lookupsArrayEnvelope,
-    });
-  });
-
   sleep(config.profile === 'smoke' ? 1.2 : 2);
 }

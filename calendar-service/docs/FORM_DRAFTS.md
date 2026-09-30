@@ -4,31 +4,17 @@
 
 The Form Drafts feature provides automatic saving of in-progress forms, allowing users to save incomplete work and resume later without losing data. Draft data is stored separately from validated entity tables, bypassing validation constraints.
 
-## ⚠️ Security Warning
+## Authentication and authorization
 
-**CRITICAL: The current implementation uses client-supplied `userId` query parameters for authentication, which is NOT secure for production use.**
+Draft endpoints require a valid JWT (Bearer token or session cookie). The server derives the user from `@CurrentUser()`; clients must not send `userId` as a query parameter.
 
-### Current Security Issues:
+Permissions (see policy/RBAC):
 
-- Endpoints accept `userId` as a query parameter that can be modified by the client
-- An attacker can change the `userId` to access, modify, or delete other users' drafts
-- No server-side authentication or authorization is implemented
+- `drafts.create` or `drafts.edit` — save/update (`PUT /drafts`)
+- `drafts.view` — get and list
+- `drafts.delete` — delete by id or by form type
 
-### Required Before Production:
-
-1. Implement proper authentication middleware to identify the authenticated user
-2. Extract `userId` from the authenticated session/token on the server side
-3. Remove `userId` from query parameters in client requests
-4. Implement authorization checks to ensure users can only access their own drafts
-5. Add audit logging for draft operations
-
-### Temporary Mitigation:
-
-This feature is currently intended for development/testing only. The API should be protected behind:
-
-- Network-level restrictions (not exposed publicly)
-- API gateway authentication
-- Rate limiting
+Rows are always scoped by the authenticated user's id in the service layer.
 
 ## Architecture
 
@@ -72,27 +58,29 @@ calendar-service/src/drafts/
 ├── drafts.module.ts           # Module registration
 ├── drafts.service.ts          # Business logic and database operations
 ├── drafts.controller.ts       # REST API endpoints
+├── drafts-cleanup.service.ts  # Scheduled expired-draft cleanup
 └── dto/
     └── drafts.dto.ts          # Request/response DTOs
 ```
 
 #### API Endpoints
 
-| Method   | Endpoint                                                     | Description                     |
-| -------- | ------------------------------------------------------------ | ------------------------------- |
-| `PUT`    | `/drafts?userId={id}`                                        | Save or update a draft (upsert) |
-| `GET`    | `/drafts?userId={id}&formType={type}&entityId={id?}`         | Get specific draft              |
-| `GET`    | `/drafts/list?userId={id}`                                   | List all user's drafts          |
-| `DELETE` | `/drafts/:id?userId={id}`                                    | Delete draft by ID              |
-| `DELETE` | `/drafts/by-form?userId={id}&formType={type}&entityId={id?}` | Delete draft by form type       |
-| (cron)   | `DraftsCleanupService` daily 02:00                           | Cleanup expired drafts          |
+| Method   | Endpoint                                         | Description                     |
+| -------- | ------------------------------------------------ | ------------------------------- |
+| `PUT`    | `/drafts`                                        | Save or update a draft (upsert) |
+| `GET`    | `/drafts?formType={type}&entityId={id?}`         | Get specific draft              |
+| `GET`    | `/drafts/list`                                   | List all user's drafts          |
+| `DELETE` | `/drafts/:id`                                    | Delete draft by ID              |
+| `DELETE` | `/drafts/by-form?formType={type}&entityId={id?}` | Delete draft by form type       |
+| (cron)   | `DraftsCleanupService` daily 02:00               | Cleanup expired drafts          |
 
 #### Example API Usage
 
 **Save a Draft:**
 
 ```bash
-curl -X PUT 'http://localhost:3000/drafts?userId=1' \
+curl -X PUT 'http://localhost:3000/drafts' \
+  -H 'Authorization: Bearer <jwt>' \
   -H 'Content-Type: application/json' \
   -d '{
     "formType": "activity",
@@ -108,19 +96,22 @@ curl -X PUT 'http://localhost:3000/drafts?userId=1' \
 **Get a Draft:**
 
 ```bash
-curl 'http://localhost:3000/drafts?userId=1&formType=activity&entityId=null'
+curl 'http://localhost:3000/drafts?formType=activity' \
+  -H 'Authorization: Bearer <jwt>'
 ```
 
 **List All Drafts:**
 
 ```bash
-curl 'http://localhost:3000/drafts/list?userId=1'
+curl 'http://localhost:3000/drafts/list' \
+  -H 'Authorization: Bearer <jwt>'
 ```
 
 **Delete a Draft:**
 
 ```bash
-curl -X DELETE 'http://localhost:3000/drafts/123?userId=1'
+curl -X DELETE 'http://localhost:3000/drafts/123' \
+  -H 'Authorization: Bearer <jwt>'
 ```
 
 ### Frontend (React + TypeScript)
@@ -156,7 +147,6 @@ import { useAutoSave } from '../hooks/useAutoSave';
 
 function CreateActivityForm() {
   const [formData, setFormData] = useState({});
-  const userId = 1; // TODO: Get from auth context
 
   const {
     existingDraft,
@@ -165,7 +155,7 @@ function CreateActivityForm() {
     lastSaved,
     saveNow,
     deleteDraft,
-  } = useAutoSave(userId, 'activity', formData, undefined, {
+  } = useAutoSave('activity', formData, undefined, {
     debounceMs: 3000,
     onSaveSuccess: () => {
       toast.success('Draft saved');
@@ -240,7 +230,7 @@ expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
 **Debounce Timing:**
 
 ```typescript
-useAutoSave(userId, formType, formData, entityId, {
+useAutoSave(formType, formData, entityId, {
   debounceMs: 2000, // Wait 2 seconds after user stops typing
   enabled: true, // Enable/disable autosave
 });
@@ -248,41 +238,7 @@ useAutoSave(userId, formType, formData, entityId, {
 
 ## User Management Integration
 
-Currently, the feature uses a temporary `userId` parameter. When user authentication is implemented:
-
-### Backend Changes
-
-1. **Add Authentication Guard:**
-
-```typescript
-// drafts.controller.ts
-import { UseGuards } from '@nestjs/common';
-
-import { AuthGuard } from '../auth/auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-
-@UseGuards(AuthGuard)
-@Controller('drafts')
-export class DraftsController {
-  @Post('save')
-  async saveDraft(
-    @CurrentUser() user: User, // Get from auth token
-    @Body() saveDto: SaveDraftDto
-  ) {
-    return this.draftsService.saveDraft(user.id, saveDto);
-  }
-}
-```
-
-### Frontend Changes
-
-2. **Remove userId Parameter:**
-
-```typescript
-// Get userId from auth context
-const { user } = useAuth();
-const { existingDraft } = useAutoSave(user.id, 'activity', formData);
-```
+The backend uses `@CurrentUser()` on all draft routes. The `useAutoSave` hook reads the authenticated user via `useAuth()` and calls the API without a client-supplied `userId` query parameter.
 
 ## Scheduled Cleanup Job
 
@@ -331,7 +287,7 @@ import { useAutoSave } from './useAutoSave';
 
 it('should autosave after debounce period', async () => {
   const { result } = renderHook(() =>
-    useAutoSave(1, 'activity', { title: 'Test' }, undefined, {
+    useAutoSave('activity', { title: 'Test' }, undefined, {
       debounceMs: 500,
     })
   );
@@ -444,7 +400,10 @@ Show list of available drafts:
 
 ```tsx
 function DraftsList() {
-  const { data } = useQuery(['drafts', userId], () => listDrafts(userId));
+  const { user } = useAuth();
+  const { data } = useQuery(['drafts', user?.id], () => listDrafts(user!.id), {
+    enabled: !!user,
+  });
 
   return (
     <ul>
@@ -465,13 +424,13 @@ function DraftsList() {
 ### Issue: Drafts not saving
 
 - **Check**: Database connection is active
-- **Check**: User has valid userId
+- **Check**: User is authenticated (valid JWT / session)
 - **Check**: FormData is not empty
 - **Check**: Network connectivity
 
 ### Issue: Drafts not loading on mount
 
-- **Check**: userId and formType are correctly passed
+- **Check**: `formType` (and optional `entityId`) are correctly passed
 - **Check**: React Query cache settings
 - **Check**: API endpoint is reachable
 
