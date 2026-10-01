@@ -577,7 +577,9 @@ describe('ActivityPage optimistic inline edit', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(mockRelease).toHaveBeenCalled();
-      expect(issueCheckbox).not.toBeChecked();
+      expect(
+        screen.getByRole('checkbox', { name: /Issue/i })
+      ).not.toBeChecked();
     });
   });
 
