@@ -198,10 +198,10 @@ function addressMatchesVenuePreset(
 
 function venueComboboxValueFromForm(
   currentVenue: VenueFormValue,
-  pinnedPresetBadges: VenuePresetItem[],
+  presets: VenuePresetItem[],
   venueStatusId: number | null | undefined
 ): FreeformComboboxValueWithLead {
-  const matches = pinnedPresetBadges.filter((item) =>
+  const matches = presets.filter((item) =>
     addressMatchesVenuePreset(currentVenue, item)
   );
   if (matches.length > 0) {
@@ -678,7 +678,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 sections={venueNameComboboxSections}
                 value={venueComboboxValueFromForm(
                   currentVenue,
-                  pinnedPresetBadges,
+                  allPresets,
                   venueStatusIdWatched
                 )}
                 onChange={handleVenueNameComboboxChange}
