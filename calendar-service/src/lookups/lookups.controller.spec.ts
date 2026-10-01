@@ -9,6 +9,7 @@ import type { LookupItem } from '@corpcal/shared/api/types';
 import type { TeamListItem } from '@corpcal/shared/schemas';
 
 import { TeamsService } from '../teams/teams.service';
+import { lookupGetCacheControl } from './cache-control';
 import { LookupsController } from './lookups.controller';
 import { LookupsService, type VenuePresetAdminItem } from './lookups.service';
 
@@ -315,7 +316,7 @@ describe('LookupsController', () => {
       expect(mockLookupsService.getVenuePresets).toHaveBeenCalledWith(false);
       expect(res.setHeader).toHaveBeenCalledWith(
         'Cache-Control',
-        `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+        lookupGetCacheControl()
       );
     });
 
@@ -342,7 +343,7 @@ describe('LookupsController', () => {
       expect(mockLookupsService.getVenuePresets).toHaveBeenCalledWith(false);
       expect(res.setHeader).toHaveBeenCalledWith(
         'Cache-Control',
-        `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+        lookupGetCacheControl()
       );
     });
   });

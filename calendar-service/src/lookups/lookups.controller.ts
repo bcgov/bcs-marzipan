@@ -1344,7 +1344,7 @@ export class LookupsController {
   @ApiOperation({
     summary: 'Get venue presets',
     description:
-      'Returns active admin-defined venue presets for the activity form. Admins with the `lookups.manage` permission can pass `includeAll=true` to retrieve all presets including inactive; this path sets `Cache-Control: no-store`.',
+      'Returns active admin-defined venue presets for the activity form (pinned presets are also shown as badges). Admins with the `lookups.manage` permission can pass `includeAll=true` to retrieve all presets including inactive; this path sets `Cache-Control: no-store`.',
   })
   @ApiQuery({
     name: 'includeAll',
@@ -1372,9 +1372,7 @@ export class LookupsController {
       includeAll === 'true' && user.permissions.includes('lookups.manage');
     res?.setHeader(
       'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
     );
     const data = await this.lookupsService.getVenuePresets(shouldIncludeAll);
     return { success: true, data };
