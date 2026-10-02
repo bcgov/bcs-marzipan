@@ -265,6 +265,9 @@ export class ActivityReminderJobService {
     }
   ): Promise<ReminderRunCounts> {
     const counts: ReminderRunCounts = { ...EMPTY_COUNTS };
+    const deferredSideEffects: Parameters<
+      NotificationsService['deliverPendingNotificationSideEffects']
+    >[0] = [];
 
     const [
       postDated,
@@ -327,6 +330,7 @@ export class ActivityReminderJobService {
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           executor,
+          deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderPostDated += 1;
     }
@@ -339,6 +343,7 @@ export class ActivityReminderJobService {
             actorUserId: CALENDAR_SYSTEM_USER_ID,
             leadDays: input.leadDays,
             executor,
+            deferredSideEffects,
           }
         );
       if (recipients.length > 0) counts.reminderDateStatusNotConfirmed += 1;
@@ -351,6 +356,7 @@ export class ActivityReminderJobService {
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           leadDays: input.leadDays,
           executor,
+          deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderNullTime += 1;
     }
@@ -363,6 +369,7 @@ export class ActivityReminderJobService {
             actorUserId: CALENDAR_SYSTEM_USER_ID,
             leadDays: input.leadDays,
             executor,
+            deferredSideEffects,
           }
         );
       if (recipients.length > 0) counts.reminderTimeStatusNotConfirmed += 1;
@@ -375,6 +382,7 @@ export class ActivityReminderJobService {
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           leadDays: input.leadDays,
           executor,
+          deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderUpcoming += 1;
     }
@@ -386,8 +394,15 @@ export class ActivityReminderJobService {
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           staleDays: input.staleDays,
           executor,
+          deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderStale += 1;
+    }
+
+    if (deferredSideEffects.length > 0) {
+      await this.notificationsService.deliverPendingNotificationSideEffects(
+        deferredSideEffects
+      );
     }
 
     return counts;
