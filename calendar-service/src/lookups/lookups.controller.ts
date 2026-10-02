@@ -879,14 +879,17 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Get all event planners' })
+  @ApiOperation({
+    summary: 'Get all event planners',
+    description: 'Active users flagged as event planners.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Event planners retrieved successfully',
     type: LookupArrayResponseWrapperDto,
   })
   @Get('event-planners')
-  @Header('Cache-Control', lookupGetCacheControl())
+  @Header('Cache-Control', 'private, no-cache')
   async getEventPlanners(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getEventPlanners();
     return { success: true, data };
