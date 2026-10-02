@@ -956,43 +956,18 @@ export class NotificationsService {
     const sideEffect = this.buildPendingSideEffect(params, dedupedRecipients);
 
     if (params.executor) {
-      // When called within an external transaction, persist only; defer side effects until commit
+      // When called within an external transaction, persist only and defer side effects until commit.
+      if (params.deferredSideEffects) {
+        params.deferredSideEffects.push(sideEffect);
+      }
       await persistEventAndRecipients(params.executor);
-      params.deferredSideEffects?.push(sideEffect);
-    } else {
-      // When called standalone, persist in a transaction and defer side effects until after commit
-      await this.databaseService.db.transaction(async (tx) => {
-        await persistEventAndRecipients(tx);
-      });
-      await this.deliverNotificationSideEffects(sideEffect);
+      return dedupedRecipients;
     }
 
-    // Side effects deferred until after transaction commit
-    this.activitiesGateway.notifyNotificationsChanged(dedupedRecipients);
-
-    try {
-      const emailExecutor = this.databaseService.db;
-      const [actorUsername, recipients] = await Promise.all([
-        this.resolveActorUsername(params.actorUserId, emailExecutor),
-        this.resolveEmailRecipients(dedupedRecipients, emailExecutor, {
-          includeInactive: params.includeInactiveRecipients ?? false,
-        }),
-      ]);
-
-      await this.notificationEmailService.sendNotificationEventEmail({
-        eventType: params.eventType,
-        entityType: params.entityType,
-        entityId: params.entityId,
-        summary: params.summary,
-        details: params.details,
-        actorUsername,
-        recipients,
-      });
-    } catch (error) {
-      this.logger.warn(
-        `Failed to send notification email(s): ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    await this.databaseService.db.transaction(async (tx) => {
+      await persistEventAndRecipients(tx);
+    });
+    await this.deliverNotificationSideEffects(sideEffect);
 
     return dedupedRecipients;
   }
@@ -1336,7 +1311,7 @@ export class NotificationsService {
     executor?: DrizzleDbExecutor;
     deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
-    const db = this.databaseService.db;
+    const db = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
@@ -1388,7 +1363,7 @@ export class NotificationsService {
     executor?: DrizzleDbExecutor;
     deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
-    const db = this.databaseService.db;
+    const db = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
@@ -1434,7 +1409,7 @@ export class NotificationsService {
     executor?: DrizzleDbExecutor;
     deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
-    const db = this.databaseService.db;
+    const db = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
@@ -1479,7 +1454,7 @@ export class NotificationsService {
     executor?: DrizzleDbExecutor;
     deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
-    const db = this.databaseService.db;
+    const db = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
@@ -1525,7 +1500,7 @@ export class NotificationsService {
     executor?: DrizzleDbExecutor;
     deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
-    const db = this.databaseService.db;
+    const db = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];
@@ -1585,7 +1560,7 @@ export class NotificationsService {
     executor?: DrizzleDbExecutor;
     deferredSideEffects?: PendingNotificationSideEffect[];
   }): Promise<number[]> {
-    const db = this.databaseService.db;
+    const db = input.executor ?? this.databaseService.db;
     const activity = await this.resolveActivityIdentity(input.activityId, db);
     if (!activity) {
       return [];

@@ -785,9 +785,11 @@ Simplified activity list for "Related Activities" dropdowns.
 
 **GET** `/lookups/venue-presets`
 
-Returns admin-defined venue presets for the activity form. All active presets appear in the Venue Name combobox; up to 4 pinned presets are shown as quick-select badges beneath the Venue input. Each item includes venue address fields plus `isPinned` and `pinnedSortOrder`.
+Returns active admin-defined venue presets for the activity form, ordered by `sortOrder`. All active presets appear in the Venue Name combobox whether pinned or not; up to 4 active pinned presets are also shown as quick-select badges beneath the Venue input. Each item includes venue address fields plus `sortOrder`, `isActive`, `isPinned`, and `pinnedSortOrder`.
 
-**Cache:** 1 hour
+**Query Parameters:** `includeAll` (`"true"`) — admins with `lookups.manage` get all presets including inactive (used by the Settings admin). Ignored for other callers.
+
+**Cache:** Revalidated on every request (`private, no-cache` in production, `no-store` otherwise). `includeAll=true` responses use `no-store`.
 
 ```json
 {
@@ -801,6 +803,8 @@ Returns admin-defined venue presets for the activity form. All active presets ap
       "city": "Victoria",
       "provinceOrState": "British Columbia",
       "country": "Canada",
+      "sortOrder": 0,
+      "isActive": true,
       "isPinned": true,
       "pinnedSortOrder": 1
     }

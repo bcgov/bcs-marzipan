@@ -16,13 +16,13 @@ import {
   fetchAllCategories,
   fetchAllTags,
   fetchAllTranslationLanguages,
+  fetchAllVenuePresets,
   fetchCities,
   fetchCommsMaterials,
   fetchGovernmentRepresentatives,
   fetchMinistries,
   fetchMinistryGroups,
   fetchThemes,
-  fetchVenuePresets,
   type LookupItem,
   type MinistryGroupListItem,
   type MinistryLookupItem,
@@ -948,8 +948,8 @@ export function VenuePresetsAdmin() {
       description="Manage venue presets for the activity form"
       entityType="Venue Preset"
       apiEndpoint="/lookups/venue-presets"
-      queryKey={lookupQueryKeys.venuePresets()}
-      queryFn={fetchVenuePresets as () => Promise<VenuePreset[]>}
+      queryKey={lookupQueryKeys.venuePresetsAdmin()}
+      queryFn={fetchAllVenuePresets as () => Promise<VenuePreset[]>}
       formFields={venuePresetFields}
       additionalColumns={venuePresetAdditionalColumns}
       getItemName={(item) =>

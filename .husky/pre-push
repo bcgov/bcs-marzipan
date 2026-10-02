@@ -12,7 +12,7 @@
 
 echo "Running full build verification..."
 
-npm run build --silent 2>/dev/null || {
+npm run build --silent || {
   echo ""
   echo "Build failed! Please fix build errors before pushing."
   echo ""
@@ -31,7 +31,7 @@ echo ""
 echo "Running test suites..."
 
 # Run calendar-service tests (Jest)
-npm run test --workspace=calendar-service --silent 2>/dev/null || {
+npm run test --workspace=calendar-service --silent || {
   echo ""
   echo "Calendar service tests failed! Please fix test failures before pushing."
   echo ""
@@ -40,7 +40,7 @@ npm run test --workspace=calendar-service --silent 2>/dev/null || {
 
 # Run calendar-ui tests (Vitest)
 # Use --run flag to ensure Vitest runs once instead of watch mode
-npm run test --workspace=calendar-ui -- --run --silent 2>/dev/null || {
+npm run test --workspace=calendar-ui -- --run --silent || {
   echo ""
   echo "Calendar UI tests failed! Please fix test failures before pushing."
   echo ""
@@ -48,7 +48,7 @@ npm run test --workspace=calendar-ui -- --run --silent 2>/dev/null || {
 }
 
 # Run database package tests (Vitest)
-npm run test --workspace=packages/database -- --run --silent 2>/dev/null || {
+npm run test --workspace=packages/database -- --run --silent || {
   echo ""
   echo "Database package tests failed! Please fix test failures before pushing."
   echo ""
