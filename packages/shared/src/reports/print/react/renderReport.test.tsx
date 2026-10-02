@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { ReportDataResponse } from '../../../api/report-data';
 import { toCalendarDateString } from '../../../datetime/types';
+import {
+  activityResponseToListItem,
+  type ActivityListItem,
+} from '../../../schemas/activity-list-item.schema';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import { EMPTY_RICH_TEXT_DOC } from '../../../utils/activity-rich-text';
 import { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
@@ -25,7 +29,7 @@ const TEST_RENDER_OPTIONS = {
   resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
 };
 
-const BASE_ACTIVITY: ActivityResponse = {
+const BASE_ACTIVITY_RESPONSE = {
   id: 101,
   displayId: 'ACT-101',
   isIssue: true,
@@ -66,6 +70,8 @@ const BASE_ACTIVITY: ActivityResponse = {
   lastUpdatedBy: 1,
   createdDateTime: '2026-04-20T00:00:00.000Z',
   lastUpdatedDateTime: '2026-04-26T17:05:00.000Z',
+  publicLastUpdatedBy: 1,
+  publicLastUpdatedDateTime: '2026-04-26T17:05:00.000Z',
   category: ['Announcement'],
   categoryIds: [1],
   tags: [],
@@ -104,7 +110,11 @@ const BASE_ACTIVITY: ActivityResponse = {
   },
   reportSettings: [],
   flags: [],
-};
+} satisfies ActivityResponse;
+
+const BASE_ACTIVITY: ActivityListItem = activityResponseToListItem(
+  BASE_ACTIVITY_RESPONSE
+);
 
 const FIXTURE: ReportDataResponse = {
   report: {
@@ -883,7 +893,7 @@ describe('renderPrintReportFragmentHtml', () => {
   });
 
   it('includes confidential activities in look-ahead with badge and executive summary', () => {
-    const confidentialActivity: ActivityResponse = {
+    const confidentialActivity: ActivityListItem = {
       ...BASE_ACTIVITY,
       isConfidential: true,
       executiveSummary: 'Hold for GCPE.',
@@ -908,7 +918,7 @@ describe('renderPrintReportFragmentHtml', () => {
   });
 
   it('includes confidential activities in exec look-ahead with badge and summary', () => {
-    const confidentialActivity: ActivityResponse = {
+    const confidentialActivity: ActivityListItem = {
       ...BASE_ACTIVITY,
       isConfidential: true,
       summary: 'Full summary text for executive readers.',

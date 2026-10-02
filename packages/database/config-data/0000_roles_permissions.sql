@@ -44,6 +44,7 @@ INSERT INTO permissions (key, display_name, category, subcategory, description, 
   ('activities.flag', 'Flag / assign activities', 'Activities', 'Assignment', 'Assign an activity to a team member for follow-up. Visible within the team.', 'activities', NULL, 'flag', 13),
   ('activities.unshare', 'Unshare activities', 'Activities', 'Sharing', 'Remove your own team from an activity''s Shared With list.', 'activities', NULL, 'unshare', 14),
   ('activities.unshare.all', 'Unshare activities for any team', 'Activities', 'Sharing', 'Remove any team from an activity''s Shared With list, not just your own.', 'activities', NULL, 'unshare', 15),
+  ('activities.publicLastUpdated.defer', 'Defer public last updated on save', 'Activities', 'Basic', 'May save activity changes without updating the public last-updated timestamp shown to all viewers; operational last-updated always updates.', 'activities', 'publicLastUpdated', 'defer', 16),
   ('activities.lock.forceHandoff', 'Force unlock', 'Activities', 'Edit lock', 'Force unlock of a locked activity.', 'activities', 'lock', 'forceHandoff', 50),
   ('activities.bulkUpdate','Bulk update activities','Activities', 'Workflow', 'Mark multiple activities reviewed or update their pitch status from the activity list', 'activities', NULL, 'bulkUpdate', 12),
   ('drafts.view', 'View drafts', 'Drafts', 'Basic', NULL, 'drafts', NULL, 'view', 10),
@@ -216,6 +217,7 @@ WHERE (
     'activities.lock.forceHandoff',
     'activities.flag',
     'activities.bypass_recurring_lockout',
+    'activities.publicLastUpdated.defer',
     'settings.manage.recurring_lockout'
   )
 )
@@ -252,6 +254,7 @@ WHERE key IN (
   'activities.delete.any',
   'activities.edit',
   'activities.unshare',
+  'activities.publicLastUpdated.defer',
   'reports.view',
   'reports.export',
   'reports.create_custom'
@@ -261,7 +264,8 @@ WHERE key IN (
 -- Keep this list deliberately small: overrides are exceptions to role templates.
 UPDATE permissions SET allow_user_override = true
 WHERE key IN (
-  'activities.unshare'
+  'activities.unshare',
+  'activities.publicLastUpdated.defer'
 );
 
 -- Permissions that must never be overridable per user, even if mis-seeded above.

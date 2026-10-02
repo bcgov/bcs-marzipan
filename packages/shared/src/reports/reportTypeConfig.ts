@@ -55,7 +55,7 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'newsReleaseOrigin',
       'lookAheadStatus',
       'lookAheadSection',
-      'lastUpdatedDateTime',
+      'publicLastUpdatedDateTime',
     ],
   },
   '30_60_90': {
@@ -74,7 +74,7 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'commsMaterials',
       'translationsRequired',
       'commsContact',
-      'lastUpdatedDateTime',
+      'publicLastUpdatedDateTime',
     ],
   },
   PLANNING: {
@@ -92,7 +92,7 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'schedulingNotes',
       'premierRequested',
       'lookAheadStatus',
-      'lastUpdatedDateTime',
+      'publicLastUpdatedDateTime',
     ],
   },
 };
