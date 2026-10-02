@@ -17,7 +17,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';
-import type { ZodTypeAny } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
 
 import type { AuthUser } from '@corpcal/shared';
 import { upsertActivityFlagsRequestSchema } from '@corpcal/shared/schemas';
@@ -33,16 +33,20 @@ class UpsertActivityFlagsDto extends createZodDto(
   upsertActivityFlagsRequestSchema
 ) {}
 
+const upsertActivityFlagRequestSchema = z.object({
+  teamId: z.number().int(),
+  assigneeId: z.number().int(),
+  note: z.string().max(1000).optional(),
+});
+
+class UpsertActivityFlagDto extends createZodDto(
+  upsertActivityFlagRequestSchema
+) {}
+
 const upsertActivityFlagBodySchema =
   upsertActivityFlagRequestSchema as ZodTypeAny;
 const upsertActivityFlagsBodySchema =
   upsertActivityFlagsRequestSchema as ZodTypeAny;
-
-type UpsertActivityFlagBody = {
-  teamId: number;
-  assigneeId: number;
-  note?: string;
-};
 
 @ApiTags('activities')
 @Controller('activities')
@@ -80,21 +84,19 @@ export class ActivityFlagsController {
     body: UpsertActivityFlagDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean }> {
-    const { teamId, assigneeId, note } = body;
-
     // Ensure the caller is on the team they are flagging for
-    if (!user.teamIds.includes(teamId)) {
+    if (!user.teamIds.includes(body.teamId)) {
       throw new ForbiddenException(
         'You are not a member of the specified team'
       );
     }
 
-    await this.flagsService.upsertFlag(
+    await this.flagsService.syncFlags(
       activityId,
-      teamId,
-      assigneeId,
+      body.teamId,
+      [body.assigneeId],
       user.id,
-      note
+      body.note
     );
     this.gateway.broadcastActivityUpdated(activityId);
     return { success: true };
