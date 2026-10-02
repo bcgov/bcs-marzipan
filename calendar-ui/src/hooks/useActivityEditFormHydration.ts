@@ -49,7 +49,9 @@ export function useActivityEditFormHydration(
   const [isFormHydrated, setIsFormHydrated] = useState(false);
   const [hydrationGeneration, setHydrationGeneration] = useState(0);
 
-  const activitySyncKey = `${activity.id}\0${activity.lastUpdatedDateTime}`;
+  const operationalLastUpdated =
+    activity.lastUpdatedDateTime ?? activity.publicLastUpdatedDateTime;
+  const activitySyncKey = `${activity.id}\0${operationalLastUpdated}`;
   const lookupsReady = !lookups.isLoading && !lookups.hasError;
 
   useEffect(() => {

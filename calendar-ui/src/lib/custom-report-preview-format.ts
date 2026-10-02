@@ -19,7 +19,11 @@ const DATE_KEYS = new Set(['startDate', 'endDate', 'pitchDate']);
 
 const TIME_KEYS = new Set(['startTime', 'endTime']);
 
-const DATETIME_KEYS = new Set(['createdDateTime', 'lastUpdatedDateTime']);
+const DATETIME_KEYS = new Set([
+  'createdDateTime',
+  'lastUpdatedDateTime',
+  'publicLastUpdatedDateTime',
+]);
 
 function formatVenueAddressLine(
   va: VenueAddressBase | null | undefined

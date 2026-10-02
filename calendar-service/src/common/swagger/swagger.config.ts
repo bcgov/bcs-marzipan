@@ -1,5 +1,5 @@
-import { createRequire } from 'module';
 import { existsSync, readFileSync } from 'fs';
+import { createRequire } from 'module';
 import { dirname, join, resolve } from 'path';
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -81,9 +81,8 @@ function getSwaggerBrandAssetsDir(): string {
 /** Shared package static assets (BC logo, BC Sans fonts) for Swagger UI. */
 function getSharedSwaggerAssetsDir(): string {
   const require = createRequire(__filename);
-  const bcsansCssPath = require.resolve(
-    '@corpcal/shared/styles/bcsans-font-face.css'
-  );
+  const bcsansCssPath =
+    require.resolve('@corpcal/shared/styles/bcsans-font-face.css');
   return join(dirname(bcsansCssPath), '..', 'assets');
 }
 

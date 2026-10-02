@@ -57,6 +57,7 @@ import {
   type ActivityListItem,
   type ActivityStatusName,
   type EventPlannerDetail,
+  type TimestampWriteContext,
 } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import {
@@ -112,6 +113,10 @@ import {
 import { PolicyService } from '../../policy/policy.service';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
+import {
+  ActivityTimestampPolicyError,
+  getActivityTimestampUpdateForWrite,
+} from '../utils/activity-timestamp-write';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import {
   buildActivityFindAllConditions,
@@ -751,6 +756,14 @@ export class ActivitiesService {
     }
 
     return prior;
+  }
+
+  /** Operational audit on mutation responses (authorized callers; independent of `canEdit`). */
+  private mutationResponseAuditFields(): Pick<
+    ActivityMapperRelatedData,
+    'includeOperationalLastUpdated'
+  > {
+    return { includeOperationalLastUpdated: true };
   }
 
   /**
@@ -1411,21 +1424,28 @@ export class ActivitiesService {
         | 'lastUpdatedBy'
         | 'createdDateTime'
         | 'lastUpdatedDateTime'
+        | 'publicLastUpdatedBy'
+        | 'publicLastUpdatedDateTime'
         | 'rowVersion'
       > & {
         displayId: null;
         createdBy: number;
-        lastUpdatedBy: number;
         createdDateTime: Date;
+        lastUpdatedBy: number;
         lastUpdatedDateTime: Date;
+        publicLastUpdatedBy: number;
+        publicLastUpdatedDateTime: Date;
       } = {
         ...activityRowForInsert,
         activityStatusId: initialStatusId,
         displayId: null,
         createdBy: userId,
-        lastUpdatedBy: userId,
         createdDateTime: now,
-        lastUpdatedDateTime: now,
+        ...getActivityTimestampUpdateForWrite({
+          context: 'create',
+          userId,
+          now,
+        }),
       };
 
       // Insert the activity
@@ -1696,6 +1716,25 @@ export class ActivitiesService {
    *   pass `{ dataScope: { bypass: true } }` only for intentional internal full-access callers.
    * @param options - Hydration profile controls which relations are batch-loaded.
    */
+  async findAll(
+    filters: FilterActivitiesQueryParams | undefined,
+    ctx: RequestContextType | undefined,
+    options: {
+      profile?: ActivityHydrationProfile;
+      outputShape: 'list';
+      /** When true with list output, attaches active edit locks (activity list page only). */
+      includeEditLocks?: boolean;
+    }
+  ): Promise<ActivityListItem[]>;
+  async findAll(
+    filters?: FilterActivitiesQueryParams,
+    ctx?: RequestContextType,
+    options?: {
+      profile?: ActivityHydrationProfile;
+      outputShape?: 'detail';
+      includeEditLocks?: boolean;
+    }
+  ): Promise<ActivityResponse[]>;
   async findAll(
     filters?: FilterActivitiesQueryParams,
     ctx?: RequestContextType,
@@ -2168,7 +2207,7 @@ export class ActivitiesService {
               { markAsReviewed: true },
               userId,
               context,
-              { bypassEditLock: true }
+              { bypassEditLock: true, timestampWriteContext: 'bulk' }
             )
           );
           break;
@@ -2185,7 +2224,7 @@ export class ActivitiesService {
               { pitchRequiredStatusId },
               userId,
               context,
-              { bypassEditLock: true }
+              { bypassEditLock: true, timestampWriteContext: 'bulk' }
             )
           );
           break;
@@ -2194,6 +2233,7 @@ export class ActivitiesService {
           results.push(
             await this.update(activityId, { isIssue: true }, userId, context, {
               bypassEditLock: true,
+              timestampWriteContext: 'bulk',
             })
           );
           break;
@@ -2204,7 +2244,12 @@ export class ActivitiesService {
               'tagIds is required for the tags operation.'
             );
           }
-          results.push(await this.updateTags(activityId, tagIds, userId));
+          results.push(
+            await this.updateTags(activityId, tagIds, userId, {
+              permissions: context.permissions,
+              timestampWriteContext: 'bulk',
+            })
+          );
           break;
         }
         case 'sharedWith': {
@@ -2217,7 +2262,10 @@ export class ActivitiesService {
           // Bulk sharing adds teams rather than replacing the list, so one
           // activity's existing shares are not silently dropped.
           results.push(
-            await this.addSharedWithTeams(activityId, teamIds, userId)
+            await this.addSharedWithTeams(activityId, teamIds, userId, {
+              permissions: context.permissions,
+              timestampWriteContext: 'bulk',
+            })
           );
           break;
         }
@@ -2323,7 +2371,10 @@ export class ActivitiesService {
       permissions?: string[];
       teamIds?: number[];
     },
-    options?: { bypassEditLock?: boolean }
+    options?: {
+      bypassEditLock?: boolean;
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
     // Resolve existence first so missing IDs return 404 instead of lock-required 423.
     const [oldActivity] = await this.databaseService.db
@@ -2416,8 +2467,11 @@ export class ActivitiesService {
       markAsCompleted: _markAsCompletedIgnored,
       commsContactLeadId: _commsContactLeadIdUiIgnored,
       ifUnmodifiedSince: _ifUnmodifiedSinceIgnored,
+      renewPublicLastUpdated,
       ...activityUpdateData
     } = dto;
+
+    const timestampWriteContext = options?.timestampWriteContext ?? 'userPatch';
 
     // Compute new status. Do not use DTO activityStatusId.
     const canReview =
@@ -2487,15 +2541,19 @@ export class ActivitiesService {
 
     // Build update payload: activityUpdateData contains only core activity fields (junction/venue were destructured out).
     // Cast is intentional: UpdateActivityRequest and Activity must stay in sync; only activity table columns are updated.
+    const now = new Date();
+
     const updateData: Partial<Activity> = {
       ...(activityUpdateData as Partial<Activity>),
       activityStatusId: computedStatusId,
-      lastUpdatedDateTime: new Date(),
+      ...this.getActivityTimestampUpdateForWriteOrThrow({
+        context: timestampWriteContext,
+        permissions: context?.permissions,
+        renewPublicLastUpdated,
+        userId,
+        now,
+      }),
     };
-
-    const now = new Date();
-    // Ensure lastUpdatedBy is set for audit/history
-    updateData.lastUpdatedBy = userId;
 
     // Capture existing related data for history (before transaction)
     const venueRows = await this.databaseService.db
@@ -2968,6 +3026,7 @@ export class ActivitiesService {
       leadMinistry: leadMinistryName.get(id) ?? null,
       leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
       leadTeamDisplayName: leadTeamDisplayMap.get(id) ?? null,
+      ...this.mutationResponseAuditFields(),
     });
 
     // Generate change list for history tracking (main activity fields)
@@ -3568,6 +3627,20 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with id ${id} not found`);
     }
 
+    const now = new Date();
+
+    await this.databaseService.db
+      .update(activities)
+      .set(
+        this.getActivityTimestampUpdateForWriteOrThrow({
+          context: 'historyNote',
+          permissions: ctx?.user?.permissions,
+          userId,
+          now,
+        })
+      )
+      .where(eq(activities.id, id));
+
     const createdEntry = await this.activityHistoryService.recordChange(
       id,
       userId,
@@ -3661,12 +3734,16 @@ export class ActivitiesService {
       // Clear snapshot before the status update so `.returning()` matches DB state.
       await this.clearReviewSnapshot(tx, id);
 
+      const now = new Date();
       const [updatedActivity] = await tx
         .update(activities)
         .set({
           activityStatusId: deletedStatus.id,
-          lastUpdatedDateTime: new Date(),
-          lastUpdatedBy: userId,
+          ...getActivityTimestampUpdateForWrite({
+            context: 'softDelete',
+            userId,
+            now,
+          }),
         })
         .where(eq(activities.id, id))
         .returning();
@@ -3730,6 +3807,7 @@ export class ActivitiesService {
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
+      ...this.mutationResponseAuditFields(),
     });
 
     this.activitiesGateway.broadcastActivityUpdated(id);
@@ -3802,12 +3880,16 @@ export class ActivitiesService {
     }
 
     const updated = await this.databaseService.db.transaction(async (tx) => {
+      const now = new Date();
       const [updatedActivity] = await tx
         .update(activities)
         .set({
           activityStatusId: deleteRequestedStatus.id,
-          lastUpdatedDateTime: new Date(),
-          lastUpdatedBy: userId,
+          ...getActivityTimestampUpdateForWrite({
+            context: 'deleteRequested',
+            userId,
+            now,
+          }),
         })
         .where(eq(activities.id, id))
         .returning();
@@ -3870,6 +3952,7 @@ export class ActivitiesService {
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
+      ...this.mutationResponseAuditFields(),
     });
 
     this.activitiesGateway.broadcastActivityUpdated(id);
@@ -3927,12 +4010,16 @@ export class ActivitiesService {
       (await this.getActivityStatusIdByName('changed'));
 
     const updated = await this.databaseService.db.transaction(async (tx) => {
+      const now = new Date();
       const [updatedActivity] = await tx
         .update(activities)
         .set({
           activityStatusId: previousStatusId,
-          lastUpdatedDateTime: new Date(),
-          lastUpdatedBy: userId,
+          ...getActivityTimestampUpdateForWrite({
+            context: 'restore',
+            userId,
+            now,
+          }),
         })
         .where(eq(activities.id, id))
         .returning();
@@ -4002,6 +4089,7 @@ export class ActivitiesService {
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
+      ...this.mutationResponseAuditFields(),
     });
 
     this.activitiesGateway.broadcastActivityUpdated(id);
@@ -4015,7 +4103,11 @@ export class ActivitiesService {
   async updateCategories(
     id: number,
     categoryIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      permissions?: string[];
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
@@ -4036,6 +4128,8 @@ export class ActivitiesService {
       .where(eq(activityCategories.activityId, id));
     const existingCategoryIds = existingCategories.map((c) => c.categoryId);
 
+    const timestampContext = options?.timestampWriteContext ?? 'junction';
+
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -4045,6 +4139,14 @@ export class ActivitiesService {
         (id: number) => ({ categoryId: id }),
         'categoryId',
         userId,
+        now
+      );
+      await this.applyActivityTimestampInTransaction(
+        tx,
+        id,
+        userId,
+        timestampContext,
+        options?.permissions,
         now
       );
     });
@@ -4076,7 +4178,11 @@ export class ActivitiesService {
   async updateThemes(
     id: number,
     themeIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      permissions?: string[];
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
@@ -4092,6 +4198,8 @@ export class ActivitiesService {
       .where(eq(activityThemes.activityId, id));
     const existingThemeIds = existingThemes.map((t) => t.themeId);
 
+    const timestampContext = options?.timestampWriteContext ?? 'junction';
+
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -4101,6 +4209,14 @@ export class ActivitiesService {
         (id: number) => ({ themeId: id }),
         'themeId',
         userId,
+        now
+      );
+      await this.applyActivityTimestampInTransaction(
+        tx,
+        id,
+        userId,
+        timestampContext,
+        options?.permissions,
         now
       );
     });
@@ -4127,7 +4243,11 @@ export class ActivitiesService {
   async updateTags(
     id: number,
     tagIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      permissions?: string[];
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
@@ -4143,6 +4263,8 @@ export class ActivitiesService {
       .where(eq(activityTags.activityId, id));
     const existingTagIds = existingTags.map((t) => t.tagId);
 
+    const timestampContext = options?.timestampWriteContext ?? 'junction';
+
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -4152,6 +4274,14 @@ export class ActivitiesService {
         (id: number) => ({ tagId: id }),
         'tagId',
         userId,
+        now
+      );
+      await this.applyActivityTimestampInTransaction(
+        tx,
+        id,
+        userId,
+        timestampContext,
+        options?.permissions,
         now
       );
     });
@@ -4177,7 +4307,11 @@ export class ActivitiesService {
   async updateSharedWith(
     id: number,
     teamIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      permissions?: string[];
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
@@ -4192,6 +4326,7 @@ export class ActivitiesService {
       .from(activitySharedWithTeams)
       .where(eq(activitySharedWithTeams.activityId, id));
     const existingTeamIds = existingShared.map((s) => s.teamId);
+    const timestampContext = options?.timestampWriteContext ?? 'junction';
 
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
@@ -4202,6 +4337,14 @@ export class ActivitiesService {
         (id: number) => ({ teamId: id }),
         'teamId',
         userId,
+        now
+      );
+      await this.applyActivityTimestampInTransaction(
+        tx,
+        id,
+        userId,
+        timestampContext,
+        options?.permissions,
         now
       );
     });
@@ -4235,7 +4378,11 @@ export class ActivitiesService {
   async addSharedWithTeams(
     id: number,
     teamIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      permissions?: string[];
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId);
 
@@ -4259,6 +4406,7 @@ export class ActivitiesService {
     }
 
     const now = new Date();
+    const timestampContext = options?.timestampWriteContext ?? 'junction';
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -4268,6 +4416,14 @@ export class ActivitiesService {
         (teamId: number) => ({ teamId }),
         'teamId',
         userId,
+        now
+      );
+      await this.applyActivityTimestampInTransaction(
+        tx,
+        id,
+        userId,
+        timestampContext,
+        options?.permissions,
         now
       );
     });
@@ -4449,10 +4605,13 @@ export class ActivitiesService {
 
       await tx
         .update(activities)
-        .set({
-          lastUpdatedDateTime: now,
-          lastUpdatedBy: userId,
-        })
+        .set(
+          getActivityTimestampUpdateForWrite({
+            context: 'sharedWithDelete',
+            userId,
+            now,
+          })
+        )
         .where(eq(activities.id, id));
     });
 
@@ -4473,5 +4632,48 @@ export class ActivitiesService {
     // Notify detail viewers as well as the activity list: an editor viewing this
     // activity must see the new shared-with set rather than saving a stale one.
     this.activitiesGateway.notifyActivityUpdate(id);
+  }
+
+  private getActivityTimestampUpdateForWriteOrThrow(
+    input: Omit<
+      Parameters<typeof getActivityTimestampUpdateForWrite>[0],
+      'now'
+    > & { now?: Date }
+  ): ReturnType<typeof getActivityTimestampUpdateForWrite> {
+    try {
+      return getActivityTimestampUpdateForWrite({
+        ...input,
+        now: input.now ?? new Date(),
+      });
+    } catch (error) {
+      if (error instanceof ActivityTimestampPolicyError) {
+        if (error.code === 'bad_request') {
+          throw new BadRequestException(error.message);
+        }
+        throw new ForbiddenException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  private async applyActivityTimestampInTransaction(
+    tx: DrizzleDbExecutor,
+    activityId: number,
+    userId: number,
+    context: TimestampWriteContext,
+    permissions: string[] | undefined,
+    now: Date = new Date()
+  ): Promise<void> {
+    await tx
+      .update(activities)
+      .set(
+        this.getActivityTimestampUpdateForWriteOrThrow({
+          context,
+          permissions,
+          userId,
+          now,
+        })
+      )
+      .where(eq(activities.id, activityId));
   }
 }

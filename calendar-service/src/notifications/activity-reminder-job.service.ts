@@ -606,7 +606,7 @@ export class ActivityReminderJobService {
           this.activeCommsCondition(),
           this.incompleteStatusCondition(),
           lte(
-            activities.lastUpdatedDateTime,
+            activities.publicLastUpdatedDateTime,
             sql`now() - make_interval(days => ${staleDays})`
           )
         )
