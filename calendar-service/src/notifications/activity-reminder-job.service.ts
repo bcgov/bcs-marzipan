@@ -178,50 +178,71 @@ export class ActivityReminderJobService {
     this.inFlight = true;
 
     try {
-      return await this.databaseService.db.transaction(async (tx) => {
-        const deferredSideEffects: PendingNotificationSideEffect[] = [];
-        const [lockResult] = await tx.execute(
-          sql`SELECT pg_try_advisory_xact_lock(${ACTIVITY_REMINDER_JOB_ADVISORY_CLASS}::integer, ${ACTIVITY_REMINDER_JOB_ADVISORY_KEY}::integer) AS acquired`
-        );
-        if (!(lockResult as { acquired: boolean }).acquired) {
-          this.logger.debug(
-            'Activity reminder job: another session holds the reminder advisory lock — skipping'
+      const transactionResult = await this.databaseService.db.transaction(
+        async (tx) => {
+          const deferredSideEffects: PendingNotificationSideEffect[] = [];
+          const [lockResult] = await tx.execute(
+            sql`SELECT pg_try_advisory_xact_lock(${ACTIVITY_REMINDER_JOB_ADVISORY_CLASS}::integer, ${ACTIVITY_REMINDER_JOB_ADVISORY_KEY}::integer) AS acquired`
           );
+          if (!(lockResult as { acquired: boolean }).acquired) {
+            this.logger.debug(
+              'Activity reminder job: another session holds the reminder advisory lock — skipping'
+            );
+            return {
+              sent: 0,
+              skipped: true,
+              skipReason: 'advisory_lock' as const,
+              counts: EMPTY_COUNTS,
+            };
+          }
+
+          const { leadDays, staleDays } =
+            await this.applicationSettings.getActivityReminderSettings(tx);
+          const today = pacificCalendarDateFromUtcMs(Date.now());
+          const windowEnd = addCalendarDaysToIsoDate(today, leadDays);
+
+          const counts = await this.sendReminderNotifications(tx, {
+            leadDays,
+            staleDays,
+            today,
+            windowEnd,
+            deferredSideEffects,
+          });
+
+          const sent =
+            counts.reminderPostDated +
+            counts.reminderDateStatusNotConfirmed +
+            counts.reminderNullTime +
+            counts.reminderTimeStatusNotConfirmed +
+            counts.reminderUpcoming +
+            counts.reminderStale;
+
           return {
-            sent: 0,
-            skipped: true,
-            skipReason: 'advisory_lock' as const,
-            counts: EMPTY_COUNTS,
+            sent,
+            skipped: false,
+            counts,
+            deferredSideEffects,
           };
         }
+      );
 
-        const { leadDays, staleDays } =
-          await this.applicationSettings.getActivityReminderSettings(tx);
-        const today = pacificCalendarDateFromUtcMs(Date.now());
-        const windowEnd = addCalendarDaysToIsoDate(today, leadDays);
+      if (transactionResult.skipped) {
+        return transactionResult;
+      }
 
-        const counts = await this.sendReminderNotifications(tx, {
-          leadDays,
-          staleDays,
-          today,
-          windowEnd,
-          deferredSideEffects,
-        });
+      await this.notificationsService.deliverPendingNotificationSideEffects(
+        (
+          transactionResult as {
+            deferredSideEffects: PendingNotificationSideEffect[];
+          }
+        ).deferredSideEffects
+      );
 
-        await this.notificationsService.deliverPendingNotificationSideEffects(
-          deferredSideEffects
-        );
-
-        const sent =
-          counts.reminderPostDated +
-          counts.reminderDateStatusNotConfirmed +
-          counts.reminderNullTime +
-          counts.reminderTimeStatusNotConfirmed +
-          counts.reminderUpcoming +
-          counts.reminderStale;
-
-        return { sent, skipped: false, counts };
-      });
+      return {
+        sent: transactionResult.sent,
+        skipped: false,
+        counts: transactionResult.counts,
+      };
     } catch (error) {
       this.logger.error(
         'Activity reminder job failed',
@@ -275,9 +296,6 @@ export class ActivityReminderJobService {
     }
   ): Promise<ReminderRunCounts> {
     const counts: ReminderRunCounts = { ...EMPTY_COUNTS };
-    const deferredSideEffects: Parameters<
-      NotificationsService['deliverPendingNotificationSideEffects']
-    >[0] = [];
 
     const [
       postDated,
@@ -340,7 +358,7 @@ export class ActivityReminderJobService {
           activityId,
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           executor,
-          deferredSideEffects,
+          deferredSideEffects: input.deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderPostDated += 1;
     }
@@ -353,7 +371,7 @@ export class ActivityReminderJobService {
             actorUserId: CALENDAR_SYSTEM_USER_ID,
             leadDays: input.leadDays,
             executor,
-            deferredSideEffects,
+            deferredSideEffects: input.deferredSideEffects,
           }
         );
       if (recipients.length > 0) counts.reminderDateStatusNotConfirmed += 1;
@@ -366,7 +384,7 @@ export class ActivityReminderJobService {
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           leadDays: input.leadDays,
           executor,
-          deferredSideEffects,
+          deferredSideEffects: input.deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderNullTime += 1;
     }
@@ -379,7 +397,7 @@ export class ActivityReminderJobService {
             actorUserId: CALENDAR_SYSTEM_USER_ID,
             leadDays: input.leadDays,
             executor,
-            deferredSideEffects,
+            deferredSideEffects: input.deferredSideEffects,
           }
         );
       if (recipients.length > 0) counts.reminderTimeStatusNotConfirmed += 1;
@@ -392,7 +410,7 @@ export class ActivityReminderJobService {
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           leadDays: input.leadDays,
           executor,
-          deferredSideEffects,
+          deferredSideEffects: input.deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderUpcoming += 1;
     }
@@ -404,15 +422,9 @@ export class ActivityReminderJobService {
           actorUserId: CALENDAR_SYSTEM_USER_ID,
           staleDays: input.staleDays,
           executor,
-          deferredSideEffects,
+          deferredSideEffects: input.deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderStale += 1;
-    }
-
-    if (deferredSideEffects.length > 0) {
-      await this.notificationsService.deliverPendingNotificationSideEffects(
-        deferredSideEffects
-      );
     }
 
     return counts;

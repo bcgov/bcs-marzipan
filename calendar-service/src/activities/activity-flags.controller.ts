@@ -17,13 +17,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';
+import type { ZodTypeAny } from 'zod';
 
 import type { AuthUser } from '@corpcal/shared';
 import {
   upsertActivityFlagRequestSchema,
   upsertActivityFlagsRequestSchema,
-  type UpsertActivityFlagRequest,
-  type UpsertActivityFlagsRequest,
 } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -40,6 +39,17 @@ class UpsertActivityFlagDto extends createZodDto(
 class UpsertActivityFlagsDto extends createZodDto(
   upsertActivityFlagsRequestSchema
 ) {}
+
+const upsertActivityFlagBodySchema =
+  upsertActivityFlagRequestSchema as ZodTypeAny;
+const upsertActivityFlagsBodySchema =
+  upsertActivityFlagsRequestSchema as ZodTypeAny;
+
+type UpsertActivityFlagBody = {
+  teamId: number;
+  assigneeId: number;
+  note?: string;
+};
 
 @ApiTags('activities')
 @Controller('activities')
@@ -73,12 +83,14 @@ export class ActivityFlagsController {
   @HttpCode(HttpStatus.OK)
   async upsertFlag(
     @Param('id', ParseIntPipe) activityId: number,
-    @Body(new ZodValidationPipe(upsertActivityFlagRequestSchema))
-    body: UpsertActivityFlagRequest,
+    @Body(new ZodValidationPipe(upsertActivityFlagBodySchema))
+    body: UpsertActivityFlagDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean }> {
+    const { teamId, assigneeId, note } = body;
+
     // Ensure the caller is on the team they are flagging for
-    if (!user.teamIds.includes(body.teamId)) {
+    if (!user.teamIds.includes(teamId)) {
       throw new ForbiddenException(
         'You are not a member of the specified team'
       );
@@ -86,10 +98,10 @@ export class ActivityFlagsController {
 
     await this.flagsService.upsertFlag(
       activityId,
-      body.teamId,
-      body.assigneeId,
+      teamId,
+      assigneeId,
       user.id,
-      body.note
+      note
     );
     this.gateway.broadcastActivityUpdated(activityId);
     return { success: true };
@@ -117,8 +129,8 @@ export class ActivityFlagsController {
   @HttpCode(HttpStatus.OK)
   async syncFlags(
     @Param('id', ParseIntPipe) activityId: number,
-    @Body(new ZodValidationPipe(upsertActivityFlagsRequestSchema))
-    body: UpsertActivityFlagsRequest,
+    @Body(new ZodValidationPipe(upsertActivityFlagsBodySchema))
+    body: UpsertActivityFlagsDto,
     @CurrentUser() user: AuthUser
   ): Promise<{
     success: boolean;

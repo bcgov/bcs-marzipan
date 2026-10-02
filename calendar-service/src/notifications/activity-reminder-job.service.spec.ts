@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
@@ -48,6 +49,10 @@ describe('ActivityReminderJobService', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    notificationsService.deliverPendingNotificationSideEffects.mockReset();
+    notificationsService.deliverPendingNotificationSideEffects.mockResolvedValue(
+      undefined
+    );
 
     const mockTx = {
       execute: vi.fn().mockResolvedValue([{ acquired: true }]),
@@ -101,6 +106,51 @@ describe('ActivityReminderJobService', () => {
         reminderStale: 0,
       },
     });
+  });
+
+  it('delivers deferred side effects only after the reminder transaction resolves', async () => {
+    let transactionResolved = false;
+
+    databaseService.db.transaction.mockImplementationOnce(
+      async (fn: (tx: unknown) => unknown) => {
+        const result = await fn({
+          execute: vi.fn().mockResolvedValue([{ acquired: true }]),
+        });
+        transactionResolved = true;
+        return result;
+      }
+    );
+
+    notificationsService.deliverPendingNotificationSideEffects.mockImplementation(
+      () => {
+        expect(transactionResolved).toBe(true);
+        return Promise.resolve();
+      }
+    );
+
+    vi.spyOn(service as any, 'findPostDatedCandidateIds').mockResolvedValue([
+      11,
+    ]);
+    vi.spyOn(
+      service as any,
+      'findDateStatusNotConfirmedCandidateIds'
+    ).mockResolvedValue([]);
+    vi.spyOn(service as any, 'findNullTimeCandidateIds').mockResolvedValue([]);
+    vi.spyOn(
+      service as any,
+      'findTimeStatusNotConfirmedCandidateIds'
+    ).mockResolvedValue([]);
+    vi.spyOn(service as any, 'findUpcomingCandidateIds').mockResolvedValue([]);
+    vi.spyOn(service as any, 'findStaleCandidateIds').mockResolvedValue([]);
+    vi.spyOn(service as any, 'filterAlreadyReminded')
+      .mockResolvedValueOnce([11])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    await service.runBatch();
   });
 
   it('sends reminder notifications for each candidate bucket', async () => {

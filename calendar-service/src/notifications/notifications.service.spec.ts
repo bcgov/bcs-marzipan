@@ -1,21 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ActivitiesGateway } from '../activities/activities.gateway';
+import { DatabaseService } from '../database/database.service';
+import { NotificationEmailService } from './notification-email.service';
 import { NotificationsService } from './notifications.service';
 
 describe('NotificationsService', () => {
+  const sendNotificationEventEmail = vi.fn().mockResolvedValue(undefined);
   const mockDatabaseService = {
     db: {
       select: vi.fn(),
       from: vi.fn(),
       where: vi.fn(),
     },
-  } as any;
+  } as DatabaseService;
   const mockGateway = {
     notifyNotificationsChanged: vi.fn(),
-  } as any;
+  } as unknown as ActivitiesGateway;
   const mockEmailService = {
-    sendNotificationEventEmail: vi.fn().mockResolvedValue(undefined),
-  } as any;
+    sendNotificationEventEmail,
+  } as unknown as NotificationEmailService;
 
   let service: NotificationsService;
 
@@ -57,7 +61,7 @@ describe('NotificationsService', () => {
     });
 
     expect(mockDatabaseService.db.where).toHaveBeenCalled();
-    expect(mockEmailService.sendNotificationEventEmail).toHaveBeenCalledWith(
+    expect(sendNotificationEventEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         summary: 'User account deactivated',
         recipients: [
