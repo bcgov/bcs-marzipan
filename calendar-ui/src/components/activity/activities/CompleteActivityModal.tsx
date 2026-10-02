@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -12,13 +12,17 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/useAuth';
+
+import { type ActivitySaveConfirmPayload } from './EditActivityConfirmModal';
+import { RenewPublicLastUpdatedField } from './RenewPublicLastUpdatedField';
 
 interface CompleteActivityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isDirty: boolean;
   isSubmitting: boolean;
-  onConfirm: (notes?: string) => void;
+  onConfirm: (value: ActivitySaveConfirmPayload) => void;
   displayId?: string;
 }
 
@@ -30,15 +34,27 @@ export function CompleteActivityModal({
   onConfirm,
   displayId,
 }: CompleteActivityModalProps) {
+  const { user } = useAuth();
   const [notes, setNotes] = useState('');
+  const [renewPublicLastUpdated, setRenewPublicLastUpdated] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setRenewPublicLastUpdated(false);
+    }
+  }, [open]);
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined);
+    onConfirm({
+      notes: notes.trim() || undefined,
+      ...(renewPublicLastUpdated ? { renewPublicLastUpdated: true } : {}),
+    });
   };
 
   const handleOpenChange = (value: boolean) => {
     if (!value) {
       setNotes('');
+      setRenewPublicLastUpdated(false);
     }
     onOpenChange(value);
   };
@@ -64,15 +80,25 @@ export function CompleteActivityModal({
           </p>
         )}
 
-        <div className="space-y-2">
-          <Label htmlFor="complete-confirm-notes">Add a note (optional)</Label>
-          <Textarea
-            id="complete-confirm-notes"
-            placeholder="Optional context for the activity history."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            maxLength={1000}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="complete-confirm-notes">
+              Add a note (optional)
+            </Label>
+            <Textarea
+              id="complete-confirm-notes"
+              placeholder="Optional context for the activity history."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              maxLength={1000}
+            />
+          </div>
+          <RenewPublicLastUpdatedField
+            permissions={user?.permissions ?? []}
+            checked={renewPublicLastUpdated}
+            onCheckedChange={setRenewPublicLastUpdated}
+            id="complete-confirm-renew-public"
           />
         </div>
 

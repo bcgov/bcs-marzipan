@@ -396,7 +396,7 @@ export function toPrintRowViewModel(
       label: activity.displayId?.trim() || `ACT-${activity.id}`,
       href: joinActivityUrl(options.activityBaseUrl, activity.id),
     },
-    lastUpdated: formatLastUpdated(activity.lastUpdatedDateTime),
+    lastUpdated: formatLastUpdated(activity.publicLastUpdatedDateTime),
     flags: {
       isIssue: activity.isIssue === true,
       isConfidential: activity.isConfidential === true,

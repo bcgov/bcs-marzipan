@@ -105,6 +105,8 @@ export const PERMISSIONS = {
     UNSHARE: 'activities.unshare',
     /** Remove any team (not just your own) from an activity's Shared With list. Admin workflow. */
     UNSHARE_ALL: 'activities.unshare.all',
+    /** May omit public last-updated on save unless renewPublicLastUpdated is true. */
+    PUBLIC_LAST_UPDATED_DEFER: 'activities.publicLastUpdated.defer',
   },
   DRAFTS: {
     VIEW: 'drafts.view',

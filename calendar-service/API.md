@@ -132,7 +132,13 @@ When `scheduledDateRangeOverlaps=true` (Activity List, Reports, and Look Ahead a
 
 Report data (`GET /reports/data/:type`) accepts the same filter fields except `page` and `limit`. Keyword `search` is **not** sent on report data fetch; the UI applies search client-side over the cached payload. Export endpoints (`GET /reports/export/:type/:format`) accept optional `search` and apply it server-side so PDF/CSV/XLSX match the filtered preview.
 
-**Response:** `200 OK`
+**Response:** `200 OK` — each element is an **activity list item** (`_shape: "list"` when present). Audit timestamps:
+
+- **`publicLastUpdatedDateTime` / `publicLastUpdatedBy`:** user-visible last updated (table sort, reports, stale reminders).
+- **`lastUpdatedDateTime` / `lastUpdatedBy`:** operational last updated (always present on list; use for integrators and for `ifUnmodifiedSince` when opening an activity to edit).
+- **`createdDateTime`:** created instant.
+
+Detail (`GET /activities/:id`) always includes public fields; operational fields are included when the caller may edit the activity.
 
 ```json
 {
@@ -145,7 +151,12 @@ Report data (`GET /reports/data/:type`) accepts the same filter fields except `p
       "summary": "Activity description",
       "category": ["Event", "Release"],
       "categoryIds": [1, 2],
-      "tags": [{ "id": "...", "text": "high-priority" }]
+      "tags": [{ "id": "...", "text": "high-priority" }],
+      "lastUpdatedDateTime": "2026-04-27T16:45:00.000Z",
+      "lastUpdatedBy": 2,
+      "publicLastUpdatedDateTime": "2026-04-20T09:00:00.000Z",
+      "publicLastUpdatedBy": 2,
+      "createdDateTime": "2026-04-01T12:00:00.000Z"
     }
   ]
 }
@@ -187,9 +198,14 @@ Updates an existing activity. Only provided fields are updated (partial update).
   "title": "Updated Title",
   "summary": "Updated description",
   "categoryIds": [1, 3],
-  "tagIds": ["00000000-0000-4000-8000-000000000106"]
+  "tagIds": ["00000000-0000-4000-8000-000000000106"],
+  "ifUnmodifiedSince": "2026-04-26T17:05:00.000Z",
+  "renewPublicLastUpdated": true
 }
 ```
+
+- **`ifUnmodifiedSince`:** optional optimistic concurrency token. Compared against the activity's **operational** `lastUpdatedDateTime` (not public). Mismatch returns `409 Conflict`.
+- **`renewPublicLastUpdated`:** optional boolean. Only meaningful when the caller has `activities.publicLastUpdated.defer`. When `true`, public last-updated is bumped along with operational on this PATCH. When omitted or `false`, defer holders skip the public bump. Callers without defer who send `true` receive `403 Forbidden`.
 
 **Response:** `200 OK`
 
@@ -1014,7 +1030,8 @@ Server error occurred.
     }
     ```
 - **CORS:** Enabled for development. Configure allowed origins for production.
-- **Audit Fields:** `createdBy`, `lastUpdatedBy`, `createdDateTime`, and `lastUpdatedDateTime` are set from the authenticated user and current time on create and update. Activity history records the user ID for each change.
+- **Audit Fields:** Activities store two last-updated pairs. **Operational** (`lastUpdatedBy`, `lastUpdatedDateTime`) always updates on in-scope writes and drives optimistic concurrency. **Public** (`publicLastUpdatedBy`, `publicLastUpdatedDateTime`) is the user-visible “last updated” for table sort, reports, and stale reminders; it is bumped on most writes unless the caller has `activities.publicLastUpdated.defer` and does not set `renewPublicLastUpdated: true` on PATCH. **List** and report bulk payloads include both pairs. **Detail** responses always include public fields; operational fields are also included when the caller may edit the activity. Soft delete, restore, delete-requested, and create force both. Bulk updates, history notes, shared-with removal, user transfer, display-id cascade, and scheduled auto-complete jobs bump operational only. Junction updates (categories, tags, themes, shared-with PUT) bump both for non-defer callers and operational only for defer holders. Manual complete/review via PATCH uses the same defer/renew rules as other saves; the background completion job does not bump public. Activity history records the user ID for each change.
+  - **Timestamp write contexts (server-internal):** Defer-aware — activity PATCH and junction PUT. Lifecycle — create, soft delete, restore, delete-requested (always bump public). Operational only — bulk PATCH, history notes, shared-with DELETE, comms transfer (lead team change), display-id cascade, system jobs. All paths resolve through `resolveBumpPublicLastUpdated` in `@corpcal/shared`.
 - **Display ID:** Auto-generated as `<MINISTRY_ABBREV>-<6_DIGIT_ID>` (e.g., `MIN-000006`).
 - **Report Settings:** The `reportSettings` field controls whether activities are omitted from specific reports. Each setting includes:
   - `reportId`: The ID of the report

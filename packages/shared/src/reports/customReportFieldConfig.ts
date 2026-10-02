@@ -261,4 +261,11 @@ export const DEFAULT_CUSTOM_REPORT_FIELD_CONFIG: readonly CustomReportFieldConfi
       section: CUSTOM_REPORT_SECTIONS.COMMS,
       order: 30,
     },
+    {
+      key: 'publicLastUpdatedDateTime',
+      label: 'Last updated',
+      selected: false,
+      section: CUSTOM_REPORT_SECTIONS.GENERAL,
+      order: 31,
+    },
   ];
