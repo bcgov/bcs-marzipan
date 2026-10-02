@@ -507,6 +507,8 @@ export const themeLookupItemSchema = z.object({
 export const venuePresetItemSchema = z
   .object({
     id: z.number().int(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
     isPinned: z.boolean(),
     pinnedSortOrder: z.number().int(),
   })
