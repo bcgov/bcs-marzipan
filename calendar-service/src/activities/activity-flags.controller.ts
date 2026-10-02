@@ -17,12 +17,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';
+import { z, type ZodTypeAny } from 'zod';
 
 import type { AuthUser } from '@corpcal/shared';
-import {
-  upsertActivityFlagsRequestSchema,
-  type UpsertActivityFlagsRequest,
-} from '@corpcal/shared/schemas';
+import { upsertActivityFlagsRequestSchema } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AppLogger } from '../common/logger/logger.service';
@@ -35,6 +33,21 @@ class UpsertActivityFlagsDto extends createZodDto(
   upsertActivityFlagsRequestSchema
 ) {}
 
+const upsertActivityFlagRequestSchema = z.object({
+  teamId: z.number().int(),
+  assigneeId: z.number().int(),
+  note: z.string().max(1000).optional(),
+});
+
+class UpsertActivityFlagDto extends createZodDto(
+  upsertActivityFlagRequestSchema
+) {}
+
+const upsertActivityFlagBodySchema =
+  upsertActivityFlagRequestSchema as ZodTypeAny;
+const upsertActivityFlagsBodySchema =
+  upsertActivityFlagsRequestSchema as ZodTypeAny;
+
 @ApiTags('activities')
 @Controller('activities')
 export class ActivityFlagsController {
@@ -44,6 +57,50 @@ export class ActivityFlagsController {
     private readonly flagsService: ActivityFlagsService,
     private readonly gateway: ActivitiesGateway
   ) {}
+
+  @ApiOperation({
+    summary: 'Assign (flag) an activity',
+    description:
+      'Legacy single-assignee endpoint. Assigns one team member to an activity for follow-up. ' +
+      'Internally syncs the full assignee set for the given (activity, team) pair to exactly one assignee, ' +
+      'so calling this route will remove any other existing assignees for that team. ' +
+      'Prefer PUT /activities/:id/flags for multi-assignee updates. ' +
+      "Requires activities.flag permission. The caller's teamId must be provided in the body.",
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Activity ID' })
+  @ApiBody({ type: UpsertActivityFlagDto })
+  @ApiResponse({ status: 200, description: 'Flag set successfully' })
+  @ApiResponse({
+    status: 403,
+    description: 'No team with flag permission or assignee not on team',
+  })
+  @ApiResponse({ status: 404, description: 'Activity not found' })
+  @RequirePermission('activities.flag')
+  @Put(':id/flag')
+  @HttpCode(HttpStatus.OK)
+  async upsertFlag(
+    @Param('id', ParseIntPipe) activityId: number,
+    @Body(new ZodValidationPipe(upsertActivityFlagBodySchema))
+    body: UpsertActivityFlagDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean }> {
+    // Ensure the caller is on the team they are flagging for
+    if (!user.teamIds.includes(body.teamId)) {
+      throw new ForbiddenException(
+        'You are not a member of the specified team'
+      );
+    }
+
+    await this.flagsService.syncFlags(
+      activityId,
+      body.teamId,
+      [body.assigneeId],
+      user.id,
+      body.note
+    );
+    this.gateway.broadcastActivityUpdated(activityId);
+    return { success: true };
+  }
 
   @ApiOperation({
     summary: 'Sync reviewer assignees for an activity',
@@ -66,8 +123,8 @@ export class ActivityFlagsController {
   @HttpCode(HttpStatus.OK)
   async syncFlags(
     @Param('id', ParseIntPipe) activityId: number,
-    @Body(new ZodValidationPipe(upsertActivityFlagsRequestSchema))
-    body: UpsertActivityFlagsRequest,
+    @Body(new ZodValidationPipe(upsertActivityFlagsBodySchema))
+    body: UpsertActivityFlagsDto,
     @CurrentUser() user: AuthUser
   ): Promise<{
     success: true;

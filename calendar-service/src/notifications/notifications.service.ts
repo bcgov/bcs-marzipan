@@ -53,6 +53,7 @@ export type PendingNotificationSideEffect = {
   summary: string;
   details: Record<string, unknown> | null;
   actorUserId: number;
+  includeInactiveRecipients?: boolean;
 };
 
 interface CreateEventParams {
@@ -66,6 +67,7 @@ interface CreateEventParams {
   recipientUserIds: number[];
   executor?: DrizzleDbExecutor;
   deferredSideEffects?: PendingNotificationSideEffect[];
+  includeInactiveRecipients?: boolean;
 }
 
 interface EmailRecipient {
@@ -529,6 +531,7 @@ export class NotificationsService {
     details?: Record<string, unknown>;
     includeSubjectUser?: boolean;
     includeAdmins?: boolean;
+    includeInactiveRecipients?: boolean;
   }): Promise<number[]> {
     const recipientUserIds: number[] = [];
     if (input.includeSubjectUser !== false) {
@@ -551,6 +554,7 @@ export class NotificationsService {
       },
       actorUserId: input.actorUserId,
       recipientUserIds,
+      includeInactiveRecipients: input.includeInactiveRecipients,
     });
   }
 
@@ -589,10 +593,21 @@ export class NotificationsService {
 
   private async resolveEmailRecipients(
     userIds: number[],
-    executor: DrizzleDbExecutor = this.databaseService.db
+    executor: DrizzleDbExecutor = this.databaseService.db,
+    options?: { includeInactive?: boolean }
   ): Promise<EmailRecipient[]> {
     if (userIds.length === 0) {
       return [];
+    }
+
+    const whereClauses = [
+      inArray(users.id, userIds),
+      eq(users.enableEmailNotification, true),
+      isNotNull(users.adEmail),
+    ];
+
+    if (!options?.includeInactive) {
+      whereClauses.push(eq(users.isActive, true));
     }
 
     const rows = await executor
@@ -602,14 +617,7 @@ export class NotificationsService {
         displayName: users.adDisplayName,
       })
       .from(users)
-      .where(
-        and(
-          inArray(users.id, userIds),
-          eq(users.isActive, true),
-          eq(users.enableEmailNotification, true),
-          isNotNull(users.adEmail)
-        )
-      );
+      .where(and(...whereClauses));
 
     return rows
       .map((row) => ({
@@ -861,7 +869,13 @@ export class NotificationsService {
           sideEffect.actorUserId,
           this.databaseService.db
         ),
-        this.resolveEmailRecipients(dedupedRecipients, this.databaseService.db),
+        this.resolveEmailRecipients(
+          dedupedRecipients,
+          this.databaseService.db,
+          {
+            includeInactive: sideEffect.includeInactiveRecipients ?? false,
+          }
+        ),
       ]);
 
       await this.notificationEmailService.sendNotificationEventEmail({
@@ -892,6 +906,7 @@ export class NotificationsService {
       summary: params.summary,
       details: params.details,
       actorUserId: params.actorUserId,
+      includeInactiveRecipients: params.includeInactiveRecipients,
     };
   }
 

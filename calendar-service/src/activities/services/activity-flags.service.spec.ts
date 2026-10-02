@@ -171,6 +171,64 @@ describe('ActivityFlagsService', () => {
       expect(mockDb.update).toHaveBeenCalled();
     });
 
+    it('replaces removed assignees and records added and removed history entries', async () => {
+      let callCount = 0;
+      mockDb.select.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return makeChain([{ id: 1 }], 'limit');
+        if (callCount === 2)
+          return makeChain(
+            [
+              { userId: 2, name: 'Jane Smith' },
+              { userId: 3, name: 'Bob Jones' },
+            ],
+            'where'
+          );
+        return makeChain(
+          [
+            { assigneeId: 2, name: 'Jane Smith' },
+            { assigneeId: 4, name: 'John Doe' },
+          ],
+          'where'
+        );
+      });
+      mockDb.insert.mockReturnValue(makeInsertChain());
+      mockDb.delete.mockReturnValue(makeDeleteChain());
+
+      const result = await service.syncFlags(1, 1, [2, 3], 5);
+
+      expect(result).toEqual({
+        addedAssigneeIds: [3],
+        removedAssigneeIds: [4],
+      });
+      expect(mockDb.insert).toHaveBeenCalled();
+      expect(mockDb.delete).toHaveBeenCalled();
+      expect(mockHistoryService.recordChange).toHaveBeenCalledWith(
+        1,
+        5,
+        'flag_assigned',
+        [{ field: 'flag.assigneeName', oldValue: null, newValue: 'Bob Jones' }],
+        undefined,
+        expect.any(Object)
+      );
+      expect(mockHistoryService.recordChange).toHaveBeenCalledWith(
+        1,
+        5,
+        'flag_removed',
+        [{ field: 'flag.assigneeName', oldValue: 'John Doe', newValue: null }],
+        undefined,
+        expect.any(Object)
+      );
+      expect(
+        mockNotificationsService.notifyActivityFlagAssignmentChanged
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 5,
+        addedAssigneeIds: [3],
+        removedAssigneeIds: [4],
+      });
+    });
+
     it('passes transaction handle to recordChange for new and removed flags', async () => {
       let callCount = 0;
       mockDb.select.mockImplementation(() => {
