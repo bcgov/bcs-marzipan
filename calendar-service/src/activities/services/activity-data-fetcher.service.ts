@@ -907,7 +907,7 @@ export class ActivityDataFetcherService {
         eventPlannerName: activityEventPlanners.eventPlannerName,
         isLead: activityEventPlanners.isLead,
         displayName: users.adDisplayName,
-        name: users.adUsername,
+        name: sql<string | null>`coalesce(${users.adDisplayName}, ${users.adUsername})`,
       })
       .from(activityEventPlanners)
       .leftJoin(users, eq(activityEventPlanners.eventPlannerId, users.id))
