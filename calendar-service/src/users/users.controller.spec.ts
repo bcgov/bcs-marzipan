@@ -83,7 +83,7 @@ describe('UsersController', () => {
       const users = [createMockUserListItem()];
       mockUsersService.findAll.mockResolvedValue(users);
 
-      const result = await controller.findAll(undefined);
+      const result = await controller.findAll({});
 
       expect(result).toEqual({ success: true, data: users });
       expect(mockUsersService.findAll).toHaveBeenCalledWith(undefined, [], []);
@@ -94,7 +94,7 @@ describe('UsersController', () => {
       const users = [createMockUserListItem()];
       mockUsersService.findAll.mockResolvedValue(users);
 
-      await controller.findAll('john');
+      await controller.findAll({ search: 'john' });
 
       expect(mockUsersService.findAll).toHaveBeenCalledWith('john', [], []);
     });
@@ -168,7 +168,7 @@ describe('UsersController', () => {
       ];
       mockUsersService.getActivitiesForUser.mockResolvedValue(activities);
 
-      const result = await controller.getActivities(1);
+      const result = await controller.getActivities(1, {});
 
       expect(result).toEqual({ success: true, data: activities });
       expect(mockUsersService.getActivitiesForUser).toHaveBeenCalledWith(
@@ -181,15 +181,9 @@ describe('UsersController', () => {
     it('should pass fromTeamId scope when provided', async () => {
       mockUsersService.getActivitiesForUser.mockResolvedValue([]);
 
-      await controller.getActivities(1, '5');
+      await controller.getActivities(1, { fromTeamId: 5 });
 
       expect(mockUsersService.getActivitiesForUser).toHaveBeenCalledWith(1, 5);
-    });
-
-    it('should throw BadRequestException for a non-integer fromTeamId', async () => {
-      await expect(controller.getActivities(1, 'not-a-number')).rejects.toThrow(
-        'fromTeamId must be an integer'
-      );
     });
   });
 
@@ -201,7 +195,7 @@ describe('UsersController', () => {
       ];
       mockUsersService.getActivityCountsForUsers.mockResolvedValue(counts);
 
-      const result = await controller.getActivityCounts('1,2');
+      const result = await controller.getActivityCounts({ userIds: [1, 2] });
 
       expect(result).toEqual({ success: true, data: counts });
       expect(mockUsersService.getActivityCountsForUsers).toHaveBeenCalledWith([

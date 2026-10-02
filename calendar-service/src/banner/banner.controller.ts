@@ -1,4 +1,10 @@
-import { Body, Controller, ForbiddenException, Get, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Patch,
+} from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -116,7 +122,7 @@ export class BannerController {
   })
   @ApiBody({ type: UpsertBannerSettingsDto })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE)
-  @Put('settings')
+  @Patch('settings')
   async upsertBannerSettings(
     @Body(new ZodValidationPipe(upsertBannerSettingsRequestSchema))
     body: UpsertBannerSettingsDto,
@@ -138,7 +144,7 @@ export class BannerController {
   })
   @ApiBody({ type: UpsertRecurringLockoutBannerSettingsDto })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT)
-  @Put('recurring-lockout/settings')
+  @Patch('recurring-lockout/settings')
   async upsertRecurringLockoutBannerSettings(
     @Body(
       new ZodValidationPipe(upsertRecurringLockoutBannerSettingsRequestSchema)

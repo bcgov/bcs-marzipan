@@ -42,17 +42,19 @@ export async function getUnreadNotificationCount(): Promise<number> {
 
 export async function markNotificationRead(recipientId: number): Promise<void> {
   logger.debug('Mark notification read', { recipientId });
-  await api.patch(`/notifications/${recipientId}/read`);
+  await api.patch(`/notifications/recipients/${recipientId}`, { read: true });
 }
 
 export async function dismissNotification(recipientId: number): Promise<void> {
   logger.debug('Dismiss notification', { recipientId });
-  await api.patch(`/notifications/${recipientId}/dismiss`);
+  await api.patch(`/notifications/recipients/${recipientId}`, {
+    dismissed: true,
+  });
 }
 
 export async function markAllNotificationsRead(): Promise<NotificationBulkActionResult> {
   logger.debug('Mark all notifications read');
-  const res = await api.patch<{
+  const res = await api.post<{
     success: boolean;
     data: NotificationBulkActionResult;
   }>('/notifications/read-all');
@@ -61,7 +63,7 @@ export async function markAllNotificationsRead(): Promise<NotificationBulkAction
 
 export async function dismissAllNotifications(): Promise<NotificationBulkActionResult> {
   logger.debug('Dismiss all notifications');
-  const res = await api.patch<{
+  const res = await api.post<{
     success: boolean;
     data: NotificationBulkActionResult;
   }>('/notifications/dismiss-all');

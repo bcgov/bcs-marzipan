@@ -20,10 +20,7 @@ import { createZodDto } from 'nestjs-zod';
 import type { ZodTypeAny } from 'zod';
 
 import type { AuthUser } from '@corpcal/shared';
-import {
-  upsertActivityFlagRequestSchema,
-  upsertActivityFlagsRequestSchema,
-} from '@corpcal/shared/schemas';
+import { upsertActivityFlagsRequestSchema } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AppLogger } from '../common/logger/logger.service';
@@ -31,10 +28,6 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { ActivitiesGateway } from './activities.gateway';
 import { ActivityFlagsService } from './services/activity-flags.service';
-
-class UpsertActivityFlagDto extends createZodDto(
-  upsertActivityFlagRequestSchema
-) {}
 
 class UpsertActivityFlagsDto extends createZodDto(
   upsertActivityFlagsRequestSchema
@@ -112,8 +105,7 @@ export class ActivityFlagsController {
     description:
       'Sets the full assignee list for the given (activity, team) pair. ' +
       'Adds missing assignees and removes assignees not present in the provided list. ' +
-      'This is the preferred multi-assignee endpoint. ' +
-      'By contrast, the legacy PUT /activities/:id/flag route overwrites the full set to a single assignee and can remove other assignees for that team. ' +
+      'This is the only write endpoint for activity flags. ' +
       'Requires activities.flag permission and a teamId the caller belongs to.',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Activity ID' })
@@ -133,9 +125,11 @@ export class ActivityFlagsController {
     body: UpsertActivityFlagsDto,
     @CurrentUser() user: AuthUser
   ): Promise<{
-    success: boolean;
-    addedAssigneeIds: number[];
-    removedAssigneeIds: number[];
+    success: true;
+    data: {
+      addedAssigneeIds: number[];
+      removedAssigneeIds: number[];
+    };
   }> {
     if (!user.teamIds.includes(body.teamId)) {
       throw new ForbiddenException(
@@ -152,7 +146,7 @@ export class ActivityFlagsController {
       body.displayTeamPerAssignee
     );
     this.gateway.broadcastActivityUpdated(activityId);
-    return { success: true, ...delta };
+    return { success: true, data: delta };
   }
 
   @ApiOperation({

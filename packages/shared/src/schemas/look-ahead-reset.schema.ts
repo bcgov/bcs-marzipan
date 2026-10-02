@@ -54,6 +54,12 @@ export const lookAheadResetManualRunBodySchema = z
     }
   });
 
+/** HTTP request schema: an absent body is equivalent to an empty body. */
+export const lookAheadResetManualRunRequestSchema = z.preprocess(
+  (value) => value ?? {},
+  lookAheadResetManualRunBodySchema
+);
+
 export type LookAheadResetManualRunBody = z.infer<
   typeof lookAheadResetManualRunBodySchema
 >;
@@ -73,3 +79,50 @@ export const lookAheadResetRunPreviewQuerySchema = z.object({
 export type LookAheadResetRunPreviewQuery = z.infer<
   typeof lookAheadResetRunPreviewQuerySchema
 >;
+
+export const lookAheadResetLastClearSummarySchema = z.object({
+  at: z.string(),
+  updated: z.number().int().nonnegative(),
+  trigger: z.enum(['schedule', 'manual']),
+});
+
+export const lookAheadResetSettingsSchema = z.object({
+  windowDaysAfterToday: z.number().int(),
+  cronMode: cronModeSchema,
+  rollbackAvailable: z.boolean(),
+  lastClear: lookAheadResetLastClearSummarySchema.optional(),
+});
+
+export const lookAheadResetRollbackResultSchema = z.object({
+  restored: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative(),
+  rollbackAvailable: z.boolean(),
+  skippedRollback: z.boolean().optional(),
+  skipReason: z.enum(['in_flight', 'advisory_lock']).optional(),
+});
+
+export const lookAheadResetRunPreviewResultSchema = z.object({
+  count: z.number().int().nonnegative(),
+  items: z.array(
+    z.object({
+      displayId: z.string().nullable(),
+      title: z.string(),
+    })
+  ),
+  listTruncated: z.boolean(),
+});
+
+export const lookAheadResetBatchRunResultSchema = z.object({
+  updated: z.number().int().nonnegative(),
+  skipped: z.boolean(),
+  skipReason: z
+    .enum([
+      'in_flight',
+      'advisory_lock',
+      'error',
+      'cron_stopped',
+      'paused_today',
+    ])
+    .optional(),
+  scheduledRunPausedTonight: z.boolean().optional(),
+});

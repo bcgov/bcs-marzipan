@@ -1,9 +1,95 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  globalActivityHistoryPageSchema,
+  globalActivityHistoryQuerySchema,
   teamHistoryEntrySchema,
   userHistoryEntrySchema,
 } from './history.schema';
+
+describe('globalActivityHistoryQuerySchema', () => {
+  it('applies pagination defaults', () => {
+    const result = globalActivityHistoryQuerySchema.parse({});
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(50);
+  });
+
+  it('rejects invalid calendar dates', () => {
+    expect(() =>
+      globalActivityHistoryQuerySchema.parse({ startDate: '2025-13-40' })
+    ).toThrow();
+  });
+
+  it('rejects invalid userId', () => {
+    expect(() =>
+      globalActivityHistoryQuerySchema.parse({ userId: 'abc' })
+    ).toThrow();
+    expect(() =>
+      globalActivityHistoryQuerySchema.parse({ userId: '0' })
+    ).toThrow();
+  });
+
+  it('parses comma-separated filters', () => {
+    const result = globalActivityHistoryQuerySchema.parse({
+      userIds: '1,2',
+      actionTypes: 'updated,created',
+      categories: 'Events',
+      leadTeamIds: '3',
+      order: 'asc',
+    });
+    expect(result.userIds).toEqual([1, 2]);
+    expect(result.actionTypes).toEqual(['updated', 'created']);
+    expect(result.categories).toEqual(['Events']);
+    expect(result.leadTeamIds).toEqual([3]);
+    expect(result.order).toBe('asc');
+  });
+
+  it('rejects malformed comma-separated ID filters', () => {
+    expect(() =>
+      globalActivityHistoryQuerySchema.parse({ userIds: '1,bad,2' })
+    ).toThrow();
+    expect(() =>
+      globalActivityHistoryQuerySchema.parse({ leadTeamIds: '3,bad' })
+    ).toThrow();
+  });
+
+  it('caps pageSize at 100', () => {
+    expect(() =>
+      globalActivityHistoryQuerySchema.parse({ pageSize: '101' })
+    ).toThrow();
+  });
+});
+
+describe('globalActivityHistoryPageSchema', () => {
+  it('accepts a paginated global history page', () => {
+    const result = globalActivityHistoryPageSchema.parse({
+      items: [
+        {
+          id: 1,
+          activityId: 10,
+          userId: 2,
+          actionType: 'updated',
+          changes: null,
+          notes: null,
+          timestamp: '2025-01-15T12:00:00.000Z',
+          activity: {
+            id: 10,
+            displayId: 'MIN-000010',
+            title: 'Cabinet meeting',
+            leadTeamId: 3,
+            categories: ['Events'],
+          },
+        },
+      ],
+      page: 1,
+      pageSize: 50,
+      hasNext: false,
+      totalItems: 1,
+    });
+    expect(result.items).toHaveLength(1);
+    expect(result.totalItems).toBe(1);
+  });
+});
 
 describe('teamHistoryEntrySchema', () => {
   it('accepts valid team history entry', () => {

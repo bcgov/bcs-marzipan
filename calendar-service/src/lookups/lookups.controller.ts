@@ -62,6 +62,7 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
   ActivityStatusResponseWrapperDto,
+  ActivityTeamSharingResponseWrapperDto,
   CategoryResponseWrapperDto,
   CityResponseWrapperDto,
   CommsMaterialResponseWrapperDto,
@@ -123,7 +124,11 @@ export class LookupsController {
     description:
       'Returns active teams (same list as GET /teams) plus quick-share group definitions.',
   })
-  @ApiResponse({ status: 200, description: 'Teams and quick-share config' })
+  @ApiResponse({
+    status: 200,
+    description: 'Teams and quick-share config',
+    type: ActivityTeamSharingResponseWrapperDto,
+  })
   @Get('activity-team-sharing')
   @Header('Cache-Control', lookupGetCacheControl())
   async getActivityTeamSharing(): Promise<{
@@ -396,49 +401,6 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Bulk update permission visibility (admin only)' })
-  @ApiResponse({ status: 200, description: 'Permissions updated' })
-  @ApiResponse({ status: 400, description: 'Validation failed' })
-  @ApiResponse({ status: 403, description: 'Caller is not system admin' })
-  @ApiBody({
-    description: 'Array of permission visibility updates',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'number', example: 12 },
-          showInUserManagement: { type: 'boolean', example: true },
-        },
-        required: ['id', 'showInUserManagement'],
-      },
-      example: [
-        { id: 12, showInUserManagement: true },
-        { id: 15, showInUserManagement: false },
-      ],
-    },
-  })
-  @Patch('permissions/visibility')
-  @RequirePermission('system.manage_permissions')
-  async bulkUpdatePermissionVisibility(
-    @Body(
-      new ZodValidationPipe(
-        z.array(z.object({ id: z.number(), showInUserManagement: z.boolean() }))
-      )
-    )
-    body: { id: number; showInUserManagement: boolean }[],
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: any[] }> {
-    this.ensureSystemAdmin(user);
-    const results = await this.lookupsService.bulkUpdatePermissionVisibility(
-      body.map((b) => ({
-        id: b.id,
-        showInUserManagement: b.showInUserManagement,
-      })),
-      user.id
-    );
-    return { success: true, data: results };
-  }
   @ApiOperation({
     summary: 'Get all users',
     description:
@@ -1447,7 +1409,7 @@ export class LookupsController {
       },
     },
   })
-  @Post('address/find')
+  @Post('addresses/search')
   async findAddresses(
     @Body() body: { searchTerm: string; country?: string; lastId?: string }
   ): Promise<{ success: boolean; data: any[] }> {
@@ -1472,7 +1434,7 @@ export class LookupsController {
       },
     },
   })
-  @Post('address/retrieve')
+  @Post('addresses/resolve')
   async retrieveAddress(
     @Body() body: { id: string }
   ): Promise<{ success: boolean; data: any }> {

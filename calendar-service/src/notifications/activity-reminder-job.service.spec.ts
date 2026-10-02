@@ -67,6 +67,19 @@ describe('ActivityReminderJobService', () => {
       },
     };
 
+    const mockTx = {
+      execute: vi.fn().mockResolvedValue([{ acquired: true }]),
+    };
+    databaseService = {
+      db: {
+        transaction: vi
+          .fn()
+          .mockImplementation((fn: (tx: unknown) => unknown) =>
+            Promise.resolve(fn(mockTx))
+          ),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ActivityReminderJobService,

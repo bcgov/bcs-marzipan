@@ -13,6 +13,10 @@ import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import {
+  ActivityFavouritesResponseWrapperDto,
+  SuccessOnlyResponseDto,
+} from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { FavouritesService } from './favourites.service';
@@ -30,18 +34,7 @@ export class FavouritesController {
   @ApiResponse({
     status: 200,
     description: 'Favourite activity IDs retrieved',
-    schema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        data: {
-          type: 'object',
-          properties: {
-            activityIds: { type: 'array', items: { type: 'integer' } },
-          },
-        },
-      },
-    },
+    type: ActivityFavouritesResponseWrapperDto,
   })
   @RequirePermission(PERMISSIONS.ACTIVITIES.VIEW)
   @Get()
@@ -56,7 +49,11 @@ export class FavouritesController {
     summary: "Add an activity to the current user's favourites",
   })
   @ApiParam({ name: 'activityId', type: 'integer' })
-  @ApiResponse({ status: 201, description: 'Activity added to favourites' })
+  @ApiResponse({
+    status: 201,
+    description: 'Activity added to favourites',
+    type: SuccessOnlyResponseDto,
+  })
   @RequirePermission(PERMISSIONS.ACTIVITIES.VIEW)
   @Post(':activityId')
   @HttpCode(HttpStatus.CREATED)
@@ -78,6 +75,7 @@ export class FavouritesController {
   @ApiResponse({
     status: 200,
     description: 'Activity removed from favourites',
+    type: SuccessOnlyResponseDto,
   })
   @RequirePermission(PERMISSIONS.ACTIVITIES.VIEW)
   @Delete(':activityId')
