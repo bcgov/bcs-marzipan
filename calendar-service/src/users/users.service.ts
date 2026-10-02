@@ -711,6 +711,9 @@ export class UsersService {
       .map((change) => change.field)
       .filter((field) => field === 'roleId' || field === 'isActive');
     if (notifyFields.length > 0) {
+      const isDeactivationTransition = changes.some(
+        (change) => change.field === 'isActive' && change.newValue === false
+      );
       const summary = notifyFields.includes('isActive')
         ? dto.isActive === false
           ? 'User account deactivated'
@@ -726,7 +729,9 @@ export class UsersService {
           roleId: dto.roleId,
           isActive: dto.isActive,
         },
-        ...(dto.isActive === false ? { includeInactiveRecipients: true } : {}),
+        ...(isDeactivationTransition
+          ? { includeInactiveRecipients: true }
+          : {}),
       });
     }
 

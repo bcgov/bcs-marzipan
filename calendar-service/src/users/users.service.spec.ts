@@ -441,6 +441,89 @@ describe('UsersService', () => {
       });
     });
 
+    it('should include inactive recipients when deactivating a user', async () => {
+      const userRow = {
+        id: 1,
+        adUsername: 'u1',
+        adDisplayName: 'User One',
+        adEmail: 'u1@test.com',
+        roleId: 1,
+        isActive: true,
+        notes: null,
+      };
+      const roleRow = [{ name: 'Admin' }];
+      const teamRows: { teamId: number; role: string }[] = [];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'))
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'));
+
+      mockDatabaseService.db.update = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+
+      await service.update(1, { isActive: false }, 1);
+
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+        changedFields: ['isActive'],
+        summary: 'User account deactivated',
+        details: {
+          roleId: undefined,
+          isActive: false,
+        },
+        includeInactiveRecipients: true,
+      });
+    });
+
+    it('should not include inactive recipients when reactivating a user', async () => {
+      const userRow = {
+        id: 1,
+        adUsername: 'u1',
+        adDisplayName: 'User One',
+        adEmail: 'u1@test.com',
+        roleId: 1,
+        isActive: false,
+        notes: null,
+      };
+      const roleRow = [{ name: 'Admin' }];
+      const teamRows: { teamId: number; role: string }[] = [];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'))
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'));
+
+      mockDatabaseService.db.update = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+
+      await service.update(1, { isActive: true }, 1);
+
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+        changedFields: ['isActive'],
+        summary: 'User account activated',
+        details: {
+          roleId: undefined,
+          isActive: true,
+        },
+      });
+    });
+
     it('should reject non-BC Gov email updates', async () => {
       const userRow = {
         id: 1,

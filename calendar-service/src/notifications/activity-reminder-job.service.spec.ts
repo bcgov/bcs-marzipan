@@ -151,6 +151,10 @@ describe('ActivityReminderJobService', () => {
       .mockResolvedValueOnce([]);
 
     await service.runBatch();
+
+    expect(
+      notificationsService.deliverPendingNotificationSideEffects
+    ).toHaveBeenCalledTimes(1);
   });
 
   it('sends reminder notifications for each candidate bucket', async () => {

@@ -296,9 +296,6 @@ export class ActivityReminderJobService {
     }
   ): Promise<ReminderRunCounts> {
     const counts: ReminderRunCounts = { ...EMPTY_COUNTS };
-    const deferredSideEffects: Parameters<
-      NotificationsService['deliverPendingNotificationSideEffects']
-    >[0] = [];
 
     const [
       postDated,
@@ -428,12 +425,6 @@ export class ActivityReminderJobService {
           deferredSideEffects: input.deferredSideEffects,
         });
       if (recipients.length > 0) counts.reminderStale += 1;
-    }
-
-    if (deferredSideEffects.length > 0) {
-      await this.notificationsService.deliverPendingNotificationSideEffects(
-        deferredSideEffects
-      );
     }
 
     return counts;
