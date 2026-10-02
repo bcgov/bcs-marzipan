@@ -186,6 +186,7 @@ export const createMockUserListItem = (
   roleId: 2,
   roleName: 'Editor',
   isActive: true,
+  isEventPlanner: false,
   teams: [{ teamId: 1, teamName: 'Team One', role: 'member' }],
   ...overrides,
 });

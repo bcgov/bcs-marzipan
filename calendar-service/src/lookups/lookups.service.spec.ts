@@ -145,30 +145,33 @@ describe('LookupsService', () => {
     ]);
   });
 
-  it('returns event planners in admin sortOrder', async () => {
+  it('returns event planner users sorted by staff name', async () => {
     mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
       createChain(
         [
           {
-            id: 1,
-            name: 'Lana Popham',
-            displayName: 'Lana Popham Events',
+            id: 2,
+            adUsername: 'NSHARMA',
+            adDisplayName: 'Niki Sharma',
+            adEmail: 'n@gov.bc.ca',
           },
           {
-            id: 2,
-            name: 'Sharma, Niki',
-            displayName: 'Niki Sharma Events',
+            id: 1,
+            adUsername: 'LPOPHAM',
+            adDisplayName: 'Lana Popham',
+            adEmail: 'l@gov.bc.ca',
           },
         ],
-        'orderBy'
+        'where'
       )
     );
 
     const result = await service.getEventPlanners();
 
     expect(result.map((planner) => planner.label)).toEqual([
-      'Lana Popham Events',
-      'Niki Sharma Events',
+      'Lana Popham',
+      'Niki Sharma',
     ]);
+    expect(result.map((planner) => planner.value)).toEqual([1, 2]);
   });
 });

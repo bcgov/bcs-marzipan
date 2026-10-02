@@ -53,6 +53,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
   const [phone, setPhone] = useState<string | null>('');
   const [jobTitle, setJobTitle] = useState<string | null>('');
   const [isActive, setIsActive] = useState<boolean>(true);
+  const [isEventPlanner, setIsEventPlanner] = useState<boolean>(false);
   const [permissionOverrideInputs, setPermissionOverrideInputs] = useState<
     UserPermissionOverrideInput[]
   >([]);
@@ -104,6 +105,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
       setPhone(detail.phone ?? '');
       setJobTitle(detail.jobTitle ?? '');
       setIsActive(Boolean(detail.isActive));
+      setIsEventPlanner(Boolean(detail.isEventPlanner));
     }
   }, [detail]);
 
@@ -136,6 +138,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
       roleId: newRoleId,
       notes: notes || null,
       isActive: Boolean(isActive),
+      isEventPlanner,
     };
 
     // Profile fields are only editable by admins / sys-admins.
@@ -271,6 +274,17 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
                 canEditOverrides={canEditOverrides}
                 onPermissionChange={setPermissionOverrideInputs}
               />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Switch
+                id="user-event-planner"
+                checked={isEventPlanner}
+                onCheckedChange={(v) => setIsEventPlanner(Boolean(v))}
+              />
+              <Label htmlFor="user-event-planner" className="text-sm">
+                Event planner
+              </Label>
             </div>
 
             <div className="flex items-center gap-3">
