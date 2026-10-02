@@ -16,6 +16,22 @@ export const saveDraftBodySchema = z.object({
 
 export type SaveDraftBody = z.infer<typeof saveDraftBodySchema>;
 
+const optionalDraftEntityIdSchema = z.preprocess(
+  (value) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  z.coerce.number().int().optional()
+);
+
+/** GET /drafts and DELETE /drafts/by-form query params. */
+export const draftLookupQuerySchema = z.object({
+  formType: z.string().min(1).describe('Type of form (e.g., activity, event)'),
+  entityId: optionalDraftEntityIdSchema.describe(
+    'Entity ID being edited (omit for new items)'
+  ),
+});
+
+export type DraftLookupQuery = z.infer<typeof draftLookupQuerySchema>;
+
 /**
  * Single draft as returned by the API (id, userId, formType, entityId, draftData, createdAt, updatedAt, expiresAt).
  */

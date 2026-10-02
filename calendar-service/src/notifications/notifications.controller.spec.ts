@@ -76,12 +76,16 @@ describe('NotificationsController', () => {
       hasNext: false,
     });
 
-    await controller.list(mockUser, {});
+    await controller.list(mockUser, {
+      includeRead: false,
+      page: 1,
+      pageSize: 20,
+    });
 
     expect(mockNotificationsService.listForUser).toHaveBeenCalledWith(99, {
       includeRead: false,
-      page: undefined,
-      pageSize: undefined,
+      page: 1,
+      pageSize: 20,
     });
   });
 });
