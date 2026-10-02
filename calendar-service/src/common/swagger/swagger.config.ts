@@ -98,7 +98,7 @@ const API_DESCRIPTION = `
 
 REST API for BC Government Corporate Calendar activities, reference data, reports, and administration.
 
-Endpoints are grouped by **tag** below (activities, lookups, teams, users, reports, look-ahead, locks, settings, and related areas).
+Endpoints are grouped by **tag** below (activities, lookups, teams, users, reports, locks, settings, and related areas).
 
 ## Authentication & authorization
 
@@ -110,7 +110,7 @@ Endpoints are grouped by **tag** below (activities, lookups, teams, users, repor
 ## JSON response shape
 
 - Typical success responses: \`{ "success": true, "data": … }\` (or \`{ "success": true }\` when there is no payload).
-- **Exceptions:** \`GET /health\` and \`GET /ready\` return probe payloads without the wrapper; some **auth** flows return redirects or status signals instead of a wrapper; **reports** may return CSV, XLSX, or PDF file downloads.
+- **Exceptions:** \`GET /health\` and \`GET /ready\` return probe payloads without the wrapper; **auth** Azure OIDC entrypoints return redirects; **reports** may return CSV, XLSX, or PDF file downloads.
 
 ## Query parameters
 
@@ -169,9 +169,8 @@ export function setupSwagger(
     .addTag('auth', 'Login, session, Azure AD and local auth availability')
     .addTag(
       'reports',
-      'Report definitions, JSON data, and CSV/XLSX/PDF exports'
+      'Report JSON data and CSV/XLSX/PDF exports (metadata via lookups/reports)'
     )
-    .addTag('look-ahead', 'Look Ahead report JSON data')
     .addTag('locks', 'Collaborative edit locks for activities and reports')
     .addTag(
       'settings',

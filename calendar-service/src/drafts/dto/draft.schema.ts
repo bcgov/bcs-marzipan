@@ -6,7 +6,7 @@ import { z } from 'zod';
  */
 
 /**
- * POST /drafts/save - Request body.
+ * PUT /drafts - Request body (upsert).
  */
 export const saveDraftBodySchema = z.object({
   formType: z.string().min(1),

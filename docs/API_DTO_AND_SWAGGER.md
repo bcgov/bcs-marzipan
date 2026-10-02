@@ -35,7 +35,7 @@ See existing modules for examples: `calendar-service/src/common/dto/activity.dto
 - **Exceptions (no wrapper):**
   - **Health / readiness:** `GET /health`, `GET /ready` — raw probe payloads for OpenShift (see `common/dto/health.dto.ts`).
   - **Binary exports:** report CSV, XLSX, PDF — file download responses; document with description-only `@ApiResponse`.
-  - **Auth (partial):** login, Azure OIDC redirects, and other cookie/session flows may return unions or non-wrapper shapes; document stable JSON endpoints with Zod DTOs where possible (see Auth exceptions below).
+  - **Auth redirects:** Azure OIDC browser entry/callback routes return redirects, not JSON wrappers.
 
 ## Query parameters (Pattern A / B)
 
@@ -62,10 +62,10 @@ HTTP query strings are always strings on the wire. Validation uses Zod in `@corp
 - When replacing manual query validation, add **parity tests** beside the schema (see `query-params.schema.spec.ts`).
 - `FilterActivitiesDto` in `activity.dto.ts` is **not** used for Swagger query expansion; use Pattern A with `filterActivitiesQuerySchema`.
 
-## Auth exceptions (Swagger)
+## Auth (Swagger)
 
-- Document **stable** JSON with Zod + `createZodDto` where responses are fixed (`GET auth/local/config`, `GET auth/me`, password setup bodies using shared schemas).
-- **Login** may return token payload or status signals (`requiresPasswordSetup`, etc.) — use description-only or multiple `@ApiResponse` entries rather than a single misleading DTO.
+- JSON auth endpoints use `{ success: true, data: … }`; **`data`** for login may be a full session payload or a status signal (`requiresPasswordSetup`, `requiresPasswordReset`).
+- Document stable config and password bodies with Zod + `createZodDto` where practical.
 - **Azure OIDC** callback/redirect routes — description-only; no request/response body schema.
 
 ## Tags
@@ -75,13 +75,13 @@ When you add a new API area (a new controller or a new logical group of endpoint
 1. Add a corresponding **`.addTag('tagName', 'Short description')`** in `calendar-service/src/common/swagger/swagger.config.ts`.
 2. Use **`@ApiTags('tagName')`** on the controller so operations are grouped under that tag in Swagger UI.
 
-Existing tags: `activities`, `lookups`, `health`, `teams`, `users`, `drafts`, `auth`, `reports`, `look-ahead`, `locks`, `settings`, `notifications`, `banner`, `login-modal`, `activity-favourites`, `activity-saved-filters`.
+Existing tags: `activities`, `lookups`, `health`, `teams`, `users`, `drafts`, `auth`, `reports`, `locks`, `settings`, `notifications`, `banner`, `login-modal`, `activity-favourites`, `activity-saved-filters`. Report **metadata** lives under `lookups` (`GET /lookups/reports`); JSON data and exports use the `reports` tag.
 
 ## Reference implementations
 
 After the Swagger DTO work, the following modules follow the full pattern and can be used as references:
 
-- **Activities**: `activities.controller.ts`, `common/dto/activity.dto.ts`, `common/dto/activity-response.dto.ts`, `common/dto/activity-update.dto.ts`, `common/dto/history.dto.ts`
+- **Activities**: `activities.controller.ts`, `common/dto/activity.dto.ts`, `common/dto/activity-response.dto.ts`, `common/dto/history.dto.ts`
 - **Notifications**: `notifications.controller.ts`, `common/dto/notification.dto.ts`
 - **Lookups**: `lookups.controller.ts`, `common/dto/lookup.dto.ts`
 - **Teams**: `teams.controller.ts`, `teams/dto/teams.dto.ts`

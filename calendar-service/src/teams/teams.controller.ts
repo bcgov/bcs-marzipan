@@ -142,21 +142,21 @@ export class TeamsController {
   }
 
   @ApiOperation({ summary: 'Get team by ID' })
-  @ApiParam({ name: 'id', description: 'Team ID' })
+  @ApiParam({ name: 'teamId', description: 'Team ID' })
   @ApiZodQueries(teamDetailQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'Team details. Returns data: null when team is not found.',
     type: TeamDetailResponseWrapperDto,
   })
-  @Get(':id')
+  @Get(':teamId')
   async findOne(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('teamId', ParseIntPipe) teamId: number,
     @Query(new ZodValidationPipe(teamDetailQuerySchema))
     query: TeamDetailQuery = {}
   ): Promise<{ success: boolean; data: TeamDetail | null }> {
     const data = await this.teamsService.findOne(
-      id,
+      teamId,
       query?.includeInactiveMembers === 'true'
     );
     return { success: true, data };
@@ -180,7 +180,7 @@ export class TeamsController {
   }
 
   @ApiOperation({ summary: 'Update team' })
-  @ApiParam({ name: 'id', description: 'Team ID' })
+  @ApiParam({ name: 'teamId', description: 'Team ID' })
   @ApiBody({ type: UpdateTeamDto })
   @ApiResponse({
     status: 200,
@@ -189,29 +189,29 @@ export class TeamsController {
   })
   @ApiResponse({ status: 404, description: 'Team not found' })
   @RequirePermission('teams.edit')
-  @Patch(':id')
+  @Patch(':teamId')
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('teamId', ParseIntPipe) teamId: number,
     @Body(new ZodValidationPipe(updateTeamBodySchema)) dto: UpdateTeamDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: TeamDetail }> {
-    const data = await this.teamsService.update(id, dto, user.id);
+    const data = await this.teamsService.update(teamId, dto, user.id);
     return { success: true, data };
   }
 
   @ApiOperation({ summary: 'Get team change history' })
-  @ApiParam({ name: 'id', description: 'Team ID' })
+  @ApiParam({ name: 'teamId', description: 'Team ID' })
   @ApiResponse({
     status: 200,
     description: 'Team history entries',
     type: TeamHistoryResponseWrapperDto,
   })
   @ApiResponse({ status: 404, description: 'Team not found' })
-  @Get(':id/history')
+  @Get(':teamId/history')
   async getHistory(
-    @Param('id', ParseIntPipe) id: number
+    @Param('teamId', ParseIntPipe) teamId: number
   ): Promise<{ success: boolean; data: TeamHistoryEntry[] }> {
-    const data = await this.teamsService.getTeamHistory(id);
+    const data = await this.teamsService.getTeamHistory(teamId);
     return { success: true, data };
   }
 }

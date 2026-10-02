@@ -13,12 +13,12 @@ export const paths = {
   settingsLookAheadReset: '/settings/look-ahead-reset',
   activities: '/activities',
   activitiesGlobalHistory: '/activities/global-history',
-  /** Requires reports.view */
-  lookAhead: '/look-ahead',
   /** GET settings requires settings.view */
   loginModalSettings: '/login-modal/settings',
   /** Read-only lookup sample */
   lookupsDateStatuses: '/lookups/date-statuses',
+  /** Report definitions (metadata); requires lookups.view */
   lookupsReports: '/lookups/reports',
-  reports: '/reports',
+  /** Look Ahead JSON data; requires reports.view */
+  reportDataLookAhead: '/reports/data/look-ahead',
 };
