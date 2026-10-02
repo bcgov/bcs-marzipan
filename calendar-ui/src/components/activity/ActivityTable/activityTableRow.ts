@@ -189,8 +189,8 @@ export function mapActivityToTableRow(
     // Status
     activityStatus: activity.activityStatus,
     activityStatusId: activity.activityStatusId ?? 0,
-    lastUpdatedDateTime: activity.lastUpdatedDateTime,
-    lastUpdatedBy: activity.lastUpdatedBy,
+    lastUpdatedDateTime: activity.publicLastUpdatedDateTime,
+    lastUpdatedBy: activity.publicLastUpdatedBy,
     createdDateTime: activity.createdDateTime,
     editLock: 'editLock' in activity ? (activity.editLock ?? null) : null,
     changedFieldsSinceReview:

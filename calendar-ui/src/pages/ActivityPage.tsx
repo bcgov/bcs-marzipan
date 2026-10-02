@@ -693,21 +693,29 @@ export function ActivityPage({
   };
 
   type SubmitActivityMode =
-    | { kind: 'update'; validatedData: ActivityFormData; notes?: string }
-    | { kind: 'reviewOnly'; notes?: string }
+    | {
+        kind: 'update';
+        validatedData: ActivityFormData;
+        notes?: string;
+        renewPublicLastUpdated?: boolean;
+      }
+    | { kind: 'reviewOnly'; notes?: string; renewPublicLastUpdated?: boolean }
     | {
         kind: 'reviewWithSave';
         validatedData: ActivityFormData;
         notes?: string;
+        renewPublicLastUpdated?: boolean;
       }
     | {
         kind: 'completeOnly';
         notes?: string;
+        renewPublicLastUpdated?: boolean;
       }
     | {
         kind: 'completeWithSave';
         validatedData: ActivityFormData;
         notes?: string;
+        renewPublicLastUpdated?: boolean;
       };
 
   const runSubmitUpdate = useCallback(
@@ -721,14 +729,21 @@ export function ActivityPage({
       try {
         let submitData: UpdateActivityRequest;
 
+        const renewField =
+          mode.renewPublicLastUpdated === true
+            ? { renewPublicLastUpdated: true as const }
+            : {};
+
         if (mode.kind === 'reviewOnly') {
           submitData = {
             ...buildMarkReviewedOnlyPayload(mode.notes),
+            ...renewField,
           };
         } else if (mode.kind === 'completeOnly') {
           submitData = {
             markAsCompleted: true,
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+            ...renewField,
           };
         } else {
           const opts: UpdatePayloadOptions =
@@ -764,13 +779,16 @@ export function ActivityPage({
               opts
             ),
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+            ...renewField,
           };
         }
 
-        if (activity.lastUpdatedDateTime) {
+        const concurrencyToken =
+          activity.lastUpdatedDateTime ?? activity.publicLastUpdatedDateTime;
+        if (concurrencyToken) {
           submitData = {
             ...submitData,
-            ifUnmodifiedSince: activity.lastUpdatedDateTime,
+            ifUnmodifiedSince: concurrencyToken,
           };
         }
 
@@ -831,6 +849,7 @@ export function ActivityPage({
       form,
       activity.title,
       activity.lastUpdatedDateTime,
+      activity.publicLastUpdatedDateTime,
       canViewActivity,
       applyExternalLockReleased,
       navigate,
@@ -840,9 +859,16 @@ export function ActivityPage({
     ]
   );
 
-  const handleConfirmedSubmit = async (notes?: string) => {
+  const handleConfirmedSubmit = async (
+    payload: import('@/components/activity/activities/EditActivityConfirmModal').ActivitySaveConfirmPayload
+  ) => {
     if (!validatedData) return;
-    await runSubmitUpdate({ kind: 'update', validatedData, notes });
+    await runSubmitUpdate({
+      kind: 'update',
+      validatedData,
+      notes: payload.notes,
+      renewPublicLastUpdated: payload.renewPublicLastUpdated,
+    });
   };
 
   const onError = (errors: FieldErrors<ActivityFormData>) => {
@@ -863,10 +889,10 @@ export function ActivityPage({
   };
 
   const handleReviewConfirm = async (
-    notes?: string,
-    markAsCompleted?: boolean,
-    unassignMe?: boolean
+    payload: import('@/components/activity/activities/ReviewActivityModal').ReviewActivityConfirmPayload
   ) => {
+    const { notes, markAsCompleted, unassignMe, renewPublicLastUpdated } =
+      payload;
     if (unassignMe && user?.id != null) {
       const myFlags = (activity.flags ?? []).filter(
         (flag) => flag.assigneeId === user.id
@@ -916,10 +942,15 @@ export function ActivityPage({
             kind: 'completeWithSave',
             validatedData: data,
             notes,
+            renewPublicLastUpdated,
           });
         }, onError)();
       } else {
-        await runSubmitUpdate({ kind: 'completeOnly', notes });
+        await runSubmitUpdate({
+          kind: 'completeOnly',
+          notes,
+          renewPublicLastUpdated,
+        });
       }
       return;
     }
@@ -929,24 +960,37 @@ export function ActivityPage({
           kind: 'reviewWithSave',
           validatedData: data,
           notes,
+          renewPublicLastUpdated,
         });
       }, onError)();
     } else {
-      await runSubmitUpdate({ kind: 'reviewOnly', notes });
+      await runSubmitUpdate({
+        kind: 'reviewOnly',
+        notes,
+        renewPublicLastUpdated,
+      });
     }
   };
 
-  const handleCompleteConfirm = async (notes?: string) => {
+  const handleCompleteConfirm = async (
+    payload: import('@/components/activity/activities/EditActivityConfirmModal').ActivitySaveConfirmPayload
+  ) => {
+    const { notes, renewPublicLastUpdated } = payload;
     if (isDirty) {
       await form.handleSubmit(async (data) => {
         await runSubmitUpdate({
           kind: 'completeWithSave',
           validatedData: data,
           notes,
+          renewPublicLastUpdated,
         });
       }, onError)();
     } else {
-      await runSubmitUpdate({ kind: 'completeOnly', notes });
+      await runSubmitUpdate({
+        kind: 'completeOnly',
+        notes,
+        renewPublicLastUpdated,
+      });
     }
   };
 
@@ -1118,7 +1162,13 @@ export function ActivityPage({
         categories={categories}
         leadMinistry={activity.leadMinistry ?? null}
         activityStatus={activity.activityStatus ?? null}
-        lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
+        lastUpdatedDateTime={activity.publicLastUpdatedDateTime ?? null}
+        adminOperationalLastUpdatedDateTime={
+          activity.lastUpdatedDateTime ?? null
+        }
+        showAdminOperationalTimestamp={hasPermission(
+          PERMISSIONS.ACTIVITIES.PUBLIC_LAST_UPDATED_DEFER
+        )}
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={() => setHistoryOpen(true)}
         flags={activity.flags ?? []}
@@ -1414,7 +1464,7 @@ export function ActivityPage({
           if (!open) setValidatedData(null);
         }}
         changes={confirmModalChanges}
-        onConfirm={(notes) => void handleConfirmedSubmit(notes)}
+        onConfirm={(payload) => void handleConfirmedSubmit(payload)}
         isSubmitting={isSubmitting}
       />
       <ReviewActivityModal
@@ -1423,9 +1473,7 @@ export function ActivityPage({
         changes={reviewModalChanges}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes, markAsCompleted, unassignMe) =>
-          void handleReviewConfirm(notes, markAsCompleted, unassignMe)
-        }
+        onConfirm={(payload) => void handleReviewConfirm(payload)}
         displayId={displayId}
         showMarkAsCompletedOption={actionFlags.showCompleteAction}
         activityEndedAtLabel={reviewModalActivityEndedAtLabel}
@@ -1438,7 +1486,7 @@ export function ActivityPage({
         onOpenChange={setShowCompleteModal}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes) => void handleCompleteConfirm(notes)}
+        onConfirm={(payload) => void handleCompleteConfirm(payload)}
         displayId={displayId}
       />
       <RequestDeleteActivityModal

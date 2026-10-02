@@ -37,6 +37,7 @@ import type {
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
 import { ActivityUtilsService } from '../activities/services/activity-utils.service';
+import { getActivityTimestampUpdateForWrite } from '../activities/utils/activity-timestamp-write';
 import { AuthService } from '../auth/auth.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
@@ -1354,14 +1355,18 @@ export class UsersService {
             teamAbbreviation: crossTeamContext.teamAbbreviation,
           });
 
+        const transferNow = new Date();
         await tx
           .update(activities)
           .set({
             leadTeamId: toTeamId,
             leadMinistryId: crossTeamContext.leadMinistryId,
             displayId,
-            lastUpdatedDateTime: new Date(),
-            lastUpdatedBy: changedByUserId,
+            ...getActivityTimestampUpdateForWrite({
+              context: 'transfer',
+              userId: changedByUserId,
+              now: transferNow,
+            }),
           })
           .where(eq(activities.id, row.activityId));
 

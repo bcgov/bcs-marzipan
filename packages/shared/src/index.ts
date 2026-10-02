@@ -1,4 +1,5 @@
 export * from './activities';
+export * from './activity-last-updated-bump';
 export * from './activity-filter-state';
 export * from './activity-completion';
 export * from './activity-reminders';

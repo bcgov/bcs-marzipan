@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { HistoryChange } from '@corpcal/shared/api/types';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,16 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/useAuth';
 
 import { ActivityFormChangesList } from './ActivityFormChangesList';
+import { type ActivitySaveConfirmPayload } from './EditActivityConfirmModal';
+import { RenewPublicLastUpdatedField } from './RenewPublicLastUpdatedField';
+
+export type ReviewActivityConfirmPayload = ActivitySaveConfirmPayload & {
+  markAsCompleted?: boolean;
+  unassignMe?: boolean;
+};
 
 interface ReviewActivityModalProps {
   open: boolean;
@@ -25,11 +33,7 @@ interface ReviewActivityModalProps {
   /** When true, copy mentions saving pending edits before updating status. */
   isDirty: boolean;
   isSubmitting: boolean;
-  onConfirm: (
-    notes?: string,
-    markAsCompleted?: boolean,
-    unassignMe?: boolean
-  ) => void;
+  onConfirm: (payload: ReviewActivityConfirmPayload) => void;
   displayId?: string;
   /** When true, show optional "Mark as completed" (activities.complete + eligibility). */
   showMarkAsCompletedOption?: boolean;
@@ -51,12 +55,25 @@ export function ReviewActivityModal({
   activityEndedAtLabel = null,
   showUnassignMeOption = false,
 }: ReviewActivityModalProps) {
+  const { user } = useAuth();
   const [notes, setNotes] = useState('');
   const [markAsCompleted, setMarkAsCompleted] = useState(false);
   const [unassignMe, setUnassignMe] = useState(false);
+  const [renewPublicLastUpdated, setRenewPublicLastUpdated] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setRenewPublicLastUpdated(false);
+    }
+  }, [open]);
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined, markAsCompleted, unassignMe);
+    onConfirm({
+      notes: notes.trim() || undefined,
+      ...(renewPublicLastUpdated ? { renewPublicLastUpdated: true } : {}),
+      ...(markAsCompleted ? { markAsCompleted: true } : {}),
+      ...(unassignMe ? { unassignMe: true } : {}),
+    });
   };
 
   const handleOpenChange = (value: boolean) => {
@@ -64,6 +81,7 @@ export function ReviewActivityModal({
       setNotes('');
       setMarkAsCompleted(false);
       setUnassignMe(false);
+      setRenewPublicLastUpdated(false);
     }
     onOpenChange(value);
   };
@@ -166,6 +184,13 @@ export function ReviewActivityModal({
               maxLength={1000}
             />
           </div>
+
+          <RenewPublicLastUpdatedField
+            permissions={user?.permissions ?? []}
+            checked={renewPublicLastUpdated}
+            onCheckedChange={setRenewPublicLastUpdated}
+            id="review-confirm-renew-public"
+          />
         </div>
 
         <DialogFooter>

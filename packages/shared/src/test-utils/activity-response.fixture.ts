@@ -89,6 +89,8 @@ export function createMockActivityResponse(
     lastUpdatedBy: 1,
     createdDateTime: '2025-01-15T12:00:00.000Z',
     lastUpdatedDateTime: '2025-01-15T12:00:00.000Z',
+    publicLastUpdatedBy: 1,
+    publicLastUpdatedDateTime: '2025-01-15T12:00:00.000Z',
 
     // Computed fields (from joins/lookups)
     category: [],

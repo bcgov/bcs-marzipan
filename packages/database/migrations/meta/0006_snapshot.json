@@ -1,6 +1,6 @@
 {
-  "id": "c9d901c3-44df-498f-8117-a2415431b3b0",
-  "prevId": "20838943-9243-4667-8eb1-1216c4f2311f",
+  "id": "ae38eb03-4142-45d4-9d24-9dcec4be9956",
+  "prevId": "c9d901c3-44df-498f-8117-a2415431b3b0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -881,6 +881,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "is_event_planner": {
+          "name": "is_event_planner",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {
@@ -4168,10 +4175,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "activity_event_planners_event_planner_id_event_planners_id_fk": {
-          "name": "activity_event_planners_event_planner_id_event_planners_id_fk",
+        "activity_event_planners_event_planner_id_users_id_fk": {
+          "name": "activity_event_planners_event_planner_id_users_id_fk",
           "tableFrom": "activity_event_planners",
-          "tableTo": "event_planners",
+          "tableTo": "users",
           "columnsFrom": ["event_planner_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -5329,6 +5336,13 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "appears_in_share_with": {
+          "name": "appears_in_share_with",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
         }
       },
       "indexes": {},
