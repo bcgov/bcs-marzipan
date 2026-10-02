@@ -102,12 +102,27 @@ describe('LookupsController', () => {
         description: null,
         sortOrder: 0,
         isActive: true,
+        appearsInShareWith: true,
         roleId: null,
         memberCount: 2,
         ministryId: 5,
         ministryName: 'M1',
       },
     ];
+
+    it('excludes teams with appearsInShareWith false', async () => {
+      mockTeamsService.findAll.mockResolvedValue([
+        ...mockTeams,
+        { ...mockTeams[0], id: 2, appearsInShareWith: false },
+      ]);
+      mockLookupsService.getActivityTeamSharingQuickShare.mockResolvedValue(
+        null
+      );
+
+      const result = await controller.getActivityTeamSharing();
+
+      expect(result.data.teams).toEqual(mockTeams);
+    });
 
     it('returns teams and quick share groups', async () => {
       mockTeamsService.findAll.mockResolvedValue(mockTeams);

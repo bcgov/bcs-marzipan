@@ -139,7 +139,13 @@ export class LookupsController {
       this.teamsService.findAll(true),
       this.lookupsService.getActivityTeamSharingQuickShare(),
     ]);
-    return { success: true, data: { teams, quickShare } };
+    return {
+      success: true,
+      data: {
+        teams: teams.filter((t) => t.appearsInShareWith),
+        quickShare,
+      },
+    };
   }
 
   @ApiOperation({

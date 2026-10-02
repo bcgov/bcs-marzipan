@@ -62,6 +62,7 @@ export const teams = pgTable('teams', {
   description: text('description'),
   sortOrder: integer('sort_order').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
+  appearsInShareWith: boolean('appears_in_share_with').notNull().default(true),
   roleId: integer('role_id').references(() => roles.id, {
     onDelete: 'set null',
   }),
