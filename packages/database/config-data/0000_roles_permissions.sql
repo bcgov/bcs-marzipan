@@ -93,12 +93,17 @@ CROSS JOIN permissions p
 WHERE p.key IN ('savedFilters.view','savedFilters.create','savedFilters.edit','savedFilters.delete')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 2b. Notifications read access for all system roles
+-- 2b. Notifications read access for all system roles (cleanup stale non-system mappings first)
+DELETE FROM role_permissions
+WHERE permission_id = (SELECT id FROM permissions WHERE key = 'notifications.view')
+  AND role_id IN (SELECT id FROM roles WHERE is_system = false);
+
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
-WHERE p.key = 'notifications.view'
+WHERE r.is_system = true
+AND p.key = 'notifications.view'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- 3. Viewer (view only, scoped)
