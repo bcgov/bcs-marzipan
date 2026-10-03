@@ -889,7 +889,7 @@ export class LookupsController {
     type: LookupArrayResponseWrapperDto,
   })
   @Get('event-planners')
-  @Header('Cache-Control', 'private, no-cache')
+  @Header('Cache-Control', lookupGetCacheControl())
   async getEventPlanners(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getEventPlanners();
     return { success: true, data };

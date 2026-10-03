@@ -159,6 +159,9 @@ export function UserCreateModal({
     mutationFn: ({ body }: CreateUserMutationInput) => createUser(body),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: userQueryKeys.list() });
+      void queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.eventPlanners(),
+      });
       showEntityToast('success', 'Created user', {
         description: formatUserCreatedDescription(
           variables.displayLabel,

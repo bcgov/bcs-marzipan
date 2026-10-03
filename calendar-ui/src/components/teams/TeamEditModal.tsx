@@ -139,6 +139,9 @@ export function TeamEditModal({
     }) => createTeam(body),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
+      void queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.activityTeamSharing(),
+      });
       showEntityToast('success', 'Created team', {
         description: variables.teamLabel,
         id: 'team-created',
@@ -173,6 +176,9 @@ export function TeamEditModal({
     }) => updateTeam(id, body),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
+      void queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.activityTeamSharing(),
+      });
       showEntityToast('success', 'Updated team', {
         description: variables.teamLabel,
         id: `team-updated-${variables.id}`,
