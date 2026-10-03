@@ -16,7 +16,6 @@ import {
   categories,
   commsMaterials,
   dateStatuses,
-  eventPlanners,
   ministries,
   newsReleaseDistributions,
   newsReleaseOrigins,
@@ -907,17 +906,11 @@ export class ActivityDataFetcherService {
         eventPlannerId: activityEventPlanners.eventPlannerId,
         eventPlannerName: activityEventPlanners.eventPlannerName,
         isLead: activityEventPlanners.isLead,
-        displayName: eventPlanners.displayName,
-        name: eventPlanners.name,
+        displayName: users.adDisplayName,
+        name: sql<string | null>`coalesce(${users.adDisplayName}, ${users.adUsername})`,
       })
       .from(activityEventPlanners)
-      .leftJoin(
-        eventPlanners,
-        and(
-          eq(activityEventPlanners.eventPlannerId, eventPlanners.id),
-          eq(eventPlanners.isActive, true)
-        )
-      )
+      .leftJoin(users, eq(activityEventPlanners.eventPlannerId, users.id))
       .where(
         and(
           inArray(activityEventPlanners.activityId, activityIds),

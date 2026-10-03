@@ -43,6 +43,13 @@
       "when": 1790973105714,
       "tag": "0005_20261002_activity_public_last_updated",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790974835097,
+      "tag": "0006_20261002_event_planners_from_users",
+      "breakpoints": true
     }
   ]
 }

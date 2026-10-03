@@ -139,7 +139,13 @@ export class LookupsController {
       this.teamsService.findAll(true),
       this.lookupsService.getActivityTeamSharingQuickShare(),
     ]);
-    return { success: true, data: { teams, quickShare } };
+    return {
+      success: true,
+      data: {
+        teams: teams.filter((t) => t.appearsInShareWith),
+        quickShare,
+      },
+    };
   }
 
   @ApiOperation({
@@ -873,7 +879,10 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Get all event planners' })
+  @ApiOperation({
+    summary: 'Get all event planners',
+    description: 'Active users flagged as event planners.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Event planners retrieved successfully',

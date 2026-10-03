@@ -17,6 +17,7 @@ export function createMockTeamListItem(
     description: 'Test description',
     sortOrder: 0,
     isActive: true,
+    appearsInShareWith: true,
     roleId: null,
     memberCount: 2,
     ministryId: 1,
