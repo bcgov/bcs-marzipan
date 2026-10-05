@@ -22,7 +22,6 @@ import {
   cities,
   commsMaterials,
   dateStatuses,
-  eventPlanners,
   governmentRepresentatives,
   ministries,
   ministryGroups,
@@ -1123,26 +1122,36 @@ export class LookupsService {
   }
 
   /**
-   * Get all active event planners
+   * Active users flagged as event planners (users.is_event_planner).
    */
   async getEventPlanners(): Promise<LookupItem[]> {
     const results = await this.databaseService.db
       .select({
-        id: eventPlanners.id,
-        name: eventPlanners.name,
-        displayName: eventPlanners.displayName,
+        id: users.id,
+        adUsername: users.adUsername,
+        adDisplayName: users.adDisplayName,
+        adEmail: users.adEmail,
       })
-      .from(eventPlanners)
-      .where(eq(eventPlanners.isActive, true))
-      .orderBy(eventPlanners.sortOrder, eventPlanners.displayName);
+      .from(users)
+      .where(and(eq(users.isActive, true), eq(users.isEventPlanner, true)));
 
-    return results.map((planner) => ({
-      id: planner.id,
-      label: planner.displayName,
-      value: planner.id,
-      name: planner.name,
-      displayName: planner.displayName,
-    }));
+    const sorted = sortByStaffName(
+      results,
+      (u) => u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`,
+      (u) => u.id
+    );
+
+    return sorted.map((u) => {
+      const label =
+        u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`;
+      return {
+        id: u.id,
+        label,
+        value: u.id,
+        name: label,
+        displayName: label,
+      };
+    });
   }
 
   /**
