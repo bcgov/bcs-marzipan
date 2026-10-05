@@ -161,6 +161,12 @@ describe('LookupsService', () => {
             adDisplayName: 'Lana Popham',
             adEmail: 'l@gov.bc.ca',
           },
+          {
+            id: 3,
+            adUsername: null,
+            adDisplayName: null,
+            adEmail: 'planner@gov.bc.ca',
+          },
         ],
         'where'
       )
@@ -171,7 +177,11 @@ describe('LookupsService', () => {
     expect(result.map((planner) => planner.label)).toEqual([
       'Lana Popham',
       'Niki Sharma',
+      'planner@gov.bc.ca',
     ]);
-    expect(result.map((planner) => planner.value)).toEqual([1, 2]);
+    expect(result.map((planner) => planner.value)).toEqual([1, 2, 3]);
+    expect(result.find((planner) => planner.value === 3)?.label).toBe(
+      'planner@gov.bc.ca'
+    );
   });
 });

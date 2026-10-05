@@ -290,6 +290,9 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
   const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
   const [representativeSearch, setRepresentativeSearch] = useState('');
+  const [retainedPlannerLabels, setRetainedPlannerLabels] = useState<
+    Record<string, string>
+  >({});
   const leadTeamId = useWatch({
     control: form.control,
     name: 'leadTeamId',
@@ -916,13 +919,39 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
         name="eventPlanners"
         render={({ field }) => {
           const list = field.value ?? [];
-          const selectedPlannerLabels = Object.fromEntries(
-            list.flatMap((planner) =>
-              planner.eventPlannerId != null && planner.eventPlannerName
-                ? [[String(planner.eventPlannerId), planner.eventPlannerName]]
-                : []
-            )
+          const selectedPlannerLabels = {
+            ...retainedPlannerLabels,
+            ...Object.fromEntries(
+              list.flatMap((planner) =>
+                planner.eventPlannerId != null && planner.eventPlannerName
+                  ? [[String(planner.eventPlannerId), planner.eventPlannerName]]
+                  : []
+              )
+            ),
+          };
+          const availablePlannerValues = new Set(
+            eventPlannerOptions.map((option) => option.value)
           );
+          const retainUnavailablePlannerLabels = (
+            entries: Array<{
+              eventPlannerId?: number | null;
+              eventPlannerName?: string | null;
+            }>
+          ) => {
+            setRetainedPlannerLabels(
+              Object.fromEntries(
+                entries.flatMap((planner) => {
+                  if (planner.eventPlannerId == null) return [];
+                  const value = String(planner.eventPlannerId);
+                  const label =
+                    planner.eventPlannerName ?? selectedPlannerLabels[value];
+                  return !availablePlannerValues.has(value) && label
+                    ? [[value, label]]
+                    : [];
+                })
+              )
+            );
+          };
           const comboboxValue: FreeformComboboxItemWithLead[] = list.map(
             (p) => {
               const base: FreeformComboboxItemWithLead =
@@ -947,6 +976,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                     )
                   : [value];
             if (arr.length === 0) {
+              setRetainedPlannerLabels({});
               setActivityFormFieldValue(form, field.name, []);
               return;
             }
@@ -975,6 +1005,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             if (next.length > 0 && !next.some((p) => p.isLead)) {
               next[0] = { ...next[0], isLead: true };
             }
+            retainUnavailablePlannerLabels(next);
             setActivityFormFieldValue(
               form,
               field.name,
@@ -989,6 +1020,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 isLead: i === index,
               }))
             );
+            retainUnavailablePlannerLabels(next);
             setActivityFormFieldValue(form, field.name, next);
           };
 

@@ -120,9 +120,9 @@ export class LookupsController {
   ) {}
 
   @ApiOperation({
-    summary: 'Teams and ministry quick-share for activity Shared with',
+    summary: 'Active teams and ministry quick-share for activity Shared with',
     description:
-      'Returns active teams (same list as GET /teams) plus quick-share group definitions.',
+      'Returns active teams with Share With visibility metadata plus quick-share group definitions.',
   })
   @ApiResponse({
     status: 200,
@@ -142,7 +142,7 @@ export class LookupsController {
     return {
       success: true,
       data: {
-        teams: teams.filter((t) => t.appearsInShareWith),
+        teams,
         quickShare,
       },
     };

@@ -1142,7 +1142,8 @@ export class LookupsService {
     );
 
     return sorted.map((u) => {
-      const label = u.adDisplayName ?? u.adUsername ?? `User ${u.id}`;
+      const label =
+        u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`;
       return {
         id: u.id,
         label,

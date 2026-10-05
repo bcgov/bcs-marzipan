@@ -110,7 +110,7 @@ describe('LookupsController', () => {
       },
     ];
 
-    it('excludes teams with appearsInShareWith false', async () => {
+    it('returns teams with their Share With visibility metadata', async () => {
       mockTeamsService.findAll.mockResolvedValue([
         ...mockTeams,
         { ...mockTeams[0], id: 2, appearsInShareWith: false },
@@ -121,7 +121,10 @@ describe('LookupsController', () => {
 
       const result = await controller.getActivityTeamSharing();
 
-      expect(result.data.teams).toEqual(mockTeams);
+      expect(result.data.teams).toEqual([
+        ...mockTeams,
+        { ...mockTeams[0], id: 2, appearsInShareWith: false },
+      ]);
     });
 
     it('returns teams and quick share groups', async () => {
