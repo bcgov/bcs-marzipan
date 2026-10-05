@@ -262,6 +262,17 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
               />
             </div>
 
+            <div className="flex items-center gap-3">
+              <Switch
+                id="user-event-planner"
+                checked={isEventPlanner}
+                onCheckedChange={(v) => setIsEventPlanner(Boolean(v))}
+              />
+              <Label htmlFor="user-event-planner" className="text-sm">
+                Event planner
+              </Label>
+            </div>
+
             <div className="space-y-2">
               <Label>Role</Label>
               <UserRoleField
@@ -274,17 +285,6 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
                 canEditOverrides={canEditOverrides}
                 onPermissionChange={setPermissionOverrideInputs}
               />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Switch
-                id="user-event-planner"
-                checked={isEventPlanner}
-                onCheckedChange={(v) => setIsEventPlanner(Boolean(v))}
-              />
-              <Label htmlFor="user-event-planner" className="text-sm">
-                Event planner
-              </Label>
             </div>
 
             <div className="flex items-center gap-3">

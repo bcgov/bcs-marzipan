@@ -887,7 +887,7 @@ export class ActivityDataFetcherService {
 
   /**
    * Fetch event planner details for multiple activities (id/name, display name, isLead).
-   * Reads from activity_event_planners junction; resolves lookup ids via event_planners table.
+   * Reads from activity_event_planners; resolves event planner user ids via users.
    * Returns activityId -> Array<EventPlannerDetail>.
    */
   async fetchEventPlannerDetailsForActivities(

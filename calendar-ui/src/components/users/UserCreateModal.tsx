@@ -360,6 +360,23 @@ export function UserCreateModal({
             />
             <FormField
               control={form.control}
+              name="isEventPlanner"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-3">
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(v) => field.onChange(Boolean(v))}
+                    />
+                  </FormControl>
+                  <FormLabel showDirtyIndicator={false} className="mt-0!">
+                    Event planner
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="adPhone"
               render={({ field }) => (
                 <FormItem>
@@ -493,23 +510,6 @@ export function UserCreateModal({
                   </FormItem>
                 );
               }}
-            />
-            <FormField
-              control={form.control}
-              name="isEventPlanner"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-3">
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={(v) => field.onChange(Boolean(v))}
-                    />
-                  </FormControl>
-                  <FormLabel showDirtyIndicator={false} className="mt-0!">
-                    Event planner
-                  </FormLabel>
-                </FormItem>
-              )}
             />
             <DialogFooter className="mt-8">
               <Button type="button" variant="outline" onClick={onClose}>
