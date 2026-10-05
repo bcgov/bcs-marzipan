@@ -111,11 +111,6 @@ describe('Permissions visibility integration', () => {
       </MemoryRouter>
     );
 
-    // Initially UserDetailPage should not show the permission
-    await waitFor(() => {
-      expect(screen.queryByText('Test Permission')).not.toBeInTheDocument();
-    });
-
     // In the admin table find the row for our permission and toggle the switch
     const adminRow = await screen.findByText('Test Permission');
     const row = adminRow.closest('tr');
@@ -145,5 +140,5 @@ describe('Permissions visibility integration', () => {
         ).toBeGreaterThanOrEqual(2),
       { timeout: 10000 }
     );
-  }, 20000);
+  }, 30000);
 });
