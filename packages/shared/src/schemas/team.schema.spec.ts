@@ -47,6 +47,7 @@ describe('teamListItemSchema', () => {
     });
     expect(result.displayName).toBeNull();
     expect(result.description).toBeNull();
+    expect(result.appearsInShareWith).toBe(false);
     expect(result.ministryId).toBeNull();
   });
 });
