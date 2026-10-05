@@ -62,5 +62,18 @@ export function hydrateActivityFormData(
 ): ActivityFormData {
   const mapped = activityToFormData(activity, lookups);
   const canon = canonicalizeActivityFormData(mapped);
-  return applyUiBaselineSentinels(canon);
+  const withPlannerLabels = {
+    ...canon,
+    eventPlanners: activity.eventPlannerDetails?.length
+      ? activity.eventPlannerDetails.map((detail) => ({
+          eventPlannerId: detail.eventPlannerId ?? undefined,
+          eventPlannerName:
+            detail.eventPlannerId != null
+              ? detail.name
+              : (detail.eventPlannerName ?? undefined),
+          isLead: detail.isLead,
+        }))
+      : canon.eventPlanners,
+  };
+  return applyUiBaselineSentinels(withPlannerLabels);
 }

@@ -64,6 +64,29 @@ function emptyActivityOverridesForField(
 }
 
 describe('hydrateActivityFormData', () => {
+  it('retains the label for an assigned event planner absent from current options', () => {
+    const activity = createMockActivityResponse({
+      eventPlannerDetails: [
+        {
+          eventPlannerId: 42,
+          eventPlannerName: null,
+          name: 'Former Planner',
+          isLead: true,
+        },
+      ],
+    });
+
+    const data = hydrateActivityFormData(activity, mockLookups);
+
+    expect(data.eventPlanners).toEqual([
+      {
+        eventPlannerId: 42,
+        eventPlannerName: 'Former Planner',
+        isLead: true,
+      },
+    ]);
+  });
+
   it.each(UI_BASELINE_SENTINEL_FIELDS)(
     'applies UI baseline sentinel for empty %s',
     (field) => {

@@ -16,6 +16,7 @@ describe('teamListItemSchema', () => {
       description: 'Description',
       sortOrder: 0,
       isActive: true,
+      appearsInShareWith: true,
       roleId: null,
       memberCount: 2,
       ministryId: 1,
@@ -24,6 +25,7 @@ describe('teamListItemSchema', () => {
     expect(result.id).toBe(1);
     expect(result.name).toBe('Team A');
     expect(result.memberCount).toBe(2);
+    expect(result.appearsInShareWith).toBe(true);
     expect(result.ministryId).toBe(1);
     expect(result.ministryName).toBe('Ministry One');
   });
@@ -37,6 +39,7 @@ describe('teamListItemSchema', () => {
       description: null,
       sortOrder: 1,
       isActive: true,
+      appearsInShareWith: false,
       roleId: null,
       memberCount: 0,
       ministryId: null,

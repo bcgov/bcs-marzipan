@@ -916,6 +916,13 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
         name="eventPlanners"
         render={({ field }) => {
           const list = field.value ?? [];
+          const selectedPlannerLabels = Object.fromEntries(
+            list.flatMap((planner) =>
+              planner.eventPlannerId != null && planner.eventPlannerName
+                ? [[String(planner.eventPlannerId), planner.eventPlannerName]]
+                : []
+            )
+          );
           const comboboxValue: FreeformComboboxItemWithLead[] = list.map(
             (p) => {
               const base: FreeformComboboxItemWithLead =
@@ -1000,6 +1007,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 <FreeformCombobox
                   readOnly={readOnly}
                   options={eventPlannerOptions}
+                  selectedOptionLabels={selectedPlannerLabels}
                   value={comboboxValue}
                   onChange={handleChange}
                   placeholder=""
