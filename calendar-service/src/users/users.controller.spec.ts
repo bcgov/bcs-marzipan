@@ -298,6 +298,18 @@ describe('UsersController', () => {
       expect(mockUsersService.update).toHaveBeenCalledWith(1, dto, mockUser.id);
     });
 
+    it('should reject demoting a system admin for a regular admin', async () => {
+      const dto = { roleId: SYSTEM_ROLE_IDS.ADMIN };
+      mockUsersService.findOne.mockResolvedValue(
+        createMockUserDetail({ id: 1, roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN })
+      );
+
+      await expect(controller.update(1, dto, mockUser)).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+
     it('should allow a system admin to assign the system admin role', async () => {
       const dto = { roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN };
       const systemAdmin: AuthUser = {
@@ -342,6 +354,9 @@ describe('UsersController', () => {
     it('should update user and return updated detail', async () => {
       const dto = { roleId: 2, isActive: true };
       const updated = createMockUserDetail({ id: 1, roleId: 2 });
+      mockUsersService.findOne.mockResolvedValue(
+        createMockUserDetail({ id: 1, roleId: SYSTEM_ROLE_IDS.ADMIN })
+      );
       mockUsersService.update.mockResolvedValue(updated);
 
       const result = await controller.update(1, dto, mockUser);

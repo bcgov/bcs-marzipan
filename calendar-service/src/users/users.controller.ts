@@ -110,6 +110,10 @@ export class UsersController {
   })
   @ApiResponse({ status: 400, description: 'Validation error or invalid role' })
   @ApiResponse({
+    status: 403,
+    description: 'Only System Admin users can assign the System Admin role',
+  })
+  @ApiResponse({
     status: 409,
     description: 'A user with this email already exists',
   })
@@ -209,6 +213,11 @@ export class UsersController {
     type: UserDetailResponseWrapperDto,
   })
   @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({
+    status: 403,
+    description:
+      "Only System Admin users can change a user's System Admin role",
+  })
   @RequirePermission('users.edit')
   @Patch(':id')
   async update(
@@ -217,8 +226,8 @@ export class UsersController {
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: UserDetail }> {
     // Editing personal profile fields (name, email, phone, job title) is
-    // restricted to admins and sys-admins. Role/active/notes remain governed
-    // by the users.edit permission only.
+    // restricted to admins and sys-admins. Other changes require users.edit;
+    // changes to or from the System Admin role require a System Admin caller.
     const editsProfile =
       dto.displayName !== undefined ||
       dto.email !== undefined ||
@@ -230,12 +239,19 @@ export class UsersController {
       );
     }
     if (
-      dto.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN &&
+      dto.roleId !== undefined &&
       user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
     ) {
       const existingUser = await this.usersService.findOne(id);
-      if (existingUser && existingUser.roleId !== dto.roleId) {
-        this.assertCanAssignSystemAdmin(user, dto.roleId);
+      if (
+        existingUser &&
+        existingUser.roleId !== dto.roleId &&
+        (existingUser.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN ||
+          dto.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN)
+      ) {
+        throw new ForbiddenException(
+          "Only System Admin users can change a user's System Admin role."
+        );
       }
     }
     this.assertCanManagePermissionOverrides(user, dto.permissionOverrides);
