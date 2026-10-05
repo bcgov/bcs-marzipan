@@ -120,6 +120,7 @@ export class UsersController {
     @Body(new ZodValidationPipe(createUserBodySchema)) dto: CreateUserDto,
     @CurrentUser() currentUser: AuthUser
   ): Promise<{ success: boolean; data: UserDetail }> {
+    this.assertCanAssignSystemAdmin(currentUser, dto.roleId);
     this.assertCanManagePermissionOverrides(
       currentUser,
       dto.permissionOverrides
@@ -228,6 +229,7 @@ export class UsersController {
         'Only admins and sys-admins can edit user profile details.'
       );
     }
+    this.assertCanAssignSystemAdmin(user, dto.roleId);
     this.assertCanManagePermissionOverrides(user, dto.permissionOverrides);
     const data = await this.usersService.update(id, dto, user.id);
     return { success: true, data };
@@ -244,6 +246,20 @@ export class UsersController {
     ) {
       throw new ForbiddenException(
         'You do not have permission to manage user permission overrides.'
+      );
+    }
+  }
+
+  private assertCanAssignSystemAdmin(
+    user: AuthUser,
+    roleId: number | undefined
+  ): void {
+    if (
+      roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN &&
+      user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+    ) {
+      throw new ForbiddenException(
+        'Only System Admin users can assign the System Admin role.'
       );
     }
   }
