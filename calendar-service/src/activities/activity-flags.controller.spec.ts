@@ -51,20 +51,18 @@ describe('ActivityFlagsController', () => {
   });
 
   it('marks write endpoints with activities.flag permission metadata', () => {
+    const expected = { keys: ['activities.flag'], mode: 'any' as const };
+    const handlers = ActivityFlagsController.prototype as Record<
+      'upsertFlag' | 'syncFlags',
+      (...args: unknown[]) => unknown
+    >;
+    // SWC attaches SetMetadata to the handler function (same target as PermissionsGuard).
     expect(
-      Reflect.getMetadata(
-        PERMISSIONS_METADATA_KEY,
-        ActivityFlagsController.prototype,
-        'upsertFlag'
-      )
-    ).toEqual({ keys: ['activities.flag'], mode: 'any' });
+      Reflect.getMetadata(PERMISSIONS_METADATA_KEY, handlers.upsertFlag)
+    ).toEqual(expected);
     expect(
-      Reflect.getMetadata(
-        PERMISSIONS_METADATA_KEY,
-        ActivityFlagsController.prototype,
-        'syncFlags'
-      )
-    ).toEqual({ keys: ['activities.flag'], mode: 'any' });
+      Reflect.getMetadata(PERMISSIONS_METADATA_KEY, handlers.syncFlags)
+    ).toEqual(expected);
   });
 
   it('syncs a single assignee for the legacy flag route when the caller is on the team', async () => {
