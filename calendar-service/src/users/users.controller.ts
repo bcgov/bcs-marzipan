@@ -229,7 +229,15 @@ export class UsersController {
         'Only admins and sys-admins can edit user profile details.'
       );
     }
-    this.assertCanAssignSystemAdmin(user, dto.roleId);
+    if (
+      dto.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN &&
+      user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+    ) {
+      const existingUser = await this.usersService.findOne(id);
+      if (existingUser && existingUser.roleId !== dto.roleId) {
+        this.assertCanAssignSystemAdmin(user, dto.roleId);
+      }
+    }
     this.assertCanManagePermissionOverrides(user, dto.permissionOverrides);
     const data = await this.usersService.update(id, dto, user.id);
     return { success: true, data };
