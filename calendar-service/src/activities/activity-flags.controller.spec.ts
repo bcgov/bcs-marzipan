@@ -51,19 +51,20 @@ describe('ActivityFlagsController', () => {
   });
 
   it('marks write endpoints with activities.flag permission metadata', () => {
+    const upsertFlagHandler = Object.getOwnPropertyDescriptor(
+      ActivityFlagsController.prototype,
+      'upsertFlag'
+    )!.value as object;
+    const syncFlagsHandler = Object.getOwnPropertyDescriptor(
+      ActivityFlagsController.prototype,
+      'syncFlags'
+    )!.value as object;
+
     expect(
-      Reflect.getMetadata(
-        PERMISSIONS_METADATA_KEY,
-        ActivityFlagsController.prototype,
-        'upsertFlag'
-      )
+      Reflect.getMetadata(PERMISSIONS_METADATA_KEY, upsertFlagHandler)
     ).toEqual({ keys: ['activities.flag'], mode: 'any' });
     expect(
-      Reflect.getMetadata(
-        PERMISSIONS_METADATA_KEY,
-        ActivityFlagsController.prototype,
-        'syncFlags'
-      )
+      Reflect.getMetadata(PERMISSIONS_METADATA_KEY, syncFlagsHandler)
     ).toEqual({ keys: ['activities.flag'], mode: 'any' });
   });
 
