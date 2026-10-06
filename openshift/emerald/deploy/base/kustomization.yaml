@@ -14,6 +14,9 @@ resources:
   - database/postgres-pvc.yaml
   - database/postgres-statefulset.yaml
   - database/postgres-service.yaml
+  - database/postgres-backup-pvc.yaml
+  - database/postgres-backup-configmap.yaml
+  - database/postgres-backup-deployment.yaml
   - database/migration/calendar-db-migrate-job.yaml
 # secrets are not included in the resources list to avoid exposing sensitive information in the kustomization.yaml file
-# apply secrets separately using kubectl apply -f calendar-service/secret.yaml, kubectl apply -f calendar-ui/secret.yaml, and kubectl apply -f database/postgres-secret.yaml
+# apply secrets separately using kubectl apply -f calendar-service/secret.yaml, kubectl apply -f calendar-ui/secret.yaml, kubectl apply -f database/postgres-secret.yaml, and kubectl apply -f database/postgres-backup-secret.yaml
