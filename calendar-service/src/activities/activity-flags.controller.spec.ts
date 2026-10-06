@@ -52,16 +52,20 @@ describe('ActivityFlagsController', () => {
 
   it('marks write endpoints with activities.flag permission metadata', () => {
     const expected = { keys: ['activities.flag'], mode: 'any' as const };
-    const handlers = ActivityFlagsController.prototype as Record<
-      'upsertFlag' | 'syncFlags',
-      (...args: unknown[]) => unknown
-    >;
-    // SWC attaches SetMetadata to the handler function (same target as PermissionsGuard).
+    const upsertFlagHandler = Object.getOwnPropertyDescriptor(
+      ActivityFlagsController.prototype,
+      'upsertFlag'
+    )!.value as object;
+    const syncFlagsHandler = Object.getOwnPropertyDescriptor(
+      ActivityFlagsController.prototype,
+      'syncFlags'
+    )!.value as object;
+
     expect(
-      Reflect.getMetadata(PERMISSIONS_METADATA_KEY, handlers.upsertFlag)
+      Reflect.getMetadata(PERMISSIONS_METADATA_KEY, upsertFlagHandler)
     ).toEqual(expected);
     expect(
-      Reflect.getMetadata(PERMISSIONS_METADATA_KEY, handlers.syncFlags)
+      Reflect.getMetadata(PERMISSIONS_METADATA_KEY, syncFlagsHandler)
     ).toEqual(expected);
   });
 
