@@ -144,7 +144,7 @@ export function useActivityTableCore({
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
   const canBulkShareActivities = canSeeDeleted;
-  const showReviewHighlights = canSeeDeleted;
+  const showReviewHighlights = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
 
   const {

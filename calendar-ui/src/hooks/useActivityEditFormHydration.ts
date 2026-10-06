@@ -64,9 +64,9 @@ export function useActivityEditFormHydration(
       lookupsRef.current
     );
     form.reset(mapped);
-    initialFormDataRef.current = mapped;
 
     const timeoutId = window.setTimeout(() => {
+      initialFormDataRef.current = structuredClone(form.getValues());
       setIsFormHydrated(true);
       setHydrationGeneration((g) => g + 1);
     }, 0);

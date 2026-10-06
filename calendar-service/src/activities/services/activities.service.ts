@@ -1825,10 +1825,9 @@ export class ActivitiesService {
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
     const isListOutput = outputShape === 'list';
-    const isAdminOrSysAdmin =
-      ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
-      ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
-    const canReview = profile.includeReviewDiff === true && isAdminOrSysAdmin;
+    const hasReviewPermission =
+      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
+    const canReview = profile.includeReviewDiff === true && hasReviewPermission;
     const shouldFetchReviewExemptFieldKeys = canReview && !isListOutput;
     const userTeamIds = ctx?.user?.teamIds ?? [];
     const fetchFlags = profile.includeFlags === true && userTeamIds.length > 0;
@@ -1871,7 +1870,7 @@ export class ActivitiesService {
         if (canReview && reviewLookups) {
           const responseForDiff: ActivityResponse =
             this.mapperService.buildResponseDto(activity, relatedData);
-          // List-view admin highlighting should reflect all changed fields,
+          // List-view reviewer highlighting should reflect all changed fields,
           // including review-exempt scheduling fields (date/time status).
           relatedData.changedFieldsSinceReview =
             this.computeChangedFieldsSinceReview(

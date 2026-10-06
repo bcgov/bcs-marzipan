@@ -75,7 +75,7 @@ export interface ActivityTableRow {
   // Status column
   activityStatus: string;
   activityStatusId: number;
-  /** Dotted field paths changed since last review (admin/system admin reviewers). */
+  /** Dotted field paths changed since last review (ACTIVITIES.REVIEW holders). */
   changedFieldsSinceReview?: string[];
   lastUpdatedDateTime: string;
   lastUpdatedBy: number;

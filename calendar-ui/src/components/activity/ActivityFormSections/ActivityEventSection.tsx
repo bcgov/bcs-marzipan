@@ -43,13 +43,12 @@ import {
   useComboboxAnchor,
 } from '@/components/ui/combobox';
 import {
-  FormAggregateDirtyIndicator,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  useFormDisplayOptions,
+  useFormPathsFieldHighlight,
 } from '@/components/ui/form';
 import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
@@ -69,6 +68,7 @@ import {
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
+import { FORM_FIELD_LABEL_HIGHLIGHT_CLASS } from '@/lib/form-field-highlight';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
@@ -287,8 +287,11 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
   teamMinistryRefs,
 }) => {
   const { readOnly } = useActivityEdit();
-  const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
+  const venueGroupHighlight = useFormPathsFieldHighlight([
+    'venueAddress.venueName',
+    'venueStatusId',
+  ]);
   const [representativeSearch, setRepresentativeSearch] = useState('');
   const [retainedPlannerLabels, setRetainedPlannerLabels] = useState<
     Record<string, string>
@@ -656,10 +659,16 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               <span
                 className={cn(
                   'inline-flex items-center gap-2',
-                  showChangedBadges && 'min-h-4.5'
+                  venueGroupHighlight.highlight &&
+                    FORM_FIELD_LABEL_HIGHLIGHT_CLASS
                 )}
               >
                 {getActivityFieldLabel('venueName')}
+                {venueGroupHighlight.screenReaderText ? (
+                  <span className="sr-only">
+                    {venueGroupHighlight.screenReaderText}
+                  </span>
+                ) : null}
                 <ActivityFieldInfoIcon
                   fieldKey="venueName"
                   ariaLabel="About venue"
@@ -667,9 +676,6 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 <ActivityFieldInfoIcon
                   fieldKey="venueStatusId"
                   ariaLabel="About venue status"
-                />
-                <FormAggregateDirtyIndicator
-                  names={['venueAddress.venueName', 'venueStatusId']}
                 />
               </span>
             </FormLabel>
