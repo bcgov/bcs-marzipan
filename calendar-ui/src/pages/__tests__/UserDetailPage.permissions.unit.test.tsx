@@ -1,5 +1,5 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
 import { fireEvent, render, screen } from '@/test/test-utils';
@@ -56,6 +56,13 @@ vi.mock('@/api/usersApi', () => ({
 }));
 
 describe('UserDetailPage permissions (unit)', () => {
+  let UserDetailPage: typeof import('../UserDetailPage').default;
+
+  // The page pulls in a large module graph; load it outside the test timeout.
+  beforeAll(async () => {
+    ({ default: UserDetailPage } = await import('../UserDetailPage'));
+  }, 60000);
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({
@@ -65,8 +72,6 @@ describe('UserDetailPage permissions (unit)', () => {
   });
 
   it('renders permissions inside the expandable panel', async () => {
-    const { default: UserDetailPage } = await import('../UserDetailPage');
-
     render(
       <MemoryRouter initialEntries={['/users/7']}>
         <Routes>

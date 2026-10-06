@@ -4681,7 +4681,7 @@ describe('ActivitiesService', () => {
   });
 
   describe('findAll list output review diff', () => {
-    it('attaches changedFieldsSinceReview only for admin users and uses the parse-free mapper builder', async () => {
+    it('attaches changedFieldsSinceReview only for ACTIVITIES.REVIEW holders and uses the parse-free mapper builder', async () => {
       const activity = createMockActivity({
         reviewedFieldSnapshot: null,
         reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
@@ -4728,7 +4728,41 @@ describe('ActivitiesService', () => {
       const buildResponseSpy = vi.spyOn(mapperService, 'buildResponseDto');
       const mapToResponseSpy = vi.spyOn(mapperService, 'mapToResponseDto');
 
-      const adminResult = await service.findAll(
+      const reviewerResult = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: 'User',
+            permissions: [PERMISSIONS.ACTIVITIES.REVIEW],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: {
+            ...HYDRATION_PROFILES.detail,
+            includeReviewDiff: true,
+          },
+        }
+      );
+
+      expect(reviewerResult[0]).toMatchObject({
+        id: activity.id,
+        changedFieldsSinceReview: expect.arrayContaining([
+          'title',
+          'dateStatusId',
+          'timeStatusId',
+        ]),
+      });
+      expect(getEffectiveReviewExemptFieldKeysSpy).not.toHaveBeenCalled();
+      expect(buildResponseSpy).toHaveBeenCalledTimes(1);
+      expect(mapToResponseSpy).not.toHaveBeenCalled();
+
+      buildResponseSpy.mockClear();
+      mapToResponseSpy.mockClear();
+
+      const nonReviewerResult = await service.findAll(
         undefined,
         {
           user: {
@@ -4747,41 +4781,9 @@ describe('ActivitiesService', () => {
         }
       );
 
-      expect(adminResult[0]).toMatchObject({
-        id: activity.id,
-        changedFieldsSinceReview: expect.arrayContaining([
-          'title',
-          'dateStatusId',
-          'timeStatusId',
-        ]),
-      });
-      expect(getEffectiveReviewExemptFieldKeysSpy).not.toHaveBeenCalled();
-      expect(buildResponseSpy).toHaveBeenCalledTimes(1);
-      expect(mapToResponseSpy).not.toHaveBeenCalled();
-
-      buildResponseSpy.mockClear();
-      mapToResponseSpy.mockClear();
-
-      const nonAdminResult = await service.findAll(
-        undefined,
-        {
-          user: {
-            roleName: 'User',
-            permissions: [],
-            teamIds: [],
-          },
-          dataScope: { bypass: true, teamIds: [] },
-        } as never,
-        {
-          outputShape: 'list',
-          profile: {
-            ...HYDRATION_PROFILES.detail,
-            includeReviewDiff: true,
-          },
-        }
+      expect(nonReviewerResult[0]).not.toHaveProperty(
+        'changedFieldsSinceReview'
       );
-
-      expect(nonAdminResult[0]).not.toHaveProperty('changedFieldsSinceReview');
       expect(buildResponseSpy).not.toHaveBeenCalled();
       expect(mapToResponseSpy).not.toHaveBeenCalled();
     });

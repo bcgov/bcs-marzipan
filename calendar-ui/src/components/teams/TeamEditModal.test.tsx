@@ -93,6 +93,7 @@ const mockTeamListItem: TeamListItem = {
   description: 'Team description',
   sortOrder: 0,
   isActive: true,
+  appearsInShareWith: true,
   roleId: null,
   memberCount: 0,
   ministryId: null,

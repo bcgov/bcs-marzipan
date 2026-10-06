@@ -144,6 +144,14 @@ describe('ActivityDataFetcherService', () => {
             displayName: 'Minister Lana Popham Events',
             name: 'Lana Popham',
           },
+          {
+            activityId: 1,
+            eventPlannerId: 3,
+            eventPlannerName: null,
+            isLead: false,
+            displayName: null,
+            name: 'planner@gov.bc.ca',
+          },
         ]),
       });
 
@@ -152,6 +160,7 @@ describe('ActivityDataFetcherService', () => {
       expect(result.get(1)?.map((planner) => planner.name)).toEqual([
         'Minister Lana Popham Events',
         'Niki Sharma Events',
+        'planner@gov.bc.ca',
       ]);
     });
   });

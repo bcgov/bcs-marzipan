@@ -120,9 +120,9 @@ export class LookupsController {
   ) {}
 
   @ApiOperation({
-    summary: 'Teams and ministry quick-share for activity Shared with',
+    summary: 'Active teams and ministry quick-share for activity Shared with',
     description:
-      'Returns active teams (same list as GET /teams) plus quick-share group definitions.',
+      'Returns active teams with Share With visibility metadata plus quick-share group definitions.',
   })
   @ApiResponse({
     status: 200,
@@ -139,7 +139,13 @@ export class LookupsController {
       this.teamsService.findAll(true),
       this.lookupsService.getActivityTeamSharingQuickShare(),
     ]);
-    return { success: true, data: { teams, quickShare } };
+    return {
+      success: true,
+      data: {
+        teams,
+        quickShare,
+      },
+    };
   }
 
   @ApiOperation({
@@ -873,7 +879,10 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Get all event planners' })
+  @ApiOperation({
+    summary: 'Get all event planners',
+    description: 'Active users flagged as event planners.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Event planners retrieved successfully',

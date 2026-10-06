@@ -150,7 +150,7 @@ export function useEventPlanners() {
   return useQuery<LookupItem[]>({
     queryKey: lookupQueryKeys.eventPlanners(),
     queryFn: () => fetchEventPlanners(),
-    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+    staleTime: DYNAMIC_LOOKUP_CACHE_MS,
   });
 }
 

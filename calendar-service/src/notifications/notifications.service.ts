@@ -13,7 +13,6 @@ import {
   activityEventPlanners,
   activityFlags,
   activityStatuses,
-  eventPlanners,
   ministries,
   notificationEvents,
   notificationRecipients,
@@ -1024,21 +1023,11 @@ export class NotificationsService {
       this.databaseService.db
         .selectDistinct({ id: users.id })
         .from(activityEventPlanners)
-        .innerJoin(
-          eventPlanners,
-          eq(eventPlanners.id, activityEventPlanners.eventPlannerId)
-        )
-        .innerJoin(
-          users,
-          sql`lower(${users.adEmail}) = lower(${eventPlanners.email})`
-        )
+        .innerJoin(users, eq(users.id, activityEventPlanners.eventPlannerId))
         .where(
           and(
             eq(activityEventPlanners.activityId, input.activityId),
             eq(activityEventPlanners.isActive, true),
-            isNotNull(activityEventPlanners.eventPlannerId),
-            isNotNull(eventPlanners.email),
-            isNotNull(users.adEmail),
             eq(users.isActive, true)
           )
         ),

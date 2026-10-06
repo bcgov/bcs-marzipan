@@ -51,6 +51,7 @@ describe('ActivityFlagsController', () => {
   });
 
   it('marks write endpoints with activities.flag permission metadata', () => {
+    const expected = { keys: ['activities.flag'], mode: 'any' as const };
     const upsertFlagHandler = Object.getOwnPropertyDescriptor(
       ActivityFlagsController.prototype,
       'upsertFlag'
@@ -62,10 +63,10 @@ describe('ActivityFlagsController', () => {
 
     expect(
       Reflect.getMetadata(PERMISSIONS_METADATA_KEY, upsertFlagHandler)
-    ).toEqual({ keys: ['activities.flag'], mode: 'any' });
+    ).toEqual(expected);
     expect(
       Reflect.getMetadata(PERMISSIONS_METADATA_KEY, syncFlagsHandler)
-    ).toEqual({ keys: ['activities.flag'], mode: 'any' });
+    ).toEqual(expected);
   });
 
   it('syncs a single assignee for the legacy flag route when the caller is on the team', async () => {
