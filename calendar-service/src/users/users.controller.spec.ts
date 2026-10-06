@@ -269,14 +269,16 @@ describe('UsersController', () => {
   describe('update', () => {
     it('should reject assigning the system admin role for a regular admin', async () => {
       const dto = { roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN };
-      mockUsersService.findOne.mockResolvedValue(
-        createMockUserDetail({ id: 1, roleId: 2 })
+      mockUsersService.update.mockRejectedValueOnce(
+        new ForbiddenException(
+          "Only System Admin users can change a user's System Admin role."
+        )
       );
 
       await expect(controller.update(1, dto, mockUser)).rejects.toThrow(
         ForbiddenException
       );
-      expect(mockUsersService.update).not.toHaveBeenCalled();
+      expect(mockUsersService.update).toHaveBeenCalledWith(1, dto, mockUser.id);
     });
 
     it('should allow an admin to update a user already assigned the system admin role', async () => {
@@ -288,7 +290,6 @@ describe('UsersController', () => {
         id: 1,
         roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
       });
-      mockUsersService.findOne.mockResolvedValue(existingUser);
       mockUsersService.update.mockResolvedValue(existingUser);
 
       await expect(controller.update(1, dto, mockUser)).resolves.toEqual({
@@ -300,14 +301,16 @@ describe('UsersController', () => {
 
     it('should reject demoting a system admin for a regular admin', async () => {
       const dto = { roleId: SYSTEM_ROLE_IDS.ADMIN };
-      mockUsersService.findOne.mockResolvedValue(
-        createMockUserDetail({ id: 1, roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN })
+      mockUsersService.update.mockRejectedValueOnce(
+        new ForbiddenException(
+          "Only System Admin users can change a user's System Admin role."
+        )
       );
 
       await expect(controller.update(1, dto, mockUser)).rejects.toThrow(
         ForbiddenException
       );
-      expect(mockUsersService.update).not.toHaveBeenCalled();
+      expect(mockUsersService.update).toHaveBeenCalledWith(1, dto, mockUser.id);
     });
 
     it('should allow a system admin to assign the system admin role', async () => {
