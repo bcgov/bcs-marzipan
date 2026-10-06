@@ -445,6 +445,7 @@ export function TeamDetails() {
                 description: team.description ?? null,
                 sortOrder: team.sortOrder,
                 isActive: team.isActive,
+                appearsInShareWith: team.appearsInShareWith,
                 roleId: null,
                 memberCount: team.members ? team.members.length : 0,
                 ministryId: team.ministryId ?? null,

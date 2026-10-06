@@ -47,6 +47,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { UserRoleField } from '@/components/users/UserRoleField';
 import { useAuth } from '@/hooks/useAuth';
@@ -82,6 +83,7 @@ const createUserFormSchema = z.object({
   adJobTitle: z.string().trim().max(USER_JOB_TITLE_MAX_LENGTH).default(''),
   adPhone: z.string().trim().max(USER_PHONE_MAX_LENGTH).default(''),
   teamIds: z.array(z.number().int()).default([]),
+  isEventPlanner: z.boolean().default(false),
 });
 
 type CreateUserFormData = z.infer<typeof createUserFormSchema>;
@@ -94,6 +96,7 @@ const defaultValues: CreateUserFormData = {
   adJobTitle: '',
   adPhone: '',
   teamIds: [],
+  isEventPlanner: false,
 };
 
 interface UserCreateModalProps {
@@ -156,6 +159,9 @@ export function UserCreateModal({
     mutationFn: ({ body }: CreateUserMutationInput) => createUser(body),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: userQueryKeys.list() });
+      void queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.eventPlanners(),
+      });
       showEntityToast('success', 'Created user', {
         description: formatUserCreatedDescription(
           variables.displayLabel,
@@ -210,6 +216,7 @@ export function UserCreateModal({
       email: data.email.trim(),
       idirUsername: data.idirUsername.trim().toUpperCase(),
       roleId: parsedRoleId,
+      ...(data.isEventPlanner && { isEventPlanner: true }),
       ...(data.displayName?.trim() && {
         displayName: data.displayName.trim(),
       }),
@@ -348,6 +355,23 @@ export function UserCreateModal({
                     />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="isEventPlanner"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-3">
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(v) => field.onChange(Boolean(v))}
+                    />
+                  </FormControl>
+                  <FormLabel showDirtyIndicator={false} className="mt-0!">
+                    Event planner
+                  </FormLabel>
                 </FormItem>
               )}
             />

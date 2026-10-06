@@ -1,5 +1,10 @@
 import { ErrorBoundary } from 'react-error-boundary';
-import type { FieldErrors } from 'react-hook-form';
+import {
+  useWatch,
+  type Control,
+  type FieldErrors,
+  type UseFormGetValues,
+} from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -95,6 +100,7 @@ import { showActivityMutationSuccessToast } from '../lib/activity-mutation-succe
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showErrorToast } from '../lib/error-toast';
+import { formatDiscardChangesLabel } from '../lib/form-field-highlight';
 import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 import {
@@ -118,6 +124,47 @@ export type ActivityPageProps = {
   activity: ActivityResponse;
   refreshActivity: () => Promise<void>;
 };
+
+type DiscardChangesButtonProps = {
+  control: Control<ActivityFormData>;
+  getValues: UseFormGetValues<ActivityFormData>;
+  initialFormData: ActivityFormData | null;
+  isDirty: boolean;
+  isSubmitting: boolean;
+  onClick: () => void;
+};
+
+function DiscardChangesButton({
+  control,
+  getValues,
+  initialFormData,
+  isDirty,
+  isSubmitting,
+  onClick,
+}: DiscardChangesButtonProps): React.ReactElement | null {
+  useWatch({ control });
+  const changeCount = initialFormData
+    ? computeFormChanges(initialFormData, getValues()).length
+    : 0;
+
+  if (!isDirty) {
+    return null;
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      className="animate-in fade-in duration-200"
+      onClick={onClick}
+      disabled={isSubmitting}
+    >
+      {changeCount > 0
+        ? formatDiscardChangesLabel(changeCount)
+        : 'Discard changes'}
+    </Button>
+  );
+}
 
 export function ActivityPage({
   activity,
@@ -1305,6 +1352,7 @@ export function ActivityPage({
             commsContactCandidates={commsContactCandidates}
             activityId={id}
             readOnly={readOnly}
+            showFieldChangeHighlights={canReviewActivities}
             reviewerChangedPaths={reviewerChangedPaths}
             leadTeamField={{
               options: leadTeamOptions,
@@ -1352,17 +1400,14 @@ export function ActivityPage({
                     Delete
                   </Button>
                 )}
-                {isDirty && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="animate-in fade-in duration-200"
-                    onClick={() => setShowLeaveConfirm(true)}
-                    disabled={isSubmitting}
-                  >
-                    Discard changes
-                  </Button>
-                )}
+                <DiscardChangesButton
+                  control={form.control}
+                  getValues={form.getValues}
+                  initialFormData={initialFormDataRef.current}
+                  isDirty={isDirty}
+                  isSubmitting={isSubmitting}
+                  onClick={() => setShowLeaveConfirm(true)}
+                />
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-4">

@@ -256,6 +256,7 @@ export class UsersService {
           adJobTitle: dto.adJobTitle?.trim() || null,
           adPhone: dto.adPhone?.trim() || null,
           isActive: true,
+          isEventPlanner: dto.isEventPlanner ?? false,
           status: 'pending',
           createdBy: createdByUserId,
           createdDateTime: new Date(),
@@ -342,6 +343,7 @@ export class UsersService {
         adEmail: users.adEmail,
         roleId: users.roleId,
         isActive: users.isActive,
+        isEventPlanner: users.isEventPlanner,
         lastUpdatedDateTime: users.lastUpdatedDateTime,
       })
       .from(users)
@@ -400,6 +402,7 @@ export class UsersService {
       roleId: u.roleId,
       roleName: roleMap.get(u.roleId) ?? 'Unknown',
       isActive: u.isActive,
+      isEventPlanner: u.isEventPlanner,
       teams: teamsByUser.get(u.id) ?? [],
       lastUpdatedDateTime: u.lastUpdatedDateTime
         ? u.lastUpdatedDateTime instanceof Date
@@ -418,6 +421,7 @@ export class UsersService {
         adEmail: users.adEmail,
         roleId: users.roleId,
         isActive: users.isActive,
+        isEventPlanner: users.isEventPlanner,
         notes: users.notes,
         flagColour: userSettings.flagColour,
         directLoginEnabled: userSettings.directLoginEnabled,
@@ -587,6 +591,17 @@ export class UsersService {
         field: 'isActive',
         oldValue: existing.isActive,
         newValue: dto.isActive,
+      });
+    }
+    if (
+      dto.isEventPlanner !== undefined &&
+      dto.isEventPlanner !== existing.isEventPlanner
+    ) {
+      updates.isEventPlanner = dto.isEventPlanner;
+      changes.push({
+        field: 'isEventPlanner',
+        oldValue: existing.isEventPlanner,
+        newValue: dto.isEventPlanner,
       });
     }
     if (dto.notes !== undefined && dto.notes !== existing.notes) {

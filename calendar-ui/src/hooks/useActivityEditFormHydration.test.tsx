@@ -6,7 +6,6 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
 
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
-import { hydrateActivityFormData } from '../lib/activity-form-hydrate';
 import { useActivityEditFormHydration } from './useActivityEditFormHydration';
 import type { FormLookupData } from './useFormLookups';
 
@@ -53,16 +52,26 @@ describe('useActivityEditFormHydration', () => {
       schedulingNotes: null,
       strategy: null,
     });
-    const expectedBaseline = hydrateActivityFormData(activity, mockLookups);
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
     const { result } = renderHook(() => {
       const form = useForm<ActivityFormData>({
         defaultValues: getDefaultFormValues() as ActivityFormData,
       });
+      formRef = form;
       return useActivityEditFormHydration(activity, mockLookups, form);
     });
 
-    expect(result.current.initialFormDataRef.current).toEqual(expectedBaseline);
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(result.current.initialFormDataRef.current).toEqual(
+      formRef!.getValues()
+    );
+    expect(result.current.initialFormDataRef.current?.venueAddress).not.toBe(
+      formRef!.getValues().venueAddress
+    );
     expect(result.current.initialFormDataRef.current?.notes).toBe('');
     expect(result.current.initialFormDataRef.current?.schedulingNotes).toBe('');
     expect(result.current.initialFormDataRef.current?.strategy).toBe('');

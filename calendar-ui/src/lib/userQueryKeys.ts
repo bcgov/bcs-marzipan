@@ -1,5 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 
+import { lookupQueryKeys } from './lookupQueryKeys';
+
 /**
  * Centralized React Query key factory for user detail, list, and change-log history.
  *
@@ -24,5 +26,8 @@ export function invalidateUserCaches(
   void queryClient.invalidateQueries({ queryKey: userQueryKeys.list() });
   void queryClient.invalidateQueries({
     queryKey: userQueryKeys.history(userId),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: lookupQueryKeys.eventPlanners(),
   });
 }

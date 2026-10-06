@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { formatDiscardChangesDialogTitle } from '@/lib/form-field-highlight';
 
 import { ActivityFormChangesList } from './ActivityFormChangesList';
 
@@ -30,11 +31,17 @@ export function DiscardActivityChangesDialog({
   onDiscard,
   isDiscarding = false,
 }: DiscardActivityChangesDialogProps): ReactElement {
+  const changeCount = changes.length;
+  const dialogTitle =
+    changeCount > 0
+      ? formatDiscardChangesDialogTitle(changeCount)
+      : 'Discard changes?';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Discard changes?</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
             The following changes will be lost if you discard them.
           </DialogDescription>
