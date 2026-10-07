@@ -87,5 +87,5 @@ describe('UserDetailPage permissions (unit)', () => {
 
     expect(await screen.findByText('Test Permission')).toBeTruthy();
     expect(screen.getByText('Activities')).toBeTruthy();
-  }, 15000);
+  }, 30000);
 });

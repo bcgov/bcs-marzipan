@@ -3,9 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { z } from 'zod';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { PERMISSIONS } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import type {
   CreateUserBody,
   UserPermissionOverrideInput,
@@ -122,7 +122,7 @@ export function UserCreateModal({
   onClose,
   onSaved,
 }: UserCreateModalProps) {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user: currentUser } = useAuth();
   const canEditOverrides = hasPermission(PERMISSIONS.USERS.MANAGE_ROLES);
   const teamsAnchorRef = useComboboxAnchor();
   const dialogContentRef = useRef<HTMLDivElement>(null);
@@ -148,6 +148,16 @@ export function UserCreateModal({
     },
     enabled: open,
   });
+
+  const availableRoles = useMemo(
+    () =>
+      roles.filter(
+        (role) =>
+          currentUser?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN ||
+          role.id !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+      ),
+    [currentUser?.roleId, roles]
+  );
 
   const { data: teams = [] } = useQuery({
     queryKey: lookupQueryKeys.teams(),
@@ -415,7 +425,7 @@ export function UserCreateModal({
                     </FormLabel>
                     <FormControl data-field={field.name}>
                       <UserRoleField
-                        roles={roles}
+                        roles={availableRoles}
                         value={field.value}
                         onValueChange={field.onChange}
                         roleId={selectedRoleId}

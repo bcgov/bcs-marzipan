@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,7 +20,7 @@ import {
   userSettings,
   userTeams,
 } from '@corpcal/database/schema';
-import type { ActivityStatusName } from '@corpcal/shared';
+import { SYSTEM_ROLE_IDS, type ActivityStatusName } from '@corpcal/shared';
 import type {
   AddUserToTeamBody,
   CreateUserBody,
@@ -577,14 +578,6 @@ export class UsersService {
     const changes: HistoryChange[] = [];
     const updates: Partial<typeof users.$inferInsert> = {};
 
-    if (dto.roleId !== undefined && dto.roleId !== existing.roleId) {
-      updates.roleId = dto.roleId;
-      changes.push({
-        field: 'roleId',
-        oldValue: existing.roleId,
-        newValue: dto.roleId,
-      });
-    }
     if (dto.isActive !== undefined && dto.isActive !== existing.isActive) {
       updates.isActive = dto.isActive;
       changes.push({
@@ -666,7 +659,7 @@ export class UsersService {
 
     const permissionOverrides = dto.permissionOverrides;
     const shouldSyncOverrides = permissionOverrides !== undefined;
-    const hasUserUpdates = Object.keys(updates).length > 0;
+    const hasNonRoleUserUpdates = Object.keys(updates).length > 0;
 
     if (shouldSyncOverrides && permissionOverrides.length > 0) {
       await this.policyService.validateUserPermissionOverrideKeys(
@@ -674,15 +667,57 @@ export class UsersService {
       );
     }
 
-    if (!hasUserUpdates && !shouldSyncOverrides) {
+    if (
+      !hasNonRoleUserUpdates &&
+      dto.roleId === undefined &&
+      !shouldSyncOverrides
+    ) {
       const refreshed = await this.findOne(id);
       if (!refreshed) throw new NotFoundException('User not found');
       return refreshed;
     }
 
-    const roleChanged = updates.roleId !== undefined;
+    let roleChanged = false;
 
     await this.databaseService.db.transaction(async (tx) => {
+      if (dto.roleId !== undefined) {
+        const lockedUsers = await tx
+          .select({ id: users.id, roleId: users.roleId })
+          .from(users)
+          .where(inArray(users.id, [...new Set([id, changedByUserId])]))
+          .orderBy(users.id)
+          .for('update');
+        const target = lockedUsers.find((row) => row.id === id);
+        const actor = lockedUsers.find((row) => row.id === changedByUserId);
+
+        if (!target) throw new NotFoundException('User not found');
+
+        const changesSystemAdminRole =
+          target.roleId !== dto.roleId &&
+          (target.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN ||
+            dto.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN);
+        if (
+          changesSystemAdminRole &&
+          actor?.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+        ) {
+          throw new ForbiddenException(
+            "Only System Admin users can change a user's System Admin role."
+          );
+        }
+
+        if (target.roleId !== dto.roleId) {
+          updates.roleId = dto.roleId;
+          changes.push({
+            field: 'roleId',
+            oldValue: target.roleId,
+            newValue: dto.roleId,
+          });
+          roleChanged = true;
+        }
+      }
+
+      const hasUserUpdates = Object.keys(updates).length > 0;
+
       if (shouldSyncOverrides) {
         await this.applyPermissionOverrides(
           id,
