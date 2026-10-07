@@ -15,6 +15,7 @@ import {
   Palette,
   PencilOff,
   Share2,
+  ShieldCheck,
   Tag,
   Timer,
   Users,
@@ -47,6 +48,7 @@ import {
 } from '@/components/admin/LookupAdmins';
 import { ReportCoverContactSettingsAdmin } from '@/components/admin/ReportCoverContactSettingsAdmin';
 import { ReviewExemptFieldsSettingsAdmin } from '@/components/admin/ReviewExemptFieldsSettingsAdmin';
+import { RolePermissionsAdminSection } from '@/components/admin/RolePermissionsAdmin';
 import { PageHeader } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -71,7 +73,8 @@ type Section =
   | 'themes'
   | 'translation-languages'
   | 'venue-presets'
-  | 'permissions-visibility';
+  | 'permissions-visibility'
+  | 'role-permissions';
 
 /**
  * Modern Settings Page
@@ -201,6 +204,14 @@ export function Settings() {
       show: Boolean(
         user?.permissions?.includes('system.manage_permissions') ||
         user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+      ),
+    },
+    {
+      id: 'role-permissions' as Section,
+      label: 'Role permissions',
+      icon: ShieldCheck,
+      show: Boolean(
+        user?.permissions?.includes(PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS)
       ),
     },
   ];
@@ -338,6 +349,10 @@ export function Settings() {
 
           <div id="section-permissions-visibility">
             <PermissionsVisibilityAdminSection />
+          </div>
+
+          <div id="section-role-permissions">
+            <RolePermissionsAdminSection />
           </div>
         </div>
       </div>

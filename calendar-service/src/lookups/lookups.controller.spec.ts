@@ -58,6 +58,9 @@ describe('LookupsController', () => {
     getActivityTeamSharingQuickShare: vi.fn(),
     getRolePermissions: vi.fn(),
     getAllPermissions: vi.fn(),
+    getPermissionAdminRoles: vi.fn(),
+    getAdminRolePermissions: vi.fn(),
+    updateAdminRolePermissions: vi.fn(),
     updatePermissionVisibility: vi.fn(),
     getRolesPermissionsMap: vi.fn(),
   };
@@ -480,7 +483,7 @@ describe('LookupsController', () => {
       mockLookupsService.getAllPermissions.mockResolvedValue([]);
 
       await expect(controller.getAllPermissions(mockUser)).rejects.toThrow(
-        'Only System Admin users can manage permission visibility.'
+        'Only System Admin users can manage permissions.'
       );
       expect(mockLookupsService.getAllPermissions).not.toHaveBeenCalled();
     });
@@ -507,9 +510,7 @@ describe('LookupsController', () => {
           { showInUserManagement: true },
           mockUser
         )
-      ).rejects.toThrow(
-        'Only System Admin users can manage permission visibility.'
-      );
+      ).rejects.toThrow('Only System Admin users can manage permissions.');
     });
 
     it('updatePermissionVisibility calls service and returns envelope for system admin', async () => {
@@ -531,6 +532,64 @@ describe('LookupsController', () => {
       expect(
         mockLookupsService.updatePermissionVisibility
       ).toHaveBeenCalledWith(10, true, sysAdminUser.id);
+    });
+  });
+
+  describe('role permission administration', () => {
+    const sysAdminUser = {
+      ...mockUser,
+      roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+      permissions: ['system.manage_permissions'],
+    };
+
+    it('rejects role permission reads without the admin permission', async () => {
+      await expect(
+        controller.getPermissionAdminRoles(mockUser)
+      ).rejects.toThrow('Only System Admin users can manage permissions.');
+      expect(mockLookupsService.getPermissionAdminRoles).not.toHaveBeenCalled();
+    });
+
+    it('returns system roles to an authorized caller', async () => {
+      const roles = [
+        { id: SYSTEM_ROLE_IDS.ADMIN, name: 'Admin', description: null },
+      ];
+      mockLookupsService.getPermissionAdminRoles.mockResolvedValue(roles);
+
+      await expect(
+        controller.getPermissionAdminRoles(sysAdminUser)
+      ).resolves.toEqual({
+        success: true,
+        data: roles,
+      });
+    });
+
+    it('saves the selected role permission ids for an authorized caller', async () => {
+      const rows = [{ id: 12, key: 'activities.edit', hasPermission: true }];
+      mockLookupsService.updateAdminRolePermissions.mockResolvedValue(rows);
+
+      const result = await controller.updateAdminRolePermissions(
+        String(SYSTEM_ROLE_IDS.ADMIN),
+        { permissionIds: [12] },
+        sysAdminUser
+      );
+
+      expect(result).toEqual({ success: true, data: rows });
+      expect(
+        mockLookupsService.updateAdminRolePermissions
+      ).toHaveBeenCalledWith(SYSTEM_ROLE_IDS.ADMIN, [12], sysAdminUser.id);
+    });
+
+    it('rejects role permission writes without the admin permission', async () => {
+      await expect(
+        controller.updateAdminRolePermissions(
+          '5',
+          { permissionIds: [12] },
+          mockUser
+        )
+      ).rejects.toThrow('Only System Admin users can manage permissions.');
+      expect(
+        mockLookupsService.updateAdminRolePermissions
+      ).not.toHaveBeenCalled();
     });
   });
 });

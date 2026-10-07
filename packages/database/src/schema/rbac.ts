@@ -112,6 +112,24 @@ export const rolePermissions = pgTable(
   (table) => [primaryKey({ columns: [table.roleId, table.permissionId] })]
 );
 
+export const rolePermissionAudit = pgTable('role_permission_audit', {
+  id: serial('id').primaryKey(),
+  roleId: integer('role_id')
+    .notNull()
+    .references(() => roles.id, { onDelete: 'cascade' }),
+  permissionId: integer('permission_id')
+    .notNull()
+    .references(() => permissions.id, { onDelete: 'cascade' }),
+  oldValue: boolean('old_value').notNull(),
+  newValue: boolean('new_value').notNull(),
+  changedBy: integer('changed_by').references((): AnyPgColumn => users.id, {
+    onDelete: 'set null',
+  }),
+  changedAt: timestamp('changed_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 /**
  * Permission effects for per-user overrides. `deny` wins over `grant` when both exist.
  */
