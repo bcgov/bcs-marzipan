@@ -116,10 +116,10 @@ export const rolePermissionAudit = pgTable('role_permission_audit', {
   id: serial('id').primaryKey(),
   roleId: integer('role_id')
     .notNull()
-    .references(() => roles.id, { onDelete: 'cascade' }),
+    .references(() => roles.id),
   permissionId: integer('permission_id')
     .notNull()
-    .references(() => permissions.id, { onDelete: 'cascade' }),
+    .references(() => permissions.id),
   oldValue: boolean('old_value').notNull(),
   newValue: boolean('new_value').notNull(),
   changedBy: integer('changed_by').references((): AnyPgColumn => users.id, {
