@@ -211,7 +211,6 @@ describe('ActivitiesService', () => {
       totalItems: 0,
     }),
     getHistoryEntryById: vi.fn().mockResolvedValue(null),
-    getLastPublishedState: vi.fn().mockResolvedValue(null),
     getPreviousStatusIdBeforeDelete: vi.fn().mockResolvedValue(null),
     generateChangeList: vi.fn().mockReturnValue([]),
     buildEntityResolutionMaps: vi.fn().mockResolvedValue(new Map()),
@@ -597,8 +596,11 @@ describe('ActivitiesService', () => {
       expect(result).toHaveProperty('lookAheadSection');
       expect(result).toHaveProperty('createdDateTime');
       expect(result).toHaveProperty('createdBy');
-      expect(result).toHaveProperty('lastUpdatedDateTime');
-      expect(result).toHaveProperty('lastUpdatedBy');
+      expect(result).toHaveProperty('publicLastUpdatedDateTime');
+      expect(result).toHaveProperty('publicLastUpdatedBy');
+      // Operational last-updated is omitted when the viewer cannot edit (no user in ctx).
+      expect(result).not.toHaveProperty('lastUpdatedDateTime');
+      expect(result).not.toHaveProperty('lastUpdatedBy');
     });
 
     it('should ensure enum fields match schema constraints', async () => {
@@ -649,7 +651,7 @@ describe('ActivitiesService', () => {
       expect(result.createdDateTime).toMatch(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
       );
-      expect(result.lastUpdatedDateTime).toMatch(
+      expect(result.publicLastUpdatedDateTime).toMatch(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
       );
     });
@@ -1581,6 +1583,254 @@ describe('ActivitiesService', () => {
         ConflictException
       );
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when renewPublicLastUpdated is sent without defer permission', () => {
+      const svc = service as unknown as {
+        getActivityTimestampUpdateForWriteOrThrow: (input: {
+          context: 'userPatch';
+          permissions: string[] | undefined;
+          renewPublicLastUpdated?: boolean;
+          userId: number;
+        }) => unknown;
+      };
+
+      expect(() =>
+        svc.getActivityTimestampUpdateForWriteOrThrow({
+          context: 'userPatch',
+          permissions: ['activities.edit'],
+          renewPublicLastUpdated: true,
+          userId: 1,
+        })
+      ).toThrow(ForbiddenException);
+    });
+
+    it('throws BadRequestException when renewPublicLastUpdated is sent on bulk update', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.update(
+          1,
+          createMockUpdateRequest({ renewPublicLastUpdated: true }),
+          1,
+          { permissions: [PERMISSIONS.ACTIVITIES.PUBLIC_LAST_UPDATED_DEFER] },
+          { bypassEditLock: true, timestampWriteContext: 'bulk' }
+        )
+      ).rejects.toThrow(BadRequestException);
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('update payload omits public last-updated when defer holder saves without renew', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Deferred public bump',
+      });
+      let capturedSet: Record<string, unknown> | undefined;
+
+      mockLocksService.getLockForEntity.mockResolvedValue({
+        id: 99,
+        userId: 1,
+        entityType: 'activity',
+        entityId: 1,
+        username: 'editor',
+        sessionId: null,
+        acquiredAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        lastRenewedAt: new Date(),
+        lastActivityAt: new Date(),
+        idleExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn((payload: Record<string, unknown>) => {
+              capturedSet = payload;
+              return {
+                where: vi.fn().mockReturnThis(),
+                returning: vi.fn().mockResolvedValue([updatedActivity]),
+              };
+            }),
+          }),
+          select: vi.fn((...args) => {
+            if (args.length === 0) {
+              return createMockQueryChain([]);
+            }
+            const fetchChain = {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
+            };
+            fetchChain.innerJoin.mockReturnValue(fetchChain);
+            fetchChain.leftJoin.mockReturnValue(fetchChain);
+            return fetchChain;
+          }),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      let withObjCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        withObjCallCount++;
+        if (withObjCallCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'changed' }]),
+          };
+        }
+        if (withObjCallCount === 2) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        fetchChain.innerJoin.mockReturnValue(fetchChain);
+        fetchChain.leftJoin.mockReturnValue(fetchChain);
+        return fetchChain;
+      });
+
+      await service.update(
+        1,
+        createMockUpdateRequest({ title: 'Deferred public bump' }),
+        1,
+        { permissions: [PERMISSIONS.ACTIVITIES.PUBLIC_LAST_UPDATED_DEFER] }
+      );
+
+      expect(capturedSet).toBeDefined();
+      expect(capturedSet).toHaveProperty('lastUpdatedBy');
+      expect(capturedSet).toHaveProperty('lastUpdatedDateTime');
+      expect(capturedSet).not.toHaveProperty('publicLastUpdatedBy');
+      expect(capturedSet).not.toHaveProperty('publicLastUpdatedDateTime');
+    });
+
+    it('update payload bumps public last-updated when caller lacks defer permission', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Public bump',
+      });
+      let capturedSet: Record<string, unknown> | undefined;
+
+      mockLocksService.getLockForEntity.mockResolvedValue({
+        id: 99,
+        userId: 1,
+        entityType: 'activity',
+        entityId: 1,
+        username: 'editor',
+        sessionId: null,
+        acquiredAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        lastRenewedAt: new Date(),
+        lastActivityAt: new Date(),
+        idleExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn((payload: Record<string, unknown>) => {
+              capturedSet = payload;
+              return {
+                where: vi.fn().mockReturnThis(),
+                returning: vi.fn().mockResolvedValue([updatedActivity]),
+              };
+            }),
+          }),
+          select: vi.fn((...args) => {
+            if (args.length === 0) {
+              return createMockQueryChain([]);
+            }
+            const fetchChain = {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
+            };
+            fetchChain.innerJoin.mockReturnValue(fetchChain);
+            fetchChain.leftJoin.mockReturnValue(fetchChain);
+            return fetchChain;
+          }),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      let withObjCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        withObjCallCount++;
+        if (withObjCallCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'changed' }]),
+          };
+        }
+        if (withObjCallCount === 2) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        fetchChain.innerJoin.mockReturnValue(fetchChain);
+        fetchChain.leftJoin.mockReturnValue(fetchChain);
+        return fetchChain;
+      });
+
+      await service.update(
+        1,
+        createMockUpdateRequest({ title: 'Public bump' }),
+        1,
+        { permissions: [PERMISSIONS.ACTIVITIES.EDIT] }
+      );
+
+      expect(capturedSet).toHaveProperty('publicLastUpdatedBy');
+      expect(capturedSet).toHaveProperty('publicLastUpdatedDateTime');
     });
 
     it('should update an activity and return a valid ActivityResponse', async () => {
@@ -2765,6 +3015,52 @@ describe('ActivitiesService', () => {
     });
   });
 
+  describe('addSharedWithTeams', () => {
+    it('bumps operational last-updated in the transaction when teams are added', async () => {
+      const response = createMockActivityResponse({ id: 1 });
+      vi.spyOn(service, 'findOne').mockResolvedValue(response);
+
+      let capturedActivityTimestampSet: Record<string, unknown> | undefined;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        const selectArg = (args[0] ?? {}) as Record<string, unknown>;
+        if ('teamId' in selectArg) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue([{ teamId: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      mockDatabaseService.db.transaction = vi.fn((callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn((payload: Record<string, unknown>) => {
+              capturedActivityTimestampSet = payload;
+              return {
+                where: vi.fn().mockResolvedValue(undefined),
+              };
+            }),
+          }),
+        };
+        return callback(tx);
+      });
+
+      await service.addSharedWithTeams(1, [2], 7, {
+        timestampWriteContext: 'bulk',
+      });
+
+      expect(capturedActivityTimestampSet).toBeDefined();
+      expect(capturedActivityTimestampSet).toHaveProperty(
+        'lastUpdatedDateTime'
+      );
+      expect(capturedActivityTimestampSet).toHaveProperty('lastUpdatedBy', 7);
+      expect(capturedActivityTimestampSet).not.toHaveProperty(
+        'publicLastUpdatedDateTime'
+      );
+    });
+  });
+
   describe('updateSharedWith', () => {
     it('notifies team members when shared-with teams change', async () => {
       const response = createMockActivityResponse({ id: 1 });
@@ -2782,7 +3078,12 @@ describe('ActivitiesService', () => {
       });
 
       mockDatabaseService.db.transaction = vi.fn((callback) => {
-        const tx = {};
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
         return callback(tx);
       });
 
@@ -2813,7 +3114,12 @@ describe('ActivitiesService', () => {
       });
 
       mockDatabaseService.db.transaction = vi.fn((callback) => {
-        const tx = {};
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
         return callback(tx);
       });
 
@@ -4375,7 +4681,7 @@ describe('ActivitiesService', () => {
   });
 
   describe('findAll list output review diff', () => {
-    it('attaches changedFieldsSinceReview only for admin users and uses the parse-free mapper builder', async () => {
+    it('attaches changedFieldsSinceReview only for ACTIVITIES.REVIEW holders and uses the parse-free mapper builder', async () => {
       const activity = createMockActivity({
         reviewedFieldSnapshot: null,
         reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
@@ -4422,7 +4728,41 @@ describe('ActivitiesService', () => {
       const buildResponseSpy = vi.spyOn(mapperService, 'buildResponseDto');
       const mapToResponseSpy = vi.spyOn(mapperService, 'mapToResponseDto');
 
-      const adminResult = await service.findAll(
+      const reviewerResult = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: 'User',
+            permissions: [PERMISSIONS.ACTIVITIES.REVIEW],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: {
+            ...HYDRATION_PROFILES.detail,
+            includeReviewDiff: true,
+          },
+        }
+      );
+
+      expect(reviewerResult[0]).toMatchObject({
+        id: activity.id,
+        changedFieldsSinceReview: expect.arrayContaining([
+          'title',
+          'dateStatusId',
+          'timeStatusId',
+        ]),
+      });
+      expect(getEffectiveReviewExemptFieldKeysSpy).not.toHaveBeenCalled();
+      expect(buildResponseSpy).toHaveBeenCalledTimes(1);
+      expect(mapToResponseSpy).not.toHaveBeenCalled();
+
+      buildResponseSpy.mockClear();
+      mapToResponseSpy.mockClear();
+
+      const nonReviewerResult = await service.findAll(
         undefined,
         {
           user: {
@@ -4441,41 +4781,9 @@ describe('ActivitiesService', () => {
         }
       );
 
-      expect(adminResult[0]).toMatchObject({
-        id: activity.id,
-        changedFieldsSinceReview: expect.arrayContaining([
-          'title',
-          'dateStatusId',
-          'timeStatusId',
-        ]),
-      });
-      expect(getEffectiveReviewExemptFieldKeysSpy).not.toHaveBeenCalled();
-      expect(buildResponseSpy).toHaveBeenCalledTimes(1);
-      expect(mapToResponseSpy).not.toHaveBeenCalled();
-
-      buildResponseSpy.mockClear();
-      mapToResponseSpy.mockClear();
-
-      const nonAdminResult = await service.findAll(
-        undefined,
-        {
-          user: {
-            roleName: 'User',
-            permissions: [],
-            teamIds: [],
-          },
-          dataScope: { bypass: true, teamIds: [] },
-        } as never,
-        {
-          outputShape: 'list',
-          profile: {
-            ...HYDRATION_PROFILES.detail,
-            includeReviewDiff: true,
-          },
-        }
+      expect(nonReviewerResult[0]).not.toHaveProperty(
+        'changedFieldsSinceReview'
       );
-
-      expect(nonAdminResult[0]).not.toHaveProperty('changedFieldsSinceReview');
       expect(buildResponseSpy).not.toHaveBeenCalled();
       expect(mapToResponseSpy).not.toHaveBeenCalled();
     });

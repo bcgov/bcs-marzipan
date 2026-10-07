@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import type { UpdateUserBody } from '@corpcal/shared/api/types';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
@@ -24,7 +25,7 @@ import { UsersService } from './users.service';
 describe('UsersService', () => {
   let service: UsersService;
 
-  type Terminal = 'limit' | 'orderBy' | 'where' | 'groupBy' | 'from';
+  type Terminal = 'limit' | 'orderBy' | 'where' | 'groupBy' | 'from' | 'for';
   const createChain = (
     resolvedValue: unknown,
     terminal: Terminal = 'limit'
@@ -38,6 +39,7 @@ describe('UsersService', () => {
       orderBy: vi.fn(),
       groupBy: vi.fn(),
       limit: vi.fn(),
+      for: vi.fn(),
       innerJoin: vi.fn(),
       leftJoin: vi.fn(),
     };
@@ -46,6 +48,7 @@ describe('UsersService', () => {
     chain.orderBy.mockReturnValue(chain);
     chain.limit.mockReturnValue(chain);
     chain.groupBy.mockReturnValue(chain);
+    chain.for.mockReturnValue(chain);
     chain.innerJoin.mockReturnValue(chain);
     chain.leftJoin.mockReturnValue(chain);
     (chain[terminal] as ReturnType<typeof vi.fn>).mockResolvedValue(value);
@@ -247,6 +250,7 @@ describe('UsersService', () => {
           roleId: 2,
           roleName: 'Editor',
           isActive: true,
+          isEventPlanner: false,
           notes: null,
           flagColour: null,
           directLoginEnabled: false,
@@ -264,6 +268,7 @@ describe('UsersService', () => {
           roleId: 2,
           roleName: 'Editor',
           isActive: true,
+          isEventPlanner: false,
           notes: null,
           flagColour: null,
           directLoginEnabled: true,
@@ -387,6 +392,46 @@ describe('UsersService', () => {
   });
 
   describe('update', () => {
+    const setupLockedRoleUpdate = (
+      initialRoleId: number,
+      lockedTargetRoleId: number,
+      actorRoleId: number
+    ) => {
+      const targetRow = {
+        id: 1,
+        adUsername: 'target',
+        adDisplayName: 'Target User',
+        adEmail: 'target@gov.bc.ca',
+        roleId: initialRoleId,
+        isActive: true,
+        notes: null,
+      };
+      const resultRow = { ...targetRow };
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([targetRow], 'limit'))
+        .mockReturnValueOnce(createChain([{ name: 'Admin' }], 'limit'))
+        .mockReturnValueOnce(createChain([], 'where'))
+        .mockReturnValueOnce(
+          createChain(
+            [
+              { id: 1, roleId: lockedTargetRoleId },
+              { id: 2, roleId: actorRoleId },
+            ],
+            'for'
+          )
+        )
+        .mockReturnValueOnce(createChain([resultRow], 'limit'))
+        .mockReturnValueOnce(createChain([{ name: 'Admin' }], 'limit'))
+        .mockReturnValueOnce(createChain([], 'where'));
+
+      mockDatabaseService.db.update = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+    };
+
     it('should throw NotFoundException when user not found', async () => {
       mockDatabaseService.db.select = vi
         .fn()
@@ -394,6 +439,83 @@ describe('UsersService', () => {
 
       await expect(service.update(999, { roleId: 2 }, 1)).rejects.toThrow(
         NotFoundException
+      );
+    });
+
+    it('should reject a regular admin promoting a user to system admin', async () => {
+      setupLockedRoleUpdate(
+        SYSTEM_ROLE_IDS.EDITOR,
+        SYSTEM_ROLE_IDS.EDITOR,
+        SYSTEM_ROLE_IDS.ADMIN
+      );
+
+      await expect(
+        service.update(1, { roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN }, 2)
+      ).rejects.toThrow('Only System Admin users can change');
+      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject a regular admin demoting a system admin', async () => {
+      setupLockedRoleUpdate(
+        SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+        SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+        SYSTEM_ROLE_IDS.ADMIN
+      );
+
+      await expect(
+        service.update(1, { roleId: SYSTEM_ROLE_IDS.ADMIN }, 2)
+      ).rejects.toThrow('Only System Admin users can change');
+      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+    });
+
+    it('should allow a system admin to change a user to system admin', async () => {
+      setupLockedRoleUpdate(
+        SYSTEM_ROLE_IDS.EDITOR,
+        SYSTEM_ROLE_IDS.EDITOR,
+        SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+      );
+
+      await service.update(1, { roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN }, 2);
+
+      expect(mockDatabaseService.db.update).toHaveBeenCalledTimes(1);
+      expect(
+        mockDatabaseService.db.update.mock.results[0].value.set
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN })
+      );
+    });
+
+    it('should reject a demotion when the target became system admin after the initial read', async () => {
+      setupLockedRoleUpdate(
+        SYSTEM_ROLE_IDS.EDITOR,
+        SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+        SYSTEM_ROLE_IDS.ADMIN
+      );
+
+      await expect(
+        service.update(1, { roleId: SYSTEM_ROLE_IDS.ADMIN }, 2)
+      ).rejects.toThrow('Only System Admin users can change');
+      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+    });
+
+    it('should allow a regular admin to update a system admin without changing the role', async () => {
+      setupLockedRoleUpdate(
+        SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+        SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+        SYSTEM_ROLE_IDS.ADMIN
+      );
+
+      await service.update(
+        1,
+        { roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN, notes: 'Updated notes' },
+        2
+      );
+
+      expect(mockDatabaseService.db.update).toHaveBeenCalledTimes(1);
+      expect(
+        mockDatabaseService.db.update.mock.results[0].value.set
+      ).toHaveBeenCalledWith(
+        expect.not.objectContaining({ roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN })
       );
     });
 
@@ -416,6 +538,7 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain([userRow], 'limit'))
         .mockReturnValueOnce(createChain(roleRow, 'limit'))
         .mockReturnValueOnce(createChain(teamRows, 'where'))
+        .mockReturnValueOnce(createChain([{ id: 1, roleId: 1 }], 'for'))
         .mockReturnValueOnce(createChain([updatedUserRow], 'limit'))
         .mockReturnValueOnce(createChain([{ name: 'Editor' }], 'limit'))
         .mockReturnValueOnce(createChain(teamRows, 'where'));
@@ -437,6 +560,89 @@ describe('UsersService', () => {
         details: {
           roleId: 2,
           isActive: undefined,
+        },
+      });
+    });
+
+    it('should include inactive recipients when deactivating a user', async () => {
+      const userRow = {
+        id: 1,
+        adUsername: 'u1',
+        adDisplayName: 'User One',
+        adEmail: 'u1@test.com',
+        roleId: 1,
+        isActive: true,
+        notes: null,
+      };
+      const roleRow = [{ name: 'Admin' }];
+      const teamRows: { teamId: number; role: string }[] = [];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'))
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'));
+
+      mockDatabaseService.db.update = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+
+      await service.update(1, { isActive: false }, 1);
+
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+        changedFields: ['isActive'],
+        summary: 'User account deactivated',
+        details: {
+          roleId: undefined,
+          isActive: false,
+        },
+        includeInactiveRecipients: true,
+      });
+    });
+
+    it('should not include inactive recipients when reactivating a user', async () => {
+      const userRow = {
+        id: 1,
+        adUsername: 'u1',
+        adDisplayName: 'User One',
+        adEmail: 'u1@test.com',
+        roleId: 1,
+        isActive: false,
+        notes: null,
+      };
+      const roleRow = [{ name: 'Admin' }];
+      const teamRows: { teamId: number; role: string }[] = [];
+
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'))
+        .mockReturnValueOnce(createChain([userRow], 'limit'))
+        .mockReturnValueOnce(createChain(roleRow, 'limit'))
+        .mockReturnValueOnce(createChain(teamRows, 'where'));
+
+      mockDatabaseService.db.update = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+
+      await service.update(1, { isActive: true }, 1);
+
+      expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
+        userId: 1,
+        actorUserId: 1,
+        changedFields: ['isActive'],
+        summary: 'User account activated',
+        details: {
+          roleId: undefined,
+          isActive: true,
         },
       });
     });

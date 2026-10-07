@@ -22,7 +22,6 @@ import {
   cities,
   commsMaterials,
   dateStatuses,
-  eventPlanners,
   governmentRepresentatives,
   ministries,
   ministryGroups,
@@ -83,6 +82,11 @@ import {
   syncCategoryTeams,
   syncTagTeams,
 } from './lookups-team-sync.helper';
+
+export type VenuePresetAdminItem = VenuePresetItem & {
+  sortOrder: number;
+  isActive: boolean;
+};
 
 @Injectable()
 export class LookupsService {
@@ -367,77 +371,6 @@ export class LookupsService {
       key: row[0].key,
       showInUserManagement: Boolean(row[0].showInUserManagement),
     };
-  }
-
-  /**
-   * Bulk update permission visibility inside a single DB transaction.
-   * Returns the updated permission rows.
-   */
-  async bulkUpdatePermissionVisibility(
-    items: { id: number; showInUserManagement: boolean }[],
-    updatedBy?: number
-  ): Promise<{ id: number; key: string; showInUserManagement: boolean }[]> {
-    return this.databaseService.db.transaction(async (tx) => {
-      const results: {
-        id: number;
-        key: string;
-        showInUserManagement: boolean;
-      }[] = [];
-      for (const item of items) {
-        const pid = Number(item.id);
-        if (!Number.isInteger(pid)) continue;
-
-        const existing = await tx
-          .select({
-            id: permissions.id,
-            show: permissions.showInUserManagement,
-          })
-          .from(permissions)
-          .where(eq(permissions.id, pid))
-          .limit(1);
-
-        if (!existing || existing.length === 0) continue;
-
-        await tx
-          .update(permissions)
-          .set({
-            showInUserManagement: item.showInUserManagement,
-            updatedAt: sql`now()`,
-            updatedBy: updatedBy ?? null,
-          })
-          .where(eq(permissions.id, pid));
-
-        const [row] = await tx
-          .select({
-            id: permissions.id,
-            key: permissions.key,
-            showInUserManagement: permissions.showInUserManagement,
-          })
-          .from(permissions)
-          .where(eq(permissions.id, pid))
-          .limit(1);
-
-        results.push({
-          id: row.id,
-          key: row.key,
-          showInUserManagement: Boolean(row.showInUserManagement),
-        });
-
-        try {
-          await tx.insert(permissionVisibilityAudit).values({
-            permissionId: pid,
-            changedBy: updatedBy ?? null,
-            oldValue: Boolean(existing[0].show),
-            newValue: Boolean(item.showInUserManagement),
-          });
-        } catch (err) {
-          this.logger.warn(
-            `Failed to write permission visibility audit for permission ${pid} (bulk): ${String(err)}`
-          );
-        }
-      }
-      return results;
-    });
   }
 
   /**
@@ -818,9 +751,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active venue presets for the activity form.
+   * Get venue presets for the activity form or admin list.
+   * @param includeAll - When true (admin), returns all presets including inactive
    */
-  async getVenuePresets(): Promise<VenuePresetItem[]> {
+  async getVenuePresets(includeAll?: boolean): Promise<VenuePresetAdminItem[]> {
     const results = await this.databaseService.db
       .select({
         id: venuePresets.id,
@@ -830,11 +764,13 @@ export class LookupsService {
         city: venuePresets.city,
         provinceOrState: venuePresets.provinceOrState,
         country: venuePresets.country,
+        sortOrder: venuePresets.sortOrder,
+        isActive: venuePresets.isActive,
         isPinned: venuePresets.isPinned,
         pinnedSortOrder: venuePresets.pinnedSortOrder,
       })
       .from(venuePresets)
-      .where(eq(venuePresets.isActive, true))
+      .where(includeAll ? undefined : eq(venuePresets.isActive, true))
       .orderBy(venuePresets.sortOrder);
     return results.map((row) => ({
       id: row.id,
@@ -844,6 +780,8 @@ export class LookupsService {
       city: row.city,
       provinceOrState: row.provinceOrState,
       country: row.country,
+      sortOrder: row.sortOrder,
+      isActive: row.isActive,
       isPinned: row.isPinned,
       pinnedSortOrder: row.pinnedSortOrder,
     }));
@@ -903,7 +841,7 @@ export class LookupsService {
       pinnedSortOrder?: number;
     },
     currentUserId: number
-  ): Promise<VenuePresetItem> {
+  ): Promise<VenuePresetAdminItem> {
     await this.assertNoDuplicateAddress(data.addressLine1, data.addressLine2);
 
     const now = new Date();
@@ -934,6 +872,8 @@ export class LookupsService {
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
+      sortOrder: result.sortOrder,
+      isActive: result.isActive,
       isPinned: result.isPinned,
       pinnedSortOrder: result.pinnedSortOrder,
     };
@@ -957,7 +897,7 @@ export class LookupsService {
       pinnedSortOrder?: number;
     },
     currentUserId: number
-  ): Promise<VenuePresetItem> {
+  ): Promise<VenuePresetAdminItem> {
     if (data.addressLine1 !== undefined || data.addressLine2 !== undefined) {
       const current = await this.databaseService.db
         .select({
@@ -1014,6 +954,8 @@ export class LookupsService {
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
+      sortOrder: result.sortOrder,
+      isActive: result.isActive,
       isPinned: result.isPinned,
       pinnedSortOrder: result.pinnedSortOrder,
     };
@@ -1047,7 +989,7 @@ export class LookupsService {
       })
       .from(reports)
       .where(eq(reports.isActive, true))
-      .orderBy(reports.sortOrder);
+      .orderBy(reports.sortOrder, reports.displayName);
 
     return results.map((report) => {
       let config = null;
@@ -1180,26 +1122,36 @@ export class LookupsService {
   }
 
   /**
-   * Get all active event planners
+   * Active users flagged as event planners (users.is_event_planner).
    */
   async getEventPlanners(): Promise<LookupItem[]> {
     const results = await this.databaseService.db
       .select({
-        id: eventPlanners.id,
-        name: eventPlanners.name,
-        displayName: eventPlanners.displayName,
+        id: users.id,
+        adUsername: users.adUsername,
+        adDisplayName: users.adDisplayName,
+        adEmail: users.adEmail,
       })
-      .from(eventPlanners)
-      .where(eq(eventPlanners.isActive, true))
-      .orderBy(eventPlanners.sortOrder, eventPlanners.displayName);
+      .from(users)
+      .where(and(eq(users.isActive, true), eq(users.isEventPlanner, true)));
 
-    return results.map((planner) => ({
-      id: planner.id,
-      label: planner.displayName,
-      value: planner.id,
-      name: planner.name,
-      displayName: planner.displayName,
-    }));
+    const sorted = sortByStaffName(
+      results,
+      (u) => u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`,
+      (u) => u.id
+    );
+
+    return sorted.map((u) => {
+      const label =
+        u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`;
+      return {
+        id: u.id,
+        label,
+        value: u.id,
+        name: label,
+        displayName: label,
+      };
+    });
   }
 
   /**

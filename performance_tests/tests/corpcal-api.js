@@ -36,7 +36,7 @@ import {
   getSettingsLookAheadReset,
   postCreateActivity,
   getGlobalHistory,
-  getReports,
+  getLookupsReports,
   postLogin,
 } from '../api/client.js';
 
@@ -76,7 +76,7 @@ export default function runScenario(data) {
   }
   postCreateActivity(config, token);
   getGlobalHistory(config, token);
-  getReports(config, token);
+  getLookupsReports(config, token);
 
   sleep(config.profile === 'smoke' ? 2 : 8);
 }

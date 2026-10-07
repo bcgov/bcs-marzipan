@@ -29,13 +29,22 @@ export type LoginResponse =
   | { requiresPasswordSetup: true; email: string }
   | { requiresPasswordReset: true; email: string };
 
+type SuccessEnvelope<T> = { success: true; data: T };
+
+function unwrap<T>(payload: SuccessEnvelope<T>): T {
+  return payload.data;
+}
+
 /**
  * Login with username (and optional password for mock/local auth)
  * Backend sets httpOnly cookie with JWT on success
  */
 export async function login(credentials: LoginBody): Promise<LoginResponse> {
-  const response = await api.post<LoginResponse>('/auth/login', credentials);
-  return response.data;
+  const response = await api.post<SuccessEnvelope<LoginResponse>>(
+    '/auth/login',
+    credentials
+  );
+  return unwrap(response.data);
 }
 
 /**
@@ -43,23 +52,24 @@ export async function login(credentials: LoginBody): Promise<LoginResponse> {
  * Uses httpOnly cookie automatically sent by browser
  */
 export async function getCurrentUser(): Promise<AuthUser> {
-  const response = await api.get<AuthUser>('/auth/me');
-  return response.data;
+  const response = await api.get<SuccessEnvelope<AuthUser>>('/auth/me');
+  return unwrap(response.data);
 }
 
 /**
  * Logout - clears httpOnly cookie on backend
  */
 export async function logout(): Promise<void> {
-  await api.post('/auth/logout');
+  await api.post<SuccessEnvelope<{ message: string }>>('/auth/logout');
 }
 
 /**
  * Returns whether Azure AD login is enabled on the backend.
  */
 export async function getAzureConfig(): Promise<AzureConfigResponse> {
-  const response = await api.get<AzureConfigResponse>('/auth/azure/config');
-  return response.data;
+  const response =
+    await api.get<SuccessEnvelope<AzureConfigResponse>>('/auth/azure/config');
+  return unwrap(response.data);
 }
 
 /**
@@ -77,18 +87,20 @@ export function startAzureLogin(): void {
  * Returns whether local (email/password) login is enabled on the backend.
  */
 export async function getLocalConfig(): Promise<LocalConfigResponse> {
-  const response = await api.get<LocalConfigResponse>('/auth/local/config');
-  return response.data;
+  const response =
+    await api.get<SuccessEnvelope<LocalConfigResponse>>('/auth/local/config');
+  return unwrap(response.data);
 }
 
 /**
  * Step 1 of local login: check account status by email before asking for a password.
  */
 export async function checkEmail(email: string): Promise<CheckEmailResponse> {
-  const response = await api.post<CheckEmailResponse>('/auth/check-email', {
-    email,
-  });
-  return response.data;
+  const response = await api.post<SuccessEnvelope<CheckEmailResponse>>(
+    '/auth/check-email',
+    { email }
+  );
+  return unwrap(response.data);
 }
 
 /**
@@ -98,11 +110,11 @@ export async function checkEmail(email: string): Promise<CheckEmailResponse> {
 export async function setPassword(
   body: SetPasswordBody
 ): Promise<{ message: string }> {
-  const response = await api.post<{ message: string }>(
+  const response = await api.post<SuccessEnvelope<{ message: string }>>(
     '/auth/set-password',
     body
   );
-  return response.data;
+  return unwrap(response.data);
 }
 
 /**
@@ -111,11 +123,11 @@ export async function setPassword(
 export async function verifyResetCode(
   body: VerifyResetCodeBody
 ): Promise<{ valid: true }> {
-  const response = await api.post<{ valid: true }>(
+  const response = await api.post<SuccessEnvelope<{ valid: true }>>(
     '/auth/verify-reset-code',
     body
   );
-  return response.data;
+  return unwrap(response.data);
 }
 
 /**
@@ -126,9 +138,8 @@ export async function verifyResetCode(
 export async function changePassword(
   body: ChangePasswordBody
 ): Promise<AuthResponse | { message: string }> {
-  const response = await api.post<AuthResponse | { message: string }>(
-    '/auth/change-password',
-    body
-  );
-  return response.data;
+  const response = await api.post<
+    SuccessEnvelope<AuthResponse | { message: string }>
+  >('/auth/change-password', body);
+  return unwrap(response.data);
 }

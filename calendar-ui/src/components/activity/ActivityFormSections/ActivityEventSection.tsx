@@ -43,13 +43,12 @@ import {
   useComboboxAnchor,
 } from '@/components/ui/combobox';
 import {
-  FormAggregateDirtyIndicator,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  useFormDisplayOptions,
+  useFormPathsFieldHighlight,
 } from '@/components/ui/form';
 import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
@@ -69,6 +68,7 @@ import {
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
+import { FORM_FIELD_LABEL_HIGHLIGHT_CLASS } from '@/lib/form-field-highlight';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
@@ -198,10 +198,10 @@ function addressMatchesVenuePreset(
 
 function venueComboboxValueFromForm(
   currentVenue: VenueFormValue,
-  pinnedPresetBadges: VenuePresetItem[],
+  presets: VenuePresetItem[],
   venueStatusId: number | null | undefined
 ): FreeformComboboxValueWithLead {
-  const matches = pinnedPresetBadges.filter((item) =>
+  const matches = presets.filter((item) =>
     addressMatchesVenuePreset(currentVenue, item)
   );
   if (matches.length > 0) {
@@ -287,9 +287,15 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
   teamMinistryRefs,
 }) => {
   const { readOnly } = useActivityEdit();
-  const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
+  const venueGroupHighlight = useFormPathsFieldHighlight([
+    'venueAddress.venueName',
+    'venueStatusId',
+  ]);
   const [representativeSearch, setRepresentativeSearch] = useState('');
+  const [retainedPlannerLabels, setRetainedPlannerLabels] = useState<
+    Record<string, string>
+  >({});
   const leadTeamId = useWatch({
     control: form.control,
     name: 'leadTeamId',
@@ -653,10 +659,16 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
               <span
                 className={cn(
                   'inline-flex items-center gap-2',
-                  showChangedBadges && 'min-h-4.5'
+                  venueGroupHighlight.highlight &&
+                    FORM_FIELD_LABEL_HIGHLIGHT_CLASS
                 )}
               >
                 {getActivityFieldLabel('venueName')}
+                {venueGroupHighlight.screenReaderText ? (
+                  <span className="sr-only">
+                    {venueGroupHighlight.screenReaderText}
+                  </span>
+                ) : null}
                 <ActivityFieldInfoIcon
                   fieldKey="venueName"
                   ariaLabel="About venue"
@@ -664,9 +676,6 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 <ActivityFieldInfoIcon
                   fieldKey="venueStatusId"
                   ariaLabel="About venue status"
-                />
-                <FormAggregateDirtyIndicator
-                  names={['venueAddress.venueName', 'venueStatusId']}
                 />
               </span>
             </FormLabel>
@@ -678,7 +687,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 sections={venueNameComboboxSections}
                 value={venueComboboxValueFromForm(
                   currentVenue,
-                  pinnedPresetBadges,
+                  allPresets,
                   venueStatusIdWatched
                 )}
                 onChange={handleVenueNameComboboxChange}
@@ -916,6 +925,39 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
         name="eventPlanners"
         render={({ field }) => {
           const list = field.value ?? [];
+          const selectedPlannerLabels = {
+            ...retainedPlannerLabels,
+            ...Object.fromEntries(
+              list.flatMap((planner) =>
+                planner.eventPlannerId != null && planner.eventPlannerName
+                  ? [[String(planner.eventPlannerId), planner.eventPlannerName]]
+                  : []
+              )
+            ),
+          };
+          const availablePlannerValues = new Set(
+            eventPlannerOptions.map((option) => option.value)
+          );
+          const retainUnavailablePlannerLabels = (
+            entries: Array<{
+              eventPlannerId?: number | null;
+              eventPlannerName?: string | null;
+            }>
+          ) => {
+            setRetainedPlannerLabels(
+              Object.fromEntries(
+                entries.flatMap((planner) => {
+                  if (planner.eventPlannerId == null) return [];
+                  const value = String(planner.eventPlannerId);
+                  const label =
+                    planner.eventPlannerName ?? selectedPlannerLabels[value];
+                  return !availablePlannerValues.has(value) && label
+                    ? [[value, label]]
+                    : [];
+                })
+              )
+            );
+          };
           const comboboxValue: FreeformComboboxItemWithLead[] = list.map(
             (p) => {
               const base: FreeformComboboxItemWithLead =
@@ -940,6 +982,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                     )
                   : [value];
             if (arr.length === 0) {
+              setRetainedPlannerLabels({});
               setActivityFormFieldValue(form, field.name, []);
               return;
             }
@@ -968,6 +1011,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
             if (next.length > 0 && !next.some((p) => p.isLead)) {
               next[0] = { ...next[0], isLead: true };
             }
+            retainUnavailablePlannerLabels(next);
             setActivityFormFieldValue(
               form,
               field.name,
@@ -982,6 +1026,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 isLead: i === index,
               }))
             );
+            retainUnavailablePlannerLabels(next);
             setActivityFormFieldValue(form, field.name, next);
           };
 
@@ -1000,6 +1045,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                 <FreeformCombobox
                   readOnly={readOnly}
                   options={eventPlannerOptions}
+                  selectedOptionLabels={selectedPlannerLabels}
                   value={comboboxValue}
                   onChange={handleChange}
                   placeholder=""

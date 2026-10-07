@@ -1,5 +1,10 @@
 import { ErrorBoundary } from 'react-error-boundary';
-import type { FieldErrors } from 'react-hook-form';
+import {
+  useWatch,
+  type Control,
+  type FieldErrors,
+  type UseFormGetValues,
+} from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -95,6 +100,7 @@ import { showActivityMutationSuccessToast } from '../lib/activity-mutation-succe
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showErrorToast } from '../lib/error-toast';
+import { formatDiscardChangesLabel } from '../lib/form-field-highlight';
 import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 import {
@@ -118,6 +124,47 @@ export type ActivityPageProps = {
   activity: ActivityResponse;
   refreshActivity: () => Promise<void>;
 };
+
+type DiscardChangesButtonProps = {
+  control: Control<ActivityFormData>;
+  getValues: UseFormGetValues<ActivityFormData>;
+  initialFormData: ActivityFormData | null;
+  isDirty: boolean;
+  isSubmitting: boolean;
+  onClick: () => void;
+};
+
+function DiscardChangesButton({
+  control,
+  getValues,
+  initialFormData,
+  isDirty,
+  isSubmitting,
+  onClick,
+}: DiscardChangesButtonProps): React.ReactElement | null {
+  useWatch({ control });
+  const changeCount = initialFormData
+    ? computeFormChanges(initialFormData, getValues()).length
+    : 0;
+
+  if (!isDirty) {
+    return null;
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      className="animate-in fade-in duration-200"
+      onClick={onClick}
+      disabled={isSubmitting}
+    >
+      {changeCount > 0
+        ? formatDiscardChangesLabel(changeCount)
+        : 'Discard changes'}
+    </Button>
+  );
+}
 
 export function ActivityPage({
   activity,
@@ -693,21 +740,29 @@ export function ActivityPage({
   };
 
   type SubmitActivityMode =
-    | { kind: 'update'; validatedData: ActivityFormData; notes?: string }
-    | { kind: 'reviewOnly'; notes?: string }
+    | {
+        kind: 'update';
+        validatedData: ActivityFormData;
+        notes?: string;
+        renewPublicLastUpdated?: boolean;
+      }
+    | { kind: 'reviewOnly'; notes?: string; renewPublicLastUpdated?: boolean }
     | {
         kind: 'reviewWithSave';
         validatedData: ActivityFormData;
         notes?: string;
+        renewPublicLastUpdated?: boolean;
       }
     | {
         kind: 'completeOnly';
         notes?: string;
+        renewPublicLastUpdated?: boolean;
       }
     | {
         kind: 'completeWithSave';
         validatedData: ActivityFormData;
         notes?: string;
+        renewPublicLastUpdated?: boolean;
       };
 
   const runSubmitUpdate = useCallback(
@@ -721,14 +776,21 @@ export function ActivityPage({
       try {
         let submitData: UpdateActivityRequest;
 
+        const renewField =
+          mode.renewPublicLastUpdated === true
+            ? { renewPublicLastUpdated: true as const }
+            : {};
+
         if (mode.kind === 'reviewOnly') {
           submitData = {
             ...buildMarkReviewedOnlyPayload(mode.notes),
+            ...renewField,
           };
         } else if (mode.kind === 'completeOnly') {
           submitData = {
             markAsCompleted: true,
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+            ...renewField,
           };
         } else {
           const opts: UpdatePayloadOptions =
@@ -764,13 +826,16 @@ export function ActivityPage({
               opts
             ),
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+            ...renewField,
           };
         }
 
-        if (activity.lastUpdatedDateTime) {
+        const concurrencyToken =
+          activity.lastUpdatedDateTime ?? activity.publicLastUpdatedDateTime;
+        if (concurrencyToken) {
           submitData = {
             ...submitData,
-            ifUnmodifiedSince: activity.lastUpdatedDateTime,
+            ifUnmodifiedSince: concurrencyToken,
           };
         }
 
@@ -831,6 +896,7 @@ export function ActivityPage({
       form,
       activity.title,
       activity.lastUpdatedDateTime,
+      activity.publicLastUpdatedDateTime,
       canViewActivity,
       applyExternalLockReleased,
       navigate,
@@ -840,9 +906,16 @@ export function ActivityPage({
     ]
   );
 
-  const handleConfirmedSubmit = async (notes?: string) => {
+  const handleConfirmedSubmit = async (
+    payload: import('@/components/activity/activities/EditActivityConfirmModal').ActivitySaveConfirmPayload
+  ) => {
     if (!validatedData) return;
-    await runSubmitUpdate({ kind: 'update', validatedData, notes });
+    await runSubmitUpdate({
+      kind: 'update',
+      validatedData,
+      notes: payload.notes,
+      renewPublicLastUpdated: payload.renewPublicLastUpdated,
+    });
   };
 
   const onError = (errors: FieldErrors<ActivityFormData>) => {
@@ -863,10 +936,10 @@ export function ActivityPage({
   };
 
   const handleReviewConfirm = async (
-    notes?: string,
-    markAsCompleted?: boolean,
-    unassignMe?: boolean
+    payload: import('@/components/activity/activities/ReviewActivityModal').ReviewActivityConfirmPayload
   ) => {
+    const { notes, markAsCompleted, unassignMe, renewPublicLastUpdated } =
+      payload;
     if (unassignMe && user?.id != null) {
       const myFlags = (activity.flags ?? []).filter(
         (flag) => flag.assigneeId === user.id
@@ -916,10 +989,15 @@ export function ActivityPage({
             kind: 'completeWithSave',
             validatedData: data,
             notes,
+            renewPublicLastUpdated,
           });
         }, onError)();
       } else {
-        await runSubmitUpdate({ kind: 'completeOnly', notes });
+        await runSubmitUpdate({
+          kind: 'completeOnly',
+          notes,
+          renewPublicLastUpdated,
+        });
       }
       return;
     }
@@ -929,24 +1007,37 @@ export function ActivityPage({
           kind: 'reviewWithSave',
           validatedData: data,
           notes,
+          renewPublicLastUpdated,
         });
       }, onError)();
     } else {
-      await runSubmitUpdate({ kind: 'reviewOnly', notes });
+      await runSubmitUpdate({
+        kind: 'reviewOnly',
+        notes,
+        renewPublicLastUpdated,
+      });
     }
   };
 
-  const handleCompleteConfirm = async (notes?: string) => {
+  const handleCompleteConfirm = async (
+    payload: import('@/components/activity/activities/EditActivityConfirmModal').ActivitySaveConfirmPayload
+  ) => {
+    const { notes, renewPublicLastUpdated } = payload;
     if (isDirty) {
       await form.handleSubmit(async (data) => {
         await runSubmitUpdate({
           kind: 'completeWithSave',
           validatedData: data,
           notes,
+          renewPublicLastUpdated,
         });
       }, onError)();
     } else {
-      await runSubmitUpdate({ kind: 'completeOnly', notes });
+      await runSubmitUpdate({
+        kind: 'completeOnly',
+        notes,
+        renewPublicLastUpdated,
+      });
     }
   };
 
@@ -1118,7 +1209,13 @@ export function ActivityPage({
         categories={categories}
         leadMinistry={activity.leadMinistry ?? null}
         activityStatus={activity.activityStatus ?? null}
-        lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
+        lastUpdatedDateTime={activity.publicLastUpdatedDateTime ?? null}
+        adminOperationalLastUpdatedDateTime={
+          activity.lastUpdatedDateTime ?? null
+        }
+        showAdminOperationalTimestamp={hasPermission(
+          PERMISSIONS.ACTIVITIES.PUBLIC_LAST_UPDATED_DEFER
+        )}
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={() => setHistoryOpen(true)}
         flags={activity.flags ?? []}
@@ -1255,6 +1352,7 @@ export function ActivityPage({
             commsContactCandidates={commsContactCandidates}
             activityId={id}
             readOnly={readOnly}
+            showFieldChangeHighlights={canReviewActivities}
             reviewerChangedPaths={reviewerChangedPaths}
             leadTeamField={{
               options: leadTeamOptions,
@@ -1302,17 +1400,14 @@ export function ActivityPage({
                     Delete
                   </Button>
                 )}
-                {isDirty && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="animate-in fade-in duration-200"
-                    onClick={() => setShowLeaveConfirm(true)}
-                    disabled={isSubmitting}
-                  >
-                    Discard changes
-                  </Button>
-                )}
+                <DiscardChangesButton
+                  control={form.control}
+                  getValues={form.getValues}
+                  initialFormData={initialFormDataRef.current}
+                  isDirty={isDirty}
+                  isSubmitting={isSubmitting}
+                  onClick={() => setShowLeaveConfirm(true)}
+                />
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-4">
@@ -1414,7 +1509,7 @@ export function ActivityPage({
           if (!open) setValidatedData(null);
         }}
         changes={confirmModalChanges}
-        onConfirm={(notes) => void handleConfirmedSubmit(notes)}
+        onConfirm={(payload) => void handleConfirmedSubmit(payload)}
         isSubmitting={isSubmitting}
       />
       <ReviewActivityModal
@@ -1423,9 +1518,7 @@ export function ActivityPage({
         changes={reviewModalChanges}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes, markAsCompleted, unassignMe) =>
-          void handleReviewConfirm(notes, markAsCompleted, unassignMe)
-        }
+        onConfirm={(payload) => void handleReviewConfirm(payload)}
         displayId={displayId}
         showMarkAsCompletedOption={actionFlags.showCompleteAction}
         activityEndedAtLabel={reviewModalActivityEndedAtLabel}
@@ -1438,7 +1531,7 @@ export function ActivityPage({
         onOpenChange={setShowCompleteModal}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes) => void handleCompleteConfirm(notes)}
+        onConfirm={(payload) => void handleCompleteConfirm(payload)}
         displayId={displayId}
       />
       <RequestDeleteActivityModal

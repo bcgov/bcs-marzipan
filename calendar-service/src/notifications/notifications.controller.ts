@@ -1,24 +1,47 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
   ParseIntPipe,
   Patch,
+  Post,
   Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { createZodDto } from 'nestjs-zod';
 
 import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 import {
   notificationListQuerySchema,
+  notificationRecipientPatchSchema,
   type NotificationBulkActionResult,
+  type NotificationListQuery,
   type NotificationPage,
+  type NotificationRecipientPatch,
 } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import {
+  NotificationBulkActionResultResponseWrapperDto,
+  NotificationPageResponseWrapperDto,
+  NotificationUpdatedResponseWrapperDto,
+  UnreadNotificationCountResponseWrapperDto,
+} from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { NotificationsService } from './notifications.service';
+
+class NotificationRecipientPatchDto extends createZodDto(
+  notificationRecipientPatchSchema
+) {}
 
 @ApiTags('notifications')
 @Controller('notifications')
@@ -31,12 +54,17 @@ export class NotificationsController {
     description:
       'By default returns unread notifications. Pass includeRead=true to include read notifications. Dismissed notifications are excluded.',
   })
-  @ApiResponse({ status: 200, description: 'Notifications retrieved' })
+  @ApiZodQueries(notificationListQuerySchema)
+  @ApiResponse({
+    status: 200,
+    description: 'Notifications retrieved',
+    type: NotificationPageResponseWrapperDto,
+  })
   @Get()
   async list(
     @CurrentUser() user: AuthUser,
     @Query(new ZodValidationPipe(notificationListQuerySchema))
-    query: { includeRead?: boolean; page?: number; pageSize?: number }
+    query: NotificationListQuery
   ): Promise<{ success: true; data: NotificationPage }> {
     const data = await this.notificationsService.listForUser(user.id, {
       includeRead: query.includeRead ?? false,
@@ -47,7 +75,11 @@ export class NotificationsController {
   }
 
   @ApiOperation({ summary: 'Get unread notification count for current user' })
-  @ApiResponse({ status: 200, description: 'Unread count retrieved' })
+  @ApiResponse({
+    status: 200,
+    description: 'Unread count retrieved',
+    type: UnreadNotificationCountResponseWrapperDto,
+  })
   @Get('unread-count')
   async unreadCount(
     @CurrentUser() user: AuthUser
@@ -56,33 +88,13 @@ export class NotificationsController {
     return { success: true, data: { count } };
   }
 
-  @ApiOperation({ summary: 'Mark notification as read' })
-  @ApiParam({ name: 'recipientId', type: Number })
-  @ApiResponse({ status: 200, description: 'Notification updated' })
-  @Patch(':recipientId/read')
-  async markRead(
-    @CurrentUser() user: AuthUser,
-    @Param('recipientId', ParseIntPipe) recipientId: number
-  ): Promise<{ success: true; data: { updated: true } }> {
-    await this.notificationsService.markRead(recipientId, user.id);
-    return { success: true, data: { updated: true } };
-  }
-
-  @ApiOperation({ summary: 'Dismiss notification' })
-  @ApiParam({ name: 'recipientId', type: Number })
-  @ApiResponse({ status: 200, description: 'Notification dismissed' })
-  @Patch(':recipientId/dismiss')
-  async dismiss(
-    @CurrentUser() user: AuthUser,
-    @Param('recipientId', ParseIntPipe) recipientId: number
-  ): Promise<{ success: true; data: { updated: true } }> {
-    await this.notificationsService.dismiss(recipientId, user.id);
-    return { success: true, data: { updated: true } };
-  }
-
   @ApiOperation({ summary: 'Mark all unread notifications as read' })
-  @ApiResponse({ status: 200, description: 'Notifications updated' })
-  @Patch('read-all')
+  @ApiResponse({
+    status: 200,
+    description: 'Notifications updated',
+    type: NotificationBulkActionResultResponseWrapperDto,
+  })
+  @Post('read-all')
   async markAllRead(
     @CurrentUser() user: AuthUser
   ): Promise<{ success: true; data: NotificationBulkActionResult }> {
@@ -91,12 +103,41 @@ export class NotificationsController {
   }
 
   @ApiOperation({ summary: 'Dismiss all non-dismissed notifications' })
-  @ApiResponse({ status: 200, description: 'Notifications dismissed' })
-  @Patch('dismiss-all')
+  @ApiResponse({
+    status: 200,
+    description: 'Notifications dismissed',
+    type: NotificationBulkActionResultResponseWrapperDto,
+  })
+  @Post('dismiss-all')
   async dismissAll(
     @CurrentUser() user: AuthUser
   ): Promise<{ success: true; data: NotificationBulkActionResult }> {
     const updatedCount = await this.notificationsService.dismissAll(user.id);
     return { success: true, data: { updatedCount } };
+  }
+
+  @ApiOperation({
+    summary: 'Update a notification recipient (read or dismiss)',
+  })
+  @ApiParam({ name: 'recipientId', type: Number })
+  @ApiBody({ type: NotificationRecipientPatchDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification updated',
+    type: NotificationUpdatedResponseWrapperDto,
+  })
+  @Patch('recipients/:recipientId')
+  async patchRecipient(
+    @CurrentUser() user: AuthUser,
+    @Param('recipientId', ParseIntPipe) recipientId: number,
+    @Body(new ZodValidationPipe(notificationRecipientPatchSchema))
+    body: NotificationRecipientPatch
+  ): Promise<{ success: true; data: { updated: true } }> {
+    if (body.read) {
+      await this.notificationsService.markRead(recipientId, user.id);
+    } else if (body.dismissed) {
+      await this.notificationsService.dismiss(recipientId, user.id);
+    }
+    return { success: true, data: { updated: true } };
   }
 }

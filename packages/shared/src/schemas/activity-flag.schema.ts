@@ -28,20 +28,6 @@ export const activityFlagResponseSchema = z.object({
 
 export type ActivityFlagResponse = z.infer<typeof activityFlagResponseSchema>;
 
-/** Request body for PUT /activities/:id/flag — sets (or replaces) the flag for the caller's team. */
-export const upsertActivityFlagRequestSchema = z.object({
-  /** Team ID scoping this flag (must be one of the caller's teams). */
-  teamId: z.number().int(),
-  /** User ID of the teammate to assign. */
-  assigneeId: z.number().int(),
-  /** Optional contextual note stored with the flag. */
-  note: z.string().max(1000).optional(),
-});
-
-export type UpsertActivityFlagRequest = z.infer<
-  typeof upsertActivityFlagRequestSchema
->;
-
 /** Request body for PUT /activities/:id/flags — syncs the full assignee set for the caller's team. */
 export const upsertActivityFlagsRequestSchema = z.object({
   /** Team ID scoping this flag set (must be one of the caller's teams). */

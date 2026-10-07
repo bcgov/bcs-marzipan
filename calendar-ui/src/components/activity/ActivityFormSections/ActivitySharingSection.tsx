@@ -42,6 +42,8 @@ export type SharingTeamLookup = {
   name: string;
   displayName?: string;
   ministryId: number | null;
+  isActive: boolean;
+  appearsInShareWith: boolean;
 };
 
 export type QuickShareGroupLookup = {
@@ -128,6 +130,13 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
   const sharedWithAnchorRef = useComboboxAnchor();
   const leadTeamId = useWatch({ control: form.control, name: 'leadTeamId' });
   const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
+  const selectableTeams = useMemo(
+    () =>
+      sharedWithTeams.filter(
+        (team) => team.isActive && team.appearsInShareWith
+      ),
+    [sharedWithTeams]
+  );
 
   const leadTeamName = useMemo(() => {
     if (leadTeamId == null) return 'lead team';
@@ -137,25 +146,25 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
 
   const sharedWithTeamOptions = useMemo<OptionItem[]>(
     () =>
-      sharedWithTeams.map((t) => ({
+      selectableTeams.map((t) => ({
         value: String(t.id),
         label: t.displayName ?? t.name,
       })),
-    [sharedWithTeams]
+    [selectableTeams]
   );
 
   const allTeamIds = useMemo(
-    () => sharedWithTeams.map((t) => t.id),
-    [sharedWithTeams]
+    () => selectableTeams.map((t) => t.id),
+    [selectableTeams]
   );
 
   const groupsWithTeamIds = useMemo(
     () =>
       quickShareGroups.map((g) => ({
         ...g,
-        teamIds: teamIdsForMinistries(g.ministryIds, sharedWithTeams),
+        teamIds: teamIdsForMinistries(g.ministryIds, selectableTeams),
       })),
-    [quickShareGroups, sharedWithTeams]
+    [quickShareGroups, selectableTeams]
   );
 
   return (
@@ -226,11 +235,24 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
                 .filter((v): v is number => typeof v === 'number')
                 .map((v) => String(v))
             : [];
-          const selectedOptions = sharedWithTeamOptions.filter((o) =>
-            currentValues.includes(o.value)
-          );
+          const selectedOptions = currentValues.flatMap((value) => {
+            const team = sharedWithTeams.find(
+              (item) => String(item.id) === value
+            );
+            return team
+              ? [
+                  {
+                    value,
+                    label: team.displayName ?? team.name,
+                  },
+                ]
+              : [];
+          });
 
           const selectedIds = selectedOptions.map((o) => parseInt(o.value, 10));
+          const selectedSelectableIds = selectedIds.filter((id) =>
+            allTeamIds.includes(id)
+          );
 
           const toggleIds = (targetIds: number[], remove: boolean) => {
             const target = new Set(targetIds);
@@ -248,7 +270,8 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
           };
 
           const shareAllChecked =
-            allTeamIds.length > 0 && setsEqualAsSets(selectedIds, allTeamIds);
+            allTeamIds.length > 0 &&
+            setsEqualAsSets(selectedSelectableIds, allTeamIds);
 
           return (
             <FormItem>

@@ -518,7 +518,7 @@ describe('ActivityPage optimistic inline edit', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows Discard changes and enables Save after edits when lock is owned', async () => {
+  it('updates the discard change count and enables Save after edits when lock is owned', async () => {
     mockLockState = 'owned';
     const user = userEvent.setup();
     renderActivityPage();
@@ -531,11 +531,19 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard changes/i })
+        screen.getByRole('button', { name: /Discard 1 change/i })
       ).toBeInTheDocument()
     );
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /^Save$/i })).not.toBeDisabled()
+    );
+
+    await user.click(screen.getByRole('checkbox', { name: /Issue/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Discard 2 changes/i })
+      ).toBeInTheDocument()
     );
   });
 
@@ -560,14 +568,17 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard changes/i })
+        screen.getByRole('button', { name: /Discard 1 change/i })
       ).toBeInTheDocument()
     );
     expect(issueCheckbox).toBeChecked();
 
-    await user.click(screen.getByRole('button', { name: /Discard changes/i }));
+    await user.click(screen.getByRole('button', { name: /Discard 1 change/i }));
 
     const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).getByRole('heading', { name: /Discard 1 change\?/i })
+    ).toBeInTheDocument();
     expect(within(dialog).getByText(/Issue:/i)).toBeInTheDocument();
 
     await user.click(
@@ -577,7 +588,9 @@ describe('ActivityPage optimistic inline edit', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(mockRelease).toHaveBeenCalled();
-      expect(issueCheckbox).not.toBeChecked();
+      expect(
+        screen.getByRole('checkbox', { name: /Issue/i })
+      ).not.toBeChecked();
     });
   });
 
@@ -918,7 +931,7 @@ describe('ActivityPage clone button', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard changes/i })
+        screen.getByRole('button', { name: /Discard 1 change/i })
       ).toBeInTheDocument()
     );
     const cloneBtn = screen.getByRole('button', { name: /^Clone$/i });

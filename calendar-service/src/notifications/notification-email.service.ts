@@ -59,7 +59,10 @@ export class NotificationEmailService {
   }
 
   private resolveLinkPath(input: SendNotificationEmailInput): string {
-    if (input.entityType === 'activity') {
+    if (
+      input.entityType === 'activity' &&
+      input.eventType !== 'calendar.activity.hard_deleted'
+    ) {
       return `/activity/${input.entityId}`;
     }
 

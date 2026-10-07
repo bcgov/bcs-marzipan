@@ -33,6 +33,18 @@ describe('getNotificationTargetPath', () => {
     expect(path).toBe('/activity/77');
   });
 
+  it('returns null for hard-deleted activity notifications', () => {
+    const path = getNotificationTargetPath(
+      buildItem({
+        entityType: 'activity',
+        entityId: 77,
+        eventType: 'calendar.activity.hard_deleted',
+      })
+    );
+
+    expect(path).toBeNull();
+  });
+
   it('prefers details userId for team notifications', () => {
     const path = getNotificationTargetPath(
       buildItem({

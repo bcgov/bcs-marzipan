@@ -160,12 +160,75 @@ describe('ActivityMapperService', () => {
       const activity = createMockActivity({
         createdDateTime: created,
         lastUpdatedDateTime: updated,
+        publicLastUpdatedDateTime: updated,
+        publicLastUpdatedBy: 1,
       });
 
-      const result = mapper.mapToResponseDto(activity);
+      const result = mapper.mapToResponseDto(activity, { canEdit: true });
 
       expect(result.createdDateTime).toBe('2026-04-27T15:30:00.000Z');
+      expect(result.publicLastUpdatedDateTime).toBe('2026-04-27T16:45:00.000Z');
       expect(result.lastUpdatedDateTime).toBe('2026-04-27T16:45:00.000Z');
+    });
+
+    it('omits operational last updated when viewer cannot edit', () => {
+      const activity = createMockActivity();
+      const result = mapper.mapToResponseDto(activity, { canEdit: false });
+      expect(result.publicLastUpdatedDateTime).toBeDefined();
+      expect(result.lastUpdatedDateTime).toBeUndefined();
+    });
+
+    it('includes operational last updated when includeOperationalLastUpdated is true without canEdit', () => {
+      const updated = new Date('2026-04-27T16:45:00.000Z');
+      const activity = createMockActivity({
+        lastUpdatedDateTime: updated,
+        publicLastUpdatedDateTime: updated,
+        publicLastUpdatedBy: 1,
+      });
+      const result = mapper.mapToResponseDto(activity, {
+        includeOperationalLastUpdated: true,
+      });
+      expect('canEdit' in result).toBe(false);
+      expect(result.lastUpdatedDateTime).toBe('2026-04-27T16:45:00.000Z');
+      expect(result.lastUpdatedBy).toBeDefined();
+    });
+  });
+
+  describe('mapToListItemDto', () => {
+    it('does not map operational public fallback when public lags operational', () => {
+      const operational = new Date('2026-04-27T16:45:00.000Z');
+      const created = new Date('2026-04-27T15:30:00.000Z');
+      const activity = createMockActivity({
+        createdDateTime: created,
+        lastUpdatedDateTime: operational,
+        publicLastUpdatedDateTime: null as unknown as Date,
+        publicLastUpdatedBy: null as unknown as number,
+        createdBy: 5,
+      });
+
+      const result = mapper.mapToListItemDto(activity);
+
+      expect(result.publicLastUpdatedDateTime).toBe('2026-04-27T15:30:00.000Z');
+      expect(result.publicLastUpdatedBy).toBe(5);
+      expect(result.lastUpdatedDateTime).toBe('2026-04-27T16:45:00.000Z');
+    });
+
+    it('includes operational and public last updated for all list rows', () => {
+      const updated = new Date('2026-04-27T16:45:00.000Z');
+      const publicUpdated = new Date('2026-04-20T09:00:00.000Z');
+      const activity = createMockActivity({
+        lastUpdatedDateTime: updated,
+        publicLastUpdatedDateTime: publicUpdated,
+        lastUpdatedBy: 2,
+        publicLastUpdatedBy: 3,
+      });
+
+      const result = mapper.mapToListItemDto(activity, { canEdit: false });
+
+      expect(result.lastUpdatedDateTime).toBe('2026-04-27T16:45:00.000Z');
+      expect(result.lastUpdatedBy).toBe(2);
+      expect(result.publicLastUpdatedDateTime).toBe('2026-04-20T09:00:00.000Z');
+      expect(result.publicLastUpdatedBy).toBe(3);
     });
   });
 });

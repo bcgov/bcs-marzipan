@@ -12,7 +12,6 @@ import {
   ApiBody,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -26,11 +25,16 @@ import type {
 } from '@corpcal/shared/api/types';
 import {
   createTeamBodySchema,
+  teamDetailQuerySchema,
+  teamListQuerySchema,
   updateTeamBodySchema,
+  type TeamDetailQuery,
+  type TeamListQuery,
 } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import {
   RequireAnyPermission,
   RequirePermission,
@@ -54,12 +58,7 @@ export class TeamsController {
     summary: 'List teams',
     description: 'Returns all teams with member count and optional ministry.',
   })
-  @ApiQuery({
-    name: 'activeOnly',
-    required: false,
-    type: Boolean,
-    description: 'If true, return only active teams (default: true)',
-  })
+  @ApiZodQueries(teamListQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'List of teams',
@@ -67,9 +66,11 @@ export class TeamsController {
   })
   @Get()
   async findAll(
-    @Query('activeOnly') activeOnly?: string
+    @Query(new ZodValidationPipe(teamListQuerySchema))
+    query: TeamListQuery = {}
   ): Promise<{ success: boolean; data: TeamListItem[] }> {
-    const active = activeOnly === undefined || activeOnly === 'true';
+    const active =
+      query?.activeOnly === undefined || query.activeOnly === 'true';
     const data = await this.teamsService.findAll(active);
     return { success: true, data };
   }
@@ -141,27 +142,22 @@ export class TeamsController {
   }
 
   @ApiOperation({ summary: 'Get team by ID' })
-  @ApiParam({ name: 'id', description: 'Team ID' })
-  @ApiQuery({
-    name: 'includeInactiveMembers',
-    required: false,
-    type: 'boolean',
-    description:
-      'When true, includes team members with isActive=false (useful for assignment UI). Defaults to false.',
-  })
+  @ApiParam({ name: 'teamId', description: 'Team ID' })
+  @ApiZodQueries(teamDetailQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'Team details. Returns data: null when team is not found.',
     type: TeamDetailResponseWrapperDto,
   })
-  @Get(':id')
+  @Get(':teamId')
   async findOne(
-    @Param('id', ParseIntPipe) id: number,
-    @Query('includeInactiveMembers') includeInactiveMembers?: string
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @Query(new ZodValidationPipe(teamDetailQuerySchema))
+    query: TeamDetailQuery = {}
   ): Promise<{ success: boolean; data: TeamDetail | null }> {
     const data = await this.teamsService.findOne(
-      id,
-      includeInactiveMembers === 'true'
+      teamId,
+      query?.includeInactiveMembers === 'true'
     );
     return { success: true, data };
   }
@@ -184,7 +180,7 @@ export class TeamsController {
   }
 
   @ApiOperation({ summary: 'Update team' })
-  @ApiParam({ name: 'id', description: 'Team ID' })
+  @ApiParam({ name: 'teamId', description: 'Team ID' })
   @ApiBody({ type: UpdateTeamDto })
   @ApiResponse({
     status: 200,
@@ -193,29 +189,29 @@ export class TeamsController {
   })
   @ApiResponse({ status: 404, description: 'Team not found' })
   @RequirePermission('teams.edit')
-  @Patch(':id')
+  @Patch(':teamId')
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('teamId', ParseIntPipe) teamId: number,
     @Body(new ZodValidationPipe(updateTeamBodySchema)) dto: UpdateTeamDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: TeamDetail }> {
-    const data = await this.teamsService.update(id, dto, user.id);
+    const data = await this.teamsService.update(teamId, dto, user.id);
     return { success: true, data };
   }
 
   @ApiOperation({ summary: 'Get team change history' })
-  @ApiParam({ name: 'id', description: 'Team ID' })
+  @ApiParam({ name: 'teamId', description: 'Team ID' })
   @ApiResponse({
     status: 200,
     description: 'Team history entries',
     type: TeamHistoryResponseWrapperDto,
   })
   @ApiResponse({ status: 404, description: 'Team not found' })
-  @Get(':id/history')
+  @Get(':teamId/history')
   async getHistory(
-    @Param('id', ParseIntPipe) id: number
+    @Param('teamId', ParseIntPipe) teamId: number
   ): Promise<{ success: boolean; data: TeamHistoryEntry[] }> {
-    const data = await this.teamsService.getTeamHistory(id);
+    const data = await this.teamsService.getTeamHistory(teamId);
     return { success: true, data };
   }
 }

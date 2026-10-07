@@ -307,6 +307,14 @@ export async function fetchVenuePresets(): Promise<VenuePresetItem[]> {
   return res.data.data;
 }
 
+export async function fetchAllVenuePresets(): Promise<VenuePresetItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: VenuePresetItem[];
+  }>('/lookups/venue-presets', { params: { includeAll: 'true' } });
+  return res.data.data;
+}
+
 // ============================================
 // Admin CRUD Functions
 // ============================================

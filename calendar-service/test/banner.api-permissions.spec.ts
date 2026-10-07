@@ -39,14 +39,14 @@ describe('Banner API permissions', () => {
 
   it('forbids non-admin users from updating banner', async () => {
     await createAuthRequest(app, nonAdminToken)
-      .put('/banner/settings')
+      .patch('/banner/settings')
       .send(upsertBody)
       .expect(403);
   });
 
   it('allows system admins to update banner', async () => {
     const res = await createAuthRequest(app, systemAdminToken)
-      .put('/banner/settings')
+      .patch('/banner/settings')
       .send(upsertBody)
       .expect(200);
 
