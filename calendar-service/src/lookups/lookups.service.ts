@@ -328,7 +328,8 @@ export class LookupsService {
             eq(roles.isSystem, true)
           )
         )
-        .limit(1);
+      .for('update')
+      .limit(1);
       if (!role) throw new NotFoundException('System role not found');
 
       const uniquePermissionIds = new Set(permissionIds);
