@@ -34,20 +34,28 @@ import {
   pitchStatuses,
   premierRequested,
   reports,
+  rolePermissionAudit,
   rolePermissions,
   roles,
+  sessions,
   tags,
   teamCategories,
+  teams,
   teamTags,
   themes,
   timeStatuses,
   translatedLanguages,
   translationRequiredStatuses,
   users,
+  userTeams,
   venuePresets,
   venueStatuses,
 } from '@corpcal/database/schema';
-import type { ActivityStatusName, Visibility } from '@corpcal/shared';
+import {
+  SYSTEM_ROLE_IDS,
+  type ActivityStatusName,
+  type Visibility,
+} from '@corpcal/shared';
 import type {
   ActivityTeamSharingQuickShare,
   CategoryLookupItem,
@@ -87,6 +95,36 @@ export type VenuePresetAdminItem = VenuePresetItem & {
   sortOrder: number;
   isActive: boolean;
 };
+
+export function validateAdminRolePermissionSelection(
+  roleId: number,
+  catalog: { id: number; key: string }[],
+  currentByPermissionId: Map<number, boolean>,
+  desiredIds: Set<number>
+): void {
+  for (const permission of catalog) {
+    if (!permission.key.startsWith('system.')) continue;
+    const isCurrentlyActive = currentByPermissionId.get(permission.id) ?? false;
+    if (desiredIds.has(permission.id) !== isCurrentlyActive) {
+      throw new BadRequestException(
+        'System permissions cannot be changed through role management'
+      );
+    }
+  }
+
+  if (
+    roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN &&
+    !catalog.some(
+      (permission) =>
+        permission.key === 'system.manage_permissions' &&
+        desiredIds.has(permission.id)
+    )
+  ) {
+    throw new BadRequestException(
+      'System Admin must retain system.manage_permissions'
+    );
+  }
+}
 
 @Injectable()
 export class LookupsService {
@@ -200,6 +238,206 @@ export class LookupsService {
       .where(eq(roles.isActive, true))
       .orderBy(roles.name);
     return results;
+  }
+
+  async getPermissionAdminRoles(): Promise<
+    { id: number; name: string; description: string | null }[]
+  > {
+    return this.databaseService.db
+      .select({
+        id: roles.id,
+        name: roles.name,
+        description: roles.description,
+      })
+      .from(roles)
+      .where(and(eq(roles.isActive, true), eq(roles.isSystem, true)))
+      .orderBy(roles.name);
+  }
+
+  async getAdminRolePermissions(roleId: number): Promise<
+    {
+      id: number;
+      key: string;
+      displayName: string;
+      description: string | null;
+      category: string;
+      sortOrder: number;
+      hasPermission: boolean;
+      locked: boolean;
+    }[]
+  > {
+    const [role] = await this.databaseService.db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(
+        and(
+          eq(roles.id, roleId),
+          eq(roles.isActive, true),
+          eq(roles.isSystem, true)
+        )
+      )
+      .limit(1);
+    if (!role) throw new NotFoundException('System role not found');
+
+    const rows = await this.databaseService.db
+      .select({
+        id: permissions.id,
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+        category: permissions.category,
+        sortOrder: permissions.sortOrder,
+        isActive: rolePermissions.isActive,
+      })
+      .from(permissions)
+      .leftJoin(
+        rolePermissions,
+        and(
+          eq(rolePermissions.permissionId, permissions.id),
+          eq(rolePermissions.roleId, roleId)
+        )
+      )
+      .orderBy(permissions.sortOrder, permissions.key);
+
+    return rows.map((row) => ({
+      id: row.id,
+      key: row.key,
+      displayName: row.displayName,
+      description: row.description,
+      category: row.category,
+      sortOrder: row.sortOrder,
+      hasPermission: Boolean(row.isActive),
+      locked: row.key.startsWith('system.'),
+    }));
+  }
+
+  async updateAdminRolePermissions(
+    roleId: number,
+    permissionIds: number[],
+    changedBy: number
+  ): Promise<Awaited<ReturnType<LookupsService['getAdminRolePermissions']>>> {
+    let permissionsChanged = false;
+    await this.databaseService.db.transaction(async (tx) => {
+      const [role] = await tx
+        .select({ id: roles.id })
+        .from(roles)
+        .where(
+          and(
+            eq(roles.id, roleId),
+            eq(roles.isActive, true),
+            eq(roles.isSystem, true)
+          )
+        )
+        .for('update')
+        .limit(1);
+      if (!role) throw new NotFoundException('System role not found');
+
+      const uniquePermissionIds = new Set(permissionIds);
+      if (uniquePermissionIds.size !== permissionIds.length) {
+        throw new BadRequestException(
+          'Duplicate permission ids are not allowed'
+        );
+      }
+
+      const catalog = await tx
+        .select({ id: permissions.id, key: permissions.key })
+        .from(permissions);
+      const knownIds = new Set(catalog.map((permission) => permission.id));
+      if (permissionIds.some((permissionId) => !knownIds.has(permissionId))) {
+        throw new BadRequestException('Unknown permission id');
+      }
+
+      const currentRows = await tx
+        .select({
+          permissionId: rolePermissions.permissionId,
+          isActive: rolePermissions.isActive,
+        })
+        .from(rolePermissions)
+        .where(eq(rolePermissions.roleId, roleId));
+      const currentByPermissionId = new Map(
+        currentRows.map((row) => [row.permissionId, row.isActive])
+      );
+      const desiredIds = new Set(permissionIds);
+      validateAdminRolePermissionSelection(
+        roleId,
+        catalog,
+        currentByPermissionId,
+        desiredIds
+      );
+
+      const now = new Date();
+      for (const permission of catalog) {
+        if (permission.key.startsWith('system.')) continue;
+        const enabled = desiredIds.has(permission.id);
+        const currentlyEnabled =
+          currentByPermissionId.get(permission.id) ?? false;
+        if (enabled === currentlyEnabled) continue;
+        permissionsChanged = true;
+
+        await tx.insert(rolePermissionAudit).values({
+          roleId,
+          permissionId: permission.id,
+          oldValue: currentlyEnabled,
+          newValue: enabled,
+          changedBy,
+          changedAt: now,
+        });
+
+        await tx
+          .insert(rolePermissions)
+          .values({
+            roleId,
+            permissionId: permission.id,
+            isActive: enabled,
+            createdBy: changedBy,
+            updatedBy: changedBy,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [rolePermissions.roleId, rolePermissions.permissionId],
+            set: { isActive: enabled, updatedBy: changedBy, updatedAt: now },
+          });
+      }
+
+      if (permissionsChanged) {
+        const roleUsers = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.roleId, roleId));
+        const roleTeams = await tx
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.roleId, roleId));
+        const teamUsers = roleTeams.length
+          ? await tx
+              .select({ id: userTeams.userId })
+              .from(userTeams)
+              .where(
+                and(
+                  inArray(
+                    userTeams.teamId,
+                    roleTeams.map((team) => team.id)
+                  ),
+                  eq(userTeams.isActive, true)
+                )
+              )
+          : [];
+        const affectedUserIds = [
+          ...new Set([
+            ...roleUsers.map((roleUser) => roleUser.id),
+            ...teamUsers.map((teamUser) => teamUser.id),
+          ]),
+        ];
+        if (affectedUserIds.length > 0) {
+          await tx
+            .delete(sessions)
+            .where(inArray(sessions.userId, affectedUserIds));
+        }
+      }
+    });
+
+    return this.getAdminRolePermissions(roleId);
   }
 
   /**
