@@ -42,16 +42,4 @@ describe('useActivityEditActions', () => {
     expect(flags.showReviewAction).toBe(false);
     expect(flags.showCompleteAction).toBe(false);
   });
-
-  it('blocks all mutation actions while a preserved edit session is reconciling', () => {
-    const flags = useActivityEditActions({
-      ...baseInput,
-      isEditRecoveryBlocked: true,
-    });
-
-    expect(flags.isEditingBlocked).toBe(true);
-    expect(flags.canSubmitUpdate).toBe(false);
-    expect(flags.showReviewAction).toBe(false);
-    expect(flags.showCompleteAction).toBe(false);
-  });
 });

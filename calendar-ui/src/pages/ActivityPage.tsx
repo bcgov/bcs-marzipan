@@ -41,6 +41,7 @@ import { ReviewActionButtonLabel } from '@/components/activity/activities/Review
 import { ReviewActivityModal } from '@/components/activity/activities/ReviewActivityModal';
 import { UnshareActivityModal } from '@/components/activity/activities/UnshareActivityModal';
 import {
+  ActivityConnectionStatusBadge,
   FormErrorFallback,
   LockBanner,
   LockBannerContent,
@@ -89,6 +90,7 @@ import { useFavourites } from '../hooks/useFavourites';
 import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { useRecurringLockoutSession } from '../hooks/useRecurringLockoutSession';
 import { getActivityConcurrencyToken } from '../lib/activity-concurrency-token';
+import { getActivityConfirmSubmitBlockedMessage } from '../lib/activity-confirm-submit-blocked-message';
 import {
   resolveActivityEditResyncAction,
   type ActivityEditResyncAction,
@@ -542,7 +544,7 @@ export function ActivityPage({
     }
   }, [id]);
 
-  useActivityWebSocket(id, {
+  const activitySocketConnection = useActivityWebSocket(id, {
     onLockAcquired: (lockedBy) => {
       if (user?.id != null && lockedBy.userId === user?.id) {
         const wasHandoff = handoffAwaitingCompletionRef.current;
@@ -756,6 +758,24 @@ export function ActivityPage({
     LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
     0
   );
+  const isActiveEditSession =
+    isEditing || lockState === 'owned' || lockState === 'acquiring';
+
+  const showConnectionBadge =
+    isActiveEditSession &&
+    activitySocketConnection !== 'connected' &&
+    !isLockedByOther &&
+    !isBlockedByRecurringLockout;
+
+  const confirmBlockedMessage = useMemo(
+    () =>
+      getActivityConfirmSubmitBlockedMessage(
+        activitySocketConnection,
+        editRecoveryState
+      ),
+    [activitySocketConnection, editRecoveryState]
+  );
+
   const actionFlags = useActivityEditActions({
     lockState,
     mayEditFormFields,
@@ -767,7 +787,6 @@ export function ActivityPage({
     isSubmitting,
     readOnly,
     isBlockedByRecurringLockout: isBlockedByRecurringLockout,
-    isEditRecoveryBlocked: editRecoveryState != null,
     isDirty,
   });
   const editRecoveryMessage =
@@ -1366,8 +1385,19 @@ export function ActivityPage({
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
       <ActivityFormStickyHeader
         onBack={handleGoBack}
+        statusBadge={
+          showConnectionBadge ? (
+            <ActivityConnectionStatusBadge
+              state={
+                activitySocketConnection === 'offline'
+                  ? 'offline'
+                  : 'reconnecting'
+              }
+            />
+          ) : undefined
+        }
         lockStrip={
-          isLockedByOther ? (
+          showConnectionBadge ? undefined : isLockedByOther ? (
             <LockBannerContent
               lockedByUsername={lockedByUsername}
               onRequestTakeLock={
@@ -1393,8 +1423,9 @@ export function ActivityPage({
           ) : undefined
         }
         lockStripVisible={
-          (isLockedByOther && !lockBannerInView) ||
-          (showLockoutNotice && !lockoutBannerInView)
+          !showConnectionBadge &&
+          ((isLockedByOther && !lockBannerInView) ||
+            (showLockoutNotice && !lockoutBannerInView))
         }
       />
       <ActivityPageHeader
@@ -1731,6 +1762,7 @@ export function ActivityPage({
         changes={confirmModalChanges}
         onConfirm={(payload) => void handleConfirmedSubmit(payload)}
         isSubmitting={isSubmitting}
+        confirmBlockedMessage={confirmBlockedMessage}
       />
       <ReviewActivityModal
         open={showReviewModal}
@@ -1745,6 +1777,7 @@ export function ActivityPage({
         showUnassignMeOption={(activity.flags ?? []).some(
           (f) => f.assigneeId === user?.id
         )}
+        confirmBlockedMessage={confirmBlockedMessage}
       />
       <CompleteActivityModal
         open={showCompleteModal}
@@ -1753,6 +1786,7 @@ export function ActivityPage({
         isSubmitting={isSubmitting}
         onConfirm={(payload) => void handleCompleteConfirm(payload)}
         displayId={displayId}
+        confirmBlockedMessage={confirmBlockedMessage}
       />
       <RequestDeleteActivityModal
         open={showRequestDeleteModal}

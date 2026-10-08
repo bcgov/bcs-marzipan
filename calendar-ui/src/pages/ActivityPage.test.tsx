@@ -192,12 +192,15 @@ let mockActivityWebSocketOptions: {
   onLockReleased?: () => void;
   onDataUpdated?: () => void;
 } = {};
+let mockActivitySocketConnection: 'connected' | 'reconnecting' | 'offline' =
+  'connected';
 vi.mock('../hooks/useActivityWebSocket', () => ({
   useActivityWebSocket: (
     _activityId: number,
     options: typeof mockActivityWebSocketOptions
   ) => {
     mockActivityWebSocketOptions = options;
+    return mockActivitySocketConnection;
   },
 }));
 
@@ -490,6 +493,7 @@ describe('ActivityPage optimistic inline edit', () => {
     mockEnsureLockForSubmit.mockClear().mockResolvedValue('ready');
     mockFetchActivity.mockClear().mockResolvedValue(mockActivityWithLeadTeam);
     mockActivityWebSocketOptions = {};
+    mockActivitySocketConnection = 'connected';
     mockLockState = 'idle';
     mockIsBlockedByRecurringLockout = false;
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
@@ -599,7 +603,7 @@ describe('ActivityPage optimistic inline edit', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('preserves dirty values and blocks saving when the server version changed', async () => {
+  it('preserves dirty values and blocks confirm when the server version changed', async () => {
     mockLockState = 'owned';
     mockFetchActivity.mockResolvedValue(
       createMockActivityResponse({
@@ -624,7 +628,7 @@ describe('ActivityPage optimistic inline edit', () => {
     await screen.findByText(/activity changed on the server/i);
     expect(titleTextarea).toHaveValue('Test Activity unsaved');
     expect(mockEnsureLockForSubmit).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: /^Save$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Save$/i })).not.toBeDisabled();
   });
 
   it('discards custom-control edits via DiscardActivityChangesDialog when lock is owned', async () => {

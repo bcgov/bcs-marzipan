@@ -1,3 +1,4 @@
+import { CloudOff, CloudSync } from 'lucide-react';
 import { useEffect, useState, type ReactElement } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 type ActivityConnectionStatusBadgeProps = {
   state: 'reconnecting' | 'offline';
@@ -41,15 +43,24 @@ export function ActivityConnectionStatusBadge({
       ? 'Offline. Live updates paused.'
       : 'Reconnecting. Live updates paused.';
 
+  const Icon = state === 'offline' ? CloudOff : CloudSync;
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge
-          variant={state === 'offline' ? 'warning' : 'secondary'}
-          className="cursor-default font-medium"
+          variant="outline"
+          size="md"
+          className={cn(
+            'cursor-default gap-1.5 border-transparent font-medium',
+            state === 'offline'
+              ? 'bg-[var(--bcsds-gold-15)] text-slate-900 hover:bg-[var(--bcsds-gold-15)]'
+              : 'text-primary bg-[var(--fluent-brand-background-2)] hover:bg-[var(--fluent-brand-background-2)]'
+          )}
           role="status"
           aria-label={ariaLabel}
         >
+          <Icon className="size-4 shrink-0" aria-hidden />
           {label}
           {state === 'reconnecting' ? <AnimatedEllipsis /> : null}
         </Badge>
