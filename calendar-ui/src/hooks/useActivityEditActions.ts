@@ -33,6 +33,8 @@ type UseActivityEditActionsInput = {
   isSubmitting: boolean;
   readOnly: boolean;
   isBlockedByRecurringLockout?: boolean;
+  /** A preserved edit session is waiting for safe lock/version reconciliation. */
+  isEditRecoveryBlocked?: boolean;
   /** Save is only meaningful when the user has changed something. */
   isDirty: boolean;
 };
@@ -51,12 +53,19 @@ export function useActivityEditActions({
   isSubmitting,
   readOnly,
   isBlockedByRecurringLockout = false,
+  isEditRecoveryBlocked = false,
   isDirty,
 }: UseActivityEditActionsInput): ActivityEditActionFlags {
   const isLockedByOther = lockState === 'locked-by-other';
-  const isEditingBlocked = isLockedByOther || isBlockedByRecurringLockout;
+  const isEditingBlocked =
+    isLockedByOther || isBlockedByRecurringLockout || isEditRecoveryBlocked;
 
-  const canSubmitUpdate = hasEditLock && !isSubmitting && !readOnly && isDirty;
+  const canSubmitUpdate =
+    hasEditLock &&
+    !isSubmitting &&
+    !readOnly &&
+    !isEditRecoveryBlocked &&
+    isDirty;
 
   const showReviewAction =
     canReviewActivities && mayEditFormFields && !isEditingBlocked;

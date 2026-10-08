@@ -1,7 +1,6 @@
-import type { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ApiError } from '../api/errors';
+import { ApiError, createApiError, NetworkError } from '../api/errors';
 import {
   acquireLock,
   getLockStatus,
@@ -24,6 +23,24 @@ export type LockState =
   | 'owned'
   | 'locked-by-other';
 
+type SettledLockState = Extract<
+  LockState,
+  'idle' | 'owned' | 'locked-by-other'
+>;
+
+export type LockRefreshResult = SettledLockState | 'unavailable';
+
+export type EnsureLockForSubmitResult =
+  | 'ready'
+  | 'blocked-by-other'
+  | 'time-lockout'
+  | 'lock-required'
+  | 'unavailable'
+  | 'unauthorized'
+  | 'server-error';
+
+type LockAcquireResult = EnsureLockForSubmitResult;
+
 export type LockAcquireFailureReason =
   | 'locked-by-other'
   | 'time-lockout'
@@ -39,7 +56,9 @@ type UseActivityLockResult = {
   /** Best-effort release with short retries before clearing local hold. */
   releaseWithRetry: () => Promise<void>;
   /** Re-fetch lock from server (e.g. after WebSocket lock transfer). */
-  refreshLockFromServer: () => Promise<void>;
+  refreshLockFromServer: () => Promise<LockRefreshResult>;
+  /** Verify server lock before PATCH; clears stale local hold and re-acquires if needed. */
+  ensureLockForSubmit: () => Promise<EnsureLockForSubmitResult>;
   /** Extend idle deadline (throttled server-side). */
   sendHeartbeat: () => Promise<void>;
   /** Update lock idle expiry from heartbeat response without full acquire. */
@@ -91,23 +110,50 @@ function clearHeldLockOptimistically(
   return lockId;
 }
 
+function classifyLockRequestFailure(
+  error: unknown
+): Exclude<
+  EnsureLockForSubmitResult,
+  'ready' | 'blocked-by-other' | 'time-lockout'
+> {
+  const apiError = createApiError(error);
+  if (apiError instanceof NetworkError) {
+    return 'unavailable';
+  }
+  if (apiError.status === 401 || apiError.status === 403) {
+    return 'unauthorized';
+  }
+  if (apiError.status >= 500) {
+    return 'server-error';
+  }
+  return 'lock-required';
+}
+
 /**
  * Manages an activity edit lock with lazy acquisition.
  * On mount, checks lock status (does not acquire). Call `acquire()` on first
  * user edit intent. Concurrent acquire() calls share one in-flight request.
  * Releases on unmount if owned.
  */
+type UseActivityLockOptions = {
+  /** Heartbeat 404/410 — server row gone while client still thought it held the lock. */
+  onServerLockGone?: () => void;
+};
+
 export function useActivityLock(
   activityId: number,
-  currentUserId: number | undefined
+  currentUserId: number | undefined,
+  options: UseActivityLockOptions = {}
 ): UseActivityLockResult {
+  const onServerLockGoneRef = useRef(options.onServerLockGone);
+  onServerLockGoneRef.current = options.onServerLockGone;
   const [lock, setLock] = useState<LockInfo | null>(null);
   const [lockState, setLockState] = useState<LockState>('checking');
   const [lockedByUsername, setLockedByUsername] = useState<string | null>(null);
   const [acquireFailureReason, setAcquireFailureReason] =
     useState<LockAcquireFailureReason>(null);
   const lockRef = useRef<LockInfo | null>(null);
-  const acquireInFlightRef = useRef<Promise<boolean> | null>(null);
+  const acquireInFlightRef = useRef<Promise<LockAcquireResult> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,21 +209,43 @@ export function useActivityLock(
     setLock(next);
   }, []);
 
-  const refreshLockFromServer = useCallback(async () => {
-    if (currentUserId == null) return;
-    try {
-      const status = await getLockStatus(activityId);
-      const info = buildLockInfoFromStatus(activityId, currentUserId, status);
+  const applyServerLockStatus = useCallback(
+    (status: Awaited<ReturnType<typeof getLockStatus>>): SettledLockState => {
+      const info =
+        currentUserId != null
+          ? buildLockInfoFromStatus(activityId, currentUserId, status)
+          : null;
       if (info) {
         lockRef.current = info;
         setLock(info);
         setLockState('owned');
         setLockedByUsername(null);
+        return 'owned';
       }
-    } catch {
-      /* ignore */
-    }
-  }, [activityId, currentUserId]);
+      lockRef.current = null;
+      setLock(null);
+      if (status.locked && !status.isOwnLock && status.lockedBy) {
+        setLockState('locked-by-other');
+        setLockedByUsername(status.lockedBy.username);
+        return 'locked-by-other';
+      }
+      setLockState('idle');
+      setLockedByUsername(null);
+      return 'idle';
+    },
+    [activityId, currentUserId]
+  );
+
+  const refreshLockFromServer =
+    useCallback(async (): Promise<LockRefreshResult> => {
+      if (currentUserId == null) return 'idle';
+      try {
+        const status = await getLockStatus(activityId);
+        return applyServerLockStatus(status);
+      } catch {
+        return 'unavailable';
+      }
+    }, [activityId, currentUserId, applyServerLockStatus]);
 
   const sendHeartbeat = useCallback(async () => {
     const currentLock = lockRef.current;
@@ -188,6 +256,7 @@ export function useActivityLock(
     } catch (err) {
       const status = err instanceof ApiError ? err.status : undefined;
       if (status === 410 || status === 404) {
+        onServerLockGoneRef.current?.();
         lockRef.current = null;
         setLock(null);
         setLockState('idle');
@@ -197,14 +266,14 @@ export function useActivityLock(
     }
   }, [mergeLockIdleExpiry]);
 
-  const acquire = useCallback(async (): Promise<boolean> => {
-    if (lockRef.current) return true;
+  const acquireDetailed = useCallback(async (): Promise<LockAcquireResult> => {
+    if (lockRef.current) return 'ready';
     const existing = acquireInFlightRef.current;
     if (existing) {
       return existing;
     }
 
-    const promise = (async (): Promise<boolean> => {
+    const promise = (async (): Promise<LockAcquireResult> => {
       setLockState('acquiring');
       setAcquireFailureReason(null);
       try {
@@ -214,25 +283,15 @@ export function useActivityLock(
         setLockState('owned');
         setLockedByUsername(null);
         setAcquireFailureReason(null);
-        return true;
+        return 'ready';
       } catch (err) {
-        const apiError = err instanceof ApiError ? err : null;
-        const axiosError = err as AxiosError<{
-          lockedBy?: { username: string };
-          message?: string;
-          reason?: string;
-        }>;
-        const status = apiError?.status ?? axiosError.response?.status;
+        const apiError = createApiError(err);
+        const status =
+          apiError instanceof ApiError ? apiError.status : undefined;
         const detail =
-          apiError?.detail ??
-          (typeof axiosError.response?.data?.message === 'string'
-            ? axiosError.response.data.message
-            : undefined);
+          apiError instanceof ApiError ? apiError.detail : undefined;
         const reason =
-          apiError?.reason ??
-          (typeof axiosError.response?.data?.reason === 'string'
-            ? axiosError.response.data.reason
-            : undefined);
+          apiError instanceof ApiError ? apiError.reason : undefined;
 
         if (reason === 'locked_by_other' || status === LOCKED_STATUS) {
           try {
@@ -241,6 +300,7 @@ export function useActivityLock(
               setLockedByUsername(statusRes.lockedBy?.username ?? null);
               setLockState('locked-by-other');
               setAcquireFailureReason('locked-by-other');
+              return 'blocked-by-other';
             } else if (
               statusRes.locked &&
               statusRes.isOwnLock &&
@@ -257,22 +317,24 @@ export function useActivityLock(
                 setLockState('owned');
                 setLockedByUsername(null);
                 setAcquireFailureReason(null);
-                return true;
+                return 'ready';
               }
               setLockedByUsername(null);
               setLockState('idle');
               setAcquireFailureReason(null);
+              return 'lock-required';
             } else {
               setLockedByUsername(null);
               setLockState('idle');
               setAcquireFailureReason(null);
+              return 'lock-required';
             }
           } catch {
             setLockedByUsername(null);
             setLockState('locked-by-other');
             setAcquireFailureReason('locked-by-other');
+            return 'blocked-by-other';
           }
-          return false;
         }
 
         if (
@@ -283,12 +345,12 @@ export function useActivityLock(
           setLockedByUsername(null);
           setLockState('idle');
           setAcquireFailureReason('time-lockout');
-          return false;
+          return 'time-lockout';
         }
 
         setLockState('idle');
         setAcquireFailureReason('other');
-        return false;
+        return classifyLockRequestFailure(err);
       } finally {
         acquireInFlightRef.current = null;
       }
@@ -297,6 +359,28 @@ export function useActivityLock(
     acquireInFlightRef.current = promise;
     return promise;
   }, [activityId, currentUserId]);
+
+  const acquire = useCallback(
+    async (): Promise<boolean> => (await acquireDetailed()) === 'ready',
+    [acquireDetailed]
+  );
+
+  const ensureLockForSubmit =
+    useCallback(async (): Promise<EnsureLockForSubmitResult> => {
+      if (currentUserId == null) return 'lock-required';
+      try {
+        const status = await getLockStatus(activityId);
+        const next = applyServerLockStatus(status);
+        if (next === 'owned') return 'ready';
+        if (next === 'locked-by-other') return 'blocked-by-other';
+        return acquireDetailed();
+      } catch (err) {
+        if (isRecurringEditLockoutError(err)) {
+          return 'time-lockout';
+        }
+        return classifyLockRequestFailure(err);
+      }
+    }, [activityId, currentUserId, applyServerLockStatus, acquireDetailed]);
 
   const release = useCallback(async (): Promise<void> => {
     const lockId = clearHeldLockOptimistically(lockRef, setLock, setLockState);
@@ -359,6 +443,7 @@ export function useActivityLock(
     release,
     releaseWithRetry,
     refreshLockFromServer,
+    ensureLockForSubmit,
     sendHeartbeat,
     mergeLockIdleExpiry,
     applyExternalLockReleased,

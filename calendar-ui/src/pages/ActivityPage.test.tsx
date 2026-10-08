@@ -20,6 +20,17 @@ import { tipTapDocJsonFromPlainText } from '@corpcal/shared/utils';
 import type { FormLookupData } from '../hooks/useFormLookups';
 import { ActivityPage, type ActivityPageProps } from './ActivityPage';
 
+const { mockFetchActivity } = vi.hoisted(() => ({
+  mockFetchActivity: vi.fn(),
+}));
+vi.mock('../api/activitiesApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/activitiesApi')>();
+  return {
+    ...actual,
+    fetchActivity: mockFetchActivity,
+  };
+});
+
 /** Matches production Editor field access so `canViewActivityFieldScope` / `canEditActivityFieldScope` do not see undefined `permissions`. */
 const mockEditorFieldPermissions: string[] = [
   PERMISSIONS.ACTIVITIES.NOTES_VIEW,
@@ -104,6 +115,8 @@ const mockAcquire = vi.fn().mockResolvedValue(true);
 const mockRelease = vi.fn().mockResolvedValue(undefined);
 const mockSetLockedByOther = vi.fn();
 const mockClearLockedByOther = vi.fn();
+const mockRefreshLockFromServer = vi.fn().mockResolvedValue('idle');
+const mockEnsureLockForSubmit = vi.fn().mockResolvedValue('ready');
 const mockRefreshActivity = vi.fn().mockResolvedValue(undefined);
 
 const mockNavigate = vi.fn();
@@ -142,7 +155,8 @@ vi.mock('../hooks/useActivityLock', () => ({
     acquire: mockAcquire,
     release: mockRelease,
     releaseWithRetry: mockRelease,
-    refreshLockFromServer: vi.fn(),
+    refreshLockFromServer: mockRefreshLockFromServer,
+    ensureLockForSubmit: mockEnsureLockForSubmit,
     sendHeartbeat: vi.fn(),
     applyExternalLockReleased: mockApplyExternalLockReleased,
     setLockedByOther: mockSetLockedByOther,
@@ -173,8 +187,18 @@ vi.mock('../hooks/useRecurringLockoutBanner', () => ({
   RECURRING_LOCKOUT_BANNER_QUERY_KEY: ['banner', 'recurring-lockout', 'active'],
 }));
 
+let mockActivityWebSocketOptions: {
+  onActivitySocketReconnect?: () => void;
+  onLockReleased?: () => void;
+  onDataUpdated?: () => void;
+} = {};
 vi.mock('../hooks/useActivityWebSocket', () => ({
-  useActivityWebSocket: vi.fn(),
+  useActivityWebSocket: (
+    _activityId: number,
+    options: typeof mockActivityWebSocketOptions
+  ) => {
+    mockActivityWebSocketOptions = options;
+  },
 }));
 
 vi.mock('../hooks/useLookups', async (importOriginal) => {
@@ -462,6 +486,10 @@ describe('ActivityPage optimistic inline edit', () => {
     mockRelease.mockClear();
     mockApplyExternalLockReleased.mockClear();
     mockAcquire.mockClear().mockResolvedValue(true);
+    mockRefreshLockFromServer.mockClear().mockResolvedValue('idle');
+    mockEnsureLockForSubmit.mockClear().mockResolvedValue('ready');
+    mockFetchActivity.mockClear().mockResolvedValue(mockActivityWithLeadTeam);
+    mockActivityWebSocketOptions = {};
     mockLockState = 'idle';
     mockIsBlockedByRecurringLockout = false;
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
@@ -545,6 +573,58 @@ describe('ActivityPage optimistic inline edit', () => {
         screen.getByRole('button', { name: /Discard 2 changes/i })
       ).toBeInTheDocument()
     );
+  });
+
+  it('preserves dirty values and reacquires after a socket reconnect', async () => {
+    mockLockState = 'owned';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.type(titleTextarea, ' unsaved');
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+    act(() => {
+      mockActivityWebSocketOptions.onActivitySocketReconnect?.();
+    });
+
+    await waitFor(() =>
+      expect(mockEnsureLockForSubmit).toHaveBeenCalledTimes(1)
+    );
+    expect(titleTextarea).toHaveValue('Test Activity unsaved');
+    expect(
+      screen.queryByText(/unsaved changes were discarded/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it('preserves dirty values and blocks saving when the server version changed', async () => {
+    mockLockState = 'owned';
+    mockFetchActivity.mockResolvedValue(
+      createMockActivityResponse({
+        ...mockActivityWithLeadTeam,
+        title: 'Other user title',
+        lastUpdatedDateTime: '2030-01-01T00:00:00.000Z',
+      })
+    );
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.type(titleTextarea, ' unsaved');
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+    act(() => {
+      mockActivityWebSocketOptions.onDataUpdated?.();
+    });
+
+    await screen.findByText(/activity changed on the server/i);
+    expect(titleTextarea).toHaveValue('Test Activity unsaved');
+    expect(mockEnsureLockForSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /^Save$/i })).toBeDisabled();
   });
 
   it('discards custom-control edits via DiscardActivityChangesDialog when lock is owned', async () => {

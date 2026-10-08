@@ -222,4 +222,64 @@ describe('useActivityEditFormHydration', () => {
     expect(result.current.isFormHydrated).toBe(true);
     expect(result.current.hydrationGeneration).toBeGreaterThan(genAfterFirst);
   });
+
+  it('preserves dirty values while server hydration is deferred', () => {
+    const activityV1 = createMockActivityResponse({
+      id: 1,
+      title: 'Original title',
+      lastUpdatedDateTime: '2025-01-01T12:00:00.000Z',
+    });
+    const activityV2 = createMockActivityResponse({
+      id: 1,
+      title: 'Server title',
+      lastUpdatedDateTime: '2025-01-02T12:00:00.000Z',
+    });
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    const { rerender } = renderHook(
+      ({
+        activity,
+        preserveDirtySession,
+      }: {
+        activity: typeof activityV1;
+        preserveDirtySession: boolean;
+      }) => {
+        const form = useForm<ActivityFormData>({
+          defaultValues: getDefaultFormValues() as ActivityFormData,
+        });
+        formRef = form;
+        return useActivityEditFormHydration(
+          activity,
+          mockLookups,
+          form,
+          preserveDirtySession
+        );
+      },
+      {
+        initialProps: {
+          activity: activityV1,
+          preserveDirtySession: false,
+        },
+      }
+    );
+
+    act(() => {
+      vi.runAllTimers();
+      formRef!.setValue('title', 'Unsaved local title', { shouldDirty: true });
+    });
+
+    rerender({ activity: activityV2, preserveDirtySession: true });
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(formRef!.getValues('title')).toBe('Unsaved local title');
+
+    rerender({ activity: activityV2, preserveDirtySession: false });
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(formRef!.getValues('title')).toBe('Server title');
+  });
 });

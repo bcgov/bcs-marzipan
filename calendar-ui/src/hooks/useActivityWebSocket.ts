@@ -16,6 +16,8 @@ export type LockHandoffResolvedSocketPayload = LockHandoffResolvedPayload;
 interface UseActivityWebSocketOptions {
   onLockAcquired?: (lockedBy: { userId: number; username: string }) => void;
   onLockReleased?: () => void;
+  /** After transport reconnect — resync lock state (server may have released during outage). */
+  onActivitySocketReconnect?: () => void;
   onDataUpdated?: () => void;
   /** User-targeted: admin handoff grace countdown (same socket connection). */
   onLockHandoffPending?: (payload: LockHandoffPendingSocketPayload) => void;
@@ -44,9 +46,17 @@ export function useActivityWebSocket(
       socket.emit('viewActivity', activityId);
     };
 
-    socket.on('connect', emitViewActivity);
+    const onConnect = () => {
+      emitViewActivity();
+    };
+    const onManagerReconnect = () => {
+      emitViewActivity();
+      optionsRef.current.onActivitySocketReconnect?.();
+    };
+
+    socket.on('connect', onConnect);
     // `connect` usually fires after transport reconnect too; this is explicit for Manager retries.
-    socket.io.on('reconnect', emitViewActivity);
+    socket.io.on('reconnect', onManagerReconnect);
 
     socket.on(
       'lockAcquired',
@@ -84,19 +94,16 @@ export function useActivityWebSocket(
       }
     });
 
-    socket.on(
-      'lockHandoffResolved',
-      (data: LockHandoffResolvedSocketPayload) => {
-        if (data.activityId === activityId) {
-          optionsRef.current.onLockHandoffResolved?.(data);
-        }
+    socket.on('lockHandoffResolved', (data: LockHandoffResolvedPayload) => {
+      if (data.activityId === activityId) {
+        optionsRef.current.onLockHandoffResolved?.(data);
       }
-    );
+    });
 
     return () => {
       socket.emit('leaveActivity', activityId);
-      socket.off('connect', emitViewActivity);
-      socket.io.off('reconnect', emitViewActivity);
+      socket.off('connect', onConnect);
+      socket.io.off('reconnect', onManagerReconnect);
       socket.off('lockAcquired');
       socket.off('lockReleased');
       socket.off('dataUpdated');
