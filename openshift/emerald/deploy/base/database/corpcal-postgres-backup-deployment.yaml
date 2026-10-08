@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/component: postgres-backup
     app.kubernetes.io/part-of: corporate-calendar
     app.kubernetes.io/managed-by: github-actions
+    DataClass: Low
 spec:
   strategy:
     type: Recreate
@@ -22,6 +23,7 @@ spec:
         app.kubernetes.io/name: corpcal
         app.kubernetes.io/component: postgres-backup
         app.kubernetes.io/part-of: corporate-calendar
+        DataClass: Low
     spec:
       # OpenShift restricted SCC safe
       securityContext: {}
