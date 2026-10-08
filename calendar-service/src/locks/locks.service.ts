@@ -42,7 +42,7 @@ function isPostgresUniqueViolation(error: unknown): boolean {
 }
 
 const LOCK_TTL_MINUTES = 5;
-const HANDOFF_GRACE_SECONDS = 30;
+const HANDOFF_GRACE_SECONDS = 90;
 /** Minimum interval between heartbeat DB updates (per lock). */
 const HEARTBEAT_MIN_INTERVAL_MS = 30_000;
 /** Max handoffs finalized in one `processAllDueHandoffs` run (safety cap). */
