@@ -70,17 +70,17 @@ spec:
             - name: RATE_LIMIT_MAX
               valueFrom:
                 configMapKeyRef:
-                  name: calendar-service-config
+                  name: corpcal-service-config
                   key: RATE_LIMIT_MAX
             - name: RATE_LIMIT_AUTH_MAX
               valueFrom:
                 configMapKeyRef:
-                  name: calendar-service-config
+                  name: corpcal-service-config
                   key: RATE_LIMIT_AUTH_MAX
             - name: RATE_LIMIT_STORE
               valueFrom:
                 configMapKeyRef:
-                  name: calendar-service-config
+                  name: corpcal-service-config
                   key: RATE_LIMIT_STORE
             - name: JWT_SECRET
               valueFrom:
@@ -90,7 +90,7 @@ spec:
             - name: RATE_LIMIT_REDIS_URL
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: corpcal-service-secret
                   key: RATE_LIMIT_REDIS_URL
             - name: AZURE_TENANT_ID
               valueFrom:
