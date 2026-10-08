@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Res,
 } from '@nestjs/common';
@@ -23,7 +24,11 @@ import {
 import type { Response } from 'express';
 import { z } from 'zod';
 
-import { DYNAMIC_LOOKUP_CACHE_SECONDS, type AuthUser } from '@corpcal/shared';
+import {
+  DYNAMIC_LOOKUP_CACHE_SECONDS,
+  SYSTEM_ROLE_IDS,
+  type AuthUser,
+} from '@corpcal/shared';
 import type {
   ActivityTeamSharingResponse,
   CategoryLookupItem,
@@ -293,6 +298,75 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({
+    summary: 'Get system roles available for permission editing',
+  })
+  @Get('roles/admin')
+  @Header('Cache-Control', 'no-store')
+  @RequirePermission('system.manage_permissions')
+  async getPermissionAdminRoles(
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    this.ensureSystemAdmin(user);
+    const data = await this.lookupsService.getPermissionAdminRoles();
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Get the full permission catalog for a system role',
+  })
+  @Get('roles/admin/:id/permissions')
+  @Header('Cache-Control', 'no-store')
+  @RequirePermission('system.manage_permissions')
+  async getAdminRolePermissions(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    this.ensureSystemAdmin(user);
+    const roleId = Number(id);
+    if (!Number.isInteger(roleId))
+      throw new NotFoundException('Role not found');
+    const data = await this.lookupsService.getAdminRolePermissions(roleId);
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Replace editable permission assignments for a system role',
+  })
+  @Put('roles/admin/:id/permissions')
+  @RequirePermission('system.manage_permissions')
+  async updateAdminRolePermissions(
+    @Param('id') id: string,
+    @Body(
+      new ZodValidationPipe(
+        z.object({
+          permissionIds: z.array(z.number().int().positive()).max(500),
+        })
+      )
+    )
+    body: { permissionIds: number[] },
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    const roleId = Number(id);
+    if (!Number.isInteger(roleId))
+      throw new NotFoundException('Role not found');
+    this.ensureSystemAdmin(user);
+    if (
+      roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN &&
+      user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+    ) {
+      throw new ForbiddenException(
+        'Only System Admin role members can change System Admin permissions.'
+      );
+    }
+    const data = await this.lookupsService.updateAdminRolePermissions(
+      roleId,
+      body.permissionIds,
+      user.id
+    );
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get permissions for all roles' })
   @ApiResponse({ status: 200, description: 'Permissions map retrieved' })
   @Get('roles/permissions')
@@ -373,7 +447,7 @@ export class LookupsController {
       !user.permissions.includes('system.manage_permissions')
     ) {
       throw new ForbiddenException(
-        'Only System Admin users can manage permission visibility.'
+        'Only System Admin users can manage permissions.'
       );
     }
   }

@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: corpcal-postgres-pvc
+  name: corpcal-postgres-backup-pvc
   labels:
+    app: corpcal-postgres-backup
     app.kubernetes.io/name: corpcal
-    app.kubernetes.io/component: database
+    app.kubernetes.io/component: postgres-backup
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/version: '16'
     app.kubernetes.io/managed-by: github-actions
 spec:
   accessModes:
