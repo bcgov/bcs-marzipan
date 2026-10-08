@@ -2,11 +2,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useForm, type Resolver } from 'react-hook-form';
-import { toast } from 'sonner';
 import { z } from 'zod';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { CreateUserBody } from '@corpcal/shared/api/types';
+import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import type {
+  CreateUserBody,
+  UserPermissionOverrideInput,
+} from '@corpcal/shared/api/types';
 import {
   USER_DISPLAY_NAME_MAX_LENGTH,
   USER_JOB_TITLE_MAX_LENGTH,
@@ -44,15 +47,15 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
+import { UserRoleField } from '@/components/users/UserRoleField';
+import { useAuth } from '@/hooks/useAuth';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import {
+  formatUserCreatedDescription,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 import { userQueryKeys } from '@/lib/userQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
@@ -80,6 +83,7 @@ const createUserFormSchema = z.object({
   adJobTitle: z.string().trim().max(USER_JOB_TITLE_MAX_LENGTH).default(''),
   adPhone: z.string().trim().max(USER_PHONE_MAX_LENGTH).default(''),
   teamIds: z.array(z.number().int()).default([]),
+  isEventPlanner: z.boolean().default(false),
 });
 
 type CreateUserFormData = z.infer<typeof createUserFormSchema>;
@@ -92,6 +96,7 @@ const defaultValues: CreateUserFormData = {
   adJobTitle: '',
   adPhone: '',
   teamIds: [],
+  isEventPlanner: false,
 };
 
 interface UserCreateModalProps {
@@ -102,6 +107,12 @@ interface UserCreateModalProps {
 
 type CreateUserRequest = CreateUserBody;
 
+type CreateUserMutationInput = {
+  body: CreateUserRequest;
+  displayLabel: string;
+  teamLabels: string[];
+};
+
 /**
  * Modal for the "Add user" flow. Creates a local user (email + role required)
  * so they can sign in with Azure AD; optional display name and initial teams.
@@ -111,9 +122,14 @@ export function UserCreateModal({
   onClose,
   onSaved,
 }: UserCreateModalProps) {
+  const { hasPermission, user: currentUser } = useAuth();
+  const canEditOverrides = hasPermission(PERMISSIONS.USERS.MANAGE_ROLES);
   const teamsAnchorRef = useComboboxAnchor();
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const [isTeamsComboboxOpen, setIsTeamsComboboxOpen] = useState(false);
+  const [permissionOverrideInputs, setPermissionOverrideInputs] = useState<
+    UserPermissionOverrideInput[]
+  >([]);
   const queryClient = useQueryClient();
 
   const form = useForm<CreateUserFormData>({
@@ -133,6 +149,16 @@ export function UserCreateModal({
     enabled: open,
   });
 
+  const availableRoles = useMemo(
+    () =>
+      roles.filter(
+        (role) =>
+          currentUser?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN ||
+          role.id !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+      ),
+    [currentUser?.roleId, roles]
+  );
+
   const { data: teams = [] } = useQuery({
     queryKey: lookupQueryKeys.teams(),
     queryFn: fetchTeams,
@@ -140,21 +166,35 @@ export function UserCreateModal({
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: CreateUserRequest) => createUser(body),
-    onSuccess: () => {
+    mutationFn: ({ body }: CreateUserMutationInput) => createUser(body),
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: userQueryKeys.list() });
-      toast.success('User created');
+      void queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.eventPlanners(),
+      });
+      showEntityToast('success', 'Created user', {
+        description: formatUserCreatedDescription(
+          variables.displayLabel,
+          variables.teamLabels
+        ),
+      });
       form.reset(defaultValues);
+      setPermissionOverrideInputs([]);
       onSaved?.();
       onClose();
     },
-    onError: (err: Error & { response?: { status?: number } }) => {
+    onError: (err: Error & { response?: { status?: number } }, variables) => {
       const status = err.response?.status;
       const message =
         status === 409
           ? 'A user with this email already exists.'
           : err.message || 'Create failed';
-      toast.error(message);
+      showEntityToast('error', 'Could not create user', {
+        description:
+          variables?.displayLabel != null
+            ? `${variables.displayLabel} — ${message}`
+            : message,
+      });
     },
   });
 
@@ -186,6 +226,7 @@ export function UserCreateModal({
       email: data.email.trim(),
       idirUsername: data.idirUsername.trim().toUpperCase(),
       roleId: parsedRoleId,
+      ...(data.isEventPlanner && { isEventPlanner: true }),
       ...(data.displayName?.trim() && {
         displayName: data.displayName.trim(),
       }),
@@ -202,8 +243,22 @@ export function UserCreateModal({
             role: 'member' as const,
           })),
         }),
+      ...(permissionOverrideInputs.length > 0 && {
+        permissionOverrides: permissionOverrideInputs,
+      }),
     };
-    createMutation.mutate(body);
+    const displayLabel =
+      data.displayName?.trim() ||
+      `${data.idirUsername.trim().toUpperCase()} (${data.email.trim().toLowerCase()})`;
+    const teamLabels = data.teamIds
+      .map(
+        (teamId) =>
+          teamOptions.find((option) => parseInt(option.value, 10) === teamId)
+            ?.label
+      )
+      .filter((label): label is string => Boolean(label));
+
+    createMutation.mutate({ body, displayLabel, teamLabels });
   };
 
   return (
@@ -315,6 +370,23 @@ export function UserCreateModal({
             />
             <FormField
               control={form.control}
+              name="isEventPlanner"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-3">
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(v) => field.onChange(Boolean(v))}
+                    />
+                  </FormControl>
+                  <FormLabel showDirtyIndicator={false} className="mt-0!">
+                    Event planner
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="adPhone"
               render={({ field }) => (
                 <FormItem>
@@ -335,10 +407,11 @@ export function UserCreateModal({
               control={form.control}
               name="roleId"
               render={({ field }) => {
-                const selectedRole = roles.find(
-                  (r) => String(r.id) === field.value
-                );
-                const roleDescription = selectedRole?.description?.trim();
+                const parsedRoleId = parseInt(field.value, 10);
+                const selectedRoleId = Number.isNaN(parsedRoleId)
+                  ? null
+                  : parsedRoleId;
+
                 return (
                   <FormItem>
                     <FormLabel showDirtyIndicator={false}>
@@ -350,25 +423,16 @@ export function UserCreateModal({
                         *
                       </span>
                     </FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl data-field={field.name}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {roles.map((r) => (
-                          <SelectItem key={r.id} value={String(r.id)}>
-                            {r.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {roleDescription && (
-                      <div className="bg-muted/50 text-muted-foreground rounded-md border px-3 py-2 text-sm">
-                        {roleDescription}
-                      </div>
-                    )}
+                    <FormControl data-field={field.name}>
+                      <UserRoleField
+                        roles={availableRoles}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        roleId={selectedRoleId}
+                        canEditOverrides={canEditOverrides}
+                        onPermissionChange={setPermissionOverrideInputs}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 );

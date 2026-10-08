@@ -145,4 +145,24 @@ describe('buildPayloadForUpdate', () => {
 
     expect(payload.representatives).toEqual([]);
   });
+
+  it('drops sharedWithTeamIds cleared to empty when includeSharedWithTeamIds is false', () => {
+    const formValues = minimalForm({ sharedWithTeamIds: [] });
+
+    const payload = buildPayloadForUpdate(formValues, formValues, {
+      includeSharedWithTeamIds: false,
+    });
+
+    expect(payload).not.toHaveProperty('sharedWithTeamIds');
+  });
+
+  it('persists sharedWithTeamIds cleared to empty when includeSharedWithTeamIds is true', () => {
+    const formValues = minimalForm({ sharedWithTeamIds: [] });
+
+    const payload = buildPayloadForUpdate(formValues, formValues, {
+      includeSharedWithTeamIds: true,
+    });
+
+    expect(payload.sharedWithTeamIds).toEqual([]);
+  });
 });

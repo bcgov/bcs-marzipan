@@ -57,6 +57,60 @@ describe('LocksService', () => {
     );
   });
 
+  describe('getActiveActivityLocksForIds', () => {
+    async function createServiceWithSelect(
+      rows: Array<{ entityId: number; userId: number; username: string }>
+    ) {
+      const dbSelect = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(rows),
+        }),
+      });
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          LocksService,
+          {
+            provide: DatabaseService,
+            useValue: { db: { transaction, select: dbSelect } },
+          },
+          { provide: ApplicationSettingsService, useValue: {} },
+          {
+            provide: ActivitiesGateway,
+            useValue: {
+              notifyLockHandoffCancelled,
+              notifyLockHandoffPending,
+              notifyLockHandoffResolved,
+              notifyLockReleased,
+            },
+          },
+          {
+            provide: LockHandoffDeadlineKickService,
+            useValue: { clearScheduledKick, scheduleHandoffKick },
+          },
+        ],
+      }).compile();
+      return { service: module.get(LocksService), dbSelect };
+    }
+
+    it('returns an empty map for an empty id list without querying', async () => {
+      const { service, dbSelect } = await createServiceWithSelect([]);
+      const result = await service.getActiveActivityLocksForIds([]);
+      expect(result.size).toBe(0);
+      expect(dbSelect).not.toHaveBeenCalled();
+    });
+
+    it('maps active lock rows by activity id', async () => {
+      const { service } = await createServiceWithSelect([
+        { entityId: 10, userId: 5, username: 'editor' },
+        { entityId: 12, userId: 6, username: 'other' },
+      ]);
+      const result = await service.getActiveActivityLocksForIds([10, 12, 99]);
+      expect(result.get(10)).toEqual({ userId: 5, username: 'editor' });
+      expect(result.get(12)).toEqual({ userId: 6, username: 'other' });
+      expect(result.has(99)).toBe(false);
+    });
+  });
+
   describe('cancelForceHandoff', () => {
     it('removes pending handoff for requester and notifies holder and requester', async () => {
       const mockRow = { fromUserId: 10, toUserId: 20 };

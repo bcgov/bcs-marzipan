@@ -19,12 +19,12 @@
  *   without Bearer are not exercised here by design (browser flows). If login is disabled
  *   on an environment, supply PERF_BEARER_TOKEN from a browser session or service token.
  *
- * Soft / permission-seeded checks (expect 200 or 403, or 404 for look-ahead when report missing):
+ * Soft / permission-seeded checks (expect 200 or 403, or 404 when report missing):
  *   - GET /settings/look-ahead-reset — settings.manage.look_ahead_reset
  *   - GET /login-modal/settings — settings.view
- *   - GET /reports, GET /reports/:id — reports.view
+ *   - GET /lookups/reports — lookups.view
+ *   - GET /reports/data/look-ahead — reports.view (404 if look-ahead report not configured)
  *   - GET /lookups/* — lookups.view
- *   - GET /look-ahead — reports.view (also 404 if look-ahead report not configured)
  */
 
 import { group, sleep } from 'k6';
@@ -51,12 +51,11 @@ import {
   checkOptionalPermissionJson,
   firstActivityId,
   globalHistoryPagedEnvelope,
-  lookAheadEnvelope,
   lookAheadResetSettingsEnvelope,
   loginModalSettingsEnvelope,
   lookupsArrayEnvelope,
-  reportByIdEnvelope,
-  reportsListIsArray,
+  lookupsReportsListEnvelope,
+  reportLookAheadDataEnvelope,
   tryParseJson,
 } from '../api/validators.js';
 
@@ -196,16 +195,16 @@ export default function corpcalApiSmoke(data) {
   sleep(0.35);
 
   if (!config.skipLookAhead) {
-    group('08_look_ahead', () => {
-      const res = http.get(urlFor(config, paths.lookAhead), {
-        tags: tagReq('look_ahead'),
+    group('08_report_data_look_ahead', () => {
+      const res = http.get(urlFor(config, paths.reportDataLookAhead), {
+        tags: tagReq('report_data_look_ahead'),
         headers,
       });
       checkJson200Or404Or403({
         res,
-        prefix: 'look_ahead',
+        prefix: 'report_data_look_ahead',
         maxMs,
-        validateWhen200: lookAheadEnvelope,
+        validateWhen200: reportLookAheadDataEnvelope,
       });
     });
     sleep(0.35);
@@ -241,68 +240,7 @@ export default function corpcalApiSmoke(data) {
 
   sleep(0.35);
 
-  let sampleReportId = null;
-
-  group('11_reports_list', () => {
-    const res = http.get(urlFor(config, paths.reports), {
-      tags: tagReq('reports_list'),
-      headers,
-    });
-    const parsed = tryParseJson(res.body);
-    checkOptionalPermissionJson({
-      res,
-      prefix: 'reports_list',
-      maxMs,
-      validateWhenOk: reportsListIsArray,
-    });
-    if (
-      res.status === 200 &&
-      Array.isArray(parsed) &&
-      parsed.length > 0 &&
-      typeof parsed[0].id === 'number'
-    ) {
-      sampleReportId = parsed[0].id;
-    }
-  });
-
-  sleep(0.25);
-
-  if (sampleReportId != null) {
-    group('12_report_by_id', () => {
-      const res = http.get(
-        urlFor(config, `${paths.reports}/${sampleReportId}`),
-        {
-          tags: tagReq('report_by_id'),
-          headers,
-        }
-      );
-      checkOptionalPermissionJson({
-        res,
-        prefix: 'report_by_id',
-        maxMs,
-        validateWhenOk: reportByIdEnvelope,
-      });
-    });
-  }
-
-  sleep(0.25);
-
-  group('13_lookups_sample', () => {
-    const res = http.get(urlFor(config, paths.lookupsDateStatuses), {
-      tags: tagReq('lookups_date_statuses'),
-      headers,
-    });
-    checkOptionalPermissionJson({
-      res,
-      prefix: 'lookups_date_statuses',
-      maxMs,
-      validateWhenOk: lookupsArrayEnvelope,
-    });
-  });
-
-  sleep(0.35);
-
-  group('14_lookups_reports_meta', () => {
+  group('11_lookups_reports', () => {
     const res = http.get(urlFor(config, paths.lookupsReports), {
       tags: tagReq('lookups_reports'),
       headers,
@@ -310,6 +248,21 @@ export default function corpcalApiSmoke(data) {
     checkOptionalPermissionJson({
       res,
       prefix: 'lookups_reports',
+      maxMs,
+      validateWhenOk: lookupsReportsListEnvelope,
+    });
+  });
+
+  sleep(0.25);
+
+  group('12_lookups_sample', () => {
+    const res = http.get(urlFor(config, paths.lookupsDateStatuses), {
+      tags: tagReq('lookups_date_statuses'),
+      headers,
+    });
+    checkOptionalPermissionJson({
+      res,
+      prefix: 'lookups_date_statuses',
       maxMs,
       validateWhenOk: lookupsArrayEnvelope,
     });

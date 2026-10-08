@@ -93,6 +93,7 @@ const mockTeamListItem: TeamListItem = {
   description: 'Team description',
   sortOrder: 0,
   isActive: true,
+  appearsInShareWith: true,
   roleId: null,
   memberCount: 0,
   ministryId: null,
@@ -131,9 +132,13 @@ describe('TeamEditModal', () => {
       fireEvent.submit(createButton.closest('form') as HTMLFormElement);
 
       await waitFor(() => {
-        expect(mockToast.success).toHaveBeenCalledWith('Team created', {
-          id: 'team-created',
-        });
+        expect(mockToast.success).toHaveBeenCalledWith(
+          'Created team',
+          expect.objectContaining({
+            description: 'Test Team (TT)',
+            id: 'team-created',
+          })
+        );
       });
     });
   });
@@ -155,9 +160,13 @@ describe('TeamEditModal', () => {
       fireEvent.submit(createButton.closest('form') as HTMLFormElement);
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Failed to create team', {
-          id: 'team-created',
-        });
+        expect(mockToast.error).toHaveBeenCalledWith(
+          'Could not create team',
+          expect.objectContaining({
+            description: 'Test Team (TT) — Failed to create team',
+            id: 'team-created',
+          })
+        );
       });
     });
   });
@@ -247,9 +256,13 @@ describe('TeamEditModal', () => {
       await user.click(screen.getByRole('button', { name: /update/i }));
 
       await waitFor(() => {
-        expect(mockToast.success).toHaveBeenCalledWith('Team updated', {
-          id: 'team-updated-5',
-        });
+        expect(mockToast.success).toHaveBeenCalledWith(
+          'Updated team',
+          expect.objectContaining({
+            description: 'Updated Name (EX)',
+            id: 'team-updated-5',
+          })
+        );
       });
     });
   });
@@ -272,9 +285,13 @@ describe('TeamEditModal', () => {
       await user.click(screen.getByRole('button', { name: /update/i }));
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Failed to update team', {
-          id: 'team-updated-5',
-        });
+        expect(mockToast.error).toHaveBeenCalledWith(
+          'Could not update team',
+          expect.objectContaining({
+            description: 'Existing (EX) — Failed to update team',
+            id: 'team-updated-5',
+          })
+        );
       });
     });
   });

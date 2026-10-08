@@ -36,6 +36,8 @@ export const lookupQueryKeys = {
   activityTeamSharing: () => ['lookups', 'activity-team-sharing'] as const,
   themes: () => ['lookups', 'themes'] as const,
   venuePresets: () => ['lookups', 'venue-presets'] as const,
+  /** Admin venue presets list (`includeAll=true`). Shares the `['lookups', 'venue-presets']` prefix. */
+  venuePresetsAdmin: () => ['lookups', 'venue-presets', 'admin'] as const,
   venueStatuses: () => ['lookups', 'venue-statuses'] as const,
   eventPlanners: () => ['lookups', 'event-planners'] as const,
   newsReleaseDistributions: () =>
@@ -48,6 +50,9 @@ export const lookupQueryKeys = {
   translationRequiredStatuses: () =>
     ['lookups', 'translation-required-statuses'] as const,
   translationLanguages: () => ['lookups', 'translation-languages'] as const,
+  /** Admin translation languages list (`includeAll=true`). Shares the `['lookups', 'translation-languages']` prefix. */
+  translationLanguagesAdmin: () =>
+    ['lookups', 'translation-languages', 'admin'] as const,
 
   users: (params?: LookupQueryParams) => ['lookups', 'users', params] as const,
   organizations: (params?: LookupQueryParams) =>
@@ -62,6 +67,10 @@ export const lookupQueryKeys = {
 
   /** Reports list (single source of truth for Settings/Reports page and activity form). */
   reports: () => ['lookups', 'reports'] as const,
+
+  /** Permissions admins may grant or deny per user. */
+  overridablePermissions: () =>
+    ['lookups', 'permissions', 'overridable'] as const,
 
   /**
    * Team options from `GET /users/teams` (`fetchTeams`). Shared prefix with lookups

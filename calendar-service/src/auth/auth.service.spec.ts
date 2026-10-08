@@ -1,9 +1,5 @@
 import { createHash } from 'node:crypto';
-import {
-  BadRequestException,
-  NotImplementedException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -189,16 +185,6 @@ describe('AuthService — session methods', () => {
 
       expect(mockDb.delete).toHaveBeenCalled();
       expect(result).toEqual({ message: 'Logged out' });
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // refresh()
-  // -------------------------------------------------------------------------
-
-  describe('refresh()', () => {
-    it('throws NotImplementedException', () => {
-      expect(() => service.refresh()).toThrow(NotImplementedException);
     });
   });
 });

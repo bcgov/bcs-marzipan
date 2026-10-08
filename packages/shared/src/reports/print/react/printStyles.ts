@@ -131,7 +131,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   overflow: hidden;
   background: var(--corpcal-table-surface);
 }
-/* Look-ahead multi-day section: section title repeats in thead for print/PDF — no outer border/panel around it. */
+/* Look Ahead multi-day section: section title repeats in thead for print/PDF — no outer border/panel around it. */
 .corpcal-print-table-wrap--section-rollup {
   border: none;
   border-radius: 0;
@@ -271,7 +271,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   width: 71%;
 }
 
-/* Look-ahead section legend fill on thead cells: preserve in PDF/export (Chrome). */
+/* Look Ahead section legend fill on thead cells: preserve in PDF/export (Chrome). */
 .corpcal-print-table thead th.corpcal-print-section-thead-cell {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -291,13 +291,19 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   font-size: 1em;
   color: var(--print-ink);
 }
+.corpcal-print-release-value {
+  font-size: 1em;
+  font-weight: 400;
+  color: var(--print-ink);
+}
 .corpcal-print-meta {
   font-size: 1em;
   color: var(--print-ink-muted);
 }
+.corpcal-print-root .corpcal-print-release-translation,
 .corpcal-print-root .corpcal-print-meta-look-ahead-green {
   font-size: 1em;
-  font-weight: 500;
+  font-weight: 400;
   /* Literal first: guaranteed contrast on table + zebra if a custom property chain fails. */
   color: #2e5a34;
   color: var(--print-look-ahead-accent-green);
@@ -471,7 +477,7 @@ export const PRINT_STYLES = `${CORPCAL_SEMANTIC_TOKEN_CSS}
   text-align: center;
 }
 
-/* Look-ahead PDF cover only: one US Letter–aspect sheet at cover sheet width. */
+/* Look Ahead PDF cover only: one US Letter–aspect sheet at cover sheet width. */
 .corpcal-print-cover-sheet {
   box-sizing: border-box;
   position: relative;

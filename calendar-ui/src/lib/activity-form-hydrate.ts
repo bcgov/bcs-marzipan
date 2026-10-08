@@ -18,7 +18,7 @@ import {
  * The form has three layers that all describe "empty" differently:
  * 1. API → form mapping uses `?? undefined`.
  * 2. {@link canonicalizeActivityFormData} (compare/diff oracle) collapses empty
- *    optional text to `undefined`, normalises summary to `EMPTY_RICH_TEXT_DOC`,
+ *    optional text to `undefined`, normalises rich text to its canonical form,
  *    nested venue keys to `null`, etc.
  * 3. UI bindings (Textarea, Radix Select, Radix RadioGroup, Checkbox, nested
  *    venue Input) expect concrete sentinels (`''`, `undefined`, `null`, `false`,
@@ -27,8 +27,8 @@ import {
  * If RHF's `defaultValues` do not match the value the UI will render on first
  * paint, Radix and React treat the first interaction as a controlled/uncontrolled
  * transition, which manifests as fields that "don't accept input from empty",
- * radios that visually change but never mark dirty, and the dirty Changed badge
- * not appearing.
+ * radios that visually change but never mark dirty, and discard/highlight UX
+ * not updating.
  *
  * {@link applyUiBaselineSentinels} re-applies UI sentinels for fields listed in
  * {@link UI_BASELINE_FIELD_SENTINELS} after canonicalize. Other shapes already
@@ -62,5 +62,18 @@ export function hydrateActivityFormData(
 ): ActivityFormData {
   const mapped = activityToFormData(activity, lookups);
   const canon = canonicalizeActivityFormData(mapped);
-  return applyUiBaselineSentinels(canon);
+  const withPlannerLabels = {
+    ...canon,
+    eventPlanners: activity.eventPlannerDetails?.length
+      ? activity.eventPlannerDetails.map((detail) => ({
+          eventPlannerId: detail.eventPlannerId ?? undefined,
+          eventPlannerName:
+            detail.eventPlannerId != null
+              ? detail.name
+              : (detail.eventPlannerName ?? undefined),
+          isLead: detail.isLead,
+        }))
+      : canon.eventPlanners,
+  };
+  return applyUiBaselineSentinels(withPlannerLabels);
 }

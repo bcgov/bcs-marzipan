@@ -1,6 +1,85 @@
 import type { QueryClient } from '@tanstack/react-query';
 
+import type { ActivityListItem } from '@corpcal/shared/api/types';
+
 import { reportQueryKeys } from './reportQueryKeys';
+
+export type ActivityLockChangedPayload = {
+  activityId: number;
+  locked: boolean;
+  lockedBy?: { userId: number; username: string };
+};
+
+/** Parses socket `activityLockChanged` payloads from the activities gateway. */
+export function parseActivityLockChangedPayload(
+  payload: unknown
+): ActivityLockChangedPayload | null {
+  if (payload == null || typeof payload !== 'object') {
+    return null;
+  }
+  const record = payload as Record<string, unknown>;
+  if (
+    typeof record.activityId !== 'number' ||
+    !Number.isFinite(record.activityId) ||
+    typeof record.locked !== 'boolean'
+  ) {
+    return null;
+  }
+  if (record.locked) {
+    const lockedBy = record.lockedBy;
+    if (lockedBy == null || typeof lockedBy !== 'object') {
+      return null;
+    }
+    const holder = lockedBy as Record<string, unknown>;
+    if (
+      typeof holder.userId !== 'number' ||
+      typeof holder.username !== 'string'
+    ) {
+      return null;
+    }
+    return {
+      activityId: record.activityId,
+      locked: true,
+      lockedBy: { userId: holder.userId, username: holder.username },
+    };
+  }
+  return { activityId: record.activityId, locked: false };
+}
+
+/**
+ * Updates cached activity list rows when an edit lock is acquired or released,
+ * avoiding a full list refetch for lock-only changes.
+ *
+ * @returns Whether any cached list row was updated.
+ */
+export function applyActivityListEditLockFromSocket(
+  queryClient: QueryClient,
+  payload: ActivityLockChangedPayload
+): boolean {
+  const editLock = payload.locked ? (payload.lockedBy ?? null) : null;
+  if (payload.locked && editLock == null) {
+    return false;
+  }
+
+  let updated = false;
+  queryClient.setQueriesData<ActivityListItem[]>(
+    { queryKey: ['activities', 'list'], exact: false },
+    (cached) => {
+      if (!cached?.length) {
+        return cached;
+      }
+      const index = cached.findIndex((item) => item.id === payload.activityId);
+      if (index === -1) {
+        return cached;
+      }
+      updated = true;
+      const next = [...cached];
+      next[index] = { ...next[index], editLock };
+      return next;
+    }
+  );
+  return updated;
+}
 
 /** Debounce window for batched refresh after activity broadcasts or local saves. */
 export const LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS = 1_500;

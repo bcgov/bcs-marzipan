@@ -16,6 +16,7 @@ import {
   PERMISSIONS,
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
+  type AuthUser,
 } from '@corpcal/shared';
 import {
   activityResponseSchema,
@@ -31,7 +32,10 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { LocksService } from '../locks/locks.service';
+import { RecurringLockoutService } from '../locks/recurring-lockout.service';
 import { LookAheadPolicyService } from '../look-ahead/look-ahead-policy.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import type { RequestContext } from '../policy/dto/user-context.dto';
 import {
   getCategoryScopeById,
   getTagScopeById,
@@ -39,6 +43,7 @@ import {
 import { PolicyService } from '../policy/policy.service';
 import { TeamsService } from '../teams/teams.service';
 import { ActivitiesGateway } from './activities.gateway';
+import { ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES } from './activity-hard-delete.coverage';
 import { ActivitiesService } from './services/activities.service';
 import { ActivityDataFetcherService } from './services/activity-data-fetcher.service';
 import { createMockActivityDataFetcherService } from './services/activity-data-fetcher.service.mock';
@@ -85,6 +90,24 @@ function mockLookupScopeMaps(
 
 /** mapToResponseDto tests exercise mapping only, not team visibility rules. */
 const BYPASS_FIND_ONE_CTX = { dataScope: { bypass: true, teamIds: [] } };
+
+function createHistoryRequestContext(
+  user: Pick<AuthUser, 'id' | 'permissions' | 'roleName'>
+): RequestContext {
+  return {
+    user: {
+      id: user.id,
+      username: 'test.user',
+      displayName: 'Test User',
+      email: 'test@example.com',
+      roleId: 1,
+      roleName: user.roleName,
+      permissions: user.permissions,
+      teamIds: [],
+    },
+    dataScope: { bypass: true, teamIds: [] },
+  };
+}
 
 describe('ActivitiesService', () => {
   let service: ActivitiesService;
@@ -140,6 +163,11 @@ describe('ActivitiesService', () => {
   // Mock database service
   const mockDatabaseService = {
     db: {
+      query: {
+        recurringLockoutBannerSettings: {
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+      },
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
@@ -175,8 +203,14 @@ describe('ActivitiesService', () => {
   const mockActivityHistoryService = {
     recordChange: vi.fn().mockResolvedValue(undefined),
     getActivityHistory: vi.fn().mockResolvedValue([]),
+    getActivityHistoryForActivityIdsPaged: vi.fn().mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 50,
+      hasNext: false,
+      totalItems: 0,
+    }),
     getHistoryEntryById: vi.fn().mockResolvedValue(null),
-    getLastPublishedState: vi.fn().mockResolvedValue(null),
     getPreviousStatusIdBeforeDelete: vi.fn().mockResolvedValue(null),
     generateChangeList: vi.fn().mockReturnValue([]),
     buildEntityResolutionMaps: vi.fn().mockResolvedValue(new Map()),
@@ -242,6 +276,11 @@ describe('ActivitiesService', () => {
 
   // Mock locks service (added when ActivitiesService started using LocksService)
   const mockLocksService = {
+    getActiveActivityLocksForIds: vi
+      .fn()
+      .mockResolvedValue(
+        new Map<number, { userId: number; username: string }>()
+      ),
     getLockForEntity: vi.fn().mockResolvedValue(null),
     releaseLock: vi.fn().mockResolvedValue(null),
     releaseLockOrFinalizePendingHandoff: vi
@@ -278,6 +317,21 @@ describe('ActivitiesService', () => {
       .mockResolvedValue(['events', 'issues', 'news', 'awareness', 'longTerm']),
     assertAllowedLookAheadSection: vi.fn().mockResolvedValue(undefined),
     getSourceLookAheadReports: vi.fn().mockResolvedValue([]),
+  };
+
+  const mockRecurringLockoutService = {
+    assertUserCanEditDuringLockout: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const mockNotificationsService = {
+    notifyActivityCreateOrStatusChange: vi.fn().mockResolvedValue(undefined),
+    notifyActivityStatusChangedToChanged: vi.fn().mockResolvedValue(undefined),
+    notifyActivityStatusChangedToAudience: vi.fn().mockResolvedValue(undefined),
+    notifyActivitySharedWithTeamsChanged: vi.fn().mockResolvedValue(undefined),
+    notifyActivityUpdated: vi.fn().mockResolvedValue(undefined),
+    getActivityAudienceForHardDelete: vi.fn().mockResolvedValue([]),
+    notifyActivityHardDeleted: vi.fn().mockResolvedValue(undefined),
+    notifyActivityHistoryNoteAdded: vi.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -336,6 +390,14 @@ describe('ActivitiesService', () => {
           provide: LookAheadPolicyService,
           useValue: mockLookAheadPolicy,
         },
+        {
+          provide: RecurringLockoutService,
+          useValue: mockRecurringLockoutService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
+        },
       ],
     }).compile();
 
@@ -343,6 +405,10 @@ describe('ActivitiesService', () => {
 
     // Reset all mocks
     vi.clearAllMocks();
+    mockRecurringLockoutService.assertUserCanEditDuringLockout.mockReset();
+    mockRecurringLockoutService.assertUserCanEditDuringLockout.mockResolvedValue(
+      undefined
+    );
     mockLookupScopeMaps([
       [1, { visibility: 'global' }],
       [2, { visibility: 'global' }],
@@ -530,8 +596,11 @@ describe('ActivitiesService', () => {
       expect(result).toHaveProperty('lookAheadSection');
       expect(result).toHaveProperty('createdDateTime');
       expect(result).toHaveProperty('createdBy');
-      expect(result).toHaveProperty('lastUpdatedDateTime');
-      expect(result).toHaveProperty('lastUpdatedBy');
+      expect(result).toHaveProperty('publicLastUpdatedDateTime');
+      expect(result).toHaveProperty('publicLastUpdatedBy');
+      // Operational last-updated is omitted when the viewer cannot edit (no user in ctx).
+      expect(result).not.toHaveProperty('lastUpdatedDateTime');
+      expect(result).not.toHaveProperty('lastUpdatedBy');
     });
 
     it('should ensure enum fields match schema constraints', async () => {
@@ -582,7 +651,7 @@ describe('ActivitiesService', () => {
       expect(result.createdDateTime).toMatch(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
       );
-      expect(result.lastUpdatedDateTime).toMatch(
+      expect(result.publicLastUpdatedDateTime).toMatch(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
       );
     });
@@ -593,6 +662,168 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createMockSelect([]);
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('canEdit bypass (regression: Advanced Editor is not an edit bypass role)', () => {
+    const svc = () =>
+      service as unknown as {
+        isEditBypassRole: (roleName?: string) => boolean;
+        computeCanEdit: (
+          leadTeamId: number | null,
+          commsContactUserIds: number[],
+          userId: number | undefined,
+          teamIds: number[] | undefined,
+          bypass: boolean
+        ) => boolean;
+      };
+
+    it('only treats Admin/System Admin as an edit bypass role', () => {
+      expect(svc().isEditBypassRole('Advanced Editor')).toBe(false);
+      expect(svc().isEditBypassRole('Advanced Viewer')).toBe(false);
+      expect(svc().isEditBypassRole(SYSTEM_ROLES.ADMIN)).toBe(true);
+      expect(svc().isEditBypassRole(SYSTEM_ROLES.SYSTEM_ADMIN)).toBe(true);
+    });
+
+    it('is false for a shared-with-only user even when their role bypasses view data-scoping', () => {
+      // Advanced Editor: not lead team, not comms contact, bypass=false (per isEditBypassRole)
+      expect(svc().computeCanEdit(1, [], 5, [2], false)).toBe(false);
+    });
+
+    it('is true for a lead-team member or comms contact regardless of bypass', () => {
+      expect(svc().computeCanEdit(1, [], 5, [1], false)).toBe(true);
+      expect(svc().computeCanEdit(1, [5], 5, [2], false)).toBe(true);
+    });
+
+    it('is true when the caller is an explicit edit bypass role', () => {
+      expect(svc().computeCanEdit(1, [], 5, [2], true)).toBe(true);
+    });
+  });
+
+  describe('getGlobalHistoryPaged', () => {
+    it('passes viewer to history paging for field redaction', async () => {
+      const ctx = createHistoryRequestContext({
+        id: 7,
+        permissions: [],
+        roleName: 'Viewer',
+      });
+
+      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
+      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
+
+      await service.getGlobalHistoryPaged({}, ctx);
+
+      expect(
+        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged
+      ).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({
+          viewer: { permissions: [], roleName: 'Viewer' },
+        })
+      );
+    });
+
+    it('passes viewer to history paging', async () => {
+      const ctx = createHistoryRequestContext({
+        id: 7,
+        permissions: ['activities.notes.view'],
+        roleName: 'Editor',
+      });
+
+      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
+      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
+
+      await service.getGlobalHistoryPaged(
+        {
+          page: 1,
+          pageSize: 25,
+        },
+        ctx
+      );
+
+      expect(
+        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged
+      ).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({
+          page: 1,
+          pageSize: 25,
+          viewer: {
+            permissions: ['activities.notes.view'],
+            roleName: 'Editor',
+          },
+        })
+      );
+    });
+
+    it('defaults to today-only Pacific window when no dates are provided', async () => {
+      vi.spyOn(service as any, 'getVisibleActivityIds').mockResolvedValue(null);
+      vi.spyOn(service as any, 'enrichHistoryPage').mockResolvedValue([]);
+
+      await service.getGlobalHistoryPaged({
+        page: 1,
+        pageSize: 25,
+      });
+
+      const call =
+        mockActivityHistoryService.getActivityHistoryForActivityIdsPaged.mock
+          .calls[0];
+      const opts = call?.[1] as { startDate?: string; endDate?: string };
+
+      expect(opts?.startDate).toBeDefined();
+      expect(opts?.endDate).toBeDefined();
+      expect(opts?.startDate).toBe(opts?.endDate);
+    });
+  });
+
+  describe('getHistory', () => {
+    it('passes request context to findOne for visibility checks', async () => {
+      const ctx = BYPASS_FIND_ONE_CTX;
+      const findOneSpy = vi
+        .spyOn(service, 'findOne')
+        .mockResolvedValue(createMockActivityResponse());
+      mockActivityHistoryService.getActivityHistory.mockResolvedValueOnce([
+        { id: 1, activityId: 25, userId: 1, actionType: 'updated' },
+      ]);
+
+      const result = await service.getHistory(25, ctx);
+
+      expect(findOneSpy).toHaveBeenCalledWith(25, ctx);
+      expect(
+        mockActivityHistoryService.getActivityHistory
+      ).toHaveBeenCalledWith(25, undefined);
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('recurring lockout guard', () => {
+    it('delegates edit checks to RecurringLockoutService', async () => {
+      const lockoutError = new HttpException(
+        {
+          statusCode: 403,
+          message:
+            'Editing activities is locked for the current lockout window.',
+          reason: 'time_lockout',
+        },
+        403
+      );
+      mockDatabaseService.db.select = createMockSelect([
+        createMockActivity({ id: 1 }),
+      ]);
+      mockRecurringLockoutService.assertUserCanEditDuringLockout.mockRejectedValue(
+        lockoutError
+      );
+
+      await expect(
+        service.update(1, createMockUpdateRequest({ title: 'Blocked' }), 1, {
+          permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+          teamIds: [],
+        })
+      ).rejects.toThrow(HttpException);
+
+      expect(
+        mockRecurringLockoutService.assertUserCanEditDuringLockout
+      ).toHaveBeenCalledWith(1, [PERMISSIONS.ACTIVITIES.EDIT]);
     });
   });
 
@@ -1336,6 +1567,272 @@ describe('ActivitiesService', () => {
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
     });
 
+    it('throws ConflictException when ifUnmodifiedSince is stale', async () => {
+      mockDatabaseService.db.select = createMockSelect([
+        createMockActivity({
+          id: 1,
+          lastUpdatedDateTime: new Date('2025-01-02T12:00:00.000Z'),
+        }),
+      ]);
+      const updateDto = createMockUpdateRequest({
+        title: 'Stale save',
+        ifUnmodifiedSince: '2025-01-01T12:00:00.000Z',
+      });
+
+      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+        ConflictException
+      );
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when renewPublicLastUpdated is sent without defer permission', () => {
+      const svc = service as unknown as {
+        getActivityTimestampUpdateForWriteOrThrow: (input: {
+          context: 'userPatch';
+          permissions: string[] | undefined;
+          renewPublicLastUpdated?: boolean;
+          userId: number;
+        }) => unknown;
+      };
+
+      expect(() =>
+        svc.getActivityTimestampUpdateForWriteOrThrow({
+          context: 'userPatch',
+          permissions: ['activities.edit'],
+          renewPublicLastUpdated: true,
+          userId: 1,
+        })
+      ).toThrow(ForbiddenException);
+    });
+
+    it('throws BadRequestException when renewPublicLastUpdated is sent on bulk update', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          return createMockQueryChain([existingActivity]);
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.update(
+          1,
+          createMockUpdateRequest({ renewPublicLastUpdated: true }),
+          1,
+          { permissions: [PERMISSIONS.ACTIVITIES.PUBLIC_LAST_UPDATED_DEFER] },
+          { bypassEditLock: true, timestampWriteContext: 'bulk' }
+        )
+      ).rejects.toThrow(BadRequestException);
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('update payload omits public last-updated when defer holder saves without renew', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Deferred public bump',
+      });
+      let capturedSet: Record<string, unknown> | undefined;
+
+      mockLocksService.getLockForEntity.mockResolvedValue({
+        id: 99,
+        userId: 1,
+        entityType: 'activity',
+        entityId: 1,
+        username: 'editor',
+        sessionId: null,
+        acquiredAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        lastRenewedAt: new Date(),
+        lastActivityAt: new Date(),
+        idleExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn((payload: Record<string, unknown>) => {
+              capturedSet = payload;
+              return {
+                where: vi.fn().mockReturnThis(),
+                returning: vi.fn().mockResolvedValue([updatedActivity]),
+              };
+            }),
+          }),
+          select: vi.fn((...args) => {
+            if (args.length === 0) {
+              return createMockQueryChain([]);
+            }
+            const fetchChain = {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
+            };
+            fetchChain.innerJoin.mockReturnValue(fetchChain);
+            fetchChain.leftJoin.mockReturnValue(fetchChain);
+            return fetchChain;
+          }),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      let withObjCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        withObjCallCount++;
+        if (withObjCallCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'changed' }]),
+          };
+        }
+        if (withObjCallCount === 2) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        fetchChain.innerJoin.mockReturnValue(fetchChain);
+        fetchChain.leftJoin.mockReturnValue(fetchChain);
+        return fetchChain;
+      });
+
+      await service.update(
+        1,
+        createMockUpdateRequest({ title: 'Deferred public bump' }),
+        1,
+        { permissions: [PERMISSIONS.ACTIVITIES.PUBLIC_LAST_UPDATED_DEFER] }
+      );
+
+      expect(capturedSet).toBeDefined();
+      expect(capturedSet).toHaveProperty('lastUpdatedBy');
+      expect(capturedSet).toHaveProperty('lastUpdatedDateTime');
+      expect(capturedSet).not.toHaveProperty('publicLastUpdatedBy');
+      expect(capturedSet).not.toHaveProperty('publicLastUpdatedDateTime');
+    });
+
+    it('update payload bumps public last-updated when caller lacks defer permission', async () => {
+      const existingActivity = createMockActivity({ id: 1 });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        title: 'Public bump',
+      });
+      let capturedSet: Record<string, unknown> | undefined;
+
+      mockLocksService.getLockForEntity.mockResolvedValue({
+        id: 99,
+        userId: 1,
+        entityType: 'activity',
+        entityId: 1,
+        username: 'editor',
+        sessionId: null,
+        acquiredAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        lastRenewedAt: new Date(),
+        lastActivityAt: new Date(),
+        idleExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn((payload: Record<string, unknown>) => {
+              capturedSet = payload;
+              return {
+                where: vi.fn().mockReturnThis(),
+                returning: vi.fn().mockResolvedValue([updatedActivity]),
+              };
+            }),
+          }),
+          select: vi.fn((...args) => {
+            if (args.length === 0) {
+              return createMockQueryChain([]);
+            }
+            const fetchChain = {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
+            };
+            fetchChain.innerJoin.mockReturnValue(fetchChain);
+            fetchChain.leftJoin.mockReturnValue(fetchChain);
+            return fetchChain;
+          }),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      let withObjCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        withObjCallCount++;
+        if (withObjCallCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'changed' }]),
+          };
+        }
+        if (withObjCallCount === 2) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        fetchChain.innerJoin.mockReturnValue(fetchChain);
+        fetchChain.leftJoin.mockReturnValue(fetchChain);
+        return fetchChain;
+      });
+
+      await service.update(
+        1,
+        createMockUpdateRequest({ title: 'Public bump' }),
+        1,
+        { permissions: [PERMISSIONS.ACTIVITIES.EDIT] }
+      );
+
+      expect(capturedSet).toHaveProperty('publicLastUpdatedBy');
+      expect(capturedSet).toHaveProperty('publicLastUpdatedDateTime');
+    });
+
     it('should update an activity and return a valid ActivityResponse', async () => {
       const existingActivity = createMockActivity({ id: 1 });
       const updatedActivity = createMockActivity({
@@ -1737,6 +2234,14 @@ describe('ActivitiesService', () => {
       expect(
         mockActivityHistoryService.recordChange.mock.calls.at(-1)?.[2]
       ).toBe('reviewed');
+      expect(
+        mockNotificationsService.notifyActivityStatusChangedToAudience
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 1,
+        status: 'reviewed',
+        includeWatchlisters: false,
+      });
     });
 
     it('should set status to reviewed on update when user has activities.review and markAsReviewed is true', async () => {
@@ -1954,6 +2459,16 @@ describe('ActivitiesService', () => {
               innerJoin: vi.fn().mockReturnThis(),
             };
           }
+          const isSharedWithTeamQuery =
+            keys.length === 1 && 'teamId' in selectArg;
+          if (isSharedWithTeamQuery) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+            };
+          }
           const isStatusNameQuery = keys.length === 1 && 'name' in selectArg;
           return {
             from: vi.fn().mockReturnThis(),
@@ -2009,6 +2524,13 @@ describe('ActivitiesService', () => {
         });
 
         expect(result.activityStatusId).toBe(reviewedStatusId);
+        expect(
+          mockNotificationsService.notifyActivitySharedWithTeamsChanged
+        ).toHaveBeenCalledWith({
+          activityId: 1,
+          actorUserId: 1,
+          teamIds: [42],
+        });
       });
 
       it('keeps status Reviewed when only visibility changes', async () => {
@@ -2037,6 +2559,9 @@ describe('ActivitiesService', () => {
         });
 
         expect(result.activityStatusId).toBe(reviewedStatusId);
+        expect(
+          mockNotificationsService.notifyActivityUpdated
+        ).not.toHaveBeenCalled();
       });
 
       it('treats representatives as the non-exempt field in full save payloads', async () => {
@@ -2135,6 +2660,13 @@ describe('ActivitiesService', () => {
           'reviewed',
           changedStatusId
         );
+        mockActivityHistoryService.generateChangeList.mockReturnValue([
+          {
+            field: 'title',
+            oldValue: 'Before',
+            newValue: 'After',
+          },
+        ]);
 
         const result = await service.update(
           1,
@@ -2150,10 +2682,101 @@ describe('ActivitiesService', () => {
         );
 
         expect(result.activityStatusId).toBe(changedStatusId);
+        expect(
+          mockNotificationsService.notifyActivityUpdated
+        ).toHaveBeenCalledWith({
+          activityId: 1,
+          actorUserId: 1,
+          changedFields: ['title'],
+        });
+      });
+
+      it('notifies status-changed recipients when status transitions to Changed', async () => {
+        const existingActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+          title: 'Before',
+        });
+        const updatedActivity = createMockActivity({
+          id: 1,
+          activityStatusId: changedStatusId,
+          title: 'After',
+        });
+
+        mockDatabaseService.db.transaction = makeTxMock(updatedActivity);
+        mockDatabaseService.db.select = mockSelectForReviewedGate(
+          existingActivity,
+          updatedActivity,
+          'reviewed',
+          changedStatusId
+        );
+
+        await service.update(
+          1,
+          {
+            title: 'After',
+          },
+          1,
+          {
+            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+            roleName: 'Editor',
+          }
+        );
+
+        expect(
+          mockNotificationsService.notifyActivityStatusChangedToChanged
+        ).toHaveBeenCalledWith({
+          activityId: 1,
+          actorUserId: 1,
+        });
+      });
+
+      it('skips generic update notification for admin actor', async () => {
+        const existingActivity = createMockActivity({
+          id: 1,
+          activityStatusId: reviewedStatusId,
+          title: 'Before',
+        });
+        const updatedActivity = createMockActivity({
+          id: 1,
+          activityStatusId: changedStatusId,
+          title: 'After',
+        });
+
+        mockDatabaseService.db.transaction = makeTxMock(updatedActivity);
+        mockDatabaseService.db.select = mockSelectForReviewedGate(
+          existingActivity,
+          updatedActivity,
+          'reviewed',
+          changedStatusId
+        );
+        mockActivityHistoryService.generateChangeList.mockReturnValue([
+          {
+            field: 'title',
+            oldValue: 'Before',
+            newValue: 'After',
+          },
+        ]);
+
+        await service.update(
+          1,
+          {
+            title: 'After',
+          },
+          1,
+          {
+            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+            roleName: SYSTEM_ROLES.ADMIN,
+          }
+        );
+
+        expect(
+          mockNotificationsService.notifyActivityUpdated
+        ).not.toHaveBeenCalled();
       });
     });
 
-    it('should throw ConflictException when activity status is delete_requested', async () => {
+    it('should throw ConflictException when activity status is delete_requested and user lacks delete.any', async () => {
       const existingActivity = createMockActivity({
         id: 1,
         activityStatusId: 5,
@@ -2173,17 +2796,113 @@ describe('ActivitiesService', () => {
       });
 
       const updateDto = createMockUpdateRequest({ title: 'Updated' });
+      const context = {
+        permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+        roleName: 'Editor',
+      };
 
-      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+      await expect(service.update(1, updateDto, 1, context)).rejects.toThrow(
         ConflictException
       );
-      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+      await expect(service.update(1, updateDto, 1, context)).rejects.toThrow(
         /cannot be updated when status is 'delete_requested'/
       );
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
     });
 
-    it('should throw ConflictException when activity status is deleted', async () => {
+    it('should update delete_requested activity when user has delete.any and preserve status', async () => {
+      const deleteRequestedStatusId = 5;
+      const existingActivity = createMockActivity({
+        id: 1,
+        activityStatusId: deleteRequestedStatusId,
+        title: 'Before',
+      });
+      const updatedActivity = createMockActivity({
+        id: 1,
+        activityStatusId: deleteRequestedStatusId,
+        title: 'After',
+      });
+
+      mockDatabaseService.db.transaction = vi.fn(async (callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockResolvedValue([updatedActivity]),
+          }),
+          select: vi.fn((...args) => {
+            if (args.length === 0) {
+              return createMockQueryChain([]);
+            }
+            const fetchChain = {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnThis(),
+              innerJoin: vi.fn().mockReturnThis(),
+              limit: vi.fn().mockResolvedValue([]),
+            };
+            fetchChain.innerJoin.mockReturnValue(fetchChain);
+            fetchChain.leftJoin.mockReturnValue(fetchChain);
+            return fetchChain;
+          }),
+          delete: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return await callback(tx);
+      });
+
+      let noArgsCallCount = 0;
+      let withObjCallCount = 0;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length === 0) {
+          noArgsCallCount++;
+          return createMockQueryChain(
+            noArgsCallCount === 1 ? [existingActivity] : [updatedActivity]
+          );
+        }
+        withObjCallCount++;
+        if (withObjCallCount === 1) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ name: 'delete_requested' }]),
+          };
+        }
+        if (withObjCallCount === 2) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: deleteRequestedStatusId }]),
+          };
+        }
+        const fetchChain = {
+          from: vi.fn().mockReturnThis(),
+          where: vi.fn().mockResolvedValue([]),
+          leftJoin: vi.fn().mockReturnThis(),
+          innerJoin: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue([]),
+        };
+        fetchChain.innerJoin.mockReturnValue(fetchChain);
+        fetchChain.leftJoin.mockReturnValue(fetchChain);
+        return fetchChain;
+      });
+
+      const updateDto = createMockUpdateRequest({ title: 'After' });
+      const result = await service.update(1, updateDto, 1, {
+        permissions: [
+          PERMISSIONS.ACTIVITIES.EDIT,
+          PERMISSIONS.ACTIVITIES.DELETE_ANY,
+        ],
+        roleName: SYSTEM_ROLES.ADMIN,
+      });
+
+      expect(result.title).toBe('After');
+      expect(result.activityStatusId).toBe(deleteRequestedStatusId);
+      expect(mockDatabaseService.db.transaction).toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException when activity status is deleted and user lacks delete.any', async () => {
       const existingActivity = createMockActivity({
         id: 1,
         activityStatusId: 4,
@@ -2201,11 +2920,15 @@ describe('ActivitiesService', () => {
       });
 
       const updateDto = createMockUpdateRequest({ title: 'Updated' });
+      const context = {
+        permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+        roleName: 'Editor',
+      };
 
-      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+      await expect(service.update(1, updateDto, 1, context)).rejects.toThrow(
         ConflictException
       );
-      await expect(service.update(1, updateDto, 1)).rejects.toThrow(
+      await expect(service.update(1, updateDto, 1, context)).rejects.toThrow(
         /cannot be updated when status is 'deleted'/
       );
       expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
@@ -2292,6 +3015,122 @@ describe('ActivitiesService', () => {
     });
   });
 
+  describe('addSharedWithTeams', () => {
+    it('bumps operational last-updated in the transaction when teams are added', async () => {
+      const response = createMockActivityResponse({ id: 1 });
+      vi.spyOn(service, 'findOne').mockResolvedValue(response);
+
+      let capturedActivityTimestampSet: Record<string, unknown> | undefined;
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        const selectArg = (args[0] ?? {}) as Record<string, unknown>;
+        if ('teamId' in selectArg) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue([{ teamId: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      mockDatabaseService.db.transaction = vi.fn((callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn((payload: Record<string, unknown>) => {
+              capturedActivityTimestampSet = payload;
+              return {
+                where: vi.fn().mockResolvedValue(undefined),
+              };
+            }),
+          }),
+        };
+        return callback(tx);
+      });
+
+      await service.addSharedWithTeams(1, [2], 7, {
+        timestampWriteContext: 'bulk',
+      });
+
+      expect(capturedActivityTimestampSet).toBeDefined();
+      expect(capturedActivityTimestampSet).toHaveProperty(
+        'lastUpdatedDateTime'
+      );
+      expect(capturedActivityTimestampSet).toHaveProperty('lastUpdatedBy', 7);
+      expect(capturedActivityTimestampSet).not.toHaveProperty(
+        'publicLastUpdatedDateTime'
+      );
+    });
+  });
+
+  describe('updateSharedWith', () => {
+    it('notifies team members when shared-with teams change', async () => {
+      const response = createMockActivityResponse({ id: 1 });
+      vi.spyOn(service, 'findOne').mockResolvedValue(response);
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        const selectArg = (args[0] ?? {}) as Record<string, unknown>;
+        if ('teamId' in selectArg) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue([{ teamId: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      mockDatabaseService.db.transaction = vi.fn((callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return callback(tx);
+      });
+
+      await service.updateSharedWith(1, [2, 3], 7);
+
+      expect(
+        mockNotificationsService.notifyActivitySharedWithTeamsChanged
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 7,
+        teamIds: [2, 3],
+      });
+    });
+
+    it('does not notify when shared-with teams are unchanged', async () => {
+      const response = createMockActivityResponse({ id: 1 });
+      vi.spyOn(service, 'findOne').mockResolvedValue(response);
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        const selectArg = (args[0] ?? {}) as Record<string, unknown>;
+        if ('teamId' in selectArg) {
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue([{ teamId: 2 }, { teamId: 3 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      mockDatabaseService.db.transaction = vi.fn((callback) => {
+        const tx = {
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnThis(),
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        };
+        return callback(tx);
+      });
+
+      await service.updateSharedWith(1, [2, 3], 7);
+
+      expect(
+        mockNotificationsService.notifyActivitySharedWithTeamsChanged
+      ).not.toHaveBeenCalled();
+    });
+  });
+
   describe('requestDelete', () => {
     it('should set status to delete_requested and record history', async () => {
       const existingActivity = createMockActivity({
@@ -2352,6 +3191,14 @@ describe('ActivitiesService', () => {
       expect(
         mockActivitiesGateway.broadcastActivityUpdated
       ).toHaveBeenCalledWith(1);
+      expect(
+        mockNotificationsService.notifyActivityStatusChangedToAudience
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 10,
+        status: 'delete_requested',
+        includeWatchlisters: false,
+      });
     });
 
     it('should throw ConflictException when status is already delete_requested', async () => {
@@ -2734,7 +3581,14 @@ describe('ActivitiesService', () => {
       );
       expect(
         mockActivityHistoryService.getHistoryEntryById
-      ).toHaveBeenCalledWith(25);
+      ).toHaveBeenCalledWith(25, undefined);
+      expect(
+        mockNotificationsService.notifyActivityHistoryNoteAdded
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 10,
+        note: 'A note for history',
+      });
       expect(result.actionType).toBe('note_added');
       expect(result.notes).toBe('A note for history');
     });
@@ -2794,7 +3648,7 @@ describe('ActivitiesService', () => {
         new Map([[1, []]])
       );
       mockDataFetcherService.fetchSharedWithTeamsForActivities.mockResolvedValue(
-        new Map([[1, []]])
+        { namesMap: new Map([[1, []]]), idsMap: new Map([[1, []]]) }
       );
       mockDataFetcherService.fetchCommsContactsForActivities.mockResolvedValue(
         new Map([[1, []]])
@@ -2985,9 +3839,13 @@ describe('ActivitiesService', () => {
         returning: vi.fn().mockResolvedValue([{ id: 1 }]),
       });
       const deleteWhere = vi.fn().mockResolvedValue(undefined);
+      const deletedTables: unknown[] = [];
       const mockTx = {
         insert: vi.fn().mockReturnValue({ values: insertValues }),
-        delete: vi.fn().mockReturnValue({ where: deleteWhere }),
+        delete: vi.fn((table) => {
+          deletedTables.push(table);
+          return { where: deleteWhere };
+        }),
       };
       mockDatabaseService.db.transaction = vi.fn(async (callback) => {
         return await callback(mockTx);
@@ -3011,9 +3869,24 @@ describe('ActivitiesService', () => {
         userId: 10,
         reason: 'Duplicate entry',
       });
-      expect(mockTx.delete).toHaveBeenCalled();
-      expect(deleteWhere).toHaveBeenCalled();
-      expect(mockTx.delete.mock.calls.length).toBeGreaterThanOrEqual(14);
+      expect(mockTx.delete.mock.calls.map(([table]) => table)).toEqual([
+        ...ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES,
+      ]);
+      expect(deletedTables).toEqual([
+        ...ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES,
+      ]);
+      expect(
+        mockNotificationsService.getActivityAudienceForHardDelete
+      ).toHaveBeenCalledWith(1);
+      expect(
+        mockNotificationsService.notifyActivityHardDeleted
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 10,
+        displayId: existingActivity.displayId,
+        title: existingActivity.title,
+        recipientUserIds: [],
+      });
       expect(
         mockActivitiesGateway.broadcastActivityUpdated
       ).toHaveBeenCalledWith(1);
@@ -3148,9 +4021,182 @@ describe('ActivitiesService', () => {
     });
   });
 
+  describe('unshareTeam', () => {
+    let findOneSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      findOneSpy = vi
+        .spyOn(service, 'findOne')
+        .mockResolvedValue(createMockActivityResponse({ id: 10 }));
+      mockLocksService.getLockForEntity.mockResolvedValue(null);
+    });
+
+    /** Distinguishes the existence-check select({ id }) from the shared-teams select({ teamId }). */
+    function mockSelectsFor(
+      existsRows: Array<{ id: number }>,
+      sharedTeamRows: Array<{ teamId: number }>
+    ) {
+      mockDatabaseService.db.select = vi.fn((cols: Record<string, unknown>) => {
+        if (cols && 'id' in cols) {
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue(existsRows),
+              }),
+            }),
+          };
+        }
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(sharedTeamRows),
+          }),
+        };
+      });
+    }
+
+    it('removes the given team from the shared-with list and records history', async () => {
+      mockSelectsFor(
+        [{ id: 10 }],
+        [{ teamId: 1 }, { teamId: 2 }, { teamId: 3 }]
+      );
+      const mockTxUpdate = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+      const mockTx = { update: mockTxUpdate };
+      mockDatabaseService.db.transaction = vi.fn((callback) =>
+        callback(mockTx)
+      );
+      const ctx = {
+        user: { id: 99, roleName: 'Editor', permissions: [], teamIds: [2] },
+        dataScope: { bypass: false, teamIds: [2] },
+      };
+
+      const result = await service.unshareTeam(10, 2, 99, ctx as never);
+
+      expect(mockJunctionService.updateJunctionRecords).toHaveBeenCalledWith(
+        mockTx,
+        expect.anything(),
+        10,
+        [1, 3],
+        expect.any(Function),
+        'teamId',
+        99,
+        expect.any(Date)
+      );
+      expect(mockTxUpdate).toHaveBeenCalledTimes(1);
+      expect(mockActivityHistoryService.recordChange).toHaveBeenCalledWith(
+        10,
+        99,
+        'updated',
+        [
+          {
+            field: 'sharedWith',
+            oldValue: [1, 2, 3],
+            newValue: [1, 3],
+          },
+        ],
+        'Activity unshared from team'
+      );
+      // Final fetch keeps the caller's user context (so canEdit/reviewer
+      // fields still populate) but forces bypass: the caller may only be a
+      // shared-with team member, which findOne's default scoping would hide.
+      expect(findOneSpy).toHaveBeenCalledWith(10, {
+        user: ctx.user,
+        dataScope: { bypass: true, teamIds: [2] },
+      });
+      expect(result).toEqual(createMockActivityResponse({ id: 10 }));
+    });
+
+    it('still forces a bypass data scope when called without a request context', async () => {
+      mockSelectsFor([{ id: 10 }], [{ teamId: 1 }, { teamId: 2 }]);
+      mockDatabaseService.db.transaction = vi.fn((callback) =>
+        callback({
+          update: vi.fn().mockReturnValue({
+            set: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue(undefined),
+            }),
+          }),
+        })
+      );
+
+      await service.unshareTeam(10, 2, 99);
+
+      expect(findOneSpy).toHaveBeenCalledWith(10, {
+        dataScope: { bypass: true, teamIds: [] },
+      });
+    });
+
+    it('throws NotFoundException when the activity does not exist (regression: must not use scoped findOne)', async () => {
+      mockSelectsFor([], []);
+      mockDatabaseService.db.transaction = vi.fn();
+
+      await expect(service.unshareTeam(999, 2, 99)).rejects.toThrow(
+        NotFoundException
+      );
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when the activity is not shared with that team', async () => {
+      mockSelectsFor([{ id: 10 }], [{ teamId: 1 }]);
+      mockDatabaseService.db.transaction = vi.fn();
+
+      await expect(service.unshareTeam(10, 99, 99)).rejects.toThrow(
+        BadRequestException
+      );
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws HttpException 423 when activity is locked by another user', async () => {
+      mockSelectsFor([{ id: 10 }], [{ teamId: 1 }, { teamId: 2 }]);
+      mockLocksService.getLockForEntity.mockResolvedValue({
+        userId: 50,
+        username: 'other-editor',
+      });
+
+      let thrown: unknown;
+      try {
+        await service.unshareTeam(10, 2, 99);
+      } catch (e) {
+        thrown = e;
+      }
+
+      expect(thrown).toBeInstanceOf(HttpException);
+      expect((thrown as HttpException).getStatus()).toBe(HttpStatus.LOCKED);
+      expect(mockDatabaseService.db.transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('bulkUnshareTeam', () => {
+    it('reports updated and skipped results per activity', async () => {
+      const removeSpy = vi
+        .spyOn(service as any, 'removeSharedWithTeam')
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(
+          new BadRequestException(
+            'This activity is not currently shared with that team.'
+          )
+        );
+
+      const result = await service.bulkUnshareTeam([10, 11], 2, 99);
+
+      expect(removeSpy).toHaveBeenCalledTimes(2);
+      expect(result.summary).toEqual({ updated: 1, skipped: 1 });
+      expect(result.results).toEqual([
+        { activityId: 10, status: 'updated' },
+        {
+          activityId: 11,
+          status: 'skipped',
+          reason: 'This activity is not currently shared with that team.',
+        },
+      ]);
+    });
+  });
+
   describe('bulkUpdate', () => {
     it('rejects tag updates for a user with shared-with-only access', async () => {
-      const updateTagsSpy = vi.spyOn(service, 'updateTags');
+      const updateSpy = vi.spyOn(service, 'update');
       mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
       mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
 
@@ -3168,7 +4214,7 @@ describe('ActivitiesService', () => {
         'You may only edit activities where you are a comms contact or lead-team member.'
       );
 
-      expect(updateTagsSpy).not.toHaveBeenCalled();
+      expect(updateSpy).not.toHaveBeenCalled();
       expect(mockPolicyService.isCommsContactForActivity).toHaveBeenCalledWith(
         1,
         2
@@ -3277,6 +4323,14 @@ describe('ActivitiesService', () => {
       expect(
         mockActivitiesGateway.broadcastActivityUpdated
       ).toHaveBeenCalledWith(1);
+      expect(
+        mockNotificationsService.notifyActivityStatusChangedToAudience
+      ).toHaveBeenCalledWith({
+        activityId: 1,
+        actorUserId: 10,
+        status: 'deleted',
+        includeWatchlisters: true,
+      });
     });
 
     it('should clear the review snapshot before updating status', async () => {
@@ -3627,7 +4681,7 @@ describe('ActivitiesService', () => {
   });
 
   describe('findAll list output review diff', () => {
-    it('attaches changedFieldsSinceReview only for admin users and uses the parse-free mapper builder', async () => {
+    it('attaches changedFieldsSinceReview only for ACTIVITIES.REVIEW holders and uses the parse-free mapper builder', async () => {
       const activity = createMockActivity({
         reviewedFieldSnapshot: null,
         reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
@@ -3674,7 +4728,41 @@ describe('ActivitiesService', () => {
       const buildResponseSpy = vi.spyOn(mapperService, 'buildResponseDto');
       const mapToResponseSpy = vi.spyOn(mapperService, 'mapToResponseDto');
 
-      const adminResult = await service.findAll(
+      const reviewerResult = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: 'User',
+            permissions: [PERMISSIONS.ACTIVITIES.REVIEW],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: {
+            ...HYDRATION_PROFILES.detail,
+            includeReviewDiff: true,
+          },
+        }
+      );
+
+      expect(reviewerResult[0]).toMatchObject({
+        id: activity.id,
+        changedFieldsSinceReview: expect.arrayContaining([
+          'title',
+          'dateStatusId',
+          'timeStatusId',
+        ]),
+      });
+      expect(getEffectiveReviewExemptFieldKeysSpy).not.toHaveBeenCalled();
+      expect(buildResponseSpy).toHaveBeenCalledTimes(1);
+      expect(mapToResponseSpy).not.toHaveBeenCalled();
+
+      buildResponseSpy.mockClear();
+      mapToResponseSpy.mockClear();
+
+      const nonReviewerResult = await service.findAll(
         undefined,
         {
           user: {
@@ -3693,22 +4781,39 @@ describe('ActivitiesService', () => {
         }
       );
 
-      expect(adminResult[0]).toMatchObject({
-        id: activity.id,
-        changedFieldsSinceReview: expect.arrayContaining([
-          'title',
-          'dateStatusId',
-          'timeStatusId',
-        ]),
-      });
-      expect(getEffectiveReviewExemptFieldKeysSpy).not.toHaveBeenCalled();
-      expect(buildResponseSpy).toHaveBeenCalledTimes(1);
+      expect(nonReviewerResult[0]).not.toHaveProperty(
+        'changedFieldsSinceReview'
+      );
+      expect(buildResponseSpy).not.toHaveBeenCalled();
       expect(mapToResponseSpy).not.toHaveBeenCalled();
+    });
+  });
 
-      buildResponseSpy.mockClear();
-      mapToResponseSpy.mockClear();
+  describe('findAll list output edit locks', () => {
+    it('attaches editLock when includeEditLocks is true and skips lock fetch otherwise', async () => {
+      const activity = createMockActivity();
 
-      const nonAdminResult = await service.findAll(
+      mockDatabaseService.db.select = vi.fn((selection?: unknown) => {
+        if (selection === undefined) {
+          return {
+            from: vi.fn().mockResolvedValue([activity]),
+          };
+        }
+
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        };
+      });
+
+      mockLocksService.getActiveActivityLocksForIds.mockResolvedValue(
+        new Map([[activity.id, { userId: 42, username: 'Editor User' }]])
+      );
+
+      const withLocks = await service.findAll(
         undefined,
         {
           user: {
@@ -3720,16 +4825,41 @@ describe('ActivitiesService', () => {
         } as never,
         {
           outputShape: 'list',
-          profile: {
-            ...HYDRATION_PROFILES.detail,
-            includeReviewDiff: true,
-          },
+          profile: HYDRATION_PROFILES.list,
+          includeEditLocks: true,
         }
       );
 
-      expect(nonAdminResult[0]).not.toHaveProperty('changedFieldsSinceReview');
-      expect(buildResponseSpy).not.toHaveBeenCalled();
-      expect(mapToResponseSpy).not.toHaveBeenCalled();
+      expect(
+        mockLocksService.getActiveActivityLocksForIds
+      ).toHaveBeenCalledWith([activity.id]);
+      expect(withLocks[0]).toMatchObject({
+        id: activity.id,
+        editLock: { userId: 42, username: 'Editor User' },
+      });
+
+      mockLocksService.getActiveActivityLocksForIds.mockClear();
+
+      const withoutLocks = await service.findAll(
+        undefined,
+        {
+          user: {
+            roleName: 'User',
+            permissions: [],
+            teamIds: [],
+          },
+          dataScope: { bypass: true, teamIds: [] },
+        } as never,
+        {
+          outputShape: 'list',
+          profile: HYDRATION_PROFILES.list,
+        }
+      );
+
+      expect(
+        mockLocksService.getActiveActivityLocksForIds
+      ).not.toHaveBeenCalled();
+      expect(withoutLocks[0]).not.toHaveProperty('editLock');
     });
   });
 

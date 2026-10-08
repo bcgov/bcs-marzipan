@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { ReportDataResponse } from '../../../api/report-data';
-import { PRINT_FOOTER_CHANGED_EXPLANATION_BODY } from './dateFormatters';
 import { CUSTOM_REPORT_PRINT_STYLES } from './customReportPrintStyles';
+import { PRINT_FOOTER_CHANGED_EXPLANATION_BODY } from './dateFormatters';
 import { PrintCustomReportDocument } from './PrintCustomReportDocument';
 import { PrintReportDocument } from './PrintReportDocument';
 import { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
@@ -83,9 +83,7 @@ export function renderPrintReportFragmentHtml(
   options: RenderReportOptions
 ): string {
   if (reportTypeName === 'custom') {
-    return renderToStaticMarkup(
-      <PrintCustomReportDocument data={data} />
-    );
+    return renderToStaticMarkup(<PrintCustomReportDocument data={data} />);
   }
 
   const variant = REPORT_TYPE_TO_VARIANT[reportTypeName];
@@ -150,7 +148,7 @@ export function wrapPrintReportHtmlDocument(
     ? 'corpcal-print-pdf-cover-sheet-only-doc'
     : '';
   const bodyClassAttr = bodyClass ? ` class="${bodyClass}"` : '';
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body${bodyClassAttr} style="margin:0;background:#fff;">${coverPageHtml}${fragmentHtml}</body></html>`;
+  return `<!DOCTYPE html><html lang="en-CA"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Report</title><style>${fontFaceCss}${PRINT_STYLES}${CUSTOM_REPORT_PRINT_STYLES}</style></head><body${bodyClassAttr} style="margin:0;background:#fff;">${coverPageHtml}${fragmentHtml}</body></html>`;
 }
 
 /** Back-compat utility: `CORPCAL_PRINT_ROOT_CLASS` as a namespaced selector value. */

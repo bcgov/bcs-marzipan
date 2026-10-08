@@ -1,7 +1,11 @@
 import { mapDatabaseError } from './database-error.mapper';
 
-function errorWithCode(code: string): Error & { code?: string } {
-  return Object.assign(new Error('DB error'), { code });
+function errorWithCode(
+  code: string,
+  message?: string,
+  cause?: Error
+): Error & { code?: string; cause?: unknown } {
+  return Object.assign(new Error(message ?? 'DB error'), { code, cause });
 }
 
 describe('mapDatabaseError', () => {
@@ -16,14 +20,53 @@ describe('mapDatabaseError', () => {
       });
     });
 
-    it('23503 returns 400 Invalid Reference', () => {
-      const result = mapDatabaseError(errorWithCode('23503'));
+    it('23503 returns 400 Invalid Reference when insert/update references missing row', () => {
+      const result = mapDatabaseError(
+        errorWithCode(
+          '23503',
+          'insert or update on table "deletion_audit" violates foreign key constraint "deletion_audit_user_id_users_id_fk"'
+        )
+      );
       expect(result).toEqual({
         httpStatus: 400,
         type: 'https://api.example.com/errors/bad-request',
         title: 'Invalid Reference',
         detail: 'Referenced record does not exist',
       });
+    });
+
+    it('23503 returns 400 Cannot Delete when parent delete is blocked by dependents', () => {
+      const result = mapDatabaseError(
+        errorWithCode(
+          '23503',
+          'update or delete on table "activities" violates foreign key constraint "activity_event_planners_activity_id_activities_id_fk" on table "activity_event_planners"'
+        )
+      );
+      expect(result).toEqual({
+        httpStatus: 400,
+        type: 'https://api.example.com/errors/bad-request',
+        title: 'Cannot Delete',
+        detail: 'Cannot delete this record because related records still exist',
+      });
+    });
+
+    it('23503 detects delete-blocked message on nested cause', () => {
+      const result = mapDatabaseError(
+        errorWithCode(
+          '23503',
+          'Failed query: delete from "activities" where "activities"."id" = $1',
+          Object.assign(
+            new Error(
+              'update or delete on table "activities" violates foreign key constraint "activity_event_planners_activity_id_activities_id_fk" on table "activity_event_planners"'
+            ),
+            { code: '23503' }
+          )
+        )
+      );
+      expect(result?.title).toBe('Cannot Delete');
+      expect(result?.detail).toBe(
+        'Cannot delete this record because related records still exist'
+      );
     });
 
     it('23514 returns 400 Constraint Violation', () => {

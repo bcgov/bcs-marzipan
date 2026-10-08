@@ -1,4 +1,5 @@
 import {
+  Bell,
   CalendarDays,
   History,
   NotebookText,
@@ -50,6 +51,7 @@ function AppSidebarContent() {
   const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW);
   const canViewUsers = hasPermission(PERMISSIONS.USERS.VIEW);
   const canViewSettings = hasPermission(PERMISSIONS.SETTINGS.VIEW);
+  const canViewNotifications = hasPermission(PERMISSIONS.NOTIFICATIONS.VIEW);
 
   const closeMobileSidebar = useCallback(() => {
     if (isMobile) setOpenMobile(false);
@@ -57,6 +59,9 @@ function AppSidebarContent() {
 
   const mainNavItems = [
     { to: '/', label: 'Activities', icon: CalendarDays },
+    ...(canViewNotifications
+      ? [{ to: '/notifications', label: 'Notifications', icon: Bell }]
+      : []),
     ...(canViewReports
       ? [{ to: '/reports', label: 'Reports', icon: NotebookText }]
       : []),

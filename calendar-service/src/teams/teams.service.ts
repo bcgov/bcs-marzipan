@@ -30,6 +30,7 @@ import type {
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { sortByStaffName } from '../users/staff-name-sort';
 
 @Injectable()
@@ -37,7 +38,8 @@ export class TeamsService {
   constructor(
     private readonly databaseService: DatabaseService,
     @Inject(forwardRef(() => ActivityDisplayIdSyncService))
-    private readonly activityDisplayIdSyncService: ActivityDisplayIdSyncService
+    private readonly activityDisplayIdSyncService: ActivityDisplayIdSyncService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   private async recordTeamHistory(
@@ -170,6 +172,7 @@ export class TeamsService {
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
+        appearsInShareWith: teams.appearsInShareWith,
         roleId: teams.roleId,
         ministryId: teams.ministryId,
       })
@@ -228,6 +231,7 @@ export class TeamsService {
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
+        appearsInShareWith: teams.appearsInShareWith,
         roleId: teams.roleId,
         ministryId: teams.ministryId,
       })
@@ -293,6 +297,7 @@ export class TeamsService {
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
+        appearsInShareWith: teams.appearsInShareWith,
         roleId: teams.roleId,
         ministryId: teams.ministryId,
       })
@@ -400,6 +405,7 @@ export class TeamsService {
         description: dto.description ?? null,
         sortOrder: dto.sortOrder ?? 0,
         isActive: dto.isActive ?? true,
+        appearsInShareWith: dto.appearsInShareWith ?? true,
         roleId: dto.roleId ?? null,
         ministryId: dto.ministryId ?? null,
         createdBy,
@@ -447,6 +453,8 @@ export class TeamsService {
     if (dto.description !== undefined) updates.description = dto.description;
     if (dto.sortOrder !== undefined) updates.sortOrder = dto.sortOrder;
     if (dto.isActive !== undefined) updates.isActive = dto.isActive;
+    if (dto.appearsInShareWith !== undefined)
+      updates.appearsInShareWith = dto.appearsInShareWith;
     if (dto.roleId !== undefined) updates.roleId = dto.roleId;
     if (dto.ministryId !== undefined)
       updates.ministryId = dto.ministryId ?? null;
@@ -516,6 +524,16 @@ export class TeamsService {
       });
     }
     if (
+      dto.appearsInShareWith !== undefined &&
+      dto.appearsInShareWith !== existing.appearsInShareWith
+    ) {
+      changes.push({
+        field: 'appearsInShareWith',
+        oldValue: existing.appearsInShareWith,
+        newValue: dto.appearsInShareWith,
+      });
+    }
+    if (
       dto.roleId !== undefined &&
       dto.roleId !== existing.roleId &&
       (dto.roleId ?? null) !== (existing.roleId ?? null)
@@ -571,6 +589,19 @@ export class TeamsService {
 
     const updated = await this.findOne(id);
     if (!updated) throw new NotFoundException('Team not found');
+
+    const notifyFields = changes
+      .map((change) => change.field)
+      .filter((field) => field === 'name' || field === 'ministryId');
+
+    if (notifyFields.length > 0) {
+      await this.notificationsService.notifyTeamUpdated({
+        teamId: id,
+        actorUserId: lastUpdatedBy,
+        changedFields: notifyFields,
+      });
+    }
+
     return updated;
   }
 

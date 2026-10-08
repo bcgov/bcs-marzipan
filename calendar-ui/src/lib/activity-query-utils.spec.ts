@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type { ActivityListItem } from '@corpcal/shared/api/types';
 import type { UpdateActivityRequest } from '@corpcal/shared/schemas';
+import { createMockActivityListItem } from '@corpcal/shared/test-utils';
 import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 
 import {
@@ -41,8 +42,9 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     leadOrg: null,
     leadMinistry: null,
     leadMinistryAbbreviation: null,
+    leadTeamDisplayName: null,
     commsLeadName: null,
-    commsContactsCount: 0,
+    commsContactName: null,
     eventPlanners: [],
     eventPlannerLeadIds: [],
     leadTeamId: null,
@@ -58,7 +60,11 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     lastUpdatedDateTime: '',
     lastUpdatedBy: 0,
     createdDateTime: '',
+    editLock: null,
     flags: [],
+    sharedWith: [],
+    sharedWithTeamIds: [],
+    visibility: null,
     ...overrides,
   };
 }
@@ -593,7 +599,7 @@ describe('filterActivityRowsByFilters', () => {
 });
 
 describe('buildOptimisticActivity', () => {
-  const minimalExisting = {
+  const minimalExisting: ActivityListItem = createMockActivityListItem({
     id: 1,
     title: 'Original title',
     summary: 'Original summary',
@@ -608,8 +614,11 @@ describe('buildOptimisticActivity', () => {
     lookAheadSection: null,
     pitchDate: null,
     createdDateTime: '2025-01-01T00:00:00Z',
-    lastUpdatedDateTime: '2025-01-01T00:00:00Z',
-  } as ActivityResponse;
+    lastUpdatedDateTime: '2025-01-02T00:00:00Z',
+    lastUpdatedBy: 2,
+    publicLastUpdatedDateTime: '2025-01-01T00:00:00Z',
+    publicLastUpdatedBy: 1,
+  });
 
   it('merges one mergeable key from update into existing', () => {
     const update: UpdateActivityRequest = { title: 'Updated title' };
@@ -646,7 +655,7 @@ describe('buildOptimisticActivity', () => {
       ...minimalExisting,
       id: 42,
       leadOrgId: 10,
-    } as ActivityResponse;
+    } as ActivityListItem;
     const update = {
       id: 999,
       leadOrgId: 99,

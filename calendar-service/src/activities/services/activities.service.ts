@@ -16,6 +16,7 @@ import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
+  activityEventPlanners,
   activityHistory,
   activityReportSettings,
   activityRepresentatives,
@@ -30,6 +31,7 @@ import {
   commsMaterials,
   dateStatuses,
   deletionAudit,
+  editLocks,
   ministries,
   pitchRequiredStatuses,
   teams,
@@ -38,13 +40,14 @@ import {
   translationRequiredStatuses,
   venueAddresses,
 } from '@corpcal/database/schema';
-import type { Activity, Category } from '@corpcal/database/types';
+import type { Activity } from '@corpcal/database/types';
 import {
   buildEffectiveReviewExemptKeys,
   DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
   HYDRATION_PROFILES,
   isManualCompleteEligible,
   normalizeActivityStatusLabel,
+  pacificCalendarDateFromInstant,
   PERMISSIONS,
   PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
   profileIncludesRelation,
@@ -54,9 +57,11 @@ import {
   type ActivityListItem,
   type ActivityStatusName,
   type EventPlannerDetail,
+  type TimestampWriteContext,
 } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import {
+  activityListItemSchema,
   CLONE_ADVANCED_FIELD_PATHS,
   CLONE_ALLOWED_INCLUDE_PATHS,
   CLONE_MODAL_SCHEDULE_FIELD_KEYS,
@@ -65,6 +70,7 @@ import {
   type ActivityFormData,
   type ActivityHistoryEntry,
   type ActivityResponse,
+  type BulkUnshareActivitiesResult,
   type CloneActivityRequest,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
@@ -80,12 +86,12 @@ import {
   buildReviewSnapshot,
   diffReviewFields,
   getEmptyReviewBaseline,
-  getForbiddenLookupIds,
   isDeepEqual,
   mapResponseToFormData,
   normalizeVenueAddressForForm,
   plainTextFromActivityRichField,
   tipTapDocJsonFromPlainText,
+  type FieldScopeUser,
   type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
 
@@ -93,7 +99,9 @@ import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
 import { ApplicationSettingsService } from '../../locks/application-settings.service';
 import { LocksService } from '../../locks/locks.service';
+import { RecurringLockoutService } from '../../locks/recurring-lockout.service';
 import { LookAheadPolicyService } from '../../look-ahead/look-ahead-policy.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 import {
   resolveDataScope,
   type RequestContext as RequestContextType,
@@ -105,6 +113,10 @@ import {
 import { PolicyService } from '../../policy/policy.service';
 import { TeamsService } from '../../teams/teams.service';
 import { ActivitiesGateway } from '../activities.gateway';
+import {
+  ActivityTimestampPolicyError,
+  getActivityTimestampUpdateForWrite,
+} from '../utils/activity-timestamp-write';
 import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import {
   buildActivityFindAllConditions,
@@ -133,9 +145,11 @@ export class ActivitiesService {
     private readonly locksService: LocksService,
     private readonly applicationSettings: ApplicationSettingsService,
     private readonly policyService: PolicyService,
+    private readonly notificationsService: NotificationsService,
     private readonly teamsService: TeamsService,
     private readonly flagsService: ActivityFlagsService,
-    private readonly lookAheadPolicy: LookAheadPolicyService
+    private readonly lookAheadPolicy: LookAheadPolicyService,
+    private readonly recurringLockoutService: RecurringLockoutService
   ) {}
 
   private async getEffectiveReviewExemptFieldKeys(
@@ -144,6 +158,43 @@ export class ActivitiesService {
     const fromDb =
       await this.applicationSettings.getReviewExemptFieldKeys(executor);
     return buildEffectiveReviewExemptKeys(fromDb);
+  }
+
+  private toReviewExemptComparableField(field: string): string {
+    if (field === 'sharedWith') {
+      return 'sharedWithTeamIds';
+    }
+
+    return field;
+  }
+
+  private resolveNotificationChangedFields(
+    changes: Array<{ field: string; oldValue: unknown; newValue: unknown }>,
+    reviewExemptFieldKeys: ReadonlySet<string>
+  ): string[] {
+    const ignoredFields = new Set<string>([
+      'activityStatusId',
+      'lastUpdatedBy',
+      'lastUpdatedDateTime',
+      'timestamp',
+    ]);
+
+    return [...new Set(changes.map((change) => change.field))]
+      .map((field) => this.toReviewExemptComparableField(field))
+      .filter(
+        (field) =>
+          !ignoredFields.has(field) && !reviewExemptFieldKeys.has(field)
+      );
+  }
+
+  private async assertCanEditDuringLockout(
+    userId: number,
+    permissions?: string[]
+  ): Promise<void> {
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(
+      userId,
+      permissions
+    );
   }
 
   /**
@@ -188,6 +239,40 @@ export class ActivitiesService {
     };
   }
 
+  private getForbiddenLookupIds(
+    submittedIds: number[],
+    existingIds: number[] | undefined,
+    userTeamIds: number[] | undefined,
+    lookupsById: ReadonlyMap<number, { visibility: string; teamIds?: number[] }>
+  ): number[] {
+    const existingSet = new Set(existingIds ?? []);
+    const userTeamSet = new Set(userTeamIds ?? []);
+
+    const isSelectable = (id: number): boolean => {
+      if (existingSet.has(id)) {
+        return true;
+      }
+
+      const lookup = lookupsById.get(id);
+      if (!lookup) {
+        return false;
+      }
+
+      if (lookup.visibility !== 'team') {
+        return true;
+      }
+
+      const allowedTeamIds = lookup.teamIds ?? [];
+      if (allowedTeamIds.length === 0 || userTeamSet.size === 0) {
+        return false;
+      }
+
+      return allowedTeamIds.some((teamId) => userTeamSet.has(teamId));
+    };
+
+    return submittedIds.filter((id) => !isSelectable(id));
+  }
+
   /**
    * Validates submitted tag IDs are selectable for the user's teams, allowing
    * grandfathered tags already on the activity on update.
@@ -206,7 +291,7 @@ export class ActivitiesService {
     const scopeById = await getTagScopeById(this.databaseService.db, [
       ...new Set([...tagIds, ...(existingTagIds ?? [])]),
     ]);
-    const forbidden = getForbiddenLookupIds(
+    const forbidden = this.getForbiddenLookupIds(
       tagIds,
       existingTagIds,
       teamIds,
@@ -237,7 +322,7 @@ export class ActivitiesService {
     const scopeById = await getCategoryScopeById(this.databaseService.db, [
       ...new Set([...categoryIds, ...(existingCategoryIds ?? [])]),
     ]);
-    const forbidden = getForbiddenLookupIds(
+    const forbidden = this.getForbiddenLookupIds(
       categoryIds,
       existingCategoryIds,
       teamIds,
@@ -673,6 +758,14 @@ export class ActivitiesService {
     return prior;
   }
 
+  /** Operational audit on mutation responses (authorized callers; independent of `canEdit`). */
+  private mutationResponseAuditFields(): Pick<
+    ActivityMapperRelatedData,
+    'includeOperationalLastUpdated'
+  > {
+    return { includeOperationalLastUpdated: true };
+  }
+
   /**
    * Map a row plus bulk-fetched relations to an {@link ActivityResponse}
    * (no permission-derived flags except optional `canEdit`).
@@ -704,7 +797,8 @@ export class ActivitiesService {
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
-      sharedWith: related.sharedWithMap.get(id) ?? [],
+      sharedWith: related.sharedWithResult.namesMap.get(id) ?? [],
+      sharedWithTeamIds: related.sharedWithResult.idsMap.get(id) ?? [],
       commsContacts,
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
@@ -758,6 +852,14 @@ export class ActivitiesService {
     return { namesMap: new Map(), idsMap: new Map() };
   }
 
+  /** Empty shape for the shared-with fetcher (names for display, IDs for membership checks). */
+  private emptySharedWithResult(): {
+    namesMap: Map<number, string[]>;
+    idsMap: Map<number, number[]>;
+  } {
+    return { namesMap: new Map(), idsMap: new Map() };
+  }
+
   private async fetchRelatedForActivityIds(
     activityIds: number[],
     activityRows: Activity[],
@@ -775,7 +877,7 @@ export class ActivitiesService {
         commsMaterialsMap: new Map(),
         translationsRequiredMap: new Map(),
         representativesAttendingMap: new Map(),
-        sharedWithMap: new Map(),
+        sharedWithResult: this.emptySharedWithResult(),
         commsContactsMap: new Map(),
         leadOrgNamesMap: new Map(),
         eventPlannerDetailsMap: new Map(),
@@ -807,7 +909,7 @@ export class ActivitiesService {
       commsMaterialsMap,
       translationsRequiredMap,
       representativesAttendingMap,
-      sharedWithMap,
+      sharedWithResult,
       commsContactsMap,
       leadOrgNamesMap,
       eventPlannerDetailsMap,
@@ -859,7 +961,7 @@ export class ActivitiesService {
         : Promise.resolve(new Map()),
       needs('sharedWith')
         ? this.dataFetcherService.fetchSharedWithTeamsForActivities(activityIds)
-        : Promise.resolve(new Map()),
+        : Promise.resolve(this.emptySharedWithResult()),
       needs('commsContacts')
         ? this.dataFetcherService.fetchCommsContactsForActivities(activityIds)
         : Promise.resolve(
@@ -946,7 +1048,7 @@ export class ActivitiesService {
       commsMaterialsMap,
       translationsRequiredMap,
       representativesAttendingMap,
-      sharedWithMap,
+      sharedWithResult,
       commsContactsMap,
       leadOrgNamesMap,
       eventPlannerDetailsMap,
@@ -1181,6 +1283,8 @@ export class ActivitiesService {
       extraCreateChanges?: HistoryChange[];
     }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
+
     // Extract junction table IDs, venue address, and status/options from the DTO
     // activityStatusId is ignored (backend sets from markAsReviewed + activities.review permission)
     const {
@@ -1320,21 +1424,28 @@ export class ActivitiesService {
         | 'lastUpdatedBy'
         | 'createdDateTime'
         | 'lastUpdatedDateTime'
+        | 'publicLastUpdatedBy'
+        | 'publicLastUpdatedDateTime'
         | 'rowVersion'
       > & {
         displayId: null;
         createdBy: number;
-        lastUpdatedBy: number;
         createdDateTime: Date;
+        lastUpdatedBy: number;
         lastUpdatedDateTime: Date;
+        publicLastUpdatedBy: number;
+        publicLastUpdatedDateTime: Date;
       } = {
         ...activityRowForInsert,
         activityStatusId: initialStatusId,
         displayId: null,
         createdBy: userId,
-        lastUpdatedBy: userId,
         createdDateTime: now,
-        lastUpdatedDateTime: now,
+        ...getActivityTimestampUpdateForWrite({
+          context: 'create',
+          userId,
+          now,
+        }),
       };
 
       // Insert the activity
@@ -1510,7 +1621,7 @@ export class ActivitiesService {
       userId,
       'created',
       createdChanges,
-      activityHistoryNotes || 'Activity created'
+      activityHistoryNotes?.trim() || undefined
     );
 
     // When created as Reviewed, persist the review snapshot so the diff starts empty.
@@ -1529,6 +1640,12 @@ export class ActivitiesService {
     if (createdActivity) {
       this.activitiesGateway.broadcastActivityCreated(createdActivity.id);
     }
+
+    await this.notificationsService.notifyActivityCreateOrStatusChange({
+      activityId: result.id,
+      actorUserId: userId,
+      changeType: 'create',
+    });
 
     return createdActivity;
   }
@@ -1600,15 +1717,38 @@ export class ActivitiesService {
    * @param options - Hydration profile controls which relations are batch-loaded.
    */
   async findAll(
+    filters: FilterActivitiesQueryParams | undefined,
+    ctx: RequestContextType | undefined,
+    options: {
+      profile?: ActivityHydrationProfile;
+      outputShape: 'list';
+      /** When true with list output, attaches active edit locks (activity list page only). */
+      includeEditLocks?: boolean;
+    }
+  ): Promise<ActivityListItem[]>;
+  async findAll(
+    filters?: FilterActivitiesQueryParams,
+    ctx?: RequestContextType,
+    options?: {
+      profile?: ActivityHydrationProfile;
+      outputShape?: 'detail';
+      includeEditLocks?: boolean;
+    }
+  ): Promise<ActivityResponse[]>;
+  async findAll(
     filters?: FilterActivitiesQueryParams,
     ctx?: RequestContextType,
     options?: {
       profile?: ActivityHydrationProfile;
       outputShape?: 'list' | 'detail';
+      /** When true with list output, attaches active edit locks (activity list page only). */
+      includeEditLocks?: boolean;
     }
   ): Promise<ActivityListItem[] | ActivityResponse[]> {
     const profile = options?.profile ?? HYDRATION_PROFILES.detail;
     const outputShape = options?.outputShape ?? 'detail';
+    const includeEditLocks =
+      options?.includeEditLocks === true && outputShape === 'list';
     let activityResults: Activity[];
 
     // Resolve status IDs for default exclusions
@@ -1685,24 +1825,33 @@ export class ActivitiesService {
     const hasEditPermission =
       ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.EDIT) ?? false;
     const isListOutput = outputShape === 'list';
-    const isAdminOrSysAdmin =
-      ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
-      ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
-    const canReview = profile.includeReviewDiff === true && isAdminOrSysAdmin;
+    const hasReviewPermission =
+      ctx?.user?.permissions?.includes(PERMISSIONS.ACTIVITIES.REVIEW) ?? false;
+    const canReview = profile.includeReviewDiff === true && hasReviewPermission;
     const shouldFetchReviewExemptFieldKeys = canReview && !isListOutput;
     const userTeamIds = ctx?.user?.teamIds ?? [];
     const fetchFlags = profile.includeFlags === true && userTeamIds.length > 0;
-    const [related, reviewLookups, reviewExemptFieldKeys, flagsMap] =
-      await Promise.all([
-        this.fetchRelatedForActivityIds(activityIds, activityResults, profile),
-        canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
-        shouldFetchReviewExemptFieldKeys
-          ? this.getEffectiveReviewExemptFieldKeys()
-          : Promise.resolve(undefined),
-        fetchFlags
-          ? this.flagsService.fetchFlagsForActivities(activityIds, userTeamIds)
-          : Promise.resolve(new Map<number, ActivityFlagResponse[]>()),
-      ]);
+    const [
+      related,
+      reviewLookups,
+      reviewExemptFieldKeys,
+      flagsMap,
+      editLockMap,
+    ] = await Promise.all([
+      this.fetchRelatedForActivityIds(activityIds, activityResults, profile),
+      canReview ? this.getReviewDiffLookups() : Promise.resolve(undefined),
+      shouldFetchReviewExemptFieldKeys
+        ? this.getEffectiveReviewExemptFieldKeys()
+        : Promise.resolve(undefined),
+      fetchFlags
+        ? this.flagsService.fetchFlagsForActivities(activityIds, userTeamIds)
+        : Promise.resolve(new Map<number, ActivityFlagResponse[]>()),
+      includeEditLocks
+        ? this.locksService.getActiveActivityLocksForIds(activityIds)
+        : Promise.resolve(
+            new Map<number, { userId: number; username: string }>()
+          ),
+    ]);
     const { namesMap: categoriesMap, idsMap: categoryIdsMap } =
       related.categoriesResult;
 
@@ -1721,7 +1870,7 @@ export class ActivitiesService {
         if (canReview && reviewLookups) {
           const responseForDiff: ActivityResponse =
             this.mapperService.buildResponseDto(activity, relatedData);
-          // List-view admin highlighting should reflect all changed fields,
+          // List-view reviewer highlighting should reflect all changed fields,
           // including review-exempt scheduling fields (date/time status).
           relatedData.changedFieldsSinceReview =
             this.computeChangedFieldsSinceReview(
@@ -1732,7 +1881,14 @@ export class ActivitiesService {
               new Set<string>()
             );
         }
-        return this.mapperService.mapToListItemDto(activity, relatedData);
+        const item = this.mapperService.mapToListItemDto(activity, relatedData);
+        if (!includeEditLocks) {
+          return item;
+        }
+        return activityListItemSchema.parse({
+          ...item,
+          editLock: editLockMap.get(activity.id) ?? null,
+        });
       });
     }
 
@@ -1794,7 +1950,7 @@ export class ActivitiesService {
         commsContacts.map((c) => c.userId),
         ctx.ctx.user.id,
         ctx.ctx.user.teamIds,
-        ctx.dataScope?.bypass ?? false
+        this.isEditBypassRole(ctx.ctx.user.roleName)
       );
 
     return {
@@ -1811,7 +1967,9 @@ export class ActivitiesService {
         ctx.related.translationsRequiredMap.get(activity.id) ?? [],
       representativesAttending:
         ctx.related.representativesAttendingMap.get(activity.id) ?? [],
-      sharedWith: ctx.related.sharedWithMap.get(activity.id) ?? [],
+      sharedWith: ctx.related.sharedWithResult.namesMap.get(activity.id) ?? [],
+      sharedWithTeamIds:
+        ctx.related.sharedWithResult.idsMap.get(activity.id) ?? [],
       commsContacts,
       eventPlannerDetails:
         ctx.related.eventPlannerDetailsMap.get(activity.id) ?? [],
@@ -1861,6 +2019,17 @@ export class ActivitiesService {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Mirrors CanEditActivityGuard's bypass check (Admin/System Admin only).
+   * Not the same as data-scope view bypass, which also covers Advanced
+   * Viewer/Advanced Editor and would falsely report canEdit for them.
+   */
+  private isEditBypassRole(roleName: string | undefined): boolean {
+    return (
+      roleName === SYSTEM_ROLES.ADMIN || roleName === SYSTEM_ROLES.SYSTEM_ADMIN
+    );
   }
 
   /**
@@ -1920,7 +2089,7 @@ export class ActivitiesService {
         commsContacts.map((c) => c.userId),
         ctx.user.id,
         ctx.user.teamIds,
-        dataScope?.bypass ?? false
+        this.isEditBypassRole(ctx.user.roleName)
       );
 
     const response = this.mapFetchedActivityToResponseDto(activity, related, {
@@ -2004,6 +2173,19 @@ export class ActivitiesService {
       );
     }
 
+    // Bulk sharing grants other teams visibility across many activities at once,
+    // so it stays an admin action. Individual activities use the form's Shared with field.
+    if (dto.operation === 'sharedWith') {
+      const isAdmin =
+        context.roleName === SYSTEM_ROLES.ADMIN ||
+        context.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+      if (!isAdmin) {
+        throw new ForbiddenException(
+          'Only admins can bulk share activities with teams.'
+        );
+      }
+    }
+
     const results: ActivityResponse[] = [];
     for (const activityId of dto.activityIds) {
       if (
@@ -2024,59 +2206,129 @@ export class ActivitiesService {
               { markAsReviewed: true },
               userId,
               context,
-              { bypassEditLock: true }
+              { bypassEditLock: true, timestampWriteContext: 'bulk' }
             )
           );
           break;
-        case 'pitchStatus':
+        case 'pitchStatus': {
+          const { pitchRequiredStatusId } = dto;
+          if (pitchRequiredStatusId === undefined) {
+            throw new BadRequestException(
+              'pitchRequiredStatusId is required for the pitchStatus operation.'
+            );
+          }
           results.push(
             await this.update(
               activityId,
-              { pitchRequiredStatusId: dto.pitchRequiredStatusId! },
+              { pitchRequiredStatusId },
               userId,
               context,
-              { bypassEditLock: true }
+              { bypassEditLock: true, timestampWriteContext: 'bulk' }
             )
           );
           break;
+        }
         case 'issue':
           results.push(
             await this.update(activityId, { isIssue: true }, userId, context, {
               bypassEditLock: true,
+              timestampWriteContext: 'bulk',
             })
           );
           break;
-        case 'tags':
-          results.push(await this.updateTags(activityId, dto.tagIds!, userId));
-          break;
-        case 'sharedWith':
+        case 'tags': {
+          const { tagIds } = dto;
+          if (tagIds === undefined) {
+            throw new BadRequestException(
+              'tagIds is required for the tags operation.'
+            );
+          }
           results.push(
-            await this.updateSharedWith(activityId, dto.teamIds!, userId)
+            await this.updateTags(activityId, tagIds, userId, {
+              permissions: context.permissions,
+              timestampWriteContext: 'bulk',
+            })
           );
           break;
-        case 'flag':
+        }
+        case 'sharedWith': {
+          const { teamIds } = dto;
+          if (teamIds === undefined) {
+            throw new BadRequestException(
+              'teamIds is required for the sharedWith operation.'
+            );
+          }
+          // Bulk sharing adds teams rather than replacing the list, so one
+          // activity's existing shares are not silently dropped.
+          results.push(
+            await this.addSharedWithTeams(activityId, teamIds, userId, {
+              permissions: context.permissions,
+              timestampWriteContext: 'bulk',
+            })
+          );
+          break;
+        }
+        case 'flag': {
+          const { flagTeamId, assigneeIds } = dto;
+          if (flagTeamId === undefined || assigneeIds === undefined) {
+            throw new BadRequestException(
+              'flagTeamId and assigneeIds are required for the flag operation.'
+            );
+          }
           await this.flagsService.syncFlags(
             activityId,
-            dto.flagTeamId!,
-            dto.assigneeIds!,
+            flagTeamId,
+            assigneeIds,
             userId
           );
           this.activitiesGateway.broadcastActivityUpdated(activityId);
           results.push(await this.findOne(activityId));
           break;
-        case 'delete':
+        }
+        case 'delete': {
+          const { deleteReason } = dto;
+          if (deleteReason === undefined) {
+            throw new BadRequestException(
+              'deleteReason is required for the delete operation.'
+            );
+          }
           results.push(
-            await this.softDelete(
-              activityId,
-              dto.deleteReason!,
-              userId,
-              context
-            )
+            await this.softDelete(activityId, deleteReason, userId, context)
           );
           break;
+        }
       }
     }
     return results;
+  }
+
+  /**
+   * Optimistic concurrency check. Rejects a save when the activity changed after the
+   * timestamp the client loaded, so an editor cannot overwrite a concurrent change
+   * (for example a team that unshared itself while the form was open).
+   */
+  private assertNotModifiedSince(
+    activity: Pick<Activity, 'lastUpdatedDateTime'>,
+    ifUnmodifiedSince: string | undefined
+  ): void {
+    if (!ifUnmodifiedSince) return;
+
+    const expected = new Date(ifUnmodifiedSince).getTime();
+    if (Number.isNaN(expected)) {
+      throw new BadRequestException('ifUnmodifiedSince must be a valid date.');
+    }
+
+    const current = activity.lastUpdatedDateTime
+      ? new Date(activity.lastUpdatedDateTime).getTime()
+      : null;
+    if (current === null || Number.isNaN(current)) return;
+
+    // Timestamps round-trip through JSON at millisecond precision; allow equality.
+    if (current > expected) {
+      throw new ConflictException(
+        'This activity was updated by someone else. Refresh to see the latest changes before saving.'
+      );
+    }
   }
 
   /** Matches CanEditActivityGuard for bulk operations that bypass its route guard. */
@@ -2118,7 +2370,10 @@ export class ActivitiesService {
       permissions?: string[];
       teamIds?: number[];
     },
-    options?: { bypassEditLock?: boolean }
+    options?: {
+      bypassEditLock?: boolean;
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
     // Resolve existence first so missing IDs return 404 instead of lock-required 423.
     const [oldActivity] = await this.databaseService.db
@@ -2130,6 +2385,11 @@ export class ActivitiesService {
     if (!oldActivity) {
       throw new NotFoundException(`Activity with ID ${id} not found`);
     }
+
+    const ifUnmodifiedSince = dto.ifUnmodifiedSince;
+    this.assertNotModifiedSince(oldActivity, ifUnmodifiedSince);
+
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
 
     const existingLock = options?.bypassEditLock
       ? null
@@ -2166,13 +2426,19 @@ export class ActivitiesService {
       }
     }
 
-    // Reject update when activity is delete_requested or deleted
     const currentStatusName = await this.getActivityStatusNameById(
       oldActivity.activityStatusId
     );
+    const canEditWhenBlocked =
+      context?.permissions?.includes(PERMISSIONS.ACTIVITIES.DELETE_ANY) ??
+      false;
+
+    // Reject update when activity is delete_requested or deleted unless caller
+    // may edit blocked activities (mirrors UI canEditWhenBlocked / clone guard).
     if (
-      currentStatusName === 'delete_requested' ||
-      currentStatusName === 'deleted'
+      (currentStatusName === 'delete_requested' ||
+        currentStatusName === 'deleted') &&
+      !canEditWhenBlocked
     ) {
       throw new ConflictException(
         `Activity cannot be updated when status is '${currentStatusName}'. Restore the activity first.`
@@ -2199,8 +2465,12 @@ export class ActivitiesService {
       markAsReviewed: _markAsReviewedIgnored,
       markAsCompleted: _markAsCompletedIgnored,
       commsContactLeadId: _commsContactLeadIdUiIgnored,
+      ifUnmodifiedSince: _ifUnmodifiedSinceIgnored,
+      renewPublicLastUpdated,
       ...activityUpdateData
     } = dto;
+
+    const timestampWriteContext = options?.timestampWriteContext ?? 'userPatch';
 
     // Compute new status. Do not use DTO activityStatusId.
     const canReview =
@@ -2210,7 +2480,11 @@ export class ActivitiesService {
 
     let newStatusName: ActivityStatusName;
 
-    if (dto.markAsCompleted === true) {
+    if (currentStatusName === 'delete_requested' && canEditWhenBlocked) {
+      newStatusName = 'delete_requested';
+    } else if (currentStatusName === 'deleted' && canEditWhenBlocked) {
+      newStatusName = 'deleted';
+    } else if (dto.markAsCompleted === true) {
       if (!canComplete) {
         throw new ForbiddenException(
           'You do not have permission to complete activities.'
@@ -2266,15 +2540,19 @@ export class ActivitiesService {
 
     // Build update payload: activityUpdateData contains only core activity fields (junction/venue were destructured out).
     // Cast is intentional: UpdateActivityRequest and Activity must stay in sync; only activity table columns are updated.
+    const now = new Date();
+
     const updateData: Partial<Activity> = {
       ...(activityUpdateData as Partial<Activity>),
       activityStatusId: computedStatusId,
-      lastUpdatedDateTime: new Date(),
+      ...this.getActivityTimestampUpdateForWriteOrThrow({
+        context: timestampWriteContext,
+        permissions: context?.permissions,
+        renewPublicLastUpdated,
+        userId,
+        now,
+      }),
     };
-
-    const now = new Date();
-    // Ensure lastUpdatedBy is set for audit/history
-    updateData.lastUpdatedBy = userId;
 
     // Capture existing related data for history (before transaction)
     const venueRows = await this.databaseService.db
@@ -2296,6 +2574,21 @@ export class ActivitiesService {
           eq(activityCommsContacts.isActive, true)
         )
       );
+
+    const existingSharedTeamIds =
+      sharedWithTeamIds === undefined
+        ? undefined
+        : (
+            await this.databaseService.db
+              .select({ teamId: activitySharedWithTeams.teamId })
+              .from(activitySharedWithTeams)
+              .where(
+                and(
+                  eq(activitySharedWithTeams.activityId, id),
+                  eq(activitySharedWithTeams.isActive, true)
+                )
+              )
+          ).map((row) => row.teamId);
 
     // Validate comms contacts belong to the (possibly updated) lead team
     const effectiveLeadTeamId =
@@ -2386,6 +2679,13 @@ export class ActivitiesService {
     }
 
     // Use transaction to ensure atomicity of activity and junction table updates
+    const concurrencyToken =
+      ifUnmodifiedSince &&
+      oldActivity.lastUpdatedDateTime &&
+      !Number.isNaN(new Date(ifUnmodifiedSince).getTime())
+        ? new Date(ifUnmodifiedSince)
+        : null;
+
     const updated = await this.databaseService.db.transaction(async (tx) => {
       const effectiveLeadTeamId =
         dto.leadTeamId !== undefined ? dto.leadTeamId : oldActivity.leadTeamId;
@@ -2449,11 +2749,27 @@ export class ActivitiesService {
           });
       }
 
+      const updateConditions = [eq(activities.id, id)];
+      if (concurrencyToken) {
+        updateConditions.push(
+          eq(activities.lastUpdatedDateTime, concurrencyToken)
+        );
+      }
+
       const [updatedActivity] = await tx
         .update(activities)
         .set(updateData)
-        .where(eq(activities.id, id))
+        .where(and(...updateConditions))
         .returning();
+
+      if (!updatedActivity) {
+        if (concurrencyToken) {
+          throw new ConflictException(
+            'This activity was updated by someone else. Refresh to see the latest changes before saving.'
+          );
+        }
+        throw new NotFoundException(`Activity with ID ${id} not found`);
+      }
 
       // Debug: log the DB row returned from update
       try {
@@ -2628,7 +2944,7 @@ export class ActivitiesService {
       commsMaterials,
       translationsRequired,
       representativesAttending,
-      sharedWith,
+      sharedWithResult,
       commsContacts,
       leadOrgNamesMap,
       eventPlannerDetailsMap,
@@ -2691,7 +3007,8 @@ export class ActivitiesService {
       commsMaterials: commsMaterials.get(id) ?? [],
       translationsRequired: translationsRequired.get(id) ?? [],
       representativesAttending: representativesAttending.get(id) ?? [],
-      sharedWith: sharedWith.get(id) ?? [],
+      sharedWith: sharedWithResult.namesMap.get(id) ?? [],
+      sharedWithTeamIds: sharedWithResult.idsMap.get(id) ?? [],
       commsContacts: commsContacts.get(id) ?? [],
       eventPlannerDetails,
       eventPlanners: eventPlannerDetails.map((d) => d.name),
@@ -2708,6 +3025,7 @@ export class ActivitiesService {
       leadMinistry: leadMinistryName.get(id) ?? null,
       leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
       leadTeamDisplayName: leadTeamDisplayMap.get(id) ?? null,
+      ...this.mutationResponseAuditFields(),
     });
 
     // Generate change list for history tracking (main activity fields)
@@ -2794,6 +3112,13 @@ export class ActivitiesService {
       });
     }
 
+    const reviewExemptFieldKeys =
+      await this.getEffectiveReviewExemptFieldKeys();
+    const notificationChangedFields = this.resolveNotificationChangedFields(
+      allChanges,
+      reviewExemptFieldKeys
+    );
+
     // Debug: log detected changes
     try {
       this.logger.debug(
@@ -2810,15 +3135,6 @@ export class ActivitiesService {
       : reviewedByUser
         ? 'reviewed'
         : 'updated';
-    const defaultHistoryNote = completedByUser
-      ? allChanges.length > 0
-        ? 'Activity completed and updated'
-        : 'Activity completed'
-      : reviewedByUser
-        ? allChanges.length > 0
-          ? 'Activity reviewed and updated'
-          : 'Activity reviewed'
-        : 'Activity updated';
 
     // Record all activity changes in a single history entry
     await this.activityHistoryService.recordChange(
@@ -2826,7 +3142,7 @@ export class ActivitiesService {
       userId,
       historyActionType,
       allChanges.length > 0 ? allChanges : undefined,
-      activityHistoryNotes || defaultHistoryNote
+      activityHistoryNotes?.trim() || undefined
     );
 
     // When status becomes Reviewed, capture the current state as the review snapshot.
@@ -2855,6 +3171,46 @@ export class ActivitiesService {
       }
     });
 
+    if (currentStatusName !== newStatusName) {
+      if (newStatusName === 'changed') {
+        await this.notificationsService.notifyActivityStatusChangedToChanged({
+          activityId: id,
+          actorUserId: userId,
+        });
+      } else if (newStatusName === 'reviewed') {
+        await this.notificationsService.notifyActivityStatusChangedToAudience({
+          activityId: id,
+          actorUserId: userId,
+          status: 'reviewed',
+          includeWatchlisters: false,
+        });
+      }
+    }
+
+    const sharedWithChanged =
+      sharedWithTeamIds !== undefined &&
+      !isDeepEqual(existingSharedTeamIds ?? [], sharedWithTeamIds);
+
+    if (sharedWithChanged) {
+      await this.notificationsService.notifyActivitySharedWithTeamsChanged({
+        activityId: id,
+        actorUserId: userId,
+        teamIds: sharedWithTeamIds,
+      });
+    }
+
+    const isAdminIncognitoActor =
+      context?.roleName === SYSTEM_ROLES.ADMIN ||
+      context?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+
+    if (!isAdminIncognitoActor && notificationChangedFields.length > 0) {
+      await this.notificationsService.notifyActivityUpdated({
+        activityId: id,
+        actorUserId: userId,
+        changedFields: notificationChangedFields,
+      });
+    }
+
     return result;
   }
 
@@ -2864,7 +3220,7 @@ export class ActivitiesService {
    * The source activity's field values are mapped into a `CreateActivityRequest`
    * payload, then transformed per the clone rules:
    * - Schedule fields and title come from the request body (user re-enters them).
-   * - Never-copied fields (look ahead, pitch, translations, pitchDate, executive
+   * - Never-copied fields (Look Ahead, pitch, translations, pitchDate, executive
    *   summary) are reset to create-time defaults.
    * - Optional `includeFieldPaths` acts as an allow-list across the advanced
    *   field inventory; fields not in the list are dropped so `create` applies
@@ -2886,6 +3242,8 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId, context.permissions);
+
     const source = await this.findOne(sourceId);
 
     const lookups = await this.getReviewDiffLookups();
@@ -2962,7 +3320,8 @@ export class ActivitiesService {
   /**
    * Remove an activity (hard delete).
    * When context.permissions does not include activities.delete.any, user must be comms contact or lead-team member for the activity.
-   * Writes to deletion_audit, then deletes all child rows and the activity in a single transaction.
+   * Writes to deletion_audit, deletes child rows and polymorphic edit locks,
+   * then deletes the activity in a single transaction (see activity-hard-delete.coverage).
    */
   async remove(
     id: number,
@@ -2990,7 +3349,14 @@ export class ActivitiesService {
     }
 
     // Verify activity exists so we return 404 for non-existent IDs (auth already enforced above)
-    await this.findOne(id, { dataScope: { bypass: true, teamIds: [] } });
+    const existingActivity = await this.findOne(id, {
+      dataScope: { bypass: true, teamIds: [] },
+    });
+
+    const hardDeleteRecipientUserIds =
+      await this.notificationsService.getActivityAudienceForHardDelete(id);
+
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
 
     const reason = options?.reason ?? undefined;
 
@@ -3002,7 +3368,7 @@ export class ActivitiesService {
         reason: reason ?? null,
       });
 
-      // Delete all child rows that reference this activity (order does not matter for these tables)
+      // Delete child rows that reference this activity (order does not matter for these tables).
       await tx
         .delete(activityHistory)
         .where(eq(activityHistory.activityId, id));
@@ -3015,6 +3381,9 @@ export class ActivitiesService {
       await tx
         .delete(activityCommsMaterials)
         .where(eq(activityCommsMaterials.activityId, id));
+      await tx
+        .delete(activityEventPlanners)
+        .where(eq(activityEventPlanners.activityId, id));
       await tx
         .delete(activityReportSettings)
         .where(eq(activityReportSettings.activityId, id));
@@ -3037,7 +3406,22 @@ export class ActivitiesService {
         .where(eq(activitySubscriptions.activityId, id));
       await tx.delete(venueAddresses).where(eq(venueAddresses.activityId, id));
 
+      // Polymorphic lock rows have no activities.id FK — must delete explicitly.
+      await tx
+        .delete(editLocks)
+        .where(
+          and(eq(editLocks.entityType, 'activity'), eq(editLocks.entityId, id))
+        );
+
       await tx.delete(activities).where(eq(activities.id, id));
+    });
+
+    await this.notificationsService.notifyActivityHardDeleted({
+      activityId: id,
+      actorUserId: userId,
+      displayId: existingActivity.displayId,
+      title: existingActivity.title,
+      recipientUserIds: hardDeleteRecipientUserIds,
     });
 
     this.activitiesGateway.broadcastActivityUpdated(id);
@@ -3048,10 +3432,23 @@ export class ActivitiesService {
   /**
    * Get activity history
    */
-  async getHistory(id: number) {
-    // Verify activity exists
-    await this.findOne(id);
-    return this.activityHistoryService.getActivityHistory(id);
+  private toHistoryViewer(
+    ctx?: RequestContextType
+  ): FieldScopeUser | undefined {
+    if (!ctx?.user) return undefined;
+    return {
+      permissions: ctx.user.permissions,
+      roleName: ctx.user.roleName,
+    };
+  }
+
+  async getHistory(id: number, ctx?: RequestContextType) {
+    // Verify activity exists and is visible to the caller
+    await this.findOne(id, ctx);
+    return this.activityHistoryService.getActivityHistory(
+      id,
+      this.toHistoryViewer(ctx)
+    );
   }
 
   /**
@@ -3117,61 +3514,6 @@ export class ActivitiesService {
     });
   }
 
-  async getGlobalHistory(ctx?: RequestContextType): Promise<{
-    items: GlobalActivityHistoryEntry[];
-    page: number;
-    pageSize: number;
-    hasNext: boolean;
-    totalItems: number;
-  }> {
-    const visibleActivityIds = await this.getVisibleActivityIds(ctx);
-    // null = admin/bypass (all visible); empty array = no visible activities
-    if (visibleActivityIds !== null && visibleActivityIds.length === 0) {
-      return {
-        items: [],
-        page: 1,
-        pageSize: 50,
-        hasNext: false,
-        totalItems: 0,
-      };
-    }
-
-    // Default scope: today (server local date)
-    const now = new Date();
-    const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-    const historyPage =
-      await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
-        visibleActivityIds,
-        {
-          startDate: todayDateStr,
-          endDate: todayDateStr,
-          page: 1,
-          pageSize: 50,
-        }
-      );
-
-    if (historyPage.items.length === 0) {
-      return {
-        items: [],
-        page: 1,
-        pageSize: 50,
-        hasNext: false,
-        totalItems: 0,
-      };
-    }
-
-    const items = await this.enrichHistoryPage(historyPage.items);
-
-    return {
-      items,
-      page: 1,
-      pageSize: 50,
-      hasNext: historyPage.hasNext,
-      totalItems: historyPage.totalItems ?? 0,
-    };
-  }
-
   async getGlobalHistoryPaged(
     opts: {
       startDate?: string;
@@ -3180,6 +3522,11 @@ export class ActivitiesService {
       pageSize?: number;
       query?: string;
       order?: 'asc' | 'desc';
+      userId?: number;
+      userIds?: number[];
+      actionTypes?: string[];
+      categoryNames?: string[];
+      leadTeamIds?: number[];
     },
     ctx?: RequestContextType
   ): Promise<{
@@ -3204,22 +3551,17 @@ export class ActivitiesService {
     const page = Math.max(1, opts.page ?? 1);
     const pageSize = Math.max(1, opts.pageSize ?? 50);
 
-    // Apply a default 30-day window when neither bound is provided to prevent
-    // unbounded history scans and expensive COUNT(*) over all-time data.
-    const now = new Date();
-    const formatDate = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const defaultEndDate = formatDate(now);
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const defaultStartDate = formatDate(thirtyDaysAgo);
+    // Default to today (Pacific) when neither bound is provided to match global history UI
+    // and prevent unbounded history scans.
+    const todayPacific = pacificCalendarDateFromInstant(Date.now());
+    const defaultDate =
+      todayPacific ??
+      `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}-${String(new Date().getUTCDate()).padStart(2, '0')}`;
 
     const startDate =
-      opts.startDate ??
-      (opts.endDate === undefined ? defaultStartDate : undefined);
+      opts.startDate ?? (opts.endDate === undefined ? defaultDate : undefined);
     const endDate =
-      opts.endDate ??
-      (opts.startDate === undefined ? defaultEndDate : undefined);
+      opts.endDate ?? (opts.startDate === undefined ? defaultDate : undefined);
 
     const historyPage =
       await this.activityHistoryService.getActivityHistoryForActivityIdsPaged(
@@ -3231,6 +3573,12 @@ export class ActivitiesService {
           pageSize,
           query: opts.query,
           order: opts.order,
+          userId: opts.userId,
+          userIds: opts.userIds,
+          actionTypes: opts.actionTypes,
+          categoryNames: opts.categoryNames,
+          leadTeamIds: opts.leadTeamIds,
+          viewer: this.toHistoryViewer(ctx),
         }
       );
 
@@ -3239,7 +3587,7 @@ export class ActivitiesService {
         items: [],
         page,
         pageSize,
-        hasNext: false,
+        hasNext: historyPage.hasNext,
         totalItems: historyPage.totalItems ?? 0,
       };
     }
@@ -3255,7 +3603,14 @@ export class ActivitiesService {
     };
   }
 
-  async addHistoryNote(id: number, note: string, userId: number) {
+  async addHistoryNote(
+    id: number,
+    note: string,
+    userId: number,
+    ctx?: RequestContextType
+  ) {
+    await this.assertCanEditDuringLockout(userId);
+
     const trimmedNote = note.trim();
     if (trimmedNote.length === 0) {
       throw new BadRequestException('Note is required');
@@ -3271,6 +3626,20 @@ export class ActivitiesService {
       throw new NotFoundException(`Activity with id ${id} not found`);
     }
 
+    const now = new Date();
+
+    await this.databaseService.db
+      .update(activities)
+      .set(
+        this.getActivityTimestampUpdateForWriteOrThrow({
+          context: 'historyNote',
+          permissions: ctx?.user?.permissions,
+          userId,
+          now,
+        })
+      )
+      .where(eq(activities.id, id));
+
     const createdEntry = await this.activityHistoryService.recordChange(
       id,
       userId,
@@ -3280,7 +3649,8 @@ export class ActivitiesService {
     );
 
     const hydratedEntry = await this.activityHistoryService.getHistoryEntryById(
-      createdEntry.id
+      createdEntry.id,
+      this.toHistoryViewer(ctx)
     );
 
     if (!hydratedEntry) {
@@ -3289,45 +3659,13 @@ export class ActivitiesService {
       );
     }
 
+    await this.notificationsService.notifyActivityHistoryNoteAdded({
+      activityId: id,
+      actorUserId: userId,
+      note: trimmedNote,
+    });
+
     return hydratedEntry;
-  }
-
-  /**
-   * Cancel changes - revert activity to last published state
-   * This is a simplified implementation that reverts to the last saved state
-   * In a full implementation, this would restore from a published snapshot
-   */
-  async cancelChanges(id: number, userId: number): Promise<ActivityResponse> {
-    // Verify activity exists
-    const currentActivity = await this.findOne(id);
-
-    // Get the last published state from history
-    // For now, we'll use a simplified approach: get the activity as it was
-    // at the time of the last 'published' action, or use current state if none
-    const lastPublished =
-      await this.activityHistoryService.getLastPublishedState(id);
-
-    if (!lastPublished || !lastPublished.changes) {
-      // No published state found, return current activity
-      // In a full implementation, we might throw an error or create a baseline
-      return currentActivity;
-    }
-
-    // TODO: Implement full restore from published state
-    // For Phase 2, this is a placeholder that records the cancel action
-    // Full implementation would require storing complete activity snapshots
-
-    // Record the cancel action in history
-    await this.activityHistoryService.recordChange(
-      id,
-      userId,
-      'changes_cancelled',
-      undefined,
-      'Changes cancelled, reverted to last published state'
-    );
-
-    // Return current activity (full restore would happen here)
-    return currentActivity;
   }
 
   /**
@@ -3340,6 +3678,8 @@ export class ActivitiesService {
     userId: number,
     context?: { permissions?: string[]; teamIds?: number[] }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId, context?.permissions);
+
     // Validate reason is provided and not empty
     // Required for audit and admin review purposes
     if (!reason || reason.trim().length === 0) {
@@ -3393,12 +3733,16 @@ export class ActivitiesService {
       // Clear snapshot before the status update so `.returning()` matches DB state.
       await this.clearReviewSnapshot(tx, id);
 
+      const now = new Date();
       const [updatedActivity] = await tx
         .update(activities)
         .set({
           activityStatusId: deletedStatus.id,
-          lastUpdatedDateTime: new Date(),
-          lastUpdatedBy: userId,
+          ...getActivityTimestampUpdateForWrite({
+            context: 'softDelete',
+            userId,
+            now,
+          }),
         })
         .where(eq(activities.id, id))
         .returning();
@@ -3443,7 +3787,8 @@ export class ActivitiesService {
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
-      sharedWith: related.sharedWithMap.get(id) ?? [],
+      sharedWith: related.sharedWithResult.namesMap.get(id) ?? [],
+      sharedWithTeamIds: related.sharedWithResult.idsMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
@@ -3461,9 +3806,17 @@ export class ActivitiesService {
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
+      ...this.mutationResponseAuditFields(),
     });
 
     this.activitiesGateway.broadcastActivityUpdated(id);
+
+    await this.notificationsService.notifyActivityStatusChangedToAudience({
+      activityId: id,
+      actorUserId: userId,
+      status: 'deleted',
+      includeWatchlisters: true,
+    });
 
     return dto;
   }
@@ -3478,6 +3831,8 @@ export class ActivitiesService {
     reason: string,
     userId: number
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     if (!reason || reason.trim().length === 0) {
       throw new BadRequestException(
         'A reason is required when requesting delete'
@@ -3524,12 +3879,16 @@ export class ActivitiesService {
     }
 
     const updated = await this.databaseService.db.transaction(async (tx) => {
+      const now = new Date();
       const [updatedActivity] = await tx
         .update(activities)
         .set({
           activityStatusId: deleteRequestedStatus.id,
-          lastUpdatedDateTime: new Date(),
-          lastUpdatedBy: userId,
+          ...getActivityTimestampUpdateForWrite({
+            context: 'deleteRequested',
+            userId,
+            now,
+          }),
         })
         .where(eq(activities.id, id))
         .returning();
@@ -3573,7 +3932,8 @@ export class ActivitiesService {
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
-      sharedWith: related.sharedWithMap.get(id) ?? [],
+      sharedWith: related.sharedWithResult.namesMap.get(id) ?? [],
+      sharedWithTeamIds: related.sharedWithResult.idsMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
@@ -3591,9 +3951,17 @@ export class ActivitiesService {
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
+      ...this.mutationResponseAuditFields(),
     });
 
     this.activitiesGateway.broadcastActivityUpdated(id);
+
+    await this.notificationsService.notifyActivityStatusChangedToAudience({
+      activityId: id,
+      actorUserId: userId,
+      status: 'delete_requested',
+      includeWatchlisters: false,
+    });
 
     return dto;
   }
@@ -3609,6 +3977,8 @@ export class ActivitiesService {
     note: string | undefined,
     _context?: { roleName: string }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     const [existing] = await this.databaseService.db
       .select()
       .from(activities)
@@ -3639,12 +4009,16 @@ export class ActivitiesService {
       (await this.getActivityStatusIdByName('changed'));
 
     const updated = await this.databaseService.db.transaction(async (tx) => {
+      const now = new Date();
       const [updatedActivity] = await tx
         .update(activities)
         .set({
           activityStatusId: previousStatusId,
-          lastUpdatedDateTime: new Date(),
-          lastUpdatedBy: userId,
+          ...getActivityTimestampUpdateForWrite({
+            context: 'restore',
+            userId,
+            now,
+          }),
         })
         .where(eq(activities.id, id))
         .returning();
@@ -3695,7 +4069,8 @@ export class ActivitiesService {
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
-      sharedWith: related.sharedWithMap.get(id) ?? [],
+      sharedWith: related.sharedWithResult.namesMap.get(id) ?? [],
+      sharedWithTeamIds: related.sharedWithResult.idsMap.get(id) ?? [],
       commsContacts: related.commsContactsMap.get(id) ?? [],
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
@@ -3713,6 +4088,7 @@ export class ActivitiesService {
       leadMinistryAbbreviation:
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
+      ...this.mutationResponseAuditFields(),
     });
 
     this.activitiesGateway.broadcastActivityUpdated(id);
@@ -3721,25 +4097,19 @@ export class ActivitiesService {
   }
 
   /**
-   * Fetch all active categories for legacy activity categories endpoint.
-   */
-  public async fetchCategories(_userTeams?: number[]): Promise<Category[]> {
-    const rows = await this.databaseService.db
-      .select()
-      .from(categories)
-      .where(eq(categories.isActive, true))
-      .orderBy(categories.name);
-    return rows;
-  }
-
-  /**
    * Update activity categories
    */
   async updateCategories(
     id: number,
     categoryIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      permissions?: string[];
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     // Verify activity exists
     await this.findOne(id);
 
@@ -3757,6 +4127,8 @@ export class ActivitiesService {
       .where(eq(activityCategories.activityId, id));
     const existingCategoryIds = existingCategories.map((c) => c.categoryId);
 
+    const timestampContext = options?.timestampWriteContext ?? 'junction';
+
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -3766,6 +4138,14 @@ export class ActivitiesService {
         (id: number) => ({ categoryId: id }),
         'categoryId',
         userId,
+        now
+      );
+      await this.applyActivityTimestampInTransaction(
+        tx,
+        id,
+        userId,
+        timestampContext,
+        options?.permissions,
         now
       );
     });
@@ -3797,8 +4177,14 @@ export class ActivitiesService {
   async updateThemes(
     id: number,
     themeIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      permissions?: string[];
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     // Verify activity exists
     await this.findOne(id);
 
@@ -3811,6 +4197,8 @@ export class ActivitiesService {
       .where(eq(activityThemes.activityId, id));
     const existingThemeIds = existingThemes.map((t) => t.themeId);
 
+    const timestampContext = options?.timestampWriteContext ?? 'junction';
+
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -3820,6 +4208,14 @@ export class ActivitiesService {
         (id: number) => ({ themeId: id }),
         'themeId',
         userId,
+        now
+      );
+      await this.applyActivityTimestampInTransaction(
+        tx,
+        id,
+        userId,
+        timestampContext,
+        options?.permissions,
         now
       );
     });
@@ -3846,8 +4242,14 @@ export class ActivitiesService {
   async updateTags(
     id: number,
     tagIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      permissions?: string[];
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     // Verify activity exists
     await this.findOne(id);
 
@@ -3860,6 +4262,8 @@ export class ActivitiesService {
       .where(eq(activityTags.activityId, id));
     const existingTagIds = existingTags.map((t) => t.tagId);
 
+    const timestampContext = options?.timestampWriteContext ?? 'junction';
+
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
         tx,
@@ -3869,6 +4273,14 @@ export class ActivitiesService {
         (id: number) => ({ tagId: id }),
         'tagId',
         userId,
+        now
+      );
+      await this.applyActivityTimestampInTransaction(
+        tx,
+        id,
+        userId,
+        timestampContext,
+        options?.permissions,
         now
       );
     });
@@ -3894,8 +4306,14 @@ export class ActivitiesService {
   async updateSharedWith(
     id: number,
     teamIds: number[],
-    userId: number
+    userId: number,
+    options?: {
+      permissions?: string[];
+      timestampWriteContext?: TimestampWriteContext;
+    }
   ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
     // Verify activity exists
     await this.findOne(id);
 
@@ -3907,6 +4325,7 @@ export class ActivitiesService {
       .from(activitySharedWithTeams)
       .where(eq(activitySharedWithTeams.activityId, id));
     const existingTeamIds = existingShared.map((s) => s.teamId);
+    const timestampContext = options?.timestampWriteContext ?? 'junction';
 
     await this.databaseService.db.transaction(async (tx) => {
       await this.junctionService.updateJunctionRecords(
@@ -3917,6 +4336,14 @@ export class ActivitiesService {
         (id: number) => ({ teamId: id }),
         'teamId',
         userId,
+        now
+      );
+      await this.applyActivityTimestampInTransaction(
+        tx,
+        id,
+        userId,
+        timestampContext,
+        options?.permissions,
         now
       );
     });
@@ -3930,9 +4357,322 @@ export class ActivitiesService {
         [{ field: 'sharedWith', oldValue: existingTeamIds, newValue: teamIds }],
         'Activity shared with teams updated'
       );
+
+      await this.notificationsService.notifyActivitySharedWithTeamsChanged({
+        activityId: id,
+        actorUserId: userId,
+        teamIds,
+      });
     }
 
     // Return updated activity
     return this.findOne(id);
+  }
+
+  /**
+   * Add teams to an activity's Shared With list, keeping the teams already there.
+   * Used by the bulk share action, where replacing the list would drop shares the
+   * selected activities each had for other teams.
+   */
+  async addSharedWithTeams(
+    id: number,
+    teamIds: number[],
+    userId: number,
+    options?: {
+      permissions?: string[];
+      timestampWriteContext?: TimestampWriteContext;
+    }
+  ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+
+    // Verify activity exists
+    await this.findOne(id);
+
+    const existingShared = await this.databaseService.db
+      .select({ teamId: activitySharedWithTeams.teamId })
+      .from(activitySharedWithTeams)
+      .where(
+        and(
+          eq(activitySharedWithTeams.activityId, id),
+          eq(activitySharedWithTeams.isActive, true)
+        )
+      );
+    const existingTeamIds = existingShared.map((s) => s.teamId);
+    const mergedTeamIds = [...new Set([...existingTeamIds, ...teamIds])];
+
+    if (mergedTeamIds.length === existingTeamIds.length) {
+      return this.findOne(id);
+    }
+
+    const now = new Date();
+    const timestampContext = options?.timestampWriteContext ?? 'junction';
+    await this.databaseService.db.transaction(async (tx) => {
+      await this.junctionService.updateJunctionRecords(
+        tx,
+        activitySharedWithTeams,
+        id,
+        mergedTeamIds,
+        (teamId: number) => ({ teamId }),
+        'teamId',
+        userId,
+        now
+      );
+      await this.applyActivityTimestampInTransaction(
+        tx,
+        id,
+        userId,
+        timestampContext,
+        options?.permissions,
+        now
+      );
+    });
+
+    await this.activityHistoryService.recordChange(
+      id,
+      userId,
+      'updated',
+      [
+        {
+          field: 'sharedWith',
+          oldValue: existingTeamIds,
+          newValue: mergedTeamIds,
+        },
+      ],
+      'Activity shared with additional teams'
+    );
+
+    this.activitiesGateway.notifyActivityUpdate(id);
+
+    return this.findOne(id);
+  }
+
+  /**
+   * Remove a single team from an activity's Shared With list.
+   * Used by the activities.unshare action, which lets a team member remove their own
+   * team's share without granting broader edit access to the activity.
+   */
+  async unshareTeam(
+    id: number,
+    teamId: number,
+    userId: number,
+    ctx?: RequestContextType
+  ): Promise<ActivityResponse> {
+    await this.assertCanEditDuringLockout(userId);
+    await this.removeSharedWithTeam(id, teamId, userId);
+
+    // Keep the caller's user context (for canEdit/reviewer fields) but force
+    // bypass: the caller may only be a shared-with team member, which
+    // findOne's default visibility scoping would otherwise hide.
+    return this.findOne(id, {
+      ...ctx,
+      dataScope: { bypass: true, teamIds: ctx?.dataScope?.teamIds ?? [] },
+    });
+  }
+
+  /**
+   * Remove one team from several activities' Shared With lists.
+   * Per-activity failures are reported rather than aborting the batch, so a
+   * selection containing activities that are locked or not shared with the team
+   * still unshares the rest. Caller authorization for `teamId` is enforced by the
+   * controller guard; the recurring lockout is checked once for the whole batch.
+   */
+  async bulkUnshareTeam(
+    activityIds: number[],
+    teamId: number,
+    userId: number
+  ): Promise<BulkUnshareActivitiesResult> {
+    await this.assertCanEditDuringLockout(userId);
+
+    const results: BulkUnshareActivitiesResult['results'] = [];
+
+    for (const activityId of activityIds) {
+      try {
+        await this.removeSharedWithTeam(activityId, teamId, userId);
+        results.push({ activityId, status: 'updated' });
+      } catch (err: unknown) {
+        // Expected per-activity outcomes (not shared with the team, missing,
+        // locked by another user) are reported as skipped so the rest proceed.
+        const isExpected =
+          err instanceof BadRequestException ||
+          err instanceof NotFoundException ||
+          (err instanceof HttpException && err.getStatus() === 423);
+        if (!isExpected) throw err;
+
+        results.push({
+          activityId,
+          status: 'skipped',
+          reason:
+            err instanceof HttpException
+              ? this.extractHttpExceptionMessage(err)
+              : 'Could not be unshared.',
+        });
+      }
+    }
+
+    return {
+      results,
+      summary: {
+        updated: results.filter((r) => r.status === 'updated').length,
+        skipped: results.filter((r) => r.status === 'skipped').length,
+      },
+    };
+  }
+
+  /** Human-readable message from a Nest exception response (string or object body). */
+  private extractHttpExceptionMessage(err: HttpException): string {
+    const response = err.getResponse();
+    if (typeof response === 'string') return response;
+    const message = (response as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+    if (Array.isArray(message)) return message.join(', ');
+    return err.message;
+  }
+
+  /**
+   * Shared write path for single and bulk unshare: validates the activity exists,
+   * is shared with the team, and is not being edited by someone else, then removes
+   * the junction row, records history, and notifies clients.
+   */
+  private async removeSharedWithTeam(
+    id: number,
+    teamId: number,
+    userId: number
+  ): Promise<void> {
+    // Plain existence check (not scoped via findOne's data-scope visibility rules):
+    // the caller may only be a shared-with team member, not visible under default scoping.
+    const [existingActivity] = await this.databaseService.db
+      .select({ id: activities.id })
+      .from(activities)
+      .where(eq(activities.id, id))
+      .limit(1);
+    if (!existingActivity) {
+      throw new NotFoundException(`Activity #${id} not found`);
+    }
+
+    // Unshare writes the same junction table an in-progress editor saves, so a
+    // lock held by another user would let their stale form re-add the team.
+    const existingLock = await this.locksService.getLockForEntity(
+      'activity',
+      id
+    );
+    if (existingLock && existingLock.userId !== userId) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.LOCKED,
+          message: 'Cannot unshare while activity is being edited.',
+          locked: true,
+          lockedBy: {
+            userId: existingLock.userId,
+            username: existingLock.username,
+          },
+        },
+        HttpStatus.LOCKED
+      );
+    }
+
+    const existingShared = await this.databaseService.db
+      .select({ teamId: activitySharedWithTeams.teamId })
+      .from(activitySharedWithTeams)
+      .where(
+        and(
+          eq(activitySharedWithTeams.activityId, id),
+          eq(activitySharedWithTeams.isActive, true)
+        )
+      );
+    const existingTeamIds = existingShared.map((s) => s.teamId);
+
+    if (!existingTeamIds.includes(teamId)) {
+      throw new BadRequestException(
+        'This activity is not currently shared with that team.'
+      );
+    }
+
+    const newTeamIds = existingTeamIds.filter((t) => t !== teamId);
+    const now = new Date();
+
+    await this.databaseService.db.transaction(async (tx) => {
+      await this.junctionService.updateJunctionRecords(
+        tx,
+        activitySharedWithTeams,
+        id,
+        newTeamIds,
+        (teamId: number) => ({ teamId }),
+        'teamId',
+        userId,
+        now
+      );
+
+      await tx
+        .update(activities)
+        .set(
+          getActivityTimestampUpdateForWrite({
+            context: 'sharedWithDelete',
+            userId,
+            now,
+          })
+        )
+        .where(eq(activities.id, id));
+    });
+
+    await this.activityHistoryService.recordChange(
+      id,
+      userId,
+      'updated',
+      [
+        {
+          field: 'sharedWith',
+          oldValue: existingTeamIds,
+          newValue: newTeamIds,
+        },
+      ],
+      'Activity unshared from team'
+    );
+
+    // Notify detail viewers as well as the activity list: an editor viewing this
+    // activity must see the new shared-with set rather than saving a stale one.
+    this.activitiesGateway.notifyActivityUpdate(id);
+  }
+
+  private getActivityTimestampUpdateForWriteOrThrow(
+    input: Omit<
+      Parameters<typeof getActivityTimestampUpdateForWrite>[0],
+      'now'
+    > & { now?: Date }
+  ): ReturnType<typeof getActivityTimestampUpdateForWrite> {
+    try {
+      return getActivityTimestampUpdateForWrite({
+        ...input,
+        now: input.now ?? new Date(),
+      });
+    } catch (error) {
+      if (error instanceof ActivityTimestampPolicyError) {
+        if (error.code === 'bad_request') {
+          throw new BadRequestException(error.message);
+        }
+        throw new ForbiddenException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  private async applyActivityTimestampInTransaction(
+    tx: DrizzleDbExecutor,
+    activityId: number,
+    userId: number,
+    context: TimestampWriteContext,
+    permissions: string[] | undefined,
+    now: Date = new Date()
+  ): Promise<void> {
+    await tx
+      .update(activities)
+      .set(
+        this.getActivityTimestampUpdateForWriteOrThrow({
+          context,
+          permissions,
+          userId,
+          now,
+        })
+      )
+      .where(eq(activities.id, activityId));
   }
 }

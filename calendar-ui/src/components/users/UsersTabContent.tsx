@@ -10,6 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
 import { fetchRoles, fetchTeams, fetchUsers } from '@/api/usersApi';
+import { ContentSection } from '@/components/table/ContentSection';
+import { FilterSection } from '@/components/table/FilterSection';
 import { SortIndicator } from '@/components/table/SortIndicator';
 import {
   tableBodyRow,
@@ -24,10 +26,18 @@ import {
   handleTableRowKeyDown,
 } from '@/components/table/tableRowNavigation';
 import { TableScrollContainer } from '@/components/table/TableScrollContainer';
-import { TableSummaryBar } from '@/components/table/TableSummaryBar';
+import {
+  TableContentSummary,
+  TableFilterSummary,
+} from '@/components/table/TableSummaryBar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserManagementFilters } from '@/components/users/UserManagementFilters';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import {
+  buildUserAppliedFilterTypeLabels,
+  buildUserFilterDetailLines,
+  hasUserClearableFilters,
+} from '@/lib/management-filter-summary';
 
 const IDIR_PLACEHOLDER = 'MYIDIR';
 const SKELETON_ROW_COUNT = 8;
@@ -229,218 +239,261 @@ export function UsersTabContent() {
     setSortDirection(direction);
   };
 
-  return (
-    <div className="space-y-4">
-      <UserManagementFilters
-        keyword={keyword}
-        teamIds={teamIds}
-        roleIds={roleIds}
-        onKeywordChange={setKeyword}
-        onTeamIdsChange={setTeamIds}
-        onRoleIdsChange={setRoleIds}
-        teamOptions={teamOptions}
-        roleOptions={roleOptions}
-        sortKey={sortKey}
-        sortDirection={sortDirection}
-        onSortChange={handleSortChange}
-        defaultSortKey={DEFAULT_SORT_KEY}
-        defaultSortDirection={DEFAULT_SORT_DIRECTION}
-        className="mb-4"
-      />
+  const appliedFilterTypeLabels = useMemo(
+    () => buildUserAppliedFilterTypeLabels({ keyword, teamIds, roleIds }),
+    [keyword, roleIds, teamIds]
+  );
 
-      <TableSummaryBar
-        count={displayedUsers.length}
-        singularLabel="user"
-        pluralLabel="users"
-        filters={[
-          {
-            id: 'show-inactive',
-            label: 'Show inactive',
-            checked: showInactive,
-            onCheckedChange: setShowInactive,
-          },
-        ]}
-      />
-      <TableScrollContainer ref={tableScrollRef}>
-        <table
-          className={`${tableTable} min-w-[640px]`}
-          role="grid"
-          aria-colcount={TABLE_COLUMN_COUNT}
-        >
-          <colgroup>
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '22%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '14%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '10%' }} />
-          </colgroup>
-          <thead className={tableThead}>
-            <tr>
-              <th className={tableTh}>
-                <span className="inline-flex items-center gap-1">
-                  Name
-                  <SortIndicator
-                    columnId="name"
-                    sortKey={sortKey}
-                    sortDirection={
-                      sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION
-                    }
-                    className="h-4 w-4"
-                  />
-                </span>
-              </th>
-              <th className={tableTh}>Email</th>
-              <th className={tableTh}>IDIR</th>
-              <th className={tableTh}>
-                <span className="inline-flex items-center gap-1">
-                  Role
-                  <SortIndicator
-                    columnId="role"
-                    sortKey={sortKey}
-                    sortDirection={
-                      sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION
-                    }
-                    className="h-4 w-4"
-                  />
-                </span>
-              </th>
-              <th className={tableTh}>Teams</th>
-              <th className={tableTh}>Status</th>
-              <th className={tableTh}>
-                <span className="inline-flex items-center gap-1">
-                  Last updated
-                  <SortIndicator
-                    columnId="lastUpdated"
-                    sortKey={sortKey}
-                    sortDirection={
-                      sortKey !== null ? sortDirection : DEFAULT_SORT_DIRECTION
-                    }
-                    className="h-4 w-4"
-                  />
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && showSkeleton ? (
-              Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
-                <tr key={i} className={tableBodyRow} aria-hidden>
-                  <td className={tableTd}>
-                    <Skeleton className="h-5 w-28" />
-                  </td>
-                  <td className={tableTd}>
-                    <Skeleton className="h-5 w-36" />
-                  </td>
-                  <td className={tableTd}>
-                    <Skeleton className="h-5 w-14" />
-                  </td>
-                  <td className={tableTd}>
-                    <Skeleton className="h-5 w-20" />
-                  </td>
-                  <td className={tableTd}>
-                    <Skeleton className="h-5 w-24" />
-                  </td>
-                  <td className={tableTd}>
-                    <Skeleton className="h-5 w-14" />
-                  </td>
-                  <td className={tableTd}>
-                    <Skeleton className="h-5 w-20" />
-                  </td>
-                </tr>
-              ))
-            ) : displayedUsers.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={TABLE_COLUMN_COUNT}
-                  className={`${tableTd} py-12 text-center text-slate-500`}
-                >
-                  {keyword || teamIds.length > 0 || roleIds.length > 0
-                    ? 'No users match your filters'
-                    : 'No users found'}
-                </td>
-              </tr>
-            ) : (
-              pageRows.map((user) => (
-                <tr
-                  key={user.id}
-                  role="button"
-                  aria-label={`View user ${displayName(user)}`}
-                  className={`${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`}
-                  tabIndex={0}
-                  onClick={(e) => {
-                    handleTableRowClick(e, () => {
-                      void navigate(`/users/${user.id}`);
-                    });
-                  }}
-                  onKeyDown={(e) => {
-                    handleTableRowKeyDown(e, () => {
-                      void navigate(`/users/${user.id}`);
-                    });
-                  }}
-                >
-                  <td className={`${tableTd} font-medium text-slate-900`}>
-                    {displayName(user)}
-                  </td>
-                  <td className={`${tableTd} text-slate-600`}>
-                    {user.adEmail ?? '-'}
-                  </td>
-                  <td className={`${tableTd} text-slate-600`}>
-                    {IDIR_PLACEHOLDER}
-                  </td>
-                  <td className={tableTd}>
-                    <span className="rounded border border-slate-200 px-2 py-0.5 text-xs">
-                      {user.roleName}
-                    </span>
-                  </td>
-                  <td className={tableTd}>
-                    <div className="flex flex-wrap gap-1">
-                      {user.teams.length === 0 ? (
-                        <span className="text-slate-400">-</span>
-                      ) : (
-                        user.teams.map((t) => (
-                          <Link
-                            key={t.teamId}
-                            to={`/teams/${t.teamId}`}
-                            data-no-row-nav
-                            className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
-                          >
-                            {t.teamName}
-                            {t.role !== 'member' ? ` (${t.role})` : ''}
-                          </Link>
-                        ))
-                      )}
-                    </div>
-                  </td>
-                  <td className={tableTd}>{statusBadge(user.isActive)}</td>
-                  <td className={`${tableTd} text-sm text-slate-600`}>
-                    {formatLastUpdated(
-                      (user as { lastUpdatedDateTime?: string | null })
-                        .lastUpdatedDateTime
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </TableScrollContainer>
-      {displayedUsers.length > 0 && (
-        <TablePagination
-          totalItems={displayedUsers.length}
-          page={pagination.pageIndex + 1}
-          pageSize={pagination.pageSize}
-          onPageChange={(p) =>
-            setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
-          }
-          onPageSizeChange={(ps) =>
-            setPagination((prev) => ({ ...prev, pageSize: ps, pageIndex: 0 }))
-          }
-          scrollContainerRef={tableScrollRef}
-          aria-label="Users table pagination"
+  const filterDetailLines = useMemo(
+    () =>
+      buildUserFilterDetailLines({
+        keyword,
+        teamIds,
+        roleIds,
+        teamOptions,
+        roleOptions,
+      }),
+    [keyword, roleIds, roleOptions, teamIds, teamOptions]
+  );
+
+  const showClearFilters = hasUserClearableFilters({
+    keyword,
+    teamIds,
+    roleIds,
+  });
+
+  const clearAllFilters = useCallback(() => {
+    setKeyword('');
+    setTeamIds([]);
+    setRoleIds([]);
+  }, []);
+
+  return (
+    <div className="min-w-0">
+      <FilterSection>
+        <UserManagementFilters
+          keyword={keyword}
+          teamIds={teamIds}
+          roleIds={roleIds}
+          onKeywordChange={setKeyword}
+          onTeamIdsChange={setTeamIds}
+          onRoleIdsChange={setRoleIds}
+          teamOptions={teamOptions}
+          roleOptions={roleOptions}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSortChange={handleSortChange}
+          defaultSortKey={DEFAULT_SORT_KEY}
+          defaultSortDirection={DEFAULT_SORT_DIRECTION}
         />
-      )}
+        <TableFilterSummary
+          appliedFilterTypeLabels={appliedFilterTypeLabels}
+          filterDetailLines={filterDetailLines}
+          onClearFilters={showClearFilters ? clearAllFilters : undefined}
+        />
+      </FilterSection>
+
+      <ContentSection>
+        <TableContentSummary
+          count={displayedUsers.length}
+          singularLabel="user"
+          pluralLabel="users"
+          filters={[
+            {
+              id: 'show-inactive',
+              label: 'Show inactive',
+              checked: showInactive,
+              onCheckedChange: setShowInactive,
+            },
+          ]}
+        />
+        <TableScrollContainer ref={tableScrollRef}>
+          <table
+            className={`${tableTable} min-w-[640px]`}
+            role="grid"
+            aria-colcount={TABLE_COLUMN_COUNT}
+          >
+            <colgroup>
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '10%' }} />
+            </colgroup>
+            <thead className={tableThead}>
+              <tr>
+                <th className={tableTh}>
+                  <span className="inline-flex items-center gap-1">
+                    Name
+                    <SortIndicator
+                      columnId="name"
+                      sortKey={sortKey}
+                      sortDirection={
+                        sortKey !== null
+                          ? sortDirection
+                          : DEFAULT_SORT_DIRECTION
+                      }
+                      className="h-4 w-4"
+                    />
+                  </span>
+                </th>
+                <th className={tableTh}>Email</th>
+                <th className={tableTh}>IDIR</th>
+                <th className={tableTh}>
+                  <span className="inline-flex items-center gap-1">
+                    Role
+                    <SortIndicator
+                      columnId="role"
+                      sortKey={sortKey}
+                      sortDirection={
+                        sortKey !== null
+                          ? sortDirection
+                          : DEFAULT_SORT_DIRECTION
+                      }
+                      className="h-4 w-4"
+                    />
+                  </span>
+                </th>
+                <th className={tableTh}>Teams</th>
+                <th className={tableTh}>Status</th>
+                <th className={tableTh}>
+                  <span className="inline-flex items-center gap-1">
+                    Last updated
+                    <SortIndicator
+                      columnId="lastUpdated"
+                      sortKey={sortKey}
+                      sortDirection={
+                        sortKey !== null
+                          ? sortDirection
+                          : DEFAULT_SORT_DIRECTION
+                      }
+                      className="h-4 w-4"
+                    />
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && showSkeleton ? (
+                Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
+                  <tr key={i} className={tableBodyRow} aria-hidden>
+                    <td className={tableTd}>
+                      <Skeleton className="h-5 w-28" />
+                    </td>
+                    <td className={tableTd}>
+                      <Skeleton className="h-5 w-36" />
+                    </td>
+                    <td className={tableTd}>
+                      <Skeleton className="h-5 w-14" />
+                    </td>
+                    <td className={tableTd}>
+                      <Skeleton className="h-5 w-20" />
+                    </td>
+                    <td className={tableTd}>
+                      <Skeleton className="h-5 w-24" />
+                    </td>
+                    <td className={tableTd}>
+                      <Skeleton className="h-5 w-14" />
+                    </td>
+                    <td className={tableTd}>
+                      <Skeleton className="h-5 w-20" />
+                    </td>
+                  </tr>
+                ))
+              ) : displayedUsers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={TABLE_COLUMN_COUNT}
+                    className={`${tableTd} py-12 text-center text-slate-500`}
+                  >
+                    {keyword || teamIds.length > 0 || roleIds.length > 0
+                      ? 'No users match your filters'
+                      : 'No users found'}
+                  </td>
+                </tr>
+              ) : (
+                pageRows.map((user) => (
+                  <tr
+                    key={user.id}
+                    role="button"
+                    aria-label={`View user ${displayName(user)}`}
+                    className={`${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`}
+                    tabIndex={0}
+                    onClick={(e) => {
+                      handleTableRowClick(e, () => {
+                        void navigate(`/users/${user.id}`);
+                      });
+                    }}
+                    onKeyDown={(e) => {
+                      handleTableRowKeyDown(e, () => {
+                        void navigate(`/users/${user.id}`);
+                      });
+                    }}
+                  >
+                    <td className={`${tableTd} font-medium text-slate-900`}>
+                      {displayName(user)}
+                    </td>
+                    <td className={`${tableTd} text-slate-600`}>
+                      {user.adEmail ?? '-'}
+                    </td>
+                    <td className={`${tableTd} text-slate-600`}>
+                      {IDIR_PLACEHOLDER}
+                    </td>
+                    <td className={tableTd}>
+                      <span className="rounded border border-slate-200 px-2 py-0.5 text-xs">
+                        {user.roleName}
+                      </span>
+                    </td>
+                    <td className={tableTd}>
+                      <div className="flex flex-wrap gap-1">
+                        {user.teams.length === 0 ? (
+                          <span className="text-slate-400">-</span>
+                        ) : (
+                          user.teams.map((t) => (
+                            <Link
+                              key={t.teamId}
+                              to={`/teams/${t.teamId}`}
+                              data-no-row-nav
+                              className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                            >
+                              {t.teamName}
+                              {t.role !== 'member' ? ` (${t.role})` : ''}
+                            </Link>
+                          ))
+                        )}
+                      </div>
+                    </td>
+                    <td className={tableTd}>{statusBadge(user.isActive)}</td>
+                    <td className={`${tableTd} text-sm text-slate-600`}>
+                      {formatLastUpdated(
+                        (user as { lastUpdatedDateTime?: string | null })
+                          .lastUpdatedDateTime
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </TableScrollContainer>
+        {displayedUsers.length > 0 && (
+          <TablePagination
+            totalItems={displayedUsers.length}
+            page={pagination.pageIndex + 1}
+            pageSize={pagination.pageSize}
+            onPageChange={(p) =>
+              setPagination((prev) => ({ ...prev, pageIndex: p - 1 }))
+            }
+            onPageSizeChange={(ps) =>
+              setPagination((prev) => ({ ...prev, pageSize: ps, pageIndex: 0 }))
+            }
+            scrollContainerRef={tableScrollRef}
+            aria-label="Users table pagination"
+          />
+        )}
+      </ContentSection>
     </div>
   );
 }

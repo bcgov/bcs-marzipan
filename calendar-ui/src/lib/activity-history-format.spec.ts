@@ -403,6 +403,15 @@ describe('formatHistoryFieldValue', () => {
     });
   });
 
+  // ── civil times ─────────────────────────────────────────────────────────
+
+  describe('startTime / endTime', () => {
+    it('formats stored 24h civil times as lowercase 12h', () => {
+      expect(formatHistoryFieldValue('startTime', '09:00')).toBe('9:00 am');
+      expect(formatHistoryFieldValue('endTime', '14:30:00')).toBe('2:30 pm');
+    });
+  });
+
   // ── generic fallbacks ─────────────────────────────────────────────────────
 
   describe('generic fallbacks', () => {

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  activityResponseToListItem,
+  type ActivityListItem,
+} from '../../../schemas/activity-list-item.schema';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
 import {
   buildTranslationsLine,
@@ -19,7 +23,7 @@ const TEST_TRANSLATION_RESOLVER = buildTranslationLanguageLabelResolver([
   { shortcode: 'SPA', displayName: 'Spanish' },
 ]);
 
-const BASE_ACTIVITY: ActivityResponse = {
+const BASE_ACTIVITY_RESPONSE = {
   id: 42,
   displayId: 'ACT-42',
   isIssue: false,
@@ -58,6 +62,8 @@ const BASE_ACTIVITY: ActivityResponse = {
   lastUpdatedBy: 1,
   createdDateTime: '2026-04-20T00:00:00.000Z',
   lastUpdatedDateTime: '2026-04-20T09:15:00.000Z',
+  publicLastUpdatedBy: 1,
+  publicLastUpdatedDateTime: '2026-04-20T09:15:00.000Z',
   category: [],
   categoryIds: [],
   tags: [],
@@ -65,6 +71,7 @@ const BASE_ACTIVITY: ActivityResponse = {
   translationsRequired: [],
   representativesAttending: [],
   sharedWith: [],
+  sharedWithTeamIds: [],
   commsContacts: [],
   leadOrg: null,
   eventPlannerDetails: [],
@@ -85,7 +92,11 @@ const BASE_ACTIVITY: ActivityResponse = {
   venueAddress: null,
   reportSettings: [],
   flags: [],
-};
+} satisfies ActivityResponse;
+
+const BASE_ACTIVITY: ActivityListItem = activityResponseToListItem(
+  BASE_ACTIVITY_RESPONSE
+);
 
 describe('buildTranslationsLine', () => {
   it('returns explicit none for empty / missing lists', () => {
@@ -234,7 +245,7 @@ describe('toPrintRowViewModel', () => {
     expect(asChanged.dateTime.lookAheadStatus).toBe('changed');
   });
 
-  it('maps date/time status for look-ahead print variants (Confirmed hidden, else TBC when date/time present)', () => {
+  it('maps date/time status for look-ahead print variants', () => {
     const unsettled = {
       ...BASE_ACTIVITY,
       dateStatus: 'Tentative',
@@ -245,15 +256,29 @@ describe('toPrintRowViewModel', () => {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'lookAhead',
     });
-    expect(lookAhead.dateTime.dateStatus).toBe('TBC');
-    expect(lookAhead.dateTime.timeStatus).toBe('TBC');
+    expect(lookAhead.dateTime.dateStatus).toBe('Tentative');
+    expect(lookAhead.dateTime.timeStatus).toBe('Proposed');
+
+    const notConfirmed = toPrintRowViewModel(
+      {
+        ...BASE_ACTIVITY,
+        dateStatus: 'Not confirmed',
+        timeStatus: 'Not confirmed',
+      },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(notConfirmed.dateTime.dateStatus).toBe('TBC');
+    expect(notConfirmed.dateTime.timeStatus).toBe('TBC');
 
     const execLa = toPrintRowViewModel(unsettled, {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'execLookAhead',
     });
-    expect(execLa.dateTime.dateStatus).toBe('TBC');
-    expect(execLa.dateTime.timeStatus).toBe('TBC');
+    expect(execLa.dateTime.dateStatus).toBe('Tentative');
+    expect(execLa.dateTime.timeStatus).toBe('Proposed');
 
     const confirmed = toPrintRowViewModel(
       {
@@ -291,8 +316,18 @@ describe('toPrintRowViewModel', () => {
       activityBaseUrl: 'http://localhost:3000',
       variant: 'thirtySixtyNinety',
     });
-    expect(thirty.dateTime.dateStatus).toBe('TBC');
-    expect(thirty.dateTime.timeStatus).toBe('TBC');
+    expect(thirty.dateTime.dateStatus).toBe('Tentative');
+    expect(thirty.dateTime.timeStatus).toBe('Proposed');
+
+    const missingStatus = toPrintRowViewModel(
+      { ...BASE_ACTIVITY, dateStatus: undefined, timeStatus: undefined },
+      {
+        activityBaseUrl: 'http://localhost:3000',
+        variant: 'lookAhead',
+      }
+    );
+    expect(missingStatus.dateTime.dateStatus).toBe('');
+    expect(missingStatus.dateTime.timeStatus).toBe('');
   });
 
   it('derives FYI flag from the category list', () => {
@@ -540,19 +575,19 @@ describe('splitActivityDisplayIdForPrint', () => {
 
 describe('compareActivitiesForPrint', () => {
   it('sorts by startTime then by title', () => {
-    const a: ActivityResponse = {
+    const a: ActivityListItem = {
       ...BASE_ACTIVITY,
       id: 1,
       startTime: '09:00',
       title: 'Beta',
     };
-    const b: ActivityResponse = {
+    const b: ActivityListItem = {
       ...BASE_ACTIVITY,
       id: 2,
       startTime: '08:00',
       title: 'Alpha',
     };
-    const c: ActivityResponse = {
+    const c: ActivityListItem = {
       ...BASE_ACTIVITY,
       id: 3,
       startTime: '09:00',
@@ -566,19 +601,19 @@ describe('compareActivitiesForPrint', () => {
 describe('createCompareActivitiesForPrint', () => {
   it('sorts by Pacific day key before startTime when sortByDayKey is true', () => {
     const compare = createCompareActivitiesForPrint({ sortByDayKey: true });
-    const a: ActivityResponse = {
+    const a: ActivityListItem = {
       ...BASE_ACTIVITY,
       id: 1,
       startDate: '2026-05-28',
       startTime: '09:00',
     };
-    const b: ActivityResponse = {
+    const b: ActivityListItem = {
       ...BASE_ACTIVITY,
       id: 2,
       startDate: '2026-05-01',
       startTime: '10:00',
     };
-    const c: ActivityResponse = {
+    const c: ActivityListItem = {
       ...BASE_ACTIVITY,
       id: 3,
       startDate: '2026-05-01',

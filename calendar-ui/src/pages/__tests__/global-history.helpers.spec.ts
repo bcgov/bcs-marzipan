@@ -2,11 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { GlobalActivityHistoryEntry } from '@corpcal/shared/api/types';
 
+import { isEntryInDateRange, matchesSearch } from '../global-history.helpers';
 import {
   formatActorUsername,
   getActorInitials,
-  isEntryInDateRange,
-  matchesSearch,
   truncateChangeLogValue,
 } from '../GlobalHistory';
 

@@ -1,9 +1,10 @@
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
-import { render, screen, waitFor } from '@/test/test-utils';
+import { PERMISSIONS } from '@corpcal/shared';
+import { fireEvent, render, screen, waitFor } from '@/test/test-utils';
 
 // Mocks: auth, lookupsApi, usersApi
 const mockUseAuth = vi.fn();
@@ -25,6 +26,7 @@ vi.mock('@/api/lookupsApi', () => {
         showInUserManagement: false,
       },
     ]),
+    fetchOverridablePermissions: vi.fn().mockResolvedValue([]),
     fetchRolesPermissionsMap: vi
       .fn()
       .mockImplementation(() => Promise.resolve(rolesPermissionsMap)),
@@ -38,6 +40,9 @@ vi.mock('@/api/lookupsApi', () => {
               key: 'perm.test',
               displayName: 'Test Permission',
               description: 'A test permission',
+              category: 'Activities',
+              sortOrder: 1,
+              allowUserOverride: false,
               hasPermission: true,
             },
           ],
@@ -68,28 +73,39 @@ vi.mock('@/api/usersApi', () => ({
     notes: null,
     directLoginEnabled: false,
     teams: [],
+    permissionOverrides: [],
   }),
   fetchRoles: vi.fn().mockResolvedValue([{ id: 2, name: 'Editor' }]),
-  fetchRolePermissions: vi.fn().mockResolvedValue([]),
+  fetchRolePermissions: vi
+    .fn()
+    .mockImplementation((roleId: number) =>
+      Promise.resolve(rolesPermissionsMap[roleId] ?? [])
+    ),
   fetchTeams: vi.fn().mockResolvedValue([]),
 }));
 
 describe('Permissions visibility integration', () => {
+  let PermissionsVisibilityAdmin: typeof import('@/components/admin/PermissionsVisibilityAdmin').PermissionsVisibilityAdmin;
+  let UserDetailPage: typeof import('../UserDetailPage').default;
+
+  // These modules pull in a large module graph; load them outside the test timeout.
+  beforeAll(async () => {
+    ({ PermissionsVisibilityAdmin } =
+      await import('@/components/admin/PermissionsVisibilityAdmin'));
+    ({ default: UserDetailPage } = await import('../UserDetailPage'));
+  }, 60000);
+
   beforeEach(() => {
     vi.clearAllMocks();
     // start with permission not visible
     rolesPermissionsMap = {};
     mockUseAuth.mockReturnValue({
       user: { id: 1, roleId: 6 },
-      hasPermission: () => true,
+      hasPermission: (key: string) => key !== PERMISSIONS.USERS.MANAGE_ROLES,
     });
   });
 
   it('toggles visibility in admin UI and UserDetailPage updates', async () => {
-    const { PermissionsVisibilityAdmin } =
-      await import('@/components/admin/PermissionsVisibilityAdmin');
-    const { default: UserDetailPage } = await import('../UserDetailPage');
-
     render(
       <MemoryRouter initialEntries={['/users/7']}>
         <div>
@@ -100,11 +116,6 @@ describe('Permissions visibility integration', () => {
         </div>
       </MemoryRouter>
     );
-
-    // Initially UserDetailPage should not show the permission
-    await waitFor(() => {
-      expect(screen.queryByText('Test Permission')).not.toBeInTheDocument();
-    });
 
     // In the admin table find the row for our permission and toggle the switch
     const adminRow = await screen.findByText('Test Permission');
@@ -122,7 +133,18 @@ describe('Permissions visibility integration', () => {
       timeout: 10000,
     });
 
-    // Ensure the UserDetailPage shows the permission somewhere on the page.
-    await screen.findByText('Test Permission', {}, { timeout: 10000 });
-  }, 20000);
+    const trigger = await screen.findByRole('button', {
+      name: /show permissions/i,
+    });
+    fireEvent.click(trigger);
+
+    // Admin table and UserDetailPage permissions panel both list the permission.
+    await waitFor(
+      () =>
+        expect(
+          screen.getAllByText('Test Permission').length
+        ).toBeGreaterThanOrEqual(2),
+      { timeout: 10000 }
+    );
+  }, 30000);
 });

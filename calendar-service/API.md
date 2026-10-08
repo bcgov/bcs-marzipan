@@ -109,8 +109,8 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | `translationRequiredStatusIds` | int[]                          | Translations-required status IDs (OR)                                                                                           |
 | `translationLanguageIds`       | int[]                          | Required translation language IDs (OR)                                                                                          |
 | `pitchRequiredStatusNames`     | string[]                       | Pitch-required status names (OR, case-insensitive)                                                                              |
-| `lookAheadStatusValues`        | string[]                       | Look-ahead status values (OR)                                                                                                   |
-| `lookAheadSectionValues`       | string[]                       | Look-ahead section bucket keys (OR)                                                                                             |
+| `lookAheadStatusValues`        | string[]                       | Look Ahead status values (OR)                                                                                                   |
+| `lookAheadSectionValues`       | string[]                       | Look Ahead section bucket keys (OR)                                                                                             |
 | `dateConfirmedFilter`          | `confirmed` \| `not_confirmed` | Date confirmation status                                                                                                        |
 | `timeConfirmedFilter`          | `confirmed` \| `not_confirmed` | Time confirmation status                                                                                                        |
 | `pitchDateNotScheduled`        | boolean (`true`)               | Activities with no pitch date                                                                                                   |
@@ -132,7 +132,13 @@ When `scheduledDateRangeOverlaps=true` (Activity List, Reports, and Look Ahead a
 
 Report data (`GET /reports/data/:type`) accepts the same filter fields except `page` and `limit`. Keyword `search` is **not** sent on report data fetch; the UI applies search client-side over the cached payload. Export endpoints (`GET /reports/export/:type/:format`) accept optional `search` and apply it server-side so PDF/CSV/XLSX match the filtered preview.
 
-**Response:** `200 OK`
+**Response:** `200 OK` — each element is an **activity list item** (`_shape: "list"` when present). Audit timestamps:
+
+- **`publicLastUpdatedDateTime` / `publicLastUpdatedBy`:** user-visible last updated (table sort, reports, stale reminders).
+- **`lastUpdatedDateTime` / `lastUpdatedBy`:** operational last updated (always present on list; use for integrators and for `ifUnmodifiedSince` when opening an activity to edit).
+- **`createdDateTime`:** created instant.
+
+Detail (`GET /activities/:id`) always includes public fields; operational fields are included when the caller may edit the activity.
 
 ```json
 {
@@ -145,7 +151,12 @@ Report data (`GET /reports/data/:type`) accepts the same filter fields except `p
       "summary": "Activity description",
       "category": ["Event", "Release"],
       "categoryIds": [1, 2],
-      "tags": [{ "id": "...", "text": "high-priority" }]
+      "tags": [{ "id": "...", "text": "high-priority" }],
+      "lastUpdatedDateTime": "2026-04-27T16:45:00.000Z",
+      "lastUpdatedBy": 2,
+      "publicLastUpdatedDateTime": "2026-04-20T09:00:00.000Z",
+      "publicLastUpdatedBy": 2,
+      "createdDateTime": "2026-04-01T12:00:00.000Z"
     }
   ]
 }
@@ -174,29 +185,6 @@ Retrieves a single activity by its ID.
 
 ---
 
-### Get Activity Categories
-
-**GET** `/activities/categories`
-
-Retrieves all available activity categories.
-
-**Response:** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Event",
-      "displayName": "Event"
-    }
-  ]
-}
-```
-
----
-
 ### Update Activity
 
 **PATCH** `/activities/:id`
@@ -210,9 +198,14 @@ Updates an existing activity. Only provided fields are updated (partial update).
   "title": "Updated Title",
   "summary": "Updated description",
   "categoryIds": [1, 3],
-  "tagIds": ["00000000-0000-4000-8000-000000000106"]
+  "tagIds": ["00000000-0000-4000-8000-000000000106"],
+  "ifUnmodifiedSince": "2026-04-26T17:05:00.000Z",
+  "renewPublicLastUpdated": true
 }
 ```
+
+- **`ifUnmodifiedSince`:** optional optimistic concurrency token. Compared against the activity's **operational** `lastUpdatedDateTime` (not public). Mismatch returns `409 Conflict`.
+- **`renewPublicLastUpdated`:** optional boolean. Only meaningful when the caller has `activities.publicLastUpdated.defer`. When `true`, public last-updated is bumped along with operational on this PATCH. When omitted or `false`, defer holders skip the public bump. Callers without defer who send `true` receive `403 Forbidden`.
 
 **Response:** `200 OK`
 
@@ -504,6 +497,25 @@ Reference data for dropdowns and filters. All responses follow the format: `{ "s
 
 **GET** `/lookups/event-planners`
 
+**Cache:** 1 hour
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Event Planner Name",
+      "displayName": "Event Planner Display Name",
+      "label": "Event Planner Display Name",
+      "value": 1
+    }
+  ]
+}
+```
+
+---
+
 ### Get permissions for all roles (bulk)
 
 **GET** `/lookups/roles/permissions`
@@ -559,58 +571,6 @@ Requires System Admin privileges (permission `system.manage_permissions`). Updat
 {
   "success": true,
   "data": { "id": 12, "key": "activities.create", "showInUserManagement": true }
-}
-```
-
----
-
-### Bulk update permission visibility (atomic)
-
-**PATCH** `/lookups/permissions/visibility`
-
-Requires System Admin privileges (`system.manage_permissions`). Accepts an array of `{ id, showInUserManagement }` objects and performs the updates in a single database transaction. An audit row is inserted for each change into `permission_visibility_audit`.
-
-**Request body:**
-
-```json
-[
-  { "id": 12, "showInUserManagement": true },
-  { "id": 15, "showInUserManagement": false }
-]
-```
-
-**Response:** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": [
-    { "id": 12, "key": "activities.create", "showInUserManagement": true },
-    { "id": 15, "key": "activities.edit", "showInUserManagement": false }
-  ]
-}
-```
-
-Behavior notes:
-
-- The endpoint validates the request body and returns `400` on validation errors.
-- All updates are performed atomically; if any update fails the transaction is rolled back.
-- Each change is recorded in `permission_visibility_audit(permission_id, changed_by, old_value, new_value, created_at)`.
-
-**Cache:** 1 hour
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Event Planner Name",
-      "displayName": "Event Planner Display Name",
-      "label": "Event Planner Display Name",
-      "value": 1
-    }
-  ]
 }
 ```
 
@@ -689,6 +649,8 @@ Behavior notes:
 
 **GET** `/lookups/translation-languages`
 
+Returns active languages by default. Admins with `lookups.manage` can pass `includeAll=true` to also retrieve inactive languages (used by the Settings admin); this path sets `Cache-Control: no-store`.
+
 **Cache:** 1 hour
 
 ```json
@@ -705,6 +667,26 @@ Behavior notes:
   ]
 }
 ```
+
+---
+
+### Create Translation Language
+
+**POST** `/lookups/translation-languages`
+
+**Permission:** `lookups.manage`
+
+**Body:** `name` (required), `displayName` (required), `shortcode`, `sortOrder` (required), `isActive` (default true), `description`.
+
+---
+
+### Update Translation Language
+
+**PATCH** `/lookups/translation-languages/:id`
+
+**Permission:** `lookups.manage`
+
+**Body:** Same as create (all optional for partial update). Deactivate a language (soft delete) by setting `isActive` to `false` rather than deleting it, since languages may already be referenced by activities.
 
 ---
 
@@ -763,9 +745,11 @@ Simplified activity list for "Related Activities" dropdowns.
 
 **GET** `/lookups/venue-presets`
 
-Returns admin-defined venue presets for the activity form. All active presets appear in the Venue Name combobox; up to 4 pinned presets are shown as quick-select badges beneath the Venue input. Each item includes venue address fields plus `isPinned` and `pinnedSortOrder`.
+Returns active admin-defined venue presets for the activity form, ordered by `sortOrder`. All active presets appear in the Venue Name combobox whether pinned or not; up to 4 active pinned presets are also shown as quick-select badges beneath the Venue input. Each item includes venue address fields plus `sortOrder`, `isActive`, `isPinned`, and `pinnedSortOrder`.
 
-**Cache:** 1 hour
+**Query Parameters:** `includeAll` (`"true"`) — admins with `lookups.manage` get all presets including inactive (used by the Settings admin). Ignored for other callers.
+
+**Cache:** Revalidated on every request (`private, no-cache` in production, `no-store` otherwise). `includeAll=true` responses use `no-store`.
 
 ```json
 {
@@ -779,6 +763,8 @@ Returns admin-defined venue presets for the activity form. All active presets ap
       "city": "Victoria",
       "provinceOrState": "British Columbia",
       "country": "Canada",
+      "sortOrder": 0,
+      "isActive": true,
       "isPinned": true,
       "pinnedSortOrder": 1
     }
@@ -813,6 +799,174 @@ Returns admin-defined venue presets for the activity form. All active presets ap
 **DELETE** `/lookups/venue-presets/:id`
 
 **Permission:** `lookups.manage`
+
+---
+
+## Banner Endpoints
+
+Recurring edit lockout uses Pacific time. Lockout start is inclusive; end is exclusive (e.g. `09:00`–`10:00` blocks through `09:59`).
+
+### Get Active System Banner
+
+**GET** `/banner`
+
+Returns the currently active scheduled system banner, or `null`.
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": null
+}
+```
+
+---
+
+### Get Active Recurring Lockout Banner
+
+**GET** `/banner/recurring-lockout`
+
+Returns the recurring lockout warning banner when settings are active and the current Pacific time is within the banner visibility window (`startTimeOfDay - bannerLeadMinutes` through `endTimeOfDay`, end exclusive). Also returns schedule metadata so clients can refresh at window boundaries without polling.
+
+**Response:** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "banner": {
+      "id": 1,
+      "isActive": true,
+      "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PT. Please make updates before lockout begins.",
+      "activeContent": "Updates to activities are locked out until <lockEndTime> PT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.",
+      "content": "Updates to activities will be locked 3:00 pm - 11:59 pm PT. Please make updates before lockout begins.",
+      "phase": "lead-up",
+      "backgroundColor": "#E6A635",
+      "textColor": "#000000",
+      "variant": "warning",
+      "startTimeOfDay": "15:00",
+      "endTimeOfDay": "23:59",
+      "bannerLeadMinutes": 30,
+      "editCountdownLeadMinutes": 3,
+      "createdDateTime": "2026-08-04T12:00:00.000Z",
+      "lastUpdatedDateTime": "2026-08-04T12:00:00.000Z"
+    },
+    "schedule": {
+      "isActive": true,
+      "startTimeOfDay": "15:00",
+      "endTimeOfDay": "23:59",
+      "bannerLeadMinutes": 30,
+      "editCountdownLeadMinutes": 3
+    }
+  }
+}
+```
+
+When the banner is outside its visibility window, `banner` is `null` but `schedule` is still returned when settings exist.
+
+---
+
+### Get Recurring Lockout Banner Settings
+
+**GET** `/banner/recurring-lockout/settings`
+
+**Permission:** `settings.manage.recurring_lockout`
+
+Returns the latest recurring lockout configuration, or `null` if never configured.
+
+---
+
+### Create or Update Recurring Lockout Banner Settings
+
+**PUT** `/banner/recurring-lockout/settings`
+
+**Permission:** `settings.manage.recurring_lockout`
+
+**Request Body:**
+
+```json
+{
+  "isActive": true,
+  "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.",
+  "activeContent": "Updates to activities are locked out until <lockEndTime> PT.",
+  "backgroundColor": "#E6A635",
+  "textColor": "#000000",
+  "variant": "warning",
+  "startTimeOfDay": "15:00",
+  "endTimeOfDay": "23:59",
+  "bannerLeadMinutes": 30,
+  "editCountdownLeadMinutes": 3
+}
+```
+
+`editCountdownLeadMinutes` controls how many minutes before lockout starts that editors see a live countdown toast while editing. Defaults to `3` when omitted.
+
+Saving settings broadcasts `recurringLockoutBannerSettingsUpdated` over the activities WebSocket.
+
+---
+
+## Locks Endpoints
+
+### Acquire Edit Lock
+
+**POST** `/locks`
+
+**Request Body:**
+
+```json
+{
+  "entityType": "activity",
+  "entityId": 42,
+  "lockSessionId": "optional-client-session-id"
+}
+```
+
+**Response:** `200 OK` — lock acquired
+
+**Error responses:**
+
+- `423 Locked` — another user holds the lock (`reason: "locked_by_other"`, includes `lockedBy`)
+- `403 Forbidden` — recurring daily edit lockout is active and the user lacks `activities.bypass_recurring_lockout` (`reason: "time_lockout"`)
+
+```json
+{
+  "type": "https://api.example.com/errors/forbidden",
+  "title": "Forbidden",
+  "status": 403,
+  "detail": "Editing activities is locked for the current lockout window.",
+  "instance": "/locks",
+  "correlationId": "abc-123",
+  "reason": "time_lockout"
+}
+```
+
+Activity mutations (`PATCH /activities/:id`, etc.) return the same `403` / `reason: "time_lockout"` during the lockout window for users without bypass permission.
+
+Users with `activities.bypass_recurring_lockout` (granted to Admin and System Admin by default) may acquire locks and edit during the window.
+
+---
+
+### Get Activity Lock Status
+
+**GET** `/locks/activity/:activityId`
+
+**Response:** `200 OK`
+
+```json
+{
+  "locked": true,
+  "isOwnLock": false,
+  "lockId": 12,
+  "lockedBy": {
+    "userId": 3,
+    "username": "Jane Editor",
+    "acquiredAt": "2026-08-04T20:00:00.000Z",
+    "expiresAt": "2026-08-04T20:05:00.000Z",
+    "idleExpiresAt": "2026-08-04T20:30:00.000Z"
+  }
+}
+```
 
 ---
 
@@ -876,7 +1030,8 @@ Server error occurred.
     }
     ```
 - **CORS:** Enabled for development. Configure allowed origins for production.
-- **Audit Fields:** `createdBy`, `lastUpdatedBy`, `createdDateTime`, and `lastUpdatedDateTime` are set from the authenticated user and current time on create and update. Activity history records the user ID for each change.
+- **Audit Fields:** Activities store two last-updated pairs. **Operational** (`lastUpdatedBy`, `lastUpdatedDateTime`) always updates on in-scope writes and drives optimistic concurrency. **Public** (`publicLastUpdatedBy`, `publicLastUpdatedDateTime`) is the user-visible “last updated” for table sort, reports, and stale reminders; it is bumped on most writes unless the caller has `activities.publicLastUpdated.defer` and does not set `renewPublicLastUpdated: true` on PATCH. **List** and report bulk payloads include both pairs. **Detail** responses always include public fields; operational fields are also included when the caller may edit the activity. Soft delete, restore, delete-requested, and create force both. Bulk updates, history notes, shared-with removal, user transfer, display-id cascade, and scheduled auto-complete jobs bump operational only. Junction updates (categories, tags, themes, shared-with PUT) bump both for non-defer callers and operational only for defer holders. Manual complete/review via PATCH uses the same defer/renew rules as other saves; the background completion job does not bump public. Activity history records the user ID for each change.
+  - **Timestamp write contexts (server-internal):** Defer-aware — activity PATCH and junction PUT. Lifecycle — create, soft delete, restore, delete-requested (always bump public). Operational only — bulk PATCH, history notes, shared-with DELETE, comms transfer (lead team change), display-id cascade, system jobs. All paths resolve through `resolveBumpPublicLastUpdated` in `@corpcal/shared`.
 - **Display ID:** Auto-generated as `<MINISTRY_ABBREV>-<6_DIGIT_ID>` (e.g., `MIN-000006`).
 - **Report Settings:** The `reportSettings` field controls whether activities are omitted from specific reports. Each setting includes:
   - `reportId`: The ID of the report

@@ -39,6 +39,40 @@ export const userTeamSchema = z.object({
 export type UserTeam = z.infer<typeof userTeamSchema>;
 
 /**
+ * Per-user permission override effects. `deny` removes a permission inherited from
+ * a role or team; `grant` adds one the user's roles do not include.
+ */
+export const USER_PERMISSION_EFFECTS = ['grant', 'deny'] as const;
+
+export type UserPermissionEffect = (typeof USER_PERMISSION_EFFECTS)[number];
+
+/**
+ * An active per-user override as returned by GET /users/:id.
+ */
+export const userPermissionOverrideSchema = z.object({
+  permissionKey: z.string(),
+  displayName: z.string(),
+  effect: z.enum(USER_PERMISSION_EFFECTS),
+});
+
+export type UserPermissionOverride = z.infer<
+  typeof userPermissionOverrideSchema
+>;
+
+/**
+ * A requested override change. `effect: null` clears the override so the user
+ * falls back to whatever their role and team memberships provide.
+ */
+export const userPermissionOverrideInputSchema = z.object({
+  permissionKey: z.string().min(1),
+  effect: z.enum(USER_PERMISSION_EFFECTS).nullable(),
+});
+
+export type UserPermissionOverrideInput = z.infer<
+  typeof userPermissionOverrideInputSchema
+>;
+
+/**
  * User list item returned by GET /users.
  */
 export const userListItemSchema = z.object({
@@ -49,6 +83,7 @@ export const userListItemSchema = z.object({
   roleId: z.number().int(),
   roleName: z.string(),
   isActive: z.boolean(),
+  isEventPlanner: z.boolean(),
   teams: z.array(userTeamSchema),
   lastUpdatedDateTime: z.string().nullable().optional(),
 });
@@ -69,6 +104,8 @@ export const userDetailSchema = userListItemSchema.extend({
   phone: z.string().nullable().optional(),
   /** ISO timestamp for the user's last successful login */
   lastLoginDateTime: z.string().nullable().optional(),
+  /** Active per-user permission grants and denials (exceptions to the role template). */
+  permissionOverrides: z.array(userPermissionOverrideSchema).default([]),
 });
 
 export type UserDetail = z.infer<typeof userDetailSchema>;
@@ -110,6 +147,7 @@ export const createUserBodySchema = z.object({
     .regex(/^[^\s@]+$/, 'IDIR username must not contain spaces or @'),
   roleId: z.number().int(),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).optional(),
+  isEventPlanner: z.boolean().optional(),
   adJobTitle: z
     .string()
     .trim()
@@ -125,6 +163,7 @@ export const createUserBodySchema = z.object({
       })
     )
     .optional(),
+  permissionOverrides: z.array(userPermissionOverrideInputSchema).optional(),
 });
 
 export type CreateUserBody = z.infer<typeof createUserBodySchema>;
@@ -135,6 +174,7 @@ export type CreateUserBody = z.infer<typeof createUserBodySchema>;
 export const updateUserBodySchema = z.object({
   roleId: z.number().int().optional(),
   isActive: z.boolean().optional(),
+  isEventPlanner: z.boolean().optional(),
   notes: z.string().max(USER_NOTES_MAX_LENGTH).nullable().optional(),
   /**
    * Profile fields. Editing these is restricted to admins / sys-admins
@@ -159,6 +199,11 @@ export const updateUserBodySchema = z.object({
     .optional(),
   phone: z.string().trim().max(50).nullable().optional(),
   jobTitle: z.string().trim().max(255).nullable().optional(),
+  /**
+   * Per-user permission overrides to apply. Only keys flagged overridable are
+   * accepted (enforced server-side); `effect: null` clears an existing override.
+   */
+  permissionOverrides: z.array(userPermissionOverrideInputSchema).optional(),
 });
 
 export type UpdateUserBody = z.infer<typeof updateUserBodySchema>;

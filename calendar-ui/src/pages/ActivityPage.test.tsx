@@ -133,6 +133,7 @@ vi.mock('../hooks/useCalendar', async (importOriginal) => {
 });
 
 let mockLockState = 'idle';
+const mockApplyExternalLockReleased = vi.fn();
 vi.mock('../hooks/useActivityLock', () => ({
   useActivityLock: () => ({
     lock: null,
@@ -140,9 +141,36 @@ vi.mock('../hooks/useActivityLock', () => ({
     lockedByUsername: mockLockState === 'locked-by-other' ? 'Other User' : null,
     acquire: mockAcquire,
     release: mockRelease,
+    releaseWithRetry: mockRelease,
+    refreshLockFromServer: vi.fn(),
+    sendHeartbeat: vi.fn(),
+    applyExternalLockReleased: mockApplyExternalLockReleased,
     setLockedByOther: mockSetLockedByOther,
     clearLockedByOther: mockClearLockedByOther,
+    acquireFailureReason: null,
   }),
+}));
+
+vi.mock('../hooks/useLockoutEditCountdownToast', () => ({
+  useLockoutEditCountdownToast: vi.fn(),
+}));
+
+let mockIsBlockedByRecurringLockout = false;
+const mockRecurringLockoutSchedule = {
+  isActive: true,
+  startTimeOfDay: '09:00',
+  endTimeOfDay: '10:00',
+};
+vi.mock('../hooks/useRecurringLockoutBanner', () => ({
+  useRecurringEditLockout: () => ({
+    isBlocked: mockIsBlockedByRecurringLockout,
+    schedule: mockIsBlockedByRecurringLockout
+      ? mockRecurringLockoutSchedule
+      : null,
+    banner: null,
+  }),
+  useRecurringLockoutBanner: () => null,
+  RECURRING_LOCKOUT_BANNER_QUERY_KEY: ['banner', 'recurring-lockout', 'active'],
 }));
 
 vi.mock('../hooks/useActivityWebSocket', () => ({
@@ -176,19 +204,25 @@ vi.mock('../hooks/useCommsContactSync', () => ({
   useCommsContactSync: () => {},
 }));
 
-function renderWithProviders(
-  ui: React.ReactElement,
-  options?: { initialRoute?: string }
+function buildActivityPageTree(
+  activity: ActivityPageProps['activity'],
+  refreshActivity: () => Promise<void>,
+  queryClient: QueryClient,
+  initialRoute: string
 ) {
-  const initialRoute = options?.initialRoute ?? '/activity/1';
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
+  return (
     <MemoryRouter initialEntries={[initialRoute]}>
       <QueryClientProvider client={queryClient}>
         <Routes>
-          <Route path="activity/:id" element={ui} />
+          <Route
+            path="activity/:id"
+            element={
+              <ActivityPage
+                activity={activity}
+                refreshActivity={refreshActivity}
+              />
+            }
+          />
         </Routes>
       </QueryClientProvider>
     </MemoryRouter>
@@ -202,10 +236,29 @@ function renderActivityPage(overrides?: {
 }) {
   const activity = overrides?.activity ?? mockActivityWithLeadTeam;
   const refreshActivity = overrides?.refreshActivity ?? mockRefreshActivity;
-  return renderWithProviders(
-    <ActivityPage activity={activity} refreshActivity={refreshActivity} />,
-    { initialRoute: overrides?.initialRoute }
+  const initialRoute = overrides?.initialRoute ?? '/activity/1';
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const tree = buildActivityPageTree(
+    activity,
+    refreshActivity,
+    queryClient,
+    initialRoute
   );
+  const result = render(tree);
+  return {
+    ...result,
+    rerender: () =>
+      result.rerender(
+        buildActivityPageTree(
+          activity,
+          refreshActivity,
+          queryClient,
+          initialRoute
+        )
+      ),
+  };
 }
 
 describe('ActivityPage form readiness', () => {
@@ -407,8 +460,10 @@ describe('ActivityPage optimistic inline edit', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockRelease.mockClear();
+    mockApplyExternalLockReleased.mockClear();
     mockAcquire.mockClear().mockResolvedValue(true);
     mockLockState = 'idle';
+    mockIsBlockedByRecurringLockout = false;
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
@@ -451,24 +506,44 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(save).toBeDisabled();
   });
 
-  it('shows Discard changes and enables Save after edits when lock is owned', async () => {
+  it('does not render placeholder text in the activity form', async () => {
+    renderActivityPage();
+
+    const titleField = await screen.findByRole('textbox', { name: /Title/i });
+    expect(titleField).not.toHaveAttribute('placeholder');
+    expect(
+      screen.queryByPlaceholderText(
+        /Enter activity title|Select categories|Select lead team|Select news release origin/i
+      )
+    ).not.toBeInTheDocument();
+  });
+
+  it('updates the discard change count and enables Save after edits when lock is owned', async () => {
     mockLockState = 'owned';
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard changes/i })
+        screen.getByRole('button', { name: /Discard 1 change/i })
       ).toBeInTheDocument()
     );
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /^Save$/i })).not.toBeDisabled()
+    );
+
+    await user.click(screen.getByRole('checkbox', { name: /Issue/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Discard 2 changes/i })
+      ).toBeInTheDocument()
     );
   });
 
@@ -493,14 +568,17 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard changes/i })
+        screen.getByRole('button', { name: /Discard 1 change/i })
       ).toBeInTheDocument()
     );
     expect(issueCheckbox).toBeChecked();
 
-    await user.click(screen.getByRole('button', { name: /Discard changes/i }));
+    await user.click(screen.getByRole('button', { name: /Discard 1 change/i }));
 
     const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).getByRole('heading', { name: /Discard 1 change\?/i })
+    ).toBeInTheDocument();
     expect(within(dialog).getByText(/Issue:/i)).toBeInTheDocument();
 
     await user.click(
@@ -510,7 +588,9 @@ describe('ActivityPage optimistic inline edit', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(mockRelease).toHaveBeenCalled();
-      expect(issueCheckbox).not.toBeChecked();
+      expect(
+        screen.getByRole('checkbox', { name: /Issue/i })
+      ).not.toBeChecked();
     });
   });
 
@@ -559,9 +639,9 @@ describe('ActivityPage optimistic inline edit', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
@@ -573,9 +653,9 @@ describe('ActivityPage optimistic inline edit', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
@@ -588,9 +668,9 @@ describe('ActivityPage optimistic inline edit', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
@@ -603,9 +683,9 @@ describe('ActivityPage optimistic inline edit', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
@@ -620,9 +700,9 @@ describe('ActivityPage optimistic inline edit', () => {
   it('form controls are enabled for optimistic edit when user may edit', async () => {
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     expect(titleTextarea).not.toBeDisabled();
   });
 
@@ -634,9 +714,9 @@ describe('ActivityPage optimistic inline edit', () => {
       },
     });
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     expect(titleTextarea).toHaveAttribute('readonly');
   });
 
@@ -647,8 +727,78 @@ describe('ActivityPage optimistic inline edit', () => {
     await screen.findByText(/Lead team/);
     const lockBanner = screen.getByRole('alert');
     expect(lockBanner).toHaveTextContent(/Other User/);
-    const titleTextarea = screen.getByPlaceholderText('Enter activity title');
+    const titleTextarea = screen.getByRole('textbox', { name: /Title/i });
     expect(titleTextarea).toHaveAttribute('readonly');
+  });
+
+  it('form is read-only during recurring edit lockout', async () => {
+    mockIsBlockedByRecurringLockout = true;
+    renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    const lockoutBanner = screen.getByRole('alert');
+    expect(lockoutBanner).toHaveTextContent(/locked until/i);
+    expect(lockoutBanner).toHaveTextContent(/read-only/i);
+    const titleTextarea = screen.getByRole('textbox', { name: /Title/i });
+    expect(titleTextarea).toHaveAttribute('readonly');
+  });
+
+  it('clears lockout banner and read-only when recurring lockout ends', async () => {
+    mockIsBlockedByRecurringLockout = true;
+    const view = renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/read-only/i);
+
+    mockIsBlockedByRecurringLockout = false;
+    view.rerender();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+    const titleTextarea = screen.getByRole('textbox', { name: /Title/i });
+    expect(titleTextarea).not.toHaveAttribute('readonly');
+  });
+
+  it('does not show Review during recurring edit lockout', async () => {
+    mockIsBlockedByRecurringLockout = true;
+    mockUseAuth.mockReturnValue({
+      hasPermission: (key: string) =>
+        key === PERMISSIONS.ACTIVITIES.EDIT ||
+        key === PERMISSIONS.ACTIVITIES.CREATE ||
+        key === PERMISSIONS.ACTIVITIES.REVIEW,
+      user: {
+        id: 1,
+        roleName: 'Editor',
+        teamIds: [5],
+        permissions: [
+          ...mockEditorFieldPermissions,
+          PERMISSIONS.ACTIVITIES.REVIEW,
+        ],
+      },
+    });
+
+    renderActivityPage();
+
+    await screen.findByText(/Lead team/);
+    expect(
+      screen.queryByRole('button', { name: /^(Save and )?Review$/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not acquire edit lock while recurring lockout is active', async () => {
+    mockIsBlockedByRecurringLockout = true;
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
+
+    await act(() => Promise.resolve());
+    expect(mockAcquire).not.toHaveBeenCalled();
   });
 });
 
@@ -656,6 +806,7 @@ describe('ActivityPage clone button', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockLockState = 'idle';
+    mockIsBlockedByRecurringLockout = false;
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
       data: [
@@ -772,15 +923,15 @@ describe('ActivityPage clone button', () => {
     const user = userEvent.setup();
     renderActivityPage();
 
-    const titleTextarea = await screen.findByPlaceholderText(
-      'Enter activity title'
-    );
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
     await user.click(titleTextarea);
     await user.type(titleTextarea, 'X');
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard changes/i })
+        screen.getByRole('button', { name: /Discard 1 change/i })
       ).toBeInTheDocument()
     );
     const cloneBtn = screen.getByRole('button', { name: /^Clone$/i });

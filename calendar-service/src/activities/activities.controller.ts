@@ -1,14 +1,13 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
   Patch,
   Post,
-  Put,
   Query,
   UseGuards,
   UseInterceptors,
@@ -21,7 +20,6 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import type { Category } from '@corpcal/database/types';
 import {
   HYDRATION_PROFILES,
   PERMISSIONS,
@@ -34,24 +32,25 @@ import type {
 } from '@corpcal/shared/api';
 import {
   addActivityHistoryNoteRequestSchema,
+  bulkUnshareActivitiesRequestSchema,
   bulkUpdateActivitiesRequestSchema,
   cloneActivityRequestSchema,
   createActivityRequestSchema,
   filterActivitiesQuerySchema,
+  globalActivityHistoryQuerySchema,
   hardDeleteRequestBodySchema,
   requestDeleteRequestSchema,
   restoreRequestSchema,
   softDeleteRequestSchema,
   updateActivityRequestSchema,
-  updateCategoriesSchema,
-  updateSharedWithSchema,
-  updateTagsSchema,
-  updateThemesSchema,
   type AddActivityHistoryNoteRequest,
+  type BulkUnshareActivitiesRequest,
+  type BulkUnshareActivitiesResult,
   type BulkUpdateActivitiesRequest,
   type CloneActivityRequest,
   type CreateActivityRequest,
   type FilterActivitiesQueryParams,
+  type GlobalActivityHistoryQuery,
   type HardDeleteRequest,
   type RequestDeleteRequest,
   type RestoreRequest,
@@ -62,30 +61,38 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
   ActivityArrayResponseWrapperDto,
+  ActivityHistoryEntryResponseWrapperDto,
+  ActivityHistoryResponseWrapperDto,
   ActivityResponseWrapperDto,
   AddActivityHistoryNoteDto,
+  BulkUnshareActivitiesDto,
   BulkUpdateActivitiesDto,
   CloneActivityDto,
   CreateActivityDto,
+  GlobalActivityHistoryPageResponseWrapperDto,
   RequestDeleteDto,
   RestoreDto,
   SoftDeleteDto,
   UpdateActivityDto,
-  UpdateCategoriesDto,
-  UpdateSharedWithDto,
-  UpdateTagsDto,
-  UpdateThemesDto,
 } from '../common/dto';
 import { AppLogger } from '../common/logger/logger.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
-import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import {
+  RequireAnyPermission,
+  RequirePermission,
+} from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { CanCloneActivityGuard } from '../policy/guards/can-clone-activity.guard';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
 import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
 import { CanRequestDeleteActivityGuard } from '../policy/guards/can-request-delete-activity.guard';
 import { CanRestoreActivityGuard } from '../policy/guards/can-restore-activity.guard';
+import {
+  CanUnshareActivityTeamGuard,
+  canUnshareTeam,
+} from '../policy/guards/can-unshare-activity-team.guard';
 import { ActivityResponseRedactionInterceptor } from './interceptors/activity-response-redaction.interceptor';
 import { ActivitiesService } from './services/activities.service';
 import { hasActivityFindAllFilterFields } from './services/activity-find-all-filters';
@@ -208,6 +215,7 @@ export class ActivitiesController {
     status: 400,
     description: 'Validation failed',
   })
+  @ApiZodQueries(filterActivitiesQuerySchema)
   @RequirePermission('activities.view')
   @Get()
   async findAll(
@@ -226,33 +234,8 @@ export class ActivitiesController {
         includeReviewDiff: true,
       },
       outputShape: 'list',
+      includeEditLocks: true,
     });
-    return {
-      success: true,
-      data: results,
-    };
-  }
-
-  @ApiOperation({
-    summary: 'Get all activity categories',
-    description:
-      'Retrieves all available activity categories for use in forms and filters.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Categories retrieved successfully',
-    type: ActivityArrayResponseWrapperDto,
-  })
-  @RequirePermission('activities.view')
-  @Get('categories')
-  async fetchCategories(): Promise<{
-    success: boolean;
-    data: Category[];
-  }> {
-    // TODO: Retrieve user teams from authentication context when user team retrieval is implemented
-    // For now, passing undefined returns only global categories
-    const userTeams: number[] | undefined = undefined;
-    const results = await this.activitiesService.fetchCategories(userTeams);
     return {
       success: true,
       data: results,
@@ -264,19 +247,21 @@ export class ActivitiesController {
     description:
       'Retrieves activity history entries across all activities visible to the current user.',
   })
+  @ApiZodQueries(globalActivityHistoryQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'Global activity history retrieved successfully',
+    type: GlobalActivityHistoryPageResponseWrapperDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid query parameters',
   })
   @RequirePermission('activities.view')
   @Get('global-history')
   async getGlobalHistory(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
-    @Query('query') query?: string,
-    @Query('order') order?: string,
+    @Query(new ZodValidationPipe(globalActivityHistoryQuerySchema))
+    queryParams: GlobalActivityHistoryQuery,
     @RequestContext() ctx?: RequestContextType
   ): Promise<{
     success: boolean;
@@ -288,52 +273,19 @@ export class ActivitiesController {
       totalItems: number;
     };
   }> {
-    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-    if (startDate !== undefined && !DATE_RE.test(startDate)) {
-      throw new BadRequestException(
-        'startDate must be a valid date in YYYY-MM-DD format'
-      );
-    }
-    if (endDate !== undefined && !DATE_RE.test(endDate)) {
-      throw new BadRequestException(
-        'endDate must be a valid date in YYYY-MM-DD format'
-      );
-    }
-    if (order !== undefined && order !== 'asc' && order !== 'desc') {
-      throw new BadRequestException('order must be "asc" or "desc"');
-    }
-
-    const MAX_PAGE_SIZE = 100;
-    const parsedPage = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
-    const parsedPageSize = pageSize
-      ? Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(pageSize, 10) || 50))
-      : 50;
-
-    // If any pagination, explicit dates, a query, or an explicit order are provided, return a paged response
-    const hasPagingOrDate =
-      startDate !== undefined ||
-      endDate !== undefined ||
-      page !== undefined ||
-      pageSize !== undefined ||
-      query !== undefined ||
-      order !== undefined;
-
-    if (!hasPagingOrDate) {
-      const result = await this.activitiesService.getGlobalHistory(ctx);
-      return {
-        success: true,
-        data: result,
-      };
-    }
-
     const result = await this.activitiesService.getGlobalHistoryPaged(
       {
-        startDate,
-        endDate,
-        page: parsedPage,
-        pageSize: parsedPageSize,
-        query,
-        order: order,
+        startDate: queryParams.startDate,
+        endDate: queryParams.endDate,
+        page: queryParams.page,
+        pageSize: queryParams.pageSize,
+        query: queryParams.query,
+        order: queryParams.order,
+        userId: queryParams.userId,
+        userIds: queryParams.userIds,
+        actionTypes: queryParams.actionTypes,
+        categoryNames: queryParams.categories,
+        leadTeamIds: queryParams.leadTeamIds,
       },
       ctx
     );
@@ -448,49 +400,44 @@ export class ActivitiesController {
   }
 
   @ApiOperation({
-    summary: 'Update activity (full update)',
+    summary: 'Bulk unshare activities from a team',
     description:
-      'Fully updates an activity. All fields must be provided (same schema as create).',
+      "Removes one team from several activities' Shared With lists. Requires activities.unshare and membership of the team (or activities.unshare.all). Activities that are not shared with the team, or are locked by another user, are reported as skipped rather than failing the batch.",
   })
-  @ApiParam({
-    name: 'id',
-    type: Number,
-    description: 'Activity ID',
-    example: 1,
-  })
-  @ApiBody({ type: CreateActivityDto })
+  @ApiBody({ type: BulkUnshareActivitiesDto })
   @ApiResponse({
     status: 200,
-    description: 'Activity updated successfully',
-    type: ActivityResponseWrapperDto,
+    description:
+      'Per-activity outcomes and a summary of updated/skipped counts',
   })
   @ApiResponse({
-    status: 400,
-    description: 'Validation failed',
+    status: 403,
+    description: 'Caller may not unshare the requested team',
   })
-  @ApiResponse({
-    status: 404,
-    description: 'Activity not found',
-  })
-  @RequirePermission('activities.edit')
-  @UseGuards(CanEditActivityGuard)
-  @Put(':id')
-  async put(
-    @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(createActivityRequestSchema))
-    body: CreateActivityRequest,
+  @RequireAnyPermission(
+    PERMISSIONS.ACTIVITIES.UNSHARE,
+    PERMISSIONS.ACTIVITIES.UNSHARE_ALL
+  )
+  @Post('bulk-unshare')
+  async bulkUnshare(
+    @Body(new ZodValidationPipe(bulkUnshareActivitiesRequestSchema))
+    body: BulkUnshareActivitiesRequest,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: ActivityResponse }> {
-    // PUT uses createActivityRequestSchema (all fields) but calls update
-    const result = await this.activitiesService.update(id, body, user.id, {
-      roleName: user.roleName,
-      permissions: user.permissions,
-      teamIds: user.teamIds,
-    });
-    return {
-      success: true,
-      data: result,
-    };
+  ): Promise<{ success: boolean; data: BulkUnshareActivitiesResult }> {
+    // Team eligibility is enforced here rather than by CanUnshareActivityTeamGuard,
+    // which reads teamId from the route params.
+    if (!canUnshareTeam(user, body.teamId)) {
+      throw new ForbiddenException(
+        'You may only unshare an activity from a team you belong to.'
+      );
+    }
+
+    const result = await this.activitiesService.bulkUnshareTeam(
+      body.activityIds,
+      body.teamId,
+      user.id
+    );
+    return { success: true, data: result };
   }
 
   @ApiOperation({
@@ -648,7 +595,7 @@ export class ActivitiesController {
   @ApiResponse({
     status: 200,
     description: 'Activity history retrieved successfully',
-    type: ActivityArrayResponseWrapperDto,
+    type: ActivityHistoryResponseWrapperDto,
   })
   @ApiResponse({
     status: 404,
@@ -656,11 +603,14 @@ export class ActivitiesController {
   })
   @RequirePermission('activities.view')
   @Get(':id/history')
-  async getHistory(@Param('id', ParseIntPipe) id: number): Promise<{
+  async getHistory(
+    @Param('id', ParseIntPipe) id: number,
+    @RequestContext() ctx: RequestContextType
+  ): Promise<{
     success: boolean;
     data: Awaited<ReturnType<ActivitiesService['getHistory']>>;
   }> {
-    const result = await this.activitiesService.getHistory(id);
+    const result = await this.activitiesService.getHistory(id, ctx);
     return {
       success: true,
       data: result,
@@ -682,6 +632,7 @@ export class ActivitiesController {
   @ApiResponse({
     status: 201,
     description: 'Activity history note added successfully',
+    type: ActivityHistoryEntryResponseWrapperDto,
   })
   @ApiResponse({
     status: 404,
@@ -694,7 +645,8 @@ export class ActivitiesController {
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(addActivityHistoryNoteRequestSchema))
     body: AddActivityHistoryNoteRequest,
-    @CurrentUser() user: AuthUser
+    @CurrentUser() user: AuthUser,
+    @RequestContext() ctx: RequestContextType
   ): Promise<{
     success: boolean;
     data: Awaited<ReturnType<ActivitiesService['addHistoryNote']>>;
@@ -702,43 +654,9 @@ export class ActivitiesController {
     const result = await this.activitiesService.addHistoryNote(
       id,
       body.note,
-      user.id
+      user.id,
+      ctx
     );
-    return {
-      success: true,
-      data: result,
-    };
-  }
-
-  @ApiOperation({
-    summary: 'Cancel changes - revert to published state',
-    description:
-      'Reverts an activity to its last published state, discarding any unpublished changes.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: Number,
-    description: 'Activity ID',
-    example: 1,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Changes cancelled, activity reverted to published state',
-    type: ActivityResponseWrapperDto,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Activity not found',
-  })
-  /** Same edit guard as PATCH/PUT: comms contact, lead-team member, or Admin/System Admin. */
-  @UseGuards(CanEditActivityGuard)
-  @RequirePermission('activities.edit')
-  @Post(':id/cancel-changes')
-  async cancelChanges(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.cancelChanges(id, user.id);
     return {
       success: true,
       data: result,
@@ -789,9 +707,9 @@ export class ActivitiesController {
   }
 
   @ApiOperation({
-    summary: 'Update activity categories',
+    summary: 'Unshare an activity from a team',
     description:
-      'Updates the categories associated with an activity. Replaces all existing categories.',
+      "Removes a single team from an activity's Shared With list. Only the team's own members (or a bypass role) may remove it.",
   })
   @ApiParam({
     name: 'id',
@@ -799,168 +717,42 @@ export class ActivitiesController {
     description: 'Activity ID',
     example: 1,
   })
-  @ApiBody({ type: UpdateCategoriesDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Categories updated successfully',
-    type: ActivityResponseWrapperDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Validation failed',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Activity not found',
-  })
-  @RequirePermission('activities.edit')
-  @UseGuards(CanEditActivityGuard)
-  @Put(':id/categories')
-  async updateCategories(
-    @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(updateCategoriesSchema))
-    body: { categoryIds: number[] },
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.updateCategories(
-      id,
-      body.categoryIds,
-      user.id
-    );
-    return {
-      success: true,
-      data: result,
-    };
-  }
-
-  @ApiOperation({
-    summary: 'Update activity themes',
-    description:
-      'Updates the themes (tags) associated with an activity. Replaces all existing themes.',
-  })
   @ApiParam({
-    name: 'id',
+    name: 'teamId',
     type: Number,
-    description: 'Activity ID',
+    description: 'Team ID to remove from the Shared With list',
     example: 1,
   })
-  @ApiBody({ type: UpdateThemesDto })
   @ApiResponse({
     status: 200,
-    description: 'Themes updated successfully',
+    description: 'Activity unshared from team successfully',
     type: ActivityResponseWrapperDto,
   })
   @ApiResponse({
     status: 400,
-    description: 'Validation failed',
+    description: 'Activity is not currently shared with that team',
   })
   @ApiResponse({
     status: 404,
     description: 'Activity not found',
   })
-  @RequirePermission('activities.edit')
-  @UseGuards(CanEditActivityGuard)
-  @Put(':id/themes')
-  async updateThemes(
+  @RequireAnyPermission(
+    PERMISSIONS.ACTIVITIES.UNSHARE,
+    PERMISSIONS.ACTIVITIES.UNSHARE_ALL
+  )
+  @UseGuards(CanUnshareActivityTeamGuard)
+  @Delete(':id/shared-with/:teamId')
+  async unshareTeam(
     @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(updateThemesSchema))
-    body: { themeIds: number[] },
-    @CurrentUser() user: AuthUser
+    @Param('teamId', ParseIntPipe) teamId: number,
+    @CurrentUser() user: AuthUser,
+    @RequestContext() ctx: RequestContextType
   ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.updateThemes(
+    const result = await this.activitiesService.unshareTeam(
       id,
-      body.themeIds,
-      user.id
-    );
-    return {
-      success: true,
-      data: result,
-    };
-  }
-
-  @ApiOperation({
-    summary: 'Update activity tags',
-    description:
-      'Updates the tags associated with an activity. Replaces all existing tags.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: Number,
-    description: 'Activity ID',
-    example: 1,
-  })
-  @ApiBody({ type: UpdateTagsDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Tags updated successfully',
-    type: ActivityResponseWrapperDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Validation failed',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Activity not found',
-  })
-  @RequirePermission('activities.edit')
-  @UseGuards(CanEditActivityGuard)
-  @Put(':id/tags')
-  async updateTags(
-    @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(updateTagsSchema))
-    body: { tagIds: number[] },
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.updateTags(
-      id,
-      body.tagIds,
-      user.id
-    );
-    return {
-      success: true,
-      data: result,
-    };
-  }
-
-  @ApiOperation({
-    summary: 'Update activity shared with ministries',
-    description:
-      'Updates the ministries that an activity is shared with. Replaces all existing shared ministries.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: Number,
-    description: 'Activity ID',
-    example: 1,
-  })
-  @ApiBody({ type: UpdateSharedWithDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Shared with ministries updated successfully',
-    type: ActivityResponseWrapperDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Validation failed',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Activity not found',
-  })
-  @RequirePermission('activities.edit')
-  @UseGuards(CanEditActivityGuard)
-  @Put(':id/shared-with')
-  async updateSharedWith(
-    @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(updateSharedWithSchema))
-    body: { teamIds: number[] },
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: ActivityResponse }> {
-    const result = await this.activitiesService.updateSharedWith(
-      id,
-      body.teamIds,
-      user.id
+      teamId,
+      user.id,
+      ctx
     );
     return {
       success: true,

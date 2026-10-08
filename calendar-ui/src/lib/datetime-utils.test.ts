@@ -10,6 +10,8 @@ import {
   formatInstantPacificTime,
   formatLongDate,
   formatPacificHistoryListDayHeading,
+  formatPacificRecencyDate,
+  formatPacificRecencyDateTime,
   formatRelativeTime,
   formatTime,
   formatTime12h,
@@ -17,6 +19,7 @@ import {
   isTimestampInPacificDateFilter,
   pacificActivityHistoryRecencyBucket,
   pacificInclusiveCalendarRangeEndingToday,
+  pacificRelativeCalendarDay,
 } from './datetime-utils';
 
 describe('formatRelativeTime', () => {
@@ -97,19 +100,19 @@ describe('formatLongDate', () => {
 });
 
 describe('formatTime', () => {
-  it('formats time in 12h style', () => {
+  it('formats time in 12h style with lowercase am/pm', () => {
     const d = new Date(2026, 0, 15, 14, 30, 0);
-    expect(formatTime(d)).toMatch(/2:30\s*PM/i);
+    expect(formatTime(d)).toBe('2:30 pm');
   });
 
-  it('formats noon as 12', () => {
+  it('formats noon as 12:00 pm', () => {
     const d = new Date(2026, 0, 15, 12, 0, 0);
-    expect(formatTime(d)).toMatch(/12:00\s*PM/i);
+    expect(formatTime(d)).toBe('12:00 pm');
   });
 
-  it('formats midnight as 12', () => {
+  it('formats midnight as 12:00 am', () => {
     const d = new Date(2026, 0, 15, 0, 0, 0);
-    expect(formatTime(d)).toMatch(/12:00\s*AM/i);
+    expect(formatTime(d)).toBe('12:00 am');
   });
 });
 
@@ -145,8 +148,9 @@ describe('formatExactDate', () => {
 
   it('appends time when includeTime is true', () => {
     const d = new Date(2026, 0, 23, 14, 30, 0);
-    const result = formatExactDate(d, { includeTime: true, includeYear: true });
-    expect(result).toMatch(/^Jan 23, 2026 at \d{1,2}:\d{2}\s*[AP]M$/i);
+    expect(formatExactDate(d, { includeTime: true, includeYear: true })).toBe(
+      'Jan 23, 2026 at 2:30 pm'
+    );
   });
 });
 
@@ -163,8 +167,9 @@ describe('formatActivityEndDateTimeLabel', () => {
   });
 
   it('formats timed end with date, time, and Pacific abbrev', () => {
-    const s = formatActivityEndDateTimeLabel('2026-04-10', '14:30', false);
-    expect(s).toMatch(/^Apr 10, 2026 at \d{1,2}:\d{2}\s*[AP]M PT$/i);
+    expect(formatActivityEndDateTimeLabel('2026-04-10', '14:30', false)).toBe(
+      'Apr 10, 2026 at 2:30 pm PT'
+    );
   });
 
   it('uses date only when isAllDay is false but endTime is empty', () => {
@@ -324,28 +329,28 @@ describe('corp Pacific instant formatting', () => {
 
   it('formatTime accepts a timeZone option for instants', () => {
     const d = new Date(INSTANT);
-    expect(formatTime(d, { timeZone: CORP_PACIFIC_TIME_ZONE })).toMatch(
-      /8:30\s*AM/i
-    );
+    expect(formatTime(d, { timeZone: CORP_PACIFIC_TIME_ZONE })).toBe('8:30 am');
   });
 
   it('formatExactDate accepts appendPacificTimeAbbrev for UI copy', () => {
     const d = new Date(INSTANT);
-    const result = formatExactDate(d, {
-      includeTime: true,
-      timeZone: CORP_PACIFIC_TIME_ZONE,
-      appendPacificTimeAbbrev: true,
-    });
-    expect(result).toMatch(/^Apr 27, 2026 at 8:30\s*AM PT$/i);
+    expect(
+      formatExactDate(d, {
+        includeTime: true,
+        timeZone: CORP_PACIFIC_TIME_ZONE,
+        appendPacificTimeAbbrev: true,
+      })
+    ).toBe('Apr 27, 2026 at 8:30 am PT');
   });
 
   it('formatExactDate accepts a timeZone option for instants', () => {
     const d = new Date(INSTANT);
-    const result = formatExactDate(d, {
-      includeTime: true,
-      timeZone: CORP_PACIFIC_TIME_ZONE,
-    });
-    expect(result).toMatch(/^Apr 27, 2026 at 8:30\s*AM$/i);
+    expect(
+      formatExactDate(d, {
+        includeTime: true,
+        timeZone: CORP_PACIFIC_TIME_ZONE,
+      })
+    ).toBe('Apr 27, 2026 at 8:30 am');
   });
 });
 
@@ -385,6 +390,69 @@ describe('Pacific history grouping / filters', () => {
           nowPacificJan15
         )
       ).toBe('Earlier');
+    });
+  });
+
+  describe('pacificRelativeCalendarDay', () => {
+    it('returns today, yesterday, or other relative to Pacific calendar days', () => {
+      expect(
+        pacificRelativeCalendarDay(
+          new Date('2026-01-15T10:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('today');
+      expect(
+        pacificRelativeCalendarDay(
+          new Date('2026-01-14T12:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('yesterday');
+      expect(
+        pacificRelativeCalendarDay(
+          new Date('2026-01-10T12:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('other');
+    });
+  });
+
+  describe('formatPacificRecencyDate', () => {
+    it('returns Today and Yesterday for relative Pacific calendar days', () => {
+      expect(
+        formatPacificRecencyDate(
+          new Date('2026-01-15T10:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Today');
+      expect(
+        formatPacificRecencyDate(
+          new Date('2026-01-14T12:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Yesterday');
+    });
+
+    it('returns a compact weekday date without year otherwise', () => {
+      expect(
+        formatPacificRecencyDate(
+          new Date('2026-01-10T12:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toBe('Sat, Jan 10');
+    });
+  });
+
+  describe('formatPacificRecencyDateTime', () => {
+    it('returns recency date and Pacific time lines', () => {
+      expect(
+        formatPacificRecencyDateTime(
+          new Date('2026-01-15T10:00:00.000Z'),
+          nowPacificJan15
+        )
+      ).toEqual({
+        dateLine: 'Today',
+        timeLine: '3:00 am PT',
+      });
     });
   });
 

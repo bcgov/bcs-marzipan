@@ -7,6 +7,8 @@ import type {
 import {
   serializeFilterActivitiesQueryParams,
   type AddActivityHistoryNoteRequest,
+  type BulkUnshareActivitiesRequest,
+  type BulkUnshareActivitiesResult,
   type BulkUpdateActivitiesRequest,
   type CloneActivityRequest,
   type CreateActivityRequest,
@@ -150,6 +152,36 @@ export async function softDeleteActivity(
   return res.data.data;
 }
 
+/**
+ * Remove a single team from an activity's Shared With list.
+ * DELETE /activities/:id/shared-with/:teamId
+ */
+export async function unshareActivityTeam(
+  id: number,
+  teamId: number
+): Promise<ActivityResponse> {
+  const res = await api.delete<{ success: boolean; data: ActivityResponse }>(
+    `/activities/${id}/shared-with/${teamId}`
+  );
+  return res.data.data;
+}
+
+/**
+ * Remove one team from several activities' Shared With lists.
+ * POST /activities/bulk-unshare
+ * Activities that are not shared with the team, or are locked by another user,
+ * are reported as skipped rather than failing the whole request.
+ */
+export async function bulkUnshareActivities(
+  body: BulkUnshareActivitiesRequest
+): Promise<BulkUnshareActivitiesResult> {
+  const res = await api.post<{
+    success: boolean;
+    data: BulkUnshareActivitiesResult;
+  }>('/activities/bulk-unshare', body, { timeout: 30_000 });
+  return res.data.data;
+}
+
 export async function fetchActivityHistory(
   id: number
 ): Promise<ActivityHistoryEntry[]> {
@@ -157,17 +189,6 @@ export async function fetchActivityHistory(
     success: boolean;
     data: ActivityHistoryEntry[];
   }>(`/activities/${id}/history`);
-  if (res.data && res.data.data) return res.data.data;
-  return Array.isArray(res.data) ? res.data : [];
-}
-
-export async function fetchGlobalActivityHistory(): Promise<
-  GlobalActivityHistoryEntry[]
-> {
-  const res = await api.get<{
-    success: boolean;
-    data: GlobalActivityHistoryEntry[];
-  }>('/activities/global-history');
   if (res.data && res.data.data) return res.data.data;
   return Array.isArray(res.data) ? res.data : [];
 }
@@ -187,26 +208,55 @@ export async function fetchGlobalActivityHistoryPaged(params?: {
   endDate?: string;
   query?: string;
   order?: 'asc' | 'desc';
+  userId?: number;
+  userIds?: number[];
+  actionTypes?: string[];
+  categories?: string[];
+  leadTeamIds?: number[];
 }): Promise<PagedResult<GlobalActivityHistoryEntry>> {
-  const res = await api.get('/activities/global-history', { params });
-  // Server may return either:
-  // - direct paged shape: { items, page, pageSize, hasNext }
-  // - wrapper shape: { success: true, data: { items, page, ... } }
-  // - legacy array: []
-  if (res.data && typeof res.data === 'object') {
-    // Direct paged shape
-    if ('items' in res.data && Array.isArray(res.data.items)) {
-      return res.data as PagedResult<GlobalActivityHistoryEntry>;
-    }
+  const serializedParams: Record<string, string | number | undefined> = {};
 
-    // Wrapped shape from server
-    if ('data' in res.data && res.data.data && 'items' in res.data.data) {
-      return res.data.data as PagedResult<GlobalActivityHistoryEntry>;
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      serializedParams[key] = value.join(',');
+    } else {
+      serializedParams[key] = value;
     }
   }
 
-  // Fallback: legacy array response -> wrap into a single page
-  const items = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
+  const res = await api.get('/activities/global-history', {
+    params: serializedParams,
+  });
+  return normalizeGlobalHistoryPagedResponse(res.data);
+}
+
+function normalizeGlobalHistoryPagedResponse(
+  data: unknown
+): PagedResult<GlobalActivityHistoryEntry> {
+  if (data && typeof data === 'object') {
+    if ('items' in data && Array.isArray(data.items)) {
+      return data as PagedResult<GlobalActivityHistoryEntry>;
+    }
+
+    if (
+      'data' in data &&
+      data.data &&
+      typeof data.data === 'object' &&
+      'items' in data.data
+    ) {
+      return data.data as PagedResult<GlobalActivityHistoryEntry>;
+    }
+  }
+
+  const items = Array.isArray(data)
+    ? data
+    : data &&
+        typeof data === 'object' &&
+        'data' in data &&
+        Array.isArray(data.data)
+      ? data.data
+      : [];
   return {
     items,
     page: 1,

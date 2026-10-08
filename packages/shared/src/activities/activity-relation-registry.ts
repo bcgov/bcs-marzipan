@@ -70,7 +70,7 @@ export const LIST_FILTER_RELATION_KEYS: ReadonlySet<ActivityRelationKey> =
 
 /** Relations required for list table UI columns not covered by filter/search keys alone. */
 export const LIST_TABLE_DISPLAY_RELATION_KEYS: ReadonlySet<ActivityRelationKey> =
-  new Set(['commsMaterials', 'premierRequested']);
+  new Set(['commsMaterials', 'premierRequested', 'sharedWith']);
 
 /** Unions relation key sets (used to build list hydration without drift). */
 export function unionActivityRelationKeys(
@@ -119,8 +119,8 @@ const REPORT_FIELD_RELATIONS: Readonly<
   sharedWith: ['sharedWith'],
   commsContact: ['commsContacts'],
   commsContacts: ['commsContacts'],
-  event_lead: ['commsContacts'],
-  eventLead: ['commsContacts'],
+  event_lead: ['eventPlannerDetails'],
+  eventLead: ['eventPlannerDetails'],
   eventPlanners: ['eventPlannerDetails'],
   eventPlannerDetails: ['eventPlannerDetails'],
   newsReleaseOrigin: ['newsReleaseOrigin'],

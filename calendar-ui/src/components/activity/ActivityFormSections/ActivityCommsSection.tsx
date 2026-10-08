@@ -179,7 +179,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                               </ComboboxChip>
                             );
                           })}
-                          <ComboboxChipsInput placeholder="Select contacts" />
+                          <ComboboxChipsInput placeholder="" />
                         </>
                       )}
                     </ComboboxValue>
@@ -218,7 +218,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
-                placeholder="Enter strategy"
+                placeholder=""
                 readOnly={readOnly}
                 rows={4}
                 maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
@@ -276,7 +276,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Select comms materials" />
+                          <ComboboxChipsInput placeholder="" />
                         </>
                       )}
                     </ComboboxValue>

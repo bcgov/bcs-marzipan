@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import type { Category } from '@corpcal/database/types';
 import { HYDRATION_PROFILES, type AuthUser } from '@corpcal/shared';
 
 import {
@@ -13,6 +12,7 @@ import type { RequestContext as RequestContextType } from '../policy/dto/user-co
 import { CanCloneActivityGuard } from '../policy/guards/can-clone-activity.guard';
 import { CanDeleteActivityGuard } from '../policy/guards/can-delete-activity.guard';
 import { CanEditActivityGuard } from '../policy/guards/can-edit-activity.guard';
+import { CanUnshareActivityTeamGuard } from '../policy/guards/can-unshare-activity-team.guard';
 import { PolicyService } from '../policy/policy.service';
 import { ActivitiesController } from './activities.controller';
 import { ActivitiesService } from './services/activities.service';
@@ -27,6 +27,7 @@ const findAllListOptions = {
     includeReviewDiff: true,
   },
   outputShape: 'list' as const,
+  includeEditLocks: true,
 };
 
 const mockUser: AuthUser = {
@@ -66,12 +67,7 @@ describe('ActivitiesController', () => {
     softDelete: vi.fn(),
     requestDelete: vi.fn(),
     restore: vi.fn(),
-    cancelChanges: vi.fn(),
-    updateCategories: vi.fn(),
-    updateThemes: vi.fn(),
-    updateTags: vi.fn(),
-    updateSharedWith: vi.fn(),
-    fetchCategories: vi.fn(),
+    unshareTeam: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -93,6 +89,7 @@ describe('ActivitiesController', () => {
         CanCloneActivityGuard,
         CanDeleteActivityGuard,
         CanEditActivityGuard,
+        CanUnshareActivityTeamGuard,
       ],
     }).compile();
 
@@ -226,48 +223,6 @@ describe('ActivitiesController', () => {
     });
   });
 
-  describe('fetchCategories', () => {
-    it('should return all categories', async () => {
-      const categories: Category[] = [
-        {
-          id: 1,
-          name: 'Education',
-          displayName: 'Education',
-          sortOrder: 1,
-          isActive: true,
-          visibility: 'global',
-          description: '',
-          createdDateTime: new Date(),
-          lastUpdatedDateTime: new Date(),
-          createdBy: 1,
-          lastUpdatedBy: 1,
-        },
-        {
-          id: 2,
-          name: 'Health',
-          displayName: 'Health',
-          sortOrder: 2,
-          isActive: true,
-          visibility: 'global',
-          description: '',
-          createdDateTime: new Date(),
-          lastUpdatedDateTime: new Date(),
-          createdBy: 1,
-          lastUpdatedBy: 1,
-        },
-      ];
-      mockActivitiesService.fetchCategories.mockResolvedValue(categories);
-
-      const result = await controller.fetchCategories();
-
-      expect(result).toEqual({
-        success: true,
-        data: categories,
-      });
-      expect(mockActivitiesService.fetchCategories).toHaveBeenCalledTimes(1);
-    });
-  });
-
   describe('findOne', () => {
     it('should return a single activity by ID', async () => {
       mockActivitiesService.findOne.mockResolvedValue(mockActivityResponse);
@@ -295,6 +250,30 @@ describe('ActivitiesController', () => {
       ).rejects.toThrow();
       expect(mockActivitiesService.findOne).toHaveBeenCalledWith(
         999,
+        mockRequestContext
+      );
+    });
+  });
+
+  describe('unshareTeam', () => {
+    it('should unshare the given team from the activity', async () => {
+      mockActivitiesService.unshareTeam.mockResolvedValue(mockActivityResponse);
+
+      const result = await controller.unshareTeam(
+        1,
+        7,
+        mockUser,
+        mockRequestContext
+      );
+
+      expect(result).toEqual({
+        success: true,
+        data: mockActivityResponse,
+      });
+      expect(mockActivitiesService.unshareTeam).toHaveBeenCalledWith(
+        1,
+        7,
+        mockUser.id,
         mockRequestContext
       );
     });

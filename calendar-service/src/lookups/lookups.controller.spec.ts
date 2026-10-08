@@ -5,12 +5,13 @@ import {
   SYSTEM_ROLE_IDS,
   type AuthUser,
 } from '@corpcal/shared';
-import type { LookupItem, VenuePresetItem } from '@corpcal/shared/api/types';
+import type { LookupItem } from '@corpcal/shared/api/types';
 import type { TeamListItem } from '@corpcal/shared/schemas';
 
 import { TeamsService } from '../teams/teams.service';
+import { lookupGetCacheControl } from './cache-control';
 import { LookupsController } from './lookups.controller';
-import { LookupsService } from './lookups.service';
+import { LookupsService, type VenuePresetAdminItem } from './lookups.service';
 
 const mockUser: AuthUser = {
   id: 1,
@@ -31,7 +32,7 @@ describe('LookupsController', () => {
     { id: 2, label: 'Category 2', value: 2 },
   ];
 
-  const mockVenuePreset: VenuePresetItem = {
+  const mockVenuePreset: VenuePresetAdminItem = {
     id: 1,
     venueName: 'BC Legislature',
     addressLine1: '501 Belleville St',
@@ -39,6 +40,8 @@ describe('LookupsController', () => {
     city: 'Victoria',
     provinceOrState: 'British Columbia',
     country: 'Canada',
+    sortOrder: 1,
+    isActive: true,
     isPinned: true,
     pinnedSortOrder: 1,
   };
@@ -99,12 +102,30 @@ describe('LookupsController', () => {
         description: null,
         sortOrder: 0,
         isActive: true,
+        appearsInShareWith: true,
         roleId: null,
         memberCount: 2,
         ministryId: 5,
         ministryName: 'M1',
       },
     ];
+
+    it('returns teams with their Share With visibility metadata', async () => {
+      mockTeamsService.findAll.mockResolvedValue([
+        ...mockTeams,
+        { ...mockTeams[0], id: 2, appearsInShareWith: false },
+      ]);
+      mockLookupsService.getActivityTeamSharingQuickShare.mockResolvedValue(
+        null
+      );
+
+      const result = await controller.getActivityTeamSharing();
+
+      expect(result.data.teams).toEqual([
+        ...mockTeams,
+        { ...mockTeams[0], id: 2, appearsInShareWith: false },
+      ]);
+    });
 
     it('returns teams and quick share groups', async () => {
       mockTeamsService.findAll.mockResolvedValue(mockTeams);
@@ -298,14 +319,50 @@ describe('LookupsController', () => {
   describe('getVenuePresets', () => {
     it('should return venue presets', async () => {
       mockLookupsService.getVenuePresets.mockResolvedValue([mockVenuePreset]);
+      const res = { setHeader: vi.fn() };
 
-      const result = await controller.getVenuePresets();
+      const result = await controller.getVenuePresets(
+        mockUser,
+        undefined,
+        res as never
+      );
 
       expect(result).toEqual({
         success: true,
         data: [mockVenuePreset],
       });
-      expect(mockLookupsService.getVenuePresets).toHaveBeenCalledTimes(1);
+      expect(mockLookupsService.getVenuePresets).toHaveBeenCalledWith(false);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Cache-Control',
+        lookupGetCacheControl()
+      );
+    });
+
+    it('passes includeAll to the service when caller has lookups.manage', async () => {
+      mockLookupsService.getVenuePresets.mockResolvedValue([mockVenuePreset]);
+      const res = { setHeader: vi.fn() };
+
+      await controller.getVenuePresets(mockUser, 'true', res as never);
+
+      expect(mockLookupsService.getVenuePresets).toHaveBeenCalledWith(true);
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
+    });
+
+    it('ignores includeAll without lookups.manage permission', async () => {
+      const editorUser: AuthUser = {
+        ...mockUser,
+        permissions: ['activities.create'],
+      };
+      mockLookupsService.getVenuePresets.mockResolvedValue([mockVenuePreset]);
+      const res = { setHeader: vi.fn() };
+
+      await controller.getVenuePresets(editorUser, 'true', res as never);
+
+      expect(mockLookupsService.getVenuePresets).toHaveBeenCalledWith(false);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Cache-Control',
+        lookupGetCacheControl()
+      );
     });
   });
 

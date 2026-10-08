@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,7 +20,7 @@ import {
   userSettings,
   userTeams,
 } from '@corpcal/database/schema';
-import type { ActivityStatusName } from '@corpcal/shared';
+import { SYSTEM_ROLE_IDS, type ActivityStatusName } from '@corpcal/shared';
 import type {
   AddUserToTeamBody,
   CreateUserBody,
@@ -32,12 +33,17 @@ import type {
   UserDetail,
   UserHistoryEntry,
   UserListItem,
+  UserPermissionOverrideInput,
 } from '@corpcal/shared/api/types';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
 import { ActivityUtilsService } from '../activities/services/activity-utils.service';
+import { getActivityTimestampUpdateForWrite } from '../activities/utils/activity-timestamp-write';
+import { AuthService } from '../auth/auth.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PolicyService } from '../policy/policy.service';
 import { TeamsService } from '../teams/teams.service';
 import { sortByStaffName } from './staff-name-sort';
 
@@ -63,23 +69,109 @@ export class UsersService {
     private readonly databaseService: DatabaseService,
     private readonly activityHistoryService: ActivityHistoryService,
     private readonly activityUtilsService: ActivityUtilsService,
-    private readonly teamsService: TeamsService
+    private readonly teamsService: TeamsService,
+    private readonly notificationsService: NotificationsService,
+    private readonly policyService: PolicyService,
+    private readonly authService: AuthService
   ) {}
+
+  /**
+   * Apply per-user permission overrides and record one history entry per changed key.
+   * Invalid keys are rejected by PolicyService before anything is written.
+   */
+  private async applyPermissionOverrides(
+    userId: number,
+    overrides: UserPermissionOverrideInput[] | undefined,
+    changedByUserId: number,
+    executor?: DrizzleDbExecutor
+  ): Promise<void> {
+    if (!overrides || overrides.length === 0) return;
+
+    const applied = await this.policyService.syncUserPermissionOverrides(
+      userId,
+      overrides,
+      changedByUserId,
+      executor
+    );
+
+    if (applied.length === 0) return;
+
+    await this.recordUserHistory(
+      userId,
+      changedByUserId,
+      'permission_override_changed',
+      applied.map((change) => ({
+        field: `permission:${change.permissionKey}`,
+        oldValue: change.oldValue,
+        newValue: change.newValue,
+      })),
+      null,
+      executor
+    );
+  }
 
   private async recordUserHistory(
     userId: number,
     changedByUserId: number,
     actionType: string,
     changes?: HistoryChange[],
-    notes?: string | null
+    notes?: string | null,
+    executor?: DrizzleDbExecutor
   ): Promise<void> {
-    await this.databaseService.db.insert(userHistory).values({
+    const db = executor ?? this.databaseService.db;
+    await db.insert(userHistory).values({
       userId,
       changedByUserId,
       actionType,
       changes: changes ? changes : null,
       notes: notes ?? null,
     });
+  }
+
+  private async addUserToTeamInTx(
+    tx: DrizzleDbExecutor,
+    userId: number,
+    dto: AddUserToTeamBody,
+    changedByUserId: number
+  ): Promise<void> {
+    const [existing] = await tx
+      .select()
+      .from(userTeams)
+      .where(
+        and(eq(userTeams.userId, userId), eq(userTeams.teamId, dto.teamId))
+      )
+      .limit(1);
+
+    if (existing?.isActive) {
+      throw new ConflictException('User is already in this team');
+    }
+
+    if (existing && !existing.isActive) {
+      await tx
+        .update(userTeams)
+        .set({ isActive: true, role: dto.role, timestamp: new Date() })
+        .where(
+          and(eq(userTeams.userId, userId), eq(userTeams.teamId, dto.teamId))
+        );
+    } else {
+      await tx.insert(userTeams).values({
+        userId,
+        teamId: dto.teamId,
+        role: dto.role,
+      });
+    }
+
+    await this.recordUserHistory(
+      userId,
+      changedByUserId,
+      'team_added',
+      [
+        { field: 'teamId', oldValue: null, newValue: dto.teamId },
+        { field: 'teamRole', oldValue: null, newValue: dto.role },
+      ],
+      dto.notes ?? null,
+      tx
+    );
   }
 
   async create(
@@ -130,32 +222,12 @@ export class UsersService {
       throw new BadRequestException('Invalid role');
     }
 
-    const [inserted] = await this.databaseService.db
-      .insert(users)
-      .values({
-        roleId: dto.roleId,
-        adUsername: normalizedIdirUsername,
-        adEmail: normalizedEmail,
-        adDisplayName: dto.displayName?.trim() || null,
-        adJobTitle: dto.adJobTitle?.trim() || null,
-        adPhone: dto.adPhone?.trim() || null,
-        isActive: true,
-        status: 'pending',
-        createdBy: createdByUserId,
-        createdDateTime: new Date(),
-      })
-      .returning({ id: users.id });
+    const uniqueTeams =
+      dto.teams && dto.teams.length > 0
+        ? Array.from(new Map(dto.teams.map((t) => [t.teamId, t])).values())
+        : [];
 
-    const userId = inserted.id;
-
-    await this.recordUserHistory(userId, createdByUserId, 'created', [
-      { field: 'roleId', oldValue: null, newValue: dto.roleId },
-    ]);
-
-    if (dto.teams && dto.teams.length > 0) {
-      const uniqueTeams = Array.from(
-        new Map(dto.teams.map((t) => [t.teamId, t])).values()
-      );
+    if (uniqueTeams.length > 0) {
       const teamIds = uniqueTeams.map((t) => t.teamId);
       const existingTeams = await this.databaseService.db
         .select({ id: teams.id })
@@ -168,17 +240,68 @@ export class UsersService {
           `Invalid team ID(s): ${missing.join(', ')}`
         );
       }
+    }
+
+    await this.policyService.validateUserPermissionOverrideKeys(
+      dto.permissionOverrides ?? []
+    );
+
+    const userId = await this.databaseService.db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(users)
+        .values({
+          roleId: dto.roleId,
+          adUsername: normalizedIdirUsername,
+          adEmail: normalizedEmail,
+          adDisplayName: dto.displayName?.trim() || null,
+          adJobTitle: dto.adJobTitle?.trim() || null,
+          adPhone: dto.adPhone?.trim() || null,
+          isActive: true,
+          isEventPlanner: dto.isEventPlanner ?? false,
+          status: 'pending',
+          createdBy: createdByUserId,
+          createdDateTime: new Date(),
+        })
+        .returning({ id: users.id });
+
+      const newUserId = inserted.id;
+
+      await this.recordUserHistory(
+        newUserId,
+        createdByUserId,
+        'created',
+        [{ field: 'roleId', oldValue: null, newValue: dto.roleId }],
+        null,
+        tx
+      );
+
       for (const teamEntry of uniqueTeams) {
-        await this.addUserToTeam(
-          userId,
+        await this.addUserToTeamInTx(
+          tx,
+          newUserId,
           { teamId: teamEntry.teamId, role: teamEntry.role },
           createdByUserId
         );
       }
-    }
+
+      await this.applyPermissionOverrides(
+        newUserId,
+        dto.permissionOverrides,
+        createdByUserId,
+        tx
+      );
+
+      return newUserId;
+    });
 
     const created = await this.findOne(userId);
     if (!created) throw new NotFoundException('User not found');
+
+    await this.notificationsService.notifyUserCreated({
+      userId,
+      actorUserId: createdByUserId,
+    });
+
     return created;
   }
 
@@ -221,6 +344,7 @@ export class UsersService {
         adEmail: users.adEmail,
         roleId: users.roleId,
         isActive: users.isActive,
+        isEventPlanner: users.isEventPlanner,
         lastUpdatedDateTime: users.lastUpdatedDateTime,
       })
       .from(users)
@@ -279,6 +403,7 @@ export class UsersService {
       roleId: u.roleId,
       roleName: roleMap.get(u.roleId) ?? 'Unknown',
       isActive: u.isActive,
+      isEventPlanner: u.isEventPlanner,
       teams: teamsByUser.get(u.id) ?? [],
       lastUpdatedDateTime: u.lastUpdatedDateTime
         ? u.lastUpdatedDateTime instanceof Date
@@ -297,6 +422,7 @@ export class UsersService {
         adEmail: users.adEmail,
         roleId: users.roleId,
         isActive: users.isActive,
+        isEventPlanner: users.isEventPlanner,
         notes: users.notes,
         flagColour: userSettings.flagColour,
         directLoginEnabled: userSettings.directLoginEnabled,
@@ -335,7 +461,14 @@ export class UsersService {
         : [];
     const teamNameMap = new Map(teamNameRows.map((t) => [t.id, t.name]));
 
+    const overrides = await this.policyService.getUserPermissionOverrides(id);
+
     return {
+      permissionOverrides: overrides.map((o) => ({
+        permissionKey: o.key,
+        displayName: o.displayName,
+        effect: o.effect,
+      })),
       ...u,
       flagColour: u.flagColour ?? null,
       directLoginEnabled: u.directLoginEnabled ?? undefined,
@@ -415,6 +548,18 @@ export class UsersService {
         'settings_updated',
         changes
       );
+
+      if (changes.some((change) => change.field === 'directLoginEnabled')) {
+        await this.notificationsService.notifyUserUpdated({
+          userId: id,
+          actorUserId: changedByUserId,
+          changedFields: ['directLoginEnabled'],
+          summary: 'User direct login setting updated',
+          details: {
+            directLoginEnabled: dto.directLoginEnabled,
+          },
+        });
+      }
     }
 
     const updated = await this.findOne(id);
@@ -433,20 +578,23 @@ export class UsersService {
     const changes: HistoryChange[] = [];
     const updates: Partial<typeof users.$inferInsert> = {};
 
-    if (dto.roleId !== undefined && dto.roleId !== existing.roleId) {
-      updates.roleId = dto.roleId;
-      changes.push({
-        field: 'roleId',
-        oldValue: existing.roleId,
-        newValue: dto.roleId,
-      });
-    }
     if (dto.isActive !== undefined && dto.isActive !== existing.isActive) {
       updates.isActive = dto.isActive;
       changes.push({
         field: 'isActive',
         oldValue: existing.isActive,
         newValue: dto.isActive,
+      });
+    }
+    if (
+      dto.isEventPlanner !== undefined &&
+      dto.isEventPlanner !== existing.isEventPlanner
+    ) {
+      updates.isEventPlanner = dto.isEventPlanner;
+      changes.push({
+        field: 'isEventPlanner',
+        oldValue: existing.isEventPlanner,
+        newValue: dto.isEventPlanner,
       });
     }
     if (dto.notes !== undefined && dto.notes !== existing.notes) {
@@ -509,30 +657,134 @@ export class UsersService {
       });
     }
 
-    if (Object.keys(updates).length === 0) return existing;
+    const permissionOverrides = dto.permissionOverrides;
+    const shouldSyncOverrides = permissionOverrides !== undefined;
+    const hasNonRoleUserUpdates = Object.keys(updates).length > 0;
 
-    updates.lastUpdatedBy = changedByUserId;
-    updates.lastUpdatedDateTime = new Date();
+    if (shouldSyncOverrides && permissionOverrides.length > 0) {
+      await this.policyService.validateUserPermissionOverrideKeys(
+        permissionOverrides
+      );
+    }
 
-    await this.databaseService.db
-      .update(users)
-      .set(updates)
-      .where(eq(users.id, id));
+    if (
+      !hasNonRoleUserUpdates &&
+      dto.roleId === undefined &&
+      !shouldSyncOverrides
+    ) {
+      const refreshed = await this.findOne(id);
+      if (!refreshed) throw new NotFoundException('User not found');
+      return refreshed;
+    }
 
-    const actionType =
-      updates.isActive === false
-        ? 'deactivated'
-        : updates.isActive === true
-          ? 'activated'
-          : updates.roleId !== undefined
-            ? 'role_changed'
-            : 'updated';
-    await this.recordUserHistory(
-      id,
-      changedByUserId,
-      actionType,
-      changes.length ? changes : undefined
-    );
+    let roleChanged = false;
+
+    await this.databaseService.db.transaction(async (tx) => {
+      if (dto.roleId !== undefined) {
+        const lockedUsers = await tx
+          .select({ id: users.id, roleId: users.roleId })
+          .from(users)
+          .where(inArray(users.id, [...new Set([id, changedByUserId])]))
+          .orderBy(users.id)
+          .for('update');
+        const target = lockedUsers.find((row) => row.id === id);
+        const actor = lockedUsers.find((row) => row.id === changedByUserId);
+
+        if (!target) throw new NotFoundException('User not found');
+
+        const changesSystemAdminRole =
+          target.roleId !== dto.roleId &&
+          (target.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN ||
+            dto.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN);
+        if (
+          changesSystemAdminRole &&
+          actor?.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+        ) {
+          throw new ForbiddenException(
+            "Only System Admin users can change a user's System Admin role."
+          );
+        }
+
+        if (target.roleId !== dto.roleId) {
+          updates.roleId = dto.roleId;
+          changes.push({
+            field: 'roleId',
+            oldValue: target.roleId,
+            newValue: dto.roleId,
+          });
+          roleChanged = true;
+        }
+      }
+
+      const hasUserUpdates = Object.keys(updates).length > 0;
+
+      if (shouldSyncOverrides) {
+        await this.applyPermissionOverrides(
+          id,
+          permissionOverrides,
+          changedByUserId,
+          tx
+        );
+      }
+
+      if (hasUserUpdates) {
+        updates.lastUpdatedBy = changedByUserId;
+        updates.lastUpdatedDateTime = new Date();
+
+        await tx.update(users).set(updates).where(eq(users.id, id));
+
+        const actionType =
+          updates.isActive === false
+            ? 'deactivated'
+            : updates.isActive === true
+              ? 'activated'
+              : updates.roleId !== undefined
+                ? 'role_changed'
+                : 'updated';
+        await this.recordUserHistory(
+          id,
+          changedByUserId,
+          actionType,
+          changes.length ? changes : undefined,
+          null,
+          tx
+        );
+      }
+
+      // Force re-login so the next JWT reflects the updated permissions/role;
+      // existing tokens would otherwise keep the stale grants until expiry.
+      if (shouldSyncOverrides || roleChanged) {
+        await this.authService.invalidateUserSessions(id, tx);
+      }
+    });
+
+    const notifyFields = changes
+      .map((change) => change.field)
+      .filter((field) => field === 'roleId' || field === 'isActive');
+    if (notifyFields.length > 0) {
+      const isDeactivationTransition = changes.some(
+        (change) => change.field === 'isActive' && change.newValue === false
+      );
+      const summary = notifyFields.includes('isActive')
+        ? dto.isActive === false
+          ? 'User account deactivated'
+          : 'User account activated'
+        : 'User role updated';
+
+      await this.notificationsService.notifyUserUpdated({
+        userId: id,
+        actorUserId: changedByUserId,
+        changedFields: notifyFields,
+        summary,
+        details: {
+          roleId: dto.roleId,
+          isActive: dto.isActive,
+        },
+        ...(isDeactivationTransition
+          ? { includeInactiveRecipients: true }
+          : {}),
+      });
+    }
 
     const updated = await this.findOne(id);
     if (!updated) throw new NotFoundException('User not found');
@@ -584,6 +836,13 @@ export class UsersService {
       ],
       dto.notes ?? null
     );
+
+    await this.notificationsService.notifyUserAddedToTeam({
+      userId,
+      teamId: dto.teamId,
+      actorUserId: changedByUserId,
+      membershipRole: dto.role,
+    });
   }
 
   /**
@@ -725,6 +984,28 @@ export class UsersService {
       dto?.notes ?? null
     );
 
+    await this.notificationsService.notifyUserUpdated({
+      userId,
+      actorUserId: changedByUserId,
+      changedFields: ['team'],
+      summary: 'User removed from team',
+      details: {
+        teamId,
+        transferredCount,
+      },
+    });
+
+    if (transferredCount > 0 && targetUserId != null) {
+      await this.notificationsService.notifyActivitiesTransferred({
+        actorUserId: changedByUserId,
+        fromUserId: userId,
+        toUserId: targetUserId,
+        transferredCount,
+        activityIds: scopedRows.map((row) => row.activityId),
+        includeAdmins: true,
+      });
+    }
+
     return { transferredCount };
   }
 
@@ -764,6 +1045,17 @@ export class UsersService {
       ],
       dto.notes ?? null
     );
+
+    await this.notificationsService.notifyUserUpdated({
+      userId,
+      actorUserId: changedByUserId,
+      changedFields: ['teamRole'],
+      summary: 'User team role updated',
+      details: {
+        teamId,
+        role: dto.role,
+      },
+    });
   }
 
   async getUserHistory(userId: number): Promise<UserHistoryEntry[]> {
@@ -1104,14 +1396,18 @@ export class UsersService {
             teamAbbreviation: crossTeamContext.teamAbbreviation,
           });
 
+        const transferNow = new Date();
         await tx
           .update(activities)
           .set({
             leadTeamId: toTeamId,
             leadMinistryId: crossTeamContext.leadMinistryId,
             displayId,
-            lastUpdatedDateTime: new Date(),
-            lastUpdatedBy: changedByUserId,
+            ...getActivityTimestampUpdateForWrite({
+              context: 'transfer',
+              userId: changedByUserId,
+              now: transferNow,
+            }),
           })
           .where(eq(activities.id, row.activityId));
 
@@ -1397,6 +1693,15 @@ export class UsersService {
       ],
       dto.notes ?? null
     );
+
+    await this.notificationsService.notifyActivitiesTransferred({
+      actorUserId: changedByUserId,
+      fromUserId: sourceUserId,
+      toUserId: dto.targetUserId,
+      transferredCount,
+      activityIds,
+      includeAdmins: true,
+    });
 
     return { transferredCount };
   }

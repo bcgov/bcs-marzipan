@@ -33,7 +33,6 @@ import type {
   MinistryLookupItem,
   OrganizationLookupItem,
   ThemeLookupItem,
-  VenuePresetItem,
 } from '@corpcal/shared/api/types';
 import {
   createActivityStatusRequestSchema,
@@ -45,6 +44,7 @@ import {
   createMinistryRequestSchema,
   createTagRequestSchema,
   createThemeRequestSchema,
+  createTranslationLanguageRequestSchema,
   createVenuePresetRequestSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
@@ -55,12 +55,14 @@ import {
   updateMinistryRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
+  updateTranslationLanguageRequestSchema,
   updateVenuePresetRequestSchema,
 } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
   ActivityStatusResponseWrapperDto,
+  ActivityTeamSharingResponseWrapperDto,
   CategoryResponseWrapperDto,
   CityResponseWrapperDto,
   CommsMaterialResponseWrapperDto,
@@ -73,6 +75,7 @@ import {
   CreateMinistryGroupDto,
   CreateTagDto,
   CreateThemeDto,
+  CreateTranslationLanguageDto,
   CreateVenuePresetDto,
   GovernmentRepresentativeResponseWrapperDto,
   LookupArrayResponseWrapperDto,
@@ -81,6 +84,7 @@ import {
   MinistryResponseWrapperDto,
   TagResponseWrapperDto,
   ThemeResponseWrapperDto,
+  TranslationLanguageResponseWrapperDto,
   UpdateActivityStatusDto,
   UpdateCategoryDto,
   UpdateCityDto,
@@ -90,6 +94,7 @@ import {
   UpdateMinistryGroupDto,
   UpdateTagDto,
   UpdateThemeDto,
+  UpdateTranslationLanguageDto,
   UpdateVenuePresetDto,
   VenuePresetArrayResponseWrapperDto,
   VenuePresetResponseWrapperDto,
@@ -101,7 +106,7 @@ import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { TeamsService } from '../teams/teams.service';
 import { lookupGetCacheControl } from './cache-control';
-import { LookupsService } from './lookups.service';
+import { LookupsService, type VenuePresetAdminItem } from './lookups.service';
 
 @ApiTags('lookups')
 @Controller('lookups')
@@ -115,11 +120,15 @@ export class LookupsController {
   ) {}
 
   @ApiOperation({
-    summary: 'Teams and ministry quick-share for activity Shared with',
+    summary: 'Active teams and ministry quick-share for activity Shared with',
     description:
-      'Returns active teams (same list as GET /teams) plus quick-share group definitions.',
+      'Returns active teams with Share With visibility metadata plus quick-share group definitions.',
   })
-  @ApiResponse({ status: 200, description: 'Teams and quick-share config' })
+  @ApiResponse({
+    status: 200,
+    description: 'Teams and quick-share config',
+    type: ActivityTeamSharingResponseWrapperDto,
+  })
   @Get('activity-team-sharing')
   @Header('Cache-Control', lookupGetCacheControl())
   async getActivityTeamSharing(): Promise<{
@@ -130,7 +139,13 @@ export class LookupsController {
       this.teamsService.findAll(true),
       this.lookupsService.getActivityTeamSharingQuickShare(),
     ]);
-    return { success: true, data: { teams, quickShare } };
+    return {
+      success: true,
+      data: {
+        teams,
+        quickShare,
+      },
+    };
   }
 
   @ApiOperation({
@@ -325,6 +340,32 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({
+    summary: 'Get permissions that can be granted or denied per user',
+    description:
+      'Returns the permissions flagged allow_user_override, used by the user management UI to set individual grants and denials.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Overridable permissions retrieved',
+  })
+  @Get('permissions/overridable')
+  @RequirePermission('users.manage_roles')
+  async getOverridablePermissions(): Promise<{
+    success: boolean;
+    data: {
+      id: number;
+      key: string;
+      displayName: string;
+      description: string | null;
+      category: string;
+      sortOrder: number;
+    }[];
+  }> {
+    const data = await this.lookupsService.getOverridablePermissions();
+    return { success: true, data };
+  }
+
   private ensureSystemAdmin(user: AuthUser): void {
     // Prefer RBAC permission check instead of hard-coded role id
     if (
@@ -366,49 +407,6 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Bulk update permission visibility (admin only)' })
-  @ApiResponse({ status: 200, description: 'Permissions updated' })
-  @ApiResponse({ status: 400, description: 'Validation failed' })
-  @ApiResponse({ status: 403, description: 'Caller is not system admin' })
-  @ApiBody({
-    description: 'Array of permission visibility updates',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'number', example: 12 },
-          showInUserManagement: { type: 'boolean', example: true },
-        },
-        required: ['id', 'showInUserManagement'],
-      },
-      example: [
-        { id: 12, showInUserManagement: true },
-        { id: 15, showInUserManagement: false },
-      ],
-    },
-  })
-  @Patch('permissions/visibility')
-  @RequirePermission('system.manage_permissions')
-  async bulkUpdatePermissionVisibility(
-    @Body(
-      new ZodValidationPipe(
-        z.array(z.object({ id: z.number(), showInUserManagement: z.boolean() }))
-      )
-    )
-    body: { id: number; showInUserManagement: boolean }[],
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: any[] }> {
-    this.ensureSystemAdmin(user);
-    const results = await this.lookupsService.bulkUpdatePermissionVisibility(
-      body.map((b) => ({
-        id: b.id,
-        showInUserManagement: b.showInUserManagement,
-      })),
-      user.id
-    );
-    return { success: true, data: results };
-  }
   @ApiOperation({
     summary: 'Get all users',
     description:
@@ -725,19 +723,94 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Get all translation languages' })
+  @ApiOperation({
+    summary: 'Get all translation languages',
+    description:
+      'Retrieves all active translation languages. Admins with the `lookups.manage` permission can pass ' +
+      '`includeAll=true` to retrieve all languages including inactive; this path sets `Cache-Control: no-store`.',
+  })
+  @ApiQuery({
+    name: 'includeAll',
+    required: false,
+    type: String,
+    enum: ['true'],
+    description:
+      'When set to `"true"` and the caller has the `lookups.manage` permission, returns all translation ' +
+      'languages including inactive.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Translation languages retrieved successfully',
     type: LookupArrayResponseWrapperDto,
   })
   @Get('translation-languages')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getTranslationLanguages(): Promise<{
+  async getTranslationLanguages(
+    @CurrentUser() user: AuthUser,
+    @Query('includeAll') includeAll?: string,
+    @Res({ passthrough: true }) res?: Response
+  ): Promise<{
     success: boolean;
     data: LookupItem[];
   }> {
-    const data = await this.lookupsService.getTranslationLanguages();
+    const shouldIncludeAll =
+      includeAll === 'true' && user.permissions.includes('lookups.manage');
+    res?.setHeader(
+      'Cache-Control',
+      shouldIncludeAll
+        ? 'no-store'
+        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+    );
+    const data =
+      await this.lookupsService.getTranslationLanguages(shouldIncludeAll);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new translation language' })
+  @ApiResponse({
+    status: 201,
+    description: 'Translation language created successfully',
+    type: TranslationLanguageResponseWrapperDto,
+  })
+  @ApiBody({ type: CreateTranslationLanguageDto })
+  @RequirePermission('lookups.manage')
+  @Post('translation-languages')
+  async createTranslationLanguage(
+    @Body(new ZodValidationPipe(createTranslationLanguageRequestSchema))
+    body: CreateTranslationLanguageDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.createTranslationLanguage(
+      body,
+      user.id
+    );
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a translation language' })
+  @ApiResponse({
+    status: 200,
+    description: 'Translation language updated successfully',
+    type: TranslationLanguageResponseWrapperDto,
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Translation Language ID',
+  })
+  @ApiBody({ type: UpdateTranslationLanguageDto })
+  @RequirePermission('lookups.manage')
+  @Patch('translation-languages/:id')
+  async updateTranslationLanguage(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateTranslationLanguageRequestSchema))
+    body: UpdateTranslationLanguageDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any }> {
+    const data = await this.lookupsService.updateTranslationLanguage(
+      Number(id),
+      body,
+      user.id
+    );
     return { success: true, data };
   }
 
@@ -806,7 +879,10 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Get all event planners' })
+  @ApiOperation({
+    summary: 'Get all event planners',
+    description: 'Active users flagged as event planners.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Event planners retrieved successfully',
@@ -1239,7 +1315,15 @@ export class LookupsController {
   @ApiOperation({
     summary: 'Get venue presets',
     description:
-      'Returns admin-defined venue presets for the activity form. Pinned presets are shown as badges.',
+      'Returns active admin-defined venue presets for the activity form (pinned presets are also shown as badges). Admins with the `lookups.manage` permission can pass `includeAll=true` to retrieve all presets including inactive; this path sets `Cache-Control: no-store`.',
+  })
+  @ApiQuery({
+    name: 'includeAll',
+    required: false,
+    type: String,
+    enum: ['true'],
+    description:
+      'When set to `"true"` and the caller has the `lookups.manage` permission, returns all venue presets including inactive.',
   })
   @ApiResponse({
     status: 200,
@@ -1247,12 +1331,21 @@ export class LookupsController {
     type: VenuePresetArrayResponseWrapperDto,
   })
   @Get('venue-presets')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getVenuePresets(): Promise<{
+  async getVenuePresets(
+    @CurrentUser() user: AuthUser,
+    @Query('includeAll') includeAll?: string,
+    @Res({ passthrough: true }) res?: Response
+  ): Promise<{
     success: boolean;
-    data: VenuePresetItem[];
+    data: VenuePresetAdminItem[];
   }> {
-    const data = await this.lookupsService.getVenuePresets();
+    const shouldIncludeAll =
+      includeAll === 'true' && user.permissions.includes('lookups.manage');
+    res?.setHeader(
+      'Cache-Control',
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
+    );
+    const data = await this.lookupsService.getVenuePresets(shouldIncludeAll);
     return { success: true, data };
   }
 
@@ -1269,7 +1362,7 @@ export class LookupsController {
     @Body(new ZodValidationPipe(createVenuePresetRequestSchema))
     body: CreateVenuePresetDto,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: VenuePresetItem }> {
+  ): Promise<{ success: boolean; data: VenuePresetAdminItem }> {
     const data = await this.lookupsService.createVenuePreset(body, user.id);
     return { success: true, data };
   }
@@ -1289,7 +1382,7 @@ export class LookupsController {
     @Body(new ZodValidationPipe(updateVenuePresetRequestSchema))
     body: UpdateVenuePresetDto,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: VenuePresetItem }> {
+  ): Promise<{ success: boolean; data: VenuePresetAdminItem }> {
     const data = await this.lookupsService.updateVenuePreset(
       Number(id),
       body,
@@ -1325,7 +1418,7 @@ export class LookupsController {
       },
     },
   })
-  @Post('address/find')
+  @Post('addresses/search')
   async findAddresses(
     @Body() body: { searchTerm: string; country?: string; lastId?: string }
   ): Promise<{ success: boolean; data: any[] }> {
@@ -1350,7 +1443,7 @@ export class LookupsController {
       },
     },
   })
-  @Post('address/retrieve')
+  @Post('addresses/resolve')
   async retrieveAddress(
     @Body() body: { id: string }
   ): Promise<{ success: boolean; data: any }> {

@@ -2,7 +2,6 @@ import { createHash, randomBytes } from 'node:crypto';
 import {
   BadRequestException,
   Injectable,
-  NotImplementedException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -23,6 +22,7 @@ import {
   type CheckEmailResponse,
 } from '@corpcal/shared';
 
+import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
 import type { AuthResponseDto } from './dto/auth-response.dto';
@@ -679,9 +679,15 @@ export class AuthService {
     return { message: 'Logged out' };
   }
 
-  refresh(): never {
-    throw new NotImplementedException(
-      'Refresh not implemented. Re-login to obtain a new token.'
-    );
+  /**
+   * Delete all active sessions for a user so JwtAuthGuard rejects their existing
+   * tokens, forcing re-login to pick up updated role/permission overrides.
+   */
+  async invalidateUserSessions(
+    userId: number,
+    executor?: DrizzleDbExecutor
+  ): Promise<void> {
+    const db = executor ?? this.databaseService.db;
+    await db.delete(sessions).where(eq(sessions.userId, userId));
   }
 }

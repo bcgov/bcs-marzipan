@@ -49,9 +49,11 @@ type ActivityFormBodyProps = {
   lookups: FormLookupData;
   /** From parent `useCommsContactCandidates` -- avoids a duplicate query and stale option lists. */
   commsContactCandidates: CommsContactCandidate[] | undefined;
+  /** Persisted activity ID (edit/view only). Enables the unshare-own-team action. */
+  activityId?: number;
   readOnly?: boolean;
-  /** When false, FormLabel "Changed" badges are hidden (e.g. on create form). Default true for edit/view. */
-  showChangedBadges?: boolean;
+  /** When false, field change label highlights are hidden (e.g. on create form). Default true for edit/view. */
+  showFieldChangeHighlights?: boolean;
   /** Dotted field paths changed since last review (reviewer-only). */
   reviewerChangedPaths?: ReadonlySet<string>;
   leadTeamField?: ActivityLeadTeamFieldConfig;
@@ -63,8 +65,9 @@ type ActivityFormBodyProps = {
 export function ActivityFormBody({
   lookups,
   commsContactCandidates,
+  activityId: _activityId,
   readOnly = false,
-  showChangedBadges = true,
+  showFieldChangeHighlights = true,
   reviewerChangedPaths,
   leadTeamField: leadTeamFieldProp,
 }: ActivityFormBodyProps): ReactElement {
@@ -151,7 +154,7 @@ export function ActivityFormBody({
     <ActivityEditProvider value={editContextValue}>
       <ActivityInfoIconSettingsProvider>
         <FormDisplayOptionsProvider
-          showChangedBadges={showChangedBadges}
+          showFieldChangeHighlights={showFieldChangeHighlights}
           reviewerChangedPaths={reviewerChangedPaths}
         >
           <div

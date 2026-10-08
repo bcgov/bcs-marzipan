@@ -15,6 +15,9 @@
 /calendar-service/build/
 /calendar-ui/dist/
 /calendar-ui/build/
+/calendar-ui/vitest-activity-form.json
+/calendar-ui/vitest-results.json
+.tmp-vitest*
 !/openshift/build/
 !/openshift/build/**
 

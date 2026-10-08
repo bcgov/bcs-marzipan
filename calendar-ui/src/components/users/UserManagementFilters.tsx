@@ -7,7 +7,6 @@ import {
 } from '@/components/table/SortDropdown';
 import { FILTER_PANEL_MIN_WIDTH } from '@/components/table/tableConstants';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -127,12 +126,6 @@ export function UserManagementFilters({
     [onRoleIdsChange]
   );
 
-  const hasDropdownFiltersActive = teamIds.length > 0 || roleIds.length > 0;
-  const handleClearDropdownFilters = useCallback(() => {
-    onTeamIdsChange([]);
-    onRoleIdsChange([]);
-  }, [onTeamIdsChange, onRoleIdsChange]);
-
   const [searchInput, setSearchInput] = useState(keyword);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -178,6 +171,27 @@ export function UserManagementFilters({
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
+          <div className="relative max-w-md min-w-[240px] flex-1">
+            <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+            <Input
+              type="text"
+              placeholder="Search by name, email, username..."
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pr-8 pl-8"
+              aria-label="Keyword search"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
+                onClick={handleClearSearch}
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <FilterTrigger
@@ -254,41 +268,8 @@ export function UserManagementFilters({
             selectedValues={roleSelectedValues}
             onChange={handleRoleIdsChange}
           />
-          {hasDropdownFiltersActive && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="animate-in fade-in ml-4 duration-200"
-              onClick={handleClearDropdownFilters}
-              aria-label="Clear all filters"
-            >
-              Clear all filters
-            </Button>
-          )}
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative max-w-md min-w-[240px] flex-1">
-            <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-            <Input
-              type="text"
-              placeholder="Search by name, email, username..."
-              value={searchInput}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pr-8 pl-8"
-              aria-label="Keyword search"
-            />
-            {searchInput && (
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
-                onClick={handleClearSearch}
-                aria-label="Clear search"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
           <SortDropdown
             columns={USER_SORT_COLUMNS}
             sortKey={sortKey}

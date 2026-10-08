@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import type { HistoryChange } from '@corpcal/shared/api/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -13,18 +14,26 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/useAuth';
+
+import { ActivityFormChangesList } from './ActivityFormChangesList';
+import { type ActivitySaveConfirmPayload } from './EditActivityConfirmModal';
+import { RenewPublicLastUpdatedField } from './RenewPublicLastUpdatedField';
+
+export type ReviewActivityConfirmPayload = ActivitySaveConfirmPayload & {
+  markAsCompleted?: boolean;
+  unassignMe?: boolean;
+};
 
 interface ReviewActivityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Pending form edits to show before confirming review. */
+  changes: HistoryChange[];
   /** When true, copy mentions saving pending edits before updating status. */
   isDirty: boolean;
   isSubmitting: boolean;
-  onConfirm: (
-    notes?: string,
-    markAsCompleted?: boolean,
-    unassignMe?: boolean
-  ) => void;
+  onConfirm: (payload: ReviewActivityConfirmPayload) => void;
   displayId?: string;
   /** When true, show optional "Mark as completed" (activities.complete + eligibility). */
   showMarkAsCompletedOption?: boolean;
@@ -37,6 +46,7 @@ interface ReviewActivityModalProps {
 export function ReviewActivityModal({
   open,
   onOpenChange,
+  changes,
   isDirty,
   isSubmitting,
   onConfirm,
@@ -45,12 +55,25 @@ export function ReviewActivityModal({
   activityEndedAtLabel = null,
   showUnassignMeOption = false,
 }: ReviewActivityModalProps) {
+  const { user } = useAuth();
   const [notes, setNotes] = useState('');
   const [markAsCompleted, setMarkAsCompleted] = useState(false);
   const [unassignMe, setUnassignMe] = useState(false);
+  const [renewPublicLastUpdated, setRenewPublicLastUpdated] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setRenewPublicLastUpdated(false);
+    }
+  }, [open]);
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined, markAsCompleted, unassignMe);
+    onConfirm({
+      notes: notes.trim() || undefined,
+      ...(renewPublicLastUpdated ? { renewPublicLastUpdated: true } : {}),
+      ...(markAsCompleted ? { markAsCompleted: true } : {}),
+      ...(unassignMe ? { unassignMe: true } : {}),
+    });
   };
 
   const handleOpenChange = (value: boolean) => {
@@ -58,6 +81,7 @@ export function ReviewActivityModal({
       setNotes('');
       setMarkAsCompleted(false);
       setUnassignMe(false);
+      setRenewPublicLastUpdated(false);
     }
     onOpenChange(value);
   };
@@ -107,8 +131,15 @@ export function ReviewActivityModal({
           </p>
         )}
 
-        {showMarkAsCompletedOption && (
-          <div className="space-y-3">
+        <div className="max-h-[60vh] space-y-4 overflow-y-auto">
+          {changes.length > 0 && (
+            <ActivityFormChangesList
+              key={open ? 'review-confirm-open' : 'review-confirm-closed'}
+              changes={changes}
+            />
+          )}
+
+          {showMarkAsCompletedOption && (
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="review-confirm-mark-completed"
@@ -124,34 +155,41 @@ export function ReviewActivityModal({
                 Mark as completed
               </Label>
             </div>
-          </div>
-        )}
+          )}
 
-        {showUnassignMeOption && (
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="review-confirm-unassign-me"
-              checked={unassignMe}
-              onCheckedChange={(checked) => setUnassignMe(checked === true)}
+          {showUnassignMeOption && (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="review-confirm-unassign-me"
+                checked={unassignMe}
+                onCheckedChange={(checked) => setUnassignMe(checked === true)}
+              />
+              <Label
+                htmlFor="review-confirm-unassign-me"
+                className="cursor-pointer text-sm font-normal"
+              >
+                Unassign me
+              </Label>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="review-confirm-notes">Add a note (optional)</Label>
+            <Textarea
+              id="review-confirm-notes"
+              placeholder="Give additional context about your changes."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              maxLength={1000}
             />
-            <Label
-              htmlFor="review-confirm-unassign-me"
-              className="cursor-pointer text-sm font-normal"
-            >
-              Unassign me
-            </Label>
           </div>
-        )}
 
-        <div className="space-y-2">
-          <Label htmlFor="review-confirm-notes">Add a note (optional)</Label>
-          <Textarea
-            id="review-confirm-notes"
-            placeholder="Give additional context about your changes."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            maxLength={1000}
+          <RenewPublicLastUpdatedField
+            permissions={user?.permissions ?? []}
+            checked={renewPublicLastUpdated}
+            onCheckedChange={setRenewPublicLastUpdated}
+            id="review-confirm-renew-public"
           />
         </div>
 

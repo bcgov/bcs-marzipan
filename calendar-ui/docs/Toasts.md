@@ -16,7 +16,18 @@ When the same logical event can trigger toasts from more than one place (e.g. fo
 - Examples: `activity-updated-42`, `activity-created-123`, `user-updated-5`, `team-deactivated-3`, `team-created`.
 - Use a stable id so the same event always uses the same string across call sites.
 
+## Durations
+
+Standard durations live in [src/lib/toast-durations.ts](src/lib/toast-durations.ts):
+
+- `TOAST_DURATION_MS.success` / `.info` — 5s
+- `TOAST_DURATION_MS.error` — 7s (errors and actionable warnings)
+
+Countdown toasts, long-lived lock notices, and other special cases keep local durations (e.g. `Infinity`, `60_000`).
+
 ## Where things live
 
+- Durations: [calendar-ui/src/lib/toast-durations.ts](src/lib/toast-durations.ts)
 - Helpers: [calendar-ui/src/lib/error-toast.ts](src/lib/error-toast.ts)
+- User/team copy: [calendar-ui/src/lib/user-team-toast-messages.ts](src/lib/user-team-toast-messages.ts)
 - Direct toast calls: search for `toast.` from `sonner` across the app.

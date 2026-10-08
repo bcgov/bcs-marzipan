@@ -21,7 +21,15 @@ const PopoverContent = React.forwardRef<
   PopoverContentProps
 >(
   (
-    { className, align = 'center', sideOffset = 4, container, ...props },
+    {
+      className,
+      align = 'center',
+      sideOffset = 4,
+      container,
+      onWheel,
+      onTouchMove,
+      ...props
+    },
     ref
   ) => (
     <PopoverPrimitive.Portal container={container ?? undefined}>
@@ -33,6 +41,16 @@ const PopoverContent = React.forwardRef<
           'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 pointer-events-auto z-[60] w-72 origin-[--radix-popover-content-transform-origin] rounded-md border p-4 shadow-md outline-none',
           className
         )}
+        onWheel={(event) => {
+          onWheel?.(event);
+          // Dialog/drawer scroll lock (react-remove-scroll) blocks wheel events on
+          // portaled popovers; stop propagation so inner lists can scroll.
+          event.stopPropagation();
+        }}
+        onTouchMove={(event) => {
+          onTouchMove?.(event);
+          event.stopPropagation();
+        }}
         {...props}
       />
     </PopoverPrimitive.Portal>

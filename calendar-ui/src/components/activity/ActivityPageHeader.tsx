@@ -1,12 +1,20 @@
-import { History, Star } from 'lucide-react';
+import { History, Star, UserX } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 
+import { formatActivityDisplayIdForUi } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import {
-  ActivityFlagIcon,
-  ActivityFlagOverflowIcon,
-} from '@/components/activity/activities/ActivityFlagIcon';
+  ActivityFlagAssigneeStack,
+  activityFlagAssigneeTooltip,
+  uniqueActivityFlagsByAssignee,
+} from '@/components/activity/activities/ActivityFlagAssigneeStack';
+import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
 import { AssignActivityModal } from '@/components/activity/activities/AssignActivityModal';
+import { SharedWithPopover } from '@/components/activity/ActivityTable/cells/SharedWithPopover';
+import {
+  ACTIVITY_OVERVIEW_ICON_MUTED_CLASS,
+  ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS,
+} from '@/components/activity/ActivityTable/overviewIconsLayout';
 import { Badge, getActivityStatusBadgeVariant } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CopyableText } from '@/components/ui/copyable-text';
@@ -18,6 +26,7 @@ import {
   isSamePacificCalendarDay,
 } from '@/lib/datetime-utils';
 import { formatDisplayValue } from '@/lib/formatDisplayValue';
+import { cn } from '@/lib/utils';
 
 type ActivityPageHeaderProps = {
   displayId: string;
@@ -26,8 +35,12 @@ type ActivityPageHeaderProps = {
   categories: string[];
   leadMinistry?: string | null;
   activityStatus?: unknown;
+  /** Public client-visible last updated. */
   lastUpdatedDateTime?: string | null;
   createdDateTime?: string | null;
+  /** Operational last updated for defer permission holders. */
+  adminOperationalLastUpdatedDateTime?: string | null;
+  showAdminOperationalTimestamp?: boolean;
   onHistoryClick?: () => void;
   /** Flags for activities assigned to the current user's teams. */
   flags?: ActivityFlagResponse[];
@@ -49,6 +62,17 @@ type ActivityPageHeaderProps = {
   isFavourite?: boolean;
   onFavouriteToggle?: () => void;
   isFavouriteToggling?: boolean;
+  /** Shared-with team display names for the header shares indicator. */
+  sharedWith?: string[];
+  visibility?: string | null;
+  leadTeamDisplayName?: string | null;
+  unshareAction?: {
+    teamLabel: string;
+    disabled: boolean;
+    disabledReason?: string;
+    onClick: () => void;
+    isPending: boolean;
+  };
 };
 
 /**
@@ -63,6 +87,8 @@ export function ActivityPageHeader({
   activityStatus,
   lastUpdatedDateTime,
   createdDateTime,
+  adminOperationalLastUpdatedDateTime,
+  showAdminOperationalTimestamp = false,
   onHistoryClick,
   flags,
   canFlag,
@@ -72,50 +98,71 @@ export function ActivityPageHeader({
   isFavourite,
   onFavouriteToggle,
   isFavouriteToggling,
+  sharedWith,
+  visibility,
+  leadTeamDisplayName,
+  unshareAction,
 }: ActivityPageHeaderProps): ReactElement {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
 
   const statusDisplay = formatDisplayValue(activityStatus);
-  let updatedLabel: string | null = null;
-  if (
-    lastUpdatedDateTime &&
-    createdDateTime &&
-    lastUpdatedDateTime !== createdDateTime
-  ) {
-    const d = new Date(lastUpdatedDateTime);
-    updatedLabel = isSamePacificCalendarDay(d, new Date())
+
+  const formatUpdatedLabel = (
+    timestamp: string | null | undefined
+  ): string | null => {
+    if (!timestamp || !createdDateTime || timestamp === createdDateTime) {
+      return null;
+    }
+    const d = new Date(timestamp);
+    return isSamePacificCalendarDay(d, new Date())
       ? `today at ${formatPacificTimeWithAbbrev(d)}`
       : formatRelativeTime(d);
-  }
+  };
+
+  const updatedLabel = formatUpdatedLabel(lastUpdatedDateTime);
+  const adminUpdatedLabel =
+    showAdminOperationalTimestamp && adminOperationalLastUpdatedDateTime != null
+      ? (formatUpdatedLabel(adminOperationalLastUpdatedDateTime) ??
+        (adminOperationalLastUpdatedDateTime !== createdDateTime
+          ? formatRelativeTime(new Date(adminOperationalLastUpdatedDateTime))
+          : null))
+      : null;
 
   const sortedFlags = flags ?? [];
-  const stackedFlags = [...sortedFlags].reverse();
-  const visibleStackedFlags = stackedFlags.slice(0, 3);
-  const overflowFlagCount = Math.max(stackedFlags.length - 3, 0);
-  const isFlagged = sortedFlags.length > 0;
+  const assignedFlags = uniqueActivityFlagsByAssignee(sortedFlags);
+  const isFlagged = assignedFlags.length > 0;
   const currentUserFlag =
     currentUserId == null
       ? null
       : (sortedFlags.find((flag) => flag.assigneeId === currentUserId) ?? null);
-  const flaggedLabel = sortedFlags.map((f) => f.assigneeName).join(', ');
+  const flaggedLabel = activityFlagAssigneeTooltip(sortedFlags);
+  const needsWideFlagButton = isFlagged && assignedFlags.length > 1;
+  const displayIdUiLabel = formatActivityDisplayIdForUi(displayId);
 
   const iconButtonClassName = 'shrink-0';
-  const multiFlagButtonClassName = 'mr-3 h-10 shrink-0 px-2 pr-4';
-  const headerActionIconClassName = 'text-muted-foreground size-4';
+  const headerActionIconClassName = 'text-icon-muted-foreground size-4';
   const timestampClassName = 'text-muted-foreground text-xs sm:text-sm';
+  const showSharingIndicator = sharedWith != null;
   const showActionButtons =
-    canFlag || isFlagged || onFavouriteToggle || onHistoryClick;
+    canFlag ||
+    isFlagged ||
+    unshareAction != null ||
+    onFavouriteToggle ||
+    onHistoryClick ||
+    showSharingIndicator;
 
   return (
     <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 sm:gap-x-12 sm:gap-y-1">
       <div className="col-start-1 row-start-1 w-fit justify-self-start">
-        <CopyableText
-          text={displayId}
-          copyLabel="Copy display ID"
-          className="text-md text-muted-foreground hover:text-foreground -ml-2 px-2 py-1"
-        >
-          {displayId}
-        </CopyableText>
+        <span title={displayId}>
+          <CopyableText
+            text={displayId}
+            copyLabel="Copy display ID"
+            className="text-md text-muted-foreground hover:text-foreground -ml-2 px-2 py-1"
+          >
+            {displayIdUiLabel}
+          </CopyableText>
+        </span>
       </div>
 
       {statusDisplay !== '' ? (
@@ -154,7 +201,10 @@ export function ActivityPageHeader({
 
       <div className="col-start-1 row-start-4 self-center sm:col-start-2 sm:row-start-2 sm:self-auto sm:text-right">
         <div className={timestampClassName}>
-          {updatedLabel ? <div>Updated {updatedLabel}</div> : null}
+          {updatedLabel ? <div>Last updated {updatedLabel}</div> : null}
+          {adminUpdatedLabel ? (
+            <div>Last updated (admin) {adminUpdatedLabel}</div>
+          ) : null}
           <div>
             Created{' '}
             {createdDateTime
@@ -185,41 +235,20 @@ export function ActivityPageHeader({
               }
               onClick={() => setAssignModalOpen(true)}
               disabled={isFlagPending}
-              className={
-                isFlagged ? multiFlagButtonClassName : iconButtonClassName
-              }
+              className={cn(
+                iconButtonClassName,
+                needsWideFlagButton && 'w-auto px-1'
+              )}
             >
-              {isFlagged ? (
-                <span className="flex items-center pr-1.5">
-                  {visibleStackedFlags.map((flag, index) => (
-                    <span
-                      key={`${flag.teamId}:${flag.assigneeId}`}
-                      className={index > 0 ? '-ml-0.5' : undefined}
-                      style={{ zIndex: index + 1 }}
-                    >
-                      <ActivityFlagIcon
-                        assigneeName={flag.assigneeName}
-                        assigneeFlagColour={flag.assigneeFlagColour}
-                      />
-                    </span>
-                  ))}
-                  {overflowFlagCount > 0 ? (
-                    <span
-                      className={
-                        visibleStackedFlags.length > 0 ? '-ml-0.5' : undefined
-                      }
-                      style={{ zIndex: visibleStackedFlags.length + 1 }}
-                    >
-                      <ActivityFlagOverflowIcon
-                        extraCount={overflowFlagCount}
-                      />
-                    </span>
-                  ) : null}
-                </span>
-              ) : (
+              {!isFlagged ? (
                 <ActivityFlagIcon
                   assigneeName={null}
                   assigneeFlagColour={null}
+                />
+              ) : (
+                <ActivityFlagAssigneeStack
+                  flags={sortedFlags}
+                  reverseStackOrder
                 />
               )}
             </Button>
@@ -247,19 +276,62 @@ export function ActivityPageHeader({
               />
             </Button>
           )}
+          {unshareAction && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              title={
+                unshareAction.disabled && unshareAction.disabledReason
+                  ? unshareAction.disabledReason
+                  : `Unshare ${unshareAction.teamLabel}`
+              }
+              aria-label={
+                unshareAction.disabled && unshareAction.disabledReason
+                  ? unshareAction.disabledReason
+                  : `Unshare ${unshareAction.teamLabel}`
+              }
+              onClick={unshareAction.onClick}
+              disabled={unshareAction.disabled || unshareAction.isPending}
+              className={cn(iconButtonClassName, 'px-2')}
+            >
+              <UserX className={headerActionIconClassName} aria-hidden />
+              <span className="ml-1.5 hidden sm:inline">
+                Unshare {unshareAction.teamLabel}
+              </span>
+            </Button>
+          )}
+          {showSharingIndicator && (
+            <SharedWithPopover
+              teamNames={sharedWith}
+              visibility={visibility}
+              leadTeamDisplayName={leadTeamDisplayName}
+              headerActions
+            />
+          )}
           {onFavouriteToggle && (
             <Button
               type="button"
               variant="ghost"
               size="icon"
               title={isFavourite ? 'Remove from watchlist' : 'Add to watchlist'}
+              aria-label={
+                isFavourite ? 'Remove from watchlist' : 'Add to watchlist'
+              }
+              aria-pressed={isFavourite}
               onClick={onFavouriteToggle}
               disabled={isFavouriteToggling}
               className={iconButtonClassName}
             >
               <Star
-                className={headerActionIconClassName}
+                className={cn(
+                  headerActionIconClassName,
+                  isFavourite
+                    ? ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS
+                    : ACTIVITY_OVERVIEW_ICON_MUTED_CLASS
+                )}
                 fill={isFavourite ? 'currentColor' : 'none'}
+                aria-hidden
               />
             </Button>
           )}

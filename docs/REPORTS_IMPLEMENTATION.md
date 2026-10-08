@@ -47,8 +47,7 @@ The Reports feature provides a flexible, config-driven system for generating, fi
 
 Core Methods:
 
-- `findAllReports()` - Get all active report definitions
-- `findReportByName(name)` - Get specific report by name
+- `findReportByName(name)` - Get specific report by name (used internally for data/export)
 - `getReportData(reportName, options)` - Fetch and organize activities according to report config
   - Applies global filters
   - Applies section-specific filters
@@ -63,13 +62,13 @@ Core Methods:
 - Filter merging: Global filters combined with section filters (section takes precedence)
 - Pagination: Built into ReportSection component (20 items per page)
 
-**Controller** (`calendar-service/src/reports/reports.controller.ts`)
+**Controllers**
 
-- `GET /reports` - List all active reports
-- `GET /reports/:id` - Get report by ID
-- `GET /reports/data/:type` - Get report data with optional date filters
-- `GET /reports/export/:type/csv` - Export report as CSV
-- `@RequirePermission('reports.view')` - Access control decorator
+- **Metadata** (`calendar-service/src/lookups/lookups.controller.ts`): `GET /lookups/reports` — list active report definitions (`lookups.view`).
+- **Data & export** (`calendar-service/src/reports/reports.controller.ts`):
+  - `GET /reports/data/:type` — report JSON with optional date/filter query params
+  - `GET /reports/export/:type/csv|xlsx|pdf` — file downloads
+  - `@RequirePermission('reports.view')` on the reports controller
 
 ### 3. Frontend Implementation
 
@@ -153,7 +152,7 @@ VALUES (
 
 **Frontend automatically:**
 
-- Discovers new report via `/reports` endpoint
+- Discovers new report via `GET /lookups/reports` (see `calendar-ui/src/api/lookupsApi.ts`)
 - Creates tab for it
 - Applies same filtering/display logic
 
