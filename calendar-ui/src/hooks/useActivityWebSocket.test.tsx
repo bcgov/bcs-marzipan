@@ -1,6 +1,7 @@
-import { render } from '@testing-library/react';
+import { act, render, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ACTIVITY_SOCKET_OFFLINE_AFTER_MS } from './activity-socket-connection-display';
 import { useActivityWebSocket } from './useActivityWebSocket';
 
 const { getFakeSocket } = vi.hoisted(() => {
@@ -42,10 +43,15 @@ vi.mock('socket.io-client', () => ({
 
 function TestHarness({
   onActivitySocketReconnect,
+  onConnectionChange,
 }: {
   onActivitySocketReconnect: () => void;
+  onConnectionChange?: (state: string) => void;
 }) {
-  useActivityWebSocket(139, { onActivitySocketReconnect });
+  const connection = useActivityWebSocket(139, {
+    onActivitySocketReconnect,
+  });
+  onConnectionChange?.(connection);
   return null;
 }
 
@@ -69,5 +75,28 @@ describe('useActivityWebSocket', () => {
     expect(socket.emit).toHaveBeenCalledTimes(2);
     expect(socket.emit).toHaveBeenNthCalledWith(1, 'viewActivity', 139);
     expect(socket.emit).toHaveBeenNthCalledWith(2, 'viewActivity', 139);
+  });
+
+  it('reports reconnecting then offline after a long disconnect', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useActivityWebSocket(139, {}));
+    const socket = getFakeSocket();
+
+    act(() => {
+      socket.emitSocketEvent('connect');
+    });
+    expect(result.current).toBe('connected');
+
+    act(() => {
+      socket.emitSocketEvent('disconnect');
+    });
+    expect(result.current).toBe('reconnecting');
+
+    act(() => {
+      vi.advanceTimersByTime(ACTIVITY_SOCKET_OFFLINE_AFTER_MS);
+    });
+    expect(result.current).toBe('offline');
+
+    vi.useRealTimers();
   });
 });
