@@ -684,9 +684,9 @@ export const createCityRequestSchema = z.object({
 export const updateCityRequestSchema = createCityRequestSchema.partial();
 
 /**
- * Reorder Cities Request Schema - city ids in their new display order
+ * Reorder Lookup Request Schema - item ids in their new display order
  */
-export const reorderCitiesRequestSchema = z.object({
+export const reorderLookupRequestSchema = z.object({
   ids: z.array(z.number().int()).min(1),
 });
 

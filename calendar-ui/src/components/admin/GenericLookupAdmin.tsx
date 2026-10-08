@@ -265,6 +265,8 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     });
     if (!enableManualSort) return matched;
     return [...matched].sort(compareBySortOrder);
+    // compareBySortOrder only depends on getItemName, which is listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, enableManualSort, filter, getItemName, search, showStatusFilter]);
 
   const reorderMutation = useMutation({

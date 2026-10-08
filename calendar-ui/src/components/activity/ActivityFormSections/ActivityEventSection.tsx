@@ -436,13 +436,10 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
         value: venueStatusOptionValue(s.id),
         label: s.displayName ?? s.name,
       }));
-    const presetOptions: FreeformComboboxOption[] = allPresets
-      .slice()
-      .sort((a, b) => (a.venueName ?? '').localeCompare(b.venueName ?? ''))
-      .map((item) => ({
-        value: venuePresetOptionValue(item.id),
-        label: venueTagLabel(item),
-      }));
+    const presetOptions: FreeformComboboxOption[] = allPresets.map((item) => ({
+      value: venuePresetOptionValue(item.id),
+      label: venueTagLabel(item),
+    }));
     return [
       { id: 'venue-status', options: statusOptions },
       { id: 'venue-presets', options: presetOptions },

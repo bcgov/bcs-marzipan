@@ -545,6 +545,7 @@ export function CategoriesAdmin() {
       description="Manage activity categories"
       entityType="Category"
       apiEndpoint="/lookups/categories"
+      enableManualSort
       queryKey={lookupQueryKeys.categoriesAdmin()}
       queryFn={fetchAllCategories}
       formFields={categoryFields}
@@ -622,6 +623,7 @@ export function CommsMaterialsAdmin() {
       description="Manage communication material types"
       entityType="Communications Material"
       apiEndpoint="/lookups/comms-materials"
+      enableManualSort
       queryKey={lookupQueryKeys.commsMaterials()}
       queryFn={fetchCommsMaterials}
       formFields={commsMaterialFields}
@@ -636,6 +638,7 @@ export function TranslationLanguagesAdmin() {
       description="Manage languages available for activity translations"
       entityType="Translation Language"
       apiEndpoint="/lookups/translation-languages"
+      enableManualSort
       queryKey={lookupQueryKeys.translationLanguagesAdmin()}
       queryFn={fetchAllTranslationLanguages}
       softDelete
@@ -663,6 +666,7 @@ export function GovernmentRepresentativesAdmin() {
       description="Manage government representatives. Ministers can be assigned from the Ministries section when creating or editing a ministry."
       entityType="Government Representative"
       apiEndpoint="/lookups/government-representatives"
+      enableManualSort
       queryKey={lookupQueryKeys.governmentRepresentatives()}
       queryFn={fetchGovernmentRepresentatives}
       formFields={govRepFields}
@@ -696,6 +700,7 @@ export function TagsAdmin() {
       description="Manage activity tags"
       entityType="Tag"
       apiEndpoint="/lookups/tags"
+      enableManualSort
       queryKey={lookupQueryKeys.tagsAdmin()}
       queryFn={fetchAllTags}
       softDelete
@@ -740,6 +745,7 @@ export function MinistryGroupsAdmin() {
       description="Named groups for activity “Shared with teams” shortcuts. Assign ministries to a group in the Ministries section."
       entityType="Ministry group"
       apiEndpoint="/lookups/ministry-groups"
+      enableManualSort
       queryKey={lookupQueryKeys.ministryGroups()}
       queryFn={fetchMinistryGroups}
       formFields={ministryGroupFields}
@@ -858,6 +864,7 @@ export function MinistriesAdmin() {
       description="Manage BC government ministries. Choose a minister from existing government representatives or create a new one; the list below stays in sync."
       entityType="Ministry"
       apiEndpoint="/lookups/ministries"
+      enableManualSort
       queryKey={lookupQueryKeys.ministries()}
       queryFn={fetchMinistries}
       formFields={ministryFields}
@@ -883,6 +890,7 @@ export function ActivityStatusesAdmin() {
       description="Manage activity status types"
       entityType="Activity Status"
       apiEndpoint="/lookups/activity-statuses"
+      enableManualSort
       queryKey={lookupQueryKeys.activityStatuses()}
       queryFn={fetchActivityStatuses}
       formFields={statusFields}
@@ -897,6 +905,7 @@ export function ThemesAdmin() {
       description="Manage activity themes"
       entityType="Theme"
       apiEndpoint="/lookups/themes"
+      enableManualSort
       queryKey={lookupQueryKeys.themes()}
       queryFn={fetchThemes}
       formFields={themeFields}
@@ -949,6 +958,7 @@ export function VenuePresetsAdmin() {
       description="Manage venue presets for the activity form"
       entityType="Venue Preset"
       apiEndpoint="/lookups/venue-presets"
+      enableManualSort
       queryKey={lookupQueryKeys.venuePresetsAdmin()}
       queryFn={fetchAllVenuePresets as () => Promise<VenuePreset[]>}
       formFields={venuePresetFields}

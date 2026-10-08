@@ -47,7 +47,7 @@ import {
   createThemeRequestSchema,
   createTranslationLanguageRequestSchema,
   createVenuePresetRequestSchema,
-  reorderCitiesRequestSchema,
+  reorderLookupRequestSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
   updateCityRequestSchema,
@@ -84,7 +84,7 @@ import {
   MinistryGroupArrayResponseWrapperDto,
   MinistryGroupResponseWrapperDto,
   MinistryResponseWrapperDto,
-  ReorderCitiesDto,
+  ReorderLookupDto,
   TagResponseWrapperDto,
   ThemeResponseWrapperDto,
   TranslationLanguageResponseWrapperDto,
@@ -110,6 +110,10 @@ import { RequirePermission } from '../policy/decorators/require-permission.decor
 import { TeamsService } from '../teams/teams.service';
 import { lookupGetCacheControl } from './cache-control';
 import { LookupsService, type VenuePresetAdminItem } from './lookups.service';
+import {
+  isReorderableLookup,
+  REORDERABLE_LOOKUPS,
+} from './reorderable-lookups';
 
 @ApiTags('lookups')
 @Controller('lookups')
@@ -1010,17 +1014,25 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Set city display order' })
-  @ApiResponse({ status: 200, description: 'City order saved' })
-  @ApiBody({ type: ReorderCitiesDto })
+  @ApiOperation({ summary: 'Set lookup display order' })
+  @ApiResponse({ status: 200, description: 'Order saved' })
+  @ApiParam({
+    name: 'entity',
+    description: `One of: ${REORDERABLE_LOOKUPS.join(', ')}`,
+  })
+  @ApiBody({ type: ReorderLookupDto })
   @RequirePermission('lookups.manage')
-  @Put('cities/order')
-  async reorderCities(
-    @Body(new ZodValidationPipe(reorderCitiesRequestSchema))
-    body: ReorderCitiesDto,
+  @Put(':entity/order')
+  async reorderLookup(
+    @Param('entity') entity: string,
+    @Body(new ZodValidationPipe(reorderLookupRequestSchema))
+    body: ReorderLookupDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean }> {
-    await this.lookupsService.reorderCities(body.ids, user.id);
+    if (!isReorderableLookup(entity)) {
+      throw new NotFoundException(`Lookup '${entity}' cannot be reordered`);
+    }
+    await this.lookupsService.reorderLookup(entity, body.ids, user.id);
     return { success: true };
   }
 

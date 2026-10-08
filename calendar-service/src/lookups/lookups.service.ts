@@ -82,6 +82,7 @@ import {
   syncCategoryTeams,
   syncTagTeams,
 } from './lookups-team-sync.helper';
+import { REORDERABLE_LOOKUP_TABLES } from './reorderable-lookups';
 
 export type VenuePresetAdminItem = VenuePresetItem & {
   sortOrder: number;
@@ -1967,18 +1968,23 @@ export class LookupsService {
   }
 
   /** Sets sortOrder to 1..n following the given id order. */
-  async reorderCities(ids: number[], currentUserId: number): Promise<void> {
+  async reorderLookup(
+    entity: string,
+    ids: number[],
+    currentUserId: number
+  ): Promise<void> {
+    const table = REORDERABLE_LOOKUP_TABLES[entity];
     const now = new Date();
     await this.databaseService.db.transaction(async (tx) => {
       for (const [index, id] of ids.entries()) {
         await tx
-          .update(cities)
+          .update(table)
           .set({
             sortOrder: index + 1,
             lastUpdatedBy: currentUserId,
             lastUpdatedDateTime: now,
           })
-          .where(eq(cities.id, id));
+          .where(eq(table.id, id));
       }
     });
   }
