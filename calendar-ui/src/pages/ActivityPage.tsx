@@ -41,6 +41,7 @@ import { ReviewActionButtonLabel } from '@/components/activity/activities/Review
 import { ReviewActivityModal } from '@/components/activity/activities/ReviewActivityModal';
 import { UnshareActivityModal } from '@/components/activity/activities/UnshareActivityModal';
 import {
+  ActivityConnectionStatusBadge,
   FormErrorFallback,
   LockBanner,
   LockBannerContent,
@@ -55,7 +56,11 @@ import {
   type LockHandoffToastHandle,
 } from '@/lib/lock-handoff-toast';
 
-import { cloneActivity, fetchActivityHistory } from '../api/activitiesApi';
+import {
+  cloneActivity,
+  fetchActivity,
+  fetchActivityHistory,
+} from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
 import { cancelForceHandoff, requestForceHandoff } from '../api/locksApi';
 import { useActivityEditActions } from '../hooks/useActivityEditActions';
@@ -84,6 +89,12 @@ import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { useFavourites } from '../hooks/useFavourites';
 import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { useRecurringLockoutSession } from '../hooks/useRecurringLockoutSession';
+import { getActivityConcurrencyToken } from '../lib/activity-concurrency-token';
+import {
+  getActivityConfirmSubmitBlockedMessage,
+  type ActivityEditRecoveryState,
+} from '../lib/activity-confirm-submit-blocked-message';
+import { resolveActivityEditResyncAction } from '../lib/activity-edit-resync';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
   buildActivityListScrollRestoreReturnState,
@@ -108,7 +119,6 @@ import {
   RECURRING_EDIT_LOCKOUT_UI_MESSAGE,
 } from '../lib/recurring-edit-lockout-error';
 import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
-import { revertActivityEditSession } from '../lib/revert-activity-edit-session';
 import { TOAST_DURATION_MS } from '../lib/toast-durations';
 import {
   getUnshareableTeamsForActivity,
@@ -269,6 +279,9 @@ export function ActivityPage({
     canRequestDelete &&
     !canDelete;
 
+  const isEditingRef = useRef(false);
+  const resyncEditSessionRef = useRef<() => void>(() => {});
+
   const {
     lock,
     lockState,
@@ -278,11 +291,14 @@ export function ActivityPage({
     release,
     releaseWithRetry,
     refreshLockFromServer,
+    ensureLockForSubmit,
     sendHeartbeat,
     applyExternalLockReleased,
     setLockedByOther,
     clearLockedByOther,
-  } = useActivityLock(id, user?.id);
+  } = useActivityLock(id, user?.id, {
+    onServerLockGone: () => resyncEditSessionRef.current(),
+  });
 
   const {
     isBlocked: isBlockedByRecurringLockout,
@@ -298,6 +314,28 @@ export function ActivityPage({
   );
 
   const [isEditing, setIsEditing] = useState(false);
+  isEditingRef.current = isEditing;
+  const isDirty = form.formState.isDirty;
+  const isDirtyRef = useRef(false);
+  isDirtyRef.current = isDirty;
+  const [editRecoveryState, setEditRecoveryState] =
+    useState<ActivityEditRecoveryState>(null);
+  const editSessionTokenRef = useRef<string | null>(null);
+  const wasEditingRef = useRef(false);
+  const resyncGenerationRef = useRef(0);
+
+  useEffect(() => {
+    if (isEditing && !wasEditingRef.current) {
+      editSessionTokenRef.current = getActivityConcurrencyToken(activity);
+    } else if (isEditing && !isDirty) {
+      editSessionTokenRef.current = getActivityConcurrencyToken(activity);
+    } else if (!isEditing) {
+      editSessionTokenRef.current = null;
+      setEditRecoveryState(null);
+    }
+    wasEditingRef.current = isEditing;
+  }, [activity, isDirty, isEditing]);
+
   const [forceHandoffPending, setForceHandoffPending] = useState(false);
   const [cancelHandoffPending, setCancelHandoffPending] = useState(false);
   const [handoffAwaitingCompletion, setHandoffAwaitingCompletion] =
@@ -328,6 +366,7 @@ export function ActivityPage({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -342,7 +381,7 @@ export function ActivityPage({
   >(undefined);
   /**
    * Forces remount of form-body UI controls (combobox/popover/select internals)
-   * when edit lock is externally lost, so open overlays cannot remain stuck.
+   * when an intentional edit-session teardown needs to close internal overlays.
    */
   const [formUiEpoch, setFormUiEpoch] = useState(0);
 
@@ -354,13 +393,85 @@ export function ActivityPage({
     null
   );
   const { isFormHydrated, hydrationGeneration, initialFormDataRef } =
-    useActivityEditFormHydration(activity, lookups, form);
+    useActivityEditFormHydration(activity, lookups, form, isEditing && isDirty);
+
+  resyncEditSessionRef.current = () => {
+    const generation = ++resyncGenerationRef.current;
+    void (async () => {
+      if (!isEditingRef.current) {
+        await refreshLockFromServer();
+        return;
+      }
+
+      setEditRecoveryState('resyncing');
+      try {
+        const [latestActivity, serverLockState] = await Promise.all([
+          fetchActivity(id),
+          refreshLockFromServer(),
+        ]);
+        if (generation !== resyncGenerationRef.current) return;
+
+        const action = resolveActivityEditResyncAction({
+          editSessionToken: editSessionTokenRef.current,
+          latestActivity,
+          serverLockState,
+        });
+        if (action === 'continue-owned') {
+          setEditRecoveryState(null);
+          return;
+        }
+        if (action === 'server-changed') {
+          if (!isDirtyRef.current) {
+            editSessionTokenRef.current =
+              getActivityConcurrencyToken(latestActivity);
+            setEditRecoveryState(null);
+            await refreshActivity();
+            return;
+          }
+          setEditRecoveryState('server-changed');
+          return;
+        }
+        if (action === 'blocked-by-other') {
+          setEditRecoveryState(null);
+          return;
+        }
+        if (action === 'retry') {
+          setEditRecoveryState('retry');
+          return;
+        }
+
+        const acquireResult = await ensureLockForSubmit();
+        if (generation !== resyncGenerationRef.current) return;
+        if (acquireResult === 'ready') {
+          setEditRecoveryState(null);
+          toast.success(
+            'Connection restored. Your unsaved changes were kept.',
+            {
+              id: `edit-lock-restored-${id}`,
+              duration: TOAST_DURATION_MS.success,
+            }
+          );
+          return;
+        }
+        if (acquireResult === 'blocked-by-other') {
+          setEditRecoveryState(null);
+          return;
+        }
+        setEditRecoveryState(acquireResult);
+      } catch {
+        if (generation === resyncGenerationRef.current) {
+          setEditRecoveryState('retry');
+        }
+      }
+    })();
+  };
 
   const closeSubmitModals = useCallback(() => {
     setShowConfirmModal(false);
     setShowReviewModal(false);
     setShowCompleteModal(false);
     setValidatedData(null);
+    isSubmittingRef.current = false;
     setIsSubmitting(false);
   }, []);
 
@@ -420,7 +531,7 @@ export function ActivityPage({
     }
   }, [id]);
 
-  useActivityWebSocket(id, {
+  const activitySocketConnection = useActivityWebSocket(id, {
     onLockAcquired: (lockedBy) => {
       if (user?.id != null && lockedBy.userId === user?.id) {
         const wasHandoff = handoffAwaitingCompletionRef.current;
@@ -430,28 +541,36 @@ export function ActivityPage({
         } else {
           handoffToastHandleRef.current?.notifyLockAcquired();
         }
-        void refreshLockFromServer();
+        void refreshLockFromServer().then((next) => {
+          if (next === 'owned') {
+            setEditRecoveryState(null);
+          }
+        });
         return;
       }
-      if (lockState !== 'owned') {
-        setLockedByOther(lockedBy.username);
-      }
+      applyExternalLockReleased();
+      setEditRecoveryState(null);
+      setLockedByOther(lockedBy.username);
     },
+    onActivitySocketReconnect: () => resyncEditSessionRef.current(),
     onLockReleased: () => {
+      if (isSubmittingRef.current) {
+        return;
+      }
       clearLockedByOther();
-      void revertActivityEditSession({
-        isEditing,
-        initialFormData: initialFormDataRef.current,
-        form,
-        setFormUiEpoch,
-        setIsEditing,
-        applyExternalLockReleased,
-      }).then(() => {
-        void refreshActivity();
-      });
+      if (isEditingRef.current) {
+        resyncEditSessionRef.current();
+        return;
+      }
+      applyExternalLockReleased();
+      void refreshActivity();
     },
     onDataUpdated: () => {
-      void refreshActivity();
+      if (isEditingRef.current && isDirtyRef.current) {
+        resyncEditSessionRef.current();
+      } else {
+        void refreshActivity();
+      }
     },
     onLockHandoffPending: (payload) => {
       handoffToastHandleRef.current?.dispose();
@@ -495,8 +614,6 @@ export function ActivityPage({
       }
     },
   });
-
-  const isDirty = form.formState.isDirty;
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -628,6 +745,24 @@ export function ActivityPage({
     LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
     0
   );
+  const isActiveEditSession =
+    isEditing || lockState === 'owned' || lockState === 'acquiring';
+
+  const showConnectionBadge =
+    isActiveEditSession &&
+    activitySocketConnection !== 'connected' &&
+    !isLockedByOther &&
+    !isBlockedByRecurringLockout;
+
+  const confirmBlockedMessage = useMemo(
+    () =>
+      getActivityConfirmSubmitBlockedMessage(
+        activitySocketConnection,
+        editRecoveryState
+      ),
+    [activitySocketConnection, editRecoveryState]
+  );
+
   const actionFlags = useActivityEditActions({
     lockState,
     mayEditFormFields,
@@ -641,6 +776,14 @@ export function ActivityPage({
     isBlockedByRecurringLockout: isBlockedByRecurringLockout,
     isDirty,
   });
+  const editRecoveryMessage =
+    editRecoveryState === 'server-changed'
+      ? 'This activity changed on the server. Your unsaved changes are preserved, but saving is disabled to prevent an overwrite.'
+      : editRecoveryState === 'resyncing'
+        ? 'Restoring your edit lock. Your unsaved changes are preserved.'
+        : editRecoveryState != null
+          ? 'The edit lock could not be restored. Your unsaved changes are preserved; check your connection and retry.'
+          : null;
 
   const reviewModalActivityEndedAtLabel = useMemo(
     () =>
@@ -726,11 +869,17 @@ export function ActivityPage({
   );
 
   const handleConfirmLeave = async () => {
+    const shouldReloadLatest = editRecoveryState === 'server-changed';
     setShowLeaveConfirm(false);
+    resyncGenerationRef.current += 1;
+    setEditRecoveryState(null);
     await release();
     setIsEditing(false);
     if (initialFormDataRef.current) {
       form.reset(initialFormDataRef.current);
+    }
+    if (shouldReloadLatest) {
+      await refreshActivity();
     }
   };
 
@@ -770,9 +919,58 @@ export function ActivityPage({
       if (isBlockedByRecurringLockout) {
         return;
       }
+      const submitBlockedMessage = getActivityConfirmSubmitBlockedMessage(
+        activitySocketConnection,
+        editRecoveryState
+      );
+      if (submitBlockedMessage != null) {
+        showErrorToast(
+          new Error('Edit session requires reconciliation'),
+          submitBlockedMessage
+        );
+        return;
+      }
 
       const submitGeneration = lockoutSubmitGenerationRef.current;
+      isSubmittingRef.current = true;
       setIsSubmitting(true);
+      const lockReady = await ensureLockForSubmit();
+      if (lockReady !== 'ready') {
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
+        if (lockReady === 'unavailable') {
+          showErrorToast(
+            new Error('Network unavailable'),
+            'Cannot reach the server. Check your connection and try again.'
+          );
+        } else if (lockReady === 'blocked-by-other') {
+          showErrorToast(
+            new Error('Locked by other'),
+            'This activity is being edited by another user.'
+          );
+        } else if (lockReady === 'time-lockout') {
+          showErrorToast(
+            new Error('Editing is temporarily locked'),
+            RECURRING_EDIT_LOCKOUT_UI_MESSAGE
+          );
+        } else if (lockReady === 'unauthorized') {
+          showErrorToast(
+            new Error('Not authorized'),
+            'Your session or permissions no longer allow this update. Sign in again and retry.'
+          );
+        } else if (lockReady === 'server-error') {
+          showErrorToast(
+            new Error('Server unavailable'),
+            'The server could not verify the edit lock. Please try again.'
+          );
+        } else {
+          showErrorToast(
+            new Error('Edit lock required'),
+            'You must acquire an edit lock before updating this activity.'
+          );
+        }
+        return;
+      }
       try {
         let submitData: UpdateActivityRequest;
 
@@ -830,8 +1028,10 @@ export function ActivityPage({
           };
         }
 
-        const concurrencyToken =
-          activity.lastUpdatedDateTime ?? activity.publicLastUpdatedDateTime;
+        const concurrencyToken = getActivityConcurrencyToken({
+          lastUpdatedDateTime: activity.lastUpdatedDateTime,
+          publicLastUpdatedDateTime: activity.publicLastUpdatedDateTime,
+        });
         if (concurrencyToken) {
           submitData = {
             ...submitData,
@@ -881,6 +1081,7 @@ export function ActivityPage({
         const message = getRecurringEditLockoutErrorMessage(err);
         showErrorToast(err, message);
       } finally {
+        isSubmittingRef.current = false;
         setIsSubmitting(false);
         if (submitGeneration === lockoutSubmitGenerationRef.current) {
           setShowConfirmModal(false);
@@ -903,6 +1104,9 @@ export function ActivityPage({
       requiredTranslationStatusId,
       isBlockedByRecurringLockout,
       lockoutSubmitGenerationRef,
+      ensureLockForSubmit,
+      activitySocketConnection,
+      editRecoveryState,
     ]
   );
 
@@ -1171,8 +1375,19 @@ export function ActivityPage({
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
       <ActivityFormStickyHeader
         onBack={handleGoBack}
+        statusBadge={
+          showConnectionBadge ? (
+            <ActivityConnectionStatusBadge
+              state={
+                activitySocketConnection === 'offline'
+                  ? 'offline'
+                  : 'reconnecting'
+              }
+            />
+          ) : undefined
+        }
         lockStrip={
-          isLockedByOther ? (
+          showConnectionBadge ? undefined : isLockedByOther ? (
             <LockBannerContent
               lockedByUsername={lockedByUsername}
               onRequestTakeLock={
@@ -1198,8 +1413,9 @@ export function ActivityPage({
           ) : undefined
         }
         lockStripVisible={
-          (isLockedByOther && !lockBannerInView) ||
-          (showLockoutNotice && !lockoutBannerInView)
+          !showConnectionBadge &&
+          ((isLockedByOther && !lockBannerInView) ||
+            (showLockoutNotice && !lockoutBannerInView))
         }
       />
       <ActivityPageHeader
@@ -1283,6 +1499,31 @@ export function ActivityPage({
         onConfirm={handleUnshareConfirm}
         isPending={unshareMutation.isPending}
       />
+      {editRecoveryMessage != null && (
+        <div
+          className="bg-muted border-border mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm"
+          role="alert"
+        >
+          <span>{editRecoveryMessage}</span>
+          {editRecoveryState === 'server-changed' ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowLeaveConfirm(true)}
+            >
+              Discard and reload
+            </Button>
+          ) : editRecoveryState !== 'resyncing' ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => resyncEditSessionRef.current()}
+            >
+              Retry
+            </Button>
+          ) : null}
+        </div>
+      )}
       {isLockedByOther && (
         <div ref={setLockBannerSentinel}>
           <LockBanner
@@ -1511,6 +1752,7 @@ export function ActivityPage({
         changes={confirmModalChanges}
         onConfirm={(payload) => void handleConfirmedSubmit(payload)}
         isSubmitting={isSubmitting}
+        confirmBlockedMessage={confirmBlockedMessage}
       />
       <ReviewActivityModal
         open={showReviewModal}
@@ -1525,6 +1767,7 @@ export function ActivityPage({
         showUnassignMeOption={(activity.flags ?? []).some(
           (f) => f.assigneeId === user?.id
         )}
+        confirmBlockedMessage={confirmBlockedMessage}
       />
       <CompleteActivityModal
         open={showCompleteModal}
@@ -1533,6 +1776,7 @@ export function ActivityPage({
         isSubmitting={isSubmitting}
         onConfirm={(payload) => void handleCompleteConfirm(payload)}
         displayId={displayId}
+        confirmBlockedMessage={confirmBlockedMessage}
       />
       <RequestDeleteActivityModal
         open={showRequestDeleteModal}
