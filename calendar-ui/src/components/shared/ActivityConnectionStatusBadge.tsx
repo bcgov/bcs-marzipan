@@ -49,6 +49,7 @@ export function ActivityConnectionStatusBadge({
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge
+          tabIndex={0}
           variant="outline"
           size="md"
           className={cn(

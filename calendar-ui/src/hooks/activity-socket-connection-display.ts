@@ -11,10 +11,13 @@ export function resolveActivitySocketConnectionDisplay(input: {
   browserOnline: boolean;
   disconnectedLongEnough: boolean;
 }): ActivitySocketConnectionDisplay {
+  if (!input.browserOnline) {
+    return 'offline';
+  }
   if (input.socketConnected) {
     return 'connected';
   }
-  if (!input.browserOnline || input.disconnectedLongEnough) {
+  if (input.disconnectedLongEnough) {
     return 'offline';
   }
   return 'reconnecting';

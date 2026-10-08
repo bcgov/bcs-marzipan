@@ -16,7 +16,7 @@ describe('resolveActivitySocketConnectionDisplay', () => {
   it('returns offline when the browser is offline', () => {
     expect(
       resolveActivitySocketConnectionDisplay({
-        socketConnected: false,
+        socketConnected: true,
         browserOnline: false,
         disconnectedLongEnough: false,
       })

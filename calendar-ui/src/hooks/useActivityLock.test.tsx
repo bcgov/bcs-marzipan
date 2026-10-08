@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiError } from '../api/errors';
+import { ApiError, NetworkError } from '../api/errors';
 import { useActivityLock } from './useActivityLock';
 
 const {
@@ -100,10 +100,7 @@ describe('useActivityLock', () => {
   });
 
   it('preserves a network failure from the acquisition request', async () => {
-    acquireLockMock.mockRejectedValue({
-      code: 'ERR_NETWORK',
-      config: {},
-    });
+    acquireLockMock.mockRejectedValue(new NetworkError('Network unavailable'));
     const { result } = renderHook(() => useActivityLock(139, 1));
 
     await waitFor(() => expect(result.current.lockState).toBe('idle'));
@@ -114,6 +111,43 @@ describe('useActivityLock', () => {
     });
 
     expect(ensureResult).toBe('unavailable');
+  });
+
+  it('preserves lock contention details from a normalized API error', async () => {
+    acquireLockMock.mockRejectedValue(
+      new ApiError({
+        type: 'about:blank',
+        title: 'Locked',
+        status: 423,
+        detail: 'Activity is locked by another user',
+        instance: '/locks',
+        correlationId: 'test',
+        reason: 'locked_by_other',
+      })
+    );
+    getLockStatusMock
+      .mockResolvedValueOnce({ locked: false })
+      .mockResolvedValueOnce({ locked: false })
+      .mockResolvedValueOnce({
+        ...ownLockStatus,
+        isOwnLock: false,
+        lockedBy: {
+          ...ownLockStatus.lockedBy,
+          userId: 2,
+          username: 'Other',
+        },
+      });
+    const { result } = renderHook(() => useActivityLock(139, 1));
+
+    await waitFor(() => expect(result.current.lockState).toBe('idle'));
+
+    let ensureResult: string | undefined;
+    await act(async () => {
+      ensureResult = await result.current.ensureLockForSubmit();
+    });
+
+    expect(ensureResult).toBe('blocked-by-other');
+    expect(result.current.lockedByUsername).toBe('Other');
   });
 
   it('notifies when heartbeat confirms the server lock is gone', async () => {
