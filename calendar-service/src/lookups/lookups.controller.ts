@@ -24,7 +24,11 @@ import {
 import type { Response } from 'express';
 import { z } from 'zod';
 
-import { DYNAMIC_LOOKUP_CACHE_SECONDS, type AuthUser } from '@corpcal/shared';
+import {
+  DYNAMIC_LOOKUP_CACHE_SECONDS,
+  SYSTEM_ROLE_IDS,
+  type AuthUser,
+} from '@corpcal/shared';
 import type {
   ActivityTeamSharingResponse,
   CategoryLookupItem,
@@ -343,10 +347,18 @@ export class LookupsController {
     body: { permissionIds: number[] },
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any[] }> {
-    this.ensureSystemAdmin(user);
     const roleId = Number(id);
     if (!Number.isInteger(roleId))
       throw new NotFoundException('Role not found');
+    this.ensureSystemAdmin(user);
+    if (
+      roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN &&
+      user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+    ) {
+      throw new ForbiddenException(
+        'Only System Admin role members can change System Admin permissions.'
+      );
+    }
     const data = await this.lookupsService.updateAdminRolePermissions(
       roleId,
       body.permissionIds,

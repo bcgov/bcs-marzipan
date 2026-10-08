@@ -591,5 +591,46 @@ describe('LookupsController', () => {
         mockLookupsService.updateAdminRolePermissions
       ).not.toHaveBeenCalled();
     });
+
+    it('rejects inherited permission callers from changing System Admin permissions', async () => {
+      const inheritedPermissionUser = {
+        ...mockUser,
+        roleId: SYSTEM_ROLE_IDS.ADMIN,
+        permissions: ['system.manage_permissions'],
+      };
+
+      await expect(
+        controller.updateAdminRolePermissions(
+          String(SYSTEM_ROLE_IDS.SYSTEM_ADMIN),
+          { permissionIds: [12] },
+          inheritedPermissionUser
+        )
+      ).rejects.toThrow(
+        'Only System Admin role members can change System Admin permissions.'
+      );
+      expect(
+        mockLookupsService.updateAdminRolePermissions
+      ).not.toHaveBeenCalled();
+    });
+
+    it('allows a direct System Admin role member to change System Admin permissions', async () => {
+      const rows = [{ id: 12, key: 'activities.edit', hasPermission: true }];
+      mockLookupsService.updateAdminRolePermissions.mockResolvedValue(rows);
+
+      const result = await controller.updateAdminRolePermissions(
+        String(SYSTEM_ROLE_IDS.SYSTEM_ADMIN),
+        { permissionIds: [12] },
+        sysAdminUser
+      );
+
+      expect(result).toEqual({ success: true, data: rows });
+      expect(
+        mockLookupsService.updateAdminRolePermissions
+      ).toHaveBeenCalledWith(
+        SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+        [12],
+        sysAdminUser.id
+      );
+    });
   });
 });
