@@ -44,8 +44,18 @@ describe('RolePermissionsAdminSection', () => {
         key: 'system.manage_permissions',
         displayName: 'Manage permissions',
         description: null,
-        category: 'System',
+        category: 'Activities',
         sortOrder: 2,
+        hasPermission: true,
+        locked: true,
+      },
+      {
+        id: 12,
+        key: 'system.view_logs',
+        displayName: 'View system logs',
+        description: null,
+        category: 'System',
+        sortOrder: 3,
         hasPermission: true,
         locked: true,
       },
@@ -66,8 +76,18 @@ describe('RolePermissionsAdminSection', () => {
         key: 'system.manage_permissions',
         displayName: 'Manage permissions',
         description: null,
-        category: 'System',
+        category: 'Activities',
         sortOrder: 2,
+        hasPermission: true,
+        locked: true,
+      },
+      {
+        id: 12,
+        key: 'system.view_logs',
+        displayName: 'View system logs',
+        description: null,
+        category: 'System',
+        sortOrder: 3,
         hasPermission: true,
         locked: true,
       },
@@ -82,19 +102,31 @@ describe('RolePermissionsAdminSection', () => {
     const ordinaryPermission = await screen.findByRole('switch', {
       name: 'View activities for Editor',
     });
-    const systemPermission = screen.getByRole('switch', {
-      name: 'Manage permissions for Editor',
-    });
-    expect(systemPermission).toBeDisabled();
-    expect(systemPermission).toBeChecked();
+    expect(await screen.findByText('(0 of 1 permissions)')).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: 'Activities0' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('tab', { name: /System/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('switch', { name: 'Manage permissions for Editor' })
+    ).toBeDisabled();
 
     fireEvent.click(ordinaryPermission);
+    expect(
+      screen.getByRole('tab', { name: 'Activities1' })
+    ).toBeInTheDocument();
+
     fireEvent.click(
       await screen.findByRole('button', { name: 'Save changes' })
     );
 
     await waitFor(() =>
-      expect(mockUpdateAdminRolePermissions).toHaveBeenCalledWith(2, [10, 11])
+      expect(mockUpdateAdminRolePermissions).toHaveBeenCalledWith(
+        2,
+        [10, 11, 12]
+      )
     );
   });
 });
