@@ -23,6 +23,7 @@ import {
   lookupItemSchema,
   ministryGroupResponseSchema,
   ministryResponseSchema,
+  reorderCitiesRequestSchema,
   tagResponseSchema,
   themeResponseSchema,
   translationLanguageResponseSchema,
@@ -123,6 +124,13 @@ export class CreateCityDto extends createZodDto(createCityRequestSchema) {}
  * DTO for updating a city
  */
 export class UpdateCityDto extends createZodDto(updateCityRequestSchema) {}
+
+/**
+ * DTO for reordering cities (ids in new display order)
+ */
+export class ReorderCitiesDto extends createZodDto(
+  reorderCitiesRequestSchema
+) {}
 
 /**
  * DTO for city response

@@ -1966,6 +1966,23 @@ export class LookupsService {
     return result;
   }
 
+  /** Sets sortOrder to 1..n following the given id order. */
+  async reorderCities(ids: number[], currentUserId: number): Promise<void> {
+    const now = new Date();
+    await this.databaseService.db.transaction(async (tx) => {
+      for (const [index, id] of ids.entries()) {
+        await tx
+          .update(cities)
+          .set({
+            sortOrder: index + 1,
+            lastUpdatedBy: currentUserId,
+            lastUpdatedDateTime: now,
+          })
+          .where(eq(cities.id, id));
+      }
+    });
+  }
+
   async updateCommsMaterial(
     id: number,
     data: Partial<{

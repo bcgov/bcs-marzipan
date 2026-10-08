@@ -684,6 +684,13 @@ export const createCityRequestSchema = z.object({
 export const updateCityRequestSchema = createCityRequestSchema.partial();
 
 /**
+ * Reorder Cities Request Schema - city ids in their new display order
+ */
+export const reorderCitiesRequestSchema = z.object({
+  ids: z.array(z.number().int()).min(1),
+});
+
+/**
  * Create Ministry Request Schema
  */
 export const createMinistryRequestSchema = z.object({

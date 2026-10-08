@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Res,
 } from '@nestjs/common';
@@ -46,6 +47,7 @@ import {
   createThemeRequestSchema,
   createTranslationLanguageRequestSchema,
   createVenuePresetRequestSchema,
+  reorderCitiesRequestSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
   updateCityRequestSchema,
@@ -82,6 +84,7 @@ import {
   MinistryGroupArrayResponseWrapperDto,
   MinistryGroupResponseWrapperDto,
   MinistryResponseWrapperDto,
+  ReorderCitiesDto,
   TagResponseWrapperDto,
   ThemeResponseWrapperDto,
   TranslationLanguageResponseWrapperDto,
@@ -1005,6 +1008,20 @@ export class LookupsController {
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.createCity(body, user.id);
     return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Set city display order' })
+  @ApiResponse({ status: 200, description: 'City order saved' })
+  @ApiBody({ type: ReorderCitiesDto })
+  @RequirePermission('lookups.manage')
+  @Put('cities/order')
+  async reorderCities(
+    @Body(new ZodValidationPipe(reorderCitiesRequestSchema))
+    body: ReorderCitiesDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean }> {
+    await this.lookupsService.reorderCities(body.ids, user.id);
+    return { success: true };
   }
 
   @ApiOperation({ summary: 'Update a city' })

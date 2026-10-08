@@ -590,6 +590,7 @@ export function CitiesAdmin() {
       queryKey={lookupQueryKeys.cities()}
       queryFn={fetchCities}
       formFields={cityFields}
+      enableManualSort
       additionalColumns={[
         {
           accessorKey: 'provinceOrState',
