@@ -90,11 +90,11 @@ import { useFavourites } from '../hooks/useFavourites';
 import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { useRecurringLockoutSession } from '../hooks/useRecurringLockoutSession';
 import { getActivityConcurrencyToken } from '../lib/activity-concurrency-token';
-import { getActivityConfirmSubmitBlockedMessage } from '../lib/activity-confirm-submit-blocked-message';
 import {
-  resolveActivityEditResyncAction,
-  type ActivityEditResyncAction,
-} from '../lib/activity-edit-resync';
+  getActivityConfirmSubmitBlockedMessage,
+  type ActivityEditRecoveryState,
+} from '../lib/activity-confirm-submit-blocked-message';
+import { resolveActivityEditResyncAction } from '../lib/activity-edit-resync';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
   buildActivityListScrollRestoreReturnState,
@@ -129,19 +129,6 @@ const logger = createLogger('ActivityPage');
 
 /** Match sticky back bar height (py-3 + h-8 sm button ≈ 56px). IO rootMargin only accepts px or %. */
 const LOCK_BANNER_INTERSECTION_ROOT_MARGIN = '-56px 0px 0px 0px';
-
-type EditRecoveryState =
-  | Exclude<
-      ActivityEditResyncAction,
-      'continue-owned' | 'reacquire' | 'blocked-by-other'
-    >
-  | 'lock-required'
-  | 'time-lockout'
-  | 'unauthorized'
-  | 'server-error'
-  | 'unavailable'
-  | 'resyncing'
-  | null;
 
 export type ActivityPageProps = {
   activity: ActivityResponse;
@@ -332,7 +319,7 @@ export function ActivityPage({
   const isDirtyRef = useRef(false);
   isDirtyRef.current = isDirty;
   const [editRecoveryState, setEditRecoveryState] =
-    useState<EditRecoveryState>(null);
+    useState<ActivityEditRecoveryState>(null);
   const editSessionTokenRef = useRef<string | null>(null);
   const wasEditingRef = useRef(false);
   const resyncGenerationRef = useRef(0);
@@ -932,12 +919,14 @@ export function ActivityPage({
       if (isBlockedByRecurringLockout) {
         return;
       }
-      if (editRecoveryState != null) {
+      const submitBlockedMessage = getActivityConfirmSubmitBlockedMessage(
+        activitySocketConnection,
+        editRecoveryState
+      );
+      if (submitBlockedMessage != null) {
         showErrorToast(
           new Error('Edit session requires reconciliation'),
-          editRecoveryState === 'server-changed'
-            ? 'This activity changed on the server. Discard and reload the latest version before saving.'
-            : 'The edit lock could not be verified. Retry after the connection is restored.'
+          submitBlockedMessage
         );
         return;
       }
@@ -1116,6 +1105,7 @@ export function ActivityPage({
       isBlockedByRecurringLockout,
       lockoutSubmitGenerationRef,
       ensureLockForSubmit,
+      activitySocketConnection,
       editRecoveryState,
     ]
   );

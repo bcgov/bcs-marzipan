@@ -14,7 +14,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 
-import { ActivityConfirmSubmitBlockedNotice } from './ActivityConfirmSubmitBlockedNotice';
+import {
+  ActivityConfirmHeaderBlockedNotice,
+  ActivityConfirmPrimaryActionGroup,
+} from './ActivityConfirmSubmitBlockedNotice';
 import { type ActivitySaveConfirmPayload } from './EditActivityConfirmModal';
 import { RenewPublicLastUpdatedField } from './RenewPublicLastUpdatedField';
 
@@ -79,9 +82,9 @@ export function CompleteActivityModal({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        {confirmBlockedMessage != null && confirmBlockedMessage.length > 0 ? (
-          <ActivityConfirmSubmitBlockedNotice message={confirmBlockedMessage} />
-        ) : null}
+        <ActivityConfirmHeaderBlockedNotice
+          confirmBlockedMessage={confirmBlockedMessage}
+        />
 
         {displayId != null && displayId.length > 0 && (
           <p className="text-muted-foreground text-sm">
@@ -121,20 +124,24 @@ export function CompleteActivityModal({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            onClick={handleConfirm}
-            disabled={confirmDisabled}
+          <ActivityConfirmPrimaryActionGroup
+            confirmBlockedMessage={confirmBlockedMessage}
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-                Submitting...
-              </>
-            ) : (
-              'Confirm'
-            )}
-          </Button>
+            <Button
+              type="button"
+              onClick={handleConfirm}
+              disabled={confirmDisabled}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Submitting...
+                </>
+              ) : (
+                'Confirm'
+              )}
+            </Button>
+          </ActivityConfirmPrimaryActionGroup>
         </DialogFooter>
       </DialogContent>
     </Dialog>

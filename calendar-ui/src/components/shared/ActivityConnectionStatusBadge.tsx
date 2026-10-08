@@ -14,7 +14,7 @@ type ActivityConnectionStatusBadgeProps = {
 };
 
 const TOOLTIP =
-  'Live updates are paused. You can keep editing; saving is available once you are reconnected.';
+  'Live updates are paused. You can keep editing; save may stay unavailable until the connection and edit lock are restored.';
 
 function AnimatedEllipsis(): ReactElement {
   const [frame, setFrame] = useState(0);
