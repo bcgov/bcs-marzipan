@@ -15,6 +15,7 @@ import {
   isActivityEditSessionActionsBlocked,
   shouldShowActivityConnectionAlert,
   shouldSuppressAcquireConnectionToast,
+  shouldWarnActivityEditBeforeUnload,
 } from './activity-edit-session-messages';
 
 describe('getActivityConnectionOfflineAlertMessage', () => {
@@ -185,6 +186,43 @@ describe('isActivityEditSessionActionsBlocked', () => {
   it('matches save blocked state', () => {
     expect(isActivityEditSessionActionsBlocked('offline', null)).toBe(true);
     expect(isActivityEditSessionActionsBlocked('connected', null)).toBe(false);
+  });
+});
+
+describe('shouldWarnActivityEditBeforeUnload', () => {
+  const savableSession = {
+    isDirty: true,
+    isActiveEditSession: true,
+    socketConnection: 'connected' as const,
+    editRecoveryState: null,
+  };
+
+  it('warns when dirty edits can still be saved', () => {
+    expect(shouldWarnActivityEditBeforeUnload(savableSession)).toBe(true);
+  });
+
+  it('does not warn when clean, inactive, disconnected, or save blocked', () => {
+    expect(
+      shouldWarnActivityEditBeforeUnload({ ...savableSession, isDirty: false })
+    ).toBe(false);
+    expect(
+      shouldWarnActivityEditBeforeUnload({
+        ...savableSession,
+        isActiveEditSession: false,
+      })
+    ).toBe(false);
+    expect(
+      shouldWarnActivityEditBeforeUnload({
+        ...savableSession,
+        socketConnection: 'offline',
+      })
+    ).toBe(false);
+    expect(
+      shouldWarnActivityEditBeforeUnload({
+        ...savableSession,
+        editRecoveryState: 'server-changed',
+      })
+    ).toBe(false);
   });
 });
 

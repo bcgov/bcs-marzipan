@@ -256,6 +256,24 @@ export function isActivityEditSessionActionsBlocked(
   );
 }
 
+/** Warn on tab close / full reload only when unsaved edits could still be saved. */
+export function shouldWarnActivityEditBeforeUnload(input: {
+  isDirty: boolean;
+  isActiveEditSession: boolean;
+  socketConnection: ActivitySocketConnectionDisplay;
+  editRecoveryState: ActivityEditRecoveryState;
+}): boolean {
+  return (
+    input.isDirty &&
+    input.isActiveEditSession &&
+    input.socketConnection === 'connected' &&
+    !isActivityEditSessionActionsBlocked(
+      input.socketConnection,
+      input.editRecoveryState
+    )
+  );
+}
+
 export function getActivityEditAcquireFailureToastMessage(
   reason: LockAcquireFailureReason,
   lockedByUsername: string | null,

@@ -102,6 +102,7 @@ import {
   isActivityEditSessionActionsBlocked,
   shouldShowActivityConnectionAlert,
   shouldSuppressAcquireConnectionToast,
+  shouldWarnActivityEditBeforeUnload,
   type ActivityEditConfirmAction,
   type ActivityEditRecoveryState,
 } from '../lib/activity-edit-session-messages';
@@ -635,16 +636,6 @@ export function ActivityPage({
     },
   });
 
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
-
   const mayEdit =
     canEditActivity &&
     lockState !== 'locked-by-other' &&
@@ -789,6 +780,23 @@ export function ActivityPage({
       ),
     [activitySocketConnection, editRecoveryState]
   );
+
+  const shouldWarnBeforeUnload = shouldWarnActivityEditBeforeUnload({
+    isDirty,
+    isActiveEditSession,
+    socketConnection: activitySocketConnection,
+    editRecoveryState,
+  });
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (shouldWarnBeforeUnload) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [shouldWarnBeforeUnload]);
 
   const confirmBlockedNoticeByAction = useMemo(() => {
     const forAction = (action: ActivityEditConfirmAction) =>
