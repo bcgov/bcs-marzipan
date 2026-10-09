@@ -14,6 +14,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import type { ActivityConfirmBlockedNoticeState } from '@/lib/activity-edit-session-messages';
+
+import {
+  ActivityConfirmHeaderBlockedNotice,
+  ActivityConfirmPrimaryActionGroup,
+} from './ActivityConfirmSubmitBlockedNotice';
 
 const MIN_REASON_LENGTH = 10;
 const MAX_REASON_LENGTH = 1000;
@@ -29,6 +35,7 @@ interface DeleteActivityModalProps {
   /** When provided, pre-populates the notes field when the modal opens (e.g. from Delete requested history). */
   initialNotes?: string;
   confirmDisabled?: boolean;
+  confirmBlockedNotice?: ActivityConfirmBlockedNoticeState;
 }
 
 export function DeleteActivityModal({
@@ -41,6 +48,10 @@ export function DeleteActivityModal({
   isSubmitting,
   initialNotes,
   confirmDisabled: confirmDisabledProp = false,
+  confirmBlockedNotice = {
+    headerBlockedMessage: null,
+    connectionFooterMessage: null,
+  },
 }: DeleteActivityModalProps): React.ReactElement {
   const [notes, setNotes] = useState('');
   const [deletePermanently, setDeletePermanently] = useState(false);
@@ -102,6 +113,10 @@ export function DeleteActivityModal({
           </DialogDescription>
         </DialogHeader>
 
+        <ActivityConfirmHeaderBlockedNotice
+          headerBlockedMessage={confirmBlockedNotice.headerBlockedMessage}
+        />
+
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="delete-activity-notes">
@@ -157,7 +172,7 @@ export function DeleteActivityModal({
                   <span className="inline-flex items-center gap-2">
                     <OctagonAlertIcon className="text-destructive h-4 w-4" />
                     <strong>
-                      Deleting an activity completely is permanent is a
+                      Deleting an activity completely is permanent and
                       non-reversible.
                     </strong>{' '}
                   </span>
@@ -201,14 +216,20 @@ export function DeleteActivityModal({
           >
             Go back
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={confirmDisabled}
+          <ActivityConfirmPrimaryActionGroup
+            connectionFooterMessage={
+              confirmBlockedNotice.connectionFooterMessage
+            }
           >
-            {isSubmitting ? 'Deleting...' : 'Confirm delete'}
-          </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirm}
+              disabled={confirmDisabled}
+            >
+              {isSubmitting ? 'Deleting...' : 'Confirm delete'}
+            </Button>
+          </ActivityConfirmPrimaryActionGroup>
         </DialogFooter>
       </DialogContent>
     </Dialog>

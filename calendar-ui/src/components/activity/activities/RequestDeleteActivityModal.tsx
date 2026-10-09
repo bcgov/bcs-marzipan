@@ -11,6 +11,12 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import type { ActivityConfirmBlockedNoticeState } from '@/lib/activity-edit-session-messages';
+
+import {
+  ActivityConfirmHeaderBlockedNotice,
+  ActivityConfirmPrimaryActionGroup,
+} from './ActivityConfirmSubmitBlockedNotice';
 
 const MIN_REASON_LENGTH = 10;
 const MAX_REASON_LENGTH = 1000;
@@ -21,6 +27,7 @@ interface RequestDeleteActivityModalProps {
   onConfirm: (reason: string) => void | Promise<void>;
   isSubmitting: boolean;
   confirmDisabled?: boolean;
+  confirmBlockedNotice?: ActivityConfirmBlockedNoticeState;
 }
 
 export function RequestDeleteActivityModal({
@@ -29,6 +36,10 @@ export function RequestDeleteActivityModal({
   onConfirm,
   isSubmitting,
   confirmDisabled: confirmDisabledProp = false,
+  confirmBlockedNotice = {
+    headerBlockedMessage: null,
+    connectionFooterMessage: null,
+  },
 }: RequestDeleteActivityModalProps): React.ReactElement {
   const [reason, setReason] = useState('');
   const [touched, setTouched] = useState(false);
@@ -65,6 +76,10 @@ export function RequestDeleteActivityModal({
           </DialogDescription>
         </DialogHeader>
 
+        <ActivityConfirmHeaderBlockedNotice
+          headerBlockedMessage={confirmBlockedNotice.headerBlockedMessage}
+        />
+
         <div className="space-y-2">
           <Label htmlFor="request-delete-reason">
             Add a note (required) <span className="text-destructive">*</span>
@@ -98,14 +113,20 @@ export function RequestDeleteActivityModal({
           >
             Go back
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={confirmDisabled}
+          <ActivityConfirmPrimaryActionGroup
+            connectionFooterMessage={
+              confirmBlockedNotice.connectionFooterMessage
+            }
           >
-            {isSubmitting ? 'Submitting...' : 'Request delete'}
-          </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirm}
+              disabled={confirmDisabled}
+            >
+              {isSubmitting ? 'Submitting...' : 'Request delete'}
+            </Button>
+          </ActivityConfirmPrimaryActionGroup>
         </DialogFooter>
       </DialogContent>
     </Dialog>

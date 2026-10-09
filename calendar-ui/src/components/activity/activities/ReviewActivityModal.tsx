@@ -15,7 +15,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
+import type { ActivityConfirmBlockedNoticeState } from '@/lib/activity-edit-session-messages';
 
+import {
+  ActivityConfirmHeaderBlockedNotice,
+  ActivityConfirmPrimaryActionGroup,
+} from './ActivityConfirmSubmitBlockedNotice';
 import { ActivityFormChangesList } from './ActivityFormChangesList';
 import { type ActivitySaveConfirmPayload } from './EditActivityConfirmModal';
 import { RenewPublicLastUpdatedField } from './RenewPublicLastUpdatedField';
@@ -42,6 +47,7 @@ interface ReviewActivityModalProps {
   /** When true, show "Unassign me" checkbox (current user is an assignee on this activity). */
   showUnassignMeOption?: boolean;
   confirmDisabled?: boolean;
+  confirmBlockedNotice?: ActivityConfirmBlockedNoticeState;
 }
 
 export function ReviewActivityModal({
@@ -56,6 +62,10 @@ export function ReviewActivityModal({
   activityEndedAtLabel = null,
   showUnassignMeOption = false,
   confirmDisabled = false,
+  confirmBlockedNotice = {
+    headerBlockedMessage: null,
+    connectionFooterMessage: null,
+  },
 }: ReviewActivityModalProps) {
   const { user } = useAuth();
   const [notes, setNotes] = useState('');
@@ -125,6 +135,10 @@ export function ReviewActivityModal({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+
+        <ActivityConfirmHeaderBlockedNotice
+          headerBlockedMessage={confirmBlockedNotice.headerBlockedMessage}
+        />
 
         {displayId != null && displayId.length > 0 && (
           <p className="text-muted-foreground text-sm">
@@ -204,20 +218,26 @@ export function ReviewActivityModal({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            onClick={handleConfirm}
-            disabled={isSubmitting || confirmDisabled}
+          <ActivityConfirmPrimaryActionGroup
+            connectionFooterMessage={
+              confirmBlockedNotice.connectionFooterMessage
+            }
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-                Submitting...
-              </>
-            ) : (
-              primaryLabel
-            )}
-          </Button>
+            <Button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isSubmitting || confirmDisabled}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Submitting...
+                </>
+              ) : (
+                primaryLabel
+              )}
+            </Button>
+          </ActivityConfirmPrimaryActionGroup>
         </DialogFooter>
       </DialogContent>
     </Dialog>

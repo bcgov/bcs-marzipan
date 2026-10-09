@@ -95,6 +95,7 @@ import {
   ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST,
   connectionBlocksFieldInputUnlessActiveSession,
   getActivityConfirmBlockedMessage,
+  getActivityConfirmBlockedNoticeState,
   getActivityEditAcquireFailureToastMessage,
   getActivityEditRecoveryBannerMessage,
   isActivityEditConnectionBlocked,
@@ -789,6 +790,24 @@ export function ActivityPage({
     [activitySocketConnection, editRecoveryState]
   );
 
+  const confirmBlockedNoticeByAction = useMemo(() => {
+    const forAction = (action: ActivityEditConfirmAction) =>
+      getActivityConfirmBlockedNoticeState(
+        action,
+        activitySocketConnection,
+        editRecoveryState
+      );
+    return {
+      save: forAction('save'),
+      review: forAction('review'),
+      complete: forAction('complete'),
+      delete: forAction('delete'),
+      requestDelete: forAction('request-delete'),
+      clone: forAction('clone'),
+      note: forAction('note'),
+    };
+  }, [activitySocketConnection, editRecoveryState]);
+
   const actionFlags = useActivityEditActions({
     lockState,
     mayEditFormFields,
@@ -1459,6 +1478,7 @@ export function ActivityPage({
           state={
             activitySocketConnection === 'offline' ? 'offline' : 'reconnecting'
           }
+          isActiveEditSession={isActiveEditSession}
         />
       ) : null}
       <ActivityFormStickyHeader
@@ -1831,6 +1851,7 @@ export function ActivityPage({
               ? lockoutInlineMessage || 'Editing is temporarily locked.'
               : undefined
         }
+        noteConfirmBlockedNotice={confirmBlockedNoticeByAction.note}
       />
       <DiscardActivityChangesDialog
         open={showLeaveConfirm}
@@ -1849,6 +1870,7 @@ export function ActivityPage({
         onConfirm={(payload) => void handleConfirmedSubmit(payload)}
         isSubmitting={isSubmitting}
         confirmDisabled={editSessionActionsBlocked}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.save}
       />
       <ReviewActivityModal
         open={showReviewModal}
@@ -1864,6 +1886,7 @@ export function ActivityPage({
           (f) => f.assigneeId === user?.id
         )}
         confirmDisabled={editSessionActionsBlocked}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.review}
       />
       <CompleteActivityModal
         open={showCompleteModal}
@@ -1873,6 +1896,7 @@ export function ActivityPage({
         onConfirm={(payload) => void handleCompleteConfirm(payload)}
         displayId={displayId}
         confirmDisabled={editSessionActionsBlocked}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.complete}
       />
       <RequestDeleteActivityModal
         open={showRequestDeleteModal}
@@ -1880,6 +1904,7 @@ export function ActivityPage({
         onConfirm={handleRequestDeleteConfirm}
         isSubmitting={isRequestDeleteSubmitting}
         confirmDisabled={editSessionActionsBlocked}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.requestDelete}
       />
       <CloneActivityModal
         open={showCloneModal}
@@ -1890,6 +1915,7 @@ export function ActivityPage({
         isSubmitting={isCloning}
         showMarkAsReviewed={canReviewActivities}
         onConfirm={(payload) => void handleCloneConfirm(payload)}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.clone}
       />
       <DeleteActivityModal
         open={showDeleteModal}
@@ -1904,6 +1930,7 @@ export function ActivityPage({
         isSubmitting={isDeleteSubmitting}
         initialNotes={deleteModalInitialNotes}
         confirmDisabled={editSessionActionsBlocked}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.delete}
       />
     </ErrorBoundary>
   );

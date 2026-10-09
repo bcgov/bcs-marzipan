@@ -1,17 +1,35 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT,
+  ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT_BEFORE_EDIT,
   ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT,
   ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE,
   connectionBlocksFieldInput,
   connectionBlocksFieldInputUnlessActiveSession,
   getActivityConfirmBlockedMessage,
+  getActivityConfirmBlockedNoticeState,
+  getActivityConnectionOfflineAlertMessage,
   getActivityEditRecoveryBannerMessage,
   isActivityEditConnectionBlocked,
   isActivityEditSessionActionsBlocked,
   shouldShowActivityConnectionAlert,
   shouldSuppressAcquireConnectionToast,
 } from './activity-edit-session-messages';
+
+describe('getActivityConnectionOfflineAlertMessage', () => {
+  it('uses make-changes copy before an edit session starts', () => {
+    expect(getActivityConnectionOfflineAlertMessage(false)).toBe(
+      ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT_BEFORE_EDIT
+    );
+  });
+
+  it('uses save-changes copy during an active edit session', () => {
+    expect(getActivityConnectionOfflineAlertMessage(true)).toBe(
+      ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT
+    );
+  });
+});
 
 describe('getActivityConfirmBlockedMessage', () => {
   it('prioritizes socket connectivity over edit recovery', () => {
@@ -39,6 +57,32 @@ describe('getActivityConfirmBlockedMessage', () => {
     expect(
       getActivityConfirmBlockedMessage('save', 'connected', 'resyncing')
     ).toBe(ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE);
+  });
+});
+
+describe('getActivityConfirmBlockedNoticeState', () => {
+  it('puts offline and reconnecting copy in the footer only', () => {
+    expect(
+      getActivityConfirmBlockedNoticeState('save', 'offline', null)
+    ).toEqual({
+      headerBlockedMessage: null,
+      connectionFooterMessage: expect.stringMatching(/offline/i),
+    });
+    expect(
+      getActivityConfirmBlockedNoticeState('delete', 'reconnecting', null)
+    ).toEqual({
+      headerBlockedMessage: null,
+      connectionFooterMessage: ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT,
+    });
+  });
+
+  it('puts recovery copy in the header when connected', () => {
+    expect(
+      getActivityConfirmBlockedNoticeState('save', 'connected', 'resyncing')
+    ).toEqual({
+      headerBlockedMessage: ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE,
+      connectionFooterMessage: null,
+    });
   });
 });
 

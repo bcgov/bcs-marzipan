@@ -84,6 +84,10 @@ import {
   useVenueStatuses,
 } from '@/hooks/useLookups';
 import {
+  isActivityConfirmBlocked,
+  type ActivityConfirmBlockedNoticeState,
+} from '@/lib/activity-edit-session-messages';
+import {
   formatHistoryFieldValue,
   getActionText,
   getHistoryFieldLabel,
@@ -94,6 +98,11 @@ import { LOAD_HISTORY_MESSAGE, LOAD_HISTORY_TITLE } from '@/lib/error-messages';
 import { showErrorToast } from '@/lib/error-toast';
 import { createLogger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
+
+import {
+  ActivityConfirmHeaderBlockedNotice,
+  ActivityConfirmPrimaryActionGroup,
+} from './ActivityConfirmSubmitBlockedNotice';
 
 const logger = createLogger('ActivityHistory');
 
@@ -142,6 +151,10 @@ export default function ActivityHistory({
   canAddNote = false,
   addNoteDisabled = false,
   addNoteDisabledReason,
+  noteConfirmBlockedNotice = {
+    headerBlockedMessage: null,
+    connectionFooterMessage: null,
+  },
 }: {
   activityId: number;
   displayId?: string;
@@ -152,6 +165,7 @@ export default function ActivityHistory({
   canAddNote?: boolean;
   addNoteDisabled?: boolean;
   addNoteDisabledReason?: string;
+  noteConfirmBlockedNotice?: ActivityConfirmBlockedNoticeState;
 }) {
   const [entries, setEntries] = useState<ActivityHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -361,8 +375,15 @@ export default function ActivityHistory({
 
   const trimmedNote = noteText.trim();
 
+  const noteConfirmBlocked = isActivityConfirmBlocked(noteConfirmBlockedNotice);
+
   const handleAddNote = async () => {
-    if (!trimmedNote || addNoteMutation.isPending || addNoteDisabled) {
+    if (
+      !trimmedNote ||
+      addNoteMutation.isPending ||
+      addNoteDisabled ||
+      noteConfirmBlocked
+    ) {
       return;
     }
 
@@ -382,7 +403,9 @@ export default function ActivityHistory({
   };
 
   const noteButtonDisabled =
-    trimmedNote.length === 0 || trimmedNote.length > MAX_NOTE_LENGTH;
+    trimmedNote.length === 0 ||
+    trimmedNote.length > MAX_NOTE_LENGTH ||
+    noteConfirmBlocked;
 
   const noteButton = useMemo(
     () =>
@@ -565,6 +588,9 @@ export default function ActivityHistory({
               itself.
             </DialogDescription>
           </DialogHeader>
+          <ActivityConfirmHeaderBlockedNotice
+            headerBlockedMessage={noteConfirmBlockedNotice.headerBlockedMessage}
+          />
           <div className="space-y-2">
             <Label htmlFor="activity-history-note">Note</Label>
             <Textarea
@@ -591,13 +617,19 @@ export default function ActivityHistory({
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              onClick={() => void handleAddNote()}
-              disabled={noteButtonDisabled || addNoteMutation.isPending}
+            <ActivityConfirmPrimaryActionGroup
+              connectionFooterMessage={
+                noteConfirmBlockedNotice.connectionFooterMessage
+              }
             >
-              {addNoteMutation.isPending ? 'Saving...' : 'Add note'}
-            </Button>
+              <Button
+                type="button"
+                onClick={() => void handleAddNote()}
+                disabled={noteButtonDisabled || addNoteMutation.isPending}
+              >
+                {addNoteMutation.isPending ? 'Saving...' : 'Add note'}
+              </Button>
+            </ActivityConfirmPrimaryActionGroup>
           </DialogFooter>
         </DialogContent>
       </Dialog>

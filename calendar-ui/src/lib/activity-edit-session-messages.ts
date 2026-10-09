@@ -27,13 +27,32 @@ export type ActivityEditConfirmAction =
   | 'review'
   | 'complete'
   | 'delete'
-  | 'request-delete';
+  | 'request-delete'
+  | 'clone'
+  | 'note';
 
-/** Top-of-screen connection alert (single line) */
+export type ActivityConfirmBlockedNoticeState = {
+  headerBlockedMessage: string | null;
+  connectionFooterMessage: string | null;
+};
+
+/** Top-of-screen connection alert when an edit session is already active */
 export const ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT =
   'You are offline. Reconnect to save changes.';
 
+/** Top-of-screen connection alert before the user has started editing */
+export const ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT_BEFORE_EDIT =
+  'You are offline. Reconnect to make changes.';
+
 export const ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT = 'Reconnecting...';
+
+export function getActivityConnectionOfflineAlertMessage(
+  isActiveEditSession: boolean
+): string {
+  return isActiveEditSession
+    ? ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT
+    : ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT_BEFORE_EDIT;
+}
 
 export const ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST =
   'Connection restored. Changes can now be saved.';
@@ -68,6 +87,8 @@ const OFFLINE_BY_ACTION: Record<ActivityEditConfirmAction, string> = {
   complete: 'You are offline. Reconnect to complete this activity.',
   delete: 'You are offline. Reconnect to continue.',
   'request-delete': 'You are offline. Reconnect to continue.',
+  clone: 'You are offline. Reconnect to clone this activity.',
+  note: 'You are offline. Reconnect to add a note.',
 };
 
 const SERVER_CHANGED_BY_ACTION: Record<ActivityEditConfirmAction, string> = {
@@ -77,6 +98,8 @@ const SERVER_CHANGED_BY_ACTION: Record<ActivityEditConfirmAction, string> = {
   delete: 'This activity has been updated elsewhere and cannot be deleted.',
   'request-delete':
     'This activity has been updated elsewhere and your delete request cannot be submitted.',
+  clone: 'This activity has been updated elsewhere and cannot be cloned.',
+  note: 'This activity has been updated elsewhere and a note cannot be added.',
 };
 
 export function getActivityEditOfflineBlockedMessage(
@@ -153,15 +176,30 @@ export function getActivityEditRecoveryBannerMessage(
   return null;
 }
 
+export function getActivityConfirmConnectionFooterMessage(
+  action: ActivityEditConfirmAction,
+  socketConnection: ActivitySocketConnectionDisplay
+): string | null {
+  if (socketConnection === 'offline') {
+    return getActivityEditOfflineBlockedMessage(action);
+  }
+  if (socketConnection === 'reconnecting') {
+    return ACTIVITY_EDIT_RECONNECTING_MODAL_MESSAGE;
+  }
+  return null;
+}
+
 export function getActivityConfirmBlockedMessage(
   action: ActivityEditConfirmAction,
   socketConnection: ActivitySocketConnectionDisplay,
   editRecoveryState: ActivityEditRecoveryState
 ): string | null {
-  if (socketConnection !== 'connected') {
-    return socketConnection === 'offline'
-      ? getActivityEditOfflineBlockedMessage(action)
-      : ACTIVITY_EDIT_RECONNECTING_MODAL_MESSAGE;
+  const connectionFooterMessage = getActivityConfirmConnectionFooterMessage(
+    action,
+    socketConnection
+  );
+  if (connectionFooterMessage != null) {
+    return connectionFooterMessage;
   }
   if (editRecoveryState === 'resyncing') {
     return ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE;
@@ -173,6 +211,36 @@ export function getActivityConfirmBlockedMessage(
     return ACTIVITY_EDIT_SESSION_RESTORE_FAILED_MESSAGE;
   }
   return null;
+}
+
+export function getActivityConfirmBlockedNoticeState(
+  action: ActivityEditConfirmAction,
+  socketConnection: ActivitySocketConnectionDisplay,
+  editRecoveryState: ActivityEditRecoveryState
+): ActivityConfirmBlockedNoticeState {
+  const connectionFooterMessage = getActivityConfirmConnectionFooterMessage(
+    action,
+    socketConnection
+  );
+  if (connectionFooterMessage != null) {
+    return { headerBlockedMessage: null, connectionFooterMessage };
+  }
+  return {
+    headerBlockedMessage: getActivityConfirmBlockedMessage(
+      action,
+      socketConnection,
+      editRecoveryState
+    ),
+    connectionFooterMessage: null,
+  };
+}
+
+export function isActivityConfirmBlocked(
+  state: ActivityConfirmBlockedNoticeState
+): boolean {
+  return (
+    state.headerBlockedMessage != null || state.connectionFooterMessage != null
+  );
 }
 
 export function isActivityEditSessionActionsBlocked(

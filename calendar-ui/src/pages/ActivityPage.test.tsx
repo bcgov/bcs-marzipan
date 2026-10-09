@@ -777,7 +777,7 @@ describe('ActivityPage optimistic inline edit', () => {
     renderActivityPage();
 
     expect(
-      await screen.findByText(/You are offline\. Reconnect to save changes\./i)
+      await screen.findByText(/You are offline\. Reconnect to make changes\./i)
     ).toBeInTheDocument();
 
     const titleTextarea = screen.getByRole('textbox', { name: /Title/i });
