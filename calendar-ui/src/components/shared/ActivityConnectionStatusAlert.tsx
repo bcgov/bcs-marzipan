@@ -1,4 +1,4 @@
-import { Cloud, CloudOff, CloudSync, Loader2 } from 'lucide-react';
+import { CloudCheck, CloudOff, CloudSync } from 'lucide-react';
 import type { ReactElement } from 'react';
 
 import { Alert, AlertTitle } from '@/components/ui/alert';
@@ -15,13 +15,11 @@ export function ActivityConnectionStatusAlert({
   message,
 }: ActivityConnectionStatusAlertProps): ReactElement {
   const Icon =
-    phase === 'offline'
+    phase === 'browser-offline' || phase === 'disconnected'
       ? CloudOff
-      : phase === 'reconnecting'
-        ? CloudSync
-        : phase === 'verifying'
-          ? Loader2
-          : Cloud;
+      : phase === 'restored'
+        ? CloudCheck
+        : CloudSync;
 
   return (
     <div
@@ -34,10 +32,7 @@ export function ActivityConnectionStatusAlert({
           phase === 'restored' && 'border-green-600/40 dark:border-green-500/40'
         )}
       >
-        <Icon
-          aria-hidden
-          className={cn(phase === 'verifying' && 'animate-spin')}
-        />
+        <Icon aria-hidden />
         <AlertTitle className="line-clamp-none font-normal">
           {message}
         </AlertTitle>

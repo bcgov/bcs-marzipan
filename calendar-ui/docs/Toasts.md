@@ -7,7 +7,7 @@ The app uses [Sonner](https://sonner.emilkowal.ski/) for toasts. Helpers and con
 - **Helpers** ([src/lib/error-toast.ts](src/lib/error-toast.ts)): Use `showErrorToast()` for API/network errors so messaging and correlation IDs stay consistent. Use `showSuccessToast()` / `showInfoToast()` when you want the same default duration and shape as other app toasts.
 - **Direct** `toast.success()`, `toast.info()`, `toast.error()`: Use when you need custom copy, description, or duration (e.g. "Activity updated" with activity details).
 
-Activity edit **connection** feedback (offline, reconnecting, verifying session, connection restored) uses the fixed top [`ActivityConnectionStatusAlert`](../src/components/shared/ActivityConnectionStatusAlert.tsx) driven by [`useActivityConnectionFeedback`](../src/hooks/useActivityConnectionFeedback.ts), not Sonner. The restored state auto-hides using the same duration as success toasts (`TOAST_DURATION_MS.success`).
+Activity edit **connection** feedback (browser offline, connection lost / reconnecting, verifying session, connection restored) uses the fixed top [`ActivityConnectionStatusAlert`](../src/components/shared/ActivityConnectionStatusAlert.tsx) driven by [`useActivityConnectionFeedback`](../src/hooks/useActivityConnectionFeedback.ts), not Sonner. Socket display states live in [`activity-socket-connection-display`](../src/hooks/activity-socket-connection-display.ts) (`browser-offline` vs `disconnected` vs `reconnecting`). The restored state auto-hides after `CONNECTION_RESTORED_ALERT_DURATION_MS` (1.5s).
 
 ## Toast IDs and deduplication
 

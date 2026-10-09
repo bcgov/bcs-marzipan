@@ -209,8 +209,11 @@ let mockActivityWebSocketOptions: {
   onLockReleased?: () => void;
   onDataUpdated?: () => void;
 } = {};
-let mockActivitySocketConnection: 'connected' | 'reconnecting' | 'offline' =
-  'connected';
+let mockActivitySocketConnection:
+  | 'connected'
+  | 'reconnecting'
+  | 'browser-offline'
+  | 'disconnected' = 'connected';
 vi.mock('../hooks/useActivityWebSocket', () => ({
   useActivityWebSocket: (
     _activityId: number,
@@ -781,7 +784,7 @@ describe('ActivityPage optimistic inline edit', () => {
   });
 
   it('shows connection alert and read-only fields when offline before editing', async () => {
-    mockActivitySocketConnection = 'offline';
+    mockActivitySocketConnection = 'browser-offline';
     const user = userEvent.setup();
     renderActivityPage();
 
@@ -801,7 +804,7 @@ describe('ActivityPage optimistic inline edit', () => {
   });
 
   it('shows connection restored alert after reconnect when user saw offline alert', async () => {
-    mockActivitySocketConnection = 'offline';
+    mockActivitySocketConnection = 'browser-offline';
     const { rerender } = renderActivityPage();
 
     expect(
@@ -821,7 +824,7 @@ describe('ActivityPage optimistic inline edit', () => {
 
   it('keeps fields editable when offline during an active edit session', async () => {
     mockLockState = 'owned';
-    mockActivitySocketConnection = 'offline';
+    mockActivitySocketConnection = 'browser-offline';
     const user = userEvent.setup();
     renderActivityPage();
 
@@ -1122,7 +1125,7 @@ describe('ActivityPage clone button', () => {
 
   it('disables Clone button when offline', async () => {
     mockUseAuth.mockReturnValue(cloneEligibleEditorAuth);
-    mockActivitySocketConnection = 'offline';
+    mockActivitySocketConnection = 'disconnected';
     renderActivityPage();
 
     const cloneBtn = await screen.findByRole('button', { name: /^Clone$/i });

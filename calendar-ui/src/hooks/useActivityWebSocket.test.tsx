@@ -77,7 +77,7 @@ describe('useActivityWebSocket', () => {
     expect(socket.emit).toHaveBeenNthCalledWith(2, 'viewActivity', 139);
   });
 
-  it('reports reconnecting then offline after a long disconnect', () => {
+  it('reports reconnecting then disconnected after a long disconnect', () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useActivityWebSocket(139, {}));
     const socket = getFakeSocket();
@@ -95,8 +95,23 @@ describe('useActivityWebSocket', () => {
     act(() => {
       vi.advanceTimersByTime(ACTIVITY_SOCKET_OFFLINE_AFTER_MS);
     });
-    expect(result.current).toBe('offline');
+    expect(result.current).toBe('disconnected');
 
     vi.useRealTimers();
+  });
+
+  it('reports browser-offline when the browser goes offline', () => {
+    const { result } = renderHook(() => useActivityWebSocket(139, {}));
+    const socket = getFakeSocket();
+
+    act(() => {
+      socket.emitSocketEvent('connect');
+    });
+    expect(result.current).toBe('connected');
+
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    expect(result.current).toBe('browser-offline');
   });
 });

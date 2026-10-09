@@ -6,8 +6,10 @@ import {
   ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT,
   ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT,
 } from '../lib/activity-edit-session-messages';
-import { TOAST_DURATION_MS } from '../lib/toast-durations';
-import { useActivityConnectionFeedback } from './useActivityConnectionFeedback';
+import {
+  CONNECTION_RESTORED_ALERT_DURATION_MS,
+  useActivityConnectionFeedback,
+} from './useActivityConnectionFeedback';
 
 const baseInput = {
   activityId: 1,
@@ -26,13 +28,18 @@ describe('useActivityConnectionFeedback', () => {
     vi.useRealTimers();
   });
 
-  it('shows offline alert and arms restored when user was notified', () => {
+  it('shows browser-offline alert and arms restored when user was notified', () => {
     const { result, rerender } = renderHook(
       (props) => useActivityConnectionFeedback(props),
-      { initialProps: { ...baseInput, socketConnection: 'offline' as const } }
+      {
+        initialProps: {
+          ...baseInput,
+          socketConnection: 'browser-offline' as const,
+        },
+      }
     );
 
-    expect(result.current.connectionAlert?.phase).toBe('offline');
+    expect(result.current.connectionAlert?.phase).toBe('browser-offline');
 
     rerender({
       ...baseInput,
@@ -52,7 +59,7 @@ describe('useActivityConnectionFeedback', () => {
         initialProps: {
           ...baseInput,
           isActiveEditSession: true,
-          socketConnection: 'offline' as const,
+          socketConnection: 'browser-offline' as const,
         },
       }
     );
@@ -79,7 +86,7 @@ describe('useActivityConnectionFeedback', () => {
     );
 
     act(() => {
-      vi.advanceTimersByTime(TOAST_DURATION_MS.success);
+      vi.advanceTimersByTime(CONNECTION_RESTORED_ALERT_DURATION_MS);
     });
 
     expect(result.current.connectionAlert).toBeNull();
@@ -92,7 +99,7 @@ describe('useActivityConnectionFeedback', () => {
         initialProps: {
           ...baseInput,
           connectionAlertEligible: false,
-          socketConnection: 'offline' as const,
+          socketConnection: 'browser-offline' as const,
         },
       }
     );
@@ -115,7 +122,7 @@ describe('useActivityConnectionFeedback', () => {
         initialProps: {
           ...baseInput,
           isActiveEditSession: true,
-          socketConnection: 'offline' as const,
+          socketConnection: 'browser-offline' as const,
         },
       }
     );
@@ -143,30 +150,55 @@ describe('useActivityConnectionFeedback', () => {
   it('resets when activityId changes', () => {
     const { result, rerender } = renderHook(
       (props) => useActivityConnectionFeedback(props),
-      { initialProps: { ...baseInput, socketConnection: 'offline' as const } }
+      {
+        initialProps: {
+          ...baseInput,
+          socketConnection: 'browser-offline' as const,
+        },
+      }
     );
 
-    expect(result.current.connectionAlert?.phase).toBe('offline');
+    expect(result.current.connectionAlert?.phase).toBe('browser-offline');
 
     rerender({
       ...baseInput,
       activityId: 2,
-      socketConnection: 'offline' as const,
+      socketConnection: 'browser-offline' as const,
     });
 
-    expect(result.current.connectionAlert?.phase).toBe('offline');
+    expect(result.current.connectionAlert?.phase).toBe('browser-offline');
   });
 
-  it('returns to offline when connection drops during restored', () => {
+  it('returns to disconnected when connection drops during restored', () => {
     const { result, rerender } = renderHook(
       (props) => useActivityConnectionFeedback(props),
-      { initialProps: { ...baseInput, socketConnection: 'offline' as const } }
+      {
+        initialProps: {
+          ...baseInput,
+          socketConnection: 'disconnected' as const,
+        },
+      }
     );
 
     rerender({ ...baseInput, socketConnection: 'connected' });
     expect(result.current.connectionAlert?.phase).toBe('restored');
 
-    rerender({ ...baseInput, socketConnection: 'offline' });
-    expect(result.current.connectionAlert?.phase).toBe('offline');
+    rerender({ ...baseInput, socketConnection: 'disconnected' });
+    expect(result.current.connectionAlert?.phase).toBe('disconnected');
+  });
+
+  it('shows disconnected alert copy when the socket is unreachable', () => {
+    const { result } = renderHook(
+      (props) => useActivityConnectionFeedback(props),
+      {
+        initialProps: {
+          ...baseInput,
+          socketConnection: 'disconnected' as const,
+        },
+      }
+    );
+
+    expect(result.current.connectionAlert?.phase).toBe('disconnected');
+    expect(result.current.connectionAlert?.message).toMatch(/connection lost/i);
   });
 });

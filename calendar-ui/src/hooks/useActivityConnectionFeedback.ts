@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
-  ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT,
   ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT,
-  getActivityConnectionOfflineAlertMessage,
+  getActivityConnectionBlockedAlertMessage,
   getActivityConnectionRestoredAlertMessage,
   type ActivityEditRecoveryState,
 } from '../lib/activity-edit-session-messages';
-import { TOAST_DURATION_MS } from '../lib/toast-durations';
-import type { ActivitySocketConnectionDisplay } from './activity-socket-connection-display';
+import {
+  isActivitySocketConnectionBlocked,
+  type ActivitySocketConnectionDisplay,
+} from './activity-socket-connection-display';
+
+/** How long the top-of-screen "connection restored" alert stays visible. */
+export const CONNECTION_RESTORED_ALERT_DURATION_MS = 1_500;
 
 export type ActivityConnectionAlertPhase =
-  | 'offline'
+  | 'browser-offline'
+  | 'disconnected'
   | 'reconnecting'
   | 'verifying'
   | 'restored';
@@ -35,10 +40,19 @@ type UseActivityConnectionFeedbackResult = {
   reportResyncFailure: () => void;
 };
 
-function isSocketBlocked(
+function connectionAlertPhase(
   socketConnection: ActivitySocketConnectionDisplay
-): boolean {
-  return socketConnection !== 'connected';
+): ActivityConnectionAlertPhase | null {
+  switch (socketConnection) {
+    case 'browser-offline':
+      return 'browser-offline';
+    case 'disconnected':
+      return 'disconnected';
+    case 'reconnecting':
+      return 'reconnecting';
+    default:
+      return null;
+  }
 }
 
 export function useActivityConnectionFeedback({
@@ -92,7 +106,7 @@ export function useActivityConnectionFeedback({
     hideRestoredTimerRef.current = setTimeout(() => {
       hideRestoredTimerRef.current = null;
       setConnectionAlert(null);
-    }, TOAST_DURATION_MS.success);
+    }, CONNECTION_RESTORED_ALERT_DURATION_MS);
   }, [clearRestoredTimer, isActiveEditSession]);
 
   const reportResyncSuccess = useCallback(() => {
@@ -113,23 +127,24 @@ export function useActivityConnectionFeedback({
     const prevSocket = prevSocketRef.current;
     prevSocketRef.current = socketConnection;
 
-    if (connectionAlertEligible && isSocketBlocked(socketConnection)) {
+    const blockedPhase = connectionAlertPhase(socketConnection);
+    if (connectionAlertEligible && blockedPhase != null) {
       userWasNotifiedRef.current = true;
       awaitingResyncSuccessRef.current = false;
       clearRestoredTimer();
       setConnectionAlert({
-        phase: socketConnection === 'offline' ? 'offline' : 'reconnecting',
-        message:
-          socketConnection === 'offline'
-            ? getActivityConnectionOfflineAlertMessage(isActiveEditSession)
-            : ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT,
+        phase: blockedPhase,
+        message: getActivityConnectionBlockedAlertMessage(
+          socketConnection,
+          isActiveEditSession
+        ),
       });
       return;
     }
 
     if (
       socketConnection === 'connected' &&
-      isSocketBlocked(prevSocket) &&
+      isActivitySocketConnectionBlocked(prevSocket) &&
       userWasNotifiedRef.current
     ) {
       if (isActiveEditSession) {

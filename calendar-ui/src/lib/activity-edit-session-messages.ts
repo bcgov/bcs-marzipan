@@ -5,7 +5,10 @@
  * Use with socket connection display and {@link ActivityEditRecoveryState}.
  */
 
-import type { ActivitySocketConnectionDisplay } from '../hooks/activity-socket-connection-display';
+import {
+  isActivitySocketConnectionBlocked,
+  type ActivitySocketConnectionDisplay,
+} from '../hooks/activity-socket-connection-display';
 import type { LockAcquireFailureReason } from '../hooks/useActivityLock';
 import type { ActivityEditResyncAction } from './activity-edit-resync';
 
@@ -44,6 +47,13 @@ export const ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT =
 export const ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT_BEFORE_EDIT =
   'You are offline. Reconnect to make changes.';
 
+export const ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT =
+  'Connection lost. Trying to reconnect.';
+
+/** Same copy as {@link ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT}. */
+export const ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT_BEFORE_EDIT =
+  ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT;
+
 export const ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT = 'Reconnecting...';
 
 export function getActivityConnectionOfflineAlertMessage(
@@ -54,15 +64,37 @@ export function getActivityConnectionOfflineAlertMessage(
     : ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT_BEFORE_EDIT;
 }
 
-export const ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT =
-  'Connection restored. Changes can now be saved.';
+export function getActivityConnectionDisconnectedAlertMessage(
+  isActiveEditSession: boolean
+): string {
+  return isActiveEditSession
+    ? ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT
+    : ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT_BEFORE_EDIT;
+}
+
+export function getActivityConnectionBlockedAlertMessage(
+  socketConnection: Exclude<ActivitySocketConnectionDisplay, 'connected'>,
+  isActiveEditSession: boolean
+): string {
+  switch (socketConnection) {
+    case 'browser-offline':
+      return getActivityConnectionOfflineAlertMessage(isActiveEditSession);
+    case 'disconnected':
+      return getActivityConnectionDisconnectedAlertMessage(isActiveEditSession);
+    case 'reconnecting':
+      return ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT;
+  }
+}
+
+export const ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT = 'Connection restored';
 
 /** @deprecated Use ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT */
 export const ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST =
   ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT;
 
+/** @deprecated Same copy as ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT */
 export const ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT =
-  'Connection restored. You can now make changes.';
+  ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT;
 
 export const ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT =
   'Restoring your session…';
@@ -71,11 +103,9 @@ export const ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE =
   ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT;
 
 export function getActivityConnectionRestoredAlertMessage(
-  isActiveEditSession: boolean
+  _isActiveEditSession: boolean
 ): string {
-  return isActiveEditSession
-    ? ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT
-    : ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT;
+  return ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT;
 }
 
 export type ActivityEditAcquireFailureToastVariant = 'warning' | 'error';
@@ -139,6 +169,16 @@ const OFFLINE_BY_ACTION: Record<ActivityEditConfirmAction, string> = {
   note: 'You are offline. Reconnect to add a note.',
 };
 
+const DISCONNECTED_BY_ACTION: Record<ActivityEditConfirmAction, string> = {
+  save: ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT,
+  review: ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT,
+  complete: ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT,
+  delete: ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT,
+  'request-delete': ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT,
+  clone: ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT,
+  note: ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT,
+};
+
 const SERVER_CHANGED_BY_ACTION: Record<ActivityEditConfirmAction, string> = {
   save: 'This activity has been updated elsewhere and cannot be saved.',
   review: 'This activity has been updated elsewhere and cannot be reviewed.',
@@ -156,6 +196,12 @@ export function getActivityEditOfflineBlockedMessage(
   return OFFLINE_BY_ACTION[action];
 }
 
+export function getActivityEditDisconnectedBlockedMessage(
+  action: ActivityEditConfirmAction
+): string {
+  return DISCONNECTED_BY_ACTION[action];
+}
+
 export function getActivityEditServerChangedBlockedMessage(
   action: ActivityEditConfirmAction
 ): string {
@@ -165,7 +211,7 @@ export function getActivityEditServerChangedBlockedMessage(
 export function isActivityEditConnectionBlocked(
   socketConnection: ActivitySocketConnectionDisplay
 ): boolean {
-  return socketConnection !== 'connected';
+  return isActivitySocketConnectionBlocked(socketConnection);
 }
 
 /** Raw socket gate (also used for blocking edit-session start and clone). */
@@ -228,8 +274,11 @@ export function getActivityConfirmConnectionFooterMessage(
   action: ActivityEditConfirmAction,
   socketConnection: ActivitySocketConnectionDisplay
 ): string | null {
-  if (socketConnection === 'offline') {
+  if (socketConnection === 'browser-offline') {
     return getActivityEditOfflineBlockedMessage(action);
+  }
+  if (socketConnection === 'disconnected') {
+    return getActivityEditDisconnectedBlockedMessage(action);
   }
   if (socketConnection === 'reconnecting') {
     return ACTIVITY_EDIT_RECONNECTING_MODAL_MESSAGE;

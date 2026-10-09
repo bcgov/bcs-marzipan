@@ -1,17 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT,
   ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT,
   ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT_BEFORE_EDIT,
   ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT,
   ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT,
-  ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT,
   ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT,
   ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE,
   connectionBlocksFieldInput,
   connectionBlocksFieldInputUnlessActiveSession,
   getActivityConfirmBlockedMessage,
   getActivityConfirmBlockedNoticeState,
+  getActivityConnectionBlockedAlertMessage,
+  getActivityConnectionDisconnectedAlertMessage,
   getActivityConnectionOfflineAlertMessage,
   getActivityConnectionRestoredAlertMessage,
   getActivityEditAcquireFailureToastVariant,
@@ -38,6 +40,31 @@ describe('getActivityConnectionOfflineAlertMessage', () => {
   });
 });
 
+describe('getActivityConnectionDisconnectedAlertMessage', () => {
+  it('returns the same copy before and during an edit session', () => {
+    expect(getActivityConnectionDisconnectedAlertMessage(false)).toBe(
+      ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT
+    );
+    expect(getActivityConnectionDisconnectedAlertMessage(true)).toBe(
+      ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT
+    );
+  });
+});
+
+describe('getActivityConnectionBlockedAlertMessage', () => {
+  it('maps socket display states to alert copy', () => {
+    expect(
+      getActivityConnectionBlockedAlertMessage('browser-offline', true)
+    ).toBe(ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT);
+    expect(
+      getActivityConnectionBlockedAlertMessage('disconnected', false)
+    ).toBe(ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT);
+    expect(
+      getActivityConnectionBlockedAlertMessage('reconnecting', false)
+    ).toBe(ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT);
+  });
+});
+
 describe('getActivityConfirmBlockedMessage', () => {
   it('prioritizes socket connectivity over edit recovery', () => {
     expect(
@@ -46,12 +73,21 @@ describe('getActivityConfirmBlockedMessage', () => {
   });
 
   it('returns action-specific offline copy', () => {
-    expect(getActivityConfirmBlockedMessage('save', 'offline', null)).toMatch(
-      /save changes/i
+    expect(
+      getActivityConfirmBlockedMessage('save', 'browser-offline', null)
+    ).toMatch(/save changes/i);
+    expect(
+      getActivityConfirmBlockedMessage('review', 'browser-offline', null)
+    ).toMatch(/review/i);
+  });
+
+  it('returns disconnected copy for confirm actions', () => {
+    expect(getActivityConfirmBlockedMessage('save', 'disconnected', null)).toBe(
+      ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT
     );
-    expect(getActivityConfirmBlockedMessage('review', 'offline', null)).toMatch(
-      /review/i
-    );
+    expect(
+      getActivityConfirmBlockedMessage('clone', 'disconnected', null)
+    ).toBe(ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT);
   });
 
   it('returns elsewhere copy when connected but server version changed', () => {
@@ -70,10 +106,16 @@ describe('getActivityConfirmBlockedMessage', () => {
 describe('getActivityConfirmBlockedNoticeState', () => {
   it('puts offline and reconnecting copy in the footer only', () => {
     expect(
-      getActivityConfirmBlockedNoticeState('save', 'offline', null)
+      getActivityConfirmBlockedNoticeState('save', 'browser-offline', null)
     ).toEqual({
       headerBlockedMessage: null,
       connectionFooterMessage: expect.stringMatching(/offline/i),
+    });
+    expect(
+      getActivityConfirmBlockedNoticeState('save', 'disconnected', null)
+    ).toEqual({
+      headerBlockedMessage: null,
+      connectionFooterMessage: expect.stringMatching(/connection lost/i),
     });
     expect(
       getActivityConfirmBlockedNoticeState('delete', 'reconnecting', null)
@@ -94,8 +136,9 @@ describe('getActivityConfirmBlockedNoticeState', () => {
 });
 
 describe('isActivityEditConnectionBlocked', () => {
-  it('is true when offline or reconnecting', () => {
-    expect(isActivityEditConnectionBlocked('offline')).toBe(true);
+  it('is true when offline, disconnected, or reconnecting', () => {
+    expect(isActivityEditConnectionBlocked('browser-offline')).toBe(true);
+    expect(isActivityEditConnectionBlocked('disconnected')).toBe(true);
     expect(isActivityEditConnectionBlocked('reconnecting')).toBe(true);
     expect(isActivityEditConnectionBlocked('connected')).toBe(false);
   });
@@ -103,7 +146,7 @@ describe('isActivityEditConnectionBlocked', () => {
 
 describe('connectionBlocksFieldInput', () => {
   it('matches isActivityEditConnectionBlocked', () => {
-    expect(connectionBlocksFieldInput('offline')).toBe(true);
+    expect(connectionBlocksFieldInput('disconnected')).toBe(true);
     expect(connectionBlocksFieldInput('connected')).toBe(false);
   });
 });
@@ -111,7 +154,7 @@ describe('connectionBlocksFieldInput', () => {
 describe('connectionBlocksFieldInputUnlessActiveSession', () => {
   it('blocks when disconnected and session has not started', () => {
     expect(
-      connectionBlocksFieldInputUnlessActiveSession('offline', false)
+      connectionBlocksFieldInputUnlessActiveSession('browser-offline', false)
     ).toBe(true);
     expect(
       connectionBlocksFieldInputUnlessActiveSession('reconnecting', false)
@@ -119,9 +162,9 @@ describe('connectionBlocksFieldInputUnlessActiveSession', () => {
   });
 
   it('allows field input when disconnected but session is active', () => {
-    expect(connectionBlocksFieldInputUnlessActiveSession('offline', true)).toBe(
-      false
-    );
+    expect(
+      connectionBlocksFieldInputUnlessActiveSession('disconnected', true)
+    ).toBe(false);
   });
 
   it('does not block when connected', () => {
@@ -134,7 +177,7 @@ describe('connectionBlocksFieldInputUnlessActiveSession', () => {
 describe('shouldShowActivityConnectionAlert', () => {
   const base = {
     mayEditFormFields: true,
-    socketConnection: 'offline' as const,
+    socketConnection: 'browser-offline' as const,
     isLockedByOther: false,
     isBlockedByRecurringLockout: false,
   };
@@ -170,9 +213,9 @@ describe('shouldShowActivityConnectionAlert', () => {
 
 describe('shouldSuppressAcquireConnectionToast', () => {
   it('suppresses network failures while connection is blocked', () => {
-    expect(shouldSuppressAcquireConnectionToast('network', 'offline')).toBe(
-      true
-    );
+    expect(
+      shouldSuppressAcquireConnectionToast('network', 'browser-offline')
+    ).toBe(true);
     expect(
       shouldSuppressAcquireConnectionToast('network', 'reconnecting')
     ).toBe(true);
@@ -183,14 +226,16 @@ describe('shouldSuppressAcquireConnectionToast', () => {
 
   it('does not suppress other failure reasons', () => {
     expect(
-      shouldSuppressAcquireConnectionToast('locked-by-other', 'offline')
+      shouldSuppressAcquireConnectionToast('locked-by-other', 'disconnected')
     ).toBe(false);
   });
 });
 
 describe('isActivityEditSessionActionsBlocked', () => {
   it('matches save blocked state', () => {
-    expect(isActivityEditSessionActionsBlocked('offline', null)).toBe(true);
+    expect(isActivityEditSessionActionsBlocked('disconnected', null)).toBe(
+      true
+    );
     expect(isActivityEditSessionActionsBlocked('connected', null)).toBe(false);
   });
 });
@@ -220,7 +265,7 @@ describe('shouldWarnActivityEditBeforeUnload', () => {
     expect(
       shouldWarnActivityEditBeforeUnload({
         ...savableSession,
-        socketConnection: 'offline',
+        socketConnection: 'browser-offline',
       })
     ).toBe(false);
     expect(
@@ -246,13 +291,10 @@ describe('getActivityEditRecoveryBannerMessage', () => {
 });
 
 describe('getActivityConnectionRestoredAlertMessage', () => {
-  it('uses before-edit copy when no active edit session', () => {
+  it('returns connection restored copy regardless of edit session', () => {
     expect(getActivityConnectionRestoredAlertMessage(false)).toBe(
-      ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT
+      ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT
     );
-  });
-
-  it('uses save-changes copy during an active edit session', () => {
     expect(getActivityConnectionRestoredAlertMessage(true)).toBe(
       ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT
     );
