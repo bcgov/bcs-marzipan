@@ -4,13 +4,19 @@ import {
   ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT,
   ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT_BEFORE_EDIT,
   ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT,
+  ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT,
+  ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT,
+  ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT,
   ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE,
   connectionBlocksFieldInput,
   connectionBlocksFieldInputUnlessActiveSession,
   getActivityConfirmBlockedMessage,
   getActivityConfirmBlockedNoticeState,
   getActivityConnectionOfflineAlertMessage,
+  getActivityConnectionRestoredAlertMessage,
+  getActivityEditAcquireFailureToastVariant,
   getActivityEditRecoveryBannerMessage,
+  getActivitySubmitBlockedToastTitle,
   isActivityEditConnectionBlocked,
   isActivityEditSessionActionsBlocked,
   shouldShowActivityConnectionAlert,
@@ -236,5 +242,66 @@ describe('getActivityEditRecoveryBannerMessage', () => {
     );
     expect(getActivityEditRecoveryBannerMessage('resyncing')).toBeNull();
     expect(getActivityEditRecoveryBannerMessage(null)).toBeNull();
+  });
+});
+
+describe('getActivityConnectionRestoredAlertMessage', () => {
+  it('uses before-edit copy when no active edit session', () => {
+    expect(getActivityConnectionRestoredAlertMessage(false)).toBe(
+      ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT
+    );
+  });
+
+  it('uses save-changes copy during an active edit session', () => {
+    expect(getActivityConnectionRestoredAlertMessage(true)).toBe(
+      ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT
+    );
+  });
+});
+
+describe('getActivityEditAcquireFailureToastVariant', () => {
+  it('returns warning for lock contention and network', () => {
+    expect(getActivityEditAcquireFailureToastVariant('locked-by-other')).toBe(
+      'warning'
+    );
+    expect(getActivityEditAcquireFailureToastVariant('network')).toBe(
+      'warning'
+    );
+  });
+
+  it('returns error for auth and request failures', () => {
+    expect(getActivityEditAcquireFailureToastVariant('unauthorized')).toBe(
+      'error'
+    );
+    expect(getActivityEditAcquireFailureToastVariant('request-failed')).toBe(
+      'error'
+    );
+  });
+
+  it('returns null when no toast should show', () => {
+    expect(getActivityEditAcquireFailureToastVariant(null)).toBeNull();
+    expect(
+      getActivityEditAcquireFailureToastVariant('time-lockout')
+    ).toBeNull();
+  });
+});
+
+describe('getActivitySubmitBlockedToastTitle', () => {
+  it('returns action-specific titles', () => {
+    expect(getActivitySubmitBlockedToastTitle('save')).toBe('Unable to save');
+    expect(getActivitySubmitBlockedToastTitle('review')).toBe(
+      'Unable to review'
+    );
+    expect(getActivitySubmitBlockedToastTitle('complete')).toBe(
+      'Unable to complete'
+    );
+  });
+});
+
+describe('connection verifying alert copy', () => {
+  it('matches resyncing modal message', () => {
+    expect(ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT).toBe(
+      ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE
+    );
   });
 });

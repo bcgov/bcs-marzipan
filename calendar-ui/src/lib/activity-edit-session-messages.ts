@@ -54,10 +54,58 @@ export function getActivityConnectionOfflineAlertMessage(
     : ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT_BEFORE_EDIT;
 }
 
-export const ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST =
+export const ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT =
   'Connection restored. Changes can now be saved.';
 
-export const ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE = 'Restoring your session…';
+/** @deprecated Use ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT */
+export const ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST =
+  ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT;
+
+export const ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT =
+  'Connection restored. You can now make changes.';
+
+export const ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT =
+  'Restoring your session…';
+
+export const ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE =
+  ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT;
+
+export function getActivityConnectionRestoredAlertMessage(
+  isActiveEditSession: boolean
+): string {
+  return isActiveEditSession
+    ? ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT
+    : ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT;
+}
+
+export type ActivityEditAcquireFailureToastVariant = 'warning' | 'error';
+
+export function getActivityEditAcquireFailureToastVariant(
+  reason: LockAcquireFailureReason
+): ActivityEditAcquireFailureToastVariant | null {
+  if (reason == null || reason === 'time-lockout') {
+    return null;
+  }
+  if (reason === 'locked-by-other' || reason === 'network') {
+    return 'warning';
+  }
+  return 'error';
+}
+
+const SUBMIT_BLOCKED_TOAST_TITLE_BY_ACTION: Record<
+  Extract<ActivityEditConfirmAction, 'save' | 'review' | 'complete'>,
+  string
+> = {
+  save: 'Unable to save',
+  review: 'Unable to review',
+  complete: 'Unable to complete',
+};
+
+export function getActivitySubmitBlockedToastTitle(
+  action: Extract<ActivityEditConfirmAction, 'save' | 'review' | 'complete'>
+): string {
+  return SUBMIT_BLOCKED_TOAST_TITLE_BY_ACTION[action];
+}
 
 export const ACTIVITY_EDIT_RECOVERY_SERVER_CHANGED_BANNER =
   'This activity has been updated elsewhere. Your changes cannot be saved.';

@@ -18,7 +18,11 @@ import {
 import { tipTapDocJsonFromPlainText } from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
-import { ACTIVITY_EDIT_ACQUIRE_FAILURE_NETWORK } from '../lib/activity-edit-session-messages';
+import {
+  ACTIVITY_EDIT_ACQUIRE_FAILURE_NETWORK,
+  ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT,
+} from '../lib/activity-edit-session-messages';
+import { TOAST_DURATION_MS } from '../lib/toast-durations';
 import { ActivityPage, type ActivityPageProps } from './ActivityPage';
 
 const { mockFetchActivity } = vi.hoisted(() => ({
@@ -54,7 +58,12 @@ vi.mock('sonner', async (importOriginal) => {
   const actual = await importOriginal<typeof import('sonner')>();
   return {
     ...actual,
-    toast: { ...actual.toast, error: vi.fn(), success: vi.fn() },
+    toast: {
+      ...actual.toast,
+      error: vi.fn(),
+      success: vi.fn(),
+      warning: vi.fn(),
+    },
   };
 });
 
@@ -791,6 +800,25 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
+  it('shows connection restored alert after reconnect when user saw offline alert', async () => {
+    mockActivitySocketConnection = 'offline';
+    const { rerender } = renderActivityPage();
+
+    expect(
+      await screen.findByText(/You are offline\. Reconnect to make changes\./i)
+    ).toBeInTheDocument();
+
+    mockActivitySocketConnection = 'connected';
+    rerender();
+
+    expect(
+      await screen.findByText(
+        ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT
+      )
+    ).toBeInTheDocument();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
   it('keeps fields editable when offline during an active edit session', async () => {
     mockLockState = 'owned';
     mockActivitySocketConnection = 'offline';
@@ -843,8 +871,9 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        ACTIVITY_EDIT_ACQUIRE_FAILURE_NETWORK
+      expect(toast.warning).toHaveBeenCalledWith(
+        ACTIVITY_EDIT_ACQUIRE_FAILURE_NETWORK,
+        { duration: TOAST_DURATION_MS.error }
       )
     );
   });
@@ -863,8 +892,9 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        'Cannot edit. Another user has started editing this activity.'
+      expect(toast.warning).toHaveBeenCalledWith(
+        'Cannot edit. Another user has started editing this activity.',
+        { duration: TOAST_DURATION_MS.error }
       )
     );
   });

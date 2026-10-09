@@ -63,6 +63,7 @@ import {
 } from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
 import { cancelForceHandoff, requestForceHandoff } from '../api/locksApi';
+import { useActivityConnectionFeedback } from '../hooks/useActivityConnectionFeedback';
 import { useActivityEditActions } from '../hooks/useActivityEditActions';
 import { useActivityEditFormHydration } from '../hooks/useActivityEditFormHydration';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
@@ -92,12 +93,13 @@ import { useRecurringLockoutSession } from '../hooks/useRecurringLockoutSession'
 import { getActivityConcurrencyToken } from '../lib/activity-concurrency-token';
 import { resolveActivityEditResyncAction } from '../lib/activity-edit-resync';
 import {
-  ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST,
   connectionBlocksFieldInputUnlessActiveSession,
   getActivityConfirmBlockedMessage,
   getActivityConfirmBlockedNoticeState,
   getActivityEditAcquireFailureToastMessage,
+  getActivityEditAcquireFailureToastVariant,
   getActivityEditRecoveryBannerMessage,
+  getActivitySubmitBlockedToastTitle,
   isActivityEditConnectionBlocked,
   isActivityEditSessionActionsBlocked,
   shouldShowActivityConnectionAlert,
@@ -121,7 +123,7 @@ import { computeFormChanges } from '../lib/activity-history-format';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
-import { showErrorToast } from '../lib/error-toast';
+import { showActionBlockedToast, showErrorToast } from '../lib/error-toast';
 import { formatDiscardChangesLabel } from '../lib/form-field-highlight';
 import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
@@ -292,6 +294,8 @@ export function ActivityPage({
 
   const isEditingRef = useRef(false);
   const resyncEditSessionRef = useRef<() => void>(() => {});
+  const reportResyncSuccessRef = useRef(() => {});
+  const reportResyncFailureRef = useRef(() => {});
 
   const {
     lock,
@@ -334,7 +338,6 @@ export function ActivityPage({
   const editSessionTokenRef = useRef<string | null>(null);
   const wasEditingRef = useRef(false);
   const resyncGenerationRef = useRef(0);
-  const pendingConnectionRestoredToastRef = useRef(false);
 
   useEffect(() => {
     if (isEditing && !wasEditingRef.current) {
@@ -430,6 +433,7 @@ export function ActivityPage({
         });
         if (action === 'continue-owned') {
           setEditRecoveryState(null);
+          reportResyncSuccessRef.current();
           return;
         }
         if (action === 'server-changed') {
@@ -438,6 +442,7 @@ export function ActivityPage({
               getActivityConcurrencyToken(latestActivity);
             setEditRecoveryState(null);
             await refreshActivity();
+            reportResyncFailureRef.current();
             return;
           }
           logger.warn(
@@ -450,14 +455,17 @@ export function ActivityPage({
             }
           );
           setEditRecoveryState('server-changed');
+          reportResyncFailureRef.current();
           return;
         }
         if (action === 'blocked-by-other') {
           setEditRecoveryState(null);
+          reportResyncFailureRef.current();
           return;
         }
         if (action === 'retry') {
           setEditRecoveryState('retry');
+          reportResyncFailureRef.current();
           return;
         }
 
@@ -465,23 +473,20 @@ export function ActivityPage({
         if (generation !== resyncGenerationRef.current) return;
         if (acquireResult === 'ready') {
           setEditRecoveryState(null);
-          if (pendingConnectionRestoredToastRef.current) {
-            pendingConnectionRestoredToastRef.current = false;
-            toast.success(ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST, {
-              id: `edit-lock-restored-${id}`,
-              duration: TOAST_DURATION_MS.success,
-            });
-          }
+          reportResyncSuccessRef.current();
           return;
         }
         if (acquireResult === 'blocked-by-other') {
           setEditRecoveryState(null);
+          reportResyncFailureRef.current();
           return;
         }
         setEditRecoveryState(acquireResult);
+        reportResyncFailureRef.current();
       } catch {
         if (generation === resyncGenerationRef.current) {
           setEditRecoveryState('retry');
+          reportResyncFailureRef.current();
         }
       }
     })();
@@ -765,12 +770,24 @@ export function ActivityPage({
     LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
     0
   );
-  const showConnectionAlert = shouldShowActivityConnectionAlert({
+  const connectionAlertEligible = shouldShowActivityConnectionAlert({
     mayEditFormFields,
     socketConnection: activitySocketConnection,
     isLockedByOther,
     isBlockedByRecurringLockout,
   });
+
+  const { connectionAlert, reportResyncSuccess, reportResyncFailure } =
+    useActivityConnectionFeedback({
+      activityId: id,
+      socketConnection: activitySocketConnection,
+      connectionAlertEligible,
+      isActiveEditSession,
+      editRecoveryState,
+    });
+
+  reportResyncSuccessRef.current = reportResyncSuccess;
+  reportResyncFailureRef.current = reportResyncFailure;
 
   const editSessionActionsBlocked = useMemo(
     () =>
@@ -834,15 +851,6 @@ export function ActivityPage({
     [editRecoveryState]
   );
 
-  useEffect(() => {
-    if (
-      (isEditing || lockState === 'owned' || lockState === 'acquiring') &&
-      activitySocketConnection !== 'connected'
-    ) {
-      pendingConnectionRestoredToastRef.current = true;
-    }
-  }, [activitySocketConnection, isEditing, lockState]);
-
   const reviewModalActivityEndedAtLabel = useMemo(
     () =>
       formatActivityEndDateTimeLabel(
@@ -873,7 +881,18 @@ export function ActivityPage({
     ) {
       return;
     }
-    toast.error(getEditLockAcquireToastMessage());
+    const message = getEditLockAcquireToastMessage();
+    if (message.length === 0) {
+      return;
+    }
+    const variant =
+      getActivityEditAcquireFailureToastVariant(acquireFailureReason);
+    const toastOptions = { duration: TOAST_DURATION_MS.error };
+    if (variant === 'warning') {
+      toast.warning(message, toastOptions);
+    } else {
+      toast.error(message, toastOptions);
+    }
   }, [
     acquireFailureReason,
     activitySocketConnection,
@@ -1032,10 +1051,10 @@ export function ActivityPage({
         editRecoveryState
       );
       if (submitBlockedMessage != null) {
-        showErrorToast(
-          new Error('Edit session requires reconciliation'),
-          submitBlockedMessage
-        );
+        showActionBlockedToast({
+          title: getActivitySubmitBlockedToastTitle(submitAction),
+          description: submitBlockedMessage,
+        });
         return;
       }
 
@@ -1047,35 +1066,45 @@ export function ActivityPage({
         isSubmittingRef.current = false;
         setIsSubmitting(false);
         if (lockReady === 'unavailable') {
-          showErrorToast(
-            new Error('Network unavailable'),
-            'Cannot reach the server. Check your connection and try again.'
-          );
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description:
+              'Cannot reach the server. Check your connection and try again.',
+            variant: 'warning',
+          });
         } else if (lockReady === 'blocked-by-other') {
-          showErrorToast(
-            new Error('Locked by other'),
-            'This activity is being edited by another user.'
-          );
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description: 'This activity is being edited by another user.',
+            variant: 'warning',
+          });
         } else if (lockReady === 'time-lockout') {
-          showErrorToast(
-            new Error('Editing is temporarily locked'),
-            RECURRING_EDIT_LOCKOUT_UI_MESSAGE
-          );
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description: RECURRING_EDIT_LOCKOUT_UI_MESSAGE,
+            variant: 'warning',
+          });
         } else if (lockReady === 'unauthorized') {
-          showErrorToast(
-            new Error('Not authorized'),
-            'Your session or permissions no longer allow this update. Sign in again and retry.'
-          );
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description:
+              'Your session or permissions no longer allow this update. Sign in again and retry.',
+            variant: 'error',
+          });
         } else if (lockReady === 'server-error') {
-          showErrorToast(
-            new Error('Server unavailable'),
-            'The server could not verify the edit lock. Please try again.'
-          );
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description:
+              'The server could not verify the edit lock. Please try again.',
+            variant: 'error',
+          });
         } else {
-          showErrorToast(
-            new Error('Edit lock required'),
-            'You must acquire an edit lock before updating this activity.'
-          );
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description:
+              'You must acquire an edit lock before updating this activity.',
+            variant: 'warning',
+          });
         }
         return;
       }
@@ -1481,18 +1510,16 @@ export function ActivityPage({
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      {showConnectionAlert ? (
+      {connectionAlert != null ? (
         <ActivityConnectionStatusAlert
-          state={
-            activitySocketConnection === 'offline' ? 'offline' : 'reconnecting'
-          }
-          isActiveEditSession={isActiveEditSession}
+          phase={connectionAlert.phase}
+          message={connectionAlert.message}
         />
       ) : null}
       <ActivityFormStickyHeader
         onBack={handleGoBack}
         lockStrip={
-          showConnectionAlert ? undefined : isLockedByOther ? (
+          connectionAlert != null ? undefined : isLockedByOther ? (
             <LockBannerContent
               lockedByUsername={lockedByUsername}
               onRequestTakeLock={
@@ -1518,7 +1545,7 @@ export function ActivityPage({
           ) : undefined
         }
         lockStripVisible={
-          !showConnectionAlert &&
+          connectionAlert == null &&
           ((isLockedByOther && !lockBannerInView) ||
             (showLockoutNotice && !lockoutBannerInView))
         }
