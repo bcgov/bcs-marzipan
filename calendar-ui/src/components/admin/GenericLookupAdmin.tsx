@@ -277,6 +277,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       invalidateListCaches();
     },
     onError: (error: unknown) => {
+      setManualMode(true);
       invalidateListCaches();
       showErrorToast(error);
     },
