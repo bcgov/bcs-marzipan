@@ -51,6 +51,7 @@ import {
   createThemeRequestSchema,
   createTranslationLanguageRequestSchema,
   createVenuePresetRequestSchema,
+  reorderLookupRequestSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
   updateCityRequestSchema,
@@ -87,6 +88,7 @@ import {
   MinistryGroupArrayResponseWrapperDto,
   MinistryGroupResponseWrapperDto,
   MinistryResponseWrapperDto,
+  ReorderLookupDto,
   TagResponseWrapperDto,
   ThemeResponseWrapperDto,
   TranslationLanguageResponseWrapperDto,
@@ -112,6 +114,10 @@ import { RequirePermission } from '../policy/decorators/require-permission.decor
 import { TeamsService } from '../teams/teams.service';
 import { lookupGetCacheControl } from './cache-control';
 import { LookupsService, type VenuePresetAdminItem } from './lookups.service';
+import {
+  isReorderableLookup,
+  REORDERABLE_LOOKUPS,
+} from './reorderable-lookups';
 
 @ApiTags('lookups')
 @Controller('lookups')
@@ -1079,6 +1085,28 @@ export class LookupsController {
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.createCity(body, user.id);
     return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Set lookup display order' })
+  @ApiResponse({ status: 200, description: 'Order saved' })
+  @ApiParam({
+    name: 'entity',
+    description: `One of: ${REORDERABLE_LOOKUPS.join(', ')}`,
+  })
+  @ApiBody({ type: ReorderLookupDto })
+  @RequirePermission('lookups.manage')
+  @Put(':entity/order')
+  async reorderLookup(
+    @Param('entity') entity: string,
+    @Body(new ZodValidationPipe(reorderLookupRequestSchema))
+    body: ReorderLookupDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean }> {
+    if (!isReorderableLookup(entity)) {
+      throw new NotFoundException(`Lookup '${entity}' cannot be reordered`);
+    }
+    await this.lookupsService.reorderLookup(entity, body.ids, user.id);
+    return { success: true };
   }
 
   @ApiOperation({ summary: 'Update a city' })
