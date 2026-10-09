@@ -20,6 +20,7 @@ describe('useEditLockIntent', () => {
     hydrationGeneration: number;
     mayEdit: boolean;
     lockState: LockState;
+    connectionBlocksEditStart?: boolean;
   }) {
     const form = useForm<ActivityFormData>({
       defaultValues: getDefaultFormValues() as ActivityFormData,
@@ -32,7 +33,7 @@ describe('useEditLockIntent', () => {
 
     const onAcquireConflict = useMemo(() => vi.fn(), []);
 
-    useEditLockIntent({
+    const { tryStartEditSessionFromDirty } = useEditLockIntent({
       formHydrated: props.formHydrated,
       hydrationGeneration: props.hydrationGeneration,
       mayEdit: props.mayEdit,
@@ -43,9 +44,10 @@ describe('useEditLockIntent', () => {
       form,
       initialFormDataRef,
       onAcquireConflict,
+      connectionBlocksEditStart: props.connectionBlocksEditStart ?? false,
     });
 
-    return { form, isEditing, onAcquireConflict };
+    return { form, isEditing, onAcquireConflict, tryStartEditSessionFromDirty };
   }
 
   beforeEach(() => {
@@ -178,5 +180,50 @@ describe('useEditLockIntent', () => {
 
   it('exposes conflict message constant for UI copy', () => {
     expect(EDIT_LOCK_CONFLICT_TOAST).toContain('Another user');
+  });
+
+  it('does not call acquire or onAcquireConflict when connection blocks edit start', async () => {
+    const { result, rerender } = renderHook(
+      () =>
+        useHarness({
+          formHydrated: true,
+          hydrationGeneration: 0,
+          mayEdit: true,
+          lockState: 'idle',
+          connectionBlocksEditStart: true,
+        }),
+      { initialProps: {} }
+    );
+
+    act(() => {
+      result.current.form.setValue('title', 'X', { shouldDirty: true });
+    });
+    rerender({});
+    await act(() => vi.advanceTimersByTimeAsync(200));
+
+    expect(acquire).not.toHaveBeenCalled();
+    expect(result.current.onAcquireConflict).not.toHaveBeenCalled();
+    expect(result.current.isEditing).toBe(false);
+  });
+
+  it('tryStartEditSessionFromDirty acquires when dirty and connection allows', async () => {
+    const { result } = renderHook(() =>
+      useHarness({
+        formHydrated: true,
+        hydrationGeneration: 0,
+        mayEdit: true,
+        lockState: 'idle',
+        connectionBlocksEditStart: false,
+      })
+    );
+
+    act(() => {
+      result.current.form.setValue('title', 'X', { shouldDirty: true });
+    });
+    act(() => {
+      result.current.tryStartEditSessionFromDirty();
+    });
+
+    await waitFor(() => expect(acquire).toHaveBeenCalledTimes(1));
   });
 });

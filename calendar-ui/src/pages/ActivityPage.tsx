@@ -41,7 +41,7 @@ import { ReviewActionButtonLabel } from '@/components/activity/activities/Review
 import { ReviewActivityModal } from '@/components/activity/activities/ReviewActivityModal';
 import { UnshareActivityModal } from '@/components/activity/activities/UnshareActivityModal';
 import {
-  ActivityConnectionStatusBadge,
+  ActivityConnectionStatusAlert,
   FormErrorFallback,
   LockBanner,
   LockBannerContent,
@@ -90,11 +90,20 @@ import { useFavourites } from '../hooks/useFavourites';
 import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { useRecurringLockoutSession } from '../hooks/useRecurringLockoutSession';
 import { getActivityConcurrencyToken } from '../lib/activity-concurrency-token';
-import {
-  getActivityConfirmSubmitBlockedMessage,
-  type ActivityEditRecoveryState,
-} from '../lib/activity-confirm-submit-blocked-message';
 import { resolveActivityEditResyncAction } from '../lib/activity-edit-resync';
+import {
+  ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST,
+  connectionBlocksFieldInput,
+  getActivityConfirmBlockedMessage,
+  getActivityEditAcquireFailureToastMessage,
+  getActivityEditRecoveryBannerMessage,
+  isActivityEditConnectionBlocked,
+  isActivityEditSessionActionsBlocked,
+  shouldShowActivityConnectionAlert,
+  shouldSuppressAcquireConnectionToast,
+  type ActivityEditConfirmAction,
+  type ActivityEditRecoveryState,
+} from '../lib/activity-edit-session-messages';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
   buildActivityListScrollRestoreReturnState,
@@ -323,6 +332,7 @@ export function ActivityPage({
   const editSessionTokenRef = useRef<string | null>(null);
   const wasEditingRef = useRef(false);
   const resyncGenerationRef = useRef(0);
+  const pendingConnectionRestoredToastRef = useRef(false);
 
   useEffect(() => {
     if (isEditing && !wasEditingRef.current) {
@@ -428,6 +438,15 @@ export function ActivityPage({
             await refreshActivity();
             return;
           }
+          logger.warn(
+            'Activity edit session blocked: server version changed while dirty',
+            {
+              activityId: id,
+              previousToken: editSessionTokenRef.current,
+              latestToken: getActivityConcurrencyToken(latestActivity),
+              serverLockState,
+            }
+          );
           setEditRecoveryState('server-changed');
           return;
         }
@@ -444,13 +463,13 @@ export function ActivityPage({
         if (generation !== resyncGenerationRef.current) return;
         if (acquireResult === 'ready') {
           setEditRecoveryState(null);
-          toast.success(
-            'Connection restored. Your unsaved changes were kept.',
-            {
+          if (pendingConnectionRestoredToastRef.current) {
+            pendingConnectionRestoredToastRef.current = false;
+            toast.success(ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST, {
               id: `edit-lock-restored-${id}`,
               duration: TOAST_DURATION_MS.success,
-            }
-          );
+            });
+          }
           return;
         }
         if (acquireResult === 'blocked-by-other') {
@@ -655,10 +674,14 @@ export function ActivityPage({
   const canCloneActivity = canCreateActivity && mayEditFormFields;
   /** True when the user cannot edit for permission/status reasons (not merely waiting on a lock). */
   const isViewOnlyByPermission = !mayEditFormFields;
+  const connectionBlocksEditStart = isActivityEditConnectionBlocked(
+    activitySocketConnection
+  );
   const readOnly =
     lockState === 'locked-by-other' ||
     isBlockedByRecurringLockout ||
-    !mayEditFormFields;
+    !mayEditFormFields ||
+    connectionBlocksFieldInput(activitySocketConnection);
   const hasEditLock = lockState === 'owned';
   const isLockedByOther = lockState === 'locked-by-other';
   const showLockoutNotice = isBlockedByRecurringLockout && !isLockedByOther;
@@ -745,18 +768,16 @@ export function ActivityPage({
     LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
     0
   );
-  const isActiveEditSession =
-    isEditing || lockState === 'owned' || lockState === 'acquiring';
+  const showConnectionAlert = shouldShowActivityConnectionAlert({
+    mayEditFormFields,
+    socketConnection: activitySocketConnection,
+    isLockedByOther,
+    isBlockedByRecurringLockout,
+  });
 
-  const showConnectionBadge =
-    isActiveEditSession &&
-    activitySocketConnection !== 'connected' &&
-    !isLockedByOther &&
-    !isBlockedByRecurringLockout;
-
-  const confirmBlockedMessage = useMemo(
+  const editSessionActionsBlocked = useMemo(
     () =>
-      getActivityConfirmSubmitBlockedMessage(
+      isActivityEditSessionActionsBlocked(
         activitySocketConnection,
         editRecoveryState
       ),
@@ -776,14 +797,19 @@ export function ActivityPage({
     isBlockedByRecurringLockout: isBlockedByRecurringLockout,
     isDirty,
   });
-  const editRecoveryMessage =
-    editRecoveryState === 'server-changed'
-      ? 'This activity changed on the server. Your unsaved changes are preserved, but saving is disabled to prevent an overwrite.'
-      : editRecoveryState === 'resyncing'
-        ? 'Restoring your edit lock. Your unsaved changes are preserved.'
-        : editRecoveryState != null
-          ? 'The edit lock could not be restored. Your unsaved changes are preserved; check your connection and retry.'
-          : null;
+  const editRecoveryMessage = useMemo(
+    () => getActivityEditRecoveryBannerMessage(editRecoveryState),
+    [editRecoveryState]
+  );
+
+  useEffect(() => {
+    if (
+      (isEditing || lockState === 'owned' || lockState === 'acquiring') &&
+      activitySocketConnection !== 'connected'
+    ) {
+      pendingConnectionRestoredToastRef.current = true;
+    }
+  }, [activitySocketConnection, isEditing, lockState]);
 
   const reviewModalActivityEndedAtLabel = useMemo(
     () =>
@@ -799,21 +825,30 @@ export function ActivityPage({
     if (acquireFailureReason === 'time-lockout') {
       return RECURRING_EDIT_LOCKOUT_UI_MESSAGE;
     }
-    if (acquireFailureReason === 'other') {
-      // Distinct from a real lock conflict: request failed for an unrelated
-      // reason (network/server error), so don't claim someone else is editing.
-      return 'Could not start editing this activity. Please try again.';
-    }
-    return lockedByUsername
-      ? `Cannot edit. ${lockedByUsername} has started editing this activity.`
-      : EDIT_LOCK_CONFLICT_TOAST;
+    return getActivityEditAcquireFailureToastMessage(
+      acquireFailureReason,
+      lockedByUsername,
+      EDIT_LOCK_CONFLICT_TOAST
+    );
   }, [acquireFailureReason, lockedByUsername]);
 
-  const onEditLockAcquireConflict = useCallback(() => {
+  const notifyEditLockAcquireConflict = useCallback(() => {
+    if (
+      shouldSuppressAcquireConnectionToast(
+        acquireFailureReason,
+        activitySocketConnection
+      )
+    ) {
+      return;
+    }
     toast.error(getEditLockAcquireToastMessage());
-  }, [getEditLockAcquireToastMessage]);
+  }, [
+    acquireFailureReason,
+    activitySocketConnection,
+    getEditLockAcquireToastMessage,
+  ]);
 
-  useEditLockIntent({
+  const { tryStartEditSessionFromDirty } = useEditLockIntent({
     formHydrated: isFormHydrated,
     hydrationGeneration,
     mayEdit,
@@ -823,8 +858,34 @@ export function ActivityPage({
     lockState,
     form,
     initialFormDataRef,
-    onAcquireConflict: onEditLockAcquireConflict,
+    onAcquireConflict: notifyEditLockAcquireConflict,
+    connectionBlocksEditStart,
   });
+
+  const prevActivitySocketConnectionRef = useRef(activitySocketConnection);
+  useEffect(() => {
+    const previous = prevActivitySocketConnectionRef.current;
+    prevActivitySocketConnectionRef.current = activitySocketConnection;
+    if (
+      previous !== 'connected' &&
+      activitySocketConnection === 'connected' &&
+      mayEditFormFields &&
+      !isLockedByOther &&
+      !isBlockedByRecurringLockout &&
+      !isEditing &&
+      lockState === 'idle'
+    ) {
+      tryStartEditSessionFromDirty();
+    }
+  }, [
+    activitySocketConnection,
+    isBlockedByRecurringLockout,
+    isEditing,
+    isLockedByOther,
+    lockState,
+    mayEditFormFields,
+    tryStartEditSessionFromDirty,
+  ]);
 
   const handleOpenDeleteModal = useCallback(async () => {
     if (normalizedStatus === 'delete_requested') {
@@ -851,6 +912,9 @@ export function ActivityPage({
 
   const ensureEditThen = useCallback(
     (action: () => void) => {
+      if (connectionBlocksEditStart) {
+        return;
+      }
       if (isEditing) {
         action();
         return;
@@ -861,11 +925,16 @@ export function ActivityPage({
           action();
         } else {
           setIsEditing(false);
-          toast.error(getEditLockAcquireToastMessage());
+          notifyEditLockAcquireConflict();
         }
       });
     },
-    [isEditing, acquire, getEditLockAcquireToastMessage]
+    [
+      connectionBlocksEditStart,
+      isEditing,
+      acquire,
+      notifyEditLockAcquireConflict,
+    ]
   );
 
   const handleConfirmLeave = async () => {
@@ -919,7 +988,14 @@ export function ActivityPage({
       if (isBlockedByRecurringLockout) {
         return;
       }
-      const submitBlockedMessage = getActivityConfirmSubmitBlockedMessage(
+      const submitAction: ActivityEditConfirmAction =
+        mode.kind === 'update'
+          ? 'save'
+          : mode.kind === 'reviewOnly' || mode.kind === 'reviewWithSave'
+            ? 'review'
+            : 'complete';
+      const submitBlockedMessage = getActivityConfirmBlockedMessage(
+        submitAction,
         activitySocketConnection,
         editRecoveryState
       );
@@ -1373,21 +1449,17 @@ export function ActivityPage({
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
+      {showConnectionAlert ? (
+        <ActivityConnectionStatusAlert
+          state={
+            activitySocketConnection === 'offline' ? 'offline' : 'reconnecting'
+          }
+        />
+      ) : null}
       <ActivityFormStickyHeader
         onBack={handleGoBack}
-        statusBadge={
-          showConnectionBadge ? (
-            <ActivityConnectionStatusBadge
-              state={
-                activitySocketConnection === 'offline'
-                  ? 'offline'
-                  : 'reconnecting'
-              }
-            />
-          ) : undefined
-        }
         lockStrip={
-          showConnectionBadge ? undefined : isLockedByOther ? (
+          showConnectionAlert ? undefined : isLockedByOther ? (
             <LockBannerContent
               lockedByUsername={lockedByUsername}
               onRequestTakeLock={
@@ -1413,7 +1485,7 @@ export function ActivityPage({
           ) : undefined
         }
         lockStripVisible={
-          !showConnectionBadge &&
+          !showConnectionAlert &&
           ((isLockedByOther && !lockBannerInView) ||
             (showLockoutNotice && !lockoutBannerInView))
         }
@@ -1623,7 +1695,11 @@ export function ActivityPage({
                       e.stopPropagation();
                       ensureEditThen(() => setShowRequestDeleteModal(true));
                     }}
-                    disabled={isSubmitting || actionFlags.isEditingBlocked}
+                    disabled={
+                      isSubmitting ||
+                      actionFlags.isEditingBlocked ||
+                      editSessionActionsBlocked
+                    }
                   >
                     Request delete
                   </Button>
@@ -1636,7 +1712,11 @@ export function ActivityPage({
                       e.stopPropagation();
                       ensureEditThen(() => void handleOpenDeleteModal());
                     }}
-                    disabled={isSubmitting || actionFlags.isEditingBlocked}
+                    disabled={
+                      isSubmitting ||
+                      actionFlags.isEditingBlocked ||
+                      editSessionActionsBlocked
+                    }
                   >
                     Delete
                   </Button>
@@ -1669,7 +1749,10 @@ export function ActivityPage({
                   variant="outline"
                   onClick={() => setShowCloneModal(true)}
                   disabled={
-                    isSubmitting || actionFlags.isEditingBlocked || isDirty
+                    isSubmitting ||
+                    actionFlags.isEditingBlocked ||
+                    isDirty ||
+                    connectionBlocksEditStart
                   }
                 >
                   Clone
@@ -1682,7 +1765,9 @@ export function ActivityPage({
                     ? 'outline'
                     : 'default'
                 }
-                disabled={!actionFlags.canSubmitUpdate}
+                disabled={
+                  !actionFlags.canSubmitUpdate || editSessionActionsBlocked
+                }
               >
                 {isSubmitting ? 'Saving...' : 'Save'}
               </Button>
@@ -1690,7 +1775,10 @@ export function ActivityPage({
                 <Button
                   type="button"
                   aria-label={isDirty ? 'Save and Review' : 'Review'}
-                  disabled={!actionFlags.reviewActionEnabled}
+                  disabled={
+                    !actionFlags.reviewActionEnabled ||
+                    editSessionActionsBlocked
+                  }
                   className={
                     isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
                   }
@@ -1704,7 +1792,10 @@ export function ActivityPage({
                   <Button
                     type="button"
                     aria-label={isDirty ? 'Save and complete' : 'Complete'}
-                    disabled={!actionFlags.completeActionEnabled}
+                    disabled={
+                      !actionFlags.completeActionEnabled ||
+                      editSessionActionsBlocked
+                    }
                     className={
                       isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
                     }
@@ -1752,7 +1843,7 @@ export function ActivityPage({
         changes={confirmModalChanges}
         onConfirm={(payload) => void handleConfirmedSubmit(payload)}
         isSubmitting={isSubmitting}
-        confirmBlockedMessage={confirmBlockedMessage}
+        confirmDisabled={editSessionActionsBlocked}
       />
       <ReviewActivityModal
         open={showReviewModal}
@@ -1767,7 +1858,7 @@ export function ActivityPage({
         showUnassignMeOption={(activity.flags ?? []).some(
           (f) => f.assigneeId === user?.id
         )}
-        confirmBlockedMessage={confirmBlockedMessage}
+        confirmDisabled={editSessionActionsBlocked}
       />
       <CompleteActivityModal
         open={showCompleteModal}
@@ -1776,13 +1867,14 @@ export function ActivityPage({
         isSubmitting={isSubmitting}
         onConfirm={(payload) => void handleCompleteConfirm(payload)}
         displayId={displayId}
-        confirmBlockedMessage={confirmBlockedMessage}
+        confirmDisabled={editSessionActionsBlocked}
       />
       <RequestDeleteActivityModal
         open={showRequestDeleteModal}
         onOpenChange={setShowRequestDeleteModal}
         onConfirm={handleRequestDeleteConfirm}
         isSubmitting={isRequestDeleteSubmitting}
+        confirmDisabled={editSessionActionsBlocked}
       />
       <CloneActivityModal
         open={showCloneModal}
@@ -1806,6 +1898,7 @@ export function ActivityPage({
         onHardDelete={handleHardDelete}
         isSubmitting={isDeleteSubmitting}
         initialNotes={deleteModalInitialNotes}
+        confirmDisabled={editSessionActionsBlocked}
       />
     </ErrorBoundary>
   );

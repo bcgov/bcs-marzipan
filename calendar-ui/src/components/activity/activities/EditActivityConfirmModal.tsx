@@ -15,10 +15,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 
-import {
-  ActivityConfirmHeaderBlockedNotice,
-  ActivityConfirmPrimaryActionGroup,
-} from './ActivityConfirmSubmitBlockedNotice';
 import { ActivityFormChangesList } from './ActivityFormChangesList';
 import { RenewPublicLastUpdatedField } from './RenewPublicLastUpdatedField';
 
@@ -33,7 +29,7 @@ interface EditActivityConfirmModalProps {
   changes: HistoryChange[];
   onConfirm: (value: ActivitySaveConfirmPayload) => void;
   isSubmitting: boolean;
-  confirmBlockedMessage?: string | null;
+  confirmDisabled?: boolean;
 }
 
 export function EditActivityConfirmModal({
@@ -42,11 +38,8 @@ export function EditActivityConfirmModal({
   changes,
   onConfirm,
   isSubmitting,
-  confirmBlockedMessage = null,
+  confirmDisabled = false,
 }: EditActivityConfirmModalProps) {
-  const confirmDisabled =
-    isSubmitting ||
-    (confirmBlockedMessage != null && confirmBlockedMessage.length > 0);
   const { user } = useAuth();
   const [notes, setNotes] = useState('');
   const [renewPublicLastUpdated, setRenewPublicLastUpdated] = useState(false);
@@ -84,10 +77,6 @@ export function EditActivityConfirmModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ActivityConfirmHeaderBlockedNotice
-          confirmBlockedMessage={confirmBlockedMessage}
-        />
-
         <div className="max-h-[60vh] overflow-y-auto">
           <ActivityFormChangesList
             key={open ? 'edit-confirm-open' : 'edit-confirm-closed'}
@@ -124,24 +113,20 @@ export function EditActivityConfirmModal({
           >
             Return to edit
           </Button>
-          <ActivityConfirmPrimaryActionGroup
-            confirmBlockedMessage={confirmBlockedMessage}
+          <Button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isSubmitting || confirmDisabled}
           >
-            <Button
-              type="button"
-              onClick={handleConfirm}
-              disabled={confirmDisabled}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                  Updating...
-                </>
-              ) : (
-                'Confirm'
-              )}
-            </Button>
-          </ActivityConfirmPrimaryActionGroup>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Updating...
+              </>
+            ) : (
+              'Confirm'
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

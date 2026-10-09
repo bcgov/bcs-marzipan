@@ -44,8 +44,28 @@ type LockAcquireResult = EnsureLockForSubmitResult;
 export type LockAcquireFailureReason =
   | 'locked-by-other'
   | 'time-lockout'
-  | 'other'
+  | 'network'
+  | 'unauthorized'
+  | 'request-failed'
   | null;
+
+function acquireFailureReasonFromClassified(
+  result: Exclude<
+    EnsureLockForSubmitResult,
+    'ready' | 'blocked-by-other' | 'time-lockout'
+  >
+): Exclude<
+  LockAcquireFailureReason,
+  'locked-by-other' | 'time-lockout' | null
+> {
+  if (result === 'unavailable') {
+    return 'network';
+  }
+  if (result === 'unauthorized') {
+    return 'unauthorized';
+  }
+  return 'request-failed';
+}
 
 type UseActivityLockResult = {
   lock: LockInfo | null;
@@ -348,9 +368,10 @@ export function useActivityLock(
           return 'time-lockout';
         }
 
+        const classified = classifyLockRequestFailure(err);
         setLockState('idle');
-        setAcquireFailureReason('other');
-        return classifyLockRequestFailure(err);
+        setAcquireFailureReason(acquireFailureReasonFromClassified(classified));
+        return classified;
       } finally {
         acquireInFlightRef.current = null;
       }

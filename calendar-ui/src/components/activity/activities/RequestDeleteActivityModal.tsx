@@ -20,6 +20,7 @@ interface RequestDeleteActivityModalProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: (reason: string) => void | Promise<void>;
   isSubmitting: boolean;
+  confirmDisabled?: boolean;
 }
 
 export function RequestDeleteActivityModal({
@@ -27,6 +28,7 @@ export function RequestDeleteActivityModal({
   onOpenChange,
   onConfirm,
   isSubmitting,
+  confirmDisabled: confirmDisabledProp = false,
 }: RequestDeleteActivityModalProps): React.ReactElement {
   const [reason, setReason] = useState('');
   const [touched, setTouched] = useState(false);
@@ -35,6 +37,7 @@ export function RequestDeleteActivityModal({
   const valid =
     trimmed.length >= MIN_REASON_LENGTH && trimmed.length <= MAX_REASON_LENGTH;
   const showError = touched && !valid && trimmed.length > 0;
+  const confirmDisabled = isSubmitting || !valid || confirmDisabledProp;
 
   const handleConfirm = () => {
     setTouched(true);
@@ -61,6 +64,7 @@ export function RequestDeleteActivityModal({
             must provide a reason (at least {MIN_REASON_LENGTH} characters).
           </DialogDescription>
         </DialogHeader>
+
         <div className="space-y-2">
           <Label htmlFor="request-delete-reason">
             Add a note (required) <span className="text-destructive">*</span>
@@ -98,7 +102,7 @@ export function RequestDeleteActivityModal({
             type="button"
             variant="destructive"
             onClick={handleConfirm}
-            disabled={isSubmitting || !valid}
+            disabled={confirmDisabled}
           >
             {isSubmitting ? 'Submitting...' : 'Request delete'}
           </Button>

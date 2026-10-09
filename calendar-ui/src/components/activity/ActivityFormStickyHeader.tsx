@@ -18,8 +18,6 @@ type ActivityFormStickyHeaderProps = {
   lockStrip?: ReactNode;
   /** When false, the lock strip is invisible and inert (opacity transition). */
   lockStripVisible?: boolean;
-  /** Optional status badge (e.g. offline/reconnecting). Shown on the trailing edge. */
-  statusBadge?: ReactNode;
 };
 
 /**
@@ -33,7 +31,6 @@ export function ActivityFormStickyHeader({
   className,
   lockStrip,
   lockStripVisible = false,
-  statusBadge,
 }: ActivityFormStickyHeaderProps): ReactElement {
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,23 +61,18 @@ export function ActivityFormStickyHeader({
         <ArrowLeft className="size-4" aria-hidden />
         Go back
       </Button>
-      {(statusBadge != null || showLockStrip) && (
+      {showLockStrip && (
         <div className="ms-auto flex min-w-0 shrink-0 items-center gap-2">
-          {statusBadge}
-          {showLockStrip && (
-            <div
-              className={cn(
-                'min-w-0 transition-opacity duration-300 ease-out',
-                lockStripVisible
-                  ? 'opacity-100'
-                  : 'pointer-events-none opacity-0'
-              )}
-              aria-hidden={!lockStripVisible}
-              inert={lockStripVisible ? undefined : true}
-            >
-              {lockStrip}
-            </div>
-          )}
+          <div
+            className={cn(
+              'min-w-0 transition-opacity duration-300 ease-out',
+              lockStripVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
+            )}
+            aria-hidden={!lockStripVisible}
+            inert={lockStripVisible ? undefined : true}
+          >
+            {lockStrip}
+          </div>
         </div>
       )}
     </div>

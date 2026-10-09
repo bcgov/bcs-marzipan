@@ -28,6 +28,7 @@ interface DeleteActivityModalProps {
   isSubmitting: boolean;
   /** When provided, pre-populates the notes field when the modal opens (e.g. from Delete requested history). */
   initialNotes?: string;
+  confirmDisabled?: boolean;
 }
 
 export function DeleteActivityModal({
@@ -39,6 +40,7 @@ export function DeleteActivityModal({
   onHardDelete,
   isSubmitting,
   initialNotes,
+  confirmDisabled: confirmDisabledProp = false,
 }: DeleteActivityModalProps): React.ReactElement {
   const [notes, setNotes] = useState('');
   const [deletePermanently, setDeletePermanently] = useState(false);
@@ -54,6 +56,7 @@ export function DeleteActivityModal({
   const canConfirmSoft = notesValid;
   const canConfirmHard = notesValid && deletePermanently && confirmPhraseMatch;
   const canConfirm = deletePermanently ? canConfirmHard : canConfirmSoft;
+  const confirmDisabled = isSubmitting || !canConfirm || confirmDisabledProp;
   const showNotesError = touched && trimmedNotes.length > 0 && !notesValid;
 
   useEffect(() => {
@@ -202,7 +205,7 @@ export function DeleteActivityModal({
             type="button"
             variant="destructive"
             onClick={handleConfirm}
-            disabled={isSubmitting || !canConfirm}
+            disabled={confirmDisabled}
           >
             {isSubmitting ? 'Deleting...' : 'Confirm delete'}
           </Button>
