@@ -4,6 +4,7 @@ import {
   ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT,
   ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE,
   connectionBlocksFieldInput,
+  connectionBlocksFieldInputUnlessActiveSession,
   getActivityConfirmBlockedMessage,
   getActivityEditRecoveryBannerMessage,
   isActivityEditConnectionBlocked,
@@ -53,6 +54,29 @@ describe('connectionBlocksFieldInput', () => {
   it('matches isActivityEditConnectionBlocked', () => {
     expect(connectionBlocksFieldInput('offline')).toBe(true);
     expect(connectionBlocksFieldInput('connected')).toBe(false);
+  });
+});
+
+describe('connectionBlocksFieldInputUnlessActiveSession', () => {
+  it('blocks when disconnected and session has not started', () => {
+    expect(
+      connectionBlocksFieldInputUnlessActiveSession('offline', false)
+    ).toBe(true);
+    expect(
+      connectionBlocksFieldInputUnlessActiveSession('reconnecting', false)
+    ).toBe(true);
+  });
+
+  it('allows field input when disconnected but session is active', () => {
+    expect(connectionBlocksFieldInputUnlessActiveSession('offline', true)).toBe(
+      false
+    );
+  });
+
+  it('does not block when connected', () => {
+    expect(
+      connectionBlocksFieldInputUnlessActiveSession('connected', false)
+    ).toBe(false);
   });
 });
 

@@ -97,11 +97,21 @@ export function isActivityEditConnectionBlocked(
   return socketConnection !== 'connected';
 }
 
-/** Same gate as edit-session pre-flight: block field input until socket is connected. */
+/** Raw socket gate (also used for blocking edit-session start and clone). */
 export function connectionBlocksFieldInput(
   socketConnection: ActivitySocketConnectionDisplay
 ): boolean {
   return isActivityEditConnectionBlocked(socketConnection);
+}
+
+/** Block field input when disconnected only before an edit session has started. */
+export function connectionBlocksFieldInputUnlessActiveSession(
+  socketConnection: ActivitySocketConnectionDisplay,
+  isActiveEditSession: boolean
+): boolean {
+  return (
+    isActivityEditConnectionBlocked(socketConnection) && !isActiveEditSession
+  );
 }
 
 export type ShouldShowActivityConnectionAlertInput = {

@@ -791,6 +791,26 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
+  it('keeps fields editable when offline during an active edit session', async () => {
+    mockLockState = 'owned';
+    mockActivitySocketConnection = 'offline';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    expect(
+      await screen.findByText(/You are offline\. Reconnect to save changes\./i)
+    ).toBeInTheDocument();
+
+    const titleTextarea = screen.getByRole('textbox', { name: /Title/i });
+    expect(titleTextarea).not.toHaveAttribute('readonly');
+
+    await user.type(titleTextarea, ' offline edit');
+    await waitFor(() =>
+      expect(titleTextarea).toHaveValue('Test Activity offline edit')
+    );
+    expect(mockAcquire).not.toHaveBeenCalled();
+  });
+
   it('does not toast network acquire failures while connection is blocked', async () => {
     mockActivitySocketConnection = 'reconnecting';
     mockAcquire.mockResolvedValue(false);

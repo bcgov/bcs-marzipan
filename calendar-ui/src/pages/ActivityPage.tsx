@@ -93,7 +93,7 @@ import { getActivityConcurrencyToken } from '../lib/activity-concurrency-token';
 import { resolveActivityEditResyncAction } from '../lib/activity-edit-resync';
 import {
   ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST,
-  connectionBlocksFieldInput,
+  connectionBlocksFieldInputUnlessActiveSession,
   getActivityConfirmBlockedMessage,
   getActivityEditAcquireFailureToastMessage,
   getActivityEditRecoveryBannerMessage,
@@ -677,11 +677,16 @@ export function ActivityPage({
   const connectionBlocksEditStart = isActivityEditConnectionBlocked(
     activitySocketConnection
   );
+  const isActiveEditSession =
+    isEditing || lockState === 'owned' || lockState === 'acquiring';
   const readOnly =
     lockState === 'locked-by-other' ||
     isBlockedByRecurringLockout ||
     !mayEditFormFields ||
-    connectionBlocksFieldInput(activitySocketConnection);
+    connectionBlocksFieldInputUnlessActiveSession(
+      activitySocketConnection,
+      isActiveEditSession
+    );
   const hasEditLock = lockState === 'owned';
   const isLockedByOther = lockState === 'locked-by-other';
   const showLockoutNotice = isBlockedByRecurringLockout && !isLockedByOther;
