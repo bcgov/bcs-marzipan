@@ -301,6 +301,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     (!showStatusFilter || filter === 'all');
 
   const handleReorder = (activeId: string, overId: string) => {
+    if (reorderMutation.isPending) return;
     const from = filteredData.findIndex((i) => String(i.id) === activeId);
     const to = filteredData.findIndex((i) => String(i.id) === overId);
     if (from < 0 || to < 0) return;
@@ -500,6 +501,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
             <Switch
               id={alphaToggleId}
               checked={!manualMode}
+              disabled={reorderMutation.isPending}
               onCheckedChange={handleAlphabeticalChange}
             />
           </div>
@@ -550,6 +552,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
             data={filteredData}
             columns={baseColumns}
             onReorder={canReorder ? handleReorder : undefined}
+            reorderDisabled={reorderMutation.isPending}
           />
         </div>
       )}

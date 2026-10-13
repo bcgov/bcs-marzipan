@@ -41,9 +41,17 @@ interface GenericDataTableProps<T extends object> {
   getRowId?: (row: T) => string;
   /** When set, rows show a drag handle; data order is used as-is (column sorting disabled). */
   onReorder?: (activeId: string, overId: string) => void;
+  /** Keeps drag handles visible but inert (e.g. while a reorder is saving). */
+  reorderDisabled?: boolean;
 }
 
-function SortableRow<T extends object>({ row }: { row: Row<T> }) {
+function SortableRow<T extends object>({
+  row,
+  disabled,
+}: {
+  row: Row<T>;
+  disabled: boolean;
+}) {
   const {
     attributes,
     listeners,
@@ -52,7 +60,7 @@ function SortableRow<T extends object>({ row }: { row: Row<T> }) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: row.id });
+  } = useSortable({ id: row.id, disabled });
 
   return (
     <tr
@@ -70,7 +78,8 @@ function SortableRow<T extends object>({ row }: { row: Row<T> }) {
           type="button"
           ref={setActivatorNodeRef}
           aria-label="Drag to reorder"
-          className="cursor-grab touch-none text-slate-400 hover:text-slate-600"
+          disabled={disabled}
+          className="cursor-grab touch-none text-slate-400 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50"
           {...attributes}
           {...listeners}
         >
@@ -97,6 +106,7 @@ export function GenericDataTable<T extends object>({
   columns,
   getRowId,
   onReorder,
+  reorderDisabled = false,
 }: GenericDataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const sensors = useSensors(
@@ -173,7 +183,7 @@ export function GenericDataTable<T extends object>({
         >
           <tbody>
             {rows.map((row) => (
-              <SortableRow key={row.id} row={row} />
+              <SortableRow key={row.id} row={row} disabled={reorderDisabled} />
             ))}
           </tbody>
         </SortableContext>

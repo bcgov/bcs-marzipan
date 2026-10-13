@@ -1974,19 +1974,19 @@ export class LookupsService {
     currentUserId: number
   ): Promise<void> {
     const table = REORDERABLE_LOOKUP_TABLES[entity];
-    const now = new Date();
-    await this.databaseService.db.transaction(async (tx) => {
-      for (const [index, id] of ids.entries()) {
-        await tx
-          .update(table)
-          .set({
-            sortOrder: index + 1,
-            lastUpdatedBy: currentUserId,
-            lastUpdatedDateTime: now,
-          })
-          .where(eq(table.id, id));
-      }
-    });
+    // One set-based UPDATE so concurrent reorders can't lock rows in opposing orders (deadlock).
+    const positions = sql.join(
+      ids.map((id, index) => sql`when ${id}::int then ${index + 1}::int`),
+      sql` `
+    );
+    await this.databaseService.db
+      .update(table)
+      .set({
+        sortOrder: sql`case ${table.id} ${positions} end`,
+        lastUpdatedBy: currentUserId,
+        lastUpdatedDateTime: new Date(),
+      })
+      .where(inArray(table.id, ids));
   }
 
   async updateCommsMaterial(
