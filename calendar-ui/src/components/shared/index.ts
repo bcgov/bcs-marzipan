@@ -5,6 +5,7 @@ export { default as DashboardBarChart } from './DashboardBarChart';
 export { ErrorDetails, StatusMessage } from './StatusMessage';
 export { ErrorState } from './ErrorState';
 export { FormErrorFallback } from './FormErrorFallback';
+export { ActivityConnectionStatusBadge } from './ActivityConnectionStatusBadge';
 export {
   LockBanner,
   LockBannerContent,

@@ -13,13 +13,13 @@ labels:
 # Replace images built into the OpenShift internal registry.
 images:
   - name: corpcal-service:latest
-    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/corpcal-service
+    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-prod/corpcal-service
     newTag: 0.0.1
   - name: corpcal-ui:latest
-    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/corpcal-ui
+    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-prod/corpcal-ui
     newTag: 0.0.1
   - name: corpcal-db-migrate:latest
-    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/corpcal-db-migrate
+    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-prod/corpcal-db-migrate
     newTag: 0.0.1
 
 patches:

@@ -16,13 +16,8 @@ resources:
   - database/postgres-service.yaml
   - database/corpcal-postgres-backup-pvc.yaml
   - database/corpcal-postgres-backup-deployment.yaml
+  - database/corpcal-postgres-backup-configmap.yaml
   - database/migration/calendar-db-migrate-job.yaml
-
-configMapGenerator:
-  - name: corpcal-postgres-backup-configmap
-    files:
-      - database/corpcal-postgres-backup.conf
-    behavior: create
 
 # secrets are not included in the resources list to avoid exposing sensitive information in the kustomization.yaml file
 # apply secrets separately using kubectl apply -f calendar-service/secret.yaml, kubectl apply -f calendar-ui/secret.yaml, kubectl apply -f database/postgres-secret.yaml, and kubectl apply -f database/corpcal-postgres-backup-secret.yaml
