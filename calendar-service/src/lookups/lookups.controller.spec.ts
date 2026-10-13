@@ -3,11 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import 'reflect-metadata';
 
-import {
-  DYNAMIC_LOOKUP_CACHE_SECONDS,
-  SYSTEM_ROLE_IDS,
-  type AuthUser,
-} from '@corpcal/shared';
+import { SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 import type { LookupItem } from '@corpcal/shared/api/types';
 import {
   reorderLookupRequestSchema,
@@ -228,7 +224,7 @@ describe('LookupsController', () => {
       expect(mockLookupsService.getCategories).toHaveBeenCalledWith(false);
       expect(res.setHeader).toHaveBeenCalledWith(
         'Cache-Control',
-        `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+        lookupGetCacheControl()
       );
     });
   });

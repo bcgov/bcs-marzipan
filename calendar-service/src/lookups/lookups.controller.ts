@@ -24,11 +24,7 @@ import {
 import type { Response } from 'express';
 import { z } from 'zod';
 
-import {
-  DYNAMIC_LOOKUP_CACHE_SECONDS,
-  SYSTEM_ROLE_IDS,
-  type AuthUser,
-} from '@corpcal/shared';
+import { SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 import type {
   ActivityTeamSharingResponse,
   CategoryLookupItem,
@@ -192,9 +188,7 @@ export class LookupsController {
       includeAll === 'true' && user.permissions.includes('lookups.manage');
     res?.setHeader(
       'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
     );
     const data = await this.lookupsService.getCategories(shouldIncludeAll);
     return { success: true, data };
@@ -580,9 +574,7 @@ export class LookupsController {
     // Non-admin path: short private cache to reduce server load.
     res?.setHeader(
       'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
     );
     const data = await this.lookupsService.getTags(shouldIncludeAll);
     return { success: true, data };
@@ -836,9 +828,7 @@ export class LookupsController {
       includeAll === 'true' && user.permissions.includes('lookups.manage');
     res?.setHeader(
       'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
     );
     const data =
       await this.lookupsService.getTranslationLanguages(shouldIncludeAll);

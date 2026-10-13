@@ -130,8 +130,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   submitOverride,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
-  const [manualMode, setManualMode] = useState(false);
-  const manualModeInitialised = useRef(false);
+  const [manualChosen, setManualChosen] = useState(false);
   const alphaToggleId = useId();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [search, setSearch] = useState('');
@@ -159,7 +158,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     }
   }, [showModal]);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, isFetchedAfterMount } = useQuery({
     queryKey,
     queryFn: queryFn,
     // Always refetch when an admin section mounts so Settings reflects any
@@ -172,19 +171,18 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
     sortLabel(a).localeCompare(sortLabel(b));
 
-  // Start in manual mode only when the saved order is not already A-Z.
-  useEffect(() => {
-    if (!enableManualSort || !data || manualModeInitialised.current) return;
-    manualModeInitialised.current = true;
+  // Re-derived on every data change (mount refetch, CRUD, other tabs) so the switch can't go stale.
+  const savedOrderIsAlphabetical = useMemo(() => {
+    if (!data) return true;
     const ordered = [...data].sort(compareBySortOrder);
-    setManualMode(
-      ordered.some(
-        (item, i) =>
-          i > 0 && sortLabel(ordered[i - 1]).localeCompare(sortLabel(item)) > 0
-      )
+    return ordered.every(
+      (item, i) =>
+        i === 0 || sortLabel(ordered[i - 1]).localeCompare(sortLabel(item)) <= 0
     );
+    // compareBySortOrder/sortLabel only depend on getItemName.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, enableManualSort]);
+  }, [data, getItemName]);
+  const manualMode = manualChosen || !savedOrderIsAlphabetical;
 
   const invalidateListCaches = () => {
     void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.root });
@@ -277,7 +275,6 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       invalidateListCaches();
     },
     onError: (error: unknown) => {
-      setManualMode(true);
       invalidateListCaches();
       showErrorToast(error);
     },
@@ -294,6 +291,9 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     reorderMutation.mutate(orderedIds);
   };
 
+  // Ordering controls wait for the mount refetch so they never act on a cached list.
+  const orderControlsReady = isFetchedAfterMount && !reorderMutation.isPending;
+
   const canReorder =
     enableManualSort &&
     manualMode &&
@@ -301,16 +301,17 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     (!showStatusFilter || filter === 'all');
 
   const handleReorder = (activeId: string, overId: string) => {
-    if (reorderMutation.isPending) return;
+    if (!orderControlsReady) return;
     const from = filteredData.findIndex((i) => String(i.id) === activeId);
     const to = filteredData.findIndex((i) => String(i.id) === overId);
     if (from < 0 || to < 0) return;
+    setManualChosen(true);
     saveOrder(arrayMove(filteredData, from, to).map((i) => i.id));
   };
 
   const handleAlphabeticalChange = (checked: boolean) => {
     if (!checked) {
-      setManualMode(true);
+      setManualChosen(true);
       return;
     }
     if (
@@ -320,7 +321,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     ) {
       return;
     }
-    setManualMode(false);
+    setManualChosen(false);
     saveOrder(
       [...(data ?? [])]
         .sort((a, b) => sortLabel(a).localeCompare(sortLabel(b)))
@@ -501,7 +502,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
             <Switch
               id={alphaToggleId}
               checked={!manualMode}
-              disabled={reorderMutation.isPending}
+              disabled={!orderControlsReady}
               onCheckedChange={handleAlphabeticalChange}
             />
           </div>
@@ -552,7 +553,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
             data={filteredData}
             columns={baseColumns}
             onReorder={canReorder ? handleReorder : undefined}
-            reorderDisabled={reorderMutation.isPending}
+            reorderDisabled={!orderControlsReady}
           />
         </div>
       )}
