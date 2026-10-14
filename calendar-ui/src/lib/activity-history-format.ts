@@ -6,85 +6,23 @@ import {
   isDeepEqual,
   plainTextFromActivityRichField,
 } from '@corpcal/shared/utils';
+import { getHistoryActionLabel } from '@/components/history/history-action-labels';
+import { formatTime12h } from '@/lib/datetime-utils';
 
 /**
  * Shared formatting utilities for displaying activity history changes.
  * Used by both the ActivityHistory drawer and confirmation modals.
  */
 
-const ACTION_TEXT_MAP: Record<string, string> = {
-  created: 'Created',
-  updated: 'Updated',
-  reviewed: 'Reviewed',
-  deleted: 'Deleted',
-  delete_requested: 'Delete requested',
-  soft_deleted: 'Deleted',
-  restored: 'Restored',
-  changes_cancelled: 'Changes cancelled',
-  note_added: 'Note added',
-  'note added': 'Note added',
-  comment_added: 'Comment added',
-  assigned: 'Assigned',
-  unassigned: 'Unassigned',
-  status_changed: 'Status changed',
-  comms_lead_transferred: 'Transferred',
-  cloned: 'Cloned',
-  flag_assigned: 'Activity assigned',
-  flag_removed: 'Activity unassigned',
-};
-
-/**
- * Returns a richer action label for flag entries that embeds the assignee name.
- * Falls back to getActionText for all other entries.
- */
-export function getActionLabel(
-  actionType: string,
-  changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
-): string {
-  if (actionType === 'flag_assigned') {
-    const change = changes?.find((c) => c.field === 'flag.assigneeName');
-    const oldName =
-      typeof change?.oldValue === 'string' && change.oldValue
-        ? change.oldValue
-        : null;
-    const newName =
-      typeof change?.newValue === 'string' && change.newValue
-        ? change.newValue
-        : null;
-    if (oldName && newName)
-      return `Activity reassigned from ${oldName} to ${newName}`;
-    if (newName) return `Activity assigned to ${newName}`;
-    return 'Activity assigned';
-  }
-  if (actionType === 'flag_removed') {
-    const name = changes?.find(
-      (c) => c.field === 'flag.assigneeName'
-    )?.oldValue;
-    return typeof name === 'string' && name
-      ? `Activity unassigned from ${name}`
-      : 'Activity unassigned';
-  }
-  return getActionText(actionType);
-}
-
 export function getActionText(actionType: string): string {
-  if (!actionType) return '';
-  const raw = String(actionType);
-  const lower = raw.toLowerCase();
-
-  if (ACTION_TEXT_MAP[lower]) return ACTION_TEXT_MAP[lower];
-
-  const spaced = raw
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .trim();
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  return getHistoryActionLabel(actionType);
 }
 
 /**
  * Label for a field in history/changelog. Uses shared activity field labels.
  */
 export function getHistoryFieldLabel(field: string): string {
+  if (field === 'flag.assigneeName') return 'Flagged for review';
   return getSharedFieldLabel(field);
 }
 
@@ -141,6 +79,14 @@ export function formatHistoryFieldValue(
 ): string {
   if (value === null || value === undefined || value === '') {
     return '(empty)';
+  }
+
+  if (
+    (field === 'startTime' || field === 'endTime') &&
+    typeof value === 'string'
+  ) {
+    const formatted = formatTime12h(value);
+    return formatted === '' ? '(empty)' : formatted;
   }
 
   if (

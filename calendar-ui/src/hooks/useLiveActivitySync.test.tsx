@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactNode } from 'react';
 
+import { createMockActivityListItem } from '@corpcal/shared/test-utils/activity-list-item.fixture';
 import {
   __resetLiveActivitySyncForTests,
   LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS,
@@ -105,6 +106,70 @@ describe('useLiveActivitySync', () => {
     });
   });
 
+  describe('activityLockChanged', () => {
+    it('patches cached list editLock without invalidating activities', () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+      const listKey = [
+        'activities',
+        'list',
+        { includeCompleted: false },
+      ] as const;
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+      render(
+        <Providers queryClient={queryClient}>
+          <TestWrapper />
+        </Providers>
+      );
+
+      queryClient.setQueryData(listKey, [
+        createMockActivityListItem({ id: 1, editLock: null }),
+      ]);
+
+      act(() => {
+        getFakeSocket().emitEvent('activityLockChanged', {
+          activityId: 1,
+          locked: true,
+          lockedBy: { userId: 2, username: 'Editor' },
+        });
+      });
+
+      expect(invalidateSpy).not.toHaveBeenCalled();
+      expect(
+        queryClient.getQueryData<
+          ReturnType<typeof createMockActivityListItem>[]
+        >(listKey)?.[0]?.editLock
+      ).toEqual({ userId: 2, username: 'Editor' });
+
+      invalidateSpy.mockRestore();
+    });
+
+    it('falls back to debounced invalidate when the activity is not cached', async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+      render(
+        <Providers queryClient={queryClient}>
+          <TestWrapper />
+        </Providers>
+      );
+      getFakeSocket().emitEvent('activityLockChanged', {
+        activityId: 1,
+        locked: true,
+        lockedBy: { userId: 2, username: 'Editor' },
+      });
+
+      await vi.advanceTimersByTimeAsync(LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS + 1);
+      expect(invalidateSpy).toHaveBeenCalled();
+
+      invalidateSpy.mockRestore();
+    });
+  });
+
   describe('activityUpdated', () => {
     it('debounces invalidateQueries when activityUpdated fires', async () => {
       const queryClient = new QueryClient({
@@ -152,6 +217,10 @@ describe('useLiveActivitySync', () => {
       );
       expect(socket.off).toHaveBeenCalledWith(
         'activityUpdated',
+        expect.any(Function)
+      );
+      expect(socket.off).toHaveBeenCalledWith(
+        'activityLockChanged',
         expect.any(Function)
       );
       expect(socket.disconnect).toHaveBeenCalled();

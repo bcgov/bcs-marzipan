@@ -1,36 +1,36 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: calendar-db-migrate
+  name: corpcal-db-migrate-job
   annotations:
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
     argocd.argoproj.io/sync-wave: '1'
   labels:
-    app: calendar-db-migrate
-    app.kubernetes.io/name: calendar
-    app.kubernetes.io/component: job
+    app: corpcal-db-migrate-job
+    app.kubernetes.io/name: corpcal
+    app.kubernetes.io/component: migration
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/instance: dev
-    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: ${APP_VERSION}
+    app.kubernetes.io/managed-by: github-actions
 spec:
   backoffLimit: 1
   template:
     metadata:
       labels:
-        app: calendar-db-migrate
+        app: corpcal-db-migrate-job
         DataClass: Low
         Internet-Ingress: DENY
     spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: calendar-db-migrate:latest
+          image: corpcal-db-migrate:latest
           env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: calendar-service-secrets
+                  name: corpcal-service-secret
                   key: DATABASE_URL
           command:
             - sh

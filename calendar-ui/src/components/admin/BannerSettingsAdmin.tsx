@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermission } from '@/hooks/usePermissions';
 import { showErrorToast, showSuccessToast } from '@/lib/error-toast';
+import { focusRequiredField } from '@/lib/form-utils';
 
 import { SystemBanner } from '../layout/SystemBanner';
 
@@ -278,11 +279,13 @@ export function BannerSettingsAdmin() {
     const trimmedContent = formData.content.trim();
 
     if (!trimmedContent) {
+      focusRequiredField('banner-content');
       toast.error('Banner content cannot be empty');
       return;
     }
 
     if (trimmedContent.length > BANNER_CONTENT_MAX_LENGTH) {
+      focusRequiredField('banner-content');
       toast.error(
         `Banner content must be ${BANNER_CONTENT_MAX_LENGTH} characters or fewer`
       );
@@ -432,6 +435,7 @@ export function BannerSettingsAdmin() {
 
             {editorMode === 'wysiwyg' ? (
               <div
+                id="banner-content"
                 ref={contentRef}
                 contentEditable={canManage}
                 suppressContentEditableWarning

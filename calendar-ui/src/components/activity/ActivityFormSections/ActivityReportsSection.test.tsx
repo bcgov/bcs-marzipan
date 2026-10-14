@@ -96,7 +96,7 @@ function getLookAheadSectionNoneRadio(): HTMLElement {
   return radio;
 }
 
-describe('ActivityReportsSection look ahead section', () => {
+describe('ActivityReportsSection Look Ahead section', () => {
   it('renders a None option for look-ahead section', () => {
     render(<ActivityReportsSectionHarness />);
 

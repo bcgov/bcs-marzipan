@@ -21,6 +21,16 @@ interface ProblemDetails {
   instance: string;
   correlationId: string;
   errors?: Array<{ path: string; message: string; code?: string }>;
+  reason?: string;
+  locked?: boolean;
+  lockRequired?: boolean;
+  lockedBy?: {
+    userId: number;
+    username: string | null;
+    acquiredAt: string | Date;
+    expiresAt: string | Date;
+    idleExpiresAt?: string | Date;
+  };
   timestamp?: string;
   /** Only included in non-production responses */
   stack?: string;
@@ -108,6 +118,47 @@ export class HttpExceptionFilter implements ExceptionFilter {
           : (exceptionResponse as { message?: string | string[] }).message ||
             'An error occurred';
 
+      const extraFields =
+        typeof exceptionResponse === 'object' && exceptionResponse !== null
+          ? {
+              reason:
+                typeof (exceptionResponse as { reason?: unknown }).reason ===
+                'string'
+                  ? (exceptionResponse as { reason: string }).reason
+                  : undefined,
+              locked:
+                typeof (exceptionResponse as { locked?: unknown }).locked ===
+                'boolean'
+                  ? (exceptionResponse as { locked: boolean }).locked
+                  : undefined,
+              lockRequired:
+                typeof (exceptionResponse as { lockRequired?: unknown })
+                  .lockRequired === 'boolean'
+                  ? (
+                      exceptionResponse as {
+                        lockRequired: boolean;
+                      }
+                    ).lockRequired
+                  : undefined,
+              lockedBy:
+                typeof (exceptionResponse as { lockedBy?: unknown })
+                  .lockedBy === 'object' &&
+                (exceptionResponse as { lockedBy?: unknown }).lockedBy !== null
+                  ? (
+                      exceptionResponse as {
+                        lockedBy: {
+                          userId: number;
+                          username: string | null;
+                          acquiredAt: string | Date;
+                          expiresAt: string | Date;
+                          idleExpiresAt?: string | Date;
+                        };
+                      }
+                    ).lockedBy
+                  : undefined,
+            }
+          : {};
+
       return {
         type: this.getErrorType(status),
         title: this.getErrorTitle(status),
@@ -115,6 +166,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         detail: Array.isArray(message) ? message.join(', ') : message,
         instance: path,
         correlationId,
+        ...extraFields,
         timestamp: new Date().toISOString(),
       };
     }

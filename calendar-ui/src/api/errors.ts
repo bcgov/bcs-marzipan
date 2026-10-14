@@ -50,6 +50,7 @@ export interface ProblemDetails {
   detail: string;
   instance: string;
   correlationId: string;
+  reason?: string;
   errors?: Array<{ path: string; message: string; code?: string }>;
   timestamp?: string;
   stack?: string; // Only in development
@@ -66,6 +67,7 @@ export class ApiError extends Error {
   public readonly detail: string;
   public readonly correlationId: string;
   public readonly instance: string;
+  public readonly reason?: string;
   public readonly errors?: Array<{
     path: string;
     message: string;
@@ -81,6 +83,7 @@ export class ApiError extends Error {
     this.detail = problemDetails.detail;
     this.correlationId = problemDetails.correlationId;
     this.instance = problemDetails.instance;
+    this.reason = problemDetails.reason;
     this.errors = problemDetails.errors;
     this.timestamp = problemDetails.timestamp;
 
@@ -197,6 +200,10 @@ export function parseErrorResponse(error: unknown): ProblemDetails | null {
     detail,
     instance: getString(config, 'url', ''),
     correlationId: getString(headers, 'x-correlation-id', 'unknown'),
+    reason:
+      isRecord(data) && typeof data.reason === 'string'
+        ? data.reason
+        : undefined,
   };
 }
 
@@ -216,6 +223,11 @@ function createFallbackApiError(detail: string): ApiError {
  * Create ApiError from axios error or other error types
  */
 export function createApiError(error: unknown): ApiError | NetworkError {
+  // Axios interceptors may have already normalized the failure.
+  if (error instanceof ApiError || error instanceof NetworkError) {
+    return error;
+  }
+
   // Check for network error (no response)
   if (isRecord(error) && hasKeys(error, 'code')) {
     const code = error.code;

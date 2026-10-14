@@ -35,7 +35,14 @@ import {
   CategoriesFilterPanel,
   type CategoryFilterOption,
 } from './CategoriesFilter';
-import { LeadsFilterPanel, type LeadFilterOption } from './LeadsFilter';
+import {
+  IdSearchableFilterPanel,
+  type IdSearchableFilterOption,
+} from './IdSearchableFilterPanel';
+import {
+  LeadTeamFilterPanel,
+  type LeadTeamFilterOption,
+} from './LeadTeamFilterPanel';
 import { LookAheadFilterPanel } from './LookAheadFilter';
 import { PitchFilterPanel } from './PitchFilter';
 import { ScheduledDateFilterPanel } from './ScheduledDateFilter';
@@ -46,6 +53,44 @@ import {
   type TranslationFilterOption,
   type TranslationStatusFilterOption,
 } from './TranslationsFilter';
+
+export type LeadFilterOption = IdSearchableFilterOption;
+
+type IdArrayFilterStateKey = 'commsContactLeadUserIds' | 'eventPlannerLeadIds';
+
+export function buildIdArrayFilterSlot(
+  key: string,
+  label: string,
+  stateKey: IdArrayFilterStateKey,
+  options: IdSearchableFilterOption[],
+  filterState: ActivityFilterState,
+  onFilterStateChange: (state: ActivityFilterState) => void,
+  searchPlaceholder: string,
+  searchAriaLabel: string
+): ResponsiveFilterSlot {
+  const selectedIds = filterState[stateKey];
+  return {
+    key,
+    label,
+    panel: (
+      <IdSearchableFilterPanel
+        options={options}
+        selectedIds={selectedIds}
+        onSelectedIdsChange={(ids) =>
+          onFilterStateChange({ ...filterState, [stateKey]: ids })
+        }
+        searchPlaceholder={searchPlaceholder}
+        searchAriaLabel={searchAriaLabel}
+      />
+    ),
+    triggerProps: {
+      active: selectedIds.length > 0,
+      count: selectedIds.length,
+      onClear: () => onFilterStateChange({ ...filterState, [stateKey]: [] }),
+      clearAriaLabel: `Clear ${label} filter`,
+    },
+  };
+}
 
 export interface ActivityTableFiltersProps {
   filterState: ActivityFilterState;
@@ -62,8 +107,7 @@ export interface ActivityTableFiltersProps {
   pitchRequiredStatusOptions: OptionItem[];
   statusOptions: OptionItem[];
   tagOptions: TagFilterOption[];
-  ministryOptions: LeadFilterOption[];
-  organizationOptions: LeadFilterOption[];
+  leadTeamOptions: LeadTeamFilterOption[];
   commsContactOptions: LeadFilterOption[];
   eventPlannerOptions: LeadFilterOption[];
   translationStatusOptions: TranslationStatusFilterOption[];
@@ -75,6 +119,10 @@ export interface ActivityTableFiltersProps {
     appliedFrom: { id: number; name: string }
   ) => void;
   activeSavedFilterId?: number | null;
+  /** Resets search, saved filter selection, and filter state to the view baseline. */
+  onResetAll?: () => void;
+  /** When true, overflow filter trigger shows a clear-all control wired to `onResetAll`. */
+  hasClearableFilters?: boolean;
   /** When omitted, derived from the current user (for tests). */
   pitchFieldVisibility?: {
     canViewPitchStatus: boolean;
@@ -116,8 +164,7 @@ export function ActivityTableFilters({
   pitchRequiredStatusOptions,
   statusOptions,
   tagOptions,
-  ministryOptions,
-  organizationOptions,
+  leadTeamOptions,
   commsContactOptions,
   eventPlannerOptions,
   translationStatusOptions,
@@ -125,6 +172,8 @@ export function ActivityTableFilters({
   savedFilters,
   onApplySavedFilter,
   activeSavedFilterId = null,
+  onResetAll,
+  hasClearableFilters = false,
   pitchFieldVisibility: pitchFieldVisibilityProp,
 }: ActivityTableFiltersProps) {
   const { user } = useAuth();
@@ -153,8 +202,7 @@ export function ActivityTableFilters({
       categoryOptions,
       pitchRequiredStatusOptions,
       tagOptions,
-      ministryOptions,
-      organizationOptions,
+      leadTeamOptions,
       commsContactOptions,
       eventPlannerOptions,
       translationStatusOptions,
@@ -166,8 +214,7 @@ export function ActivityTableFilters({
     categoryOptions,
     pitchRequiredStatusOptions,
     tagOptions,
-    ministryOptions,
-    organizationOptions,
+    leadTeamOptions,
     commsContactOptions,
     eventPlannerOptions,
     translationStatusOptions,
@@ -181,10 +228,9 @@ export function ActivityTableFilters({
         statusOptions,
         categoryOptions,
         tagOptions,
-        ministryOptions,
-        organizationOptions,
         commsContactOptions,
         eventPlannerOptions,
+        leadTeamOptions,
         translationStatusOptions,
         translationOptions,
       }),
@@ -192,10 +238,9 @@ export function ActivityTableFilters({
       statusOptions,
       categoryOptions,
       tagOptions,
-      ministryOptions,
-      organizationOptions,
       commsContactOptions,
       eventPlannerOptions,
+      leadTeamOptions,
       translationStatusOptions,
       translationOptions,
     ]
@@ -247,33 +292,6 @@ export function ActivityTableFilters({
     },
     [filterState, onFilterStateChange]
   );
-
-  /** Clears all filter state only. Search keyword is intentionally left unchanged so users can adjust filters without losing their search. If search is later moved to the left with filters, consider extending this to also call onSearchKeywordChange(''). */
-  const handleClearAllFilters = useCallback(() => {
-    onFilterStateChange({
-      dateRange: {
-        startDate: '',
-        endDate: '',
-        noStartDate: false,
-        noEndDate: false,
-      },
-      categoryIds: [],
-      activityStatusIds: [],
-      pitchRequiredStatusNames: [],
-      pitchDateFilter: { kind: 'any' },
-      lookAheadStatusValues: [],
-      lookAheadSectionValues: [],
-      dateConfirmedFilter: 'any',
-      timeConfirmedFilter: 'any',
-      tagIds: [],
-      leadMinistryIds: [],
-      leadOrgIds: [],
-      commsContactLeadUserIds: [],
-      eventPlannerLeadIds: [],
-      translationRequiredStatusIds: [],
-      translationLanguageIds: [],
-    });
-  }, [onFilterStateChange]);
 
   const handleTagIdsChange = useCallback(
     (tagIds: number[]) => {
@@ -367,6 +385,54 @@ export function ActivityTableFilters({
         },
       },
       {
+        key: 'lead',
+        label: 'Lead',
+        panel: (
+          <LeadTeamFilterPanel
+            teamOptions={leadTeamOptions}
+            selectedTeamIds={filterState.leadTeamIds}
+            onSelectedTeamIdsChange={(leadTeamIds) =>
+              onFilterStateChange({ ...filterState, leadTeamIds })
+            }
+          />
+        ),
+        triggerProps: {
+          active: filterState.leadTeamIds.length > 0,
+          count: filterState.leadTeamIds.length,
+          onClear: () =>
+            onFilterStateChange({ ...filterState, leadTeamIds: [] }),
+          clearAriaLabel: 'Clear Lead filter',
+        },
+      },
+      buildIdArrayFilterSlot(
+        'commsContact',
+        'Comms contact',
+        'commsContactLeadUserIds',
+        commsContactOptions,
+        filterState,
+        onFilterStateChange,
+        'Search comms contacts...',
+        'Search comms contacts'
+      ),
+      {
+        key: 'status',
+        label: 'Status',
+        panel: (
+          <FilterCheckboxDropdownPanel
+            options={statusOptions}
+            selectedValues={statusSelectedValues}
+            onChange={handleStatusChange}
+            emptyMessage="No results"
+          />
+        ),
+        triggerProps: {
+          active: statusSelectedValues.length > 0,
+          count: statusSelectedValues.length,
+          onClear: () => handleStatusChange([]),
+          clearAriaLabel: 'Clear Status filter',
+        },
+      },
+      {
         key: 'lookAhead',
         label: 'Look Ahead',
         panel: (
@@ -392,56 +458,20 @@ export function ActivityTableFilters({
         },
       },
       {
-        key: 'status',
-        label: 'Status',
+        key: 'tags',
+        label: 'Tags',
         panel: (
-          <FilterCheckboxDropdownPanel
-            options={statusOptions}
-            selectedValues={statusSelectedValues}
-            onChange={handleStatusChange}
-            emptyMessage="No results"
+          <TagsFilterPanel
+            tagOptions={tagOptions}
+            selectedTagIds={filterState.tagIds}
+            onTagIdsChange={handleTagIdsChange}
           />
         ),
         triggerProps: {
-          active: statusSelectedValues.length > 0,
-          count: statusSelectedValues.length,
-          onClear: () => handleStatusChange([]),
-          clearAriaLabel: 'Clear Status filter',
-        },
-      },
-      {
-        key: 'leads',
-        label: 'Leads',
-        panel: (
-          <LeadsFilterPanel
-            filterState={filterState}
-            onFilterStateChange={onFilterStateChange}
-            ministryOptions={ministryOptions}
-            organizationOptions={organizationOptions}
-            commsContactOptions={commsContactOptions}
-            eventPlannerOptions={eventPlannerOptions}
-          />
-        ),
-        triggerProps: {
-          active:
-            filterState.leadMinistryIds.length > 0 ||
-            filterState.leadOrgIds.length > 0 ||
-            filterState.commsContactLeadUserIds.length > 0 ||
-            filterState.eventPlannerLeadIds.length > 0,
-          count:
-            filterState.leadMinistryIds.length +
-            filterState.leadOrgIds.length +
-            filterState.commsContactLeadUserIds.length +
-            filterState.eventPlannerLeadIds.length,
-          onClear: () =>
-            onFilterStateChange({
-              ...filterState,
-              leadMinistryIds: [],
-              leadOrgIds: [],
-              commsContactLeadUserIds: [],
-              eventPlannerLeadIds: [],
-            }),
-          clearAriaLabel: 'Clear Leads filter',
+          active: filterState.tagIds.length > 0,
+          count: filterState.tagIds.length,
+          onClear: () => handleTagIdsChange([]),
+          clearAriaLabel: 'Clear Tags filter',
         },
       },
       {
@@ -471,23 +501,6 @@ export function ActivityTableFilters({
               translationLanguageIds: [],
             }),
           clearAriaLabel: 'Clear Translations filter',
-        },
-      },
-      {
-        key: 'tags',
-        label: 'Tags',
-        panel: (
-          <TagsFilterPanel
-            tagOptions={tagOptions}
-            selectedTagIds={filterState.tagIds}
-            onTagIdsChange={handleTagIdsChange}
-          />
-        ),
-        triggerProps: {
-          active: filterState.tagIds.length > 0,
-          count: filterState.tagIds.length,
-          onClear: () => handleTagIdsChange([]),
-          clearAriaLabel: 'Clear Tags filter',
         },
       },
       ...(showPitchFilter
@@ -544,6 +557,16 @@ export function ActivityTableFilters({
             } satisfies ResponsiveFilterSlot,
           ]
         : []),
+      buildIdArrayFilterSlot(
+        'eventPlanner',
+        'Event planner',
+        'eventPlannerLeadIds',
+        eventPlannerOptions,
+        filterState,
+        onFilterStateChange,
+        'Search event planners...',
+        'Search event planners'
+      ),
     ],
     [
       filterState,
@@ -562,8 +585,7 @@ export function ActivityTableFilters({
       tagOptions,
       translationStatusOptions,
       translationOptions,
-      ministryOptions,
-      organizationOptions,
+      leadTeamOptions,
       commsContactOptions,
       eventPlannerOptions,
       showPitchFilter,
@@ -574,27 +596,12 @@ export function ActivityTableFilters({
 
   return (
     <div
-      className="mb-4 flex flex-nowrap items-center justify-between gap-8"
+      className="flex flex-nowrap items-center justify-between gap-8"
       role="search"
-      aria-label="Filter activities by datetime, category, look ahead, status, leads, translations, tags, pitch, and keyword"
+      aria-label="Filter activities by date, category, lead team, comms contact, status, Look Ahead, tags, translations, pitch, event planner, and keyword"
     >
-      <div className="flex min-w-0 flex-1 items-center">
-        <ResponsiveFilterRow
-          slots={filterSlots}
-          overflowTriggerClassName="h-10"
-          onClearAll={handleClearAllFilters}
-          savedFilters={savedFilters}
-          filterState={filterState}
-          searchKeyword={searchKeyword}
-          onApplySavedFilter={onApplySavedFilter}
-          activeSavedFilterId={activeSavedFilterId}
-          filterSummaryContext={summaryContext}
-          parseSavedFilterForDraft={parseSavedFilterForDraft}
-          validFilterLookups={validFilterLookupsForPreview}
-        />
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="relative max-w-md min-w-[240px] flex-1">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="relative max-w-md min-w-[240px] shrink-0">
           <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
           <Input
             type="text"
@@ -615,6 +622,21 @@ export function ActivityTableFilters({
             </button>
           )}
         </div>
+        <ResponsiveFilterRow
+          slots={filterSlots}
+          overflowTriggerClassName="h-10"
+          onClearAll={hasClearableFilters ? onResetAll : undefined}
+          savedFilters={savedFilters}
+          filterState={filterState}
+          searchKeyword={searchKeyword}
+          onApplySavedFilter={onApplySavedFilter}
+          activeSavedFilterId={activeSavedFilterId}
+          filterSummaryContext={summaryContext}
+          parseSavedFilterForDraft={parseSavedFilterForDraft}
+          validFilterLookups={validFilterLookupsForPreview}
+        />
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
         <SortDropdown
           hideDirectionLabel
           columns={sortColumns}

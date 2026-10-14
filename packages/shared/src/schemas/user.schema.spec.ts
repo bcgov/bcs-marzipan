@@ -23,10 +23,12 @@ describe('userListItemSchema', () => {
       roleId: 2,
       roleName: 'Editor',
       isActive: true,
+      isEventPlanner: true,
       teams: [{ teamId: 1, teamName: 'Team One', role: 'member' }],
     });
     expect(result.id).toBe(1);
     expect(result.roleName).toBe('Editor');
+    expect(result.isEventPlanner).toBe(true);
     expect(result.teams).toHaveLength(1);
     expect(result.teams[0].role).toBe('member');
   });
@@ -40,9 +42,11 @@ describe('userListItemSchema', () => {
       roleId: 1,
       roleName: 'Admin',
       isActive: false,
+      isEventPlanner: false,
       teams: [],
     });
     expect(result.adUsername).toBeNull();
+    expect(result.isEventPlanner).toBe(false);
     expect(result.teams).toEqual([]);
   });
 });
@@ -50,10 +54,12 @@ describe('userListItemSchema', () => {
 describe('createUserBodySchema', () => {
   it('accepts valid body with email and roleId', () => {
     const result = createUserBodySchema.parse({
-      email: 'user@example.gov.bc.ca',
+      email: 'user@gov.bc.ca',
+      idirUsername: 'JSMITH',
       roleId: 1,
     });
-    expect(result.email).toBe('user@example.gov.bc.ca');
+    expect(result.email).toBe('user@gov.bc.ca');
+    expect(result.idirUsername).toBe('JSMITH');
     expect(result.roleId).toBe(1);
     expect(result.displayName).toBeUndefined();
     expect(result.teams).toBeUndefined();
@@ -61,7 +67,8 @@ describe('createUserBodySchema', () => {
 
   it('accepts optional displayName and teams', () => {
     const result = createUserBodySchema.parse({
-      email: 'user@example.com',
+      email: 'user@gov.bc.ca',
+      idirUsername: 'JDOE',
       roleId: 2,
       displayName: 'Jane Doe',
       teams: [
@@ -77,7 +84,8 @@ describe('createUserBodySchema', () => {
 
   it('enforces displayName max length (255)', () => {
     const valid = createUserBodySchema.parse({
-      email: 'user@example.com',
+      email: 'user@gov.bc.ca',
+      idirUsername: 'JDOE',
       roleId: 2,
       displayName: 'd'.repeat(255),
     });
@@ -85,7 +93,8 @@ describe('createUserBodySchema', () => {
 
     expect(() =>
       createUserBodySchema.parse({
-        email: 'user@example.com',
+        email: 'user@gov.bc.ca',
+        idirUsername: 'JDOE',
         roleId: 2,
         displayName: 'd'.repeat(256),
       })
@@ -93,12 +102,23 @@ describe('createUserBodySchema', () => {
   });
 
   it('rejects missing email', () => {
-    expect(() => createUserBodySchema.parse({ roleId: 1 })).toThrow();
+    expect(() =>
+      createUserBodySchema.parse({ idirUsername: 'JDOE', roleId: 1 })
+    ).toThrow();
+  });
+
+  it('rejects missing IDIR username', () => {
+    expect(() =>
+      createUserBodySchema.parse({ email: 'u@gov.bc.ca', roleId: 1 })
+    ).toThrow();
   });
 
   it('rejects missing roleId', () => {
     expect(() =>
-      createUserBodySchema.parse({ email: 'u@example.com' })
+      createUserBodySchema.parse({
+        email: 'u@gov.bc.ca',
+        idirUsername: 'JDOE',
+      })
     ).toThrow();
   });
 
@@ -106,6 +126,27 @@ describe('createUserBodySchema', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: 'not-an-email',
+        idirUsername: 'JDOE',
+        roleId: 1,
+      })
+    ).toThrow();
+  });
+
+  it('rejects non-BC Gov email domains', () => {
+    expect(() =>
+      createUserBodySchema.parse({
+        email: 'user@example.com',
+        idirUsername: 'JDOE',
+        roleId: 1,
+      })
+    ).toThrow();
+  });
+
+  it('rejects IDIR values that look like emails', () => {
+    expect(() =>
+      createUserBodySchema.parse({
+        email: 'user@gov.bc.ca',
+        idirUsername: 'user@gov.bc.ca',
         roleId: 1,
       })
     ).toThrow();
@@ -113,7 +154,11 @@ describe('createUserBodySchema', () => {
 
   it('rejects empty email', () => {
     expect(() =>
-      createUserBodySchema.parse({ email: '   ', roleId: 1 })
+      createUserBodySchema.parse({
+        email: '   ',
+        idirUsername: 'JDOE',
+        roleId: 1,
+      })
     ).toThrow();
   });
 });
@@ -189,6 +234,25 @@ describe('updateUserBodySchema', () => {
     expect(() =>
       updateUserBodySchema.parse({ notes: 'n'.repeat(1001) })
     ).toThrow();
+  });
+
+  it('accepts @gov.bc.ca email updates', () => {
+    const result = updateUserBodySchema.parse({ email: 'edited@gov.bc.ca' });
+    expect(result.email).toBe('edited@gov.bc.ca');
+  });
+
+  it('rejects non-BC Gov email updates', () => {
+    expect(() =>
+      updateUserBodySchema.parse({ email: 'edited@example.com' })
+    ).toThrow();
+  });
+
+  it('rejects null email updates', () => {
+    expect(() => updateUserBodySchema.parse({ email: null })).toThrow();
+  });
+
+  it('rejects empty email updates', () => {
+    expect(() => updateUserBodySchema.parse({ email: '   ' })).toThrow();
   });
 });
 
@@ -299,6 +363,7 @@ describe('userDetailSchema', () => {
     roleId: 2,
     roleName: 'Editor',
     isActive: true,
+    isEventPlanner: false,
     teams: [],
     notes: null,
     flagColour: null,
@@ -307,6 +372,7 @@ describe('userDetailSchema', () => {
   it('accepts null flagColour', () => {
     const result = userDetailSchema.parse(base);
     expect(result.flagColour).toBeNull();
+    expect(result.isEventPlanner).toBe(false);
   });
 
   it('accepts a hex flagColour string', () => {

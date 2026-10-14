@@ -17,3 +17,7 @@ resources:
   - database/postgres-pvc.yaml
   - database/postgres-statefulset.yaml
   - database/postgres-service.yaml
+  - database/postgres-backup-pvc.yaml
+  - database/postgres-backup-secret.yaml
+  - database/postgres-backup-configmap.yaml
+  - database/postgres-backup-deployment.yaml

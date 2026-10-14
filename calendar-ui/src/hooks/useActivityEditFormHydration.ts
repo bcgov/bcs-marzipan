@@ -23,6 +23,8 @@ import type { FormLookupData } from './useFormLookups';
  * Lookups are accessed via a ref so that individual query settlements do not
  * cascade repeated resets; only the ready-state transition (`lookupsReady`)
  * and the activity sync key trigger re-hydration.
+ * When `preserveDirtySession` is true, a newer server version is deferred so
+ * reconnect/data-update handling cannot silently replace unsaved form values.
  *
  * Exposes {@link isFormHydrated} and a monotonic {@link hydrationGeneration}
  * for lock-intent logic.
@@ -34,7 +36,8 @@ import type { FormLookupData } from './useFormLookups';
 export function useActivityEditFormHydration(
   activity: ActivityResponse,
   lookups: FormLookupData,
-  form: UseFormReturn<ActivityFormData>
+  form: UseFormReturn<ActivityFormData>,
+  preserveDirtySession = false
 ): {
   isFormHydrated: boolean;
   hydrationGeneration: number;
@@ -49,11 +52,13 @@ export function useActivityEditFormHydration(
   const [isFormHydrated, setIsFormHydrated] = useState(false);
   const [hydrationGeneration, setHydrationGeneration] = useState(0);
 
-  const activitySyncKey = `${activity.id}\0${activity.lastUpdatedDateTime}`;
+  const operationalLastUpdated =
+    activity.lastUpdatedDateTime ?? activity.publicLastUpdatedDateTime;
+  const activitySyncKey = `${activity.id}\0${operationalLastUpdated}`;
   const lookupsReady = !lookups.isLoading && !lookups.hasError;
 
   useEffect(() => {
-    if (!lookupsReady) return;
+    if (!lookupsReady || preserveDirtySession) return;
 
     setIsFormHydrated(false);
 
@@ -62,9 +67,9 @@ export function useActivityEditFormHydration(
       lookupsRef.current
     );
     form.reset(mapped);
-    initialFormDataRef.current = mapped;
 
     const timeoutId = window.setTimeout(() => {
+      initialFormDataRef.current = structuredClone(form.getValues());
       setIsFormHydrated(true);
       setHydrationGeneration((g) => g + 1);
     }, 0);
@@ -72,7 +77,7 @@ export function useActivityEditFormHydration(
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [activitySyncKey, lookupsReady, form]);
+  }, [activitySyncKey, lookupsReady, form, preserveDirtySession]);
 
   return {
     isFormHydrated,

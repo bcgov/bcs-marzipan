@@ -69,11 +69,76 @@ spec:
                 configMapKeyRef:
                   name: calendar-service-config
                   key: POST_LOGIN_REDIRECT_URL
+            - name: PUBLIC_APP_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: PUBLIC_APP_BASE_URL
+            - name: NOTIFICATIONS_EMAIL_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_EMAIL_ENABLED
+            - name: NOTIFICATIONS_EMAIL_FROM
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_EMAIL_FROM
+            - name: NOTIFICATIONS_SMTP_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_SMTP_HOST
+            - name: NOTIFICATIONS_SMTP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_SMTP_PORT
+            - name: NOTIFICATIONS_SMTP_SECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_SMTP_SECURE
+            - name: NOTIFICATIONS_EMAIL_SUBJECT_PREFIX
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_EMAIL_SUBJECT_PREFIX
+            - name: RATE_LIMIT_MAX
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: RATE_LIMIT_MAX
+            - name: RATE_LIMIT_AUTH_MAX
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: RATE_LIMIT_AUTH_MAX
+            - name: RATE_LIMIT_STORE
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: RATE_LIMIT_STORE
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: calendar-service-secrets
                   key: JWT_SECRET
+            - name: NOTIFICATIONS_SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: NOTIFICATIONS_SMTP_USER
+            - name: NOTIFICATIONS_SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: NOTIFICATIONS_SMTP_PASS
+            - name: RATE_LIMIT_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-service-secrets
+                  key: RATE_LIMIT_REDIS_URL
             - name: AZURE_TENANT_ID
               valueFrom:
                 secretKeyRef:

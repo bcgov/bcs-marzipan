@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import type { MissingRequiredFieldItem } from '@/lib/form-utils';
 
 const HOVER_CLOSE_DELAY_MS = 150;
 
@@ -30,14 +31,24 @@ function usePrefersHover(): boolean {
 
 type ActivityFormMissingFieldsHintProps = {
   helperText: string;
-  fields: readonly string[];
+  fields: readonly (string | MissingRequiredFieldItem)[];
   align?: 'start' | 'center' | 'end';
+  onFieldSelect?: (fieldName: string) => void;
 };
+
+function getFieldName(field: string | MissingRequiredFieldItem): string {
+  return typeof field === 'string' ? field : field.name;
+}
+
+function getFieldLabel(field: string | MissingRequiredFieldItem): string {
+  return typeof field === 'string' ? field : field.label;
+}
 
 export function ActivityFormMissingFieldsHint({
   helperText,
   fields,
   align = 'end',
+  onFieldSelect,
 }: ActivityFormMissingFieldsHintProps) {
   const [open, setOpen] = useState(false);
   const prefersHover = usePrefersHover();
@@ -116,7 +127,22 @@ export function ActivityFormMissingFieldsHint({
           </h4>
           <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
             {fields.map((field) => (
-              <li key={field}>{field}</li>
+              <li key={getFieldName(field)}>
+                {onFieldSelect ? (
+                  <button
+                    type="button"
+                    className="hover:text-foreground focus-visible:ring-ring/50 rounded-sm text-left underline-offset-2 hover:underline focus-visible:ring-[3px] focus-visible:outline-none"
+                    onClick={() => {
+                      setOpen(false);
+                      onFieldSelect(getFieldName(field));
+                    }}
+                  >
+                    {getFieldLabel(field)}
+                  </button>
+                ) : (
+                  getFieldLabel(field)
+                )}
+              </li>
             ))}
           </ul>
         </div>

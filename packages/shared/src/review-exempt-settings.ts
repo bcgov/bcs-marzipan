@@ -21,7 +21,7 @@ export const ACTIVITY_REVIEW_EXEMPT_FIELD_KEYS_SETTING =
 
 /**
  * When no row exists or JSON is invalid, the server and diff defaults use this
- * list (must match the seed in packages/database/seeds).
+ * list (must match the config seed in packages/database/config-data).
  */
 export const DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS = [
   'visibility',

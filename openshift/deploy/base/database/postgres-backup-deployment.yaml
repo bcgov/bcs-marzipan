@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calendar-postgres-backup
+  labels:
+    app: calendar-postgres-backup
+    app.kubernetes.io/name: calendar
+    app.kubernetes.io/component: postgres-backup
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: dev
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calendar-postgres-backup
+  template:
+    metadata:
+      labels:
+        app: calendar-postgres-backup
+        app.kubernetes.io/name: calendar
+        app.kubernetes.io/component: postgres-backup
+        app.kubernetes.io/part-of: corporate-calendar
+    spec:
+      # OpenShift restricted SCC safe
+      securityContext: {}
+      containers:
+        - name: postgres-backup
+          image: ghcr.io/bcgov/backup-container:2.10.3
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TZ
+              value: UTC
+            - name: BACKUP_STRATEGY
+              value: rolling
+            - name: BACKUP_DIR
+              value: /backups/
+            - name: NUM_BACKUPS
+              value: ''
+            - name: DAILY_BACKUPS
+              value: ''
+            - name: WEEKLY_BACKUPS
+              value: ''
+            - name: MONTHLY_BACKUPS
+              value: ''
+            - name: BACKUP_PERIOD
+              value: ''
+            - name: DATABASE_SERVICE_NAME
+              value: calendar-postgres
+            - name: DATABASE_NAME
+              value: calendar
+            - name: TABLE_SCHEMA
+              value: public
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-postgres-secret
+                  key: POSTGRES_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: FTP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-postgres-backup-secret
+                  key: ftp-url
+                  optional: true
+            - name: FTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-postgres-backup-secret
+                  key: ftp-user
+                  optional: true
+            - name: FTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-postgres-backup-secret
+                  key: ftp-password
+                  optional: true
+            - name: WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: calendar-postgres-backup-secret
+                  key: webhook-url
+                  optional: true
+            - name: ENVIRONMENT_FRIENDLY_NAME
+              value: Corporate Calendar DB Backups
+            - name: ENVIRONMENT_NAME
+              value: dev
+          volumeMounts:
+            - name: backup-config
+              mountPath: /backup.conf
+              subPath: postgres-backup.conf
+            - name: backup-storage
+              mountPath: /backups/
+      volumes:
+        - name: backup-config
+          configMap:
+            name: calendar-postgres-backup-configmap
+        - name: backup-storage
+          persistentVolumeClaim:
+            claimName: postgres-backup-pvc

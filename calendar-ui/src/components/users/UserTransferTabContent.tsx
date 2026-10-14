@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
@@ -14,7 +13,11 @@ import {
   type TransferActivitiesFieldsMeta,
 } from '@/components/users/TransferActivitiesFields';
 import { useTransferActivitiesSubmit } from '@/hooks/useTransferActivitiesSubmit';
-import { formatTransferActivitiesSuccessMessage } from '@/lib/transfer-activities-messages';
+import {
+  formatTransferActivitiesSuccessDescription,
+  formatTransferActivitiesSuccessTitle,
+} from '@/lib/transfer-activities-messages';
+import { showEntityToast } from '@/lib/user-team-toast-messages';
 import { invalidateUserCaches } from '@/lib/userQueryKeys';
 
 interface UserTransferTabContentProps {
@@ -85,12 +88,19 @@ export function UserTransferTabContent({
         draft.targetUserId != null
           ? `activities-transferred-${sourceUser.id}-${draft.targetUserId}`
           : 'activities-transferred';
-      toast.success(
-        formatTransferActivitiesSuccessMessage(data.transferredCount),
-        {
-          id: toastId,
-        }
-      );
+      const targetUserName =
+        draft.targetUserLabel.trim() ||
+        (draft.targetUserId != null
+          ? `User ${draft.targetUserId}`
+          : 'another user');
+      showEntityToast('success', formatTransferActivitiesSuccessTitle(), {
+        description: formatTransferActivitiesSuccessDescription(
+          data.transferredCount,
+          sourceDisplayName,
+          targetUserName
+        ),
+        id: toastId,
+      });
       setDraft(resetForm());
     },
     onError: (err: Error) => {
@@ -98,7 +108,10 @@ export function UserTransferTabContent({
         draft.targetUserId != null
           ? `activities-transferred-${sourceUser.id}-${draft.targetUserId}`
           : 'activities-transferred';
-      toast.error(err.message || 'Transfer failed', { id: toastId });
+      showEntityToast('error', 'Transfer failed', {
+        description: `${sourceDisplayName} — ${err.message || 'Transfer failed'}`,
+        id: toastId,
+      });
     },
   });
 

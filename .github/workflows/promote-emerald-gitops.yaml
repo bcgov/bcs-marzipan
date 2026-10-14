@@ -18,6 +18,16 @@ on:
         description: Image tag to promote (defaults to APP_VERSION variable, else short SHA)
         required: false
         type: string
+  workflow_call:
+    inputs:
+      target_environment:
+        description: Target Emerald environment overlay to update
+        required: true
+        type: string
+      image_tag:
+        description: Image tag to promote (defaults to APP_VERSION variable, else short SHA)
+        required: false
+        type: string
 
 jobs:
   update-gitops-overlay:

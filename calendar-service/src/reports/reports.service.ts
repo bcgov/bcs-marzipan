@@ -69,7 +69,7 @@ import {
 } from './print-assets';
 import { filterActivityResponsesBySearchKeyword } from './report-activity-search';
 
-/** Look-ahead family reports that use the shared letter-size cover in PDF export only. */
+/** Look Ahead family reports that use the shared letter-size cover in PDF export only. */
 const REPORT_TYPES_WITH_LOOK_AHEAD_COVER = new Set(['look-ahead', 'exec']);
 
 /** Reports that use the shared confidential header band in PDF body export. */
@@ -197,6 +197,13 @@ export class ReportsService {
     const raw = this.configService.get<string>('PUBLIC_APP_BASE_URL');
     const trimmed = raw?.trim();
     if (trimmed && trimmed.length > 0) return trimTrailingSlashes(trimmed);
+
+    if (this.configService.get<string>('NODE_ENV') === 'production') {
+      throw new Error(
+        'PUBLIC_APP_BASE_URL must be configured in production to generate report activity links.'
+      );
+    }
+
     return 'http://localhost:3000';
   }
 
@@ -213,7 +220,7 @@ export class ReportsService {
     const dataUrl = buildLookAheadReportCoverDataUrl();
     if (!dataUrl) {
       this.logger.warn(
-        'Look-ahead cover image missing from @corpcal/shared assets/reports; PDF export continues without a cover page.'
+        'Look Ahead cover image missing from @corpcal/shared assets/reports; PDF export continues without a cover page.'
       );
       return '';
     }
@@ -242,89 +249,6 @@ export class ReportsService {
       label: row.reportLegendLabel,
       legendColor: row.legendColor,
     }));
-  }
-
-  /**
-   * Get all active reports
-   * @returns List of all active reports
-   */
-  async findAllReports(): Promise<ReportResponse[]> {
-    const results = await this.databaseService.db
-      .select()
-      .from(reports)
-      .where(eq(reports.isActive, true))
-      .orderBy(reports.sortOrder, reports.displayName);
-
-    return results.map((report) => {
-      // Validate and parse config JSONB field
-      let config = null;
-      if (report.config) {
-        const configResult = reportConfigSchema.safeParse(report.config);
-        if (configResult.success) {
-          config = configResult.data;
-        } else {
-          // Log validation error but don't fail the request
-          this.logger.warn(
-            `Invalid report config for report ${report.id}: ${configResult.error.message}`
-          );
-        }
-      }
-
-      return {
-        id: report.id,
-        name: report.name,
-        displayName: report.displayName,
-        sortOrder: report.sortOrder,
-        isActive: report.isActive,
-        visibility:
-          (report.visibility as Visibility) ?? ('team' satisfies Visibility),
-        config,
-        description: report.description,
-      };
-    });
-  }
-
-  /**
-   * Get a report by ID
-   * @param reportId - The report ID
-   * @returns Report details or null if not found
-   */
-  async findReportById(reportId: number): Promise<ReportResponse | null> {
-    const [result] = await this.databaseService.db
-      .select()
-      .from(reports)
-      .where(and(eq(reports.id, reportId), eq(reports.isActive, true)))
-      .limit(1);
-
-    if (!result) {
-      return null;
-    }
-
-    // Validate and parse config JSONB field
-    let config = null;
-    if (result.config) {
-      const configResult = reportConfigSchema.safeParse(result.config);
-      if (configResult.success) {
-        config = configResult.data;
-      } else {
-        // Log validation error but don't fail the request
-        this.logger.warn(
-          `Invalid report config for report ${result.id}: ${configResult.error.message}`
-        );
-      }
-    }
-
-    return {
-      id: result.id,
-      name: result.name,
-      displayName: result.displayName,
-      sortOrder: result.sortOrder,
-      isActive: result.isActive,
-      visibility:
-        (result.visibility as Visibility) ?? ('team' satisfies Visibility),
-      config,
-      description: result.description,
-    };
   }
 
   /**
@@ -580,7 +504,7 @@ export class ReportsService {
       const report: ReportResponse = {
         id: -1,
         name: 'custom',
-        displayName: 'Custom',
+        displayName: 'Excel',
         sortOrder: 0,
         isActive: true,
         visibility: 'team' satisfies Visibility,

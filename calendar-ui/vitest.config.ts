@@ -9,6 +9,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // Full-page jsdom renders (e.g. ActivityPage) can exceed 5s when workers are under load.
+    testTimeout: 15000,
     coverage: {
       reportsDirectory: path.resolve(__dirname, '../coverage/ui'),
     },

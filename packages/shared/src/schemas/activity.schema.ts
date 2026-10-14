@@ -461,6 +461,17 @@ export const createActivityRequestSchema = createBaseSchema
  */
 export const updateActivityRequestSchema = createBaseSchema
   .partial()
+  .extend({
+    /**
+     * Optimistic concurrency token: the operational `lastUpdatedDateTime` the client loaded.
+     * When supplied and the activity has changed since, the save is rejected with
+     * 409 instead of silently overwriting the newer state (e.g. a team that was
+     * unshared while the editor held the form open).
+     */
+    ifUnmodifiedSince: z.string().datetime().optional(),
+    /** When caller has activities.publicLastUpdated.defer, set true to also bump publicLastUpdated*. */
+    renewPublicLastUpdated: z.boolean().optional(),
+  })
   .refine(updateLeadContactRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,
     path: [...LEAD_CONTACT_REFINE_PATH],
@@ -480,6 +491,97 @@ export const updateActivityRequestSchema = createBaseSchema
       ...zodConstraintIssueParams(),
     }
   );
+
+/**
+ * Administrative bulk action request. This intentionally permits only the
+ * operations available from the activity list bulk-actions UI.
+ */
+export const bulkUpdateActivitiesRequestSchema = z
+  .object({
+    activityIds: z.array(z.number().int().positive()).min(1).max(100),
+    operation: z.enum([
+      'review',
+      'pitchStatus',
+      'issue',
+      'tags',
+      'sharedWith',
+      'flag',
+      'delete',
+    ]),
+    pitchRequiredStatusId: z.number().int().positive().optional(),
+    tagIds: z.array(z.number().int().positive()).max(100).optional(),
+    teamIds: z.array(z.number().int().positive()).max(100).optional(),
+    flagTeamId: z.number().int().positive().optional(),
+    assigneeIds: z
+      .array(z.number().int().positive())
+      .min(1)
+      .max(100)
+      .optional(),
+    deleteReason: z.string().min(10).max(1000).trim().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const addRequiredIssue = (field: string) => {
+      ctx.addIssue({
+        code: 'custom',
+        message: `${field} is required for ${data.operation}.`,
+        path: [field],
+      });
+    };
+    if (
+      data.operation === 'pitchStatus' &&
+      data.pitchRequiredStatusId === undefined
+    ) {
+      addRequiredIssue('pitchRequiredStatusId');
+    }
+    if (data.operation === 'tags' && data.tagIds === undefined) {
+      addRequiredIssue('tagIds');
+    }
+    if (data.operation === 'sharedWith' && data.teamIds === undefined) {
+      addRequiredIssue('teamIds');
+    }
+    if (data.operation === 'flag' && data.flagTeamId === undefined) {
+      addRequiredIssue('flagTeamId');
+    }
+    if (data.operation === 'delete' && data.deleteReason === undefined) {
+      addRequiredIssue('deleteReason');
+    }
+    if (data.operation === 'flag' && data.assigneeIds === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'assigneeIds is required for flag.',
+        path: ['assigneeIds'],
+      });
+    }
+  });
+
+/**
+ * Bulk unshare request: removes one team from several activities' Shared With lists.
+ * Separate from bulkUpdateActivitiesRequestSchema because unsharing requires only
+ * activities.unshare, not the edit permissions the other bulk operations need.
+ */
+export const bulkUnshareActivitiesRequestSchema = z.object({
+  activityIds: z.array(z.number().int().positive()).min(1).max(100),
+  teamId: z.number().int().positive(),
+});
+
+/**
+ * Per-activity outcome for a bulk unshare. Activities that were not shared with the
+ * team, or are locked by another user, are reported as `skipped` with a reason
+ * rather than failing the whole batch.
+ */
+export const bulkUnshareActivitiesResultSchema = z.object({
+  results: z.array(
+    z.object({
+      activityId: z.number().int(),
+      status: z.enum(['updated', 'skipped']),
+      reason: z.string().optional(),
+    })
+  ),
+  summary: z.object({
+    updated: z.number().int(),
+    skipped: z.number().int(),
+  }),
+});
 
 /**
  * Schema for soft deleting an activity
@@ -552,6 +654,15 @@ export const hardDeleteRequestBodySchema = hardDeleteRequestSchema.default({});
  */
 export type CreateActivityRequest = z.infer<typeof createActivityRequestSchema>;
 export type UpdateActivityRequest = z.infer<typeof updateActivityRequestSchema>;
+export type BulkUpdateActivitiesRequest = z.infer<
+  typeof bulkUpdateActivitiesRequestSchema
+>;
+export type BulkUnshareActivitiesRequest = z.infer<
+  typeof bulkUnshareActivitiesRequestSchema
+>;
+export type BulkUnshareActivitiesResult = z.infer<
+  typeof bulkUnshareActivitiesResultSchema
+>;
 export type SoftDeleteRequest = z.infer<typeof softDeleteRequestSchema>;
 export type RequestDeleteRequest = z.infer<typeof requestDeleteRequestSchema>;
 export type RestoreRequest = z.infer<typeof restoreRequestSchema>;

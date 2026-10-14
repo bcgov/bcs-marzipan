@@ -8,9 +8,11 @@ To use the database in a service, inject `DatabaseService`:
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { DatabaseService } from '../database';
-import { activities } from '@corpcal/database/schema';
 import { eq } from 'drizzle-orm';
+
+import { activities } from '@corpcal/database/schema';
+
+import { DatabaseService } from '../database';
 
 @Injectable()
 export class MyService {
@@ -59,7 +61,7 @@ To seed the database with lookup table data, from the calendar-service run:
 npm run seed
 ```
 
-This will automatically discover and execute all seed SQL files located in `packages/database/seeds/` in order.
+This will automatically discover and execute SQL files from `packages/database/config-data/` and `packages/database/seeds/` in order.
 **Note** this should be tested thoroughly before using with production data.
 
 ### Seed File Naming Convention
@@ -138,5 +140,5 @@ The seed operation is idempotent - it can be run multiple times safely:
 - Always use `DatabaseService` injection rather than importing `db` directly from `@corpcal/database`
 - This ensures proper connection pooling, configuration, and testability
 - Seed files should be run after database migrations have been applied
-- Seed files are located in `packages/database/seeds/` (not in migrations directory)
+- Config and seed files are located in `packages/database/config-data/` and `packages/database/seeds/` (not in migrations directory)
 - The core seed runner logic lives in `@corpcal/database` package for better separation of concerns

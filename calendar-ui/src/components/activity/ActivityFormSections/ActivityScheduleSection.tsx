@@ -17,13 +17,12 @@ import {
 } from '@/components/app/form-select';
 import { Button } from '@/components/ui/button';
 import {
-  FormAggregateDirtyIndicator,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  useFormDisplayOptions,
+  useFormPathsFieldHighlight,
 } from '@/components/ui/form';
 import { Label } from '@/components/ui/label';
 import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
@@ -37,6 +36,7 @@ import {
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
+import { FORM_FIELD_LABEL_HIGHLIGHT_CLASS } from '@/lib/form-field-highlight';
 import {
   getPresetAnchorToday,
   parseIsoDateLocal,
@@ -92,8 +92,9 @@ export function ActivityScheduleSection({
   timeStatuses,
 }: ActivityScheduleSectionProps) {
   const { readOnly } = useActivityEdit();
-  const { showChangedBadges } = useFormDisplayOptions();
   const form = useFormContext<ActivityFormData>();
+  const dateGroupHighlight = useFormPathsFieldHighlight(DATE_GROUP_FIELDS);
+  const timeGroupHighlight = useFormPathsFieldHighlight(TIME_GROUP_FIELDS);
   const [activeTimePopover, setActiveTimePopover] = useState<
     'start' | 'end' | null
   >(null);
@@ -147,13 +148,19 @@ export function ActivityScheduleSection({
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.schedule}>
       <FormItem>
         {/* Group label — not FormLabel: not tied to one control id (nested fields each have sr-only labels). */}
-        <Label
-          className={cn(
-            'flex items-center gap-2',
-            showChangedBadges && 'min-h-[18px]'
-          )}
-        >
-          <span>Date</span>
+        <Label className="flex items-center gap-2">
+          <span
+            className={cn(
+              dateGroupHighlight.highlight && FORM_FIELD_LABEL_HIGHLIGHT_CLASS
+            )}
+          >
+            Date
+            {dateGroupHighlight.screenReaderText ? (
+              <span className="sr-only">
+                {dateGroupHighlight.screenReaderText}
+              </span>
+            ) : null}
+          </span>
           <ActivityFieldInfoIcon
             fieldKey="startDate"
             ariaLabel="About start date"
@@ -166,7 +173,6 @@ export function ActivityScheduleSection({
             fieldKey="dateStatusId"
             ariaLabel="About date status"
           />
-          <FormAggregateDirtyIndicator names={DATE_GROUP_FIELDS} />
         </Label>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
           <div className="flex min-w-0 items-center gap-2">
@@ -316,7 +322,7 @@ export function ActivityScheduleSection({
                       className={STATUS_SELECT_MIN_WIDTH}
                       aria-label={getActivityFieldLabel(statusField.name)}
                     >
-                      <SelectValue placeholder="Date status" />
+                      <SelectValue placeholder="" />
                     </FormSelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -350,13 +356,19 @@ export function ActivityScheduleSection({
 
       <FormItem>
         {/* Group label — not FormLabel: not tied to one control id (nested fields each have sr-only labels). */}
-        <Label
-          className={cn(
-            'flex items-center gap-2',
-            showChangedBadges && 'min-h-[18px]'
-          )}
-        >
-          <span>Time</span>
+        <Label className="flex items-center gap-2">
+          <span
+            className={cn(
+              timeGroupHighlight.highlight && FORM_FIELD_LABEL_HIGHLIGHT_CLASS
+            )}
+          >
+            Time
+            {timeGroupHighlight.screenReaderText ? (
+              <span className="sr-only">
+                {timeGroupHighlight.screenReaderText}
+              </span>
+            ) : null}
+          </span>
           <ActivityFieldInfoIcon
             fieldKey="startTime"
             ariaLabel="About start time"
@@ -373,7 +385,6 @@ export function ActivityScheduleSection({
             fieldKey="timeStatusId"
             ariaLabel="About time status"
           />
-          <FormAggregateDirtyIndicator names={TIME_GROUP_FIELDS} />
         </Label>
         <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
           <div className="flex min-w-0 items-center gap-2">
@@ -515,7 +526,7 @@ export function ActivityScheduleSection({
                       className={STATUS_SELECT_MIN_WIDTH}
                       aria-label={getActivityFieldLabel(statusField.name)}
                     >
-                      <SelectValue placeholder="Time status" />
+                      <SelectValue placeholder="" />
                     </FormSelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -562,13 +573,13 @@ export function ActivityScheduleSection({
                 {getActivityFieldLabel(field.name)}
                 <ActivityFieldInfoIcon
                   fieldKey="schedulingNotes"
-                  ariaLabel="About scheduling notes"
+                  ariaLabel="About scheduling and approval notes"
                 />
               </>
             </FormLabel>
             <FormControl data-field={field.name}>
               <Textarea
-                placeholder="Enter scheduling considerations"
+                placeholder=""
                 readOnly={readOnly}
                 rows={4}
                 maxLength={ACTIVITY_SCHEDULING_NOTES_MAX_LENGTH}

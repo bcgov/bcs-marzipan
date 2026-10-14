@@ -1,6 +1,10 @@
+import {
+  activityResponseToListItem,
+  type ActivityListItem,
+} from '../../schemas/activity-list-item.schema';
 import type { ActivityResponse } from '../../schemas/activity-response.schema';
 
-export const BASE_ACTIVITY: ActivityResponse = {
+const BASE_ACTIVITY_RESPONSE = {
   id: 101,
   displayId: 'ACT-101',
   isIssue: true,
@@ -39,6 +43,8 @@ export const BASE_ACTIVITY: ActivityResponse = {
   lastUpdatedBy: 1,
   createdDateTime: '2026-04-20T00:00:00.000Z',
   lastUpdatedDateTime: '2026-04-26T17:05:00.000Z',
+  publicLastUpdatedBy: 1,
+  publicLastUpdatedDateTime: '2026-04-26T17:05:00.000Z',
   category: ['Announcement'],
   categoryIds: [1],
   tags: [],
@@ -46,6 +52,7 @@ export const BASE_ACTIVITY: ActivityResponse = {
   translationsRequired: [],
   representativesAttending: [],
   sharedWith: [],
+  sharedWithTeamIds: [],
   commsContacts: [],
   leadOrg: 'Ministry of Housing',
   eventPlannerDetails: [],
@@ -66,4 +73,8 @@ export const BASE_ACTIVITY: ActivityResponse = {
   venueAddress: null,
   reportSettings: [],
   flags: [],
-};
+} satisfies ActivityResponse;
+
+export const BASE_ACTIVITY: ActivityListItem = activityResponseToListItem(
+  BASE_ACTIVITY_RESPONSE
+);

@@ -1,8 +1,10 @@
 import { ErrorBoundary } from 'react-error-boundary';
+import type { FieldErrors } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useMemo, useState, type FC } from 'react';
+import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 
+import { getActivityFormSectionFieldKeys } from '@corpcal/shared';
 import { PERMISSIONS } from '@corpcal/shared/auth';
 import {
   createActivityRequestSchema,
@@ -16,7 +18,12 @@ import {
 } from '@/components/activity';
 import { CreateActivityConfirmModal } from '@/components/activity/activities/CreateActivityConfirmModal';
 import { PageHeader } from '@/components/layout';
-import { FormErrorFallback, StatusMessage } from '@/components/shared';
+import {
+  FormErrorFallback,
+  LockoutBanner,
+  LockoutBannerContent,
+  StatusMessage,
+} from '@/components/shared';
 import { Button } from '@/components/ui/button';
 
 import { Form } from '../components/ui/form';
@@ -24,6 +31,8 @@ import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState';
 import { useAuth } from '../hooks/useAuth';
 import { useCreateActivity } from '../hooks/useCalendar';
+import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
+import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import { buildPayloadForCreate } from '../lib/activity-form-payload';
@@ -35,9 +44,16 @@ import {
   ACCESS_DENIED_TITLE,
 } from '../lib/error-messages';
 import { showErrorToast } from '../lib/error-toast';
+import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
+import { getRecurringEditLockoutErrorMessage } from '../lib/recurring-edit-lockout-error';
+import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
+import { TOAST_DURATION_MS } from '../lib/toast-durations';
 
 const logger = createLogger('CreateActivityForm');
+
+/** Match sticky back bar height (py-3 + h-8 sm button ≈ 56px). IO rootMargin only accepts px or %. */
+const LOCK_BANNER_INTERSECTION_ROOT_MARGIN = '-56px 0px 0px 0px';
 
 /** Create flow: navigates back to the list (or `location.state.from`) after submit/cancel; same-tab as Activity list. */
 export const CreateActivityForm: FC = () => {
@@ -59,6 +75,28 @@ export const CreateActivityForm: FC = () => {
   const canViewActivity = hasPermission(PERMISSIONS.ACTIVITIES.VIEW);
 
   const {
+    isBlocked: isBlockedByRecurringLockout,
+    schedule: recurringLockoutSchedule,
+  } = useRecurringEditLockout(user?.permissions ?? []);
+
+  const lockoutInlineMessage = useMemo(
+    () =>
+      recurringLockoutSchedule != null
+        ? getRecurringLockoutInlineMessage(recurringLockoutSchedule)
+        : '',
+    [recurringLockoutSchedule]
+  );
+
+  const [lockoutBannerSentinel, setLockoutBannerSentinel] =
+    useState<HTMLDivElement | null>(null);
+  const lockoutBannerInView = useElementIsIntersecting(
+    lockoutBannerSentinel,
+    isBlockedByRecurringLockout,
+    LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
+    0
+  );
+
+  const {
     form,
     lookups,
     leadTeamOptions,
@@ -74,7 +112,9 @@ export const CreateActivityForm: FC = () => {
     hasCreateAny,
   });
 
-  const { isFormValid, missingFields, missingFieldsHelperText } =
+  const createActivityFormRef = useRef<HTMLFormElement>(null);
+
+  const { missingFields, missingFieldItems, missingFieldsHelperText } =
     useActivityFormSubmitState(form, {
       getFieldLabel: getActivityFieldLabel,
       schema: createActivityRequestSchema,
@@ -85,6 +125,15 @@ export const CreateActivityForm: FC = () => {
       resolveTranslationRequiredStatusId(lookups.translationRequiredStatuses),
     [lookups.translationRequiredStatuses]
   );
+
+  useEffect(() => {
+    if (!isBlockedByRecurringLockout) {
+      return;
+    }
+
+    setShowConfirmModal(false);
+    setValidatedData(null);
+  }, [isBlockedByRecurringLockout]);
 
   const handleCancel = () => {
     void form.reset();
@@ -100,7 +149,7 @@ export const CreateActivityForm: FC = () => {
     notes?: string,
     markAsReviewed?: boolean
   ) => {
-    if (!validatedData) return;
+    if (!validatedData || isBlockedByRecurringLockout) return;
     const titleForToast = validatedData.title;
     setIsSubmitting(true);
     try {
@@ -147,21 +196,27 @@ export const CreateActivityForm: FC = () => {
       logger.error('Failed to create activity', error);
       showErrorToast(
         error,
-        'Your activity could not be created. If the problem persists, please contact calendar admins.'
+        getRecurringEditLockoutErrorMessage(error) ??
+          'Your activity could not be created. If the problem persists, please contact calendar admins.'
       );
       setIsSubmitting(false);
     }
   };
 
-  const onError = () => {
+  const onError = (errors: FieldErrors<ActivityFormData>) => {
     logger.error('Form validation failed');
+    focusFirstInvalidField(errors, {
+      getFieldLabel: getActivityFieldLabel,
+      fieldOrder: getActivityFormSectionFieldKeys(),
+      root: createActivityFormRef.current,
+    });
     const detail =
       missingFields.length > 0
         ? `Required fields missing: ${missingFields.join(', ')}`
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
-      duration: 6000,
+      duration: TOAST_DURATION_MS.error,
     });
   };
 
@@ -207,11 +262,31 @@ export const CreateActivityForm: FC = () => {
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      <ActivityFormStickyHeader />
+      <ActivityFormStickyHeader
+        lockStrip={
+          isBlockedByRecurringLockout ? (
+            <LockoutBannerContent
+              message={lockoutInlineMessage}
+              className="max-w-full flex-wrap items-center justify-end gap-x-3 gap-y-1"
+            />
+          ) : undefined
+        }
+        lockStripVisible={isBlockedByRecurringLockout && !lockoutBannerInView}
+      />
       <PageHeader title="Create New Activity" />
+
+      {isBlockedByRecurringLockout && (
+        <div ref={setLockoutBannerSentinel}>
+          <LockoutBanner
+            inert={!lockoutBannerInView}
+            message={lockoutInlineMessage}
+          />
+        </div>
+      )}
 
       <Form {...form}>
         <form
+          ref={createActivityFormRef}
           onSubmit={(e) => {
             e.preventDefault();
             void form.handleSubmit(onSubmit, onError)(e);
@@ -235,8 +310,8 @@ export const CreateActivityForm: FC = () => {
           <ActivityFormBody
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
-            readOnly={false}
-            showChangedBadges={false}
+            readOnly={isBlockedByRecurringLockout}
+            showFieldChangeHighlights={false}
             leadTeamField={{
               options: leadTeamOptions,
               displayLabel: null,
@@ -262,14 +337,18 @@ export const CreateActivityForm: FC = () => {
               {missingFieldsHelperText != null && (
                 <ActivityFormMissingFieldsHint
                   helperText={missingFieldsHelperText}
-                  fields={missingFields}
+                  fields={missingFieldItems}
+                  onFieldSelect={(fieldName) =>
+                    focusRequiredField(fieldName, {
+                      root: createActivityFormRef.current,
+                    })
+                  }
                 />
               )}
               <Button
                 type="submit"
                 variant="default"
-                disabled={!isFormValid || isSubmitting}
-                className={!isFormValid ? 'cursor-not-allowed' : undefined}
+                disabled={isSubmitting || isBlockedByRecurringLockout}
               >
                 {isSubmitting ? 'Submitting...' : 'Submit'}
               </Button>
@@ -297,6 +376,7 @@ export const CreateActivityForm: FC = () => {
           }
           showMarkAsReviewed={canReviewActivities}
           isSubmitting={isSubmitting}
+          confirmDisabled={isBlockedByRecurringLockout}
         />
       ) : null}
     </ErrorBoundary>

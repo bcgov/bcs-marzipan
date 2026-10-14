@@ -149,6 +149,31 @@ function ActivityOverviewSectionHarness({
 }
 
 describe('ActivityOverviewSection field updates after hydration', () => {
+  it('renders summary and significance fields', () => {
+    render(<ActivityOverviewSectionHarness />);
+
+    expect(document.querySelector('input[name="summary"]')).toBeInTheDocument();
+    expect(
+      document.querySelector('input[name="significance"]')
+    ).toBeInTheDocument();
+  });
+
+  it('renders summary and significance with links-only toolbars', () => {
+    render(<ActivityOverviewSectionHarness />);
+
+    const toolbars = screen.getAllByRole('toolbar', {
+      name: /Text formatting/i,
+    });
+    expect(toolbars.length).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.queryByRole('button', { name: /^Bold$/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole('button', { name: /^Clear formatting$/i })
+    ).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /^Link$/i })).toHaveLength(2);
+  });
+
   it('marks isIssue dirty when the Issue checkbox is clicked', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;

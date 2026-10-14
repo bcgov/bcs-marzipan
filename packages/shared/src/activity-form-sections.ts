@@ -11,6 +11,8 @@ import type { ActivityFormData } from './schemas/activity.schema';
  *   `review-exempt-settings.ts` (filters out code-exempt keys).
  * - Clone modal advanced options — `CLONE_ADVANCED_*` in `clone-activity.schema.ts`
  *   (filters out clone-specific exclusions).
+ * - Missing-field focus / sticky hint order — `getActivityFormSectionFieldKeys()`
+ *   (calendar-ui `useActivityFormSubmitState`).
  *
  * When the form changes, update this file first, then the matching section component
  * in `calendar-ui/src/components/activity/ActivityFormSections/`. See
@@ -46,38 +48,40 @@ export const ACTIVITY_FORM_SECTION_LABELS: Record<
 
 /**
  * Top-level `ActivityFormData` keys owned by each section.
+ * Array order matches visual DOM order in the matching `Activity*Section` component
+ * (focus order, sticky hint list, derived admin/clone groupings).
  * Include code-exempt or clone-excluded keys here for completeness; consumers filter.
  */
 export const ACTIVITY_FORM_SECTION_FIELDS = {
   overview: [
-    'title',
     'categoryIds',
-    'tagIds',
+    'title',
+    'summary',
+    'isConfidential',
+    'isIssue',
+    'significance',
     'leadTeamId',
     'leadOrgId',
     'leadOrgName',
-    'significance',
-    'isIssue',
-    'isConfidential',
-    'summary',
-    'notes',
     'pitchRequiredStatusId',
     'pitchDate',
+    'notes',
+    'tagIds',
   ],
   comms: ['commsContacts', 'strategy', 'commsMaterialIds'],
   reports: [
-    'reportSettings',
     'executiveSummary',
     'lookAheadStatus',
     'lookAheadSection',
+    'reportSettings',
   ],
   schedule: [
     'startDate',
     'endDate',
-    'startTime',
-    'endTime',
-    'isAllDay',
     'dateStatusId',
+    'startTime',
+    'isAllDay',
+    'endTime',
     'timeStatusId',
     'schedulingNotes',
   ],
@@ -89,10 +93,10 @@ export const ACTIVITY_FORM_SECTION_FIELDS = {
     'translationLanguageIds',
   ],
   event: [
-    'venueStatusId',
-    'venueAddress',
     'premierRequestedId',
     'representatives',
+    'venueAddress',
+    'venueStatusId',
     'eventPlanners',
   ],
   sharing: ['visibility', 'sharedWithTeamIds'],

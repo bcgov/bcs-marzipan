@@ -34,7 +34,8 @@ This package contains Drizzle ORM schema definitions and database client setup.
 If you prefer to run SQL statements manually instead of using the CLI commands:
 
 - Migration SQL: `packages/database/migrations/*.sql`
-- Seed SQL: `packages/database/seeds/*.sql`
+- Config SQL: `packages/database/config-data/*.sql`
+- Fixture seed SQL: `packages/database/seeds/*.sql`
 
 ## Schema Change (Squash) Workflow (Development only)
 
@@ -108,7 +109,7 @@ Or run the generated SQL file manually from `packages/database/migrations/`.
 npm run seed --workspace=calendar-service
 ```
 
-Or run the seed SQL files manually from `packages/database/seeds/`.
+Or run the SQL files manually from `packages/database/config-data/` and `packages/database/seeds/`.
 
 > **Note:** The seed data may need updating if your schema changes affect lookup tables or required data.
 
@@ -325,7 +326,7 @@ The schema is defined in `src/schema/`:
 
 ## Field-level activity permissions
 
-Seed `seeds/0006_20260331_field_level_permissions_seed.sql` defines granular `activities.<scope>.view` / `activities.<scope>.edit` rows. **View** permissions are enforced for `notes` and `lookAhead` (API may omit those fields when the user lacks view access). **Pitch required status**, **pitch date**, and **translations** are visible to all users who can view the activity; editing still requires the corresponding `activities.<scope>.edit` grants.
+Seed `config-data/0002_field_level_permissions.sql` defines granular `activities.<scope>.view` / `activities.<scope>.edit` rows. **View** permissions are enforced for `notes` and `lookAhead` (API may omit those fields when the user lacks view access). **Pitch required status**, **pitch date**, and **translations** are visible to all users who can view the activity; editing still requires the corresponding `activities.<scope>.edit` grants.
 
 Seeds are tracked in `_seed_history` by **filename**. If you renumber or merge seed files on a database that was seeded with older names, run seeds with `force: true` (where the CLI or API exposes it), truncate `_seed_history`, or wipe the database so every file runs again in order.
 

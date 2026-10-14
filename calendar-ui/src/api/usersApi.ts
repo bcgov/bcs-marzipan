@@ -17,6 +17,7 @@ import type {
 } from '@corpcal/shared/api/types';
 
 import api from './axios';
+import type { RolePermissionRow } from './lookupsApi';
 
 export interface FetchUsersParams {
   search?: string;
@@ -202,7 +203,10 @@ export async function initiatePasswordReset(
 }
 
 export async function fetchTeams(): Promise<
-  Pick<TeamListItem, 'id' | 'name' | 'displayName'>[]
+  Pick<
+    TeamListItem,
+    'id' | 'name' | 'displayName' | 'ministryId' | 'ministryName'
+  >[]
 > {
   const response = await api.get<{
     success: boolean;
@@ -212,6 +216,8 @@ export async function fetchTeams(): Promise<
     id: t.id,
     name: t.name,
     displayName: t.displayName,
+    ministryId: t.ministryId ?? null,
+    ministryName: t.ministryName ?? null,
   }));
 }
 
@@ -222,14 +228,9 @@ export async function fetchRoles(): Promise<RoleOption[]> {
   return Array.isArray(response.data.data) ? response.data.data : [];
 }
 
-export async function fetchRolePermissions(roleId: number): Promise<
-  {
-    key: string;
-    displayName?: string | null;
-    description?: string | null;
-    hasPermission?: boolean;
-  }[]
-> {
+export async function fetchRolePermissions(
+  roleId: number
+): Promise<RolePermissionRow[]> {
   const response = await api.get<{ success: boolean; data: any }>(
     `/lookups/roles/${roleId}/permissions`
   );

@@ -47,6 +47,18 @@ export function isSamePacificCalendarDay(a: Date, b: Date): boolean {
 }
 
 export type ActivityHistoryRecencyBucket = 'Today' | 'This week' | 'Earlier';
+export type HistoryRecencyBucket =
+  | 'Today'
+  | 'Yesterday'
+  | 'This week'
+  | 'Earlier';
+
+export const HISTORY_RECENCY_BUCKETS: readonly HistoryRecencyBucket[] = [
+  'Today',
+  'Yesterday',
+  'This week',
+  'Earlier',
+];
 
 function pacificStartOfCalendarDayMs(dateKey: string): number | null {
   return pacificCivilToInstantMs(dateKey, '00:00:00');
@@ -79,6 +91,69 @@ export function pacificActivityHistoryRecencyBucket(
   return 'Earlier';
 }
 
+export type PacificRelativeCalendarDay = 'today' | 'yesterday' | 'other';
+
+/**
+ * Compares an instant's Pacific calendar day to `now` for relative UI labels.
+ */
+export function pacificRelativeCalendarDay(
+  entryInstant: Date,
+  now: Date = new Date()
+): PacificRelativeCalendarDay {
+  const entryKey = pacificCalendarDateFromInstant(entryInstant);
+  const todayKey = pacificCalendarDateFromInstant(now);
+  if (entryKey == null || todayKey == null) return 'other';
+  if (entryKey === todayKey) return 'today';
+
+  const yesterdayKey = addCalendarDays(todayKey, -1);
+  if (entryKey === yesterdayKey) return 'yesterday';
+
+  return 'other';
+}
+
+/**
+ * Compact audit-list grouping based on corporate Pacific calendar dates.
+ * "This week" preserves the existing rolling seven-day history window after
+ * extracting today and yesterday into their own groups.
+ */
+export function pacificHistoryRecencyBucket(
+  entryInstant: Date,
+  now: Date = new Date()
+): HistoryRecencyBucket {
+  const relative = pacificRelativeCalendarDay(entryInstant, now);
+  if (relative === 'today') return 'Today';
+  if (relative === 'yesterday') return 'Yesterday';
+
+  const entryKey = pacificCalendarDateFromInstant(entryInstant);
+  const todayKey = pacificCalendarDateFromInstant(now);
+  if (entryKey == null || todayKey == null) return 'Earlier';
+
+  const yesterdayKey = addCalendarDays(todayKey, -1);
+  const weekStartKey = addCalendarDays(todayKey, -7);
+  if (entryKey >= weekStartKey && entryKey < yesterdayKey) return 'This week';
+  return 'Earlier';
+}
+
+/**
+ * Pacific date label with recency words: Today, Yesterday, or a compact weekday
+ * date (e.g. Wed, Sep 15) without year.
+ */
+export function formatPacificRecencyDate(
+  timestamp: Date,
+  now: Date = new Date()
+): string {
+  const relative = pacificRelativeCalendarDay(timestamp, now);
+  if (relative === 'today') return 'Today';
+  if (relative === 'yesterday') return 'Yesterday';
+
+  return timestamp.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: CORP_PACIFIC_TIME_ZONE,
+  });
+}
+
 /**
  * Section heading for global/history lists: "Today" when the instant falls on
  * the same Pacific calendar day as `now`; otherwise a long Pacific date.
@@ -87,7 +162,7 @@ export function formatPacificHistoryListDayHeading(
   timestamp: Date,
   now: Date = new Date()
 ): string {
-  if (isSamePacificCalendarDay(timestamp, now)) {
+  if (pacificRelativeCalendarDay(timestamp, now) === 'today') {
     return 'Today';
   }
   return formatLongDate(timestamp, { timeZone: CORP_PACIFIC_TIME_ZONE });
@@ -139,11 +214,29 @@ export function pacificInclusiveCalendarRangeEndingToday(
 
 /**
  * Pacific wall-clock time for labels like "Updated today at …", including
- * `PT` so the zone is explicit (e.g. `4:21 PM PT`).
+ * `PT` so the zone is explicit (e.g. `4:21 pm PT`).
  */
 export function formatPacificTimeWithAbbrev(date: Date): string {
   const clock = formatTime(date, { timeZone: CORP_PACIFIC_TIME_ZONE });
   return clock === '' ? '' : `${clock}${PACIFIC_TIME_ABBREV_SUFFIX}`;
+}
+
+export type PacificRecencyDateTimeLines = {
+  dateLine: string;
+  timeLine: string;
+};
+
+/**
+ * Two-line Pacific timestamp for compact UI: recency date + time with PT suffix.
+ */
+export function formatPacificRecencyDateTime(
+  timestamp: Date,
+  now: Date = new Date()
+): PacificRecencyDateTimeLines {
+  return {
+    dateLine: formatPacificRecencyDate(timestamp, now),
+    timeLine: formatPacificTimeWithAbbrev(timestamp),
+  };
 }
 
 const RELATIVE_INTERVALS: [number, string, string][] = [
@@ -211,11 +304,14 @@ export function formatLongDate(
 }
 
 export function formatTime(date: Date, options?: IntlTimeZoneOption): string {
-  return date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    ...(options?.timeZone ? { timeZone: options.timeZone } : {}),
-  });
+  return date
+    .toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      ...(options?.timeZone ? { timeZone: options.timeZone } : {}),
+    })
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
 }
 
 /**
@@ -227,7 +323,7 @@ export function formatTime12h(timeStr: string | null): string {
 }
 
 export type FormatExactDateOptions = IntlTimeZoneOption & {
-  /** Include time, e.g. "Jan 23, 2026 at 2:00 PM". Default false. */
+  /** Include time, e.g. "Jan 23, 2026 at 2:00 pm". Default false. */
   includeTime?: boolean;
   /**
    * Include year: true | 'auto' = always show (e.g. "Jan 23, 2026"); false = omit (e.g. "Jan 23").
@@ -262,7 +358,7 @@ export function parseDateOnlyString(dateStr: string): Date {
 }
 
 /**
- * Exact date (and optional time) for "Updated Jan 23, 2026" or "Updated Jan 23, 2026 at 2:00 PM".
+ * Exact date (and optional time) for "Updated Jan 23, 2026" or "Updated Jan 23, 2026 at 2:00 pm".
  * Call site adds context prefix, e.g. "Updated " + formatExactDate(date).
  *
  * Pass `timeZone: CORP_PACIFIC_TIME_ZONE` when formatting an instant from the

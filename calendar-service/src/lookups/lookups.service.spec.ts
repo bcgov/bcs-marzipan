@@ -107,4 +107,81 @@ describe('LookupsService', () => {
       })
     );
   });
+
+  it('returns government representatives in admin sortOrder', async () => {
+    mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
+      createChain(
+        [
+          {
+            id: 2,
+            name: 'Niki Sharma',
+            displayName: 'Attorney General Niki Sharma',
+            title: 'Attorney General and Deputy Premier',
+            ministryId: 3,
+            representativeType: 'minister',
+            sortOrder: 1,
+            isActive: true,
+          },
+          {
+            id: 1,
+            name: 'Lana Popham',
+            displayName: 'Minister Lana Popham',
+            title: 'Minister of Agriculture and Food',
+            ministryId: 2,
+            representativeType: 'minister',
+            sortOrder: 2,
+            isActive: true,
+          },
+        ],
+        'orderBy'
+      )
+    );
+
+    const result = await service.getGovernmentRepresentatives();
+
+    expect(result.map((rep) => rep.name)).toEqual([
+      'Niki Sharma',
+      'Lana Popham',
+    ]);
+  });
+
+  it('returns event planner users sorted by staff name', async () => {
+    mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
+      createChain(
+        [
+          {
+            id: 2,
+            adUsername: 'NSHARMA',
+            adDisplayName: 'Niki Sharma',
+            adEmail: 'n@gov.bc.ca',
+          },
+          {
+            id: 1,
+            adUsername: 'LPOPHAM',
+            adDisplayName: 'Lana Popham',
+            adEmail: 'l@gov.bc.ca',
+          },
+          {
+            id: 3,
+            adUsername: null,
+            adDisplayName: null,
+            adEmail: 'planner@gov.bc.ca',
+          },
+        ],
+        'where'
+      )
+    );
+
+    const result = await service.getEventPlanners();
+
+    expect(result.map((planner) => planner.label)).toEqual([
+      'Lana Popham',
+      'Niki Sharma',
+      'planner@gov.bc.ca',
+    ]);
+    expect(result.map((planner) => planner.value)).toEqual([1, 2, 3]);
+    expect(result.find((planner) => planner.value === 3)?.label).toBe(
+      'planner@gov.bc.ca'
+    );
+  });
 });

@@ -8,6 +8,8 @@ import type {
 } from '@corpcal/shared/api/types';
 import type {
   AddActivityHistoryNoteRequest,
+  BulkUnshareActivitiesRequest,
+  BulkUpdateActivitiesRequest,
   RequestDeleteRequest,
   RestoreRequest,
   SoftDeleteRequest,
@@ -17,6 +19,8 @@ import type {
 
 import {
   addActivityHistoryNote,
+  bulkUnshareActivities,
+  bulkUpdateActivities,
   createActivity,
   deleteActivity,
   fetchActivities,
@@ -24,6 +28,7 @@ import {
   requestDeleteActivity,
   restoreActivity,
   softDeleteActivity,
+  unshareActivityTeam,
   updateActivity,
 } from '../api/activitiesApi';
 import { removeAssigneeActivityFlag, syncActivityFlags } from '../api/flagsApi';
@@ -140,6 +145,21 @@ export function useUpdateActivity() {
   });
 }
 
+export function useBulkUpdateActivities() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BulkUpdateActivitiesRequest) =>
+      bulkUpdateActivities(body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      scheduleLiveActivityRefresh(qc, {
+        source: 'local',
+        invalidateActivities: true,
+      });
+    },
+  });
+}
+
 // Delete (with optimistic update). Pass { id, body?: { reason?: string } } for hard delete audit.
 export function useDeleteActivity() {
   const qc = useQueryClient();
@@ -215,6 +235,49 @@ export function useRequestDeleteActivity() {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.id] });
       scheduleLiveActivityRefresh(qc, { source: 'local', activityId: vars.id });
+    },
+  });
+}
+
+// Unshare a single team from the activity's Shared With list
+export function useUnshareActivityTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, teamId }: { id: number; teamId: number }) =>
+      unshareActivityTeam(id, teamId),
+    onSuccess: (data, vars) => {
+      qc.setQueryData(['activity', vars.id], data);
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      scheduleLiveActivityRefresh(qc, { source: 'local', activityId: vars.id });
+    },
+    onError: (error) => {
+      const status = (error as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 404) {
+        toast.warning(
+          'Activity was already updated. Refresh to see the latest state.'
+        );
+      }
+    },
+  });
+}
+
+/** Remove one team from several activities' Shared With lists. */
+export function useBulkUnshareActivities() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: BulkUnshareActivitiesRequest) =>
+      bulkUnshareActivities(body),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: ['activities'] });
+      for (const row of result.results) {
+        if (row.status === 'updated') {
+          scheduleLiveActivityRefresh(qc, {
+            source: 'local',
+            activityId: row.activityId,
+          });
+        }
+      }
     },
   });
 }

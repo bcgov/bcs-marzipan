@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
@@ -138,6 +138,22 @@ describe('shouldRejectRichTextLengthIncrease', () => {
 });
 
 describe('RichTextField', () => {
+  it('renders links-only toolbar without bold control', async () => {
+    renderRichTextField({
+      value: EMPTY_RICH_TEXT_DOC,
+      toolbar: 'links',
+    });
+    await waitForRichTextEditor();
+
+    expect(
+      screen.queryByRole('button', { name: /^Bold$/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /^Clear formatting$/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Link$/i })).toBeInTheDocument();
+  });
+
   it('suppresses onChange when TipTap emits a semantically equivalent empty doc', async () => {
     const { onChange } = renderRichTextField({ value: '{"type":"doc"}' });
 

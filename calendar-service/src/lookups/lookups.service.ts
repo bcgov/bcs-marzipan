@@ -22,7 +22,6 @@ import {
   cities,
   commsMaterials,
   dateStatuses,
-  eventPlanners,
   governmentRepresentatives,
   ministries,
   ministryGroups,
@@ -35,20 +34,28 @@ import {
   pitchStatuses,
   premierRequested,
   reports,
+  rolePermissionAudit,
   rolePermissions,
   roles,
+  sessions,
   tags,
   teamCategories,
+  teams,
   teamTags,
   themes,
   timeStatuses,
   translatedLanguages,
   translationRequiredStatuses,
   users,
+  userTeams,
   venuePresets,
   venueStatuses,
 } from '@corpcal/database/schema';
-import type { ActivityStatusName, Visibility } from '@corpcal/shared';
+import {
+  SYSTEM_ROLE_IDS,
+  type ActivityStatusName,
+  type Visibility,
+} from '@corpcal/shared';
 import type {
   ActivityTeamSharingQuickShare,
   CategoryLookupItem,
@@ -72,6 +79,7 @@ import { reportConfigSchema } from '@corpcal/shared/schemas';
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
+import { sortByStaffName } from '../users/staff-name-sort';
 import {
   loadTeamMetadataForLookupIds,
   teamMetadataForLookup,
@@ -82,6 +90,41 @@ import {
   syncCategoryTeams,
   syncTagTeams,
 } from './lookups-team-sync.helper';
+
+export type VenuePresetAdminItem = VenuePresetItem & {
+  sortOrder: number;
+  isActive: boolean;
+};
+
+export function validateAdminRolePermissionSelection(
+  roleId: number,
+  catalog: { id: number; key: string }[],
+  currentByPermissionId: Map<number, boolean>,
+  desiredIds: Set<number>
+): void {
+  for (const permission of catalog) {
+    if (!permission.key.startsWith('system.')) continue;
+    const isCurrentlyActive = currentByPermissionId.get(permission.id) ?? false;
+    if (desiredIds.has(permission.id) !== isCurrentlyActive) {
+      throw new BadRequestException(
+        'System permissions cannot be changed through role management'
+      );
+    }
+  }
+
+  if (
+    roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN &&
+    !catalog.some(
+      (permission) =>
+        permission.key === 'system.manage_permissions' &&
+        desiredIds.has(permission.id)
+    )
+  ) {
+    throw new BadRequestException(
+      'System Admin must retain system.manage_permissions'
+    );
+  }
+}
 
 @Injectable()
 export class LookupsService {
@@ -197,6 +240,206 @@ export class LookupsService {
     return results;
   }
 
+  async getPermissionAdminRoles(): Promise<
+    { id: number; name: string; description: string | null }[]
+  > {
+    return this.databaseService.db
+      .select({
+        id: roles.id,
+        name: roles.name,
+        description: roles.description,
+      })
+      .from(roles)
+      .where(and(eq(roles.isActive, true), eq(roles.isSystem, true)))
+      .orderBy(roles.name);
+  }
+
+  async getAdminRolePermissions(roleId: number): Promise<
+    {
+      id: number;
+      key: string;
+      displayName: string;
+      description: string | null;
+      category: string;
+      sortOrder: number;
+      hasPermission: boolean;
+      locked: boolean;
+    }[]
+  > {
+    const [role] = await this.databaseService.db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(
+        and(
+          eq(roles.id, roleId),
+          eq(roles.isActive, true),
+          eq(roles.isSystem, true)
+        )
+      )
+      .limit(1);
+    if (!role) throw new NotFoundException('System role not found');
+
+    const rows = await this.databaseService.db
+      .select({
+        id: permissions.id,
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+        category: permissions.category,
+        sortOrder: permissions.sortOrder,
+        isActive: rolePermissions.isActive,
+      })
+      .from(permissions)
+      .leftJoin(
+        rolePermissions,
+        and(
+          eq(rolePermissions.permissionId, permissions.id),
+          eq(rolePermissions.roleId, roleId)
+        )
+      )
+      .orderBy(permissions.sortOrder, permissions.key);
+
+    return rows.map((row) => ({
+      id: row.id,
+      key: row.key,
+      displayName: row.displayName,
+      description: row.description,
+      category: row.category,
+      sortOrder: row.sortOrder,
+      hasPermission: Boolean(row.isActive),
+      locked: row.key.startsWith('system.'),
+    }));
+  }
+
+  async updateAdminRolePermissions(
+    roleId: number,
+    permissionIds: number[],
+    changedBy: number
+  ): Promise<Awaited<ReturnType<LookupsService['getAdminRolePermissions']>>> {
+    let permissionsChanged = false;
+    await this.databaseService.db.transaction(async (tx) => {
+      const [role] = await tx
+        .select({ id: roles.id })
+        .from(roles)
+        .where(
+          and(
+            eq(roles.id, roleId),
+            eq(roles.isActive, true),
+            eq(roles.isSystem, true)
+          )
+        )
+        .for('update')
+        .limit(1);
+      if (!role) throw new NotFoundException('System role not found');
+
+      const uniquePermissionIds = new Set(permissionIds);
+      if (uniquePermissionIds.size !== permissionIds.length) {
+        throw new BadRequestException(
+          'Duplicate permission ids are not allowed'
+        );
+      }
+
+      const catalog = await tx
+        .select({ id: permissions.id, key: permissions.key })
+        .from(permissions);
+      const knownIds = new Set(catalog.map((permission) => permission.id));
+      if (permissionIds.some((permissionId) => !knownIds.has(permissionId))) {
+        throw new BadRequestException('Unknown permission id');
+      }
+
+      const currentRows = await tx
+        .select({
+          permissionId: rolePermissions.permissionId,
+          isActive: rolePermissions.isActive,
+        })
+        .from(rolePermissions)
+        .where(eq(rolePermissions.roleId, roleId));
+      const currentByPermissionId = new Map(
+        currentRows.map((row) => [row.permissionId, row.isActive])
+      );
+      const desiredIds = new Set(permissionIds);
+      validateAdminRolePermissionSelection(
+        roleId,
+        catalog,
+        currentByPermissionId,
+        desiredIds
+      );
+
+      const now = new Date();
+      for (const permission of catalog) {
+        if (permission.key.startsWith('system.')) continue;
+        const enabled = desiredIds.has(permission.id);
+        const currentlyEnabled =
+          currentByPermissionId.get(permission.id) ?? false;
+        if (enabled === currentlyEnabled) continue;
+        permissionsChanged = true;
+
+        await tx.insert(rolePermissionAudit).values({
+          roleId,
+          permissionId: permission.id,
+          oldValue: currentlyEnabled,
+          newValue: enabled,
+          changedBy,
+          changedAt: now,
+        });
+
+        await tx
+          .insert(rolePermissions)
+          .values({
+            roleId,
+            permissionId: permission.id,
+            isActive: enabled,
+            createdBy: changedBy,
+            updatedBy: changedBy,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [rolePermissions.roleId, rolePermissions.permissionId],
+            set: { isActive: enabled, updatedBy: changedBy, updatedAt: now },
+          });
+      }
+
+      if (permissionsChanged) {
+        const roleUsers = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.roleId, roleId));
+        const roleTeams = await tx
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.roleId, roleId));
+        const teamUsers = roleTeams.length
+          ? await tx
+              .select({ id: userTeams.userId })
+              .from(userTeams)
+              .where(
+                and(
+                  inArray(
+                    userTeams.teamId,
+                    roleTeams.map((team) => team.id)
+                  ),
+                  eq(userTeams.isActive, true)
+                )
+              )
+          : [];
+        const affectedUserIds = [
+          ...new Set([
+            ...roleUsers.map((roleUser) => roleUser.id),
+            ...teamUsers.map((teamUser) => teamUser.id),
+          ]),
+        ];
+        if (affectedUserIds.length > 0) {
+          await tx
+            .delete(sessions)
+            .where(inArray(sessions.userId, affectedUserIds));
+        }
+      }
+    });
+
+    return this.getAdminRolePermissions(roleId);
+  }
+
   /**
    * Get active permissions for a given role id (key + description)
    */
@@ -205,6 +448,9 @@ export class LookupsService {
       key: string;
       displayName: string | null;
       description: string | null;
+      category: string;
+      sortOrder: number;
+      allowUserOverride: boolean;
       hasPermission: boolean;
     }[]
   > {
@@ -214,6 +460,9 @@ export class LookupsService {
         key: permissions.key,
         displayName: permissions.displayName,
         description: permissions.description,
+        category: permissions.category,
+        sortOrder: permissions.sortOrder,
+        allowUserOverride: permissions.allowUserOverride,
         permissionId: permissions.id,
         rolePermissionActive: rolePermissions.isActive,
       })
@@ -234,6 +483,9 @@ export class LookupsService {
       key: r.key,
       displayName: r.displayName,
       description: r.description,
+      category: r.category,
+      sortOrder: r.sortOrder,
+      allowUserOverride: Boolean(r.allowUserOverride),
       hasPermission: Boolean(r.rolePermissionActive),
     }));
   }
@@ -249,6 +501,9 @@ export class LookupsService {
         key: string;
         displayName?: string | null;
         description?: string | null;
+        category: string;
+        sortOrder: number;
+        allowUserOverride: boolean;
         hasPermission: boolean;
       }[]
     >
@@ -262,6 +517,9 @@ export class LookupsService {
         key: permissions.key,
         displayName: permissions.displayName,
         description: permissions.description,
+        category: permissions.category,
+        sortOrder: permissions.sortOrder,
+        allowUserOverride: permissions.allowUserOverride,
         rolePermissionActive: rolePermissions.isActive,
       })
       .from(roles)
@@ -284,6 +542,9 @@ export class LookupsService {
         key: r.key,
         displayName: r.displayName,
         description: r.description,
+        category: r.category,
+        sortOrder: r.sortOrder,
+        allowUserOverride: Boolean(r.allowUserOverride),
         hasPermission: Boolean(r.rolePermissionActive),
       });
     }
@@ -351,77 +612,6 @@ export class LookupsService {
   }
 
   /**
-   * Bulk update permission visibility inside a single DB transaction.
-   * Returns the updated permission rows.
-   */
-  async bulkUpdatePermissionVisibility(
-    items: { id: number; showInUserManagement: boolean }[],
-    updatedBy?: number
-  ): Promise<{ id: number; key: string; showInUserManagement: boolean }[]> {
-    return this.databaseService.db.transaction(async (tx) => {
-      const results: {
-        id: number;
-        key: string;
-        showInUserManagement: boolean;
-      }[] = [];
-      for (const item of items) {
-        const pid = Number(item.id);
-        if (!Number.isInteger(pid)) continue;
-
-        const existing = await tx
-          .select({
-            id: permissions.id,
-            show: permissions.showInUserManagement,
-          })
-          .from(permissions)
-          .where(eq(permissions.id, pid))
-          .limit(1);
-
-        if (!existing || existing.length === 0) continue;
-
-        await tx
-          .update(permissions)
-          .set({
-            showInUserManagement: item.showInUserManagement,
-            updatedAt: sql`now()`,
-            updatedBy: updatedBy ?? null,
-          })
-          .where(eq(permissions.id, pid));
-
-        const [row] = await tx
-          .select({
-            id: permissions.id,
-            key: permissions.key,
-            showInUserManagement: permissions.showInUserManagement,
-          })
-          .from(permissions)
-          .where(eq(permissions.id, pid))
-          .limit(1);
-
-        results.push({
-          id: row.id,
-          key: row.key,
-          showInUserManagement: Boolean(row.showInUserManagement),
-        });
-
-        try {
-          await tx.insert(permissionVisibilityAudit).values({
-            permissionId: pid,
-            changedBy: updatedBy ?? null,
-            oldValue: Boolean(existing[0].show),
-            newValue: Boolean(item.showInUserManagement),
-          });
-        } catch (err) {
-          this.logger.warn(
-            `Failed to write permission visibility audit for permission ${pid} (bulk): ${String(err)}`
-          );
-        }
-      }
-      return results;
-    });
-  }
-
-  /**
    * Get all active users
    * Computes display name from adDisplayName or falls back to adUsername
    * Supports filtering by userIds to fetch specific users
@@ -450,7 +640,17 @@ export class LookupsService {
       .where(and(...conditions))
       .orderBy(users.adDisplayName, users.adUsername);
 
-    return results.map((user) => {
+    const sortedResults = sortByStaffName(
+      results,
+      (user) =>
+        user.adDisplayName ??
+        user.adUsername ??
+        user.adEmail ??
+        `User ${user.id}`,
+      (user) => user.id
+    );
+
+    return sortedResults.map((user) => {
       const label = user.adDisplayName ?? user.adUsername ?? `User ${user.id}`;
       return {
         id: user.id,
@@ -570,6 +770,36 @@ export class LookupsService {
       description: r.description,
       showInUserManagement: Boolean(r.showInUserManagement),
     }));
+  }
+
+  /**
+   * Permissions admins may grant or deny for an individual user (user_permissions).
+   * `system.*` keys are excluded defensively even if flagged in the database.
+   */
+  async getOverridablePermissions(): Promise<
+    {
+      id: number;
+      key: string;
+      displayName: string;
+      description: string | null;
+      category: string;
+      sortOrder: number;
+    }[]
+  > {
+    const rows = await this.databaseService.db
+      .select({
+        id: permissions.id,
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+        category: permissions.category,
+        sortOrder: permissions.sortOrder,
+      })
+      .from(permissions)
+      .where(eq(permissions.allowUserOverride, true))
+      .orderBy(permissions.sortOrder);
+
+    return rows.filter((r) => !r.key.startsWith('system.'));
   }
 
   /**
@@ -759,9 +989,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active venue presets for the activity form.
+   * Get venue presets for the activity form or admin list.
+   * @param includeAll - When true (admin), returns all presets including inactive
    */
-  async getVenuePresets(): Promise<VenuePresetItem[]> {
+  async getVenuePresets(includeAll?: boolean): Promise<VenuePresetAdminItem[]> {
     const results = await this.databaseService.db
       .select({
         id: venuePresets.id,
@@ -771,11 +1002,13 @@ export class LookupsService {
         city: venuePresets.city,
         provinceOrState: venuePresets.provinceOrState,
         country: venuePresets.country,
+        sortOrder: venuePresets.sortOrder,
+        isActive: venuePresets.isActive,
         isPinned: venuePresets.isPinned,
         pinnedSortOrder: venuePresets.pinnedSortOrder,
       })
       .from(venuePresets)
-      .where(eq(venuePresets.isActive, true))
+      .where(includeAll ? undefined : eq(venuePresets.isActive, true))
       .orderBy(venuePresets.sortOrder);
     return results.map((row) => ({
       id: row.id,
@@ -785,6 +1018,8 @@ export class LookupsService {
       city: row.city,
       provinceOrState: row.provinceOrState,
       country: row.country,
+      sortOrder: row.sortOrder,
+      isActive: row.isActive,
       isPinned: row.isPinned,
       pinnedSortOrder: row.pinnedSortOrder,
     }));
@@ -844,7 +1079,7 @@ export class LookupsService {
       pinnedSortOrder?: number;
     },
     currentUserId: number
-  ): Promise<VenuePresetItem> {
+  ): Promise<VenuePresetAdminItem> {
     await this.assertNoDuplicateAddress(data.addressLine1, data.addressLine2);
 
     const now = new Date();
@@ -875,6 +1110,8 @@ export class LookupsService {
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
+      sortOrder: result.sortOrder,
+      isActive: result.isActive,
       isPinned: result.isPinned,
       pinnedSortOrder: result.pinnedSortOrder,
     };
@@ -898,7 +1135,7 @@ export class LookupsService {
       pinnedSortOrder?: number;
     },
     currentUserId: number
-  ): Promise<VenuePresetItem> {
+  ): Promise<VenuePresetAdminItem> {
     if (data.addressLine1 !== undefined || data.addressLine2 !== undefined) {
       const current = await this.databaseService.db
         .select({
@@ -955,6 +1192,8 @@ export class LookupsService {
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
+      sortOrder: result.sortOrder,
+      isActive: result.isActive,
       isPinned: result.isPinned,
       pinnedSortOrder: result.pinnedSortOrder,
     };
@@ -988,7 +1227,7 @@ export class LookupsService {
       })
       .from(reports)
       .where(eq(reports.isActive, true))
-      .orderBy(reports.sortOrder);
+      .orderBy(reports.sortOrder, reports.displayName);
 
     return results.map((report) => {
       let config = null;
@@ -1044,18 +1283,24 @@ export class LookupsService {
   }
 
   /**
-   * Get all active translation languages
+   * Get all translation languages for lists and forms.
+   * @param includeAll - When true (admin), returns all languages including inactive
    */
-  async getTranslationLanguages(): Promise<TranslationLanguageLookupItem[]> {
+  async getTranslationLanguages(
+    includeAll?: boolean
+  ): Promise<TranslationLanguageLookupItem[]> {
     const results = await this.databaseService.db
       .select({
         id: translatedLanguages.id,
         name: translatedLanguages.name,
         displayName: translatedLanguages.displayName,
         shortcode: translatedLanguages.shortcode,
+        sortOrder: translatedLanguages.sortOrder,
+        isActive: translatedLanguages.isActive,
+        description: translatedLanguages.description,
       })
       .from(translatedLanguages)
-      .where(eq(translatedLanguages.isActive, true))
+      .where(includeAll ? undefined : eq(translatedLanguages.isActive, true))
       .orderBy(translatedLanguages.sortOrder);
 
     return results.map((lang) => ({
@@ -1065,6 +1310,9 @@ export class LookupsService {
       name: lang.name,
       displayName: lang.displayName,
       shortcode: lang.shortcode,
+      sortOrder: lang.sortOrder,
+      isActive: lang.isActive,
+      description: lang.description,
     }));
   }
 
@@ -1090,7 +1338,10 @@ export class LookupsService {
         ministries,
         eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
       )
-      .orderBy(governmentRepresentatives.sortOrder);
+      .orderBy(
+        governmentRepresentatives.sortOrder,
+        governmentRepresentatives.displayName
+      );
 
     return results.map((rep) => ({
       id: rep.id,
@@ -1109,26 +1360,36 @@ export class LookupsService {
   }
 
   /**
-   * Get all active event planners
+   * Active users flagged as event planners (users.is_event_planner).
    */
   async getEventPlanners(): Promise<LookupItem[]> {
     const results = await this.databaseService.db
       .select({
-        id: eventPlanners.id,
-        name: eventPlanners.name,
-        displayName: eventPlanners.displayName,
+        id: users.id,
+        adUsername: users.adUsername,
+        adDisplayName: users.adDisplayName,
+        adEmail: users.adEmail,
       })
-      .from(eventPlanners)
-      .where(eq(eventPlanners.isActive, true))
-      .orderBy(eventPlanners.sortOrder);
+      .from(users)
+      .where(and(eq(users.isActive, true), eq(users.isEventPlanner, true)));
 
-    return results.map((planner) => ({
-      id: planner.id,
-      label: planner.displayName,
-      value: planner.id,
-      name: planner.name,
-      displayName: planner.displayName,
-    }));
+    const sorted = sortByStaffName(
+      results,
+      (u) => u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`,
+      (u) => u.id
+    );
+
+    return sorted.map((u) => {
+      const label =
+        u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`;
+      return {
+        id: u.id,
+        label,
+        value: u.id,
+        name: label,
+        displayName: label,
+      };
+    });
   }
 
   /**
@@ -1587,6 +1848,39 @@ export class LookupsService {
   }
 
   /**
+   * Create a new translation language
+   */
+  async createTranslationLanguage(
+    data: {
+      name: string;
+      displayName?: string | null;
+      shortcode?: string | null;
+      sortOrder: number;
+      isActive?: boolean;
+      description?: string | null;
+    },
+    currentUserId: number
+  ): Promise<typeof translatedLanguages.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(translatedLanguages)
+      .values({
+        name: data.name,
+        displayName: data.displayName ?? data.name,
+        shortcode: data.shortcode ?? undefined,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive ?? true,
+        description: data.description ?? undefined,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  /**
    * Create a new government representative
    */
   async createGovernmentRepresentative(
@@ -1939,6 +2233,41 @@ export class LookupsService {
       .update(commsMaterials)
       .set(updateData)
       .where(eq(commsMaterials.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateTranslationLanguage(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string | null;
+      shortcode: string | null;
+      sortOrder: number;
+      isActive: boolean;
+      description: string | null;
+    }>,
+    currentUserId: number
+  ): Promise<typeof translatedLanguages.$inferSelect | undefined> {
+    // Build update object explicitly to ensure type safety
+    const updateData: Partial<typeof translatedLanguages.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.displayName !== undefined)
+      updateData.displayName = data.displayName ?? undefined;
+    if (data.shortcode !== undefined) updateData.shortcode = data.shortcode;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.description !== undefined)
+      updateData.description = data.description ?? undefined;
+
+    const [result] = await this.databaseService.db
+      .update(translatedLanguages)
+      .set(updateData)
+      .where(eq(translatedLanguages.id, id))
       .returning();
     return result;
   }

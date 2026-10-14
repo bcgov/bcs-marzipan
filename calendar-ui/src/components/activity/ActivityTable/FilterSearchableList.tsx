@@ -19,17 +19,28 @@ export interface FilterSearchableListOption {
   label: string;
 }
 
+export interface FilterSearchableListSection {
+  heading: string;
+  options: FilterSearchableListOption[];
+}
+
 export interface FilterSearchableListRenderOptionMeta {
   index: number;
   isFirst: boolean;
 }
 
 export interface FilterSearchableListProps {
-  options: FilterSearchableListOption[];
-  /** Required for checkbox rows; ignored when `renderOption` is set. */
+  /** Flat list mode (default when `sections` is omitted). */
+  options?: FilterSearchableListOption[];
+  /** Grouped list with section headings (takes precedence over `options`). */
+  sections?: FilterSearchableListSection[];
+  /** Required for checkbox rows; ignored when `renderOption` or `onToggleValue` is set. */
   selectedIds?: number[];
-  /** Required for checkbox rows; ignored when `renderOption` is set. */
+  /** Required for checkbox rows; ignored when `renderOption` or `onToggleValue` is set. */
   onToggle?: (id: number) => void;
+  /** String-value multi-select (e.g. history field keys). Takes precedence over numeric ids. */
+  selectedValues?: string[];
+  onToggleValue?: (value: string) => void;
   searchPlaceholder?: string;
   searchAriaLabel?: string;
   emptyMessage?: string;
@@ -49,14 +60,26 @@ export interface FilterSearchableListProps {
   ) => ReactNode;
 }
 
+function filterOptionsBySearch(
+  options: FilterSearchableListOption[],
+  searchTerm: string
+): FilterSearchableListOption[] {
+  const term = searchTerm.trim().toLowerCase();
+  if (term === '') return options;
+  return options.filter((opt) => opt.label.toLowerCase().includes(term));
+}
+
 /**
  * Searchable multi-select list using plain markup (no Radix menu primitives).
  * Works inside Popover, DropdownMenuContent, or DropdownMenuSubContent.
  */
 export function FilterSearchableList({
-  options,
+  options = [],
+  sections,
   selectedIds = [],
   onToggle,
+  selectedValues = [],
+  onToggleValue,
   searchPlaceholder = 'Search...',
   searchAriaLabel = 'Search',
   emptyMessage = 'No results',
@@ -76,20 +99,53 @@ export function FilterSearchableList({
     ? controlledOnSearchChange
     : setInternalSearch;
 
-  const filteredOptions = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (term === '') return options;
-    return options.filter((opt) => opt.label.toLowerCase().includes(term));
-  }, [options, searchTerm]);
+  const filteredSections = useMemo((): FilterSearchableListSection[] => {
+    if (sections != null && sections.length > 0) {
+      return sections
+        .map((section) => ({
+          heading: section.heading,
+          options: filterOptionsBySearch(section.options, searchTerm),
+        }))
+        .filter((section) => section.options.length > 0);
+    }
+    return [
+      {
+        heading: '',
+        options: filterOptionsBySearch(options, searchTerm),
+      },
+    ];
+  }, [sections, options, searchTerm]);
+
+  const filteredOptions = useMemo(
+    () => filteredSections.flatMap((s) => s.options),
+    [filteredSections]
+  );
+
+  const useStringSelection = onToggleValue != null;
 
   const handleToggle = useCallback(
     (value: string) => {
+      if (useStringSelection) {
+        onToggleValue?.(value);
+        return;
+      }
       if (!onToggle) return;
       const id = parseInt(value, 10);
       if (!Number.isFinite(id)) return;
       onToggle(id);
     },
-    [onToggle]
+    [onToggle, onToggleValue, useStringSelection]
+  );
+
+  const isOptionSelected = useCallback(
+    (value: string) => {
+      if (useStringSelection) {
+        return selectedValues.includes(value);
+      }
+      const id = parseInt(value, 10);
+      return Number.isFinite(id) && selectedIds.includes(id);
+    },
+    [selectedIds, selectedValues, useStringSelection]
   );
 
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -104,7 +160,14 @@ export function FilterSearchableList({
     }
   }, []);
 
-  const hasSelection = !renderOption && selectedIds.length > 0;
+  const hasSelection =
+    !renderOption && useStringSelection
+      ? selectedValues.length > 0
+      : !renderOption && selectedIds.length > 0;
+  const useSectionHeadings =
+    sections != null && sections.length > 0 && !renderOption;
+
+  let globalOptionIndex = 0;
 
   return (
     <>
@@ -168,24 +231,31 @@ export function FilterSearchableList({
             );
           })
         ) : (
-          filteredOptions.map((opt, index) => {
-            const id = parseInt(opt.value, 10);
-            const checked = Number.isFinite(id) && selectedIds.includes(id);
-            const isFirst = index === 0;
-            return (
-              <FilterCheckboxItem
-                key={opt.value}
-                ref={isFirst ? firstItemRef : undefined}
-                checked={checked}
-                onCheckedChange={() =>
-                  Number.isFinite(id) && handleToggle(opt.value)
-                }
-                onKeyDown={isFirst ? handleFirstItemKeyDown : undefined}
-              >
-                {opt.label}
-              </FilterCheckboxItem>
-            );
-          })
+          filteredSections.map((section) => (
+            <div key={section.heading || '_flat'}>
+              {useSectionHeadings && section.heading ? (
+                <div className="text-muted-foreground px-3 pt-2 pb-1 text-xs tracking-wide uppercase">
+                  {section.heading}
+                </div>
+              ) : null}
+              {section.options.map((opt) => {
+                const checked = isOptionSelected(opt.value);
+                const isFirst = globalOptionIndex === 0;
+                globalOptionIndex += 1;
+                return (
+                  <FilterCheckboxItem
+                    key={opt.value}
+                    ref={isFirst ? firstItemRef : undefined}
+                    checked={checked}
+                    onCheckedChange={() => handleToggle(opt.value)}
+                    onKeyDown={isFirst ? handleFirstItemKeyDown : undefined}
+                  >
+                    {opt.label}
+                  </FilterCheckboxItem>
+                );
+              })}
+            </div>
+          ))
         )}
       </div>
       {showClearButton && hasSelection && onClear && (

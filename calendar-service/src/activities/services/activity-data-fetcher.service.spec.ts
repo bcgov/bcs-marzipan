@@ -121,4 +121,47 @@ describe('ActivityDataFetcherService', () => {
       expect(result.get(1)).toBeNull();
     });
   });
+
+  describe('fetchEventPlannerDetailsForActivities', () => {
+    it('sorts event planner details by canonical person name', async () => {
+      mockDb.select.mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        leftJoin: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([
+          {
+            activityId: 1,
+            eventPlannerId: 2,
+            eventPlannerName: null,
+            isLead: false,
+            displayName: 'Niki Sharma Events',
+            name: 'Sharma, Niki',
+          },
+          {
+            activityId: 1,
+            eventPlannerId: 1,
+            eventPlannerName: null,
+            isLead: true,
+            displayName: 'Minister Lana Popham Events',
+            name: 'Lana Popham',
+          },
+          {
+            activityId: 1,
+            eventPlannerId: 3,
+            eventPlannerName: null,
+            isLead: false,
+            displayName: null,
+            name: 'planner@gov.bc.ca',
+          },
+        ]),
+      });
+
+      const result = await service.fetchEventPlannerDetailsForActivities([1]);
+
+      expect(result.get(1)?.map((planner) => planner.name)).toEqual([
+        'Minister Lana Popham Events',
+        'Niki Sharma Events',
+        'planner@gov.bc.ca',
+      ]);
+    });
+  });
 });

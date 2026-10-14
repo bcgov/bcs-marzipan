@@ -3,6 +3,112 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DatabaseService } from '../../database/database.service';
 import { ActivityHistoryService } from './activity-history.service';
 
+type PagedHistoryRow = {
+  id: number;
+  activityId: number;
+  userId: number;
+  actionType: string;
+  changes: unknown;
+  notes: string | null;
+  timestamp: Date | string;
+};
+
+function createCountQueryChain(count: number) {
+  const result = [{ count }];
+  const terminal = {
+    then: (
+      onFulfilled: (value: typeof result) => unknown,
+      onRejected?: (reason: unknown) => unknown
+    ) => Promise.resolve(result).then(onFulfilled, onRejected),
+  };
+  const chain: {
+    leftJoin: ReturnType<typeof vi.fn>;
+    where: ReturnType<typeof vi.fn>;
+  } = {
+    leftJoin: vi.fn(),
+    where: vi.fn(),
+  };
+  chain.leftJoin.mockReturnValue(chain);
+  chain.where.mockReturnValue(terminal);
+  return chain;
+}
+
+function createThenableQueryChain<T>(value: T) {
+  const chain: {
+    leftJoin: ReturnType<typeof vi.fn>;
+    where: ReturnType<typeof vi.fn>;
+    orderBy: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
+    offset: ReturnType<typeof vi.fn>;
+    then: PromiseLike<T>['then'];
+  } = {} as {
+    leftJoin: ReturnType<typeof vi.fn>;
+    where: ReturnType<typeof vi.fn>;
+    orderBy: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
+    offset: ReturnType<typeof vi.fn>;
+    then: PromiseLike<T>['then'];
+  };
+
+  for (const method of [
+    'leftJoin',
+    'where',
+    'orderBy',
+    'limit',
+    'offset',
+  ] as const) {
+    chain[method] = vi.fn().mockReturnValue(chain);
+  }
+
+  chain.then = (onFulfilled, onRejected) =>
+    Promise.resolve(value).then(onFulfilled, onRejected);
+
+  return chain;
+}
+
+function installPagedHistoryDbMock(
+  mockDb: {
+    select: ReturnType<typeof vi.fn>;
+  },
+  config: {
+    rows: PagedHistoryRow[];
+    totalCount?: number;
+    users?: Array<{
+      id: number;
+      adDisplayName: string | null;
+      adUsername: string | null;
+    }>;
+  }
+) {
+  let selectCall = 0;
+
+  mockDb.select = vi.fn().mockImplementation(() => {
+    selectCall += 1;
+
+    if (selectCall === 1) {
+      const mainChain = createThenableQueryChain(config.rows);
+      return {
+        from: vi.fn().mockReturnValue(mainChain),
+      };
+    }
+
+    if (selectCall === 2) {
+      const countChain = createCountQueryChain(
+        config.totalCount ?? config.rows.length
+      );
+      return {
+        from: vi.fn().mockReturnValue(countChain),
+      };
+    }
+
+    return {
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(config.users ?? []),
+      }),
+    };
+  });
+}
+
 describe('ActivityHistoryService', () => {
   let service: ActivityHistoryService;
   let mockDb: {
@@ -11,6 +117,7 @@ describe('ActivityHistoryService', () => {
     where: ReturnType<typeof vi.fn>;
     orderBy: ReturnType<typeof vi.fn>;
     limit: ReturnType<typeof vi.fn>;
+    insert?: ReturnType<typeof vi.fn>;
   };
 
   const _createMockQueryChain = (finalValue: unknown) => {
@@ -43,6 +150,146 @@ describe('ActivityHistoryService', () => {
     }).compile();
 
     service = module.get<ActivityHistoryService>(ActivityHistoryService);
+  });
+
+  describe('recordChange', () => {
+    const createRecordChangeSelectMock = () => {
+      let selectCount = 0;
+      return vi.fn().mockImplementation(() => {
+        selectCount += 1;
+        const callIndex = selectCount;
+        const limit = vi
+          .fn()
+          .mockResolvedValue(
+            callIndex === 1
+              ? [{ title: 'Activity', displayId: 'A-001' }]
+              : callIndex === 2
+                ? [{ displayName: 'Alice', username: 'alice' }]
+                : []
+          );
+        const where = vi.fn().mockImplementation(() => {
+          if (callIndex <= 2) {
+            return { limit };
+          }
+          return Promise.resolve([]);
+        });
+        return {
+          from: vi.fn().mockReturnValue({
+            leftJoin: vi.fn().mockReturnValue({ where }),
+            where,
+          }),
+        };
+      });
+    };
+
+    it('stores normalized changes when field changes are present', async () => {
+      const returning = vi.fn().mockResolvedValue([{ id: 99 }]);
+      const values = vi.fn().mockReturnValue({ returning });
+      const insert = vi.fn().mockReturnValue({ values });
+
+      mockDb.select = createRecordChangeSelectMock();
+      mockDb.insert = insert;
+
+      await service.recordChange(
+        1,
+        2,
+        'updated',
+        [
+          { field: 'categories', oldValue: [1], newValue: [2] },
+          { field: 'title', oldValue: 'Old', newValue: 'New' },
+        ],
+        'Batch note'
+      );
+
+      expect(values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          changes: [
+            {
+              field: 'categoryIds',
+              oldValue: [1],
+              newValue: [2],
+            },
+            {
+              field: 'title',
+              oldValue: 'Old',
+              newValue: 'New',
+            },
+          ],
+        })
+      );
+    });
+
+    it('stores null changes for note-only entries', async () => {
+      const returning = vi.fn().mockResolvedValue([{ id: 100 }]);
+      const values = vi.fn().mockReturnValue({ returning });
+      const insert = vi.fn().mockReturnValue({ values });
+
+      mockDb.select = createRecordChangeSelectMock();
+      mockDb.insert = insert;
+
+      await service.recordChange(1, 2, 'note_added', undefined, 'Note only');
+
+      expect(values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          changes: null,
+        })
+      );
+    });
+  });
+
+  describe('getActivityHistory', () => {
+    it('redacts scoped fields for restricted viewers', async () => {
+      const historyEntries = [
+        {
+          id: 1,
+          activityId: 10,
+          userId: 2,
+          actionType: 'updated',
+          changes: [
+            { field: 'title', oldValue: 'A', newValue: 'B' },
+            { field: 'notes', oldValue: 'secret', newValue: 'updated' },
+          ],
+          notes: null,
+          timestamp: new Date('2026-01-01T12:00:00.000Z'),
+        },
+      ];
+
+      let selectCount = 0;
+      mockDb.select = vi.fn().mockImplementation(() => {
+        selectCount += 1;
+        if (selectCount === 1) {
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                orderBy: vi.fn().mockResolvedValue(historyEntries),
+              }),
+            }),
+          };
+        }
+
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: 2,
+                adDisplayName: 'Alice',
+                adUsername: 'alice',
+              },
+            ]),
+          }),
+        };
+      });
+
+      const result = await service.getActivityHistory(10, {
+        permissions: [],
+        roleName: 'Viewer',
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]?.changes).toEqual([
+        { field: 'title', oldValue: 'A', newValue: 'B' },
+      ]);
+    });
   });
 
   describe('getPreviousStatusIdBeforeDelete', () => {
@@ -356,7 +603,7 @@ describe('ActivityHistoryService', () => {
       ]);
     });
 
-    it('should skip all audit fields', () => {
+    it('should skip audit and non-tracked history fields', () => {
       const changes = service.generateChangeList(
         {
           id: 1,
@@ -364,6 +611,8 @@ describe('ActivityHistoryService', () => {
           lastUpdatedDateTime: 'b',
           rowVersion: 1,
           displayId: 'X-001',
+          lastUpdatedBy: 1,
+          createdBy: 2,
         },
         {
           id: 2,
@@ -371,6 +620,8 @@ describe('ActivityHistoryService', () => {
           lastUpdatedDateTime: 'd',
           rowVersion: 2,
           displayId: 'X-002',
+          lastUpdatedBy: 3,
+          createdBy: 4,
         }
       );
       expect(changes).toEqual([]);
@@ -433,6 +684,159 @@ describe('ActivityHistoryService', () => {
       expect(changes).toEqual([
         { field: 'title', oldValue: 'Old', newValue: 'New' },
       ]);
+    });
+  });
+
+  describe('getActivityHistoryForActivityIdsPaged', () => {
+    const sampleRow = (
+      overrides: Partial<PagedHistoryRow> = {}
+    ): PagedHistoryRow => ({
+      id: 1,
+      activityId: 10,
+      userId: 2,
+      actionType: 'updated',
+      changes: [{ field: 'title', oldValue: 'A', newValue: 'B' }],
+      notes: null,
+      timestamp: new Date('2026-03-20T20:00:00.000Z'),
+      ...overrides,
+    });
+
+    it('returns empty results without querying when activityIds is empty', async () => {
+      const result = await service.getActivityHistoryForActivityIdsPaged([], {
+        page: 1,
+        pageSize: 25,
+      });
+
+      expect(result).toEqual({
+        items: [],
+        page: 1,
+        pageSize: 25,
+        hasNext: false,
+        totalItems: 0,
+      });
+      expect(mockDb.select).not.toHaveBeenCalled();
+    });
+
+    it('paginates results and sets hasNext when an extra row is returned', async () => {
+      installPagedHistoryDbMock(mockDb, {
+        rows: [
+          sampleRow({ id: 1 }),
+          sampleRow({ id: 2 }),
+          sampleRow({ id: 3 }),
+        ],
+        totalCount: 3,
+        users: [{ id: 2, adDisplayName: 'Alice', adUsername: 'alice' }],
+      });
+
+      const result = await service.getActivityHistoryForActivityIdsPaged([10], {
+        page: 1,
+        pageSize: 2,
+      });
+
+      expect(result.items).toHaveLength(2);
+      expect(result.hasNext).toBe(true);
+      expect(result.totalItems).toBe(3);
+      expect(result.page).toBe(1);
+      expect(result.pageSize).toBe(2);
+    });
+
+    it('queries all activities when activityIds is null', async () => {
+      installPagedHistoryDbMock(mockDb, {
+        rows: [sampleRow()],
+        totalCount: 1,
+        users: [{ id: 2, adDisplayName: 'Alice', adUsername: 'alice' }],
+      });
+
+      const result = await service.getActivityHistoryForActivityIdsPaged(null, {
+        page: 1,
+        pageSize: 25,
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(mockDb.select).toHaveBeenCalled();
+    });
+
+    it('paginates visible rows after RBAC filtering for scoped viewers', async () => {
+      installPagedHistoryDbMock(mockDb, {
+        rows: [
+          sampleRow({
+            id: 1,
+            changes: [
+              { field: 'notes', oldValue: 'secret', newValue: 'updated' },
+            ],
+          }),
+          sampleRow({
+            id: 2,
+            changes: [{ field: 'title', oldValue: 'A', newValue: 'B' }],
+          }),
+        ],
+        totalCount: 2,
+        users: [{ id: 2, adDisplayName: 'Alice', adUsername: 'alice' }],
+      });
+
+      const result = await service.getActivityHistoryForActivityIdsPaged([10], {
+        page: 1,
+        pageSize: 1,
+        viewer: {
+          permissions: [],
+          roleName: 'Viewer',
+        },
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.id).toBe(2);
+      expect(result.hasNext).toBe(false);
+      expect(result.totalItems).toBe(1);
+    });
+
+    it('redacts scoped fields for restricted viewers in paged results', async () => {
+      installPagedHistoryDbMock(mockDb, {
+        rows: [
+          sampleRow({
+            changes: [
+              { field: 'title', oldValue: 'A', newValue: 'B' },
+              { field: 'notes', oldValue: 'secret', newValue: 'updated' },
+            ],
+          }),
+        ],
+        totalCount: 1,
+        users: [{ id: 2, adDisplayName: 'Alice', adUsername: 'alice' }],
+      });
+
+      const result = await service.getActivityHistoryForActivityIdsPaged([10], {
+        page: 1,
+        pageSize: 25,
+        viewer: {
+          permissions: [],
+          roleName: 'Viewer',
+        },
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.changes).toEqual([
+        { field: 'title', oldValue: 'A', newValue: 'B' },
+      ]);
+    });
+
+    it('accepts Pacific calendar date bounds and text query options', async () => {
+      installPagedHistoryDbMock(mockDb, {
+        rows: [sampleRow()],
+        totalCount: 1,
+        users: [{ id: 2, adDisplayName: 'Alice', adUsername: 'alice' }],
+      });
+
+      const result = await service.getActivityHistoryForActivityIdsPaged([10], {
+        startDate: '2026-03-20',
+        endDate: '2026-03-20',
+        query: 'budget',
+        actionTypes: ['updated'],
+        userId: 2,
+        page: 1,
+        pageSize: 25,
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(mockDb.select).toHaveBeenCalled();
     });
   });
 });

@@ -23,7 +23,10 @@ const DEFAULTS = {
   fetchCommsMaterialsForActivities: new Map(),
   fetchTranslationsRequiredForActivities: new Map(),
   fetchRepresentativesAttendingForActivities: new Map(),
-  fetchSharedWithTeamsForActivities: new Map(),
+  fetchSharedWithTeamsForActivities: {
+    namesMap: new Map<number, string[]>(),
+    idsMap: new Map<number, number[]>(),
+  },
   fetchCommsContactsForActivities: new Map(),
   fetchUserNamesForUserIds: new Map(),
   fetchLeadOrgNamesForActivities: new Map(),

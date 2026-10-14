@@ -8,10 +8,14 @@ import {
 import { Toaster as Sonner, type ToasterProps } from 'sonner';
 import { type CSSProperties } from 'react';
 
+import { DEFAULT_TOAST_DURATION_MS } from '@/lib/toast-durations';
+
 const Toaster = ({ theme = 'light', ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme}
+      duration={DEFAULT_TOAST_DURATION_MS}
+      closeButton
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

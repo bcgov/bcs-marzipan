@@ -16,7 +16,6 @@ import {
   categories,
   commsMaterials,
   dateStatuses,
-  eventPlanners,
   ministries,
   newsReleaseDistributions,
   newsReleaseOrigins,
@@ -37,6 +36,7 @@ import type { Activity } from '@corpcal/database/types';
 import type { EventPlannerDetail } from '@corpcal/shared/schemas';
 
 import { DatabaseService } from '../../database/database.service';
+import { sortByStaffName } from '../../users/staff-name-sort';
 
 /**
  * Service for fetching related data for activities
@@ -685,19 +685,22 @@ export class ActivityDataFetcherService {
   }
 
   /**
-   * Fetch shared with teams for multiple activities
-   * Returns team display names for UI display
+   * Fetch shared with teams for multiple activities.
+   * Returns display names for UI text and team IDs for membership checks
+   * (e.g. deciding whether a user's team can unshare the activity).
    */
-  async fetchSharedWithTeamsForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string[]>> {
+  async fetchSharedWithTeamsForActivities(activityIds: number[]): Promise<{
+    namesMap: Map<number, string[]>;
+    idsMap: Map<number, number[]>;
+  }> {
     if (activityIds.length === 0) {
-      return new Map();
+      return { namesMap: new Map(), idsMap: new Map() };
     }
 
     const results = await this.databaseService.db
       .select({
         activityId: activitySharedWithTeams.activityId,
+        teamId: activitySharedWithTeams.teamId,
         teamName: sql<string>`COALESCE(${teams.displayName}, ${teams.name})`.as(
           'teamName'
         ),
@@ -712,13 +715,18 @@ export class ActivityDataFetcherService {
         )
       );
 
-    const map = new Map<number, string[]>();
+    const namesMap = new Map<number, string[]>();
+    const idsMap = new Map<number, number[]>();
     for (const row of results) {
-      const existing = map.get(row.activityId) ?? [];
-      existing.push(row.teamName);
-      map.set(row.activityId, existing);
+      const names = namesMap.get(row.activityId) ?? [];
+      names.push(row.teamName);
+      namesMap.set(row.activityId, names);
+
+      const ids = idsMap.get(row.activityId) ?? [];
+      ids.push(row.teamId);
+      idsMap.set(row.activityId, ids);
     }
-    return map;
+    return { namesMap, idsMap };
   }
 
   /**
@@ -776,6 +784,18 @@ export class ActivityDataFetcherService {
       });
       map.set(row.activityId, existing);
     }
+
+    for (const [activityId, contacts] of map.entries()) {
+      map.set(
+        activityId,
+        sortByStaffName(
+          contacts,
+          (contact) => contact.name,
+          (contact) => contact.userId
+        )
+      );
+    }
+
     return map;
   }
 
@@ -867,13 +887,17 @@ export class ActivityDataFetcherService {
 
   /**
    * Fetch event planner details for multiple activities (id/name, display name, isLead).
-   * Reads from activity_event_planners junction; resolves lookup ids via event_planners table.
+   * Reads from activity_event_planners; resolves event planner user ids via users.
    * Returns activityId -> Array<EventPlannerDetail>.
    */
   async fetchEventPlannerDetailsForActivities(
     activityIds: number[]
   ): Promise<Map<number, EventPlannerDetail[]>> {
-    const map = new Map<number, EventPlannerDetail[]>();
+    type EventPlannerDetailWithSortName = EventPlannerDetail & {
+      sortName: string;
+    };
+
+    const map = new Map<number, EventPlannerDetailWithSortName[]>();
     if (activityIds.length === 0) return map;
 
     const rows = await this.databaseService.db
@@ -882,17 +906,13 @@ export class ActivityDataFetcherService {
         eventPlannerId: activityEventPlanners.eventPlannerId,
         eventPlannerName: activityEventPlanners.eventPlannerName,
         isLead: activityEventPlanners.isLead,
-        displayName: eventPlanners.displayName,
-        name: eventPlanners.name,
+        displayName: users.adDisplayName,
+        name: sql<
+          string | null
+        >`coalesce(${users.adDisplayName}, ${users.adUsername}, ${users.adEmail})`,
       })
       .from(activityEventPlanners)
-      .leftJoin(
-        eventPlanners,
-        and(
-          eq(activityEventPlanners.eventPlannerId, eventPlanners.id),
-          eq(eventPlanners.isActive, true)
-        )
-      )
+      .leftJoin(users, eq(activityEventPlanners.eventPlannerId, users.id))
       .where(
         and(
           inArray(activityEventPlanners.activityId, activityIds),
@@ -912,6 +932,12 @@ export class ActivityDataFetcherService {
         (row.eventPlannerId != null
           ? `Planner #${row.eventPlannerId}`
           : 'Unknown planner');
+      const sortName =
+        fromFreeform ||
+        (row.eventPlannerId != null && row.name
+          ? row.name.trim()
+          : fromLookup) ||
+        name;
 
       const list = map.get(row.activityId) ?? [];
       list.push({
@@ -919,10 +945,25 @@ export class ActivityDataFetcherService {
         eventPlannerName: row.eventPlannerName ?? undefined,
         name,
         isLead: row.isLead ?? false,
+        sortName,
       });
       map.set(row.activityId, list);
     }
-    return map;
+
+    const sortedMap = new Map<number, EventPlannerDetail[]>();
+
+    for (const [activityId, planners] of map.entries()) {
+      sortedMap.set(
+        activityId,
+        sortByStaffName(
+          planners,
+          (planner) => planner.sortName,
+          (planner) => planner.eventPlannerId ?? planner.name
+        ).map(({ sortName: _sortName, ...planner }) => planner)
+      );
+    }
+
+    return sortedMap;
   }
 
   /**

@@ -17,14 +17,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';
+import { z, type ZodTypeAny } from 'zod';
 
 import type { AuthUser } from '@corpcal/shared';
-import {
-  upsertActivityFlagRequestSchema,
-  upsertActivityFlagsRequestSchema,
-  type UpsertActivityFlagRequest,
-  type UpsertActivityFlagsRequest,
-} from '@corpcal/shared/schemas';
+import { upsertActivityFlagsRequestSchema } from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AppLogger } from '../common/logger/logger.service';
@@ -33,13 +29,24 @@ import { RequirePermission } from '../policy/decorators/require-permission.decor
 import { ActivitiesGateway } from './activities.gateway';
 import { ActivityFlagsService } from './services/activity-flags.service';
 
+class UpsertActivityFlagsDto extends createZodDto(
+  upsertActivityFlagsRequestSchema
+) {}
+
+const upsertActivityFlagRequestSchema = z.object({
+  teamId: z.number().int(),
+  assigneeId: z.number().int(),
+  note: z.string().max(1000).optional(),
+});
+
 class UpsertActivityFlagDto extends createZodDto(
   upsertActivityFlagRequestSchema
 ) {}
 
-class UpsertActivityFlagsDto extends createZodDto(
-  upsertActivityFlagsRequestSchema
-) {}
+const upsertActivityFlagBodySchema =
+  upsertActivityFlagRequestSchema as ZodTypeAny;
+const upsertActivityFlagsBodySchema =
+  upsertActivityFlagsRequestSchema as ZodTypeAny;
 
 @ApiTags('activities')
 @Controller('activities')
@@ -73,8 +80,8 @@ export class ActivityFlagsController {
   @HttpCode(HttpStatus.OK)
   async upsertFlag(
     @Param('id', ParseIntPipe) activityId: number,
-    @Body(new ZodValidationPipe(upsertActivityFlagRequestSchema))
-    body: UpsertActivityFlagRequest,
+    @Body(new ZodValidationPipe(upsertActivityFlagBodySchema))
+    body: UpsertActivityFlagDto,
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean }> {
     // Ensure the caller is on the team they are flagging for
@@ -84,10 +91,10 @@ export class ActivityFlagsController {
       );
     }
 
-    await this.flagsService.upsertFlag(
+    await this.flagsService.syncFlags(
       activityId,
       body.teamId,
-      body.assigneeId,
+      [body.assigneeId],
       user.id,
       body.note
     );
@@ -100,8 +107,7 @@ export class ActivityFlagsController {
     description:
       'Sets the full assignee list for the given (activity, team) pair. ' +
       'Adds missing assignees and removes assignees not present in the provided list. ' +
-      'This is the preferred multi-assignee endpoint. ' +
-      'By contrast, the legacy PUT /activities/:id/flag route overwrites the full set to a single assignee and can remove other assignees for that team. ' +
+      'This is the only write endpoint for activity flags. ' +
       'Requires activities.flag permission and a teamId the caller belongs to.',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Activity ID' })
@@ -117,13 +123,15 @@ export class ActivityFlagsController {
   @HttpCode(HttpStatus.OK)
   async syncFlags(
     @Param('id', ParseIntPipe) activityId: number,
-    @Body(new ZodValidationPipe(upsertActivityFlagsRequestSchema))
-    body: UpsertActivityFlagsRequest,
+    @Body(new ZodValidationPipe(upsertActivityFlagsBodySchema))
+    body: UpsertActivityFlagsDto,
     @CurrentUser() user: AuthUser
   ): Promise<{
-    success: boolean;
-    addedAssigneeIds: number[];
-    removedAssigneeIds: number[];
+    success: true;
+    data: {
+      addedAssigneeIds: number[];
+      removedAssigneeIds: number[];
+    };
   }> {
     if (!user.teamIds.includes(body.teamId)) {
       throw new ForbiddenException(
@@ -140,7 +148,7 @@ export class ActivityFlagsController {
       body.displayTeamPerAssignee
     );
     this.gateway.broadcastActivityUpdated(activityId);
-    return { success: true, ...delta };
+    return { success: true, data: delta };
   }
 
   @ApiOperation({

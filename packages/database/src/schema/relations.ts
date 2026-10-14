@@ -15,7 +15,6 @@ import { activities } from './activity';
 import {
   categories,
   commsMaterials,
-  eventPlanners,
   reports,
   sectors,
   tags,
@@ -159,7 +158,7 @@ export const activityTranslationsRequired = pgTable(
 
 /**
  * ActivityEventPlanners junction table - Many-to-many relationship between Activities and Event Planners
- * eventPlannerId = lookup table; eventPlannerName = one-off free text. Backend prefers id when present.
+ * eventPlannerId = users.id (users with is_event_planner); eventPlannerName = one-off free text. Backend prefers id when present.
  * isLead marks the lead planner (exactly one per activity when planners exist).
  */
 export const activityEventPlanners = pgTable('activity_event_planners', {
@@ -167,9 +166,7 @@ export const activityEventPlanners = pgTable('activity_event_planners', {
   activityId: integer('activity_id')
     .notNull()
     .references(() => activities.id),
-  eventPlannerId: integer('event_planner_id').references(
-    () => eventPlanners.id
-  ),
+  eventPlannerId: integer('event_planner_id').references(() => users.id),
   eventPlannerName: varchar('event_planner_name', { length: 255 }),
   isLead: boolean('is_lead').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
@@ -290,9 +287,9 @@ export const activityEventPlannersRelations = relations(
       fields: [activityEventPlanners.activityId],
       references: [activities.id],
     }),
-    eventPlanner: one(eventPlanners, {
+    eventPlanner: one(users, {
       fields: [activityEventPlanners.eventPlannerId],
-      references: [eventPlanners.id],
+      references: [users.id],
     }),
   })
 );

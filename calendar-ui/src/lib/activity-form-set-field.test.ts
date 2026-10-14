@@ -16,6 +16,15 @@ import {
 } from './activity-form-set-field';
 
 describe('setActivityFormFieldValue', () => {
+  it('leaves venue province and country unset in default form values', () => {
+    const values = getDefaultFormValues();
+
+    expect(values.venueAddress).toMatchObject({
+      provinceOrState: null,
+      country: null,
+    });
+  });
+
   it('calls setValue with ACTIVITY_FIELD_SET_OPTS and triggers field validation', () => {
     const { result } = renderHook(() =>
       useForm<ActivityFormData>({

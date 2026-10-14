@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { FormLookupData } from '@/hooks/useFormLookups';
 import { getHistoryFieldLabel } from '@/lib/activity-history-format';
+import { formatTime12h } from '@/lib/datetime-utils';
 
 interface CreateActivityConfirmModalProps {
   open: boolean;
@@ -29,6 +30,8 @@ interface CreateActivityConfirmModalProps {
   leadTeamOptions?: TeamListItem[];
   onConfirm: (notes?: string, markAsReviewed?: boolean) => void;
   isSubmitting: boolean;
+  /** When true, confirm is disabled (e.g. recurring edit lockout became active). */
+  confirmDisabled?: boolean;
   /** When true, show "Mark as reviewed" checkbox (admin/sysAdmin only). */
   showMarkAsReviewed?: boolean;
 }
@@ -139,6 +142,14 @@ function resolveDisplayValue(
     return status?.label || status?.name || String(value);
   }
 
+  if (
+    (field === 'startTime' || field === 'endTime') &&
+    typeof value === 'string'
+  ) {
+    const formatted = formatTime12h(value);
+    return formatted === '' ? '(empty)' : formatted;
+  }
+
   if (field === 'venueStatusId' && typeof value === 'number') {
     const status = lookups.venueStatuses.find((s) => s.id === value);
     return status?.displayName ?? status?.name ?? String(value);
@@ -236,6 +247,7 @@ export function CreateActivityConfirmModal({
   leadTeamOptions,
   onConfirm,
   isSubmitting,
+  confirmDisabled = false,
   showMarkAsReviewed = false,
 }: CreateActivityConfirmModalProps) {
   const [notes, setNotes] = useState('');
@@ -357,7 +369,11 @@ export function CreateActivityConfirmModal({
           >
             Go back
           </Button>
-          <Button type="button" onClick={handleConfirm} disabled={isSubmitting}>
+          <Button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isSubmitting || confirmDisabled}
+          >
             {isSubmitting ? 'Submitting...' : 'Confirm'}
           </Button>
         </DialogFooter>

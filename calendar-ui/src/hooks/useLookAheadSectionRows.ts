@@ -78,6 +78,16 @@ export function getLookAheadSectionLabelFromRows(
   return match?.uiLabel ?? value;
 }
 
+/** Report cover / legend label for a stored `activity.lookAheadSection` value. */
+export function getLookAheadSectionReportLabelFromRows(
+  rows: ReadonlyArray<LookAheadSectionRow>,
+  value: string | null | undefined
+): string {
+  if (!value) return '';
+  const match = rows.find((r) => r.lookAheadKey === value);
+  return match?.reportLegendLabel ?? value;
+}
+
 /**
  * Look up the configured legend swatch color for a stored `activity.lookAheadSection`
  * value using the resolved rows.

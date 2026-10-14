@@ -7,6 +7,8 @@ import {
   reportDataQuerySchema,
   reportDataQueryToActivityFindAllFilters,
   serializeFilterActivitiesQueryParams,
+  userActivityCountsQuerySchema,
+  userListQuerySchema,
 } from './query-params.schema';
 
 describe('parseIdListFromQueryParam', () => {
@@ -47,7 +49,6 @@ describe('filterActivitiesQuerySchema', () => {
   it('parses array filter params from comma-separated strings', () => {
     const result = filterActivitiesQuerySchema.parse({
       activityStatusIds: '1,2,3',
-      leadMinistryIds: '5',
       leadTeamIds: '7,8',
       commsContactLeadUserIds: '10',
       flagAssigneeUserIds: '20',
@@ -57,7 +58,6 @@ describe('filterActivitiesQuerySchema', () => {
       lookAheadSectionValues: 'events,issues',
     });
     expect(result.activityStatusIds).toEqual([1, 2, 3]);
-    expect(result.leadMinistryIds).toEqual([5]);
     expect(result.leadTeamIds).toEqual([7, 8]);
     expect(result.commsContactLeadUserIds).toEqual([10]);
     expect(result.flagAssigneeUserIds).toEqual([20]);
@@ -84,9 +84,7 @@ describe('filterActivitiesQuerySchema', () => {
       { activityStatusIds: '1,2.5,3' },
     ];
     for (const query of invalid) {
-      const result = filterActivitiesQuerySchema.parse(query);
-      const key = Object.keys(query)[0] as keyof typeof result;
-      expect(result[key]).toBeUndefined();
+      expect(() => filterActivitiesQuerySchema.parse(query)).toThrow();
     }
   });
 
@@ -131,6 +129,37 @@ describe('serializeFilterActivitiesQueryParams', () => {
       sharedWithTeamIds: '3',
       includeCompleted: true,
     });
+  });
+});
+
+describe('userListQuerySchema', () => {
+  it('parses optional filters and comma-separated teamIds', () => {
+    expect(userListQuerySchema.parse({})).toEqual({});
+    expect(
+      userListQuerySchema.parse({ teamIds: '1,2', search: 'ada' })
+    ).toEqual({
+      teamIds: [1, 2],
+      search: 'ada',
+    });
+  });
+
+  it('rejects an optional ID filter when any segment is invalid', () => {
+    expect(() => userListQuerySchema.parse({ teamIds: '1,foo,2' })).toThrow();
+    expect(() => userListQuerySchema.parse({ roleIds: '1,foo,2' })).toThrow();
+  });
+});
+
+describe('userActivityCountsQuerySchema', () => {
+  it('parses required comma-separated userIds', () => {
+    expect(userActivityCountsQuerySchema.parse({ userIds: '10,20' })).toEqual({
+      userIds: [10, 20],
+    });
+  });
+
+  it('rejects invalid segments in userIds', () => {
+    expect(() =>
+      userActivityCountsQuerySchema.parse({ userIds: '1,bad' })
+    ).toThrow();
   });
 });
 

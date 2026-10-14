@@ -241,11 +241,11 @@ export function MinistryAdminModalForm({
             }
             setMinisterComboValue(v);
           }}
-          placeholder="Search ministers or type a new name…"
+          placeholder=""
           searchPlaceholder="Search…"
           emptyMessage="No matching ministers."
-          freeformLabel="Create new government representative"
-          freeformDescription="Saves as a minister linked to this ministry."
+          freeformBadgeLabel="Add custom minister"
+          listFooterHint="Custom minister names allowed"
           disabled={isSubmitting}
           className="w-full"
         />

@@ -22,7 +22,6 @@ This document describes the authentication and authorization system implemented 
 │  │  │ - POST /auth/login    │  │  │  │ - getPermissionsForRole()   │   │  │
 │  │  │ - GET  /auth/me       │  │  │  │ - getTeamIdsForUser()       │   │  │
 │  │  │ - POST /auth/logout   │  │  │  │ - hasPermission()           │   │  │
-│  │  │ - POST /auth/refresh  │  │  │  │ - bypassesDataScoping()     │   │  │
 │  │  └───────────────────────┘  │  │  └─────────────────────────────┘   │  │
 │  │  ┌───────────────────────┐  │  │  ┌─────────────────────────────┐   │  │
 │  │  │ AuthService           │  │  │  │ Guards                      │   │  │
@@ -172,6 +171,7 @@ The system includes six predefined roles. Teams may optionally have a role (`tea
 - **Delete (soft and hard)**: Requires `activities.delete` **and** (comms contact or lead-team member or `activities.delete.any`). Without `activities.delete.any`, the service allows delete only when the user is a comms contact or lead-team member for the activity. Enforced by `CanDeleteActivityGuard` and by the activities service for context.
 - **Edit page when Delete requested or Deleted**: When an activity is in **Delete requested** or **Deleted** status, only **Admin** and **System Admin** may access the edit page. Other users (including those with `activities.edit`) can view the activity and use Restore from the banner if allowed; the UI redirects non-admins away from the edit page. No new permission is used; enforcement is role-based in the UI and via redirect. (Edit is implemented as a mode of the same activity page; the URL reflects edit state and non-admins are redirected to view when in delete_requested/deleted status.)
 - **activities.review**: may set activity status to Reviewed when creating or updating (e.g. "Mark as reviewed" checkbox).
+- **activities.publicLastUpdated.defer** (Admin / System Admin): on defer-aware saves (activity PATCH and junction updates), may leave the **public** last-updated timestamp unchanged unless they opt in. Lifecycle and housekeeping writes (create, delete/restore flows, bulk, notes, transfer, system jobs) follow fixed rules and are not toggled by defer. **Operational** last-updated (`lastUpdatedBy` / `lastUpdatedDateTime`) always updates on in-scope writes. Users without this permission always bump both timestamps. On PATCH from confirm modals, defer holders may send `renewPublicLastUpdated: true` to also bump public; sending that flag without defer permission is rejected. Optimistic concurrency (`ifUnmodifiedSince`) uses the **operational** timestamp. Activity **list** and report bulk payloads include **both** operational and public last-updated fields; table sort, reports, and stale reminders should use **public** for user-visible “last updated.” Activity detail responses include public fields for all viewers; operational fields are included when the caller may edit the activity (list always includes operational for integrators). In the UI, defer holders see **Last updated** (public) and **Last updated (admin)** (operational).
 - **activities.lock.forceHandoff** (Admin / System Admin): may `POST /locks/activity/:activityId/force-handoff` to start a timed handoff of the edit lock, and may `DELETE /locks/activity/:activityId/force-handoff` to cancel a **pending** handoff. Only the user who requested the handoff (`to_user_id`) can cancel; other holders of the permission cannot cancel someone else's request.
 - Bypass (see all activities): Advanced Viewer, Advanced Editor, Admin, System Admin.
 
@@ -266,7 +266,8 @@ CREATE TABLE user_teams (
 | GET    | /auth/azure/callback | Handles Azure AD callback                   | No            |
 | GET    | /auth/me             | Get current user & permissions              | Yes           |
 | POST   | /auth/logout         | Log out (client discards token)             | Yes           |
-| POST   | /auth/refresh        | Refresh token (not implemented)             | Yes           |
+
+JSON auth responses use `{ "success": true, "data": … }` except Azure redirect routes.
 
 ### Login Request/Response
 
@@ -492,6 +493,26 @@ Users who can see an activity only because it is **shared with** one of their te
 List and detail activity responses run `redactActivityResponse` in the activities controller. For scopes that have an `activities.<scope>.view` permission, the user must hold that permission, the matching `activities.<scope>.edit` permission (edit implies view), or a role that bypasses field view checks (Advanced Viewer, Advanced Editor, Admin, System Admin). Otherwise those response fields are omitted.
 
 Some scopes **do not** enforce a view permission: **translations**, **pitch required status**, and **pitch date** are always included for users who can access the activity; editing them still requires the corresponding `activities.<scope>.edit` grants where applicable.
+
+#### Activity history visibility and field redaction
+
+Activity history (`GET /activities/:id/history`, global history) applies two layers of access control:
+
+1. **Activity visibility** — History is returned only for activities the caller can already see (same team/visibility rules as list and detail). Per-activity history calls `findOne` first; global history filters by visible activity IDs.
+
+2. **Field-level redaction** — Each history entry’s `changes` array is filtered with the same field-scope rules as activity responses (`redactActivityHistoryChanges` / `canViewHistoryField`). Users see diffs only for fields they are allowed to view; other field changes are removed from the payload.
+
+**Omitting empty entries (intentional):** After redaction, an entry is **not returned at all** when the caller would have nothing useful to read: no viewable field changes remain, there is no audit note on the history row, and the action is not `note_added`. Empty shell rows (action type + actor + timestamp with no details) are deliberately omitted — they add noise without revealing permitted information.
+
+Entries are still returned when at least one of the following applies:
+
+- One or more field changes remain after redaction (partial diffs are fine).
+- The history row has a non-empty audit `notes` value (standalone context the actor chose to record).
+- The action type is `note_added` (timeline note with no field changes).
+
+The full audit log remains in the database for operators with broader access; this behavior governs **read** responses only.
+
+Implementation: `ActivityHistoryService.mapEntriesToResponse` and `shouldIncludeHistoryEntry` in `calendar-service`; field keys and scope mapping in `packages/shared/src/activity-history-fields.ts`.
 
 #### Using dataScope in controllers and services
 

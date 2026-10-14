@@ -1,11 +1,45 @@
-import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import type { ActivityHistoryEntry } from '@corpcal/shared/api/types';
 import { fetchActivityHistory } from '@/api/activitiesApi';
+import {
+  buildActivityHistoryFilterDetailLines,
+  buildHistoryActorFilterOptions,
+  buildHistoryAppliedFilterTypeLabels,
+  GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS,
+  HISTORY_LIST_CONTENT_CLASSNAME,
+  historyEntryMatchesActionTypes,
+  historyEntryMatchesUserIds,
+  HistoryList,
+  HistoryListEmptyState,
+  HistoryListLoading,
+  HistoryListToolbar,
+  HistoryMultiSelectFilter,
+  HistorySearchInput,
+  historySummaryHasActiveFilters,
+  historySummaryHasClearableFilters,
+  resolveHistoryEmptyVariant,
+  toActivityHistoryViewModel,
+} from '@/components/history';
 import { ErrorState } from '@/components/shared';
+import { ContentSection } from '@/components/table/ContentSection';
+import { FilterSection } from '@/components/table/FilterSection';
+import {
+  tableContainer,
+  tableScrollWrapper,
+} from '@/components/table/tableConstants';
+import {
+  TableContentSummary,
+  TableFilterSummary,
+} from '@/components/table/TableSummaryBar';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,8 +49,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useAddActivityHistoryNote } from '@/hooks/useCalendar';
 import {
   useActivityStatuses,
@@ -40,20 +85,15 @@ import {
 } from '@/hooks/useLookups';
 import {
   formatHistoryFieldValue,
-  getActionLabel,
+  getActionText,
   getHistoryFieldLabel,
   type LookupMaps,
   type StatusLookupMap,
 } from '@/lib/activity-history-format';
-import {
-  CORP_PACIFIC_TIME_ZONE,
-  formatLongDate,
-  formatPacificTimeWithAbbrev,
-  pacificActivityHistoryRecencyBucket,
-} from '@/lib/datetime-utils';
 import { LOAD_HISTORY_MESSAGE, LOAD_HISTORY_TITLE } from '@/lib/error-messages';
 import { showErrorToast } from '@/lib/error-toast';
 import { createLogger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
 
 const logger = createLogger('ActivityHistory');
 
@@ -64,22 +104,6 @@ export interface DateStatusLookupItem {
 }
 
 const MAX_NOTE_LENGTH = 1000;
-
-function getActorDisplayName(entry: ActivityHistoryEntry): string {
-  return entry.actor?.displayName || entry.userName || `User ${entry.userId}`;
-}
-
-function getActorInitials(entry: ActivityHistoryEntry): string {
-  const displayName = getActorDisplayName(entry);
-  const parts = displayName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) {
-    return 'U';
-  }
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-}
 
 function matchesSearch(
   entry: ActivityHistoryEntry,
@@ -92,9 +116,9 @@ function matchesSearch(
   }
 
   const haystacks = [
-    getActorDisplayName(entry),
+    entry.actor?.displayName || entry.userName || `User ${entry.userId}`,
     entry.actor?.username,
-    getActionLabel(entry.actionType, entry.changes ?? []),
+    getActionText(entry.actionType),
     entry.notes,
     ...(entry.changes ?? []).flatMap((change) => [
       getHistoryFieldLabel(change.field),
@@ -110,28 +134,34 @@ function matchesSearch(
 
 export default function ActivityHistory({
   activityId,
+  displayId,
   open,
   onOpenChange,
   dateStatuses,
   venueStatuses: venueStatusesProp,
+  canAddNote = false,
+  addNoteDisabled = false,
+  addNoteDisabledReason,
 }: {
   activityId: number;
+  displayId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   dateStatuses?: DateStatusLookupItem[];
   venueStatuses?: Array<{ id: number; name: string; displayName?: string }>;
+  canAddNote?: boolean;
+  addNoteDisabled?: boolean;
+  addNoteDisabledReason?: string;
 }) {
   const [entries, setEntries] = useState<ActivityHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedActionTypes, setSelectedActionTypes] = useState<string[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(
-    new Set()
-  );
   const addNoteMutation = useAddActivityHistoryNote();
-
   const activityStatusesQuery = useActivityStatuses();
   const timeStatusesQuery = useTimeStatuses();
   const venueStatusesQuery = useVenueStatuses();
@@ -151,19 +181,6 @@ export default function ActivityHistory({
   const ministriesQuery = useMinistries();
   const organizationsQuery = useOrganizations();
 
-  // Toggle expanded state for a history entry
-  const toggleExpandedEntry = useCallback((entryId: number) => {
-    setExpandedEntries((prev) => {
-      const next = new Set(prev);
-      if (next.has(entryId)) {
-        next.delete(entryId);
-      } else {
-        next.add(entryId);
-      }
-      return next;
-    });
-  }, []);
-
   const lookupMaps = useMemo((): LookupMaps => {
     const toMap = (
       items: Array<{ id: number; label: string }> | undefined
@@ -176,7 +193,6 @@ export default function ActivityHistory({
     const dateStatusMap = new Map<number | string, string>();
     dateStatuses?.forEach((s) => dateStatusMap.set(s.id, s.label));
 
-    // Prefer prop-supplied venue statuses; fall back to query data
     const venueStatusMap = new Map<number | string, string>();
     if (venueStatusesProp) {
       venueStatusesProp.forEach((s) =>
@@ -298,32 +314,55 @@ export default function ActivityHistory({
 
   const filteredEntries = useMemo(
     () =>
-      entries.filter((entry) => matchesSearch(entry, searchQuery, lookupMaps)),
-    [entries, searchQuery, lookupMaps]
+      entries.filter(
+        (entry) =>
+          matchesSearch(entry, searchQuery, lookupMaps) &&
+          historyEntryMatchesActionTypes(entry, selectedActionTypes) &&
+          historyEntryMatchesUserIds(entry, selectedUserIds)
+      ),
+    [entries, lookupMaps, searchQuery, selectedActionTypes, selectedUserIds]
   );
 
-  // Categorize into Today / This week / Earlier using corp Pacific calendar
-  // boundaries so buckets match Pacific-formatted timestamps.
-  const groupsOrder = ['Today', 'This week', 'Earlier'] as const;
-  const groups: Record<string, ActivityHistoryEntry[]> = {
-    Today: [],
-    'This week': [],
-    Earlier: [],
-  };
+  const actorFilterOptions = useMemo(
+    () => buildHistoryActorFilterOptions(entries),
+    [entries]
+  );
 
-  const now = new Date();
-  for (const e of filteredEntries) {
-    const bucket = pacificActivityHistoryRecencyBucket(
-      new Date(e.timestamp),
-      now
-    );
-    groups[bucket].push(e);
-  }
+  const hasActiveFilters = historySummaryHasActiveFilters({
+    searchQuery,
+    selectedActionTypes,
+    selectedUserIds,
+  });
+
+  const clearAllFilters = useCallback(() => {
+    setSearchQuery('');
+    setSelectedActionTypes([]);
+    setSelectedUserIds([]);
+  }, []);
+
+  const filterDetailLines = useMemo(
+    () =>
+      buildActivityHistoryFilterDetailLines({
+        searchQuery,
+        selectedActionTypes,
+        selectedUserIds,
+        actorFilterOptions,
+      }),
+    [actorFilterOptions, searchQuery, selectedActionTypes, selectedUserIds]
+  );
+
+  const historyEntries = useMemo(
+    () =>
+      filteredEntries.map((entry) =>
+        toActivityHistoryViewModel(entry, { lookupMaps })
+      ),
+    [filteredEntries, lookupMaps]
+  );
 
   const trimmedNote = noteText.trim();
 
   const handleAddNote = async () => {
-    if (!trimmedNote || addNoteMutation.isPending) {
+    if (!trimmedNote || addNoteMutation.isPending || addNoteDisabled) {
       return;
     }
 
@@ -345,192 +384,177 @@ export default function ActivityHistory({
   const noteButtonDisabled =
     trimmedNote.length === 0 || trimmedNote.length > MAX_NOTE_LENGTH;
 
-  return (
-    <>
-      <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/40" />
-          <DialogPrimitive.Content
-            className={
-              'bg-background fixed top-0 right-0 z-50 h-full w-full max-w-md translate-x-full transform p-6 transition duration-200 ease-in-out data-[state=open]:translate-x-0'
-            }
-          >
-            <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 hover:opacity-100">
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </DialogPrimitive.Close>
-
-            <div className="border-b border-slate-200 pb-4">
-              <div className="pr-8">
-                <p className="text-[11px] font-semibold tracking-[0.16em] text-slate-500 uppercase">
-                  Activity timeline
-                </p>
-                <h2 className="mt-1 text-[28px] font-semibold tracking-tight text-slate-900">
-                  History
-                </h2>
-                <p className="mt-1.5 max-w-sm text-sm leading-6 text-slate-500">
-                  {entries.length === 0
-                    ? 'Track updates, reviews, and notes for this activity.'
-                    : `${entries.length} event${entries.length === 1 ? '' : 's'} recorded for this activity.`}
-                </p>
-              </div>
-              <div className="mt-4 flex items-center gap-3">
-                <input
-                  placeholder="Search"
-                  aria-label="Search history"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  className="bg-background w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-                />
+  const noteButton = useMemo(
+    () =>
+      canAddNote ? (
+        addNoteDisabled && addNoteDisabledReason ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => setNoteModalOpen(true)}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2"
+                  disabled
                 >
-                  + Add note
+                  <Plus className="h-4 w-4" />
+                  Note
                 </Button>
-              </div>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{addNoteDisabledReason}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2"
+            disabled={addNoteDisabled}
+            onClick={() => setNoteModalOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            New note
+          </Button>
+        )
+      ) : null,
+    [addNoteDisabled, addNoteDisabledReason, canAddNote]
+  );
+
+  const appliedFilterTypeLabels = useMemo(
+    () =>
+      buildHistoryAppliedFilterTypeLabels({
+        searchQuery,
+        selectedActionTypes,
+        selectedUserIds,
+      }),
+    [searchQuery, selectedActionTypes, selectedUserIds]
+  );
+
+  const showClearFilters = historySummaryHasClearableFilters({
+    searchQuery,
+    selectedActionTypes,
+    selectedUserIds,
+  });
+
+  const renderCountSummary = useCallback(
+    (countTrailing?: ReactNode) =>
+      !loadError ? (
+        <TableContentSummary
+          count={loading ? 0 : filteredEntries.length}
+          singularLabel="record"
+          pluralLabel="records"
+          countTrailing={countTrailing}
+          actions={noteButton}
+        />
+      ) : null,
+    [filteredEntries.length, loadError, loading, noteButton]
+  );
+
+  return (
+    <>
+      <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+        <DrawerContent
+          className={cn(
+            'flex h-full flex-col',
+            'data-[vaul-drawer-direction=right]:w-full',
+            'data-[vaul-drawer-direction=right]:max-w-xl',
+            'data-[vaul-drawer-direction=right]:sm:max-w-xl',
+            'data-[vaul-drawer-direction=right]:lg:max-w-2xl'
+          )}
+        >
+          <DrawerHeader className="shrink-0 text-left">
+            <DrawerTitle>
+              History
+              {displayId != null && displayId.length > 0 ? (
+                <> {displayId}</>
+              ) : null}
+            </DrawerTitle>
+          </DrawerHeader>
+
+          <FilterSection className="shrink-0 px-4">
+            <div className="flex min-w-0 items-center gap-3 overflow-x-auto">
+              <HistorySearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                className="max-w-none min-w-[180px] shrink-0"
+              />
+              <HistoryMultiSelectFilter
+                label="Type"
+                options={GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS}
+                selectedValues={selectedActionTypes}
+                onChange={setSelectedActionTypes}
+              />
+              <HistoryMultiSelectFilter
+                label="Updated by"
+                options={actorFilterOptions}
+                selectedValues={selectedUserIds}
+                onChange={setSelectedUserIds}
+                searchPlaceholder="Search users"
+              />
             </div>
+            <TableFilterSummary
+              appliedFilterTypeLabels={appliedFilterTypeLabels}
+              filterDetailLines={filterDetailLines}
+              onClearFilters={
+                !loadError && showClearFilters ? clearAllFilters : undefined
+              }
+            />
+          </FilterSection>
 
-            <div className="mt-4 overflow-auto" style={{ maxHeight: '80vh' }}>
-              {loading ? (
-                <div>Loading history...</div>
-              ) : loadError ? (
-                <ErrorState
-                  title={LOAD_HISTORY_TITLE}
-                  message={LOAD_HISTORY_MESSAGE}
-                  onRetry={() => void loadHistory()}
-                />
-              ) : entries.length === 0 ? (
-                <div>No history found.</div>
-              ) : filteredEntries.length === 0 ? (
-                <div>No matching history found.</div>
-              ) : (
-                groupsOrder.map((groupKey) =>
-                  groups[groupKey].length > 0 ? (
-                    <div key={groupKey} className="mb-6">
-                      <div className="mb-2 text-sm font-semibold">
-                        {groupKey}
-                      </div>
-                      <div className="space-y-4">
-                        {groups[groupKey].map((entry) => (
-                          <div key={entry.id} className="rounded py-3">
-                            <div className="flex gap-3">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
-                                {getActorInitials(entry)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-start justify-between gap-2">
-                                  <div>
-                                    <div className="text-foreground text-base font-normal">
-                                      {getActorDisplayName(entry)}
-                                    </div>
-                                    <div className="text-muted-foreground mt-1 text-sm">
-                                      {getActionLabel(
-                                        entry.actionType,
-                                        entry.changes ?? []
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="text-muted-foreground text-sm">
-                                    {groupKey === 'Today'
-                                      ? `Today at ${formatPacificTimeWithAbbrev(
-                                          new Date(entry.timestamp)
-                                        )}`
-                                      : formatLongDate(
-                                          new Date(entry.timestamp),
-                                          { timeZone: CORP_PACIFIC_TIME_ZONE }
-                                        )}
-                                  </div>
-                                </div>
-
-                                <div className="text-foreground mt-3 space-y-3 text-sm">
-                                  {entry.changes && entry.changes.length > 0 ? (
-                                    <div>
-                                      {(expandedEntries.has(entry.id)
-                                        ? entry.changes
-                                        : entry.changes.slice(0, 3)
-                                      )
-                                        .filter(
-                                          (change) =>
-                                            change.field !== 'flag.assigneeName'
-                                        )
-                                        .map((change, index) => (
-                                          <div
-                                            key={index}
-                                            className="mb-1 text-sm"
-                                          >
-                                            <strong className="font-medium">
-                                              {getHistoryFieldLabel(
-                                                change.field
-                                              )}
-                                              :
-                                            </strong>{' '}
-                                            <span className="text-muted-foreground">
-                                              {formatHistoryFieldValue(
-                                                change.field,
-                                                change.oldValue,
-                                                lookupMaps
-                                              )}
-                                            </span>{' '}
-                                            →{' '}
-                                            <span>
-                                              {formatHistoryFieldValue(
-                                                change.field,
-                                                change.newValue,
-                                                lookupMaps
-                                              )}
-                                            </span>
-                                          </div>
-                                        ))}
-                                      {entry.changes.length > 3 ? (
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            toggleExpandedEntry(entry.id)
-                                          }
-                                          className="mt-1 cursor-pointer border-none bg-transparent p-0 text-sm font-medium text-blue-600 hover:text-blue-800"
-                                        >
-                                          {expandedEntries.has(entry.id)
-                                            ? 'Show less'
-                                            : 'Show more'}
-                                        </button>
-                                      ) : null}
-                                    </div>
-                                  ) : null}
-
-                                  {entry.notes ? (
-                                    <div className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                                      {entry.notes}
-                                    </div>
-                                  ) : null}
-
-                                  {!entry.notes &&
-                                  (!entry.changes ||
-                                    entry.changes.length === 0 ||
-                                    entry.changes.every(
-                                      (c) => c.field === 'flag.assigneeName'
-                                    )) &&
-                                  entry.actionType !== 'flag_assigned' &&
-                                  entry.actionType !== 'flag_removed' ? (
-                                    <div className="text-muted-foreground text-sm">
-                                      No field-level changes recorded
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+          <ContentSection className="flex min-h-0 flex-1 flex-col px-4 pb-4">
+            {loading ? (
+              <>
+                <HistoryListToolbar summary={renderCountSummary()} />
+                <HistoryListLoading />
+              </>
+            ) : loadError ? (
+              <ErrorState
+                title={LOAD_HISTORY_TITLE}
+                message={LOAD_HISTORY_MESSAGE}
+                onRetry={() => void loadHistory()}
+              />
+            ) : entries.length === 0 ? (
+              <>
+                <HistoryListToolbar summary={renderCountSummary()} />
+                <div className={cn(tableContainer, 'min-h-0 flex-1')}>
+                  <HistoryListEmptyState variant="no-data" />
+                </div>
+              </>
+            ) : filteredEntries.length === 0 ? (
+              <>
+                <HistoryListToolbar summary={renderCountSummary()} />
+                <div className={cn(tableContainer, 'min-h-0 flex-1')}>
+                  <HistoryListEmptyState
+                    variant={resolveHistoryEmptyVariant(
+                      entries.length > 0,
+                      hasActiveFilters,
+                      searchQuery
+                    )}
+                  />
+                </div>
+              </>
+            ) : (
+              <HistoryList
+                entries={historyEntries}
+                className={HISTORY_LIST_CONTENT_CLASSNAME}
+              >
+                {({ expandAll, groups }) => (
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    <HistoryListToolbar
+                      summary={renderCountSummary(expandAll)}
+                    />
+                    <div className={cn(tableContainer, 'min-h-0 flex-1')}>
+                      <div className={tableScrollWrapper}>{groups}</div>
                     </div>
-                  ) : null
-                )
-              )}
-            </div>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
+                  </div>
+                )}
+              </HistoryList>
+            )}
+          </ContentSection>
+        </DrawerContent>
+      </Drawer>
 
       <Dialog open={noteModalOpen} onOpenChange={setNoteModalOpen}>
         <DialogContent className="sm:max-w-lg">

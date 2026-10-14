@@ -3,9 +3,12 @@ import type { LockState } from './useActivityLock';
 export type ActivityEditActionFlags = {
   /** Another user holds the edit lock. */
   isLockedByOther: boolean;
+  /** Edit actions are blocked by another user's lock or recurring lockout. */
+  isEditingBlocked: boolean;
   /**
-   * Save submits through the form when the client holds the edit lock, validation passes, and
-   * the form has unsaved edits. Review uses ensureEditThen separately so reviewers can mark
+   * Save submits through the form when the client holds the edit lock and the form has unsaved
+   * edits. Validation failures are handled by the form submit error path so focus can move to
+   * the first invalid field. Review uses ensureEditThen separately so reviewers can mark
    * reviewed without dirtying the form first.
    */
   canSubmitUpdate: boolean;
@@ -29,6 +32,7 @@ type UseActivityEditActionsInput = {
   canSubmitWithoutValidationErrors: boolean;
   isSubmitting: boolean;
   readOnly: boolean;
+  isBlockedByRecurringLockout?: boolean;
   /** Save is only meaningful when the user has changed something. */
   isDirty: boolean;
 };
@@ -46,19 +50,16 @@ export function useActivityEditActions({
   canSubmitWithoutValidationErrors,
   isSubmitting,
   readOnly,
+  isBlockedByRecurringLockout = false,
   isDirty,
 }: UseActivityEditActionsInput): ActivityEditActionFlags {
   const isLockedByOther = lockState === 'locked-by-other';
+  const isEditingBlocked = isLockedByOther || isBlockedByRecurringLockout;
 
-  const canSubmitUpdate =
-    hasEditLock &&
-    canSubmitWithoutValidationErrors &&
-    !isSubmitting &&
-    !readOnly &&
-    isDirty;
+  const canSubmitUpdate = hasEditLock && !isSubmitting && !readOnly && isDirty;
 
   const showReviewAction =
-    canReviewActivities && mayEditFormFields && !isLockedByOther;
+    canReviewActivities && mayEditFormFields && !isEditingBlocked;
 
   const reviewActionEnabled =
     showReviewAction &&
@@ -69,7 +70,7 @@ export function useActivityEditActions({
     canCompleteActivities &&
     markCompleteEligible &&
     mayEditFormFields &&
-    !isLockedByOther;
+    !isEditingBlocked;
 
   const completeActionEnabled =
     showCompleteAction &&
@@ -78,6 +79,7 @@ export function useActivityEditActions({
 
   return {
     isLockedByOther,
+    isEditingBlocked,
     canSubmitUpdate,
     showReviewAction,
     reviewActionEnabled,

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ActivityFilterState } from '@corpcal/shared';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
-import type { ActivityTableActiveSavedFilter } from '@/components/activity/ActivityTable/ActivityTable';
+import type { ActivityTableActiveSavedFilter } from '@/components/activity/ActivityTable';
 import { hasAnyActivityTableFilterActive } from '@/components/activity/ActivityTable/ActivityTableFilters';
 import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
@@ -37,10 +37,9 @@ export function useReportsSavedFilters(options: {
         statusOptions: lookups.statusOptions,
         categoryOptions: lookups.categoryOptions,
         tagOptions: lookups.tagOptions,
-        ministryOptions: lookups.ministryOptions,
-        organizationOptions: lookups.organizationOptions,
         commsContactOptions: lookups.commsContactOptions,
         eventPlannerOptions: lookups.eventPlannerOptions,
+        leadTeamOptions: lookups.leadTeamOptions,
         translationStatusOptions: lookups.translationStatusOptions,
         translationOptions: lookups.translationOptions,
       }),
@@ -48,10 +47,9 @@ export function useReportsSavedFilters(options: {
       lookups.statusOptions,
       lookups.categoryOptions,
       lookups.tagOptions,
-      lookups.ministryOptions,
-      lookups.organizationOptions,
       lookups.commsContactOptions,
       lookups.eventPlannerOptions,
+      lookups.leadTeamOptions,
       lookups.translationStatusOptions,
       lookups.translationOptions,
     ]

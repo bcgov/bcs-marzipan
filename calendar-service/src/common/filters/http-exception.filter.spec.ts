@@ -1,5 +1,8 @@
 import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
-import type { ArgumentsHost } from '@nestjs/common/interfaces';
+import type {
+  ArgumentsHost,
+  HttpArgumentsHost,
+} from '@nestjs/common/interfaces';
 import type { Request, Response } from 'express';
 
 import { HttpExceptionFilter } from './http-exception.filter';
@@ -8,11 +11,14 @@ function createMockHost(
   request: Partial<Request & { correlationId?: string }>,
   response: Partial<Response>
 ): ArgumentsHost {
+  const httpArgumentsHost: HttpArgumentsHost = {
+    getRequest: () => request,
+    getResponse: () => response,
+    getNext: () => undefined,
+  } as HttpArgumentsHost;
+
   return {
-    switchToHttp: () => ({
-      getRequest: () => request,
-      getResponse: () => response,
-    }),
+    switchToHttp: () => httpArgumentsHost,
   } as unknown as ArgumentsHost;
 }
 

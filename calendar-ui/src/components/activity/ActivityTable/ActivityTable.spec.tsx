@@ -42,6 +42,7 @@ function makeActivity(id: number) {
     commsContacts: [],
     eventPlanners: [],
     eventPlannerLeadIds: [],
+    leadTeamId: null,
     leadMinistryId: null,
     leadOrgId: null,
     translationsRequired: [],
@@ -57,7 +58,7 @@ function makeActivity(id: number) {
   };
 }
 
-const mockActivities = Array.from({ length: 12 }, (_, i) =>
+const mockActivities = Array.from({ length: 30 }, (_, i) =>
   makeActivity(i + 1)
 );
 
@@ -94,8 +95,7 @@ vi.mock('@/hooks/useActivityTableFilterLookups', () => ({
     statusOptions: [],
     pitchRequiredStatusOptions: [],
     tagOptions: [],
-    ministryOptions: [],
-    organizationOptions: [],
+    leadTeamOptions: [],
     commsContactOptions: [],
     eventPlannerOptions: [],
     translationOptions: [],
@@ -104,8 +104,7 @@ vi.mock('@/hooks/useActivityTableFilterLookups', () => ({
       statusOptions: [],
       pitchRequiredStatusOptions: [],
       tagOptions: [],
-      ministryOptions: [],
-      organizationOptions: [],
+      leadTeamOptions: [],
       commsContactOptions: [],
       eventPlannerOptions: [],
       translationStatusOptions: [],
@@ -118,12 +117,12 @@ vi.mock('@/hooks/useActivityTableFilterLookups', () => ({
 vi.mock('@/hooks/useActivityTablePreferences', () => ({
   useActivityTablePreferences: () => ({
     preferences: {
-      sortKey: null,
-      sortDirection: 'desc',
+      sortKey: 'startDate',
+      sortDirection: 'asc',
       showCompleted: false,
       showDeleted: false,
       searchKeyword: '',
-      pageSize: 10,
+      pageSize: 25,
       filterState: DEFAULT_ACTIVITY_FILTER_STATE,
     },
     setPreferences: mockSetPreferences,
@@ -140,8 +139,18 @@ vi.mock('@/hooks/useSavedFilters', () => ({
 
 vi.mock('@/hooks/useLookups', () => ({
   useCategories: () => ({ data: [] }),
+  usePitchRequiredStatuses: () => ({ data: [] }),
+  useTags: () => ({ data: [] }),
+  useTeams: () => ({ data: [] }),
   useTranslationLanguages: () => ({ data: [], isLoading: false }),
   useUsers: () => ({ data: [] }),
+}));
+
+vi.mock('@/hooks/useFavourites', () => ({
+  useFavourites: () => ({
+    favouriteActivityIds: [],
+    toggle: vi.fn(),
+  }),
 }));
 
 vi.mock('@/hooks/useCalendar', () => ({
@@ -151,6 +160,14 @@ vi.mock('@/hooks/useCalendar', () => ({
     isError: false,
     isFetching: false,
     refetch: vi.fn(),
+  }),
+  useBulkUpdateActivities: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useBulkUnshareActivities: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
   }),
   useSyncActivityFlags: () => ({
     mutate: vi.fn(),
@@ -173,6 +190,36 @@ vi.mock('./ActivityTableFilters', () => ({
   ActivityTableFilters: () => <div data-testid="activity-table-filters" />,
   hasAnyActivityTableFilterActive: () => false,
 }));
+
+vi.mock('@/hooks/useActivityGridLayoutPreferences', () => ({
+  useActivityGridLayoutPreferences: () => ({
+    getColumnOrder: vi.fn(() => []),
+    setColumnOrder: vi.fn(),
+    getColumnSizing: vi.fn(() => ({})),
+    setColumnSizing: vi.fn(),
+  }),
+}));
+
+describe('ActivityTable layout', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.sessionStorage.clear();
+  });
+
+  it('renders column headers', () => {
+    render(<ActivityTable />);
+
+    expect(
+      screen.getByRole('columnheader', { name: /Overview/i })
+    ).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: /Summary/i })).toBeTruthy();
+    expect(
+      screen.getByRole('columnheader', { name: /Scheduling/i })
+    ).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: /Comms/i })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: /Status/i })).toBeTruthy();
+  });
+});
 
 describe('ActivityTable scroll state capture', () => {
   beforeEach(() => {

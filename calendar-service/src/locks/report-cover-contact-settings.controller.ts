@@ -1,10 +1,14 @@
 import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import { reportCoverContactSettingsSchema } from '@corpcal/shared/schemas';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  ReportCoverContactSettingsDto,
+  ReportCoverContactSettingsResponseWrapperDto,
+} from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { ApplicationSettingsService } from './application-settings.service';
@@ -22,7 +26,11 @@ export class ReportCoverContactSettingsController {
     summary:
       'Get contact phone and email shown on look-ahead family PDF cover pages',
   })
-  @ApiResponse({ status: 200, description: 'Current values' })
+  @ApiResponse({
+    status: 200,
+    description: 'Current values',
+    type: ReportCoverContactSettingsResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE)
   async getSettings() {
     const data =
@@ -35,7 +43,12 @@ export class ReportCoverContactSettingsController {
     summary:
       'Update contact phone and email on look-ahead family PDF cover pages',
   })
-  @ApiResponse({ status: 200, description: 'Settings updated' })
+  @ApiBody({ type: ReportCoverContactSettingsDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Settings updated',
+    type: ReportCoverContactSettingsResponseWrapperDto,
+  })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE)
   async patchSettings(
     @Body(new ZodValidationPipe(reportCoverContactSettingsSchema))

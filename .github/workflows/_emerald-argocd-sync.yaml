@@ -1,0 +1,241 @@
+name: Emerald — ArgoCD Sync & Verify
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REUSABLE WORKFLOW — called by deploy-emerald.yaml after the GitOps overlay
+# has been updated.
+#
+# Responsibility: tell ArgoCD to refresh its view of the GitOps repository
+# immediately (rather than waiting for the default polling interval), then
+# block until the application reaches Synced + Healthy, verify the deployed
+# image tag, and write a step summary.
+#
+# Steps performed:
+#   1.  Validate that ArgoCD credentials are configured
+#       (skips gracefully with a warning if not — so the workflow does not
+#        fail during initial setup before ArgoCD secrets exist)
+#   2.  Install the argocd CLI (pinned version)
+#   3.  Log in to ArgoCD
+#   4.  Trigger an immediate app refresh so ArgoCD re-reads the GitOps repo
+#   5.  Wait for Synced + Healthy (respects timeout_seconds input)
+#   6.  Verify: sync status, health status, deployed image tag
+#   7.  Write GitHub Step Summary
+#
+# Inputs:
+#   target_environment  – Emerald environment key (dev | test | prod)
+#   app_name            – ArgoCD application name to wait on
+#   image_tag           – Expected image tag for optional tag verification
+#   timeout_seconds     – Max seconds to wait (default: 300)
+#
+# Required repository variable:
+#   ARGOCD_SERVER       – ArgoCD server hostname or URL
+#                         e.g. "argocd.apps.emerald.devops.gov.bc.ca"
+#
+# Required repository secret:
+#   ARGOCD_AUTH_TOKEN   – ArgoCD API token with at least 'get' and 'sync'
+#                         permission on the target application
+#
+# Both must be set at the REPOSITORY level (not per environment) because the
+# same ArgoCD instance typically manages all three Emerald environments.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_call:
+    inputs:
+      target_environment:
+        description: Emerald environment key (dev | test | prod).
+        required: true
+        type: string
+      app_name:
+        description: ArgoCD application name to wait on.
+        required: true
+        type: string
+      image_tag:
+        description: >
+          Expected image tag for verification.
+          When provided, the workflow warns if the tag is not found in the
+          deployed resource manifests.
+        required: false
+        type: string
+        default: ''
+      timeout_seconds:
+        description: >
+          Maximum seconds to wait for ArgoCD sync + healthy.
+          Increase for large deployments or slow image pulls.
+        required: false
+        type: number
+        default: 300
+
+permissions:
+  contents: read
+
+jobs:
+  argocd-sync:
+    name: ArgoCD Sync — ${{ inputs.target_environment }}
+    runs-on: ubuntu-latest
+    # Generous job timeout: covers ArgoCD wait + CLI install + network retries.
+    timeout-minutes: 15
+
+    steps:
+      # ── 1. Validate credentials ─────────────────────────────────────────────
+      # If either required credential is absent, emit a warning and mark the
+      # step as skipped so downstream steps are also skipped — the workflow
+      # exits successfully rather than blocking a deployment just because
+      # ArgoCD hasn't been wired up yet.
+      - name: Validate ArgoCD configuration
+        id: validate
+        env:
+          ARGOCD_SERVER: ${{ vars.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$ARGOCD_SERVER" ]]; then
+            echo "::warning::vars.ARGOCD_SERVER is not configured — ArgoCD sync wait is skipped."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ -z "$ARGOCD_AUTH_TOKEN" ]]; then
+            echo "::warning::secrets.ARGOCD_AUTH_TOKEN is not configured — ArgoCD sync wait is skipped."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ -z "${{ inputs.app_name }}" ]]; then
+            echo "::error::app_name input is required but was not provided"
+            exit 1
+          fi
+
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+          echo "ArgoCD server : $ARGOCD_SERVER"
+          echo "Application   : ${{ inputs.app_name }}"
+
+      # ── 2. Install argocd CLI ───────────────────────────────────────────────
+      - name: Install argocd CLI
+        if: steps.validate.outputs.configured == 'true'
+        run: |
+          ARGOCD_VERSION="v2.13.3"
+          sudo curl -sSL -o /usr/local/bin/argocd \
+            "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-amd64"
+          sudo chmod +x /usr/local/bin/argocd
+          argocd version --client
+
+      # ── 3. Login to ArgoCD ──────────────────────────────────────────────────
+      # --grpc-web  : required when ArgoCD is exposed via an HTTP proxy such as
+      #               an OpenShift Route (the proxy does not support h2c).
+      # --insecure  : skips TLS certificate verification. Remove if the ArgoCD
+      #               server presents a certificate from a trusted CA.
+      - name: Login to ArgoCD
+        if: steps.validate.outputs.configured == 'true'
+        env:
+          ARGOCD_SERVER: ${{ vars.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+        run: |
+          argocd login "$ARGOCD_SERVER" \
+            --auth-token "$ARGOCD_AUTH_TOKEN" \
+            --grpc-web \
+            --insecure
+
+      # ── 4. Refresh the ArgoCD application ───────────────────────────────────
+      # Forces ArgoCD to re-fetch the GitOps repository immediately so the tag
+      # change pushed by promote-emerald-gitops.yaml is picked up right away
+      # instead of waiting up to 3 minutes for the default polling cycle.
+      - name: Refresh application
+        if: steps.validate.outputs.configured == 'true'
+        run: |
+          argocd app get "${{ inputs.app_name }}" --refresh >/dev/null 2>&1 \
+            || echo "::warning::App refresh returned a non-zero exit code; ArgoCD will pick up the change on its next poll cycle."
+          echo "Refresh requested for '${{ inputs.app_name }}'"
+
+      # ── 5. Wait for Synced + Healthy ────────────────────────────────────────
+      - name: Wait for ArgoCD sync + healthy
+        if: steps.validate.outputs.configured == 'true'
+        run: |
+          echo "Waiting for '${{ inputs.app_name }}' — timeout: ${{ inputs.timeout_seconds }}s"
+
+          argocd app wait "${{ inputs.app_name }}" \
+            --sync \
+            --health \
+            --operation \
+            --timeout "${{ inputs.timeout_seconds }}"
+
+      # ── 6. Verify deployment state ──────────────────────────────────────────
+      - name: Verify deployment
+        if: steps.validate.outputs.configured == 'true'
+        id: verify
+        run: |
+          set -euo pipefail
+          APP="${{ inputs.app_name }}"
+          EXPECTED_TAG="${{ inputs.image_tag }}"
+
+          echo "=== ArgoCD Application Summary ==="
+          argocd app get "$APP"
+
+          echo ""
+          echo "=== Deployed Images ==="
+          DEPLOYED_IMAGES=$(
+            argocd app get "$APP" -o json \
+              | jq -r '.status.summary.images[]?' 2>/dev/null \
+              || true
+          )
+          echo "${DEPLOYED_IMAGES:-  (no image summary available)}"
+
+          # Extract sync and health status for the summary step.
+          SYNC_STATUS=$(argocd app get "$APP" -o json | jq -r '.status.sync.status // "Unknown"')
+          HEALTH_STATUS=$(argocd app get "$APP" -o json | jq -r '.status.health.status // "Unknown"')
+
+          echo "sync_status=${SYNC_STATUS}"     >> "$GITHUB_OUTPUT"
+          echo "health_status=${HEALTH_STATUS}" >> "$GITHUB_OUTPUT"
+
+          # Hard-fail if the app did not reach the expected terminal state.
+          if [[ "$SYNC_STATUS" != "Synced" ]]; then
+            echo "::error::Sync status is '${SYNC_STATUS}' (expected: Synced)"
+            exit 1
+          fi
+          if [[ "$HEALTH_STATUS" != "Healthy" ]]; then
+            echo "::error::Health status is '${HEALTH_STATUS}' (expected: Healthy)"
+            exit 1
+          fi
+
+          # Soft-warn if the expected tag is not visible in deployed manifests.
+          # (The tag may not appear if ArgoCD summarises multi-arch manifests
+          # differently, so this is a warning rather than a hard failure.)
+          if [[ -n "$EXPECTED_TAG" ]]; then
+            if echo "$DEPLOYED_IMAGES" | grep -qF ":${EXPECTED_TAG}"; then
+              echo "Image tag '${EXPECTED_TAG}' confirmed in deployed resources."
+            else
+              echo "::warning::Expected tag '${EXPECTED_TAG}' not found in deployed image list. Verify manually if needed."
+            fi
+          fi
+
+      # ── 7. Write step summary ───────────────────────────────────────────────
+      - name: Write deployment summary
+        if: always()
+        run: |
+          CONFIGURED="${{ steps.validate.outputs.configured }}"
+          SYNC="${{ steps.verify.outputs.sync_status }}"
+          HEALTH="${{ steps.verify.outputs.health_status }}"
+          JOB_STATUS="${{ job.status }}"
+
+          ICON="✅"
+          [[ "$JOB_STATUS" != "success" ]] && ICON="❌"
+
+          {
+            echo "## ${ICON} Emerald Deployment — \`${{ inputs.target_environment }}\`"
+            echo ""
+            if [[ "$CONFIGURED" != "true" ]]; then
+              echo "> ⚠️ **ArgoCD integration is not configured** — sync wait was skipped."
+              echo ">"
+              echo "> To enable: set **\`vars.ARGOCD_SERVER\`** and **\`secrets.ARGOCD_AUTH_TOKEN\`** at the repository level."
+            else
+              echo "| Field              | Value |"
+              echo "| ------------------ | ----- |"
+              echo "| **Cluster**        | Emerald |"
+              echo "| **Environment**    | \`${{ inputs.target_environment }}\` |"
+              echo "| **Application**    | \`${{ inputs.app_name }}\` |"
+              echo "| **Image tag**      | \`${{ inputs.image_tag }}\` |"
+              echo "| **Sync status**    | ${SYNC:-N/A} |"
+              echo "| **Health status**  | ${HEALTH:-N/A} |"
+              echo "| **Overall status** | ${JOB_STATUS} |"
+              echo "| **Run**            | [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |"
+              echo "| **Triggered by**   | \`${{ github.actor }}\` via \`${{ github.event_name }}\` |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

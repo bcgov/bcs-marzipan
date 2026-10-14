@@ -1,6 +1,9 @@
 import { useCallback, useMemo } from 'react';
 
-import { TableSummaryBar } from '@/components/table/TableSummaryBar';
+import {
+  TableContentSummary,
+  TableFilterSummary,
+} from '@/components/table/TableSummaryBar';
 import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import { useActivityTableSummaryBarState } from '@/hooks/useActivityTableSummaryBarState';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
@@ -19,15 +22,16 @@ export interface ReportTableSummaryBarProps {
   onClearSavedFilter?: () => void;
 }
 
-export function ReportTableSummaryBar({
+export function useReportTableSummaryState({
   reportName,
   preferences,
   setPreferences,
   canSeeDeleted,
-  activityCount,
-  appliedSavedFilterName = null,
   onClearSavedFilter,
-}: ReportTableSummaryBarProps) {
+}: Omit<
+  ReportTableSummaryBarProps,
+  'activityCount' | 'appliedSavedFilterName'
+>) {
   const { pitchFieldVisibility } = useActivityTableFilterLookups(canSeeDeleted);
 
   const getResetFilterState = useCallback(
@@ -52,7 +56,7 @@ export function ReportTableSummaryBar({
     ]
   );
 
-  const summary = useActivityTableSummaryBarState({
+  return useActivityTableSummaryBarState({
     preferences,
     setPreferences,
     canSeeDeleted,
@@ -60,17 +64,66 @@ export function ReportTableSummaryBar({
     hasClearablePanelFilters,
     onClearSavedFilter,
   });
+}
+
+export function ReportTableFilterSummary({
+  reportName,
+  preferences,
+  setPreferences,
+  canSeeDeleted,
+  appliedSavedFilterName = null,
+  onClearSavedFilter,
+}: Omit<ReportTableSummaryBarProps, 'activityCount'>) {
+  const summary = useReportTableSummaryState({
+    reportName,
+    preferences,
+    setPreferences,
+    canSeeDeleted,
+    onClearSavedFilter,
+  });
 
   return (
-    <TableSummaryBar
-      count={activityCount}
-      singularLabel={summary.singularLabel}
-      pluralLabel={summary.pluralLabel}
-      filters={summary.filters}
+    <TableFilterSummary
       appliedFilterTypeLabels={summary.appliedFilterTypeLabels}
       filterDetailLines={summary.filterDetailLines}
       onClearFilters={summary.onClearFilters}
       appliedSavedFilterName={appliedSavedFilterName}
     />
+  );
+}
+
+export function ReportTableContentSummary({
+  reportName,
+  preferences,
+  setPreferences,
+  canSeeDeleted,
+  activityCount,
+  onClearSavedFilter,
+}: Omit<ReportTableSummaryBarProps, 'appliedSavedFilterName'>) {
+  const summary = useReportTableSummaryState({
+    reportName,
+    preferences,
+    setPreferences,
+    canSeeDeleted,
+    onClearSavedFilter,
+  });
+
+  return (
+    <TableContentSummary
+      count={activityCount}
+      singularLabel={summary.singularLabel}
+      pluralLabel={summary.pluralLabel}
+      filters={summary.filters}
+    />
+  );
+}
+
+/** @deprecated Prefer FilterSection + ReportTableFilterSummary + ContentSection + ReportTableContentSummary */
+export function ReportTableSummaryBar(props: ReportTableSummaryBarProps) {
+  return (
+    <>
+      <ReportTableFilterSummary {...props} />
+      <ReportTableContentSummary {...props} />
+    </>
   );
 }

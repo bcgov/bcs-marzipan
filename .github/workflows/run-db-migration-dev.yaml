@@ -5,11 +5,16 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      run_seeds:
-        description: 'Run seed data after migrations'
+      seed_scope:
+        description: 'Which seed data to run after migrations'
         required: false
-        default: false
-        type: boolean
+        default: none
+        type: choice
+        options:
+          - none
+          - config
+          - seed
+          - all
 
 jobs:
   deploy:
@@ -22,6 +27,7 @@ jobs:
       TOOLS_NAMESPACE: ${{ secrets.OPENSHIFT_TOOLS_NAMESPACE }}
       DEV_NAMESPACE: ${{ secrets.OPENSHIFT_DEV_NAMESPACE }}
       APP_VERSION: ${{ vars.APP_VERSION }}
+      PUBLIC_APP_BASE_URL: ${{ vars.PUBLIC_APP_BASE_URL }}
 
     steps:
       - name: Checkout code
@@ -72,7 +78,9 @@ jobs:
             --timeout=300s
 
       - name: Run DB seeds
-        if: ${{ inputs.run_seeds == true }}
+        if: ${{ inputs.seed_scope != 'none' }}
+        env:
+          SEED_SCOPE: ${{ inputs.seed_scope }}
         run: |
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${TOOLS_NAMESPACE}
@@ -86,7 +94,7 @@ jobs:
             -n ${DEV_NAMESPACE} \
             --ignore-not-found
 
-          envsubst '${DEV_NAMESPACE} ${APP_VERSION}' < openshift/deploy/base/database/migration/calendar-db-seed-job.yaml \
+          envsubst '${DEV_NAMESPACE} ${APP_VERSION} ${SEED_SCOPE}' < openshift/deploy/base/database/migration/calendar-db-seed-job.yaml \
             | oc apply -n ${DEV_NAMESPACE} -f -
 
           oc wait --for=condition=complete job/calendar-db-seed \
@@ -98,6 +106,29 @@ jobs:
           export APP_VERSION="${{ vars.APP_VERSION }}"
           oc project ${DEV_NAMESPACE}
           export CALENDAR_UI_API_BASE_URL="https://calendar-service-${DEV_NAMESPACE}.apps.silver.devops.gov.bc.ca"
-          oc kustomize openshift/deploy/overlays/dev | envsubst | oc apply -f -
+
+          oc kustomize openshift/deploy/overlays/dev > rendered.yaml
+          envsubst < rendered.yaml > rendered-substituted.yaml
+
+          ruby - <<'RUBY'
+          require 'yaml'
+
+          YAML.load_stream(File.read('rendered-substituted.yaml')).each do |doc|
+            next unless doc.is_a?(Hash) && doc['kind'] == 'Deployment'
+
+            Array(doc.dig('spec', 'template', 'spec', 'containers')).each do |container|
+              Array(container['env']).each do |env|
+                next unless env.is_a?(Hash)
+                if env.key?('value') && env.key?('valueFrom') && !env['value'].to_s.empty?
+                  raise "Invalid env entry for #{env['name']}: contains both value and valueFrom"
+                end
+              end
+            end
+          end
+
+          puts 'Rendered manifest is valid'
+          RUBY
+
+          oc apply -n ${DEV_NAMESPACE} -f rendered-substituted.yaml
           oc rollout restart deployment/calendar-service
           oc rollout restart deployment/calendar-ui

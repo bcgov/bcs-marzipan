@@ -6,7 +6,11 @@ import {
   CALENDAR_SOCKET_IO_OPTIONS,
   getCalendarSocketUrl,
 } from '@/lib/calendar-socket';
-import { scheduleLiveActivityRefresh } from '@/lib/liveActivitySync';
+import {
+  applyActivityListEditLockFromSocket,
+  parseActivityLockChangedPayload,
+  scheduleLiveActivityRefresh,
+} from '@/lib/liveActivitySync';
 
 type ActivityTablePayload = { activityId: number };
 
@@ -58,8 +62,30 @@ export function useLiveActivitySync(): { isSocketConnected: boolean } {
     socket.on('disconnect', handleDisconnect);
     socket.io.on('reconnect', subscribe);
 
+    function handleActivityLockChanged(payload: unknown): void {
+      const lockPayload = parseActivityLockChangedPayload(payload);
+      if (
+        lockPayload &&
+        applyActivityListEditLockFromSocket(queryClient, lockPayload)
+      ) {
+        return;
+      }
+      scheduleLiveActivityRefresh(queryClient, {
+        source: 'remote',
+        activityId:
+          lockPayload?.activityId ??
+          (payload &&
+          typeof payload === 'object' &&
+          'activityId' in payload &&
+          typeof (payload as ActivityTablePayload).activityId === 'number'
+            ? (payload as ActivityTablePayload).activityId
+            : undefined),
+      });
+    }
+
     socket.on('activityCreated', handleRemoteTableEvent);
     socket.on('activityUpdated', handleRemoteTableEvent);
+    socket.on('activityLockChanged', handleActivityLockChanged);
 
     return () => {
       socket.emit('unsubscribeFromActivities');
@@ -68,6 +94,7 @@ export function useLiveActivitySync(): { isSocketConnected: boolean } {
       socket.io.off('reconnect', subscribe);
       socket.off('activityCreated', handleRemoteTableEvent);
       socket.off('activityUpdated', handleRemoteTableEvent);
+      socket.off('activityLockChanged', handleActivityLockChanged);
       socket.disconnect();
       setIsSocketConnected(false);
     };

@@ -1,14 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import {
-  ArrowLeft,
-  CheckCircle,
-  Edit,
-  Key,
-  Mail,
-  Phone,
-  XCircle,
-} from 'lucide-react';
+import { ArrowLeft, Edit, Key, Mail, Phone } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -17,11 +9,12 @@ import {
   PERMISSIONS as SHARED_PERMISSIONS,
   SYSTEM_ROLE_IDS,
 } from '@corpcal/shared';
-import type { UserDetail } from '@corpcal/shared/api/types';
-import { fetchRolesPermissionsMap } from '@/api/lookupsApi';
+import type {
+  UserDetail,
+  UserPermissionOverrideInput,
+} from '@corpcal/shared/api/types';
 import {
   addUserToTeam,
-  fetchRolePermissions,
   fetchRoles,
   fetchTeams,
   fetchUser,
@@ -52,22 +45,22 @@ import {
 } from '@/components/ui/combobox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { UserChangeLogTabContent } from '@/components/users/UserChangeLogTabContent';
 import { UserEditModal } from '@/components/users/UserEditModal';
+import { UserRoleField } from '@/components/users/UserRoleField';
 import { UserTransferTabContent } from '@/components/users/UserTransferTabContent';
 import { useAuth } from '@/hooks/useAuth';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import {
+  formatRemovedFromTeamDescription,
+  formatUserUpdatedDescription,
+  resolveUserDisplayName,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 import { invalidateUserCaches, userQueryKeys } from '@/lib/userQueryKeys';
 import type { OptionItem } from '@/schemas/types';
 
@@ -152,9 +145,16 @@ export default function UserDetailPage() {
     allSelectableTeamIds.length > 0 &&
     allSelectableTeamIds.every((id) => localTeamIds.includes(id));
 
+  const [permissionOverrideInputs, setPermissionOverrideInputs] = useState<
+    UserPermissionOverrideInput[]
+  >([]);
+
   const mutation = useMutation({
-    mutationFn: (payload: { roleId?: number; notes?: string | null }) =>
-      updateUser(userId, payload),
+    mutationFn: (payload: {
+      roleId?: number;
+      notes?: string | null;
+      permissionOverrides?: UserPermissionOverrideInput[];
+    }) => updateUser(userId, payload),
     onSuccess: () => {
       invalidateUserCaches(queryClient, userId);
     },
@@ -213,6 +213,7 @@ export default function UserDetailPage() {
   });
 
   const canEdit = hasPermission(SHARED_PERMISSIONS.USERS.EDIT);
+  const canEditOverrides = hasPermission(SHARED_PERMISSIONS.USERS.MANAGE_ROLES);
   const canTransferActivities = hasPermission(
     SHARED_PERMISSIONS.USERS.TRANSFER_ACTIVITIES
   );
@@ -231,110 +232,20 @@ export default function UserDetailPage() {
     });
   }, [roles, currentUserIsSystemAdmin]);
 
-  const selectedRoleName =
-    roles.find((r) => r.id === selectedRoleId)?.name ?? '';
+  const resolveTeamLabel = (teamId: number): string =>
+    teamOptions.find((option) => parseInt(option.value, 10) === teamId)
+      ?.label ?? `Team ${teamId}`;
 
-  const [rolePermissionRows, setRolePermissionRows] = useState<
-    {
-      displayName?: string | null;
-      description?: string | null;
-      key?: string;
-      hasPermission?: boolean;
-    }[]
-  >([]);
-  // rolePermissionRows holds the permission rows for the selected role
-  const [rolesPermissionsMap, setRolesPermissionsMap] = useState<
-    Record<
-      number,
-      {
-        displayName?: string | null;
-        description?: string | null;
-        hasPermission: boolean;
-      }[]
-    >
-  >({});
-
-  const {
-    data: rolesPermissionsMapData,
-    isSuccess: rolesPermissionsMapLoaded,
-  } = useQuery<Record<string, any[]>>({
-    queryKey: ['roles', 'permissions', 'map'],
-    queryFn: fetchRolesPermissionsMap,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // populate local cache from bulk endpoint when available
-  useEffect(() => {
-    if (!rolesPermissionsMapLoaded || !rolesPermissionsMapData) return;
-    const normalized: Record<number, any[]> = {};
-    for (const k of Object.keys(rolesPermissionsMapData)) {
-      const numeric = Number(k);
-      normalized[numeric] = rolesPermissionsMapData[k];
-    }
-    setRolesPermissionsMap(normalized);
-  }, [rolesPermissionsMapLoaded, rolesPermissionsMapData]);
-
-  // Note: do not prefetch permissions for all roles — fetch only for the
-  // currently selected role to avoid unnecessary parallel requests.
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!selectedRoleId) return;
-
-    // Use cached map when available, otherwise fetch single role permissions.
-    const cached = rolesPermissionsMap[selectedRoleId];
-    if (cached) {
-      const rows = cached as any[];
-      setRolePermissionRows(rows);
-      return;
-    }
-
-    void fetchRolePermissions(selectedRoleId)
-      .then((rows) => {
-        if (cancelled) return;
-        setRolePermissionRows(rows);
-        setRolesPermissionsMap(
-          (m) => ({ ...m, [selectedRoleId]: rows }) as any
-        );
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setRolePermissionRows([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedRoleId, selectedRoleName, rolesPermissionsMap]);
-
-  const permissionRows = rolePermissionRows;
-  const visibleRows = permissionRows;
-
-  // Memoize rendered permission items to avoid unnecessary re-renders
-  const renderedPermissionItems = useMemo(() => {
-    return visibleRows.map((r, i) => (
-      <div key={r.key ?? i} className="flex items-start gap-2">
-        {r.hasPermission ? (
-          <CheckCircle
-            className="h-6 w-6 shrink-0 text-green-600"
-            aria-hidden
-          />
-        ) : (
-          <XCircle className="h-6 w-6 shrink-0 text-red-600" aria-hidden />
-        )}
-        <span className="leading-tight">
-          {r.displayName ?? r.description ?? r.key}
-        </span>
-      </div>
-    ));
-  }, [visibleRows]);
-
-  const syncTeamMembership = async (): Promise<boolean> => {
-    if (!userDetail) return true;
+  const syncTeamMembership = async (): Promise<{
+    ok: boolean;
+    addedTeamLabels: string[];
+  }> => {
+    if (!userDetail) return { ok: true, addedTeamLabels: [] };
 
     const serverTeamIds = new Set(userDetail.teams.map((t) => t.teamId));
     const toAdd = localTeamIds.filter((id) => !serverTeamIds.has(id));
 
-    if (toAdd.length === 0) return true;
+    if (toAdd.length === 0) return { ok: true, addedTeamLabels: [] };
 
     const results = await Promise.allSettled(
       toAdd.map((teamId) => addUserToTeam(userId, { teamId, role: 'member' }))
@@ -342,17 +253,20 @@ export default function UserDetailPage() {
 
     const failed = results.filter((r) => r.status === 'rejected').length;
     invalidateUserCaches(queryClient, userId);
+    const userName = resolveUserDisplayName(userDetail);
+    const teamLabels = toAdd.map(resolveTeamLabel);
 
     if (failed > 0) {
-      toast.error(
-        failed === results.length
-          ? 'Failed to update team membership'
-          : `${failed} team change${failed > 1 ? 's' : ''} failed`
-      );
-      return false;
+      showEntityToast('error', 'Could not update team membership', {
+        description:
+          failed === results.length
+            ? `${userName} — failed to add to ${teamLabels.join(', ')}`
+            : `${userName} — ${failed} of ${results.length} team change${failed > 1 ? 's' : ''} failed`,
+      });
+      return { ok: false, addedTeamLabels: [] };
     }
 
-    return true;
+    return { ok: true, addedTeamLabels: teamLabels };
   };
 
   const handleTeamSelectionChange = async (selected: OptionItem[]) => {
@@ -393,7 +307,12 @@ export default function UserDetailPage() {
       if (activities.length === 0) {
         await removeUserFromTeam(userId, teamId);
         invalidateUserCaches(queryClient, userId);
-        toast.success('Removed from team');
+        showEntityToast('success', 'Removed from team', {
+          description: formatRemovedFromTeamDescription(
+            resolveUserDisplayName(userDetail),
+            teamName
+          ),
+        });
       } else {
         setTeamRemovalModal({
           teamId,
@@ -412,23 +331,39 @@ export default function UserDetailPage() {
   };
 
   const handleSave = async () => {
-    const body: { roleId?: number; notes?: string | null } = {};
+    if (!userDetail) return;
+
+    const body: {
+      roleId?: number;
+      notes?: string | null;
+      permissionOverrides?: UserPermissionOverrideInput[];
+    } = {};
     if (selectedRoleId != null) body.roleId = selectedRoleId;
     body.notes = localNotes || null;
+    if (permissionOverrideInputs.length > 0) {
+      body.permissionOverrides = permissionOverrideInputs;
+    }
 
-    const serverDirectLoginEnabled = Boolean(userDetail?.directLoginEnabled);
+    const serverDirectLoginEnabled = Boolean(userDetail.directLoginEnabled);
 
     try {
       await mutation.mutateAsync(body);
 
       // Persist direct login setting if it changed from the server value
-      if (userDetail && serverDirectLoginEnabled !== directLoginEnabled) {
+      if (serverDirectLoginEnabled !== directLoginEnabled) {
         await settingsMutation.mutateAsync({ directLoginEnabled });
       }
 
-      const teamsSaved = await syncTeamMembership();
-      if (!teamsSaved) return;
+      const teamSync = await syncTeamMembership();
+      if (!teamSync.ok) return;
 
+      showEntityToast('success', 'Updated user', {
+        description: formatUserUpdatedDescription(
+          resolveUserDisplayName(userDetail),
+          teamSync.addedTeamLabels
+        ),
+        id: `user-updated-${userId}`,
+      });
       void navigate('/users');
     } catch {
       // Errors are surfaced via mutation onError handlers
@@ -547,29 +482,115 @@ export default function UserDetailPage() {
             </div>
 
             <TabsContent value="account" className="mt-0 space-y-6">
-              <div className="space-y-4">
+              <div className="max-w-2xl space-y-6 bg-transparent p-0">
                 <div>
                   <Label>Role</Label>
-                  <Select
+                  <UserRoleField
+                    roles={availableRoles}
                     value={selectedRoleId ? String(selectedRoleId) : ''}
-                    onValueChange={(v) => setSelectedRoleId(Number(v) || null)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableRoles.map((r) => (
-                        <SelectItem key={r.id} value={String(r.id)}>
-                          {r.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {visibleRows.length > 0 && (
-                    <div className="mt-2 grid grid-cols-1 gap-2 p-2 text-sm text-slate-700 sm:grid-cols-2">
-                      {renderedPermissionItems}
+                    onValueChange={(value) =>
+                      setSelectedRoleId(Number(value) || null)
+                    }
+                    roleId={selectedRoleId}
+                    disabled={!canEdit}
+                    triggerClassName="w-full"
+                    savedRoleId={userDetail.roleId}
+                    existingOverrides={userDetail.permissionOverrides}
+                    canEditOverrides={canEditOverrides}
+                    onPermissionChange={setPermissionOverrideInputs}
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-base font-semibold">Teams</Label>
+                  <div className="mt-2">
+                    <Combobox
+                      items={teamOptions}
+                      multiple
+                      value={selectedTeamOptions}
+                      onValueChange={(selected: OptionItem[]) => {
+                        void handleTeamSelectionChange(selected);
+                      }}
+                      itemToStringValue={(o: OptionItem) => o.label}
+                      disabled={
+                        !canEdit ||
+                        isProcessingTeamRemove ||
+                        teamRemovalModal != null
+                      }
+                    >
+                      <ComboboxChips
+                        ref={teamsComboboxAnchorRef}
+                        className="w-full"
+                      >
+                        <ComboboxValue>
+                          {(values: OptionItem[]) => (
+                            <>
+                              {values.map((option) => (
+                                <ComboboxChip key={option.value}>
+                                  {option.label}
+                                </ComboboxChip>
+                              ))}
+                              <ComboboxChipsInput placeholder="Select teams..." />
+                            </>
+                          )}
+                        </ComboboxValue>
+                      </ComboboxChips>
+                      <ComboboxContent
+                        anchor={teamsComboboxAnchorRef}
+                        className="popover-list-scroll flex max-h-[min(var(--popover-list-max-height),24rem)] flex-col overflow-x-hidden overflow-y-auto p-0"
+                      >
+                        <div className="bg-popover px-1 py-1">
+                          <TeamsComboboxSelectAllRow
+                            allSelected={allTeamsSelected}
+                            disabled={!canEdit || teamOptions.length === 0}
+                            onToggleSelectAll={() => {
+                              if (allTeamsSelected) {
+                                toast.error(
+                                  'Remove one team at a time using the team chips.'
+                                );
+                                return;
+                              }
+                              setLocalTeamIds(allSelectableTeamIds);
+                            }}
+                          />
+                          {teamOptions.length > 0 ? (
+                            <ComboboxSeparator className="my-1" />
+                          ) : null}
+                          <ComboboxEmpty>No teams found.</ComboboxEmpty>
+                          <ComboboxList className="max-h-none scroll-py-1 overflow-visible p-0 data-empty:p-0">
+                            {(option: OptionItem) => (
+                              <ComboboxItem key={option.value} value={option}>
+                                {option.label}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxList>
+                        </div>
+                      </ComboboxContent>
+                    </Combobox>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="font-semibold">User colour</div>
+
+                  <div className="mt-2 flex items-center gap-3">
+                    <Input
+                      type="color"
+                      aria-label="User colour"
+                      value={flagColour || '#0F6CBD'}
+                      onChange={(e) => setFlagColour(e.target.value)}
+                      onBlur={() => {
+                        if (!canEdit || flagColour === null) return;
+                        if (flagColour !== (userDetail?.flagColour ?? null))
+                          settingsMutation.mutate({ flagColour });
+                      }}
+                      disabled={!canEdit}
+                      className="h-10 w-16 cursor-pointer p-1"
+                    />
+                    <div className="text-sm text-slate-500">
+                      Flag colour for this user
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 <div>
@@ -581,164 +602,74 @@ export default function UserDetailPage() {
                     className="h-40"
                   />
                 </div>
-              </div>
 
-              <div className="max-w-2xl bg-transparent p-0">
-                <div className="font-semibold">User colour</div>
+                <div>
+                  <div className="font-semibold">Direct login</div>
 
-                <div className="mt-2 flex items-center gap-3">
-                  <Input
-                    type="color"
-                    aria-label="User colour"
-                    value={flagColour || '#0F6CBD'}
-                    onChange={(e) => setFlagColour(e.target.value)}
-                    onBlur={() => {
-                      if (!canEdit || flagColour === null) return;
-                      if (flagColour !== (userDetail?.flagColour ?? null))
-                        settingsMutation.mutate({ flagColour });
-                    }}
-                    disabled={!canEdit}
-                    className="h-10 w-16 cursor-pointer p-1"
-                  />
-                  <div className="text-sm text-slate-500">
-                    Flag colour for this user
-                  </div>
-                </div>
-              </div>
-
-              <div className="max-w-2xl bg-transparent p-0">
-                <Label className="text-base font-semibold">Teams</Label>
-                <div className="mt-2">
-                  <Combobox
-                    items={teamOptions}
-                    multiple
-                    value={selectedTeamOptions}
-                    onValueChange={(selected: OptionItem[]) => {
-                      void handleTeamSelectionChange(selected);
-                    }}
-                    itemToStringValue={(o: OptionItem) => o.label}
-                    disabled={
-                      !canEdit ||
-                      isProcessingTeamRemove ||
-                      teamRemovalModal != null
-                    }
-                  >
-                    <ComboboxChips
-                      ref={teamsComboboxAnchorRef}
-                      className="w-full"
-                    >
-                      <ComboboxValue>
-                        {(values: OptionItem[]) => (
-                          <>
-                            {values.map((option) => (
-                              <ComboboxChip key={option.value}>
-                                {option.label}
-                              </ComboboxChip>
-                            ))}
-                            <ComboboxChipsInput placeholder="Select teams..." />
-                          </>
-                        )}
-                      </ComboboxValue>
-                    </ComboboxChips>
-                    <ComboboxContent
-                      anchor={teamsComboboxAnchorRef}
-                      className="popover-list-scroll flex max-h-[min(var(--popover-list-max-height),24rem)] flex-col overflow-x-hidden overflow-y-auto p-0"
-                    >
-                      <div className="bg-popover px-1 py-1">
-                        <TeamsComboboxSelectAllRow
-                          allSelected={allTeamsSelected}
-                          disabled={!canEdit || teamOptions.length === 0}
-                          onToggleSelectAll={() => {
-                            if (allTeamsSelected) {
-                              toast.error(
-                                'Remove one team at a time using the team chips.'
-                              );
-                              return;
-                            }
-                            setLocalTeamIds(allSelectableTeamIds);
-                          }}
-                        />
-                        {teamOptions.length > 0 ? (
-                          <ComboboxSeparator className="my-1" />
-                        ) : null}
-                        <ComboboxEmpty>No teams found.</ComboboxEmpty>
-                        <ComboboxList className="max-h-none scroll-py-1 overflow-visible p-0 data-empty:p-0">
-                          {(option: OptionItem) => (
-                            <ComboboxItem key={option.value} value={option}>
-                              {option.label}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </div>
-                    </ComboboxContent>
-                  </Combobox>
-                </div>
-              </div>
-
-              <div className="max-w-2xl bg-transparent p-0">
-                <div className="font-semibold">Direct login</div>
-
-                <div className="mt-2 flex items-center gap-3">
-                  <div>
-                    <Switch
-                      checked={directLoginEnabled}
-                      onCheckedChange={(v) => setDirectLoginEnabled(Boolean(v))}
-                      disabled={!canEdit}
-                    />
-                  </div>
-                  <div className="text-sm text-slate-500">
-                    Enable direct login
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      if (!canEdit) return;
-                      setResetCodeResult({ code: '', expiresInHours: 0 });
-                      resetMutation.mutate();
-                    }}
-                    disabled={!canEdit || resetMutation.status === 'pending'}
-                    className="flex items-center gap-2 text-slate-500"
-                  >
-                    <Key className="h-4 w-4" aria-hidden />
-                    Generate temporary password
-                  </Button>
-
-                  {resetCodeResult?.code && (
-                    <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-2">
-                      <code className="font-mono text-sm break-all select-all">
-                        {resetCodeResult.code}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          void (async () => {
-                            try {
-                              if (
-                                resetCodeResult?.code &&
-                                navigator?.clipboard?.writeText
-                              ) {
-                                await navigator.clipboard.writeText(
-                                  resetCodeResult.code
-                                );
-                                toast.success('Copied to clipboard');
-                              } else {
-                                toast.error('Clipboard not available');
-                              }
-                            } catch {
-                              toast.error('Failed to copy to clipboard');
-                            }
-                          })();
-                        }}
-                        aria-label="Copy reset code"
-                      >
-                        Copy
-                      </Button>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div>
+                      <Switch
+                        checked={directLoginEnabled}
+                        onCheckedChange={(v) =>
+                          setDirectLoginEnabled(Boolean(v))
+                        }
+                        disabled={!canEdit}
+                      />
                     </div>
-                  )}
+                    <div className="text-sm text-slate-500">
+                      Enable direct login
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (!canEdit) return;
+                        setResetCodeResult({ code: '', expiresInHours: 0 });
+                        resetMutation.mutate();
+                      }}
+                      disabled={!canEdit || resetMutation.status === 'pending'}
+                      className="flex items-center gap-2 text-slate-500"
+                    >
+                      <Key className="h-4 w-4" aria-hidden />
+                      Generate temporary password
+                    </Button>
+
+                    {resetCodeResult?.code && (
+                      <div className="bg-muted flex items-center gap-2 rounded-md border px-4 py-2">
+                        <code className="font-mono text-sm break-all select-all">
+                          {resetCodeResult.code}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            void (async () => {
+                              try {
+                                if (
+                                  resetCodeResult?.code &&
+                                  navigator?.clipboard?.writeText
+                                ) {
+                                  await navigator.clipboard.writeText(
+                                    resetCodeResult.code
+                                  );
+                                  toast.success('Copied to clipboard');
+                                } else {
+                                  toast.error('Clipboard not available');
+                                }
+                              } catch {
+                                toast.error('Failed to copy to clipboard');
+                              }
+                            })();
+                          }}
+                          aria-label="Copy reset code"
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

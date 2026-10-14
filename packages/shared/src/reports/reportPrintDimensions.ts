@@ -34,7 +34,7 @@ export const REPORT_PRINT_LANDSCAPE_LAYOUT_WIDTH_PX = 1207 as const;
 export const REPORT_LETTER_PAGE_HEIGHT_PX = 1056 as const;
 
 /**
- * Look-ahead cover sheet width — independent of {@link REPORT_PRINT_LAYOUT_WIDTH_PX} so
+ * Look Ahead cover sheet width — independent of {@link REPORT_PRINT_LAYOUT_WIDTH_PX} so
  * cover artwork/overlay typography stay at their tuned size when body layout narrows.
  */
 export const REPORT_PRINT_COVER_SHEET_WIDTH_PX = 1024 as const;
@@ -49,7 +49,7 @@ export const REPORT_PRINT_SHEET_CONTENT_MAX_WIDTH_CSS =
   `${REPORT_PRINT_LAYOUT_WIDTH_PX}px` as const;
 
 /**
- * Horizontal inset for look-ahead PDF cover artwork and overlay coordinates.
+ * Horizontal inset for Look Ahead PDF cover artwork and overlay coordinates.
  * Matches `.corpcal-print-body` horizontal padding so the cover aligns with report text.
  */
 export const REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX = 24 as const;
@@ -57,7 +57,7 @@ export const REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX = 24 as const;
 /**
  * Width inside horizontal insets on the cover sheet
  * ({@link REPORT_PRINT_COVER_SHEET_WIDTH_PX} − 2× {@link REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX}).
- * Look-ahead cover overlay geometry is tuned for this column (see print/react/lookAheadCoverMetrics.ts).
+ * Look Ahead cover overlay geometry is tuned for this column (see print/react/lookAheadCoverMetrics.ts).
  */
 export const REPORT_PRINT_COVER_CONTENT_WIDTH_PX =
   REPORT_PRINT_COVER_SHEET_WIDTH_PX - 2 * REPORT_PRINT_PAGE_HORIZONTAL_INSET_PX;
@@ -111,10 +111,10 @@ export const REPORT_PDF_HEADER_LOGO_PRINT_PT = 19 as const;
 export const REPORT_PDF_FOOTER_MAIN_PRINT_PT = 8.5 as const;
 export const REPORT_PDF_FOOTER_HINT_PRINT_PT = 8 as const;
 
-/** Look-ahead cover overlay footer note (`corpcal-print-cover-footer-note`) on Letter PDF. */
+/** Look Ahead cover overlay footer note (`corpcal-print-cover-footer-note`) on Letter PDF. */
 export const LOOK_AHEAD_COVER_FOOTER_PRINT_PT = 12 as const;
 
-/** Look-ahead cover overlay date, contents heading, and list on Letter PDF. */
+/** Look Ahead cover overlay date, contents heading, and list on Letter PDF. */
 export const LOOK_AHEAD_COVER_CONTENTS_PRINT_PT = 14 as const;
 
 /**

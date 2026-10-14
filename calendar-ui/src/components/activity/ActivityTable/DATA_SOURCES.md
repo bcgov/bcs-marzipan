@@ -22,13 +22,13 @@ This document audits where each table value comes from (API/backend) and any ext
 | Representatives attending    | `activity_representatives.representative_name` (free text) | Scheduling – rep badges            |
 | Comms contacts               | User names (for lead)                                      | Leads – comms lead name            |
 | Venue                        | Joined `venue_addresses` (see below)                       | Scheduling – formatted address     |
-| Look Ahead status / section  | DB enum values (not from lookup table)                     | Summary – look ahead badge         |
+| Look Ahead status / section  | DB enum values (not from lookup table)                     | Summary – Look Ahead badge         |
 
 ## Values not from lookups
 
 - **Identity**: `id`, `displayId` – from activities table.
 - **Overview**: `title`, `pitchDate`, `isConfidential`, `isIssue` – from activities or simple lookups.
-- **Summary**: `summary` – from activities; tags and look ahead as above.
+- **Summary**: `summary` – from activities; tags and Look Ahead as above.
 - **Scheduling**: `startDate`, `endDate`, `startTime`, `endTime`, `isAllDay` – from activities; venue is joined and formatted.
 - **Leads**: `commsContactsCount` – derived; `eventLead` from user lookup.
 - **Status column**: `lastUpdatedDateTime`, `lastUpdatedBy`, `createdDateTime` – from activities / audit.

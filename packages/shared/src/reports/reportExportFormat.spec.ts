@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ReportResponse } from '../schemas/lookup.schema';
 import { createMockActivityListItem } from '../test-utils';
+import { EMPTY_RICH_TEXT_DOC } from '../utils/activity-rich-text';
 import {
   buildReportExportTable,
   serializeReportTableToCsv,
@@ -80,14 +81,54 @@ describe('reportExportFormat', () => {
               category: [],
               tags: [],
               representativesAttending: [],
-              commsContacts: [{ userId: 2, name: 'Lead Person', isLead: true }],
+              eventPlannerDetails: [{ name: 'Lead Planner', isLead: true }],
             }),
           ],
         },
       ],
     });
 
-    expect(table.rows[0][4]).toBe('T1 – E – Event lead: Lead Person');
+    expect(table.rows[0][4]).toBe('T1 – E – Event lead: Lead Planner');
+  });
+
+  it('falls back to the overview summary when executive summary is empty', () => {
+    const table = buildReportExportTable({
+      report: minimalReport,
+      sections: [
+        {
+          name: 'Sec A',
+          activities: [
+            createMockActivityListItem({
+              title: 'T1',
+              summary: 'Overview summary',
+              executiveSummary: null,
+            }),
+          ],
+        },
+      ],
+    });
+
+    expect(table.rows[0][4]).toBe('T1 – Overview summary');
+  });
+
+  it('falls back when executive summary is an empty rich-text document', () => {
+    const table = buildReportExportTable({
+      report: minimalReport,
+      sections: [
+        {
+          name: 'Sec A',
+          activities: [
+            createMockActivityListItem({
+              title: 'T1',
+              summary: 'Overview summary',
+              executiveSummary: EMPTY_RICH_TEXT_DOC,
+            }),
+          ],
+        },
+      ],
+    });
+
+    expect(table.rows[0][4]).toBe('T1 – Overview summary');
   });
 
   it('serializeReportTableToCsv escapes quotes', () => {

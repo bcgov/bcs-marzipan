@@ -129,7 +129,7 @@ function TranslationLanguagesField({
                               {option.label}
                             </ComboboxChip>
                           ))}
-                          <ComboboxChipsInput placeholder="Select translation languages" />
+                          <ComboboxChipsInput placeholder="" />
                         </>
                       )}
                     </ComboboxValue>
@@ -208,7 +208,7 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select news release origin" />
+                  <SelectValue placeholder="" />
                 </FormSelectTrigger>
               </FormControl>
               <SelectContent>
@@ -252,7 +252,7 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
             >
               <FormControl data-field={field.name}>
                 <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="Select news release distribution" />
+                  <SelectValue placeholder="" />
                 </FormSelectTrigger>
               </FormControl>
               <SelectContent>
@@ -308,7 +308,7 @@ export const ActivityReleaseSection: React.FC<ActivityReleaseSectionProps> = ({
                       !translationsScope.fieldScopeDisabled
                     }
                   >
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder="" />
                   </FormSelectTrigger>
                 </FormControl>
               </ActivityFieldScopePermissionTooltip>

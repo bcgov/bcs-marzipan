@@ -92,11 +92,6 @@ Located in `test/` directory.
 - ✅ Filter by date range
 - ✅ Return empty array when no matches
 
-#### GET /activities/categories
-
-- ✅ Return all activity categories
-- ✅ Return array of category objects
-
 #### GET /activities/:id
 
 - ✅ Return specific activity by ID

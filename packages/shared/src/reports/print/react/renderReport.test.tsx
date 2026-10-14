@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { ReportDataResponse } from '../../../api/report-data';
 import { toCalendarDateString } from '../../../datetime/types';
+import {
+  activityResponseToListItem,
+  type ActivityListItem,
+} from '../../../schemas/activity-list-item.schema';
 import type { ActivityResponse } from '../../../schemas/activity-response.schema';
+import { EMPTY_RICH_TEXT_DOC } from '../../../utils/activity-rich-text';
 import { buildLookAheadReportPdfHeaderTemplateHtml } from './buildLookAheadReportPdfHeaderTemplate';
 import { buildReportPdfFooterTemplateHtml } from './buildReportPdfFooterTemplate';
 import {
@@ -24,7 +29,7 @@ const TEST_RENDER_OPTIONS = {
   resolveTranslationLanguageLabel: TEST_TRANSLATION_RESOLVER,
 };
 
-const BASE_ACTIVITY: ActivityResponse = {
+const BASE_ACTIVITY_RESPONSE = {
   id: 101,
   displayId: 'ACT-101',
   isIssue: true,
@@ -65,6 +70,8 @@ const BASE_ACTIVITY: ActivityResponse = {
   lastUpdatedBy: 1,
   createdDateTime: '2026-04-20T00:00:00.000Z',
   lastUpdatedDateTime: '2026-04-26T17:05:00.000Z',
+  publicLastUpdatedBy: 1,
+  publicLastUpdatedDateTime: '2026-04-26T17:05:00.000Z',
   category: ['Announcement'],
   categoryIds: [1],
   tags: [],
@@ -72,6 +79,7 @@ const BASE_ACTIVITY: ActivityResponse = {
   translationsRequired: ['FR', 'PUN'],
   representativesAttending: [],
   sharedWith: [],
+  sharedWithTeamIds: [],
   commsContacts: [],
   leadOrg: 'Ministry of Housing',
   eventPlannerDetails: [
@@ -102,7 +110,11 @@ const BASE_ACTIVITY: ActivityResponse = {
   },
   reportSettings: [],
   flags: [],
-};
+} satisfies ActivityResponse;
+
+const BASE_ACTIVITY: ActivityListItem = activityResponseToListItem(
+  BASE_ACTIVITY_RESPONSE
+);
 
 const FIXTURE: ReportDataResponse = {
   report: {
@@ -154,10 +166,61 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('Apr 27, 2026');
   });
 
-  it('renders event lead below executive summary when a comms lead exists', () => {
+  it('renders the title and overview summary when executive summary is empty', () => {
+    const activityWithoutExecutiveSummary = {
+      ...BASE_ACTIVITY,
+      executiveSummary: null,
+      summary: 'Overview summary for this activity.',
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [
+        { ...FIXTURE.sections[0], activities: [activityWithoutExecutiveSummary] },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+    });
+
+    expect(html).toContain('<strong>Minister announces housing investment</strong>');
+    expect(html).toContain('Overview summary for this activity.');
+    expect(html).not.toContain('Investment of $500M');
+  });
+
+  it('renders the title and overview summary when executive summary is an empty rich-text document', () => {
+    const activityWithoutExecutiveSummary = {
+      ...BASE_ACTIVITY,
+      executiveSummary: EMPTY_RICH_TEXT_DOC,
+      summary: 'Overview summary for this activity.',
+    };
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [
+        {
+          ...FIXTURE.sections[0],
+          activities: [activityWithoutExecutiveSummary],
+        },
+      ],
+    };
+
+    const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
+      activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
+    });
+
+    expect(html).toContain(
+      '<strong>Minister announces housing investment</strong>'
+    );
+    expect(html).toContain('Overview summary for this activity.');
+  });
+
+  it('renders event lead below executive summary when an event planner lead exists', () => {
     const activityWithLead = {
       ...BASE_ACTIVITY,
-      commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
+      eventPlannerDetails: [
+        { name: 'Alex Planner', isLead: true },
+        { name: 'Sam Backup', isLead: false },
+      ],
     };
     const fixture: ReportDataResponse = {
       ...FIXTURE,
@@ -166,13 +229,16 @@ describe('renderPrintReportFragmentHtml', () => {
     const html = renderPrintReportFragmentHtml('look-ahead', fixture, {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
     });
-    expect(html).toContain('Event lead: Jordan Smith');
+    expect(html).toContain('Event lead: Alex Planner');
   });
 
   it('does not render event lead when report config omits event_lead', () => {
     const activityWithLead = {
       ...BASE_ACTIVITY,
-      commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
+      eventPlannerDetails: [
+        { name: 'Alex Planner', isLead: true },
+        { name: 'Sam Backup', isLead: false },
+      ],
     };
     const fixture: ReportDataResponse = {
       ...FIXTURE,
@@ -781,7 +847,7 @@ describe('renderPrintReportFragmentHtml', () => {
     ).toBe(1);
     expect((html.match(/>Release<\/th>/g) ?? []).length).toBe(1);
     expect(html).toContain('>Activity details</th>');
-    expect(html).toContain('>Activity</th>');
+    expect(html).toContain('>CC ID</th>');
   });
 
   it('honours an explicit printPerDayColumnHeaderRepeat: true on a non-events section', () => {
@@ -827,7 +893,7 @@ describe('renderPrintReportFragmentHtml', () => {
   });
 
   it('includes confidential activities in look-ahead with badge and executive summary', () => {
-    const confidentialActivity: ActivityResponse = {
+    const confidentialActivity: ActivityListItem = {
       ...BASE_ACTIVITY,
       isConfidential: true,
       executiveSummary: 'Hold for GCPE.',
@@ -852,7 +918,7 @@ describe('renderPrintReportFragmentHtml', () => {
   });
 
   it('includes confidential activities in exec look-ahead with badge and summary', () => {
-    const confidentialActivity: ActivityResponse = {
+    const confidentialActivity: ActivityListItem = {
       ...BASE_ACTIVITY,
       isConfidential: true,
       summary: 'Full summary text for executive readers.',

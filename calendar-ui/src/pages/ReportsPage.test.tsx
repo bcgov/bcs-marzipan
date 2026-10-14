@@ -179,7 +179,14 @@ vi.mock('@/components/reports/ReportFiltersBar', () => ({
 }));
 
 vi.mock('@/components/reports/ReportTableSummaryBar', () => ({
-  ReportTableSummaryBar: () => null,
+  useReportTableSummaryState: () => ({
+    appliedFilterTypeLabels: [],
+    filterDetailLines: [],
+    onClearFilters: undefined,
+    filters: [],
+    singularLabel: 'activity',
+    pluralLabel: 'activities',
+  }),
 }));
 
 vi.mock('@/components/reports/CustomReportPreviewSection', () => ({
@@ -441,8 +448,7 @@ describe('ReportsPage placeholder data handling', () => {
         category_count: 0,
         status_count: 0,
         tag_count: 0,
-        ministry_count: 0,
-        org_count: 0,
+        lead_team_count: 0,
       })
     );
   });
@@ -468,12 +474,12 @@ describe('ReportsPage placeholder data handling', () => {
     mockReports.splice(0, mockReports.length, {
       id: 1,
       name: 'look-ahead',
-      displayName: 'Look-ahead Report',
+      displayName: 'Look Ahead',
     });
     settledReportData = makeReportData(
       'Initial activity',
       'look-ahead',
-      'Look-ahead Report'
+      'Look Ahead'
     );
     mockFetchReportData.mockReset();
     mockFetchReportData.mockResolvedValue(settledReportData);

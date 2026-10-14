@@ -5,9 +5,12 @@ import {
   addCalendarMonths,
   buildCalendarMonthSections,
   defaultThirtySixtyNinetyDateRange,
+  defaultThirtySixtyNinetyTabDateRange,
   firstDayOfCalendarMonth,
   lastDayOfCalendarMonth,
+  monthCountForThirtySixtyNinetyTab,
   thirtySixtyNinetyDateRangeFromPacificDate,
+  thirtySixtyNinetyTabDateRangeFromPacificDate,
 } from './buildCalendarMonthSections';
 
 const MAY_FIRST = toCalendarDateString('2026-05-01');
@@ -79,38 +82,73 @@ describe('buildCalendarMonthSections', () => {
   });
 });
 
+describe('thirtySixtyNinetyTabDateRangeFromPacificDate', () => {
+  it('maps tab labels to calendar-month windows from the Pacific month start', () => {
+    const pacificToday = toCalendarDateString('2026-05-27');
+    expect(monthCountForThirtySixtyNinetyTab(30)).toBe(1);
+    expect(monthCountForThirtySixtyNinetyTab(60)).toBe(2);
+    expect(monthCountForThirtySixtyNinetyTab(90)).toBe(3);
+    expect(
+      thirtySixtyNinetyTabDateRangeFromPacificDate(30, pacificToday)
+    ).toEqual({
+      start: '2026-05-01',
+      end: '2026-05-31',
+    });
+    expect(
+      thirtySixtyNinetyTabDateRangeFromPacificDate(60, pacificToday)
+    ).toEqual({
+      start: '2026-05-01',
+      end: '2026-06-30',
+    });
+    expect(
+      thirtySixtyNinetyTabDateRangeFromPacificDate(90, pacificToday)
+    ).toEqual({
+      start: '2026-05-01',
+      end: '2026-07-31',
+    });
+  });
+
+  it('defaultThirtySixtyNinetyTabDateRange matches preset for the same Pacific day', () => {
+    const anchor = new Date('2026-05-27T12:00:00.000Z');
+    expect(defaultThirtySixtyNinetyTabDateRange(60, anchor)).toEqual({
+      start: '2026-05-01',
+      end: '2026-06-30',
+    });
+  });
+});
+
 describe('defaultThirtySixtyNinetyDateRange', () => {
-  it('anchors to the first day of the current Pacific month', () => {
+  it('defaults to the 60-tab (two-month) window', () => {
     const range = defaultThirtySixtyNinetyDateRange(
-      3,
+      monthCountForThirtySixtyNinetyTab(60),
       new Date('2026-05-27T12:00:00.000Z')
     );
 
     expect(range.start).toBe('2026-05-01');
-    expect(range.end).toBe('2026-07-31');
+    expect(range.end).toBe('2026-06-30');
   });
 
-  it('supports one- and six-month presets', () => {
+  it('supports explicit month-count presets', () => {
     const anchor = new Date('2026-05-27T12:00:00.000Z');
     expect(defaultThirtySixtyNinetyDateRange(1, anchor)).toEqual({
       start: '2026-05-01',
       end: '2026-05-31',
     });
-    expect(defaultThirtySixtyNinetyDateRange(6, anchor)).toEqual({
+    expect(defaultThirtySixtyNinetyDateRange(3, anchor)).toEqual({
       start: '2026-05-01',
-      end: '2026-10-31',
+      end: '2026-07-31',
     });
   });
 
   it('thirtySixtyNinetyDateRangeFromPacificDate matches default for the same Pacific day', () => {
     expect(
       thirtySixtyNinetyDateRangeFromPacificDate(
-        3,
+        2,
         toCalendarDateString('2026-05-27')
       )
     ).toEqual({
       start: '2026-05-01',
-      end: '2026-07-31',
+      end: '2026-06-30',
     });
   });
 });

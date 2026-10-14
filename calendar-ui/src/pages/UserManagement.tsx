@@ -1,15 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
-import type { TeamListItem } from '@corpcal/shared/api/types';
-import { updateTeam } from '@/api/teamsApi';
 import { PageHeader } from '@/components/layout';
 import { TeamEditModal } from '@/components/teams/TeamEditModal';
-import { TeamHistoryDrawer } from '@/components/teams/TeamHistoryDrawer';
 import { TeamsTabContent } from '@/components/teams/TeamsTabContent';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -29,32 +25,12 @@ export function Users() {
   }, [location.search]);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
-  const [teamToEdit, setTeamToEdit] = useState<TeamListItem | null>(null);
-  const [teamHistoryTeam, setTeamHistoryTeam] = useState<TeamListItem | null>(
-    null
-  );
 
   const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
   const canCreateUser = hasPermission(PERMISSIONS.USERS.CREATE);
   const canViewTeams = hasPermission(PERMISSIONS.TEAMS.VIEW);
   const canCreateTeam = hasPermission(PERMISSIONS.TEAMS.CREATE);
-  const canEditTeam = hasPermission(PERMISSIONS.TEAMS.EDIT);
-  const canDeleteTeam = hasPermission(PERMISSIONS.TEAMS.DELETE);
-
-  const deactivateTeamMutation = useMutation({
-    mutationFn: (teamId: number) => updateTeam(teamId, { isActive: false }),
-    onSuccess: (_data, teamId) => {
-      void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
-      toast.success('Team deactivated', { id: `team-deactivated-${teamId}` });
-    },
-    onError: (err: Error, teamId) => {
-      toast.error(err.message || 'Deactivate failed', {
-        id:
-          typeof teamId === 'number' ? `team-deactivated-${teamId}` : undefined,
-      });
-    },
-  });
 
   const headerAction =
     activeTab === 'teams'
@@ -96,40 +72,20 @@ export function Users() {
         </TabsContent>
 
         <TabsContent value="teams" className="mt-0">
-          {canViewTeams && (
-            <TeamsTabContent
-              canCreate={canCreateTeam}
-              canEdit={canEditTeam}
-              canDelete={canDeleteTeam}
-              onAddTeam={() => setShowCreateTeam(true)}
-              onEditTeam={setTeamToEdit}
-              onViewHistory={setTeamHistoryTeam}
-              onDeactivate={(team) => deactivateTeamMutation.mutate(team.id)}
-            />
-          )}
+          {canViewTeams && <TeamsTabContent />}
         </TabsContent>
       </Tabs>
 
       <TeamEditModal
-        team={showCreateTeam ? null : (teamToEdit ?? null)}
-        open={showCreateTeam || !!teamToEdit}
-        onClose={() => {
-          setShowCreateTeam(false);
-          setTeamToEdit(null);
-        }}
+        team={null}
+        open={showCreateTeam}
+        onClose={() => setShowCreateTeam(false)}
         onSaved={() => {
           void queryClient.invalidateQueries({
             queryKey: lookupQueryKeys.teams(),
           });
           setShowCreateTeam(false);
-          setTeamToEdit(null);
         }}
-      />
-
-      <TeamHistoryDrawer
-        team={teamHistoryTeam}
-        open={!!teamHistoryTeam}
-        onClose={() => setTeamHistoryTeam(null)}
       />
     </>
   );

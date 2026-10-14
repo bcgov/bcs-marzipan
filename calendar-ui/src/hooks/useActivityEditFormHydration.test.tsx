@@ -6,7 +6,6 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { createMockActivityResponse } from '@corpcal/shared/test-utils';
 
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
-import { hydrateActivityFormData } from '../lib/activity-form-hydrate';
 import { useActivityEditFormHydration } from './useActivityEditFormHydration';
 import type { FormLookupData } from './useFormLookups';
 
@@ -53,16 +52,26 @@ describe('useActivityEditFormHydration', () => {
       schedulingNotes: null,
       strategy: null,
     });
-    const expectedBaseline = hydrateActivityFormData(activity, mockLookups);
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
     const { result } = renderHook(() => {
       const form = useForm<ActivityFormData>({
         defaultValues: getDefaultFormValues() as ActivityFormData,
       });
+      formRef = form;
       return useActivityEditFormHydration(activity, mockLookups, form);
     });
 
-    expect(result.current.initialFormDataRef.current).toEqual(expectedBaseline);
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(result.current.initialFormDataRef.current).toEqual(
+      formRef!.getValues()
+    );
+    expect(result.current.initialFormDataRef.current?.venueAddress).not.toBe(
+      formRef!.getValues().venueAddress
+    );
     expect(result.current.initialFormDataRef.current?.notes).toBe('');
     expect(result.current.initialFormDataRef.current?.schedulingNotes).toBe('');
     expect(result.current.initialFormDataRef.current?.strategy).toBe('');
@@ -212,5 +221,65 @@ describe('useActivityEditFormHydration', () => {
 
     expect(result.current.isFormHydrated).toBe(true);
     expect(result.current.hydrationGeneration).toBeGreaterThan(genAfterFirst);
+  });
+
+  it('preserves dirty values while server hydration is deferred', () => {
+    const activityV1 = createMockActivityResponse({
+      id: 1,
+      title: 'Original title',
+      lastUpdatedDateTime: '2025-01-01T12:00:00.000Z',
+    });
+    const activityV2 = createMockActivityResponse({
+      id: 1,
+      title: 'Server title',
+      lastUpdatedDateTime: '2025-01-02T12:00:00.000Z',
+    });
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    const { rerender } = renderHook(
+      ({
+        activity,
+        preserveDirtySession,
+      }: {
+        activity: typeof activityV1;
+        preserveDirtySession: boolean;
+      }) => {
+        const form = useForm<ActivityFormData>({
+          defaultValues: getDefaultFormValues() as ActivityFormData,
+        });
+        formRef = form;
+        return useActivityEditFormHydration(
+          activity,
+          mockLookups,
+          form,
+          preserveDirtySession
+        );
+      },
+      {
+        initialProps: {
+          activity: activityV1,
+          preserveDirtySession: false,
+        },
+      }
+    );
+
+    act(() => {
+      vi.runAllTimers();
+      formRef!.setValue('title', 'Unsaved local title', { shouldDirty: true });
+    });
+
+    rerender({ activity: activityV2, preserveDirtySession: true });
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(formRef!.getValues('title')).toBe('Unsaved local title');
+
+    rerender({ activity: activityV2, preserveDirtySession: false });
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(formRef!.getValues('title')).toBe('Server title');
   });
 });

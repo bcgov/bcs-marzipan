@@ -1,8 +1,8 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
-import { render, screen } from '@/test/test-utils';
+import { fireEvent, render, screen } from '@/test/test-utils';
 
 // Mock auth
 const mockUseAuth = vi.fn();
@@ -10,11 +10,18 @@ vi.mock('@/hooks/useAuth', () => ({ useAuth: () => mockUseAuth() }));
 
 // Mock lookupsApi and usersApi
 vi.mock('@/api/lookupsApi', () => ({
-  fetchRolesPermissionsMap: vi.fn().mockResolvedValue({
-    2: [
-      { key: 'perm.test', displayName: 'Test Permission', hasPermission: true },
-    ],
-  }),
+  fetchOverridablePermissions: vi.fn().mockResolvedValue([
+    {
+      id: 1,
+      key: 'perm.test',
+      displayName: 'Test Permission',
+      description: null,
+      category: 'Activities',
+      sortOrder: 1,
+      allowUserOverride: false,
+      hasPermission: true,
+    },
+  ]),
 }));
 
 vi.mock('@/api/usersApi', () => ({
@@ -29,13 +36,33 @@ vi.mock('@/api/usersApi', () => ({
     notes: null,
     directLoginEnabled: false,
     teams: [],
+    permissionOverrides: [],
   }),
-  fetchRoles: vi.fn().mockResolvedValue([{ id: 2, name: 'Editor' }]),
-  fetchRolePermissions: vi.fn().mockResolvedValue([]),
+  fetchRoles: vi
+    .fn()
+    .mockResolvedValue([{ id: 2, name: 'Editor', description: null }]),
+  fetchRolePermissions: vi.fn().mockResolvedValue([
+    {
+      key: 'perm.test',
+      displayName: 'Test Permission',
+      description: null,
+      category: 'Activities',
+      sortOrder: 1,
+      allowUserOverride: false,
+      hasPermission: true,
+    },
+  ]),
   fetchTeams: vi.fn().mockResolvedValue([]),
 }));
 
 describe('UserDetailPage permissions (unit)', () => {
+  let UserDetailPage: typeof import('../UserDetailPage').default;
+
+  // The page pulls in a large module graph; load it outside the test timeout.
+  beforeAll(async () => {
+    ({ default: UserDetailPage } = await import('../UserDetailPage'));
+  }, 60000);
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({
@@ -44,9 +71,7 @@ describe('UserDetailPage permissions (unit)', () => {
     });
   });
 
-  it('renders permission icons from bulk roles->permissions map', async () => {
-    const { default: UserDetailPage } = await import('../UserDetailPage');
-
+  it('renders permissions inside the expandable panel', async () => {
     render(
       <MemoryRouter initialEntries={['/users/7']}>
         <Routes>
@@ -55,12 +80,12 @@ describe('UserDetailPage permissions (unit)', () => {
       </MemoryRouter>
     );
 
-    // Should find the permission from the mocked bulk map
-    const perm = await screen.findByText(
-      'Test Permission',
-      {},
-      { timeout: 10000 }
-    );
-    expect(perm).toBeTruthy();
-  }, 15000);
+    const trigger = await screen.findByRole('button', {
+      name: /show permissions/i,
+    });
+    fireEvent.click(trigger);
+
+    expect(await screen.findByText('Test Permission')).toBeTruthy();
+    expect(screen.getByText('Activities')).toBeTruthy();
+  }, 30000);
 });

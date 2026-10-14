@@ -1,4 +1,10 @@
-import { Body, Controller, ForbiddenException, Get, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Patch,
+} from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -7,14 +13,25 @@ import {
   type AuthUser,
   type ResponseWrapper,
 } from '@corpcal/shared';
-import type { BannerSettings } from '@corpcal/shared/api/types';
-import { upsertBannerSettingsRequestSchema } from '@corpcal/shared/schemas';
+import type {
+  ActiveRecurringLockoutBannerResponse,
+  BannerSettings,
+  RecurringLockoutBannerSettings,
+} from '@corpcal/shared/api/types';
+import {
+  upsertBannerSettingsRequestSchema,
+  upsertRecurringLockoutBannerSettingsRequestSchema,
+} from '@corpcal/shared/schemas';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
+  ActiveRecurringLockoutBannerResponseWrapperDto,
   BannerSettingsNullableResponseWrapperDto,
   BannerSettingsResponseWrapperDto,
+  RecurringLockoutBannerSettingsNullableResponseWrapperDto,
+  RecurringLockoutBannerSettingsResponseWrapperDto,
   UpsertBannerSettingsDto,
+  UpsertRecurringLockoutBannerSettingsDto,
 } from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
@@ -49,6 +66,25 @@ export class BannerController {
     return { success: true, data };
   }
 
+  @ApiOperation({
+    summary: 'Get active recurring lockout banner',
+    description:
+      'Returns the recurring lockout banner when active for the current time of day, plus schedule metadata for client-side boundary refresh.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Active recurring lockout banner retrieved successfully',
+    type: ActiveRecurringLockoutBannerResponseWrapperDto,
+  })
+  @Get('recurring-lockout')
+  async getActiveRecurringLockoutBanner(): Promise<
+    ResponseWrapper<ActiveRecurringLockoutBannerResponse>
+  > {
+    const data =
+      await this.bannerService.getActiveRecurringLockoutBannerState();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get current banner settings' })
   @ApiResponse({
     status: 200,
@@ -62,6 +98,22 @@ export class BannerController {
     return { success: true, data };
   }
 
+  @ApiOperation({ summary: 'Get recurring lockout banner settings' })
+  @ApiResponse({
+    status: 200,
+    description: 'Recurring lockout banner settings retrieved successfully',
+    type: RecurringLockoutBannerSettingsNullableResponseWrapperDto,
+  })
+  @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT)
+  @Get('recurring-lockout/settings')
+  async getRecurringLockoutBannerSettings(): Promise<
+    ResponseWrapper<RecurringLockoutBannerSettings | null>
+  > {
+    const data =
+      await this.bannerService.getCurrentRecurringLockoutBannerSettings();
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Create or update banner settings' })
   @ApiResponse({
     status: 200,
@@ -70,7 +122,7 @@ export class BannerController {
   })
   @ApiBody({ type: UpsertBannerSettingsDto })
   @RequirePermission(PERMISSIONS.SETTINGS.MANAGE)
-  @Put('settings')
+  @Patch('settings')
   async upsertBannerSettings(
     @Body(new ZodValidationPipe(upsertBannerSettingsRequestSchema))
     body: UpsertBannerSettingsDto,
@@ -79,6 +131,31 @@ export class BannerController {
     this.ensureSystemAdmin(user);
 
     const data = await this.bannerService.upsertBannerSettings(body, user.id);
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Create or update recurring lockout banner settings',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Recurring lockout banner settings saved successfully',
+    type: RecurringLockoutBannerSettingsResponseWrapperDto,
+  })
+  @ApiBody({ type: UpsertRecurringLockoutBannerSettingsDto })
+  @RequirePermission(PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT)
+  @Patch('recurring-lockout/settings')
+  async upsertRecurringLockoutBannerSettings(
+    @Body(
+      new ZodValidationPipe(upsertRecurringLockoutBannerSettingsRequestSchema)
+    )
+    body: UpsertRecurringLockoutBannerSettingsDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<ResponseWrapper<RecurringLockoutBannerSettings>> {
+    const data = await this.bannerService.upsertRecurringLockoutBannerSettings(
+      body,
+      user.id
+    );
     return { success: true, data };
   }
 }

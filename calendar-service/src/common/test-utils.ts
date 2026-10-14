@@ -118,6 +118,8 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     createdBy: 1,
     lastUpdatedDateTime: now,
     lastUpdatedBy: 1,
+    publicLastUpdatedDateTime: now,
+    publicLastUpdatedBy: 1,
     rowVersion: 0,
     reviewedFieldSnapshot: null,
     reviewedFieldSnapshotVersion: 1,
@@ -186,6 +188,7 @@ export const createMockUserListItem = (
   roleId: 2,
   roleName: 'Editor',
   isActive: true,
+  isEventPlanner: false,
   teams: [{ teamId: 1, teamName: 'Team One', role: 'member' }],
   ...overrides,
 });
@@ -196,6 +199,7 @@ export const createMockUserDetail = (
   ...createMockUserListItem(),
   notes: null,
   flagColour: null,
+  permissionOverrides: [],
   ...overrides,
 });
 

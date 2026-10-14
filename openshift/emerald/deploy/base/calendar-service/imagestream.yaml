@@ -1,9 +1,10 @@
 apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
-  name: calendar-service
+  name: corpcal-service
   labels:
-    app.kubernetes.io/name: calendar
+    app.kubernetes.io/name: corpcal
     app.kubernetes.io/component: service
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/version: ${APP_VERSION}
+    app.kubernetes.io/managed-by: github-actions

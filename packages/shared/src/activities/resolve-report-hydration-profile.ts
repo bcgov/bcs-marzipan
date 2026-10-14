@@ -37,6 +37,9 @@ export function resolveReportHydrationProfile(
 ): ActivityHydrationProfile {
   const relations = new Set([
     ...SEARCH_ACTIVITY_RELATION_KEYS,
+    // Rollup reports always render date/time status alongside their values.
+    'dateStatus' as const,
+    'timeStatus' as const,
     ...relationsForReportFieldKeys(input.effectiveFields),
     ...relationsForQueryFilters(input.query ?? {}),
   ]);

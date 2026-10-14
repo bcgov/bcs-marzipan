@@ -26,7 +26,7 @@ export async function fetchLoginModalSettings(): Promise<LoginModalSettings | nu
 export async function upsertLoginModalSettings(
   data: UpsertLoginModalSettingsBody
 ): Promise<LoginModalSettings> {
-  const res = await api.put<WrappedResponse<LoginModalSettings>>(
+  const res = await api.patch<WrappedResponse<LoginModalSettings>>(
     '/login-modal/settings',
     data
   );

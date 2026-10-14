@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
-import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import type {
   UpdateUserBody,
   UserDetail,
   UserListItem,
+  UserPermissionOverrideInput,
 } from '@corpcal/shared/api/types';
-import { fetchUser, updateUser } from '@/api/usersApi';
+import { fetchRoles, fetchUser, updateUser } from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,8 +21,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { UserRoleField } from '@/components/users/UserRoleField';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  resolveUserDisplayName,
+  showEntityToast,
+} from '@/lib/user-team-toast-messages';
 import { invalidateUserCaches, userQueryKeys } from '@/lib/userQueryKeys';
+
+const GOV_BC_EMAIL_DOMAIN = '@gov.bc.ca';
 
 interface UserEditModalProps {
   user: UserListItem;
@@ -42,12 +49,18 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
     displayParts.length > 1 ? displayParts[displayParts.length - 1] : ''
   );
   const [email, setEmail] = useState<string | null>(user.adEmail ?? '');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>('');
   const [jobTitle, setJobTitle] = useState<string | null>('');
   const [isActive, setIsActive] = useState<boolean>(true);
+  const [isEventPlanner, setIsEventPlanner] = useState<boolean>(false);
+  const [permissionOverrideInputs, setPermissionOverrideInputs] = useState<
+    UserPermissionOverrideInput[]
+  >([]);
 
   const queryClient = useQueryClient();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, hasPermission } = useAuth();
+  const canEditOverrides = hasPermission(PERMISSIONS.USERS.MANAGE_ROLES);
 
   // Editing personal profile details is limited to admins / sys-admins.
   const canEditProfile =
@@ -60,6 +73,24 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
     enabled: !!user.id,
   });
 
+  const { data: roles = [] } = useQuery({
+    queryKey: ['roles'],
+    queryFn: fetchRoles,
+  });
+
+  const currentUserIsSystemAdmin =
+    currentUser?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
+
+  const availableRoles = roles.filter((role) => {
+    if (!currentUserIsSystemAdmin && role.id === SYSTEM_ROLE_IDS.SYSTEM_ADMIN) {
+      return false;
+    }
+    return true;
+  });
+
+  const parsedRoleId = parseInt(roleId, 10);
+  const selectedRoleId = Number.isNaN(parsedRoleId) ? null : parsedRoleId;
+
   useEffect(() => {
     if (detail) {
       setRoleId(String(detail.roleId));
@@ -70,21 +101,30 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
       setFirstName(parts.slice(0, -1).join(' ') || parts[0] || '');
       setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
       setEmail(detail.adEmail ?? '');
+      setEmailError(null);
       setPhone(detail.phone ?? '');
       setJobTitle(detail.jobTitle ?? '');
       setIsActive(Boolean(detail.isActive));
+      setIsEventPlanner(Boolean(detail.isEventPlanner));
     }
   }, [detail]);
 
   const updateMutation = useMutation({
-    mutationFn: (body: UpdateUserBody) => updateUser(user.id, body),
-    onSuccess: () => {
+    mutationFn: ({ body }: { body: UpdateUserBody; displayLabel: string }) =>
+      updateUser(user.id, body),
+    onSuccess: (_data, variables) => {
       invalidateUserCaches(queryClient, user.id);
-      toast.success('User updated', { id: `user-updated-${user.id}` });
+      showEntityToast('success', 'Updated user', {
+        description: variables.displayLabel,
+        id: `user-updated-${user.id}`,
+      });
       onSaved();
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Update failed', {
+    onError: (err: Error, variables) => {
+      showEntityToast('error', 'Could not update user', {
+        description: variables?.displayLabel
+          ? `${variables.displayLabel} — ${err.message || 'Update failed'}`
+          : err.message || 'Update failed',
         id: `user-updated-${user.id}`,
       });
     },
@@ -98,25 +138,52 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
       roleId: newRoleId,
       notes: notes || null,
       isActive: Boolean(isActive),
+      isEventPlanner,
     };
 
     // Profile fields are only editable by admins / sys-admins.
     if (canEditProfile) {
+      const normalizedEmail = (email ?? '').trim().toLowerCase();
+      if (!normalizedEmail) {
+        setEmailError('Email is required');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        setEmailError('Invalid email format');
+        return;
+      }
+      if (!normalizedEmail.endsWith(GOV_BC_EMAIL_DOMAIN)) {
+        setEmailError('Email must be a @gov.bc.ca address');
+        return;
+      }
+
       const combinedName = [firstName, lastName]
         .map((part) => (part ?? '').trim())
         .filter(Boolean)
         .join(' ');
       body.displayName = combinedName || null;
-      body.email = (email ?? '').trim() || null;
+      body.email = normalizedEmail;
       body.phone = (phone ?? '').trim() || null;
       body.jobTitle = (jobTitle ?? '').trim() || null;
     }
 
-    updateMutation.mutate(body);
+    if (permissionOverrideInputs.length > 0) {
+      body.permissionOverrides = permissionOverrideInputs;
+    }
+
+    const combinedName = [firstName, lastName]
+      .map((part) => (part ?? '').trim())
+      .filter(Boolean)
+      .join(' ');
+    const displayLabel =
+      canEditProfile && combinedName
+        ? combinedName
+        : resolveUserDisplayName(user);
+
+    updateMutation.mutate({ body, displayLabel });
   };
 
-  const displayName =
-    user.adDisplayName || user.adUsername || `User ${user.id}`;
+  const displayName = resolveUserDisplayName(user);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -158,11 +225,19 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
               <Input
                 type="email"
                 value={email ?? ''}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError(null);
+                }}
                 readOnly={!canEditProfile}
                 disabled={!canEditProfile}
                 className={canEditProfile ? undefined : 'bg-slate-50'}
               />
+              {emailError ? (
+                <p className="text-destructive text-sm font-medium">
+                  {emailError}
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -184,6 +259,31 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
                 readOnly={!canEditProfile}
                 disabled={!canEditProfile}
                 className={canEditProfile ? undefined : 'bg-slate-50'}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Switch
+                id="user-event-planner"
+                checked={isEventPlanner}
+                onCheckedChange={(v) => setIsEventPlanner(Boolean(v))}
+              />
+              <Label htmlFor="user-event-planner" className="text-sm">
+                Event planner
+              </Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <UserRoleField
+                roles={availableRoles}
+                value={roleId}
+                onValueChange={setRoleId}
+                roleId={selectedRoleId}
+                savedRoleId={detail?.roleId}
+                existingOverrides={detail?.permissionOverrides}
+                canEditOverrides={canEditOverrides}
+                onPermissionChange={setPermissionOverrideInputs}
               />
             </div>
 

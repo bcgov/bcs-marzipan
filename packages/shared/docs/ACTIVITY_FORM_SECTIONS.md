@@ -8,20 +8,21 @@ The activity form UI is composed in `calendar-ui/src/components/activity/Activit
 
 ## When you change the form
 
-1. **Update the registry** — add/move/remove the top-level `ActivityFormData` key under the correct section in `ACTIVITY_FORM_SECTION_FIELDS`. Adjust `ACTIVITY_FORM_SECTION_IDS` and `ACTIVITY_FORM_SECTION_LABELS` if you add or rename a section.
+1. **Update the registry** — add/move/remove the top-level `ActivityFormData` key under the correct section in `ACTIVITY_FORM_SECTION_FIELDS`. **Preserve visual DOM order** within each section array (not alphabetical or schema order). Adjust `ACTIVITY_FORM_SECTION_IDS` and `ACTIVITY_FORM_SECTION_LABELS` if you add or rename a section.
 2. **Update the section component** — render the field in the matching `Activity*Section.tsx` file.
 3. **Update `ActivityFormBody`** — if section order or column layout changes.
 4. **Review-exempt** — if the field should be admin-configurable, ensure it is listed in the registry and **not** in `ACTIVITY_REVIEW_EXEMPT_CODE_KEYS` (`review-exempt-settings.ts`). The admin UI grouping is derived automatically.
 5. **Clone modal** — optional advanced fields are derived from the registry minus exclusions in `clone-activity.schema.ts` (`CLONE_NEVER_COPIED_FIELD_KEYS`, etc.). Add clone-specific exclusions there; do not duplicate section lists.
-6. **Run tests** — `npm test -- activity-form-sections` in `packages/shared`.
+6. **Run tests** — `npm test -- activity-form-sections` in `packages/shared` and `activity-form-section-field-order` in `calendar-ui`.
 
 ## Derived consumers (do not duplicate section lists)
 
-| Consumer                              | Source                                                      |
-| ------------------------------------- | ----------------------------------------------------------- |
-| Review-exempt Settings combobox       | `ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS`              |
-| Clone modal “More options” checkboxes | `CLONE_ADVANCED_SECTIONS` / `CLONE_ADVANCED_FIELD_GROUPS`   |
-| Section headings in form components   | `ACTIVITY_FORM_SECTION_LABELS` (re-exported in calendar-ui) |
+| Consumer                                | Source                                                               |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| Review-exempt Settings combobox         | `ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS`                       |
+| Clone modal “More options” checkboxes   | `CLONE_ADVANCED_SECTIONS` / `CLONE_ADVANCED_FIELD_GROUPS`            |
+| Section headings in form components     | `ACTIVITY_FORM_SECTION_LABELS` (re-exported in calendar-ui)          |
+| Missing-field focus / sticky hint order | `getActivityFormSectionFieldKeys()` via `useActivityFormSubmitState` |
 
 ## Section order (current)
 

@@ -7,7 +7,7 @@ import {
 } from './draft.schema';
 
 /**
- * DTO for creating or updating a form draft (POST /drafts/save).
+ * DTO for creating or updating a form draft (PUT /drafts).
  * Generated from saveDraftBodySchema using nestjs-zod.
  */
 export class SaveDraftDto extends createZodDto(saveDraftBodySchema) {}

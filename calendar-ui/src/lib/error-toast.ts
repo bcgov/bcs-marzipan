@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 
 import { ApiError, NetworkError } from '../api/errors';
+import { TOAST_DURATION_MS } from './toast-durations';
 
 /**
  * Error Toast Helper
@@ -108,29 +109,27 @@ export function showErrorToast(error: unknown, customMessage?: string): void {
   let title = 'Error';
   let message = 'An error occurred';
   let variant: 'error' | 'warning' = 'error';
-  let duration = 5000;
+  let duration = TOAST_DURATION_MS.error;
 
   if (error instanceof ApiError) {
     // Handle API errors with appropriate messaging
     title = getErrorTitle(error.status);
     message = customMessage || error.detail;
 
-    // Adjust variant and duration based on error type
+    // Adjust the toast variant based on the error type while keeping the
+    // default 7s duration consistent across app-level error notifications.
     if (error.status === 409) {
-      // Conflict - warning style, longer duration
+      // Conflicts are user-actionable, so surface them as warnings.
       variant = 'warning';
-      duration = 7000;
     } else if (error.status === 429) {
-      // Rate limiting - warning style
+      // Rate limiting is transient; keep it as a warning with the default duration.
       variant = 'warning';
       message = 'Too many requests. Please wait a moment and try again.';
-      duration = 6000;
     } else if (error.status >= 500) {
-      // Server errors - error style, longer duration
-      duration = 8000;
+      // Server-side failures are surfaced as error toasts with the default duration.
       message = 'Server error. Please try again later.';
     } else if (error.isRetryable()) {
-      // Retryable errors - warning style
+      // Retryable client-side conditions are shown as warnings.
       variant = 'warning';
     }
 
@@ -149,7 +148,7 @@ export function showErrorToast(error: unknown, customMessage?: string): void {
       customMessage ||
       'Unable to connect to server. Please check your connection and try again.';
     variant = 'warning';
-    duration = 6000;
+    duration = TOAST_DURATION_MS.error;
 
     if (import.meta.env.DEV && error.correlationId) {
       message += ` (ID: ${error.correlationId})`;
@@ -172,12 +171,15 @@ export function showErrorToast(error: unknown, customMessage?: string): void {
  * Show a success toast notification
  */
 export function showSuccessToast(message: string, title = 'Success'): void {
-  toast.success(title, { description: message, duration: 3000 });
+  toast.success(title, {
+    description: message,
+    duration: TOAST_DURATION_MS.success,
+  });
 }
 
 /**
  * Show an info toast notification
  */
 export function showInfoToast(message: string, title = 'Info'): void {
-  toast.info(title, { description: message, duration: 4000 });
+  toast.info(title, { description: message, duration: TOAST_DURATION_MS.info });
 }

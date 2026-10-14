@@ -31,6 +31,7 @@ import {
   type PatchIdleTimeoutConfigBody,
 } from './dto/idle-timeout-config.dto';
 import { LocksService } from './locks.service';
+import { RecurringLockoutService } from './recurring-lockout.service';
 
 @ApiTags('locks')
 @Controller('locks')
@@ -38,6 +39,7 @@ import { LocksService } from './locks.service';
 export class LocksController {
   constructor(
     private readonly locksService: LocksService,
+    private readonly recurringLockoutService: RecurringLockoutService,
     private readonly applicationSettings: ApplicationSettingsService,
     private readonly activitiesGateway: ActivitiesGateway
   ) {}
@@ -54,6 +56,11 @@ export class LocksController {
   @ApiOperation({ summary: 'Acquire a lock on an entity (e.g. activity)' })
   @ApiResponse({ status: 200, description: 'Lock acquired' })
   @ApiResponse({ status: 423, description: 'Already locked by another user' })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Editing is blocked by the recurring lockout window for users without bypass permission',
+  })
   async acquire(
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(acquireLockBodySchema)) body: AcquireLockBody
@@ -61,6 +68,12 @@ export class LocksController {
     if (body.entityType !== 'activity') {
       return { locked: false, message: 'Only activity locks are supported.' };
     }
+
+    await this.recurringLockoutService.assertUserCanEditDuringLockout(
+      user.id,
+      user.permissions
+    );
+
     const lock = await this.locksService.tryAcquireLock(
       body.entityType,
       body.entityId,

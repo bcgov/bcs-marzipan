@@ -31,10 +31,12 @@ const mockRow = (overrides: Partial<ActivityTableRow>): ActivityTableRow => ({
   leadOrg: null,
   leadMinistry: null,
   leadMinistryAbbreviation: null,
+  leadTeamDisplayName: null,
   commsLeadName: null,
-  commsContactsCount: 0,
+  commsContactName: null,
   eventPlanners: [],
   eventPlannerLeadIds: [],
+  leadTeamId: null,
   leadMinistryId: null,
   leadOrgId: null,
   commsContactLeadUserId: null,
@@ -47,7 +49,11 @@ const mockRow = (overrides: Partial<ActivityTableRow>): ActivityTableRow => ({
   lastUpdatedDateTime: new Date().toISOString(),
   lastUpdatedBy: 1,
   createdDateTime: new Date().toISOString(),
+  editLock: null,
   flags: [],
+  sharedWith: [],
+  sharedWithTeamIds: [],
+  visibility: null,
   ...overrides,
 });
 
@@ -64,7 +70,7 @@ describe('activityTableSort', () => {
       expect(result).toBeLessThan(0); // withDate should come first
     });
 
-    it('sorts activities with dates before those without dates (descending)', () => {
+    it('sorts activities without dates before those with dates (descending)', () => {
       const withDate = mockRow({ id: 1, startDate: '2025-02-01' });
       const withoutDate = mockRow({ id: 2, startDate: null });
 
@@ -72,7 +78,7 @@ describe('activityTableSort', () => {
         { key: 'startDate', direction: 'desc' },
       ]);
 
-      expect(result).toBeLessThan(0); // withDate should come first (before withoutDate)
+      expect(result).toBeGreaterThan(0); // withoutDate (furthest out) should come first
     });
 
     it('sorts activities with no date to the end when both are null', () => {

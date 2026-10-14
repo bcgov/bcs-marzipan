@@ -5,7 +5,6 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { ActivitiesModule } from './activities/activities.module';
 import { ActivityCompletionModule } from './activity-completion/activity-completion.module';
@@ -22,8 +21,8 @@ import { FavouritesModule } from './favourites/favourites.module';
 import { LocksModule } from './locks/locks.module';
 import { LoginModalModule } from './login-modal/login-modal.module';
 import { LookAheadResetModule } from './look-ahead-reset/look-ahead-reset.module';
-import { LookAheadModule } from './look-ahead/look-ahead.module';
 import { LookupsModule } from './lookups/lookups.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PermissionsGuard } from './policy/guards/permissions.guard';
 import { RolesGuard } from './policy/guards/roles.guard';
 import { DataScopeInterceptor } from './policy/interceptors/data-scope.interceptor';
@@ -52,12 +51,6 @@ function resolveRootEnvPath(): string {
       // Load .env from root directory
       envFilePath: resolveRootEnvPath(),
     }),
-    // Global rate limiter — 200 requests per minute per IP for all routes.
-    // This is intentionally generous to avoid 429s on busy authenticated pages
-    // (many parallel API calls, shared NAT / office egress, automated clients).
-    // Sensitive auth endpoints override this with a much tighter limit (5 req/min)
-    // via @Throttle() decorators on each handler in AuthController.
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 200 }]),
     ScheduleModule.forRoot(),
     LoggerModule,
     DatabaseModule,
@@ -73,16 +66,15 @@ function resolveRootEnvPath(): string {
     DraftsModule,
     ReportsModule,
     SavedFiltersModule,
-    LookAheadModule,
     UsersModule,
     TeamsModule,
     FavouritesModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     CorrelationIdMiddleware,
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

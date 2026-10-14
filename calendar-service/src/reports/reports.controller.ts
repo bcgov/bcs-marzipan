@@ -1,25 +1,20 @@
-import {
-  Controller,
-  Get,
-  Param,
-  ParseIntPipe,
-  Query,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 
+import type { ReportDataResponse } from '@corpcal/shared/api/types';
 import {
   reportDataQuerySchema,
   type ReportDataQueryParams,
 } from '@corpcal/shared/schemas';
-import type { ReportResponse } from '@corpcal/shared/schemas/lookup.schema';
 
+import { ReportDataResponseWrapperDto } from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
-import { ReportsService, type ReportDataResponse } from './reports.service';
+import { ReportsService } from './reports.service';
 
 @ApiTags('reports')
 @Controller('reports')
@@ -27,23 +22,13 @@ import { ReportsService, type ReportDataResponse } from './reports.service';
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
-  @Get()
-  @ApiOperation({ summary: 'Get all active reports' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of all active reports',
-    type: [Object],
-  })
-  async findAllReports(): Promise<ReportResponse[]> {
-    return this.reportsService.findAllReports();
-  }
-
   @Get('data/:type')
   @ApiOperation({ summary: 'Get report data by type' })
+  @ApiZodQueries(reportDataQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'Report data with sections and activities',
-    type: Object,
+    type: ReportDataResponseWrapperDto,
   })
   @ApiResponse({
     status: 404,
@@ -54,12 +39,14 @@ export class ReportsController {
     @Query(new ZodValidationPipe(reportDataQuerySchema))
     query: ReportDataQueryParams,
     @RequestContext() ctx: RequestContextType
-  ): Promise<ReportDataResponse> {
-    return this.reportsService.getReportData(type, query, ctx);
+  ): Promise<{ success: true; data: ReportDataResponse }> {
+    const data = await this.reportsService.getReportData(type, query, ctx);
+    return { success: true, data };
   }
 
   @Get('export/:type/csv')
   @ApiOperation({ summary: 'Export report as CSV' })
+  @ApiZodQueries(reportDataQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'CSV file download',
@@ -85,6 +72,7 @@ export class ReportsController {
 
   @Get('export/:type/xlsx')
   @ApiOperation({ summary: 'Export report as Excel (XLSX)' })
+  @ApiZodQueries(reportDataQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'Excel workbook download',
@@ -112,6 +100,7 @@ export class ReportsController {
 
   @Get('export/:type/pdf')
   @ApiOperation({ summary: 'Export report as PDF' })
+  @ApiZodQueries(reportDataQuerySchema)
   @ApiResponse({
     status: 200,
     description: 'PDF file download',
@@ -139,22 +128,5 @@ export class ReportsController {
       'no-store, no-cache, must-revalidate, private'
     );
     res.send(buffer);
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a report by ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Report details',
-    type: Object,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Report not found',
-  })
-  async findReportById(
-    @Param('id', ParseIntPipe) id: number
-  ): Promise<ReportResponse | null> {
-    return this.reportsService.findReportById(id);
   }
 }

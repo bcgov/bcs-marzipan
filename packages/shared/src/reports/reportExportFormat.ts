@@ -2,9 +2,9 @@ import type { ReportActivityRow, ReportResponse } from '../api/types';
 import { isCalendarDateString } from '../datetime';
 import {
   effectiveReportFieldsIncludeEventLead,
-  getCommsContactLeadDisplayName,
   getEffectiveReportDetailText,
   getEffectiveReportFields,
+  getEventPlannerLeadDisplayName,
 } from './reportTypeConfig';
 
 /** Default column headers for tabular report exports (CSV, Excel, PDF table). */
@@ -71,7 +71,7 @@ export function buildReportExportTable(
       );
       const detailParts = [activity.title, detailText].filter(Boolean);
       if (effectiveReportFieldsIncludeEventLead(effectiveFields)) {
-        const leadName = getCommsContactLeadDisplayName(activity);
+        const leadName = getEventPlannerLeadDisplayName(activity);
         if (leadName) detailParts.push(`Event lead: ${leadName}`);
       }
       const details = detailParts.join(' – ');

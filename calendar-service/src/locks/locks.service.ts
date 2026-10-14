@@ -8,7 +8,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, gt, lt, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, lt, lte, or, sql } from 'drizzle-orm';
 
 import {
   editLockPendingHandoffs,
@@ -42,7 +42,7 @@ function isPostgresUniqueViolation(error: unknown): boolean {
 }
 
 const LOCK_TTL_MINUTES = 5;
-const HANDOFF_GRACE_SECONDS = 30;
+const HANDOFF_GRACE_SECONDS = 90;
 /** Minimum interval between heartbeat DB updates (per lock). */
 const HEARTBEAT_MIN_INTERVAL_MS = 30_000;
 /** Max handoffs finalized in one `processAllDueHandoffs` run (safety cap). */
@@ -172,6 +172,7 @@ export class LocksService {
             {
               statusCode: HttpStatus.LOCKED,
               message: 'This activity is being edited by another user.',
+              reason: 'locked_by_other',
               locked: true,
               lockedBy: {
                 userId: existing.userId,
@@ -234,6 +235,38 @@ export class LocksService {
       }
       return inserted;
     });
+  }
+
+  /**
+   * Active edit locks for the given activity ids (non-expired session + idle).
+   */
+  async getActiveActivityLocksForIds(
+    activityIds: number[]
+  ): Promise<Map<number, { userId: number; username: string }>> {
+    const map = new Map<number, { userId: number; username: string }>();
+    if (activityIds.length === 0) {
+      return map;
+    }
+    const now = new Date();
+    const rows = await this.databaseService.db
+      .select({
+        entityId: editLocks.entityId,
+        userId: editLocks.userId,
+        username: editLocks.username,
+      })
+      .from(editLocks)
+      .where(
+        and(
+          eq(editLocks.entityType, 'activity'),
+          inArray(editLocks.entityId, activityIds),
+          gt(editLocks.expiresAt, now),
+          gt(editLocks.idleExpiresAt, now)
+        )
+      );
+    for (const row of rows) {
+      map.set(row.entityId, { userId: row.userId, username: row.username });
+    }
+    return map;
   }
 
   async getLockForEntity(

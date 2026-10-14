@@ -1,7 +1,10 @@
 export * from './activities';
+export * from './activity-last-updated-bump';
 export * from './activity-filter-state';
 export * from './activity-completion';
+export * from './activity-reminders';
 export * from './activity-form-sections';
+export * from './activity-history-fields';
 export * from './datetime';
 export * from './filters/activityFilterStateToQueryParams';
 export * from './filters/activity-filter-active';
@@ -11,6 +14,9 @@ export * from './filters/activity-filter-match-input';
 export * from './filters/activity-searchable-text';
 export * from './filters/confirmed-status-names';
 export * from './look-ahead-reset';
+export * from './recurring-edit-lockout';
+export * from './recurring-lockout-banner-content';
+export * from './notifications';
 export {
   ACTIVITY_INFO_ICON_FIELD_KEYS,
   ACTIVITY_INFO_ICON_FIELD_KEY_SET,

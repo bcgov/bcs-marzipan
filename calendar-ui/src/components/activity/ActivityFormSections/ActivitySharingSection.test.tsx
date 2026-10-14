@@ -31,10 +31,14 @@ function ActivitySharingSectionHarness({
   readOnly = false,
   defaultValues,
   onFormReady,
+  sharedWithTeams = [],
+  quickShareGroups = [],
 }: {
   readOnly?: boolean;
   defaultValues?: Partial<ActivityFormData>;
   onFormReady?: (form: ReturnType<typeof useForm<ActivityFormData>>) => void;
+  sharedWithTeams?: import('./ActivitySharingSection').SharingTeamLookup[];
+  quickShareGroups?: import('./ActivitySharingSection').QuickShareGroupLookup[];
 }) {
   const form = useForm<ActivityFormData>({
     defaultValues: {
@@ -55,7 +59,10 @@ function ActivitySharingSectionHarness({
           canEditFieldScope: () => true,
         }}
       >
-        <ActivitySharingSection sharedWithTeams={[]} quickShareGroups={[]} />
+        <ActivitySharingSection
+          sharedWithTeams={sharedWithTeams}
+          quickShareGroups={quickShareGroups}
+        />
       </ActivityEditProvider>
     </FormProvider>
   );
@@ -116,5 +123,57 @@ describe('ActivitySharingSection visibility switch', () => {
 
     expect(restrictSwitch).not.toBeChecked();
     expect(formRef?.getValues('visibility')).toBe('global');
+  });
+});
+
+describe('ActivitySharingSection hidden assigned teams', () => {
+  it('keeps hidden teams labeled and selected when a visible team is added', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    render(
+      <ActivitySharingSectionHarness
+        defaultValues={{ sharedWithTeamIds: [2] }}
+        onFormReady={(form) => {
+          formRef = form;
+        }}
+        sharedWithTeams={[
+          {
+            id: 1,
+            name: 'Visible team',
+            displayName: 'Visible team',
+            ministryId: 6,
+            isActive: true,
+            appearsInShareWith: true,
+          },
+          {
+            id: 2,
+            name: 'Former share team',
+            displayName: 'Former share team',
+            ministryId: 5,
+            isActive: true,
+            appearsInShareWith: false,
+          },
+        ]}
+        quickShareGroups={[
+          { id: 1, name: 'Social', sortOrder: 0, ministryIds: [5] },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Former share team')).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: 'Share with' }));
+    expect(
+      screen.getByRole('button', { name: 'Share with social' })
+    ).toBeDisabled();
+
+    await user.click(screen.getByRole('option', { name: 'Visible team' }));
+
+    expect(formRef?.getValues('sharedWithTeamIds')).toEqual([2, 1]);
+    expect(screen.getByText('Former share team')).toBeInTheDocument();
+    expect(screen.getAllByText('Visible team').length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('option', { name: 'Former share team' })
+    ).toBeNull();
   });
 });

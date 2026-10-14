@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
-import type { ActivityResponse } from '@corpcal/shared/api/types';
+import type { ActivityListItem } from '@corpcal/shared/api/types';
 import type { UpdateActivityRequest } from '@corpcal/shared/schemas';
+import { createMockActivityListItem } from '@corpcal/shared/test-utils';
 import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 
 import {
@@ -41,10 +42,12 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     leadOrg: null,
     leadMinistry: null,
     leadMinistryAbbreviation: null,
+    leadTeamDisplayName: null,
     commsLeadName: null,
-    commsContactsCount: 0,
+    commsContactName: null,
     eventPlanners: [],
     eventPlannerLeadIds: [],
+    leadTeamId: null,
     leadMinistryId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,
@@ -57,7 +60,11 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     lastUpdatedDateTime: '',
     lastUpdatedBy: 0,
     createdDateTime: '',
+    editLock: null,
     flags: [],
+    sharedWith: [],
+    sharedWithTeamIds: [],
+    visibility: null,
     ...overrides,
   };
 }
@@ -475,31 +482,18 @@ describe('filterActivityRowsByFilters', () => {
     expect(result.map((r) => r.id)).toEqual([1, 2]);
   });
 
-  it('filters by leadMinistryIds', () => {
+  it('filters by leadTeamIds', () => {
     const rows = [
-      makeRow({ id: 1, leadMinistryId: 10 }),
-      makeRow({ id: 2, leadMinistryId: 20 }),
-      makeRow({ id: 3, leadMinistryId: null }),
-      makeRow({ id: 4, leadMinistryId: 10 }),
+      makeRow({ id: 1, leadTeamId: 10 }),
+      makeRow({ id: 2, leadTeamId: 20 }),
+      makeRow({ id: 3, leadTeamId: null }),
+      makeRow({ id: 4, leadTeamId: 10 }),
     ];
     const result = filterActivityRowsByFilters(rows, {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
-      leadMinistryIds: [10, 30],
+      leadTeamIds: [10, 30],
     });
     expect(result.map((r) => r.id)).toEqual([1, 4]);
-  });
-
-  it('filters by leadOrgIds', () => {
-    const rows = [
-      makeRow({ id: 1, leadOrgId: 5 }),
-      makeRow({ id: 2, leadOrgId: 6 }),
-      makeRow({ id: 3, leadOrgId: null }),
-    ];
-    const result = filterActivityRowsByFilters(rows, {
-      ...DEFAULT_ACTIVITY_FILTER_STATE,
-      leadOrgIds: [5],
-    });
-    expect(result.map((r) => r.id)).toEqual([1]);
   });
 
   it('filters by commsContactLeadUserIds', () => {
@@ -532,23 +526,20 @@ describe('filterActivityRowsByFilters', () => {
     const rows = [
       makeRow({
         id: 1,
-        leadMinistryId: 10,
-        leadOrgId: 5,
+        leadTeamId: 10,
         commsContactLeadUserId: 100,
         eventPlannerLeadIds: [1],
       }),
       makeRow({
         id: 2,
-        leadMinistryId: 10,
-        leadOrgId: 99,
+        leadTeamId: 99,
         commsContactLeadUserId: 100,
         eventPlannerLeadIds: [1],
       }),
     ];
     const result = filterActivityRowsByFilters(rows, {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
-      leadMinistryIds: [10],
-      leadOrgIds: [5],
+      leadTeamIds: [10],
       commsContactLeadUserIds: [100],
       eventPlannerLeadIds: [1],
     });
@@ -608,7 +599,7 @@ describe('filterActivityRowsByFilters', () => {
 });
 
 describe('buildOptimisticActivity', () => {
-  const minimalExisting = {
+  const minimalExisting: ActivityListItem = createMockActivityListItem({
     id: 1,
     title: 'Original title',
     summary: 'Original summary',
@@ -623,8 +614,11 @@ describe('buildOptimisticActivity', () => {
     lookAheadSection: null,
     pitchDate: null,
     createdDateTime: '2025-01-01T00:00:00Z',
-    lastUpdatedDateTime: '2025-01-01T00:00:00Z',
-  } as ActivityResponse;
+    lastUpdatedDateTime: '2025-01-02T00:00:00Z',
+    lastUpdatedBy: 2,
+    publicLastUpdatedDateTime: '2025-01-01T00:00:00Z',
+    publicLastUpdatedBy: 1,
+  });
 
   it('merges one mergeable key from update into existing', () => {
     const update: UpdateActivityRequest = { title: 'Updated title' };
@@ -661,7 +655,7 @@ describe('buildOptimisticActivity', () => {
       ...minimalExisting,
       id: 42,
       leadOrgId: 10,
-    } as ActivityResponse;
+    } as ActivityListItem;
     const update = {
       id: 999,
       leadOrgId: 99,

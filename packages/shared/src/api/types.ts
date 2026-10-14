@@ -17,11 +17,15 @@ export type {
 } from '../schemas/activity-list-item.schema';
 export type {
   ActivityFlagResponse,
-  UpsertActivityFlagRequest,
   UpsertActivityFlagsRequest,
 } from '../schemas/activity-flag.schema';
 export type {
   BannerSettings,
+  RecurringLockoutBannerSettings,
+  ActiveRecurringLockoutBanner,
+  RecurringLockoutBannerSchedule,
+  ActiveRecurringLockoutBannerResponse,
+  UpsertRecurringLockoutBannerSettingsBody,
   UpsertBannerSettingsBody,
 } from '../schemas/banner.schema';
 export type {
@@ -58,6 +62,9 @@ export type {
   UpdateUserTeamRoleBody,
   TransferActivitiesBody,
   RemoveUserFromTeamBody,
+  UserPermissionEffect,
+  UserPermissionOverride,
+  UserPermissionOverrideInput,
 } from '../schemas/user.schema';
 
 // Team CRUD API types
@@ -79,6 +86,14 @@ export type {
   CreateMinistryGroupRequest,
   UpdateMinistryGroupRequest,
 } from '../schemas/ministry-groups.schema';
+
+export type {
+  NotificationBulkActionResult,
+  NotificationItem,
+  NotificationListQuery,
+  NotificationPage,
+  UnreadNotificationCount,
+} from '../schemas/notification.schema';
 
 // Lookup types - re-exported from lookup schema
 export type {

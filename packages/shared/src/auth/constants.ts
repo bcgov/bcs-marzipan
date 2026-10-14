@@ -81,6 +81,8 @@ export const PERMISSIONS = {
     DELETE_ANY: 'activities.delete.any',
     APPROVE: 'activities.approve',
     REVIEW: 'activities.review',
+    /** Perform supported updates against multiple activities from the list. */
+    BULK_UPDATE: 'activities.bulkUpdate',
     PUBLISH: 'activities.publish',
     UNPUBLISH: 'activities.unpublish',
     NOTES_VIEW: 'activities.notes.view',
@@ -97,6 +99,14 @@ export const PERMISSIONS = {
     COMPLETE: 'activities.complete',
     /** Assign (flag) an activity to a team member for follow-up. Team-scoped. */
     FLAG: 'activities.flag',
+    /** Edit activities during the recurring daily lockout window. */
+    BYPASS_RECURRING_LOCKOUT: 'activities.bypass_recurring_lockout',
+    /** Remove your own team from an activity's Shared With list. Does not grant broader edit access. */
+    UNSHARE: 'activities.unshare',
+    /** Remove any team (not just your own) from an activity's Shared With list. Admin workflow. */
+    UNSHARE_ALL: 'activities.unshare.all',
+    /** May omit public last-updated on save unless renewPublicLastUpdated is true. */
+    PUBLIC_LAST_UPDATED_DEFER: 'activities.publicLastUpdated.defer',
   },
   DRAFTS: {
     VIEW: 'drafts.view',
@@ -136,6 +146,9 @@ export const PERMISSIONS = {
     EDIT: 'teams.edit',
     DELETE: 'teams.delete',
   },
+  NOTIFICATIONS: {
+    VIEW: 'notifications.view',
+  },
   SETTINGS: {
     VIEW: 'settings.view',
     MANAGE: 'settings.manage',
@@ -153,6 +166,8 @@ export const PERMISSIONS = {
      * System Admin only.
      */
     MANAGE_ACTIVITY_INFO_ICONS: 'settings.manage.activity_info_icons',
+    /** Configure recurring edit lockout window and warning banner. */
+    MANAGE_RECURRING_LOCKOUT: 'settings.manage.recurring_lockout',
   },
   SYSTEM: {
     VIEW_LOGS: 'system.view_logs',

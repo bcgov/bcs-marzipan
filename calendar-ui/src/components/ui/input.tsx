@@ -7,6 +7,7 @@ function Input({
   className,
   type,
   readOnly,
+  placeholder,
   ...props
 }: React.ComponentProps<'input'>) {
   return (
@@ -23,6 +24,7 @@ function Input({
         className
       )}
       readOnly={readOnly}
+      {...(placeholder !== '' ? { placeholder } : {})}
       {...props}
     />
   );

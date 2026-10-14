@@ -24,7 +24,7 @@ export function optionalRadioEnumValue<T extends string>(
     : undefined;
 }
 
-/** Look-ahead status radios — typed against {@link ActivityFormData}. */
+/** Look Ahead status radios — typed against {@link ActivityFormData}. */
 export function lookAheadStatusFormValue(
   value: string
 ): ActivityFormData['lookAheadStatus'] {
@@ -32,7 +32,7 @@ export function lookAheadStatusFormValue(
 }
 
 /**
- * Look-ahead section radios use dynamic lookup keys; store non-empty strings as-is.
+ * Look Ahead section radios use dynamic lookup keys; store non-empty strings as-is.
  */
 export function lookAheadSectionFormValue(
   value: string
