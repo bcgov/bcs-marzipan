@@ -700,6 +700,7 @@ export function ActivityPage({
     isActiveEditSession,
     editRecoveryState,
   });
+  const [connectionAlertPresent, setConnectionAlertPresent] = useState(false);
 
   const resyncEditSession = useCallback(() => {
     const generation = ++resyncGenerationRef.current;
@@ -1523,16 +1524,14 @@ export function ActivityPage({
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
-      {connectionAlert != null ? (
-        <ActivityConnectionStatusAlert
-          phase={connectionAlert.phase}
-          message={connectionAlert.message}
-        />
-      ) : null}
+      <ActivityConnectionStatusAlert
+        display={connectionAlert}
+        onPresentChange={setConnectionAlertPresent}
+      />
       <ActivityFormStickyHeader
         onBack={handleGoBack}
         lockStrip={
-          connectionAlert != null ? undefined : isLockedByOther ? (
+          connectionAlertPresent ? undefined : isLockedByOther ? (
             <LockBannerContent
               lockedByUsername={lockedByUsername}
               onRequestTakeLock={
@@ -1558,7 +1557,7 @@ export function ActivityPage({
           ) : undefined
         }
         lockStripVisible={
-          connectionAlert == null &&
+          !connectionAlertPresent &&
           ((isLockedByOther && !lockBannerInView) ||
             (showLockoutNotice && !lockoutBannerInView))
         }
