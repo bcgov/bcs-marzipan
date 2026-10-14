@@ -98,8 +98,7 @@ jobs:
       - name: Build calendar-ui
         run: |
           docker build \
-            --build-arg APP_VERSION="$APP_VERSION" \
-
+            --build-arg APP_VERSION="$BUILD_IMAGE_TAG" \
             -f calendar-ui/Dockerfile \
             -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-ui:$BUILD_IMAGE_TAG" \
             .
