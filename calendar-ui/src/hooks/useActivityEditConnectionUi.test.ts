@@ -85,6 +85,35 @@ describe('useActivityEditConnectionUi', () => {
     expect(result.current.connectionAlert?.phase).toBe('restored');
   });
 
+  it('clears offline alert during reconnecting grace while keeping restore armed', () => {
+    const { result, rerender } = renderHook(
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
+      {
+        initialProps: {
+          ...baseInput,
+          socketConnection: 'browser-offline',
+        },
+      }
+    );
+
+    expect(result.current.connectionAlert?.phase).toBe('browser-offline');
+
+    rerender({
+      ...baseInput,
+      socketConnection: 'reconnecting',
+    });
+
+    expect(result.current.connectionAlert).toBeNull();
+
+    rerender({
+      ...baseInput,
+      socketConnection: 'connected',
+    });
+
+    expect(result.current.connectionAlert?.phase).toBe('restored');
+  });
+
   it('shows browser-offline alert and arms restored when user was notified', () => {
     const { result, rerender } = renderHook(
       (props: UseActivityEditConnectionUiInput) =>

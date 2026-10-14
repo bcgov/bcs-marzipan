@@ -187,6 +187,17 @@ export function useActivityEditConnectionUi({
 
     if (
       connectionAlertEligible &&
+      blockedPhase === 'reconnecting' &&
+      userWasNotifiedRef.current
+    ) {
+      clearRestoredTimer();
+      awaitingResyncSuccessRef.current = false;
+      setConnectionAlert(null);
+      return;
+    }
+
+    if (
+      connectionAlertEligible &&
       blockedPhase != null &&
       shouldNotifyBlockedConnection(
         blockedPhase,

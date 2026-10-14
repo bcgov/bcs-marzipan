@@ -593,17 +593,17 @@ export function ActivityPage({
   const connectionBlocksEditStart = isActivitySocketConnectionBlocked(
     activitySocketConnection
   );
-  const isActiveEditSession =
-    isEditing || lockState === 'owned' || lockState === 'acquiring';
+  const hasEditLock = lockState === 'owned';
+  /** Held server lock — allows offline field edits; excludes optimistic pre-acquire. */
+  const isActiveEditSession = isEditing && hasEditLock;
   const readOnly =
     lockState === 'locked-by-other' ||
     isBlockedByRecurringLockout ||
     !mayEditFormFields ||
     connectionBlocksFieldInputUnlessActiveSession(
       activitySocketConnection,
-      isActiveEditSession
+      hasEditLock
     );
-  const hasEditLock = lockState === 'owned';
   const isLockedByOther = lockState === 'locked-by-other';
   const showLockoutNotice = isBlockedByRecurringLockout && !isLockedByOther;
 
@@ -709,9 +709,11 @@ export function ActivityPage({
     const generation = ++resyncGenerationRef.current;
     void (async () => {
       if (!isEditingRef.current) {
-        // Best-effort lock sync; connection restored UI comes from socket display
-        // transitions in useActivityEditConnectionUi, not resync outcome here.
-        await refreshLockFromServer();
+        const refreshResult = await refreshLockFromServer();
+        if (generation !== resyncGenerationRef.current) return;
+        notifyResyncOutcome(
+          refreshResult === 'unavailable' ? 'failure' : 'success'
+        );
         return;
       }
 

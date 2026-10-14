@@ -337,11 +337,14 @@ describe('getActivityEditRecoveryBannerMessage', () => {
 });
 
 describe('getActivityEditAcquireFailureToastVariant', () => {
-  it('returns warning for lock contention and network', () => {
+  it('returns warning for lock contention, network, and time lockout', () => {
     expect(getActivityEditAcquireFailureToastVariant('locked-by-other')).toBe(
       'warning'
     );
     expect(getActivityEditAcquireFailureToastVariant('network')).toBe(
+      'warning'
+    );
+    expect(getActivityEditAcquireFailureToastVariant('time-lockout')).toBe(
       'warning'
     );
   });
@@ -357,9 +360,6 @@ describe('getActivityEditAcquireFailureToastVariant', () => {
 
   it('returns null when no toast should show', () => {
     expect(getActivityEditAcquireFailureToastVariant(null)).toBeNull();
-    expect(
-      getActivityEditAcquireFailureToastVariant('time-lockout')
-    ).toBeNull();
   });
 });
 

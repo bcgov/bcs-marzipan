@@ -99,10 +99,14 @@ export type ActivityEditAcquireFailureToastVariant = 'warning' | 'error';
 export function getActivityEditAcquireFailureToastVariant(
   reason: LockAcquireFailureReason
 ): ActivityEditAcquireFailureToastVariant | null {
-  if (reason == null || reason === 'time-lockout') {
+  if (reason == null) {
     return null;
   }
-  if (reason === 'locked-by-other' || reason === 'network') {
+  if (
+    reason === 'time-lockout' ||
+    reason === 'locked-by-other' ||
+    reason === 'network'
+  ) {
     return 'warning';
   }
   return 'error';
