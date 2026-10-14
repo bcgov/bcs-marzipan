@@ -15,7 +15,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
-import type { ActivityConfirmBlockedNoticeState } from '@/lib/activity-edit-session-messages';
+import type { ActivityConfirmBlockedNotice } from '@/lib/activity-edit-session-messages';
 
 import {
   ActivityConfirmHeaderBlockedNotice,
@@ -47,7 +47,7 @@ interface ReviewActivityModalProps {
   /** When true, show "Unassign me" checkbox (current user is an assignee on this activity). */
   showUnassignMeOption?: boolean;
   confirmDisabled?: boolean;
-  confirmBlockedNotice?: ActivityConfirmBlockedNoticeState;
+  confirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }
 
 export function ReviewActivityModal({
@@ -62,10 +62,7 @@ export function ReviewActivityModal({
   activityEndedAtLabel = null,
   showUnassignMeOption = false,
   confirmDisabled = false,
-  confirmBlockedNotice = {
-    headerBlockedMessage: null,
-    connectionFooterMessage: null,
-  },
+  confirmBlockedNotice = null,
 }: ReviewActivityModalProps) {
   const { user } = useAuth();
   const [notes, setNotes] = useState('');
@@ -136,9 +133,7 @@ export function ReviewActivityModal({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <ActivityConfirmHeaderBlockedNotice
-          headerBlockedMessage={confirmBlockedNotice.headerBlockedMessage}
-        />
+        <ActivityConfirmHeaderBlockedNotice notice={confirmBlockedNotice} />
 
         {displayId != null && displayId.length > 0 && (
           <p className="text-muted-foreground text-sm">
@@ -218,11 +213,7 @@ export function ReviewActivityModal({
           >
             Cancel
           </Button>
-          <ActivityConfirmPrimaryActionGroup
-            connectionFooterMessage={
-              confirmBlockedNotice.connectionFooterMessage
-            }
-          >
+          <ActivityConfirmPrimaryActionGroup notice={confirmBlockedNotice}>
             <Button
               type="button"
               onClick={handleConfirm}

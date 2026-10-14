@@ -85,7 +85,7 @@ import {
 } from '@/hooks/useLookups';
 import {
   isActivityConfirmBlocked,
-  type ActivityConfirmBlockedNoticeState,
+  type ActivityConfirmBlockedNotice,
 } from '@/lib/activity-edit-session-messages';
 import {
   formatHistoryFieldValue,
@@ -151,10 +151,7 @@ export default function ActivityHistory({
   canAddNote = false,
   addNoteDisabled = false,
   addNoteDisabledReason,
-  noteConfirmBlockedNotice = {
-    headerBlockedMessage: null,
-    connectionFooterMessage: null,
-  },
+  noteConfirmBlockedNotice = null,
 }: {
   activityId: number;
   displayId?: string;
@@ -165,7 +162,7 @@ export default function ActivityHistory({
   canAddNote?: boolean;
   addNoteDisabled?: boolean;
   addNoteDisabledReason?: string;
-  noteConfirmBlockedNotice?: ActivityConfirmBlockedNoticeState;
+  noteConfirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }) {
   const [entries, setEntries] = useState<ActivityHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -589,7 +586,7 @@ export default function ActivityHistory({
             </DialogDescription>
           </DialogHeader>
           <ActivityConfirmHeaderBlockedNotice
-            headerBlockedMessage={noteConfirmBlockedNotice.headerBlockedMessage}
+            notice={noteConfirmBlockedNotice}
           />
           <div className="space-y-2">
             <Label htmlFor="activity-history-note">Note</Label>
@@ -618,9 +615,7 @@ export default function ActivityHistory({
               Cancel
             </Button>
             <ActivityConfirmPrimaryActionGroup
-              connectionFooterMessage={
-                noteConfirmBlockedNotice.connectionFooterMessage
-              }
+              notice={noteConfirmBlockedNotice}
             >
               <Button
                 type="button"

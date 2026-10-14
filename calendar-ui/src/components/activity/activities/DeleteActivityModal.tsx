@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { ActivityConfirmBlockedNoticeState } from '@/lib/activity-edit-session-messages';
+import type { ActivityConfirmBlockedNotice } from '@/lib/activity-edit-session-messages';
 
 import {
   ActivityConfirmHeaderBlockedNotice,
@@ -35,7 +35,7 @@ interface DeleteActivityModalProps {
   /** When provided, pre-populates the notes field when the modal opens (e.g. from Delete requested history). */
   initialNotes?: string;
   confirmDisabled?: boolean;
-  confirmBlockedNotice?: ActivityConfirmBlockedNoticeState;
+  confirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }
 
 export function DeleteActivityModal({
@@ -48,10 +48,7 @@ export function DeleteActivityModal({
   isSubmitting,
   initialNotes,
   confirmDisabled: confirmDisabledProp = false,
-  confirmBlockedNotice = {
-    headerBlockedMessage: null,
-    connectionFooterMessage: null,
-  },
+  confirmBlockedNotice = null,
 }: DeleteActivityModalProps): React.ReactElement {
   const [notes, setNotes] = useState('');
   const [deletePermanently, setDeletePermanently] = useState(false);
@@ -113,9 +110,7 @@ export function DeleteActivityModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ActivityConfirmHeaderBlockedNotice
-          headerBlockedMessage={confirmBlockedNotice.headerBlockedMessage}
-        />
+        <ActivityConfirmHeaderBlockedNotice notice={confirmBlockedNotice} />
 
         <div className="space-y-4">
           <div className="space-y-2">
@@ -216,11 +211,7 @@ export function DeleteActivityModal({
           >
             Go back
           </Button>
-          <ActivityConfirmPrimaryActionGroup
-            connectionFooterMessage={
-              confirmBlockedNotice.connectionFooterMessage
-            }
-          >
+          <ActivityConfirmPrimaryActionGroup notice={confirmBlockedNotice}>
             <Button
               type="button"
               variant="destructive"

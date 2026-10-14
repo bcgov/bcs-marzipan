@@ -5,11 +5,7 @@ export type ActivitySocketConnectionDisplay =
   | 'browser-offline'
   | 'disconnected';
 
-/** @deprecated Use ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS */
-export const ACTIVITY_SOCKET_OFFLINE_AFTER_MS = 3_000;
-
-export const ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS =
-  ACTIVITY_SOCKET_OFFLINE_AFTER_MS;
+export const ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS = 3_000;
 
 export function isActivitySocketConnectionBlocked(
   connection: ActivitySocketConnectionDisplay

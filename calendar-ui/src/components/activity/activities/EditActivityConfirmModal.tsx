@@ -14,7 +14,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
-import type { ActivityConfirmBlockedNoticeState } from '@/lib/activity-edit-session-messages';
+import type { ActivityConfirmBlockedNotice } from '@/lib/activity-edit-session-messages';
 
 import {
   ActivityConfirmHeaderBlockedNotice,
@@ -35,7 +35,7 @@ interface EditActivityConfirmModalProps {
   onConfirm: (value: ActivitySaveConfirmPayload) => void;
   isSubmitting: boolean;
   confirmDisabled?: boolean;
-  confirmBlockedNotice?: ActivityConfirmBlockedNoticeState;
+  confirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }
 
 export function EditActivityConfirmModal({
@@ -45,10 +45,7 @@ export function EditActivityConfirmModal({
   onConfirm,
   isSubmitting,
   confirmDisabled = false,
-  confirmBlockedNotice = {
-    headerBlockedMessage: null,
-    connectionFooterMessage: null,
-  },
+  confirmBlockedNotice = null,
 }: EditActivityConfirmModalProps) {
   const { user } = useAuth();
   const [notes, setNotes] = useState('');
@@ -87,9 +84,7 @@ export function EditActivityConfirmModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ActivityConfirmHeaderBlockedNotice
-          headerBlockedMessage={confirmBlockedNotice.headerBlockedMessage}
-        />
+        <ActivityConfirmHeaderBlockedNotice notice={confirmBlockedNotice} />
 
         <div className="max-h-[60vh] overflow-y-auto">
           <ActivityFormChangesList
@@ -127,11 +122,7 @@ export function EditActivityConfirmModal({
           >
             Return to edit
           </Button>
-          <ActivityConfirmPrimaryActionGroup
-            connectionFooterMessage={
-              confirmBlockedNotice.connectionFooterMessage
-            }
-          >
+          <ActivityConfirmPrimaryActionGroup notice={confirmBlockedNotice}>
             <Button
               type="button"
               onClick={handleConfirm}

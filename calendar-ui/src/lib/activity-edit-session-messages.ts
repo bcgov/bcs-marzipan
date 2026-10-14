@@ -5,12 +5,12 @@
  * Use with socket connection display and {@link ActivityEditRecoveryState}.
  */
 
+import type { LockAcquireFailureReason } from '../hooks/useActivityLock';
+import type { ActivityEditResyncAction } from './activity-edit-resync';
 import {
   isActivitySocketConnectionBlocked,
   type ActivitySocketConnectionDisplay,
-} from '../hooks/activity-socket-connection-display';
-import type { LockAcquireFailureReason } from '../hooks/useActivityLock';
-import type { ActivityEditResyncAction } from './activity-edit-resync';
+} from './activity-socket-connection-display';
 
 export type ActivityEditRecoveryState =
   | Exclude<
@@ -34,9 +34,9 @@ export type ActivityEditConfirmAction =
   | 'clone'
   | 'note';
 
-export type ActivityConfirmBlockedNoticeState = {
-  headerBlockedMessage: string | null;
-  connectionFooterMessage: string | null;
+export type ActivityConfirmBlockedNotice = {
+  message: string;
+  variant: 'recovery' | 'connection';
 };
 
 /** Top-of-screen connection alert when an edit session is already active */
@@ -88,25 +88,11 @@ export function getActivityConnectionBlockedAlertMessage(
 
 export const ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT = 'Connection restored';
 
-/** @deprecated Use ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT */
-export const ACTIVITY_EDIT_CONNECTION_RESTORED_TOAST =
-  ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT;
-
-/** @deprecated Same copy as ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT */
-export const ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT =
-  ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT;
-
 export const ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT =
   'Restoring your session…';
 
 export const ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE =
   ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT;
-
-export function getActivityConnectionRestoredAlertMessage(
-  _isActiveEditSession: boolean
-): string {
-  return ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT;
-}
 
 export type ActivityEditAcquireFailureToastVariant = 'warning' | 'error';
 
@@ -142,10 +128,6 @@ export const ACTIVITY_EDIT_RECOVERY_SERVER_CHANGED_BANNER =
 
 export const ACTIVITY_EDIT_RECOVERY_FAILED_BANNER =
   'Your session could not be restored. Your changes are unsaved; check your connection and try again.';
-
-/** @deprecated Use ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT */
-export const ACTIVITY_EDIT_RECONNECTING_MODAL_MESSAGE =
-  ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT;
 
 export const ACTIVITY_EDIT_SESSION_RESTORE_FAILED_MESSAGE =
   'Your session cannot be restored. Please check your connection.';
@@ -208,17 +190,11 @@ export function getActivityEditServerChangedBlockedMessage(
   return SERVER_CHANGED_BY_ACTION[action];
 }
 
-export function isActivityEditConnectionBlocked(
-  socketConnection: ActivitySocketConnectionDisplay
-): boolean {
-  return isActivitySocketConnectionBlocked(socketConnection);
-}
-
 /** Raw socket gate (also used for blocking edit-session start and clone). */
 export function connectionBlocksFieldInput(
   socketConnection: ActivitySocketConnectionDisplay
 ): boolean {
-  return isActivityEditConnectionBlocked(socketConnection);
+  return isActivitySocketConnectionBlocked(socketConnection);
 }
 
 /** Block field input when disconnected only before an edit session has started. */
@@ -227,7 +203,7 @@ export function connectionBlocksFieldInputUnlessActiveSession(
   isActiveEditSession: boolean
 ): boolean {
   return (
-    isActivityEditConnectionBlocked(socketConnection) && !isActiveEditSession
+    isActivitySocketConnectionBlocked(socketConnection) && !isActiveEditSession
   );
 }
 
@@ -243,7 +219,7 @@ export function shouldShowActivityConnectionAlert(
 ): boolean {
   return (
     input.mayEditFormFields &&
-    isActivityEditConnectionBlocked(input.socketConnection) &&
+    isActivitySocketConnectionBlocked(input.socketConnection) &&
     !input.isLockedByOther &&
     !input.isBlockedByRecurringLockout
   );
@@ -254,7 +230,7 @@ export function shouldSuppressAcquireConnectionToast(
   socketConnection: ActivitySocketConnectionDisplay
 ): boolean {
   return (
-    reason === 'network' && isActivityEditConnectionBlocked(socketConnection)
+    reason === 'network' && isActivitySocketConnectionBlocked(socketConnection)
   );
 }
 
@@ -281,7 +257,7 @@ export function getActivityConfirmConnectionFooterMessage(
     return getActivityEditDisconnectedBlockedMessage(action);
   }
   if (socketConnection === 'reconnecting') {
-    return ACTIVITY_EDIT_RECONNECTING_MODAL_MESSAGE;
+    return ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT;
   }
   return null;
 }
@@ -310,34 +286,33 @@ export function getActivityConfirmBlockedMessage(
   return null;
 }
 
-export function getActivityConfirmBlockedNoticeState(
+export function getActivityConfirmBlockedNotice(
   action: ActivityEditConfirmAction,
   socketConnection: ActivitySocketConnectionDisplay,
   editRecoveryState: ActivityEditRecoveryState
-): ActivityConfirmBlockedNoticeState {
-  const connectionFooterMessage = getActivityConfirmConnectionFooterMessage(
+): ActivityConfirmBlockedNotice | null {
+  const connectionMessage = getActivityConfirmConnectionFooterMessage(
     action,
     socketConnection
   );
-  if (connectionFooterMessage != null) {
-    return { headerBlockedMessage: null, connectionFooterMessage };
+  if (connectionMessage != null) {
+    return { message: connectionMessage, variant: 'connection' };
   }
-  return {
-    headerBlockedMessage: getActivityConfirmBlockedMessage(
-      action,
-      socketConnection,
-      editRecoveryState
-    ),
-    connectionFooterMessage: null,
-  };
+  const recoveryMessage = getActivityConfirmBlockedMessage(
+    action,
+    socketConnection,
+    editRecoveryState
+  );
+  if (recoveryMessage != null) {
+    return { message: recoveryMessage, variant: 'recovery' };
+  }
+  return null;
 }
 
 export function isActivityConfirmBlocked(
-  state: ActivityConfirmBlockedNoticeState
+  notice: ActivityConfirmBlockedNotice | null | undefined
 ): boolean {
-  return (
-    state.headerBlockedMessage != null || state.connectionFooterMessage != null
-  );
+  return notice != null;
 }
 
 export function isActivityEditSessionActionsBlocked(

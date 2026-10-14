@@ -2,7 +2,7 @@ import { CloudCheck, CloudOff, CloudSync } from 'lucide-react';
 import type { ReactElement } from 'react';
 
 import { Alert, AlertTitle } from '@/components/ui/alert';
-import type { ActivityConnectionAlertPhase } from '@/hooks/useActivityConnectionFeedback';
+import type { ActivityConnectionAlertPhase } from '@/hooks/useActivityEditConnectionUi';
 import { cn } from '@/lib/utils';
 
 type ActivityConnectionStatusAlertProps = {

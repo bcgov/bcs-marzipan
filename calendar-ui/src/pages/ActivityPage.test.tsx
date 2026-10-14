@@ -20,7 +20,7 @@ import { tipTapDocJsonFromPlainText } from '@corpcal/shared/utils';
 import type { FormLookupData } from '../hooks/useFormLookups';
 import {
   ACTIVITY_EDIT_ACQUIRE_FAILURE_NETWORK,
-  ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT,
+  ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT,
 } from '../lib/activity-edit-session-messages';
 import { TOAST_DURATION_MS } from '../lib/toast-durations';
 import { ActivityPage, type ActivityPageProps } from './ActivityPage';
@@ -815,9 +815,7 @@ describe('ActivityPage optimistic inline edit', () => {
     rerender();
 
     expect(
-      await screen.findByText(
-        ACTIVITY_EDIT_CONNECTION_RESTORED_BEFORE_EDIT_ALERT
-      )
+      await screen.findByText(ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT)
     ).toBeInTheDocument();
     expect(toast.success).not.toHaveBeenCalled();
   });

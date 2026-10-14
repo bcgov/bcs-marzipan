@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
+  ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT,
   ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT,
   getActivityConnectionBlockedAlertMessage,
-  getActivityConnectionRestoredAlertMessage,
   type ActivityEditRecoveryState,
 } from '../lib/activity-edit-session-messages';
 import {
   isActivitySocketConnectionBlocked,
   type ActivitySocketConnectionDisplay,
-} from './activity-socket-connection-display';
+} from '../lib/activity-socket-connection-display';
 
 /** How long the top-of-screen "connection restored" alert stays visible. */
 export const CONNECTION_RESTORED_ALERT_DURATION_MS = 1_500;
@@ -26,7 +26,9 @@ export type ActivityConnectionAlertDisplay = {
   message: string;
 };
 
-type UseActivityConnectionFeedbackInput = {
+export type ActivityEditResyncOutcome = 'success' | 'failure';
+
+type UseActivityEditConnectionUiInput = {
   activityId: number;
   socketConnection: ActivitySocketConnectionDisplay;
   connectionAlertEligible: boolean;
@@ -34,10 +36,9 @@ type UseActivityConnectionFeedbackInput = {
   editRecoveryState: ActivityEditRecoveryState;
 };
 
-type UseActivityConnectionFeedbackResult = {
+type UseActivityEditConnectionUiResult = {
   connectionAlert: ActivityConnectionAlertDisplay | null;
-  reportResyncSuccess: () => void;
-  reportResyncFailure: () => void;
+  notifyResyncOutcome: (outcome: ActivityEditResyncOutcome) => void;
 };
 
 function connectionAlertPhase(
@@ -55,21 +56,34 @@ function connectionAlertPhase(
   }
 }
 
-export function useActivityConnectionFeedback({
+/** Suppress "Reconnecting" on first socket handshake; still alert on clear failures. */
+function shouldNotifyBlockedConnection(
+  blockedPhase: ActivityConnectionAlertPhase,
+  hasEstablishedConnection: boolean
+): boolean {
+  if (hasEstablishedConnection) {
+    return true;
+  }
+  return blockedPhase === 'disconnected' || blockedPhase === 'browser-offline';
+}
+
+export function useActivityEditConnectionUi({
   activityId,
   socketConnection,
   connectionAlertEligible,
   isActiveEditSession,
   editRecoveryState,
-}: UseActivityConnectionFeedbackInput): UseActivityConnectionFeedbackResult {
+}: UseActivityEditConnectionUiInput): UseActivityEditConnectionUiResult {
   const [connectionAlert, setConnectionAlert] =
     useState<ActivityConnectionAlertDisplay | null>(null);
   const userWasNotifiedRef = useRef(false);
   const awaitingResyncSuccessRef = useRef(false);
+  const hasEstablishedConnectionRef = useRef(false);
   const hideRestoredTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
   const prevSocketRef = useRef(socketConnection);
+  const prevEditRecoveryRef = useRef(editRecoveryState);
 
   const clearRestoredTimer = useCallback(() => {
     if (hideRestoredTimerRef.current != null) {
@@ -82,6 +96,7 @@ export function useActivityConnectionFeedback({
     clearRestoredTimer();
     userWasNotifiedRef.current = false;
     awaitingResyncSuccessRef.current = false;
+    hasEstablishedConnectionRef.current = false;
     setConnectionAlert(null);
   }, [clearRestoredTimer]);
 
@@ -101,34 +116,58 @@ export function useActivityConnectionFeedback({
     awaitingResyncSuccessRef.current = false;
     setConnectionAlert({
       phase: 'restored',
-      message: getActivityConnectionRestoredAlertMessage(isActiveEditSession),
+      message: ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT,
     });
     hideRestoredTimerRef.current = setTimeout(() => {
       hideRestoredTimerRef.current = null;
       setConnectionAlert(null);
     }, CONNECTION_RESTORED_ALERT_DURATION_MS);
-  }, [clearRestoredTimer, isActiveEditSession]);
+  }, [clearRestoredTimer]);
 
-  const reportResyncSuccess = useCallback(() => {
+  const notifyResyncSuccess = useCallback(() => {
     if (!userWasNotifiedRef.current && !awaitingResyncSuccessRef.current) {
       return;
     }
     showRestored();
   }, [showRestored]);
 
-  const reportResyncFailure = useCallback(() => {
+  const notifyResyncFailure = useCallback(() => {
     clearRestoredTimer();
     userWasNotifiedRef.current = false;
     awaitingResyncSuccessRef.current = false;
     setConnectionAlert(null);
   }, [clearRestoredTimer]);
 
+  const notifyResyncOutcome = useCallback(
+    (outcome: ActivityEditResyncOutcome) => {
+      if (outcome === 'success') {
+        notifyResyncSuccess();
+      } else {
+        notifyResyncFailure();
+      }
+    },
+    [notifyResyncFailure, notifyResyncSuccess]
+  );
+
   useEffect(() => {
     const prevSocket = prevSocketRef.current;
     prevSocketRef.current = socketConnection;
+    const prevEditRecovery = prevEditRecoveryRef.current;
+    prevEditRecoveryRef.current = editRecoveryState;
+
+    if (socketConnection === 'connected') {
+      hasEstablishedConnectionRef.current = true;
+    }
 
     const blockedPhase = connectionAlertPhase(socketConnection);
-    if (connectionAlertEligible && blockedPhase != null) {
+    if (
+      connectionAlertEligible &&
+      blockedPhase != null &&
+      shouldNotifyBlockedConnection(
+        blockedPhase,
+        hasEstablishedConnectionRef.current
+      )
+    ) {
       userWasNotifiedRef.current = true;
       awaitingResyncSuccessRef.current = false;
       clearRestoredTimer();
@@ -168,6 +207,23 @@ export function useActivityConnectionFeedback({
         phase: 'verifying',
         message: ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT,
       });
+      return;
+    }
+
+    if (
+      socketConnection === 'connected' &&
+      awaitingResyncSuccessRef.current &&
+      prevEditRecovery === 'resyncing' &&
+      editRecoveryState !== 'resyncing'
+    ) {
+      if (editRecoveryState == null) {
+        showRestored();
+      } else {
+        clearRestoredTimer();
+        userWasNotifiedRef.current = false;
+        awaitingResyncSuccessRef.current = false;
+        setConnectionAlert(null);
+      }
     }
   }, [
     activityId,
@@ -181,7 +237,6 @@ export function useActivityConnectionFeedback({
 
   return {
     connectionAlert,
-    reportResyncSuccess,
-    reportResyncFailure,
+    notifyResyncOutcome,
   };
 }

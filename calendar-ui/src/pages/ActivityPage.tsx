@@ -63,8 +63,8 @@ import {
 } from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
 import { cancelForceHandoff, requestForceHandoff } from '../api/locksApi';
-import { useActivityConnectionFeedback } from '../hooks/useActivityConnectionFeedback';
 import { useActivityEditActions } from '../hooks/useActivityEditActions';
+import { useActivityEditConnectionUi } from '../hooks/useActivityEditConnectionUi';
 import { useActivityEditFormHydration } from '../hooks/useActivityEditFormHydration';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState';
@@ -95,12 +95,11 @@ import { resolveActivityEditResyncAction } from '../lib/activity-edit-resync';
 import {
   connectionBlocksFieldInputUnlessActiveSession,
   getActivityConfirmBlockedMessage,
-  getActivityConfirmBlockedNoticeState,
+  getActivityConfirmBlockedNotice,
   getActivityEditAcquireFailureToastMessage,
   getActivityEditAcquireFailureToastVariant,
   getActivityEditRecoveryBannerMessage,
   getActivitySubmitBlockedToastTitle,
-  isActivityEditConnectionBlocked,
   isActivityEditSessionActionsBlocked,
   shouldShowActivityConnectionAlert,
   shouldSuppressAcquireConnectionToast,
@@ -121,6 +120,7 @@ import {
 import { resolveTranslationRequiredStatusId } from '../lib/activity-form-translation-required';
 import { computeFormChanges } from '../lib/activity-history-format';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
+import { isActivitySocketConnectionBlocked } from '../lib/activity-socket-connection-display';
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showActionBlockedToast, showErrorToast } from '../lib/error-toast';
@@ -294,8 +294,6 @@ export function ActivityPage({
 
   const isEditingRef = useRef(false);
   const resyncEditSessionRef = useRef<() => void>(() => {});
-  const reportResyncSuccessRef = useRef(() => {});
-  const reportResyncFailureRef = useRef(() => {});
 
   const {
     lock,
@@ -409,88 +407,6 @@ export function ActivityPage({
   );
   const { isFormHydrated, hydrationGeneration, initialFormDataRef } =
     useActivityEditFormHydration(activity, lookups, form, isEditing && isDirty);
-
-  resyncEditSessionRef.current = () => {
-    const generation = ++resyncGenerationRef.current;
-    void (async () => {
-      if (!isEditingRef.current) {
-        await refreshLockFromServer();
-        return;
-      }
-
-      setEditRecoveryState('resyncing');
-      try {
-        const [latestActivity, serverLockState] = await Promise.all([
-          fetchActivity(id),
-          refreshLockFromServer(),
-        ]);
-        if (generation !== resyncGenerationRef.current) return;
-
-        const action = resolveActivityEditResyncAction({
-          editSessionToken: editSessionTokenRef.current,
-          latestActivity,
-          serverLockState,
-        });
-        if (action === 'continue-owned') {
-          setEditRecoveryState(null);
-          reportResyncSuccessRef.current();
-          return;
-        }
-        if (action === 'server-changed') {
-          if (!isDirtyRef.current) {
-            editSessionTokenRef.current =
-              getActivityConcurrencyToken(latestActivity);
-            setEditRecoveryState(null);
-            await refreshActivity();
-            reportResyncFailureRef.current();
-            return;
-          }
-          logger.warn(
-            'Activity edit session blocked: server version changed while dirty',
-            {
-              activityId: id,
-              previousToken: editSessionTokenRef.current,
-              latestToken: getActivityConcurrencyToken(latestActivity),
-              serverLockState,
-            }
-          );
-          setEditRecoveryState('server-changed');
-          reportResyncFailureRef.current();
-          return;
-        }
-        if (action === 'blocked-by-other') {
-          setEditRecoveryState(null);
-          reportResyncFailureRef.current();
-          return;
-        }
-        if (action === 'retry') {
-          setEditRecoveryState('retry');
-          reportResyncFailureRef.current();
-          return;
-        }
-
-        const acquireResult = await ensureLockForSubmit();
-        if (generation !== resyncGenerationRef.current) return;
-        if (acquireResult === 'ready') {
-          setEditRecoveryState(null);
-          reportResyncSuccessRef.current();
-          return;
-        }
-        if (acquireResult === 'blocked-by-other') {
-          setEditRecoveryState(null);
-          reportResyncFailureRef.current();
-          return;
-        }
-        setEditRecoveryState(acquireResult);
-        reportResyncFailureRef.current();
-      } catch {
-        if (generation === resyncGenerationRef.current) {
-          setEditRecoveryState('retry');
-          reportResyncFailureRef.current();
-        }
-      }
-    })();
-  };
 
   const closeSubmitModals = useCallback(() => {
     setShowConfirmModal(false);
@@ -671,7 +587,7 @@ export function ActivityPage({
   const canCloneActivity = canCreateActivity && mayEditFormFields;
   /** True when the user cannot edit for permission/status reasons (not merely waiting on a lock). */
   const isViewOnlyByPermission = !mayEditFormFields;
-  const connectionBlocksEditStart = isActivityEditConnectionBlocked(
+  const connectionBlocksEditStart = isActivitySocketConnectionBlocked(
     activitySocketConnection
   );
   const isActiveEditSession =
@@ -777,17 +693,114 @@ export function ActivityPage({
     isBlockedByRecurringLockout,
   });
 
-  const { connectionAlert, reportResyncSuccess, reportResyncFailure } =
-    useActivityConnectionFeedback({
-      activityId: id,
-      socketConnection: activitySocketConnection,
-      connectionAlertEligible,
-      isActiveEditSession,
-      editRecoveryState,
-    });
+  const { connectionAlert, notifyResyncOutcome } = useActivityEditConnectionUi({
+    activityId: id,
+    socketConnection: activitySocketConnection,
+    connectionAlertEligible,
+    isActiveEditSession,
+    editRecoveryState,
+  });
 
-  reportResyncSuccessRef.current = reportResyncSuccess;
-  reportResyncFailureRef.current = reportResyncFailure;
+  const resyncEditSession = useCallback(() => {
+    const generation = ++resyncGenerationRef.current;
+    void (async () => {
+      if (!isEditingRef.current) {
+        try {
+          await refreshLockFromServer();
+          if (generation === resyncGenerationRef.current) {
+            notifyResyncOutcome('success');
+          }
+        } catch {
+          if (generation === resyncGenerationRef.current) {
+            notifyResyncOutcome('failure');
+          }
+        }
+        return;
+      }
+
+      setEditRecoveryState('resyncing');
+      try {
+        const [latestActivity, serverLockState] = await Promise.all([
+          fetchActivity(id),
+          refreshLockFromServer(),
+        ]);
+        if (generation !== resyncGenerationRef.current) return;
+
+        const action = resolveActivityEditResyncAction({
+          editSessionToken: editSessionTokenRef.current,
+          latestActivity,
+          serverLockState,
+        });
+        if (action === 'continue-owned') {
+          setEditRecoveryState(null);
+          notifyResyncOutcome('success');
+          return;
+        }
+        if (action === 'server-changed') {
+          if (!isDirtyRef.current) {
+            editSessionTokenRef.current =
+              getActivityConcurrencyToken(latestActivity);
+            setEditRecoveryState(null);
+            await refreshActivity();
+            notifyResyncOutcome('failure');
+            return;
+          }
+          logger.warn(
+            'Activity edit session blocked: server version changed while dirty',
+            {
+              activityId: id,
+              previousToken: editSessionTokenRef.current,
+              latestToken: getActivityConcurrencyToken(latestActivity),
+              serverLockState,
+            }
+          );
+          setEditRecoveryState('server-changed');
+          notifyResyncOutcome('failure');
+          return;
+        }
+        if (action === 'blocked-by-other') {
+          setEditRecoveryState(null);
+          notifyResyncOutcome('failure');
+          return;
+        }
+        if (action === 'retry') {
+          setEditRecoveryState('retry');
+          notifyResyncOutcome('failure');
+          return;
+        }
+
+        const acquireResult = await ensureLockForSubmit();
+        if (generation !== resyncGenerationRef.current) return;
+        if (acquireResult === 'ready') {
+          setEditRecoveryState(null);
+          notifyResyncOutcome('success');
+          return;
+        }
+        if (acquireResult === 'blocked-by-other') {
+          setEditRecoveryState(null);
+          notifyResyncOutcome('failure');
+          return;
+        }
+        setEditRecoveryState(acquireResult);
+        notifyResyncOutcome('failure');
+      } catch {
+        if (generation === resyncGenerationRef.current) {
+          setEditRecoveryState('retry');
+          notifyResyncOutcome('failure');
+        }
+      }
+    })();
+  }, [
+    ensureLockForSubmit,
+    id,
+    notifyResyncOutcome,
+    refreshActivity,
+    refreshLockFromServer,
+  ]);
+
+  useEffect(() => {
+    resyncEditSessionRef.current = resyncEditSession;
+  }, [resyncEditSession]);
 
   const editSessionActionsBlocked = useMemo(
     () =>
@@ -817,7 +830,7 @@ export function ActivityPage({
 
   const confirmBlockedNoticeByAction = useMemo(() => {
     const forAction = (action: ActivityEditConfirmAction) =>
-      getActivityConfirmBlockedNoticeState(
+      getActivityConfirmBlockedNotice(
         action,
         activitySocketConnection,
         editRecoveryState

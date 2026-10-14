@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { ActivityConfirmBlockedNoticeState } from '@/lib/activity-edit-session-messages';
+import type { ActivityConfirmBlockedNotice } from '@/lib/activity-edit-session-messages';
 
 import {
   ActivityConfirmHeaderBlockedNotice,
@@ -27,7 +27,7 @@ interface RequestDeleteActivityModalProps {
   onConfirm: (reason: string) => void | Promise<void>;
   isSubmitting: boolean;
   confirmDisabled?: boolean;
-  confirmBlockedNotice?: ActivityConfirmBlockedNoticeState;
+  confirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }
 
 export function RequestDeleteActivityModal({
@@ -36,10 +36,7 @@ export function RequestDeleteActivityModal({
   onConfirm,
   isSubmitting,
   confirmDisabled: confirmDisabledProp = false,
-  confirmBlockedNotice = {
-    headerBlockedMessage: null,
-    connectionFooterMessage: null,
-  },
+  confirmBlockedNotice = null,
 }: RequestDeleteActivityModalProps): React.ReactElement {
   const [reason, setReason] = useState('');
   const [touched, setTouched] = useState(false);
@@ -76,9 +73,7 @@ export function RequestDeleteActivityModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ActivityConfirmHeaderBlockedNotice
-          headerBlockedMessage={confirmBlockedNotice.headerBlockedMessage}
-        />
+        <ActivityConfirmHeaderBlockedNotice notice={confirmBlockedNotice} />
 
         <div className="space-y-2">
           <Label htmlFor="request-delete-reason">
@@ -113,11 +108,7 @@ export function RequestDeleteActivityModal({
           >
             Go back
           </Button>
-          <ActivityConfirmPrimaryActionGroup
-            connectionFooterMessage={
-              confirmBlockedNotice.connectionFooterMessage
-            }
-          >
+          <ActivityConfirmPrimaryActionGroup notice={confirmBlockedNotice}>
             <Button
               type="button"
               variant="destructive"

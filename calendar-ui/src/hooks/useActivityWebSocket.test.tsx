@@ -1,7 +1,8 @@
 import { act, render, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ACTIVITY_SOCKET_OFFLINE_AFTER_MS } from './activity-socket-connection-display';
+import { ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS } from '@/lib/activity-socket-connection-display';
+
 import { useActivityWebSocket } from './useActivityWebSocket';
 
 const { getFakeSocket } = vi.hoisted(() => {
@@ -93,7 +94,7 @@ describe('useActivityWebSocket', () => {
     expect(result.current).toBe('reconnecting');
 
     act(() => {
-      vi.advanceTimersByTime(ACTIVITY_SOCKET_OFFLINE_AFTER_MS);
+      vi.advanceTimersByTime(ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS);
     });
     expect(result.current).toBe('disconnected');
 

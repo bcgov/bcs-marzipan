@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 
-import type { ActivityConfirmBlockedNoticeState } from '@/lib/activity-edit-session-messages';
+import type { ActivityConfirmBlockedNotice } from '@/lib/activity-edit-session-messages';
 import { cn } from '@/lib/utils';
 
 type ActivityConfirmSubmitBlockedNoticeProps = {
@@ -26,30 +26,30 @@ export function ActivityConfirmSubmitBlockedNotice({
 }
 
 export function ActivityConfirmHeaderBlockedNotice({
-  headerBlockedMessage,
-}: Pick<
-  ActivityConfirmBlockedNoticeState,
-  'headerBlockedMessage'
->): ReactElement | null {
-  if (headerBlockedMessage == null || headerBlockedMessage.length === 0) {
+  notice,
+}: {
+  notice?: ActivityConfirmBlockedNotice | null;
+}): ReactElement | null {
+  if (notice?.variant !== 'recovery' || notice.message.length === 0) {
     return null;
   }
 
-  return <ActivityConfirmSubmitBlockedNotice message={headerBlockedMessage} />;
+  return <ActivityConfirmSubmitBlockedNotice message={notice.message} />;
 }
 
 export function ActivityConfirmPrimaryActionGroup({
-  connectionFooterMessage,
+  notice,
   children,
-}: Pick<ActivityConfirmBlockedNoticeState, 'connectionFooterMessage'> & {
+}: {
+  notice?: ActivityConfirmBlockedNotice | null;
   children: ReactNode;
 }): ReactElement {
   return (
     <div className="flex flex-col items-end gap-1">
       {children}
-      {connectionFooterMessage != null ? (
+      {notice?.variant === 'connection' ? (
         <ActivityConfirmSubmitBlockedNotice
-          message={connectionFooterMessage}
+          message={notice.message}
           className="max-w-xs text-right sm:max-w-sm"
         />
       ) : null}

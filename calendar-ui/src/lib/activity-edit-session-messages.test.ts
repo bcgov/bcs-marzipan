@@ -5,26 +5,24 @@ import {
   ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT,
   ACTIVITY_EDIT_CONNECTION_OFFLINE_ALERT_BEFORE_EDIT,
   ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT,
-  ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT,
   ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT,
   ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE,
   connectionBlocksFieldInput,
   connectionBlocksFieldInputUnlessActiveSession,
   getActivityConfirmBlockedMessage,
-  getActivityConfirmBlockedNoticeState,
+  getActivityConfirmBlockedNotice,
   getActivityConnectionBlockedAlertMessage,
   getActivityConnectionDisconnectedAlertMessage,
   getActivityConnectionOfflineAlertMessage,
-  getActivityConnectionRestoredAlertMessage,
   getActivityEditAcquireFailureToastVariant,
   getActivityEditRecoveryBannerMessage,
   getActivitySubmitBlockedToastTitle,
-  isActivityEditConnectionBlocked,
   isActivityEditSessionActionsBlocked,
   shouldShowActivityConnectionAlert,
   shouldSuppressAcquireConnectionToast,
   shouldWarnActivityEditBeforeUnload,
 } from './activity-edit-session-messages';
+import { isActivitySocketConnectionBlocked } from './activity-socket-connection-display';
 
 describe('getActivityConnectionOfflineAlertMessage', () => {
   it('uses make-changes copy before an edit session starts', () => {
@@ -103,49 +101,49 @@ describe('getActivityConfirmBlockedMessage', () => {
   });
 });
 
-describe('getActivityConfirmBlockedNoticeState', () => {
-  it('puts offline and reconnecting copy in the footer only', () => {
+describe('getActivityConfirmBlockedNotice', () => {
+  it('returns connection variant for offline and reconnecting', () => {
     expect(
-      getActivityConfirmBlockedNoticeState('save', 'browser-offline', null)
+      getActivityConfirmBlockedNotice('save', 'browser-offline', null)
     ).toEqual({
-      headerBlockedMessage: null,
-      connectionFooterMessage: expect.stringMatching(/offline/i),
+      variant: 'connection',
+      message: expect.stringMatching(/offline/i),
     });
     expect(
-      getActivityConfirmBlockedNoticeState('save', 'disconnected', null)
+      getActivityConfirmBlockedNotice('save', 'disconnected', null)
     ).toEqual({
-      headerBlockedMessage: null,
-      connectionFooterMessage: expect.stringMatching(/connection lost/i),
+      variant: 'connection',
+      message: expect.stringMatching(/connection lost/i),
     });
     expect(
-      getActivityConfirmBlockedNoticeState('delete', 'reconnecting', null)
+      getActivityConfirmBlockedNotice('delete', 'reconnecting', null)
     ).toEqual({
-      headerBlockedMessage: null,
-      connectionFooterMessage: ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT,
+      variant: 'connection',
+      message: ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT,
     });
   });
 
-  it('puts recovery copy in the header when connected', () => {
+  it('returns recovery variant when connected but resyncing', () => {
     expect(
-      getActivityConfirmBlockedNoticeState('save', 'connected', 'resyncing')
+      getActivityConfirmBlockedNotice('save', 'connected', 'resyncing')
     ).toEqual({
-      headerBlockedMessage: ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE,
-      connectionFooterMessage: null,
+      variant: 'recovery',
+      message: ACTIVITY_EDIT_RESYNCING_MODAL_MESSAGE,
     });
   });
 });
 
-describe('isActivityEditConnectionBlocked', () => {
+describe('isActivitySocketConnectionBlocked', () => {
   it('is true when offline, disconnected, or reconnecting', () => {
-    expect(isActivityEditConnectionBlocked('browser-offline')).toBe(true);
-    expect(isActivityEditConnectionBlocked('disconnected')).toBe(true);
-    expect(isActivityEditConnectionBlocked('reconnecting')).toBe(true);
-    expect(isActivityEditConnectionBlocked('connected')).toBe(false);
+    expect(isActivitySocketConnectionBlocked('browser-offline')).toBe(true);
+    expect(isActivitySocketConnectionBlocked('disconnected')).toBe(true);
+    expect(isActivitySocketConnectionBlocked('reconnecting')).toBe(true);
+    expect(isActivitySocketConnectionBlocked('connected')).toBe(false);
   });
 });
 
 describe('connectionBlocksFieldInput', () => {
-  it('matches isActivityEditConnectionBlocked', () => {
+  it('matches isActivitySocketConnectionBlocked', () => {
     expect(connectionBlocksFieldInput('disconnected')).toBe(true);
     expect(connectionBlocksFieldInput('connected')).toBe(false);
   });
@@ -287,17 +285,6 @@ describe('getActivityEditRecoveryBannerMessage', () => {
     );
     expect(getActivityEditRecoveryBannerMessage('resyncing')).toBeNull();
     expect(getActivityEditRecoveryBannerMessage(null)).toBeNull();
-  });
-});
-
-describe('getActivityConnectionRestoredAlertMessage', () => {
-  it('returns connection restored copy regardless of edit session', () => {
-    expect(getActivityConnectionRestoredAlertMessage(false)).toBe(
-      ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT
-    );
-    expect(getActivityConnectionRestoredAlertMessage(true)).toBe(
-      ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT
-    );
   });
 });
 
