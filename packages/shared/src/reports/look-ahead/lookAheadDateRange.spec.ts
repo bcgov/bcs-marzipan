@@ -30,10 +30,11 @@ describe('lookAheadDateRangeFromTomorrow', () => {
     });
   });
 
-  it('defaultLookAheadDateRange matches 7-day preset', () => {
+  it('defaults to seven inclusive days starting today in Pacific', () => {
     const anchor = new Date('2026-05-28T15:00:00.000Z');
-    expect(defaultLookAheadDateRange(anchor)).toEqual(
-      lookAheadDateRangeFromTomorrow(7, anchor)
-    );
+    expect(defaultLookAheadDateRange(anchor)).toEqual({
+      start: '2026-05-28',
+      end: '2026-06-03',
+    });
   });
 });
