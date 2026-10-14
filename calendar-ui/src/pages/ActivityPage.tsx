@@ -1,13 +1,15 @@
 import { ErrorBoundary } from 'react-error-boundary';
-import {
-  useWatch,
-  type Control,
-  type FieldErrors,
-  type UseFormGetValues,
-} from 'react-hook-form';
+import { type FieldErrors, type UseFormReturn } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 
 import {
   buildActivityDisplayId,
@@ -71,6 +73,7 @@ import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState'
 import {
   useActivityLock,
   type ActivityLockAcquireFailure,
+  type LockState,
 } from '../hooks/useActivityLock';
 import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
@@ -128,8 +131,11 @@ import { isActivitySocketConnectionBlocked } from '../lib/activity-socket-connec
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showActionBlockedToast, showErrorToast } from '../lib/error-toast';
-import { formatDiscardChangesLabel } from '../lib/form-field-highlight';
-import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
+import {
+  focusFirstInvalidField,
+  focusRequiredField,
+  getMissingRequiredFieldItemsFromZodError,
+} from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 import {
   getRecurringEditLockoutErrorMessage,
@@ -152,44 +158,210 @@ export type ActivityPageProps = {
   refreshActivity: () => Promise<void>;
 };
 
-type DiscardChangesButtonProps = {
-  control: Control<ActivityFormData>;
-  getValues: UseFormGetValues<ActivityFormData>;
-  initialFormData: ActivityFormData | null;
+type ActivityEditFormStickyBarProps = {
+  form: UseFormReturn<ActivityFormData>;
+  activityFormRef: RefObject<HTMLFormElement | null>;
   isDirty: boolean;
   isSubmitting: boolean;
-  onClick: () => void;
+  isViewOnlyByPermission: boolean;
+  showRequestDeleteButton: boolean;
+  showDeleteButton: boolean;
+  canCloneActivity: boolean;
+  canReviewActivities: boolean;
+  lockState: LockState;
+  mayEditFormFields: boolean;
+  canCompleteActivities: boolean;
+  markCompleteEligible: boolean;
+  hasEditLock: boolean;
+  readOnly: boolean;
+  isBlockedByRecurringLockout: boolean;
+  editSessionActionsBlocked: boolean;
+  connectionBlocksEditStart: boolean;
+  ensureEditThen: (action: () => void) => void;
+  onRequestDelete: () => void;
+  onDelete: () => void;
+  onDiscard: () => void;
+  onClone: () => void;
+  onReview: () => void;
+  onComplete: () => void;
 };
 
-function DiscardChangesButton({
-  control,
-  getValues,
-  initialFormData,
+function ActivityEditFormStickyBar({
+  form,
+  activityFormRef,
   isDirty,
   isSubmitting,
-  onClick,
-}: DiscardChangesButtonProps): React.ReactElement | null {
-  useWatch({ control });
-  const changeCount = initialFormData
-    ? computeFormChanges(initialFormData, getValues()).length
-    : 0;
+  isViewOnlyByPermission,
+  showRequestDeleteButton,
+  showDeleteButton,
+  canCloneActivity,
+  canReviewActivities,
+  lockState,
+  mayEditFormFields,
+  canCompleteActivities,
+  markCompleteEligible,
+  hasEditLock,
+  readOnly,
+  isBlockedByRecurringLockout,
+  editSessionActionsBlocked,
+  connectionBlocksEditStart,
+  ensureEditThen,
+  onRequestDelete,
+  onDelete,
+  onDiscard,
+  onClone,
+  onReview,
+  onComplete,
+}: ActivityEditFormStickyBarProps): React.ReactElement {
+  const { isFormValid, missingFieldItems, missingFieldsHelperText } =
+    useActivityFormSubmitState(form, {
+      getFieldLabel: getActivityFieldLabel,
+      schema: createActivityRequestSchema,
+    });
 
-  if (!isDirty) {
-    return null;
-  }
+  const actionFlags = useActivityEditActions({
+    lockState,
+    mayEditFormFields,
+    canReviewActivities,
+    canCompleteActivities,
+    markCompleteEligible,
+    hasEditLock,
+    canSubmitWithoutValidationErrors: isFormValid,
+    isSubmitting,
+    readOnly,
+    isBlockedByRecurringLockout,
+    isDirty,
+  });
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      className="animate-in fade-in duration-200"
-      onClick={onClick}
-      disabled={isSubmitting}
-    >
-      {changeCount > 0
-        ? formatDiscardChangesLabel(changeCount)
-        : 'Discard changes'}
-    </Button>
+    <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+        {isViewOnlyByPermission && (
+          <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-2 text-sm">
+            <Badge variant="secondary">View-only</Badge>
+            <span>You cannot edit this activity.</span>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {showRequestDeleteButton && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                ensureEditThen(onRequestDelete);
+              }}
+              disabled={
+                isSubmitting ||
+                actionFlags.isEditingBlocked ||
+                editSessionActionsBlocked
+              }
+            >
+              Request delete
+            </Button>
+          )}
+          {showDeleteButton && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                ensureEditThen(onDelete);
+              }}
+              disabled={
+                isSubmitting ||
+                actionFlags.isEditingBlocked ||
+                editSessionActionsBlocked
+              }
+            >
+              Delete
+            </Button>
+          )}
+          {isDirty && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="animate-in fade-in duration-200"
+              onClick={onDiscard}
+              disabled={isSubmitting}
+            >
+              Discard changes
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-4">
+        {missingFieldsHelperText != null && (
+          <ActivityFormMissingFieldsHint
+            helperText={missingFieldsHelperText}
+            fields={missingFieldItems}
+            onFieldSelect={(fieldName) =>
+              focusRequiredField(fieldName, {
+                root: activityFormRef.current,
+              })
+            }
+          />
+        )}
+        {canCloneActivity && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClone}
+            disabled={
+              isSubmitting ||
+              actionFlags.isEditingBlocked ||
+              isDirty ||
+              connectionBlocksEditStart
+            }
+          >
+            Clone
+          </Button>
+        )}
+        <Button
+          type="submit"
+          variant={
+            canReviewActivities || actionFlags.showCompleteAction
+              ? 'outline'
+              : 'default'
+          }
+          disabled={
+            !actionFlags.canSubmitUpdate || editSessionActionsBlocked
+          }
+        >
+          {isSubmitting ? 'Saving...' : 'Save'}
+        </Button>
+        {actionFlags.showReviewAction && (
+          <Button
+            type="button"
+            aria-label={isDirty ? 'Save and Review' : 'Review'}
+            disabled={
+              !actionFlags.reviewActionEnabled || editSessionActionsBlocked
+            }
+            className={
+              isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
+            }
+            onClick={() => ensureEditThen(onReview)}
+          >
+            <ReviewActionButtonLabel isDirty={isDirty} />
+          </Button>
+        )}
+        {actionFlags.showCompleteAction && !actionFlags.showReviewAction && (
+          <Button
+            type="button"
+            aria-label={isDirty ? 'Save and complete' : 'Complete'}
+            disabled={
+              !actionFlags.completeActionEnabled || editSessionActionsBlocked
+            }
+            className={
+              isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
+            }
+            onClick={() => ensureEditThen(onComplete)}
+          >
+            <CompleteActionButtonLabel isDirty={isDirty} />
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -230,15 +402,6 @@ export function ActivityPage({
     userId: user?.id,
     userTeamIds: user?.teamIds,
     hasCreateAny,
-  });
-  const {
-    isFormValid,
-    missingFields,
-    missingFieldItems,
-    missingFieldsHelperText,
-  } = useActivityFormSubmitState(form, {
-    getFieldLabel: getActivityFieldLabel,
-    schema: createActivityRequestSchema,
   });
   const requiredTranslationStatusId = useMemo(
     () =>
@@ -845,23 +1008,17 @@ export function ActivityPage({
     };
   }, [activitySocketConnection, editRecoveryState]);
 
-  const actionFlags = useActivityEditActions({
-    lockState,
-    mayEditFormFields,
-    canReviewActivities,
-    canCompleteActivities,
-    markCompleteEligible,
-    hasEditLock,
-    canSubmitWithoutValidationErrors: isFormValid,
-    isSubmitting,
-    readOnly,
-    isBlockedByRecurringLockout: isBlockedByRecurringLockout,
-    isDirty,
-  });
   const editRecoveryMessage = useMemo(
     () => getActivityEditRecoveryBannerMessage(editRecoveryState),
     [editRecoveryState]
   );
+
+  const showCompleteActionInReviewModal =
+    canCompleteActivities &&
+    markCompleteEligible &&
+    mayEditFormFields &&
+    !isLockedByOther &&
+    !isBlockedByRecurringLockout;
 
   const reviewModalActivityEndedAtLabel = useMemo(
     () =>
@@ -1286,9 +1443,17 @@ export function ActivityPage({
       fieldOrder: getActivityFormSectionFieldKeys(),
       root: activityFormRef.current,
     });
+    const parsed = createActivityRequestSchema.safeParse(form.getValues());
+    const missingLabels = !parsed.success
+      ? getMissingRequiredFieldItemsFromZodError(
+          parsed.error,
+          getActivityFieldLabel,
+          getActivityFormSectionFieldKeys()
+        ).map((field) => field.label)
+      : [];
     const detail =
-      missingFields.length > 0
-        ? `Required fields missing: ${missingFields.join(', ')}`
+      missingLabels.length > 0
+        ? `Required fields missing: ${missingLabels.join(', ')}`
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
@@ -1756,136 +1921,33 @@ export function ActivityPage({
               optionsFetching: leadTeamOptionsFetching,
             }}
           />
-          <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
-              {isViewOnlyByPermission && (
-                <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-2 text-sm">
-                  <Badge variant="secondary">View-only</Badge>
-                  <span>You cannot edit this activity.</span>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {showRequestDeleteButton && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      ensureEditThen(() => setShowRequestDeleteModal(true));
-                    }}
-                    disabled={
-                      isSubmitting ||
-                      actionFlags.isEditingBlocked ||
-                      editSessionActionsBlocked
-                    }
-                  >
-                    Request delete
-                  </Button>
-                )}
-                {showDeleteButton && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      ensureEditThen(() => void handleOpenDeleteModal());
-                    }}
-                    disabled={
-                      isSubmitting ||
-                      actionFlags.isEditingBlocked ||
-                      editSessionActionsBlocked
-                    }
-                  >
-                    Delete
-                  </Button>
-                )}
-                <DiscardChangesButton
-                  control={form.control}
-                  getValues={form.getValues}
-                  initialFormData={initialFormDataRef.current}
-                  isDirty={isDirty}
-                  isSubmitting={isSubmitting}
-                  onClick={() => setShowLeaveConfirm(true)}
-                />
-              </div>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-4">
-              {missingFieldsHelperText != null && (
-                <ActivityFormMissingFieldsHint
-                  helperText={missingFieldsHelperText}
-                  fields={missingFieldItems}
-                  onFieldSelect={(fieldName) =>
-                    focusRequiredField(fieldName, {
-                      root: activityFormRef.current,
-                    })
-                  }
-                />
-              )}
-              {canCloneActivity && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCloneModal(true)}
-                  disabled={
-                    isSubmitting ||
-                    actionFlags.isEditingBlocked ||
-                    isDirty ||
-                    connectionBlocksEditStart
-                  }
-                >
-                  Clone
-                </Button>
-              )}
-              <Button
-                type="submit"
-                variant={
-                  canReviewActivities || actionFlags.showCompleteAction
-                    ? 'outline'
-                    : 'default'
-                }
-                disabled={
-                  !actionFlags.canSubmitUpdate || editSessionActionsBlocked
-                }
-              >
-                {isSubmitting ? 'Saving...' : 'Save'}
-              </Button>
-              {actionFlags.showReviewAction && (
-                <Button
-                  type="button"
-                  aria-label={isDirty ? 'Save and Review' : 'Review'}
-                  disabled={
-                    !actionFlags.reviewActionEnabled ||
-                    editSessionActionsBlocked
-                  }
-                  className={
-                    isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
-                  }
-                  onClick={() => ensureEditThen(() => setShowReviewModal(true))}
-                >
-                  <ReviewActionButtonLabel isDirty={isDirty} />
-                </Button>
-              )}
-              {actionFlags.showCompleteAction &&
-                !actionFlags.showReviewAction && (
-                  <Button
-                    type="button"
-                    aria-label={isDirty ? 'Save and complete' : 'Complete'}
-                    disabled={
-                      !actionFlags.completeActionEnabled ||
-                      editSessionActionsBlocked
-                    }
-                    className={
-                      isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
-                    }
-                    onClick={() =>
-                      ensureEditThen(() => setShowCompleteModal(true))
-                    }
-                  >
-                    <CompleteActionButtonLabel isDirty={isDirty} />
-                  </Button>
-                )}
-            </div>
-          </div>
+          <ActivityEditFormStickyBar
+            form={form}
+            activityFormRef={activityFormRef}
+            isDirty={isDirty}
+            isSubmitting={isSubmitting}
+            isViewOnlyByPermission={isViewOnlyByPermission}
+            showRequestDeleteButton={showRequestDeleteButton}
+            showDeleteButton={showDeleteButton}
+            canCloneActivity={canCloneActivity}
+            canReviewActivities={canReviewActivities}
+            lockState={lockState}
+            mayEditFormFields={mayEditFormFields}
+            canCompleteActivities={canCompleteActivities}
+            markCompleteEligible={markCompleteEligible}
+            hasEditLock={hasEditLock}
+            readOnly={readOnly}
+            isBlockedByRecurringLockout={isBlockedByRecurringLockout}
+            editSessionActionsBlocked={editSessionActionsBlocked}
+            connectionBlocksEditStart={connectionBlocksEditStart}
+            ensureEditThen={ensureEditThen}
+            onRequestDelete={() => setShowRequestDeleteModal(true)}
+            onDelete={() => void handleOpenDeleteModal()}
+            onDiscard={() => setShowLeaveConfirm(true)}
+            onClone={() => setShowCloneModal(true)}
+            onReview={() => setShowReviewModal(true)}
+            onComplete={() => setShowCompleteModal(true)}
+          />
         </form>
       </Form>
       <ActivityHistory
@@ -1933,7 +1995,7 @@ export function ActivityPage({
         isSubmitting={isSubmitting}
         onConfirm={(payload) => void handleReviewConfirm(payload)}
         displayId={displayId}
-        showMarkAsCompletedOption={actionFlags.showCompleteAction}
+        showMarkAsCompletedOption={showCompleteActionInReviewModal}
         activityEndedAtLabel={reviewModalActivityEndedAtLabel}
         showUnassignMeOption={(activity.flags ?? []).some(
           (f) => f.assigneeId === user?.id
