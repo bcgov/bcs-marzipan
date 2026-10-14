@@ -115,4 +115,29 @@ describe('useActivityWebSocket', () => {
     });
     expect(result.current).toBe('browser-offline');
   });
+
+  it('resyncs when the browser comes online while the socket stayed connected', () => {
+    const onActivitySocketReconnect = vi.fn();
+    const { result } = renderHook(() =>
+      useActivityWebSocket(139, { onActivitySocketReconnect })
+    );
+    const socket = getFakeSocket();
+
+    act(() => {
+      socket.emitSocketEvent('connect');
+    });
+    expect(result.current).toBe('connected');
+
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    expect(result.current).toBe('browser-offline');
+
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    expect(result.current).toBe('connected');
+    expect(onActivitySocketReconnect).toHaveBeenCalledTimes(1);
+    expect(socket.emit).toHaveBeenLastCalledWith('viewActivity', 139);
+  });
 });

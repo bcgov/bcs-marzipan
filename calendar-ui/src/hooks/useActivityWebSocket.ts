@@ -111,7 +111,10 @@ export function useActivityWebSocket(
     const onBrowserOnline = () => {
       browserOnline = true;
       syncDisplay();
-      if (!socketConnected) {
+      if (socketConnected) {
+        emitViewActivity();
+        optionsRef.current.onActivitySocketReconnect?.();
+      } else {
         scheduleOfflineEscalation();
       }
     };

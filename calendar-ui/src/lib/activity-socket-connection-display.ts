@@ -7,9 +7,14 @@ export type ActivitySocketConnectionDisplay =
 
 export const ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS = 3_000;
 
+export type BlockedActivitySocketConnectionDisplay = Exclude<
+  ActivitySocketConnectionDisplay,
+  'connected'
+>;
+
 export function isActivitySocketConnectionBlocked(
   connection: ActivitySocketConnectionDisplay
-): boolean {
+): connection is BlockedActivitySocketConnectionDisplay {
   return connection !== 'connected';
 }
 

@@ -8,14 +8,15 @@ import {
 import {
   CONNECTION_RESTORED_ALERT_DURATION_MS,
   useActivityEditConnectionUi,
+  type UseActivityEditConnectionUiInput,
 } from './useActivityEditConnectionUi';
 
-const baseInput = {
+const baseInput: UseActivityEditConnectionUiInput = {
   activityId: 1,
-  socketConnection: 'connected' as const,
+  socketConnection: 'connected',
   connectionAlertEligible: true,
   isActiveEditSession: false,
-  editRecoveryState: null as const,
+  editRecoveryState: null,
 };
 
 describe('useActivityEditConnectionUi', () => {
@@ -29,11 +30,12 @@ describe('useActivityEditConnectionUi', () => {
 
   it('does not show reconnecting or restored on initial connect handshake', () => {
     const { result, rerender } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       {
         initialProps: {
           ...baseInput,
-          socketConnection: 'reconnecting' as const,
+          socketConnection: 'reconnecting',
         },
       }
     );
@@ -48,15 +50,35 @@ describe('useActivityEditConnectionUi', () => {
     expect(result.current.connectionAlert).toBeNull();
   });
 
-  it('shows reconnecting after the socket was connected then dropped', () => {
+  it('does not show a reconnecting alert during a brief socket blip', () => {
     const { result, rerender } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       { initialProps: baseInput }
     );
 
     rerender({ ...baseInput, socketConnection: 'reconnecting' });
 
-    expect(result.current.connectionAlert?.phase).toBe('reconnecting');
+    expect(result.current.connectionAlert).toBeNull();
+
+    rerender({ ...baseInput, socketConnection: 'connected' });
+
+    expect(result.current.connectionAlert).toBeNull();
+  });
+
+  it('shows disconnected after reconnecting escalates to a long outage', () => {
+    const { result, rerender } = renderHook(
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
+      { initialProps: baseInput }
+    );
+
+    rerender({ ...baseInput, socketConnection: 'reconnecting' });
+    expect(result.current.connectionAlert).toBeNull();
+
+    rerender({ ...baseInput, socketConnection: 'disconnected' });
+
+    expect(result.current.connectionAlert?.phase).toBe('disconnected');
 
     rerender({ ...baseInput, socketConnection: 'connected' });
 
@@ -65,11 +87,12 @@ describe('useActivityEditConnectionUi', () => {
 
   it('shows browser-offline alert and arms restored when user was notified', () => {
     const { result, rerender } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       {
         initialProps: {
           ...baseInput,
-          socketConnection: 'browser-offline' as const,
+          socketConnection: 'browser-offline',
         },
       }
     );
@@ -89,12 +112,13 @@ describe('useActivityEditConnectionUi', () => {
 
   it('shows verifying then restored after resync success during active edit session', () => {
     const { result, rerender } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       {
         initialProps: {
           ...baseInput,
           isActiveEditSession: true,
-          socketConnection: 'browser-offline' as const,
+          socketConnection: 'browser-offline',
         },
       }
     );
@@ -129,12 +153,13 @@ describe('useActivityEditConnectionUi', () => {
 
   it('does not show restored when user was never notified', () => {
     const { result, rerender } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       {
         initialProps: {
           ...baseInput,
           connectionAlertEligible: false,
-          socketConnection: 'browser-offline' as const,
+          socketConnection: 'browser-offline',
         },
       }
     );
@@ -152,12 +177,13 @@ describe('useActivityEditConnectionUi', () => {
 
   it('shows restored when resync state clears without calling notifyResyncOutcome', () => {
     const { result, rerender } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       {
         initialProps: {
           ...baseInput,
           isActiveEditSession: true,
-          socketConnection: 'browser-offline' as const,
+          socketConnection: 'browser-offline',
         },
       }
     );
@@ -183,12 +209,13 @@ describe('useActivityEditConnectionUi', () => {
 
   it('clears verifying when resync ends in a failure state', () => {
     const { result, rerender } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       {
         initialProps: {
           ...baseInput,
           isActiveEditSession: true,
-          socketConnection: 'browser-offline' as const,
+          socketConnection: 'browser-offline',
         },
       }
     );
@@ -212,12 +239,13 @@ describe('useActivityEditConnectionUi', () => {
 
   it('clears alert on resync failure without restored', () => {
     const { result, rerender } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       {
         initialProps: {
           ...baseInput,
           isActiveEditSession: true,
-          socketConnection: 'browser-offline' as const,
+          socketConnection: 'browser-offline',
         },
       }
     );
@@ -244,11 +272,12 @@ describe('useActivityEditConnectionUi', () => {
 
   it('resets when activityId changes', () => {
     const { result, rerender } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       {
         initialProps: {
           ...baseInput,
-          socketConnection: 'browser-offline' as const,
+          socketConnection: 'browser-offline',
         },
       }
     );
@@ -258,7 +287,7 @@ describe('useActivityEditConnectionUi', () => {
     rerender({
       ...baseInput,
       activityId: 2,
-      socketConnection: 'browser-offline' as const,
+      socketConnection: 'browser-offline',
     });
 
     expect(result.current.connectionAlert?.phase).toBe('browser-offline');
@@ -266,11 +295,12 @@ describe('useActivityEditConnectionUi', () => {
 
   it('returns to disconnected when connection drops during restored', () => {
     const { result, rerender } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       {
         initialProps: {
           ...baseInput,
-          socketConnection: 'disconnected' as const,
+          socketConnection: 'disconnected',
         },
       }
     );
@@ -282,13 +312,37 @@ describe('useActivityEditConnectionUi', () => {
     expect(result.current.connectionAlert?.phase).toBe('disconnected');
   });
 
-  it('shows disconnected alert copy when the socket is unreachable', () => {
-    const { result } = renderHook(
-      (props) => useActivityEditConnectionUi(props),
+  it('clears blocked alert when connectionAlertEligible becomes false', () => {
+    const { result, rerender } = renderHook(
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
       {
         initialProps: {
           ...baseInput,
-          socketConnection: 'disconnected' as const,
+          socketConnection: 'browser-offline',
+        },
+      }
+    );
+
+    expect(result.current.connectionAlert?.phase).toBe('browser-offline');
+
+    rerender({
+      ...baseInput,
+      connectionAlertEligible: false,
+      socketConnection: 'browser-offline',
+    });
+
+    expect(result.current.connectionAlert).toBeNull();
+  });
+
+  it('shows disconnected alert copy when the socket is unreachable', () => {
+    const { result } = renderHook(
+      (props: UseActivityEditConnectionUiInput) =>
+        useActivityEditConnectionUi(props),
+      {
+        initialProps: {
+          ...baseInput,
+          socketConnection: 'disconnected',
         },
       }
     );

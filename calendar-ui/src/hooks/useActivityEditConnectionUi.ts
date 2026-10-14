@@ -28,7 +28,12 @@ export type ActivityConnectionAlertDisplay = {
 
 export type ActivityEditResyncOutcome = 'success' | 'failure';
 
-type UseActivityEditConnectionUiInput = {
+type BlockedSocketConnectionPhase = Exclude<
+  ActivityConnectionAlertPhase,
+  'verifying' | 'restored'
+>;
+
+export type UseActivityEditConnectionUiInput = {
   activityId: number;
   socketConnection: ActivitySocketConnectionDisplay;
   connectionAlertEligible: boolean;
@@ -43,7 +48,7 @@ type UseActivityEditConnectionUiResult = {
 
 function connectionAlertPhase(
   socketConnection: ActivitySocketConnectionDisplay
-): ActivityConnectionAlertPhase | null {
+): BlockedSocketConnectionPhase | null {
   switch (socketConnection) {
     case 'browser-offline':
       return 'browser-offline';
@@ -56,11 +61,17 @@ function connectionAlertPhase(
   }
 }
 
-/** Suppress "Reconnecting" on first socket handshake; still alert on clear failures. */
+/**
+ * Top-of-screen alerts skip the brief `reconnecting` grace window (initial
+ * handshake and post-drop blips). Escalation to `disconnected` still alerts.
+ */
 function shouldNotifyBlockedConnection(
-  blockedPhase: ActivityConnectionAlertPhase,
+  blockedPhase: BlockedSocketConnectionPhase,
   hasEstablishedConnection: boolean
 ): boolean {
+  if (blockedPhase === 'reconnecting') {
+    return false;
+  }
   if (hasEstablishedConnection) {
     return true;
   }
@@ -160,6 +171,15 @@ export function useActivityEditConnectionUi({
     }
 
     const blockedPhase = connectionAlertPhase(socketConnection);
+
+    if (!connectionAlertEligible && blockedPhase != null) {
+      clearRestoredTimer();
+      userWasNotifiedRef.current = false;
+      awaitingResyncSuccessRef.current = false;
+      setConnectionAlert(null);
+      return;
+    }
+
     if (
       connectionAlertEligible &&
       blockedPhase != null &&
@@ -174,7 +194,7 @@ export function useActivityEditConnectionUi({
       setConnectionAlert({
         phase: blockedPhase,
         message: getActivityConnectionBlockedAlertMessage(
-          socketConnection,
+          blockedPhase,
           isActiveEditSession
         ),
       });

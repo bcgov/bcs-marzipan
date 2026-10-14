@@ -55,6 +55,8 @@ export function ActivityConnectionStatusAlert({
     onPresentChange?.(rendered != null);
   }, [onPresentChange, rendered]);
 
+  const displayKey = displayEffectKey(display);
+
   useEffect(() => {
     const clearEnterFrame = () => {
       if (enterFrameRef.current != null) {
@@ -103,7 +105,7 @@ export function ActivityConnectionStatusAlert({
         exitTimerRef.current = null;
       }
     };
-  }, [displayEffectKey(display)]);
+  }, [displayKey, display]);
 
   if (rendered == null) {
     return null;
@@ -113,11 +115,9 @@ export function ActivityConnectionStatusAlert({
   const iconSpin = isInProgressPhase(rendered.phase);
 
   return (
-    <div
-      className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4"
-      aria-live="polite"
-    >
+    <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4">
       <Alert
+        role="status"
         className={cn(
           'bg-muted border-border text-foreground pointer-events-auto w-full max-w-md shadow-md sm:w-[24rem]',
           'transform-gpu transition-[opacity,transform,border-color] duration-[250ms] ease-in-out motion-reduce:transition-none',

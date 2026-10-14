@@ -96,6 +96,7 @@ import {
   connectionBlocksFieldInputUnlessActiveSession,
   getActivityConfirmBlockedMessage,
   getActivityConfirmBlockedNotice,
+  getActivityConnectionBlockedAlertMessage,
   getActivityEditAcquireFailureToastMessage,
   getActivityEditAcquireFailureToastVariant,
   getActivityEditRecoveryBannerMessage,
@@ -706,16 +707,9 @@ export function ActivityPage({
     const generation = ++resyncGenerationRef.current;
     void (async () => {
       if (!isEditingRef.current) {
-        try {
-          await refreshLockFromServer();
-          if (generation === resyncGenerationRef.current) {
-            notifyResyncOutcome('success');
-          }
-        } catch {
-          if (generation === resyncGenerationRef.current) {
-            notifyResyncOutcome('failure');
-          }
-        }
+        // Best-effort lock sync; connection restored UI comes from socket display
+        // transitions in useActivityEditConnectionUi, not resync outcome here.
+        await refreshLockFromServer();
         return;
       }
 
@@ -978,6 +972,15 @@ export function ActivityPage({
   const ensureEditThen = useCallback(
     (action: () => void) => {
       if (connectionBlocksEditStart) {
+        if (isActivitySocketConnectionBlocked(activitySocketConnection)) {
+          toast.warning(
+            getActivityConnectionBlockedAlertMessage(
+              activitySocketConnection,
+              isActiveEditSession
+            ),
+            { duration: TOAST_DURATION_MS.error }
+          );
+        }
         return;
       }
       if (isEditing) {
@@ -995,7 +998,9 @@ export function ActivityPage({
       });
     },
     [
+      activitySocketConnection,
       connectionBlocksEditStart,
+      isActiveEditSession,
       isEditing,
       acquire,
       notifyEditLockAcquireConflict,
