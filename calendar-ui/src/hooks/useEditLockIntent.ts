@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { computeFormChanges } from '../lib/activity-history-format';
-import type { LockState } from './useActivityLock';
+import type {
+  ActivityLockAcquireFailure,
+  ActivityLockAcquireResult,
+  LockState,
+} from './useActivityLock';
 
 export const EDIT_LOCK_CONFLICT_TOAST =
   'Cannot edit. Another user has started editing this activity.';
@@ -18,11 +22,11 @@ type UseEditLockIntentOptions = {
   mayEdit: boolean;
   isEditing: boolean;
   setIsEditing: (value: boolean) => void;
-  acquire: () => Promise<boolean>;
+  acquire: () => Promise<ActivityLockAcquireResult>;
   lockState: LockState;
   form: UseFormReturn<ActivityFormData>;
   initialFormDataRef: RefObject<ActivityFormData | null>;
-  onAcquireConflict: () => void;
+  onAcquireConflict: (failure: ActivityLockAcquireFailure) => void;
   /** When true, do not optimistically start an edit session (offline / reconnecting). */
   connectionBlocksEditStart: boolean;
 };
@@ -92,13 +96,16 @@ export function useEditLockIntent({
 
     autoAcquireAttemptedRef.current = true;
     setIsEditing(true);
-    void acquire().then((ok) => {
-      if (!ok) {
+    void acquire().then((outcome) => {
+      if (!outcome.ok) {
         setIsEditing(false);
         if (initialFormDataRef.current) {
           form.reset(initialFormDataRef.current);
         }
-        onAcquireConflict();
+        onAcquireConflict({
+          reason: outcome.reason,
+          lockedByUsername: outcome.lockedByUsername,
+        });
       } else {
         autoAcquireAttemptedRef.current = false;
       }

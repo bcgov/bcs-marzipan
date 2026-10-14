@@ -121,7 +121,7 @@ const mockLookupsReady: FormLookupData = {
   venueStatuses: [],
 };
 
-const mockAcquire = vi.fn().mockResolvedValue(true);
+const mockAcquire = vi.fn().mockResolvedValue({ ok: true as const });
 const mockRelease = vi.fn().mockResolvedValue(undefined);
 const mockSetLockedByOther = vi.fn();
 const mockClearLockedByOther = vi.fn();
@@ -508,7 +508,7 @@ describe('ActivityPage optimistic inline edit', () => {
     mockNavigate.mockClear();
     mockRelease.mockClear();
     mockApplyExternalLockReleased.mockClear();
-    mockAcquire.mockClear().mockResolvedValue(true);
+    mockAcquire.mockClear().mockResolvedValue({ ok: true as const });
     mockRefreshLockFromServer.mockClear().mockResolvedValue('idle');
     mockEnsureLockForSubmit.mockClear().mockResolvedValue('ready');
     mockFetchActivity.mockClear().mockResolvedValue(mockActivityWithLeadTeam);
@@ -842,8 +842,11 @@ describe('ActivityPage optimistic inline edit', () => {
 
   it('does not toast network acquire failures while connection is blocked', async () => {
     mockActivitySocketConnection = 'reconnecting';
-    mockAcquire.mockResolvedValue(false);
-    mockAcquireFailureReason = 'network';
+    mockAcquire.mockResolvedValue({
+      ok: false,
+      reason: 'network',
+      lockedByUsername: null,
+    });
     const user = userEvent.setup();
     renderActivityPage();
 
@@ -859,8 +862,11 @@ describe('ActivityPage optimistic inline edit', () => {
   });
 
   it('shows network toast when acquire fails while connected', async () => {
-    mockAcquire.mockResolvedValue(false);
-    mockAcquireFailureReason = 'network';
+    mockAcquire.mockResolvedValue({
+      ok: false,
+      reason: 'network',
+      lockedByUsername: null,
+    });
     const user = userEvent.setup();
     renderActivityPage();
 
@@ -880,8 +886,11 @@ describe('ActivityPage optimistic inline edit', () => {
   });
 
   it('resets form and shows error toast when lock acquisition fails', async () => {
-    mockAcquire.mockResolvedValue(false);
-    mockAcquireFailureReason = 'locked-by-other';
+    mockAcquire.mockResolvedValue({
+      ok: false,
+      reason: 'locked-by-other',
+      lockedByUsername: 'Other User',
+    });
     const user = userEvent.setup();
     renderActivityPage();
 
@@ -894,7 +903,7 @@ describe('ActivityPage optimistic inline edit', () => {
     await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
     await waitFor(() =>
       expect(toast.warning).toHaveBeenCalledWith(
-        'Cannot edit. Another user has started editing this activity.',
+        'Cannot edit. Other User has started editing this activity.',
         { duration: TOAST_DURATION_MS.error }
       )
     );
@@ -1008,7 +1017,7 @@ describe('ActivityPage optimistic inline edit', () => {
 describe('ActivityPage clone button', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
-    mockAcquire.mockClear().mockResolvedValue(true);
+    mockAcquire.mockClear().mockResolvedValue({ ok: true as const });
     mockActivitySocketConnection = 'connected';
     mockLockState = 'idle';
     mockIsBlockedByRecurringLockout = false;
@@ -1133,7 +1142,7 @@ describe('ActivityPage clone button', () => {
   it('disables Clone button when the form has unsaved changes', async () => {
     mockUseAuth.mockReturnValue(cloneEligibleEditorAuth);
     mockLockState = 'owned';
-    mockAcquire.mockResolvedValue(true);
+    mockAcquire.mockResolvedValue({ ok: true as const });
     const user = userEvent.setup();
     renderActivityPage();
 

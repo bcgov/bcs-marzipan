@@ -6,14 +6,17 @@ import { useMemo, useRef, useState } from 'react';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
-import type { LockState } from './useActivityLock';
+import type { ActivityLockAcquireResult, LockState } from './useActivityLock';
 import {
   EDIT_LOCK_CONFLICT_TOAST,
   useEditLockIntent,
 } from './useEditLockIntent';
 
 describe('useEditLockIntent', () => {
-  const acquire = vi.fn(() => Promise.resolve(true));
+  const acquire = vi.fn(
+    (): Promise<ActivityLockAcquireResult> =>
+      Promise.resolve({ ok: true as const })
+  );
 
   function useHarness(props: {
     formHydrated: boolean;
@@ -53,7 +56,7 @@ describe('useEditLockIntent', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     acquire.mockReset();
-    acquire.mockImplementation(() => Promise.resolve(true));
+    acquire.mockImplementation(() => Promise.resolve({ ok: true as const }));
   });
 
   afterEach(() => {
@@ -104,7 +107,13 @@ describe('useEditLockIntent', () => {
   });
 
   it('invokes onAcquireConflict once when acquire returns false', async () => {
-    acquire.mockImplementation(() => Promise.resolve(false));
+    acquire.mockImplementation(() =>
+      Promise.resolve({
+        ok: false,
+        reason: 'locked-by-other',
+        lockedByUsername: 'Other',
+      })
+    );
 
     const { result, rerender } = renderHook(
       (p: { hydrated: boolean; gen: number }) =>
@@ -126,6 +135,10 @@ describe('useEditLockIntent', () => {
     await waitFor(() => expect(acquire).toHaveBeenCalledTimes(1));
     await act(() => Promise.resolve());
     expect(result.current.onAcquireConflict).toHaveBeenCalledTimes(1);
+    expect(result.current.onAcquireConflict).toHaveBeenCalledWith({
+      reason: 'locked-by-other',
+      lockedByUsername: 'Other',
+    });
   });
 
   it('does not call acquire when mayEdit is false even if hydrated and dirty', async () => {
@@ -150,7 +163,13 @@ describe('useEditLockIntent', () => {
   });
 
   it('does not spam acquire while the same dirty state retries', async () => {
-    acquire.mockImplementation(() => Promise.resolve(false));
+    acquire.mockImplementation(() =>
+      Promise.resolve({
+        ok: false,
+        reason: 'network',
+        lockedByUsername: null,
+      })
+    );
 
     const { result, rerender } = renderHook(
       (p: { hydrated: boolean; gen: number }) =>

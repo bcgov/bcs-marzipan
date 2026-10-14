@@ -68,7 +68,10 @@ import { useActivityEditConnectionUi } from '../hooks/useActivityEditConnectionU
 import { useActivityEditFormHydration } from '../hooks/useActivityEditFormHydration';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState';
-import { useActivityLock } from '../hooks/useActivityLock';
+import {
+  useActivityLock,
+  type ActivityLockAcquireFailure,
+} from '../hooks/useActivityLock';
 import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -300,7 +303,6 @@ export function ActivityPage({
     lock,
     lockState,
     lockedByUsername,
-    acquireFailureReason,
     acquire,
     release,
     releaseWithRetry,
@@ -869,43 +871,37 @@ export function ActivityPage({
     [activity.endDate, activity.endTime, activity.isAllDay]
   );
 
-  const getEditLockAcquireToastMessage = useCallback((): string => {
-    if (acquireFailureReason === 'time-lockout') {
-      return RECURRING_EDIT_LOCKOUT_UI_MESSAGE;
-    }
-    return getActivityEditAcquireFailureToastMessage(
-      acquireFailureReason,
-      lockedByUsername,
-      EDIT_LOCK_CONFLICT_TOAST
-    );
-  }, [acquireFailureReason, lockedByUsername]);
-
-  const notifyEditLockAcquireConflict = useCallback(() => {
-    if (
-      shouldSuppressAcquireConnectionToast(
-        acquireFailureReason,
-        activitySocketConnection
-      )
-    ) {
-      return;
-    }
-    const message = getEditLockAcquireToastMessage();
-    if (message.length === 0) {
-      return;
-    }
-    const variant =
-      getActivityEditAcquireFailureToastVariant(acquireFailureReason);
-    const toastOptions = { duration: TOAST_DURATION_MS.error };
-    if (variant === 'warning') {
-      toast.warning(message, toastOptions);
-    } else {
-      toast.error(message, toastOptions);
-    }
-  }, [
-    acquireFailureReason,
-    activitySocketConnection,
-    getEditLockAcquireToastMessage,
-  ]);
+  const notifyEditLockAcquireConflict = useCallback(
+    (failure: ActivityLockAcquireFailure) => {
+      if (
+        shouldSuppressAcquireConnectionToast(
+          failure.reason,
+          activitySocketConnection
+        )
+      ) {
+        return;
+      }
+      const message =
+        failure.reason === 'time-lockout'
+          ? RECURRING_EDIT_LOCKOUT_UI_MESSAGE
+          : getActivityEditAcquireFailureToastMessage(
+              failure.reason,
+              failure.lockedByUsername,
+              EDIT_LOCK_CONFLICT_TOAST
+            );
+      if (message.length === 0) {
+        return;
+      }
+      const variant = getActivityEditAcquireFailureToastVariant(failure.reason);
+      const toastOptions = { duration: TOAST_DURATION_MS.error };
+      if (variant === 'warning') {
+        toast.warning(message, toastOptions);
+      } else {
+        toast.error(message, toastOptions);
+      }
+    },
+    [activitySocketConnection]
+  );
 
   const { tryStartEditSessionFromDirty } = useEditLockIntent({
     formHydrated: isFormHydrated,
@@ -988,12 +984,15 @@ export function ActivityPage({
         return;
       }
       setIsEditing(true);
-      void acquire().then((ok) => {
-        if (ok) {
+      void acquire().then((outcome) => {
+        if (outcome.ok) {
           action();
         } else {
           setIsEditing(false);
-          notifyEditLockAcquireConflict();
+          notifyEditLockAcquireConflict({
+            reason: outcome.reason,
+            lockedByUsername: outcome.lockedByUsername,
+          });
         }
       });
     },

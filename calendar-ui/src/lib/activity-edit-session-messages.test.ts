@@ -18,11 +18,17 @@ import {
   getActivityEditRecoveryBannerMessage,
   getActivitySubmitBlockedToastTitle,
   isActivityEditSessionActionsBlocked,
+  isEditSessionConfirmGateClosed,
   shouldShowActivityConnectionAlert,
   shouldSuppressAcquireConnectionToast,
   shouldWarnActivityEditBeforeUnload,
+  type ActivityEditConfirmAction,
+  type ActivityEditRecoveryState,
 } from './activity-edit-session-messages';
-import { isActivitySocketConnectionBlocked } from './activity-socket-connection-display';
+import {
+  isActivitySocketConnectionBlocked,
+  type ActivitySocketConnectionDisplay,
+} from './activity-socket-connection-display';
 
 describe('getActivityConnectionOfflineAlertMessage', () => {
   it('uses make-changes copy before an edit session starts', () => {
@@ -229,12 +235,54 @@ describe('shouldSuppressAcquireConnectionToast', () => {
   });
 });
 
+const ALL_CONFIRM_ACTIONS: ActivityEditConfirmAction[] = [
+  'save',
+  'review',
+  'complete',
+  'delete',
+  'request-delete',
+  'clone',
+  'note',
+];
+
+describe('isEditSessionConfirmGateClosed', () => {
+  it('is closed when socket is blocked or recovery is active', () => {
+    expect(isEditSessionConfirmGateClosed('disconnected', null)).toBe(true);
+    expect(isEditSessionConfirmGateClosed('reconnecting', null)).toBe(true);
+    expect(isEditSessionConfirmGateClosed('connected', 'resyncing')).toBe(true);
+    expect(isEditSessionConfirmGateClosed('connected', null)).toBe(false);
+  });
+});
+
 describe('isActivityEditSessionActionsBlocked', () => {
   it('matches save blocked state', () => {
     expect(isActivityEditSessionActionsBlocked('disconnected', null)).toBe(
       true
     );
     expect(isActivityEditSessionActionsBlocked('connected', null)).toBe(false);
+  });
+
+  it('matches every confirm action blocked state', () => {
+    const cases: Array<
+      [ActivitySocketConnectionDisplay, ActivityEditRecoveryState]
+    > = [
+      ['connected', null],
+      ['disconnected', null],
+      ['browser-offline', null],
+      ['reconnecting', null],
+      ['connected', 'resyncing'],
+      ['connected', 'server-changed'],
+      ['connected', 'retry'],
+    ];
+
+    for (const [socket, recovery] of cases) {
+      const gate = isActivityEditSessionActionsBlocked(socket, recovery);
+      for (const action of ALL_CONFIRM_ACTIONS) {
+        const actionBlocked =
+          getActivityConfirmBlockedMessage(action, socket, recovery) != null;
+        expect(actionBlocked).toBe(gate);
+      }
+    }
   });
 });
 

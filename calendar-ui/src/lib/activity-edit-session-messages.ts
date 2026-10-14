@@ -315,17 +315,22 @@ export function isActivityConfirmBlocked(
   return notice != null;
 }
 
-export function isActivityEditSessionActionsBlocked(
+/** Shared gate for save/review/complete/delete/clone/note — connection + recovery only. */
+export function isEditSessionConfirmGateClosed(
   socketConnection: ActivitySocketConnectionDisplay,
   editRecoveryState: ActivityEditRecoveryState
 ): boolean {
   return (
-    getActivityConfirmBlockedMessage(
-      'save',
-      socketConnection,
-      editRecoveryState
-    ) != null
+    isActivitySocketConnectionBlocked(socketConnection) ||
+    editRecoveryState !== null
   );
+}
+
+export function isActivityEditSessionActionsBlocked(
+  socketConnection: ActivitySocketConnectionDisplay,
+  editRecoveryState: ActivityEditRecoveryState
+): boolean {
+  return isEditSessionConfirmGateClosed(socketConnection, editRecoveryState);
 }
 
 /** Warn on tab close / full reload only when unsaved edits could still be saved. */

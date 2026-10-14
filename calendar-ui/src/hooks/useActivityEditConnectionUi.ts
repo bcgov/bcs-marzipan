@@ -135,6 +135,11 @@ export function useActivityEditConnectionUi({
     }, CONNECTION_RESTORED_ALERT_DURATION_MS);
   }, [clearRestoredTimer]);
 
+  /**
+   * "Connection restored" after resync: prefer clearing `editRecoveryState` from
+   * resyncing (see effect below). `notifyResyncOutcome('success')` is a fallback
+   * when resync completes without that rerender (e.g. tests / same-tick completion).
+   */
   const notifyResyncSuccess = useCallback(() => {
     if (!userWasNotifiedRef.current && !awaitingResyncSuccessRef.current) {
       return;

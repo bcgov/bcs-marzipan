@@ -51,9 +51,12 @@ export function ActivityConnectionStatusAlert({
   const openRef = useRef(false);
   const enterFrameRef = useRef<number | null>(null);
 
+  const onPresentChangeRef = useRef(onPresentChange);
+  onPresentChangeRef.current = onPresentChange;
+
   useEffect(() => {
-    onPresentChange?.(rendered != null);
-  }, [onPresentChange, rendered]);
+    onPresentChangeRef.current?.(rendered != null);
+  }, [rendered]);
 
   const displayKey = displayEffectKey(display);
 
