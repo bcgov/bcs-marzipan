@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { pacificCalendarDateFromInstant } from '@corpcal/shared/datetime';
 import {
+  defaultLookAheadDateRange,
   lookAheadDateRangeFromTomorrow,
   type LookAheadDayCount,
 } from '@corpcal/shared/reports/look-ahead';
@@ -84,15 +85,44 @@ export function LookAheadDayRangeTabs({
     if (prevPacificToday === pacificToday) return;
     if (!isDateRangeActive(dateRange)) return;
 
+    const previousAnchor = new Date(clockTick - PACIFIC_DATE_CHECK_MS);
     const matchedOnPreviousDay = activeDayCountFromRange(
       dateRange.startDate,
       dateRange.endDate,
-      new Date(clockTick - PACIFIC_DATE_CHECK_MS)
+      previousAnchor
     );
     if (matchedOnPreviousDay != null) {
       applyDayCount(matchedOnPreviousDay);
+      return;
     }
-  }, [applyDayCount, clockTick, dateRange, pacificToday]);
+
+    const previousDefaultRange = defaultLookAheadDateRange(previousAnchor);
+    if (
+      previousDefaultRange.start === dateRange.startDate &&
+      previousDefaultRange.end === dateRange.endDate
+    ) {
+      const currentDefaultRange = defaultLookAheadDateRange(anchor);
+      setPreferences({
+        filterState: {
+          ...preferences.filterState,
+          dateRange: {
+            startDate: currentDefaultRange.start,
+            endDate: currentDefaultRange.end,
+            noStartDate: false,
+            noEndDate: false,
+          },
+        },
+      });
+    }
+  }, [
+    applyDayCount,
+    anchor,
+    clockTick,
+    dateRange,
+    pacificToday,
+    preferences.filterState,
+    setPreferences,
+  ]);
 
   const activeCount = useMemo(() => {
     return (
