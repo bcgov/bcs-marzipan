@@ -11,12 +11,16 @@ export interface LookAheadDateRange {
   end: CalendarDateString;
 }
 
-function pacificTomorrow(now: Date): CalendarDateString {
+function pacificToday(now: Date): CalendarDateString {
   const today = pacificCalendarDateFromInstant(now);
   if (today == null) {
     throw new Error('Unable to resolve current Pacific calendar date');
   }
-  return addCalendarDays(today, 1);
+  return today;
+}
+
+function pacificTomorrow(now: Date): CalendarDateString {
+  return addCalendarDays(pacificToday(now), 1);
 }
 
 /**
@@ -33,9 +37,13 @@ export function lookAheadDateRangeFromTomorrow(
   };
 }
 
-/** Default look-ahead window: 7 days starting tomorrow. */
+/** Default look-ahead window: 7 inclusive days starting today in Pacific. */
 export function defaultLookAheadDateRange(
   now: Date = new Date()
 ): LookAheadDateRange {
-  return lookAheadDateRangeFromTomorrow(7, now);
+  const start = pacificToday(now);
+  return {
+    start,
+    end: addCalendarDays(start, 6),
+  };
 }
