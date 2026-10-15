@@ -324,9 +324,7 @@ function ActivityEditFormStickyBar({
               ? 'outline'
               : 'default'
           }
-          disabled={
-            !actionFlags.canSubmitUpdate || editSessionActionsBlocked
-          }
+          disabled={!actionFlags.canSubmitUpdate || editSessionActionsBlocked}
         >
           {isSubmitting ? 'Saving...' : 'Save'}
         </Button>
