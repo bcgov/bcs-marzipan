@@ -23,6 +23,7 @@ import {
   type Row,
   type SortingState,
 } from '@tanstack/react-table';
+import { GripVertical } from 'lucide-react';
 import { useState } from 'react';
 
 import { SortIndicator } from '@/components/table/SortIndicator';
@@ -73,28 +74,29 @@ function SortableRow<T extends object>({
       }}
       className={cn(tableBodyRow, isDragging && 'bg-slate-100 opacity-80')}
     >
-      <td className={tableTd}>
-        <button
-          type="button"
-          ref={setActivatorNodeRef}
-          aria-label="Drag to reorder"
-          disabled={disabled}
-          className="cursor-grab touch-none text-slate-400 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50"
-          {...attributes}
-          {...listeners}
-        >
-          <span aria-hidden="true" className="flex h-5 items-stretch gap-1">
-            <span className="w-0.5 rounded bg-current" />
-            <span className="w-0.5 rounded bg-current" />
-            <span className="w-0.5 rounded bg-current" />
-          </span>
-        </button>
-      </td>
       {row.getVisibleCells().map((cell) => (
         <td key={cell.id} className={tableTd}>
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
       ))}
+      <td className={cn(tableTd, 'w-10 text-right')}>
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          aria-label="Drag to reorder"
+          disabled={disabled}
+          className="inline-flex cursor-grab touch-none text-slate-400 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical
+            size={16}
+            strokeWidth={2}
+            className="size-4"
+            aria-hidden="true"
+          />
+        </button>
+      </td>
     </tr>
   );
 }
@@ -146,7 +148,6 @@ export function GenericDataTable<T extends object>({
       <thead className={tableThead}>
         {table.getHeaderGroups().map((headerGroup) => (
           <tr key={headerGroup.id}>
-            {onReorder && <th className={tableTh}>Order</th>}
             {headerGroup.headers.map((header) => {
               const canSort = header.column.getCanSort();
               return (
@@ -173,6 +174,20 @@ export function GenericDataTable<T extends object>({
                 </th>
               );
             })}
+            {onReorder && (
+              <th
+                className={cn(tableTh, 'w-10 text-right')}
+                scope="col"
+                aria-label="Order"
+              >
+                <GripVertical
+                  size={16}
+                  strokeWidth={2}
+                  className="ml-auto size-4 text-slate-500"
+                  aria-hidden="true"
+                />
+              </th>
+            )}
           </tr>
         ))}
       </thead>

@@ -204,11 +204,16 @@ export function ActivityCompletionSettingsAdmin(): ReactElement | null {
     <>
       <AdminSection
         title="Activity completion automation"
-        description="Move reviewed activities with confirmed date and time to Completed after their end time."
+        description={
+          <>
+            Moves confirmed activity status to <em>Completed</em> if end time is
+            past.
+          </>
+        }
         sectionId="activity-completion"
         isLoading={isLoading}
-        headerAction={
-          <div className="flex items-center gap-2">
+        footerAction={
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"

@@ -1,4 +1,4 @@
-import { ChevronDown, Plus } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
 
 import {
@@ -11,7 +11,7 @@ import { Button } from '../ui/button';
 
 interface AdminSectionProps {
   title: string;
-  description?: string;
+  description?: ReactNode;
   sectionId?: SettingsSectionId;
   defaultOpen?: boolean;
   onAdd?: () => void;
@@ -19,10 +19,12 @@ interface AdminSectionProps {
   children: ReactNode;
   className?: string;
   isLoading?: boolean;
-  /** Rendered at the top of the expanded section body (filters, save, etc.). */
+  /** Rendered at the top of the expanded section body (filters, search, etc.). */
   headerAction?: ReactNode;
   /** Rendered at the top of the expanded section body, opposite primary actions. */
   titleAction?: ReactNode;
+  /** Rendered at the bottom of the expanded section body (save, cancel, reset). */
+  footerAction?: ReactNode;
 }
 
 /**
@@ -37,12 +39,13 @@ export function AdminSection({
   sectionId,
   defaultOpen = false,
   onAdd,
-  addButtonLabel = 'Add new',
+  addButtonLabel = '+ Add item',
   children,
   className,
   isLoading = false,
   headerAction,
   titleAction,
+  footerAction,
 }: AdminSectionProps) {
   const settingsSection = useSettingsSectionOptional();
   const isContextManaged = sectionId != null && settingsSection != null;
@@ -65,20 +68,17 @@ export function AdminSection({
 
   return (
     <div
-      className={cn(
-        'rounded-lg border border-slate-200 bg-white shadow-sm',
-        className
-      )}
+      className={cn('rounded-lg border border-slate-200 bg-white', className)}
     >
-      <div className={cn('p-4 sm:p-6', isOpen && 'border-b border-slate-200')}>
+      <div className="p-4 sm:p-6">
         <button
           type="button"
           aria-controls={contentId}
           aria-expanded={isOpen}
           onClick={handleToggle}
-          className="flex w-full items-center justify-between gap-4 text-left focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="flex min-h-10 w-full items-center justify-between gap-4 text-left focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
-          <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
             <span
               role="heading"
               aria-level={2}
@@ -87,15 +87,17 @@ export function AdminSection({
               {title}
             </span>
             {description && (
-              <span className="min-w-0 text-sm font-normal text-slate-600 sm:max-w-[min(100%,28rem)]">
+              <span className="min-w-0 text-sm font-normal text-slate-600 sm:max-w-[min(100%,42rem)]">
                 {description}
               </span>
             )}
           </span>
           <ChevronDown
+            size={20}
+            strokeWidth={2}
             aria-hidden="true"
             className={cn(
-              'h-5 w-5 shrink-0 text-slate-500 transition-transform',
+              'size-5 shrink-0 text-slate-500 transition-transform',
               isOpen && 'rotate-180'
             )}
           />
@@ -116,13 +118,7 @@ export function AdminSection({
               <div className="flex flex-wrap items-center justify-end gap-3 sm:ml-auto">
                 {headerAction}
                 {onAdd && (
-                  <Button
-                    onClick={onAdd}
-                    disabled={isLoading}
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
+                  <Button onClick={onAdd} disabled={isLoading} size="lg">
                     {addButtonLabel}
                   </Button>
                 )}
@@ -131,6 +127,11 @@ export function AdminSection({
           </div>
         )}
         {children}
+        {footerAction && (
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-3 sm:mt-6">
+            {footerAction}
+          </div>
+        )}
       </div>
     </div>
   );

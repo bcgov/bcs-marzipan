@@ -72,7 +72,7 @@ export function EditLockIdleSettingsAdmin(): React.ReactElement | null {
       description="Release inactive edit locks after this many minutes."
       sectionId="edit-lock-idle"
       isLoading={isLoading}
-      headerAction={
+      footerAction={
         <Button
           type="button"
           onClick={() => handleSave()}

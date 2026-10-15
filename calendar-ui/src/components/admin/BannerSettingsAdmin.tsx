@@ -318,7 +318,7 @@ export function BannerSettingsAdmin() {
       description="Dismissible info banner for all signed-in users."
       sectionId="banner"
       isLoading={isLoading}
-      headerAction={
+      footerAction={
         canManage ? (
           <div className="flex items-center gap-2">
             <Button

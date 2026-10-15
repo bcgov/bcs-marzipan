@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import React, { useMemo, useState } from 'react';
 
@@ -15,6 +16,7 @@ import {
   tableTh,
   tableThead,
 } from '@/components/table/tableConstants';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -121,24 +123,35 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
       title="Permission visibility"
       description="Show or hide permissions in user management; does not grant or revoke access."
       sectionId="permissions-visibility"
+      headerAction={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="relative">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search"
+              aria-label="Search permissions"
+              className="h-9 w-44 rounded-md border border-slate-300 bg-white pr-3 pl-8 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shadow-none"
+            aria-pressed={!sortAsc}
+            onClick={() => setSortAsc((s) => !s)}
+          >
+            {sortAsc ? 'A–Z' : 'Z–A'}
+          </Button>
+        </div>
+      }
     >
-      <div className="mb-3 flex items-center gap-2">
-        <input
-          aria-label="Search permissions"
-          placeholder="Search permissions"
-          className="w-full rounded border px-2 py-1"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <button
-          aria-pressed={!sortAsc}
-          onClick={() => setSortAsc((s) => !s)}
-          className="rounded border bg-white px-2 py-1"
-          title="Toggle sort order"
-        >
-          {sortAsc ? 'A→Z' : 'Z→A'}
-        </button>
-      </div>
       <table className={`${tableTable} text-left`}>
         <thead className={tableThead}>
           <tr>

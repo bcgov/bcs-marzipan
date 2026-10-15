@@ -370,7 +370,7 @@ function RecurringLockoutBannerSettingsAdminInner() {
       description="Daily window when activity editing is blocked."
       sectionId="recurring-lockout-banner"
       isLoading={isLoading}
-      headerAction={
+      footerAction={
         <div className="flex items-center gap-2">
           <Button
             type="button"

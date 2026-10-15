@@ -67,7 +67,7 @@ export function ReportCoverContactSettingsAdmin(): ReactElement | null {
       description="Phone and text shown in reports and help."
       sectionId="report-cover-contact"
       isLoading={isLoading}
-      headerAction={
+      footerAction={
         <Button
           type="button"
           onClick={() => saveMutation.mutate({ contactPhone, contactEmail })}
@@ -116,9 +116,6 @@ export function ReportCoverContactSettingsAdmin(): ReactElement | null {
               />
             </div>
           </div>
-          <p className="text-muted-foreground text-xs">
-            Shown in reports and help sections.
-          </p>
         </div>
       )}
     </AdminSection>

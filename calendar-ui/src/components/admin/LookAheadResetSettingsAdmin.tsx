@@ -305,14 +305,16 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
               <Eraser className="size-4" aria-hidden />
               Clear LA status
             </Button>
-            <Button
-              type="button"
-              onClick={() => saveWindowMutation.mutate(windowDays)}
-              disabled={!hasWindowChanges || saveWindowMutation.isPending}
-            >
-              Save
-            </Button>
           </div>
+        }
+        footerAction={
+          <Button
+            type="button"
+            onClick={() => saveWindowMutation.mutate(windowDays)}
+            disabled={!hasWindowChanges || saveWindowMutation.isPending}
+          >
+            Save
+          </Button>
         }
       >
         {error && (

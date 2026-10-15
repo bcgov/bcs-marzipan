@@ -173,7 +173,7 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
       description={`Tooltip text on selected activity form fields (max ${ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH} characters).`}
       sectionId="activity-info-icons"
       isLoading={isLoading}
-      headerAction={
+      footerAction={
         <Button
           type="button"
           onClick={() =>

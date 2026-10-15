@@ -198,7 +198,18 @@ function SettingsPageContent({
   const { closeAllSections, hasOpenSections, openSection } =
     useSettingsSection();
   const [showBackToNavigation, setShowBackToNavigation] = useState(false);
+  const [footerBarRect, setFooterBarRect] = useState<{
+    left: number;
+    width: number;
+  } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const syncFooterBarRect = useCallback(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const { left, width } = el.getBoundingClientRect();
+    setFooterBarRect({ left, width });
+  }, []);
 
   const visibleSectionIds = useMemo(
     () => new Set(visibleSections.map((section) => section.id)),
@@ -235,6 +246,21 @@ function SettingsPageContent({
   }, [openSection, scrollToSection, visibleSectionIds]);
 
   useEffect(() => {
+    syncFooterBarRect();
+    const el = contentRef.current;
+    if (!el) return;
+
+    const resizeObserver = new ResizeObserver(() => syncFooterBarRect());
+    resizeObserver.observe(el);
+    window.addEventListener('resize', syncFooterBarRect);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', syncFooterBarRect);
+    };
+  }, [syncFooterBarRect]);
+
+  useEffect(() => {
     const content = contentRef.current;
     let scrollContainer: HTMLElement | null = null;
 
@@ -251,14 +277,16 @@ function SettingsPageContent({
     }
 
     const scrollTarget: Window | HTMLElement = scrollContainer ?? window;
-    const handleScroll = () =>
+    const handleScroll = () => {
       setShowBackToNavigation(
         (scrollContainer?.scrollTop ?? window.scrollY) > 240
       );
+      syncFooterBarRect();
+    };
     handleScroll();
     scrollTarget.addEventListener('scroll', handleScroll, { passive: true });
     return () => scrollTarget.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [syncFooterBarRect]);
 
   return (
     <>
@@ -267,7 +295,7 @@ function SettingsPageContent({
         <nav
           id="quick-navigation"
           aria-label="Settings quick navigation"
-          className="mb-8 rounded-lg border border-slate-200 bg-white shadow-sm"
+          className="mb-8 rounded-lg border border-slate-200 bg-white"
         >
           <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-4 sm:p-6">
             <div>
@@ -402,12 +430,17 @@ function SettingsPageContent({
         </div>
       </div>
       <div
-        className={`fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_12px_rgba(15,23,42,0.08)] backdrop-blur transition-transform duration-200 ${
+        className={`fixed bottom-0 z-30 bg-white/95 backdrop-blur transition-transform duration-200 ${
           showBackToNavigation ? 'translate-y-0' : 'translate-y-full'
-        }`}
+        } ${footerBarRect == null ? 'inset-x-0' : ''}`}
+        style={
+          footerBarRect
+            ? { left: footerBarRect.left, width: footerBarRect.width }
+            : undefined
+        }
         aria-hidden={!showBackToNavigation}
       >
-        <div className="mx-auto flex max-w-7xl justify-end">
+        <div className="flex w-full justify-end py-3">
           <button
             type="button"
             tabIndex={showBackToNavigation ? 0 : -1}
@@ -419,7 +452,7 @@ function SettingsPageContent({
             }
             className="rounded-md px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
           >
-            Back to quick navigation
+            Scroll to top
           </button>
         </div>
       </div>

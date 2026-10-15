@@ -127,7 +127,7 @@ export function ReviewExemptFieldsSettingsAdmin(): ReactElement | null {
       description="Optional fields that can change without unsetting Reviewed."
       sectionId="review-exempt-fields"
       isLoading={isLoading}
-      headerAction={
+      footerAction={
         <Button
           type="button"
           onClick={() =>

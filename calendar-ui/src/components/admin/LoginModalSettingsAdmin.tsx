@@ -183,17 +183,19 @@ function LoginModalSettingsAdminInner() {
         sectionId="login-modal"
         isLoading={isLoading}
         headerAction={
+          canManage && previewModal ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPreviewOpen(true)}
+            >
+              Preview
+            </Button>
+          ) : null
+        }
+        footerAction={
           canManage ? (
             <div className="flex items-center gap-2">
-              {previewModal && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setPreviewOpen(true)}
-                >
-                  Preview
-                </Button>
-              )}
               <Button
                 type="button"
                 variant="outline"
