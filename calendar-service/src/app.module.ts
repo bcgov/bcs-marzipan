@@ -21,7 +21,6 @@ import { FavouritesModule } from './favourites/favourites.module';
 import { LocksModule } from './locks/locks.module';
 import { LoginModalModule } from './login-modal/login-modal.module';
 import { LookAheadResetModule } from './look-ahead-reset/look-ahead-reset.module';
-import { LookAheadModule } from './look-ahead/look-ahead.module';
 import { LookupsModule } from './lookups/lookups.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PermissionsGuard } from './policy/guards/permissions.guard';
@@ -67,7 +66,6 @@ function resolveRootEnvPath(): string {
     DraftsModule,
     ReportsModule,
     SavedFiltersModule,
-    LookAheadModule,
     UsersModule,
     TeamsModule,
     FavouritesModule,

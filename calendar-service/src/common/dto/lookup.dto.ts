@@ -2,6 +2,7 @@ import { createZodDto } from 'nestjs-zod';
 
 import {
   activityStatusResponseSchema,
+  activityTeamSharingResponseSchema,
   categoryResponseSchema,
   cityResponseSchema,
   commsMaterialsResponseSchema,
@@ -22,6 +23,7 @@ import {
   lookupItemSchema,
   ministryGroupResponseSchema,
   ministryResponseSchema,
+  reorderLookupRequestSchema,
   tagResponseSchema,
   themeResponseSchema,
   translationLanguageResponseSchema,
@@ -122,6 +124,13 @@ export class CreateCityDto extends createZodDto(createCityRequestSchema) {}
  * DTO for updating a city
  */
 export class UpdateCityDto extends createZodDto(updateCityRequestSchema) {}
+
+/**
+ * DTO for reordering lookup items (ids in new display order)
+ */
+export class ReorderLookupDto extends createZodDto(
+  reorderLookupRequestSchema
+) {}
 
 /**
  * DTO for city response
@@ -362,4 +371,8 @@ export class VenuePresetResponseWrapperDto extends createZodDto(
 
 export class VenuePresetArrayResponseWrapperDto extends createZodDto(
   createArrayResponseWrapperSchema(venuePresetItemSchema)
+) {}
+
+export class ActivityTeamSharingResponseWrapperDto extends createZodDto(
+  createResponseWrapperSchema(activityTeamSharingResponseSchema)
 ) {}

@@ -370,7 +370,7 @@ export function toPrintRowViewModel(
   const startTime =
     activity.isAllDay === true
       ? 'All day'
-      : formatTime12h(activity.startDate, activity.startTime);
+      : formatTime12h(null, activity.startTime);
   const hasTimeDisplay = Boolean(startTime);
 
   return {
@@ -396,7 +396,7 @@ export function toPrintRowViewModel(
       label: activity.displayId?.trim() || `ACT-${activity.id}`,
       href: joinActivityUrl(options.activityBaseUrl, activity.id),
     },
-    lastUpdated: formatLastUpdated(activity.lastUpdatedDateTime),
+    lastUpdated: formatLastUpdated(activity.publicLastUpdatedDateTime),
     flags: {
       isIssue: activity.isIssue === true,
       isConfidential: activity.isConfidential === true,

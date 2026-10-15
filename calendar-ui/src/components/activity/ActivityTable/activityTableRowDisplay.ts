@@ -2,22 +2,40 @@ import { REVIEW_HIGHLIGHT_BG } from '@/lib/review-highlight';
 
 import type { ActivityTableRow } from './activityTableRow';
 
-/** Background applied to fields changed since the last review (admin reviewers only). */
+/** Background applied to fields changed since the last review (review permission). */
 export const LIST_REVIEW_HIGHLIGHT_BG = REVIEW_HIGHLIGHT_BG;
+
+function pathsMatchFieldChange(changedPath: string, formPath: string): boolean {
+  if (changedPath === formPath) {
+    return true;
+  }
+  return (
+    changedPath.startsWith(`${formPath}.`) ||
+    formPath.startsWith(`${changedPath}.`)
+  );
+}
+
+/** Whether any review-diff path matches a form/RHF field path (prefix-aware). */
+export function pathsIncludeFieldChange(
+  changedPaths: readonly string[] | ReadonlySet<string> | undefined,
+  formPath: string
+): boolean {
+  if (changedPaths == null) {
+    return false;
+  }
+  const pathList: readonly string[] = Array.isArray(changedPaths)
+    ? changedPaths
+    : Array.from(changedPaths);
+  return pathList.some((changedPath) =>
+    pathsMatchFieldChange(changedPath, formPath)
+  );
+}
 
 export function rowHasChangedPath(
   row: ActivityTableRow,
   path: string
 ): boolean {
-  const changed = row.changedFieldsSinceReview ?? [];
-  return changed.some((changedPath: string) => {
-    if (changedPath === path) {
-      return true;
-    }
-    return (
-      changedPath.startsWith(`${path}.`) || path.startsWith(`${changedPath}.`)
-    );
-  });
+  return pathsIncludeFieldChange(row.changedFieldsSinceReview, path);
 }
 
 export function rowHasAnyChangedPath(

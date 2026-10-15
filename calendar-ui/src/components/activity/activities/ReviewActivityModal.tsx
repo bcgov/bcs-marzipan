@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { HistoryChange } from '@corpcal/shared/api/types';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,21 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/useAuth';
+import type { ActivityConfirmBlockedNotice } from '@/lib/activity-edit-session-messages';
 
+import {
+  ActivityConfirmHeaderBlockedNotice,
+  ActivityConfirmPrimaryActionGroup,
+} from './ActivityConfirmSubmitBlockedNotice';
 import { ActivityFormChangesList } from './ActivityFormChangesList';
+import { type ActivitySaveConfirmPayload } from './EditActivityConfirmModal';
+import { RenewPublicLastUpdatedField } from './RenewPublicLastUpdatedField';
+
+export type ReviewActivityConfirmPayload = ActivitySaveConfirmPayload & {
+  markAsCompleted?: boolean;
+  unassignMe?: boolean;
+};
 
 interface ReviewActivityModalProps {
   open: boolean;
@@ -25,11 +38,7 @@ interface ReviewActivityModalProps {
   /** When true, copy mentions saving pending edits before updating status. */
   isDirty: boolean;
   isSubmitting: boolean;
-  onConfirm: (
-    notes?: string,
-    markAsCompleted?: boolean,
-    unassignMe?: boolean
-  ) => void;
+  onConfirm: (payload: ReviewActivityConfirmPayload) => void;
   displayId?: string;
   /** When true, show optional "Mark as completed" (activities.complete + eligibility). */
   showMarkAsCompletedOption?: boolean;
@@ -37,6 +46,8 @@ interface ReviewActivityModalProps {
   activityEndedAtLabel?: string | null;
   /** When true, show "Unassign me" checkbox (current user is an assignee on this activity). */
   showUnassignMeOption?: boolean;
+  confirmDisabled?: boolean;
+  confirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }
 
 export function ReviewActivityModal({
@@ -50,13 +61,28 @@ export function ReviewActivityModal({
   showMarkAsCompletedOption = false,
   activityEndedAtLabel = null,
   showUnassignMeOption = false,
+  confirmDisabled = false,
+  confirmBlockedNotice = null,
 }: ReviewActivityModalProps) {
+  const { user } = useAuth();
   const [notes, setNotes] = useState('');
   const [markAsCompleted, setMarkAsCompleted] = useState(false);
   const [unassignMe, setUnassignMe] = useState(false);
+  const [renewPublicLastUpdated, setRenewPublicLastUpdated] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setRenewPublicLastUpdated(false);
+    }
+  }, [open]);
 
   const handleConfirm = () => {
-    onConfirm(notes.trim() || undefined, markAsCompleted, unassignMe);
+    onConfirm({
+      notes: notes.trim() || undefined,
+      ...(renewPublicLastUpdated ? { renewPublicLastUpdated: true } : {}),
+      ...(markAsCompleted ? { markAsCompleted: true } : {}),
+      ...(unassignMe ? { unassignMe: true } : {}),
+    });
   };
 
   const handleOpenChange = (value: boolean) => {
@@ -64,6 +90,7 @@ export function ReviewActivityModal({
       setNotes('');
       setMarkAsCompleted(false);
       setUnassignMe(false);
+      setRenewPublicLastUpdated(false);
     }
     onOpenChange(value);
   };
@@ -105,6 +132,8 @@ export function ReviewActivityModal({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+
+        <ActivityConfirmHeaderBlockedNotice notice={confirmBlockedNotice} />
 
         {displayId != null && displayId.length > 0 && (
           <p className="text-muted-foreground text-sm">
@@ -166,6 +195,13 @@ export function ReviewActivityModal({
               maxLength={1000}
             />
           </div>
+
+          <RenewPublicLastUpdatedField
+            permissions={user?.permissions ?? []}
+            checked={renewPublicLastUpdated}
+            onCheckedChange={setRenewPublicLastUpdated}
+            id="review-confirm-renew-public"
+          />
         </div>
 
         <DialogFooter>
@@ -177,16 +213,22 @@ export function ReviewActivityModal({
           >
             Cancel
           </Button>
-          <Button type="button" onClick={handleConfirm} disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-                Submitting...
-              </>
-            ) : (
-              primaryLabel
-            )}
-          </Button>
+          <ActivityConfirmPrimaryActionGroup notice={confirmBlockedNotice}>
+            <Button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isSubmitting || confirmDisabled}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Submitting...
+                </>
+              ) : (
+                primaryLabel
+              )}
+            </Button>
+          </ActivityConfirmPrimaryActionGroup>
         </DialogFooter>
       </DialogContent>
     </Dialog>

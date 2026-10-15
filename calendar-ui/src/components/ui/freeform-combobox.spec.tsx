@@ -58,6 +58,22 @@ describe('FreeformCombobox', () => {
       expect(screen.getByRole('combobox')).toHaveDisplayValue('Option 1');
     });
 
+    it('renders a selected label absent from the selectable options', () => {
+      const value: FreeformComboboxValue = {
+        type: 'option',
+        value: 'inactive-option',
+      };
+      render(
+        <FreeformCombobox
+          {...defaultProps}
+          options={[]}
+          selectedOptionLabels={{ 'inactive-option': 'Former planner' }}
+          value={value}
+        />
+      );
+      expect(screen.getByRole('combobox')).toHaveDisplayValue('Former planner');
+    });
+
     it('renders freeform value', () => {
       const value: FreeformComboboxValue = {
         type: 'freeform',

@@ -95,11 +95,11 @@ export function ActivityTimestampsCell({
             fallbackName={editLock.username}
             compact
           />
-          <span className="flex min-w-0 flex-1 items-baseline gap-x-0 overflow-hidden">
+          <span className="flex min-w-0 flex-1 items-baseline gap-x-1 overflow-hidden">
             <span className="min-w-0 truncate" title={editorDisplayName}>
               {editorDisplayName}
             </span>
-            <span className="shrink-0"> is editing</span>
+            <span className="shrink-0 whitespace-nowrap">is editing</span>
           </span>
         </div>
       ) : null}

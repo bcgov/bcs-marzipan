@@ -463,12 +463,14 @@ export const updateActivityRequestSchema = createBaseSchema
   .partial()
   .extend({
     /**
-     * Optimistic concurrency token: the `lastUpdatedDateTime` the client loaded.
+     * Optimistic concurrency token: the operational `lastUpdatedDateTime` the client loaded.
      * When supplied and the activity has changed since, the save is rejected with
      * 409 instead of silently overwriting the newer state (e.g. a team that was
      * unshared while the editor held the form open).
      */
     ifUnmodifiedSince: z.string().datetime().optional(),
+    /** When caller has activities.publicLastUpdated.defer, set true to also bump publicLastUpdated*. */
+    renewPublicLastUpdated: z.boolean().optional(),
   })
   .refine(updateLeadContactRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,

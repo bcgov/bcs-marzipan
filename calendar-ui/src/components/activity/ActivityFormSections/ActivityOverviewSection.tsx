@@ -288,6 +288,7 @@ function LeadTeamField({
               description: null,
               sortOrder: 0,
               isActive: true,
+              appearsInShareWith: true,
               roleId: null,
               memberCount: 0,
               ministryId: null,

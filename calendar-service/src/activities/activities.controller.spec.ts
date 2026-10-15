@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import type { Category } from '@corpcal/database/types';
 import { HYDRATION_PROFILES, type AuthUser } from '@corpcal/shared';
 
 import {
@@ -68,13 +67,7 @@ describe('ActivitiesController', () => {
     softDelete: vi.fn(),
     requestDelete: vi.fn(),
     restore: vi.fn(),
-    cancelChanges: vi.fn(),
-    updateCategories: vi.fn(),
-    updateThemes: vi.fn(),
-    updateTags: vi.fn(),
-    updateSharedWith: vi.fn(),
     unshareTeam: vi.fn(),
-    fetchCategories: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -227,48 +220,6 @@ describe('ActivitiesController', () => {
         {},
         findAllListOptions
       );
-    });
-  });
-
-  describe('fetchCategories', () => {
-    it('should return all categories', async () => {
-      const categories: Category[] = [
-        {
-          id: 1,
-          name: 'Education',
-          displayName: 'Education',
-          sortOrder: 1,
-          isActive: true,
-          visibility: 'global',
-          description: '',
-          createdDateTime: new Date(),
-          lastUpdatedDateTime: new Date(),
-          createdBy: 1,
-          lastUpdatedBy: 1,
-        },
-        {
-          id: 2,
-          name: 'Health',
-          displayName: 'Health',
-          sortOrder: 2,
-          isActive: true,
-          visibility: 'global',
-          description: '',
-          createdDateTime: new Date(),
-          lastUpdatedDateTime: new Date(),
-          createdBy: 1,
-          lastUpdatedBy: 1,
-        },
-      ];
-      mockActivitiesService.fetchCategories.mockResolvedValue(categories);
-
-      const result = await controller.fetchCategories();
-
-      expect(result).toEqual({
-        success: true,
-        data: categories,
-      });
-      expect(mockActivitiesService.fetchCategories).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -87,8 +87,13 @@ export const activityListItemSchema = z.object({
     activityComputedFieldsSchema.shape.newsReleaseDistribution,
   activityStatus: activityComputedFieldsSchema.shape.activityStatus,
   activityStatusId: activityDbFieldsSchema.shape.activityStatusId,
-  lastUpdatedDateTime: activityDbFieldsSchema.shape.lastUpdatedDateTime,
-  lastUpdatedBy: activityDbFieldsSchema.shape.lastUpdatedBy,
+  /** Operational last update (always on list; drives concurrency when editing). */
+  lastUpdatedBy: z.number().int(),
+  lastUpdatedDateTime: z.string().datetime(),
+  /** Client-visible last update (reports, stale reminders, default display). */
+  publicLastUpdatedDateTime:
+    activityDbFieldsSchema.shape.publicLastUpdatedDateTime,
+  publicLastUpdatedBy: activityDbFieldsSchema.shape.publicLastUpdatedBy,
   createdDateTime: activityDbFieldsSchema.shape.createdDateTime,
   canEdit: activityComputedFieldsSchema.shape.canEdit,
   changedFieldsSinceReview: z.array(z.string()).optional(),
@@ -171,8 +176,11 @@ export function activityResponseToListItem(
     newsReleaseDistribution: activity.newsReleaseDistribution ?? null,
     activityStatus: activity.activityStatus,
     activityStatusId: activity.activityStatusId,
-    lastUpdatedDateTime: activity.lastUpdatedDateTime,
-    lastUpdatedBy: activity.lastUpdatedBy,
+    lastUpdatedBy: activity.lastUpdatedBy ?? activity.publicLastUpdatedBy,
+    lastUpdatedDateTime:
+      activity.lastUpdatedDateTime ?? activity.publicLastUpdatedDateTime,
+    publicLastUpdatedDateTime: activity.publicLastUpdatedDateTime,
+    publicLastUpdatedBy: activity.publicLastUpdatedBy,
     createdDateTime: activity.createdDateTime,
     canEdit: activity.canEdit,
     changedFieldsSinceReview: activity.changedFieldsSinceReview,

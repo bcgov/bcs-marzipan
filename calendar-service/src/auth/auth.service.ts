@@ -2,7 +2,6 @@ import { createHash, randomBytes } from 'node:crypto';
 import {
   BadRequestException,
   Injectable,
-  NotImplementedException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -690,11 +689,5 @@ export class AuthService {
   ): Promise<void> {
     const db = executor ?? this.databaseService.db;
     await db.delete(sessions).where(eq(sessions.userId, userId));
-  }
-
-  refresh(): never {
-    throw new NotImplementedException(
-      'Refresh not implemented. Re-login to obtain a new token.'
-    );
   }
 }

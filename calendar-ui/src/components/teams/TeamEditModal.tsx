@@ -65,6 +65,7 @@ export function TeamEditModal({
   const [hasServerAbbreviationConflict, setHasServerAbbreviationConflict] =
     useState(false);
   const [isActive, setIsActive] = useState(true);
+  const [appearsInShareWith, setAppearsInShareWith] = useState(true);
   const [ministryId, setMinistryId] = useState<string | null>(null);
 
   const isDuplicateAbbreviationError = (error: unknown): boolean => {
@@ -112,6 +113,7 @@ export function TeamEditModal({
       setDescription('');
       setHasServerAbbreviationConflict(false);
       setIsActive(true);
+      setAppearsInShareWith(true);
       setMinistryId(null);
       setAbbrevManuallyEdited(false);
     } else if (detail) {
@@ -120,6 +122,7 @@ export function TeamEditModal({
       setDescription(detail.description ?? '');
       setHasServerAbbreviationConflict(false);
       setIsActive(detail.isActive);
+      setAppearsInShareWith(detail.appearsInShareWith);
       setMinistryId(
         detail.ministryId != null ? String(detail.ministryId) : null
       );
@@ -136,6 +139,9 @@ export function TeamEditModal({
     }) => createTeam(body),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
+      void queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.activityTeamSharing(),
+      });
       showEntityToast('success', 'Created team', {
         description: variables.teamLabel,
         id: 'team-created',
@@ -170,6 +176,9 @@ export function TeamEditModal({
     }) => updateTeam(id, body),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.teams() });
+      void queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.activityTeamSharing(),
+      });
       showEntityToast('success', 'Updated team', {
         description: variables.teamLabel,
         id: `team-updated-${variables.id}`,
@@ -232,6 +241,7 @@ export function TeamEditModal({
           displayName: trimmedDisplay || undefined,
           description: description.trim() || undefined,
           isActive,
+          appearsInShareWith,
           ministryId: ministryId != null ? parseInt(ministryId, 10) : undefined,
         },
       });
@@ -246,6 +256,7 @@ export function TeamEditModal({
           displayName: trimmedDisplay || undefined,
           description: description.trim() || undefined,
           isActive,
+          appearsInShareWith,
           ministryId: ministryId != null ? parseInt(ministryId, 10) : null,
         },
       });
@@ -401,6 +412,16 @@ export function TeamEditModal({
                 placeholder="Description"
                 maxLength={TEAM_DESCRIPTION_MAX_LENGTH}
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="team-appears-in-share-with"
+                checked={appearsInShareWith}
+                onCheckedChange={setAppearsInShareWith}
+              />
+              <Label htmlFor="team-appears-in-share-with">
+                Appears in &quot;Share With&quot; options
+              </Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch

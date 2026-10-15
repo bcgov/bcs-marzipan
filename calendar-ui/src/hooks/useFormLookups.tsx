@@ -109,6 +109,8 @@ export interface FormLookupData {
     name: string;
     displayName?: string;
     ministryId: number | null;
+    isActive: boolean;
+    appearsInShareWith: boolean;
   }>;
 
   /** Ministry quick-share groups (activity form); empty if not configured. */
@@ -333,6 +335,8 @@ export function useFormLookups(): FormLookupData {
         name: t.name,
         displayName: t.displayName ?? undefined,
         ministryId: t.ministryId,
+        isActive: t.isActive,
+        appearsInShareWith: t.appearsInShareWith,
       })) ?? [];
 
     const quickShareGroups =

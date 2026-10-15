@@ -168,6 +168,33 @@ export function showErrorToast(error: unknown, customMessage?: string): void {
 }
 
 /**
+ * Show a warning toast with app-standard error duration (7s).
+ */
+export function showWarningToast(
+  title: string,
+  description?: string,
+  duration: number = TOAST_DURATION_MS.error
+): void {
+  toast.warning(title, { description, duration });
+}
+
+/**
+ * Known blocked user action (submit guard, lock verify) with explicit title.
+ */
+export function showActionBlockedToast(input: {
+  title: string;
+  description: string;
+  variant?: 'warning' | 'error';
+}): void {
+  const duration = TOAST_DURATION_MS.error;
+  if (input.variant === 'error') {
+    toast.error(input.title, { description: input.description, duration });
+  } else {
+    toast.warning(input.title, { description: input.description, duration });
+  }
+}
+
+/**
  * Show a success toast notification
  */
 export function showSuccessToast(message: string, title = 'Success'): void {

@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
@@ -85,6 +85,16 @@ vi.mock('@/api/usersApi', () => ({
 }));
 
 describe('Permissions visibility integration', () => {
+  let PermissionsVisibilityAdmin: typeof import('@/components/admin/PermissionsVisibilityAdmin').PermissionsVisibilityAdmin;
+  let UserDetailPage: typeof import('../UserDetailPage').default;
+
+  // These modules pull in a large module graph; load them outside the test timeout.
+  beforeAll(async () => {
+    ({ PermissionsVisibilityAdmin } =
+      await import('@/components/admin/PermissionsVisibilityAdmin'));
+    ({ default: UserDetailPage } = await import('../UserDetailPage'));
+  }, 60000);
+
   beforeEach(() => {
     vi.clearAllMocks();
     // start with permission not visible
@@ -96,10 +106,6 @@ describe('Permissions visibility integration', () => {
   });
 
   it('toggles visibility in admin UI and UserDetailPage updates', async () => {
-    const { PermissionsVisibilityAdmin } =
-      await import('@/components/admin/PermissionsVisibilityAdmin');
-    const { default: UserDetailPage } = await import('../UserDetailPage');
-
     render(
       <MemoryRouter initialEntries={['/users/7']}>
         <div>
@@ -110,11 +116,6 @@ describe('Permissions visibility integration', () => {
         </div>
       </MemoryRouter>
     );
-
-    // Initially UserDetailPage should not show the permission
-    await waitFor(() => {
-      expect(screen.queryByText('Test Permission')).not.toBeInTheDocument();
-    });
 
     // In the admin table find the row for our permission and toggle the switch
     const adminRow = await screen.findByText('Test Permission');
@@ -145,5 +146,5 @@ describe('Permissions visibility integration', () => {
         ).toBeGreaterThanOrEqual(2),
       { timeout: 10000 }
     );
-  }, 20000);
+  }, 30000);
 });

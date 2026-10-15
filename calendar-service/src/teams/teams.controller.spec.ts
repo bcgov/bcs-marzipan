@@ -63,7 +63,7 @@ describe('TeamsController', () => {
       const teams = [createMockTeamListItem()];
       mockTeamsService.findAll.mockResolvedValue(teams);
 
-      const result = await controller.findAll(undefined);
+      const result = await controller.findAll({});
 
       expect(result).toEqual({ success: true, data: teams });
       expect(mockTeamsService.findAll).toHaveBeenCalledWith(true);
@@ -74,7 +74,7 @@ describe('TeamsController', () => {
       const teams = [createMockTeamListItem()];
       mockTeamsService.findAll.mockResolvedValue(teams);
 
-      await controller.findAll('true');
+      await controller.findAll({ activeOnly: 'true' });
 
       expect(mockTeamsService.findAll).toHaveBeenCalledWith(true);
     });
@@ -83,7 +83,7 @@ describe('TeamsController', () => {
       const teams = [createMockTeamListItem({ isActive: false })];
       mockTeamsService.findAll.mockResolvedValue(teams);
 
-      await controller.findAll('false');
+      await controller.findAll({ activeOnly: 'false' });
 
       expect(mockTeamsService.findAll).toHaveBeenCalledWith(false);
     });

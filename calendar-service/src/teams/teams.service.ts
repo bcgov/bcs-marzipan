@@ -172,6 +172,7 @@ export class TeamsService {
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
+        appearsInShareWith: teams.appearsInShareWith,
         roleId: teams.roleId,
         ministryId: teams.ministryId,
       })
@@ -230,6 +231,7 @@ export class TeamsService {
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
+        appearsInShareWith: teams.appearsInShareWith,
         roleId: teams.roleId,
         ministryId: teams.ministryId,
       })
@@ -295,6 +297,7 @@ export class TeamsService {
         description: teams.description,
         sortOrder: teams.sortOrder,
         isActive: teams.isActive,
+        appearsInShareWith: teams.appearsInShareWith,
         roleId: teams.roleId,
         ministryId: teams.ministryId,
       })
@@ -402,6 +405,7 @@ export class TeamsService {
         description: dto.description ?? null,
         sortOrder: dto.sortOrder ?? 0,
         isActive: dto.isActive ?? true,
+        appearsInShareWith: dto.appearsInShareWith ?? true,
         roleId: dto.roleId ?? null,
         ministryId: dto.ministryId ?? null,
         createdBy,
@@ -449,6 +453,8 @@ export class TeamsService {
     if (dto.description !== undefined) updates.description = dto.description;
     if (dto.sortOrder !== undefined) updates.sortOrder = dto.sortOrder;
     if (dto.isActive !== undefined) updates.isActive = dto.isActive;
+    if (dto.appearsInShareWith !== undefined)
+      updates.appearsInShareWith = dto.appearsInShareWith;
     if (dto.roleId !== undefined) updates.roleId = dto.roleId;
     if (dto.ministryId !== undefined)
       updates.ministryId = dto.ministryId ?? null;
@@ -515,6 +521,16 @@ export class TeamsService {
         field: 'isActive',
         oldValue: existing.isActive,
         newValue: dto.isActive,
+      });
+    }
+    if (
+      dto.appearsInShareWith !== undefined &&
+      dto.appearsInShareWith !== existing.appearsInShareWith
+    ) {
+      changes.push({
+        field: 'appearsInShareWith',
+        oldValue: existing.appearsInShareWith,
+        newValue: dto.appearsInShareWith,
       });
     }
     if (

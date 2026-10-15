@@ -507,6 +507,8 @@ export const themeLookupItemSchema = z.object({
 export const venuePresetItemSchema = z
   .object({
     id: z.number().int(),
+    sortOrder: z.number().int(),
+    isActive: z.boolean(),
     isPinned: z.boolean(),
     pinnedSortOrder: z.number().int(),
   })
@@ -680,6 +682,18 @@ export const createCityRequestSchema = z.object({
  * Update City Request Schema
  */
 export const updateCityRequestSchema = createCityRequestSchema.partial();
+
+/**
+ * Reorder Lookup Request Schema - item ids in their new display order
+ */
+export const reorderLookupRequestSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Lookup IDs must be unique',
+    }),
+});
 
 /**
  * Create Ministry Request Schema

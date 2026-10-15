@@ -36,6 +36,11 @@ const HISTORY_ACTION_LABELS: Record<string, string> = {
   activities_transferred: 'Activities transferred',
 };
 
+/** Legacy action types that may exist in DB but have no API to create new entries. */
+const DEPRECATED_GLOBAL_ACTIVITY_HISTORY_ACTION_TYPES = new Set([
+  'changes_cancelled',
+]);
+
 const USER_AND_TEAM_HISTORY_ACTION_TYPES = new Set([
   'role_changed',
   'activated',
@@ -68,5 +73,9 @@ export const GLOBAL_ACTIVITY_HISTORY_ACTION_TYPE_OPTIONS = Object.keys(
   HISTORY_ACTION_LABELS
 )
   .filter((actionType) => !USER_AND_TEAM_HISTORY_ACTION_TYPES.has(actionType))
+  .filter(
+    (actionType) =>
+      !DEPRECATED_GLOBAL_ACTIVITY_HISTORY_ACTION_TYPES.has(actionType)
+  )
   .map((value) => ({ value, label: getHistoryActionLabel(value) }))
   .sort((a, b) => a.label.localeCompare(b.label));

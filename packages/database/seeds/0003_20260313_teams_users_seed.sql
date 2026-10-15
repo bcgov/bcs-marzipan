@@ -54,6 +54,9 @@ INSERT INTO teams (id, name, display_name, abbreviation, description, sort_order
   (36, 'EAO', 'EAO', 'EAO', 'Environmental Assessment Office', 36, true, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
+-- GCPE teams (1-7) are not offered in activity "Share with" options
+UPDATE teams SET appears_in_share_with = false WHERE id BETWEEN 1 AND 7;
+
 -- ----------------------------------------------------------------------------
 -- TEAM_CATEGORIES
 -- Links team-scoped categories (categories.visibility = team) to teams.

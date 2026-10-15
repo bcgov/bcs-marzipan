@@ -19,6 +19,7 @@ import {
 
 import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
+import { getActivityTimestampUpdateForWrite } from '../utils/activity-timestamp-write';
 import { ActivityHistoryService } from './activity-history.service';
 import { ActivityUtilsService } from './activity-utils.service';
 
@@ -194,8 +195,11 @@ export class ActivityDisplayIdSyncService {
           .update(activities)
           .set({
             displayId: entry.newDisplayId,
-            lastUpdatedBy: actorUserId,
-            lastUpdatedDateTime: now,
+            ...getActivityTimestampUpdateForWrite({
+              context: 'systemJob',
+              userId: actorUserId,
+              now,
+            }),
           })
           .where(eq(activities.id, entry.activityId));
       }

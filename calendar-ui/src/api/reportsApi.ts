@@ -32,10 +32,13 @@ export async function fetchReportData(
   type: string,
   params?: ReportDataRequestParams
 ): Promise<ReportDataResponse> {
-  const response = await api.get<ReportDataResponse>(`/reports/data/${type}`, {
-    params: serializeReportDataQueryParams(params),
-  });
-  return response.data;
+  const response = await api.get<{ success: true; data: ReportDataResponse }>(
+    `/reports/data/${type}`,
+    {
+      params: serializeReportDataQueryParams(params),
+    }
+  );
+  return response.data.data;
 }
 
 async function downloadReportFile(

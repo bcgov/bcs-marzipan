@@ -49,7 +49,7 @@ spec:
                   name: calendar-ui-config
                   key: VITE_API_BASE_URL
             - name: API_PROXY_UPSTREAM
-              value: http://calendar-service.$(POD_NAMESPACE).svc.cluster.local:3001
+              value: http://calendar-service:3001
             - name: NODE_ENV
               valueFrom:
                 configMapKeyRef:

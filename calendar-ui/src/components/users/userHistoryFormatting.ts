@@ -21,6 +21,7 @@ const USER_HISTORY_FIELD_LABELS: Record<string, string> = {
   firstName: 'First name',
   lastName: 'Last name',
   isActive: 'Account status',
+  isEventPlanner: 'Event planner',
   directLoginEnabled: 'Direct login enabled',
   notes: 'Notes',
   flagColour: 'Flag colour',

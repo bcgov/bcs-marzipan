@@ -17,7 +17,6 @@ export type {
 } from '../schemas/activity-list-item.schema';
 export type {
   ActivityFlagResponse,
-  UpsertActivityFlagRequest,
   UpsertActivityFlagsRequest,
 } from '../schemas/activity-flag.schema';
 export type {

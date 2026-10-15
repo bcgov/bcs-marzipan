@@ -307,6 +307,14 @@ export async function fetchVenuePresets(): Promise<VenuePresetItem[]> {
   return res.data.data;
 }
 
+export async function fetchAllVenuePresets(): Promise<VenuePresetItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: VenuePresetItem[];
+  }>('/lookups/venue-presets', { params: { includeAll: 'true' } });
+  return res.data.data;
+}
+
 // ============================================
 // Admin CRUD Functions
 // ============================================
@@ -442,6 +450,53 @@ export type RolePermissionRow = {
   allowUserOverride: boolean;
   hasPermission: boolean;
 };
+
+export type AdminRolePermissionRow = {
+  id: number;
+  key: string;
+  displayName: string;
+  description: string | null;
+  category: string;
+  sortOrder: number;
+  hasPermission: boolean;
+  locked: boolean;
+};
+
+export type PermissionAdminRole = {
+  id: number;
+  name: string;
+  description: string | null;
+};
+
+export async function fetchPermissionAdminRoles(): Promise<
+  PermissionAdminRole[]
+> {
+  const res = await api.get<{ success: boolean; data: PermissionAdminRole[] }>(
+    '/lookups/roles/admin'
+  );
+  return res.data.data;
+}
+
+export async function fetchAdminRolePermissions(
+  roleId: number
+): Promise<AdminRolePermissionRow[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: AdminRolePermissionRow[];
+  }>(`/lookups/roles/admin/${roleId}/permissions`);
+  return res.data.data;
+}
+
+export async function updateAdminRolePermissions(
+  roleId: number,
+  permissionIds: number[]
+): Promise<AdminRolePermissionRow[]> {
+  const res = await api.put<{
+    success: boolean;
+    data: AdminRolePermissionRow[];
+  }>(`/lookups/roles/admin/${roleId}/permissions`, { permissionIds });
+  return res.data.data;
+}
 
 /** Permissions that admins may grant or deny for an individual user. */
 export async function fetchOverridablePermissions(): Promise<

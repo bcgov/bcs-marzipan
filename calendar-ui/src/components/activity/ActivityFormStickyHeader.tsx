@@ -62,15 +62,17 @@ export function ActivityFormStickyHeader({
         Go back
       </Button>
       {showLockStrip && (
-        <div
-          className={cn(
-            'ms-auto min-w-0 transition-opacity duration-300 ease-out',
-            lockStripVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
-          )}
-          aria-hidden={!lockStripVisible}
-          inert={lockStripVisible ? undefined : true}
-        >
-          {lockStrip}
+        <div className="ms-auto flex min-w-0 shrink-0 items-center gap-2">
+          <div
+            className={cn(
+              'min-w-0 transition-opacity duration-300 ease-out',
+              lockStripVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
+            )}
+            aria-hidden={!lockStripVisible}
+            inert={lockStripVisible ? undefined : true}
+          >
+            {lockStrip}
+          </div>
         </div>
       )}
     </div>

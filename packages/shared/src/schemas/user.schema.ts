@@ -83,6 +83,7 @@ export const userListItemSchema = z.object({
   roleId: z.number().int(),
   roleName: z.string(),
   isActive: z.boolean(),
+  isEventPlanner: z.boolean(),
   teams: z.array(userTeamSchema),
   lastUpdatedDateTime: z.string().nullable().optional(),
 });
@@ -146,6 +147,7 @@ export const createUserBodySchema = z.object({
     .regex(/^[^\s@]+$/, 'IDIR username must not contain spaces or @'),
   roleId: z.number().int(),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).optional(),
+  isEventPlanner: z.boolean().optional(),
   adJobTitle: z
     .string()
     .trim()
@@ -172,6 +174,7 @@ export type CreateUserBody = z.infer<typeof createUserBodySchema>;
 export const updateUserBodySchema = z.object({
   roleId: z.number().int().optional(),
   isActive: z.boolean().optional(),
+  isEventPlanner: z.boolean().optional(),
   notes: z.string().max(USER_NOTES_MAX_LENGTH).nullable().optional(),
   /**
    * Profile fields. Editing these is restricted to admins / sys-admins

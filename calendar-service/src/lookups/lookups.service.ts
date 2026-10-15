@@ -22,7 +22,6 @@ import {
   cities,
   commsMaterials,
   dateStatuses,
-  eventPlanners,
   governmentRepresentatives,
   ministries,
   ministryGroups,
@@ -35,20 +34,28 @@ import {
   pitchStatuses,
   premierRequested,
   reports,
+  rolePermissionAudit,
   rolePermissions,
   roles,
+  sessions,
   tags,
   teamCategories,
+  teams,
   teamTags,
   themes,
   timeStatuses,
   translatedLanguages,
   translationRequiredStatuses,
   users,
+  userTeams,
   venuePresets,
   venueStatuses,
 } from '@corpcal/database/schema';
-import type { ActivityStatusName, Visibility } from '@corpcal/shared';
+import {
+  SYSTEM_ROLE_IDS,
+  type ActivityStatusName,
+  type Visibility,
+} from '@corpcal/shared';
 import type {
   ActivityTeamSharingQuickShare,
   CategoryLookupItem,
@@ -83,6 +90,42 @@ import {
   syncCategoryTeams,
   syncTagTeams,
 } from './lookups-team-sync.helper';
+import { REORDERABLE_LOOKUP_TABLES } from './reorderable-lookups';
+
+export type VenuePresetAdminItem = VenuePresetItem & {
+  sortOrder: number;
+  isActive: boolean;
+};
+
+export function validateAdminRolePermissionSelection(
+  roleId: number,
+  catalog: { id: number; key: string }[],
+  currentByPermissionId: Map<number, boolean>,
+  desiredIds: Set<number>
+): void {
+  for (const permission of catalog) {
+    if (!permission.key.startsWith('system.')) continue;
+    const isCurrentlyActive = currentByPermissionId.get(permission.id) ?? false;
+    if (desiredIds.has(permission.id) !== isCurrentlyActive) {
+      throw new BadRequestException(
+        'System permissions cannot be changed through role management'
+      );
+    }
+  }
+
+  if (
+    roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN &&
+    !catalog.some(
+      (permission) =>
+        permission.key === 'system.manage_permissions' &&
+        desiredIds.has(permission.id)
+    )
+  ) {
+    throw new BadRequestException(
+      'System Admin must retain system.manage_permissions'
+    );
+  }
+}
 
 @Injectable()
 export class LookupsService {
@@ -196,6 +239,206 @@ export class LookupsService {
       .where(eq(roles.isActive, true))
       .orderBy(roles.name);
     return results;
+  }
+
+  async getPermissionAdminRoles(): Promise<
+    { id: number; name: string; description: string | null }[]
+  > {
+    return this.databaseService.db
+      .select({
+        id: roles.id,
+        name: roles.name,
+        description: roles.description,
+      })
+      .from(roles)
+      .where(and(eq(roles.isActive, true), eq(roles.isSystem, true)))
+      .orderBy(roles.name);
+  }
+
+  async getAdminRolePermissions(roleId: number): Promise<
+    {
+      id: number;
+      key: string;
+      displayName: string;
+      description: string | null;
+      category: string;
+      sortOrder: number;
+      hasPermission: boolean;
+      locked: boolean;
+    }[]
+  > {
+    const [role] = await this.databaseService.db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(
+        and(
+          eq(roles.id, roleId),
+          eq(roles.isActive, true),
+          eq(roles.isSystem, true)
+        )
+      )
+      .limit(1);
+    if (!role) throw new NotFoundException('System role not found');
+
+    const rows = await this.databaseService.db
+      .select({
+        id: permissions.id,
+        key: permissions.key,
+        displayName: permissions.displayName,
+        description: permissions.description,
+        category: permissions.category,
+        sortOrder: permissions.sortOrder,
+        isActive: rolePermissions.isActive,
+      })
+      .from(permissions)
+      .leftJoin(
+        rolePermissions,
+        and(
+          eq(rolePermissions.permissionId, permissions.id),
+          eq(rolePermissions.roleId, roleId)
+        )
+      )
+      .orderBy(permissions.sortOrder, permissions.key);
+
+    return rows.map((row) => ({
+      id: row.id,
+      key: row.key,
+      displayName: row.displayName,
+      description: row.description,
+      category: row.category,
+      sortOrder: row.sortOrder,
+      hasPermission: Boolean(row.isActive),
+      locked: row.key.startsWith('system.'),
+    }));
+  }
+
+  async updateAdminRolePermissions(
+    roleId: number,
+    permissionIds: number[],
+    changedBy: number
+  ): Promise<Awaited<ReturnType<LookupsService['getAdminRolePermissions']>>> {
+    let permissionsChanged = false;
+    await this.databaseService.db.transaction(async (tx) => {
+      const [role] = await tx
+        .select({ id: roles.id })
+        .from(roles)
+        .where(
+          and(
+            eq(roles.id, roleId),
+            eq(roles.isActive, true),
+            eq(roles.isSystem, true)
+          )
+        )
+        .for('update')
+        .limit(1);
+      if (!role) throw new NotFoundException('System role not found');
+
+      const uniquePermissionIds = new Set(permissionIds);
+      if (uniquePermissionIds.size !== permissionIds.length) {
+        throw new BadRequestException(
+          'Duplicate permission ids are not allowed'
+        );
+      }
+
+      const catalog = await tx
+        .select({ id: permissions.id, key: permissions.key })
+        .from(permissions);
+      const knownIds = new Set(catalog.map((permission) => permission.id));
+      if (permissionIds.some((permissionId) => !knownIds.has(permissionId))) {
+        throw new BadRequestException('Unknown permission id');
+      }
+
+      const currentRows = await tx
+        .select({
+          permissionId: rolePermissions.permissionId,
+          isActive: rolePermissions.isActive,
+        })
+        .from(rolePermissions)
+        .where(eq(rolePermissions.roleId, roleId));
+      const currentByPermissionId = new Map(
+        currentRows.map((row) => [row.permissionId, row.isActive])
+      );
+      const desiredIds = new Set(permissionIds);
+      validateAdminRolePermissionSelection(
+        roleId,
+        catalog,
+        currentByPermissionId,
+        desiredIds
+      );
+
+      const now = new Date();
+      for (const permission of catalog) {
+        if (permission.key.startsWith('system.')) continue;
+        const enabled = desiredIds.has(permission.id);
+        const currentlyEnabled =
+          currentByPermissionId.get(permission.id) ?? false;
+        if (enabled === currentlyEnabled) continue;
+        permissionsChanged = true;
+
+        await tx.insert(rolePermissionAudit).values({
+          roleId,
+          permissionId: permission.id,
+          oldValue: currentlyEnabled,
+          newValue: enabled,
+          changedBy,
+          changedAt: now,
+        });
+
+        await tx
+          .insert(rolePermissions)
+          .values({
+            roleId,
+            permissionId: permission.id,
+            isActive: enabled,
+            createdBy: changedBy,
+            updatedBy: changedBy,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [rolePermissions.roleId, rolePermissions.permissionId],
+            set: { isActive: enabled, updatedBy: changedBy, updatedAt: now },
+          });
+      }
+
+      if (permissionsChanged) {
+        const roleUsers = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.roleId, roleId));
+        const roleTeams = await tx
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.roleId, roleId));
+        const teamUsers = roleTeams.length
+          ? await tx
+              .select({ id: userTeams.userId })
+              .from(userTeams)
+              .where(
+                and(
+                  inArray(
+                    userTeams.teamId,
+                    roleTeams.map((team) => team.id)
+                  ),
+                  eq(userTeams.isActive, true)
+                )
+              )
+          : [];
+        const affectedUserIds = [
+          ...new Set([
+            ...roleUsers.map((roleUser) => roleUser.id),
+            ...teamUsers.map((teamUser) => teamUser.id),
+          ]),
+        ];
+        if (affectedUserIds.length > 0) {
+          await tx
+            .delete(sessions)
+            .where(inArray(sessions.userId, affectedUserIds));
+        }
+      }
+    });
+
+    return this.getAdminRolePermissions(roleId);
   }
 
   /**
@@ -367,77 +610,6 @@ export class LookupsService {
       key: row[0].key,
       showInUserManagement: Boolean(row[0].showInUserManagement),
     };
-  }
-
-  /**
-   * Bulk update permission visibility inside a single DB transaction.
-   * Returns the updated permission rows.
-   */
-  async bulkUpdatePermissionVisibility(
-    items: { id: number; showInUserManagement: boolean }[],
-    updatedBy?: number
-  ): Promise<{ id: number; key: string; showInUserManagement: boolean }[]> {
-    return this.databaseService.db.transaction(async (tx) => {
-      const results: {
-        id: number;
-        key: string;
-        showInUserManagement: boolean;
-      }[] = [];
-      for (const item of items) {
-        const pid = Number(item.id);
-        if (!Number.isInteger(pid)) continue;
-
-        const existing = await tx
-          .select({
-            id: permissions.id,
-            show: permissions.showInUserManagement,
-          })
-          .from(permissions)
-          .where(eq(permissions.id, pid))
-          .limit(1);
-
-        if (!existing || existing.length === 0) continue;
-
-        await tx
-          .update(permissions)
-          .set({
-            showInUserManagement: item.showInUserManagement,
-            updatedAt: sql`now()`,
-            updatedBy: updatedBy ?? null,
-          })
-          .where(eq(permissions.id, pid));
-
-        const [row] = await tx
-          .select({
-            id: permissions.id,
-            key: permissions.key,
-            showInUserManagement: permissions.showInUserManagement,
-          })
-          .from(permissions)
-          .where(eq(permissions.id, pid))
-          .limit(1);
-
-        results.push({
-          id: row.id,
-          key: row.key,
-          showInUserManagement: Boolean(row.showInUserManagement),
-        });
-
-        try {
-          await tx.insert(permissionVisibilityAudit).values({
-            permissionId: pid,
-            changedBy: updatedBy ?? null,
-            oldValue: Boolean(existing[0].show),
-            newValue: Boolean(item.showInUserManagement),
-          });
-        } catch (err) {
-          this.logger.warn(
-            `Failed to write permission visibility audit for permission ${pid} (bulk): ${String(err)}`
-          );
-        }
-      }
-      return results;
-    });
   }
 
   /**
@@ -818,9 +990,10 @@ export class LookupsService {
   }
 
   /**
-   * Get all active venue presets for the activity form.
+   * Get venue presets for the activity form or admin list.
+   * @param includeAll - When true (admin), returns all presets including inactive
    */
-  async getVenuePresets(): Promise<VenuePresetItem[]> {
+  async getVenuePresets(includeAll?: boolean): Promise<VenuePresetAdminItem[]> {
     const results = await this.databaseService.db
       .select({
         id: venuePresets.id,
@@ -830,11 +1003,13 @@ export class LookupsService {
         city: venuePresets.city,
         provinceOrState: venuePresets.provinceOrState,
         country: venuePresets.country,
+        sortOrder: venuePresets.sortOrder,
+        isActive: venuePresets.isActive,
         isPinned: venuePresets.isPinned,
         pinnedSortOrder: venuePresets.pinnedSortOrder,
       })
       .from(venuePresets)
-      .where(eq(venuePresets.isActive, true))
+      .where(includeAll ? undefined : eq(venuePresets.isActive, true))
       .orderBy(venuePresets.sortOrder);
     return results.map((row) => ({
       id: row.id,
@@ -844,6 +1019,8 @@ export class LookupsService {
       city: row.city,
       provinceOrState: row.provinceOrState,
       country: row.country,
+      sortOrder: row.sortOrder,
+      isActive: row.isActive,
       isPinned: row.isPinned,
       pinnedSortOrder: row.pinnedSortOrder,
     }));
@@ -903,7 +1080,7 @@ export class LookupsService {
       pinnedSortOrder?: number;
     },
     currentUserId: number
-  ): Promise<VenuePresetItem> {
+  ): Promise<VenuePresetAdminItem> {
     await this.assertNoDuplicateAddress(data.addressLine1, data.addressLine2);
 
     const now = new Date();
@@ -934,6 +1111,8 @@ export class LookupsService {
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
+      sortOrder: result.sortOrder,
+      isActive: result.isActive,
       isPinned: result.isPinned,
       pinnedSortOrder: result.pinnedSortOrder,
     };
@@ -957,7 +1136,7 @@ export class LookupsService {
       pinnedSortOrder?: number;
     },
     currentUserId: number
-  ): Promise<VenuePresetItem> {
+  ): Promise<VenuePresetAdminItem> {
     if (data.addressLine1 !== undefined || data.addressLine2 !== undefined) {
       const current = await this.databaseService.db
         .select({
@@ -1014,6 +1193,8 @@ export class LookupsService {
       city: result.city,
       provinceOrState: result.provinceOrState,
       country: result.country,
+      sortOrder: result.sortOrder,
+      isActive: result.isActive,
       isPinned: result.isPinned,
       pinnedSortOrder: result.pinnedSortOrder,
     };
@@ -1047,7 +1228,7 @@ export class LookupsService {
       })
       .from(reports)
       .where(eq(reports.isActive, true))
-      .orderBy(reports.sortOrder);
+      .orderBy(reports.sortOrder, reports.displayName);
 
     return results.map((report) => {
       let config = null;
@@ -1180,26 +1361,36 @@ export class LookupsService {
   }
 
   /**
-   * Get all active event planners
+   * Active users flagged as event planners (users.is_event_planner).
    */
   async getEventPlanners(): Promise<LookupItem[]> {
     const results = await this.databaseService.db
       .select({
-        id: eventPlanners.id,
-        name: eventPlanners.name,
-        displayName: eventPlanners.displayName,
+        id: users.id,
+        adUsername: users.adUsername,
+        adDisplayName: users.adDisplayName,
+        adEmail: users.adEmail,
       })
-      .from(eventPlanners)
-      .where(eq(eventPlanners.isActive, true))
-      .orderBy(eventPlanners.sortOrder, eventPlanners.displayName);
+      .from(users)
+      .where(and(eq(users.isActive, true), eq(users.isEventPlanner, true)));
 
-    return results.map((planner) => ({
-      id: planner.id,
-      label: planner.displayName,
-      value: planner.id,
-      name: planner.name,
-      displayName: planner.displayName,
-    }));
+    const sorted = sortByStaffName(
+      results,
+      (u) => u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`,
+      (u) => u.id
+    );
+
+    return sorted.map((u) => {
+      const label =
+        u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`;
+      return {
+        id: u.id,
+        label,
+        value: u.id,
+        name: label,
+        displayName: label,
+      };
+    });
   }
 
   /**
@@ -2012,6 +2203,28 @@ export class LookupsService {
       .where(eq(cities.id, id))
       .returning();
     return result;
+  }
+
+  /** Sets sortOrder to 1..n following the given id order. */
+  async reorderLookup(
+    entity: string,
+    ids: number[],
+    currentUserId: number
+  ): Promise<void> {
+    const table = REORDERABLE_LOOKUP_TABLES[entity];
+    // One set-based UPDATE so concurrent reorders can't lock rows in opposing orders (deadlock).
+    const positions = sql.join(
+      ids.map((id, index) => sql`when ${id}::int then ${index + 1}::int`),
+      sql` `
+    );
+    await this.databaseService.db
+      .update(table)
+      .set({
+        sortOrder: sql`case ${table.id} ${positions} end`,
+        lastUpdatedBy: currentUserId,
+        lastUpdatedDateTime: new Date(),
+      })
+      .where(inArray(table.id, ids));
   }
 
   async updateCommsMaterial(

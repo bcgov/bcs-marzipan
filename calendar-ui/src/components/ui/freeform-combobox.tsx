@@ -63,6 +63,8 @@ const FREEFORM_BADGE_CLASSES =
 export interface FreeformComboboxProps {
   /** Flat options (default). Ignored for listing when `sections` is set. */
   options?: FreeformComboboxOption[];
+  /** Labels for selected option values that are intentionally absent from the selectable options. */
+  selectedOptionLabels?: Readonly<Record<string, string>>;
   /**
    * When set, options are shown in order with a divider between consecutive
    * sections that each have at least one visible (filtered) row.
@@ -132,6 +134,7 @@ function findExactMatchOption(
 export function FreeformCombobox({
   options: optionsProp,
   sections,
+  selectedOptionLabels,
   value,
   onChange,
   placeholder = '',
@@ -183,12 +186,14 @@ export function FreeformCombobox({
     (v: FreeformComboboxValue): string => {
       if (!v) return '';
       if (v.type === 'option') {
+        const selectedLabel = selectedOptionLabels?.[v.value];
+        if (selectedLabel) return selectedLabel;
         const opt = flatOptions.find((o) => o.value === v.value);
         return opt?.label ?? v.value;
       }
       return v.value;
     },
-    [flatOptions]
+    [flatOptions, selectedOptionLabels]
   );
 
   const trimmedInput = inputValue.trim();

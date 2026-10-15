@@ -19,6 +19,7 @@ import {
 } from '@corpcal/shared';
 
 import { ActivityHistoryService } from '../activities/services/activity-history.service';
+import { getActivityTimestampUpdateForWrite } from '../activities/utils/activity-timestamp-write';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
@@ -214,13 +215,17 @@ export class ActivityCompletionJobService {
 
     const candidateIds = candidates.map((c) => c.id);
     const now = new Date();
+    const timestampUpdate = getActivityTimestampUpdateForWrite({
+      context: 'systemJob',
+      userId: CALENDAR_SYSTEM_USER_ID,
+      now,
+    });
 
     await tx
       .update(activities)
       .set({
         activityStatusId: completedStatus.id,
-        lastUpdatedBy: CALENDAR_SYSTEM_USER_ID,
-        lastUpdatedDateTime: now,
+        ...timestampUpdate,
       })
       .where(inArray(activities.id, candidateIds));
 

@@ -61,6 +61,19 @@ export function getAuthAzureConfig(config) {
   return res;
 }
 
+/** Unwrap `{ success, data }` auth payloads (falls back to root for legacy shapes). */
+export function unwrapSuccessData(parsed) {
+  if (
+    parsed &&
+    parsed.success === true &&
+    parsed.data &&
+    typeof parsed.data === 'object'
+  ) {
+    return parsed.data;
+  }
+  return parsed;
+}
+
 export function postLogin(config) {
   const body = JSON.stringify({
     username: config.username,
@@ -75,7 +88,11 @@ export function postLogin(config) {
     'auth login returns accessToken': (r) => {
       try {
         const parsed = JSON.parse(r.body);
-        return typeof parsed.accessToken === 'string' && parsed.accessToken.length > 0;
+        const payload = unwrapSuccessData(parsed);
+        return (
+          typeof payload.accessToken === 'string' &&
+          payload.accessToken.length > 0
+        );
       } catch {
         return false;
       }
@@ -87,8 +104,9 @@ export function postLogin(config) {
 export function extractAccessToken(response) {
   try {
     const parsed = JSON.parse(response.body);
-    if (typeof parsed.accessToken === 'string') {
-      return parsed.accessToken;
+    const payload = unwrapSuccessData(parsed);
+    if (typeof payload.accessToken === 'string') {
+      return payload.accessToken;
     }
   } catch {
     // ignore
@@ -208,11 +226,11 @@ export function getGlobalHistory(config, token) {
   return res;
 }
 
-export function getReports(config, token) {
-  const res = http.get(urlFor(config, paths.reports), {
-    tags: { name: 'reports' },
+export function getLookupsReports(config, token) {
+  const res = http.get(urlFor(config, paths.lookupsReports), {
+    tags: { name: 'lookups_reports' },
     headers: authBearerHeaders(config, token),
   });
-  check(res, { 'reports status 2xx': isHttp2xx });
+  check(res, { 'lookups reports status 2xx': isHttp2xx });
   return res;
 }

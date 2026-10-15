@@ -35,8 +35,12 @@ type ActivityPageHeaderProps = {
   categories: string[];
   leadMinistry?: string | null;
   activityStatus?: unknown;
+  /** Public client-visible last updated. */
   lastUpdatedDateTime?: string | null;
   createdDateTime?: string | null;
+  /** Operational last updated for defer permission holders. */
+  adminOperationalLastUpdatedDateTime?: string | null;
+  showAdminOperationalTimestamp?: boolean;
   onHistoryClick?: () => void;
   /** Flags for activities assigned to the current user's teams. */
   flags?: ActivityFlagResponse[];
@@ -83,6 +87,8 @@ export function ActivityPageHeader({
   activityStatus,
   lastUpdatedDateTime,
   createdDateTime,
+  adminOperationalLastUpdatedDateTime,
+  showAdminOperationalTimestamp = false,
   onHistoryClick,
   flags,
   canFlag,
@@ -100,17 +106,27 @@ export function ActivityPageHeader({
   const [assignModalOpen, setAssignModalOpen] = useState(false);
 
   const statusDisplay = formatDisplayValue(activityStatus);
-  let updatedLabel: string | null = null;
-  if (
-    lastUpdatedDateTime &&
-    createdDateTime &&
-    lastUpdatedDateTime !== createdDateTime
-  ) {
-    const d = new Date(lastUpdatedDateTime);
-    updatedLabel = isSamePacificCalendarDay(d, new Date())
+
+  const formatUpdatedLabel = (
+    timestamp: string | null | undefined
+  ): string | null => {
+    if (!timestamp || !createdDateTime || timestamp === createdDateTime) {
+      return null;
+    }
+    const d = new Date(timestamp);
+    return isSamePacificCalendarDay(d, new Date())
       ? `today at ${formatPacificTimeWithAbbrev(d)}`
       : formatRelativeTime(d);
-  }
+  };
+
+  const updatedLabel = formatUpdatedLabel(lastUpdatedDateTime);
+  const adminUpdatedLabel =
+    showAdminOperationalTimestamp && adminOperationalLastUpdatedDateTime != null
+      ? (formatUpdatedLabel(adminOperationalLastUpdatedDateTime) ??
+        (adminOperationalLastUpdatedDateTime !== createdDateTime
+          ? formatRelativeTime(new Date(adminOperationalLastUpdatedDateTime))
+          : null))
+      : null;
 
   const sortedFlags = flags ?? [];
   const assignedFlags = uniqueActivityFlagsByAssignee(sortedFlags);
@@ -185,7 +201,10 @@ export function ActivityPageHeader({
 
       <div className="col-start-1 row-start-4 self-center sm:col-start-2 sm:row-start-2 sm:self-auto sm:text-right">
         <div className={timestampClassName}>
-          {updatedLabel ? <div>Updated {updatedLabel}</div> : null}
+          {updatedLabel ? <div>Last updated {updatedLabel}</div> : null}
+          {adminUpdatedLabel ? (
+            <div>Last updated (admin) {adminUpdatedLabel}</div>
+          ) : null}
           <div>
             Created{' '}
             {createdDateTime

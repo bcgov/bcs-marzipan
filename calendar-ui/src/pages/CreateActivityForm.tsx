@@ -311,7 +311,7 @@ export const CreateActivityForm: FC = () => {
             lookups={lookups}
             commsContactCandidates={commsContactCandidates}
             readOnly={isBlockedByRecurringLockout}
-            showChangedBadges={false}
+            showFieldChangeHighlights={false}
             leadTeamField={{
               options: leadTeamOptions,
               displayLabel: null,

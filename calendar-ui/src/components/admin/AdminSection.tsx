@@ -14,6 +14,8 @@ interface AdminSectionProps {
   className?: string;
   isLoading?: boolean;
   headerAction?: ReactNode;
+  /** Rendered next to the title (outside the collapse button). */
+  titleAction?: ReactNode;
 }
 
 /**
@@ -31,6 +33,7 @@ export function AdminSection({
   className,
   isLoading = false,
   headerAction,
+  titleAction,
 }: AdminSectionProps) {
   const [isOpen, setIsOpen] = useState(true);
   const contentId = useId();
@@ -44,13 +47,13 @@ export function AdminSection({
     >
       <div className="border-b border-slate-200 p-4 sm:p-6">
         <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 items-start gap-4">
             <button
               type="button"
               aria-controls={contentId}
               aria-expanded={isOpen}
               onClick={() => setIsOpen((open) => !open)}
-              className="flex w-full items-start gap-3 text-left focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className="flex items-start gap-3 text-left focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               <ChevronDown
                 aria-hidden="true"
@@ -74,6 +77,11 @@ export function AdminSection({
                 )}
               </span>
             </button>
+            {titleAction && (
+              <div className="flex shrink-0 items-center pt-0.5">
+                {titleAction}
+              </div>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-3">
             {headerAction}

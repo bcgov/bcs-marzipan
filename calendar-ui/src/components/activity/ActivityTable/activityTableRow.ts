@@ -75,7 +75,7 @@ export interface ActivityTableRow {
   // Status column
   activityStatus: string;
   activityStatusId: number;
-  /** Dotted field paths changed since last review (admin/system admin reviewers). */
+  /** Dotted field paths changed since last review (ACTIVITIES.REVIEW holders). */
   changedFieldsSinceReview?: string[];
   lastUpdatedDateTime: string;
   lastUpdatedBy: number;
@@ -189,8 +189,8 @@ export function mapActivityToTableRow(
     // Status
     activityStatus: activity.activityStatus,
     activityStatusId: activity.activityStatusId ?? 0,
-    lastUpdatedDateTime: activity.lastUpdatedDateTime,
-    lastUpdatedBy: activity.lastUpdatedBy,
+    lastUpdatedDateTime: activity.publicLastUpdatedDateTime,
+    lastUpdatedBy: activity.publicLastUpdatedBy,
     createdDateTime: activity.createdDateTime,
     editLock: 'editLock' in activity ? (activity.editLock ?? null) : null,
     changedFieldsSinceReview:

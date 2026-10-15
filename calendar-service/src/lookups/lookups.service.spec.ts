@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import type { SQL } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { themes } from '@corpcal/database/schema';
 
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
 import { DatabaseService } from '../database/database.service';
@@ -145,30 +149,86 @@ describe('LookupsService', () => {
     ]);
   });
 
-  it('returns event planners in admin sortOrder', async () => {
+  it('returns event planner users sorted by staff name', async () => {
     mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
       createChain(
         [
           {
-            id: 1,
-            name: 'Lana Popham',
-            displayName: 'Lana Popham Events',
+            id: 2,
+            adUsername: 'NSHARMA',
+            adDisplayName: 'Niki Sharma',
+            adEmail: 'n@gov.bc.ca',
           },
           {
-            id: 2,
-            name: 'Sharma, Niki',
-            displayName: 'Niki Sharma Events',
+            id: 1,
+            adUsername: 'LPOPHAM',
+            adDisplayName: 'Lana Popham',
+            adEmail: 'l@gov.bc.ca',
+          },
+          {
+            id: 3,
+            adUsername: null,
+            adDisplayName: null,
+            adEmail: 'planner@gov.bc.ca',
           },
         ],
-        'orderBy'
+        'where'
       )
     );
 
     const result = await service.getEventPlanners();
 
     expect(result.map((planner) => planner.label)).toEqual([
-      'Lana Popham Events',
-      'Niki Sharma Events',
+      'Lana Popham',
+      'Niki Sharma',
+      'planner@gov.bc.ca',
     ]);
+    expect(result.map((planner) => planner.value)).toEqual([1, 2, 3]);
+    expect(result.find((planner) => planner.value === 3)?.label).toBe(
+      'planner@gov.bc.ca'
+    );
+  });
+
+  describe('reorderLookup', () => {
+    const dialect = new PgDialect();
+
+    const mockUpdate = (where: ReturnType<typeof vi.fn>) => {
+      const set = vi.fn().mockReturnValue({ where });
+      mockDatabaseService.db.update = vi.fn().mockReturnValue({ set });
+      return set;
+    };
+
+    it('assigns 1..n positions in a single UPDATE limited to the given ids', async () => {
+      const where = vi.fn().mockResolvedValue(undefined);
+      const set = mockUpdate(where);
+
+      await service.reorderLookup('themes', [30, 10, 20], 7);
+
+      expect(mockDatabaseService.db.update).toHaveBeenCalledTimes(1);
+      expect(mockDatabaseService.db.update).toHaveBeenCalledWith(themes);
+
+      const values = set.mock.calls[0][0] as { sortOrder: SQL };
+      expect(values).toMatchObject({
+        lastUpdatedBy: 7,
+        lastUpdatedDateTime: expect.any(Date),
+      });
+      const sortOrder = dialect.sqlToQuery(values.sortOrder);
+      expect(sortOrder.sql).toBe(
+        'case "themes"."id" when $1::int then $2::int when $3::int then $4::int when $5::int then $6::int end'
+      );
+      expect(sortOrder.params).toEqual([30, 1, 10, 2, 20, 3]);
+
+      const condition = dialect.sqlToQuery(where.mock.calls[0][0] as SQL);
+      expect(condition.sql).toBe('"themes"."id" in ($1, $2, $3)');
+      expect(condition.params).toEqual([30, 10, 20]);
+    });
+
+    it('propagates database failures', async () => {
+      mockUpdate(vi.fn().mockRejectedValue(new Error('deadlock detected')));
+
+      await expect(service.reorderLookup('cities', [1, 2], 7)).rejects.toThrow(
+        'deadlock detected'
+      );
+    });
   });
 });

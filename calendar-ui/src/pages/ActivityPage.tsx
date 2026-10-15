@@ -1,8 +1,15 @@
 import { ErrorBoundary } from 'react-error-boundary';
-import type { FieldErrors } from 'react-hook-form';
+import { type FieldErrors, type UseFormReturn } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 
 import {
   buildActivityDisplayId,
@@ -36,6 +43,7 @@ import { ReviewActionButtonLabel } from '@/components/activity/activities/Review
 import { ReviewActivityModal } from '@/components/activity/activities/ReviewActivityModal';
 import { UnshareActivityModal } from '@/components/activity/activities/UnshareActivityModal';
 import {
+  ActivityConnectionStatusAlert,
   FormErrorFallback,
   LockBanner,
   LockBannerContent,
@@ -50,14 +58,23 @@ import {
   type LockHandoffToastHandle,
 } from '@/lib/lock-handoff-toast';
 
-import { cloneActivity, fetchActivityHistory } from '../api/activitiesApi';
+import {
+  cloneActivity,
+  fetchActivity,
+  fetchActivityHistory,
+} from '../api/activitiesApi';
 import { ApiError } from '../api/errors';
 import { cancelForceHandoff, requestForceHandoff } from '../api/locksApi';
 import { useActivityEditActions } from '../hooks/useActivityEditActions';
+import { useActivityEditConnectionUi } from '../hooks/useActivityEditConnectionUi';
 import { useActivityEditFormHydration } from '../hooks/useActivityEditFormHydration';
 import { useActivityFormSetup } from '../hooks/useActivityFormSetup';
 import { useActivityFormSubmitState } from '../hooks/useActivityFormSubmitState';
-import { useActivityLock } from '../hooks/useActivityLock';
+import {
+  useActivityLock,
+  type ActivityLockAcquireFailure,
+  type LockState,
+} from '../hooks/useActivityLock';
 import { useActivityWebSocket } from '../hooks/useActivityWebSocket';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -79,6 +96,24 @@ import { useElementIsIntersecting } from '../hooks/useElementIsIntersecting';
 import { useFavourites } from '../hooks/useFavourites';
 import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { useRecurringLockoutSession } from '../hooks/useRecurringLockoutSession';
+import { getActivityConcurrencyToken } from '../lib/activity-concurrency-token';
+import { resolveActivityEditResyncAction } from '../lib/activity-edit-resync';
+import {
+  connectionBlocksFieldInputUnlessActiveSession,
+  getActivityConfirmBlockedMessage,
+  getActivityConfirmBlockedNotice,
+  getActivityConnectionBlockedAlertMessage,
+  getActivityEditAcquireFailureToastMessage,
+  getActivityEditAcquireFailureToastVariant,
+  getActivityEditRecoveryBannerMessage,
+  getActivitySubmitBlockedToastTitle,
+  isActivityEditSessionActionsBlocked,
+  shouldShowActivityConnectionAlert,
+  shouldSuppressAcquireConnectionToast,
+  shouldWarnActivityEditBeforeUnload,
+  type ActivityEditConfirmAction,
+  type ActivityEditRecoveryState,
+} from '../lib/activity-edit-session-messages';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import {
   buildActivityListScrollRestoreReturnState,
@@ -92,17 +127,21 @@ import {
 import { resolveTranslationRequiredStatusId } from '../lib/activity-form-translation-required';
 import { computeFormChanges } from '../lib/activity-history-format';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
+import { isActivitySocketConnectionBlocked } from '../lib/activity-socket-connection-display';
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
-import { showErrorToast } from '../lib/error-toast';
-import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
+import { showActionBlockedToast, showErrorToast } from '../lib/error-toast';
+import {
+  focusFirstInvalidField,
+  focusRequiredField,
+  getMissingRequiredFieldItemsFromZodError,
+} from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 import {
   getRecurringEditLockoutErrorMessage,
   RECURRING_EDIT_LOCKOUT_UI_MESSAGE,
 } from '../lib/recurring-edit-lockout-error';
 import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
-import { revertActivityEditSession } from '../lib/revert-activity-edit-session';
 import { TOAST_DURATION_MS } from '../lib/toast-durations';
 import {
   getUnshareableTeamsForActivity,
@@ -118,6 +157,211 @@ export type ActivityPageProps = {
   activity: ActivityResponse;
   refreshActivity: () => Promise<void>;
 };
+
+type ActivityEditFormStickyBarProps = {
+  form: UseFormReturn<ActivityFormData>;
+  activityFormRef: RefObject<HTMLFormElement | null>;
+  isDirty: boolean;
+  isSubmitting: boolean;
+  isViewOnlyByPermission: boolean;
+  showRequestDeleteButton: boolean;
+  showDeleteButton: boolean;
+  canCloneActivity: boolean;
+  canReviewActivities: boolean;
+  lockState: LockState;
+  mayEditFormFields: boolean;
+  canCompleteActivities: boolean;
+  markCompleteEligible: boolean;
+  hasEditLock: boolean;
+  readOnly: boolean;
+  isBlockedByRecurringLockout: boolean;
+  editSessionActionsBlocked: boolean;
+  connectionBlocksEditStart: boolean;
+  ensureEditThen: (action: () => void) => void;
+  onRequestDelete: () => void;
+  onDelete: () => void;
+  onDiscard: () => void;
+  onClone: () => void;
+  onReview: () => void;
+  onComplete: () => void;
+};
+
+function ActivityEditFormStickyBar({
+  form,
+  activityFormRef,
+  isDirty,
+  isSubmitting,
+  isViewOnlyByPermission,
+  showRequestDeleteButton,
+  showDeleteButton,
+  canCloneActivity,
+  canReviewActivities,
+  lockState,
+  mayEditFormFields,
+  canCompleteActivities,
+  markCompleteEligible,
+  hasEditLock,
+  readOnly,
+  isBlockedByRecurringLockout,
+  editSessionActionsBlocked,
+  connectionBlocksEditStart,
+  ensureEditThen,
+  onRequestDelete,
+  onDelete,
+  onDiscard,
+  onClone,
+  onReview,
+  onComplete,
+}: ActivityEditFormStickyBarProps): React.ReactElement {
+  const { isFormValid, missingFieldItems, missingFieldsHelperText } =
+    useActivityFormSubmitState(form, {
+      getFieldLabel: getActivityFieldLabel,
+      schema: createActivityRequestSchema,
+    });
+
+  const actionFlags = useActivityEditActions({
+    lockState,
+    mayEditFormFields,
+    canReviewActivities,
+    canCompleteActivities,
+    markCompleteEligible,
+    hasEditLock,
+    canSubmitWithoutValidationErrors: isFormValid,
+    isSubmitting,
+    readOnly,
+    isBlockedByRecurringLockout,
+    isDirty,
+  });
+
+  return (
+    <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+        {isViewOnlyByPermission && (
+          <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-2 text-sm">
+            <Badge variant="secondary">View-only</Badge>
+            <span>You cannot edit this activity.</span>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {showRequestDeleteButton && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                ensureEditThen(onRequestDelete);
+              }}
+              disabled={
+                isSubmitting ||
+                actionFlags.isEditingBlocked ||
+                editSessionActionsBlocked
+              }
+            >
+              Request delete
+            </Button>
+          )}
+          {showDeleteButton && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                ensureEditThen(onDelete);
+              }}
+              disabled={
+                isSubmitting ||
+                actionFlags.isEditingBlocked ||
+                editSessionActionsBlocked
+              }
+            >
+              Delete
+            </Button>
+          )}
+          {isDirty && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="animate-in fade-in duration-200"
+              onClick={onDiscard}
+              disabled={isSubmitting}
+            >
+              Discard changes
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-4">
+        {missingFieldsHelperText != null && (
+          <ActivityFormMissingFieldsHint
+            helperText={missingFieldsHelperText}
+            fields={missingFieldItems}
+            onFieldSelect={(fieldName) =>
+              focusRequiredField(fieldName, {
+                root: activityFormRef.current,
+              })
+            }
+          />
+        )}
+        {canCloneActivity && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClone}
+            disabled={
+              isSubmitting ||
+              actionFlags.isEditingBlocked ||
+              isDirty ||
+              connectionBlocksEditStart
+            }
+          >
+            Clone
+          </Button>
+        )}
+        <Button
+          type="submit"
+          variant={
+            canReviewActivities || actionFlags.showCompleteAction
+              ? 'outline'
+              : 'default'
+          }
+          disabled={!actionFlags.canSubmitUpdate || editSessionActionsBlocked}
+        >
+          {isSubmitting ? 'Saving...' : 'Save'}
+        </Button>
+        {actionFlags.showReviewAction && (
+          <Button
+            type="button"
+            aria-label={isDirty ? 'Save and Review' : 'Review'}
+            disabled={
+              !actionFlags.reviewActionEnabled || editSessionActionsBlocked
+            }
+            className={
+              isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
+            }
+            onClick={() => ensureEditThen(onReview)}
+          >
+            <ReviewActionButtonLabel isDirty={isDirty} />
+          </Button>
+        )}
+        {actionFlags.showCompleteAction && !actionFlags.showReviewAction && (
+          <Button
+            type="button"
+            aria-label={isDirty ? 'Save and complete' : 'Complete'}
+            disabled={
+              !actionFlags.completeActionEnabled || editSessionActionsBlocked
+            }
+            className={
+              isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
+            }
+            onClick={() => ensureEditThen(onComplete)}
+          >
+            <CompleteActionButtonLabel isDirty={isDirty} />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function ActivityPage({
   activity,
@@ -156,15 +400,6 @@ export function ActivityPage({
     userId: user?.id,
     userTeamIds: user?.teamIds,
     hasCreateAny,
-  });
-  const {
-    isFormValid,
-    missingFields,
-    missingFieldItems,
-    missingFieldsHelperText,
-  } = useActivityFormSubmitState(form, {
-    getFieldLabel: getActivityFieldLabel,
-    schema: createActivityRequestSchema,
   });
   const requiredTranslationStatusId = useMemo(
     () =>
@@ -222,20 +457,25 @@ export function ActivityPage({
     canRequestDelete &&
     !canDelete;
 
+  const isEditingRef = useRef(false);
+  const resyncEditSessionRef = useRef<() => void>(() => {});
+
   const {
     lock,
     lockState,
     lockedByUsername,
-    acquireFailureReason,
     acquire,
     release,
     releaseWithRetry,
     refreshLockFromServer,
+    ensureLockForSubmit,
     sendHeartbeat,
     applyExternalLockReleased,
     setLockedByOther,
     clearLockedByOther,
-  } = useActivityLock(id, user?.id);
+  } = useActivityLock(id, user?.id, {
+    onServerLockGone: () => resyncEditSessionRef.current(),
+  });
 
   const {
     isBlocked: isBlockedByRecurringLockout,
@@ -251,6 +491,28 @@ export function ActivityPage({
   );
 
   const [isEditing, setIsEditing] = useState(false);
+  isEditingRef.current = isEditing;
+  const isDirty = form.formState.isDirty;
+  const isDirtyRef = useRef(false);
+  isDirtyRef.current = isDirty;
+  const [editRecoveryState, setEditRecoveryState] =
+    useState<ActivityEditRecoveryState>(null);
+  const editSessionTokenRef = useRef<string | null>(null);
+  const wasEditingRef = useRef(false);
+  const resyncGenerationRef = useRef(0);
+
+  useEffect(() => {
+    if (isEditing && !wasEditingRef.current) {
+      editSessionTokenRef.current = getActivityConcurrencyToken(activity);
+    } else if (isEditing && !isDirty) {
+      editSessionTokenRef.current = getActivityConcurrencyToken(activity);
+    } else if (!isEditing) {
+      editSessionTokenRef.current = null;
+      setEditRecoveryState(null);
+    }
+    wasEditingRef.current = isEditing;
+  }, [activity, isDirty, isEditing]);
+
   const [forceHandoffPending, setForceHandoffPending] = useState(false);
   const [cancelHandoffPending, setCancelHandoffPending] = useState(false);
   const [handoffAwaitingCompletion, setHandoffAwaitingCompletion] =
@@ -281,6 +543,7 @@ export function ActivityPage({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -295,7 +558,7 @@ export function ActivityPage({
   >(undefined);
   /**
    * Forces remount of form-body UI controls (combobox/popover/select internals)
-   * when edit lock is externally lost, so open overlays cannot remain stuck.
+   * when an intentional edit-session teardown needs to close internal overlays.
    */
   const [formUiEpoch, setFormUiEpoch] = useState(0);
 
@@ -307,13 +570,14 @@ export function ActivityPage({
     null
   );
   const { isFormHydrated, hydrationGeneration, initialFormDataRef } =
-    useActivityEditFormHydration(activity, lookups, form);
+    useActivityEditFormHydration(activity, lookups, form, isEditing && isDirty);
 
   const closeSubmitModals = useCallback(() => {
     setShowConfirmModal(false);
     setShowReviewModal(false);
     setShowCompleteModal(false);
     setValidatedData(null);
+    isSubmittingRef.current = false;
     setIsSubmitting(false);
   }, []);
 
@@ -373,7 +637,7 @@ export function ActivityPage({
     }
   }, [id]);
 
-  useActivityWebSocket(id, {
+  const activitySocketConnection = useActivityWebSocket(id, {
     onLockAcquired: (lockedBy) => {
       if (user?.id != null && lockedBy.userId === user?.id) {
         const wasHandoff = handoffAwaitingCompletionRef.current;
@@ -383,28 +647,36 @@ export function ActivityPage({
         } else {
           handoffToastHandleRef.current?.notifyLockAcquired();
         }
-        void refreshLockFromServer();
+        void refreshLockFromServer().then((next) => {
+          if (next === 'owned') {
+            setEditRecoveryState(null);
+          }
+        });
         return;
       }
-      if (lockState !== 'owned') {
-        setLockedByOther(lockedBy.username);
-      }
+      applyExternalLockReleased();
+      setEditRecoveryState(null);
+      setLockedByOther(lockedBy.username);
     },
+    onActivitySocketReconnect: () => resyncEditSessionRef.current(),
     onLockReleased: () => {
+      if (isSubmittingRef.current) {
+        return;
+      }
       clearLockedByOther();
-      void revertActivityEditSession({
-        isEditing,
-        initialFormData: initialFormDataRef.current,
-        form,
-        setFormUiEpoch,
-        setIsEditing,
-        applyExternalLockReleased,
-      }).then(() => {
-        void refreshActivity();
-      });
+      if (isEditingRef.current) {
+        resyncEditSessionRef.current();
+        return;
+      }
+      applyExternalLockReleased();
+      void refreshActivity();
     },
     onDataUpdated: () => {
-      void refreshActivity();
+      if (isEditingRef.current && isDirtyRef.current) {
+        resyncEditSessionRef.current();
+      } else {
+        void refreshActivity();
+      }
     },
     onLockHandoffPending: (payload) => {
       handoffToastHandleRef.current?.dispose();
@@ -449,18 +721,6 @@ export function ActivityPage({
     },
   });
 
-  const isDirty = form.formState.isDirty;
-
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
-
   const mayEdit =
     canEditActivity &&
     lockState !== 'locked-by-other' &&
@@ -491,11 +751,20 @@ export function ActivityPage({
   const canCloneActivity = canCreateActivity && mayEditFormFields;
   /** True when the user cannot edit for permission/status reasons (not merely waiting on a lock). */
   const isViewOnlyByPermission = !mayEditFormFields;
+  const connectionBlocksEditStart = isActivitySocketConnectionBlocked(
+    activitySocketConnection
+  );
+  const hasEditLock = lockState === 'owned';
+  /** Held server lock — allows offline field edits; excludes optimistic pre-acquire. */
+  const isActiveEditSession = isEditing && hasEditLock;
   const readOnly =
     lockState === 'locked-by-other' ||
     isBlockedByRecurringLockout ||
-    !mayEditFormFields;
-  const hasEditLock = lockState === 'owned';
+    !mayEditFormFields ||
+    connectionBlocksFieldInputUnlessActiveSession(
+      activitySocketConnection,
+      hasEditLock
+    );
   const isLockedByOther = lockState === 'locked-by-other';
   const showLockoutNotice = isBlockedByRecurringLockout && !isLockedByOther;
 
@@ -581,19 +850,173 @@ export function ActivityPage({
     LOCK_BANNER_INTERSECTION_ROOT_MARGIN,
     0
   );
-  const actionFlags = useActivityEditActions({
-    lockState,
+  const connectionAlertEligible = shouldShowActivityConnectionAlert({
     mayEditFormFields,
-    canReviewActivities,
-    canCompleteActivities,
-    markCompleteEligible,
-    hasEditLock,
-    canSubmitWithoutValidationErrors: isFormValid,
-    isSubmitting,
-    readOnly,
-    isBlockedByRecurringLockout: isBlockedByRecurringLockout,
-    isDirty,
+    socketConnection: activitySocketConnection,
+    isLockedByOther,
+    isBlockedByRecurringLockout,
   });
+
+  const { connectionAlert, notifyResyncOutcome } = useActivityEditConnectionUi({
+    activityId: id,
+    socketConnection: activitySocketConnection,
+    connectionAlertEligible,
+    isActiveEditSession,
+    editRecoveryState,
+  });
+  const [connectionAlertPresent, setConnectionAlertPresent] = useState(false);
+
+  const resyncEditSession = useCallback(() => {
+    const generation = ++resyncGenerationRef.current;
+    void (async () => {
+      if (!isEditingRef.current) {
+        const refreshResult = await refreshLockFromServer();
+        if (generation !== resyncGenerationRef.current) return;
+        notifyResyncOutcome(
+          refreshResult === 'unavailable' ? 'failure' : 'success'
+        );
+        return;
+      }
+
+      setEditRecoveryState('resyncing');
+      try {
+        const [latestActivity, serverLockState] = await Promise.all([
+          fetchActivity(id),
+          refreshLockFromServer(),
+        ]);
+        if (generation !== resyncGenerationRef.current) return;
+
+        const action = resolveActivityEditResyncAction({
+          editSessionToken: editSessionTokenRef.current,
+          latestActivity,
+          serverLockState,
+        });
+        if (action === 'continue-owned') {
+          setEditRecoveryState(null);
+          notifyResyncOutcome('success');
+          return;
+        }
+        if (action === 'server-changed') {
+          if (!isDirtyRef.current) {
+            editSessionTokenRef.current =
+              getActivityConcurrencyToken(latestActivity);
+            setEditRecoveryState(null);
+            await refreshActivity();
+            notifyResyncOutcome('failure');
+            return;
+          }
+          logger.warn(
+            'Activity edit session blocked: server version changed while dirty',
+            {
+              activityId: id,
+              previousToken: editSessionTokenRef.current,
+              latestToken: getActivityConcurrencyToken(latestActivity),
+              serverLockState,
+            }
+          );
+          setEditRecoveryState('server-changed');
+          notifyResyncOutcome('failure');
+          return;
+        }
+        if (action === 'blocked-by-other') {
+          setEditRecoveryState(null);
+          notifyResyncOutcome('failure');
+          return;
+        }
+        if (action === 'retry') {
+          setEditRecoveryState('retry');
+          notifyResyncOutcome('failure');
+          return;
+        }
+
+        const acquireResult = await ensureLockForSubmit();
+        if (generation !== resyncGenerationRef.current) return;
+        if (acquireResult === 'ready') {
+          setEditRecoveryState(null);
+          notifyResyncOutcome('success');
+          return;
+        }
+        if (acquireResult === 'blocked-by-other') {
+          setEditRecoveryState(null);
+          notifyResyncOutcome('failure');
+          return;
+        }
+        setEditRecoveryState(acquireResult);
+        notifyResyncOutcome('failure');
+      } catch {
+        if (generation === resyncGenerationRef.current) {
+          setEditRecoveryState('retry');
+          notifyResyncOutcome('failure');
+        }
+      }
+    })();
+  }, [
+    ensureLockForSubmit,
+    id,
+    notifyResyncOutcome,
+    refreshActivity,
+    refreshLockFromServer,
+  ]);
+
+  useEffect(() => {
+    resyncEditSessionRef.current = resyncEditSession;
+  }, [resyncEditSession]);
+
+  const editSessionActionsBlocked = useMemo(
+    () =>
+      isActivityEditSessionActionsBlocked(
+        activitySocketConnection,
+        editRecoveryState
+      ),
+    [activitySocketConnection, editRecoveryState]
+  );
+
+  const shouldWarnBeforeUnload = shouldWarnActivityEditBeforeUnload({
+    isDirty,
+    isActiveEditSession,
+    socketConnection: activitySocketConnection,
+    editRecoveryState,
+  });
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (shouldWarnBeforeUnload) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [shouldWarnBeforeUnload]);
+
+  const confirmBlockedNoticeByAction = useMemo(() => {
+    const forAction = (action: ActivityEditConfirmAction) =>
+      getActivityConfirmBlockedNotice(
+        action,
+        activitySocketConnection,
+        editRecoveryState
+      );
+    return {
+      save: forAction('save'),
+      review: forAction('review'),
+      complete: forAction('complete'),
+      delete: forAction('delete'),
+      requestDelete: forAction('request-delete'),
+      clone: forAction('clone'),
+      note: forAction('note'),
+    };
+  }, [activitySocketConnection, editRecoveryState]);
+
+  const editRecoveryMessage = useMemo(
+    () => getActivityEditRecoveryBannerMessage(editRecoveryState),
+    [editRecoveryState]
+  );
+
+  const showCompleteActionInReviewModal =
+    canCompleteActivities &&
+    markCompleteEligible &&
+    mayEditFormFields &&
+    !isLockedByOther &&
+    !isBlockedByRecurringLockout;
 
   const reviewModalActivityEndedAtLabel = useMemo(
     () =>
@@ -605,25 +1028,39 @@ export function ActivityPage({
     [activity.endDate, activity.endTime, activity.isAllDay]
   );
 
-  const getEditLockAcquireToastMessage = useCallback((): string => {
-    if (acquireFailureReason === 'time-lockout') {
-      return RECURRING_EDIT_LOCKOUT_UI_MESSAGE;
-    }
-    if (acquireFailureReason === 'other') {
-      // Distinct from a real lock conflict: request failed for an unrelated
-      // reason (network/server error), so don't claim someone else is editing.
-      return 'Could not start editing this activity. Please try again.';
-    }
-    return lockedByUsername
-      ? `Cannot edit. ${lockedByUsername} has started editing this activity.`
-      : EDIT_LOCK_CONFLICT_TOAST;
-  }, [acquireFailureReason, lockedByUsername]);
+  const notifyEditLockAcquireConflict = useCallback(
+    (failure: ActivityLockAcquireFailure) => {
+      if (
+        shouldSuppressAcquireConnectionToast(
+          failure.reason,
+          activitySocketConnection
+        )
+      ) {
+        return;
+      }
+      const message =
+        failure.reason === 'time-lockout'
+          ? RECURRING_EDIT_LOCKOUT_UI_MESSAGE
+          : getActivityEditAcquireFailureToastMessage(
+              failure.reason,
+              failure.lockedByUsername,
+              EDIT_LOCK_CONFLICT_TOAST
+            );
+      if (message.length === 0) {
+        return;
+      }
+      const variant = getActivityEditAcquireFailureToastVariant(failure.reason);
+      const toastOptions = { duration: TOAST_DURATION_MS.error };
+      if (variant === 'warning') {
+        toast.warning(message, toastOptions);
+      } else {
+        toast.error(message, toastOptions);
+      }
+    },
+    [activitySocketConnection]
+  );
 
-  const onEditLockAcquireConflict = useCallback(() => {
-    toast.error(getEditLockAcquireToastMessage());
-  }, [getEditLockAcquireToastMessage]);
-
-  useEditLockIntent({
+  const { tryStartEditSessionFromDirty } = useEditLockIntent({
     formHydrated: isFormHydrated,
     hydrationGeneration,
     mayEdit,
@@ -633,8 +1070,34 @@ export function ActivityPage({
     lockState,
     form,
     initialFormDataRef,
-    onAcquireConflict: onEditLockAcquireConflict,
+    onAcquireConflict: notifyEditLockAcquireConflict,
+    connectionBlocksEditStart,
   });
+
+  const prevActivitySocketConnectionRef = useRef(activitySocketConnection);
+  useEffect(() => {
+    const previous = prevActivitySocketConnectionRef.current;
+    prevActivitySocketConnectionRef.current = activitySocketConnection;
+    if (
+      previous !== 'connected' &&
+      activitySocketConnection === 'connected' &&
+      mayEditFormFields &&
+      !isLockedByOther &&
+      !isBlockedByRecurringLockout &&
+      !isEditing &&
+      lockState === 'idle'
+    ) {
+      tryStartEditSessionFromDirty();
+    }
+  }, [
+    activitySocketConnection,
+    isBlockedByRecurringLockout,
+    isEditing,
+    isLockedByOther,
+    lockState,
+    mayEditFormFields,
+    tryStartEditSessionFromDirty,
+  ]);
 
   const handleOpenDeleteModal = useCallback(async () => {
     if (normalizedStatus === 'delete_requested') {
@@ -661,29 +1124,57 @@ export function ActivityPage({
 
   const ensureEditThen = useCallback(
     (action: () => void) => {
+      if (connectionBlocksEditStart) {
+        if (isActivitySocketConnectionBlocked(activitySocketConnection)) {
+          toast.warning(
+            getActivityConnectionBlockedAlertMessage(
+              activitySocketConnection,
+              isActiveEditSession
+            ),
+            { duration: TOAST_DURATION_MS.error }
+          );
+        }
+        return;
+      }
       if (isEditing) {
         action();
         return;
       }
       setIsEditing(true);
-      void acquire().then((ok) => {
-        if (ok) {
+      void acquire().then((outcome) => {
+        if (outcome.ok) {
           action();
         } else {
           setIsEditing(false);
-          toast.error(getEditLockAcquireToastMessage());
+          notifyEditLockAcquireConflict({
+            reason: outcome.reason,
+            lockedByUsername: outcome.lockedByUsername,
+          });
         }
       });
     },
-    [isEditing, acquire, getEditLockAcquireToastMessage]
+    [
+      activitySocketConnection,
+      connectionBlocksEditStart,
+      isActiveEditSession,
+      isEditing,
+      acquire,
+      notifyEditLockAcquireConflict,
+    ]
   );
 
   const handleConfirmLeave = async () => {
+    const shouldReloadLatest = editRecoveryState === 'server-changed';
     setShowLeaveConfirm(false);
+    resyncGenerationRef.current += 1;
+    setEditRecoveryState(null);
     await release();
     setIsEditing(false);
     if (initialFormDataRef.current) {
       form.reset(initialFormDataRef.current);
+    }
+    if (shouldReloadLatest) {
+      await refreshActivity();
     }
   };
 
@@ -693,21 +1184,29 @@ export function ActivityPage({
   };
 
   type SubmitActivityMode =
-    | { kind: 'update'; validatedData: ActivityFormData; notes?: string }
-    | { kind: 'reviewOnly'; notes?: string }
+    | {
+        kind: 'update';
+        validatedData: ActivityFormData;
+        notes?: string;
+        renewPublicLastUpdated?: boolean;
+      }
+    | { kind: 'reviewOnly'; notes?: string; renewPublicLastUpdated?: boolean }
     | {
         kind: 'reviewWithSave';
         validatedData: ActivityFormData;
         notes?: string;
+        renewPublicLastUpdated?: boolean;
       }
     | {
         kind: 'completeOnly';
         notes?: string;
+        renewPublicLastUpdated?: boolean;
       }
     | {
         kind: 'completeWithSave';
         validatedData: ActivityFormData;
         notes?: string;
+        renewPublicLastUpdated?: boolean;
       };
 
   const runSubmitUpdate = useCallback(
@@ -715,20 +1214,93 @@ export function ActivityPage({
       if (isBlockedByRecurringLockout) {
         return;
       }
+      const submitAction: ActivityEditConfirmAction =
+        mode.kind === 'update'
+          ? 'save'
+          : mode.kind === 'reviewOnly' || mode.kind === 'reviewWithSave'
+            ? 'review'
+            : 'complete';
+      const submitBlockedMessage = getActivityConfirmBlockedMessage(
+        submitAction,
+        activitySocketConnection,
+        editRecoveryState
+      );
+      if (submitBlockedMessage != null) {
+        showActionBlockedToast({
+          title: getActivitySubmitBlockedToastTitle(submitAction),
+          description: submitBlockedMessage,
+        });
+        return;
+      }
 
       const submitGeneration = lockoutSubmitGenerationRef.current;
+      isSubmittingRef.current = true;
       setIsSubmitting(true);
+      const lockReady = await ensureLockForSubmit();
+      if (lockReady !== 'ready') {
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
+        if (lockReady === 'unavailable') {
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description:
+              'Cannot reach the server. Check your connection and try again.',
+            variant: 'warning',
+          });
+        } else if (lockReady === 'blocked-by-other') {
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description: 'This activity is being edited by another user.',
+            variant: 'warning',
+          });
+        } else if (lockReady === 'time-lockout') {
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description: RECURRING_EDIT_LOCKOUT_UI_MESSAGE,
+            variant: 'warning',
+          });
+        } else if (lockReady === 'unauthorized') {
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description:
+              'Your session or permissions no longer allow this update. Sign in again and retry.',
+            variant: 'error',
+          });
+        } else if (lockReady === 'server-error') {
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description:
+              'The server could not verify the edit lock. Please try again.',
+            variant: 'error',
+          });
+        } else {
+          showActionBlockedToast({
+            title: getActivitySubmitBlockedToastTitle(submitAction),
+            description:
+              'You must acquire an edit lock before updating this activity.',
+            variant: 'warning',
+          });
+        }
+        return;
+      }
       try {
         let submitData: UpdateActivityRequest;
+
+        const renewField =
+          mode.renewPublicLastUpdated === true
+            ? { renewPublicLastUpdated: true as const }
+            : {};
 
         if (mode.kind === 'reviewOnly') {
           submitData = {
             ...buildMarkReviewedOnlyPayload(mode.notes),
+            ...renewField,
           };
         } else if (mode.kind === 'completeOnly') {
           submitData = {
             markAsCompleted: true,
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+            ...renewField,
           };
         } else {
           const opts: UpdatePayloadOptions =
@@ -764,13 +1336,18 @@ export function ActivityPage({
               opts
             ),
             ...(mode.notes ? { activityHistoryNotes: mode.notes } : {}),
+            ...renewField,
           };
         }
 
-        if (activity.lastUpdatedDateTime) {
+        const concurrencyToken = getActivityConcurrencyToken({
+          lastUpdatedDateTime: activity.lastUpdatedDateTime,
+          publicLastUpdatedDateTime: activity.publicLastUpdatedDateTime,
+        });
+        if (concurrencyToken) {
           submitData = {
             ...submitData,
-            ifUnmodifiedSince: activity.lastUpdatedDateTime,
+            ifUnmodifiedSince: concurrencyToken,
           };
         }
 
@@ -816,6 +1393,7 @@ export function ActivityPage({
         const message = getRecurringEditLockoutErrorMessage(err);
         showErrorToast(err, message);
       } finally {
+        isSubmittingRef.current = false;
         setIsSubmitting(false);
         if (submitGeneration === lockoutSubmitGenerationRef.current) {
           setShowConfirmModal(false);
@@ -831,18 +1409,29 @@ export function ActivityPage({
       form,
       activity.title,
       activity.lastUpdatedDateTime,
+      activity.publicLastUpdatedDateTime,
       canViewActivity,
       applyExternalLockReleased,
       navigate,
       requiredTranslationStatusId,
       isBlockedByRecurringLockout,
       lockoutSubmitGenerationRef,
+      ensureLockForSubmit,
+      activitySocketConnection,
+      editRecoveryState,
     ]
   );
 
-  const handleConfirmedSubmit = async (notes?: string) => {
+  const handleConfirmedSubmit = async (
+    payload: import('@/components/activity/activities/EditActivityConfirmModal').ActivitySaveConfirmPayload
+  ) => {
     if (!validatedData) return;
-    await runSubmitUpdate({ kind: 'update', validatedData, notes });
+    await runSubmitUpdate({
+      kind: 'update',
+      validatedData,
+      notes: payload.notes,
+      renewPublicLastUpdated: payload.renewPublicLastUpdated,
+    });
   };
 
   const onError = (errors: FieldErrors<ActivityFormData>) => {
@@ -852,9 +1441,17 @@ export function ActivityPage({
       fieldOrder: getActivityFormSectionFieldKeys(),
       root: activityFormRef.current,
     });
+    const parsed = createActivityRequestSchema.safeParse(form.getValues());
+    const missingLabels = !parsed.success
+      ? getMissingRequiredFieldItemsFromZodError(
+          parsed.error,
+          getActivityFieldLabel,
+          getActivityFormSectionFieldKeys()
+        ).map((field) => field.label)
+      : [];
     const detail =
-      missingFields.length > 0
-        ? `Required fields missing: ${missingFields.join(', ')}`
+      missingLabels.length > 0
+        ? `Required fields missing: ${missingLabels.join(', ')}`
         : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
@@ -863,10 +1460,10 @@ export function ActivityPage({
   };
 
   const handleReviewConfirm = async (
-    notes?: string,
-    markAsCompleted?: boolean,
-    unassignMe?: boolean
+    payload: import('@/components/activity/activities/ReviewActivityModal').ReviewActivityConfirmPayload
   ) => {
+    const { notes, markAsCompleted, unassignMe, renewPublicLastUpdated } =
+      payload;
     if (unassignMe && user?.id != null) {
       const myFlags = (activity.flags ?? []).filter(
         (flag) => flag.assigneeId === user.id
@@ -916,10 +1513,15 @@ export function ActivityPage({
             kind: 'completeWithSave',
             validatedData: data,
             notes,
+            renewPublicLastUpdated,
           });
         }, onError)();
       } else {
-        await runSubmitUpdate({ kind: 'completeOnly', notes });
+        await runSubmitUpdate({
+          kind: 'completeOnly',
+          notes,
+          renewPublicLastUpdated,
+        });
       }
       return;
     }
@@ -929,24 +1531,37 @@ export function ActivityPage({
           kind: 'reviewWithSave',
           validatedData: data,
           notes,
+          renewPublicLastUpdated,
         });
       }, onError)();
     } else {
-      await runSubmitUpdate({ kind: 'reviewOnly', notes });
+      await runSubmitUpdate({
+        kind: 'reviewOnly',
+        notes,
+        renewPublicLastUpdated,
+      });
     }
   };
 
-  const handleCompleteConfirm = async (notes?: string) => {
+  const handleCompleteConfirm = async (
+    payload: import('@/components/activity/activities/EditActivityConfirmModal').ActivitySaveConfirmPayload
+  ) => {
+    const { notes, renewPublicLastUpdated } = payload;
     if (isDirty) {
       await form.handleSubmit(async (data) => {
         await runSubmitUpdate({
           kind: 'completeWithSave',
           validatedData: data,
           notes,
+          renewPublicLastUpdated,
         });
       }, onError)();
     } else {
-      await runSubmitUpdate({ kind: 'completeOnly', notes });
+      await runSubmitUpdate({
+        kind: 'completeOnly',
+        notes,
+        renewPublicLastUpdated,
+      });
     }
   };
 
@@ -1078,10 +1693,14 @@ export function ActivityPage({
 
   return (
     <ErrorBoundary FallbackComponent={FormErrorFallback}>
+      <ActivityConnectionStatusAlert
+        display={connectionAlert}
+        onPresentChange={setConnectionAlertPresent}
+      />
       <ActivityFormStickyHeader
         onBack={handleGoBack}
         lockStrip={
-          isLockedByOther ? (
+          connectionAlertPresent ? undefined : isLockedByOther ? (
             <LockBannerContent
               lockedByUsername={lockedByUsername}
               onRequestTakeLock={
@@ -1107,8 +1726,9 @@ export function ActivityPage({
           ) : undefined
         }
         lockStripVisible={
-          (isLockedByOther && !lockBannerInView) ||
-          (showLockoutNotice && !lockoutBannerInView)
+          !connectionAlertPresent &&
+          ((isLockedByOther && !lockBannerInView) ||
+            (showLockoutNotice && !lockoutBannerInView))
         }
       />
       <ActivityPageHeader
@@ -1118,7 +1738,13 @@ export function ActivityPage({
         categories={categories}
         leadMinistry={activity.leadMinistry ?? null}
         activityStatus={activity.activityStatus ?? null}
-        lastUpdatedDateTime={activity.lastUpdatedDateTime ?? null}
+        lastUpdatedDateTime={activity.publicLastUpdatedDateTime ?? null}
+        adminOperationalLastUpdatedDateTime={
+          activity.lastUpdatedDateTime ?? null
+        }
+        showAdminOperationalTimestamp={hasPermission(
+          PERMISSIONS.ACTIVITIES.PUBLIC_LAST_UPDATED_DEFER
+        )}
         createdDateTime={activity.createdDateTime ?? null}
         onHistoryClick={() => setHistoryOpen(true)}
         flags={activity.flags ?? []}
@@ -1186,6 +1812,31 @@ export function ActivityPage({
         onConfirm={handleUnshareConfirm}
         isPending={unshareMutation.isPending}
       />
+      {editRecoveryMessage != null && (
+        <div
+          className="bg-muted border-border mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm"
+          role="alert"
+        >
+          <span>{editRecoveryMessage}</span>
+          {editRecoveryState === 'server-changed' ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowLeaveConfirm(true)}
+            >
+              Discard and reload
+            </Button>
+          ) : editRecoveryState !== 'resyncing' ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => resyncEditSessionRef.current()}
+            >
+              Retry
+            </Button>
+          ) : null}
+        </div>
+      )}
       {isLockedByOther && (
         <div ref={setLockBannerSentinel}>
           <LockBanner
@@ -1255,6 +1906,7 @@ export function ActivityPage({
             commsContactCandidates={commsContactCandidates}
             activityId={id}
             readOnly={readOnly}
+            showFieldChangeHighlights={canReviewActivities}
             reviewerChangedPaths={reviewerChangedPaths}
             leadTeamField={{
               options: leadTeamOptions,
@@ -1267,120 +1919,33 @@ export function ActivityPage({
               optionsFetching: leadTeamOptionsFetching,
             }}
           />
-          <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 py-4">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
-              {isViewOnlyByPermission && (
-                <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-2 text-sm">
-                  <Badge variant="secondary">View-only</Badge>
-                  <span>You cannot edit this activity.</span>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {showRequestDeleteButton && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      ensureEditThen(() => setShowRequestDeleteModal(true));
-                    }}
-                    disabled={isSubmitting || actionFlags.isEditingBlocked}
-                  >
-                    Request delete
-                  </Button>
-                )}
-                {showDeleteButton && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      ensureEditThen(() => void handleOpenDeleteModal());
-                    }}
-                    disabled={isSubmitting || actionFlags.isEditingBlocked}
-                  >
-                    Delete
-                  </Button>
-                )}
-                {isDirty && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="animate-in fade-in duration-200"
-                    onClick={() => setShowLeaveConfirm(true)}
-                    disabled={isSubmitting}
-                  >
-                    Discard changes
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-4">
-              {missingFieldsHelperText != null && (
-                <ActivityFormMissingFieldsHint
-                  helperText={missingFieldsHelperText}
-                  fields={missingFieldItems}
-                  onFieldSelect={(fieldName) =>
-                    focusRequiredField(fieldName, {
-                      root: activityFormRef.current,
-                    })
-                  }
-                />
-              )}
-              {canCloneActivity && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCloneModal(true)}
-                  disabled={
-                    isSubmitting || actionFlags.isEditingBlocked || isDirty
-                  }
-                >
-                  Clone
-                </Button>
-              )}
-              <Button
-                type="submit"
-                variant={
-                  canReviewActivities || actionFlags.showCompleteAction
-                    ? 'outline'
-                    : 'default'
-                }
-                disabled={!actionFlags.canSubmitUpdate}
-              >
-                {isSubmitting ? 'Saving...' : 'Save'}
-              </Button>
-              {actionFlags.showReviewAction && (
-                <Button
-                  type="button"
-                  aria-label={isDirty ? 'Save and Review' : 'Review'}
-                  disabled={!actionFlags.reviewActionEnabled}
-                  className={
-                    isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
-                  }
-                  onClick={() => ensureEditThen(() => setShowReviewModal(true))}
-                >
-                  <ReviewActionButtonLabel isDirty={isDirty} />
-                </Button>
-              )}
-              {actionFlags.showCompleteAction &&
-                !actionFlags.showReviewAction && (
-                  <Button
-                    type="button"
-                    aria-label={isDirty ? 'Save and complete' : 'Complete'}
-                    disabled={!actionFlags.completeActionEnabled}
-                    className={
-                      isDirty && !isFormValid ? 'cursor-not-allowed' : undefined
-                    }
-                    onClick={() =>
-                      ensureEditThen(() => setShowCompleteModal(true))
-                    }
-                  >
-                    <CompleteActionButtonLabel isDirty={isDirty} />
-                  </Button>
-                )}
-            </div>
-          </div>
+          <ActivityEditFormStickyBar
+            form={form}
+            activityFormRef={activityFormRef}
+            isDirty={isDirty}
+            isSubmitting={isSubmitting}
+            isViewOnlyByPermission={isViewOnlyByPermission}
+            showRequestDeleteButton={showRequestDeleteButton}
+            showDeleteButton={showDeleteButton}
+            canCloneActivity={canCloneActivity}
+            canReviewActivities={canReviewActivities}
+            lockState={lockState}
+            mayEditFormFields={mayEditFormFields}
+            canCompleteActivities={canCompleteActivities}
+            markCompleteEligible={markCompleteEligible}
+            hasEditLock={hasEditLock}
+            readOnly={readOnly}
+            isBlockedByRecurringLockout={isBlockedByRecurringLockout}
+            editSessionActionsBlocked={editSessionActionsBlocked}
+            connectionBlocksEditStart={connectionBlocksEditStart}
+            ensureEditThen={ensureEditThen}
+            onRequestDelete={() => setShowRequestDeleteModal(true)}
+            onDelete={() => void handleOpenDeleteModal()}
+            onDiscard={() => setShowLeaveConfirm(true)}
+            onClone={() => setShowCloneModal(true)}
+            onReview={() => setShowReviewModal(true)}
+            onComplete={() => setShowCompleteModal(true)}
+          />
         </form>
       </Form>
       <ActivityHistory
@@ -1399,6 +1964,7 @@ export function ActivityPage({
               ? lockoutInlineMessage || 'Editing is temporarily locked.'
               : undefined
         }
+        noteConfirmBlockedNotice={confirmBlockedNoticeByAction.note}
       />
       <DiscardActivityChangesDialog
         open={showLeaveConfirm}
@@ -1414,8 +1980,10 @@ export function ActivityPage({
           if (!open) setValidatedData(null);
         }}
         changes={confirmModalChanges}
-        onConfirm={(notes) => void handleConfirmedSubmit(notes)}
+        onConfirm={(payload) => void handleConfirmedSubmit(payload)}
         isSubmitting={isSubmitting}
+        confirmDisabled={editSessionActionsBlocked}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.save}
       />
       <ReviewActivityModal
         open={showReviewModal}
@@ -1423,29 +1991,33 @@ export function ActivityPage({
         changes={reviewModalChanges}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes, markAsCompleted, unassignMe) =>
-          void handleReviewConfirm(notes, markAsCompleted, unassignMe)
-        }
+        onConfirm={(payload) => void handleReviewConfirm(payload)}
         displayId={displayId}
-        showMarkAsCompletedOption={actionFlags.showCompleteAction}
+        showMarkAsCompletedOption={showCompleteActionInReviewModal}
         activityEndedAtLabel={reviewModalActivityEndedAtLabel}
         showUnassignMeOption={(activity.flags ?? []).some(
           (f) => f.assigneeId === user?.id
         )}
+        confirmDisabled={editSessionActionsBlocked}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.review}
       />
       <CompleteActivityModal
         open={showCompleteModal}
         onOpenChange={setShowCompleteModal}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
-        onConfirm={(notes) => void handleCompleteConfirm(notes)}
+        onConfirm={(payload) => void handleCompleteConfirm(payload)}
         displayId={displayId}
+        confirmDisabled={editSessionActionsBlocked}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.complete}
       />
       <RequestDeleteActivityModal
         open={showRequestDeleteModal}
         onOpenChange={setShowRequestDeleteModal}
         onConfirm={handleRequestDeleteConfirm}
         isSubmitting={isRequestDeleteSubmitting}
+        confirmDisabled={editSessionActionsBlocked}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.requestDelete}
       />
       <CloneActivityModal
         open={showCloneModal}
@@ -1456,6 +2028,7 @@ export function ActivityPage({
         isSubmitting={isCloning}
         showMarkAsReviewed={canReviewActivities}
         onConfirm={(payload) => void handleCloneConfirm(payload)}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.clone}
       />
       <DeleteActivityModal
         open={showDeleteModal}
@@ -1469,6 +2042,8 @@ export function ActivityPage({
         onHardDelete={handleHardDelete}
         isSubmitting={isDeleteSubmitting}
         initialNotes={deleteModalInitialNotes}
+        confirmDisabled={editSessionActionsBlocked}
+        confirmBlockedNotice={confirmBlockedNoticeByAction.delete}
       />
     </ErrorBoundary>
   );

@@ -30,3 +30,20 @@ export const activityCompletionSettingsSchema: z.ZodType<ActivityCompletionSetti
         { message: 'Buffer must be 0, 15, 30, or 45 minutes' }
       ),
   });
+
+export const activityCompletionPreviewSchema = z.object({
+  count: z.number().int().nonnegative(),
+  items: z.array(
+    z.object({
+      displayId: z.string().nullable(),
+      title: z.string(),
+    })
+  ),
+  listTruncated: z.boolean(),
+});
+
+export const activityCompletionBatchRunResultSchema = z.object({
+  updated: z.number().int().nonnegative(),
+  skipped: z.boolean(),
+  skipReason: z.enum(['in_flight', 'advisory_lock', 'error']).optional(),
+});

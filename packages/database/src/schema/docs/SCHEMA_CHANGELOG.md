@@ -2,6 +2,12 @@
 
 Append-only log of notable schema and constraint changes. Regenerate SQL migrations with Drizzle Kit from `packages/database` when Drizzle schema changes.
 
+## 2026-10-02 — Event planners from users; teams "Share with" flag
+
+- **`users.is_event_planner`** (boolean, default false): users offered as Event planner options on activities.
+- **`activity_event_planners.event_planner_id`** now references `users.id` (was `event_planners.id`). Existing rows were converted to freeform `event_planner_name` in the migration. The `event_planners` lookup table is no longer used.
+- **`teams.appears_in_share_with`** (boolean, default true): whether a team is offered in activity "Share with" options; GCPE teams 1-7 are set to false.
+
 ## 2026-03-31 — Activity saved filters: global scope across contexts
 
 - **`activity_saved_filters`** no longer stores `context_key`; saved filters are now reused across activity-list contexts/tabs.

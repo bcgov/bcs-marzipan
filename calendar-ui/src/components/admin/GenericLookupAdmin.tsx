@@ -1,7 +1,15 @@
+import { arrayMove } from '@dnd-kit/sortable';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { Edit, Search, Trash2, XCircle } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import api from '@/api/axios';
 import {
@@ -20,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   ClientValidationError,
   showErrorToast,
@@ -77,6 +86,12 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   /** When false, hides active/inactive filter (entities without isActive). Default true. */
   showStatusFilter?: boolean;
   /**
+   * Adds an "Alphabetical" toggle. Turning it on saves an A-Z `sortOrder`; when off,
+   * rows can be dragged and each drop saves the new order. Requires a
+   * `PUT {apiEndpoint}/order` endpoint accepting `{ ids }`.
+   */
+  enableManualSort?: boolean;
+  /**
    * When set, runs instead of the default POST/PATCH mutations (e.g. multi-step saves).
    * Caller should invalidate relevant queries; this component only closes the modal on success.
    */
@@ -111,9 +126,12 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   additionalInvalidateKeys,
   softDelete,
   showStatusFilter = true,
+  enableManualSort = false,
   submitOverride,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
+  const [manualChosen, setManualChosen] = useState(false);
+  const alphaToggleId = useId();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [search, setSearch] = useState('');
   const [submitOverridePending, setSubmitOverridePending] = useState(false);
@@ -140,13 +158,31 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     }
   }, [showModal]);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, isFetchedAfterMount } = useQuery({
     queryKey,
     queryFn: queryFn,
     // Always refetch when an admin section mounts so Settings reflects any
     // mutation or seed/schema change from another tab or the backend.
     refetchOnMount: 'always',
   });
+
+  const sortLabel = (item: T) => item.displayName || getItemName(item);
+  const compareBySortOrder = (a: T, b: T) =>
+    (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+    sortLabel(a).localeCompare(sortLabel(b));
+
+  // Re-derived on every data change (mount refetch, CRUD, other tabs) so the switch can't go stale.
+  const savedOrderIsAlphabetical = useMemo(() => {
+    if (!data) return true;
+    const ordered = [...data].sort(compareBySortOrder);
+    return ordered.every(
+      (item, i) =>
+        i === 0 || sortLabel(ordered[i - 1]).localeCompare(sortLabel(item)) <= 0
+    );
+    // compareBySortOrder/sortLabel only depend on getItemName.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, getItemName]);
+  const manualMode = manualChosen || !savedOrderIsAlphabetical;
 
   const invalidateListCaches = () => {
     void queryClient.invalidateQueries({ queryKey: lookupQueryKeys.root });
@@ -212,7 +248,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   const filteredData = useMemo(() => {
     if (!data) return [];
     const normalizedSearch = search.trim().toLowerCase();
-    return data.filter((item) => {
+    const matched = data.filter((item) => {
       const matchesStatus =
         !showStatusFilter ||
         filter === 'all' ||
@@ -225,7 +261,73 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
           searchableText.toLowerCase().includes(normalizedSearch))
       );
     });
-  }, [data, filter, getItemName, search, showStatusFilter]);
+    if (!enableManualSort) return matched;
+    return [...matched].sort(compareBySortOrder);
+    // compareBySortOrder only depends on getItemName, which is listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, enableManualSort, filter, getItemName, search, showStatusFilter]);
+
+  const reorderMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      await api.put(`${apiEndpoint}/order`, { ids });
+    },
+    onSuccess: () => {
+      invalidateListCaches();
+    },
+    onError: (error: unknown) => {
+      invalidateListCaches();
+      showErrorToast(error);
+    },
+  });
+
+  const saveOrder = (orderedIds: number[]) => {
+    const position = new Map(orderedIds.map((id, index) => [id, index + 1]));
+    queryClient.setQueryData<T[]>(queryKey, (old) =>
+      old?.map((item) => ({
+        ...item,
+        sortOrder: position.get(item.id) ?? item.sortOrder,
+      }))
+    );
+    reorderMutation.mutate(orderedIds);
+  };
+
+  // Ordering controls wait for the mount refetch so they never act on a cached list.
+  const orderControlsReady = isFetchedAfterMount && !reorderMutation.isPending;
+
+  const canReorder =
+    enableManualSort &&
+    manualMode &&
+    search.trim() === '' &&
+    (!showStatusFilter || filter === 'all');
+
+  const handleReorder = (activeId: string, overId: string) => {
+    if (!orderControlsReady) return;
+    const from = filteredData.findIndex((i) => String(i.id) === activeId);
+    const to = filteredData.findIndex((i) => String(i.id) === overId);
+    if (from < 0 || to < 0) return;
+    setManualChosen(true);
+    saveOrder(arrayMove(filteredData, from, to).map((i) => i.id));
+  };
+
+  const handleAlphabeticalChange = (checked: boolean) => {
+    if (!checked) {
+      setManualChosen(true);
+      return;
+    }
+    if (
+      !confirm(
+        `Sort all ${title.toLowerCase()} A-Z? This replaces the current custom order.`
+      )
+    ) {
+      return;
+    }
+    setManualChosen(false);
+    saveOrder(
+      [...(data ?? [])]
+        .sort((a, b) => sortLabel(a).localeCompare(sortLabel(b)))
+        .map((i) => i.id)
+    );
+  };
 
   const baseColumns: ColumnDef<T>[] = useMemo(
     () => [
@@ -246,13 +348,17 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         ),
       },
       ...additionalColumns,
-      {
-        accessorKey: 'sortOrder',
-        header: 'Sort order',
-        cell: ({ row }) => (
-          <span className="text-slate-600">{row.original.sortOrder}</span>
-        ),
-      },
+      ...(enableManualSort
+        ? []
+        : [
+            {
+              accessorKey: 'sortOrder',
+              header: 'Sort order',
+              cell: ({ row }) => (
+                <span className="text-slate-600">{row.original.sortOrder}</span>
+              ),
+            } as ColumnDef<T>,
+          ]),
       {
         accessorKey: 'isActive',
         header: 'Status',
@@ -302,7 +408,13 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         ),
       },
     ],
-    [additionalColumns, deleteMutation, entityType, getItemName]
+    [
+      additionalColumns,
+      deleteMutation,
+      enableManualSort,
+      entityType,
+      getItemName,
+    ]
   );
 
   const handleSubmit = async () => {
@@ -383,6 +495,19 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       onAdd={handleOpenModal}
       addButtonLabel={`Add ${entityType}`}
       isLoading={isLoading}
+      titleAction={
+        enableManualSort ? (
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <label htmlFor={alphaToggleId}>Alphabetical</label>
+            <Switch
+              id={alphaToggleId}
+              checked={!manualMode}
+              disabled={!orderControlsReady}
+              onCheckedChange={handleAlphabeticalChange}
+            />
+          </div>
+        ) : undefined
+      }
       headerAction={
         <div className="flex flex-wrap items-center justify-end gap-2">
           <div className="relative">
@@ -424,7 +549,12 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       )}
       {filteredData && filteredData.length > 0 && (
         <div className="max-h-[min(480px,60vh)] overflow-auto rounded-lg border border-slate-200">
-          <GenericDataTable data={filteredData} columns={baseColumns} />
+          <GenericDataTable
+            data={filteredData}
+            columns={baseColumns}
+            onReorder={canReorder ? handleReorder : undefined}
+            reorderDisabled={!orderControlsReady}
+          />
         </div>
       )}
       {filteredData && filteredData.length === 0 && (

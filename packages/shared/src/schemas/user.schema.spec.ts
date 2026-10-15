@@ -23,10 +23,12 @@ describe('userListItemSchema', () => {
       roleId: 2,
       roleName: 'Editor',
       isActive: true,
+      isEventPlanner: true,
       teams: [{ teamId: 1, teamName: 'Team One', role: 'member' }],
     });
     expect(result.id).toBe(1);
     expect(result.roleName).toBe('Editor');
+    expect(result.isEventPlanner).toBe(true);
     expect(result.teams).toHaveLength(1);
     expect(result.teams[0].role).toBe('member');
   });
@@ -40,9 +42,11 @@ describe('userListItemSchema', () => {
       roleId: 1,
       roleName: 'Admin',
       isActive: false,
+      isEventPlanner: false,
       teams: [],
     });
     expect(result.adUsername).toBeNull();
+    expect(result.isEventPlanner).toBe(false);
     expect(result.teams).toEqual([]);
   });
 });
@@ -359,6 +363,7 @@ describe('userDetailSchema', () => {
     roleId: 2,
     roleName: 'Editor',
     isActive: true,
+    isEventPlanner: false,
     teams: [],
     notes: null,
     flagColour: null,
@@ -367,6 +372,7 @@ describe('userDetailSchema', () => {
   it('accepts null flagColour', () => {
     const result = userDetailSchema.parse(base);
     expect(result.flagColour).toBeNull();
+    expect(result.isEventPlanner).toBe(false);
   });
 
   it('accepts a hex flagColour string', () => {

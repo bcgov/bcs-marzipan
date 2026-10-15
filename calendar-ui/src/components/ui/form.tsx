@@ -23,21 +23,27 @@ import {
   type ReactNode,
 } from 'react';
 
+import { pathsIncludeFieldChange } from '@/components/activity/ActivityTable/activityTableRowDisplay';
+import {
+  FORM_FIELD_LABEL_HIGHLIGHT_CLASS,
+  getFormFieldHighlightScreenReaderText,
+} from '@/lib/form-field-highlight';
+
 import { cn } from '../../lib/utils';
-import { FormFieldIndicator } from './form-field-changed-indicator';
 import { Label } from './label';
 
 const Form = FormProvider;
 
 type FormDisplayOptionsContextValue = {
-  showChangedBadges: boolean;
+  /** Yellow label highlights for unsaved + since-review paths (ACTIVITIES.REVIEW on edit). */
+  showFieldChangeHighlights: boolean;
   /** Dotted field paths flagged as changed since the last Reviewed snapshot. Empty set = no review diff. */
   reviewerChangedPaths: ReadonlySet<string>;
 };
 
 const FormDisplayOptionsContext = createContext<FormDisplayOptionsContextValue>(
   {
-    showChangedBadges: true,
+    showFieldChangeHighlights: true,
     reviewerChangedPaths: new Set(),
   }
 );
@@ -47,18 +53,18 @@ export function useFormDisplayOptions(): FormDisplayOptionsContextValue {
 }
 
 type FormDisplayOptionsProviderProps = {
-  showChangedBadges?: boolean;
+  showFieldChangeHighlights?: boolean;
   reviewerChangedPaths?: ReadonlySet<string>;
   children: ReactNode;
 };
 
 function FormDisplayOptionsProvider({
-  showChangedBadges = true,
+  showFieldChangeHighlights = true,
   reviewerChangedPaths,
   children,
 }: FormDisplayOptionsProviderProps): ReactElement {
   const value = {
-    showChangedBadges,
+    showFieldChangeHighlights,
     reviewerChangedPaths: reviewerChangedPaths ?? new Set<string>(),
   };
   return (
@@ -165,6 +171,50 @@ function RequiredFieldIndicator({
   );
 }
 
+/** Walks RHF `dirtyFields` for dotted paths (e.g. `venueAddress.city`). */
+function dirtyFieldAtPath(dirty: unknown, path: string): boolean {
+  const parts = path.split('.');
+  let cur: unknown = dirty;
+  for (const p of parts) {
+    if (cur == null || typeof cur !== 'object') return false;
+    cur = (cur as Record<string, unknown>)[p];
+  }
+  return cur === true;
+}
+
+type FormPathsFieldHighlightState = {
+  highlight: boolean;
+  screenReaderText: string | null;
+};
+
+/**
+ * Label highlight for composite group labels (Date, Time, Venue) when any nested path is dirty or needs review.
+ */
+function useFormPathsFieldHighlight(
+  names: readonly string[]
+): FormPathsFieldHighlightState {
+  const { showFieldChangeHighlights, reviewerChangedPaths } =
+    useFormDisplayOptions();
+  const { control } = useFormContext();
+  const { dirtyFields } = useFormState({ control });
+
+  if (!showFieldChangeHighlights) {
+    return { highlight: false, screenReaderText: null };
+  }
+
+  const anyDirty = names.some((path) => dirtyFieldAtPath(dirtyFields, path));
+  const anyReview = names.some((path) =>
+    pathsIncludeFieldChange(reviewerChangedPaths, path)
+  );
+  const highlight = anyDirty || anyReview;
+  return {
+    highlight,
+    screenReaderText: highlight
+      ? getFormFieldHighlightScreenReaderText(anyDirty, anyReview)
+      : null,
+  };
+}
+
 const FormLabel = forwardRef<
   ElementRef<typeof LabelPrimitive.Root>,
   ComponentPropsWithoutRef<typeof LabelPrimitive.Root> & {
@@ -185,7 +235,8 @@ const FormLabel = forwardRef<
   ) => {
     const { showError, formItemId, isDirty, name } = useFormField();
     const { setAriaRequired } = useContext(FormItemContext)!;
-    const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
+    const { showFieldChangeHighlights, reviewerChangedPaths } =
+      useFormDisplayOptions();
 
     useLayoutEffect(() => {
       if (!showRequired) return;
@@ -195,95 +246,43 @@ const FormLabel = forwardRef<
       };
     }, [showRequired, setAriaRequired]);
 
+    const needsReview = pathsIncludeFieldChange(reviewerChangedPaths, name);
+    const highlight =
+      showFieldChangeHighlights &&
+      showDirtyIndicator &&
+      (isDirty || needsReview);
+    const screenReaderText = highlight
+      ? getFormFieldHighlightScreenReaderText(isDirty, needsReview)
+      : null;
+
     return (
       <Label
         ref={ref}
         className={cn(
           showError && 'text-destructive',
           className,
-          'flex items-center gap-2',
-          showChangedBadges && showDirtyIndicator && 'min-h-[18px]'
+          'flex items-center gap-2'
         )}
         htmlFor={formItemId}
         {...props}
       >
-        <span className="inline-flex items-center gap-1">
+        <span
+          className={cn(
+            'inline-flex items-center gap-1',
+            highlight && FORM_FIELD_LABEL_HIGHLIGHT_CLASS
+          )}
+        >
           {children}
           {showRequired ? <RequiredFieldIndicator className="inline" /> : null}
+          {screenReaderText ? (
+            <span className="sr-only">{screenReaderText}</span>
+          ) : null}
         </span>
-        {showChangedBadges &&
-          showDirtyIndicator &&
-          (isDirty ? (
-            <FormFieldIndicator variant="changed" />
-          ) : reviewerChangedPaths.has(name) ? (
-            <FormFieldIndicator variant="review" />
-          ) : null)}
       </Label>
     );
   }
 );
 FormLabel.displayName = 'FormLabel';
-
-/** Walks RHF `dirtyFields` for dotted paths (e.g. `venueAddress.city`). */
-function dirtyFieldAtPath(dirty: unknown, path: string): boolean {
-  const parts = path.split('.');
-  let cur: unknown = dirty;
-  for (const p of parts) {
-    if (cur == null || typeof cur !== 'object') return false;
-    cur = (cur as Record<string, unknown>)[p];
-  }
-  return cur === true;
-}
-
-/**
- * Shows the changed marker for a field name without nesting the control under {@link FormLabel}
- * (e.g. composite date/time rows, sr-only labels).
- * Prioritises the RHF dirty indicator; falls back to review-diff indicator when not dirty.
- */
-function FormFieldDirtyIndicator({
-  name,
-  className,
-}: {
-  name: string;
-  className?: string;
-}) {
-  const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
-  const { control } = useFormContext();
-  const { dirtyFields } = useFormState({ control });
-  if (!showChangedBadges) return null;
-  if (dirtyFieldAtPath(dirtyFields, name)) {
-    return <FormFieldIndicator variant="changed" className={className} />;
-  }
-  if (reviewerChangedPaths.has(name)) {
-    return <FormFieldIndicator variant="review" className={className} />;
-  }
-  return null;
-}
-
-/**
- * One “Changed” marker when any of the given RHF paths is dirty (e.g. Date / Time groups).
- */
-function FormAggregateDirtyIndicator({
-  names,
-  className,
-}: {
-  names: readonly string[];
-  className?: string;
-}) {
-  const { showChangedBadges, reviewerChangedPaths } = useFormDisplayOptions();
-  const { control } = useFormContext();
-  const { dirtyFields } = useFormState({ control });
-  if (!showChangedBadges) return null;
-  const anyDirty = names.some((path) => dirtyFieldAtPath(dirtyFields, path));
-  if (anyDirty) {
-    return <FormFieldIndicator variant="changed" className={className} />;
-  }
-  const anyReview = names.some((path) => reviewerChangedPaths.has(path));
-  if (anyReview) {
-    return <FormFieldIndicator variant="review" className={className} />;
-  }
-  return null;
-}
 
 const FormControl = forwardRef<
   ElementRef<typeof Slot>,
@@ -364,8 +363,7 @@ export {
   FormDescription,
   FormMessage,
   FormField,
-  FormFieldDirtyIndicator,
-  FormAggregateDirtyIndicator,
   FormDisplayOptionsProvider,
   RequiredFieldIndicator,
+  useFormPathsFieldHighlight,
 };

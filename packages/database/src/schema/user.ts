@@ -28,8 +28,7 @@ export const users = pgTable(
       .references(() => roles.id),
     groupId: integer('group_id'), // FK to Groups TODO
     isActive: boolean('is_active').notNull().default(true),
-
-    // Active Directory
+    isEventPlanner: boolean('is_event_planner').notNull().default(false),
     externalId: varchar('external_id', { length: 255 }), // Active Directory user ID
     adUsername: varchar('ad_username', { length: 255 }), // Active Directory username
     adDisplayName: varchar('ad_display_name', { length: 255 }), // Active Directory display name

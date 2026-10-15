@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Res,
 } from '@nestjs/common';
@@ -23,7 +24,7 @@ import {
 import type { Response } from 'express';
 import { z } from 'zod';
 
-import { DYNAMIC_LOOKUP_CACHE_SECONDS, type AuthUser } from '@corpcal/shared';
+import { SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 import type {
   ActivityTeamSharingResponse,
   CategoryLookupItem,
@@ -33,7 +34,6 @@ import type {
   MinistryLookupItem,
   OrganizationLookupItem,
   ThemeLookupItem,
-  VenuePresetItem,
 } from '@corpcal/shared/api/types';
 import {
   createActivityStatusRequestSchema,
@@ -47,6 +47,7 @@ import {
   createThemeRequestSchema,
   createTranslationLanguageRequestSchema,
   createVenuePresetRequestSchema,
+  reorderLookupRequestSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
   updateCityRequestSchema,
@@ -63,6 +64,7 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
   ActivityStatusResponseWrapperDto,
+  ActivityTeamSharingResponseWrapperDto,
   CategoryResponseWrapperDto,
   CityResponseWrapperDto,
   CommsMaterialResponseWrapperDto,
@@ -82,6 +84,7 @@ import {
   MinistryGroupArrayResponseWrapperDto,
   MinistryGroupResponseWrapperDto,
   MinistryResponseWrapperDto,
+  ReorderLookupDto,
   TagResponseWrapperDto,
   ThemeResponseWrapperDto,
   TranslationLanguageResponseWrapperDto,
@@ -106,7 +109,11 @@ import { parseCommaSeparatedIds } from '../common/utils/parse-query-ids';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import { TeamsService } from '../teams/teams.service';
 import { lookupGetCacheControl } from './cache-control';
-import { LookupsService } from './lookups.service';
+import { LookupsService, type VenuePresetAdminItem } from './lookups.service';
+import {
+  isReorderableLookup,
+  REORDERABLE_LOOKUPS,
+} from './reorderable-lookups';
 
 @ApiTags('lookups')
 @Controller('lookups')
@@ -120,11 +127,15 @@ export class LookupsController {
   ) {}
 
   @ApiOperation({
-    summary: 'Teams and ministry quick-share for activity Shared with',
+    summary: 'Active teams and ministry quick-share for activity Shared with',
     description:
-      'Returns active teams (same list as GET /teams) plus quick-share group definitions.',
+      'Returns active teams with Share With visibility metadata plus quick-share group definitions.',
   })
-  @ApiResponse({ status: 200, description: 'Teams and quick-share config' })
+  @ApiResponse({
+    status: 200,
+    description: 'Teams and quick-share config',
+    type: ActivityTeamSharingResponseWrapperDto,
+  })
   @Get('activity-team-sharing')
   @Header('Cache-Control', lookupGetCacheControl())
   async getActivityTeamSharing(): Promise<{
@@ -135,7 +146,13 @@ export class LookupsController {
       this.teamsService.findAll(true),
       this.lookupsService.getActivityTeamSharingQuickShare(),
     ]);
-    return { success: true, data: { teams, quickShare } };
+    return {
+      success: true,
+      data: {
+        teams,
+        quickShare,
+      },
+    };
   }
 
   @ApiOperation({
@@ -171,9 +188,7 @@ export class LookupsController {
       includeAll === 'true' && user.permissions.includes('lookups.manage');
     res?.setHeader(
       'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
     );
     const data = await this.lookupsService.getCategories(shouldIncludeAll);
     return { success: true, data };
@@ -283,6 +298,75 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({
+    summary: 'Get system roles available for permission editing',
+  })
+  @Get('roles/admin')
+  @Header('Cache-Control', 'no-store')
+  @RequirePermission('system.manage_permissions')
+  async getPermissionAdminRoles(
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    this.ensureSystemAdmin(user);
+    const data = await this.lookupsService.getPermissionAdminRoles();
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Get the full permission catalog for a system role',
+  })
+  @Get('roles/admin/:id/permissions')
+  @Header('Cache-Control', 'no-store')
+  @RequirePermission('system.manage_permissions')
+  async getAdminRolePermissions(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    this.ensureSystemAdmin(user);
+    const roleId = Number(id);
+    if (!Number.isInteger(roleId))
+      throw new NotFoundException('Role not found');
+    const data = await this.lookupsService.getAdminRolePermissions(roleId);
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Replace editable permission assignments for a system role',
+  })
+  @Put('roles/admin/:id/permissions')
+  @RequirePermission('system.manage_permissions')
+  async updateAdminRolePermissions(
+    @Param('id') id: string,
+    @Body(
+      new ZodValidationPipe(
+        z.object({
+          permissionIds: z.array(z.number().int().positive()).max(500),
+        })
+      )
+    )
+    body: { permissionIds: number[] },
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    const roleId = Number(id);
+    if (!Number.isInteger(roleId))
+      throw new NotFoundException('Role not found');
+    this.ensureSystemAdmin(user);
+    if (
+      roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN &&
+      user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+    ) {
+      throw new ForbiddenException(
+        'Only System Admin role members can change System Admin permissions.'
+      );
+    }
+    const data = await this.lookupsService.updateAdminRolePermissions(
+      roleId,
+      body.permissionIds,
+      user.id
+    );
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get permissions for all roles' })
   @ApiResponse({ status: 200, description: 'Permissions map retrieved' })
   @Get('roles/permissions')
@@ -363,7 +447,7 @@ export class LookupsController {
       !user.permissions.includes('system.manage_permissions')
     ) {
       throw new ForbiddenException(
-        'Only System Admin users can manage permission visibility.'
+        'Only System Admin users can manage permissions.'
       );
     }
   }
@@ -397,49 +481,6 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Bulk update permission visibility (admin only)' })
-  @ApiResponse({ status: 200, description: 'Permissions updated' })
-  @ApiResponse({ status: 400, description: 'Validation failed' })
-  @ApiResponse({ status: 403, description: 'Caller is not system admin' })
-  @ApiBody({
-    description: 'Array of permission visibility updates',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'number', example: 12 },
-          showInUserManagement: { type: 'boolean', example: true },
-        },
-        required: ['id', 'showInUserManagement'],
-      },
-      example: [
-        { id: 12, showInUserManagement: true },
-        { id: 15, showInUserManagement: false },
-      ],
-    },
-  })
-  @Patch('permissions/visibility')
-  @RequirePermission('system.manage_permissions')
-  async bulkUpdatePermissionVisibility(
-    @Body(
-      new ZodValidationPipe(
-        z.array(z.object({ id: z.number(), showInUserManagement: z.boolean() }))
-      )
-    )
-    body: { id: number; showInUserManagement: boolean }[],
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: any[] }> {
-    this.ensureSystemAdmin(user);
-    const results = await this.lookupsService.bulkUpdatePermissionVisibility(
-      body.map((b) => ({
-        id: b.id,
-        showInUserManagement: b.showInUserManagement,
-      })),
-      user.id
-    );
-    return { success: true, data: results };
-  }
   @ApiOperation({
     summary: 'Get all users',
     description:
@@ -533,9 +574,7 @@ export class LookupsController {
     // Non-admin path: short private cache to reduce server load.
     res?.setHeader(
       'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
     );
     const data = await this.lookupsService.getTags(shouldIncludeAll);
     return { success: true, data };
@@ -789,9 +828,7 @@ export class LookupsController {
       includeAll === 'true' && user.permissions.includes('lookups.manage');
     res?.setHeader(
       'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
     );
     const data =
       await this.lookupsService.getTranslationLanguages(shouldIncludeAll);
@@ -912,7 +949,10 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Get all event planners' })
+  @ApiOperation({
+    summary: 'Get all event planners',
+    description: 'Active users flagged as event planners.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Event planners retrieved successfully',
@@ -1035,6 +1075,28 @@ export class LookupsController {
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.createCity(body, user.id);
     return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Set lookup display order' })
+  @ApiResponse({ status: 200, description: 'Order saved' })
+  @ApiParam({
+    name: 'entity',
+    description: `One of: ${REORDERABLE_LOOKUPS.join(', ')}`,
+  })
+  @ApiBody({ type: ReorderLookupDto })
+  @RequirePermission('lookups.manage')
+  @Put(':entity/order')
+  async reorderLookup(
+    @Param('entity') entity: string,
+    @Body(new ZodValidationPipe(reorderLookupRequestSchema))
+    body: ReorderLookupDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean }> {
+    if (!isReorderableLookup(entity)) {
+      throw new NotFoundException(`Lookup '${entity}' cannot be reordered`);
+    }
+    await this.lookupsService.reorderLookup(entity, body.ids, user.id);
+    return { success: true };
   }
 
   @ApiOperation({ summary: 'Update a city' })
@@ -1345,7 +1407,15 @@ export class LookupsController {
   @ApiOperation({
     summary: 'Get venue presets',
     description:
-      'Returns admin-defined venue presets for the activity form. Pinned presets are shown as badges.',
+      'Returns active admin-defined venue presets for the activity form (pinned presets are also shown as badges). Admins with the `lookups.manage` permission can pass `includeAll=true` to retrieve all presets including inactive; this path sets `Cache-Control: no-store`.',
+  })
+  @ApiQuery({
+    name: 'includeAll',
+    required: false,
+    type: String,
+    enum: ['true'],
+    description:
+      'When set to `"true"` and the caller has the `lookups.manage` permission, returns all venue presets including inactive.',
   })
   @ApiResponse({
     status: 200,
@@ -1353,12 +1423,21 @@ export class LookupsController {
     type: VenuePresetArrayResponseWrapperDto,
   })
   @Get('venue-presets')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getVenuePresets(): Promise<{
+  async getVenuePresets(
+    @CurrentUser() user: AuthUser,
+    @Query('includeAll') includeAll?: string,
+    @Res({ passthrough: true }) res?: Response
+  ): Promise<{
     success: boolean;
-    data: VenuePresetItem[];
+    data: VenuePresetAdminItem[];
   }> {
-    const data = await this.lookupsService.getVenuePresets();
+    const shouldIncludeAll =
+      includeAll === 'true' && user.permissions.includes('lookups.manage');
+    res?.setHeader(
+      'Cache-Control',
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
+    );
+    const data = await this.lookupsService.getVenuePresets(shouldIncludeAll);
     return { success: true, data };
   }
 
@@ -1375,7 +1454,7 @@ export class LookupsController {
     @Body(new ZodValidationPipe(createVenuePresetRequestSchema))
     body: CreateVenuePresetDto,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: VenuePresetItem }> {
+  ): Promise<{ success: boolean; data: VenuePresetAdminItem }> {
     const data = await this.lookupsService.createVenuePreset(body, user.id);
     return { success: true, data };
   }
@@ -1395,7 +1474,7 @@ export class LookupsController {
     @Body(new ZodValidationPipe(updateVenuePresetRequestSchema))
     body: UpdateVenuePresetDto,
     @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: VenuePresetItem }> {
+  ): Promise<{ success: boolean; data: VenuePresetAdminItem }> {
     const data = await this.lookupsService.updateVenuePreset(
       Number(id),
       body,
@@ -1431,7 +1510,7 @@ export class LookupsController {
       },
     },
   })
-  @Post('address/find')
+  @Post('addresses/search')
   async findAddresses(
     @Body() body: { searchTerm: string; country?: string; lastId?: string }
   ): Promise<{ success: boolean; data: any[] }> {
@@ -1456,7 +1535,7 @@ export class LookupsController {
       },
     },
   })
-  @Post('address/retrieve')
+  @Post('addresses/resolve')
   async retrieveAddress(
     @Body() body: { id: string }
   ): Promise<{ success: boolean; data: any }> {

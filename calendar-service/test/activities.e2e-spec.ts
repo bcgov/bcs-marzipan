@@ -229,40 +229,6 @@ describe('ActivitiesController (API integration)', () => {
     });
   });
 
-  describe('/activities/categories (GET)', () => {
-    it('should return all activity categories', () => {
-      return createAuthRequest(app, accessToken)
-        .get('/activities/categories')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data');
-          expect(Array.isArray(res.body.data)).toBe(true);
-        });
-    });
-
-    it('should return X-Correlation-ID header (UUID v4) when not provided', () => {
-      return createAuthRequest(app, accessToken)
-        .get('/activities/categories')
-        .expect(200)
-        .expect((res) => {
-          expect(res.headers['x-correlation-id']).toBeDefined();
-          expect(res.headers['x-correlation-id']).toMatch(UUID_V4_REGEX);
-        });
-    });
-
-    it('should echo X-Correlation-ID when provided', () => {
-      const uuid = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
-      return createAuthRequest(app, accessToken)
-        .get('/activities/categories')
-        .set('X-Correlation-ID', uuid)
-        .expect(200)
-        .expect((res) => {
-          expect(res.headers['x-correlation-id']).toBe(uuid);
-        });
-    });
-  });
-
   describe('/activities/:id (GET)', () => {
     it('should return a specific activity by ID', () => {
       return createAuthRequest(app, accessToken)
@@ -418,7 +384,8 @@ describe('ActivitiesController (API integration)', () => {
       const meRes = await createAuthRequest(app, accessToken)
         .get('/auth/me')
         .expect(200);
-      const myTeamIds = (meRes.body?.teamIds as number[] | undefined) ?? [];
+      const myTeamIds =
+        (meRes.body?.data?.teamIds as number[] | undefined) ?? [];
       expect(myTeamIds.length).toBeGreaterThan(0);
       const flagTeamId = myTeamIds[0];
 
@@ -509,7 +476,8 @@ describe('ActivitiesController (API integration)', () => {
       const meRes = await createAuthRequest(app, accessToken)
         .get('/auth/me')
         .expect(200);
-      const myTeamIds = (meRes.body?.teamIds as number[] | undefined) ?? [];
+      const myTeamIds =
+        (meRes.body?.data?.teamIds as number[] | undefined) ?? [];
       expect(myTeamIds.length).toBeGreaterThan(0);
       flagTeamId = myTeamIds[0]!;
 
@@ -540,12 +508,14 @@ describe('ActivitiesController (API integration)', () => {
         .expect(200);
 
       expect(syncRes.body).toHaveProperty('success', true);
-      expect(Array.isArray(syncRes.body.addedAssigneeIds)).toBe(true);
-      expect(syncRes.body.addedAssigneeIds).toEqual(
+      expect(Array.isArray(syncRes.body.data.addedAssigneeIds)).toBe(true);
+      expect(syncRes.body.data.addedAssigneeIds).toEqual(
         expect.arrayContaining(assigneeIds)
       );
-      expect(syncRes.body.addedAssigneeIds).toHaveLength(assigneeIds.length);
-      expect(syncRes.body.removedAssigneeIds).toEqual([]);
+      expect(syncRes.body.data.addedAssigneeIds).toHaveLength(
+        assigneeIds.length
+      );
+      expect(syncRes.body.data.removedAssigneeIds).toEqual([]);
 
       const getRes = await createAuthRequest(app, accessToken)
         .get(`/activities/${flagTargetId}`)

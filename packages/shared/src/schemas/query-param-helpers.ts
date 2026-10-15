@@ -22,13 +22,13 @@ export function parseIdListFromQueryParam(param: string | null): number[] {
   return ids;
 }
 
-function parseCommaSeparatedInts(val: string): number[] {
+function parseCommaSeparatedInts(val: string): number[] | null {
   const ids: number[] = [];
   for (const segment of val.split(',')) {
     const parsed = parseIntegerQuerySegment(segment);
     if (parsed == null) {
       if (segment.trim() !== '') {
-        return [];
+        return null;
       }
       continue;
     }
@@ -36,6 +36,20 @@ function parseCommaSeparatedInts(val: string): number[] {
   }
   return ids;
 }
+
+const commaSeparatedIntsFromString = z
+  .string()
+  .transform((value, context): number[] => {
+    const parsed = parseCommaSeparatedInts(value);
+    if (parsed === null) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Expected a comma-separated list of integers',
+      });
+      return z.NEVER;
+    }
+    return parsed;
+  });
 
 function parseCommaSeparatedStrings(val: string): string[] {
   return val
@@ -52,14 +66,23 @@ const intFromString = z
 /** HTTP query param: comma-separated or repeated ints → number[]; empty → undefined. */
 export function commaSeparatedIntArray() {
   return z
-    .union([
-      z.array(intFromString),
-      z.string().transform(parseCommaSeparatedInts),
-    ])
+    .union([z.array(intFromString), commaSeparatedIntsFromString])
     .optional()
     .transform((val) =>
       val == null || (Array.isArray(val) && val.length === 0) ? undefined : val
     );
+}
+
+/**
+ * Required comma-separated positive ints. Any invalid segment fails validation
+ * (strict — do not mix with lenient per-segment parsing).
+ */
+export function requiredCommaSeparatedIntArray() {
+  return commaSeparatedIntsFromString.pipe(
+    z
+      .array(z.number().int().positive())
+      .min(1, 'At least one valid ID is required')
+  );
 }
 
 /** HTTP query param: comma-separated or repeated strings → string[]; empty → undefined. */

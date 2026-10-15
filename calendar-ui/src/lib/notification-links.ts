@@ -3,7 +3,10 @@ import type { NotificationItem } from '@corpcal/shared/api/types';
 export function getNotificationTargetPath(
   item: NotificationItem
 ): string | null {
-  if (item.entityType === 'activity') {
+  if (
+    item.entityType === 'activity' &&
+    item.eventType !== 'calendar.activity.hard_deleted'
+  ) {
     return `/activity/${item.entityId}`;
   }
 
