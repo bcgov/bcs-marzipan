@@ -1,4 +1,4 @@
-import { useWatch, type UseFormReturn } from 'react-hook-form';
+import type { UseFormReturn } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useEffect, useRef } from 'react';
 
@@ -41,7 +41,6 @@ export function useEditLockSession({
   sendHeartbeat,
 }: UseEditLockSessionOptions): void {
   const idleWarnShownRef = useRef(false);
-  const watched = useWatch({ control: form.control });
   const idleExpiresAt = lock?.idleExpiresAt;
 
   useEffect(() => {
@@ -49,12 +48,32 @@ export function useEditLockSession({
   }, [activityId, idleExpiresAt]);
 
   useEffect(() => {
-    if (lockState !== 'owned' || !isEditing) return;
-    const t = setTimeout(() => {
-      void sendHeartbeat();
-    }, DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [watched, lockState, isEditing, sendHeartbeat]);
+    if (lockState !== 'owned' || !isEditing) return undefined;
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const scheduleDebouncedHeartbeat = () => {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(() => {
+        timeoutId = undefined;
+        void sendHeartbeat();
+      }, DEBOUNCE_MS);
+    };
+
+    scheduleDebouncedHeartbeat();
+    const subscription = form.watch(() => {
+      scheduleDebouncedHeartbeat();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [form, isEditing, lockState, sendHeartbeat]);
 
   useEffect(() => {
     if (lockState !== 'owned' || !isEditing) return;

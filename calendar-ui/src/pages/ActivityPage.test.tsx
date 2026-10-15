@@ -571,7 +571,7 @@ describe('ActivityPage optimistic inline edit', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('updates the discard change count and enables Save after edits when lock is owned', async () => {
+  it('shows Discard changes and enables Save after edits when lock is owned', async () => {
     mockLockState = 'owned';
     const user = userEvent.setup();
     renderActivityPage();
@@ -584,7 +584,7 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard 1 change/i })
+        screen.getByRole('button', { name: /^Discard changes$/i })
       ).toBeInTheDocument()
     );
     await waitFor(() =>
@@ -595,7 +595,7 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard 2 changes/i })
+        screen.getByRole('button', { name: /^Discard changes$/i })
       ).toBeInTheDocument()
     );
   });
@@ -673,12 +673,14 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard 1 change/i })
+        screen.getByRole('button', { name: /^Discard changes$/i })
       ).toBeInTheDocument()
     );
     expect(issueCheckbox).toBeChecked();
 
-    await user.click(screen.getByRole('button', { name: /Discard 1 change/i }));
+    await user.click(
+      screen.getByRole('button', { name: /^Discard changes$/i })
+    );
 
     const dialog = await screen.findByRole('dialog');
     expect(
@@ -1154,7 +1156,7 @@ describe('ActivityPage clone button', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard 1 change/i })
+        screen.getByRole('button', { name: /^Discard changes$/i })
       ).toBeInTheDocument()
     );
     const cloneBtn = screen.getByRole('button', { name: /^Clone$/i });
