@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 
-import { isActivityConfirmConnectionBlockedMessage } from '@/lib/activity-confirm-submit-blocked-message';
+import type { ActivityConfirmBlockedNotice } from '@/lib/activity-edit-session-messages';
 import { cn } from '@/lib/utils';
 
 type ActivityConfirmSubmitBlockedNoticeProps = {
@@ -26,40 +26,30 @@ export function ActivityConfirmSubmitBlockedNotice({
 }
 
 export function ActivityConfirmHeaderBlockedNotice({
-  confirmBlockedMessage,
+  notice,
 }: {
-  confirmBlockedMessage: string | null;
+  notice?: ActivityConfirmBlockedNotice | null;
 }): ReactElement | null {
-  if (
-    confirmBlockedMessage == null ||
-    confirmBlockedMessage.length === 0 ||
-    isActivityConfirmConnectionBlockedMessage(confirmBlockedMessage)
-  ) {
+  if (notice?.variant !== 'recovery' || notice.message.length === 0) {
     return null;
   }
 
-  return <ActivityConfirmSubmitBlockedNotice message={confirmBlockedMessage} />;
+  return <ActivityConfirmSubmitBlockedNotice message={notice.message} />;
 }
 
 export function ActivityConfirmPrimaryActionGroup({
-  confirmBlockedMessage,
+  notice,
   children,
 }: {
-  confirmBlockedMessage: string | null;
+  notice?: ActivityConfirmBlockedNotice | null;
   children: ReactNode;
 }): ReactElement {
-  const connectionMessage =
-    confirmBlockedMessage != null &&
-    isActivityConfirmConnectionBlockedMessage(confirmBlockedMessage)
-      ? confirmBlockedMessage
-      : null;
-
   return (
     <div className="flex flex-col items-end gap-1">
       {children}
-      {connectionMessage != null ? (
+      {notice?.variant === 'connection' ? (
         <ActivityConfirmSubmitBlockedNotice
-          message={connectionMessage}
+          message={notice.message}
           className="max-w-xs text-right sm:max-w-sm"
         />
       ) : null}

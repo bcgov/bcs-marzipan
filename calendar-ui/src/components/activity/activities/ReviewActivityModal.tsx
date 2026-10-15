@@ -15,6 +15,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
+import type { ActivityConfirmBlockedNotice } from '@/lib/activity-edit-session-messages';
 
 import {
   ActivityConfirmHeaderBlockedNotice,
@@ -45,7 +46,8 @@ interface ReviewActivityModalProps {
   activityEndedAtLabel?: string | null;
   /** When true, show "Unassign me" checkbox (current user is an assignee on this activity). */
   showUnassignMeOption?: boolean;
-  confirmBlockedMessage?: string | null;
+  confirmDisabled?: boolean;
+  confirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }
 
 export function ReviewActivityModal({
@@ -59,11 +61,9 @@ export function ReviewActivityModal({
   showMarkAsCompletedOption = false,
   activityEndedAtLabel = null,
   showUnassignMeOption = false,
-  confirmBlockedMessage = null,
+  confirmDisabled = false,
+  confirmBlockedNotice = null,
 }: ReviewActivityModalProps) {
-  const confirmDisabled =
-    isSubmitting ||
-    (confirmBlockedMessage != null && confirmBlockedMessage.length > 0);
   const { user } = useAuth();
   const [notes, setNotes] = useState('');
   const [markAsCompleted, setMarkAsCompleted] = useState(false);
@@ -133,9 +133,7 @@ export function ReviewActivityModal({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <ActivityConfirmHeaderBlockedNotice
-          confirmBlockedMessage={confirmBlockedMessage}
-        />
+        <ActivityConfirmHeaderBlockedNotice notice={confirmBlockedNotice} />
 
         {displayId != null && displayId.length > 0 && (
           <p className="text-muted-foreground text-sm">
@@ -215,13 +213,11 @@ export function ReviewActivityModal({
           >
             Cancel
           </Button>
-          <ActivityConfirmPrimaryActionGroup
-            confirmBlockedMessage={confirmBlockedMessage}
-          >
+          <ActivityConfirmPrimaryActionGroup notice={confirmBlockedNotice}>
             <Button
               type="button"
               onClick={handleConfirm}
-              disabled={confirmDisabled}
+              disabled={isSubmitting || confirmDisabled}
             >
               {isSubmitting ? (
                 <>

@@ -2,9 +2,21 @@
 export type ActivitySocketConnectionDisplay =
   | 'connected'
   | 'reconnecting'
-  | 'offline';
+  | 'browser-offline'
+  | 'disconnected';
 
-export const ACTIVITY_SOCKET_OFFLINE_AFTER_MS = 3_000;
+export const ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS = 3_000;
+
+export type BlockedActivitySocketConnectionDisplay = Exclude<
+  ActivitySocketConnectionDisplay,
+  'connected'
+>;
+
+export function isActivitySocketConnectionBlocked(
+  connection: ActivitySocketConnectionDisplay
+): connection is BlockedActivitySocketConnectionDisplay {
+  return connection !== 'connected';
+}
 
 export function resolveActivitySocketConnectionDisplay(input: {
   socketConnected: boolean;
@@ -12,13 +24,13 @@ export function resolveActivitySocketConnectionDisplay(input: {
   disconnectedLongEnough: boolean;
 }): ActivitySocketConnectionDisplay {
   if (!input.browserOnline) {
-    return 'offline';
+    return 'browser-offline';
   }
   if (input.socketConnected) {
     return 'connected';
   }
   if (input.disconnectedLongEnough) {
-    return 'offline';
+    return 'disconnected';
   }
   return 'reconnecting';
 }

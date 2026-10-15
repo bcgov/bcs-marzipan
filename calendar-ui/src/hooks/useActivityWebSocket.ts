@@ -2,6 +2,11 @@ import { io } from 'socket.io-client';
 import { useEffect, useRef, useState } from 'react';
 
 import {
+  ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS,
+  resolveActivitySocketConnectionDisplay,
+  type ActivitySocketConnectionDisplay,
+} from '@/lib/activity-socket-connection-display';
+import {
   CALENDAR_SOCKET_IO_OPTIONS,
   getCalendarSocketUrl,
 } from '@/lib/calendar-socket';
@@ -9,12 +14,6 @@ import type {
   LockHandoffPendingPayload,
   LockHandoffResolvedPayload,
 } from '@/lib/lock-handoff-toast';
-
-import {
-  ACTIVITY_SOCKET_OFFLINE_AFTER_MS,
-  resolveActivitySocketConnectionDisplay,
-  type ActivitySocketConnectionDisplay,
-} from './activity-socket-connection-display';
 
 export type LockHandoffPendingSocketPayload = LockHandoffPendingPayload;
 export type LockHandoffResolvedSocketPayload = LockHandoffResolvedPayload;
@@ -81,7 +80,7 @@ export function useActivityWebSocket(
       offlineTimer = setTimeout(() => {
         disconnectedLongEnough = true;
         syncDisplay();
-      }, ACTIVITY_SOCKET_OFFLINE_AFTER_MS);
+      }, ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS);
     };
 
     const markDisconnected = () => {
@@ -112,7 +111,10 @@ export function useActivityWebSocket(
     const onBrowserOnline = () => {
       browserOnline = true;
       syncDisplay();
-      if (!socketConnected) {
+      if (socketConnected) {
+        emitViewActivity();
+        optionsRef.current.onActivitySocketReconnect?.();
+      } else {
         scheduleOfflineEscalation();
       }
     };

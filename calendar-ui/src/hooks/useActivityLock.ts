@@ -44,14 +44,43 @@ type LockAcquireResult = EnsureLockForSubmitResult;
 export type LockAcquireFailureReason =
   | 'locked-by-other'
   | 'time-lockout'
-  | 'other'
+  | 'network'
+  | 'unauthorized'
+  | 'request-failed'
   | null;
+
+export type ActivityLockAcquireFailure = {
+  reason: LockAcquireFailureReason;
+  lockedByUsername: string | null;
+};
+
+export type ActivityLockAcquireResult =
+  | { ok: true }
+  | ({ ok: false } & ActivityLockAcquireFailure);
+
+function acquireFailureReasonFromClassified(
+  result: Exclude<
+    EnsureLockForSubmitResult,
+    'ready' | 'blocked-by-other' | 'time-lockout'
+  >
+): Exclude<
+  LockAcquireFailureReason,
+  'locked-by-other' | 'time-lockout' | null
+> {
+  if (result === 'unavailable') {
+    return 'network';
+  }
+  if (result === 'unauthorized') {
+    return 'unauthorized';
+  }
+  return 'request-failed';
+}
 
 type UseActivityLockResult = {
   lock: LockInfo | null;
   lockState: LockState;
   lockedByUsername: string | null;
-  acquire: () => Promise<boolean>;
+  acquire: () => Promise<ActivityLockAcquireResult>;
   release: () => Promise<void>;
   /** Best-effort release with short retries before clearing local hold. */
   releaseWithRetry: () => Promise<void>;
@@ -154,6 +183,10 @@ export function useActivityLock(
     useState<LockAcquireFailureReason>(null);
   const lockRef = useRef<LockInfo | null>(null);
   const acquireInFlightRef = useRef<Promise<LockAcquireResult> | null>(null);
+  const lastAcquireFailureRef = useRef<ActivityLockAcquireFailure>({
+    reason: null,
+    lockedByUsername: null,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -276,6 +309,7 @@ export function useActivityLock(
     const promise = (async (): Promise<LockAcquireResult> => {
       setLockState('acquiring');
       setAcquireFailureReason(null);
+      lastAcquireFailureRef.current = { reason: null, lockedByUsername: null };
       try {
         const acquired = await acquireLock(activityId);
         lockRef.current = acquired;
@@ -283,6 +317,10 @@ export function useActivityLock(
         setLockState('owned');
         setLockedByUsername(null);
         setAcquireFailureReason(null);
+        lastAcquireFailureRef.current = {
+          reason: null,
+          lockedByUsername: null,
+        };
         return 'ready';
       } catch (err) {
         const apiError = createApiError(err);
@@ -297,9 +335,14 @@ export function useActivityLock(
           try {
             const statusRes = await getLockStatus(activityId);
             if (statusRes.locked && !statusRes.isOwnLock) {
-              setLockedByUsername(statusRes.lockedBy?.username ?? null);
+              const otherUsername = statusRes.lockedBy?.username ?? null;
+              setLockedByUsername(otherUsername);
               setLockState('locked-by-other');
               setAcquireFailureReason('locked-by-other');
+              lastAcquireFailureRef.current = {
+                reason: 'locked-by-other',
+                lockedByUsername: otherUsername,
+              };
               return 'blocked-by-other';
             } else if (
               statusRes.locked &&
@@ -333,6 +376,10 @@ export function useActivityLock(
             setLockedByUsername(null);
             setLockState('locked-by-other');
             setAcquireFailureReason('locked-by-other');
+            lastAcquireFailureRef.current = {
+              reason: 'locked-by-other',
+              lockedByUsername: null,
+            };
             return 'blocked-by-other';
           }
         }
@@ -345,12 +392,22 @@ export function useActivityLock(
           setLockedByUsername(null);
           setLockState('idle');
           setAcquireFailureReason('time-lockout');
+          lastAcquireFailureRef.current = {
+            reason: 'time-lockout',
+            lockedByUsername: null,
+          };
           return 'time-lockout';
         }
 
+        const classified = classifyLockRequestFailure(err);
+        const classifiedReason = acquireFailureReasonFromClassified(classified);
         setLockState('idle');
-        setAcquireFailureReason('other');
-        return classifyLockRequestFailure(err);
+        setAcquireFailureReason(classifiedReason);
+        lastAcquireFailureRef.current = {
+          reason: classifiedReason,
+          lockedByUsername: null,
+        };
+        return classified;
       } finally {
         acquireInFlightRef.current = null;
       }
@@ -360,10 +417,18 @@ export function useActivityLock(
     return promise;
   }, [activityId, currentUserId]);
 
-  const acquire = useCallback(
-    async (): Promise<boolean> => (await acquireDetailed()) === 'ready',
-    [acquireDetailed]
-  );
+  const acquire = useCallback(async (): Promise<ActivityLockAcquireResult> => {
+    const result = await acquireDetailed();
+    if (result === 'ready') {
+      return { ok: true };
+    }
+    const { reason, lockedByUsername } = lastAcquireFailureRef.current;
+    return {
+      ok: false,
+      reason: reason ?? 'request-failed',
+      lockedByUsername,
+    };
+  }, [acquireDetailed]);
 
   const ensureLockForSubmit =
     useCallback(async (): Promise<EnsureLockForSubmitResult> => {

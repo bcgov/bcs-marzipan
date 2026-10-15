@@ -1,7 +1,8 @@
 import { act, render, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ACTIVITY_SOCKET_OFFLINE_AFTER_MS } from './activity-socket-connection-display';
+import { ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS } from '@/lib/activity-socket-connection-display';
+
 import { useActivityWebSocket } from './useActivityWebSocket';
 
 const { getFakeSocket } = vi.hoisted(() => {
@@ -77,7 +78,7 @@ describe('useActivityWebSocket', () => {
     expect(socket.emit).toHaveBeenNthCalledWith(2, 'viewActivity', 139);
   });
 
-  it('reports reconnecting then offline after a long disconnect', () => {
+  it('reports reconnecting then disconnected after a long disconnect', () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useActivityWebSocket(139, {}));
     const socket = getFakeSocket();
@@ -93,10 +94,50 @@ describe('useActivityWebSocket', () => {
     expect(result.current).toBe('reconnecting');
 
     act(() => {
-      vi.advanceTimersByTime(ACTIVITY_SOCKET_OFFLINE_AFTER_MS);
+      vi.advanceTimersByTime(ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS);
     });
-    expect(result.current).toBe('offline');
+    expect(result.current).toBe('disconnected');
 
     vi.useRealTimers();
+  });
+
+  it('reports browser-offline when the browser goes offline', () => {
+    const { result } = renderHook(() => useActivityWebSocket(139, {}));
+    const socket = getFakeSocket();
+
+    act(() => {
+      socket.emitSocketEvent('connect');
+    });
+    expect(result.current).toBe('connected');
+
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    expect(result.current).toBe('browser-offline');
+  });
+
+  it('resyncs when the browser comes online while the socket stayed connected', () => {
+    const onActivitySocketReconnect = vi.fn();
+    const { result } = renderHook(() =>
+      useActivityWebSocket(139, { onActivitySocketReconnect })
+    );
+    const socket = getFakeSocket();
+
+    act(() => {
+      socket.emitSocketEvent('connect');
+    });
+    expect(result.current).toBe('connected');
+
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    expect(result.current).toBe('browser-offline');
+
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    expect(result.current).toBe('connected');
+    expect(onActivitySocketReconnect).toHaveBeenCalledTimes(1);
+    expect(socket.emit).toHaveBeenLastCalledWith('viewActivity', 139);
   });
 });
