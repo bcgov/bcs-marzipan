@@ -62,6 +62,8 @@ export interface RenderModalContentProps {
 interface GenericLookupAdminProps<T extends BaseLookupItem> {
   title: string;
   description: string;
+  /** Optional note above the table (inside the expanded section). */
+  bodyLead?: ReactNode;
   sectionId: SettingsSectionId;
   entityType: string;
   apiEndpoint: string;
@@ -112,6 +114,7 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
 export function GenericLookupAdmin<T extends BaseLookupItem>({
   title,
   description,
+  bodyLead,
   sectionId,
   entityType,
   apiEndpoint,
@@ -546,6 +549,9 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         </div>
       }
     >
+      {bodyLead ? (
+        <div className="mb-4 text-sm text-slate-600">{bodyLead}</div>
+      ) : null}
       {error && (
         <div className="text-destructive text-sm">
           Error loading {title.toLowerCase()}

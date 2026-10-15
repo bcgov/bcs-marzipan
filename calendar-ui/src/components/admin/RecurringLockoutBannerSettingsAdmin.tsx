@@ -367,7 +367,7 @@ function RecurringLockoutBannerSettingsAdminInner() {
   return (
     <AdminSection
       title="Recurring edit lockout"
-      description="Configure a daily lockout window and warning banners. Users without bypass permission cannot edit activities during lockout."
+      description="Daily window when activity editing is blocked."
       sectionId="recurring-lockout-banner"
       isLoading={isLoading}
       headerAction={
@@ -415,7 +415,7 @@ function RecurringLockoutBannerSettingsAdminInner() {
           </div>
           <p className="text-xs text-slate-500">
             {formData.isActive
-              ? 'Lockout window and warning banners apply on schedule.'
+              ? 'Lockout window and warning banners apply on schedule. Users with bypass permission can still edit.'
               : 'Recurring lockout is disabled. No lockout window or banners will apply.'}
           </p>
         </div>
