@@ -73,16 +73,17 @@ export function AdminSection({
       <div className="p-4 sm:p-6">
         <button
           type="button"
+          data-state={isOpen ? 'open' : 'closed'}
           aria-controls={contentId}
           aria-expanded={isOpen}
           onClick={handleToggle}
-          className="flex min-h-10 w-full items-center justify-between gap-4 text-left focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="flex min-h-10 w-full items-center justify-between gap-4 text-left focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:outline-none [&[data-state=open]_[data-slot=admin-section-chevron]]:rotate-180"
         >
           <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
             <span
               role="heading"
               aria-level={2}
-              className="shrink-0 text-lg font-semibold text-slate-900 sm:text-xl"
+              className="shrink-0 text-lg font-semibold text-slate-900"
             >
               {title}
             </span>
@@ -92,15 +93,17 @@ export function AdminSection({
               </span>
             )}
           </span>
-          <ChevronDown
-            size={20}
-            strokeWidth={2}
-            aria-hidden="true"
-            className={cn(
-              'size-5 shrink-0 text-slate-500 transition-transform',
-              isOpen && 'rotate-180'
-            )}
-          />
+          <span
+            data-slot="admin-section-chevron"
+            className="inline-flex shrink-0 text-slate-500 transition-transform duration-200 ease-in-out"
+          >
+            <ChevronDown
+              size={20}
+              strokeWidth={2}
+              aria-hidden="true"
+              className="size-5"
+            />
+          </span>
         </button>
       </div>
       <div id={contentId} hidden={!isOpen} className="p-4 sm:p-6">

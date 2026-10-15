@@ -36,6 +36,12 @@ import {
 } from '@/components/table/tableConstants';
 import { cn } from '@/lib/utils';
 
+/** Padding for the drag-order column; width comes from {@link REORDER_COL_CLASS}. */
+const tableReorderCol = 'whitespace-nowrap px-2';
+
+/** Fixed width so the header label fits; not driven by the row grip icon alone. */
+const REORDER_COL_CLASS = 'w-16';
+
 interface GenericDataTableProps<T extends object> {
   data: T[];
   columns: ColumnDef<T, unknown>[];
@@ -79,7 +85,7 @@ function SortableRow<T extends object>({
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
       ))}
-      <td className={cn(tableTd, 'w-10 text-right')}>
+      <td className={cn(tableTd, tableReorderCol, 'text-center')}>
         <button
           type="button"
           ref={setActivatorNodeRef}
@@ -145,6 +151,23 @@ export function GenericDataTable<T extends object>({
 
   const tableElement = (
     <table className={tableTable}>
+      {onReorder && (
+        <colgroup>
+          {columns.map((column, index) => (
+            <col
+              key={
+                typeof column.id === 'string'
+                  ? column.id
+                  : 'accessorKey' in column &&
+                      typeof column.accessorKey === 'string'
+                    ? column.accessorKey
+                    : index
+              }
+            />
+          ))}
+          <col className={REORDER_COL_CLASS} />
+        </colgroup>
+      )}
       <thead className={tableThead}>
         {table.getHeaderGroups().map((headerGroup) => (
           <tr key={headerGroup.id}>
@@ -176,16 +199,10 @@ export function GenericDataTable<T extends object>({
             })}
             {onReorder && (
               <th
-                className={cn(tableTh, 'w-10 text-right')}
+                className={cn(tableTh, tableReorderCol, 'text-center')}
                 scope="col"
-                aria-label="Order"
               >
-                <GripVertical
-                  size={16}
-                  strokeWidth={2}
-                  className="ml-auto size-4 text-slate-500"
-                  aria-hidden="true"
-                />
+                Order
               </th>
             )}
           </tr>

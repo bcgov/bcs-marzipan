@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ColumnDef } from '@tanstack/react-table';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 
 import { SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import {
@@ -9,18 +10,24 @@ import {
   updatePermissionVisibility,
 } from '@/api/lookupsApi';
 import { AdminSection } from '@/components/admin';
+import { GenericDataTable } from '@/components/table/GenericDataTable';
 import {
-  tableBodyRow,
-  tableTable,
-  tableTd,
-  tableTh,
-  tableThead,
+  tableContainer,
+  tableScrollWrapper,
 } from '@/components/table/tableConstants';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
 
-export function PermissionsVisibilityAdmin(): React.ReactElement | null {
+type AdminPermissionRow = {
+  id: number;
+  key: string;
+  displayName: string;
+  description: string | null;
+  showInUserManagement: boolean;
+};
+
+export function PermissionsVisibilityAdmin(): ReactElement | null {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -28,67 +35,58 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
     queryKey: ['admin', 'permissions'],
     queryFn: fetchAllPermissions,
     enabled: Boolean(
-      (user as any)?.permissions?.includes('system.manage_permissions') ||
-      (user as any)?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+      (user as { permissions?: string[] })?.permissions?.includes(
+        'system.manage_permissions'
+      ) ||
+      (user as { roleId?: number })?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
     ),
   });
 
   const [search, setSearch] = useState('');
-  const [sortAsc, setSortAsc] = useState(true);
 
   const filteredPerms = useMemo(() => {
-    const list = (perms || []).filter((p: any) => {
+    const list = (perms as AdminPermissionRow[]).filter((p) => {
       if (!search) return true;
       const s = search.toLowerCase();
       return (
-        String(p.key || '')
-          .toLowerCase()
-          .includes(s) ||
-        String(p.displayName || '')
-          .toLowerCase()
-          .includes(s) ||
-        String(p.description || '')
+        p.key.toLowerCase().includes(s) ||
+        p.displayName.toLowerCase().includes(s) ||
+        String(p.description ?? '')
           .toLowerCase()
           .includes(s)
       );
     });
-    return list.sort((a: any, b: any) => {
-      const A = (a.displayName || a.key || '').toLowerCase();
-      const B = (b.displayName || b.key || '').toLowerCase();
-      return sortAsc ? A.localeCompare(B) : B.localeCompare(A);
-    });
-  }, [perms, search, sortAsc]);
+    return list;
+  }, [perms, search]);
 
   const mutation = useMutation({
     mutationFn: ({ id, show }: { id: number; show: boolean }) =>
       updatePermissionVisibility(id, show),
     onSuccess: (data, vars) => {
-      // Update admin perms cache (in case it's stale) then update roles->permissions map
       void queryClient.invalidateQueries({
         queryKey: ['admin', 'permissions'],
       });
 
-      // Try to obtain a friendly displayName from the admin permissions cache
       const adminPerms =
-        queryClient.getQueryData<any[]>(['admin', 'permissions']) || [];
+        queryClient.getQueryData<AdminPermissionRow[]>([
+          'admin',
+          'permissions',
+        ]) || [];
       const permEntry = adminPerms.find((p) => p.id === vars.id);
       const displayName =
         permEntry?.displayName ?? permEntry?.description ?? data?.data?.key;
 
-      // Synchronously update the roles->permissions bulk map so consuming UIs update immediately.
       queryClient.setQueryData(
         ['roles', 'permissions', 'map'],
-        (prev: Record<number, any[]> | undefined) => {
+        (prev: Record<number, { key: string }[]> | undefined) => {
           const next = prev ? { ...prev } : {};
           const key = data?.data?.key;
           if (vars.show) {
-            // Visibility changes do not change role assignments; rely on refetch to populate new rows.
             void displayName;
           } else {
-            // Remove from any role entries that match
             for (const k of Object.keys(next)) {
               next[Number(k)] = (next[Number(k)] || []).filter(
-                (e: any) => e.key !== key
+                (e) => e.key !== key
               );
               if ((next[Number(k)] || []).length === 0) delete next[Number(k)];
             }
@@ -97,24 +95,58 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
         }
       );
 
-      // Also trigger a refetch of the bulk map to ensure any consumers depending on
-      // the network-backed query pick up the latest state (helps tests and other UIs).
       void queryClient.invalidateQueries({
         queryKey: ['roles', 'permissions', 'map'],
       });
-      // UserRolePermissionsSection loads per-role rows from ['roles', roleId, 'permissions'].
       void queryClient.invalidateQueries({ queryKey: ['roles'] });
 
       toast.success('Permission visibility updated');
     },
-    onError: (err: any) => {
+    onError: (err: { message?: string }) => {
       toast.error(err?.message || 'Failed to update permission');
     },
   });
 
+  const columns = useMemo<ColumnDef<AdminPermissionRow>[]>(
+    () => [
+      {
+        accessorKey: 'key',
+        header: 'Permission',
+        cell: ({ row }) => (
+          <span className="text-sm text-slate-700">{row.original.key}</span>
+        ),
+      },
+      {
+        accessorKey: 'displayName',
+        header: 'Display name',
+        cell: ({ row }) => (
+          <span className="text-sm text-slate-700">
+            {row.original.displayName}
+          </span>
+        ),
+      },
+      {
+        id: 'showInUserManagement',
+        header: 'Visible in user management',
+        enableSorting: false,
+        cell: ({ row }) => (
+          <Switch
+            checked={Boolean(row.original.showInUserManagement)}
+            onCheckedChange={(v) =>
+              mutation.mutate({ id: row.original.id, show: Boolean(v) })
+            }
+            disabled={mutation.isPending}
+          />
+        ),
+      },
+    ],
+    [mutation]
+  );
+
   const canManagePermissions = Boolean(
-    (user as any)?.permissions?.includes('system.manage_permissions') ||
-    (user as any)?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+    (user as { permissions?: string[] })?.permissions?.includes(
+      'system.manage_permissions'
+    ) || (user as { roleId?: number })?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN
   );
   if (!canManagePermissions) return null;
 
@@ -123,71 +155,47 @@ export function PermissionsVisibilityAdmin(): React.ReactElement | null {
       title="Permission visibility"
       description="Show or hide permissions in user management; does not grant or revoke access."
       sectionId="permissions-visibility"
+      isLoading={isPending}
       headerAction={
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <div className="relative">
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
-              aria-label="Search permissions"
-              className="h-9 w-44 rounded-md border border-slate-300 bg-white pr-3 pl-8 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none"
-            />
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shadow-none"
-            aria-pressed={!sortAsc}
-            onClick={() => setSortAsc((s) => !s)}
-          >
-            {sortAsc ? 'A–Z' : 'Z–A'}
-          </Button>
+        <div className="relative">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search"
+            aria-label="Search permissions"
+            className="h-9 w-44 rounded-md border border-slate-300 bg-white pr-3 pl-8 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none"
+          />
         </div>
       }
     >
-      <table className={`${tableTable} text-left`}>
-        <thead className={tableThead}>
-          <tr>
-            <th className={`${tableTh} w-1/3`}>Permission</th>
-            <th className={`${tableTh} w-1/3`}>Display name</th>
-            <th className={`${tableTh} w-1/3`}>Visible in user management</th>
-          </tr>
-        </thead>
-        <tbody>
-          {isPending ? (
-            <tr>
-              <td className={tableTd} colSpan={3}>
-                Loading...
-              </td>
-            </tr>
-          ) : (
-            filteredPerms.map((p: any) => (
-              <tr key={p.id} className={tableBodyRow}>
-                <td className={`${tableTd} text-sm text-slate-700`}>{p.key}</td>
-                <td className={`${tableTd} text-sm text-slate-700`}>
-                  {p.displayName}
-                </td>
-                <td className={`${tableTd} text-right`}>
-                  <Switch
-                    checked={Boolean(p.showInUserManagement)}
-                    onCheckedChange={(v) =>
-                      mutation.mutate({ id: p.id, show: Boolean(v) })
-                    }
-                    disabled={mutation.isPending}
-                  />
-                </td>
-              </tr>
-            ))
+      {isPending ? (
+        <div className="py-8 text-center text-slate-600">Loading...</div>
+      ) : filteredPerms.length === 0 ? (
+        <div className="py-8 text-center text-slate-600">
+          No permissions found
+        </div>
+      ) : (
+        <div
+          className={cn(
+            tableContainer,
+            'max-h-[min(480px,60vh)] bg-white shadow-none'
           )}
-        </tbody>
-      </table>
+        >
+          <div
+            className={cn(
+              tableScrollWrapper,
+              'max-h-[min(480px,60vh)] [overflow-y:auto]'
+            )}
+          >
+            <GenericDataTable data={filteredPerms} columns={columns} />
+          </div>
+        </div>
+      )}
     </AdminSection>
   );
 }
