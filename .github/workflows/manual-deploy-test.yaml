@@ -1,3 +1,4 @@
+# GitHub Actions workflow for deploying to only Silver OpenShift Test environment
 name: Deploy to OpenShift Silver Testing Environment
 
 permissions:
