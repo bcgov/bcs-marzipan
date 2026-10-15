@@ -1,17 +1,22 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import {
-  DYNAMIC_LOOKUP_CACHE_SECONDS,
-  SYSTEM_ROLE_IDS,
-  type AuthUser,
-} from '@corpcal/shared';
-import type { LookupItem } from '@corpcal/shared/api/types';
-import type { TeamListItem } from '@corpcal/shared/schemas';
+import 'reflect-metadata';
 
+import { SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
+import type { LookupItem } from '@corpcal/shared/api/types';
+import {
+  reorderLookupRequestSchema,
+  type TeamListItem,
+} from '@corpcal/shared/schemas';
+
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { PERMISSIONS_METADATA_KEY } from '../policy/decorators/require-permission.decorator';
 import { TeamsService } from '../teams/teams.service';
 import { lookupGetCacheControl } from './cache-control';
 import { LookupsController } from './lookups.controller';
 import { LookupsService, type VenuePresetAdminItem } from './lookups.service';
+import { REORDERABLE_LOOKUPS } from './reorderable-lookups';
 
 const mockUser: AuthUser = {
   id: 1,
@@ -58,8 +63,12 @@ describe('LookupsController', () => {
     getActivityTeamSharingQuickShare: vi.fn(),
     getRolePermissions: vi.fn(),
     getAllPermissions: vi.fn(),
+    getPermissionAdminRoles: vi.fn(),
+    getAdminRolePermissions: vi.fn(),
+    updateAdminRolePermissions: vi.fn(),
     updatePermissionVisibility: vi.fn(),
     getRolesPermissionsMap: vi.fn(),
+    reorderLookup: vi.fn(),
   };
 
   const mockTeamsService = {
@@ -215,7 +224,7 @@ describe('LookupsController', () => {
       expect(mockLookupsService.getCategories).toHaveBeenCalledWith(false);
       expect(res.setHeader).toHaveBeenCalledWith(
         'Cache-Control',
-        `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+        lookupGetCacheControl()
       );
     });
   });
@@ -480,7 +489,7 @@ describe('LookupsController', () => {
       mockLookupsService.getAllPermissions.mockResolvedValue([]);
 
       await expect(controller.getAllPermissions(mockUser)).rejects.toThrow(
-        'Only System Admin users can manage permission visibility.'
+        'Only System Admin users can manage permissions.'
       );
       expect(mockLookupsService.getAllPermissions).not.toHaveBeenCalled();
     });
@@ -507,9 +516,7 @@ describe('LookupsController', () => {
           { showInUserManagement: true },
           mockUser
         )
-      ).rejects.toThrow(
-        'Only System Admin users can manage permission visibility.'
-      );
+      ).rejects.toThrow('Only System Admin users can manage permissions.');
     });
 
     it('updatePermissionVisibility calls service and returns envelope for system admin', async () => {
@@ -531,6 +538,172 @@ describe('LookupsController', () => {
       expect(
         mockLookupsService.updatePermissionVisibility
       ).toHaveBeenCalledWith(10, true, sysAdminUser.id);
+    });
+  });
+
+  describe('reorderLookup', () => {
+    const pipe = new ZodValidationPipe(reorderLookupRequestSchema);
+    const validate = (body: unknown) =>
+      pipe.transform(body, { type: 'body', data: undefined });
+
+    it('requires lookups.manage', () => {
+      const handler = Object.getOwnPropertyDescriptor(
+        LookupsController.prototype,
+        'reorderLookup'
+      )!.value as object;
+
+      expect(Reflect.getMetadata(PERMISSIONS_METADATA_KEY, handler)).toEqual({
+        keys: ['lookups.manage'],
+        mode: 'any',
+      });
+    });
+
+    it.each(REORDERABLE_LOOKUPS)('saves the order for %s', async (entity) => {
+      mockLookupsService.reorderLookup.mockResolvedValue(undefined);
+
+      const result = await controller.reorderLookup(
+        entity,
+        { ids: [3, 1, 2] },
+        mockUser
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(mockLookupsService.reorderLookup).toHaveBeenCalledWith(
+        entity,
+        [3, 1, 2],
+        mockUser.id
+      );
+    });
+
+    it.each(['users', 'permissions', '__proto__', 'constructor'])(
+      'rejects unsupported entity %s without touching the database',
+      async (entity) => {
+        await expect(
+          controller.reorderLookup(entity, { ids: [1] }, mockUser)
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(mockLookupsService.reorderLookup).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each([
+      ['missing ids', {}],
+      ['empty ids', { ids: [] }],
+      ['string ids', { ids: ['1', '2'] }],
+      ['fractional ids', { ids: [1.5] }],
+      ['non-array ids', { ids: 1 }],
+    ])('rejects a body with %s', (_label, body) => {
+      expect(() => validate(body)).toThrow(BadRequestException);
+    });
+
+    it('accepts a body of integer ids', () => {
+      expect(validate({ ids: [2, 1] })).toEqual({ ids: [2, 1] });
+    });
+
+    it('propagates service failures', async () => {
+      mockLookupsService.reorderLookup.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        controller.reorderLookup('cities', { ids: [1, 2] }, mockUser)
+      ).rejects.toThrow('db down');
+    });
+  });
+
+  describe('role permission administration', () => {
+    const sysAdminUser = {
+      ...mockUser,
+      roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+      permissions: ['system.manage_permissions'],
+    };
+
+    it('rejects role permission reads without the admin permission', async () => {
+      await expect(
+        controller.getPermissionAdminRoles(mockUser)
+      ).rejects.toThrow('Only System Admin users can manage permissions.');
+      expect(mockLookupsService.getPermissionAdminRoles).not.toHaveBeenCalled();
+    });
+
+    it('returns system roles to an authorized caller', async () => {
+      const roles = [
+        { id: SYSTEM_ROLE_IDS.ADMIN, name: 'Admin', description: null },
+      ];
+      mockLookupsService.getPermissionAdminRoles.mockResolvedValue(roles);
+
+      await expect(
+        controller.getPermissionAdminRoles(sysAdminUser)
+      ).resolves.toEqual({
+        success: true,
+        data: roles,
+      });
+    });
+
+    it('saves the selected role permission ids for an authorized caller', async () => {
+      const rows = [{ id: 12, key: 'activities.edit', hasPermission: true }];
+      mockLookupsService.updateAdminRolePermissions.mockResolvedValue(rows);
+
+      const result = await controller.updateAdminRolePermissions(
+        String(SYSTEM_ROLE_IDS.ADMIN),
+        { permissionIds: [12] },
+        sysAdminUser
+      );
+
+      expect(result).toEqual({ success: true, data: rows });
+      expect(
+        mockLookupsService.updateAdminRolePermissions
+      ).toHaveBeenCalledWith(SYSTEM_ROLE_IDS.ADMIN, [12], sysAdminUser.id);
+    });
+
+    it('rejects role permission writes without the admin permission', async () => {
+      await expect(
+        controller.updateAdminRolePermissions(
+          '5',
+          { permissionIds: [12] },
+          mockUser
+        )
+      ).rejects.toThrow('Only System Admin users can manage permissions.');
+      expect(
+        mockLookupsService.updateAdminRolePermissions
+      ).not.toHaveBeenCalled();
+    });
+
+    it('rejects inherited permission callers from changing System Admin permissions', async () => {
+      const inheritedPermissionUser = {
+        ...mockUser,
+        roleId: SYSTEM_ROLE_IDS.ADMIN,
+        permissions: ['system.manage_permissions'],
+      };
+
+      await expect(
+        controller.updateAdminRolePermissions(
+          String(SYSTEM_ROLE_IDS.SYSTEM_ADMIN),
+          { permissionIds: [12] },
+          inheritedPermissionUser
+        )
+      ).rejects.toThrow(
+        'Only System Admin role members can change System Admin permissions.'
+      );
+      expect(
+        mockLookupsService.updateAdminRolePermissions
+      ).not.toHaveBeenCalled();
+    });
+
+    it('allows a direct System Admin role member to change System Admin permissions', async () => {
+      const rows = [{ id: 12, key: 'activities.edit', hasPermission: true }];
+      mockLookupsService.updateAdminRolePermissions.mockResolvedValue(rows);
+
+      const result = await controller.updateAdminRolePermissions(
+        String(SYSTEM_ROLE_IDS.SYSTEM_ADMIN),
+        { permissionIds: [12] },
+        sysAdminUser
+      );
+
+      expect(result).toEqual({ success: true, data: rows });
+      expect(
+        mockLookupsService.updateAdminRolePermissions
+      ).toHaveBeenCalledWith(
+        SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
+        [12],
+        sysAdminUser.id
+      );
     });
   });
 });

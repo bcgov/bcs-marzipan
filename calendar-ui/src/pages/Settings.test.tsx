@@ -54,6 +54,9 @@ vi.mock('@/components/admin/LookupAdmins', () => ({
   PermissionsVisibilityAdminSection: () => <div>PermissionsVisibility</div>,
   VenuePresetsAdmin: () => <div>VenuePresets</div>,
 }));
+vi.mock('@/components/admin/RolePermissionsAdmin', () => ({
+  RolePermissionsAdminSection: () => <div>RolePermissions</div>,
+}));
 vi.mock('@/components/admin/ReportCoverContactSettingsAdmin', () => ({
   ReportCoverContactSettingsAdmin: () => (
     <div data-testid="report-cover-contact-section">ReportCoverContact</div>
@@ -77,6 +80,7 @@ const SYSTEM_ADMIN_ONLY_LINKS = [
   'Activity info icons',
   'Review-exempt fields',
   'Permission visibility',
+  'Role permissions',
 ];
 
 const RECURRING_LOCKOUT_LINK = 'Recurring edit lockout';
@@ -110,7 +114,11 @@ describe('Settings quick navigation', () => {
   describe('as System Admin', () => {
     beforeEach(() => {
       mockUseAuth.mockReturnValue({
-        user: { id: 1, roleId: SYSTEM_ADMIN_ROLE_ID },
+        user: {
+          id: 1,
+          roleId: SYSTEM_ADMIN_ROLE_ID,
+          permissions: [PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS],
+        },
         hasPermission: () => true,
       });
     });

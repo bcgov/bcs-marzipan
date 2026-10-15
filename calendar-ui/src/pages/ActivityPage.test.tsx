@@ -18,7 +18,23 @@ import {
 import { tipTapDocJsonFromPlainText } from '@corpcal/shared/utils';
 
 import type { FormLookupData } from '../hooks/useFormLookups';
+import {
+  ACTIVITY_EDIT_ACQUIRE_FAILURE_NETWORK,
+  ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT,
+} from '../lib/activity-edit-session-messages';
+import { TOAST_DURATION_MS } from '../lib/toast-durations';
 import { ActivityPage, type ActivityPageProps } from './ActivityPage';
+
+const { mockFetchActivity } = vi.hoisted(() => ({
+  mockFetchActivity: vi.fn(),
+}));
+vi.mock('../api/activitiesApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/activitiesApi')>();
+  return {
+    ...actual,
+    fetchActivity: mockFetchActivity,
+  };
+});
 
 /** Matches production Editor field access so `canViewActivityFieldScope` / `canEditActivityFieldScope` do not see undefined `permissions`. */
 const mockEditorFieldPermissions: string[] = [
@@ -42,7 +58,12 @@ vi.mock('sonner', async (importOriginal) => {
   const actual = await importOriginal<typeof import('sonner')>();
   return {
     ...actual,
-    toast: { ...actual.toast, error: vi.fn(), success: vi.fn() },
+    toast: {
+      ...actual.toast,
+      error: vi.fn(),
+      success: vi.fn(),
+      warning: vi.fn(),
+    },
   };
 });
 
@@ -100,10 +121,12 @@ const mockLookupsReady: FormLookupData = {
   venueStatuses: [],
 };
 
-const mockAcquire = vi.fn().mockResolvedValue(true);
+const mockAcquire = vi.fn().mockResolvedValue({ ok: true as const });
 const mockRelease = vi.fn().mockResolvedValue(undefined);
 const mockSetLockedByOther = vi.fn();
 const mockClearLockedByOther = vi.fn();
+const mockRefreshLockFromServer = vi.fn().mockResolvedValue('idle');
+const mockEnsureLockForSubmit = vi.fn().mockResolvedValue('ready');
 const mockRefreshActivity = vi.fn().mockResolvedValue(undefined);
 
 const mockNavigate = vi.fn();
@@ -133,6 +156,13 @@ vi.mock('../hooks/useCalendar', async (importOriginal) => {
 });
 
 let mockLockState = 'idle';
+let mockAcquireFailureReason:
+  | 'locked-by-other'
+  | 'time-lockout'
+  | 'network'
+  | 'unauthorized'
+  | 'request-failed'
+  | null = null;
 const mockApplyExternalLockReleased = vi.fn();
 vi.mock('../hooks/useActivityLock', () => ({
   useActivityLock: () => ({
@@ -142,12 +172,13 @@ vi.mock('../hooks/useActivityLock', () => ({
     acquire: mockAcquire,
     release: mockRelease,
     releaseWithRetry: mockRelease,
-    refreshLockFromServer: vi.fn(),
+    refreshLockFromServer: mockRefreshLockFromServer,
+    ensureLockForSubmit: mockEnsureLockForSubmit,
     sendHeartbeat: vi.fn(),
     applyExternalLockReleased: mockApplyExternalLockReleased,
     setLockedByOther: mockSetLockedByOther,
     clearLockedByOther: mockClearLockedByOther,
-    acquireFailureReason: null,
+    acquireFailureReason: mockAcquireFailureReason,
   }),
 }));
 
@@ -173,8 +204,24 @@ vi.mock('../hooks/useRecurringLockoutBanner', () => ({
   RECURRING_LOCKOUT_BANNER_QUERY_KEY: ['banner', 'recurring-lockout', 'active'],
 }));
 
+let mockActivityWebSocketOptions: {
+  onActivitySocketReconnect?: () => void;
+  onLockReleased?: () => void;
+  onDataUpdated?: () => void;
+} = {};
+let mockActivitySocketConnection:
+  | 'connected'
+  | 'reconnecting'
+  | 'browser-offline'
+  | 'disconnected' = 'connected';
 vi.mock('../hooks/useActivityWebSocket', () => ({
-  useActivityWebSocket: vi.fn(),
+  useActivityWebSocket: (
+    _activityId: number,
+    options: typeof mockActivityWebSocketOptions
+  ) => {
+    mockActivityWebSocketOptions = options;
+    return mockActivitySocketConnection;
+  },
 }));
 
 vi.mock('../hooks/useLookups', async (importOriginal) => {
@@ -461,8 +508,14 @@ describe('ActivityPage optimistic inline edit', () => {
     mockNavigate.mockClear();
     mockRelease.mockClear();
     mockApplyExternalLockReleased.mockClear();
-    mockAcquire.mockClear().mockResolvedValue(true);
+    mockAcquire.mockClear().mockResolvedValue({ ok: true as const });
+    mockRefreshLockFromServer.mockClear().mockResolvedValue('idle');
+    mockEnsureLockForSubmit.mockClear().mockResolvedValue('ready');
+    mockFetchActivity.mockClear().mockResolvedValue(mockActivityWithLeadTeam);
+    mockActivityWebSocketOptions = {};
+    mockActivitySocketConnection = 'connected';
     mockLockState = 'idle';
+    mockAcquireFailureReason = null;
     mockIsBlockedByRecurringLockout = false;
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
     mockUseLeadTeamOptions.mockReturnValue({
@@ -518,7 +571,7 @@ describe('ActivityPage optimistic inline edit', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('updates the discard change count and enables Save after edits when lock is owned', async () => {
+  it('shows Discard changes and enables Save after edits when lock is owned', async () => {
     mockLockState = 'owned';
     const user = userEvent.setup();
     renderActivityPage();
@@ -531,7 +584,7 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard 1 change/i })
+        screen.getByRole('button', { name: /^Discard changes$/i })
       ).toBeInTheDocument()
     );
     await waitFor(() =>
@@ -542,9 +595,61 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard 2 changes/i })
+        screen.getByRole('button', { name: /^Discard changes$/i })
       ).toBeInTheDocument()
     );
+  });
+
+  it('preserves dirty values and reacquires after a socket reconnect', async () => {
+    mockLockState = 'owned';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.type(titleTextarea, ' unsaved');
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+    act(() => {
+      mockActivityWebSocketOptions.onActivitySocketReconnect?.();
+    });
+
+    await waitFor(() =>
+      expect(mockEnsureLockForSubmit).toHaveBeenCalledTimes(1)
+    );
+    expect(titleTextarea).toHaveValue('Test Activity unsaved');
+    expect(
+      screen.queryByText(/unsaved changes were discarded/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it('preserves dirty values and blocks confirm when the server version changed', async () => {
+    mockLockState = 'owned';
+    mockFetchActivity.mockResolvedValue(
+      createMockActivityResponse({
+        ...mockActivityWithLeadTeam,
+        title: 'Other user title',
+        lastUpdatedDateTime: '2030-01-01T00:00:00.000Z',
+      })
+    );
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.type(titleTextarea, ' unsaved');
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+    act(() => {
+      mockActivityWebSocketOptions.onDataUpdated?.();
+    });
+
+    await screen.findByText(/updated elsewhere/i);
+    expect(titleTextarea).toHaveValue('Test Activity unsaved');
+    expect(mockEnsureLockForSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /^Save$/i })).toBeDisabled();
   });
 
   it('discards custom-control edits via DiscardActivityChangesDialog when lock is owned', async () => {
@@ -568,12 +673,14 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard 1 change/i })
+        screen.getByRole('button', { name: /^Discard changes$/i })
       ).toBeInTheDocument()
     );
     expect(issueCheckbox).toBeChecked();
 
-    await user.click(screen.getByRole('button', { name: /Discard 1 change/i }));
+    await user.click(
+      screen.getByRole('button', { name: /^Discard changes$/i })
+    );
 
     const dialog = await screen.findByRole('dialog');
     expect(
@@ -678,8 +785,90 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(mockAcquire).not.toHaveBeenCalled();
   });
 
-  it('resets form and shows error toast when lock acquisition fails', async () => {
-    mockAcquire.mockResolvedValue(false);
+  it('shows connection alert and read-only fields when offline before editing', async () => {
+    mockActivitySocketConnection = 'browser-offline';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    expect(
+      await screen.findByText(/You are offline\. Reconnect to make changes\./i)
+    ).toBeInTheDocument();
+
+    const titleTextarea = screen.getByRole('textbox', { name: /Title/i });
+    expect(titleTextarea).toHaveAttribute('readonly');
+
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
+
+    await act(() => Promise.resolve());
+    expect(mockAcquire).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('shows connection restored alert after reconnect when user saw offline alert', async () => {
+    mockActivitySocketConnection = 'browser-offline';
+    const { rerender } = renderActivityPage();
+
+    expect(
+      await screen.findByText(/You are offline\. Reconnect to make changes\./i)
+    ).toBeInTheDocument();
+
+    mockActivitySocketConnection = 'connected';
+    rerender();
+
+    expect(
+      await screen.findByText(ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT)
+    ).toBeInTheDocument();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it('keeps fields editable when offline during an active edit session', async () => {
+    mockLockState = 'owned';
+    mockActivitySocketConnection = 'browser-offline';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    expect(
+      await screen.findByText(/You are offline\. Reconnect to make changes\./i)
+    ).toBeInTheDocument();
+
+    const titleTextarea = screen.getByRole('textbox', { name: /Title/i });
+    expect(titleTextarea).not.toHaveAttribute('readonly');
+
+    await user.type(titleTextarea, ' offline edit');
+    await waitFor(() =>
+      expect(titleTextarea).toHaveValue('Test Activity offline edit')
+    );
+    expect(mockAcquire).not.toHaveBeenCalled();
+  });
+
+  it('does not toast network acquire failures while connection is blocked', async () => {
+    mockActivitySocketConnection = 'reconnecting';
+    mockAcquire.mockResolvedValue({
+      ok: false,
+      reason: 'network',
+      lockedByUsername: null,
+    });
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
+
+    await act(() => Promise.resolve());
+    expect(mockAcquire).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('shows network toast when acquire fails while connected', async () => {
+    mockAcquire.mockResolvedValue({
+      ok: false,
+      reason: 'network',
+      lockedByUsername: null,
+    });
     const user = userEvent.setup();
     renderActivityPage();
 
@@ -691,8 +880,33 @@ describe('ActivityPage optimistic inline edit', () => {
 
     await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        'Cannot edit. Another user has started editing this activity.'
+      expect(toast.warning).toHaveBeenCalledWith(
+        ACTIVITY_EDIT_ACQUIRE_FAILURE_NETWORK,
+        { duration: TOAST_DURATION_MS.error }
+      )
+    );
+  });
+
+  it('resets form and shows error toast when lock acquisition fails', async () => {
+    mockAcquire.mockResolvedValue({
+      ok: false,
+      reason: 'locked-by-other',
+      lockedByUsername: 'Other User',
+    });
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.click(titleTextarea);
+    await user.type(titleTextarea, 'X');
+
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(toast.warning).toHaveBeenCalledWith(
+        'Cannot edit. Other User has started editing this activity.',
+        { duration: TOAST_DURATION_MS.error }
       )
     );
   });
@@ -805,6 +1019,8 @@ describe('ActivityPage optimistic inline edit', () => {
 describe('ActivityPage clone button', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    mockAcquire.mockClear().mockResolvedValue({ ok: true as const });
+    mockActivitySocketConnection = 'connected';
     mockLockState = 'idle';
     mockIsBlockedByRecurringLockout = false;
     mockUseFormLookups.mockReturnValue(mockLookupsReady);
@@ -916,10 +1132,19 @@ describe('ActivityPage clone button', () => {
     expect(cloneBtn).toBeDisabled();
   });
 
+  it('disables Clone button when offline', async () => {
+    mockUseAuth.mockReturnValue(cloneEligibleEditorAuth);
+    mockActivitySocketConnection = 'disconnected';
+    renderActivityPage();
+
+    const cloneBtn = await screen.findByRole('button', { name: /^Clone$/i });
+    expect(cloneBtn).toBeDisabled();
+  });
+
   it('disables Clone button when the form has unsaved changes', async () => {
     mockUseAuth.mockReturnValue(cloneEligibleEditorAuth);
     mockLockState = 'owned';
-    mockAcquire.mockResolvedValue(true);
+    mockAcquire.mockResolvedValue({ ok: true as const });
     const user = userEvent.setup();
     renderActivityPage();
 
@@ -931,7 +1156,7 @@ describe('ActivityPage clone button', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /Discard 1 change/i })
+        screen.getByRole('button', { name: /^Discard changes$/i })
       ).toBeInTheDocument()
     );
     const cloneBtn = screen.getByRole('button', { name: /^Clone$/i });

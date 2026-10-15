@@ -1,10 +1,14 @@
 import type { UseFormReturn } from 'react-hook-form';
-import { useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, type RefObject } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { computeFormChanges } from '../lib/activity-history-format';
-import type { LockState } from './useActivityLock';
+import type {
+  ActivityLockAcquireFailure,
+  ActivityLockAcquireResult,
+  LockState,
+} from './useActivityLock';
 
 export const EDIT_LOCK_CONFLICT_TOAST =
   'Cannot edit. Another user has started editing this activity.';
@@ -18,11 +22,17 @@ type UseEditLockIntentOptions = {
   mayEdit: boolean;
   isEditing: boolean;
   setIsEditing: (value: boolean) => void;
-  acquire: () => Promise<boolean>;
+  acquire: () => Promise<ActivityLockAcquireResult>;
   lockState: LockState;
   form: UseFormReturn<ActivityFormData>;
   initialFormDataRef: RefObject<ActivityFormData | null>;
-  onAcquireConflict: () => void;
+  onAcquireConflict: (failure: ActivityLockAcquireFailure) => void;
+  /** When true, do not optimistically start an edit session (offline / reconnecting). */
+  connectionBlocksEditStart: boolean;
+};
+
+type UseEditLockIntentResult = {
+  tryStartEditSessionFromDirty: () => void;
 };
 
 /**
@@ -45,15 +55,18 @@ export function useEditLockIntent({
   form,
   initialFormDataRef,
   onAcquireConflict,
-}: UseEditLockIntentOptions): void {
+  connectionBlocksEditStart,
+}: UseEditLockIntentOptions): UseEditLockIntentResult {
   const autoAcquireAttemptedRef = useRef(false);
   const mayEditRef = useRef(mayEdit);
   const formHydratedRef = useRef(formHydrated);
   const isEditingRef = useRef(isEditing);
+  const connectionBlocksEditStartRef = useRef(connectionBlocksEditStart);
 
   mayEditRef.current = mayEdit;
   formHydratedRef.current = formHydrated;
   isEditingRef.current = isEditing;
+  connectionBlocksEditStartRef.current = connectionBlocksEditStart;
 
   useEffect(() => {
     autoAcquireAttemptedRef.current = false;
@@ -64,6 +77,40 @@ export function useEditLockIntent({
       autoAcquireAttemptedRef.current = false;
     }
   }, [lockState]);
+
+  const tryStartEditSessionFromDirty = useCallback(() => {
+    if (
+      !formHydratedRef.current ||
+      isEditingRef.current ||
+      !mayEditRef.current ||
+      autoAcquireAttemptedRef.current ||
+      connectionBlocksEditStartRef.current
+    ) {
+      return;
+    }
+    const baseline = initialFormDataRef.current;
+    if (!baseline) return;
+
+    const changes = computeFormChanges(baseline, form.getValues());
+    if (changes.length === 0) return;
+
+    autoAcquireAttemptedRef.current = true;
+    setIsEditing(true);
+    void acquire().then((outcome) => {
+      if (!outcome.ok) {
+        setIsEditing(false);
+        if (initialFormDataRef.current) {
+          form.reset(initialFormDataRef.current);
+        }
+        onAcquireConflict({
+          reason: outcome.reason,
+          lockedByUsername: outcome.lockedByUsername,
+        });
+      } else {
+        autoAcquireAttemptedRef.current = false;
+      }
+    });
+  }, [acquire, form, initialFormDataRef, onAcquireConflict, setIsEditing]);
 
   useEffect(() => {
     if (!formHydrated || isEditing || !mayEdit) {
@@ -94,25 +141,10 @@ export function useEditLockIntent({
         ) {
           return;
         }
-        const baseline = initialFormDataRef.current;
-        if (!baseline) return;
-
-        const changes = computeFormChanges(baseline, form.getValues());
-        if (changes.length === 0) return;
-
-        autoAcquireAttemptedRef.current = true;
-        setIsEditing(true);
-        void acquire().then((ok) => {
-          if (!ok) {
-            setIsEditing(false);
-            if (initialFormDataRef.current) {
-              form.reset(initialFormDataRef.current);
-            }
-            onAcquireConflict();
-          } else {
-            autoAcquireAttemptedRef.current = false;
-          }
-        });
+        if (connectionBlocksEditStartRef.current) {
+          return;
+        }
+        tryStartEditSessionFromDirty();
       }, CHANGE_DETECT_DEBOUNCE_MS);
     };
 
@@ -132,10 +164,9 @@ export function useEditLockIntent({
     hydrationGeneration,
     mayEdit,
     isEditing,
-    acquire,
     form,
-    setIsEditing,
-    initialFormDataRef,
-    onAcquireConflict,
+    tryStartEditSessionFromDirty,
   ]);
+
+  return { tryStartEditSessionFromDirty };
 }
