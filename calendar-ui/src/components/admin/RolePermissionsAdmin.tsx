@@ -116,41 +116,36 @@ export function RolePermissionsAdminSection() {
   return (
     <AdminSection
       title="Role permissions"
-      description="Manage permissions assigned to system roles. System permissions are fixed and cannot be changed here."
-      headerAction={
-        selectedRoleId !== undefined && (
+      description="Toggle permissions per role; system permissions cannot be changed here."
+      sectionId="role-permissions"
+      footerAction={
+        selectedRoleId !== undefined && isDirty ? (
           <div className="flex items-center gap-2">
-            {isDirty && (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={saveMutation.isPending}
-                  onClick={() => {
-                    setDraftPermissionIds(
-                      new Set(
-                        rows
-                          .filter((row) => row.hasPermission)
-                          .map((row) => row.id)
-                      )
-                    );
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={saveMutation.isPending}
-                  onClick={() => saveMutation.mutate()}
-                >
-                  {saveMutation.isPending ? 'Saving...' : 'Save changes'}
-                </Button>
-              </>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={saveMutation.isPending}
+              onClick={() => {
+                setDraftPermissionIds(
+                  new Set(
+                    rows.filter((row) => row.hasPermission).map((row) => row.id)
+                  )
+                );
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={saveMutation.isPending}
+              onClick={() => saveMutation.mutate()}
+            >
+              {saveMutation.isPending ? 'Saving...' : 'Save changes'}
+            </Button>
           </div>
-        )
+        ) : undefined
       }
     >
       <div className="mb-5 max-w-sm">

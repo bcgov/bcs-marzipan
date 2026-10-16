@@ -19,6 +19,10 @@ import {
   LookupForm,
 } from '@/components/admin';
 import { GenericDataTable } from '@/components/table/GenericDataTable';
+import {
+  tableContainer,
+  tableScrollWrapper,
+} from '@/components/table/tableConstants';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,12 +33,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import type { SettingsSectionId } from '@/contexts/SettingsSectionContext';
 import {
   ClientValidationError,
   showErrorToast,
   showSuccessToast,
 } from '@/lib/error-toast';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import { cn } from '@/lib/utils';
 
 const EMPTY_INITIAL: Record<string, unknown> = {};
 
@@ -61,6 +67,9 @@ export interface RenderModalContentProps {
 interface GenericLookupAdminProps<T extends BaseLookupItem> {
   title: string;
   description: string;
+  /** Optional note above the table (inside the expanded section). */
+  bodyLead?: ReactNode;
+  sectionId: SettingsSectionId;
   entityType: string;
   apiEndpoint: string;
   /**
@@ -110,6 +119,8 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
 export function GenericLookupAdmin<T extends BaseLookupItem>({
   title,
   description,
+  bodyLead,
+  sectionId,
   entityType,
   apiEndpoint,
   queryKey,
@@ -492,8 +503,9 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     <AdminSection
       title={title}
       description={description}
+      sectionId={sectionId}
       onAdd={handleOpenModal}
-      addButtonLabel={`Add ${entityType}`}
+      addButtonLabel={`+ Add ${entityType.toLowerCase()}`}
       isLoading={isLoading}
       titleAction={
         enableManualSort ? (
@@ -519,7 +531,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={`Search ${title}`}
+              placeholder="Search"
               aria-label={`Search ${title}`}
               className="h-9 w-44 rounded-md border border-slate-300 bg-white pr-3 pl-8 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none"
             />
@@ -542,19 +554,34 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         </div>
       }
     >
+      {bodyLead ? (
+        <div className="mb-4 text-sm text-slate-600">{bodyLead}</div>
+      ) : null}
       {error && (
         <div className="text-destructive text-sm">
           Error loading {title.toLowerCase()}
         </div>
       )}
       {filteredData && filteredData.length > 0 && (
-        <div className="max-h-[min(480px,60vh)] overflow-auto rounded-lg border border-slate-200">
-          <GenericDataTable
-            data={filteredData}
-            columns={baseColumns}
-            onReorder={canReorder ? handleReorder : undefined}
-            reorderDisabled={!orderControlsReady}
-          />
+        <div
+          className={cn(
+            tableContainer,
+            'max-h-[min(480px,60vh)] bg-white shadow-none'
+          )}
+        >
+          <div
+            className={cn(
+              tableScrollWrapper,
+              'max-h-[min(480px,60vh)] [overflow-y:auto]'
+            )}
+          >
+            <GenericDataTable
+              data={filteredData}
+              columns={baseColumns}
+              onReorder={canReorder ? handleReorder : undefined}
+              reorderDisabled={!orderControlsReady}
+            />
+          </div>
         </div>
       )}
       {filteredData && filteredData.length === 0 && (
