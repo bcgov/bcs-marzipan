@@ -68,7 +68,7 @@ npm run perf:k6:browser:auth:local
 
 ## CI / Tekton
 
-- **CI/CD** (`ci-cd.yaml`): `npm run perf:k6:inspect` on every push to `main`
+- **Code quality** ([`.github/workflows/code-quality-checks.yaml`](../.github/workflows/code-quality-checks.yaml)): `npm run perf:k6:inspect` runs as part of `npm run verify` on pull requests and pushes to `main` / `develop`, and before Emerald deploy builds
 - **Manual workflow** (`.github/workflows/k6-performance.yaml`): `profile=smoke` runs `corpcal-api-smoke.js`; `profile=standard` runs `corpcal-api.js`
 - **OpenShift** (`openshift/ci/k6-smoke-task.yaml`): Tekton task `corpcal-k6-api-smoke` with optional auth params
 

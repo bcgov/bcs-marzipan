@@ -201,7 +201,7 @@ See [Database Package Documentation](packages/database/README.md) for the comple
 npm run test   # Run all unit tests (calendar-service, calendar-ui, packages/shared)
 ```
 
-See [Testing Documentation](docs/TESTING.md) for strategy, naming conventions (`*.spec.ts` / `*.spec.tsx`), what to test, and when tests run (pre-commit, pre-push).
+See [Testing Documentation](docs/TESTING.md) for strategy, naming conventions (`*.spec.ts` / `*.spec.tsx`), what to test, and when tests run (pre-commit, pre-push, CI). See [CI documentation](docs/CI.md) for GitHub quality gates and `npm run verify`.
 
 ## API Documentation
 
@@ -284,17 +284,20 @@ npm install
 ### Code Quality
 
 ```bash
+# Full CI parity (before opening/updating a PR)
+npm run verify
+
+# Faster local gate (format + lint + types)
+npm run verify:quick
+
 # Format all code
 npm run format
 
 # Check formatting
 npm run format:check
 
-# Lint and auto-fix
-npm run lint
-
-# Check linting
-npm run lint
+# Lint and typecheck
+npm run check
 ```
 
 ### Git Hooks
@@ -303,16 +306,17 @@ This project uses **Husky** to enforce code quality. See [Pre-Commit Hooks Docum
 
 **Pre-commit hook** (blocking):
 
-- Runs ESLint with auto-fix on staged files
-- Runs Prettier on non-code files
+- Runs Prettier and ESLint with auto-fix on staged TypeScript
+- Runs Prettier on staged non-code files
 - Runs tests for affected files
 
 **Pre-push hook** (blocking):
 
-- Validates full project build
-- Runs all test suites
-- Validates schema types are in sync
-- Validates branch naming convention
+- Repo-wide `format:check` and `check` (lint + typecheck)
+- Shared schema / DB alignment (`validate-types`)
+- Validates branch naming on feature branches
+
+**GitHub CI:** Pull requests to `main` / `develop` run `npm run verify`. See [CI documentation](docs/CI.md) for deploy gates and branch protection.
 
 **Commit-msg hook** (non-blocking):
 

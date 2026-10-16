@@ -19,7 +19,7 @@ name: Deploy to Emerald
 # └─────────────────────────────────────────────────────────────────────────┘
 #
 # Internal call chain:
-#   resolve-env → build-and-push → update-gitops → argocd-sync
+#   resolve-env → quality-gate → build-and-push → update-gitops → argocd-sync
 #
 # Prod promotion (no rebuild):
 #   The prod environment never rebuilds from source. Instead, the image that
@@ -183,13 +183,18 @@ jobs:
             echo "argocd_app_name=${ARGOCD_APP}"
           } >> "$GITHUB_OUTPUT"
 
-  # ── 2. Build application images + push to Artifactory ──────────────────────
+  # ── 2. Quality gate (same bar as PR CI: npm run verify) ───────────────────
+  quality-gate:
+    name: Quality Checks
+    uses: ./.github/workflows/_code-quality.yaml
+
+  # ── 3. Build application images + push to Artifactory ──────────────────────
   # For dev/test: docker build from source, tag, push.
   # For prod:     docker pull from test repo, retag, push — no rebuild.
   # Application compilation (npm build etc.) happens inside the Dockerfile.
   build-and-push:
     name: Build / Promote Images — ${{ needs.resolve-env.outputs.environment }}
-    needs: resolve-env
+    needs: [resolve-env, quality-gate]
     uses: ./.github/workflows/artifactory-build.yaml
     with:
       ref: ${{ needs.resolve-env.outputs.branch }}
@@ -202,7 +207,7 @@ jobs:
       image_tag: ${{ needs.resolve-env.outputs.image_tag }}
     secrets: inherit
 
-  # ── 3. Update kustomization.yaml in the GitOps repo ────────────────────────
+  # ── 4. Update kustomization.yaml in the GitOps repo ────────────────────────
   # Patches the image newTag for corpcal-service, corpcal-ui and
   # corpcal-db-migrate, commits with a standard message, and force-pushes
   # to the GitOps base branch. ArgoCD detects the change and begins syncing.
@@ -215,7 +220,7 @@ jobs:
       image_tag: ${{ needs.resolve-env.outputs.image_tag }}
     secrets: inherit
 
-  # ── 4. Wait for ArgoCD sync, verify health, produce summary ────────────────
+  # ── 5. Wait for ArgoCD sync, verify health, produce summary ────────────────
   # Triggers an immediate ArgoCD refresh so the GitOps change is picked up
   # without waiting for the polling interval. Then blocks until the application
   # reports Synced + Healthy (or times out). Writes a Markdown step summary.
