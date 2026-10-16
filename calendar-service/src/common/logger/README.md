@@ -25,6 +25,7 @@ Inject `AppLogger` into your service or controller constructor:
 
 ```typescript
 import { Injectable } from '@nestjs/common';
+
 import { AppLogger } from '../common/logger/logger.service';
 
 @Injectable()

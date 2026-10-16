@@ -9,9 +9,10 @@ const repoRoot = resolve(packageRoot, '../..');
 const svgPath = resolve(packageRoot, 'assets/logo/bc-logo.svg');
 const outputPath = resolve(
   packageRoot,
-  'src/reports/print/react/bcLogoPrintDataUrl.generated.ts',
+  'src/reports/print/react/bcLogoPrintDataUrl.generated.ts'
 );
-const outputPathFromRepo = 'packages/shared/src/reports/print/react/bcLogoPrintDataUrl.generated.ts';
+const outputPathFromRepo =
+  'packages/shared/src/reports/print/react/bcLogoPrintDataUrl.generated.ts';
 
 const svg = readFileSync(svgPath, 'utf8');
 const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;

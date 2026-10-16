@@ -201,7 +201,7 @@ See [Database Package Documentation](packages/database/README.md) for the comple
 npm run test   # Run all unit tests (calendar-service, calendar-ui, packages/shared)
 ```
 
-See [Testing Documentation](docs/TESTING.md) for strategy, naming conventions (`*.spec.ts` / `*.spec.tsx`), what to test, and when tests run (pre-commit, pre-push, CI). See [CI documentation](docs/CI.md) for GitHub quality gates and `npm run verify`.
+See [Testing Documentation](docs/TESTING.md) for strategy, naming conventions (`*.spec.ts` / `*.spec.tsx`), what to test, and when tests run (pre-commit, CI). See [CI documentation](docs/CI.md) for GitHub quality gates and `npm run verify`.
 
 ## API Documentation
 

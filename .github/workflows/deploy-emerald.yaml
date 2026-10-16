@@ -186,7 +186,10 @@ jobs:
   # ── 2. Quality gate (same bar as PR CI: npm run verify) ───────────────────
   quality-gate:
     name: Quality Checks
+    needs: [resolve-env]
     uses: ./.github/workflows/_code-quality.yaml
+    with:
+      ref: ${{ needs.resolve-env.outputs.branch }}
 
   # ── 3. Build application images + push to Artifactory ──────────────────────
   # For dev/test: docker build from source, tag, push.
