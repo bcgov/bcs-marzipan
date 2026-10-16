@@ -142,8 +142,13 @@ function applyAllowedLookupSelection(
   existingIds: number[] | undefined,
   userTeamIds: number[],
   scopeById: Map<number, LookupTeamScope>,
+  hasCreateAny: boolean,
   onApply: (allowedIds: number[]) => void
 ): void {
+  if (hasCreateAny) {
+    onApply(submittedIds);
+    return;
+  }
   const allowedIds = filterAllowedLookupIds(
     submittedIds,
     existingIds,
@@ -493,9 +498,31 @@ export const ActivityOverviewSection: React.FC<
   const pickableTeamCategoryOptions = useMemo(
     () =>
       pickableCategories
-        .filter((c) => c.visibility === 'team')
+        .filter(
+          (c) =>
+            c.visibility === 'team' &&
+            isLookupSelectable(
+              toLookupScope(c.visibility, c.teamIds),
+              userTeamIds
+            )
+        )
         .map((c) => toLookupOption(c.id, c.displayName ?? c.name)),
-    [pickableCategories]
+    [pickableCategories, userTeamIds]
+  );
+  // Team-scoped categories outside the user's teams; only present for create.any holders.
+  const otherTeamCategoryOptions = useMemo(
+    () =>
+      pickableCategories
+        .filter(
+          (c) =>
+            c.visibility === 'team' &&
+            !isLookupSelectable(
+              toLookupScope(c.visibility, c.teamIds),
+              userTeamIds
+            )
+        )
+        .map((c) => toLookupOption(c.id, c.displayName ?? c.name)),
+    [pickableCategories, userTeamIds]
   );
   const pickableGlobalCategoryOptions = useMemo(
     () =>
@@ -505,8 +532,16 @@ export const ActivityOverviewSection: React.FC<
     [pickableCategories]
   );
   const pickableCategoryOptions = useMemo(
-    () => [...pickableTeamCategoryOptions, ...pickableGlobalCategoryOptions],
-    [pickableTeamCategoryOptions, pickableGlobalCategoryOptions]
+    () => [
+      ...pickableTeamCategoryOptions,
+      ...pickableGlobalCategoryOptions,
+      ...otherTeamCategoryOptions,
+    ],
+    [
+      pickableTeamCategoryOptions,
+      pickableGlobalCategoryOptions,
+      otherTeamCategoryOptions,
+    ]
   );
 
   const tagScopeById = useMemo(
@@ -580,6 +615,7 @@ export const ActivityOverviewSection: React.FC<
                       field.value ?? [],
                       userTeamIds,
                       categoryScopeById,
+                      hasCreateAny,
                       (allowedIds) => {
                         setActivityFormFieldValue(form, field.name, allowedIds);
                       }
@@ -628,6 +664,20 @@ export const ActivityOverviewSection: React.FC<
                           )}
                         </ComboboxCollection>
                       </ComboboxGroup>
+                      {otherTeamCategoryOptions.length > 0 && (
+                        <>
+                          <ComboboxSeparator />
+                          <ComboboxGroup items={otherTeamCategoryOptions}>
+                            <ComboboxCollection>
+                              {(option: OptionItem) => (
+                                <ComboboxItem key={option.value} value={option}>
+                                  {option.label}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxCollection>
+                          </ComboboxGroup>
+                        </>
+                      )}
                     </ComboboxList>
                   </ComboboxContent>
                 </Combobox>
@@ -1025,6 +1075,7 @@ export const ActivityOverviewSection: React.FC<
                       field.value ?? [],
                       userTeamIds,
                       tagScopeById,
+                      hasCreateAny,
                       (allowedIds) => {
                         setActivityFormFieldValue(form, field.name, allowedIds);
                       }
