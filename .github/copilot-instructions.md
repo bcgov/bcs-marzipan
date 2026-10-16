@@ -24,6 +24,14 @@ Node.js >= 24, npm workspaces. **Service:** NestJS 11, PostgreSQL, Drizzle, Zod,
 
 `.github/instructions/*.instructions.md` auto-apply via `applyTo` when editing matching paths.
 
+## Repository skills (on demand)
+
+`.github/skills/*/SKILL.md` — follow when the user asks for that workflow (not path-triggered).
+
+| Skill                                  | Use when                                                                                                                                        |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| [qa-rollup](skills/qa-rollup/SKILL.md) | QA test plan for PRs merged to **develop** since a baseline; non-technical, grouped by PR with page/section locations; post full rollup in chat |
+
 ## Boundaries
 
 - Do not edit generated output (`dist/`, coverage, `packages/database/migrations`) unless explicitly instructed.
