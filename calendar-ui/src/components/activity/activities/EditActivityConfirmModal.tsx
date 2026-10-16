@@ -14,6 +14,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
+import type { ActivityConfirmBlockedNotice } from '@/lib/activity-edit-session-messages';
 
 import {
   ActivityConfirmHeaderBlockedNotice,
@@ -33,7 +34,8 @@ interface EditActivityConfirmModalProps {
   changes: HistoryChange[];
   onConfirm: (value: ActivitySaveConfirmPayload) => void;
   isSubmitting: boolean;
-  confirmBlockedMessage?: string | null;
+  confirmDisabled?: boolean;
+  confirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }
 
 export function EditActivityConfirmModal({
@@ -42,11 +44,9 @@ export function EditActivityConfirmModal({
   changes,
   onConfirm,
   isSubmitting,
-  confirmBlockedMessage = null,
+  confirmDisabled = false,
+  confirmBlockedNotice = null,
 }: EditActivityConfirmModalProps) {
-  const confirmDisabled =
-    isSubmitting ||
-    (confirmBlockedMessage != null && confirmBlockedMessage.length > 0);
   const { user } = useAuth();
   const [notes, setNotes] = useState('');
   const [renewPublicLastUpdated, setRenewPublicLastUpdated] = useState(false);
@@ -84,9 +84,7 @@ export function EditActivityConfirmModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ActivityConfirmHeaderBlockedNotice
-          confirmBlockedMessage={confirmBlockedMessage}
-        />
+        <ActivityConfirmHeaderBlockedNotice notice={confirmBlockedNotice} />
 
         <div className="max-h-[60vh] overflow-y-auto">
           <ActivityFormChangesList
@@ -124,13 +122,11 @@ export function EditActivityConfirmModal({
           >
             Return to edit
           </Button>
-          <ActivityConfirmPrimaryActionGroup
-            confirmBlockedMessage={confirmBlockedMessage}
-          >
+          <ActivityConfirmPrimaryActionGroup notice={confirmBlockedNotice}>
             <Button
               type="button"
               onClick={handleConfirm}
-              disabled={confirmDisabled}
+              disabled={isSubmitting || confirmDisabled}
             >
               {isSubmitting ? (
                 <>

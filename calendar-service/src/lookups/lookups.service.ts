@@ -90,6 +90,7 @@ import {
   syncCategoryTeams,
   syncTagTeams,
 } from './lookups-team-sync.helper';
+import { REORDERABLE_LOOKUP_TABLES } from './reorderable-lookups';
 
 export type VenuePresetAdminItem = VenuePresetItem & {
   sortOrder: number;
@@ -2202,6 +2203,28 @@ export class LookupsService {
       .where(eq(cities.id, id))
       .returning();
     return result;
+  }
+
+  /** Sets sortOrder to 1..n following the given id order. */
+  async reorderLookup(
+    entity: string,
+    ids: number[],
+    currentUserId: number
+  ): Promise<void> {
+    const table = REORDERABLE_LOOKUP_TABLES[entity];
+    // One set-based UPDATE so concurrent reorders can't lock rows in opposing orders (deadlock).
+    const positions = sql.join(
+      ids.map((id, index) => sql`when ${id}::int then ${index + 1}::int`),
+      sql` `
+    );
+    await this.databaseService.db
+      .update(table)
+      .set({
+        sortOrder: sql`case ${table.id} ${positions} end`,
+        lastUpdatedBy: currentUserId,
+        lastUpdatedDateTime: new Date(),
+      })
+      .where(inArray(table.id, ids));
   }
 
   async updateCommsMaterial(

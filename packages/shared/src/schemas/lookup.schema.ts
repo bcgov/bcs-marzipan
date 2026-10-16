@@ -684,6 +684,18 @@ export const createCityRequestSchema = z.object({
 export const updateCityRequestSchema = createCityRequestSchema.partial();
 
 /**
+ * Reorder Lookup Request Schema - item ids in their new display order
+ */
+export const reorderLookupRequestSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'Lookup IDs must be unique',
+    }),
+});
+
+/**
  * Create Ministry Request Schema
  */
 export const createMinistryRequestSchema = z.object({

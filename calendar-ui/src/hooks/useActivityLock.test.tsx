@@ -99,6 +99,26 @@ describe('useActivityLock', () => {
     expect(result.current.lockState).toBe('owned');
   });
 
+  it('returns acquire failure reason on the acquire result without waiting for render', async () => {
+    acquireLockMock.mockRejectedValue(new NetworkError('Network unavailable'));
+    const { result } = renderHook(() => useActivityLock(139, 1));
+
+    await waitFor(() => expect(result.current.lockState).toBe('idle'));
+
+    let acquireResult: Awaited<
+      ReturnType<typeof result.current.acquire>
+    > | null = null;
+    await act(async () => {
+      acquireResult = await result.current.acquire();
+    });
+
+    expect(acquireResult).toEqual({
+      ok: false,
+      reason: 'network',
+      lockedByUsername: null,
+    });
+  });
+
   it('preserves a network failure from the acquisition request', async () => {
     acquireLockMock.mockRejectedValue(new NetworkError('Network unavailable'));
     const { result } = renderHook(() => useActivityLock(139, 1));

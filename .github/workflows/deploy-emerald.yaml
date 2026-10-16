@@ -203,8 +203,8 @@ jobs:
     secrets: inherit
 
   # ── 3. Update kustomization.yaml in the GitOps repo ────────────────────────
-  # Patches the image newTag for calendar-service, calendar-ui and
-  # calendar-db-migrate, commits with a standard message, and force-pushes
+  # Patches the image newTag for corpcal-service, corpcal-ui and
+  # corpcal-db-migrate, commits with a standard message, and force-pushes
   # to the GitOps base branch. ArgoCD detects the change and begins syncing.
   update-gitops:
     name: Update GitOps Overlay — ${{ needs.resolve-env.outputs.environment }}

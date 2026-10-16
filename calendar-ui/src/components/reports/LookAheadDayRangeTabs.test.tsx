@@ -1,10 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  defaultLookAheadDateRange,
-  lookAheadDateRangeFromTomorrow,
-} from '@corpcal/shared/reports/look-ahead';
+import { lookAheadQuickPickRange } from '@corpcal/shared/reports/look-ahead';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
 import { buildDefaultPreferencesForReport } from '@/lib/report-preferences-defaults';
 
@@ -39,7 +36,10 @@ describe('LookAheadDayRangeTabs', () => {
   it('advances the today-based default at Pacific midnight', () => {
     vi.useFakeTimers();
     vi.setSystemTime(BEFORE_PACIFIC_MIDNIGHT);
-    const defaultRange = defaultLookAheadDateRange(BEFORE_PACIFIC_MIDNIGHT);
+    const defaultRange = lookAheadQuickPickRange(
+      'today',
+      BEFORE_PACIFIC_MIDNIGHT
+    );
     const setPreferences = vi.fn();
 
     render(
@@ -60,7 +60,7 @@ describe('LookAheadDayRangeTabs', () => {
       filterState: expect.objectContaining({
         dateRange: {
           startDate: '2026-05-29',
-          endDate: '2026-06-04',
+          endDate: '2026-05-29',
           noStartDate: false,
           noEndDate: false,
         },
@@ -71,10 +71,7 @@ describe('LookAheadDayRangeTabs', () => {
   it('continues to advance tomorrow-based quick-pick ranges', () => {
     vi.useFakeTimers();
     vi.setSystemTime(BEFORE_PACIFIC_MIDNIGHT);
-    const quickPick = lookAheadDateRangeFromTomorrow(
-      7,
-      BEFORE_PACIFIC_MIDNIGHT
-    );
+    const quickPick = lookAheadQuickPickRange(7, BEFORE_PACIFIC_MIDNIGHT);
     const setPreferences = vi.fn();
 
     render(

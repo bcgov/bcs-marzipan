@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, NetworkError } from '../api/errors';
 import {
   getFriendlyErrorMessage,
+  showActionBlockedToast,
   showErrorToast,
   showInfoToast,
   showSuccessToast,
+  showWarningToast,
 } from './error-toast';
 import { TOAST_DURATION_MS } from './toast-durations';
 
@@ -126,6 +128,52 @@ describe('showErrorToast', () => {
     expect(mockToast.error).toHaveBeenCalledTimes(1);
     expect(mockToast.error).toHaveBeenCalledWith('Error', {
       description: 'raw string',
+      duration: TOAST_DURATION_MS.error,
+    });
+  });
+});
+
+describe('showWarningToast', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('calls toast.warning with default error duration', () => {
+    showWarningToast('Heads up', 'Details');
+
+    expect(mockToast.warning).toHaveBeenCalledWith('Heads up', {
+      description: 'Details',
+      duration: TOAST_DURATION_MS.error,
+    });
+  });
+});
+
+describe('showActionBlockedToast', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('uses warning variant by default', () => {
+    showActionBlockedToast({
+      title: 'Unable to save',
+      description: 'You are offline.',
+    });
+
+    expect(mockToast.warning).toHaveBeenCalledWith('Unable to save', {
+      description: 'You are offline.',
+      duration: TOAST_DURATION_MS.error,
+    });
+  });
+
+  it('uses error variant when specified', () => {
+    showActionBlockedToast({
+      title: 'Unable to save',
+      description: 'Not authorized.',
+      variant: 'error',
+    });
+
+    expect(mockToast.error).toHaveBeenCalledWith('Unable to save', {
+      description: 'Not authorized.',
       duration: TOAST_DURATION_MS.error,
     });
   });
