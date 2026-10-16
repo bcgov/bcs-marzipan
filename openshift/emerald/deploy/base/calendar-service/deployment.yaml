@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/name: corpcal
     app.kubernetes.io/component: service
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/version: ${APP_VERSION}
     app.kubernetes.io/managed-by: github-actions
 spec:
   replicas: 1
@@ -67,6 +66,36 @@ spec:
                 configMapKeyRef:
                   name: corpcal-service-config
                   key: PUBLIC_APP_BASE_URL
+            - name: NOTIFICATIONS_EMAIL_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_EMAIL_ENABLED
+            - name: NOTIFICATIONS_EMAIL_FROM
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_EMAIL_FROM
+            - name: NOTIFICATIONS_SMTP_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_SMTP_HOST
+            - name: NOTIFICATIONS_SMTP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_SMTP_PORT
+            - name: NOTIFICATIONS_SMTP_SECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_SMTP_SECURE
+            - name: NOTIFICATIONS_EMAIL_SUBJECT_PREFIX
+              valueFrom:
+                configMapKeyRef:
+                  name: calendar-service-config
+                  key: NOTIFICATIONS_EMAIL_SUBJECT_PREFIX
             - name: RATE_LIMIT_MAX
               valueFrom:
                 configMapKeyRef:

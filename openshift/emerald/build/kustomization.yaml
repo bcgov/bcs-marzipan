@@ -1,0 +1,20 @@
+#Not used in Emerald OpenShift build & deployment workflow - Oct 2026
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs:
+      app.kubernetes.io/instance: corpcal-tools
+      env: tools
+    includeSelectors: false
+resources:
+  - calendar-service/imagestream.yaml
+  - calendar-service/buildconfig.yaml
+  - calendar-service/configmap.yaml
+  - calendar-ui/imagestream.yaml
+  - calendar-ui/buildconfig.yaml
+  - calendar-ui/configmap.yaml
+  - database/migrate/imagestream.yaml
+  - database/migrate/buildconfig.yaml
+  - database/seed/imagestream.yaml
+  - database/seed/buildconfig.yaml
+namespace: dc4c90-tools
