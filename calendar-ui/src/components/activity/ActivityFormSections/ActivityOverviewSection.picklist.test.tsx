@@ -188,6 +188,62 @@ describe('ActivityOverviewSection lookup picklist selectability', () => {
     ).toBeInTheDocument();
   });
 
+  it('lets CREATE_ANY users apply an out-of-team category', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+    render(
+      <PicklistHarness
+        hasCreateAny
+        userTeamIds={[]}
+        onFormReady={(form) => {
+          formRef = form;
+        }}
+      />
+    );
+
+    await openCategoryPicklist(user);
+    await user.click(
+      await screen.findByRole('option', { name: 'Team Category' })
+    );
+
+    await waitFor(() => {
+      expect(formRef!.getValues('categoryIds')).toEqual([teamCategory.id]);
+    });
+  });
+
+  it('lists out-of-team categories after global ones for CREATE_ANY users', async () => {
+    const user = userEvent.setup();
+    render(<PicklistHarness hasCreateAny userTeamIds={[]} />);
+
+    await openCategoryPicklist(user);
+
+    const names = (await screen.findAllByRole('option')).map(
+      (o) => o.textContent
+    );
+    expect(names).toEqual(['Global Category', 'Team Category']);
+  });
+
+  it('lets CREATE_ANY users apply an out-of-team tag', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+    render(
+      <PicklistHarness
+        hasCreateAny
+        userTeamIds={[]}
+        onFormReady={(form) => {
+          formRef = form;
+        }}
+      />
+    );
+
+    await openTagPicklist(user);
+    await user.click(await screen.findByRole('option', { name: 'Team Tag' }));
+
+    await waitFor(() => {
+      expect(formRef!.getValues('tagIds')).toEqual([teamTag.id]);
+    });
+  });
+
   it('keeps grandfathered category chips visible and not re-addable after removal', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
