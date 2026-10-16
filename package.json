@@ -13,8 +13,8 @@
   "overrides": {
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "picomatch": "4.0.4",
-    "ws": "8.21.0",
+    "picomatch": "4.0.7",
+    "ws": "8.22.0",
     "esbuild": "0.28.1",
     "@esbuild-kit/core-utils": {
       "esbuild": "0.28.1"
@@ -28,15 +28,18 @@
       "multer": "2.2.0"
     },
     "@nestjs/swagger": {
-      "js-yaml": "5.2.2"
+      "js-yaml": "5.4.3"
+    },
+    "@eslint/eslintrc": {
+      "js-yaml": "5.4.3"
     },
     "fork-ts-checker-webpack-plugin": {
-      "js-yaml": "5.2.2"
+      "js-yaml": "5.4.3"
     },
     "cosmiconfig": {
-      "js-yaml": "5.2.2"
+      "js-yaml": "5.4.3"
     },
-    "js-yaml": "5.2.2",
+    "js-yaml": "5.4.3",
     "multer": "2.2.0",
     "lodash": ">=4.17.22",
     "tmp": "0.2.7",
@@ -80,7 +83,7 @@
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@swc/core": "^1.15.11",
     "@vitest/coverage-v8": "^4.1.11",
-    "concurrently": "^10.0.3",
+    "concurrently": "^10.0.6",
     "dotenv": "^16.6.1",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^9.1.0",
@@ -91,7 +94,7 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "globals": "^16.0.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.2.11",
+    "lint-staged": "^17.6.0",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "typescript": "^5.3.3",
