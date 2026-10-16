@@ -34,9 +34,11 @@ This document describes the testing strategy, folder structure, naming conventio
 ## When Tests Run
 
 - **Pre-commit (lint-staged):** Related tests for changed `calendar-service`, `calendar-ui`, and `packages/*` files via `scripts/test/vitest-related.js` (with workspace argument). `packages/*` run related Vitest tests when applicable.
-- **Pre-push:** Full build, then all test suites (`calendar-service`, `calendar-ui`, `packages/shared`) via the root `npm run test` (after `npm run build`).
+- **Pre-push:** `format:check`, `check`, and `validate-types` (shared package). Full build and all workspace tests run in CI via `npm run verify` on pull requests.
+- **CI / pre-merge:** `npm run verify` (format, build, lint, typecheck, full `test`, k6 script inspect). See [CI.md](CI.md).
 
 ## Related Documentation
 
 - [scripts/test/README.md](../scripts/test/README.md) — `vitest-related.js` script used by lint-staged for all workspaces
 - [Pre-Commit Hooks](PRE_COMMIT_HOOKS.md) — Hooks and pre-push behavior
+- [CI](CI.md) — GitHub Actions, `npm run verify`, branch protection

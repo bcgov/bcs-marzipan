@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PERMISSIONS } from '@corpcal/shared';
-import { render, screen, waitFor } from '@/test/test-utils';
+import { expandAdminSection, render, screen, waitFor } from '@/test/test-utils';
 
 const mockFetchLookAheadResetSettings = vi.fn();
 const mockFetchLookAheadResetRunPreview = vi.fn();
@@ -57,6 +57,7 @@ describe('LookAheadResetSettingsAdmin', () => {
     expect(
       screen.getByRole('heading', { name: /Look Ahead status reset/i })
     ).toBeInTheDocument();
+    expandAdminSection(/Look Ahead status reset/i);
     expect(
       screen.getByRole('button', { name: /Clear LA status/i })
     ).toBeInTheDocument();
@@ -95,6 +96,7 @@ describe('LookAheadResetSettingsAdmin', () => {
       { timeout: 20000 }
     );
 
+    expandAdminSection(/Look Ahead status reset/i);
     expect(
       screen.getByRole('button', { name: /Restore previous/i })
     ).toBeDisabled();
@@ -126,6 +128,7 @@ describe('LookAheadResetSettingsAdmin', () => {
       { timeout: 20000 }
     );
 
+    expandAdminSection(/Look Ahead status reset/i);
     await waitFor(
       () =>
         expect(

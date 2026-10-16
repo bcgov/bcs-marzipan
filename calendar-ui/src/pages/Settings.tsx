@@ -20,7 +20,7 @@ import {
   Timer,
   Users,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
 import {
@@ -50,31 +50,16 @@ import { ReportCoverContactSettingsAdmin } from '@/components/admin/ReportCoverC
 import { ReviewExemptFieldsSettingsAdmin } from '@/components/admin/ReviewExemptFieldsSettingsAdmin';
 import { RolePermissionsAdminSection } from '@/components/admin/RolePermissionsAdmin';
 import { PageHeader } from '@/components/layout';
+import {
+  parseSettingsSectionHash,
+  settingsSectionHash,
+  SettingsSectionProvider,
+  useSettingsSection,
+  type SettingsSectionId,
+} from '@/contexts/SettingsSectionContext';
 import { useAuth } from '@/hooks/useAuth';
 
-type Section =
-  | 'banner'
-  | 'recurring-lockout-banner'
-  | 'login-modal'
-  | 'edit-lock-idle'
-  | 'activity-completion'
-  | 'look-ahead-reset'
-  | 'activity-info-icons'
-  | 'report-cover-contact'
-  | 'review-exempt-fields'
-  | 'ministry-groups'
-  | 'categories'
-  | 'cities'
-  | 'comms'
-  | 'representatives'
-  | 'tags'
-  | 'ministries'
-  | 'statuses'
-  | 'themes'
-  | 'translation-languages'
-  | 'venue-presets'
-  | 'permissions-visibility'
-  | 'role-permissions';
+type Section = SettingsSectionId;
 
 /**
  * Modern Settings Page
@@ -87,34 +72,6 @@ export function Settings() {
   const canManageRecurringLockout = Boolean(
     user?.permissions?.includes(PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT)
   );
-  const [showBackToNavigation, setShowBackToNavigation] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const content = contentRef.current;
-    let scrollContainer: HTMLElement | null = null;
-
-    for (
-      let parent = content?.parentElement;
-      parent;
-      parent = parent.parentElement
-    ) {
-      const overflowY = window.getComputedStyle(parent).overflowY;
-      if (overflowY === 'auto' || overflowY === 'scroll') {
-        scrollContainer = parent;
-        break;
-      }
-    }
-
-    const scrollTarget: Window | HTMLElement = scrollContainer ?? window;
-    const handleScroll = () =>
-      setShowBackToNavigation(
-        (scrollContainer?.scrollTop ?? window.scrollY) > 240
-      );
-    handleScroll();
-    scrollTarget.addEventListener('scroll', handleScroll, { passive: true });
-    return () => scrollTarget.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const sections = [
     {
@@ -218,29 +175,145 @@ export function Settings() {
 
   const visibleSections = sections.filter((s) => s.show !== false);
 
-  const scrollToSection = (sectionId: Section) => {
-    const element = document.getElementById(`section-${sectionId}`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
   return (
     <>
       <PageHeader title="Settings and configuration" />
 
+      <SettingsSectionProvider>
+        <SettingsPageContent visibleSections={visibleSections} />
+      </SettingsSectionProvider>
+    </>
+  );
+}
+
+function SettingsPageContent({
+  visibleSections,
+}: {
+  visibleSections: Array<{
+    id: Section;
+    label: string;
+    icon: typeof Megaphone;
+  }>;
+}) {
+  const { closeAllSections, hasOpenSections, openSection } =
+    useSettingsSection();
+  const [showBackToNavigation, setShowBackToNavigation] = useState(false);
+  const [footerBarRect, setFooterBarRect] = useState<{
+    left: number;
+    width: number;
+  } | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const syncFooterBarRect = useCallback(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const { left, width } = el.getBoundingClientRect();
+    setFooterBarRect({ left, width });
+  }, []);
+
+  const visibleSectionIds = useMemo(
+    () => new Set(visibleSections.map((section) => section.id)),
+    [visibleSections]
+  );
+
+  const scrollToSection = useCallback((sectionId: Section) => {
+    document
+      .getElementById(`section-${sectionId}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const navigateToSection = useCallback(
+    (sectionId: Section) => {
+      openSection(sectionId);
+      window.history.replaceState(null, '', settingsSectionHash(sectionId));
+      requestAnimationFrame(() => scrollToSection(sectionId));
+    },
+    [openSection, scrollToSection]
+  );
+
+  useEffect(() => {
+    const applyHash = () => {
+      const sectionId = parseSettingsSectionHash(window.location.hash);
+      if (sectionId && visibleSectionIds.has(sectionId)) {
+        openSection(sectionId);
+        requestAnimationFrame(() => scrollToSection(sectionId));
+      }
+    };
+
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+  }, [openSection, scrollToSection, visibleSectionIds]);
+
+  useEffect(() => {
+    syncFooterBarRect();
+    const el = contentRef.current;
+    if (!el) return;
+
+    const resizeObserver = new ResizeObserver(() => syncFooterBarRect());
+    resizeObserver.observe(el);
+    window.addEventListener('resize', syncFooterBarRect);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', syncFooterBarRect);
+    };
+  }, [syncFooterBarRect]);
+
+  useEffect(() => {
+    const content = contentRef.current;
+    let scrollContainer: HTMLElement | null = null;
+
+    for (
+      let parent = content?.parentElement;
+      parent;
+      parent = parent.parentElement
+    ) {
+      const overflowY = window.getComputedStyle(parent).overflowY;
+      if (overflowY === 'auto' || overflowY === 'scroll') {
+        scrollContainer = parent;
+        break;
+      }
+    }
+
+    const scrollTarget: Window | HTMLElement = scrollContainer ?? window;
+    const handleScroll = () => {
+      setShowBackToNavigation(
+        (scrollContainer?.scrollTop ?? window.scrollY) > 240
+      );
+      syncFooterBarRect();
+    };
+    handleScroll();
+    scrollTarget.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollTarget.removeEventListener('scroll', handleScroll);
+  }, [syncFooterBarRect]);
+
+  return (
+    <>
       <div ref={contentRef} className="pb-20">
         {/* Quick Navigation */}
         <nav
           id="quick-navigation"
           aria-label="Settings quick navigation"
-          className="mb-8 rounded-lg border border-slate-200 bg-white shadow-sm"
+          className="mb-8 rounded-lg border border-slate-200 bg-white"
         >
-          <div className="border-b border-slate-200 p-4 sm:p-6">
-            <h2 className="mb-2 text-lg font-semibold text-slate-900">
-              Quick navigation
-            </h2>
-            <p className="text-sm text-slate-600">Jump to any admin section</p>
+          <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-4 sm:p-6">
+            <div>
+              <h2 className="mb-2 text-lg font-semibold text-slate-900">
+                Quick navigation
+              </h2>
+              <p className="text-sm text-slate-600">
+                Jump to any admin section
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={closeAllSections}
+              disabled={!hasOpenSections}
+              className="shrink-0 rounded-md px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+            >
+              Close all sections
+            </button>
           </div>
           <div className="p-4 sm:p-6">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -249,10 +322,10 @@ export function Settings() {
                 return (
                   <a
                     key={section.id}
-                    href={`#section-${section.id}`}
+                    href={settingsSectionHash(section.id)}
                     onClick={(e) => {
                       e.preventDefault();
-                      scrollToSection(section.id);
+                      navigateToSection(section.id);
                     }}
                     className="flex items-center gap-2 rounded-lg p-2 text-sm text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-800"
                   >
@@ -357,12 +430,17 @@ export function Settings() {
         </div>
       </div>
       <div
-        className={`fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_12px_rgba(15,23,42,0.08)] backdrop-blur transition-transform duration-200 ${
+        className={`fixed bottom-0 z-30 bg-white/95 backdrop-blur transition-transform duration-200 ${
           showBackToNavigation ? 'translate-y-0' : 'translate-y-full'
-        }`}
+        } ${footerBarRect == null ? 'inset-x-0' : ''}`}
+        style={
+          footerBarRect
+            ? { left: footerBarRect.left, width: footerBarRect.width }
+            : undefined
+        }
         aria-hidden={!showBackToNavigation}
       >
-        <div className="mx-auto flex max-w-7xl justify-end">
+        <div className="flex w-full justify-end py-3">
           <button
             type="button"
             tabIndex={showBackToNavigation ? 0 : -1}
@@ -374,7 +452,7 @@ export function Settings() {
             }
             className="rounded-md px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
           >
-            Back to quick navigation
+            Scroll to top
           </button>
         </div>
       </div>

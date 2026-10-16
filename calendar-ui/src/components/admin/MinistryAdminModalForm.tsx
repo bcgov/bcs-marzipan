@@ -249,6 +249,10 @@ export function MinistryAdminModalForm({
           disabled={isSubmitting}
           className="w-full"
         />
+        <p className="text-muted-foreground text-xs">
+          Pick a government representative or enter a new name to create one on
+          save.
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="ministry-sort" className="text-sm font-medium">
@@ -298,6 +302,10 @@ export function MinistryAdminModalForm({
             ))}
           </SelectContent>
         </Select>
+        <p className="text-muted-foreground text-xs">
+          Controls which &quot;Shared with teams&quot; shortcut includes this
+          ministry.
+        </p>
       </div>
     </div>
   );

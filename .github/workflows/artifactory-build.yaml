@@ -92,7 +92,7 @@ jobs:
         run: |
           docker build \
             -f calendar-service/Dockerfile \
-            -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-service:$BUILD_IMAGE_TAG" \
+            -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-service:$BUILD_IMAGE_TAG" \
             .
 
       - name: Build calendar-ui
@@ -100,14 +100,32 @@ jobs:
           docker build \
             --build-arg APP_VERSION="$BUILD_IMAGE_TAG" \
             -f calendar-ui/Dockerfile \
-            -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-ui:$BUILD_IMAGE_TAG" \
+            -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-ui:$BUILD_IMAGE_TAG" \
+            .
+      - name: Build DB migrate job
+        run: |
+          docker build \
+            -f corpcal-db-migrate/Dockerfile \
+            -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-db-migrate:$BUILD_IMAGE_TAG" \
             .
 
+      - name: Build DB seed job
+        run: |
+          docker build \
+            -f corpcal-db-seed/Dockerfile \
+            -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-db-seed:$BUILD_IMAGE_TAG" \
+            .
       - name: Push calendar-service
-        run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-service:$BUILD_IMAGE_TAG"
+        run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-service:$BUILD_IMAGE_TAG"
 
       - name: Push calendar-ui
-        run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/calendar-ui:$BUILD_IMAGE_TAG"
+        run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-ui:$BUILD_IMAGE_TAG"
+
+      - name: Push DB migrate job
+        run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-db-migrate:$BUILD_IMAGE_TAG"
+
+      - name: Push DB seed job
+        run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-db-seed:$BUILD_IMAGE_TAG"
 
       - name: Summary
         run: |

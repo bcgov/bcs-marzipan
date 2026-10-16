@@ -200,9 +200,7 @@ function DateTimeCell({
           </span>
         </div>
       ) : null}
-      {variant === 'planning' ? (
-        <PlanningDateExtras row={row} />
-      ) : null}
+      {variant === 'planning' ? <PlanningDateExtras row={row} /> : null}
     </div>
   );
 }

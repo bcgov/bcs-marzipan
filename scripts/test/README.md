@@ -27,6 +27,8 @@ node scripts/test/vitest-related.js <workspace> [file1] [file2] ...
 **Example:**
 If you change `calendar-service/src/lookups/lookups.controller.ts`, lint-staged will run:
 
+- `prettier --write` on the staged file
+- `eslint --fix` on the staged file
 - `node scripts/test/vitest-related.js calendar-service calendar-service/src/lookups/lookups.controller.ts`
 - Vitest will find and run `lookups.controller.spec.ts`
 
@@ -39,18 +41,22 @@ These scripts are automatically invoked by `lint-staged` during pre-commit hooks
 ```json
 "lint-staged": {
   "calendar-service/**/*.ts": [
+    "prettier --write",
     "eslint --fix",
     "node scripts/test/vitest-related.js calendar-service"
   ],
   "calendar-ui/**/*.{ts,tsx}": [
+    "prettier --write",
     "eslint --fix",
     "node scripts/test/vitest-related.js calendar-ui"
   ],
   "packages/database/**/*.ts": [
+    "prettier --write",
     "eslint --fix",
     "node scripts/test/vitest-related.js database"
   ],
   "packages/shared/**/*.ts": [
+    "prettier --write",
     "eslint --fix",
     "node scripts/test/vitest-related.js shared"
   ]
@@ -59,7 +65,7 @@ These scripts are automatically invoked by `lint-staged` during pre-commit hooks
 
 When files are staged and you commit:
 
-1. `lint-staged` runs ESLint on the staged files
+1. `lint-staged` runs Prettier and ESLint on the staged TypeScript files
 2. `lint-staged` passes the workspace and file paths to the test script
 3. The script runs only tests related to changed source files
 4. If tests fail, the commit is blocked

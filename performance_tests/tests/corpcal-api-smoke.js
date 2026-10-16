@@ -30,7 +30,6 @@
 import { group, sleep } from 'k6';
 import http from 'k6/http';
 
-import { buildLoadOptions, loadTestConfig } from '../api/config.js';
 import {
   authBearerHeaders,
   extractAccessToken,
@@ -40,19 +39,20 @@ import {
   postLogin,
   urlFor,
 } from '../api/client.js';
+import { buildLoadOptions, loadTestConfig } from '../api/config.js';
 import { paths } from '../api/paths.js';
 import {
   activityDetailEnvelope,
   activityHistoryEnvelope,
   activityListEnvelope,
   authMeLooksValid,
-  checkJson200Or404Or403,
   checkJson2xx,
+  checkJson200Or404Or403,
   checkOptionalPermissionJson,
   firstActivityId,
   globalHistoryPagedEnvelope,
-  lookAheadResetSettingsEnvelope,
   loginModalSettingsEnvelope,
+  lookAheadResetSettingsEnvelope,
   lookupsArrayEnvelope,
   lookupsReportsListEnvelope,
   reportLookAheadDataEnvelope,

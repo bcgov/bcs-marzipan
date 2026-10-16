@@ -23,6 +23,7 @@ import {
   type Row,
   type SortingState,
 } from '@tanstack/react-table';
+import { GripVertical } from 'lucide-react';
 import { useState } from 'react';
 
 import { SortIndicator } from '@/components/table/SortIndicator';
@@ -34,6 +35,12 @@ import {
   tableThead,
 } from '@/components/table/tableConstants';
 import { cn } from '@/lib/utils';
+
+/** Padding for the drag-order column; width comes from {@link REORDER_COL_CLASS}. */
+const tableReorderCol = 'whitespace-nowrap px-2';
+
+/** Fixed width so the header label fits; not driven by the row grip icon alone. */
+const REORDER_COL_CLASS = 'w-16';
 
 interface GenericDataTableProps<T extends object> {
   data: T[];
@@ -73,28 +80,29 @@ function SortableRow<T extends object>({
       }}
       className={cn(tableBodyRow, isDragging && 'bg-slate-100 opacity-80')}
     >
-      <td className={tableTd}>
-        <button
-          type="button"
-          ref={setActivatorNodeRef}
-          aria-label="Drag to reorder"
-          disabled={disabled}
-          className="cursor-grab touch-none text-slate-400 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50"
-          {...attributes}
-          {...listeners}
-        >
-          <span aria-hidden="true" className="flex h-5 items-stretch gap-1">
-            <span className="w-0.5 rounded bg-current" />
-            <span className="w-0.5 rounded bg-current" />
-            <span className="w-0.5 rounded bg-current" />
-          </span>
-        </button>
-      </td>
       {row.getVisibleCells().map((cell) => (
         <td key={cell.id} className={tableTd}>
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
       ))}
+      <td className={cn(tableTd, tableReorderCol, 'text-center')}>
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          aria-label="Drag to reorder"
+          disabled={disabled}
+          className="inline-flex cursor-grab touch-none text-slate-400 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical
+            size={16}
+            strokeWidth={2}
+            className="size-4"
+            aria-hidden="true"
+          />
+        </button>
+      </td>
     </tr>
   );
 }
@@ -143,10 +151,26 @@ export function GenericDataTable<T extends object>({
 
   const tableElement = (
     <table className={tableTable}>
+      {onReorder && (
+        <colgroup>
+          {columns.map((column, index) => (
+            <col
+              key={
+                typeof column.id === 'string'
+                  ? column.id
+                  : 'accessorKey' in column &&
+                      typeof column.accessorKey === 'string'
+                    ? column.accessorKey
+                    : index
+              }
+            />
+          ))}
+          <col className={REORDER_COL_CLASS} />
+        </colgroup>
+      )}
       <thead className={tableThead}>
         {table.getHeaderGroups().map((headerGroup) => (
           <tr key={headerGroup.id}>
-            {onReorder && <th className={tableTh}>Order</th>}
             {headerGroup.headers.map((header) => {
               const canSort = header.column.getCanSort();
               return (
@@ -173,6 +197,14 @@ export function GenericDataTable<T extends object>({
                 </th>
               );
             })}
+            {onReorder && (
+              <th
+                className={cn(tableTh, tableReorderCol, 'text-center')}
+                scope="col"
+              >
+                Order
+              </th>
+            )}
           </tr>
         ))}
       </thead>
