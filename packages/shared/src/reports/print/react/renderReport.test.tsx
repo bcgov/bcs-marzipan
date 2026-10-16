@@ -175,7 +175,10 @@ describe('renderPrintReportFragmentHtml', () => {
     const fixture: ReportDataResponse = {
       ...FIXTURE,
       sections: [
-        { ...FIXTURE.sections[0], activities: [activityWithoutExecutiveSummary] },
+        {
+          ...FIXTURE.sections[0],
+          activities: [activityWithoutExecutiveSummary],
+        },
       ],
     };
 
@@ -183,7 +186,9 @@ describe('renderPrintReportFragmentHtml', () => {
       activityBaseUrl: 'https://corpcal.example.gov.bc.ca',
     });
 
-    expect(html).toContain('<strong>Minister announces housing investment</strong>');
+    expect(html).toContain(
+      '<strong>Minister announces housing investment</strong>'
+    );
     expect(html).toContain('Overview summary for this activity.');
     expect(html).not.toContain('Investment of $500M');
   });
@@ -431,8 +436,7 @@ describe('renderPrintReportFragmentHtml', () => {
             {
               id: 'schedule',
               name: 'GCPE Corporate Calendar: Activities Schedule',
-              reportDisplayName:
-                'GCPE Corporate Calendar: Activities Schedule',
+              reportDisplayName: 'GCPE Corporate Calendar: Activities Schedule',
               order: 1,
             },
           ],
@@ -464,9 +468,7 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).toContain(
       'Major policy announcement with province-wide housing impact.'
     );
-    expect(html).toContain(
-      'Date TBD; align with regional council schedule.'
-    );
+    expect(html).toContain('Date TBD; align with regional council schedule.');
     expect(html).toContain('Premier David Eby');
     expect(html).toContain('Victoria, Legislative Assembly');
     expect(html).toContain('Last updated Apr');

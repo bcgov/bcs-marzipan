@@ -18,7 +18,7 @@ Node.js >= 24, npm workspaces. **Service:** NestJS 11, PostgreSQL, Drizzle, Zod,
 
 - Read existing code before creating new patterns; reuse components, hooks, utilities, and schemas.
 - Extend existing features instead of parallel abstractions. Keep diffs focused on the task.
-- Run `npm run check` and relevant tests before finishing.
+- Run `npm run check` and relevant tests before finishing; use `npm run verify` when you need full CI parity (see `docs/CI.md`).
 
 ## Path-specific instructions
 
@@ -52,7 +52,7 @@ Node.js >= 24, npm workspaces. **Service:** NestJS 11, PostgreSQL, Drizzle, Zod,
 
 ## Common commands
 
-`npm start` · `npm run check` · `npm run test` · `npm run build` · `npm run build:packages`
+`npm start` · `npm run check` · `npm run verify` · `npm run verify:quick` · `npm run test` · `npm run build` · `npm run build:packages`
 
 ## Architecture
 
@@ -67,4 +67,4 @@ Node.js >= 24, npm workspaces. **Service:** NestJS 11, PostgreSQL, Drizzle, Zod,
 
 ## Deeper docs
 
-`README.md` · `docs/TESTING.md` · `docs/ERROR_HANDLING.md` · `docs/AUTH_AND_RBAC.md` · `.github/instructions/` (path-specific)
+`README.md` · `docs/CI.md` · `docs/TESTING.md` · `docs/PRE_COMMIT_HOOKS.md` · `docs/ERROR_HANDLING.md` · `docs/AUTH_AND_RBAC.md` · `.github/instructions/` (path-specific)
