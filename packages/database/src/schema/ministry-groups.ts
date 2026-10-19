@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import {
   integer,
   pgTable,
@@ -8,6 +7,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
+import { normalizedLookupName } from './lookup-name-index';
 import { users } from './user';
 
 /**
@@ -15,7 +15,7 @@ import { users } from './user';
  * Ministries optionally reference one group via ministries.ministry_group_id.
  * There is no is_active flag: retiring a group is done by deleting it (ministries
  * are cleared via ON DELETE SET NULL) or by reassigning ministries first.
- * Display names are unique case-insensitively (see unique index on lower(name)).
+ * Names are unique case-insensitively after trimming whitespace.
  */
 export const ministryGroups = pgTable(
   'ministry_groups',
@@ -39,8 +39,8 @@ export const ministryGroups = pgTable(
       .references(() => users.id),
   },
   (table) => ({
-    nameLowerUnique: uniqueIndex('ministry_groups_name_lower_unique').on(
-      sql`lower(${table.name})`
-    ),
+    normalizedNameUnique: uniqueIndex(
+      'ministry_groups_normalized_name_unique'
+    ).on(normalizedLookupName(table.name)),
   })
 );

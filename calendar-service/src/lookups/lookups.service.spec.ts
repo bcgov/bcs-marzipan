@@ -62,6 +62,8 @@ describe('LookupsService', () => {
 
     service = module.get<LookupsService>(LookupsService);
     vi.clearAllMocks();
+    mockDatabaseService.db.insert = vi.fn().mockReturnThis();
+    mockDatabaseService.db.values = vi.fn().mockResolvedValue(undefined);
   });
 
   it('rejects lookup names that already exist, ignoring case and whitespace', async () => {
@@ -86,6 +88,44 @@ describe('LookupsService', () => {
     ).rejects.toThrow(ConflictException);
 
     expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+  });
+
+  it('trims tabs and newlines before storing and checking lookup names', async () => {
+    const returning = vi.fn().mockResolvedValue([{ id: 23, name: 'Victoria' }]);
+    const values = vi.fn().mockReturnValue({ returning });
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValueOnce(createChain([], 'limit'))
+      .mockReturnValueOnce(createChain([{ id: 23 }], 'limit'));
+    mockDatabaseService.db.insert = vi.fn().mockReturnValue({ values });
+
+    await service.createCity({ name: '\tVictoria\t', sortOrder: 0 }, 99);
+
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Victoria' })
+    );
+    await expect(
+      service.createCity({ name: 'Victoria', sortOrder: 0 }, 99)
+    ).rejects.toThrow(ConflictException);
+    expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it('translates a database unique violation into a lookup conflict', async () => {
+    const returning = vi.fn().mockRejectedValue(
+      Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint_name: 'cities_normalized_name_unique',
+      })
+    );
+    const values = vi.fn().mockReturnValue({ returning });
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValue(createChain([], 'limit'));
+    mockDatabaseService.db.insert = vi.fn().mockReturnValue({ values });
+
+    await expect(
+      service.createCity({ name: 'Victoria', sortOrder: 0 }, 99)
+    ).rejects.toThrow(ConflictException);
   });
 
   it('inserts an audit row when toggling permission visibility', async () => {

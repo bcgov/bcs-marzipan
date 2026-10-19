@@ -6,10 +6,12 @@ import {
   primaryKey,
   serial,
   timestamp,
+  uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core';
 
 import { activities } from './activity';
+import { normalizedLookupName } from './lookup-name-index';
 import { governmentRepresentatives } from './lookups';
 import { ministryGroups } from './ministry-groups';
 import { ministryUsers } from './relations';
@@ -23,46 +25,54 @@ import { users } from './user';
  * TODO: Consider ministry API for future.
  * TODO: This is a blend of ministries and groups. Use as basis for future group table.
  */
-export const ministries = pgTable('ministries', {
-  id: serial('id').primaryKey(),
-  sortOrder: integer('sort_order').notNull(),
-  isActive: boolean('is_active').notNull().default(true),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }).notNull(),
-  abbreviation: varchar('abbreviation', { length: 5 }).notNull(),
+export const ministries = pgTable(
+  'ministries',
+  {
+    id: serial('id').primaryKey(),
+    sortOrder: integer('sort_order').notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    name: varchar('name', { length: 255 }).notNull(),
+    displayName: varchar('display_name', { length: 255 }).notNull(),
+    abbreviation: varchar('abbreviation', { length: 5 }).notNull(),
 
-  /**
-   * Designated minister (government representative) for this ministry.
-   * FK to government_representatives.id is enforced in SQL migrations (avoids circular schema inference).
-   */
-  ministerGovernmentRepId: integer('minister_government_rep_id'),
+    /**
+     * Designated minister (government representative) for this ministry.
+     * FK to government_representatives.id is enforced in SQL migrations (avoids circular schema inference).
+     */
+    ministerGovernmentRepId: integer('minister_government_rep_id'),
 
-  // Contacts
-  contactUserId: integer('contact_user_id').references(() => users.id), // FK to User
-  secondContactUserId: integer('second_contact_user_id').references(
-    () => users.id
-  ), // FK to User
+    // Contacts
+    contactUserId: integer('contact_user_id').references(() => users.id), // FK to User
+    secondContactUserId: integer('second_contact_user_id').references(
+      () => users.id
+    ), // FK to User
 
-  ministryGroupId: integer('ministry_group_id').references(
-    () => ministryGroups.id,
-    { onDelete: 'set null' }
-  ),
+    ministryGroupId: integer('ministry_group_id').references(
+      () => ministryGroups.id,
+      { onDelete: 'set null' }
+    ),
 
-  createdDateTime: timestamp('created_date_time', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdBy: integer('created_by')
-    .notNull()
-    .references(() => users.id),
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
+    createdDateTime: timestamp('created_date_time', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdBy: integer('created_by')
+      .notNull()
+      .references(() => users.id),
+    lastUpdatedDateTime: timestamp('last_updated_date_time', {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    lastUpdatedBy: integer('last_updated_by')
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => ({
+    normalizedNameUnique: uniqueIndex('ministries_normalized_name_unique').on(
+      normalizedLookupName(table.name)
+    ),
   })
-    .notNull()
-    .defaultNow(),
-  lastUpdatedBy: integer('last_updated_by')
-    .notNull()
-    .references(() => users.id),
-});
+);
 
 export const ministriesRelations = relations(ministries, ({ one, many }) => ({
   contactUser: one(users, {
