@@ -50,9 +50,13 @@ export function SchedulingCellCompact({
     row.startDate && row.endDate && row.endDate !== row.startDate
       ? formatDateRange(row.startDate, row.endDate)
       : row.startDate
-        ? formatExactDate(parseDateOnlyString(row.startDate), {
-            includeYear: 'auto',
-          })
+        ? (() => {
+            const date = parseDateOnlyString(row.startDate);
+            const weekday = date.toLocaleDateString('en-US', {
+              weekday: 'long',
+            });
+            return `${weekday}, ${formatExactDate(date, { includeYear: 'auto' })}`;
+          })()
         : '';
 
   return (
@@ -73,7 +77,7 @@ export function SchedulingCellCompact({
       {row.startDate && (
         <div className="flex items-center gap-1.5">
           <Calendar className={ACTIVITY_GRID_ROW_ICON_CLASS} />
-          <span>{dateRangeText}</span>
+          <span className="whitespace-nowrap">{dateRangeText}</span>
           <Badge
             variant="outline"
             className={cn(
