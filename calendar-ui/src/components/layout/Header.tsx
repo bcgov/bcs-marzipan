@@ -307,18 +307,22 @@ const Header = () => {
                       <p className="text-muted-foreground text-xs">
                         {unreadCount} unread
                       </p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => {
+                      <DropdownMenuItem
+                        asChild
+                        onSelect={() => {
                           setIsNotificationsMenuOpen(false);
                           setIsNotificationPrefsOpen(true);
                         }}
                       >
-                        <Settings2 className="mr-1 h-3.5 w-3.5" />
-                        Notification options
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                        >
+                          <Settings2 className="mr-1 h-3.5 w-3.5" />
+                          Notification options
+                        </Button>
+                      </DropdownMenuItem>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
