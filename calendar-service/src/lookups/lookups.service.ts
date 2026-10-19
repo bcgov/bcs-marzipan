@@ -29,6 +29,7 @@ import {
   ministryGroups,
   newsReleaseDistributions,
   newsReleaseOrigins,
+  normalizedLookupName,
   organizations,
   permissions,
   permissionVisibilityAudit,
@@ -127,6 +128,23 @@ export function validateAdminRolePermissionSelection(
       'System Admin must retain system.manage_permissions'
     );
   }
+}
+
+function isUniqueConstraintViolation(
+  error: unknown,
+  constraintName: string
+): boolean {
+  let current = error;
+  while (current !== null && typeof current === 'object') {
+    if ('code' in current && current.code === '23505') {
+      const constraint =
+        ('constraint' in current && current.constraint) ||
+        ('constraint_name' in current && current.constraint_name);
+      if (constraint === constraintName) return true;
+    }
+    current = 'cause' in current ? current.cause : null;
+  }
+  return false;
 }
 
 @Injectable()
@@ -1032,19 +1050,25 @@ export class LookupsService {
     return (val ?? '').trim().toLowerCase();
   }
 
+  private trimAddress(
+    val: string | null | undefined
+  ): string | null | undefined {
+    return val == null ? val : val.trim();
+  }
+
   private async assertLookupNameIsUnique(
     table: PgTable & { id: AnyPgColumn; name: AnyPgColumn },
     name: string,
     label: string,
     excludeId?: number
   ): Promise<void> {
-    const normalizedName = name.trim().toLowerCase();
+    const normalizedName = this.normalizeLookupName(name).toLowerCase();
     const [existing] = await this.databaseService.db
       .select({ id: table.id })
       .from(table)
       .where(
         and(
-          sql`lower(trim(${table.name})) = ${normalizedName}`,
+          sql`${normalizedLookupName(table.name)} = ${normalizedName}`,
           excludeId === undefined ? undefined : ne(table.id, excludeId)
         )
       )
@@ -1052,6 +1076,29 @@ export class LookupsService {
 
     if (existing) {
       throw new ConflictException(`A ${label} with this name already exists.`);
+    }
+  }
+
+  private normalizeLookupName(name: string): string {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+      throw new BadRequestException('Name cannot be empty');
+    }
+    return normalizedName;
+  }
+
+  private async withLookupConflict<T>(
+    constraintName: string,
+    conflictMessage: string,
+    write: () => Promise<T>
+  ): Promise<T> {
+    try {
+      return await write();
+    } catch (error) {
+      if (isUniqueConstraintViolation(error, constraintName)) {
+        throw new ConflictException(conflictMessage);
+      }
+      throw error;
     }
   }
 
@@ -1111,25 +1158,30 @@ export class LookupsService {
     await this.assertNoDuplicateAddress(data.addressLine1, data.addressLine2);
 
     const now = new Date();
-    const [result] = await this.databaseService.db
-      .insert(venuePresets)
-      .values({
-        venueName: data.venueName,
-        addressLine1: data.addressLine1 ?? undefined,
-        addressLine2: data.addressLine2 ?? undefined,
-        city: data.city ?? undefined,
-        provinceOrState: data.provinceOrState ?? undefined,
-        country: data.country ?? undefined,
-        sortOrder: data.sortOrder ?? 0,
-        isActive: data.isActive ?? true,
-        isPinned: data.isPinned ?? false,
-        pinnedSortOrder: data.pinnedSortOrder ?? 0,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
-        createdDateTime: now,
-        lastUpdatedDateTime: now,
-      })
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'venue_presets_normalized_address_unique',
+      'A venue preset with this address already exists.',
+      () =>
+        this.databaseService.db
+          .insert(venuePresets)
+          .values({
+            venueName: data.venueName,
+            addressLine1: this.trimAddress(data.addressLine1) ?? undefined,
+            addressLine2: this.trimAddress(data.addressLine2) ?? undefined,
+            city: data.city ?? undefined,
+            provinceOrState: data.provinceOrState ?? undefined,
+            country: data.country ?? undefined,
+            sortOrder: data.sortOrder ?? 0,
+            isActive: data.isActive ?? true,
+            isPinned: data.isPinned ?? false,
+            pinnedSortOrder: data.pinnedSortOrder ?? 0,
+            createdBy: currentUserId,
+            lastUpdatedBy: currentUserId,
+            createdDateTime: now,
+            lastUpdatedDateTime: now,
+          })
+          .returning()
+    );
     return {
       id: result.id,
       venueName: result.venueName,
@@ -1185,32 +1237,37 @@ export class LookupsService {
     }
 
     const now = new Date();
-    const [result] = await this.databaseService.db
-      .update(venuePresets)
-      .set({
-        ...(data.venueName !== undefined && { venueName: data.venueName }),
-        ...(data.addressLine1 !== undefined && {
-          addressLine1: data.addressLine1,
-        }),
-        ...(data.addressLine2 !== undefined && {
-          addressLine2: data.addressLine2,
-        }),
-        ...(data.city !== undefined && { city: data.city }),
-        ...(data.provinceOrState !== undefined && {
-          provinceOrState: data.provinceOrState,
-        }),
-        ...(data.country !== undefined && { country: data.country }),
-        ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
-        ...(data.isActive !== undefined && { isActive: data.isActive }),
-        ...(data.isPinned !== undefined && { isPinned: data.isPinned }),
-        ...(data.pinnedSortOrder !== undefined && {
-          pinnedSortOrder: data.pinnedSortOrder,
-        }),
-        lastUpdatedBy: currentUserId,
-        lastUpdatedDateTime: now,
-      })
-      .where(eq(venuePresets.id, id))
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'venue_presets_normalized_address_unique',
+      'A venue preset with this address already exists.',
+      () =>
+        this.databaseService.db
+          .update(venuePresets)
+          .set({
+            ...(data.venueName !== undefined && { venueName: data.venueName }),
+            ...(data.addressLine1 !== undefined && {
+              addressLine1: this.trimAddress(data.addressLine1),
+            }),
+            ...(data.addressLine2 !== undefined && {
+              addressLine2: this.trimAddress(data.addressLine2),
+            }),
+            ...(data.city !== undefined && { city: data.city }),
+            ...(data.provinceOrState !== undefined && {
+              provinceOrState: data.provinceOrState,
+            }),
+            ...(data.country !== undefined && { country: data.country }),
+            ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+            ...(data.isActive !== undefined && { isActive: data.isActive }),
+            ...(data.isPinned !== undefined && { isPinned: data.isPinned }),
+            ...(data.pinnedSortOrder !== undefined && {
+              pinnedSortOrder: data.pinnedSortOrder,
+            }),
+            lastUpdatedBy: currentUserId,
+            lastUpdatedDateTime: now,
+          })
+          .where(eq(venuePresets.id, id))
+          .returning()
+    );
     if (!result) throw new Error('Venue preset not found');
     return {
       id: result.id,
@@ -1616,10 +1673,7 @@ export class LookupsService {
     }));
   }
 
-  /**
-   * Insert a ministry group. Duplicate name (case-insensitive) causes SQLSTATE 23505;
-   * the HTTP layer maps that to 409 Conflict.
-   */
+  /** Insert a ministry group. */
   async createMinistryGroup(
     data: { name: string; sortOrder: number },
     currentUserId: number
@@ -1631,24 +1685,26 @@ export class LookupsService {
     );
 
     const now = new Date();
-    const [result] = await this.databaseService.db
-      .insert(ministryGroups)
-      .values({
-        name: data.name,
-        sortOrder: data.sortOrder,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
-        createdDateTime: now,
-        lastUpdatedDateTime: now,
-      })
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'ministry_groups_normalized_name_unique',
+      'A ministry group with this name already exists.',
+      () =>
+        this.databaseService.db
+          .insert(ministryGroups)
+          .values({
+            name: this.normalizeLookupName(data.name),
+            sortOrder: data.sortOrder,
+            createdBy: currentUserId,
+            lastUpdatedBy: currentUserId,
+            createdDateTime: now,
+            lastUpdatedDateTime: now,
+          })
+          .returning()
+    );
     return result;
   }
 
-  /**
-   * Update a ministry group. Renaming to an existing name (case-insensitive) causes SQLSTATE 23505;
-   * the HTTP layer maps that to 409 Conflict.
-   */
+  /** Update a ministry group. */
   async updateMinistryGroup(
     id: number,
     data: Partial<{ name: string; sortOrder: number }>,
@@ -1667,14 +1723,20 @@ export class LookupsService {
       lastUpdatedBy: currentUserId,
       lastUpdatedDateTime: new Date(),
     };
-    if (data.name !== undefined) updateData.name = data.name;
+    if (data.name !== undefined)
+      updateData.name = this.normalizeLookupName(data.name);
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
 
-    const [result] = await this.databaseService.db
-      .update(ministryGroups)
-      .set(updateData)
-      .where(eq(ministryGroups.id, id))
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'ministry_groups_normalized_name_unique',
+      'A ministry group with this name already exists.',
+      () =>
+        this.databaseService.db
+          .update(ministryGroups)
+          .set(updateData)
+          .where(eq(ministryGroups.id, id))
+          .returning()
+    );
     return result;
   }
 
@@ -1806,26 +1868,31 @@ export class LookupsService {
     }
 
     const now = new Date();
-    return this.databaseService.db.transaction(async (tx) => {
-      const [result] = await tx
-        .insert(categories)
-        .values({
-          name: data.name,
-          displayName: data.displayName ?? data.name,
-          sortOrder: data.sortOrder,
-          isActive: data.isActive ?? true,
-          visibility,
-          description: data.description ?? undefined,
-          createdBy: currentUserId,
-          lastUpdatedBy: currentUserId,
-          createdDateTime: now,
-          lastUpdatedDateTime: now,
-        })
-        .returning();
+    return this.withLookupConflict(
+      'categories_normalized_name_unique',
+      'A category with this name already exists.',
+      () =>
+        this.databaseService.db.transaction(async (tx) => {
+          const [result] = await tx
+            .insert(categories)
+            .values({
+              name: this.normalizeLookupName(data.name),
+              displayName: data.displayName ?? data.name,
+              sortOrder: data.sortOrder,
+              isActive: data.isActive ?? true,
+              visibility,
+              description: data.description ?? undefined,
+              createdBy: currentUserId,
+              lastUpdatedBy: currentUserId,
+              createdDateTime: now,
+              lastUpdatedDateTime: now,
+            })
+            .returning();
 
-      await syncCategoryTeams(tx, result.id, visibility, data.teamIds);
-      return result;
-    });
+          await syncCategoryTeams(tx, result.id, visibility, data.teamIds);
+          return result;
+        })
+    );
   }
 
   /**
@@ -1845,21 +1912,26 @@ export class LookupsService {
     await this.assertLookupNameIsUnique(cities, data.name, 'city');
 
     const now = new Date();
-    const [result] = await this.databaseService.db
-      .insert(cities)
-      .values({
-        name: data.name,
-        displayName: data.displayName ?? data.name, // Schema requires notNull, fallback to name
-        provinceOrState: data.provinceOrState ?? undefined,
-        country: data.country ?? undefined,
-        sortOrder: data.sortOrder,
-        isActive: data.isActive ?? true,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
-        createdDateTime: now,
-        lastUpdatedDateTime: now,
-      })
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'cities_normalized_name_unique',
+      'A city with this name already exists.',
+      () =>
+        this.databaseService.db
+          .insert(cities)
+          .values({
+            name: this.normalizeLookupName(data.name),
+            displayName: data.displayName ?? data.name,
+            provinceOrState: data.provinceOrState ?? undefined,
+            country: data.country ?? undefined,
+            sortOrder: data.sortOrder,
+            isActive: data.isActive ?? true,
+            createdBy: currentUserId,
+            lastUpdatedBy: currentUserId,
+            createdDateTime: now,
+            lastUpdatedDateTime: now,
+          })
+          .returning()
+    );
     return result;
   }
 
@@ -1883,20 +1955,25 @@ export class LookupsService {
     );
 
     const now = new Date();
-    const [result] = await this.databaseService.db
-      .insert(commsMaterials)
-      .values({
-        name: data.name,
-        displayName: data.displayName ?? data.name,
-        sortOrder: data.sortOrder,
-        isActive: data.isActive ?? true,
-        description: data.description ?? undefined,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
-        createdDateTime: now,
-        lastUpdatedDateTime: now,
-      })
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'comms_materials_normalized_name_unique',
+      'A comms material with this name already exists.',
+      () =>
+        this.databaseService.db
+          .insert(commsMaterials)
+          .values({
+            name: this.normalizeLookupName(data.name),
+            displayName: data.displayName ?? data.name,
+            sortOrder: data.sortOrder,
+            isActive: data.isActive ?? true,
+            description: data.description ?? undefined,
+            createdBy: currentUserId,
+            lastUpdatedBy: currentUserId,
+            createdDateTime: now,
+            lastUpdatedDateTime: now,
+          })
+          .returning()
+    );
     return result;
   }
 
@@ -1921,21 +1998,26 @@ export class LookupsService {
     );
 
     const now = new Date();
-    const [result] = await this.databaseService.db
-      .insert(translatedLanguages)
-      .values({
-        name: data.name,
-        displayName: data.displayName ?? data.name,
-        shortcode: data.shortcode ?? undefined,
-        sortOrder: data.sortOrder,
-        isActive: data.isActive ?? true,
-        description: data.description ?? undefined,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
-        createdDateTime: now,
-        lastUpdatedDateTime: now,
-      })
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'translated_languages_normalized_name_unique',
+      'A translation language with this name already exists.',
+      () =>
+        this.databaseService.db
+          .insert(translatedLanguages)
+          .values({
+            name: this.normalizeLookupName(data.name),
+            displayName: data.displayName ?? data.name,
+            shortcode: data.shortcode ?? undefined,
+            sortOrder: data.sortOrder,
+            isActive: data.isActive ?? true,
+            description: data.description ?? undefined,
+            createdBy: currentUserId,
+            lastUpdatedBy: currentUserId,
+            createdDateTime: now,
+            lastUpdatedDateTime: now,
+          })
+          .returning()
+    );
     return result;
   }
 
@@ -1960,21 +2042,26 @@ export class LookupsService {
     );
 
     const now = new Date();
-    const [result] = await this.databaseService.db
-      .insert(governmentRepresentatives)
-      .values({
-        name: data.name,
-        displayName: data.displayName ?? data.name,
-        title: data.title ?? undefined,
-        sortOrder: data.sortOrder,
-        isActive: data.isActive ?? true,
-        representativeType: data.representativeType ?? undefined,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
-        createdDateTime: now,
-        lastUpdatedDateTime: now,
-      })
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'government_representatives_normalized_name_unique',
+      'A government representative with this name already exists.',
+      () =>
+        this.databaseService.db
+          .insert(governmentRepresentatives)
+          .values({
+            name: this.normalizeLookupName(data.name),
+            displayName: data.displayName ?? data.name,
+            title: data.title ?? undefined,
+            sortOrder: data.sortOrder,
+            isActive: data.isActive ?? true,
+            representativeType: data.representativeType ?? undefined,
+            createdBy: currentUserId,
+            lastUpdatedBy: currentUserId,
+            createdDateTime: now,
+            lastUpdatedDateTime: now,
+          })
+          .returning()
+    );
     return result;
   }
 
@@ -2006,26 +2093,31 @@ export class LookupsService {
     }
 
     const now = new Date();
-    return this.databaseService.db.transaction(async (tx) => {
-      const [result] = await tx
-        .insert(tags)
-        .values({
-          name: data.name,
-          displayName: data.displayName ?? data.name,
-          sortOrder: data.sortOrder ?? 0,
-          isActive: data.isActive ?? true,
-          visibility,
-          description: data.description ?? undefined,
-          createdBy: currentUserId,
-          lastUpdatedBy: currentUserId,
-          createdDateTime: now,
-          lastUpdatedDateTime: now,
-        })
-        .returning();
+    return this.withLookupConflict(
+      'tags_normalized_name_unique',
+      'A tag with this name already exists.',
+      () =>
+        this.databaseService.db.transaction(async (tx) => {
+          const [result] = await tx
+            .insert(tags)
+            .values({
+              name: this.normalizeLookupName(data.name),
+              displayName: data.displayName ?? data.name,
+              sortOrder: data.sortOrder ?? 0,
+              isActive: data.isActive ?? true,
+              visibility,
+              description: data.description ?? undefined,
+              createdBy: currentUserId,
+              lastUpdatedBy: currentUserId,
+              createdDateTime: now,
+              lastUpdatedDateTime: now,
+            })
+            .returning();
 
-      await syncTagTeams(tx, result.id, visibility, data.teamIds);
-      return result;
-    });
+          await syncTagTeams(tx, result.id, visibility, data.teamIds);
+          return result;
+        })
+    );
   }
 
   /**
@@ -2045,54 +2137,57 @@ export class LookupsService {
   ): Promise<typeof ministries.$inferSelect> {
     await this.assertLookupNameIsUnique(ministries, data.name, 'ministry');
 
-    const now = new Date();
-    if (
-      data.ministerGovernmentRepId != null &&
-      data.ministerGovernmentRepId !== undefined
-    ) {
-      await this.databaseService.db
-        .update(ministries)
-        .set({
-          ministerGovernmentRepId: null,
-          lastUpdatedBy: currentUserId,
-          lastUpdatedDateTime: now,
+    return this.withLookupConflict(
+      'ministries_normalized_name_unique',
+      'A ministry with this name already exists.',
+      () =>
+        this.databaseService.db.transaction(async (tx) => {
+          const now = new Date();
+          if (data.ministerGovernmentRepId != null) {
+            await tx
+              .update(ministries)
+              .set({
+                ministerGovernmentRepId: null,
+                lastUpdatedBy: currentUserId,
+                lastUpdatedDateTime: now,
+              })
+              .where(
+                eq(
+                  ministries.ministerGovernmentRepId,
+                  data.ministerGovernmentRepId
+                )
+              );
+          }
+
+          // Seeds insert explicit ministry ids without advancing the serial sequence.
+          await tx.execute(sql`
+            SELECT setval(
+              pg_get_serial_sequence('public.ministries', 'id'),
+              COALESCE((SELECT MAX(id) FROM ministries), 1),
+              EXISTS (SELECT 1 FROM ministries)
+            )
+          `);
+
+          const [result] = await tx
+            .insert(ministries)
+            .values({
+              name: this.normalizeLookupName(data.name),
+              displayName: data.displayName,
+              abbreviation: data.abbreviation,
+              ministerGovernmentRepId:
+                data.ministerGovernmentRepId ?? undefined,
+              sortOrder: data.sortOrder,
+              isActive: data.isActive ?? true,
+              ministryGroupId: data.ministryGroupId ?? undefined,
+              createdBy: currentUserId,
+              lastUpdatedBy: currentUserId,
+              createdDateTime: now,
+              lastUpdatedDateTime: now,
+            })
+            .returning();
+          return result;
         })
-        .where(
-          eq(ministries.ministerGovernmentRepId, data.ministerGovernmentRepId)
-        );
-    }
-
-    // Seeds insert explicit ministry ids; PostgreSQL does not advance the serial sequence,
-    // so the next DEFAULT id can collide. Sync without requiring a migration.
-    await this.databaseService.db.execute(sql`
-      SELECT setval(
-        pg_get_serial_sequence('public.ministries', 'id'),
-        COALESCE((SELECT MAX(id) FROM ministries), 1),
-        EXISTS (SELECT 1 FROM ministries)
-      )
-    `);
-
-    const [result] = await this.databaseService.db
-      .insert(ministries)
-      .values({
-        name: data.name,
-        displayName: data.displayName,
-        abbreviation: data.abbreviation,
-        ministerGovernmentRepId:
-          data.ministerGovernmentRepId === null ||
-          data.ministerGovernmentRepId === undefined
-            ? undefined
-            : data.ministerGovernmentRepId,
-        sortOrder: data.sortOrder,
-        isActive: data.isActive ?? true,
-        ministryGroupId: data.ministryGroupId ?? undefined,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
-        createdDateTime: now,
-        lastUpdatedDateTime: now,
-      })
-      .returning();
-    return result;
+    );
   }
 
   /**
@@ -2148,19 +2243,24 @@ export class LookupsService {
         EXISTS (SELECT 1 FROM themes)
       )
     `);
-    const [result] = await this.databaseService.db
-      .insert(themes)
-      .values({
-        name: data.name,
-        displayName: data.displayName ?? data.name,
-        sortOrder: data.sortOrder,
-        isActive: data.isActive ?? true,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
-        createdDateTime: now,
-        lastUpdatedDateTime: now,
-      })
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'themes_normalized_name_unique',
+      'A theme with this name already exists.',
+      () =>
+        this.databaseService.db
+          .insert(themes)
+          .values({
+            name: this.normalizeLookupName(data.name),
+            displayName: data.displayName ?? data.name,
+            sortOrder: data.sortOrder,
+            isActive: data.isActive ?? true,
+            createdBy: currentUserId,
+            lastUpdatedBy: currentUserId,
+            createdDateTime: now,
+            lastUpdatedDateTime: now,
+          })
+          .returning()
+    );
     return result;
   }
 
@@ -2190,62 +2290,69 @@ export class LookupsService {
       );
     }
 
-    return this.databaseService.db.transaction(async (tx) => {
-      const [existing] = await tx
-        .select()
-        .from(categories)
-        .where(eq(categories.id, id))
-        .limit(1);
-      if (!existing) {
-        return undefined;
-      }
-
-      const updateData: Partial<typeof categories.$inferInsert> = {
-        lastUpdatedBy: currentUserId,
-        lastUpdatedDateTime: new Date(),
-      };
-
-      if (data.name !== undefined) updateData.name = data.name;
-      if (data.displayName !== undefined)
-        updateData.displayName = data.displayName;
-      if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
-      if (data.isActive !== undefined) updateData.isActive = data.isActive;
-      if (data.description !== undefined)
-        updateData.description = data.description ?? undefined;
-
-      const shouldSyncTeams =
-        data.visibility !== undefined || data.teamIds !== undefined;
-      if (shouldSyncTeams) {
-        const visibility = this.resolveLookupUpdateVisibility(
-          existing.visibility as 'global' | 'team',
-          data.visibility,
-          data.teamIds
-        );
-        if (visibility === 'team') {
-          let teamIds = data.teamIds;
-          if (teamIds === undefined) {
-            teamIds = await loadActiveCategoryTeamIds(tx, id);
+    return this.withLookupConflict(
+      'categories_normalized_name_unique',
+      'A category with this name already exists.',
+      () =>
+        this.databaseService.db.transaction(async (tx) => {
+          const [existing] = await tx
+            .select()
+            .from(categories)
+            .where(eq(categories.id, id))
+            .limit(1);
+          if (!existing) {
+            return undefined;
           }
-          if (!teamIds.length) {
-            throw new BadRequestException(
-              'At least one team is required when visibility is team'
+
+          const updateData: Partial<typeof categories.$inferInsert> = {
+            lastUpdatedBy: currentUserId,
+            lastUpdatedDateTime: new Date(),
+          };
+
+          if (data.name !== undefined)
+            updateData.name = this.normalizeLookupName(data.name);
+          if (data.displayName !== undefined)
+            updateData.displayName = data.displayName;
+          if (data.sortOrder !== undefined)
+            updateData.sortOrder = data.sortOrder;
+          if (data.isActive !== undefined) updateData.isActive = data.isActive;
+          if (data.description !== undefined)
+            updateData.description = data.description ?? undefined;
+
+          const shouldSyncTeams =
+            data.visibility !== undefined || data.teamIds !== undefined;
+          if (shouldSyncTeams) {
+            const visibility = this.resolveLookupUpdateVisibility(
+              existing.visibility as 'global' | 'team',
+              data.visibility,
+              data.teamIds
             );
+            if (visibility === 'team') {
+              let teamIds = data.teamIds;
+              if (teamIds === undefined) {
+                teamIds = await loadActiveCategoryTeamIds(tx, id);
+              }
+              if (!teamIds.length) {
+                throw new BadRequestException(
+                  'At least one team is required when visibility is team'
+                );
+              }
+              updateData.visibility = visibility;
+              await syncCategoryTeams(tx, id, visibility, teamIds);
+            } else {
+              updateData.visibility = 'global';
+              await syncCategoryTeams(tx, id, 'global', []);
+            }
           }
-          updateData.visibility = visibility;
-          await syncCategoryTeams(tx, id, visibility, teamIds);
-        } else {
-          updateData.visibility = 'global';
-          await syncCategoryTeams(tx, id, 'global', []);
-        }
-      }
 
-      const [result] = await tx
-        .update(categories)
-        .set(updateData)
-        .where(eq(categories.id, id))
-        .returning();
-      return result;
-    });
+          const [result] = await tx
+            .update(categories)
+            .set(updateData)
+            .where(eq(categories.id, id))
+            .returning();
+          return result;
+        })
+    );
   }
 
   async updateCity(
@@ -2270,7 +2377,8 @@ export class LookupsService {
       lastUpdatedDateTime: new Date(),
     };
 
-    if (data.name !== undefined) updateData.name = data.name;
+    if (data.name !== undefined)
+      updateData.name = this.normalizeLookupName(data.name);
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName;
     if (data.provinceOrState !== undefined)
@@ -2280,11 +2388,16 @@ export class LookupsService {
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
-    const [result] = await this.databaseService.db
-      .update(cities)
-      .set(updateData)
-      .where(eq(cities.id, id))
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'cities_normalized_name_unique',
+      'A city with this name already exists.',
+      () =>
+        this.databaseService.db
+          .update(cities)
+          .set(updateData)
+          .where(eq(cities.id, id))
+          .returning()
+    );
     return result;
   }
 
@@ -2336,7 +2449,8 @@ export class LookupsService {
       lastUpdatedDateTime: new Date(),
     };
 
-    if (data.name !== undefined) updateData.name = data.name;
+    if (data.name !== undefined)
+      updateData.name = this.normalizeLookupName(data.name);
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName ?? undefined;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
@@ -2344,11 +2458,16 @@ export class LookupsService {
     if (data.description !== undefined)
       updateData.description = data.description ?? undefined;
 
-    const [result] = await this.databaseService.db
-      .update(commsMaterials)
-      .set(updateData)
-      .where(eq(commsMaterials.id, id))
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'comms_materials_normalized_name_unique',
+      'A comms material with this name already exists.',
+      () =>
+        this.databaseService.db
+          .update(commsMaterials)
+          .set(updateData)
+          .where(eq(commsMaterials.id, id))
+          .returning()
+    );
     return result;
   }
 
@@ -2379,7 +2498,8 @@ export class LookupsService {
       lastUpdatedDateTime: new Date(),
     };
 
-    if (data.name !== undefined) updateData.name = data.name;
+    if (data.name !== undefined)
+      updateData.name = this.normalizeLookupName(data.name);
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName ?? undefined;
     if (data.shortcode !== undefined) updateData.shortcode = data.shortcode;
@@ -2388,11 +2508,16 @@ export class LookupsService {
     if (data.description !== undefined)
       updateData.description = data.description ?? undefined;
 
-    const [result] = await this.databaseService.db
-      .update(translatedLanguages)
-      .set(updateData)
-      .where(eq(translatedLanguages.id, id))
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'translated_languages_normalized_name_unique',
+      'A translation language with this name already exists.',
+      () =>
+        this.databaseService.db
+          .update(translatedLanguages)
+          .set(updateData)
+          .where(eq(translatedLanguages.id, id))
+          .returning()
+    );
     return result;
   }
 
@@ -2423,7 +2548,8 @@ export class LookupsService {
       lastUpdatedDateTime: new Date(),
     };
 
-    if (data.name !== undefined) updateData.name = data.name;
+    if (data.name !== undefined)
+      updateData.name = this.normalizeLookupName(data.name);
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName ?? undefined;
     if (data.title !== undefined) updateData.title = data.title ?? undefined;
@@ -2432,11 +2558,16 @@ export class LookupsService {
     if (data.representativeType !== undefined)
       updateData.representativeType = data.representativeType ?? undefined;
 
-    const [result] = await this.databaseService.db
-      .update(governmentRepresentatives)
-      .set(updateData)
-      .where(eq(governmentRepresentatives.id, id))
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'government_representatives_normalized_name_unique',
+      'A government representative with this name already exists.',
+      () =>
+        this.databaseService.db
+          .update(governmentRepresentatives)
+          .set(updateData)
+          .where(eq(governmentRepresentatives.id, id))
+          .returning()
+    );
     return result;
   }
 
@@ -2457,62 +2588,69 @@ export class LookupsService {
       await this.assertLookupNameIsUnique(tags, data.name, 'tag', id);
     }
 
-    return this.databaseService.db.transaction(async (tx) => {
-      const [existing] = await tx
-        .select()
-        .from(tags)
-        .where(eq(tags.id, id))
-        .limit(1);
-      if (!existing) {
-        return undefined;
-      }
-
-      const updateData: Partial<typeof tags.$inferInsert> = {
-        lastUpdatedBy: currentUserId,
-        lastUpdatedDateTime: new Date(),
-      };
-
-      if (data.name !== undefined) updateData.name = data.name;
-      if (data.displayName !== undefined)
-        updateData.displayName = data.displayName ?? undefined;
-      if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
-      if (data.isActive !== undefined) updateData.isActive = data.isActive;
-      if (data.description !== undefined)
-        updateData.description = data.description ?? undefined;
-
-      const shouldSyncTeams =
-        data.visibility !== undefined || data.teamIds !== undefined;
-      if (shouldSyncTeams) {
-        const visibility = this.resolveLookupUpdateVisibility(
-          existing.visibility as 'global' | 'team',
-          data.visibility,
-          data.teamIds
-        );
-        if (visibility === 'team') {
-          let teamIds = data.teamIds;
-          if (teamIds === undefined) {
-            teamIds = await loadActiveTagTeamIds(tx, id);
+    return this.withLookupConflict(
+      'tags_normalized_name_unique',
+      'A tag with this name already exists.',
+      () =>
+        this.databaseService.db.transaction(async (tx) => {
+          const [existing] = await tx
+            .select()
+            .from(tags)
+            .where(eq(tags.id, id))
+            .limit(1);
+          if (!existing) {
+            return undefined;
           }
-          if (!teamIds.length) {
-            throw new BadRequestException(
-              'At least one team is required when visibility is team'
+
+          const updateData: Partial<typeof tags.$inferInsert> = {
+            lastUpdatedBy: currentUserId,
+            lastUpdatedDateTime: new Date(),
+          };
+
+          if (data.name !== undefined)
+            updateData.name = this.normalizeLookupName(data.name);
+          if (data.displayName !== undefined)
+            updateData.displayName = data.displayName ?? undefined;
+          if (data.sortOrder !== undefined)
+            updateData.sortOrder = data.sortOrder;
+          if (data.isActive !== undefined) updateData.isActive = data.isActive;
+          if (data.description !== undefined)
+            updateData.description = data.description ?? undefined;
+
+          const shouldSyncTeams =
+            data.visibility !== undefined || data.teamIds !== undefined;
+          if (shouldSyncTeams) {
+            const visibility = this.resolveLookupUpdateVisibility(
+              existing.visibility as 'global' | 'team',
+              data.visibility,
+              data.teamIds
             );
+            if (visibility === 'team') {
+              let teamIds = data.teamIds;
+              if (teamIds === undefined) {
+                teamIds = await loadActiveTagTeamIds(tx, id);
+              }
+              if (!teamIds.length) {
+                throw new BadRequestException(
+                  'At least one team is required when visibility is team'
+                );
+              }
+              updateData.visibility = visibility;
+              await syncTagTeams(tx, id, visibility, teamIds);
+            } else {
+              updateData.visibility = 'global';
+              await syncTagTeams(tx, id, 'global', []);
+            }
           }
-          updateData.visibility = visibility;
-          await syncTagTeams(tx, id, visibility, teamIds);
-        } else {
-          updateData.visibility = 'global';
-          await syncTagTeams(tx, id, 'global', []);
-        }
-      }
 
-      const [result] = await tx
-        .update(tags)
-        .set(updateData)
-        .where(eq(tags.id, id))
-        .returning();
-      return result;
-    });
+          const [result] = await tx
+            .update(tags)
+            .set(updateData)
+            .where(eq(tags.id, id))
+            .returning();
+          return result;
+        })
+    );
   }
 
   async updateMinistry(
@@ -2543,7 +2681,8 @@ export class LookupsService {
       lastUpdatedDateTime: new Date(),
     };
 
-    if (data.name !== undefined) updateData.name = data.name;
+    if (data.name !== undefined)
+      updateData.name = this.normalizeLookupName(data.name);
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName;
     if (data.abbreviation !== undefined)
@@ -2618,11 +2757,17 @@ export class LookupsService {
       return updated;
     };
 
-    if (abbreviationChanged) {
-      return this.databaseService.db.transaction(run);
-    }
-    // Use root pool when no cascade is needed to avoid unnecessary transaction overhead.
-    return run(this.databaseService.db);
+    return this.withLookupConflict(
+      'ministries_normalized_name_unique',
+      'A ministry with this name already exists.',
+      () => {
+        if (abbreviationChanged) {
+          return this.databaseService.db.transaction(run);
+        }
+        // Use root pool when no cascade is needed to avoid unnecessary transaction overhead.
+        return run(this.databaseService.db);
+      }
+    );
   }
 
   async updateActivityStatus(
@@ -2678,17 +2823,23 @@ export class LookupsService {
       lastUpdatedDateTime: new Date(),
     };
 
-    if (data.name !== undefined) updateData.name = data.name;
+    if (data.name !== undefined)
+      updateData.name = this.normalizeLookupName(data.name);
     if (data.displayName !== undefined)
       updateData.displayName = data.displayName ?? undefined;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
-    const [result] = await this.databaseService.db
-      .update(themes)
-      .set(updateData)
-      .where(eq(themes.id, id))
-      .returning();
+    const [result] = await this.withLookupConflict(
+      'themes_normalized_name_unique',
+      'A theme with this name already exists.',
+      () =>
+        this.databaseService.db
+          .update(themes)
+          .set(updateData)
+          .where(eq(themes.id, id))
+          .returning()
+    );
     return result;
   }
 

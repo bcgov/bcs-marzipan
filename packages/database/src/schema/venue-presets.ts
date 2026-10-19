@@ -1,13 +1,15 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
   integer,
   pgTable,
   serial,
   timestamp,
+  uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core';
 
+import { normalizedLookupName } from './lookup-name-index';
 import { users } from './user';
 
 /**
@@ -17,33 +19,44 @@ import { users } from './user';
  * the input, ordered by `pinned_sort_order`.
  * Address fields align with `venue_addresses` (including optional `address_line2`).
  */
-export const venuePresets = pgTable('venue_presets', {
-  id: serial('id').primaryKey().notNull(),
-  venueName: varchar('venue_name', { length: 255 }).notNull(),
-  addressLine1: varchar('address_line1', { length: 255 }),
-  addressLine2: varchar('address_line2', { length: 255 }),
-  city: varchar('city', { length: 255 }),
-  provinceOrState: varchar('province_or_state', { length: 255 }),
-  country: varchar('country', { length: 255 }),
-  sortOrder: integer('sort_order').notNull().default(0),
-  isActive: boolean('is_active').notNull().default(true),
-  isPinned: boolean('is_pinned').notNull().default(false),
-  pinnedSortOrder: integer('pinned_sort_order').notNull().default(0),
-  createdDateTime: timestamp('created_date_time', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdBy: integer('created_by')
-    .notNull()
-    .references(() => users.id),
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
+export const venuePresets = pgTable(
+  'venue_presets',
+  {
+    id: serial('id').primaryKey().notNull(),
+    venueName: varchar('venue_name', { length: 255 }).notNull(),
+    addressLine1: varchar('address_line1', { length: 255 }),
+    addressLine2: varchar('address_line2', { length: 255 }),
+    city: varchar('city', { length: 255 }),
+    provinceOrState: varchar('province_or_state', { length: 255 }),
+    country: varchar('country', { length: 255 }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    isActive: boolean('is_active').notNull().default(true),
+    isPinned: boolean('is_pinned').notNull().default(false),
+    pinnedSortOrder: integer('pinned_sort_order').notNull().default(0),
+    createdDateTime: timestamp('created_date_time', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdBy: integer('created_by')
+      .notNull()
+      .references(() => users.id),
+    lastUpdatedDateTime: timestamp('last_updated_date_time', {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    lastUpdatedBy: integer('last_updated_by')
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => ({
+    normalizedAddressUnique: uniqueIndex(
+      'venue_presets_normalized_address_unique'
+    ).on(
+      normalizedLookupName(sql`coalesce(${table.addressLine1}, '')`),
+      normalizedLookupName(sql`coalesce(${table.addressLine2}, '')`)
+    ),
   })
-    .notNull()
-    .defaultNow(),
-  lastUpdatedBy: integer('last_updated_by')
-    .notNull()
-    .references(() => users.id),
-});
+);
 
 export const venuePresetsRelations = relations(venuePresets, ({ one }) => ({
   createdByUser: one(users, {
