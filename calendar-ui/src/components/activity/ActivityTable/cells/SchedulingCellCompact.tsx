@@ -77,7 +77,7 @@ export function SchedulingCellCompact({
       {row.startDate && (
         <div className="flex items-center gap-1.5">
           <Calendar className={ACTIVITY_GRID_ROW_ICON_CLASS} />
-          <span className="whitespace-nowrap">{dateRangeText}</span>
+          <span>{dateRangeText}</span>
           <Badge
             variant="outline"
             className={cn(
