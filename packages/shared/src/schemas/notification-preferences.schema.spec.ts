@@ -48,6 +48,12 @@ describe('notificationPreferencesUpdateSchema', () => {
     );
   });
 
+  it('rejects an empty categories array', () => {
+    expect(() =>
+      notificationPreferencesUpdateSchema.parse({ categories: [] })
+    ).toThrow();
+  });
+
   it('rejects unknown categories', () => {
     expect(() =>
       notificationPreferencesUpdateSchema.parse({

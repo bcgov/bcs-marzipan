@@ -44,6 +44,10 @@ export function NotificationPreferencesModal({
   // data is shown so a refresh on open is never ignored.
   const [edits, setEdits] = useState<NotificationPreferences | null>(null);
   const draft = edits ?? preferences ?? null;
+  const isDirty =
+    !!edits &&
+    !!preferences &&
+    JSON.stringify(edits) !== JSON.stringify(preferences);
 
   useEffect(() => {
     if (!open) {
@@ -220,7 +224,7 @@ export function NotificationPreferencesModal({
           </Button>
           <Button
             type="button"
-            disabled={!draft || isSaving}
+            disabled={!draft || !isDirty || isSaving}
             onClick={() => void handleSave()}
           >
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

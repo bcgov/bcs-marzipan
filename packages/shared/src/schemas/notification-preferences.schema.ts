@@ -31,6 +31,7 @@ export const notificationPreferencesUpdateSchema = z
     emailEnabled: z.boolean().optional(),
     categories: z
       .array(notificationCategoryPreferenceSchema)
+      .min(1)
       .max(Object.keys(NOTIFICATION_PREFERENCE_CATEGORIES).length)
       .optional(),
   })
