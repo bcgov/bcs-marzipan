@@ -21,7 +21,7 @@ function minimalForm(overrides: Partial<ActivityFormData>): ActivityFormData {
     leadTeamId: 1,
     categoryIds: [1],
     ...overrides,
-  } as ActivityFormData;
+  };
 }
 
 describe('getEmptyReviewBaseline', () => {

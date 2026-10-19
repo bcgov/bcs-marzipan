@@ -85,11 +85,7 @@ export function activityDetailEnvelope(parsed) {
 
 /** Activity history: data is array (may be empty) */
 export function activityHistoryEnvelope(parsed) {
-  return (
-    parsed &&
-    parsed.success === true &&
-    Array.isArray(parsed.data)
-  );
+  return parsed && parsed.success === true && Array.isArray(parsed.data);
 }
 
 /** GET /reports/data/look-ahead (and legacy look-ahead alias shape). */
@@ -133,11 +129,7 @@ export function lookupsReportsListEnvelope(parsed) {
 
 /** GET /lookups/date-statuses — typical lookup array */
 export function lookupsArrayEnvelope(parsed) {
-  return (
-    parsed &&
-    parsed.success === true &&
-    Array.isArray(parsed.data)
-  );
+  return parsed && parsed.success === true && Array.isArray(parsed.data);
 }
 
 /**
@@ -162,7 +154,12 @@ export function checkJson2xx({ res, prefix, maxMs, validateBody }) {
  * Permission-sensitive read: 200 (expect body) or 403.
  */
 /** Read-only metadata that may be missing (404) or forbidden (403) in some envs / roles. */
-export function checkJson200Or404Or403({ res, prefix, maxMs, validateWhen200 }) {
+export function checkJson200Or404Or403({
+  res,
+  prefix,
+  maxMs,
+  validateWhen200,
+}) {
   const parsed = tryParseJson(res.body);
   return check(res, {
     [`${prefix} 200, 404, or 403`]: (r) =>
@@ -185,8 +182,7 @@ export function checkOptionalPermissionJson({
 }) {
   const parsed = tryParseJson(res.body);
   return check(res, {
-    [`${prefix} 200 or 403`]: (r) =>
-      r.status === 200 || r.status === 403,
+    [`${prefix} 200 or 403`]: (r) => r.status === 200 || r.status === 403,
     [`${prefix} timing < ${maxMs}ms`]: (r) => timingUnder(r, maxMs),
     [`${prefix} body valid when 200`]: () => {
       if (res.status !== 200) {

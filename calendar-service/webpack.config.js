@@ -3,7 +3,10 @@ const nodeExternals = require('webpack-node-externals');
 const path = require('path');
 
 const SWAGGER_BRAND_DIR = path.join(__dirname, 'src/common/swagger');
-const SWAGGER_BRAND_TEXT_FILES = ['swagger-ui-brand.css', 'swagger-ui-brand.js'];
+const SWAGGER_BRAND_TEXT_FILES = [
+  'swagger-ui-brand.css',
+  'swagger-ui-brand.js',
+];
 
 /** Emit Swagger brand static files beside dist/main.js for /api/* serving. */
 class CopySwaggerBrandAssetsPlugin {

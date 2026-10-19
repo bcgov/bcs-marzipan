@@ -74,7 +74,7 @@ function DateTimeCell({ activity }: { activity: ActivityListItem }) {
             {dateStatus ? (
               <span
                 className={`custom-report-dt-status${
-                  dateText !== '–' ? ' custom-report-dt-status-gap' : ''
+                  dateText !== '–' ? 'custom-report-dt-status-gap' : ''
                 }`}
               >
                 {dateStatus}
@@ -90,7 +90,7 @@ function DateTimeCell({ activity }: { activity: ActivityListItem }) {
             {timeStatus ? (
               <span
                 className={`custom-report-dt-status${
-                  timeText !== '–' ? ' custom-report-dt-status-gap' : ''
+                  timeText !== '–' ? 'custom-report-dt-status-gap' : ''
                 }`}
               >
                 {timeStatus}
@@ -307,7 +307,7 @@ function CustomReportActivityRow({
     <tr
       className={`custom-report-tr ${
         zebraEven ? 'custom-report-row-even' : 'custom-report-row-odd'
-      }${highlighted ? ' live-row-highlight' : ''}`}
+      }${highlighted ? 'live-row-highlight' : ''}`}
     >
       <td className="custom-report-td">
         <DateTimeCell activity={activity} />

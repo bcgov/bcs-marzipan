@@ -54,9 +54,10 @@ This document describes the new reusable admin component architecture for managi
   title="Categories"
   description="Manage activity categories"
   onAdd={handleAdd}
-  addButtonLabel="Add Category"
+  addButtonLabel="+ Add category"
   isLoading={isLoading}
   headerAction={<FilterDropdown />}
+  footerAction={<SaveButton />}
 >
   <DataTable />
 </AdminSection>

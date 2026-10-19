@@ -315,9 +315,10 @@ export function BannerSettingsAdmin() {
   return (
     <AdminSection
       title="System banner"
-      description="Manage the dismissible info banner shown at the top of the app for all signed-in users."
+      description="Dismissible info banner for all signed-in users."
+      sectionId="banner"
       isLoading={isLoading}
-      headerAction={
+      footerAction={
         canManage ? (
           <div className="flex items-center gap-2">
             <Button

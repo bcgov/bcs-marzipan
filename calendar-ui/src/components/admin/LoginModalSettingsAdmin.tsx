@@ -179,20 +179,23 @@ function LoginModalSettingsAdminInner() {
     <>
       <AdminSection
         title="Login modal"
-        description="Configure a notice modal shown to users the first time they sign in each session."
+        description="Notice shown once per session on first sign-in."
+        sectionId="login-modal"
         isLoading={isLoading}
         headerAction={
+          canManage && previewModal ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPreviewOpen(true)}
+            >
+              Preview
+            </Button>
+          ) : null
+        }
+        footerAction={
           canManage ? (
             <div className="flex items-center gap-2">
-              {previewModal && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setPreviewOpen(true)}
-                >
-                  Preview
-                </Button>
-              )}
               <Button
                 type="button"
                 variant="outline"
@@ -229,8 +232,8 @@ function LoginModalSettingsAdminInner() {
           <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
             <LogIn className="h-5 w-5 text-slate-600" />
             <div className="text-sm text-slate-700">
-              The modal is shown once per session, the first time a user signs
-              in. HTML content is supported.
+              Shown once per session on first sign-in. HTML content is
+              supported.
             </div>
           </div>
 
