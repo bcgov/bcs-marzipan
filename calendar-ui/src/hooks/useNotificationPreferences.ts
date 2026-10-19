@@ -9,6 +9,8 @@ import {
   updateNotificationPreferences,
 } from '@/api/notificationsApi';
 
+import { useAuth } from '@/hooks/useAuth';
+
 export const NOTIFICATION_PREFERENCES_QUERY_KEY = [
   'notifications',
   'preferences',
@@ -16,11 +18,13 @@ export const NOTIFICATION_PREFERENCES_QUERY_KEY = [
 
 export function useNotificationPreferences(options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const queryKey = [...NOTIFICATION_PREFERENCES_QUERY_KEY, user?.id] as const;
 
   const query = useQuery({
-    queryKey: NOTIFICATION_PREFERENCES_QUERY_KEY,
+    queryKey,
     queryFn: getNotificationPreferences,
-    enabled: options?.enabled ?? true,
+    enabled: !!user && (options?.enabled ?? true),
     staleTime: 60_000,
   });
 
@@ -28,7 +32,7 @@ export function useNotificationPreferences(options?: { enabled?: boolean }) {
     mutationFn: (body: NotificationPreferencesUpdate) =>
       updateNotificationPreferences(body),
     onSuccess: (data: NotificationPreferences) => {
-      queryClient.setQueryData(NOTIFICATION_PREFERENCES_QUERY_KEY, data);
+      queryClient.setQueryData(queryKey, data);
     },
   });
 
