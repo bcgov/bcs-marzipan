@@ -137,7 +137,7 @@ describe('NotificationsService', () => {
         [2, 3, 4],
         executor
       );
-      expect(result).toEqual([3, 4]);
+      expect(result).toEqual([2, 3, 4]);
       expect(
         insertedRecipients.map((r) => (r as { userId: number }).userId)
       ).toEqual([3, 4]);
@@ -147,12 +147,12 @@ describe('NotificationsService', () => {
       });
     });
 
-    it('skips persistence when every recipient opted out of in-app', async () => {
+    it('persists the event but no inbox rows for email-only recipients', async () => {
       resolveOptOuts.mockResolvedValue({
         inApp: new Set([2]),
         email: new Set(),
       });
-      const { executor } = createInsertExecutor();
+      const { executor, insertedRecipients } = createInsertExecutor();
       const deferred: any[] = [];
 
       const result = await (service as any).createEventWithRecipients({
@@ -162,8 +162,10 @@ describe('NotificationsService', () => {
         deferredSideEffects: deferred,
       });
 
-      expect(result).toEqual([]);
-      expect(executor.insert).not.toHaveBeenCalled();
+      // Event row only (needed for reminder dedupe); no notification_recipients insert.
+      expect(result).toEqual([2]);
+      expect(executor.insert).toHaveBeenCalledTimes(1);
+      expect(insertedRecipients).toEqual([]);
       expect(deferred[0]).toMatchObject({
         recipientUserIds: [],
         emailRecipientUserIds: [2],

@@ -31,30 +31,46 @@ export function NotificationPreferencesModal({
   open,
   onOpenChange,
 }: NotificationPreferencesModalProps) {
-  const { preferences, isLoading, isError, refetch, save, isSaving } =
-    useNotificationPreferences({ enabled: open });
-  const [draft, setDraft] = useState<NotificationPreferences | null>(null);
+  const {
+    preferences,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+    save,
+    isSaving,
+  } = useNotificationPreferences({ enabled: open });
+  // Holds only the user's unsaved edits; until they edit, the latest server
+  // data is shown so a refresh on open is never ignored.
+  const [edits, setEdits] = useState<NotificationPreferences | null>(null);
+  const draft = edits ?? preferences ?? null;
 
   useEffect(() => {
-    // Seed once per open so background refetches don't clobber unsaved edits.
-    setDraft((prev) => (open ? (prev ?? preferences ?? null) : null));
-  }, [open, preferences]);
+    if (!open) {
+      setEdits(null);
+    }
+  }, [open]);
+
+  const updateDraft = (
+    update: (current: NotificationPreferences) => NotificationPreferences
+  ) => {
+    setEdits((prev) => {
+      const base = prev ?? preferences;
+      return base ? update(base) : prev;
+    });
+  };
 
   const setCategoryChannel = (
     category: NotificationCategoryPreference['category'],
     channel: Channel,
     value: boolean
   ) => {
-    setDraft((prev) =>
-      prev
-        ? {
-            ...prev,
-            categories: prev.categories.map((c) =>
-              c.category === category ? { ...c, [channel]: value } : c
-            ),
-          }
-        : prev
-    );
+    updateDraft((current) => ({
+      ...current,
+      categories: current.categories.map((c) =>
+        c.category === category ? { ...c, [channel]: value } : c
+      ),
+    }));
   };
 
   const handleSave = async () => {
@@ -85,7 +101,9 @@ export function NotificationPreferencesModal({
       );
     }
 
-    if (isLoading || !draft) {
+    // Hold the form until the opening refresh completes; once the user has
+    // edited, keep their draft through any later background refetch.
+    if (isLoading || !draft || (isFetching && !edits)) {
       return (
         <div className="flex justify-center py-8">
           <Loader2
@@ -111,9 +129,7 @@ export function NotificationPreferencesModal({
             id="notification-pref-email-enabled"
             checked={draft.emailEnabled}
             onCheckedChange={(checked) =>
-              setDraft((prev) =>
-                prev ? { ...prev, emailEnabled: checked } : prev
-              )
+              updateDraft((current) => ({ ...current, emailEnabled: checked }))
             }
           />
         </div>

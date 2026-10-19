@@ -950,11 +950,14 @@ export class NotificationsService {
       return [];
     }
 
-    const persistEventAndRecipients = async (executor: DrizzleDbExecutor) => {
-      if (inAppRecipients.length === 0) {
-        return;
-      }
+    // Anyone reached by at least one channel; this is what callers report on.
+    const notifiedRecipients = dedupedRecipients.filter(
+      (id) => !optOuts.inApp.has(id) || !optOuts.email.has(id)
+    );
 
+    // The event row is always written (even for email-only delivery) because
+    // reminder deduplication reads notification_events.
+    const persistEventAndRecipients = async (executor: DrizzleDbExecutor) => {
       const actorUsername = await this.resolveActorUsername(
         params.actorUserId,
         executor
@@ -973,6 +976,10 @@ export class NotificationsService {
           actorUsername,
         })
         .returning({ id: notificationEvents.id });
+
+      if (inAppRecipients.length === 0) {
+        return;
+      }
 
       await executor
         .insert(notificationRecipients)
@@ -998,7 +1005,7 @@ export class NotificationsService {
         params.deferredSideEffects.push(sideEffect);
       }
       await persistEventAndRecipients(params.executor);
-      return inAppRecipients;
+      return notifiedRecipients;
     }
 
     await this.databaseService.db.transaction(async (tx) => {
@@ -1006,7 +1013,7 @@ export class NotificationsService {
     });
     await this.deliverNotificationSideEffects(sideEffect);
 
-    return inAppRecipients;
+    return notifiedRecipients;
   }
 
   async notifyActivityCreateOrStatusChange(input: {

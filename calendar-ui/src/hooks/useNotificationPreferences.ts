@@ -8,7 +8,6 @@ import {
   getNotificationPreferences,
   updateNotificationPreferences,
 } from '@/api/notificationsApi';
-
 import { useAuth } from '@/hooks/useAuth';
 
 export const NOTIFICATION_PREFERENCES_QUERY_KEY = [
@@ -25,7 +24,9 @@ export function useNotificationPreferences(options?: { enabled?: boolean }) {
     queryKey,
     queryFn: getNotificationPreferences,
     enabled: !!user && (options?.enabled ?? true),
-    staleTime: 60_000,
+    // Always revalidate when the modal opens so edits start from fresh data.
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const mutation = useMutation({
@@ -39,6 +40,7 @@ export function useNotificationPreferences(options?: { enabled?: boolean }) {
   return {
     preferences: query.data,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     refetch: query.refetch,
     save: mutation.mutateAsync,
