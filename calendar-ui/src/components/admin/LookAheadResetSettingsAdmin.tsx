@@ -274,7 +274,8 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
     <>
       <AdminSection
         title="Look Ahead status reset"
-        description="Automatically clear Look Ahead status for activities in the configured forward window. You can turn off the nightly job, run a manual clear, or restore the previous state after the last clear."
+        description="Clear Look Ahead status for activities in a forward date window."
+        sectionId="look-ahead-reset"
         isLoading={isLoading}
         headerAction={
           <div className="flex flex-wrap items-center gap-2">
@@ -304,14 +305,16 @@ export function LookAheadResetSettingsAdmin(): ReactElement | null {
               <Eraser className="size-4" aria-hidden />
               Clear LA status
             </Button>
-            <Button
-              type="button"
-              onClick={() => saveWindowMutation.mutate(windowDays)}
-              disabled={!hasWindowChanges || saveWindowMutation.isPending}
-            >
-              Save
-            </Button>
           </div>
+        }
+        footerAction={
+          <Button
+            type="button"
+            onClick={() => saveWindowMutation.mutate(windowDays)}
+            disabled={!hasWindowChanges || saveWindowMutation.isPending}
+          >
+            Save
+          </Button>
         }
       >
         {error && (

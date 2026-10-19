@@ -33,7 +33,7 @@ export function tryParseTipTapDoc(value: string): TipTapJSONContent | null {
     if (parsed.content !== undefined && !Array.isArray(parsed.content)) {
       return null;
     }
-    return parsed as TipTapJSONContent;
+    return parsed;
   } catch {
     return null;
   }

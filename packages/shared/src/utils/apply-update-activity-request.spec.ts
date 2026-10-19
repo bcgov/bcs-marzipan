@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type {
-  ActivityFormData,
-  UpdateActivityRequest,
-} from '../schemas/activity.schema';
+import type { ActivityFormData } from '../schemas/activity.schema';
 import { applyUpdateActivityRequestToFormData } from './apply-update-activity-request';
 
 function baseForm(overrides: Partial<ActivityFormData> = {}): ActivityFormData {
@@ -20,7 +17,7 @@ function baseForm(overrides: Partial<ActivityFormData> = {}): ActivityFormData {
     categoryIds: [1],
     sharedWithTeamIds: [],
     ...overrides,
-  } as ActivityFormData;
+  };
 }
 
 describe('applyUpdateActivityRequestToFormData', () => {
@@ -47,7 +44,7 @@ describe('applyUpdateActivityRequestToFormData', () => {
     const base = baseForm({ title: 'Keep' });
     const result = applyUpdateActivityRequestToFormData(base, {
       title: undefined,
-    } as UpdateActivityRequest);
+    });
     expect(result.title).toBe('Keep');
   });
 
@@ -66,7 +63,7 @@ describe('applyUpdateActivityRequestToFormData', () => {
     const result = applyUpdateActivityRequestToFormData(base, {
       markAsReviewed: true,
       markAsCompleted: false,
-    } as UpdateActivityRequest);
+    });
     expect(
       (result as unknown as Record<string, unknown>).markAsReviewed
     ).toBeUndefined();

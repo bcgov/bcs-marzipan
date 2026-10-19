@@ -38,7 +38,9 @@ export function loadTestConfig() {
 
   const profile = (__ENV.PERF_PROFILE || 'standard').toLowerCase();
   if (profile !== 'smoke' && profile !== 'standard') {
-    throw new Error(`PERF_PROFILE must be "smoke" or "standard", got: ${profile}`);
+    throw new Error(
+      `PERF_PROFILE must be "smoke" or "standard", got: ${profile}`
+    );
   }
 
   const smokeMaxMsRaw = __ENV.SMOKE_MAX_MS;

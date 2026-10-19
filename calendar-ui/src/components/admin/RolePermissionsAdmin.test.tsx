@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fireEvent, render, screen, waitFor } from '@/test/test-utils';
+import {
+  expandAdminSection,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@/test/test-utils';
 
 const mockFetchPermissionAdminRoles = vi.fn();
 const mockFetchAdminRolePermissions = vi.fn();
@@ -98,6 +104,7 @@ describe('RolePermissionsAdminSection', () => {
     const { RolePermissionsAdminSection } =
       await import('./RolePermissionsAdmin');
     render(<RolePermissionsAdminSection />);
+    expandAdminSection(/Role permissions/i);
 
     const ordinaryPermission = await screen.findByRole('switch', {
       name: 'View activities for Editor',

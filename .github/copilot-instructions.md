@@ -18,11 +18,19 @@ Node.js >= 24, npm workspaces. **Service:** NestJS 11, PostgreSQL, Drizzle, Zod,
 
 - Read existing code before creating new patterns; reuse components, hooks, utilities, and schemas.
 - Extend existing features instead of parallel abstractions. Keep diffs focused on the task.
-- Run `npm run check` and relevant tests before finishing.
+- Run `npm run check` and relevant tests before finishing; use `npm run verify` when you need full CI parity (see `docs/CI.md`).
 
 ## Path-specific instructions
 
 `.github/instructions/*.instructions.md` auto-apply via `applyTo` when editing matching paths.
+
+## Repository skills (on demand)
+
+`.github/skills/*/SKILL.md` — follow when the user asks for that workflow (not path-triggered).
+
+| Skill                                  | Use when                                                                                                                                        |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| [qa-rollup](skills/qa-rollup/SKILL.md) | QA test plan for PRs merged to **develop** since a baseline; non-technical, grouped by PR with page/section locations; post full rollup in chat |
 
 ## Boundaries
 
@@ -44,7 +52,7 @@ Node.js >= 24, npm workspaces. **Service:** NestJS 11, PostgreSQL, Drizzle, Zod,
 
 ## Common commands
 
-`npm start` · `npm run check` · `npm run test` · `npm run build` · `npm run build:packages`
+`npm start` · `npm run check` · `npm run verify` · `npm run verify:quick` · `npm run test` · `npm run build` · `npm run build:packages`
 
 ## Architecture
 
@@ -59,4 +67,4 @@ Node.js >= 24, npm workspaces. **Service:** NestJS 11, PostgreSQL, Drizzle, Zod,
 
 ## Deeper docs
 
-`README.md` · `docs/TESTING.md` · `docs/ERROR_HANDLING.md` · `docs/AUTH_AND_RBAC.md` · `.github/instructions/` (path-specific)
+`README.md` · `docs/CI.md` · `docs/TESTING.md` · `docs/PRE_COMMIT_HOOKS.md` · `docs/ERROR_HANDLING.md` · `docs/AUTH_AND_RBAC.md` · `.github/instructions/` (path-specific)
