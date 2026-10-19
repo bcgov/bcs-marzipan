@@ -27,6 +27,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
+import {
+  optionItemsEqual,
+  uniqueNumericIdsFromOptions,
+  uniqueOptionItems,
+} from '@/lib/combobox-option-utils';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
@@ -41,10 +46,6 @@ type ActivityCommsSectionProps = {
   }>;
   commsLeadOptions: OptionItem[];
 };
-
-function optionItemsEqual(a: OptionItem, b: OptionItem): boolean {
-  return String(a.value) === String(b.value);
-}
 
 function buildCommsContactsFromSelection(
   selected: OptionItem[],
@@ -104,7 +105,10 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             setActivityFormFieldValue(
               form,
               field.name,
-              buildCommsContactsFromSelection(selected, field.value)
+              buildCommsContactsFromSelection(
+                uniqueOptionItems(selected),
+                field.value
+              )
             );
           };
 
@@ -134,9 +138,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   value={selectedOptions}
                   onValueChange={handleValueChange}
                   itemToStringValue={(o) => o.value}
-                  isItemEqualToValue={(item, value) =>
-                    optionItemsEqual(item, value)
-                  }
+                  isItemEqualToValue={optionItemsEqual}
                   readOnly={readOnly}
                 >
                   <ComboboxChips
@@ -258,10 +260,11 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                     setActivityFormFieldValue(
                       form,
                       field.name,
-                      selected.map((o) => Number(o.value))
+                      uniqueNumericIdsFromOptions(selected)
                     )
                   }
                   itemToStringValue={(o) => o.label}
+                  isItemEqualToValue={optionItemsEqual}
                   readOnly={readOnly}
                 >
                   <ComboboxChips

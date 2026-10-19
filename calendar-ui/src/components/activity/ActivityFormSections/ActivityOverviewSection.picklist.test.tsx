@@ -244,6 +244,47 @@ describe('ActivityOverviewSection lookup picklist selectability', () => {
     });
   });
 
+  it('matches category options by value so re-selecting toggles instead of duplicating', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    render(
+      <PicklistHarness
+        onFormReady={(form) => {
+          formRef = form;
+        }}
+      />
+    );
+
+    await openCategoryPicklist(user);
+    await user.click(
+      await screen.findByRole('option', { name: 'Global Category' })
+    );
+
+    await waitFor(() => {
+      expect(formRef!.getValues('categoryIds')).toEqual([globalCategory.id]);
+    });
+    expect(
+      document.querySelectorAll(
+        '[data-field="categoryIds"] [data-slot=combobox-chip]'
+      )
+    ).toHaveLength(1);
+
+    await openCategoryPicklist(user);
+    await user.click(
+      await screen.findByRole('option', { name: 'Global Category' })
+    );
+
+    await waitFor(() => {
+      expect(formRef!.getValues('categoryIds')).toEqual([]);
+    });
+    expect(
+      document.querySelectorAll(
+        '[data-field="categoryIds"] [data-slot=combobox-chip]'
+      )
+    ).toHaveLength(0);
+  });
+
   it('keeps grandfathered category chips visible and not re-addable after removal', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
