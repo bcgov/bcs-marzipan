@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
@@ -61,6 +62,30 @@ describe('LookupsService', () => {
 
     service = module.get<LookupsService>(LookupsService);
     vi.clearAllMocks();
+  });
+
+  it('rejects lookup names that already exist, ignoring case and whitespace', async () => {
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValue(createChain([{ id: 42 }], 'limit'));
+
+    await expect(
+      service.createCity({ name: '  victoria ', sortOrder: 0 }, 99)
+    ).rejects.toThrow(ConflictException);
+
+    expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
+  });
+
+  it('rejects renaming a lookup to another row name', async () => {
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValue(createChain([{ id: 42 }], 'limit'));
+
+    await expect(
+      service.updateTheme(13, { name: 'Operations' }, 99)
+    ).rejects.toThrow(ConflictException);
+
+    expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
   });
 
   it('inserts an audit row when toggling permission visibility', async () => {
