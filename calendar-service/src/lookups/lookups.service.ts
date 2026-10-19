@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -14,6 +15,7 @@ import {
   sql,
   type SQL,
 } from 'drizzle-orm';
+import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
 
 import {
   activities,
@@ -1030,6 +1032,29 @@ export class LookupsService {
     return (val ?? '').trim().toLowerCase();
   }
 
+  private async assertLookupNameIsUnique(
+    table: PgTable & { id: AnyPgColumn; name: AnyPgColumn },
+    name: string,
+    label: string,
+    excludeId?: number
+  ): Promise<void> {
+    const normalizedName = name.trim().toLowerCase();
+    const [existing] = await this.databaseService.db
+      .select({ id: table.id })
+      .from(table)
+      .where(
+        and(
+          sql`lower(trim(${table.name})) = ${normalizedName}`,
+          excludeId === undefined ? undefined : ne(table.id, excludeId)
+        )
+      )
+      .limit(1);
+
+    if (existing) {
+      throw new ConflictException(`A ${label} with this name already exists.`);
+    }
+  }
+
   /**
    * Check for duplicate address (addressLine1 + addressLine2) among existing presets.
    * Throws if a duplicate is found (excludes the row with `excludeId` on update).
@@ -1059,7 +1084,9 @@ export class LookupsService {
     });
 
     if (duplicate) {
-      throw new Error('A venue preset with this address already exists');
+      throw new ConflictException(
+        'A venue preset with this address already exists.'
+      );
     }
   }
 
@@ -1597,6 +1624,12 @@ export class LookupsService {
     data: { name: string; sortOrder: number },
     currentUserId: number
   ): Promise<typeof ministryGroups.$inferSelect> {
+    await this.assertLookupNameIsUnique(
+      ministryGroups,
+      data.name,
+      'ministry group'
+    );
+
     const now = new Date();
     const [result] = await this.databaseService.db
       .insert(ministryGroups)
@@ -1621,6 +1654,15 @@ export class LookupsService {
     data: Partial<{ name: string; sortOrder: number }>,
     currentUserId: number
   ): Promise<typeof ministryGroups.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(
+        ministryGroups,
+        data.name,
+        'ministry group',
+        id
+      );
+    }
+
     const updateData: Partial<typeof ministryGroups.$inferInsert> = {
       lastUpdatedBy: currentUserId,
       lastUpdatedDateTime: new Date(),
@@ -1751,6 +1793,8 @@ export class LookupsService {
     },
     currentUserId: number
   ): Promise<typeof categories.$inferSelect> {
+    await this.assertLookupNameIsUnique(categories, data.name, 'category');
+
     const visibility = this.resolveLookupVisibility(
       data.visibility,
       data.teamIds
@@ -1798,6 +1842,8 @@ export class LookupsService {
     },
     currentUserId: number
   ): Promise<typeof cities.$inferSelect> {
+    await this.assertLookupNameIsUnique(cities, data.name, 'city');
+
     const now = new Date();
     const [result] = await this.databaseService.db
       .insert(cities)
@@ -1830,6 +1876,12 @@ export class LookupsService {
     },
     currentUserId: number
   ): Promise<typeof commsMaterials.$inferSelect> {
+    await this.assertLookupNameIsUnique(
+      commsMaterials,
+      data.name,
+      'comms material'
+    );
+
     const now = new Date();
     const [result] = await this.databaseService.db
       .insert(commsMaterials)
@@ -1862,6 +1914,12 @@ export class LookupsService {
     },
     currentUserId: number
   ): Promise<typeof translatedLanguages.$inferSelect> {
+    await this.assertLookupNameIsUnique(
+      translatedLanguages,
+      data.name,
+      'translation language'
+    );
+
     const now = new Date();
     const [result] = await this.databaseService.db
       .insert(translatedLanguages)
@@ -1895,6 +1953,12 @@ export class LookupsService {
     },
     currentUserId: number
   ): Promise<typeof governmentRepresentatives.$inferSelect> {
+    await this.assertLookupNameIsUnique(
+      governmentRepresentatives,
+      data.name,
+      'government representative'
+    );
+
     const now = new Date();
     const [result] = await this.databaseService.db
       .insert(governmentRepresentatives)
@@ -1929,6 +1993,8 @@ export class LookupsService {
     },
     currentUserId: number
   ): Promise<typeof tags.$inferSelect> {
+    await this.assertLookupNameIsUnique(tags, data.name, 'tag');
+
     const visibility = this.resolveLookupVisibility(
       data.visibility,
       data.teamIds
@@ -1977,6 +2043,8 @@ export class LookupsService {
     },
     currentUserId: number
   ): Promise<typeof ministries.$inferSelect> {
+    await this.assertLookupNameIsUnique(ministries, data.name, 'ministry');
+
     const now = new Date();
     if (
       data.ministerGovernmentRepId != null &&
@@ -2070,6 +2138,8 @@ export class LookupsService {
     },
     currentUserId: number
   ): Promise<any> {
+    await this.assertLookupNameIsUnique(themes, data.name, 'theme');
+
     const now = new Date();
     await this.databaseService.db.execute(sql`
       SELECT setval(
@@ -2111,6 +2181,15 @@ export class LookupsService {
     }>,
     currentUserId: number
   ): Promise<typeof categories.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(
+        categories,
+        data.name,
+        'category',
+        id
+      );
+    }
+
     return this.databaseService.db.transaction(async (tx) => {
       const [existing] = await tx
         .select()
@@ -2181,6 +2260,10 @@ export class LookupsService {
     }>,
     currentUserId: number
   ): Promise<typeof cities.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(cities, data.name, 'city', id);
+    }
+
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof cities.$inferInsert> = {
       lastUpdatedBy: currentUserId,
@@ -2238,6 +2321,15 @@ export class LookupsService {
     }>,
     currentUserId: number
   ): Promise<typeof commsMaterials.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(
+        commsMaterials,
+        data.name,
+        'comms material',
+        id
+      );
+    }
+
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof commsMaterials.$inferInsert> = {
       lastUpdatedBy: currentUserId,
@@ -2272,6 +2364,15 @@ export class LookupsService {
     }>,
     currentUserId: number
   ): Promise<typeof translatedLanguages.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(
+        translatedLanguages,
+        data.name,
+        'translation language',
+        id
+      );
+    }
+
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof translatedLanguages.$inferInsert> = {
       lastUpdatedBy: currentUserId,
@@ -2307,6 +2408,15 @@ export class LookupsService {
     }>,
     currentUserId: number
   ): Promise<typeof governmentRepresentatives.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(
+        governmentRepresentatives,
+        data.name,
+        'government representative',
+        id
+      );
+    }
+
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof governmentRepresentatives.$inferInsert> = {
       lastUpdatedBy: currentUserId,
@@ -2343,6 +2453,10 @@ export class LookupsService {
     }>,
     currentUserId: number
   ): Promise<typeof tags.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(tags, data.name, 'tag', id);
+    }
+
     return this.databaseService.db.transaction(async (tx) => {
       const [existing] = await tx
         .select()
@@ -2414,6 +2528,15 @@ export class LookupsService {
     }>,
     currentUserId: number
   ): Promise<typeof ministries.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(
+        ministries,
+        data.name,
+        'ministry',
+        id
+      );
+    }
+
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof ministries.$inferInsert> = {
       lastUpdatedBy: currentUserId,
@@ -2545,6 +2668,10 @@ export class LookupsService {
     }>,
     currentUserId: number
   ): Promise<typeof themes.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(themes, data.name, 'theme', id);
+    }
+
     // Build update object explicitly to ensure type safety
     const updateData: Partial<typeof themes.$inferInsert> = {
       lastUpdatedBy: currentUserId,
