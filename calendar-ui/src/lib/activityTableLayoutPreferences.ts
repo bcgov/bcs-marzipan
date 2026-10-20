@@ -9,13 +9,33 @@ export const ACTIVITY_GRID_STORAGE_KEY = 'activityTableGridPreferences';
 export interface ActivityGridLayoutPreferences {
   columnOrder: string[];
   columnSizing: Record<string, number>;
+  /** Column id -> visible; ids not listed fall back to visible. */
+  columnVisibility: Record<string, boolean>;
 }
+
+/** Comms is hidden until the user turns it on. */
+export const DEFAULT_ACTIVITY_GRID_COLUMN_VISIBILITY: Record<string, boolean> =
+  { materials: false };
 
 export const DEFAULT_ACTIVITY_GRID_LAYOUT_PREFERENCES: ActivityGridLayoutPreferences =
   {
     columnOrder: [],
     columnSizing: {},
+    columnVisibility: DEFAULT_ACTIVITY_GRID_COLUMN_VISIBILITY,
   };
+
+function parseVisibilityRecord(value: unknown): Record<string, boolean> {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+    return DEFAULT_ACTIVITY_GRID_COLUMN_VISIBILITY;
+  }
+  const result: Record<string, boolean> = {};
+  for (const [key, visible] of Object.entries(
+    value as Record<string, unknown>
+  )) {
+    if (typeof visible === 'boolean') result[key] = visible;
+  }
+  return result;
+}
 
 function parseStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -53,6 +73,7 @@ export function normalizeActivityGridLayoutPreferences(
     return {
       columnOrder: parseStringArray(raw.columnOrder),
       columnSizing: parseSizingRecord(raw.columnSizing),
+      columnVisibility: parseVisibilityRecord(raw.columnVisibility),
     };
   }
 
@@ -62,6 +83,7 @@ export function normalizeActivityGridLayoutPreferences(
   return {
     columnOrder: parseStringArray(columnOrder.A),
     columnSizing: parseSizingRecord(columnSizing.A),
+    columnVisibility: DEFAULT_ACTIVITY_GRID_COLUMN_VISIBILITY,
   };
 }
 

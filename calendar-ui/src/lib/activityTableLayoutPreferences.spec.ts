@@ -25,6 +25,7 @@ describe('activityTableLayoutPreferences', () => {
         'status',
       ],
       columnSizing: { summary: 420 },
+      columnVisibility: { materials: true, scheduling: false },
     };
 
     writeActivityGridLayoutPreferences(prefs);
@@ -56,6 +57,13 @@ describe('activityTableLayoutPreferences', () => {
     ).toEqual({
       columnOrder: ['select', 'summary'],
       columnSizing: { summary: 420 },
+      columnVisibility: { materials: false },
+    });
+  });
+
+  it('hides the Comms column by default', () => {
+    expect(DEFAULT_ACTIVITY_GRID_LAYOUT_PREFERENCES.columnVisibility).toEqual({
+      materials: false,
     });
   });
 

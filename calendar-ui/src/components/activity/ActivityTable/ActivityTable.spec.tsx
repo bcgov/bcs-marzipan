@@ -197,6 +197,8 @@ vi.mock('@/hooks/useActivityGridLayoutPreferences', () => ({
     setColumnOrder: vi.fn(),
     getColumnSizing: vi.fn(() => ({})),
     setColumnSizing: vi.fn(),
+    getColumnVisibility: vi.fn(() => ({ materials: false })),
+    setColumnVisibility: vi.fn(),
   }),
 }));
 
@@ -216,7 +218,7 @@ describe('ActivityTable layout', () => {
     expect(
       screen.getByRole('columnheader', { name: /Scheduling/i })
     ).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: /Comms/i })).toBeTruthy();
+    expect(screen.queryByRole('columnheader', { name: /Comms/i })).toBeNull();
     expect(screen.getByRole('columnheader', { name: /Status/i })).toBeTruthy();
   });
 });

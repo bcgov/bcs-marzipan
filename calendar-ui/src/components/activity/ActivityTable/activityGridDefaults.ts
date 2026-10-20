@@ -11,6 +11,14 @@ export const GRID_A_COLUMN_ORDER = [
   'status',
 ] as const;
 
+/** Columns users can show or hide; select and overview are always shown. */
+export const GRID_A_HIDEABLE_COLUMNS = [
+  { id: 'summary', label: 'Summary' },
+  { id: 'scheduling', label: 'Scheduling' },
+  { id: 'materials', label: 'Comms' },
+  { id: 'status', label: 'Status' },
+] as const;
+
 export const GRID_A_COLUMN_WIDTHS: Record<string, number> = {
   select: GRID_A_SELECT_COLUMN_WIDTH_PX,
   overview: 260,

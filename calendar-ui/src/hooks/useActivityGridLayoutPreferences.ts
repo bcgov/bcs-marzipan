@@ -12,6 +12,8 @@ export interface UseActivityGridLayoutPreferencesResult {
   setColumnOrder: (order: string[]) => void;
   getColumnSizing: () => Record<string, number>;
   setColumnSizing: (sizing: Record<string, number>) => void;
+  getColumnVisibility: () => Record<string, boolean>;
+  setColumnVisibility: (visibility: Record<string, boolean>) => void;
 }
 
 /** Reads and writes sessionStorage-backed Grid A column order and widths. */
@@ -62,10 +64,27 @@ export function useActivityGridLayoutPreferences(): UseActivityGridLayoutPrefere
     [preferences.columnSizing]
   );
 
+  const setColumnVisibility = useCallback(
+    (visibility: Record<string, boolean>) => {
+      updatePreferences((current) => ({
+        ...current,
+        columnVisibility: visibility,
+      }));
+    },
+    [updatePreferences]
+  );
+
+  const getColumnVisibility = useCallback(
+    () => preferences.columnVisibility,
+    [preferences.columnVisibility]
+  );
+
   return {
     getColumnOrder,
     setColumnOrder,
     getColumnSizing,
     setColumnSizing,
+    getColumnVisibility,
+    setColumnVisibility,
   };
 }
