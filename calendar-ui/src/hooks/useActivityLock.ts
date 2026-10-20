@@ -88,8 +88,8 @@ type UseActivityLockResult = {
   refreshLockFromServer: () => Promise<LockRefreshResult>;
   /** Verify server lock before PATCH; clears stale local hold and re-acquires if needed. */
   ensureLockForSubmit: () => Promise<EnsureLockForSubmitResult>;
-  /** Extend idle deadline (throttled server-side). */
-  sendHeartbeat: () => Promise<void>;
+  /** Extend idle deadline (throttled server-side); `keepAlive` only renews the connection lease. */
+  sendHeartbeat: (options?: { keepAlive?: boolean }) => Promise<void>;
   /** Update lock idle expiry from heartbeat response without full acquire. */
   mergeLockIdleExpiry: (idleExpiresAt: string) => void;
   /** Server released the lock (idle expiry, handoff, etc.); clear local hold. */
@@ -280,24 +280,27 @@ export function useActivityLock(
       }
     }, [activityId, currentUserId, applyServerLockStatus]);
 
-  const sendHeartbeat = useCallback(async () => {
-    const currentLock = lockRef.current;
-    if (currentLock == null) return;
-    try {
-      const res = await heartbeatLock(currentLock.id);
-      mergeLockIdleExpiry(res.idleExpiresAt);
-    } catch (err) {
-      const status = err instanceof ApiError ? err.status : undefined;
-      if (status === 410 || status === 404) {
-        onServerLockGoneRef.current?.();
-        lockRef.current = null;
-        setLock(null);
-        setLockState('idle');
-        setLockedByUsername(null);
-        return;
+  const sendHeartbeat = useCallback(
+    async (options?: { keepAlive?: boolean }) => {
+      const currentLock = lockRef.current;
+      if (currentLock == null) return;
+      try {
+        const res = await heartbeatLock(currentLock.id, options);
+        mergeLockIdleExpiry(res.idleExpiresAt);
+      } catch (err) {
+        const status = err instanceof ApiError ? err.status : undefined;
+        if (status === 410 || status === 404) {
+          onServerLockGoneRef.current?.();
+          lockRef.current = null;
+          setLock(null);
+          setLockState('idle');
+          setLockedByUsername(null);
+          return;
+        }
       }
-    }
-  }, [mergeLockIdleExpiry]);
+    },
+    [mergeLockIdleExpiry]
+  );
 
   const acquireDetailed = useCallback(async (): Promise<LockAcquireResult> => {
     if (lockRef.current) return 'ready';

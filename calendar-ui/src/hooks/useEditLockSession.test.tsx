@@ -15,9 +15,10 @@ vi.mock('sonner', () => ({
   },
 }));
 
-const DEBOUNCE_MS = 45_000;
+const THROTTLE_MS = 30_000;
+const KEEPALIVE_MS = 90_000;
 
-describe('useEditLockSession debounced heartbeat', () => {
+describe('useEditLockSession activity heartbeat', () => {
   const sendHeartbeat = vi.fn(() => Promise.resolve());
 
   function useHarness(
@@ -51,61 +52,76 @@ describe('useEditLockSession debounced heartbeat', () => {
     vi.useRealTimers();
   });
 
-  it('sends a debounced heartbeat after 45s without form changes', () => {
+  it('does not extend the idle deadline without user activity', () => {
     renderHook(() => useHarness());
 
-    expect(sendHeartbeat).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(KEEPALIVE_MS * 3);
+    });
+
+    expect(sendHeartbeat).not.toHaveBeenCalledWith();
+    expect(sendHeartbeat).not.toHaveBeenCalledWith(undefined);
+  });
+
+  it('sends keep-alive heartbeats that only renew the connection', () => {
+    renderHook(() => useHarness());
 
     act(() => {
-      vi.advanceTimersByTime(DEBOUNCE_MS);
+      vi.advanceTimersByTime(KEEPALIVE_MS);
     });
 
     expect(sendHeartbeat).toHaveBeenCalledTimes(1);
+    expect(sendHeartbeat).toHaveBeenCalledWith({ keepAlive: true });
   });
 
-  it('reschedules the debounced heartbeat when the form changes', () => {
+  it('sends an activity heartbeat immediately on form change, then throttles', () => {
     const { result } = renderHook(() => useHarness());
 
     act(() => {
-      vi.advanceTimersByTime(30_000);
+      result.current.form.setValue('title', 'One');
     });
+    expect(sendHeartbeat).toHaveBeenCalledTimes(1);
 
     act(() => {
-      result.current.form.setValue('title', 'Updated title');
+      result.current.form.setValue('title', 'Two');
     });
+    expect(sendHeartbeat).toHaveBeenCalledTimes(1);
 
     act(() => {
-      vi.advanceTimersByTime(30_000);
+      vi.advanceTimersByTime(THROTTLE_MS);
     });
-    expect(sendHeartbeat).not.toHaveBeenCalled();
+    expect(sendHeartbeat).toHaveBeenCalledTimes(2);
+  });
+
+  it('treats keyboard input as activity', () => {
+    renderHook(() => useHarness());
 
     act(() => {
-      vi.advanceTimersByTime(15_000);
+      window.dispatchEvent(new Event('keydown'));
     });
+
     expect(sendHeartbeat).toHaveBeenCalledTimes(1);
   });
 
-  it('clears the debounced timer and subscription on unmount', () => {
+  it('removes listeners and timers on unmount', () => {
     const { unmount } = renderHook(() => useHarness());
-
-    act(() => {
-      vi.advanceTimersByTime(20_000);
-    });
 
     unmount();
 
     act(() => {
-      vi.advanceTimersByTime(DEBOUNCE_MS);
+      window.dispatchEvent(new Event('keydown'));
+      vi.advanceTimersByTime(KEEPALIVE_MS);
     });
 
     expect(sendHeartbeat).not.toHaveBeenCalled();
   });
 
-  it('does not schedule debounced heartbeats when not editing with an owned lock', () => {
+  it('does not send heartbeats when not editing with an owned lock', () => {
     renderHook(() => useHarness({ lockState: 'owned', isEditing: false }));
 
     act(() => {
-      vi.advanceTimersByTime(DEBOUNCE_MS);
+      window.dispatchEvent(new Event('keydown'));
+      vi.advanceTimersByTime(KEEPALIVE_MS);
     });
 
     expect(sendHeartbeat).not.toHaveBeenCalled();
