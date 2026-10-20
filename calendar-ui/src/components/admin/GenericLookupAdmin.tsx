@@ -566,13 +566,13 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         <div
           className={cn(
             tableContainer,
-            'max-h-[min(480px,60vh)] bg-white shadow-none'
+            'max-h-[min(720px,90vh)] bg-white shadow-none'
           )}
         >
           <div
             className={cn(
               tableScrollWrapper,
-              'max-h-[min(480px,60vh)] [overflow-y:auto]'
+              'max-h-[min(720px,90vh)] [overflow-y:auto]'
             )}
           >
             <GenericDataTable
