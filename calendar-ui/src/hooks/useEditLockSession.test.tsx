@@ -78,12 +78,17 @@ describe('useEditLockSession activity heartbeat', () => {
     const { result } = renderHook(() => useHarness());
 
     act(() => {
-      result.current.form.setValue('title', 'One');
+      result.current.form.setValue('title', 'One', { shouldDirty: true });
+    });
+    expect(sendHeartbeat).not.toHaveBeenCalled();
+
+    act(() => {
+      window.dispatchEvent(new Event('keydown'));
     });
     expect(sendHeartbeat).toHaveBeenCalledTimes(1);
 
     act(() => {
-      result.current.form.setValue('title', 'Two');
+      window.dispatchEvent(new Event('keydown'));
     });
     expect(sendHeartbeat).toHaveBeenCalledTimes(1);
 

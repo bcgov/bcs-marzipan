@@ -77,7 +77,11 @@ export function useEditLockSession({
       }
     };
 
-    const subscription = form.watch(onActivity);
+    // Only user-originated field changes count; programmatic setValue/reset
+    // (hydration, live sync) must not extend the idle deadline.
+    const subscription = form.watch((_values, info) => {
+      if (info.type === 'change') onActivity();
+    });
     ACTIVITY_EVENTS.forEach((name) =>
       window.addEventListener(name, onActivity, { passive: true })
     );
