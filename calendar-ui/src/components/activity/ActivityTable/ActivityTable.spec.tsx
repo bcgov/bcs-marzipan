@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
 import { clearStrictModeScrollRestoreFallback } from '@/lib/activity-list-scroll-restore';
+import { ACTIVITY_GRID_STORAGE_KEY } from '@/lib/activityTableLayoutPreferences';
 
 import { ActivityTable } from './ActivityTable';
 
@@ -61,6 +63,7 @@ function makeActivity(id: number) {
 const mockActivities = Array.from({ length: 30 }, (_, i) =>
   makeActivity(i + 1)
 );
+mockActivities[0].commsMaterials = ['Backgrounder'] as never[];
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
@@ -191,24 +194,13 @@ vi.mock('./ActivityTableFilters', () => ({
   hasAnyActivityTableFilterActive: () => false,
 }));
 
-vi.mock('@/hooks/useActivityGridLayoutPreferences', () => ({
-  useActivityGridLayoutPreferences: () => ({
-    getColumnOrder: vi.fn(() => []),
-    setColumnOrder: vi.fn(),
-    getColumnSizing: vi.fn(() => ({})),
-    setColumnSizing: vi.fn(),
-    getColumnVisibility: vi.fn(() => ({ materials: false })),
-    setColumnVisibility: vi.fn(),
-  }),
-}));
-
 describe('ActivityTable layout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.sessionStorage.clear();
   });
 
-  it('renders column headers', () => {
+  it('renders column headers with Comms hidden by default', () => {
     render(<ActivityTable />);
 
     expect(
@@ -220,6 +212,79 @@ describe('ActivityTable layout', () => {
     ).toBeTruthy();
     expect(screen.queryByRole('columnheader', { name: /Comms/i })).toBeNull();
     expect(screen.getByRole('columnheader', { name: /Status/i })).toBeTruthy();
+    expect(screen.queryByText('Backgrounder')).toBeNull();
+  });
+
+  it('persists column visibility, order, and widths across remounts', async () => {
+    const user = userEvent.setup();
+    const savedOrder = [
+      'select',
+      'overview',
+      'status',
+      'summary',
+      'scheduling',
+      'materials',
+    ];
+    window.sessionStorage.setItem(
+      ACTIVITY_GRID_STORAGE_KEY,
+      JSON.stringify({
+        columnOrder: savedOrder,
+        columnSizing: { summary: 500 },
+        columnVisibility: { materials: false },
+      })
+    );
+
+    const first = render(<ActivityTable />);
+
+    await user.click(screen.getByRole('button', { name: /Columns/i }));
+    await user.click(
+      await screen.findByRole('menuitemcheckbox', { name: 'Comms' })
+    );
+    await user.click(
+      await screen.findByRole('menuitemcheckbox', { name: 'Scheduling' })
+    );
+    // The open menu marks the page aria-hidden; close it before querying.
+    await user.keyboard('{Escape}');
+
+    expect(
+      await screen.findByRole('columnheader', { name: /Comms/i })
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole('columnheader', { name: /Scheduling/i })
+    ).toBeNull();
+    expect(screen.getAllByText('Backgrounder').length).toBeGreaterThan(0);
+
+    const stored = JSON.parse(
+      window.sessionStorage.getItem(ACTIVITY_GRID_STORAGE_KEY) as string
+    );
+    expect(stored.columnVisibility).toEqual({
+      materials: true,
+      scheduling: false,
+    });
+    expect(stored.columnOrder).toEqual(savedOrder);
+    expect(stored.columnSizing).toEqual({ summary: 500 });
+
+    first.unmount();
+    render(<ActivityTable />);
+
+    expect(screen.getByRole('columnheader', { name: /Comms/i })).toBeTruthy();
+    expect(
+      screen.queryByRole('columnheader', { name: /Scheduling/i })
+    ).toBeNull();
+    const headerNames = screen
+      .getAllByRole('columnheader')
+      .map((h) => h.textContent ?? '');
+    const indexOf = (label: RegExp) =>
+      headerNames.findIndex((name) => label.test(name));
+    expect(indexOf(/Status/i)).toBeLessThan(indexOf(/Summary/i));
+    expect(indexOf(/Summary/i)).toBeLessThan(indexOf(/Comms/i));
+    expect(screen.getAllByText('Backgrounder').length).toBeGreaterThan(0);
+
+    const reread = JSON.parse(
+      window.sessionStorage.getItem(ACTIVITY_GRID_STORAGE_KEY) as string
+    );
+    expect(reread.columnOrder).toEqual(savedOrder);
+    expect(reread.columnSizing).toEqual({ summary: 500 });
   });
 });
 
