@@ -10,6 +10,7 @@ import {
   releaseLockWithKeepalive,
   type LockInfo,
 } from '../api/locksApi';
+import { isEditLockIdleExpired } from '../lib/edit-lock-idle-expiry';
 import {
   getRecurringEditLockoutDetailFallback,
   isRecurringEditLockoutError,
@@ -92,6 +93,8 @@ type UseActivityLockResult = {
   sendHeartbeat: (options?: { keepAlive?: boolean }) => Promise<void>;
   /** Update lock idle expiry from heartbeat response without full acquire. */
   mergeLockIdleExpiry: (idleExpiresAt: string) => void;
+  /** True when the most recently held lock was lost to inactivity (not a connection problem). */
+  wasLockIdleExpired: () => boolean;
   /** Server released the lock (idle expiry, handoff, etc.); clear local hold. */
   applyExternalLockReleased: () => void;
   /** Update lock state from an external source (e.g. WebSocket). */
@@ -187,6 +190,37 @@ export function useActivityLock(
     reason: null,
     lockedByUsername: null,
   });
+  /** Server clock minus client clock (ms), from server-stamped responses. */
+  const serverClockOffsetRef = useRef(0);
+  /** Last idle deadline seen for our lock; kept after the lock is cleared locally. */
+  const lastIdleExpiresAtRef = useRef<string | null>(null);
+  /** Client time of the earliest activity heartbeat the server has not acknowledged. */
+  const unconfirmedActivityAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (lock?.idleExpiresAt) {
+      lastIdleExpiresAtRef.current = lock.idleExpiresAt;
+    }
+  }, [lock?.idleExpiresAt]);
+
+  const recordServerTime = useCallback((serverTime: string | undefined) => {
+    const ms = serverTime ? new Date(serverTime).getTime() : Number.NaN;
+    if (Number.isFinite(ms)) {
+      serverClockOffsetRef.current = ms - Date.now();
+    }
+  }, []);
+
+  const wasLockIdleExpired = useCallback((): boolean => {
+    const offset = serverClockOffsetRef.current;
+    const idleExpiresAt = lastIdleExpiresAtRef.current;
+    const unconfirmedAt = unconfirmedActivityAtRef.current;
+    return isEditLockIdleExpired({
+      idleExpiresAtMs: idleExpiresAt ? new Date(idleExpiresAt).getTime() : null,
+      serverNowMs: Date.now() + offset,
+      unconfirmedActivityAtMs:
+        unconfirmedAt == null ? null : unconfirmedAt + offset,
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,6 +229,8 @@ export function useActivityLock(
     setLockedByUsername(null);
     setAcquireFailureReason(null);
     lockRef.current = null;
+    lastIdleExpiresAtRef.current = null;
+    unconfirmedActivityAtRef.current = null;
 
     getLockStatus(activityId)
       .then((status) => {
@@ -284,9 +320,14 @@ export function useActivityLock(
     async (options?: { keepAlive?: boolean }) => {
       const currentLock = lockRef.current;
       if (currentLock == null) return;
+      if (!options?.keepAlive && unconfirmedActivityAtRef.current == null) {
+        unconfirmedActivityAtRef.current = Date.now();
+      }
       try {
         const res = await heartbeatLock(currentLock.id, options);
+        recordServerTime(res.serverTime);
         if (!options?.keepAlive) {
+          unconfirmedActivityAtRef.current = null;
           mergeLockIdleExpiry(res.idleExpiresAt);
         }
       } catch (err) {
@@ -301,7 +342,7 @@ export function useActivityLock(
         }
       }
     },
-    [mergeLockIdleExpiry]
+    [mergeLockIdleExpiry, recordServerTime]
   );
 
   const acquireDetailed = useCallback(async (): Promise<LockAcquireResult> => {
@@ -317,6 +358,8 @@ export function useActivityLock(
       lastAcquireFailureRef.current = { reason: null, lockedByUsername: null };
       try {
         const acquired = await acquireLock(activityId);
+        recordServerTime(acquired.acquiredAt);
+        unconfirmedActivityAtRef.current = null;
         lockRef.current = acquired;
         setLock(acquired);
         setLockState('owned');
@@ -420,7 +463,7 @@ export function useActivityLock(
 
     acquireInFlightRef.current = promise;
     return promise;
-  }, [activityId, currentUserId]);
+  }, [activityId, currentUserId, recordServerTime]);
 
   const acquire = useCallback(async (): Promise<ActivityLockAcquireResult> => {
     const result = await acquireDetailed();
@@ -516,6 +559,7 @@ export function useActivityLock(
     ensureLockForSubmit,
     sendHeartbeat,
     mergeLockIdleExpiry,
+    wasLockIdleExpired,
     applyExternalLockReleased,
     setLockedByOther,
     clearLockedByOther,

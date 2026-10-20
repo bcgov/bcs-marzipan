@@ -23,6 +23,7 @@ export type ActivityEditRecoveryState =
   | 'server-error'
   | 'unavailable'
   | 'resyncing'
+  | 'idle-expired'
   | null;
 
 export type ActivityEditConfirmAction =
@@ -136,6 +137,12 @@ export const ACTIVITY_EDIT_RECOVERY_FAILED_BANNER =
 export const ACTIVITY_EDIT_SESSION_RESTORE_FAILED_MESSAGE =
   'Your session cannot be restored. Please check your connection.';
 
+export const ACTIVITY_EDIT_RECOVERY_IDLE_EXPIRED_BANNER =
+  'Your edit session ended due to inactivity. Unsaved changes are kept; resume editing to save them.';
+
+export const ACTIVITY_EDIT_IDLE_EXPIRED_BLOCKED_MESSAGE =
+  'Your edit session ended due to inactivity. Resume editing to continue.';
+
 export const ACTIVITY_EDIT_ACQUIRE_FAILURE_NETWORK =
   'Unable to start editing. Check your connection and try again.';
 
@@ -244,6 +251,9 @@ export function getActivityEditRecoveryBannerMessage(
   if (editRecoveryState === 'server-changed') {
     return ACTIVITY_EDIT_RECOVERY_SERVER_CHANGED_BANNER;
   }
+  if (editRecoveryState === 'idle-expired') {
+    return ACTIVITY_EDIT_RECOVERY_IDLE_EXPIRED_BANNER;
+  }
   if (editRecoveryState != null && editRecoveryState !== 'resyncing') {
     return ACTIVITY_EDIT_RECOVERY_FAILED_BANNER;
   }
@@ -283,6 +293,9 @@ export function getActivityConfirmBlockedMessage(
   }
   if (editRecoveryState === 'server-changed') {
     return getActivityEditServerChangedBlockedMessage(action);
+  }
+  if (editRecoveryState === 'idle-expired') {
+    return ACTIVITY_EDIT_IDLE_EXPIRED_BLOCKED_MESSAGE;
   }
   if (editRecoveryState != null) {
     return ACTIVITY_EDIT_SESSION_RESTORE_FAILED_MESSAGE;
