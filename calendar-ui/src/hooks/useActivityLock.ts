@@ -286,7 +286,9 @@ export function useActivityLock(
       if (currentLock == null) return;
       try {
         const res = await heartbeatLock(currentLock.id, options);
-        mergeLockIdleExpiry(res.idleExpiresAt);
+        if (!options?.keepAlive) {
+          mergeLockIdleExpiry(res.idleExpiresAt);
+        }
       } catch (err) {
         const status = err instanceof ApiError ? err.status : undefined;
         if (status === 410 || status === 404) {
