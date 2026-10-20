@@ -246,8 +246,13 @@ export function CloneActivityModal({
     endTimeMinutes <= startTimeMinutes;
 
   const titleIsValid = title.trim().length > 0;
+  const startDateIsValid = startStr.length > 0;
+  const endDateIsValid = endStr.length > 0;
+  const scheduleDatesAreValid =
+    startDateIsValid && endDateIsValid && !hasDateOrderWarning;
   const sessionBlocked = isActivityConfirmBlocked(confirmBlockedNotice);
-  const disableConfirm = isSubmitting || !titleIsValid || sessionBlocked;
+  const disableConfirm =
+    isSubmitting || !titleIsValid || !scheduleDatesAreValid || sessionBlocked;
 
   const togglePath = (path: string) => {
     setIncludedPaths((prev) => {
@@ -264,8 +269,8 @@ export function CloneActivityModal({
   const handleConfirm = () => {
     const payload: CloneActivityRequest = {
       title: title.trim(),
-      startDate: startDate ? startDate : null,
-      endDate: endDate ? endDate : null,
+      startDate: startStr,
+      endDate: endStr,
       startTime: isAllDay ? null : startTime ? startTime : null,
       endTime: isAllDay ? null : endTime ? endTime : null,
       isAllDay,
@@ -422,6 +427,16 @@ export function CloneActivityModal({
                 </FormSelectSafe>
               </div>
             </div>
+            {!startDateIsValid ? (
+              <p className="text-destructive text-sm font-medium">
+                Start date is required.
+              </p>
+            ) : null}
+            {!endDateIsValid ? (
+              <p className="text-destructive text-sm font-medium">
+                End date is required.
+              </p>
+            ) : null}
             {hasDateOrderWarning ? (
               <p className="text-sm font-medium text-amber-700">
                 End date must be later than or equal to start date.

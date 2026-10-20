@@ -198,10 +198,10 @@ export const CLONE_ALLOWED_INCLUDE_PATHS: ReadonlySet<string> = new Set<string>(
 /**
  * Body for `POST /activities/:id/clone`. `id` comes from the URL.
  *
- * Schedule fields mirror `activityCoreFieldsSchema`: dates and times are
- * nullable optional strings; status ids are optional so the server can apply
- * lookup defaults when omitted. `activitySchedulingSuperRefine('clone')`
- * requires start and end dates before the request is accepted.
+ * Schedule dates are required (same as create). Times are nullable optional
+ * strings; status ids are optional so the server can apply lookup defaults
+ * when omitted. `activitySchedulingSuperRefine('clone')` enforces cross-field
+ * scheduling rules (date order, Confirmed status, etc.).
  *
  * `includeFieldPaths`: when omitted, the server does not apply the allow-list
  * (advanced fields follow the source after permission stripping). When present,
@@ -217,8 +217,8 @@ export const cloneActivityRequestSchema = z
         'Title for the new activity, typically prefixed (e.g. CLONED).'
       ),
 
-    startDate: z.string().date().nullable().optional(),
-    endDate: z.string().date().nullable().optional(),
+    startDate: z.string().date(),
+    endDate: z.string().date(),
     startTime: z.string().time().nullable().optional(),
     endTime: z.string().time().nullable().optional(),
     isAllDay: z.boolean().optional(),
