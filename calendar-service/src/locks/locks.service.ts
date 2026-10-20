@@ -450,11 +450,14 @@ export class LocksService {
   }
 
   /**
-   * Heartbeat: extends idle deadline. Throttled server-side.
+   * Heartbeat: extends idle deadline (user activity). Throttled server-side.
+   * With `keepAliveOnly`, renews only the connection lease and leaves the idle
+   * deadline untouched, so a connected but inactive session still expires.
    */
   async heartbeatLock(
     lockId: number,
-    userId: number
+    userId: number,
+    options: { keepAliveOnly?: boolean } = {}
   ): Promise<{
     serverTime: string;
     idleExpiresAt: string;
@@ -477,11 +480,36 @@ export class LocksService {
       throw new HttpException('Lock expired', HttpStatus.GONE);
     }
 
-    const lastRenewed =
-      row.lastRenewedAt instanceof Date
-        ? row.lastRenewedAt
-        : new Date(row.lastRenewedAt);
-    const elapsed = now.getTime() - lastRenewed.getTime();
+    const newExpiresAt = new Date(now.getTime() + LOCK_TTL_MINUTES * 60 * 1000);
+
+    if (options.keepAliveOnly) {
+      const lastRenewedAt =
+        row.lastRenewedAt instanceof Date
+          ? row.lastRenewedAt
+          : new Date(row.lastRenewedAt);
+      if (now.getTime() - lastRenewedAt.getTime() < HEARTBEAT_MIN_INTERVAL_MS) {
+        return {
+          serverTime: now.toISOString(),
+          idleExpiresAt: idleExpiresAtDate.toISOString(),
+          throttled: true,
+        };
+      }
+      await this.databaseService.db
+        .update(editLocks)
+        .set({ lastRenewedAt: now, expiresAt: newExpiresAt })
+        .where(eq(editLocks.id, lockId));
+      return {
+        serverTime: now.toISOString(),
+        idleExpiresAt: idleExpiresAtDate.toISOString(),
+        throttled: false,
+      };
+    }
+
+    const lastActivity =
+      row.lastActivityAt instanceof Date
+        ? row.lastActivityAt
+        : new Date(row.lastActivityAt);
+    const elapsed = now.getTime() - lastActivity.getTime();
     if (elapsed < HEARTBEAT_MIN_INTERVAL_MS) {
       return {
         serverTime: now.toISOString(),
@@ -491,7 +519,6 @@ export class LocksService {
     }
 
     const newIdleExpires = await this.idleDeadlineFrom(now);
-    const newExpiresAt = new Date(now.getTime() + LOCK_TTL_MINUTES * 60 * 1000);
 
     const [updated] = await this.databaseService.db
       .update(editLocks)
