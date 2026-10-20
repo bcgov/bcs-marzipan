@@ -5,9 +5,12 @@ import { useEffect, useRef } from 'react';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import type { LockInfo } from '@/api/locksApi';
 
-import type { LockState } from './useActivityLock';
+import type { HeartbeatOutcome, LockState } from './useActivityLock';
 
+/** Client activity send interval; the server's activity throttle (10s) must stay below this. */
 const ACTIVITY_THROTTLE_MS = 30_000;
+/** Retry delay after a throttled activity heartbeat; exceeds the server's 10s window. */
+const THROTTLED_RETRY_MS = 11_000;
 const KEEPALIVE_MS = 90_000;
 const ACTIVITY_EVENTS = [
   'keydown',
@@ -24,7 +27,9 @@ type UseEditLockSessionOptions = {
   lockState: LockState;
   lock: LockInfo | null;
   isEditing: boolean;
-  sendHeartbeat: (options?: { keepAlive?: boolean }) => Promise<void>;
+  sendHeartbeat: (options?: {
+    keepAlive?: boolean;
+  }) => Promise<HeartbeatOutcome>;
 };
 
 function idleWarnToastId(activityId: number): string {
@@ -58,11 +63,19 @@ export function useEditLockSession({
 
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let lastSentAt = 0;
+    let disposed = false;
 
     const send = () => {
       timeoutId = undefined;
       lastSentAt = Date.now();
-      void sendHeartbeat();
+      void sendHeartbeat().then((outcome) => {
+        // Server rejected the activity as too soon (arrival jitter); retry once
+        // its window has passed so the idle deadline still gets extended.
+        if (outcome !== 'throttled' || disposed || timeoutId !== undefined) {
+          return;
+        }
+        timeoutId = setTimeout(send, THROTTLED_RETRY_MS);
+      });
     };
 
     // Leading-edge throttle: first activity extends immediately, later activity
@@ -87,6 +100,7 @@ export function useEditLockSession({
     );
 
     return () => {
+      disposed = true;
       subscription.unsubscribe();
       ACTIVITY_EVENTS.forEach((name) =>
         window.removeEventListener(name, onActivity)
