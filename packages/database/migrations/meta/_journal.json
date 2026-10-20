@@ -64,6 +64,13 @@
       "when": 1791407635577,
       "tag": "0008_20261007_role-permission-audit",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792194273667,
+      "tag": "0009_20261016_user-notification-preferences",
+      "breakpoints": true
     }
   ]
 }

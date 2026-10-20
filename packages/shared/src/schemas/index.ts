@@ -28,3 +28,4 @@ export * from './team.schema';
 export * from './response-wrapper.schema';
 export * from './notification.schema';
 export * from './notification-recipient-patch.schema';
+export * from './notification-preferences.schema';

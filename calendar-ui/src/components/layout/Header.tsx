@@ -5,6 +5,7 @@ import {
   LogOut,
   Pencil,
   PencilOff,
+  Settings2,
   User,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -18,6 +19,7 @@ import {
 import type { BannerSettings } from '@corpcal/shared/api/types';
 import { fetchActiveBanner } from '@/api/bannerApi';
 import logo from '@/assets/Logo.svg';
+import { NotificationPreferencesModal } from '@/components/notifications/NotificationPreferencesModal';
 import { MOCK_USERS } from '@/components/shared/UserSwitcher';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -79,6 +81,8 @@ const Header = () => {
   const queryClient = useQueryClient();
   const { user, logout, login, isAuthenticated } = useAuth();
   const [isDismissed, setIsDismissed] = useState(false);
+  const [isNotificationsMenuOpen, setIsNotificationsMenuOpen] = useState(false);
+  const [isNotificationPrefsOpen, setIsNotificationPrefsOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
 
   const { data: banner } = useQuery({
@@ -277,7 +281,10 @@ const Header = () => {
         <div className="ml-auto flex items-center gap-4">
           {isAuthenticated && user && (
             <>
-              <DropdownMenu>
+              <DropdownMenu
+                open={isNotificationsMenuOpen}
+                onOpenChange={setIsNotificationsMenuOpen}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
@@ -296,9 +303,27 @@ const Header = () => {
                 <DropdownMenuContent align="end" className="w-[26rem] p-0">
                   <div className="flex items-center justify-between px-3 py-2">
                     <p className="text-sm font-semibold">Notifications</p>
-                    <p className="text-muted-foreground text-xs">
-                      {unreadCount} unread
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-muted-foreground text-xs">
+                        {unreadCount} unread
+                      </p>
+                      <DropdownMenuItem
+                        asChild
+                        onSelect={() => {
+                          setIsNotificationsMenuOpen(false);
+                          setIsNotificationPrefsOpen(true);
+                        }}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                        >
+                          <Settings2 className="mr-1 h-3.5 w-3.5" />
+                          Notification options
+                        </Button>
+                      </DropdownMenuItem>
+                    </div>
                   </div>
                   <DropdownMenuSeparator />
                   <div className="max-h-80 overflow-y-auto p-2">
@@ -413,6 +438,10 @@ const Header = () => {
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <NotificationPreferencesModal
+                open={isNotificationPrefsOpen}
+                onOpenChange={setIsNotificationPrefsOpen}
+              />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
