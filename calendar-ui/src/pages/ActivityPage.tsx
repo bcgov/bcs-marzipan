@@ -458,7 +458,10 @@ export function ActivityPage({
     !canDelete;
 
   const isEditingRef = useRef(false);
-  const resyncEditSessionRef = useRef<() => void>(() => {});
+  const resyncEditSessionRef = useRef<
+    (options?: { userInitiated?: boolean }) => void
+  >(() => {});
+  const handleEditLockLostRef = useRef<() => void>(() => {});
 
   const {
     lock,
@@ -470,11 +473,12 @@ export function ActivityPage({
     refreshLockFromServer,
     ensureLockForSubmit,
     sendHeartbeat,
+    wasLockIdleExpired,
     applyExternalLockReleased,
     setLockedByOther,
     clearLockedByOther,
   } = useActivityLock(id, user?.id, {
-    onServerLockGone: () => resyncEditSessionRef.current(),
+    onServerLockGone: () => handleEditLockLostRef.current(),
   });
 
   const {
@@ -497,6 +501,8 @@ export function ActivityPage({
   isDirtyRef.current = isDirty;
   const [editRecoveryState, setEditRecoveryState] =
     useState<ActivityEditRecoveryState>(null);
+  const editRecoveryStateRef = useRef<ActivityEditRecoveryState>(null);
+  editRecoveryStateRef.current = editRecoveryState;
   const editSessionTokenRef = useRef<string | null>(null);
   const wasEditingRef = useRef(false);
   const resyncGenerationRef = useRef(0);
@@ -665,7 +671,7 @@ export function ActivityPage({
       }
       clearLockedByOther();
       if (isEditingRef.current) {
-        resyncEditSessionRef.current();
+        handleEditLockLostRef.current();
         return;
       }
       applyExternalLockReleased();
@@ -866,101 +872,152 @@ export function ActivityPage({
   });
   const [connectionAlertPresent, setConnectionAlertPresent] = useState(false);
 
-  const resyncEditSession = useCallback(() => {
-    const generation = ++resyncGenerationRef.current;
-    void (async () => {
-      if (!isEditingRef.current) {
-        const refreshResult = await refreshLockFromServer();
-        if (generation !== resyncGenerationRef.current) return;
-        notifyResyncOutcome(
-          refreshResult === 'unavailable' ? 'failure' : 'success'
-        );
-        return;
-      }
-
-      setEditRecoveryState('resyncing');
-      try {
-        const [latestActivity, serverLockState] = await Promise.all([
-          fetchActivity(id),
-          refreshLockFromServer(),
-        ]);
-        if (generation !== resyncGenerationRef.current) return;
-
-        const action = resolveActivityEditResyncAction({
-          editSessionToken: editSessionTokenRef.current,
-          latestActivity,
-          serverLockState,
-        });
-        if (action === 'continue-owned') {
-          setEditRecoveryState(null);
-          notifyResyncOutcome('success');
+  const resyncEditSession = useCallback(
+    (options?: { userInitiated?: boolean }) => {
+      const userInitiated = options?.userInitiated === true;
+      const generation = ++resyncGenerationRef.current;
+      void (async () => {
+        if (!isEditingRef.current) {
+          const refreshResult = await refreshLockFromServer();
+          if (generation !== resyncGenerationRef.current) return;
+          notifyResyncOutcome(
+            refreshResult === 'unavailable' ? 'failure' : 'success'
+          );
           return;
         }
-        if (action === 'server-changed') {
-          if (!isDirtyRef.current) {
-            editSessionTokenRef.current =
-              getActivityConcurrencyToken(latestActivity);
+
+        // Idle-expired sessions only resume on explicit user intent; automatic
+        // triggers (socket reconnect, lock events) just refresh lock display.
+        if (editRecoveryStateRef.current === 'idle-expired' && !userInitiated) {
+          const refreshResult = await refreshLockFromServer();
+          if (generation !== resyncGenerationRef.current) return;
+          if (refreshResult === 'owned') {
             setEditRecoveryState(null);
-            await refreshActivity();
+          }
+          notifyResyncOutcome(
+            refreshResult === 'unavailable' ? 'failure' : 'success'
+          );
+          return;
+        }
+
+        setEditRecoveryState('resyncing');
+        try {
+          const [latestActivity, serverLockState] = await Promise.all([
+            fetchActivity(id),
+            refreshLockFromServer(),
+          ]);
+          if (generation !== resyncGenerationRef.current) return;
+
+          const action = resolveActivityEditResyncAction({
+            editSessionToken: editSessionTokenRef.current,
+            latestActivity,
+            serverLockState,
+          });
+          if (action === 'continue-owned') {
+            setEditRecoveryState(null);
+            notifyResyncOutcome('success');
+            return;
+          }
+          if (action === 'server-changed') {
+            if (!isDirtyRef.current) {
+              editSessionTokenRef.current =
+                getActivityConcurrencyToken(latestActivity);
+              setEditRecoveryState(null);
+              await refreshActivity();
+              notifyResyncOutcome('failure');
+              return;
+            }
+            logger.warn(
+              'Activity edit session blocked: server version changed while dirty',
+              {
+                activityId: id,
+                previousToken: editSessionTokenRef.current,
+                latestToken: getActivityConcurrencyToken(latestActivity),
+                serverLockState,
+              }
+            );
+            setEditRecoveryState('server-changed');
             notifyResyncOutcome('failure');
             return;
           }
-          logger.warn(
-            'Activity edit session blocked: server version changed while dirty',
-            {
-              activityId: id,
-              previousToken: editSessionTokenRef.current,
-              latestToken: getActivityConcurrencyToken(latestActivity),
-              serverLockState,
-            }
-          );
-          setEditRecoveryState('server-changed');
-          notifyResyncOutcome('failure');
-          return;
-        }
-        if (action === 'blocked-by-other') {
-          setEditRecoveryState(null);
-          notifyResyncOutcome('failure');
-          return;
-        }
-        if (action === 'retry') {
-          setEditRecoveryState('retry');
-          notifyResyncOutcome('failure');
-          return;
-        }
+          if (action === 'blocked-by-other') {
+            setEditRecoveryState(null);
+            notifyResyncOutcome('failure');
+            return;
+          }
+          if (action === 'retry') {
+            setEditRecoveryState('retry');
+            notifyResyncOutcome('failure');
+            return;
+          }
 
-        const acquireResult = await ensureLockForSubmit();
-        if (generation !== resyncGenerationRef.current) return;
-        if (acquireResult === 'ready') {
-          setEditRecoveryState(null);
-          notifyResyncOutcome('success');
-          return;
-        }
-        if (acquireResult === 'blocked-by-other') {
-          setEditRecoveryState(null);
+          if (!userInitiated && wasLockIdleExpired()) {
+            setEditRecoveryState('idle-expired');
+            notifyResyncOutcome('failure');
+            return;
+          }
+
+          const acquireResult = await ensureLockForSubmit();
+          if (generation !== resyncGenerationRef.current) return;
+          if (acquireResult === 'ready') {
+            setEditRecoveryState(null);
+            notifyResyncOutcome('success');
+            return;
+          }
+          if (acquireResult === 'blocked-by-other') {
+            setEditRecoveryState(null);
+            notifyResyncOutcome('failure');
+            return;
+          }
+          setEditRecoveryState(acquireResult);
           notifyResyncOutcome('failure');
-          return;
+        } catch {
+          if (generation === resyncGenerationRef.current) {
+            setEditRecoveryState('retry');
+            notifyResyncOutcome('failure');
+          }
         }
-        setEditRecoveryState(acquireResult);
-        notifyResyncOutcome('failure');
-      } catch {
-        if (generation === resyncGenerationRef.current) {
-          setEditRecoveryState('retry');
-          notifyResyncOutcome('failure');
-        }
-      }
-    })();
-  }, [
-    ensureLockForSubmit,
-    id,
-    notifyResyncOutcome,
-    refreshActivity,
-    refreshLockFromServer,
-  ]);
+      })();
+    },
+    [
+      ensureLockForSubmit,
+      id,
+      notifyResyncOutcome,
+      refreshActivity,
+      refreshLockFromServer,
+      wasLockIdleExpired,
+    ]
+  );
 
   useEffect(() => {
     resyncEditSessionRef.current = resyncEditSession;
   }, [resyncEditSession]);
+
+  /** Lock lost while editing: idle expiry waits for user intent; anything else auto-recovers. */
+  const handleEditLockLost = useCallback(() => {
+    if (!isEditingRef.current || !wasLockIdleExpired()) {
+      resyncEditSession();
+      return;
+    }
+    resyncGenerationRef.current += 1;
+    applyExternalLockReleased();
+    setEditRecoveryState('idle-expired');
+  }, [applyExternalLockReleased, resyncEditSession, wasLockIdleExpired]);
+
+  useEffect(() => {
+    handleEditLockLostRef.current = handleEditLockLost;
+  }, [handleEditLockLost]);
+
+  useEffect(() => {
+    if (editRecoveryState !== 'idle-expired') return undefined;
+    let resumed = false;
+    const subscription = form.watch((_values, info) => {
+      if (resumed || info.type !== 'change') return;
+      resumed = true;
+      resyncEditSessionRef.current({ userInitiated: true });
+    });
+    return () => subscription.unsubscribe();
+  }, [editRecoveryState, form]);
 
   const editSessionActionsBlocked = useMemo(
     () =>
@@ -1830,9 +1887,13 @@ export function ActivityPage({
             <Button
               type="button"
               variant="outline"
-              onClick={() => resyncEditSessionRef.current()}
+              onClick={() =>
+                resyncEditSessionRef.current({ userInitiated: true })
+              }
             >
-              Retry
+              {editRecoveryState === 'idle-expired'
+                ? 'Resume editing'
+                : 'Retry'}
             </Button>
           ) : null}
         </div>
