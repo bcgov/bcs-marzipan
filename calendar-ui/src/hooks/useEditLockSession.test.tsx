@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
-import type { LockState } from './useActivityLock';
+import type { HeartbeatOutcome, LockState } from './useActivityLock';
 import { useEditLockSession } from './useEditLockSession';
 
 vi.mock('sonner', () => ({
@@ -16,10 +16,14 @@ vi.mock('sonner', () => ({
 }));
 
 const THROTTLE_MS = 30_000;
+const THROTTLED_RETRY_MS = 11_000;
 const KEEPALIVE_MS = 90_000;
 
 describe('useEditLockSession activity heartbeat', () => {
-  const sendHeartbeat = vi.fn(() => Promise.resolve());
+  const sendHeartbeat = vi.fn(
+    (_options?: { keepAlive?: boolean }): Promise<HeartbeatOutcome> =>
+      Promise.resolve('ok')
+  );
 
   function useHarness(
     opts: {
@@ -45,7 +49,7 @@ describe('useEditLockSession activity heartbeat', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    sendHeartbeat.mockClear();
+    sendHeartbeat.mockClear().mockImplementation(() => Promise.resolve('ok'));
   });
 
   afterEach(() => {
@@ -96,6 +100,63 @@ describe('useEditLockSession activity heartbeat', () => {
       vi.advanceTimersByTime(THROTTLE_MS);
     });
     expect(sendHeartbeat).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries a throttled activity heartbeat after the server window', async () => {
+    sendHeartbeat.mockImplementationOnce(() => Promise.resolve('throttled'));
+    renderHook(() => useHarness());
+
+    await act(async () => {
+      window.dispatchEvent(new Event('keydown'));
+      await Promise.resolve();
+    });
+    expect(sendHeartbeat).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(THROTTLED_RETRY_MS - 1);
+      await Promise.resolve();
+    });
+    expect(sendHeartbeat).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+    });
+    expect(sendHeartbeat).toHaveBeenCalledTimes(2);
+    expect(sendHeartbeat).toHaveBeenLastCalledWith();
+
+    // Succeeded: no further retries without more activity.
+    await act(async () => {
+      vi.advanceTimersByTime(THROTTLED_RETRY_MS * 2);
+      await Promise.resolve();
+    });
+    expect(
+      sendHeartbeat.mock.calls.filter((args) => args[0] === undefined)
+    ).toHaveLength(2);
+  });
+
+  it('does not retry a throttled heartbeat after unmount', async () => {
+    let resolveFirst: (outcome: HeartbeatOutcome) => void = () => {};
+    sendHeartbeat.mockImplementationOnce(
+      () =>
+        new Promise<HeartbeatOutcome>((resolve) => {
+          resolveFirst = resolve;
+        })
+    );
+    const { unmount } = renderHook(() => useHarness());
+
+    act(() => {
+      window.dispatchEvent(new Event('keydown'));
+    });
+    unmount();
+
+    await act(async () => {
+      resolveFirst('throttled');
+      await Promise.resolve();
+      vi.advanceTimersByTime(THROTTLED_RETRY_MS);
+    });
+
+    expect(sendHeartbeat).toHaveBeenCalledTimes(1);
   });
 
   it('treats keyboard input as activity', () => {

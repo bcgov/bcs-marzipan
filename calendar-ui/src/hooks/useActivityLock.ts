@@ -31,6 +31,14 @@ type SettledLockState = Extract<
 
 export type LockRefreshResult = SettledLockState | 'unavailable';
 
+/** Result of a heartbeat; `throttled` means the server did not record the activity. */
+export type HeartbeatOutcome =
+  | 'ok'
+  | 'throttled'
+  | 'failed'
+  | 'lock-gone'
+  | 'no-lock';
+
 export type EnsureLockForSubmitResult =
   | 'ready'
   | 'blocked-by-other'
@@ -90,7 +98,9 @@ type UseActivityLockResult = {
   /** Verify server lock before PATCH; clears stale local hold and re-acquires if needed. */
   ensureLockForSubmit: () => Promise<EnsureLockForSubmitResult>;
   /** Extend idle deadline (throttled server-side); `keepAlive` only renews the connection lease. */
-  sendHeartbeat: (options?: { keepAlive?: boolean }) => Promise<void>;
+  sendHeartbeat: (options?: {
+    keepAlive?: boolean;
+  }) => Promise<HeartbeatOutcome>;
   /** Update lock idle expiry from heartbeat response without full acquire. */
   mergeLockIdleExpiry: (idleExpiresAt: string) => void;
   /** True when the most recently held lock was lost to inactivity (not a connection problem). */
@@ -317,19 +327,26 @@ export function useActivityLock(
     }, [activityId, currentUserId, applyServerLockStatus]);
 
   const sendHeartbeat = useCallback(
-    async (options?: { keepAlive?: boolean }) => {
+    async (options?: { keepAlive?: boolean }): Promise<HeartbeatOutcome> => {
       const currentLock = lockRef.current;
-      if (currentLock == null) return;
+      if (currentLock == null) return 'no-lock';
       if (!options?.keepAlive && unconfirmedActivityAtRef.current == null) {
         unconfirmedActivityAtRef.current = Date.now();
       }
       try {
         const res = await heartbeatLock(currentLock.id, options);
         recordServerTime(res.serverTime);
-        if (!options?.keepAlive) {
-          unconfirmedActivityAtRef.current = null;
-          mergeLockIdleExpiry(res.idleExpiresAt);
+        if (options?.keepAlive) {
+          return 'ok';
         }
+        if (res.throttled) {
+          // Server did not record this activity; leave it unconfirmed so the
+          // caller retries before the idle deadline.
+          return 'throttled';
+        }
+        unconfirmedActivityAtRef.current = null;
+        mergeLockIdleExpiry(res.idleExpiresAt);
+        return 'ok';
       } catch (err) {
         const status = err instanceof ApiError ? err.status : undefined;
         if (status === 410 || status === 404) {
@@ -338,8 +355,9 @@ export function useActivityLock(
           setLock(null);
           setLockState('idle');
           setLockedByUsername(null);
-          return;
+          return 'lock-gone';
         }
+        return 'failed';
       }
     },
     [mergeLockIdleExpiry, recordServerTime]
