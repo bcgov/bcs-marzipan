@@ -10,7 +10,6 @@ import type {
   MinistryLookupItem,
   OrganizationLookupItem,
   PitchRequiredStatusLookupItem,
-  PitchStatusLookupItem,
   ReportResponse,
   TagLookupItem,
   ThemeLookupItem,
@@ -117,6 +116,21 @@ export async function fetchAllTags(): Promise<TagLookupItem[]> {
   return res.data.data;
 }
 
+export async function fetchCodes(): Promise<TagLookupItem[]> {
+  const res = await api.get<{ success: boolean; data: TagLookupItem[] }>(
+    '/lookups/codes'
+  );
+  return res.data.data;
+}
+
+export async function fetchAllCodes(): Promise<TagLookupItem[]> {
+  const res = await api.get<{ success: boolean; data: TagLookupItem[] }>(
+    '/lookups/codes',
+    { params: { includeAll: 'true' } }
+  );
+  return res.data.data;
+}
+
 export async function fetchActivityStatuses(): Promise<
   ActivityStatusLookupItem[]
 > {
@@ -124,14 +138,6 @@ export async function fetchActivityStatuses(): Promise<
     success: boolean;
     data: ActivityStatusLookupItem[];
   }>('/lookups/activity-statuses');
-  return res.data.data;
-}
-
-export async function fetchPitchStatuses(): Promise<PitchStatusLookupItem[]> {
-  const res = await api.get<{
-    success: boolean;
-    data: PitchStatusLookupItem[];
-  }>('/lookups/pitch-statuses');
   return res.data.data;
 }
 
@@ -726,7 +732,6 @@ export type {
   OrganizationLookupItem,
   UserLookupItem,
   TagLookupItem,
-  PitchStatusLookupItem,
   ActivityStatusLookupItem,
   CommsMaterialsLookupItem,
   TranslationLanguageLookupItem,

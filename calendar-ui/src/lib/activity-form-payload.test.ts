@@ -100,16 +100,16 @@ describe('buildPayloadForUpdate', () => {
   it('strips UI sentinels from optional fields before sending to API', () => {
     const formValues = minimalForm({
       notes: '',
+      internalNotes: '',
       schedulingNotes: '',
-      strategy: '',
       significance: EMPTY_RICH_TEXT_DOC,
     });
 
     const payload = buildPayloadForUpdate(formValues, formValues);
 
     expect(payload.notes).toBeNull();
+    expect(payload.internalNotes).toBeNull();
     expect(payload.schedulingNotes).toBeNull();
-    expect(payload.strategy).toBeNull();
     expect(payload.significance).toBeNull();
   });
 

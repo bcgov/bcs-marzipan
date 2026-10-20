@@ -42,16 +42,15 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 3. [Categories](#categories)
 4. [Pods](#pods)
 5. [Reports](#reports)
-6. [ActivityReportSettings](#activityreportsettings)
-7. [Users](#users)
-8. [Roles](#roles)
-9. [Permissions](#permissions)
-10. [RolePermissions](#rolepermissions)
-11. [Sessions](#sessions)
-12. [UserTeams](#userteams)
-13. [Venue addresses](#venue-addresses)
-14. [Venue Presets](#venue-presets)
-15. [Ministries and government representatives](#ministries-and-government-representatives)
+6. [Users](#users)
+7. [Roles](#roles)
+8. [Permissions](#permissions)
+9. [RolePermissions](#rolepermissions)
+10. [Sessions](#sessions)
+11. [UserTeams](#userteams)
+12. [Venue addresses](#venue-addresses)
+13. [Venue Presets](#venue-presets)
+14. [Ministries and government representatives](#ministries-and-government-representatives)
 
 ---
 
@@ -82,7 +81,7 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 | `StatusId`                          | `int`               | `activityStatusId`                      | `integer`                  | `notNull`, FK                                           | Renamed, now required (not nullable), FK to ActivityStatus (replaces generic Status)                                                                                                                                                           |
 | `HqStatusId`                        | `int`               | `lookAheadStatus`                       | `varchar(50)`              | nullable                                                | Changed from FK to Status to enum-like varchar: 'none', 'new', 'changed'                                                                                                                                                                       |
 | `HqSection`                         | `int`               | `lookAheadSection`                      | `varchar(50)`              | nullable                                                | Changed from integer to enum-like varchar: 'events', 'issues', 'news', 'awareness'                                                                                                                                                             |
-| `IsConfidential`                    | `bit`               | `isConfidential`                        | `boolean`                  | `notNull`, `default(false)`                             | Activity-level sensitivity flag (badges, team visibility); report inclusion is controlled by `activityReportSettings.omitted`                                                                                                                  |
+| `IsConfidential`                    | `bit`               | `isConfidential`                        | `boolean`                  | `notNull`, `default(false)`                             | Activity-level sensitivity flag (badges, team visibility); Look Ahead print may show placeholder copy when true — does not remove activities from report datasets                                                                              |
 | `NRDateTime`                        | `datetime`          | `newsReleaseDateTime`                   | `timestamp with time zone` | nullable                                                | Renamed from NRDateTime to newsReleaseDateTime                                                                                                                                                                                                 |
 | `NRDistributionId`                  | `int`               | `newsReleaseDistributionId`             | `integer`                  | nullable, FK                                            | Direct mapping, FK to NRDistribution (nullable)                                                                                                                                                                                                |
 | `PremierRequestedId`                | `int`               | `premierRequestedId`                    | `integer`                  | nullable, FK                                            | Direct mapping, FK to PremierRequested (nullable)                                                                                                                                                                                              |
@@ -133,17 +132,17 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 
 ### New Fields (Not in Legacy Schema)
 
-| New Field Name                 | Type          | New Constraints             | Description                                                                                                                  |
-| ------------------------------ | ------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `displayId`                    | `varchar(50)` | `unique`                    | Computed: ministry or team prefix + numeric segment (`buildActivityDisplayId` in shared); e.g. AG-000123, HLTH-123456789     |
-| `dateStatusId`                 | `integer`     | `notNull`, FK               | FK to DateStatus - replaces legacy IsConfirmed boolean                                                                       |
-| `timeStatusId`                 | `integer`     | `notNull`, FK               | FK to TimeStatus - new field for time confirmation status                                                                    |
-| `newsReleaseOriginId`          | `integer`     | nullable, FK                | FK to NewsReleaseOrigin lookup table                                                                                         |
-| `newsReleaseId`                | `uuid`        | nullable                    | Reference to news release                                                                                                    |
-| `pitchDate`                    | `date`        | nullable                    | Date when activity was or will be pitched (nullable)                                                                         |
-| `pitchRequiredStatusId`        | `integer`     | nullable, FK                | FK to pitch_required_statuses (pending, required, not_required)                                                              |
-| `translationsRequiredStatusId` | `integer`     | nullable, FK                | FK to translation_required_statuses (pending, required, not_required)                                                        |
-| `isConfidential`               | `boolean`     | `notNull`, `default(false)` | Activity-level sensitivity flag (badges, team visibility); does not omit from reports — use `activityReportSettings.omitted` |
+| New Field Name                 | Type          | New Constraints             | Description                                                                                                              |
+| ------------------------------ | ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `displayId`                    | `varchar(50)` | `unique`                    | Computed: ministry or team prefix + numeric segment (`buildActivityDisplayId` in shared); e.g. AG-000123, HLTH-123456789 |
+| `dateStatusId`                 | `integer`     | `notNull`, FK               | FK to DateStatus - replaces legacy IsConfirmed boolean                                                                   |
+| `timeStatusId`                 | `integer`     | `notNull`, FK               | FK to TimeStatus - new field for time confirmation status                                                                |
+| `newsReleaseOriginId`          | `integer`     | nullable, FK                | FK to NewsReleaseOrigin lookup table                                                                                     |
+| `newsReleaseId`                | `uuid`        | nullable                    | Reference to news release                                                                                                |
+| `pitchDate`                    | `date`        | nullable                    | Date when activity was or will be pitched (nullable)                                                                     |
+| `pitchRequiredStatusId`        | `integer`     | nullable, FK                | FK to pitch_required_statuses (pending, required, not_required)                                                          |
+| `translationsRequiredStatusId` | `integer`     | nullable, FK                | FK to translation_required_statuses (pending, required, not_required)                                                    |
+| `isConfidential`               | `boolean`     | `notNull`, `default(false)` | Activity-level sensitivity flag (badges, team visibility); does not remove activities from report datasets               |
 
 ### Moved to Separate Tables
 
@@ -172,7 +171,6 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 | -                                | `activityEventPlanners`        | New - replaces single event planner on activities. Allows multiple planners per activity; each row has optional eventPlannerId (user id) or eventPlannerName (free text), and isLead (exactly one per activity when planners exist). |
 | -                                | `activityRepresentatives`      | New - replaces legacy GovernmentRepresentativeId (allows multiple)                                                                                                                                                                   |
 | -                                | `activityCommsContacts`        | New - all comms contacts with isLead flag. Replaces commsContactLeadId on activities table. Exactly one contact per activity must have isLead=true.                                                                                  |
-| -                                | `activityReportSettings`       | New - replaces legacy IsConfidential and notForThirtySixtyNinety boolean flags. Uses `omitted` boolean to control whether activities are excluded from reports.                                                                      |
 | -                                | `teamCategories`               | New - controls team access to categories (access control)                                                                                                                                                                            |
 
 ### Key Transformations
@@ -221,9 +219,9 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 8. **New Features**:
 
 - `displayId`: Computed display identifier with ministry prefix
-- `activityReportSettings`: Junction table for per-activity report settings. Uses `omitted` boolean to control whether activities are excluded from reports. Combined with `isConfidential` on activities to determine inclusion behavior.
 - `reports`: Lookup table for report types (e.g., 'look-ahead', 'thirty-sixty-ninety'). Includes `visibility` (global/team) and `config` (JSONB) for configurable report structure.
-- `isConfidential`: Activity-level sensitivity flag (badges, team visibility); report inclusion is controlled by `activityReportSettings.omitted`.
+- `isConfidential`: Activity-level sensitivity flag (badges, team visibility); Look Ahead print may redact details when true.
+- `lookAheadSection` / `lookAheadStatus`: Look Ahead report grouping and change markers; Look Ahead reports require a non-null `lookAheadSection`.
 - `activityCommsContacts`: Junction table for all comms contacts with isLead flag. Replaces commsContactLeadId on activities table. Exactly one contact per activity must have isLead=true.
 - `leadMinistryId`: Renamed from contactMinistryId
 - `pitchDate`: Date tracking for pitch workflow
@@ -538,46 +536,7 @@ The `config` field stores a JSONB object that defines how activities are include
 - `**visibility = 'global'`\*\*: Report is visible to all teams (e.g., Look Ahead)
 - `**visibility = 'team'**`: Report is visible only to the creator's team (e.g., 30/60/90)
 
-### Related Tables
-
-- **Junction Tables**:
-  - `activityReportSettings`: Many-to-many relationship between Activities and Reports - stores per-activity omitted flags
-
----
-
-## ActivityReportSettings
-
-**Legacy Table Name:** `activity_report_exclusions` (renamed and transformed)  
-**New Table Name:** `activity_report_settings`
-
-**Description:** Per-activity report settings. Stores whether an activity is omitted from a specific report. Every activity must have a setting for every active report. When an activity is created, default rows are created with `omitted=false`. Users can update the omitted value to exclude activities from specific reports.
-
-### Field Mappings
-
-| Legacy Field Name | Legacy Type | New Field Name | New Type                   | New Constraints                      | Mapping Notes                                                                           |
-| ----------------- | ----------- | -------------- | -------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------- |
-| `activity_id`     | `integer`   | `activityId`   | `integer`                  | `notNull`, FK, primary key component | FK to Activities - primary key component (required)                                     |
-| `report_id`       | `integer`   | `reportId`     | `integer`                  | `notNull`, FK, primary key component | FK to Reports - primary key component (required)                                        |
-| `is_active`       | `bit`       | _Removed_      | -                          | -                                    | Replaced by `omitted` field                                                             |
-| -                 | -           | `omitted`      | `boolean`                  | `notNull`, `default(false)`          | **New field** - Whether activity is omitted from this report (required, default: false) |
-| `timestamp`       | `timestamp` | `timestamp`    | `timestamp with time zone` | `notNull`, `defaultNow()`            | Book-keeping timestamp (required, default: now)                                         |
-
-### Inclusion Logic
-
-Activity inclusion in reports is determined by `isConfidential` (on activities) and `omitted` (on activityReportSettings). For detailed inclusion logic, behavior, and legacy mapping information, see [Activity Report Settings](./SCHEMA_USAGE.md#activity-report-settings) in the usage guide.
-
-### Legacy Mapping
-
-This table replaces the legacy boolean flags on the Activity table:
-
-- `**IsConfidential` (notForLookAhead)\*\*: `isConfidential=true` on activities (sensitivity); `omitted=true` in activityReportSettings excludes from a report
-- `**notForThirtySixtyNinety`\*\*: `omitted=true` for 'thirty-sixty-ninety' report
-
-### Related Tables
-
-- **Foreign Keys**:
-  - `activityId` → `activities.id`
-  - `reportId` → `reports.id`
+Report datasets include activities the user can view that match each report’s date window and section filters. Look Ahead reports require `lookAheadSection` to be assigned (not null). See [Report activity inclusion](./SCHEMA_USAGE.md#report-activity-inclusion).
 
 ---
 

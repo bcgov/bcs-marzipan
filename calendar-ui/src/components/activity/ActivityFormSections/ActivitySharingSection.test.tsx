@@ -17,12 +17,6 @@ beforeAll(() => {
   }
 });
 
-vi.mock('@/hooks/useLeadTeamOptions', () => ({
-  useLeadTeamOptions: () => ({
-    data: [{ id: 5, name: 'Comms Team', displayName: 'Comms Team' }],
-  }),
-}));
-
 vi.mock('../activity-info-icon-settings-context', () => ({
   ActivityFieldInfoIcon: () => null,
 }));
@@ -62,6 +56,28 @@ function ActivitySharingSectionHarness({
         <ActivitySharingSection
           sharedWithTeams={sharedWithTeams}
           quickShareGroups={quickShareGroups}
+          commsLeadOptions={[]}
+          organizations={[]}
+          leadTeamField={{
+            options: [
+              {
+                id: 5,
+                name: 'Comms Team',
+                displayName: 'Comms Team',
+                abbreviation: 'CT',
+                description: null,
+                sortOrder: 0,
+                isActive: true,
+                appearsInShareWith: true,
+                roleId: null,
+                memberCount: 1,
+                ministryId: null,
+                ministryName: null,
+              },
+            ],
+            displayLabel: 'Comms Team',
+            optionsFetching: false,
+          }}
         />
       </ActivityEditProvider>
     </FormProvider>

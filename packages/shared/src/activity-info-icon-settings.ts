@@ -7,21 +7,26 @@ export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
   'categoryIds',
   'title',
   'summary',
-  'visibility',
-  'sharedWithTeamIds',
   'isConfidential',
   'isIssue',
-  'leadTeamId',
   'leadOrgId',
   'significance',
   'pitchRequiredStatusId',
   'pitchDate',
-  'notes',
   'tagIds',
+  'codeIds',
+  'internalNotes',
+  'notes',
 
+  'leadTeamId',
   'commsContacts',
-  'strategy',
+  'visibility',
+  'sharedWithTeamIds',
   'commsMaterialIds',
+  'newsReleaseOriginId',
+  'newsReleaseDistributionId',
+  'translationsRequiredStatusId',
+  'translationLanguageIds',
 
   'startDate',
   'endDate',
@@ -31,11 +36,6 @@ export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
   'isAllDay',
   'timeStatusId',
   'schedulingNotes',
-
-  'newsReleaseOriginId',
-  'newsReleaseDistributionId',
-  'translationsRequiredStatusId',
-  'translationLanguageIds',
 
   'premierRequestedId',
   'representatives',
@@ -51,7 +51,6 @@ export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
   'executiveSummary',
   'lookAheadStatus',
   'lookAheadSection',
-  'reportSettings',
 ] as const;
 
 export type ActivityInfoIconFieldKey =
@@ -87,10 +86,6 @@ export const DEFAULT_ACTIVITY_INFO_ICON_SETTINGS: ActivityInfoIconSettings = {
     {
       fieldKey: 'significance',
       text: 'Describe how this will impact people and why it is important.',
-    },
-    {
-      fieldKey: 'strategy',
-      text: 'Describe any promotion, digital content, or visuals planned as part of the announcement vision.',
     },
     {
       fieldKey: 'schedulingNotes',

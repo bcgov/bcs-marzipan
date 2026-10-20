@@ -2,7 +2,11 @@ import { format, startOfDay } from 'date-fns';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 
-import { CORP_PACIFIC_LABEL } from '@corpcal/shared';
+import {
+  CONFIRMED_LOOKUP_NAME,
+  CORP_PACIFIC_LABEL,
+  TBD_LOOKUP_NAME,
+} from '@corpcal/shared';
 import type {
   DateStatusLookupItem,
   TimeStatusLookupItem,
@@ -15,7 +19,6 @@ import {
   FormSelectSafe,
   FormSelectTrigger,
 } from '@/components/app/form-select';
-import { Button } from '@/components/ui/button';
 import {
   FormControl,
   FormField,
@@ -52,10 +55,8 @@ import { ActivityFormSection } from './ActivityFormSection';
 const STATUS_SELECT_MIN_WIDTH = 'min-w-[9rem]';
 
 /** Inline status next to date/time: FormItem's default space-y-2 adds margin above the control when an sr-only label is present; disable vertical gap so rows align. */
-const INLINE_STATUS_FORM_ITEM_CLASS = 'shrink-0 space-y-0';
-
-const PRIMARY_AND_STATUS_ROW_CLASS =
-  'grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center';
+const DATE_OR_TIME_VALUES_ROW_CLASS =
+  'flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2';
 
 const DATE_GROUP_FIELDS = ['startDate', 'endDate', 'dateStatusId'] as const;
 const TIME_GROUP_FIELDS = [
@@ -144,6 +145,62 @@ export function ActivityScheduleSection({
     endTimeMinutes !== null &&
     endTimeMinutes <= startTimeMinutes;
 
+  const hasBothDates = Boolean(startStr && endStr);
+  const timeFilledForConfirmed =
+    isAllDay || (startTimeStr.length > 0 && endTimeStr.length > 0);
+  const tbdDateStatusId = dateStatuses.find(
+    (s) => s.name === TBD_LOOKUP_NAME
+  )?.id;
+  const tbdTimeStatusId = timeStatuses.find(
+    (s) => s.name === TBD_LOOKUP_NAME
+  )?.id;
+  const dateStatusIdValue = useWatch({
+    control: form.control,
+    name: 'dateStatusId',
+  });
+  const timeStatusIdValue = useWatch({
+    control: form.control,
+    name: 'timeStatusId',
+  });
+
+  useEffect(() => {
+    if (readOnly || tbdDateStatusId == null) return;
+    const current = dateStatuses.find((s) => s.id === dateStatusIdValue);
+    if (
+      !hasBothDates &&
+      current?.name === CONFIRMED_LOOKUP_NAME &&
+      dateStatusIdValue !== tbdDateStatusId
+    ) {
+      setActivityFormFieldValue(form, 'dateStatusId', tbdDateStatusId);
+    }
+  }, [
+    dateStatusIdValue,
+    dateStatuses,
+    form,
+    hasBothDates,
+    readOnly,
+    tbdDateStatusId,
+  ]);
+
+  useEffect(() => {
+    if (readOnly || tbdTimeStatusId == null) return;
+    const current = timeStatuses.find((s) => s.id === timeStatusIdValue);
+    if (
+      !timeFilledForConfirmed &&
+      current?.name === CONFIRMED_LOOKUP_NAME &&
+      timeStatusIdValue !== tbdTimeStatusId
+    ) {
+      setActivityFormFieldValue(form, 'timeStatusId', tbdTimeStatusId);
+    }
+  }, [
+    form,
+    readOnly,
+    tbdTimeStatusId,
+    timeFilledForConfirmed,
+    timeStatusIdValue,
+    timeStatuses,
+  ]);
+
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.schedule}>
       <FormItem>
@@ -174,8 +231,8 @@ export function ActivityScheduleSection({
             ariaLabel="About date status"
           />
         </Label>
-        <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="space-y-3">
+          <div className={DATE_OR_TIME_VALUES_ROW_CLASS}>
             <FormField
               control={form.control}
               name="startDate"
@@ -213,25 +270,6 @@ export function ActivityScheduleSection({
                       getPresetAnchor={getPresetAnchorToday}
                       triggerAriaLabel="Activity start date"
                       triggerVariant="form"
-                      headerRight={
-                        startStr && !readOnly ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary text-sm"
-                            onClick={() =>
-                              setActivityFormFieldValue(
-                                form,
-                                field.name,
-                                undefined
-                              )
-                            }
-                          >
-                            Clear
-                          </Button>
-                        ) : null
-                      }
                     />
                   </FormControl>
                 </FormItem>
@@ -271,25 +309,6 @@ export function ActivityScheduleSection({
                       isDateDisabled={isEndBeforeStart}
                       triggerAriaLabel="Activity end date"
                       triggerVariant="form"
-                      headerRight={
-                        endStr && !readOnly ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary text-sm"
-                            onClick={() =>
-                              setActivityFormFieldValue(
-                                form,
-                                field.name,
-                                undefined
-                              )
-                            }
-                          >
-                            Clear
-                          </Button>
-                        ) : null
-                      }
                     />
                   </FormControl>
                 </FormItem>
@@ -300,7 +319,7 @@ export function ActivityScheduleSection({
             control={form.control}
             name="dateStatusId"
             render={({ field: statusField }) => (
-              <FormItem className={INLINE_STATUS_FORM_ITEM_CLASS}>
+              <FormItem className="max-w-full space-y-0 sm:max-w-xs">
                 <FormLabel className="sr-only" showDirtyIndicator={false}>
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
@@ -326,11 +345,18 @@ export function ActivityScheduleSection({
                     </FormSelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {dateStatuses.map((status) => (
-                      <SelectItem key={status.id} value={String(status.id)}>
-                        {status.displayName ?? status.name}
-                      </SelectItem>
-                    ))}
+                    {dateStatuses.map((status) => {
+                      const isConfirmed = status.name === CONFIRMED_LOOKUP_NAME;
+                      return (
+                        <SelectItem
+                          key={status.id}
+                          value={String(status.id)}
+                          disabled={isConfirmed && !hasBothDates}
+                        >
+                          {status.displayName ?? status.name}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </FormSelectSafe>
               </FormItem>
@@ -386,8 +412,8 @@ export function ActivityScheduleSection({
             ariaLabel="About time status"
           />
         </Label>
-        <div className={PRIMARY_AND_STATUS_ROW_CLASS}>
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="space-y-3">
+          <div className={DATE_OR_TIME_VALUES_ROW_CLASS}>
             <FormField
               control={form.control}
               name="startTime"
@@ -504,7 +530,7 @@ export function ActivityScheduleSection({
             control={form.control}
             name="timeStatusId"
             render={({ field: statusField }) => (
-              <FormItem className={INLINE_STATUS_FORM_ITEM_CLASS}>
+              <FormItem className="max-w-full space-y-0 sm:max-w-xs">
                 <FormLabel className="sr-only" showDirtyIndicator={false}>
                   {getActivityFieldLabel(statusField.name)}
                 </FormLabel>
@@ -530,11 +556,18 @@ export function ActivityScheduleSection({
                     </FormSelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {timeStatuses.map((status) => (
-                      <SelectItem key={status.id} value={String(status.id)}>
-                        {status.displayName ?? status.name}
-                      </SelectItem>
-                    ))}
+                    {timeStatuses.map((status) => {
+                      const isConfirmed = status.name === CONFIRMED_LOOKUP_NAME;
+                      return (
+                        <SelectItem
+                          key={status.id}
+                          value={String(status.id)}
+                          disabled={isConfirmed && !timeFilledForConfirmed}
+                        >
+                          {status.displayName ?? status.name}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </FormSelectSafe>
               </FormItem>

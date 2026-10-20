@@ -96,7 +96,7 @@ const mockLookupsReady: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  pitchStatuses: [],
+  codes: [],
   pitchRequiredStatuses: [
     {
       id: 1,

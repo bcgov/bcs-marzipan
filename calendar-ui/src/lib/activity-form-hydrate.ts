@@ -39,7 +39,7 @@ import {
  *
  * | Field                              | Baseline sentinel       |
  * | ---------------------------------- | ----------------------- |
- * | notes, schedulingNotes, strategy   | `''`                    |
+ * | notes, internalNotes, schedulingNotes | `''`                 |
  * | significance, executiveSummary, summary | `EMPTY_RICH_TEXT_DOC` |
  *
  * Canonical-only (no hydrate override):

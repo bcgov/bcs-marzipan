@@ -1,7 +1,7 @@
 import { format, startOfDay } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 
-import { CORP_PACIFIC_LABEL } from '@corpcal/shared';
+import { CORP_PACIFIC_LABEL, TBD_LOOKUP_NAME } from '@corpcal/shared';
 import {
   ACTIVITY_FIELD_SCOPE_CONFIG,
   ACTIVITY_FIELD_SCOPES,
@@ -12,6 +12,7 @@ import {
   CLONE_ADVANCED_FIELD_GROUPS,
   CLONE_ADVANCED_SECTIONS,
   CLONE_TITLE_MAX_LENGTH,
+  getDefaultCloneIncludedFieldPaths,
   type CloneActivityRequest,
   type CloneAdvancedSection,
 } from '@corpcal/shared/schemas';
@@ -54,17 +55,12 @@ import {
   ActivityConfirmPrimaryActionGroup,
 } from './ActivityConfirmSubmitBlockedNotice';
 
-const NOT_CONFIRMED_STATUS_NAME = 'not_confirmed';
-
-function resolveNotConfirmedStatusId<
+function resolveTbdStatusId<
   T extends { id: number; name: string; displayName: string },
 >(statuses: T[]): number | undefined {
-  const notConfirmedByName = statuses.find(
-    (s) => s.name === NOT_CONFIRMED_STATUS_NAME
+  return (
+    statuses.find((s) => s.name === TBD_LOOKUP_NAME)?.id ?? statuses[0]?.id
   );
-  if (notConfirmedByName) return notConfirmedByName.id;
-  const firstByDisplay = statuses[0];
-  return firstByDisplay?.id;
 }
 
 /**
@@ -127,11 +123,11 @@ export function CloneActivityModal({
   const { user } = useAuth();
 
   const defaultDateStatusId = useMemo(
-    () => resolveNotConfirmedStatusId(lookups.dateStatuses),
+    () => resolveTbdStatusId(lookups.dateStatuses),
     [lookups.dateStatuses]
   );
   const defaultTimeStatusId = useMemo(
-    () => resolveNotConfirmedStatusId(lookups.timeStatuses),
+    () => resolveTbdStatusId(lookups.timeStatuses),
     [lookups.timeStatuses]
   );
 
@@ -182,7 +178,7 @@ export function CloneActivityModal({
   );
 
   const [includedPaths, setIncludedPaths] = useState<Set<string>>(
-    () => new Set(editablePaths)
+    () => new Set(getDefaultCloneIncludedFieldPaths(editablePaths))
   );
 
   useEffect(() => {
@@ -199,7 +195,7 @@ export function CloneActivityModal({
     setShowMoreOptions(false);
     setMarkAsReviewed(true);
     setActiveTimePopover(null);
-    setIncludedPaths(new Set(editablePaths));
+    setIncludedPaths(new Set(getDefaultCloneIncludedFieldPaths(editablePaths)));
   }, [
     open,
     sourceTitle,

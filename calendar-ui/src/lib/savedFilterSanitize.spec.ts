@@ -24,7 +24,7 @@ describe('sanitizeSavedFilterPayload', () => {
       lookAheadStatusValues: ['new'],
       lookAheadSectionValues: ['events'],
       dateConfirmedFilter: 'confirmed',
-      timeConfirmedFilter: 'not_confirmed',
+      timeConfirmedFilter: 'tbd',
       tagIds: [10, 20],
       leadTeamIds: [5],
       commsContactLeadUserIds: [7],
@@ -47,7 +47,7 @@ describe('sanitizeSavedFilterPayload', () => {
       kind: 'not_scheduled',
     });
     expect(result.filterState.dateConfirmedFilter).toBe('confirmed');
-    expect(result.filterState.timeConfirmedFilter).toBe('not_confirmed');
+    expect(result.filterState.timeConfirmedFilter).toBe('tbd');
   });
 
   it('should return defaults for null/undefined filterState', () => {

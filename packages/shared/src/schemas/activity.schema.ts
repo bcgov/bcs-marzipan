@@ -7,6 +7,10 @@ import {
   plainTextFromActivityRichField,
 } from '../utils/activity-rich-text';
 import {
+  activitySchedulingSuperRefine,
+  type ActivitySchedulingLookupResolvers,
+} from '../validation/activity-scheduling-validation';
+import {
   zodConstraintIssueParams,
   zodRequiredIssueParams,
 } from '../validation/zod-issue-kind';
@@ -163,15 +167,6 @@ const activityCoreFieldsSchema = z.object({
     )
     .optional()
     .nullable(),
-  strategy: z
-    .string()
-    .max(
-      ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
-      MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
-    )
-    .nullable()
-    .optional(),
-
   // Status IDs (numbers for database; venue optional when activity has no venue)
   // Note: These are numbers in requests (matching database schema) but converted to strings
   // in responses for consistent JSON serialization. See activity-response.schema.ts for details.
@@ -204,13 +199,21 @@ const activityCoreFieldsSchema = z.object({
       MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
     )
     .nullable()
-    .optional(), // Maps to legacy Comments
+    .optional(),
+  internalNotes: z
+    .string()
+    .max(
+      ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
+      MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
+    )
+    .nullable()
+    .optional(),
   executiveSummary: z.preprocess(
     emptyStringToNull,
     z.union([activityBriefRichTextStoredStringSchema, z.null()]).optional()
   ),
-  pitchRequiredStatusId: z.number().int().nullable().optional(), // pending, required, not_required
-  translationsRequiredStatusId: z.number().int().nullable().optional(), // pending, required, not_required
+  pitchRequiredStatusId: z.number().int().nullable().optional(), // tbd, not_required, required, pitched
+  translationsRequiredStatusId: z.number().int().nullable().optional(), // tbd, required, not_required
 
   // Optional enum fields
   lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(),
@@ -232,10 +235,6 @@ const activityCoreFieldsSchema = z.object({
     .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
     .nullable()
     .optional(),
-  newsReleaseId: z.preprocess(
-    emptyStringToNull,
-    z.string().uuid().nullable().optional()
-  ),
   newsReleaseOriginId: z.number().int().nullable().optional(),
   leadTeamId: z.number().int(), // Required - primary association for which team leads this activity
   leadMinistryId: z.preprocess(
@@ -300,28 +299,6 @@ const eventPlannerSchema = z.object({
 });
 
 /**
- * Report setting schema
- * Defines whether an activity is omitted from a specific report
- */
-const reportSettingSchema = z.preprocess(
-  (val) => {
-    // Normalize incoming shape: accept `{ id: number }` (older clients)
-    // and map it to `{ reportId: number }` so validation passes.
-    if (val && typeof val === 'object' && !Array.isArray(val)) {
-      const v = val as Record<string, unknown>;
-      if (v.reportId === undefined && v.id !== undefined) {
-        return { ...v, reportId: v.id };
-      }
-    }
-    return val;
-  },
-  z.object({
-    reportId: z.number().int(),
-    omitted: z.boolean().default(false),
-  })
-);
-
-/**
  * Comms contact schema
  * Supports identifying the lead contact via isLead flag
  */
@@ -337,13 +314,13 @@ const commsContactSchema = z.object({
 const junctionTableIdsSchema = z.object({
   categoryIds: z.array(z.number().int()).optional(),
   tagIds: z.array(z.number().int()).optional(),
+  codeIds: z.array(z.number().int()).optional(),
   commsMaterialIds: z.array(z.number().int()).optional(),
   translationLanguageIds: z.array(z.number().int()).optional(),
   eventPlanners: z.array(eventPlannerSchema).optional(),
   representatives: z.array(representativeSchema).optional(),
   sharedWithTeamIds: z.array(z.number().int()).optional(), // Editor-type teams the activity is shared with
   commsContacts: z.array(commsContactSchema).optional(), // Comms contacts with isLead flag (exactly one must have isLead=true)
-  reportSettings: z.array(reportSettingSchema).optional(), // Report settings for the activity
 });
 
 const CATEGORY_IDS_MIN_MESSAGE = 'At least one category is required';
@@ -426,9 +403,11 @@ const createBaseSchema = activityCoreFieldsSchema
  * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
  * Requires at least one Comms contact with exactly one marked as lead.
  */
-export const createActivityRequestSchema = createBaseSchema
+const createActivityRequestSchemaBase = createBaseSchema
   .extend({
     commsContacts: createCommsContactsFieldSchema,
+    startDate: z.string().date(),
+    endDate: z.string().date(),
   })
   .refine(createLeadContactPresenceRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,
@@ -448,6 +427,20 @@ export const createActivityRequestSchema = createBaseSchema
       ...zodRequiredIssueParams(),
     }
   );
+
+export const createActivityRequestSchema =
+  createActivityRequestSchemaBase.superRefine(
+    activitySchedulingSuperRefine('create')
+  );
+
+/** Create schema with lookup resolvers for Confirmed/Pitched cross-field rules in the UI. */
+export function createActivityRequestSchemaWithLookups(
+  resolvers: ActivitySchedulingLookupResolvers
+) {
+  return createActivityRequestSchemaBase.superRefine(
+    activitySchedulingSuperRefine('create', resolvers)
+  );
+}
 
 /**
  * Schema for updating an activity via HTTP request
@@ -490,7 +483,8 @@ export const updateActivityRequestSchema = createBaseSchema
       path: ['markAsCompleted'],
       ...zodConstraintIssueParams(),
     }
-  );
+  )
+  .superRefine(activitySchedulingSuperRefine('update'));
 
 /**
  * Administrative bulk action request. This intentionally permits only the
@@ -673,6 +667,12 @@ export type HardDeleteRequest = z.infer<typeof hardDeleteRequestSchema>;
 
 /**
  * Form data type for create/edit activity forms.
- * Single source of truth: same as CreateActivityRequest (schema-inferred).
+ * Schedule dates may be empty in UI state until filled; Zod requires them on submit.
  */
-export type ActivityFormData = CreateActivityRequest;
+export type ActivityFormData = Omit<
+  CreateActivityRequest,
+  'startDate' | 'endDate'
+> & {
+  startDate?: string;
+  endDate?: string;
+};

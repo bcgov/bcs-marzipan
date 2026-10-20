@@ -84,11 +84,13 @@ describe('isActivityResponsePayload', () => {
 
 describe('redactActivityResponse', () => {
   const activity = createMockActivityResponse({
-    notes: 'secret notes',
+    notes: 'general notes',
+    internalNotes: 'secret internal notes',
     dateStatusId: 2,
     timeStatusId: 3,
     dateStatus: 'Set',
     timeStatus: 'Tentative',
+    executiveSummary: '{"type":"doc","content":[]}',
     lookAheadStatus: 'new',
     lookAheadSection: 'events',
     translationsRequired: ['French'],
@@ -101,7 +103,8 @@ describe('redactActivityResponse', () => {
 
   it('returns all fields when user has all view grants for restricted scopes', () => {
     const result = redactActivityResponse(activity, editorWithAllViewGrants);
-    expect(result.notes).toBe('secret notes');
+    expect(result.notes).toBe('general notes');
+    expect(result.internalNotes).toBe('secret internal notes');
     expect(result.dateStatusId).toBe(2);
     expect(result.timeStatusId).toBe(3);
     expect(result.lookAheadStatus).toBe('new');
@@ -126,11 +129,13 @@ describe('redactActivityResponse', () => {
 
   it('strips view-restricted fields for Viewer without grants; keeps date/time status, translations, pitch status, and pitch date', () => {
     const result = redactActivityResponse(activity, viewerNoGrants);
-    expect(result.notes).toBeUndefined();
+    expect(result.notes).toBe('general notes');
+    expect(result.internalNotes).toBeUndefined();
     expect(result.dateStatusId).toBe(2);
     expect(result.timeStatusId).toBe(3);
     expect(result.dateStatus).toBe('Set');
     expect(result.timeStatus).toBe('Tentative');
+    expect(result.executiveSummary).toBeUndefined();
     expect(result.lookAheadStatus).toBeUndefined();
     expect(result.lookAheadSection).toBeUndefined();
     expect(result.translationsRequired).toEqual(['French']);
@@ -141,9 +146,10 @@ describe('redactActivityResponse', () => {
     expect(result.pitchDate).toBe('2025-03-01');
   });
 
-  it('preserves all fields for Advanced Viewer (role bypass)', () => {
+  it('preserves general notes for Advanced Viewer but redacts internal notes without grant', () => {
     const result = redactActivityResponse(activity, advancedViewer);
-    expect(result.notes).toBe('secret notes');
+    expect(result.notes).toBe('general notes');
+    expect(result.internalNotes).toBeUndefined();
     expect(result.dateStatusId).toBe(2);
     expect(result.lookAheadStatus).toBe('new');
     expect(result.translationsRequired).toEqual(['French']);
@@ -166,7 +172,7 @@ describe('redactActivityResponse', () => {
   it('filters changedFieldsSinceReview for redacted view-restricted scopes only', () => {
     const withChanges = createMockActivityResponse({
       changedFieldsSinceReview: [
-        'notes',
+        'internalNotes',
         'title',
         'dateStatusId',
         'lookAheadStatus',

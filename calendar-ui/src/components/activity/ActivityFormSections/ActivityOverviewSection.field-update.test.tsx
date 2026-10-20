@@ -8,10 +8,7 @@ import {
   createActivityRequestSchema,
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
-import {
-  createMockActivityResponse,
-  createMockTeamListItem,
-} from '@corpcal/shared/test-utils';
+import { createMockActivityResponse } from '@corpcal/shared/test-utils';
 import { tipTapDocJsonFromPlainText } from '@corpcal/shared/utils';
 import { getDefaultFormValues } from '@/lib/activity-form-defaults';
 
@@ -38,6 +35,10 @@ vi.mock('../activity-info-icon-settings-context', () => ({
   ActivityFieldInfoIcon: () => null,
 }));
 
+vi.mock('@/hooks/useLeadTeamOptions', () => ({
+  useLeadTeamOptions: () => ({ data: [] }),
+}));
+
 const mockLookups: FormLookupData = {
   isLoading: false,
   hasError: false,
@@ -54,7 +55,7 @@ const mockLookups: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  pitchStatuses: [],
+  codes: [],
   pitchRequiredStatuses: [
     {
       id: 1,
@@ -125,23 +126,9 @@ function ActivityOverviewSectionHarness({
           categories={mockLookups.categories}
           organizations={[]}
           tags={[]}
+          codes={[]}
           pitchRequiredStatuses={mockLookups.pitchRequiredStatuses}
           userTeamIds={[5]}
-          leadTeamField={{
-            options: [
-              createMockTeamListItem({
-                id: 5,
-                name: 'Team',
-                displayName: 'Team',
-                abbreviation: 'TM',
-                ministryId: 1,
-                ministryName: 'Ministry',
-                memberCount: 1,
-              }),
-            ],
-            displayLabel: 'Team',
-            optionsFetching: false,
-          }}
         />
       </ActivityEditProvider>
     </FormProvider>

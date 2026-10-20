@@ -121,6 +121,42 @@ export const tagLookupItemSchema = lookupItemSchema.extend({
 });
 
 // ============================================
+// Code Schema (activity coding labels)
+// ============================================
+
+export const codeResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string(),
+  sortOrder: z.number().int(),
+  visibility: z.enum(['global', 'team']),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
+
+export const codeLookupItemSchema = lookupItemSchema.extend({
+  name: z.string(),
+  displayName: z.string(),
+  visibility: z.enum(['global', 'team']),
+});
+
+export const createCodeRequestSchema = z.object({
+  name: z.string().min(1).max(255),
+  displayName: z.string().min(1).max(255).optional(),
+  sortOrder: z.number().int().optional(),
+  isActive: z.boolean().optional(),
+  description: z.string().nullable().optional(),
+  visibility: z.enum(['global']).optional(),
+});
+
+export const updateCodeRequestSchema = createCodeRequestSchema.partial();
+
+export type CodeResponse = z.infer<typeof codeResponseSchema>;
+export type CodeLookupItem = z.infer<typeof codeLookupItemSchema>;
+export type CreateCodeRequest = z.infer<typeof createCodeRequestSchema>;
+export type UpdateCodeRequest = z.infer<typeof updateCodeRequestSchema>;
+
+// ============================================
 // Organization Schema
 // ============================================
 
@@ -202,28 +238,6 @@ export const userLookupItemSchema = lookupItemSchema.extend({
   email: z.string().nullable(),
   username: z.string().nullable(),
   jobTitle: z.string().nullable().optional(),
-});
-
-// ============================================
-// Pitch Status Schema
-// ============================================
-
-/**
- * Pitch Status Response Schema
- * Fields from the pitch_statuses table exposed via API
- */
-export const pitchStatusResponseSchema = z.object({
-  id: z.number().int(),
-  name: z.string(),
-  displayName: z.string(),
-  sortOrder: z.number().int(),
-  isActive: z.boolean(),
-  description: z.string().nullable(),
-});
-
-export const pitchStatusLookupItemSchema = lookupItemSchema.extend({
-  name: z.string(),
-  displayName: z.string(),
 });
 
 // ============================================
@@ -558,9 +572,6 @@ export type MinistryLookupItem = z.infer<typeof ministryLookupItemSchema>;
 
 export type UserResponse = z.infer<typeof userResponseSchema>;
 export type UserLookupItem = z.infer<typeof userLookupItemSchema>;
-
-export type PitchStatusResponse = z.infer<typeof pitchStatusResponseSchema>;
-export type PitchStatusLookupItem = z.infer<typeof pitchStatusLookupItemSchema>;
 
 export type ActivityStatusResponse = z.infer<
   typeof activityStatusResponseSchema

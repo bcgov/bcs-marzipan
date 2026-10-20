@@ -14,6 +14,7 @@ import api from '@/api/axios';
 import {
   fetchActivityStatuses,
   fetchAllCategories,
+  fetchAllCodes,
   fetchAllTags,
   fetchAllTranslationLanguages,
   fetchAllVenuePresets,
@@ -85,6 +86,14 @@ type GovernmentRepresentative = LookupItem & {
 };
 
 type Tag = LookupItem & {
+  name?: string;
+  displayName?: string | null;
+  visibility?: 'global' | 'team';
+  teamNames?: string[];
+  teamIds?: number[];
+};
+
+type Code = LookupItem & {
   name?: string;
   displayName?: string | null;
   visibility?: 'global' | 'team';
@@ -704,6 +713,61 @@ export function TagsAdmin() {
       queryFn={fetchAllTags}
       softDelete
       additionalInvalidateKeys={[lookupQueryKeys.tags()]}
+      formFields={tagFields}
+      getItemName={(item) => item.name ?? item.displayName ?? String(item.id)}
+      getInitialData={(item) => lookupVisibilityInitialData(item)}
+      transformSubmitData={(data) => {
+        try {
+          return transformLookupVisibilitySubmitData(data);
+        } catch {
+          toast.error('At least one team is required when visibility is team.');
+          throw new ClientValidationError();
+        }
+      }}
+      additionalColumns={[
+        {
+          accessorKey: 'visibility',
+          header: 'Visibility',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {renderLookupVisibilityColumn(row.original)}
+            </span>
+          ),
+        },
+      ]}
+      renderModalContent={(props) => (
+        <LookupVisibilityAdminForm
+          {...props}
+          fields={tagFields}
+          teamOptions={teamOptions}
+        />
+      )}
+    />
+  );
+}
+
+export function CodesAdmin() {
+  const { data: teams = [] } = useQuery({
+    queryKey: lookupQueryKeys.teams(),
+    queryFn: fetchTeams,
+  });
+
+  const teamOptions = teams.map((t) => ({
+    value: String(t.id),
+    label: t.displayName ?? t.name ?? String(t.id),
+  }));
+
+  return (
+    <GenericLookupAdmin<Code>
+      title="Codes"
+      description="Manage activity coding labels"
+      entityType="Code"
+      apiEndpoint="/lookups/codes"
+      enableManualSort
+      queryKey={lookupQueryKeys.codesAdmin()}
+      queryFn={fetchAllCodes}
+      softDelete
+      additionalInvalidateKeys={[lookupQueryKeys.codes()]}
       formFields={tagFields}
       getItemName={(item) => item.name ?? item.displayName ?? String(item.id)}
       getInitialData={(item) => lookupVisibilityInitialData(item)}

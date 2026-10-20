@@ -18,7 +18,7 @@ const mockLookups: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  pitchStatuses: [],
+  codes: [],
   pitchRequiredStatuses: [],
   activityStatuses: [],
   commsMaterials: [],
@@ -50,7 +50,7 @@ describe('useActivityEditFormHydration', () => {
       lastUpdatedDateTime: '2025-01-01T12:00:00.000Z',
       notes: null,
       schedulingNotes: null,
-      strategy: null,
+      internalNotes: null,
     });
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
@@ -74,7 +74,7 @@ describe('useActivityEditFormHydration', () => {
     );
     expect(result.current.initialFormDataRef.current?.notes).toBe('');
     expect(result.current.initialFormDataRef.current?.schedulingNotes).toBe('');
-    expect(result.current.initialFormDataRef.current?.strategy).toBe('');
+    expect(result.current.initialFormDataRef.current?.internalNotes).toBe('');
   });
 
   it('marks hydrated after reset-driven controls have a task turn to settle', () => {
@@ -107,7 +107,7 @@ describe('useActivityEditFormHydration', () => {
       lastUpdatedDateTime: '2025-01-01T12:00:00.000Z',
       notes: null,
       schedulingNotes: null,
-      strategy: null,
+      internalNotes: null,
       significance: '',
       executiveSummary: null,
     });

@@ -78,6 +78,13 @@
       "when": 1792799645253,
       "tag": "0010_20261023_lookup_sort_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793137570586,
+      "tag": "0011_20261027_activity_form_restructure",
+      "breakpoints": true
     }
   ]
 }

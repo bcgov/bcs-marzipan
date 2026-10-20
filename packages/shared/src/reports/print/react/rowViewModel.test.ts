@@ -42,9 +42,7 @@ const BASE_ACTIVITY_RESPONSE = {
   timeStatusId: undefined,
   venueStatusId: null,
   schedulingNotes: null,
-  strategy: null,
   newsReleaseOriginId: null,
-  newsReleaseId: null,
   newsReleaseDistributionId: null,
   executiveSummary: null,
   lookAheadStatus: 'none',
@@ -67,6 +65,8 @@ const BASE_ACTIVITY_RESPONSE = {
   category: [],
   categoryIds: [],
   tags: [],
+  codes: [],
+  codeIds: [],
   commsMaterials: [],
   translationsRequired: [],
   representativesAttending: [],
@@ -90,7 +90,6 @@ const BASE_ACTIVITY_RESPONSE = {
   leadMinistryAbbreviation: 'ECC',
   leadTeamDisplayName: null,
   venueAddress: null,
-  reportSettings: [],
   flags: [],
 } satisfies ActivityResponse;
 
@@ -362,11 +361,10 @@ describe('toPrintRowViewModel', () => {
     expect(row.release.translationsLine).toBe('');
   });
 
-  it('maps 30/60/90 comms and strategy fields on the row view-model', () => {
+  it('maps 30/60/90 comms fields on the row view-model', () => {
     const row = toPrintRowViewModel(
       {
         ...BASE_ACTIVITY,
-        strategy: 'Lead with housing affordability message.',
         commsMaterials: ['Media advisory', 'Backgrounder'],
         commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
         translationsRequired: ['FR'],
@@ -378,7 +376,6 @@ describe('toPrintRowViewModel', () => {
       }
     );
 
-    expect(row.strategyStored).toBe('Lead with housing affordability message.');
     expect(row.commsMaterials).toEqual(['Media advisory', 'Backgrounder']);
     expect(row.commsContactLead).toBe('Jordan Smith');
     expect(row.release.translationsLine).toBe('French');

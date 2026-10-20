@@ -23,9 +23,7 @@ const BASE_ACTIVITY_RESPONSE = {
   timeStatusId: undefined,
   venueStatusId: null,
   schedulingNotes: null,
-  strategy: null,
   newsReleaseOriginId: null,
-  newsReleaseId: null,
   newsReleaseDistributionId: null,
   executiveSummary: 'Executive summary',
   lookAheadStatus: 'new',
@@ -48,6 +46,8 @@ const BASE_ACTIVITY_RESPONSE = {
   category: ['Announcement'],
   categoryIds: [1],
   tags: [],
+  codes: [],
+  codeIds: [],
   commsMaterials: [],
   translationsRequired: [],
   representativesAttending: [],
@@ -71,7 +71,6 @@ const BASE_ACTIVITY_RESPONSE = {
   leadMinistryAbbreviation: 'HOUS',
   leadTeamDisplayName: null,
   venueAddress: null,
-  reportSettings: [],
   flags: [],
 } satisfies ActivityResponse;
 

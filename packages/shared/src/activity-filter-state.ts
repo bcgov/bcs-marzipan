@@ -22,8 +22,8 @@ export interface ActivityFilterState {
   pitchDateFilter: PitchDateFilter;
   lookAheadStatusValues: string[];
   lookAheadSectionValues: string[];
-  dateConfirmedFilter: 'any' | 'confirmed' | 'not_confirmed';
-  timeConfirmedFilter: 'any' | 'confirmed' | 'not_confirmed';
+  dateConfirmedFilter: 'any' | 'confirmed' | 'tbd';
+  timeConfirmedFilter: 'any' | 'confirmed' | 'tbd';
   tagIds: number[];
   /** Activity lead team IDs (OR within; AND with other dimensions). */
   leadTeamIds: number[];
@@ -193,13 +193,13 @@ export function coerceActivityFilterStateFromRecord(
 
   const rawDateConfirmed = raw.dateConfirmedFilter;
   const dateConfirmedFilter: ActivityFilterState['dateConfirmedFilter'] =
-    rawDateConfirmed === 'confirmed' || rawDateConfirmed === 'not_confirmed'
+    rawDateConfirmed === 'confirmed' || rawDateConfirmed === 'tbd'
       ? rawDateConfirmed
       : 'any';
 
   const rawTimeConfirmed = raw.timeConfirmedFilter;
   const timeConfirmedFilter: ActivityFilterState['timeConfirmedFilter'] =
-    rawTimeConfirmed === 'confirmed' || rawTimeConfirmed === 'not_confirmed'
+    rawTimeConfirmed === 'confirmed' || rawTimeConfirmed === 'tbd'
       ? rawTimeConfirmed
       : 'any';
 

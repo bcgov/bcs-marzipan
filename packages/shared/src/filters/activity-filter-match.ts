@@ -122,7 +122,7 @@ export function activityMatchesFilterState(
     return false;
   }
   if (
-    filterState.dateConfirmedFilter === 'not_confirmed' &&
+    filterState.dateConfirmedFilter === 'tbd' &&
     isConfirmedStatusLabel(input.dateStatusName)
   ) {
     return false;
@@ -134,7 +134,7 @@ export function activityMatchesFilterState(
     return false;
   }
   if (
-    filterState.timeConfirmedFilter === 'not_confirmed' &&
+    filterState.timeConfirmedFilter === 'tbd' &&
     isConfirmedStatusLabel(input.timeStatusName)
   ) {
     return false;

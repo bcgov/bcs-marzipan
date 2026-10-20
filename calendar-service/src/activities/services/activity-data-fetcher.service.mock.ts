@@ -12,6 +12,7 @@ const DEFAULTS = {
     idsMap: new Map<number, number[]>(),
   },
   fetchTagsForActivities: new Map(),
+  fetchCodesForActivities: new Map(),
   fetchNewsReleaseOriginsForActivities: new Map(),
   fetchNewsReleaseDistributionsForActivities: new Map(),
   fetchPremierRequestedForActivities: new Map(),
@@ -34,7 +35,6 @@ const DEFAULTS = {
     number,
     EventPlannerDetail[]
   >,
-  fetchReportSettingsForActivities: new Map(),
   fetchPitchRequiredStatusForActivities: new Map() as Map<
     number,
     string | null

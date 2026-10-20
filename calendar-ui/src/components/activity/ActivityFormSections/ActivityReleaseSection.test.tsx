@@ -8,7 +8,7 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { getDefaultFormValues } from '@/lib/activity-form-defaults';
 
 import { ActivityEditProvider } from '../activity-edit-context';
-import { ActivityReleaseSection } from './ActivityReleaseSection';
+import { ActivityCommsSection } from './ActivityCommsSection';
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -55,7 +55,7 @@ const mockLookups = {
   users: [],
   eventPlanners: [],
   tags: [],
-  pitchStatuses: [],
+  codes: [],
   pitchRequiredStatuses: [],
   activityStatuses: [],
   commsMaterials: [],
@@ -75,7 +75,7 @@ const mockLookups = {
   venueStatuses: [],
 };
 
-function ActivityReleaseSectionHarness({
+function ActivityCommsSectionHarness({
   readOnly,
   canEditFieldScope,
   defaultValues,
@@ -106,7 +106,8 @@ function ActivityReleaseSectionHarness({
           canEditFieldScope: canEditFieldScope ?? (() => true),
         }}
       >
-        <ActivityReleaseSection
+        <ActivityCommsSection
+          commsMaterialOptions={mockLookups.commsMaterials}
           newsReleaseDistributionOptions={mockLookups.newsReleaseDistributions}
           newsReleaseOriginOptions={mockLookups.newsReleaseOrigins}
           translationRequiredStatuses={translationRequiredStatuses}
@@ -117,9 +118,9 @@ function ActivityReleaseSectionHarness({
   );
 }
 
-describe('ActivityReleaseSection permissions', () => {
+describe('ActivityCommsSection release fields permissions', () => {
   it('renders news release selects as readOnly when activity is view-only', async () => {
-    render(<ActivityReleaseSectionHarness readOnly={true} />);
+    render(<ActivityCommsSectionHarness readOnly={true} />);
 
     const origin = await screen.findByRole('combobox', {
       name: /News release origin/i,
@@ -129,7 +130,7 @@ describe('ActivityReleaseSection permissions', () => {
 
   it('disables translation languages when field scope forbids edit', async () => {
     render(
-      <ActivityReleaseSectionHarness
+      <ActivityCommsSectionHarness
         readOnly={false}
         canEditFieldScope={(s: string) => s !== 'translations'}
         defaultValues={{ translationsRequiredStatusId: 2 }}
@@ -143,10 +144,10 @@ describe('ActivityReleaseSection permissions', () => {
   });
 });
 
-describe('ActivityReleaseSection translation languages visibility', () => {
+describe('ActivityCommsSection translation languages visibility', () => {
   it('hides translation languages when status is not Required', () => {
     render(
-      <ActivityReleaseSectionHarness
+      <ActivityCommsSectionHarness
         readOnly={false}
         defaultValues={{ translationsRequiredStatusId: 1 }}
       />
@@ -159,7 +160,7 @@ describe('ActivityReleaseSection translation languages visibility', () => {
 
   it('shows translation languages when status is Required', async () => {
     render(
-      <ActivityReleaseSectionHarness
+      <ActivityCommsSectionHarness
         readOnly={false}
         defaultValues={{ translationsRequiredStatusId: 2 }}
       />
@@ -176,13 +177,13 @@ const translationRequiredStatusesWithoutRequired =
     (status) => status.name !== 'required'
   );
 
-describe('ActivityReleaseSection translation status change', () => {
+describe('ActivityCommsSection translation status change', () => {
   it('clears translation languages when status changes away from required', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
     render(
-      <ActivityReleaseSectionHarness
+      <ActivityCommsSectionHarness
         readOnly={false}
         defaultValues={{
           translationsRequiredStatusId: 2,
@@ -211,7 +212,7 @@ describe('ActivityReleaseSection translation status change', () => {
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
     render(
-      <ActivityReleaseSectionHarness
+      <ActivityCommsSectionHarness
         readOnly={false}
         translationRequiredStatuses={translationRequiredStatusesWithoutRequired}
         defaultValues={{

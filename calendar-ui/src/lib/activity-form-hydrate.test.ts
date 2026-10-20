@@ -31,7 +31,7 @@ const mockLookups: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  pitchStatuses: [],
+  codes: [],
   pitchRequiredStatuses: [],
   activityStatuses: [],
   commsMaterials: [],
@@ -51,7 +51,7 @@ const mockLookups: FormLookupData = {
 const EMPTY_API_ACTIVITY_OVERRIDES = {
   notes: null,
   schedulingNotes: null,
-  strategy: null,
+  internalNotes: null,
   significance: null,
   executiveSummary: null,
   summary: '',

@@ -17,7 +17,6 @@ export function getDefaultFormValues(): Partial<ActivityFormData> {
     translationLanguageIds: [],
     representatives: [],
     sharedWithTeamIds: [],
-    reportSettings: [],
     activityStatusId: 1,
     dateStatusId: 1,
     timeStatusId: 1,

@@ -27,9 +27,11 @@ describe('applyFieldLevelWritePolicy', () => {
   it('strips all restricted fields for Viewer without grants', () => {
     const dto: Record<string, unknown> = {
       title: 'Keep me',
-      notes: 'Strip me',
+      notes: 'Keep general notes',
+      internalNotes: 'Strip me',
       dateStatusId: 1,
       timeStatusId: 1,
+      executiveSummary: '{"type":"doc","content":[]}',
       lookAheadStatus: 'new',
       lookAheadSection: 'events',
       translationsRequiredStatusId: 1,
@@ -41,9 +43,11 @@ describe('applyFieldLevelWritePolicy', () => {
     const stripped = applyFieldLevelWritePolicy(dto, viewerNoGrants);
 
     expect(dto.title).toBe('Keep me');
-    expect(dto.notes).toBeUndefined();
+    expect(dto.notes).toBe('Keep general notes');
+    expect(dto.internalNotes).toBeUndefined();
     expect(dto.dateStatusId).toBe(1);
     expect(dto.timeStatusId).toBe(1);
+    expect(dto.executiveSummary).toBeUndefined();
     expect(dto.lookAheadStatus).toBeUndefined();
     expect(dto.lookAheadSection).toBeUndefined();
     expect(dto.translationsRequiredStatusId).toBeUndefined();
@@ -51,33 +55,38 @@ describe('applyFieldLevelWritePolicy', () => {
     expect(dto.pitchRequiredStatusId).toBeUndefined();
     expect(dto.pitchDate).toBeUndefined();
     expect(stripped).toHaveLength(5);
+    expect(stripped).toContain('internalNotes');
   });
 
   it('preserves fields the user can edit', () => {
     const dto: Record<string, unknown> = {
       title: 'Keep me',
-      notes: 'I should stay',
+      notes: 'General notes stay without scope grant',
+      internalNotes: 'I should stay',
       dateStatusId: 1,
     };
 
     const stripped = applyFieldLevelWritePolicy(dto, editorWithNotesEdit);
 
-    expect(dto.notes).toBe('I should stay');
+    expect(dto.notes).toBe('General notes stay without scope grant');
+    expect(dto.internalNotes).toBe('I should stay');
     expect(dto.dateStatusId).toBe(1);
-    expect(stripped).not.toContain('notes');
+    expect(stripped).not.toContain('internalNotes');
     expect(stripped).toHaveLength(0);
   });
 
   it('returns empty array when user has all edit grants', () => {
     const dto: Record<string, unknown> = {
-      notes: 'keep',
+      notes: 'general',
+      internalNotes: 'keep',
       dateStatusId: 1,
       timeStatusId: 1,
     };
 
     const stripped = applyFieldLevelWritePolicy(dto, adminWithAll);
 
-    expect(dto.notes).toBe('keep');
+    expect(dto.notes).toBe('general');
+    expect(dto.internalNotes).toBe('keep');
     expect(dto.dateStatusId).toBe(1);
     expect(stripped).toHaveLength(0);
   });

@@ -12,7 +12,6 @@ import {
   text,
   time,
   timestamp,
-  uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
 
@@ -31,10 +30,10 @@ import { ministries } from './ministry';
 import { organizations } from './organizations';
 import {
   activityCategories,
+  activityCodes,
   activityCommsContacts,
   activityCommsMaterials,
   activityEventPlanners,
-  activityReportSettings,
   activityRepresentatives,
   activitySectors,
   activitySharedWithTeams,
@@ -83,7 +82,6 @@ export const activities = pgTable(
       .references(() => timeStatuses.id), // FK to TimeStatus
 
     schedulingNotes: text('scheduling_notes'), // (500 char limit) maps to legacy Schedule field
-    strategy: text('strategy'), // Strategic information (legacy field)
 
     venueStatusId: integer('venue_status_id').references(
       () => venueStatuses.id
@@ -93,7 +91,6 @@ export const activities = pgTable(
     newsReleaseOriginId: integer('news_release_origin_id').references(
       () => newsReleaseOrigins.id
     ), // FK to NewsReleaseOrigin lookup table
-    newsReleaseId: uuid('news_release_id'),
     newsReleaseDateTime: timestamp('news_release_date_time', {
       withTimezone: true,
     }), // News release date/time (legacy field)
@@ -104,11 +101,11 @@ export const activities = pgTable(
     lookAheadSection: varchar('look_ahead_section', { length: 50 }), // 'events', 'issues', 'news', 'awareness' maps to legacy HqSection field
 
     // Highly confidential / sensitive; restricts visibility and shows badges in print.
-    // Does not omit activities from reports — use activityReportSettings.omitted for that.
     isConfidential: boolean('is_confidential').notNull().default(false),
 
     // Notes and additional fields
-    notes: text('notes'), // Maps to legacy Comments field
+    notes: text('notes'),
+    internalNotes: text('internal_notes'),
     pitchDate: date('pitch_date'), // Date when activity was or will be pitched (nullable)
     pitchRequiredStatusId: integer('pitch_required_status_id').references(
       () => pitchRequiredStatuses.id
@@ -258,9 +255,9 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
   activityCommsContacts: many(activityCommsContacts),
   activityThemes: many(activityThemes),
   activityTags: many(activityTags),
+  activityCodes: many(activityCodes),
   activitySubscriptions: many(activitySubscriptions),
   activitySectors: many(activitySectors),
-  reportSettings: many(activityReportSettings),
   venueAddress: one(venueAddresses, {
     fields: [activities.id],
     references: [venueAddresses.activityId],
