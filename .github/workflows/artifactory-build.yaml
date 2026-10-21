@@ -44,6 +44,8 @@ permissions:
 env:
   REGISTRY: ${{ vars.ARTIFACTORY_REGISTRY }}
   ARTIFACTORY_DEV_IMAGE_REPO: ${{ vars.ARTIFACTORY_DEV_IMAGE_REPO }}
+  ARTIFACTORY_TEST_IMAGE_REPO: ${{ vars.ARTIFACTORY_TEST_IMAGE_REPO }}
+  ARTIFACTORY_PROD_IMAGE_REPO: ${{ vars.ARTIFACTORY_PROD_IMAGE_REPO }}
   APP_VERSION: ${{ vars.APP_VERSION }}
   BUILD_REF: ${{ inputs.ref || github.ref_name }}
 
@@ -88,7 +90,35 @@ jobs:
             docker login "$REGISTRY" \
               -u "${{ secrets.ARTIFACTORY_USERNAME }}" --password-stdin
 
+      - name: Promote tested images to prod repo
+        if: ${{ inputs.target_environment == 'prod' }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$ARTIFACTORY_TEST_IMAGE_REPO" ]]; then
+            echo "::error::ARTIFACTORY_TEST_IMAGE_REPO is required when promoting to prod."
+            exit 1
+          fi
+
+          for image in \
+            corpcal-service \
+            corpcal-ui \
+            corpcal-db-migrate \
+            corpcal-db-seed; do
+            source_ref="$REGISTRY/$ARTIFACTORY_TEST_IMAGE_REPO/$image:$BUILD_IMAGE_TAG"
+            target_ref="$REGISTRY/$ARTIFACTORY_IMAGE_REPO/$image:$BUILD_IMAGE_TAG"
+
+            echo "Pulling $source_ref"
+            docker pull "$source_ref"
+
+            echo "Retagging $source_ref -> $target_ref"
+            docker tag "$source_ref" "$target_ref"
+
+            echo "Pushing $target_ref"
+            docker push "$target_ref"
+          done
+
       - name: Build calendar-service
+        if: ${{ inputs.target_environment != 'prod' }}
         run: |
           docker build \
             -f calendar-service/Dockerfile \
@@ -96,13 +126,16 @@ jobs:
             .
 
       - name: Build calendar-ui
+        if: ${{ inputs.target_environment != 'prod' }}
         run: |
           docker build \
             --build-arg APP_VERSION="$BUILD_IMAGE_TAG" \
             -f calendar-ui/Dockerfile \
             -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-ui:$BUILD_IMAGE_TAG" \
             .
+
       - name: Build DB migrate job
+        if: ${{ inputs.target_environment != 'prod' }}
         run: |
           docker build \
             -f Dockerfile.migrate \
@@ -110,21 +143,27 @@ jobs:
             .
 
       - name: Build DB seed job
+        if: ${{ inputs.target_environment != 'prod' }}
         run: |
           docker build \
             -f Dockerfile.seed \
             -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-db-seed:$BUILD_IMAGE_TAG" \
             .
+
       - name: Push calendar-service
+        if: ${{ inputs.target_environment != 'prod' }}
         run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-service:$BUILD_IMAGE_TAG"
 
       - name: Push calendar-ui
+        if: ${{ inputs.target_environment != 'prod' }}
         run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-ui:$BUILD_IMAGE_TAG"
 
       - name: Push DB migrate job
+        if: ${{ inputs.target_environment != 'prod' }}
         run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-db-migrate:$BUILD_IMAGE_TAG"
 
       - name: Push DB seed job
+        if: ${{ inputs.target_environment != 'prod' }}
         run: docker push "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-db-seed:$BUILD_IMAGE_TAG"
 
       - name: Summary
@@ -134,3 +173,8 @@ jobs:
           echo "- **Image repo:** $ARTIFACTORY_IMAGE_REPO" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag:** $BUILD_IMAGE_TAG" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Branch:** $BUILD_REF" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "${{ inputs.target_environment }}" == "prod" ]]; then
+            echo "- **Promotion mode:** retag from test repo to prod repo" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- **Promotion mode:** rebuild and push from source" >> "$GITHUB_STEP_SUMMARY"
+          fi
