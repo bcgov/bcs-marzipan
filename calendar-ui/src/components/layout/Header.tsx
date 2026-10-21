@@ -42,21 +42,10 @@ import {
   RECURRING_LOCKOUT_BANNER_QUERY_KEY,
   useRecurringLockoutBanner,
 } from '@/hooks/useRecurringLockoutBanner';
+import { getInitials } from '@/lib/initials';
 import { getNotificationTargetPath } from '@/lib/notification-links';
 
 import { SystemBanner } from './SystemBanner';
-
-/**
- * Get initials from display name
- */
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 function getBannerDismissKey(banner: BannerSettings): string {
   return `system-banner-dismissed-${banner.id}-${banner.lastUpdatedDateTime}`;

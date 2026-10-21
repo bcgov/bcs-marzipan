@@ -76,6 +76,7 @@ import {
 } from '@/hooks/useLookups';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import { formatHistoryFieldValue } from '@/lib/activity-history-format';
+import { getInitials } from '@/lib/initials';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 const MAX_CHANGE_VALUE_LENGTH = 120;
@@ -141,16 +142,7 @@ function getActorDisplayName(entry: GlobalActivityHistoryEntry): string {
 }
 
 export function getActorInitials(entry: GlobalActivityHistoryEntry): string {
-  const displayName = getActorDisplayName(entry);
-  const parts = displayName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) {
-    return 'U';
-  }
-
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
+  return getInitials(getActorDisplayName(entry));
 }
 
 function DateFilter({

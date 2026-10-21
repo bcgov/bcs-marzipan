@@ -54,6 +54,7 @@ import { UserEditModal } from '@/components/users/UserEditModal';
 import { UserRoleField } from '@/components/users/UserRoleField';
 import { UserTransferTabContent } from '@/components/users/UserTransferTabContent';
 import { useAuth } from '@/hooks/useAuth';
+import { getInitials } from '@/lib/initials';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import {
   formatRemovedFromTeamDescription,
@@ -394,11 +395,9 @@ export default function UserDetailPage() {
               <div className="flex items-start gap-4">
                 <Avatar className="h-12 w-12">
                   <AvatarFallback className="text-lg font-semibold">
-                    {(userDetail.adDisplayName || userDetail.adUsername || '')
-                      .split(' ')
-                      .map((s) => s[0])
-                      .slice(0, 2)
-                      .join('') || 'U'}
+                    {getInitials(
+                      userDetail.adDisplayName || userDetail.adUsername
+                    )}
                   </AvatarFallback>
                 </Avatar>
                 <div>
