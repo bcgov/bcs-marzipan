@@ -101,6 +101,8 @@ type UseActivityLockResult = {
   sendHeartbeat: (options?: {
     keepAlive?: boolean;
   }) => Promise<HeartbeatOutcome>;
+  /** Estimated server time (ms), from the last heartbeat `serverTime` offset. */
+  getServerNowMs: () => number;
   /** Update lock idle expiry from heartbeat response without full acquire. */
   mergeLockIdleExpiry: (idleExpiresAt: string) => void;
   /** True when the most recently held lock was lost to inactivity (not a connection problem). */
@@ -219,6 +221,11 @@ export function useActivityLock(
       serverClockOffsetRef.current = ms - Date.now();
     }
   }, []);
+
+  const getServerNowMs = useCallback(
+    () => Date.now() + serverClockOffsetRef.current,
+    []
+  );
 
   const wasLockIdleExpired = useCallback((): boolean => {
     const offset = serverClockOffsetRef.current;
@@ -576,6 +583,7 @@ export function useActivityLock(
     refreshLockFromServer,
     ensureLockForSubmit,
     sendHeartbeat,
+    getServerNowMs,
     mergeLockIdleExpiry,
     wasLockIdleExpired,
     applyExternalLockReleased,

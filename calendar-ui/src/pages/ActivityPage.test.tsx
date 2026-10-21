@@ -176,6 +176,7 @@ vi.mock('../hooks/useActivityLock', () => ({
     refreshLockFromServer: mockRefreshLockFromServer,
     ensureLockForSubmit: mockEnsureLockForSubmit,
     sendHeartbeat: vi.fn().mockResolvedValue('ok'),
+    getServerNowMs: vi.fn(() => Date.now()),
     wasLockIdleExpired: mockWasLockIdleExpired,
     applyExternalLockReleased: mockApplyExternalLockReleased,
     setLockedByOther: mockSetLockedByOther,

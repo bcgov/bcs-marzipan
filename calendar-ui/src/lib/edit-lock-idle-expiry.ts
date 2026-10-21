@@ -1,6 +1,31 @@
 /** Allowance for client/server clock estimate error and cleanup timing. */
 export const EDIT_LOCK_IDLE_EXPIRY_TOLERANCE_MS = 5_000;
 
+/** Warn the editor this long before the server idle deadline (server clock). */
+export const EDIT_LOCK_IDLE_WARN_MS = 60_000;
+
+export function getEditLockIdleDeadlineMs(idleExpiresAt: string): number {
+  return new Date(idleExpiresAt).getTime();
+}
+
+export function getEditLockIdleMsLeft(
+  idleExpiresAt: string,
+  serverNowMs: number
+): number {
+  return getEditLockIdleDeadlineMs(idleExpiresAt) - serverNowMs;
+}
+
+/** True when the server idle deadline has passed (within tolerance). */
+export function isEditLockIdleDeadlinePassed(
+  idleExpiresAt: string,
+  serverNowMs: number
+): boolean {
+  return (
+    getEditLockIdleMsLeft(idleExpiresAt, serverNowMs) <=
+    EDIT_LOCK_IDLE_EXPIRY_TOLERANCE_MS
+  );
+}
+
 type IsEditLockIdleExpiredInput = {
   /** Last server-issued idle deadline for this user's lock (server clock, ms). */
   idleExpiresAtMs: number | null;

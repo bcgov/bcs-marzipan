@@ -473,6 +473,7 @@ export function ActivityPage({
     refreshLockFromServer,
     ensureLockForSubmit,
     sendHeartbeat,
+    getServerNowMs,
     wasLockIdleExpired,
     applyExternalLockReleased,
     setLockedByOther,
@@ -538,15 +539,6 @@ export function ActivityPage({
       handoffToastHandleRef.current = null;
     };
   }, [id]);
-
-  useEditLockSession({
-    form,
-    activityId: id,
-    lockState,
-    lock,
-    isEditing,
-    sendHeartbeat,
-  });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
@@ -1007,6 +999,19 @@ export function ActivityPage({
   useEffect(() => {
     handleEditLockLostRef.current = handleEditLockLost;
   }, [handleEditLockLost]);
+
+  useEditLockSession({
+    form,
+    activityId: id,
+    lockState,
+    lock,
+    isEditing,
+    sendHeartbeat,
+    getServerNowMs,
+    onEditLockLost: () => handleEditLockLostRef.current(),
+    socketConnection: activitySocketConnection,
+    refreshLockFromServer,
+  });
 
   useEffect(() => {
     if (editRecoveryState !== 'idle-expired') return undefined;

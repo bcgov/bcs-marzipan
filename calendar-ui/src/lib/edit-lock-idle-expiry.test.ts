@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EDIT_LOCK_IDLE_EXPIRY_TOLERANCE_MS,
+  EDIT_LOCK_IDLE_WARN_MS,
+  getEditLockIdleMsLeft,
+  isEditLockIdleDeadlinePassed,
   isEditLockIdleExpired,
 } from './edit-lock-idle-expiry';
 
@@ -66,5 +69,26 @@ describe('isEditLockIdleExpired', () => {
         unconfirmedActivityAtMs: DEADLINE + 30_000,
       })
     ).toBe(true);
+  });
+});
+
+describe('idle deadline helpers', () => {
+  const deadlineIso = new Date(DEADLINE).toISOString();
+
+  it('computes ms left from server now', () => {
+    expect(getEditLockIdleMsLeft(deadlineIso, DEADLINE - 10_000)).toBe(10_000);
+  });
+
+  it('detects passed deadline within tolerance', () => {
+    expect(
+      isEditLockIdleDeadlinePassed(
+        deadlineIso,
+        DEADLINE - EDIT_LOCK_IDLE_EXPIRY_TOLERANCE_MS
+      )
+    ).toBe(true);
+  });
+
+  it('exports a one-minute warn lead', () => {
+    expect(EDIT_LOCK_IDLE_WARN_MS).toBe(60_000);
   });
 });
