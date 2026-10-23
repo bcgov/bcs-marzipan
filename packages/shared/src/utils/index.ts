@@ -28,3 +28,4 @@ export * from './activity-rich-text';
 export * from './wcagContrast';
 export * from './lookup-selectability';
 export * from './government-representative-sort';
+export * from './parse-gov-bc-display-name';
