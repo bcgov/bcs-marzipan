@@ -18,6 +18,15 @@ describe('resolveUserDisplayName', () => {
       })
     ).toBe('Jane Smith');
   });
+
+  it('formats Azure AD display names as First Last', () => {
+    expect(
+      resolveUserDisplayName({
+        adDisplayName: 'Smith, Jane CITZ:EX',
+        id: 1,
+      })
+    ).toBe('Jane Smith');
+  });
 });
 
 describe('resolveTeamDisplayName', () => {

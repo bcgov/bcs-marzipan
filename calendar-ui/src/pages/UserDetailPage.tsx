@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  formatGovBcDisplayNameAsFirstLast,
   PERMISSIONS as SHARED_PERMISSIONS,
   SYSTEM_ROLE_IDS,
 } from '@corpcal/shared';
@@ -402,7 +403,11 @@ export default function UserDetailPage() {
                 </Avatar>
                 <div>
                   <h2 className="text-2xl leading-tight font-semibold">
-                    {userDetail.adDisplayName || userDetail.adUsername}
+                    {userDetail.adDisplayName
+                      ? formatGovBcDisplayNameAsFirstLast(
+                          userDetail.adDisplayName
+                        ) || userDetail.adDisplayName
+                      : userDetail.adUsername}
                   </h2>
                   <div className="mt-1">
                     <div className="text-sm text-slate-900">
