@@ -28,11 +28,12 @@ export interface FormField {
 }
 
 function buildDefaultFormData(
-  initialData?: Record<string, any>
+  initialData?: Record<string, any>,
+  omitDefaultSortOrder?: boolean
 ): Record<string, any> {
   return {
     isActive: true,
-    sortOrder: 0,
+    ...(omitDefaultSortOrder ? {} : { sortOrder: 0 }),
     ...(initialData ?? {}),
   };
 }
@@ -48,6 +49,8 @@ interface LookupFormProps {
   resetKey: string;
   initialData?: Record<string, any>;
   onChange: (data: Record<string, any>) => void;
+  /** When true, do not seed sortOrder (server assigns on create). */
+  omitDefaultSortOrder?: boolean;
 }
 
 /**
@@ -59,9 +62,10 @@ export function LookupForm({
   resetKey,
   initialData,
   onChange,
+  omitDefaultSortOrder = false,
 }: LookupFormProps) {
   const [formData, setFormData] = useState<Record<string, any>>(() =>
-    buildDefaultFormData(initialData)
+    buildDefaultFormData(initialData, omitDefaultSortOrder)
   );
 
   const lastResetKeyRef = useRef<string | null>(null);
@@ -74,7 +78,7 @@ export function LookupForm({
       return;
     }
     lastResetKeyRef.current = resetKey;
-    setFormData(buildDefaultFormData(initialData));
+    setFormData(buildDefaultFormData(initialData, omitDefaultSortOrder));
     // Only reset on `resetKey` changes; `initialData` is the snapshot for that key.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);

@@ -5,16 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  and,
-  asc,
-  eq,
-  inArray,
-  isNotNull,
-  ne,
-  sql,
-  type SQL,
-} from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, ne, sql, type SQL } from 'drizzle-orm';
 import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
 
 import {
@@ -25,6 +16,7 @@ import {
   commsMaterials,
   dateStatuses,
   governmentRepresentatives,
+  lookupSortSettings,
   ministries,
   ministryGroups,
   newsReleaseDistributions,
@@ -77,12 +69,20 @@ import type {
   UserLookupItem,
   VenuePresetItem,
 } from '@corpcal/shared/api/types';
-import { reportConfigSchema } from '@corpcal/shared/schemas';
+import {
+  isReorderableLookupKey,
+  REORDERABLE_LOOKUP_KEYS,
+  reportConfigSchema,
+  type LookupSortMode,
+  type ReorderableLookupKey,
+} from '@corpcal/shared/schemas';
 
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { sortByStaffName } from '../users/staff-name-sort';
+import { lookupListOrderBy, resolveNextSortOrder } from './lookup-list-order';
+import { LOOKUP_LIST_ORDER_COLUMNS } from './lookup-order-columns';
 import {
   loadTeamMetadataForLookupIds,
   teamMetadataForLookup,
@@ -156,12 +156,91 @@ export class LookupsService {
     private readonly activityDisplayIdSyncService: ActivityDisplayIdSyncService
   ) {}
 
+  async getLookupSortSettings(): Promise<
+    Record<ReorderableLookupKey, LookupSortMode>
+  > {
+    const rows = await this.databaseService.db
+      .select({
+        lookupKey: lookupSortSettings.lookupKey,
+        sortMode: lookupSortSettings.sortMode,
+      })
+      .from(lookupSortSettings);
+
+    const settings = Object.fromEntries(
+      REORDERABLE_LOOKUP_KEYS.map((key) => [
+        key,
+        'manual' satisfies LookupSortMode,
+      ])
+    ) as Record<ReorderableLookupKey, LookupSortMode>;
+
+    for (const row of rows) {
+      if (isReorderableLookupKey(row.lookupKey)) {
+        settings[row.lookupKey] =
+          row.sortMode === 'alphabetical' ? 'alphabetical' : 'manual';
+      }
+    }
+    return settings;
+  }
+
+  async getLookupSortMode(
+    lookupKey: ReorderableLookupKey
+  ): Promise<LookupSortMode> {
+    const [row] = await this.databaseService.db
+      .select({ sortMode: lookupSortSettings.sortMode })
+      .from(lookupSortSettings)
+      .where(eq(lookupSortSettings.lookupKey, lookupKey))
+      .limit(1);
+    if (!row) return 'manual';
+    return row.sortMode === 'alphabetical' ? 'alphabetical' : 'manual';
+  }
+
+  async updateLookupSortMode(
+    lookupKey: ReorderableLookupKey,
+    sortMode: LookupSortMode,
+    currentUserId: number
+  ): Promise<void> {
+    const now = new Date();
+    await this.databaseService.db
+      .insert(lookupSortSettings)
+      .values({
+        lookupKey,
+        sortMode,
+        lastUpdatedBy: currentUserId,
+        lastUpdatedDateTime: now,
+      })
+      .onConflictDoUpdate({
+        target: lookupSortSettings.lookupKey,
+        set: {
+          sortMode,
+          lastUpdatedBy: currentUserId,
+          lastUpdatedDateTime: now,
+        },
+      });
+  }
+
+  private async listOrderBy(lookupKey: ReorderableLookupKey) {
+    const mode = await this.getLookupSortMode(lookupKey);
+    return lookupListOrderBy(LOOKUP_LIST_ORDER_COLUMNS[lookupKey], mode);
+  }
+
+  private async sortOrderForCreate(
+    lookupKey: ReorderableLookupKey,
+    sortOrder: number | undefined
+  ): Promise<number> {
+    if (sortOrder !== undefined) return sortOrder;
+    return resolveNextSortOrder(
+      this.databaseService.db,
+      REORDERABLE_LOOKUP_TABLES[lookupKey]
+    );
+  }
+
   /**
    * Get all categories for lists and forms. All active categories are returned
    * with team metadata; selectability is enforced in the activity form and on save.
    * @param includeAll - When true (admin), returns all categories including inactive
    */
   async getCategories(includeAll?: boolean): Promise<CategoryLookupItem[]> {
+    const orderBy = await this.listOrderBy('categories');
     const results = await this.databaseService.db
       .select({
         id: categories.id,
@@ -174,7 +253,7 @@ export class LookupsService {
       })
       .from(categories)
       .where(includeAll ? undefined : eq(categories.isActive, true))
-      .orderBy(categories.sortOrder);
+      .orderBy(...orderBy);
 
     const teamScopedIds = results
       .filter((c) => c.visibility === 'team')
@@ -691,6 +770,7 @@ export class LookupsService {
    * @param includeAll - When true (admin), returns all tags including inactive
    */
   async getTags(includeAll?: boolean): Promise<TagLookupItem[]> {
+    const orderBy = await this.listOrderBy('tags');
     const results = await this.databaseService.db
       .select({
         id: tags.id,
@@ -702,7 +782,7 @@ export class LookupsService {
       })
       .from(tags)
       .where(includeAll ? undefined : eq(tags.isActive, true))
-      .orderBy(tags.sortOrder);
+      .orderBy(...orderBy);
 
     const teamScopedIds = results
       .filter((t) => t.visibility === 'team')
@@ -1014,6 +1094,7 @@ export class LookupsService {
    * @param includeAll - When true (admin), returns all presets including inactive
    */
   async getVenuePresets(includeAll?: boolean): Promise<VenuePresetAdminItem[]> {
+    const orderBy = await this.listOrderBy('venue-presets');
     const results = await this.databaseService.db
       .select({
         id: venuePresets.id,
@@ -1030,7 +1111,7 @@ export class LookupsService {
       })
       .from(venuePresets)
       .where(includeAll ? undefined : eq(venuePresets.isActive, true))
-      .orderBy(venuePresets.sortOrder);
+      .orderBy(...orderBy);
     return results.map((row) => ({
       id: row.id,
       venueName: row.venueName,
@@ -1157,6 +1238,10 @@ export class LookupsService {
   ): Promise<VenuePresetAdminItem> {
     await this.assertNoDuplicateAddress(data.addressLine1, data.addressLine2);
 
+    const sortOrder = await this.sortOrderForCreate(
+      'venue-presets',
+      data.sortOrder
+    );
     const now = new Date();
     const [result] = await this.withLookupConflict(
       'venue_presets_normalized_address_unique',
@@ -1171,7 +1256,7 @@ export class LookupsService {
             city: data.city ?? undefined,
             provinceOrState: data.provinceOrState ?? undefined,
             country: data.country ?? undefined,
-            sortOrder: data.sortOrder ?? 0,
+            sortOrder,
             isActive: data.isActive ?? true,
             isPinned: data.isPinned ?? false,
             pinnedSortOrder: data.pinnedSortOrder ?? 0,
@@ -1345,6 +1430,7 @@ export class LookupsService {
    * Get all active comms materials
    */
   async getCommsMaterials(): Promise<CommsMaterialsLookupItem[]> {
+    const orderBy = await this.listOrderBy('comms-materials');
     const results = await this.databaseService.db
       .select({
         id: commsMaterials.id,
@@ -1354,7 +1440,7 @@ export class LookupsService {
         isActive: commsMaterials.isActive,
       })
       .from(commsMaterials)
-      .orderBy(commsMaterials.sortOrder);
+      .orderBy(...orderBy);
 
     return results.map((material) => ({
       id: material.id,
@@ -1374,6 +1460,7 @@ export class LookupsService {
   async getTranslationLanguages(
     includeAll?: boolean
   ): Promise<TranslationLanguageLookupItem[]> {
+    const orderBy = await this.listOrderBy('translation-languages');
     const results = await this.databaseService.db
       .select({
         id: translatedLanguages.id,
@@ -1386,7 +1473,7 @@ export class LookupsService {
       })
       .from(translatedLanguages)
       .where(includeAll ? undefined : eq(translatedLanguages.isActive, true))
-      .orderBy(translatedLanguages.sortOrder);
+      .orderBy(...orderBy);
 
     return results.map((lang) => ({
       id: lang.id,
@@ -1423,10 +1510,7 @@ export class LookupsService {
         ministries,
         eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
       )
-      .orderBy(
-        governmentRepresentatives.sortOrder,
-        governmentRepresentatives.displayName
-      );
+      .orderBy(...(await this.listOrderBy('government-representatives')));
 
     return results.map((rep) => ({
       id: rep.id,
@@ -1588,6 +1672,7 @@ export class LookupsService {
    * Get all active cities
    */
   async getCities(): Promise<LookupItem[]> {
+    const orderBy = await this.listOrderBy('cities');
     const results = await this.databaseService.db
       .select({
         id: cities.id,
@@ -1599,7 +1684,7 @@ export class LookupsService {
         isActive: cities.isActive,
       })
       .from(cities)
-      .orderBy(cities.sortOrder);
+      .orderBy(...orderBy);
 
     return results.map((city) => ({
       id: city.id,
@@ -1618,6 +1703,7 @@ export class LookupsService {
    * Get all active ministries
    */
   async getMinistries(): Promise<MinistryLookupItem[]> {
+    const orderBy = await this.listOrderBy('ministries');
     const results = await this.databaseService.db
       .select({
         id: ministries.id,
@@ -1635,7 +1721,7 @@ export class LookupsService {
         governmentRepresentatives,
         eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
       )
-      .orderBy(ministries.sortOrder);
+      .orderBy(...orderBy);
 
     return results.map((ministry) => ({
       id: ministry.id,
@@ -1657,6 +1743,7 @@ export class LookupsService {
    * Returns all rows: there is no isActive on `ministry_groups` (retire by delete or reassign ministries).
    */
   async getMinistryGroups(): Promise<MinistryGroupResponse[]> {
+    const orderBy = await this.listOrderBy('ministry-groups');
     const rows = await this.databaseService.db
       .select({
         id: ministryGroups.id,
@@ -1664,7 +1751,7 @@ export class LookupsService {
         sortOrder: ministryGroups.sortOrder,
       })
       .from(ministryGroups)
-      .orderBy(asc(ministryGroups.sortOrder), asc(ministryGroups.id));
+      .orderBy(...orderBy);
 
     return rows.map((r) => ({
       id: r.id,
@@ -1675,7 +1762,7 @@ export class LookupsService {
 
   /** Insert a ministry group. */
   async createMinistryGroup(
-    data: { name: string; sortOrder: number },
+    data: { name: string; sortOrder?: number },
     currentUserId: number
   ): Promise<typeof ministryGroups.$inferSelect> {
     await this.assertLookupNameIsUnique(
@@ -1684,6 +1771,10 @@ export class LookupsService {
       'ministry group'
     );
 
+    const sortOrder = await this.sortOrderForCreate(
+      'ministry-groups',
+      data.sortOrder
+    );
     const now = new Date();
     const [result] = await this.withLookupConflict(
       'ministry_groups_normalized_name_unique',
@@ -1693,7 +1784,7 @@ export class LookupsService {
           .insert(ministryGroups)
           .values({
             name: this.normalizeLookupName(data.name),
-            sortOrder: data.sortOrder,
+            sortOrder,
             createdBy: currentUserId,
             lastUpdatedBy: currentUserId,
             createdDateTime: now,
@@ -1792,6 +1883,7 @@ export class LookupsService {
    * Get all active themes
    */
   async getThemes(): Promise<ThemeLookupItem[]> {
+    const orderBy = await this.listOrderBy('themes');
     const results = await this.databaseService.db
       .select({
         id: themes.id,
@@ -1801,7 +1893,7 @@ export class LookupsService {
         isActive: themes.isActive,
       })
       .from(themes)
-      .orderBy(themes.sortOrder);
+      .orderBy(...orderBy);
 
     return results.map((theme) => ({
       id: theme.id,
@@ -1818,6 +1910,7 @@ export class LookupsService {
    * Get all active activity statuses
    */
   async getActivityStatuses(): Promise<LookupItem[]> {
+    const orderBy = await this.listOrderBy('activity-statuses');
     const results = await this.databaseService.db
       .select({
         id: activityStatuses.id,
@@ -1827,7 +1920,7 @@ export class LookupsService {
         isActive: activityStatuses.isActive,
       })
       .from(activityStatuses)
-      .orderBy(activityStatuses.sortOrder);
+      .orderBy(...orderBy);
 
     return results.map((status) => ({
       id: status.id,
@@ -1847,7 +1940,7 @@ export class LookupsService {
     data: {
       name: string;
       displayName?: string | null;
-      sortOrder: number;
+      sortOrder?: number;
       isActive?: boolean;
       visibility?: 'global' | 'team';
       description?: string | null;
@@ -1867,6 +1960,10 @@ export class LookupsService {
       );
     }
 
+    const sortOrder = await this.sortOrderForCreate(
+      'categories',
+      data.sortOrder
+    );
     const now = new Date();
     return this.withLookupConflict(
       'categories_normalized_name_unique',
@@ -1878,7 +1975,7 @@ export class LookupsService {
             .values({
               name: this.normalizeLookupName(data.name),
               displayName: data.displayName ?? data.name,
-              sortOrder: data.sortOrder,
+              sortOrder,
               isActive: data.isActive ?? true,
               visibility,
               description: data.description ?? undefined,
@@ -1904,13 +2001,14 @@ export class LookupsService {
       displayName?: string | null;
       provinceOrState?: string | null;
       country?: string | null;
-      sortOrder: number;
+      sortOrder?: number;
       isActive?: boolean;
     },
     currentUserId: number
   ): Promise<typeof cities.$inferSelect> {
     await this.assertLookupNameIsUnique(cities, data.name, 'city');
 
+    const sortOrder = await this.sortOrderForCreate('cities', data.sortOrder);
     const now = new Date();
     const [result] = await this.withLookupConflict(
       'cities_normalized_name_unique',
@@ -1923,7 +2021,7 @@ export class LookupsService {
             displayName: data.displayName ?? data.name,
             provinceOrState: data.provinceOrState ?? undefined,
             country: data.country ?? undefined,
-            sortOrder: data.sortOrder,
+            sortOrder,
             isActive: data.isActive ?? true,
             createdBy: currentUserId,
             lastUpdatedBy: currentUserId,
@@ -1942,7 +2040,7 @@ export class LookupsService {
     data: {
       name: string;
       displayName?: string | null;
-      sortOrder: number;
+      sortOrder?: number;
       isActive?: boolean;
       description?: string | null;
     },
@@ -1954,6 +2052,10 @@ export class LookupsService {
       'comms material'
     );
 
+    const sortOrder = await this.sortOrderForCreate(
+      'comms-materials',
+      data.sortOrder
+    );
     const now = new Date();
     const [result] = await this.withLookupConflict(
       'comms_materials_normalized_name_unique',
@@ -1964,7 +2066,7 @@ export class LookupsService {
           .values({
             name: this.normalizeLookupName(data.name),
             displayName: data.displayName ?? data.name,
-            sortOrder: data.sortOrder,
+            sortOrder,
             isActive: data.isActive ?? true,
             description: data.description ?? undefined,
             createdBy: currentUserId,
@@ -1985,7 +2087,7 @@ export class LookupsService {
       name: string;
       displayName?: string | null;
       shortcode?: string | null;
-      sortOrder: number;
+      sortOrder?: number;
       isActive?: boolean;
       description?: string | null;
     },
@@ -1997,6 +2099,10 @@ export class LookupsService {
       'translation language'
     );
 
+    const sortOrder = await this.sortOrderForCreate(
+      'translation-languages',
+      data.sortOrder
+    );
     const now = new Date();
     const [result] = await this.withLookupConflict(
       'translated_languages_normalized_name_unique',
@@ -2008,7 +2114,7 @@ export class LookupsService {
             name: this.normalizeLookupName(data.name),
             displayName: data.displayName ?? data.name,
             shortcode: data.shortcode ?? undefined,
-            sortOrder: data.sortOrder,
+            sortOrder,
             isActive: data.isActive ?? true,
             description: data.description ?? undefined,
             createdBy: currentUserId,
@@ -2029,7 +2135,7 @@ export class LookupsService {
       name: string;
       displayName?: string | null;
       title?: string | null;
-      sortOrder: number;
+      sortOrder?: number;
       isActive?: boolean;
       representativeType?: string | null;
     },
@@ -2041,6 +2147,10 @@ export class LookupsService {
       'government representative'
     );
 
+    const sortOrder = await this.sortOrderForCreate(
+      'government-representatives',
+      data.sortOrder
+    );
     const now = new Date();
     const [result] = await this.withLookupConflict(
       'government_representatives_normalized_name_unique',
@@ -2052,7 +2162,7 @@ export class LookupsService {
             name: this.normalizeLookupName(data.name),
             displayName: data.displayName ?? data.name,
             title: data.title ?? undefined,
-            sortOrder: data.sortOrder,
+            sortOrder,
             isActive: data.isActive ?? true,
             representativeType: data.representativeType ?? undefined,
             createdBy: currentUserId,
@@ -2092,6 +2202,7 @@ export class LookupsService {
       );
     }
 
+    const sortOrder = await this.sortOrderForCreate('tags', data.sortOrder);
     const now = new Date();
     return this.withLookupConflict(
       'tags_normalized_name_unique',
@@ -2103,7 +2214,7 @@ export class LookupsService {
             .values({
               name: this.normalizeLookupName(data.name),
               displayName: data.displayName ?? data.name,
-              sortOrder: data.sortOrder ?? 0,
+              sortOrder,
               isActive: data.isActive ?? true,
               visibility,
               description: data.description ?? undefined,
@@ -2129,7 +2240,7 @@ export class LookupsService {
       displayName: string;
       abbreviation: string; // Required by schema
       ministerGovernmentRepId?: number | null;
-      sortOrder: number;
+      sortOrder?: number;
       isActive?: boolean;
       ministryGroupId?: number | null;
     },
@@ -2137,6 +2248,10 @@ export class LookupsService {
   ): Promise<typeof ministries.$inferSelect> {
     await this.assertLookupNameIsUnique(ministries, data.name, 'ministry');
 
+    const sortOrder = await this.sortOrderForCreate(
+      'ministries',
+      data.sortOrder
+    );
     return this.withLookupConflict(
       'ministries_normalized_name_unique',
       'A ministry with this name already exists.',
@@ -2176,7 +2291,7 @@ export class LookupsService {
               abbreviation: data.abbreviation,
               ministerGovernmentRepId:
                 data.ministerGovernmentRepId ?? undefined,
-              sortOrder: data.sortOrder,
+              sortOrder,
               isActive: data.isActive ?? true,
               ministryGroupId: data.ministryGroupId ?? undefined,
               createdBy: currentUserId,
@@ -2197,19 +2312,23 @@ export class LookupsService {
     data: {
       name: string;
       displayName?: string | null;
-      sortOrder: number;
+      sortOrder?: number;
       isActive?: boolean;
       description?: string | null;
     },
     currentUserId: number
   ): Promise<typeof activityStatuses.$inferSelect> {
+    const sortOrder = await this.sortOrderForCreate(
+      'activity-statuses',
+      data.sortOrder
+    );
     const now = new Date();
     const [result] = await this.databaseService.db
       .insert(activityStatuses)
       .values({
         name: data.name,
         displayName: data.displayName ?? data.name, // Schema requires notNull, fallback to name
-        sortOrder: data.sortOrder,
+        sortOrder,
         isActive: data.isActive ?? true,
         description: data.description ?? undefined,
         createdBy: currentUserId,
@@ -2228,13 +2347,14 @@ export class LookupsService {
     data: {
       name: string;
       displayName?: string | null;
-      sortOrder: number;
+      sortOrder?: number;
       isActive?: boolean;
     },
     currentUserId: number
   ): Promise<any> {
     await this.assertLookupNameIsUnique(themes, data.name, 'theme');
 
+    const sortOrder = await this.sortOrderForCreate('themes', data.sortOrder);
     const now = new Date();
     await this.databaseService.db.execute(sql`
       SELECT setval(
@@ -2252,7 +2372,7 @@ export class LookupsService {
           .values({
             name: this.normalizeLookupName(data.name),
             displayName: data.displayName ?? data.name,
-            sortOrder: data.sortOrder,
+            sortOrder,
             isActive: data.isActive ?? true,
             createdBy: currentUserId,
             lastUpdatedBy: currentUserId,
@@ -2407,6 +2527,15 @@ export class LookupsService {
     ids: number[],
     currentUserId: number
   ): Promise<void> {
+    if (!isReorderableLookupKey(entity)) {
+      throw new NotFoundException(`Lookup '${entity}' cannot be reordered`);
+    }
+    const mode = await this.getLookupSortMode(entity);
+    if (mode !== 'manual') {
+      throw new ConflictException(
+        `Lookup '${entity}' is sorted A–Z; switch to Custom before reordering.`
+      );
+    }
     const table = REORDERABLE_LOOKUP_TABLES[entity];
     // One set-based UPDATE so concurrent reorders can't lock rows in opposing orders (deadlock).
     const positions = sql.join(
