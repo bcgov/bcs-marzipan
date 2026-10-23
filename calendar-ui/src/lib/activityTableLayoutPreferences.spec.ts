@@ -67,6 +67,25 @@ describe('activityTableLayoutPreferences', () => {
     });
   });
 
+  it('keeps all columns visible when stored layout predates columnVisibility', () => {
+    expect(
+      normalizeActivityGridLayoutPreferences({
+        columnOrder: ['select', 'summary', 'materials'],
+        columnSizing: { summary: 400 },
+      }).columnVisibility
+    ).toEqual({});
+  });
+
+  it('treats an empty columnVisibility object as product defaults', () => {
+    expect(
+      normalizeActivityGridLayoutPreferences({
+        columnOrder: ['select', 'summary'],
+        columnSizing: {},
+        columnVisibility: {},
+      }).columnVisibility
+    ).toEqual({ materials: false });
+  });
+
   it('reconciles stored column order with defaults', () => {
     const defaultOrder = [
       'select',

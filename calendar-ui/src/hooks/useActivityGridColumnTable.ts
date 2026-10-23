@@ -207,7 +207,6 @@ export function useActivityGridColumnTable({
   return {
     table,
     columnOrder: visibleColumnOrder,
-    allColumnOrder: columnOrder,
     columnVisibility,
     toggleColumnVisibility,
     draggableColumnIds,

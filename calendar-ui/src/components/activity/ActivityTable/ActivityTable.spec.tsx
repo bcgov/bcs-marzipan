@@ -285,6 +285,10 @@ describe('ActivityTable layout', () => {
     );
     expect(reread.columnOrder).toEqual(savedOrder);
     expect(reread.columnSizing).toEqual({ summary: 500 });
+    expect(reread.columnVisibility).toEqual({
+      materials: true,
+      scheduling: false,
+    });
   });
 });
 

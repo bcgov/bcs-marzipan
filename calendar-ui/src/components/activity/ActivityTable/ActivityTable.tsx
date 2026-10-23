@@ -202,7 +202,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
               userMap={userMap}
               showUpdatedByAvatar={false}
             />
-            <LeadContactLine row={row.original} variant="labelled" />
+            <LeadContactLine row={row.original} />
           </div>
         ),
       }),
@@ -243,12 +243,19 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
   });
 
   const columnOptions = useMemo(
-    () =>
-      GRID_A_HIDEABLE_COLUMNS.map(({ id, label }) => ({
+    () => [
+      {
+        id: 'overview',
+        label: 'Overview',
+        visible: true,
+        disabled: true,
+      },
+      ...GRID_A_HIDEABLE_COLUMNS.map(({ id, label }) => ({
         id,
         label,
         visible: columnVisibility[id] !== false,
       })),
+    ],
     [columnVisibility]
   );
 

@@ -16,7 +16,7 @@ export interface UseActivityGridLayoutPreferencesResult {
   setColumnVisibility: (visibility: Record<string, boolean>) => void;
 }
 
-/** Reads and writes sessionStorage-backed Grid A column order and widths. */
+/** Reads and writes sessionStorage-backed Grid A column order, widths, and visibility. */
 export function useActivityGridLayoutPreferences(): UseActivityGridLayoutPreferencesResult {
   const [preferences, setPreferencesState] =
     useState<ActivityGridLayoutPreferences>(() =>

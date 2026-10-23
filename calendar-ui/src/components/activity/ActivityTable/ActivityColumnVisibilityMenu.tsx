@@ -5,8 +5,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -14,6 +12,7 @@ export interface ActivityColumnVisibilityOption {
   id: string;
   label: string;
   visible: boolean;
+  disabled?: boolean;
 }
 
 export interface ActivityColumnVisibilityMenuProps {
@@ -34,12 +33,11 @@ export function ActivityColumnVisibilityMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuLabel>Show columns</DropdownMenuLabel>
-        <DropdownMenuSeparator />
         {options.map((option) => (
           <DropdownMenuCheckboxItem
             key={option.id}
             checked={option.visible}
+            disabled={option.disabled}
             onCheckedChange={(checked) => onToggle(option.id, checked === true)}
             onSelect={(e) => e.preventDefault()}
           >
