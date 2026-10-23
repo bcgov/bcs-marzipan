@@ -257,13 +257,29 @@ describe('LookupsService', () => {
   describe('reorderLookup', () => {
     const dialect = new PgDialect();
 
+    const mockSortMode = (sortMode: 'manual' | 'alphabetical') => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValue(createChain([{ sortMode }], 'limit'));
+    };
+
     const mockUpdate = (where: ReturnType<typeof vi.fn>) => {
       const set = vi.fn().mockReturnValue({ where });
       mockDatabaseService.db.update = vi.fn().mockReturnValue({ set });
       return set;
     };
 
+    it('rejects reorder when sort mode is alphabetical', async () => {
+      mockSortMode('alphabetical');
+
+      await expect(service.reorderLookup('themes', [1, 2], 7)).rejects.toThrow(
+        ConflictException
+      );
+      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+    });
+
     it('assigns 1..n positions in a single UPDATE limited to the given ids', async () => {
+      mockSortMode('manual');
       const where = vi.fn().mockResolvedValue(undefined);
       const set = mockUpdate(where);
 
@@ -289,6 +305,7 @@ describe('LookupsService', () => {
     });
 
     it('propagates database failures', async () => {
+      mockSortMode('manual');
       mockUpdate(vi.fn().mockRejectedValue(new Error('deadlock detected')));
 
       await expect(service.reorderLookup('cities', [1, 2], 7)).rejects.toThrow(

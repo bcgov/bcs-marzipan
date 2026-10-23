@@ -21,6 +21,8 @@ export const lookupQueryKeys = {
   /** Root prefix; invalidating this refreshes every lookup query. */
   root: ['lookups'] as const,
 
+  sortSettings: () => ['lookups', 'sort-settings'] as const,
+
   categories: () => ['lookups', 'categories'] as const,
   /** Admin categories list (`includeAll=true`). Shares the `['lookups', 'categories']` prefix. */
   categoriesAdmin: () => ['lookups', 'categories', 'admin'] as const,
