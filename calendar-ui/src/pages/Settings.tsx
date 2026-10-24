@@ -195,7 +195,7 @@ function SettingsPageContent({
     icon: typeof Megaphone;
   }>;
 }) {
-  const { closeAllSections, hasOpenSections, openSection } =
+  const { closeAllSections, hasOpenSections, openAllSections, openSection } =
     useSettingsSection();
   const [showBackToNavigation, setShowBackToNavigation] = useState(false);
   const [footerBarRect, setFooterBarRect] = useState<{
@@ -215,6 +215,17 @@ function SettingsPageContent({
     () => new Set(visibleSections.map((section) => section.id)),
     [visibleSections]
   );
+
+  const sectionBulkActionClassName =
+    'shrink-0 rounded-md px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none';
+
+  const handleToggleAllSections = useCallback(() => {
+    if (hasOpenSections) {
+      closeAllSections();
+      return;
+    }
+    openAllSections(visibleSections.map((section) => section.id));
+  }, [closeAllSections, hasOpenSections, openAllSections, visibleSections]);
 
   const scrollToSection = useCallback((sectionId: Section) => {
     document
@@ -308,11 +319,12 @@ function SettingsPageContent({
             </div>
             <button
               type="button"
-              onClick={closeAllSections}
-              disabled={!hasOpenSections}
-              className="shrink-0 rounded-md px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+              onClick={handleToggleAllSections}
+              className={sectionBulkActionClassName}
             >
-              Close all sections
+              {hasOpenSections
+                ? 'Collapse all sections'
+                : 'Expand all sections'}
             </button>
           </div>
           <div className="p-4 sm:p-6">

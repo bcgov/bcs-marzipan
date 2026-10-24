@@ -315,6 +315,25 @@ export async function fetchAllVenuePresets(): Promise<VenuePresetItem[]> {
   return res.data.data;
 }
 
+export type LookupSortMode = 'manual' | 'alphabetical';
+
+export async function fetchLookupSortSettings(): Promise<
+  Record<string, LookupSortMode>
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: Record<string, LookupSortMode>;
+  }>('/lookups/sort-settings');
+  return res.data.data;
+}
+
+export async function updateLookupSortMode(
+  entityKey: string,
+  sortMode: LookupSortMode
+): Promise<void> {
+  await api.patch(`/lookups/${entityKey}/sort-mode`, { sortMode });
+}
+
 // ============================================
 // Admin CRUD Functions
 // ============================================
