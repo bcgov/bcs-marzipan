@@ -178,33 +178,36 @@ describe('LookupsService', () => {
   });
 
   it('returns government representatives in admin sortOrder', async () => {
-    mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
-      createChain(
-        [
-          {
-            id: 2,
-            name: 'Niki Sharma',
-            displayName: 'Attorney General Niki Sharma',
-            title: 'Attorney General and Deputy Premier',
-            ministryId: 3,
-            representativeType: 'minister',
-            sortOrder: 1,
-            isActive: true,
-          },
-          {
-            id: 1,
-            name: 'Lana Popham',
-            displayName: 'Minister Lana Popham',
-            title: 'Minister of Agriculture and Food',
-            ministryId: 2,
-            representativeType: 'minister',
-            sortOrder: 2,
-            isActive: true,
-          },
-        ],
-        'orderBy'
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValueOnce(
+        createChain(
+          [
+            {
+              id: 2,
+              name: 'Niki Sharma',
+              displayName: 'Attorney General Niki Sharma',
+              title: 'Attorney General and Deputy Premier',
+              ministryId: 3,
+              representativeType: 'minister',
+              sortOrder: 1,
+              isActive: true,
+            },
+            {
+              id: 1,
+              name: 'Lana Popham',
+              displayName: 'Minister Lana Popham',
+              title: 'Minister of Agriculture and Food',
+              ministryId: 2,
+              representativeType: 'minister',
+              sortOrder: 2,
+              isActive: true,
+            },
+          ],
+          'orderBy'
+        )
       )
-    );
+      .mockReturnValueOnce(createChain([{ sortMode: 'manual' }], 'limit'));
 
     const result = await service.getGovernmentRepresentatives();
 

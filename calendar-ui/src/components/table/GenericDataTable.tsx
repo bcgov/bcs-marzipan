@@ -13,7 +13,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { CSS, type Transform } from '@dnd-kit/utilities';
 import {
   flexRender,
   getCoreRowModel,
@@ -37,16 +37,19 @@ import {
 import type { LookupReorderInteraction } from '@/lib/lookupReorderUiPreferences';
 import { cn } from '@/lib/utils';
 
-/** Padding for the drag-order column; width comes from {@link reorderColClass}. */
-const tableReorderCol = 'whitespace-nowrap px-2';
+/** Order column: fixed width under table-fixed so header text does not force horizontal scroll. */
+const tableReorderCol =
+  'w-20 min-w-20 max-w-20 whitespace-nowrap px-2 py-3 pr-4 text-center';
 
-const REORDER_COL_DRAG_CLASS = 'w-10';
-const REORDER_COL_STEP_CLASS = 'w-10';
+const REORDER_COL_WIDTH_CLASS = 'w-20';
 
-function reorderColClass(interaction: LookupReorderInteraction): string {
-  return interaction === 'drag'
-    ? REORDER_COL_DRAG_CLASS
-    : REORDER_COL_STEP_CLASS;
+/** Matches `@dnd-kit/modifiers` `restrictToVerticalAxis` (row reorder only needs Y). */
+function restrictToVerticalAxis({
+  transform,
+}: {
+  transform: Transform;
+}): Transform {
+  return { ...transform, x: 0 };
 }
 
 interface GenericDataTableProps<T extends object> {
@@ -248,7 +251,7 @@ export function GenericDataTable<T extends object>({
   const rowCount = rows.length;
 
   const orderHeader = (
-    <th className={cn(tableTh, tableReorderCol, 'text-center')} scope="col">
+    <th className={cn(tableTh, tableReorderCol)} scope="col">
       Order
     </th>
   );
@@ -269,7 +272,7 @@ export function GenericDataTable<T extends object>({
               }
             />
           ))}
-          <col className={reorderColClass(reorderInteraction)} />
+          <col className={REORDER_COL_WIDTH_CLASS} />
         </colgroup>
       )}
       <thead className={tableThead}>
@@ -354,6 +357,7 @@ export function GenericDataTable<T extends object>({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      modifiers={[restrictToVerticalAxis]}
       onDragEnd={handleDragEnd}
     >
       {tableElement}

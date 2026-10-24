@@ -193,6 +193,14 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     }
   };
 
+  /** Reorder already optimistically updates `queryKey`; avoid invalidating all lookups. */
+  const invalidateReorderCaches = () => {
+    void queryClient.invalidateQueries({ queryKey });
+    for (const key of additionalInvalidateKeys ?? []) {
+      void queryClient.invalidateQueries({ queryKey: key });
+    }
+  };
+
   const sortMode: LookupSortMode =
     (reorderEntityKey && sortSettings?.[reorderEntityKey]) || 'manual';
   const isCustomSort = sortMode === 'manual';
@@ -292,10 +300,10 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       await api.put(`${apiEndpoint}/order`, { ids });
     },
     onSuccess: () => {
-      invalidateListCaches();
+      invalidateReorderCaches();
     },
     onError: (error: unknown) => {
-      invalidateListCaches();
+      invalidateReorderCaches();
       showErrorToast(error);
     },
   });
@@ -512,32 +520,6 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       onAdd={handleOpenModal}
       addButtonLabel={`+ Add ${entityType.toLowerCase()}`}
       isLoading={isLoading}
-      titleAction={
-        enableManualSort && reorderEntityKey ? (
-          <Tabs
-            value={sortMode}
-            onValueChange={(value) => {
-              const mode = value as LookupSortMode;
-              if (
-                (mode === 'alphabetical' || mode === 'manual') &&
-                mode !== sortMode
-              ) {
-                sortModeMutation.mutate(mode);
-              }
-            }}
-            className="w-auto gap-0"
-          >
-            <TabsList size="sm" aria-label="Published sort order">
-              <TabsTrigger value="alphabetical" disabled={!orderControlsReady}>
-                A–Z
-              </TabsTrigger>
-              <TabsTrigger value="manual" disabled={!orderControlsReady}>
-                Custom
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        ) : undefined
-      }
       headerAction={
         <div className="flex flex-wrap items-center justify-end gap-2">
           <div className="relative">
@@ -575,6 +557,41 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       {bodyLead ? (
         <div className="mb-4 text-sm text-slate-600">{bodyLead}</div>
       ) : null}
+      {enableManualSort && reorderEntityKey ? (
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <Tabs
+            value={sortMode}
+            onValueChange={(value) => {
+              const mode = value as LookupSortMode;
+              if (
+                (mode === 'alphabetical' || mode === 'manual') &&
+                mode !== sortMode
+              ) {
+                sortModeMutation.mutate(mode);
+              }
+            }}
+            className="w-auto gap-0"
+          >
+            <TabsList size="sm" aria-label="Published sort order">
+              <TabsTrigger value="alphabetical" disabled={!orderControlsReady}>
+                A–Z
+              </TabsTrigger>
+              <TabsTrigger value="manual" disabled={!orderControlsReady}>
+                Custom
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {isCustomSort ? (
+            <LookupReorderMenu
+              dragEnabled={reorderInteraction === 'drag'}
+              disabled={!orderControlsReady}
+              onDragEnabledChange={(drag) =>
+                setReorderInteraction(drag ? 'drag' : 'step')
+              }
+            />
+          ) : null}
+        </div>
+      ) : null}
       {error && (
         <div className="text-destructive text-sm">
           Error loading {title.toLowerCase()}
@@ -582,17 +599,6 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       )}
       {filteredData && filteredData.length > 0 && (
         <>
-          {enableManualSort && isCustomSort ? (
-            <div className="mb-2 flex justify-end">
-              <LookupReorderMenu
-                dragEnabled={reorderInteraction === 'drag'}
-                disabled={!orderControlsReady}
-                onDragEnabledChange={(drag) =>
-                  setReorderInteraction(drag ? 'drag' : 'step')
-                }
-              />
-            </div>
-          ) : null}
           <div
             className={cn(
               tableContainer,
