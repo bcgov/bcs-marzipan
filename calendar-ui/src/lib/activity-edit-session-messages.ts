@@ -357,8 +357,15 @@ export function shouldWarnActivityEditBeforeUnload(input: {
   socketConnection: ActivitySocketConnectionDisplay;
   editRecoveryState: ActivityEditRecoveryState;
 }): boolean {
+  if (!input.isDirty) {
+    return false;
+  }
+
+  if (input.editRecoveryState === 'idle-expired') {
+    return true;
+  }
+
   return (
-    input.isDirty &&
     input.isActiveEditSession &&
     input.socketConnection === 'connected' &&
     !isActivityEditSessionActionsBlocked(
