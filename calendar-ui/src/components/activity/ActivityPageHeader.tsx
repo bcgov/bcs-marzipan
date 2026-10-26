@@ -225,13 +225,13 @@ export function ActivityPageHeader({
               size="icon"
               title={
                 isFlagged
-                  ? `Assigned to ${flaggedLabel} — click to edit`
-                  : 'Assign activity'
+                  ? `Flagged for ${flaggedLabel} — click to edit`
+                  : 'Flag activity'
               }
               aria-label={
                 isFlagged
-                  ? `Assigned to ${flaggedLabel} — click to edit`
-                  : 'Assign activity'
+                  ? `Flagged for ${flaggedLabel} — click to edit`
+                  : 'Flag activity'
               }
               onClick={() => setAssignModalOpen(true)}
               disabled={isFlagPending}
@@ -258,8 +258,8 @@ export function ActivityPageHeader({
               type="button"
               variant="ghost"
               size="icon"
-              title={`Assigned to ${currentUserFlag.assigneeName} — click to unassign`}
-              aria-label={`Assigned to ${currentUserFlag.assigneeName} — click to unassign`}
+              title={`Flagged for ${currentUserFlag.assigneeName} — click to unassign`}
+              aria-label={`Flagged for ${currentUserFlag.assigneeName} — click to unassign`}
               onClick={() =>
                 onFlagUnassign(
                   currentUserFlag.teamId,

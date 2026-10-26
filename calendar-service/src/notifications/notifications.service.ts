@@ -420,7 +420,7 @@ export class NotificationsService {
         entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
         entityId: activity.id,
         changeType: FLAG_ASSIGNMENT_CHANGED_CHANGE_TYPE,
-        summary: `You were assigned to review activity: ${this.formatActivityLabel(activity)}`,
+        summary: `You were flagged to review activity: ${this.formatActivityLabel(activity)}`,
         details: {
           activityId: activity.id,
           displayId: activity.displayId,
@@ -440,7 +440,7 @@ export class NotificationsService {
         entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
         entityId: activity.id,
         changeType: FLAG_ASSIGNMENT_CHANGED_CHANGE_TYPE,
-        summary: `You were unassigned from reviewing activity: ${this.formatActivityLabel(activity)}`,
+        summary: `You were unflagged from reviewing activity: ${this.formatActivityLabel(activity)}`,
         details: {
           activityId: activity.id,
           displayId: activity.displayId,
