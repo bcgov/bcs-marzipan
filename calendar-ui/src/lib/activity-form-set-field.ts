@@ -18,6 +18,8 @@ export const ACTIVITY_FIELD_SET_OPTS = {
   shouldValidate: false,
 } as const;
 
+export const ACTIVITY_FORM_USER_EDIT_EVENT = 'activity-form-user-edit';
+
 /**
  * Writes an activity form field via `form.setValue` instead of Controller `field.onChange`.
  *
@@ -41,4 +43,7 @@ export function setActivityFormFieldValue<
 ): void {
   form.setValue(name, value, ACTIVITY_FIELD_SET_OPTS);
   void form.trigger(name);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(ACTIVITY_FORM_USER_EDIT_EVENT));
+  }
 }

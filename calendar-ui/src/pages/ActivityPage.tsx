@@ -124,6 +124,7 @@ import {
   buildPayloadForUpdate,
   type UpdatePayloadOptions,
 } from '../lib/activity-form-payload';
+import { ACTIVITY_FORM_USER_EDIT_EVENT } from '../lib/activity-form-set-field';
 import { resolveTranslationRequiredStatusId } from '../lib/activity-form-translation-required';
 import { computeFormChanges } from '../lib/activity-history-format';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
@@ -1011,12 +1012,22 @@ export function ActivityPage({
   useEffect(() => {
     if (editRecoveryState !== 'idle-expired') return undefined;
     let resumed = false;
-    const subscription = form.watch((_values, info) => {
-      if (resumed || info.type !== 'change') return;
+    const resumeOnUserEdit = () => {
+      if (resumed) return;
       resumed = true;
       resyncEditSessionRef.current({ userInitiated: true });
+    };
+    const subscription = form.watch((_values, info) => {
+      if (info.type === 'change') resumeOnUserEdit();
     });
-    return () => subscription.unsubscribe();
+    window.addEventListener(ACTIVITY_FORM_USER_EDIT_EVENT, resumeOnUserEdit);
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener(
+        ACTIVITY_FORM_USER_EDIT_EVENT,
+        resumeOnUserEdit
+      );
+    };
   }, [editRecoveryState, form]);
 
   const editSessionActionsBlocked = useMemo(
