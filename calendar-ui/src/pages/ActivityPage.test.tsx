@@ -667,6 +667,36 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(titleTextarea).toHaveValue('Test Activity unsaved');
   });
 
+  it('resumes an idle-expired session after a custom control edit', async () => {
+    mockLockState = 'owned';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.type(titleTextarea, ' unsaved');
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+    mockWasLockIdleExpired.mockReturnValue(true);
+    act(() => {
+      mockActivityWebSocketOptions.onLockReleased?.();
+    });
+    await screen.findByText(/ended due to inactivity/i);
+
+    await user.click(screen.getByRole('checkbox', { name: /Issue/i }));
+
+    await waitFor(() =>
+      expect(mockEnsureLockForSubmit).toHaveBeenCalledTimes(1)
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/ended due to inactivity/i)
+      ).not.toBeInTheDocument()
+    );
+    expect(titleTextarea).toHaveValue('Test Activity unsaved');
+  });
+
   it('auto-recovers when the lock is released for a non-idle reason', async () => {
     mockLockState = 'owned';
     const user = userEvent.setup();
