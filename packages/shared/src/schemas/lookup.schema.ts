@@ -2,8 +2,27 @@ import { z } from 'zod';
 
 import { REPRESENTATIVE_TYPE, VISIBILITY } from '../constants/constants';
 import { venueAddressSchema } from './activity.schema';
+import {
+  LOOKUP_SORT_MODES,
+  REORDERABLE_LOOKUP_KEYS,
+  type LookupSortMode,
+  type ReorderableLookupKey,
+} from './lookup-sort.constants';
 import { refineLookupTeamVisibility } from './lookup-visibility-request';
 import { reportConfigSchema } from './report-config.schema';
+
+export {
+  LOOKUP_SORT_MODES,
+  REORDERABLE_LOOKUP_KEYS,
+  type LookupSortMode,
+  type ReorderableLookupKey,
+};
+
+/** Omit or empty sortOrder on create; server assigns next sort_order. */
+const optionalCreateSortOrderSchema = z.preprocess(
+  (v) => (v === '' || v == null ? undefined : v),
+  z.number().int().optional()
+);
 
 /**
  * Lookup Response Schemas
@@ -615,7 +634,7 @@ export type VenuePresetItem = z.infer<typeof venuePresetItemSchema>;
 const createCategoryRequestBaseSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  sortOrder: z.number().int(),
+  sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
   visibility: z.enum(VISIBILITY).default('global').optional(),
   description: z.string().nullable().optional(),
@@ -644,10 +663,7 @@ const createTagRequestBaseSchema = z.object({
     (v) => (v === '' ? null : v),
     z.string().min(1).max(255).nullable().optional()
   ),
-  sortOrder: z.preprocess(
-    (v) => (v === '' || v == null ? undefined : v),
-    z.number().int().default(0).optional()
-  ),
+  sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
   visibility: z.enum(['global', 'team']).default('global').optional(),
   description: z.string().nullable().optional(),
@@ -674,7 +690,7 @@ export const createCityRequestSchema = z.object({
   displayName: z.string().min(1).max(255),
   provinceOrState: z.string().max(255).nullable().optional(),
   country: z.string().max(255).nullable().optional(),
-  sortOrder: z.number().int(),
+  sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
 });
 
@@ -682,6 +698,25 @@ export const createCityRequestSchema = z.object({
  * Update City Request Schema
  */
 export const updateCityRequestSchema = createCityRequestSchema.partial();
+
+/**
+ * Lookup sort mode settings (admin reorderable types).
+ */
+export const lookupSortSettingsResponseSchema = z.record(
+  z.enum(REORDERABLE_LOOKUP_KEYS),
+  z.enum(LOOKUP_SORT_MODES)
+);
+
+export const updateLookupSortModeRequestSchema = z.object({
+  sortMode: z.enum(LOOKUP_SORT_MODES),
+});
+
+export type LookupSortSettingsResponse = z.infer<
+  typeof lookupSortSettingsResponseSchema
+>;
+export type UpdateLookupSortModeRequest = z.infer<
+  typeof updateLookupSortModeRequestSchema
+>;
 
 /**
  * Reorder Lookup Request Schema - item ids in their new display order
@@ -703,7 +738,7 @@ export const createMinistryRequestSchema = z.object({
   displayName: z.string().min(1).max(255),
   abbreviation: z.string().min(1).max(5),
   ministerGovernmentRepId: z.number().int().nullable().optional(),
-  sortOrder: z.number().int(),
+  sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
   ministryGroupId: z.number().int().nullable().optional(),
 });
@@ -727,7 +762,7 @@ export const updateMinistryRequestSchema = z.object({
 export const createCommsMaterialRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  sortOrder: z.number().int(),
+  sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
   description: z.string().nullable().optional(),
 });
@@ -745,7 +780,7 @@ export const createTranslationLanguageRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
   shortcode: z.string().max(15).nullable().optional(),
-  sortOrder: z.number().int(),
+  sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().optional(),
   description: z.string().nullable().optional(),
 });
@@ -763,7 +798,7 @@ export const createGovernmentRepresentativeRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
   title: z.string().max(255).nullable().optional(),
-  sortOrder: z.number().int(),
+  sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
   representativeType: z.enum(REPRESENTATIVE_TYPE).nullable().optional(),
 });
@@ -780,7 +815,7 @@ export const updateGovernmentRepresentativeRequestSchema =
 export const createThemeRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  sortOrder: z.number().int(),
+  sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
 });
 
@@ -795,7 +830,7 @@ export const updateThemeRequestSchema = createThemeRequestSchema.partial();
 export const createActivityStatusRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  sortOrder: z.number().int(),
+  sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
   description: z.string().nullable().optional(),
 });
@@ -816,7 +851,7 @@ export const createVenuePresetRequestSchema = z.object({
   city: z.string().max(255).nullable().optional(),
   provinceOrState: z.string().max(255).nullable().optional(),
   country: z.string().max(255).nullable().optional(),
-  sortOrder: z.number().int().default(0).optional(),
+  sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
   isPinned: z.boolean().default(false).optional(),
   pinnedSortOrder: z.number().int().default(0).optional(),

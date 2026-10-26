@@ -164,6 +164,7 @@ let mockAcquireFailureReason:
   | 'request-failed'
   | null = null;
 const mockApplyExternalLockReleased = vi.fn();
+const mockWasLockIdleExpired = vi.fn(() => false);
 vi.mock('../hooks/useActivityLock', () => ({
   useActivityLock: () => ({
     lock: null,
@@ -174,7 +175,9 @@ vi.mock('../hooks/useActivityLock', () => ({
     releaseWithRetry: mockRelease,
     refreshLockFromServer: mockRefreshLockFromServer,
     ensureLockForSubmit: mockEnsureLockForSubmit,
-    sendHeartbeat: vi.fn(),
+    sendHeartbeat: vi.fn().mockResolvedValue('ok'),
+    getServerNowMs: vi.fn(() => Date.now()),
+    wasLockIdleExpired: mockWasLockIdleExpired,
     applyExternalLockReleased: mockApplyExternalLockReleased,
     setLockedByOther: mockSetLockedByOther,
     clearLockedByOther: mockClearLockedByOther,
@@ -508,6 +511,7 @@ describe('ActivityPage optimistic inline edit', () => {
     mockNavigate.mockClear();
     mockRelease.mockClear();
     mockApplyExternalLockReleased.mockClear();
+    mockWasLockIdleExpired.mockClear().mockReturnValue(false);
     mockAcquire.mockClear().mockResolvedValue({ ok: true as const });
     mockRefreshLockFromServer.mockClear().mockResolvedValue('idle');
     mockEnsureLockForSubmit.mockClear().mockResolvedValue('ready');
@@ -621,6 +625,69 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(titleTextarea).toHaveValue('Test Activity unsaved');
     expect(
       screen.queryByText(/unsaved changes were discarded/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not reacquire after idle expiry until the user resumes', async () => {
+    mockLockState = 'owned';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.type(titleTextarea, ' unsaved');
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+    mockWasLockIdleExpired.mockReturnValue(true);
+    act(() => {
+      mockActivityWebSocketOptions.onLockReleased?.();
+    });
+
+    await screen.findByText(/ended due to inactivity/i);
+    expect(mockApplyExternalLockReleased).toHaveBeenCalled();
+    expect(titleTextarea).toHaveValue('Test Activity unsaved');
+
+    act(() => {
+      mockActivityWebSocketOptions.onActivitySocketReconnect?.();
+    });
+    await waitFor(() => expect(mockRefreshLockFromServer).toHaveBeenCalled());
+    expect(mockEnsureLockForSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(/ended due to inactivity/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Resume editing/i }));
+
+    await waitFor(() =>
+      expect(mockEnsureLockForSubmit).toHaveBeenCalledTimes(1)
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/ended due to inactivity/i)
+      ).not.toBeInTheDocument()
+    );
+    expect(titleTextarea).toHaveValue('Test Activity unsaved');
+  });
+
+  it('auto-recovers when the lock is released for a non-idle reason', async () => {
+    mockLockState = 'owned';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.type(titleTextarea, ' unsaved');
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+    act(() => {
+      mockActivityWebSocketOptions.onLockReleased?.();
+    });
+
+    await waitFor(() =>
+      expect(mockEnsureLockForSubmit).toHaveBeenCalledTimes(1)
+    );
+    expect(
+      screen.queryByText(/ended due to inactivity/i)
     ).not.toBeInTheDocument();
   });
 

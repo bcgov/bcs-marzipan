@@ -35,6 +35,10 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import { resolveTranslationRequiredStatusId } from '@/lib/activity-form-translation-required';
+import {
+  optionItemsEqual,
+  uniqueNumericIdsFromOptions,
+} from '@/lib/combobox-option-utils';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
@@ -110,10 +114,11 @@ function TranslationLanguagesField({
                     setActivityFormFieldValue(
                       form,
                       field.name,
-                      selected.map((o) => Number(o.value))
+                      uniqueNumericIdsFromOptions(selected)
                     )
                   }
                   itemToStringValue={(o) => o.label}
+                  isItemEqualToValue={optionItemsEqual}
                   readOnly={
                     translationsScope.readOnly &&
                     !translationsScope.fieldScopeDisabled

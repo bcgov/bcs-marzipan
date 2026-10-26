@@ -918,6 +918,42 @@ describe('FreeformCombobox', () => {
     });
   });
 
+  describe('onSetLead', () => {
+    it('supports keyboard focus and activation for Set as lead', async () => {
+      const user = userEvent.setup();
+      const onSetLead = vi.fn();
+      const value: FreeformComboboxItemWithLead[] = [
+        { type: 'option', value: 'option1' },
+        { type: 'option', value: 'option2', isLead: true },
+      ];
+
+      render(
+        <FreeformCombobox
+          {...defaultProps}
+          multiple
+          value={value}
+          onChange={vi.fn()}
+          onSetLead={onSetLead}
+        />
+      );
+
+      const setLeadButton = screen.getByRole('button', {
+        name: 'Set as lead',
+      });
+      expect(setLeadButton).not.toHaveAttribute('tabindex', '-1');
+
+      setLeadButton.focus();
+      expect(setLeadButton).toHaveFocus();
+
+      await user.keyboard('{Enter}');
+      expect(onSetLead).toHaveBeenCalledWith(0);
+
+      onSetLead.mockClear();
+      await user.keyboard(' ');
+      expect(onSetLead).toHaveBeenCalledWith(0);
+    });
+  });
+
   describe('Edge Cases', () => {
     it('handles option value that does not exist in options array', () => {
       const value: FreeformComboboxValue = {
