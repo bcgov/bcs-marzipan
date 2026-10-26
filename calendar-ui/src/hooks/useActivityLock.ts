@@ -376,7 +376,7 @@ export function useActivityLock(
       lastAcquireFailureRef.current = { reason: null, lockedByUsername: null };
       try {
         const acquired = await acquireLock(activityId);
-        recordServerTime(acquired.acquiredAt);
+        recordServerTime(acquired.serverTime);
         unconfirmedActivityAtRef.current = null;
         lockRef.current = acquired;
         setLock(acquired);

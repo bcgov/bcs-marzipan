@@ -47,6 +47,7 @@ const acquiredLock = {
   acquiredAt: '2026-10-08T18:00:00.000Z',
   expiresAt: '2026-10-08T19:00:00.000Z',
   idleExpiresAt: '2026-10-08T18:30:00.000Z',
+  serverTime: '2026-10-08T18:00:00.000Z',
 };
 
 describe('useActivityLock', () => {
@@ -97,6 +98,25 @@ describe('useActivityLock', () => {
     expect(ensureResult).toBe('ready');
     expect(acquireLockMock).toHaveBeenCalledWith(139);
     expect(result.current.lockState).toBe('owned');
+  });
+
+  it('uses the fresh server time, not the original acquisition time, for clock sync', async () => {
+    const now = Date.now();
+    acquireLockMock.mockResolvedValueOnce({
+      ...acquiredLock,
+      acquiredAt: new Date(now - 60 * 60 * 1000).toISOString(),
+      idleExpiresAt: new Date(now - 60 * 1000).toISOString(),
+      serverTime: new Date(now).toISOString(),
+    });
+    const { result } = renderHook(() => useActivityLock(139, 1));
+
+    await waitFor(() => expect(result.current.lockState).toBe('idle'));
+
+    await act(async () => {
+      await result.current.acquire();
+    });
+
+    expect(result.current.wasLockIdleExpired()).toBe(true);
   });
 
   it('returns acquire failure reason on the acquire result without waiting for render', async () => {

@@ -29,7 +29,9 @@ export type LockStatusResponse = {
   };
 };
 
-export type AcquireLockResponse = LockInfo;
+export type AcquireLockResponse = LockInfo & {
+  serverTime: string;
+};
 
 export type HeartbeatLockResponse = {
   serverTime: string;

@@ -103,6 +103,7 @@ export class LocksController {
       acquiredAt: lock.acquiredAt,
       expiresAt: lock.expiresAt,
       idleExpiresAt: lock.idleExpiresAt,
+      serverTime: new Date().toISOString(),
     };
   }
 
