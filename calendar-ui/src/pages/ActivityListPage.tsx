@@ -14,8 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useFavourites } from '@/hooks/useFavourites';
-import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
-import { useMinistries, useTeams } from '@/hooks/useLookups';
+import { useActivityTeamSharing, useMinistries } from '@/hooks/useLookups';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import { formatMinistrySelectionLabel } from '@/lib/ministry-tab-label';
 
@@ -86,20 +85,21 @@ export const ActivityListPage = () => {
   const [activeSavedFilter, setActiveSavedFilter] =
     useState<ActivityTableActiveSavedFilter | null>(null);
 
-  const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
+  const { data: activityTeamSharing } = useActivityTeamSharing();
   const { data: ministries = [] } = useMinistries();
-  const { data: allTeams = [] } = useTeams();
+  const allTeams = activityTeamSharing?.teams;
   const { favouriteActivityIds } = useFavourites();
 
   const userTeamIds = useMemo(() => user?.teamIds ?? [], [user?.teamIds]);
-  // Lead options need create/edit permission; fall back to the full team list.
   const userTeams = useMemo(() => {
-    const byId = new Map<number, UserTeam>();
-    [...allTeams, ...leadTeamOptions].forEach((t) => {
-      if (userTeamIds.includes(t.id)) byId.set(t.id, t);
-    });
-    return [...byId.values()];
-  }, [allTeams, leadTeamOptions, userTeamIds]);
+    return (allTeams ?? [])
+      .filter((team) => userTeamIds.includes(team.id))
+      .map(({ id, ministryId, ministryName }) => ({
+        id,
+        ministryId,
+        ministryName,
+      }));
+  }, [allTeams, userTeamIds]);
   const teamsWithMinistry = useMemo(
     () =>
       userTeams.filter(
@@ -161,7 +161,7 @@ export const ActivityListPage = () => {
     teamsWithMinistry.forEach((t) => {
       if (sharedTabIds.includes(t.ministryId)) ids.add(t.id);
     });
-    allTeams.forEach((t) => {
+    allTeams?.forEach((t) => {
       if (t.ministryId != null && sharedTabIds.includes(t.ministryId)) {
         ids.add(t.id);
       }

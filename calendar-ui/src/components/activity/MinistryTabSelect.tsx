@@ -1,19 +1,12 @@
-import { Check, ChevronDown } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
+import { useState } from 'react';
 
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
 
 export interface MinistryTabOption {
   id: number;
@@ -34,6 +27,11 @@ export function MinistryTabSelect({
   onChange,
   ariaLabel,
 }: MinistryTabSelectProps) {
+  const [search, setSearch] = useState('');
+  const filteredOptions = options.filter((option) =>
+    option.label.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
   const toggle = (id: number) => {
     if (selectedIds.includes(id)) {
       if (selectedIds.length === 1) return;
@@ -44,7 +42,11 @@ export function MinistryTabSelect({
   };
 
   return (
-    <Popover>
+    <Popover
+      onOpenChange={(open) => {
+        if (!open) setSearch('');
+      }}
+    >
       <PopoverTrigger
         asChild
         onClick={(e) => e.stopPropagation()}
@@ -60,32 +62,45 @@ export function MinistryTabSelect({
         </span>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-0">
-        <Command>
-          <CommandInput placeholder="Search ministries..." />
-          <CommandList>
-            <CommandEmpty>No ministries found.</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => {
-                const selected = selectedIds.includes(option.id);
-                return (
-                  <CommandItem
-                    key={option.id}
-                    value={option.label}
-                    onSelect={() => toggle(option.id)}
-                  >
-                    <Check
-                      className={cn(
-                        'mr-2 h-4 w-4',
-                        selected ? 'opacity-100' : 'opacity-0'
-                      )}
-                    />
-                    {option.label}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+        <div className="flex items-center border-b px-3">
+          <Search
+            aria-hidden="true"
+            className="mr-2 h-4 w-4 shrink-0 opacity-50"
+          />
+          <input
+            aria-label="Search ministries"
+            className="placeholder:text-muted-foreground flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search ministries..."
+            type="text"
+            value={search}
+          />
+        </div>
+        <div
+          aria-label="Ministries"
+          className="max-h-[var(--popover-list-max-height)] overflow-y-auto p-1"
+          role="group"
+        >
+          {filteredOptions.length === 0 ? (
+            <p className="text-muted-foreground py-6 text-center text-sm">
+              No ministries found.
+            </p>
+          ) : (
+            filteredOptions.map((option) => (
+              <div
+                key={option.id}
+                className="hover:bg-accent flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
+              >
+                <Checkbox
+                  aria-label={option.label}
+                  checked={selectedIds.includes(option.id)}
+                  onCheckedChange={() => toggle(option.id)}
+                />
+                <span>{option.label}</span>
+              </div>
+            ))
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );
