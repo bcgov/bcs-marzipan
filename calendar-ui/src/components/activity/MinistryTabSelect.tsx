@@ -53,6 +53,13 @@ export function MinistryTabSelect({
         <span
           role="button"
           tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              e.currentTarget.click();
+            }
+          }}
           className="hover:bg-muted rounded p-0.5"
           aria-label={ariaLabel}
         >
