@@ -77,7 +77,7 @@ jobs:
           fi
 
           if [[ -z "${{ inputs.image_tag || vars.APP_VERSION }}" ]]; then
-            echo "::error::Set repo variable APP_VERSION or pass image_tag"
+            echo "::error::Set repo variable APP_VERSION or pass image_tag. SHA fallback is disabled for normal deploy builds to avoid orphaned Artifactory tags."
             exit 1
           fi
 
