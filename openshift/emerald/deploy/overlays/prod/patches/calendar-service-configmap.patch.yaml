@@ -7,3 +7,5 @@ data:
   AUTH_COOKIE_DOMAIN: calendar.digital.gcpe.gov.bc.ca
   POST_LOGIN_REDIRECT_URL: https://calendar.digital.gcpe.gov.bc.ca
   CORS_ALLOWED_ORIGINS: https://calendar.digital.gcpe.gov.bc.ca,http://localhost:3000,http://localhost:4173,http://localhost:8080
+  NOTIFICATIONS_EMAIL_SUBJECT_PREFIX: 'Corpcal 2.0 - Notification'
+  NOTIFICATIONS_EMAIL_FROM: 'noreply@gov.bc.ca'
