@@ -209,6 +209,20 @@ describe('buildActivityFindAllConditions', () => {
     expect(conditions).toHaveLength(4);
   });
 
+  it('adds a condition for leadMinistryIds', () => {
+    const { db } = createMockDb();
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters({ leadMinistryIds: [3, 4] }),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      db,
+      dataScope: BYPASS_DATA_SCOPE,
+    });
+    // 2 archive exclusions + 1 inArray filter
+    expect(conditions).toHaveLength(3);
+  });
+
   it('builds exists subqueries for junction-table filters', () => {
     const { select, db } = createMockDb();
     buildActivityFindAllConditions({
