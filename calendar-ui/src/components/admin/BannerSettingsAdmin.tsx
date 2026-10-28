@@ -439,6 +439,7 @@ export function BannerSettingsAdmin() {
                 id="banner-content"
                 ref={contentRef}
                 contentEditable={canManage}
+                lang="en-CA"
                 suppressContentEditableWarning
                 onInput={() => {
                   const nextContent = contentRef.current?.innerHTML ?? '';

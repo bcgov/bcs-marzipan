@@ -562,6 +562,7 @@ export function FreeformCombobox({
       <input
         ref={inputRef}
         type="text"
+        lang="en-CA"
         className={cn(
           'placeholder:text-muted-foreground min-w-16 flex-1 bg-transparent text-sm outline-none',
           readOnly && READ_ONLY_STATIC_PLACEHOLDER

@@ -154,6 +154,7 @@ export function RichTextField({
     editorProps: {
       attributes: {
         ...(id ? { id } : {}),
+        lang: 'en-CA',
         class: cn(
           'prose prose-sm max-w-none dark:prose-invert outline-none',
           'min-h-[120px] px-3 py-2 text-sm',
