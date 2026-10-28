@@ -28,7 +28,7 @@ and `@corpcal/database`.
 
 A specific calendar day with no time and no timezone, e.g. `2026-04-27`. This
 is a label for "the scheduled day" in the corp calendar. It is the right type
-for activity `startDate`, `endDate`, and `pitchDate`.
+for activity `startDate` and `endDate`.
 
 - **Wire format**: `YYYY-MM-DD` string.
 - **Database**: PostgreSQL `DATE` (timezone-agnostic).
@@ -173,7 +173,7 @@ calling `toLocaleDateString` / `toLocaleTimeString` without `timeZone`.
 
 ## Wire contract for the API
 
-- `startDate`, `endDate`, `pitchDate`: `CalendarDateString | null`
+- `startDate`, `endDate`: `CalendarDateString | null`
   (`YYYY-MM-DD`).
 - `startTime`, `endTime`: `CivilTimeString | null` (`HH:mm`).
 - `createdDateTime`, `lastUpdatedDateTime`, and other instants:

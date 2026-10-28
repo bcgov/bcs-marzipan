@@ -55,23 +55,6 @@ const mockLookups: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  codes: [],
-  pitchRequiredStatuses: [
-    {
-      id: 1,
-      label: 'Pending',
-      value: 1,
-      name: 'pending',
-      displayName: 'Pending',
-    },
-    {
-      id: 2,
-      label: 'Required',
-      value: 2,
-      name: 'required',
-      displayName: 'Required',
-    },
-  ],
   activityStatuses: [],
   commsMaterials: [],
   translationLanguages: [],
@@ -92,7 +75,6 @@ function ActivityOverviewSectionHarness({
     id: 301,
     lastUpdatedDateTime: '2026-05-20T12:00:00.000Z',
     isIssue: false,
-    pitchRequiredStatusId: 1,
     category: ['Test Category'],
     commsContacts: [{ userId: 1, name: 'Lead', isLead: true }],
     summary: tipTapDocJsonFromPlainText('Test summary'),
@@ -126,8 +108,6 @@ function ActivityOverviewSectionHarness({
           categories={mockLookups.categories}
           organizations={[]}
           tags={[]}
-          codes={[]}
-          pitchRequiredStatuses={mockLookups.pitchRequiredStatuses}
           userTeamIds={[5]}
         />
       </ActivityEditProvider>
@@ -183,32 +163,6 @@ describe('ActivityOverviewSection field updates after hydration', () => {
     await waitFor(() => {
       expect(formRef!.getValues('isIssue')).toBe(true);
       expect(formRef!.formState.dirtyFields.isIssue).toBe(true);
-    });
-  });
-
-  it('marks pitchRequiredStatusId dirty when FormSelectSafe value changes', async () => {
-    const user = userEvent.setup();
-    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
-
-    render(
-      <ActivityOverviewSectionHarness
-        onFormReady={(form) => {
-          formRef = form;
-        }}
-      />
-    );
-
-    const pitchSelect = await screen.findByRole('combobox', {
-      name: /^Pitch required$/i,
-    });
-    await user.click(pitchSelect);
-
-    const requiredOption = await screen.findByText('Required');
-    await user.click(requiredOption);
-
-    await waitFor(() => {
-      expect(formRef!.getValues('pitchRequiredStatusId')).toBe(2);
-      expect(formRef!.formState.dirtyFields.pitchRequiredStatusId).toBe(true);
     });
   });
 });

@@ -151,33 +151,6 @@ export const timeStatuses = pgTable('time_statuses', {
 });
 
 /**
- * PitchRequiredStatus lookup table - Tri-state for whether pitch is required
- * Values: 'pending', 'required', 'not_required'
- */
-export const pitchRequiredStatuses = pgTable('pitch_required_statuses', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }).notNull(),
-  sortOrder: integer('sort_order').notNull().default(0),
-  isActive: boolean('is_active').notNull().default(true),
-  description: text('description'),
-  createdDateTime: timestamp('created_date_time', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdBy: integer('created_by')
-    .notNull()
-    .references(() => users.id),
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
-  })
-    .notNull()
-    .defaultNow(),
-  lastUpdatedBy: integer('last_updated_by')
-    .notNull()
-    .references(() => users.id),
-});
-
-/**
  * TranslationRequiredStatus lookup table - Tri-state for whether translations are required
  * Values: 'pending', 'required', 'not_required'
  */
@@ -417,45 +390,6 @@ export const tags = pgTable(
     ),
     // Trigram index for ILIKE search on display_name
     index('idx_tags_display_name_trgm').using(
-      'gin',
-      sql`lower(${table.displayName}) gin_trgm_ops`
-    ),
-  ]
-);
-
-/**
- * Code lookup table - Activity coding labels (similar shape to tags).
- * All codes default to global visibility for now.
- */
-export const codes = pgTable(
-  'codes',
-  {
-    id: serial('id').primaryKey(),
-    name: varchar('name', { length: 255 }).notNull(),
-    displayName: varchar('display_name', { length: 255 }).notNull(),
-    sortOrder: integer('sort_order').notNull().default(0),
-    visibility: varchar('visibility', { length: 50 })
-      .notNull()
-      .default('global'),
-    isActive: boolean('is_active').notNull().default(true),
-    description: text('description'),
-    createdDateTime: timestamp('created_date_time', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    createdBy: integer('created_by')
-      .notNull()
-      .references(() => users.id),
-    lastUpdatedDateTime: timestamp('last_updated_date_time', {
-      withTimezone: true,
-    })
-      .notNull()
-      .defaultNow(),
-    lastUpdatedBy: integer('last_updated_by')
-      .notNull()
-      .references(() => users.id),
-  },
-  (table) => [
-    index('idx_codes_display_name_trgm').using(
       'gin',
       sql`lower(${table.displayName}) gin_trgm_ops`
     ),
@@ -756,5 +690,3 @@ export const categoriesRelations = relations(categories, ({ many }) => ({
 export const tagsRelations = relations(tags, ({ many }) => ({
   teamTags: many(teamTags),
 }));
-
-export const codesRelations = relations(codes, ({ many }) => ({}));

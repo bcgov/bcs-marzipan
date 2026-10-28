@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-import {
-  CONFIRMED_LOOKUP_NAME,
-  PITCHED_LOOKUP_NAME,
-} from '../constants/constants';
+import { CONFIRMED_LOOKUP_NAME } from '../constants/constants';
 import {
   zodConstraintIssueParams,
   zodRequiredIssueParams,
@@ -12,7 +9,6 @@ import {
 export type ActivitySchedulingLookupResolvers = {
   dateStatusNameForId?: (id: number) => string | undefined;
   timeStatusNameForId?: (id: number) => string | undefined;
-  pitchRequiredStatusNameForId?: (id: number) => string | undefined;
 };
 
 export type ActivitySchedulingFields = {
@@ -23,8 +19,6 @@ export type ActivitySchedulingFields = {
   isAllDay?: boolean;
   dateStatusId?: number;
   timeStatusId?: number;
-  pitchRequiredStatusId?: number | null;
-  pitchDate?: string | null;
 };
 
 const START_DATE_REQUIRED_MESSAGE = 'Start date is required';
@@ -35,8 +29,6 @@ const DATE_CONFIRMED_REQUIRES_DATES_MESSAGE =
   'Date status Confirmed requires start and end dates';
 const TIME_CONFIRMED_REQUIRES_TIMES_MESSAGE =
   'Time status Confirmed requires start and end times, or All day';
-const PITCHED_REQUIRES_PITCH_DATE_MESSAGE =
-  'Pitch status Pitched requires a pitch date';
 
 function normalizeLookupName(name: string | undefined): string {
   return (name ?? '').trim().toLowerCase();
@@ -44,10 +36,6 @@ function normalizeLookupName(name: string | undefined): string {
 
 function isConfirmedLookupName(name: string | undefined): boolean {
   return normalizeLookupName(name) === CONFIRMED_LOOKUP_NAME;
-}
-
-function isPitchedLookupName(name: string | undefined): boolean {
-  return normalizeLookupName(name) === PITCHED_LOOKUP_NAME;
 }
 
 function hasNonEmptyDate(value: string | null | undefined): boolean {
@@ -78,19 +66,6 @@ function resolveTimeStatusName(
   return resolvers.timeStatusNameForId(data.timeStatusId);
 }
 
-function resolvePitchStatusName(
-  data: ActivitySchedulingFields,
-  resolvers: ActivitySchedulingLookupResolvers | undefined
-): string | undefined {
-  if (
-    data.pitchRequiredStatusId == null ||
-    resolvers?.pitchRequiredStatusNameForId == null
-  ) {
-    return undefined;
-  }
-  return resolvers.pitchRequiredStatusNameForId(data.pitchRequiredStatusId);
-}
-
 function addIssue(
   ctx: z.RefinementCtx,
   path: (string | number)[],
@@ -109,7 +84,7 @@ function addIssue(
 
 /**
  * Validates scheduling dates/times and cross-field status rules.
- * When resolvers are omitted, Confirmed/Pitched coupling is skipped (service validates with DB lookups).
+ * When resolvers are omitted, Confirmed coupling is skipped (service validates with DB lookups).
  */
 export function applyActivitySchedulingValidation(
   data: ActivitySchedulingFields,
@@ -179,20 +154,6 @@ export function applyActivitySchedulingValidation(
         'constraint'
       );
     }
-  }
-
-  const pitchStatusName = resolvePitchStatusName(data, resolvers);
-  if (
-    pitchStatusName != null &&
-    isPitchedLookupName(pitchStatusName) &&
-    !hasNonEmptyDate(data.pitchDate)
-  ) {
-    addIssue(
-      ctx,
-      ['pitchDate'],
-      PITCHED_REQUIRES_PITCH_DATE_MESSAGE,
-      'constraint'
-    );
   }
 }
 

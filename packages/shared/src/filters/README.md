@@ -22,7 +22,7 @@ is interpreted across the Reports (server SQL) path and the Activity List
 - **OR within a multi-select**: any selected value matches.
 - **Scheduled date range**: activity span must **overlap** the filter window. The Activity List and Reports set `scheduledDateRangeOverlaps=true`, so both activity `startDate` and `endDate` are required. Without that API flag, SQL overlap still applies but a missing `endDate` is treated as single-day.
 - A dimension with no value in state is skipped.
-- Field-scope visibility (e.g. pitch) does **not** gate predicates: criteria
+- Field-scope visibility does **not** gate predicates: criteria
   apply whenever present in state. The same goes for `hasActivityFilterCriteria`.
 
 ## Owners and parity

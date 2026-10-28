@@ -33,7 +33,6 @@ export const ACTIVITY_HISTORY_FIELD_ALIASES: Readonly<
 > = {
   categoryIds: ['categoryIds', 'categories'],
   tagIds: ['tagIds', 'tags'],
-  codeIds: ['codeIds', 'codes'],
   sharedWithTeamIds: ['sharedWithTeamIds', 'sharedWith'],
 };
 

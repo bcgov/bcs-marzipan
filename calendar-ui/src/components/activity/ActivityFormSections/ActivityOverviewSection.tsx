@@ -1,10 +1,7 @@
-import { format } from 'date-fns';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useMemo } from 'react';
 
-import { PITCHED_LOOKUP_NAME } from '@corpcal/shared';
-import type { PitchRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import {
   ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH,
   ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
@@ -18,11 +15,6 @@ import {
   tipTapDocJsonFromPlainText,
   type LookupTeamScope,
 } from '@corpcal/shared/utils';
-import {
-  FormSelectSafe,
-  FormSelectTrigger,
-} from '@/components/app/form-select';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Combobox,
@@ -52,15 +44,9 @@ import {
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
 import { RichTextField } from '@/components/ui/rich-text-field';
-import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
-import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
-import {
-  optionalIdSelectDisplayValue,
-  optionalSelectIdValue,
-} from '@/lib/activity-form-coerce-value';
+import { optionalSelectIdValue } from '@/lib/activity-form-coerce-value';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
@@ -68,11 +54,6 @@ import {
   optionItemsEqual,
   uniqueNumericIdsFromOptions,
 } from '@/lib/combobox-option-utils';
-import {
-  getPresetAnchorToday,
-  parseIsoDateLocal,
-  PRESETS_FUTURE_SHORT,
-} from '@/lib/scheduled-date-presets';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
@@ -270,13 +251,6 @@ type ActivityOverviewSectionProps = {
     visibility?: string;
     teamIds?: number[];
   }>;
-  codes: Array<{
-    id: number;
-    text: string;
-    visibility?: string;
-    teamIds?: number[];
-  }>;
-  pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
   userTeamIds: number[];
   hasCreateAny?: boolean;
 };
@@ -287,27 +261,16 @@ export const ActivityOverviewSection: React.FC<
   categories,
   organizations,
   tags,
-  codes,
-  pitchRequiredStatuses,
   userTeamIds,
   hasCreateAny = false,
 }) => {
   const { readOnly, canViewFieldScope } = useActivityEdit();
   const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
-  const canViewPitchStatus = canViewFieldScope?.('pitchStatus') ?? false;
-  const canViewPitchDate = canViewFieldScope?.('pitchDate') ?? false;
   const canViewInternalNotes = canViewFieldScope?.('internalNotes') ?? false;
-  const canViewCodes = canViewFieldScope?.('codes') ?? false;
-  const pitchStatusScope = useActivityFieldScopeControl('pitchStatus');
-  const pitchDateScope = useActivityFieldScopeControl('pitchDate');
   const internalNotesScope = useActivityFieldScopeControl('internalNotes');
-  const codesScope = useActivityFieldScopeControl('codes');
   const form = useFormContext<ActivityFormData>();
-  const pitchDateValue = useWatch({ control: form.control, name: 'pitchDate' });
-  const hasPitchDate = Boolean(String(pitchDateValue ?? '').trim());
   const categoriesAnchorRef = useComboboxAnchor();
   const tagsAnchorRef = useComboboxAnchor();
-  const codesAnchorRef = useComboboxAnchor();
 
   const categoryScopeById = useMemo(
     () =>
@@ -407,40 +370,6 @@ export const ActivityOverviewSection: React.FC<
   const pickableTagOptions = useMemo(
     () => [...pickableTeamTagOptions, ...pickableGlobalTagOptions],
     [pickableTeamTagOptions, pickableGlobalTagOptions]
-  );
-
-  const codeScopeById = useMemo(
-    () =>
-      new Map<number, LookupTeamScope>(
-        codes.map((c) => [c.id, toLookupScope(c.visibility, c.teamIds)])
-      ),
-    [codes]
-  );
-  const codeLabelById = useMemo(
-    () => new Map(codes.map((c) => [c.id, c.text] as const)),
-    [codes]
-  );
-  const pickableCodes = useMemo(
-    () => codes.filter((c) => isLookupPickable(c, userTeamIds, hasCreateAny)),
-    [codes, userTeamIds, hasCreateAny]
-  );
-  const pickableTeamCodeOptions = useMemo(
-    () =>
-      pickableCodes
-        .filter((c) => c.visibility === 'team')
-        .map((c) => toLookupOption(c.id, c.text)),
-    [pickableCodes]
-  );
-  const pickableGlobalCodeOptions = useMemo(
-    () =>
-      pickableCodes
-        .filter((c) => c.visibility !== 'team')
-        .map((c) => toLookupOption(c.id, c.text)),
-    [pickableCodes]
-  );
-  const pickableCodeOptions = useMemo(
-    () => [...pickableTeamCodeOptions, ...pickableGlobalCodeOptions],
-    [pickableTeamCodeOptions, pickableGlobalCodeOptions]
   );
 
   return (
@@ -637,6 +566,35 @@ export const ActivityOverviewSection: React.FC<
 
       <FormField
         control={form.control}
+        name="isIssue"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-start space-y-0 space-x-3">
+            <FormControl data-field={field.name}>
+              <Checkbox
+                checked={!!field.value}
+                readOnly={readOnly}
+                onCheckedChange={(checked) =>
+                  setActivityFormFieldValue(form, field.name, checked === true)
+                }
+              />
+            </FormControl>
+            <div className="space-y-1 leading-none">
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="isIssue"
+                    ariaLabel="About issue"
+                  />
+                </>
+              </FormLabel>
+            </div>
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
         name="summary"
         render={({ field }) => (
           <FormItem>
@@ -668,34 +626,6 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="isIssue"
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-            <FormControl data-field={field.name}>
-              <Checkbox
-                checked={!!field.value}
-                readOnly={readOnly}
-                onCheckedChange={(checked) =>
-                  setActivityFormFieldValue(form, field.name, checked === true)
-                }
-              />
-            </FormControl>
-            <div className="space-y-1 leading-none">
-              <FormLabel>
-                <>
-                  {getActivityFieldLabel(field.name)}
-                  <ActivityFieldInfoIcon
-                    fieldKey="isIssue"
-                    ariaLabel="About issue"
-                  />
-                </>
-              </FormLabel>
-            </div>
-          </FormItem>
-        )}
-      />
       <FormField
         control={form.control}
         name="significance"
@@ -735,136 +665,6 @@ export const ActivityOverviewSection: React.FC<
       />
 
       <FormSectionDivider />
-
-      {canViewPitchStatus ? (
-        <FormField
-          control={form.control}
-          name="pitchRequiredStatusId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <>
-                  {getActivityFieldLabel(field.name)}
-                  <ActivityFieldInfoIcon
-                    fieldKey="pitchRequiredStatusId"
-                    ariaLabel="About pitch required"
-                  />
-                </>
-              </FormLabel>
-              <FormSelectSafe
-                readOnly={pitchStatusScope.readOnly}
-                disabled={pitchStatusScope.fieldScopeDisabled}
-                optionValues={pitchRequiredStatuses.map((s) => String(s.id))}
-                value={optionalIdSelectDisplayValue(field.value)}
-                onValueChange={(value) =>
-                  setActivityFormFieldValue(
-                    form,
-                    field.name,
-                    optionalSelectIdValue(value)
-                  )
-                }
-              >
-                <ActivityFieldScopePermissionTooltip scope="pitchStatus">
-                  <FormControl data-field={field.name}>
-                    <FormSelectTrigger
-                      readOnly={
-                        pitchStatusScope.readOnly &&
-                        !pitchStatusScope.fieldScopeDisabled
-                      }
-                    >
-                      <SelectValue placeholder="" />
-                    </FormSelectTrigger>
-                  </FormControl>
-                </ActivityFieldScopePermissionTooltip>
-                <SelectContent>
-                  {pitchRequiredStatuses.map((status) => (
-                    <SelectItem
-                      key={status.id}
-                      value={String(status.id)}
-                      disabled={
-                        status.name === PITCHED_LOOKUP_NAME && !hasPitchDate
-                      }
-                    >
-                      {status.displayName ?? status.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </FormSelectSafe>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      ) : null}
-
-      {canViewPitchDate ? (
-        <FormField
-          control={form.control}
-          name="pitchDate"
-          render={({ field }) => {
-            const raw = field.value ?? '';
-            const pitchLabel = raw
-              ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
-              : 'Select pitch date';
-            return (
-              <FormItem>
-                <FormLabel>
-                  <>
-                    {getActivityFieldLabel(field.name)}
-                    <ActivityFieldInfoIcon
-                      fieldKey="pitchDate"
-                      ariaLabel="About pitch date"
-                    />
-                  </>
-                </FormLabel>
-                <ActivityFieldScopePermissionTooltip scope="pitchDate">
-                  <FormControl className="w-full" data-field={field.name}>
-                    <ScheduledDatePopoverField
-                      triggerVariant="form"
-                      value={raw}
-                      onChange={(iso) =>
-                        setActivityFormFieldValue(
-                          form,
-                          field.name,
-                          iso || undefined
-                        )
-                      }
-                      label={pitchLabel}
-                      triggerMuted={!raw}
-                      readOnly={pitchDateScope.readOnly}
-                      disabled={pitchDateScope.fieldScopeDisabled}
-                      popoverTitle="Select pitch date"
-                      presets={PRESETS_FUTURE_SHORT}
-                      getPresetAnchor={getPresetAnchorToday}
-                      headerRight={
-                        raw &&
-                        !pitchDateScope.readOnly &&
-                        !pitchDateScope.fieldScopeDisabled ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary text-sm"
-                            onClick={() =>
-                              setActivityFormFieldValue(
-                                form,
-                                field.name,
-                                undefined
-                              )
-                            }
-                          >
-                            Clear
-                          </Button>
-                        ) : null
-                      }
-                    />
-                  </FormControl>
-                </ActivityFieldScopePermissionTooltip>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
-      ) : null}
 
       <FormField
         control={form.control}
@@ -961,213 +761,68 @@ export const ActivityOverviewSection: React.FC<
         }}
       />
 
-      <FormField
-        control={form.control}
-        name="codeIds"
-        render={({ field }) => {
-          const visibleIds = canViewCodes ? (field.value ?? []) : [];
-          const selectedOptions = buildSelectedLookupOptions(
-            visibleIds,
-            codeLabelById
-          );
-          const codeComboboxItems = mergeComboboxItems(
-            pickableCodeOptions,
-            selectedOptions
-          );
-          return (
-            <FormItem>
-              <FormLabel>
-                <>
-                  {getActivityFieldLabel(field.name)}
-                  <ActivityFieldInfoIcon
-                    fieldKey="codeIds"
-                    ariaLabel="About codes"
-                  />
-                </>
-              </FormLabel>
-              <ActivityFieldScopePermissionTooltip scope="codes">
-                <FormControl data-field={field.name}>
-                  <Combobox
-                    items={codeComboboxItems}
-                    multiple
-                    value={selectedOptions}
-                    onValueChange={(selected) => {
-                      if (!canViewCodes) return;
-                      const submittedIds = selected.map((o) => Number(o.value));
-                      applyAllowedLookupSelection(
-                        submittedIds,
-                        field.value ?? [],
-                        userTeamIds,
-                        codeScopeById,
-                        (allowedIds) => {
-                          setActivityFormFieldValue(
-                            form,
-                            field.name,
-                            allowedIds
-                          );
-                        }
-                      );
-                    }}
-                    itemToStringValue={(o) => o.label}
-                    readOnly={
-                      codesScope.readOnly && !codesScope.fieldScopeDisabled
-                    }
-                    disabled={codesScope.fieldScopeDisabled || !canViewCodes}
-                  >
-                    <ComboboxChips ref={codesAnchorRef} className="w-full">
-                      <ComboboxValue>
-                        {(values: OptionItem[]) => (
-                          <>
-                            {values.map((option) => (
-                              <ComboboxChip key={option.value}>
-                                {option.label}
-                              </ComboboxChip>
-                            ))}
-                            <ComboboxChipsInput placeholder="" />
-                          </>
-                        )}
-                      </ComboboxValue>
-                    </ComboboxChips>
-                    <ComboboxContent anchor={codesAnchorRef}>
-                      <ComboboxEmpty>No codes found.</ComboboxEmpty>
-                      <ComboboxList>
-                        {pickableTeamCodeOptions.length > 0 && (
-                          <>
-                            <ComboboxGroup items={pickableTeamCodeOptions}>
-                              <ComboboxCollection>
-                                {(option: OptionItem) => (
-                                  <ComboboxItem
-                                    key={option.value}
-                                    value={option}
-                                  >
-                                    {option.label}
-                                  </ComboboxItem>
-                                )}
-                              </ComboboxCollection>
-                            </ComboboxGroup>
-                            <ComboboxSeparator />
-                          </>
-                        )}
-                        <ComboboxGroup items={pickableGlobalCodeOptions}>
-                          <ComboboxCollection>
-                            {(option: OptionItem) => (
-                              <ComboboxItem key={option.value} value={option}>
-                                {option.label}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxCollection>
-                        </ComboboxGroup>
-                      </ComboboxList>
-                    </ComboboxContent>
-                  </Combobox>
-                </FormControl>
-              </ActivityFieldScopePermissionTooltip>
-              <FormMessage />
-            </FormItem>
-          );
-        }}
-      />
-
       {canViewInternalNotes ? (
-        <Tabs defaultValue="internal" className="w-full">
-          <TabsList variant="line" size="sm">
-            <TabsTrigger value="internal">Internal notes</TabsTrigger>
-            <TabsTrigger value="notes">Notes</TabsTrigger>
-          </TabsList>
-          <TabsContent value="internal" className="mt-4">
-            <FormField
-              control={form.control}
-              name="internalNotes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <>
-                      {getActivityFieldLabel(field.name)}
-                      <ActivityFieldInfoIcon
-                        fieldKey="internalNotes"
-                        ariaLabel="About internal notes"
-                      />
-                    </>
-                  </FormLabel>
-                  <ActivityFieldScopePermissionTooltip scope="internalNotes">
-                    <FormControl data-field={field.name}>
-                      <Textarea
-                        placeholder=""
-                        readOnly={internalNotesScope.readOnly}
-                        disabled={internalNotesScope.fieldScopeDisabled}
-                        rows={4}
-                        maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
-                        {...field}
-                        value={field.value ?? ''}
-                      />
-                    </FormControl>
-                  </ActivityFieldScopePermissionTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </TabsContent>
-          <TabsContent value="notes" className="mt-4">
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    <>
-                      {getActivityFieldLabel(field.name)}
-                      <ActivityFieldInfoIcon
-                        fieldKey="notes"
-                        ariaLabel="About notes"
-                      />
-                    </>
-                  </FormLabel>
-                  <FormControl data-field={field.name}>
-                    <Textarea
-                      placeholder=""
-                      readOnly={readOnly}
-                      rows={4}
-                      maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </TabsContent>
-        </Tabs>
-      ) : (
         <FormField
           control={form.control}
-          name="notes"
+          name="internalNotes"
           render={({ field }) => (
             <FormItem>
               <FormLabel>
                 <>
                   {getActivityFieldLabel(field.name)}
                   <ActivityFieldInfoIcon
-                    fieldKey="notes"
-                    ariaLabel="About notes"
+                    fieldKey="internalNotes"
+                    ariaLabel="About internal notes"
                   />
                 </>
               </FormLabel>
-              <FormControl data-field={field.name}>
-                <Textarea
-                  placeholder=""
-                  readOnly={readOnly}
-                  rows={4}
-                  maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
-                  {...field}
-                  value={field.value ?? ''}
-                />
-              </FormControl>
+              <ActivityFieldScopePermissionTooltip scope="internalNotes">
+                <FormControl data-field={field.name}>
+                  <Textarea
+                    placeholder=""
+                    readOnly={internalNotesScope.readOnly}
+                    disabled={internalNotesScope.fieldScopeDisabled}
+                    rows={4}
+                    maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
+                    {...field}
+                    value={field.value ?? ''}
+                  />
+                </FormControl>
+              </ActivityFieldScopePermissionTooltip>
               <FormMessage />
             </FormItem>
           )}
         />
-      )}
+      ) : null}
+
+      <FormField
+        control={form.control}
+        name="notes"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="notes"
+                  ariaLabel="About notes"
+                />
+              </>
+            </FormLabel>
+            <FormControl data-field={field.name}>
+              <Textarea
+                placeholder=""
+                readOnly={readOnly}
+                rows={4}
+                maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
+                {...field}
+                value={field.value ?? ''}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </ActivityFormSection>
   );
 };

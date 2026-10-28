@@ -13,7 +13,6 @@ import {
   activityStatuses,
   categories,
   cities,
-  codes,
   commsMaterials,
   dateStatuses,
   governmentRepresentatives,
@@ -26,7 +25,6 @@ import {
   organizations,
   permissions,
   permissionVisibilityAudit,
-  pitchRequiredStatuses,
   premierRequested,
   reports,
   rolePermissionAudit,
@@ -54,7 +52,6 @@ import {
 import type {
   ActivityTeamSharingQuickShare,
   CategoryLookupItem,
-  CodeLookupItem,
   CommsMaterialsLookupItem,
   GovernmentRepresentativeLookupItem,
   LookupItem,
@@ -819,35 +816,6 @@ export class LookupsService {
   }
 
   /**
-   * Get all codes for activity form and admin. Global visibility only for now.
-   */
-  async getCodes(includeAll?: boolean): Promise<CodeLookupItem[]> {
-    const results = await this.databaseService.db
-      .select({
-        id: codes.id,
-        name: codes.name,
-        displayName: codes.displayName,
-        sortOrder: codes.sortOrder,
-        isActive: codes.isActive,
-        visibility: codes.visibility,
-      })
-      .from(codes)
-      .where(includeAll ? undefined : eq(codes.isActive, true))
-      .orderBy(codes.sortOrder);
-
-    return results.map((code) => ({
-      id: code.id,
-      label: code.displayName,
-      value: code.id,
-      name: code.name,
-      displayName: code.displayName,
-      sortOrder: code.sortOrder,
-      isActive: code.isActive,
-      visibility: code.visibility as 'global' | 'team',
-    }));
-  }
-
-  /**
    * Return all permissions (for admin management)
    */
   async getAllPermissions(): Promise<
@@ -968,29 +936,6 @@ export class LookupsService {
       .from(venueStatuses)
       .where(eq(venueStatuses.isActive, true))
       .orderBy(venueStatuses.sortOrder);
-
-    return results.map((status) => ({
-      id: status.id,
-      label: status.displayName,
-      value: status.id,
-      name: status.name,
-      displayName: status.displayName,
-    }));
-  }
-
-  /**
-   * Get all active pitch required statuses (pending, required, not_required)
-   */
-  async getPitchRequiredStatuses(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
-      .select({
-        id: pitchRequiredStatuses.id,
-        name: pitchRequiredStatuses.name,
-        displayName: pitchRequiredStatuses.displayName,
-      })
-      .from(pitchRequiredStatuses)
-      .where(eq(pitchRequiredStatuses.isActive, true))
-      .orderBy(pitchRequiredStatuses.sortOrder);
 
     return results.map((status) => ({
       id: status.id,
@@ -2235,76 +2180,6 @@ export class LookupsService {
           return result;
         })
     );
-  }
-
-  async createCode(
-    data: {
-      name: string;
-      displayName?: string | null;
-      sortOrder?: number;
-      isActive?: boolean;
-      description?: string | null;
-    },
-    currentUserId: number
-  ): Promise<typeof codes.$inferSelect> {
-    const now = new Date();
-    const [result] = await this.databaseService.db
-      .insert(codes)
-      .values({
-        name: data.name,
-        displayName: data.displayName ?? data.name,
-        sortOrder: data.sortOrder ?? 0,
-        isActive: data.isActive ?? true,
-        visibility: 'global',
-        description: data.description ?? undefined,
-        createdBy: currentUserId,
-        lastUpdatedBy: currentUserId,
-        createdDateTime: now,
-        lastUpdatedDateTime: now,
-      })
-      .returning();
-    return result;
-  }
-
-  async updateCode(
-    id: number,
-    data: {
-      name?: string;
-      displayName?: string | null;
-      sortOrder?: number;
-      isActive?: boolean;
-      description?: string | null;
-    },
-    currentUserId: number
-  ): Promise<typeof codes.$inferSelect | undefined> {
-    const [existing] = await this.databaseService.db
-      .select()
-      .from(codes)
-      .where(eq(codes.id, id))
-      .limit(1);
-    if (!existing) {
-      throw new NotFoundException(`Code with ID ${id} not found`);
-    }
-    const now = new Date();
-    const updateData: Partial<typeof codes.$inferInsert> = {
-      lastUpdatedBy: currentUserId,
-      lastUpdatedDateTime: now,
-    };
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.displayName !== undefined) {
-      updateData.displayName = data.displayName ?? data.name ?? existing.name;
-    }
-    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
-    if (data.isActive !== undefined) updateData.isActive = data.isActive;
-    if (data.description !== undefined) {
-      updateData.description = data.description ?? undefined;
-    }
-    const [result] = await this.databaseService.db
-      .update(codes)
-      .set(updateData)
-      .where(eq(codes.id, id))
-      .returning();
-    return result;
   }
 
   /**

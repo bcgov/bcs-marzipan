@@ -17,8 +17,6 @@ const adminWithAll = {
     'activities.notes.edit',
     'activities.lookAhead.edit',
     'activities.translations.edit',
-    'activities.pitchStatus.edit',
-    'activities.pitchDate.edit',
   ],
   roleName: SYSTEM_ROLES.ADMIN,
 };
@@ -36,8 +34,6 @@ describe('applyFieldLevelWritePolicy', () => {
       lookAheadSection: 'events',
       translationsRequiredStatusId: 1,
       translationLanguageIds: [1, 2],
-      pitchRequiredStatusId: 1,
-      pitchDate: '2025-01-01',
     };
 
     const stripped = applyFieldLevelWritePolicy(dto, viewerNoGrants);
@@ -52,9 +48,7 @@ describe('applyFieldLevelWritePolicy', () => {
     expect(dto.lookAheadSection).toBeUndefined();
     expect(dto.translationsRequiredStatusId).toBeUndefined();
     expect(dto.translationLanguageIds).toBeUndefined();
-    expect(dto.pitchRequiredStatusId).toBeUndefined();
-    expect(dto.pitchDate).toBeUndefined();
-    expect(stripped).toHaveLength(5);
+    expect(stripped).toHaveLength(3);
     expect(stripped).toContain('internalNotes');
   });
 

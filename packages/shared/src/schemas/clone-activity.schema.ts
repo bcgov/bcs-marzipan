@@ -73,13 +73,11 @@ export type CloneModalScheduleFieldKey =
   (typeof CLONE_MODAL_SCHEDULE_FIELD_KEYS)[number];
 
 /**
- * Source fields that must never be carried over to a clone. Pitch and
- * translation fields reset to create-time defaults; Look Ahead fields are
+ * Source fields that must never be carried over to a clone. Translation fields
+ * reset to create-time defaults; Look Ahead fields are
  * optional advanced clone checkboxes when the user has lookAhead.edit.
  */
 export const CLONE_NEVER_COPIED_FIELD_KEYS = [
-  'pitchRequiredStatusId',
-  'pitchDate',
   'translationsRequiredStatusId',
   'translationLanguageIds',
 ] as const satisfies readonly (keyof ActivityFormData)[];

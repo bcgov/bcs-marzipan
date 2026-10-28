@@ -39,7 +39,6 @@ import {
   createActivityStatusRequestSchema,
   createCategoryRequestSchema,
   createCityRequestSchema,
-  createCodeRequestSchema,
   createCommsMaterialRequestSchema,
   createGovernmentRepresentativeRequestSchema,
   createMinistryGroupRequestSchema,
@@ -52,7 +51,6 @@ import {
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
   updateCityRequestSchema,
-  updateCodeRequestSchema,
   updateCommsMaterialRequestSchema,
   updateGovernmentRepresentativeRequestSchema,
   updateLookupSortModeRequestSchema,
@@ -666,62 +664,6 @@ export class LookupsController {
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.updateTag(Number(id), body, user.id);
-    return { success: true, data };
-  }
-
-  @ApiOperation({ summary: 'Get all codes' })
-  @Get('codes')
-  async getCodes(
-    @CurrentUser() user: AuthUser,
-    @Query('includeAll') includeAll?: string,
-    @Res({ passthrough: true }) res?: Response
-  ): Promise<{ success: boolean; data: LookupItem[] }> {
-    const shouldIncludeAll =
-      includeAll === 'true' && user.permissions.includes('lookups.manage');
-    res?.setHeader(
-      'Cache-Control',
-      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
-    );
-    const data = await this.lookupsService.getCodes(shouldIncludeAll);
-    return { success: true, data };
-  }
-
-  @RequirePermission('lookups.manage')
-  @Post('codes')
-  async createCode(
-    @Body(new ZodValidationPipe(createCodeRequestSchema))
-    body: {
-      name: string;
-      displayName?: string;
-      sortOrder?: number;
-      isActive?: boolean;
-      description?: string | null;
-    },
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: unknown }> {
-    const data = await this.lookupsService.createCode(body, user.id);
-    return { success: true, data };
-  }
-
-  @RequirePermission('lookups.manage')
-  @Patch('codes/:id')
-  async updateCode(
-    @Param('id') id: string,
-    @Body(new ZodValidationPipe(updateCodeRequestSchema))
-    body: {
-      name?: string;
-      displayName?: string;
-      sortOrder?: number;
-      isActive?: boolean;
-      description?: string | null;
-    },
-    @CurrentUser() user: AuthUser
-  ): Promise<{ success: boolean; data: unknown }> {
-    const data = await this.lookupsService.updateCode(
-      Number(id),
-      body,
-      user.id
-    );
     return { success: true, data };
   }
 
@@ -1388,22 +1330,6 @@ export class LookupsController {
   @Header('Cache-Control', lookupGetCacheControl())
   async getVenueStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getVenueStatuses();
-    return { success: true, data };
-  }
-
-  @ApiOperation({ summary: 'Get all pitch required statuses' })
-  @ApiResponse({
-    status: 200,
-    description: 'Pitch required statuses retrieved successfully',
-    type: LookupArrayResponseWrapperDto,
-  })
-  @Get('pitch-required-statuses')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getPitchRequiredStatuses(): Promise<{
-    success: boolean;
-    data: LookupItem[];
-  }> {
-    const data = await this.lookupsService.getPitchRequiredStatuses();
     return { success: true, data };
   }
 

@@ -13,7 +13,6 @@ import {
 import { activities } from './activity';
 import {
   categories,
-  codes,
   commsMaterials,
   sectors,
   tags,
@@ -488,26 +487,6 @@ export const activityTags = pgTable(
 );
 
 /**
- * ActivityCodes junction table - Many-to-many between Activities and Codes
- */
-export const activityCodes = pgTable(
-  'activity_codes',
-  {
-    activityId: integer('activity_id')
-      .notNull()
-      .references(() => activities.id),
-    codeId: integer('code_id')
-      .notNull()
-      .references(() => codes.id),
-    isActive: boolean('is_active').notNull().default(true),
-    timestamp: timestamp('timestamp', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [primaryKey({ columns: [table.activityId, table.codeId] })]
-);
-
-/**
  * ActivitySectors junction table - Many-to-many relationship between Activities and Sectors
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/ActivitySectors.cs
  */
@@ -537,17 +516,6 @@ export const activityTagsRelations = relations(activityTags, ({ one }) => ({
   tag: one(tags, {
     fields: [activityTags.tagId],
     references: [tags.id],
-  }),
-}));
-
-export const activityCodesRelations = relations(activityCodes, ({ one }) => ({
-  activity: one(activities, {
-    fields: [activityCodes.activityId],
-    references: [activities.id],
-  }),
-  code: one(codes, {
-    fields: [activityCodes.codeId],
-    references: [codes.id],
   }),
 }));
 

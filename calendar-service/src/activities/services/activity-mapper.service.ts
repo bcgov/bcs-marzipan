@@ -81,8 +81,6 @@ export type ActivityMapperRelatedData = {
   categories?: string[];
   categoryIds?: number[];
   tags?: Array<{ id: number; text: string }>;
-  codes?: Array<{ id: number; text: string }>;
-  codeIds?: number[];
   activityStatus?: string;
   dateStatus?: string;
   timeStatus?: string;
@@ -112,7 +110,6 @@ export type ActivityMapperRelatedData = {
   eventPlanners?: string[];
   eventPlannerLeadIds?: number[];
   leadOrgName?: string | null;
-  pitchRequiredStatus?: string | null;
   translationsRequiredStatus?: string | null;
   leadMinistry?: string | null;
   leadMinistryAbbreviation?: string | null;
@@ -206,13 +203,7 @@ export class ActivityMapperService {
       leadOrgName: activity.leadOrgName ?? null,
       leadOrg: relatedData?.leadOrgName ?? null,
 
-      // Tags / codes
       tags: relatedData?.tags ?? [],
-      codes: relatedData?.codes ?? [],
-      codeIds:
-        relatedData?.codeIds ??
-        relatedData?.codes?.map((code) => code.id) ??
-        [],
 
       // Approvals
       significance: activity.significance ?? null,
@@ -262,8 +253,6 @@ export class ActivityMapperService {
       // Notes and additional fields
       notes: activity.notes ?? null,
       internalNotes: activity.internalNotes ?? null,
-      pitchDate: formatDate(activity.pitchDate),
-      pitchRequiredStatusId: activity.pitchRequiredStatusId ?? null,
       translationsRequiredStatusId:
         activity.translationsRequiredStatusId ?? null,
       premierRequestedId: activity.premierRequestedId ?? null,
@@ -282,7 +271,6 @@ export class ActivityMapperService {
       newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,
       newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
       premierRequested: relatedData?.premierRequested ?? null,
-      pitchRequiredStatus: relatedData?.pitchRequiredStatus ?? null,
       translationsRequiredStatus:
         relatedData?.translationsRequiredStatus ?? null,
       leadMinistry: relatedData?.leadMinistry ?? null,
@@ -348,8 +336,6 @@ export class ActivityMapperService {
       category: relatedData?.categories ?? [],
       categoryIds: relatedData?.categoryIds ?? [],
       tags: relatedData?.tags ?? [],
-      pitchDate: formatDate(activity.pitchDate),
-      pitchRequiredStatus: relatedData?.pitchRequiredStatus ?? null,
       lookAheadStatus: LOOK_AHEAD_STATUS.includes(
         activity.lookAheadStatus as LookAheadStatus
       )

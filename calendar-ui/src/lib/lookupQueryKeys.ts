@@ -47,7 +47,6 @@ export const lookupQueryKeys = {
   premierRequested: () => ['lookups', 'premier-requested'] as const,
   dateStatuses: () => ['lookups', 'date-statuses'] as const,
   timeStatuses: () => ['lookups', 'time-statuses'] as const,
-  pitchRequiredStatuses: () => ['lookups', 'pitch-required-statuses'] as const,
   translationRequiredStatuses: () =>
     ['lookups', 'translation-required-statuses'] as const,
   translationLanguages: () => ['lookups', 'translation-languages'] as const,
@@ -65,11 +64,6 @@ export const lookupQueryKeys = {
   tags: () => ['lookups', 'tags'] as const,
   /** Admin tags list (`includeAll=true`). Shares the `['lookups', 'tags']` prefix. */
   tagsAdmin: () => ['lookups', 'tags', 'admin'] as const,
-
-  /** User-scoped codes list (no `includeAll`). */
-  codes: () => ['lookups', 'codes'] as const,
-  /** Admin codes list (`includeAll=true`). Shares the `['lookups', 'codes']` prefix. */
-  codesAdmin: () => ['lookups', 'codes', 'admin'] as const,
 
   /** Reports list (single source of truth for Settings/Reports page and activity form). */
   reports: () => ['lookups', 'reports'] as const,

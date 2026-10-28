@@ -15,7 +15,7 @@ const RICH_TEXT_KEYS = new Set([
   'notes',
 ]);
 
-const DATE_KEYS = new Set(['startDate', 'endDate', 'pitchDate']);
+const DATE_KEYS = new Set(['startDate', 'endDate']);
 
 const TIME_KEYS = new Set(['startTime', 'endTime']);
 

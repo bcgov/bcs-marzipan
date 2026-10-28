@@ -96,9 +96,6 @@ export function activityFilterStateToQueryParams(
     params.translationLanguageIds = translationLanguageIds;
   }
 
-  const pitchNames = nonEmptyTrimmedStrings(fs.pitchRequiredStatusNames);
-  if (pitchNames) params.pitchRequiredStatusNames = pitchNames;
-
   const lookAheadStatuses = nonEmptyArray(fs.lookAheadStatusValues);
   if (lookAheadStatuses) params.lookAheadStatusValues = lookAheadStatuses;
 
@@ -110,23 +107,6 @@ export function activityFilterStateToQueryParams(
   }
   if (fs.timeConfirmedFilter !== 'any') {
     params.timeConfirmedFilter = fs.timeConfirmedFilter;
-  }
-
-  const pdf = fs.pitchDateFilter;
-  if (pdf.kind === 'not_scheduled') {
-    params.pitchDateNotScheduled = true;
-  } else if (pdf.kind === 'scheduled') {
-    const dr = pdf.dateRange;
-    if (isDateRangeActive(dr)) {
-      if (!dr.noStartDate && dr.startDate !== '') {
-        params.pitchDateFrom = dr.startDate;
-      }
-      if (!dr.noEndDate && dr.endDate !== '') {
-        params.pitchDateTo = dr.endDate;
-      }
-    } else {
-      params.pitchDateScheduled = true;
-    }
   }
 
   return params;
