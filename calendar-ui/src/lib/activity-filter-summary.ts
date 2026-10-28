@@ -264,7 +264,7 @@ export function buildActivityFilterChipRows(
   if ((filterState.leadTeamIds ?? []).length > 0) {
     rows.push({
       rowKey: 'leadTeam',
-      label: 'Lead',
+      label: 'Ministry',
       chips: (filterState.leadTeamIds ?? []).map((id) => ({
         chipKey: `leadTeam:${id}`,
         displayLabel: labelForNumericId(id, ctx.leadTeamOptions),

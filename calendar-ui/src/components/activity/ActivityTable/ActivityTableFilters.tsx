@@ -386,7 +386,7 @@ export function ActivityTableFilters({
       },
       {
         key: 'lead',
-        label: 'Lead',
+        label: 'Ministry',
         panel: (
           <LeadTeamFilterPanel
             teamOptions={leadTeamOptions}
@@ -401,7 +401,7 @@ export function ActivityTableFilters({
           count: filterState.leadTeamIds.length,
           onClear: () =>
             onFilterStateChange({ ...filterState, leadTeamIds: [] }),
-          clearAriaLabel: 'Clear Lead filter',
+          clearAriaLabel: 'Clear Ministry filter',
         },
       },
       buildIdArrayFilterSlot(
