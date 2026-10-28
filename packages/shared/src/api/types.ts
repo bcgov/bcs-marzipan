@@ -103,7 +103,6 @@ export type {
   CategoryLookupItem,
   TagResponse,
   TagLookupItem,
-  CodeLookupItem,
   OrganizationResponse,
   OrganizationLookupItem,
   MinistryResponse,
@@ -126,7 +125,6 @@ export type {
   DateStatusLookupItem,
   TimeStatusLookupItem,
   VenueStatusLookupItem,
-  PitchRequiredStatusLookupItem,
   TranslationRequiredStatusLookupItem,
   VenuePresetItem,
 } from '../schemas/lookup.schema';

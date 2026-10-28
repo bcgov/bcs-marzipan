@@ -106,8 +106,6 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     lookAheadSection: 'events',
     notes: null,
     internalNotes: null,
-    pitchDate: null,
-    pitchRequiredStatusId: null,
     translationsRequiredStatusId: null,
     premierRequestedId: null,
     visibility: 'global',

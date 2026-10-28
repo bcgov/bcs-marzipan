@@ -31,7 +31,6 @@ vi.mock('@/api/lookupsApi', () => ({
   fetchDateStatuses: vi.fn().mockResolvedValue([]),
   fetchNewsReleaseDistributions: vi.fn().mockResolvedValue([]),
   fetchNewsReleaseOrigins: vi.fn().mockResolvedValue([]),
-  fetchPitchRequiredStatuses: vi.fn().mockResolvedValue([]),
   fetchPremierRequested: vi.fn().mockResolvedValue([]),
   fetchTimeStatuses: vi.fn().mockResolvedValue([]),
   fetchTranslationRequiredStatuses: vi.fn().mockResolvedValue([]),

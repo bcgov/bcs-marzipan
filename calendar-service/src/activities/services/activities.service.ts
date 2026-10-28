@@ -14,7 +14,6 @@ import { and, eq, inArray, isNull, ne, type SQL } from 'drizzle-orm';
 import {
   activities,
   activityCategories,
-  activityCodes,
   activityCommsContacts,
   activityCommsMaterials,
   activityEventPlanners,
@@ -28,13 +27,11 @@ import {
   activityThemes,
   activityTranslationsRequired,
   categories,
-  codes,
   commsMaterials,
   dateStatuses,
   deletionAudit,
   editLocks,
   ministries,
-  pitchRequiredStatuses,
   teams,
   timeStatuses,
   translatedLanguages,
@@ -50,7 +47,6 @@ import {
   normalizeActivityStatusLabel,
   pacificCalendarDateFromInstant,
   PERMISSIONS,
-  PITCHED_LOOKUP_NAME,
   profileIncludesRelation,
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
@@ -307,19 +303,6 @@ export class ActivitiesService {
     if (forbidden.length > 0) {
       throw new BadRequestException(
         `Tag IDs not available to your teams: ${forbidden.join(', ')}`
-      );
-    }
-  }
-
-  private async validateCodeIds(codeIds: number[]): Promise<void> {
-    if (!codeIds.length) return;
-    const rows = await this.databaseService.db
-      .select({ id: codes.id })
-      .from(codes)
-      .where(and(inArray(codes.id, codeIds), eq(codes.isActive, true)));
-    if (rows.length !== new Set(codeIds).size) {
-      throw new BadRequestException(
-        'One or more code IDs are invalid or inactive'
       );
     }
   }
@@ -808,7 +791,6 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
-      codes: related.codesMap.get(id) ?? [],
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
@@ -829,7 +811,6 @@ export class ActivitiesService {
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
@@ -889,7 +870,6 @@ export class ActivitiesService {
       return {
         categoriesResult: this.emptyCategoriesResult(),
         tagsMap: new Map(),
-        codesMap: new Map(),
         activityStatusesMap: new Map(),
         dateStatusesMap: new Map(),
         timeStatusesMap: new Map(),
@@ -907,7 +887,6 @@ export class ActivitiesService {
         newsReleaseOriginsMap: new Map(),
         newsReleaseDistributionsMap: new Map(),
         premierRequestedMap: new Map(),
-        pitchRequiredStatusMap: new Map(),
         translationsRequiredStatusMap: new Map(),
         leadMinistryNamesMap: new Map(),
         leadMinistryAbbreviationsMap: new Map(),
@@ -921,7 +900,6 @@ export class ActivitiesService {
     const [
       categoriesResult,
       tagsMap,
-      codesMap,
       activityStatusesMap,
       dateStatusesMap,
       timeStatusesMap,
@@ -937,7 +915,6 @@ export class ActivitiesService {
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
-      pitchRequiredStatusMap,
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
       leadMinistryAbbreviationsMap,
@@ -948,9 +925,6 @@ export class ActivitiesService {
         : Promise.resolve(this.emptyCategoriesResult()),
       needs('tags')
         ? this.dataFetcherService.fetchTagsForActivities(activityIds)
-        : Promise.resolve(new Map()),
-      needs('codes')
-        ? this.dataFetcherService.fetchCodesForActivities(activityIds)
         : Promise.resolve(new Map()),
       needs('activityStatus')
         ? this.dataFetcherService.fetchActivityStatusesForActivities(
@@ -1016,11 +990,6 @@ export class ActivitiesService {
             activityIds
           )
         : Promise.resolve(new Map()),
-      needs('pitchRequiredStatus')
-        ? this.dataFetcherService.fetchPitchRequiredStatusForActivities(
-            activityIds
-          )
-        : Promise.resolve(new Map()),
       needs('translationsRequiredStatus')
         ? this.dataFetcherService.fetchTranslationsRequiredStatusForActivities(
             activityIds
@@ -1060,7 +1029,6 @@ export class ActivitiesService {
     return {
       categoriesResult,
       tagsMap,
-      codesMap,
       activityStatusesMap,
       dateStatusesMap,
       timeStatusesMap,
@@ -1078,7 +1046,6 @@ export class ActivitiesService {
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
-      pitchRequiredStatusMap,
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
       leadMinistryAbbreviationsMap,
@@ -1207,36 +1174,20 @@ export class ActivitiesService {
   }
 
   /**
-   * Resolve DB IDs for TBD row used as create defaults for pitch/translation.
+   * Resolve DB ID for TBD row used as create default for translations required.
    */
-  private async resolvePendingPitchAndTranslationStatusIds(): Promise<{
-    pitchRequiredStatusId: number;
-    translationsRequiredStatusId: number;
-  }> {
-    const [pitchRow] = await this.databaseService.db
-      .select({ id: pitchRequiredStatuses.id })
-      .from(pitchRequiredStatuses)
-      .where(eq(pitchRequiredStatuses.name, TBD_LOOKUP_NAME))
-      .limit(1);
+  private async resolvePendingTranslationStatusId(): Promise<number> {
     const [translationRow] = await this.databaseService.db
       .select({ id: translationRequiredStatuses.id })
       .from(translationRequiredStatuses)
       .where(eq(translationRequiredStatuses.name, TBD_LOOKUP_NAME))
       .limit(1);
-    if (pitchRow?.id == null) {
-      throw new InternalServerErrorException(
-        'Pitch required status "tbd" is not configured in lookups.'
-      );
-    }
     if (translationRow?.id == null) {
       throw new InternalServerErrorException(
         'Translation required status "tbd" is not configured in lookups.'
       );
     }
-    return {
-      pitchRequiredStatusId: pitchRow.id,
-      translationsRequiredStatusId: translationRow.id,
-    };
+    return translationRow.id;
   }
 
   private schedulingLookupResolversCache: ActivitySchedulingLookupResolvers | null =
@@ -1246,27 +1197,19 @@ export class ActivitiesService {
     if (this.schedulingLookupResolversCache) {
       return this.schedulingLookupResolversCache;
     }
-    const [dateRows, timeRows, pitchRows] = await Promise.all([
+    const [dateRows, timeRows] = await Promise.all([
       this.databaseService.db
         .select({ id: dateStatuses.id, name: dateStatuses.name })
         .from(dateStatuses),
       this.databaseService.db
         .select({ id: timeStatuses.id, name: timeStatuses.name })
         .from(timeStatuses),
-      this.databaseService.db
-        .select({
-          id: pitchRequiredStatuses.id,
-          name: pitchRequiredStatuses.name,
-        })
-        .from(pitchRequiredStatuses),
     ]);
     const dateMap = new Map(dateRows.map((r) => [r.id, r.name]));
     const timeMap = new Map(timeRows.map((r) => [r.id, r.name]));
-    const pitchMap = new Map(pitchRows.map((r) => [r.id, r.name]));
     this.schedulingLookupResolversCache = {
       dateStatusNameForId: (id) => dateMap.get(id),
       timeStatusNameForId: (id) => timeMap.get(id),
-      pitchRequiredStatusNameForId: (id) => pitchMap.get(id),
     };
     return this.schedulingLookupResolversCache;
   }
@@ -1284,17 +1227,6 @@ export class ActivitiesService {
     if (errors.length > 0) {
       throw new BadRequestException(errors[0]?.message ?? 'Invalid scheduling');
     }
-  }
-
-  private async getPitchRequiredStatusIdByName(
-    name: string
-  ): Promise<number | null> {
-    const [row] = await this.databaseService.db
-      .select({ id: pitchRequiredStatuses.id })
-      .from(pitchRequiredStatuses)
-      .where(eq(pitchRequiredStatuses.name, name))
-      .limit(1);
-    return row?.id ?? null;
   }
 
   /**
@@ -1366,7 +1298,6 @@ export class ActivitiesService {
     const {
       categoryIds,
       tagIds,
-      codeIds,
       commsMaterialIds,
       translationLanguageIds,
       sharedWithTeamIds,
@@ -1451,17 +1382,13 @@ export class ActivitiesService {
     if (tagIds?.length) {
       await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
     }
-    if (codeIds?.length) {
-      await this.validateCodeIds(codeIds);
-    }
     await this.lookAheadPolicy.assertAllowedLookAheadSection(
       activityData.lookAheadSection
     );
 
-    const pendingStatuses =
-      await this.resolvePendingPitchAndTranslationStatusIds();
+    const pendingTranslationStatusId =
+      await this.resolvePendingTranslationStatusId();
     const {
-      pitchRequiredStatusId: dtoPitchStatus,
       translationsRequiredStatusId: dtoTranslationStatus,
       dateStatusId: dtoDateStatus,
       timeStatusId: dtoTimeStatus,
@@ -1477,10 +1404,8 @@ export class ActivitiesService {
       significance: dtoSignificance ?? null,
       dateStatusId: dtoDateStatus ?? defaultDateTimeStatuses.dateStatusId,
       timeStatusId: dtoTimeStatus ?? defaultDateTimeStatuses.timeStatusId,
-      pitchRequiredStatusId:
-        dtoPitchStatus ?? pendingStatuses.pitchRequiredStatusId,
       translationsRequiredStatusId:
-        dtoTranslationStatus ?? pendingStatuses.translationsRequiredStatusId,
+        dtoTranslationStatus ?? pendingTranslationStatusId,
     };
 
     await this.assertActivitySchedulingRules(
@@ -1492,8 +1417,6 @@ export class ActivitiesService {
         isAllDay: activityRowForInsert.isAllDay,
         dateStatusId: activityRowForInsert.dateStatusId,
         timeStatusId: activityRowForInsert.timeStatusId,
-        pitchRequiredStatusId: activityRowForInsert.pitchRequiredStatusId,
-        pitchDate: activityRowForInsert.pitchDate,
       },
       'create'
     );
@@ -1610,15 +1533,6 @@ export class ActivitiesService {
           activityId,
           tagIds,
           (id: number) => ({ tagId: id }),
-          userId,
-          now
-        ),
-        this.junctionService.insertJunctionRecords(
-          tx,
-          activityCodes,
-          activityId,
-          codeIds,
-          (id: number) => ({ codeId: id }),
           userId,
           now
         ),
@@ -2061,8 +1975,6 @@ export class ActivitiesService {
         ctx.related.newsReleaseDistributionsMap.get(activity.id) ?? null,
       premierRequested:
         ctx.related.premierRequestedMap.get(activity.id) ?? null,
-      pitchRequiredStatus:
-        ctx.related.pitchRequiredStatusMap.get(activity.id) ?? null,
       translationsRequiredStatus:
         ctx.related.translationsRequiredStatusMap.get(activity.id) ?? null,
       leadMinistry: ctx.related.leadMinistryNamesMap.get(activity.id) ?? null,
@@ -2226,7 +2138,6 @@ export class ActivitiesService {
   ): Promise<ActivityResponse[]> {
     const requiredOperationPermissionByOperation = {
       review: PERMISSIONS.ACTIVITIES.REVIEW,
-      pitchStatus: PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
       issue: PERMISSIONS.ACTIVITIES.EDIT,
       tags: PERMISSIONS.ACTIVITIES.EDIT,
       sharedWith: PERMISSIONS.ACTIVITIES.EDIT,
@@ -2235,6 +2146,11 @@ export class ActivitiesService {
     } as const;
     const requiredOperationPermission =
       requiredOperationPermissionByOperation[dto.operation];
+    if (requiredOperationPermission == null) {
+      throw new BadRequestException(
+        `Unsupported bulk activity operation: ${dto.operation}`
+      );
+    }
     if (!context.permissions?.includes(requiredOperationPermission)) {
       throw new ForbiddenException(
         `You do not have permission to perform this bulk activity operation.`
@@ -2267,7 +2183,6 @@ export class ActivitiesService {
     for (const activityId of dto.activityIds) {
       if (
         dto.operation === 'review' ||
-        dto.operation === 'pitchStatus' ||
         dto.operation === 'issue' ||
         dto.operation === 'tags' ||
         dto.operation === 'sharedWith'
@@ -2287,38 +2202,6 @@ export class ActivitiesService {
             )
           );
           break;
-        case 'pitchStatus': {
-          const { pitchRequiredStatusId } = dto;
-          if (pitchRequiredStatusId === undefined) {
-            throw new BadRequestException(
-              'pitchRequiredStatusId is required for the pitchStatus operation.'
-            );
-          }
-          const pitchedId =
-            await this.getPitchRequiredStatusIdByName(PITCHED_LOOKUP_NAME);
-          if (pitchedId != null && pitchRequiredStatusId === pitchedId) {
-            const [activityRow] = await this.databaseService.db
-              .select({ pitchDate: activities.pitchDate })
-              .from(activities)
-              .where(eq(activities.id, activityId))
-              .limit(1);
-            if (!activityRow?.pitchDate) {
-              throw new BadRequestException(
-                'Pitch status Pitched requires a pitch date on each selected activity.'
-              );
-            }
-          }
-          results.push(
-            await this.update(
-              activityId,
-              { pitchRequiredStatusId },
-              userId,
-              context,
-              { bypassEditLock: true, timestampWriteContext: 'bulk' }
-            )
-          );
-          break;
-        }
         case 'issue':
           results.push(
             await this.update(activityId, { isIssue: true }, userId, context, {
@@ -2545,7 +2428,6 @@ export class ActivitiesService {
     const {
       categoryIds,
       tagIds,
-      codeIds,
       commsMaterialIds,
       translationLanguageIds,
       sharedWithTeamIds,
@@ -2677,14 +2559,6 @@ export class ActivitiesService {
           updateData.timeStatusId !== undefined
             ? updateData.timeStatusId
             : oldActivity.timeStatusId,
-        pitchRequiredStatusId:
-          updateData.pitchRequiredStatusId !== undefined
-            ? updateData.pitchRequiredStatusId
-            : oldActivity.pitchRequiredStatusId,
-        pitchDate:
-          updateData.pitchDate !== undefined
-            ? updateData.pitchDate
-            : oldActivity.pitchDate,
       },
       'update'
     );
@@ -2798,9 +2672,6 @@ export class ActivitiesService {
           existingTagIds
         );
       }
-    }
-    if (codeIds !== undefined && codeIds.length > 0) {
-      await this.validateCodeIds(codeIds);
     }
     if (Object.prototype.hasOwnProperty.call(dto, 'lookAheadSection')) {
       await this.lookAheadPolicy.assertAllowedLookAheadSection(
@@ -2948,19 +2819,6 @@ export class ActivitiesService {
         );
       }
 
-      if (codeIds !== undefined) {
-        await this.junctionService.updateJunctionRecords(
-          tx,
-          activityCodes,
-          id,
-          codeIds,
-          (id: number) => ({ codeId: id }),
-          'codeId',
-          userId,
-          now
-        );
-      }
-
       // Update comms materials
       if (commsMaterialIds !== undefined) {
         await this.junctionService.updateJunctionRecords(
@@ -3055,7 +2913,6 @@ export class ActivitiesService {
     const [
       categoriesResult,
       tagsList,
-      codesList,
       activityStatus,
       dateStatus,
       timeStatus,
@@ -3071,7 +2928,6 @@ export class ActivitiesService {
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
-      pitchRequiredStatus,
       translationsRequiredStatus,
       leadMinistryName,
       leadMinistryAbbreviation,
@@ -3079,7 +2935,6 @@ export class ActivitiesService {
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
-      this.dataFetcherService.fetchCodesForActivities([id]),
       this.dataFetcherService.fetchActivityStatusesForActivities([id]),
       this.dataFetcherService.fetchDateStatusesForActivities([id]),
       this.dataFetcherService.fetchTimeStatusesForActivities([id]),
@@ -3095,7 +2950,6 @@ export class ActivitiesService {
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
       this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
         id,
       ]),
@@ -3118,7 +2972,6 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
-      codes: codesList.get(id) ?? [],
       activityStatus: activityStatus.get(id),
       dateStatus: dateStatus.get(id),
       timeStatus: timeStatus.get(id),
@@ -3139,7 +2992,6 @@ export class ActivitiesService {
       newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: premierRequestedMap.get(id) ?? null,
-      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
       leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
@@ -3327,8 +3179,8 @@ export class ActivitiesService {
    * The source activity's field values are mapped into a `CreateActivityRequest`
    * payload, then transformed per the clone rules:
    * - Schedule fields and title come from the request body (user re-enters them).
-   * - Never-copied fields (pitch, translations, pitchDate) are reset to
-   *   create-time defaults. Look Ahead fields copy when included in
+   * - Never-copied fields (translations) are reset to create-time defaults.
+   *   Look Ahead fields copy when included in
    *   `includeFieldPaths` and the user has lookAhead.edit.
    * - Optional `includeFieldPaths` acts as an allow-list across the advanced
    *   field inventory; fields not in the list are dropped so `create` applies
@@ -3414,8 +3266,6 @@ export class ActivitiesService {
         isAllDay: dto.isAllDay,
         dateStatusId: dto.dateStatusId,
         timeStatusId: dto.timeStatusId,
-        pitchRequiredStatusId: dto.pitchRequiredStatusId,
-        pitchDate: dto.pitchDate,
       },
       'clone'
     );
@@ -3903,7 +3753,6 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
-      codes: related.codesMap.get(id) ?? [],
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
@@ -3924,7 +3773,6 @@ export class ActivitiesService {
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
@@ -4048,7 +3896,6 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
-      codes: related.codesMap.get(id) ?? [],
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
@@ -4069,7 +3916,6 @@ export class ActivitiesService {
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
@@ -4185,7 +4031,6 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
-      codes: related.codesMap.get(id) ?? [],
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
@@ -4206,7 +4051,6 @@ export class ActivitiesService {
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,

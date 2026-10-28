@@ -42,6 +42,7 @@ import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-per
 import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
+import { OptionalLookupSelectField } from './OptionalLookupSelectField';
 
 type ActivityCommsSectionProps = {
   commsMaterialOptions: Array<{
@@ -260,92 +261,20 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         }}
       />
 
-      <FormField
+      <OptionalLookupSelectField
         control={form.control}
         name="newsReleaseOriginId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              <>
-                {getActivityFieldLabel(field.name)}
-                <ActivityFieldInfoIcon
-                  fieldKey="newsReleaseOriginId"
-                  ariaLabel="About news release origin"
-                />
-              </>
-            </FormLabel>
-            <FormSelectSafe
-              readOnly={readOnly}
-              optionValues={newsReleaseOriginOptions.map((o) => o.value)}
-              value={optionalIdSelectDisplayValue(field.value)}
-              onValueChange={(value) =>
-                setActivityFormFieldValue(
-                  form,
-                  field.name,
-                  optionalSelectIdValue(value)
-                )
-              }
-            >
-              <FormControl data-field={field.name}>
-                <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="" />
-                </FormSelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {newsReleaseOriginOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </FormSelectSafe>
-            <FormMessage />
-          </FormItem>
-        )}
+        options={newsReleaseOriginOptions}
+        readOnly={readOnly}
+        infoAriaLabel="About news release origin"
       />
 
-      <FormField
+      <OptionalLookupSelectField
         control={form.control}
         name="newsReleaseDistributionId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              <>
-                {getActivityFieldLabel(field.name)}
-                <ActivityFieldInfoIcon
-                  fieldKey="newsReleaseDistributionId"
-                  ariaLabel="About news release distribution"
-                />
-              </>
-            </FormLabel>
-            <FormSelectSafe
-              readOnly={readOnly}
-              optionValues={newsReleaseDistributionOptions.map((o) => o.value)}
-              value={optionalIdSelectDisplayValue(field.value)}
-              onValueChange={(value) =>
-                setActivityFormFieldValue(
-                  form,
-                  field.name,
-                  optionalSelectIdValue(value)
-                )
-              }
-            >
-              <FormControl data-field={field.name}>
-                <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="" />
-                </FormSelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {newsReleaseDistributionOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </FormSelectSafe>
-            <FormMessage />
-          </FormItem>
-        )}
+        options={newsReleaseDistributionOptions}
+        readOnly={readOnly}
+        infoAriaLabel="About news release distribution"
       />
 
       <FormField

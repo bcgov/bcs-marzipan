@@ -19,8 +19,6 @@ describe('sanitizeSavedFilterPayload', () => {
       },
       categoryIds: [1, 2],
       activityStatusIds: [1, 2, 3],
-      pitchRequiredStatusNames: ['Required'],
-      pitchDateFilter: { kind: 'not_scheduled' },
       lookAheadStatusValues: ['new'],
       lookAheadSectionValues: ['events'],
       dateConfirmedFilter: 'confirmed',
@@ -43,9 +41,6 @@ describe('sanitizeSavedFilterPayload', () => {
     expect(result.filterState.categoryIds).toEqual([1, 2]);
     expect(result.filterState.activityStatusIds).toEqual([1, 2, 3]);
     expect(result.filterState.dateRange.startDate).toBe('2025-01-01');
-    expect(result.filterState.pitchDateFilter).toEqual({
-      kind: 'not_scheduled',
-    });
     expect(result.filterState.dateConfirmedFilter).toBe('confirmed');
     expect(result.filterState.timeConfirmedFilter).toBe('tbd');
   });
@@ -84,36 +79,6 @@ describe('sanitizeSavedFilterPayload', () => {
     expect(result.filterState.activityStatusIds).toEqual([]);
     expect(result.filterState.dateRange.startDate).toBe('2025-01-01');
     expect(result.filterState.dateRange.endDate).toBe('');
-  });
-
-  it('should handle scheduled pitch date filter', () => {
-    const payload: SavedFilterPayload = {
-      filterState: {
-        ...validPayload.filterState,
-        pitchDateFilter: {
-          kind: 'scheduled',
-          dateRange: {
-            startDate: '2025-06-01',
-            endDate: '2025-06-30',
-            noStartDate: false,
-            noEndDate: true,
-          },
-        },
-      },
-      searchKeyword: '',
-    };
-
-    const result = sanitizeSavedFilterPayload(payload);
-
-    expect(result.filterState.pitchDateFilter).toEqual({
-      kind: 'scheduled',
-      dateRange: {
-        startDate: '2025-06-01',
-        endDate: '2025-06-30',
-        noStartDate: false,
-        noEndDate: true,
-      },
-    });
   });
 
   it('should default invalid confirmed filter values to "any"', () => {

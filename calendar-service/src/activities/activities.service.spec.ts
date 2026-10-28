@@ -464,7 +464,6 @@ describe('ActivitiesService', () => {
         leadOrgName: 'Test Organization',
         significance: 'High significance',
         notes: 'Some notes',
-        pitchDate: new Date('2024-02-15') as any,
         schedulingNotes: 'Consider scheduling',
         newsReleaseDistributionId: 1,
         premierRequestedId: 2,
@@ -583,7 +582,6 @@ describe('ActivitiesService', () => {
       expect(result).toHaveProperty('sharedWith');
       expect(Array.isArray(result.sharedWith)).toBe(true);
       expect(result).toHaveProperty('internalNotes');
-      expect(result).toHaveProperty('codes');
       expect(result).toHaveProperty('lookAheadStatus');
       expect(result).toHaveProperty('lookAheadSection');
       expect(result).toHaveProperty('createdDateTime');
@@ -4586,7 +4584,6 @@ describe('ActivitiesService', () => {
           limit: vi.fn(),
         };
         chain.limit
-          .mockResolvedValueOnce(statusRow) // pitch pending status
           .mockResolvedValueOnce(statusRow) // translation pending status
           .mockResolvedValueOnce([{ id: 1 }]) // default dateStatusId
           .mockResolvedValueOnce([{ id: 1 }]) // default timeStatusId
@@ -4886,7 +4883,6 @@ describe('ActivitiesService', () => {
         displayId: 'GCPE-000100',
         title: 'Original activity',
         lookAheadStatus: 'changed',
-        pitchRequiredStatusId: 5,
         translationsRequiredStatusId: 7,
         startDate: '2025-01-15',
         endDate: '2025-01-15',
@@ -4941,7 +4937,6 @@ describe('ActivitiesService', () => {
 
       expect(dtoRecord.lookAheadStatus).toBeUndefined();
       expect(dtoRecord.lookAheadSection).toBeUndefined();
-      expect(dtoRecord.pitchRequiredStatusId).toBeUndefined();
       expect(dtoRecord.translationsRequiredStatusId).toBeUndefined();
       expect(dtoRecord.activityStatusId).toBeUndefined();
 

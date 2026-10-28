@@ -42,7 +42,6 @@ export const ACTIVITY_REVIEW_EXEMPT_CODE_KEYS: ReadonlySet<string> = new Set([
   'dateStatusId',
   'timeStatusId',
   'venueStatusId',
-  'pitchDate',
 ]);
 
 /**

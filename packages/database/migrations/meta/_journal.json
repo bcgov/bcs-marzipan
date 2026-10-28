@@ -85,6 +85,13 @@
       "when": 1793137570586,
       "tag": "0011_20261027_activity_form_restructure",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793206751461,
+      "tag": "0012_20261028_remove_pitch_fields",
+      "breakpoints": true
     }
   ]
 }

@@ -167,8 +167,6 @@ export function ActivityFormBody({
                 categories={lookups.categories}
                 organizations={lookups.organizations}
                 tags={lookups.tags}
-                codes={lookups.codes}
-                pitchRequiredStatuses={lookups.pitchRequiredStatuses}
                 userTeamIds={user?.teamIds ?? []}
                 hasCreateAny={hasCreateAny}
               />

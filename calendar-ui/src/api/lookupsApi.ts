@@ -9,7 +9,6 @@ import type {
   MinistryGroupResponse,
   MinistryLookupItem,
   OrganizationLookupItem,
-  PitchRequiredStatusLookupItem,
   ReportResponse,
   TagLookupItem,
   ThemeLookupItem,
@@ -111,21 +110,6 @@ export async function fetchTags(): Promise<TagLookupItem[]> {
 export async function fetchAllTags(): Promise<TagLookupItem[]> {
   const res = await api.get<{ success: boolean; data: TagLookupItem[] }>(
     '/lookups/tags',
-    { params: { includeAll: 'true' } }
-  );
-  return res.data.data;
-}
-
-export async function fetchCodes(): Promise<TagLookupItem[]> {
-  const res = await api.get<{ success: boolean; data: TagLookupItem[] }>(
-    '/lookups/codes'
-  );
-  return res.data.data;
-}
-
-export async function fetchAllCodes(): Promise<TagLookupItem[]> {
-  const res = await api.get<{ success: boolean; data: TagLookupItem[] }>(
-    '/lookups/codes',
     { params: { includeAll: 'true' } }
   );
   return res.data.data;
@@ -242,16 +226,6 @@ export async function fetchVenueStatuses(): Promise<VenueStatusLookupItem[]> {
     success: boolean;
     data: VenueStatusLookupItem[];
   }>('/lookups/venue-statuses');
-  return res.data.data;
-}
-
-export async function fetchPitchRequiredStatuses(): Promise<
-  PitchRequiredStatusLookupItem[]
-> {
-  const res = await api.get<{
-    success: boolean;
-    data: PitchRequiredStatusLookupItem[];
-  }>('/lookups/pitch-required-statuses');
   return res.data.data;
 }
 

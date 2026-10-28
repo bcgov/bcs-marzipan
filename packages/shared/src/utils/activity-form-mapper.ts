@@ -131,10 +131,8 @@ export function mapResponseToFormData(
     endDate: response.endDate ?? undefined,
     startTime: response.startTime ?? undefined,
     endTime: response.endTime ?? undefined,
-    pitchRequiredStatusId: response.pitchRequiredStatusId ?? undefined,
     translationsRequiredStatusId:
       response.translationsRequiredStatusId ?? undefined,
-    pitchDate: response.pitchDate ?? undefined,
     notes: response.notes ?? undefined,
     internalNotes: response.internalNotes ?? undefined,
     executiveSummary: response.executiveSummary ?? undefined,
@@ -152,12 +150,6 @@ export function mapResponseToFormData(
     premierRequestedId: response.premierRequestedId ?? undefined,
     categoryIds: categoryIds?.length ? categoryIds : [],
     tagIds: tagIds?.length ? tagIds : undefined,
-    codeIds:
-      response.codeIds?.length > 0
-        ? response.codeIds
-        : response.codes?.length > 0
-          ? response.codes.map((c) => c.id)
-          : undefined,
     commsMaterialIds: commsMaterialIds?.length ? commsMaterialIds : undefined,
     translationLanguageIds: translationLanguageIds?.length
       ? translationLanguageIds

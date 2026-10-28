@@ -18,7 +18,6 @@ import {
   fetchDateStatuses,
   fetchNewsReleaseDistributions,
   fetchNewsReleaseOrigins,
-  fetchPitchRequiredStatuses,
   fetchPremierRequested,
   fetchTimeStatuses,
   fetchTranslationRequiredStatuses,
@@ -303,12 +302,6 @@ export function GlobalHistory() {
     staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
   });
 
-  const pitchRequiredStatusesQuery = useQuery({
-    queryKey: [...lookupQueryKeys.pitchRequiredStatuses(), 'history-filters'],
-    queryFn: fetchPitchRequiredStatuses,
-    staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
-  });
-
   const translationRequiredStatusesQuery = useQuery({
     queryKey: [
       ...lookupQueryKeys.translationRequiredStatuses(),
@@ -453,17 +446,6 @@ export function GlobalHistory() {
     [timeStatusesQuery.data]
   );
 
-  const pitchRequiredStatusLabelMap = useMemo(
-    () =>
-      new Map(
-        (pitchRequiredStatusesQuery.data ?? []).map((status) => [
-          status.id,
-          status.displayName || status.label || status.name,
-        ])
-      ),
-    [pitchRequiredStatusesQuery.data]
-  );
-
   const translationRequiredStatusLabelMap = useMemo(
     () =>
       new Map(
@@ -540,28 +522,6 @@ export function GlobalHistory() {
           case 'timeStatusId':
             formattedValue = timeStatusLabelMap.get(value) || String(value);
             return truncateChangeLogValue(formattedValue);
-          case 'pitchRequiredStatusId':
-            formattedValue =
-              pitchRequiredStatusLabelMap.get(value) || String(value);
-            return truncateChangeLogValue(formattedValue);
-          case 'translationsRequiredStatusId':
-            formattedValue =
-              translationRequiredStatusLabelMap.get(value) || String(value);
-            return truncateChangeLogValue(formattedValue);
-          case 'newsReleaseOriginId':
-            formattedValue =
-              newsReleaseOriginLabelMap.get(value) || String(value);
-            return truncateChangeLogValue(formattedValue);
-          case 'newsReleaseDistributionId':
-            formattedValue =
-              newsReleaseDistributionLabelMap.get(value) || String(value);
-            return truncateChangeLogValue(formattedValue);
-          case 'premierRequestedId':
-            formattedValue =
-              premierRequestedLabelMap.get(value) || String(value);
-            return truncateChangeLogValue(formattedValue);
-          default:
-            break;
         }
       }
 
@@ -575,7 +535,6 @@ export function GlobalHistory() {
       newsReleaseDistributionLabelMap,
       newsReleaseOriginLabelMap,
       organizationLabelMap,
-      pitchRequiredStatusLabelMap,
       premierRequestedLabelMap,
       timeStatusLabelMap,
       translationRequiredStatusLabelMap,

@@ -24,16 +24,6 @@ const mockLookups: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  codes: [],
-  pitchRequiredStatuses: [
-    {
-      id: 1,
-      label: 'Pending',
-      value: 1,
-      name: 'pending',
-      displayName: 'Pending',
-    },
-  ],
   activityStatuses: [],
   commsMaterials: [],
   translationLanguages: [],
@@ -76,7 +66,7 @@ describe('useActivityEditFormHydration field updates', () => {
     act(() => {
       setActivityFormFieldValue(formRef!, 'categoryIds', [101, 102]);
       setActivityFormFieldValue(formRef!, 'tagIds', [201]);
-      setActivityFormFieldValue(formRef!, 'pitchDate', '2030-06-01');
+      setActivityFormFieldValue(formRef!, 'startDate', '2030-06-01');
       setActivityFormFieldValue(formRef!, 'visibility', 'team');
       setActivityFormFieldValue(formRef!, 'sharedWithTeamIds', [501, 502]);
       setActivityFormFieldValue(formRef!, 'commsMaterialIds', [701, 703]);
@@ -94,8 +84,8 @@ describe('useActivityEditFormHydration field updates', () => {
     expect(formRef!.getValues('tagIds')).toEqual([201]);
     expect(formRef!.formState.dirtyFields.tagIds).toBe(true);
 
-    expect(formRef!.getValues('pitchDate')).toBe('2030-06-01');
-    expect(formRef!.formState.dirtyFields.pitchDate).toBe(true);
+    expect(formRef!.getValues('startDate')).toBe('2030-06-01');
+    expect(formRef!.formState.dirtyFields.startDate).toBe(true);
 
     expect(formRef!.getValues('visibility')).toBe('team');
     expect(formRef!.formState.dirtyFields.visibility).toBe(true);
