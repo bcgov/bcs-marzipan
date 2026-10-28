@@ -139,8 +139,6 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 | `timeStatusId`                 | `integer`     | `notNull`, FK               | FK to TimeStatus - new field for time confirmation status                                                                |
 | `newsReleaseOriginId`          | `integer`     | nullable, FK                | FK to NewsReleaseOrigin lookup table                                                                                     |
 | `newsReleaseId`                | `uuid`        | nullable                    | Reference to news release                                                                                                |
-| `pitchDate`                    | `date`        | nullable                    | Date when activity was or will be pitched (nullable)                                                                     |
-| `pitchRequiredStatusId`        | `integer`     | nullable, FK                | FK to pitch_required_statuses (pending, required, not_required)                                                          |
 | `translationsRequiredStatusId` | `integer`     | nullable, FK                | FK to translation_required_statuses (pending, required, not_required)                                                    |
 | `isConfidential`               | `boolean`     | `notNull`, `default(false)` | Activity-level sensitivity flag (badges, team visibility); does not remove activities from report datasets               |
 
@@ -224,7 +222,6 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 - `lookAheadSection` / `lookAheadStatus`: Look Ahead report grouping and change markers; Look Ahead reports require a non-null `lookAheadSection`.
 - `activityCommsContacts`: Junction table for all comms contacts with isLead flag. Replaces commsContactLeadId on activities table. Exactly one contact per activity must have isLead=true.
 - `leadMinistryId`: Renamed from contactMinistryId
-- `pitchDate`: Date tracking for pitch workflow
 - `notes`: General notes field (mapped from legacy Comments)
 - `newsReleaseDistributionId`: News release distribution (mapped from legacy NRDistributionId)
 - `premierRequestedId`: Premier request tracking (mapped from legacy PremierRequestedId)
@@ -363,7 +360,7 @@ Field-level constraints are documented in the "New Constraints" column of the Fi
 **Legacy Table Name:** `[Gcpe.Hub].[calendar].[Category]`  
 **New Table Name:** `categories`
 
-**Description:** Classification categories for activities. Categories can be restricted to specific teams via the visibility field and teamCategories junction table. Pitch is not category-scoped; it may be required for any activity and is expressed at the activity level via `pitchRequiredStatusId` (see Activities and pitch_required_statuses).
+**Description:** Classification categories for activities. Categories can be restricted to specific teams via the visibility field and teamCategories junction table.
 
 ### Field Mappings
 
@@ -392,11 +389,11 @@ Categories use an explicit visibility model aligned with the pods visibility pat
 
 ---
 
-## Pitch Required Statuses and Translation Required Statuses
+## Translation Required Statuses
 
-**Table Names:** `pitch_required_statuses`, `translation_required_statuses`
+**Table Name:** `translation_required_statuses`
 
-**Description:** Small lookup tables for tri-state "required" status on activities. Both tables share the same three values: `pending`, `required`, `not_required`. Activities reference them via nullable FKs `pitchRequiredStatusId` and `translationsRequiredStatusId` (replacing the former boolean `pitchRequired` on activities).
+**Description:** Lookup table for tri-state "required" status on activities (`pending`, `required`, `not_required`). Activities reference it via nullable FK `translationsRequiredStatusId`.
 
 ### Field Mappings (each table)
 

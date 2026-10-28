@@ -21,7 +21,6 @@ const editorWithAllViewGrants = {
     'activities.view',
     'activities.notes.view',
     'activities.lookAhead.view',
-    'activities.pitchStatus.view',
   ],
   roleName: SYSTEM_ROLES.EDITOR,
 };
@@ -96,9 +95,6 @@ describe('redactActivityResponse', () => {
     translationsRequired: ['French'],
     translationsRequiredStatusId: 1,
     translationsRequiredStatus: 'Pending',
-    pitchRequiredStatusId: 2,
-    pitchRequiredStatus: 'Required',
-    pitchDate: '2025-03-01',
   });
 
   it('returns all fields when user has all view grants for restricted scopes', () => {
@@ -109,25 +105,9 @@ describe('redactActivityResponse', () => {
     expect(result.timeStatusId).toBe(3);
     expect(result.lookAheadStatus).toBe('new');
     expect(result.translationsRequired).toEqual(['French']);
-    expect(result.pitchDate).toBe('2025-03-01');
   });
 
-  it('keeps pitch status and pitch date when pitch status is globally viewable', () => {
-    const viewerNoPitchStatus = {
-      permissions: [
-        'activities.view',
-        'activities.notes.view',
-        'activities.lookAhead.view',
-      ],
-      roleName: SYSTEM_ROLES.EDITOR,
-    };
-    const result = redactActivityResponse(activity, viewerNoPitchStatus);
-    expect(result.pitchRequiredStatusId).toBe(2);
-    expect(result.pitchRequiredStatus).toBe('Required');
-    expect(result.pitchDate).toBe('2025-03-01');
-  });
-
-  it('strips view-restricted fields for Viewer without grants; keeps date/time status, translations, pitch status, and pitch date', () => {
+  it('strips view-restricted fields for Viewer without grants; keeps date/time status and translations', () => {
     const result = redactActivityResponse(activity, viewerNoGrants);
     expect(result.notes).toBe('general notes');
     expect(result.internalNotes).toBeUndefined();
@@ -141,9 +121,6 @@ describe('redactActivityResponse', () => {
     expect(result.translationsRequired).toEqual(['French']);
     expect(result.translationsRequiredStatusId).toBe(1);
     expect(result.translationsRequiredStatus).toBe('Pending');
-    expect(result.pitchRequiredStatusId).toBe(2);
-    expect(result.pitchRequiredStatus).toBe('Required');
-    expect(result.pitchDate).toBe('2025-03-01');
   });
 
   it('preserves general notes for Advanced Viewer but redacts internal notes without grant', () => {
@@ -153,7 +130,6 @@ describe('redactActivityResponse', () => {
     expect(result.dateStatusId).toBe(2);
     expect(result.lookAheadStatus).toBe('new');
     expect(result.translationsRequired).toEqual(['French']);
-    expect(result.pitchDate).toBe('2025-03-01');
   });
 
   it('does not mutate the original', () => {

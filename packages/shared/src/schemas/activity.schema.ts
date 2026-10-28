@@ -189,7 +189,6 @@ const activityCoreFieldsSchema = z.object({
   endDate: z.string().date().nullable().optional(),
   startTime: z.string().time().nullable().optional(),
   endTime: z.string().time().nullable().optional(),
-  pitchDate: z.string().date().nullable().optional(), // Date when activity was or will be pitched
 
   // Optional text fields
   notes: z
@@ -212,7 +211,6 @@ const activityCoreFieldsSchema = z.object({
     emptyStringToNull,
     z.union([activityBriefRichTextStoredStringSchema, z.null()]).optional()
   ),
-  pitchRequiredStatusId: z.number().int().nullable().optional(), // tbd, not_required, required, pitched
   translationsRequiredStatusId: z.number().int().nullable().optional(), // tbd, required, not_required
 
   // Optional enum fields
@@ -314,7 +312,6 @@ const commsContactSchema = z.object({
 const junctionTableIdsSchema = z.object({
   categoryIds: z.array(z.number().int()).optional(),
   tagIds: z.array(z.number().int()).optional(),
-  codeIds: z.array(z.number().int()).optional(),
   commsMaterialIds: z.array(z.number().int()).optional(),
   translationLanguageIds: z.array(z.number().int()).optional(),
   eventPlanners: z.array(eventPlannerSchema).optional(),
@@ -495,14 +492,12 @@ export const bulkUpdateActivitiesRequestSchema = z
     activityIds: z.array(z.number().int().positive()).min(1).max(100),
     operation: z.enum([
       'review',
-      'pitchStatus',
       'issue',
       'tags',
       'sharedWith',
       'flag',
       'delete',
     ]),
-    pitchRequiredStatusId: z.number().int().positive().optional(),
     tagIds: z.array(z.number().int().positive()).max(100).optional(),
     teamIds: z.array(z.number().int().positive()).max(100).optional(),
     flagTeamId: z.number().int().positive().optional(),
@@ -521,12 +516,6 @@ export const bulkUpdateActivitiesRequestSchema = z
         path: [field],
       });
     };
-    if (
-      data.operation === 'pitchStatus' &&
-      data.pitchRequiredStatusId === undefined
-    ) {
-      addRequiredIssue('pitchRequiredStatusId');
-    }
     if (data.operation === 'tags' && data.tagIds === undefined) {
       addRequiredIssue('tagIds');
     }

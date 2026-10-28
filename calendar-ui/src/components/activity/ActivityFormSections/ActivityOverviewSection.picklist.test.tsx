@@ -111,8 +111,6 @@ function PicklistHarness({
           categories={categories}
           organizations={[]}
           tags={tags}
-          codes={[]}
-          pitchRequiredStatuses={[]}
           userTeamIds={userTeamIds}
           hasCreateAny={hasCreateAny}
         />

@@ -10,8 +10,6 @@ const baseRow: ActivityTableRow = {
   title: '',
   activityCategories: [],
   categoryIds: [],
-  pitchDate: null,
-  pitchRequiredStatus: null,
   isConfidential: false,
   isIssue: false,
   summary: '',

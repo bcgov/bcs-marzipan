@@ -43,7 +43,6 @@ const mockUser: AuthUser = {
     'activities.delete',
     'activities.notes.view',
     'activities.lookAhead.view',
-    'activities.pitchStatus.view',
   ],
   teamIds: [],
 };

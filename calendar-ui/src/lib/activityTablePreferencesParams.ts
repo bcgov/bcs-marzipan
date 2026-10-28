@@ -18,12 +18,6 @@ const URL_PARAM_NO_START = 'noStart';
 const URL_PARAM_NO_END = 'noEnd';
 const URL_PARAM_CATEGORY = 'category';
 const URL_PARAM_STATUS = 'status';
-const URL_PARAM_PITCH_STATUS = 'pitchStatus';
-const URL_PARAM_PITCH_DATE_KIND = 'pitchDateKind';
-const URL_PARAM_PITCH_DATE_FROM = 'pitchDateFrom';
-const URL_PARAM_PITCH_DATE_TO = 'pitchDateTo';
-const URL_PARAM_PITCH_NO_START = 'pitchNoStart';
-const URL_PARAM_PITCH_NO_END = 'pitchNoEnd';
 const URL_PARAM_LOOK_AHEAD_STATUS = 'lookAheadStatus';
 const URL_PARAM_LOOK_AHEAD_SECTION = 'lookAheadSection';
 const URL_PARAM_DATE_CONFIRMED = 'dateConfirmed';
@@ -112,41 +106,6 @@ function parseFromSearchParams(
     searchParams.get(URL_PARAM_STATUS)
   );
 
-  const pitchStatusParam = searchParams.get(URL_PARAM_PITCH_STATUS);
-  const pitchRequiredStatusNames =
-    typeof pitchStatusParam === 'string' && pitchStatusParam.trim()
-      ? pitchStatusParam
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : [];
-
-  const pitchDateKindParam = searchParams
-    .get(URL_PARAM_PITCH_DATE_KIND)
-    ?.trim();
-  const pitchDateFrom =
-    searchParams.get(URL_PARAM_PITCH_DATE_FROM)?.trim() ?? '';
-  const pitchDateTo = searchParams.get(URL_PARAM_PITCH_DATE_TO)?.trim() ?? '';
-  const pitchNoStart = parseBool(searchParams.get(URL_PARAM_PITCH_NO_START));
-  const pitchNoEnd = parseBool(searchParams.get(URL_PARAM_PITCH_NO_END));
-
-  let pitchDateFilter: ActivityFilterState['pitchDateFilter'] = {
-    kind: 'any',
-  };
-  if (pitchDateKindParam === 'not_scheduled') {
-    pitchDateFilter = { kind: 'not_scheduled' };
-  } else if (pitchDateKindParam === 'scheduled') {
-    pitchDateFilter = {
-      kind: 'scheduled',
-      dateRange: {
-        startDate: pitchDateFrom,
-        endDate: pitchDateTo,
-        noStartDate: pitchNoStart === true,
-        noEndDate: pitchNoEnd === true,
-      },
-    };
-  }
-
   const lookAheadStatusParam = searchParams.get(URL_PARAM_LOOK_AHEAD_STATUS);
   const lookAheadStatusValues =
     typeof lookAheadStatusParam === 'string' && lookAheadStatusParam.trim()
@@ -201,8 +160,6 @@ function parseFromSearchParams(
     },
     categoryIds,
     activityStatusIds,
-    pitchRequiredStatusNames,
-    pitchDateFilter,
     lookAheadStatusValues,
     lookAheadSectionValues,
     dateConfirmedFilter,
@@ -277,39 +234,6 @@ function parseFromStorage(
     if (rawFilter && typeof rawFilter === 'object') {
       const dr = rawFilter.dateRange as Record<string, unknown> | undefined;
       if (dr && typeof dr === 'object') {
-        const pitchRequiredStatusNames = Array.isArray(
-          rawFilter.pitchRequiredStatusNames
-        )
-          ? (rawFilter.pitchRequiredStatusNames as string[]).filter(
-              (s): s is string => typeof s === 'string'
-            )
-          : [];
-        const pdf = rawFilter.pitchDateFilter as
-          | { kind: string; dateRange?: Record<string, unknown> }
-          | undefined;
-        let pitchDateFilter: ActivityFilterState['pitchDateFilter'] = {
-          kind: 'any',
-        };
-        if (pdf && typeof pdf === 'object' && pdf.kind === 'not_scheduled') {
-          pitchDateFilter = { kind: 'not_scheduled' };
-        } else if (
-          pdf &&
-          typeof pdf === 'object' &&
-          pdf.kind === 'scheduled' &&
-          pdf.dateRange &&
-          typeof pdf.dateRange === 'object'
-        ) {
-          const pr = pdf.dateRange;
-          pitchDateFilter = {
-            kind: 'scheduled',
-            dateRange: {
-              startDate: typeof pr.startDate === 'string' ? pr.startDate : '',
-              endDate: typeof pr.endDate === 'string' ? pr.endDate : '',
-              noStartDate: pr.noStartDate === true,
-              noEndDate: pr.noEndDate === true,
-            },
-          };
-        }
         const lookAheadStatusValues = Array.isArray(
           rawFilter.lookAheadStatusValues
         )
@@ -389,8 +313,6 @@ function parseFromStorage(
                 (n): n is number => typeof n === 'number' && Number.isFinite(n)
               )
             : [],
-          pitchRequiredStatusNames,
-          pitchDateFilter,
           lookAheadStatusValues,
           lookAheadSectionValues,
           dateConfirmedFilter,
@@ -433,12 +355,6 @@ export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
     searchParams.has(URL_PARAM_NO_END) ||
     searchParams.has(URL_PARAM_CATEGORY) ||
     searchParams.has(URL_PARAM_STATUS) ||
-    searchParams.has(URL_PARAM_PITCH_STATUS) ||
-    searchParams.has(URL_PARAM_PITCH_DATE_KIND) ||
-    searchParams.has(URL_PARAM_PITCH_DATE_FROM) ||
-    searchParams.has(URL_PARAM_PITCH_DATE_TO) ||
-    searchParams.has(URL_PARAM_PITCH_NO_START) ||
-    searchParams.has(URL_PARAM_PITCH_NO_END) ||
     searchParams.has(URL_PARAM_LOOK_AHEAD_STATUS) ||
     searchParams.has(URL_PARAM_LOOK_AHEAD_SECTION) ||
     searchParams.has(URL_PARAM_DATE_CONFIRMED) ||
@@ -491,8 +407,6 @@ export function preferencesToParams(
     [URL_PARAM_NO_END]: String(f.dateRange.noEndDate),
     [URL_PARAM_CATEGORY]: f.categoryIds.join(','),
     [URL_PARAM_STATUS]: f.activityStatusIds.join(','),
-    [URL_PARAM_PITCH_STATUS]: f.pitchRequiredStatusNames.join(','),
-    [URL_PARAM_PITCH_DATE_KIND]: f.pitchDateFilter.kind,
     [URL_PARAM_LOOK_AHEAD_STATUS]: f.lookAheadStatusValues.join(','),
     [URL_PARAM_LOOK_AHEAD_SECTION]: f.lookAheadSectionValues.join(','),
     [URL_PARAM_DATE_CONFIRMED]:
@@ -506,13 +420,6 @@ export function preferencesToParams(
     [URL_PARAM_TRANSLATION]: f.translationLanguageIds.join(','),
     [URL_PARAM_TRANSLATION_STATUS]: f.translationRequiredStatusIds.join(','),
   };
-  if (f.pitchDateFilter.kind === 'scheduled') {
-    const dr = f.pitchDateFilter.dateRange;
-    raw[URL_PARAM_PITCH_DATE_FROM] = dr.startDate;
-    raw[URL_PARAM_PITCH_DATE_TO] = dr.endDate;
-    raw[URL_PARAM_PITCH_NO_START] = String(dr.noStartDate);
-    raw[URL_PARAM_PITCH_NO_END] = String(dr.noEndDate);
-  }
   const out: Record<string, string> = {};
   for (const [key, value] of Object.entries(raw)) {
     if (value !== '') {

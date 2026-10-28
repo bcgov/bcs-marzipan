@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 
 import type {
   DateStatusLookupItem,
-  PitchRequiredStatusLookupItem,
   TimeStatusLookupItem,
   TranslationRequiredStatusLookupItem,
   VenueStatusLookupItem,
@@ -13,7 +12,6 @@ import {
   useActivityStatuses,
   useActivityTeamSharing,
   useCategories,
-  useCodes,
   useCommsMaterials,
   useDateStatuses,
   useEventPlanners,
@@ -22,7 +20,6 @@ import {
   useNewsReleaseDistributions,
   useNewsReleaseOrigins,
   useOrganizations,
-  usePitchRequiredStatuses,
   usePremierRequested,
   useTags,
   useTimeStatuses,
@@ -61,14 +58,6 @@ export interface FormLookupData {
 
   // Tags - for Badge components
   tags: Array<{
-    id: number;
-    text: string;
-    visibility: 'global' | 'team';
-    teamIds?: number[];
-  }>;
-
-  // Codes - activity coding labels (same shape as tags in the form)
-  codes: Array<{
     id: number;
     text: string;
     visibility: 'global' | 'team';
@@ -135,9 +124,6 @@ export interface FormLookupData {
   // Venue Statuses - Event section (next to venue name)
   venueStatuses: VenueStatusLookupItem[];
 
-  // Pitch Required Statuses - for Overview section
-  pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
-
   // Translation Required Statuses - for Comms section
   translationRequiredStatuses: TranslationRequiredStatusLookupItem[];
 
@@ -155,7 +141,6 @@ export function useFormLookups(): FormLookupData {
   const usersQuery = useUsers();
   const eventPlannersQuery = useEventPlanners();
   const tagsQuery = useTags();
-  const codesQuery = useCodes();
   const activityStatusesQuery = useActivityStatuses();
   const commsMaterialsQuery = useCommsMaterials();
   const translationLanguagesQuery = useTranslationLanguages();
@@ -167,7 +152,6 @@ export function useFormLookups(): FormLookupData {
   const dateStatusesQuery = useDateStatuses();
   const timeStatusesQuery = useTimeStatuses();
   const venueStatusesQuery = useVenueStatuses();
-  const pitchRequiredStatusesQuery = usePitchRequiredStatuses();
   const translationRequiredStatusesQuery = useTranslationRequiredStatuses();
 
   const isLoading =
@@ -177,7 +161,6 @@ export function useFormLookups(): FormLookupData {
     usersQuery.isLoading ||
     eventPlannersQuery.isLoading ||
     tagsQuery.isLoading ||
-    codesQuery.isLoading ||
     activityStatusesQuery.isLoading ||
     commsMaterialsQuery.isLoading ||
     translationLanguagesQuery.isLoading ||
@@ -189,7 +172,6 @@ export function useFormLookups(): FormLookupData {
     dateStatusesQuery.isLoading ||
     timeStatusesQuery.isLoading ||
     venueStatusesQuery.isLoading ||
-    pitchRequiredStatusesQuery.isLoading ||
     translationRequiredStatusesQuery.isLoading;
 
   const hasError =
@@ -199,7 +181,6 @@ export function useFormLookups(): FormLookupData {
     usersQuery.isError ||
     eventPlannersQuery.isError ||
     tagsQuery.isError ||
-    codesQuery.isError ||
     activityStatusesQuery.isError ||
     commsMaterialsQuery.isError ||
     translationLanguagesQuery.isError ||
@@ -211,7 +192,6 @@ export function useFormLookups(): FormLookupData {
     dateStatusesQuery.isError ||
     timeStatusesQuery.isError ||
     venueStatusesQuery.isError ||
-    pitchRequiredStatusesQuery.isError ||
     translationRequiredStatusesQuery.isError;
 
   // Memoized so consumers (e.g. ActivityPage hydration) only see a new
@@ -261,14 +241,6 @@ export function useFormLookups(): FormLookupData {
     // Transform tags for Badge components
     const tags =
       tagsQuery.data?.map((item) => ({
-        id: item.id,
-        text: item.displayName || item.name || item.label,
-        visibility: item.visibility,
-        teamIds: item.teamIds,
-      })) || [];
-
-    const codes =
-      codesQuery.data?.map((item) => ({
         id: item.id,
         text: item.displayName || item.name || item.label,
         visibility: item.visibility,
@@ -359,7 +331,6 @@ export function useFormLookups(): FormLookupData {
       users,
       eventPlanners,
       tags: tags,
-      codes,
       activityStatuses: activityStatuses,
       commsMaterials: commsMaterials,
       translationLanguages: translationLanguages,
@@ -372,7 +343,6 @@ export function useFormLookups(): FormLookupData {
       dateStatuses: dateStatusesQuery.data ?? [],
       timeStatuses: timeStatusesQuery.data ?? [],
       venueStatuses: venueStatusesQuery.data ?? [],
-      pitchRequiredStatuses: pitchRequiredStatusesQuery.data ?? [],
       translationRequiredStatuses: translationRequiredStatusesQuery.data ?? [],
       isLoading,
       hasError,
@@ -391,10 +361,8 @@ export function useFormLookups(): FormLookupData {
     newsReleaseDistributionsQuery.data,
     newsReleaseOriginsQuery.data,
     organizationsQuery.data,
-    pitchRequiredStatusesQuery.data,
     premierRequestedQuery.data,
     tagsQuery.data,
-    codesQuery.data,
     timeStatusesQuery.data,
     translationLanguagesQuery.data,
     translationRequiredStatusesQuery.data,

@@ -20,10 +20,6 @@ export interface ActivityFilterMatchInput {
   /** Category lookup IDs on the activity. */
   categoryIds: number[];
   activityStatusId: number;
-  /** Pitch required status display name (or null). */
-  pitchRequiredStatusName: string | null;
-  /** Pitch (panel) date as an ISO string, or null when not scheduled. */
-  pitchDate: string | null;
   lookAheadStatus: string | null;
   lookAheadSection: string | null;
   /** Date confirmation status name (matched case-insensitively against confirmed labels). */
@@ -68,8 +64,6 @@ export function activityResponseToFilterMatchInput(
     endDate: activity.endDate,
     categoryIds: activity.categoryIds ?? [],
     activityStatusId: activity.activityStatusId,
-    pitchRequiredStatusName: activity.pitchRequiredStatus ?? null,
-    pitchDate: activity.pitchDate ?? null,
     lookAheadStatus: activity.lookAheadStatus ?? null,
     lookAheadSection: activity.lookAheadSection ?? null,
     dateStatusName: activity.dateStatus ?? '',

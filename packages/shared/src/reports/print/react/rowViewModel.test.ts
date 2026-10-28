@@ -48,8 +48,6 @@ const BASE_ACTIVITY_RESPONSE = {
   lookAheadStatus: 'none',
   lookAheadSection: 'events',
   notes: null,
-  pitchDate: null,
-  pitchRequiredStatusId: null,
   translationsRequiredStatusId: null,
   premierRequestedId: null,
   visibility: 'global',
@@ -65,8 +63,6 @@ const BASE_ACTIVITY_RESPONSE = {
   category: [],
   categoryIds: [],
   tags: [],
-  codes: [],
-  codeIds: [],
   commsMaterials: [],
   translationsRequired: [],
   representativesAttending: [],
@@ -84,7 +80,6 @@ const BASE_ACTIVITY_RESPONSE = {
   newsReleaseOrigin: null,
   newsReleaseDistribution: null,
   premierRequested: null,
-  pitchRequiredStatus: null,
   translationsRequiredStatus: null,
   leadMinistry: 'Education and Child Care',
   leadMinistryAbbreviation: 'ECC',
@@ -269,8 +264,8 @@ describe('toPrintRowViewModel', () => {
         variant: 'lookAhead',
       }
     );
-    expect(notConfirmed.dateTime.dateStatus).toBe('TBC');
-    expect(notConfirmed.dateTime.timeStatus).toBe('TBC');
+    expect(notConfirmed.dateTime.dateStatus).toBe('TBD');
+    expect(notConfirmed.dateTime.timeStatus).toBe('TBD');
 
     const execLa = toPrintRowViewModel(unsettled, {
       activityBaseUrl: 'http://localhost:3000',

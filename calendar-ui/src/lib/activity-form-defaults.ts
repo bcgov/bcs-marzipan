@@ -20,7 +20,6 @@ export function getDefaultFormValues(): Partial<ActivityFormData> {
     activityStatusId: 1,
     dateStatusId: 1,
     timeStatusId: 1,
-    pitchRequiredStatusId: 1,
     translationsRequiredStatusId: 1,
     leadTeamId: 0,
     venueStatusId: undefined,

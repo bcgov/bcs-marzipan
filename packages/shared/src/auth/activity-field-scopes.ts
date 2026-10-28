@@ -7,7 +7,7 @@
  * View rule (scopes with a view permission): has <scope>.view OR <scope>.edit OR role is
  * Advanced Viewer / Advanced Editor / Admin / System Admin — unless
  * {@link ScopeDefinition.allowRoleViewBypass} is false.
- * Scopes without a view permission (translations, pitchStatus, pitchDate) are always visible; edit is still gated.
+ * Scopes without a view permission (translations) are always visible; edit is still gated.
  * Edit rule: has <scope>.edit only (no role bypass).
  */
 
@@ -15,11 +15,8 @@ import { PERMISSIONS, SYSTEM_ROLES } from './constants';
 
 export const ACTIVITY_FIELD_SCOPES = [
   'internalNotes',
-  'codes',
   'lookAhead',
   'translations',
-  'pitchStatus',
-  'pitchDate',
 ] as const;
 
 export type ActivityFieldScope = (typeof ACTIVITY_FIELD_SCOPES)[number];
@@ -50,13 +47,6 @@ export const ACTIVITY_FIELD_SCOPE_CONFIG: Record<
     requestFields: ['internalNotes'],
     allowRoleViewBypass: false,
   },
-  codes: {
-    viewKey: PERMISSIONS.ACTIVITIES.CODES_VIEW,
-    editKey: PERMISSIONS.ACTIVITIES.CODES_EDIT,
-    responseFields: ['codeIds', 'codes'],
-    requestFields: ['codeIds'],
-    allowRoleViewBypass: false,
-  },
   lookAhead: {
     viewKey: PERMISSIONS.ACTIVITIES.LOOK_AHEAD_VIEW,
     editKey: PERMISSIONS.ACTIVITIES.LOOK_AHEAD_EDIT,
@@ -72,18 +62,6 @@ export const ACTIVITY_FIELD_SCOPE_CONFIG: Record<
       'translationsRequired',
     ],
     requestFields: ['translationsRequiredStatusId', 'translationLanguageIds'],
-  },
-  pitchStatus: {
-    viewKey: null,
-    editKey: PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
-    responseFields: ['pitchRequiredStatusId', 'pitchRequiredStatus'],
-    requestFields: ['pitchRequiredStatusId'],
-  },
-  pitchDate: {
-    viewKey: null,
-    editKey: PERMISSIONS.ACTIVITIES.PITCH_DATE_EDIT,
-    responseFields: ['pitchDate'],
-    requestFields: ['pitchDate'],
   },
 } as const;
 

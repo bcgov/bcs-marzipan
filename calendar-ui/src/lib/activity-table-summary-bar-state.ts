@@ -4,10 +4,7 @@ import type {
   BooleanFilter,
   TableSummaryFilterDetailLine,
 } from '@/components/table/TableSummaryBar';
-import type {
-  ActivityPitchFieldVisibility,
-  ActivityStatusArchiveIds,
-} from '@/hooks/useActivityTableFilterLookups';
+import type { ActivityStatusArchiveIds } from '@/hooks/useActivityTableFilterLookups';
 import {
   buildActivityFilterSummaryLinesForDetailPopover,
   getAppliedActivityFilterTypeLabels,
@@ -84,7 +81,6 @@ export function buildActivityTableFilterSummaryDetails(options: {
   filterState: ActivityFilterState;
   searchKeyword: string;
   filterSummaryContext: ActivityFilterSummaryContext;
-  pitchFieldVisibility: ActivityPitchFieldVisibility;
 }): {
   appliedFilterTypeLabels: string[];
   filterDetailLines: TableSummaryFilterDetailLine[];
@@ -97,10 +93,8 @@ export function buildActivityTableFilterSummaryDetails(options: {
   );
 
   const hasActiveCriteria =
-    hasAnyActivityTableFilterActive(
-      options.filterState,
-      options.pitchFieldVisibility
-    ) || options.searchKeyword.trim() !== '';
+    hasAnyActivityTableFilterActive(options.filterState) ||
+    options.searchKeyword.trim() !== '';
 
   const filterDetailLines = hasActiveCriteria
     ? buildActivityFilterSummaryLinesForDetailPopover(

@@ -1,10 +1,7 @@
 import { format } from 'date-fns';
 
 import type { ActivityFilterState } from '@corpcal/shared';
-import {
-  isDateRangeActive,
-  type DateRangeValue,
-} from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
+import { type DateRangeValue } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { getLookAheadStatusLabel } from '@/constants/form-options';
 import type { OptionItem } from '@/schemas/types';
 
@@ -27,7 +24,6 @@ export type ActivityFilterChipRow = {
 export type ActivityFilterSummaryContext = {
   statusOptions: OptionItem[];
   categoryOptions?: OptionItem[];
-  pitchRequiredStatusOptions: OptionItem[];
   tagOptions: OptionItem[];
   leadTeamOptions: OptionItem[];
   commsContactOptions: OptionItem[];
@@ -71,19 +67,6 @@ function labelForNumericId(id: number, options: OptionItem[]): string {
     if (Number.isFinite(n)) map.set(n, o.label);
   }
   return map.get(id) ?? `ID ${id}`;
-}
-
-function pitchDateSummary(
-  pitchDateFilter: ActivityFilterState['pitchDateFilter']
-): string {
-  if (pitchDateFilter.kind === 'any') return '';
-  if (pitchDateFilter.kind === 'not_scheduled') {
-    return 'Not scheduled for panel';
-  }
-  if (!isDateRangeActive(pitchDateFilter.dateRange)) {
-    return 'Scheduled for panel';
-  }
-  return `Scheduled for panel — ${formatDateRangeValue(pitchDateFilter.dateRange)}`;
 }
 
 function confirmedLabel(
@@ -156,33 +139,6 @@ export function buildActivityFilterChipRows(
         chipKey: `status:${id}`,
         displayLabel: labelForNumericId(id, ctx.statusOptions),
       })),
-    });
-  }
-
-  if (filterState.pitchRequiredStatusNames.length > 0) {
-    const byValue = new Map(
-      ctx.pitchRequiredStatusOptions.map((o) => [o.value, o.label])
-    );
-    rows.push({
-      rowKey: 'pitchStatus',
-      label: 'Pitch status',
-      chips: filterState.pitchRequiredStatusNames.map((name) => ({
-        chipKey: `pitchStatus:${encodeURIComponent(name)}`,
-        displayLabel: byValue.get(name) ?? name,
-      })),
-    });
-  }
-
-  if (filterState.pitchDateFilter.kind !== 'any') {
-    rows.push({
-      rowKey: 'pitchDate',
-      label: 'Pitch date',
-      chips: [
-        {
-          chipKey: 'pitchDate',
-          displayLabel: pitchDateSummary(filterState.pitchDateFilter),
-        },
-      ],
     });
   }
 
@@ -369,12 +325,6 @@ export function clearSavedFilterChip(
       searchKeyword: kw,
     };
   }
-  if (chipKey === 'pitchDate') {
-    return {
-      filterState: { ...state, pitchDateFilter: { kind: 'any' } },
-      searchKeyword: kw,
-    };
-  }
   if (chipKey === 'dateConfirmed') {
     return {
       filterState: { ...state, dateConfirmedFilter: 'any' },
@@ -416,18 +366,6 @@ export function clearSavedFilterChip(
         filterState: {
           ...state,
           activityStatusIds: state.activityStatusIds.filter((x) => x !== id),
-        },
-        searchKeyword: kw,
-      };
-    }
-    case 'pitchStatus': {
-      const name = decodeURIComponent(raw);
-      return {
-        filterState: {
-          ...state,
-          pitchRequiredStatusNames: state.pitchRequiredStatusNames.filter(
-            (x) => x !== name
-          ),
         },
         searchKeyword: kw,
       };

@@ -20,7 +20,6 @@ import {
   dateStatuses,
   newsReleaseDistributions,
   newsReleaseOrigins,
-  pitchRequiredStatuses,
   premierRequested,
   timeStatuses,
   translationRequiredStatuses,
@@ -30,7 +29,6 @@ import { ministries } from './ministry';
 import { organizations } from './organizations';
 import {
   activityCategories,
-  activityCodes,
   activityCommsContacts,
   activityCommsMaterials,
   activityEventPlanners,
@@ -106,10 +104,6 @@ export const activities = pgTable(
     // Notes and additional fields
     notes: text('notes'),
     internalNotes: text('internal_notes'),
-    pitchDate: date('pitch_date'), // Date when activity was or will be pitched (nullable)
-    pitchRequiredStatusId: integer('pitch_required_status_id').references(
-      () => pitchRequiredStatuses.id
-    ), // pending, required, not_required
     translationsRequiredStatusId: integer(
       'translations_required_status_id'
     ).references(() => translationRequiredStatuses.id), // pending, required, not_required
@@ -234,11 +228,6 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     references: [premierRequested.id],
     relationName: 'premierRequestedLookup',
   }),
-  pitchRequiredStatus: one(pitchRequiredStatuses, {
-    fields: [activities.pitchRequiredStatusId],
-    references: [pitchRequiredStatuses.id],
-    relationName: 'pitchRequiredStatus',
-  }),
   translationsRequiredStatus: one(translationRequiredStatuses, {
     fields: [activities.translationsRequiredStatusId],
     references: [translationRequiredStatuses.id],
@@ -255,7 +244,6 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
   activityCommsContacts: many(activityCommsContacts),
   activityThemes: many(activityThemes),
   activityTags: many(activityTags),
-  activityCodes: many(activityCodes),
   activitySubscriptions: many(activitySubscriptions),
   activitySectors: many(activitySectors),
   venueAddress: one(venueAddresses, {

@@ -11,8 +11,6 @@ function row(partial: Partial<ActivityTableRow>): ActivityTableRow {
     title: 'Test',
     activityCategories: [],
     categoryIds: [],
-    pitchDate: null,
-    pitchRequiredStatus: null,
     isConfidential: false,
     isIssue: false,
     summary: '',

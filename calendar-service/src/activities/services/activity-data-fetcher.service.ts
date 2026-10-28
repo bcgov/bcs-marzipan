@@ -4,7 +4,6 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   activities,
   activityCategories,
-  activityCodes,
   activityCommsContacts,
   activityCommsMaterials,
   activityEventPlanners,
@@ -14,14 +13,12 @@ import {
   activityTags,
   activityTranslationsRequired,
   categories,
-  codes,
   commsMaterials,
   dateStatuses,
   ministries,
   newsReleaseDistributions,
   newsReleaseOrigins,
   organizations,
-  pitchRequiredStatuses,
   premierRequested,
   tags,
   teams,
@@ -123,42 +120,6 @@ export class ActivityDataFetcherService {
       existing.push({
         id: row.tagId,
         text: row.tagDisplayName ?? row.tagName ?? '',
-      });
-      map.set(row.activityId, existing);
-    }
-    return map;
-  }
-
-  async fetchCodesForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, Array<{ id: number; text: string }>>> {
-    if (activityIds.length === 0) {
-      return new Map();
-    }
-
-    const results = await this.databaseService.db
-      .select({
-        activityId: activityCodes.activityId,
-        codeId: codes.id,
-        codeDisplayName: codes.displayName,
-        codeName: codes.name,
-      })
-      .from(activityCodes)
-      .innerJoin(codes, eq(activityCodes.codeId, codes.id))
-      .where(
-        and(
-          inArray(activityCodes.activityId, activityIds),
-          eq(activityCodes.isActive, true),
-          eq(codes.isActive, true)
-        )
-      );
-
-    const map = new Map<number, Array<{ id: number; text: string }>>();
-    for (const row of results) {
-      const existing = map.get(row.activityId) ?? [];
-      existing.push({
-        id: row.codeId,
-        text: row.codeDisplayName ?? row.codeName ?? '',
       });
       map.set(row.activityId, existing);
     }
@@ -1000,67 +961,6 @@ export class ActivityDataFetcherService {
     }
 
     return sortedMap;
-  }
-
-  /**
-   * Fetch pitch required status display names for multiple activities
-   */
-  async fetchPitchRequiredStatusForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string | null>> {
-    if (activityIds.length === 0) {
-      return new Map();
-    }
-
-    const activityResults = await this.databaseService.db
-      .select({
-        id: activities.id,
-        pitchRequiredStatusId: activities.pitchRequiredStatusId,
-      })
-      .from(activities)
-      .where(inArray(activities.id, activityIds));
-
-    const statusIds = activityResults
-      .map((a) => a.pitchRequiredStatusId)
-      .filter((id): id is number => id !== null && id !== undefined);
-
-    if (statusIds.length === 0) {
-      const resultMap = new Map<number, string | null>();
-      for (const activity of activityResults) {
-        resultMap.set(activity.id, null);
-      }
-      return resultMap;
-    }
-
-    const statusResults = await this.databaseService.db
-      .select({
-        id: pitchRequiredStatuses.id,
-        name: pitchRequiredStatuses.displayName,
-      })
-      .from(pitchRequiredStatuses)
-      .where(
-        and(
-          inArray(pitchRequiredStatuses.id, statusIds),
-          eq(pitchRequiredStatuses.isActive, true)
-        )
-      );
-
-    const statusMap = new Map<number, string>(
-      statusResults.map((s) => [s.id, s.name])
-    );
-
-    const resultMap = new Map<number, string | null>();
-    for (const activity of activityResults) {
-      if (activity.pitchRequiredStatusId) {
-        resultMap.set(
-          activity.id,
-          statusMap.get(activity.pitchRequiredStatusId) ?? null
-        );
-      } else {
-        resultMap.set(activity.id, null);
-      }
-    }
-    return resultMap;
   }
 
   /**

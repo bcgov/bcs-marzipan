@@ -86,7 +86,7 @@ export const UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES = [
   {
     category: 'Optional dates / times (ScheduledDatePopoverField)',
     emptyShape: 'undefined',
-    examples: 'startDate, endDate, startTime, endTime, pitchDate',
+    examples: 'startDate, endDate, startTime, endTime',
   },
   {
     category: 'Optional string IDs cleared via Select',
@@ -97,7 +97,7 @@ export const UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES = [
     category: 'ID arrays (Combobox multi-select)',
     emptyShape: '[]',
     examples:
-      'categoryIds, tagIds, codeIds, commsMaterialIds, translationLanguageIds, sharedWithTeamIds',
+      'categoryIds, tagIds, commsMaterialIds, translationLanguageIds, sharedWithTeamIds',
   },
   {
     category: 'Object arrays',

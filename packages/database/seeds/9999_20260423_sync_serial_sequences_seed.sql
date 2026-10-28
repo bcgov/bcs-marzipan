@@ -24,13 +24,11 @@ SELECT setval('news_release_distributions_id_seq', COALESCE((SELECT MAX(id) FROM
 SELECT setval('news_release_origins_id_seq', COALESCE((SELECT MAX(id) FROM news_release_origins), 1), true);
 SELECT setval('organizations_id_seq', COALESCE((SELECT MAX(id) FROM organizations), 1), true);
 SELECT setval('permissions_id_seq', COALESCE((SELECT MAX(id) FROM permissions), 1), true);
-SELECT setval('pitch_required_statuses_id_seq', COALESCE((SELECT MAX(id) FROM pitch_required_statuses), 1), true);
 SELECT setval('premier_requested_id_seq', COALESCE((SELECT MAX(id) FROM premier_requested), 1), true);
 SELECT setval('reports_id_seq', COALESCE((SELECT MAX(id) FROM reports), 1), true);
 SELECT setval('roles_id_seq', COALESCE((SELECT MAX(id) FROM roles), 1), true);
 -- sectors: UUID PK (gen_random_uuid), no serial sequence — omit setval
 SELECT setval('tags_id_seq', COALESCE((SELECT MAX(id) FROM tags), 1), true);
-SELECT setval('codes_id_seq', COALESCE((SELECT MAX(id) FROM codes), 1), true);
 SELECT setval('team_history_id_seq', COALESCE((SELECT MAX(id) FROM team_history), 1), true);
 SELECT setval('teams_id_seq', COALESCE((SELECT MAX(id) FROM teams), 1), true);
 SELECT setval('themes_id_seq', COALESCE((SELECT MAX(id) FROM themes), 1), true);

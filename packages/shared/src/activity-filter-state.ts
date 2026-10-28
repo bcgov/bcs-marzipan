@@ -1,6 +1,6 @@
 import { isDeepEqual } from './utils/isDeepEqual';
 
-/** Scheduled / pitch panel date range bounds (ISO date strings or empty). */
+/** Scheduled panel date range bounds (ISO date strings or empty). */
 export interface DateRangeValue {
   startDate: string;
   endDate: string;
@@ -8,18 +8,10 @@ export interface DateRangeValue {
   noEndDate: boolean;
 }
 
-/** Pitch date filter: any (no filter), not_scheduled, or scheduled with optional date range. */
-export type PitchDateFilter =
-  | { kind: 'any' }
-  | { kind: 'not_scheduled' }
-  | { kind: 'scheduled'; dateRange: DateRangeValue };
-
 export interface ActivityFilterState {
   dateRange: DateRangeValue;
   categoryIds: number[];
   activityStatusIds: number[];
-  pitchRequiredStatusNames: string[];
-  pitchDateFilter: PitchDateFilter;
   lookAheadStatusValues: string[];
   lookAheadSectionValues: string[];
   dateConfirmedFilter: 'any' | 'confirmed' | 'tbd';
@@ -40,8 +32,6 @@ export const ACTIVITY_FILTER_STATE_KEYS = [
   'dateRange',
   'categoryIds',
   'activityStatusIds',
-  'pitchRequiredStatusNames',
-  'pitchDateFilter',
   'lookAheadStatusValues',
   'lookAheadSectionValues',
   'dateConfirmedFilter',
@@ -62,7 +52,7 @@ export type ActivityFilterArrayStateKey = {
 }[keyof ActivityFilterState];
 
 const NON_ARRAY_ACTIVITY_FILTER_STATE_KEYS = new Set<keyof ActivityFilterState>(
-  ['dateRange', 'pitchDateFilter', 'dateConfirmedFilter', 'timeConfirmedFilter']
+  ['dateRange', 'dateConfirmedFilter', 'timeConfirmedFilter']
 );
 
 /** Array-valued filter keys derived from {@link ACTIVITY_FILTER_STATE_KEYS}. */
@@ -76,13 +66,6 @@ const ALLOWED_FILTER_STATE_KEY_SET = new Set<string>(
   ACTIVITY_FILTER_STATE_KEYS
 );
 
-export const DEFAULT_PITCH_DATE_RANGE: DateRangeValue = {
-  startDate: '',
-  endDate: '',
-  noStartDate: false,
-  noEndDate: false,
-};
-
 export const DEFAULT_ACTIVITY_FILTER_STATE: ActivityFilterState = {
   dateRange: {
     startDate: '',
@@ -92,8 +75,6 @@ export const DEFAULT_ACTIVITY_FILTER_STATE: ActivityFilterState = {
   },
   categoryIds: [],
   activityStatusIds: [],
-  pitchRequiredStatusNames: [],
-  pitchDateFilter: { kind: 'any' },
   lookAheadStatusValues: [],
   lookAheadSectionValues: [],
   dateConfirmedFilter: 'any',
@@ -161,30 +142,6 @@ export function coerceActivityFilterStateFromRecord(
 
   const categoryIds = sanitizeIdArrayNoLookup(raw.categoryIds);
   const activityStatusIds = sanitizeIdArrayNoLookup(raw.activityStatusIds);
-  const pitchRequiredStatusNames = sanitizeStringArray(
-    raw.pitchRequiredStatusNames
-  );
-
-  let pitchDateFilter: PitchDateFilter = { kind: 'any' };
-  const pdf = raw.pitchDateFilter as
-    | { kind?: string; dateRange?: Record<string, unknown> }
-    | undefined;
-  if (pdf && typeof pdf === 'object') {
-    if (pdf.kind === 'not_scheduled') {
-      pitchDateFilter = { kind: 'not_scheduled' };
-    } else if (pdf.kind === 'scheduled' && pdf.dateRange) {
-      const pr = pdf.dateRange;
-      pitchDateFilter = {
-        kind: 'scheduled',
-        dateRange: {
-          startDate: typeof pr.startDate === 'string' ? pr.startDate : '',
-          endDate: typeof pr.endDate === 'string' ? pr.endDate : '',
-          noStartDate: pr.noStartDate === true,
-          noEndDate: pr.noEndDate === true,
-        },
-      };
-    }
-  }
 
   const lookAheadStatusValues = sanitizeStringArray(raw.lookAheadStatusValues);
   const lookAheadSectionValues = sanitizeStringArray(
@@ -207,8 +164,6 @@ export function coerceActivityFilterStateFromRecord(
     dateRange,
     categoryIds,
     activityStatusIds,
-    pitchRequiredStatusNames,
-    pitchDateFilter,
     lookAheadStatusValues,
     lookAheadSectionValues,
     dateConfirmedFilter,

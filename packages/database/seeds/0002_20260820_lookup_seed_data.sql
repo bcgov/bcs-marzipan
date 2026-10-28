@@ -179,16 +179,6 @@ INSERT INTO tags (id, name, display_name, sort_order, visibility, is_active, des
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- CODES
--- Activity coding labels (global visibility by default)
--- ============================================================================
-
-INSERT INTO codes (id, name, display_name, sort_order, visibility, is_active, description, created_by, last_updated_by) VALUES
-  (1, 'code-a', 'Code A', 1, 'global', true, 'Sample coding label', 1, 1),
-  (2, 'code-b', 'Code B', 2, 'global', true, 'Sample coding label', 1, 1)
-ON CONFLICT (id) DO NOTHING;
-
--- ============================================================================
 -- THEMES
 -- Classification themes for activities
 -- Legacy: used UUID primary key. Now uses serial (integer) id.

@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import {
-  CONFIRMED_LOOKUP_NAME,
-  PITCHED_LOOKUP_NAME,
-  TBD_LOOKUP_NAME,
-} from '../constants/constants';
+import { CONFIRMED_LOOKUP_NAME, TBD_LOOKUP_NAME } from '../constants/constants';
 import { applyActivitySchedulingValidation } from './activity-scheduling-validation';
 
 function parseWithScheduling(
@@ -28,8 +24,6 @@ describe('applyActivitySchedulingValidation', () => {
       id === 2 ? CONFIRMED_LOOKUP_NAME : TBD_LOOKUP_NAME,
     timeStatusNameForId: (id: number) =>
       id === 2 ? CONFIRMED_LOOKUP_NAME : TBD_LOOKUP_NAME,
-    pitchRequiredStatusNameForId: (id: number) =>
-      id === 4 ? PITCHED_LOOKUP_NAME : TBD_LOOKUP_NAME,
   };
 
   it('requires start and end dates on create', () => {
@@ -95,22 +89,5 @@ describe('applyActivitySchedulingValidation', () => {
       resolvers
     );
     expect(result.success).toBe(true);
-  });
-
-  it('requires pitch date when pitch status is Pitched', () => {
-    const result = parseWithScheduling(
-      {
-        startDate: '2026-01-01',
-        endDate: '2026-01-01',
-        pitchRequiredStatusId: 4,
-      },
-      'create',
-      resolvers
-    );
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(result.error.issues.some((i) => i.path[0] === 'pitchDate')).toBe(
-      true
-    );
   });
 });

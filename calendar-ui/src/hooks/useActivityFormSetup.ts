@@ -38,8 +38,6 @@ function buildSchedulingResolvers(
       lookups.dateStatuses.find((s) => s.id === id)?.name,
     timeStatusNameForId: (id) =>
       lookups.timeStatuses.find((s) => s.id === id)?.name,
-    pitchRequiredStatusNameForId: (id) =>
-      lookups.pitchRequiredStatuses.find((s) => s.id === id)?.name,
   };
 }
 

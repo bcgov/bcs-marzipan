@@ -121,42 +121,6 @@ export const tagLookupItemSchema = lookupItemSchema.extend({
 });
 
 // ============================================
-// Code Schema (activity coding labels)
-// ============================================
-
-export const codeResponseSchema = z.object({
-  id: z.number().int(),
-  name: z.string(),
-  displayName: z.string(),
-  sortOrder: z.number().int(),
-  visibility: z.enum(['global', 'team']),
-  isActive: z.boolean(),
-  description: z.string().nullable(),
-});
-
-export const codeLookupItemSchema = lookupItemSchema.extend({
-  name: z.string(),
-  displayName: z.string(),
-  visibility: z.enum(['global', 'team']),
-});
-
-export const createCodeRequestSchema = z.object({
-  name: z.string().min(1).max(255),
-  displayName: z.string().min(1).max(255).optional(),
-  sortOrder: z.number().int().optional(),
-  isActive: z.boolean().optional(),
-  description: z.string().nullable().optional(),
-  visibility: z.enum(['global']).optional(),
-});
-
-export const updateCodeRequestSchema = createCodeRequestSchema.partial();
-
-export type CodeResponse = z.infer<typeof codeResponseSchema>;
-export type CodeLookupItem = z.infer<typeof codeLookupItemSchema>;
-export type CreateCodeRequest = z.infer<typeof createCodeRequestSchema>;
-export type UpdateCodeRequest = z.infer<typeof updateCodeRequestSchema>;
-
-// ============================================
 // Organization Schema
 // ============================================
 
@@ -302,28 +266,6 @@ export const timeStatusResponseSchema = z.object({
 });
 
 export const timeStatusLookupItemSchema = lookupItemSchema.extend({
-  name: z.string(),
-  displayName: z.string(),
-});
-
-// ============================================
-// Pitch Required Status Schema
-// ============================================
-
-/**
- * Pitch Required Status Response Schema
- * Values: pending, required, not_required
- */
-export const pitchRequiredStatusResponseSchema = z.object({
-  id: z.number().int(),
-  name: z.string(),
-  displayName: z.string(),
-  sortOrder: z.number().int(),
-  isActive: z.boolean(),
-  description: z.string().nullable(),
-});
-
-export const pitchRequiredStatusLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string(),
 });
@@ -585,13 +527,6 @@ export type DateStatusLookupItem = z.infer<typeof dateStatusLookupItemSchema>;
 
 export type TimeStatusResponse = z.infer<typeof timeStatusResponseSchema>;
 export type TimeStatusLookupItem = z.infer<typeof timeStatusLookupItemSchema>;
-
-export type PitchRequiredStatusResponse = z.infer<
-  typeof pitchRequiredStatusResponseSchema
->;
-export type PitchRequiredStatusLookupItem = z.infer<
-  typeof pitchRequiredStatusLookupItemSchema
->;
 
 export type TranslationRequiredStatusResponse = z.infer<
   typeof translationRequiredStatusResponseSchema

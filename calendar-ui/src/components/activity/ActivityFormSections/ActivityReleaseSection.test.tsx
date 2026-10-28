@@ -55,8 +55,6 @@ const mockLookups = {
   users: [],
   eventPlanners: [],
   tags: [],
-  codes: [],
-  pitchRequiredStatuses: [],
   activityStatuses: [],
   commsMaterials: [],
   translationLanguages: [
@@ -117,6 +115,49 @@ function ActivityCommsSectionHarness({
     </FormProvider>
   );
 }
+
+describe('ActivityCommsSection optional lookup clear', () => {
+  it('clears news release origin when Clear is clicked', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    render(
+      <ActivityCommsSectionHarness
+        readOnly={false}
+        defaultValues={{ newsReleaseOriginId: 1 }}
+        onFormReady={(form) => {
+          formRef = form;
+        }}
+      />
+    );
+
+    const origin = await screen.findByRole('combobox', {
+      name: /News release origin/i,
+    });
+    await user.click(origin);
+    await user.click(
+      await screen.findByRole('button', { name: /Clear News release origin/i })
+    );
+
+    await waitFor(() => {
+      expect(formRef!.getValues('newsReleaseOriginId')).toBeUndefined();
+      expect(formRef!.formState.dirtyFields.newsReleaseOriginId).toBe(true);
+    });
+  });
+
+  it('hides Clear for news release origin when read-only', () => {
+    render(
+      <ActivityCommsSectionHarness
+        readOnly
+        defaultValues={{ newsReleaseOriginId: 1 }}
+      />
+    );
+
+    expect(
+      screen.queryByRole('button', { name: /Clear News release origin/i })
+    ).not.toBeInTheDocument();
+  });
+});
 
 describe('ActivityCommsSection release fields permissions', () => {
   it('renders news release selects as readOnly when activity is view-only', async () => {

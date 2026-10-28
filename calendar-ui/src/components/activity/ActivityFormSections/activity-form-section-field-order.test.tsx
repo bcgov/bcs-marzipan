@@ -146,10 +146,7 @@ function SectionFormHarness({
   );
 }
 
-const mockLookups: Pick<
-  FormLookupData,
-  'categories' | 'pitchRequiredStatuses'
-> = {
+const mockLookups: Pick<FormLookupData, 'categories'> = {
   categories: [
     {
       id: 1,
@@ -158,34 +155,18 @@ const mockLookups: Pick<
       visibility: 'global',
     },
   ],
-  pitchRequiredStatuses: [
-    {
-      id: 1,
-      label: 'Pending',
-      value: 1,
-      name: 'pending',
-      displayName: 'Pending',
-    },
-  ],
 };
 
 describe('activity form section field order', () => {
   it('matches registry order in overview', () => {
     const { container } = render(
       <SectionFormHarness
-        canViewFieldScope={(scope) =>
-          scope === 'pitchStatus' ||
-          scope === 'pitchDate' ||
-          scope === 'internalNotes' ||
-          scope === 'codes'
-        }
+        canViewFieldScope={(scope) => scope === 'internalNotes'}
       >
         <ActivityOverviewSection
           categories={mockLookups.categories}
           organizations={[]}
           tags={[]}
-          codes={[{ id: 1, text: 'Sample code', visibility: 'global' }]}
-          pitchRequiredStatuses={mockLookups.pitchRequiredStatuses}
           userTeamIds={[5]}
           hasCreateAny={false}
         />

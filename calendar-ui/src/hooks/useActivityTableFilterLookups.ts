@@ -1,13 +1,10 @@
 import { useMemo } from 'react';
 
-import { canViewActivityFieldScope } from '@corpcal/shared/auth';
 import type { LeadTeamFilterOption } from '@/components/activity/ActivityTable/LeadTeamFilterPanel';
-import { useAuth } from '@/hooks/useAuth';
 import {
   useActivityStatuses,
   useCategories,
   useEventPlanners,
-  usePitchRequiredStatuses,
   useTags,
   useTeams,
   useTranslationLanguages,
@@ -22,35 +19,13 @@ export interface ActivityStatusArchiveIds {
   deletedStatusId?: number;
 }
 
-export interface ActivityPitchFieldVisibility {
-  canViewPitchStatus: boolean;
-  canViewPitchDate: boolean;
-}
-
-export function useActivityPitchFieldVisibility(): ActivityPitchFieldVisibility {
-  const { user } = useAuth();
-
-  return useMemo(() => {
-    if (!user) {
-      return { canViewPitchStatus: false, canViewPitchDate: false };
-    }
-    const ctx = { permissions: user.permissions, roleName: user.roleName };
-    return {
-      canViewPitchStatus: canViewActivityFieldScope(ctx, 'pitchStatus'),
-      canViewPitchDate: canViewActivityFieldScope(ctx, 'pitchDate'),
-    };
-  }, [user]);
-}
-
 /**
  * Shared lookup labels for activity table filters and summary bar chips.
  * Category options are included for saved-filter sanitization and summary chips.
  */
 export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
-  pitchFieldVisibility: ActivityPitchFieldVisibility;
   statusArchiveIds: ActivityStatusArchiveIds;
   statusOptions: { value: string; label: string }[];
-  pitchRequiredStatusOptions: { value: string; label: string }[];
   tagOptions: { value: string; label: string }[];
   leadTeamOptions: LeadTeamFilterOption[];
   commsContactOptions: { value: string; label: string }[];
@@ -61,12 +36,8 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
   filterSummaryContext: ActivityFilterSummaryContext;
   hasActivityStatuses: boolean;
 } {
-  const pitchFieldVisibility = useActivityPitchFieldVisibility();
-
   const { data: activityStatusesForFilter = [] } = useActivityStatuses();
   const { data: categoriesForFilter = [] } = useCategories();
-  const { data: pitchRequiredStatusesForFilter = [] } =
-    usePitchRequiredStatuses();
   const { data: tagsForFilter = [] } = useTags();
   const { data: usersForFilter = [] } = useUsers();
   const { data: eventPlannersForFilter = [] } = useEventPlanners();
@@ -96,15 +67,6 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
           label: s.displayName,
         })),
     [activityStatusesForFilter, canSeeDeleted]
-  );
-
-  const pitchRequiredStatusOptions = useMemo(
-    () =>
-      pitchRequiredStatusesForFilter.map((s) => ({
-        value: s.displayName,
-        label: s.displayName,
-      })),
-    [pitchRequiredStatusesForFilter]
   );
 
   const tagOptions = useMemo(
@@ -180,7 +142,6 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
     (): ActivityFilterSummaryContext => ({
       statusOptions,
       categoryOptions,
-      pitchRequiredStatusOptions,
       tagOptions,
       leadTeamOptions,
       commsContactOptions,
@@ -191,7 +152,6 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
     [
       statusOptions,
       categoryOptions,
-      pitchRequiredStatusOptions,
       tagOptions,
       leadTeamOptions,
       commsContactOptions,
@@ -202,10 +162,8 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
   );
 
   return {
-    pitchFieldVisibility,
     statusArchiveIds,
     statusOptions,
-    pitchRequiredStatusOptions,
     tagOptions,
     categoryOptions,
     leadTeamOptions,

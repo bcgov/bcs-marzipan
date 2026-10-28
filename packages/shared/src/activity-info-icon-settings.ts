@@ -6,15 +6,12 @@ export const ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH = 500 as const;
 export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
   'categoryIds',
   'title',
-  'summary',
   'isConfidential',
   'isIssue',
+  'summary',
   'leadOrgId',
   'significance',
-  'pitchRequiredStatusId',
-  'pitchDate',
   'tagIds',
-  'codeIds',
   'internalNotes',
   'notes',
 

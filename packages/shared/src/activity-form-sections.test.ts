@@ -105,7 +105,6 @@ describe('activity-form-sections', () => {
         'leadOrgId',
         'leadOrgName',
         'tagIds',
-        'codeIds',
         'internalNotes',
         'notes',
       ],

@@ -50,7 +50,7 @@ export function useActivityTableSummaryBarState({
   const showCompleted = preferences.showCompleted;
   const showDeleted = preferences.showDeleted;
 
-  const { pitchFieldVisibility, statusArchiveIds, filterSummaryContext } =
+  const { statusArchiveIds, filterSummaryContext } =
     useActivityTableFilterLookups(canSeeDeleted);
 
   const { hasStatusFilter, effectiveShowCompleted, effectiveShowDeleted } =
@@ -99,9 +99,8 @@ export function useActivityTableSummaryBarState({
           filterState,
           searchKeyword,
           filterSummaryContext,
-          pitchFieldVisibility,
         }),
-      [filterState, searchKeyword, filterSummaryContext, pitchFieldVisibility]
+      [filterState, searchKeyword, filterSummaryContext]
     );
 
   const handleClearPanelFilters = useCallback(() => {

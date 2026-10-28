@@ -44,7 +44,6 @@ vi.mock('@/hooks/useLookups', () => ({
   useActivityStatuses: () => ({ data: [] }),
   useCategories: () => ({ data: [] }),
   useEventPlanners: () => ({ data: [] }),
-  usePitchRequiredStatuses: () => ({ data: [] }),
   useTags: () => ({ data: [] }),
   useTeams: () => ({ data: [] }),
   useTranslationLanguages: () => ({ data: [] }),

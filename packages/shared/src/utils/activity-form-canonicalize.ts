@@ -81,7 +81,6 @@ export function canonicalizeActivityFormData(
     endDate: canonOptString(data.endDate),
     startTime: canonOptString(data.startTime),
     endTime: canonOptString(data.endTime),
-    pitchDate: canonOptString(data.pitchDate),
     leadOrgName: canonOptString(data.leadOrgName),
     lookAheadStatus:
       data.lookAheadStatus === null || data.lookAheadStatus === undefined
@@ -93,7 +92,6 @@ export function canonicalizeActivityFormData(
         : data.lookAheadSection,
     categoryIds: canonIdArray(data.categoryIds),
     tagIds: canonIdArray(data.tagIds),
-    codeIds: canonIdArray(data.codeIds),
     commsMaterialIds: canonIdArray(data.commsMaterialIds),
     translationLanguageIds: canonIdArray(data.translationLanguageIds),
     sharedWithTeamIds: canonIdArray(data.sharedWithTeamIds),

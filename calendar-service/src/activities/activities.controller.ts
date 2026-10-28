@@ -376,7 +376,7 @@ export class ActivitiesController {
   @ApiOperation({
     summary: 'Bulk update activities',
     description:
-      'Marks selected activities reviewed or changes their pitch-required status without acquiring individual edit locks. Requires activities.bulkUpdate and the permission required for the selected operation.',
+      'Marks selected activities reviewed or applies other bulk list actions without acquiring individual edit locks. Requires activities.bulkUpdate and the permission required for the selected operation.',
   })
   @ApiBody({ type: BulkUpdateActivitiesDto })
   @ApiResponse({

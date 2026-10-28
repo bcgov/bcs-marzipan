@@ -33,7 +33,6 @@ export interface LookupMaps {
   venueStatusMap?: StatusLookupMap;
   activityStatusMap?: StatusLookupMap;
   timeStatusMap?: StatusLookupMap;
-  pitchRequiredStatusMap?: StatusLookupMap;
   translationsRequiredStatusMap?: StatusLookupMap;
   newsReleaseOriginMap?: StatusLookupMap;
   newsReleaseDistributionMap?: StatusLookupMap;
@@ -139,14 +138,6 @@ export function formatHistoryFieldValue(
     lookupMaps?.timeStatusMap
   ) {
     return lookupMaps.timeStatusMap.get(value) || String(value);
-  }
-
-  if (
-    field === 'pitchRequiredStatusId' &&
-    typeof value === 'number' &&
-    lookupMaps?.pitchRequiredStatusMap
-  ) {
-    return lookupMaps.pitchRequiredStatusMap.get(value) || String(value);
   }
 
   if (
@@ -385,11 +376,9 @@ const FIELDS_TO_COMPARE = [
   'endDate',
   'startTime',
   'endTime',
-  'pitchDate',
   'notes',
   'internalNotes',
   'executiveSummary',
-  'pitchRequiredStatusId',
   'translationsRequiredStatusId',
   'lookAheadStatus',
   'lookAheadSection',
@@ -403,7 +392,6 @@ const FIELDS_TO_COMPARE = [
   'newsReleaseOriginId',
   'categoryIds',
   'tagIds',
-  'codeIds',
   'commsMaterialIds',
   'translationLanguageIds',
   'sharedWithTeamIds',

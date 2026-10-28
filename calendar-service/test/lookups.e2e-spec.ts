@@ -163,7 +163,7 @@ describe('LookupsController (e2e)', () => {
         '/lookups/organizations',
         '/lookups/users',
         '/lookups/activity-statuses',
-        '/lookups/pitch-required-statuses',
+        '/lookups/translation-required-statuses',
       ];
 
       for (const endpoint of endpoints) {

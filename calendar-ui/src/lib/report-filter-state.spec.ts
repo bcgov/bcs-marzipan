@@ -67,15 +67,9 @@ describe('hasReportClearableFiltersActive', () => {
   it('returns true when search keyword is set and includeSearchKeyword is true', () => {
     const filterState = buildReportClearFilterState('planning');
     expect(
-      hasReportClearableFiltersActive(
-        filterState,
-        'planning',
-        'quarterly',
-        undefined,
-        {
-          includeSearchKeyword: true,
-        }
-      )
+      hasReportClearableFiltersActive(filterState, 'planning', 'quarterly', {
+        includeSearchKeyword: true,
+      })
     ).toBe(true);
     expect(
       hasReportClearableFiltersActive(filterState, 'planning', 'quarterly')

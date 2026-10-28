@@ -9,7 +9,6 @@ import {
   cities,
   dateStatuses,
   governmentRepresentatives,
-  pitchRequiredStatuses,
   tags,
   themes,
   timeStatuses,
@@ -88,13 +87,6 @@ export type NewDateStatus = InferInsertModel<typeof dateStatuses>;
 
 export type TimeStatus = InferSelectModel<typeof timeStatuses>;
 export type NewTimeStatus = InferInsertModel<typeof timeStatuses>;
-
-export type PitchRequiredStatus = InferSelectModel<
-  typeof pitchRequiredStatuses
->;
-export type NewPitchRequiredStatus = InferInsertModel<
-  typeof pitchRequiredStatuses
->;
 
 export type TranslationRequiredStatus = InferSelectModel<
   typeof translationRequiredStatuses

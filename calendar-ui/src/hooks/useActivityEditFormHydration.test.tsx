@@ -18,8 +18,6 @@ const mockLookups: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  codes: [],
-  pitchRequiredStatuses: [],
   activityStatuses: [],
   commsMaterials: [],
   translationLanguages: [],

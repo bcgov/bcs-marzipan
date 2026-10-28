@@ -79,8 +79,6 @@ export const activityDbFieldsSchema = z.object({
   notes: z.string().nullable().optional(),
   /** Omitted when user lacks internal notes view permission. */
   internalNotes: z.string().nullable().optional(),
-  pitchDate: z.string().nullable().optional(),
-  pitchRequiredStatusId: z.number().int().nullable().optional(),
   translationsRequiredStatusId: z.number().int().nullable().optional(),
   premierRequestedId: z.number().int().nullable(),
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
@@ -105,11 +103,6 @@ export const activityDbFieldsSchema = z.object({
  * Tag Schema for computed fields
  */
 const tagSchema = z.object({
-  id: z.number().int(),
-  text: z.string(),
-});
-
-const codeSchema = z.object({
   id: z.number().int(),
   text: z.string(),
 });
@@ -146,8 +139,6 @@ export const activityComputedFieldsSchema = z.object({
   category: z.array(z.string()).default([]),
   categoryIds: z.array(z.number().int()).default([]),
   tags: z.array(tagSchema).default([]),
-  codes: z.array(codeSchema).default([]),
-  codeIds: z.array(z.number().int()).default([]),
   commsMaterials: z.array(z.string()).default([]),
   translationsRequired: z.array(z.string()).default([]).optional(),
   representativesAttending: z.array(z.string()).default([]), // Representative display names
@@ -184,7 +175,6 @@ export const activityComputedFieldsSchema = z.object({
   newsReleaseOrigin: z.string().nullable(),
   newsReleaseDistribution: z.string().nullable(),
   premierRequested: z.string().nullable(),
-  pitchRequiredStatus: z.string().nullable().optional(),
   translationsRequiredStatus: z.string().nullable().optional(),
   leadMinistry: z.string().nullable(),
   leadMinistryAbbreviation: z.string().nullable(),

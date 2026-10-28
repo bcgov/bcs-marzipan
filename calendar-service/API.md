@@ -36,8 +36,6 @@ Creates a new calendar activity with related junction table records.
   "schedulingNotes": "Room booking required",
   "strategy": null,
   "notes": "General notes for admin change log",
-  "pitchDate": "2026-03-10",
-  "pitchRequiredStatusId": null,
   "translationsRequiredStatusId": null,
   "newsReleaseDistributionId": 1,
   "premierRequestedId": 2,
@@ -104,15 +102,10 @@ Array filters accept comma-separated values in the query string (e.g. `tagIds=1,
 | `categoryIds`                  | number[]             | Category lookup IDs (OR)                                                                                                        |
 | `translationRequiredStatusIds` | int[]                | Translations-required status IDs (OR)                                                                                           |
 | `translationLanguageIds`       | int[]                | Required translation language IDs (OR)                                                                                          |
-| `pitchRequiredStatusNames`     | string[]             | Pitch-required status names (OR, case-insensitive)                                                                              |
 | `lookAheadStatusValues`        | string[]             | Look Ahead status values (OR)                                                                                                   |
 | `lookAheadSectionValues`       | string[]             | Look Ahead section bucket keys (OR)                                                                                             |
 | `dateConfirmedFilter`          | `confirmed` \| `tbd` | Date confirmation status                                                                                                        |
 | `timeConfirmedFilter`          | `confirmed` \| `tbd` | Time confirmation status                                                                                                        |
-| `pitchDateNotScheduled`        | boolean (`true`)     | Activities with no pitch date                                                                                                   |
-| `pitchDateScheduled`           | boolean (`true`)     | Activities with any pitch date set (when no pitch date range bounds)                                                            |
-| `pitchDateFrom`                | ISO date             | Pitch date on or after                                                                                                          |
-| `pitchDateTo`                  | ISO date             | Pitch date on or before                                                                                                         |
 | `city`                         | string               | Filter by venue city                                                                                                            |
 | `isIssue`                      | boolean              | Filter by issue flag                                                                                                            |
 | `includeCompleted`             | boolean (`true`)     | Include completed-status activities when no `activityStatusIds` filter                                                          |

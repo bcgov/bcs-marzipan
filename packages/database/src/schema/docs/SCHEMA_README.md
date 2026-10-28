@@ -141,7 +141,7 @@ See [SCHEMA_CHANGELOG.md](./SCHEMA_CHANGELOG.md) (e.g. nullable `significance`, 
 Before updating schemas, understand where the root definitions live:
 
 - **Activity Schema**: `packages/database/src/schema/activity.ts` - The Drizzle schema definition for the `activities` table
-- **Lookup Table Schemas**: `packages/database/src/schema/lookups.ts` - The Drizzle schema definitions for all lookup tables (activityStatuses, cities, categories, tags, pitchStatuses, etc.)
+- **Lookup Table Schemas**: `packages/database/src/schema/lookups.ts` - The Drizzle schema definitions for all lookup tables (activityStatuses, cities, categories, tags, etc.)
 - **Activity status (id, name) mapping**: Canonical mapping is in `packages/database/config-data/0001_lookup_status.sql` (activity_statuses). Ids 1-7 must match: 1=new, 2=reviewed, 3=changed, 4=deleted, 5=delete_requested, 6=completed, 7=on_hold. The seed asserts this; code and the activities seed depend on it.
 - **Other Table Schemas**: `packages/database/src/schema/` - Additional schema files for ministries, teams, users, relations, etc.
 
@@ -245,7 +245,7 @@ For fields that don't exist in the database but are computed from other data:
 The application uses SQL seed files to populate lookup tables and initial data. These files are located in `packages/database/migrations/`:
 
 - **`001_seed_lookup_tables.sql`**: Seeds all lookup tables with their initial values
-  - Activity statuses, pitch statuses, scheduling statuses
+  - Activity statuses, scheduling statuses
   - Categories, tags, themes
   - Cities, government representatives
   - Comms materials, translated languages

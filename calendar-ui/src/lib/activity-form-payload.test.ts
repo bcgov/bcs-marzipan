@@ -97,6 +97,34 @@ describe('buildPayloadForUpdate', () => {
     expect(payload.lookAheadSection).toBeNull();
   });
 
+  it('maps cleared optional lookup IDs to null so PATCH clears DB columns', () => {
+    const formValues = minimalForm({
+      newsReleaseOriginId: undefined,
+      newsReleaseDistributionId: undefined,
+      premierRequestedId: undefined,
+    });
+
+    const payload = buildPayloadForUpdate(formValues, formValues);
+
+    expect(payload.newsReleaseOriginId).toBeNull();
+    expect(payload.newsReleaseDistributionId).toBeNull();
+    expect(payload.premierRequestedId).toBeNull();
+  });
+
+  it('sends optional lookup IDs when set', () => {
+    const formValues = minimalForm({
+      newsReleaseOriginId: 2,
+      newsReleaseDistributionId: 3,
+      premierRequestedId: 1,
+    });
+
+    const payload = buildPayloadForUpdate(formValues, formValues);
+
+    expect(payload.newsReleaseOriginId).toBe(2);
+    expect(payload.newsReleaseDistributionId).toBe(3);
+    expect(payload.premierRequestedId).toBe(1);
+  });
+
   it('strips UI sentinels from optional fields before sending to API', () => {
     const formValues = minimalForm({
       notes: '',

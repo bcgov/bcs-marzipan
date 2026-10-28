@@ -222,8 +222,7 @@ export const DEFAULT_LOOK_AHEAD_STATUS = 'none' as const;
 export const DEFAULT_VISIBILITY = 'global' as const;
 
 /**
- * Lookup `name` for pitch_required_statuses and translation_required_statuses
- * when defaulting on activity create.
+ * Lookup `name` for translation_required_statuses when defaulting on activity create.
  */
 export const TBD_LOOKUP_NAME = 'tbd' as const;
 
@@ -232,9 +231,6 @@ export const PITCH_TRANSLATION_PENDING_LOOKUP_NAME = TBD_LOOKUP_NAME;
 
 /** Lookup `name` for date/time confirmed status and filter matching. */
 export const CONFIRMED_LOOKUP_NAME = 'confirmed' as const;
-
-/** Lookup `name` for pitch_required_statuses when pitch has been presented. */
-export const PITCHED_LOOKUP_NAME = 'pitched' as const;
 
 /**
  * Lookup `name` for translation_required_statuses when translations are mandatory.
