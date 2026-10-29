@@ -2,7 +2,7 @@
 
 ## Overview
 
-While we've successfully added `lang='en-CA'` to all text input and textarea form fields, there are several areas where Canadian English text content exists but is **not** currently subject to browser spellchecking. This document identifies those areas.
+This analysis captures the initial form-input phase only. The TipTap and banner editor gaps and their related recommendations below have since been addressed; see `CANADIAN_ENGLISH_IMPLEMENTATION_COMPLETE.md` for the current implementation.
 
 ## Areas WITHOUT Canadian English Spellcheck Support
 
