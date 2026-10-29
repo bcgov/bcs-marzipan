@@ -158,9 +158,9 @@ Total Changes: 10 lines across 5 files
 
 ### For Text Editors & Inputs
 
-- Browser spell-checker now recognizes Canadian English
-- Words like "honour", "colour", "centre" are no longer flagged as errors
-- Spell-check suggestions follow Canadian spelling conventions
+- Inputs and editors explicitly declare Canadian English via `lang="en-CA"`.
+- Recognition of words such as "honour", "colour", and "centre" depends on the browser/OS spellcheck settings and available dictionaries.
+- The language attribute does not install or force a Canadian English dictionary.
 - Users in Canada will have a better experience with native language support
 
 ### For Rich Text Areas
