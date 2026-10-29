@@ -7,3 +7,5 @@ data:
   POST_LOGIN_REDIRECT_URL: https://test-calendar.digital.gcpe.gov.bc.ca
   PUBLIC_APP_BASE_URL: https://test-calendar.digital.gcpe.gov.bc.ca
   CORS_ALLOWED_ORIGINS: https://test-calendar.digital.gcpe.gov.bc.ca,http://localhost:3000,http://localhost:4173,http://localhost:8080
+  NOTIFICATIONS_EMAIL_SUBJECT_PREFIX: 'Corpcal 2.0 - Notification (TEST)'
+  NOTIFICATIONS_EMAIL_FROM: 'test.noreply@gov.bc.ca'
