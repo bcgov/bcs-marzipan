@@ -403,8 +403,6 @@ const createBaseSchema = activityCoreFieldsSchema
 const createActivityRequestSchemaBase = createBaseSchema
   .extend({
     commsContacts: createCommsContactsFieldSchema,
-    startDate: z.string().date(),
-    endDate: z.string().date(),
   })
   .refine(createLeadContactPresenceRefine, {
     message: LEAD_CONTACT_REFINE_MESSAGE,

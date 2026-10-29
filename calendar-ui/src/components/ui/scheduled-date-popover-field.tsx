@@ -1,11 +1,13 @@
 import { format, isSameMonth, startOfDay, startOfMonth } from 'date-fns';
 import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import {
+  forwardRef,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type ComponentPropsWithoutRef,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -82,7 +84,7 @@ function focusTabbableDay(containerRef: RefObject<HTMLDivElement | null>) {
   });
 }
 
-export interface ScheduledDatePopoverFieldProps {
+export type ScheduledDatePopoverFieldProps = {
   value: string;
   onChange: (isoDate: string) => void;
   /** Resolved label on the trigger (formatted date, placeholder, or filter copy). */
@@ -115,27 +117,39 @@ export interface ScheduledDatePopoverFieldProps {
    * `filter`: compact row for table filters (default).
    */
   triggerVariant?: 'filter' | 'form';
-}
+} & Omit<
+  ComponentPropsWithoutRef<typeof Button>,
+  'type' | 'variant' | 'size' | 'children' | 'onClick'
+>;
 
-export function ScheduledDatePopoverField({
-  value,
-  onChange,
-  label,
-  triggerMuted = false,
-  disabled = false,
-  readOnly = false,
-  popoverTitle,
-  headerRight,
-  presets,
-  getPresetAnchor,
-  showPresets,
-  isDateDisabled = () => false,
-  popoverContentClassName,
-  triggerClassName,
-  align = 'start',
-  triggerAriaLabel,
-  triggerVariant = 'filter',
-}: ScheduledDatePopoverFieldProps) {
+export const ScheduledDatePopoverField = forwardRef<
+  HTMLButtonElement,
+  ScheduledDatePopoverFieldProps
+>(function ScheduledDatePopoverField(
+  {
+    value,
+    onChange,
+    label,
+    triggerMuted = false,
+    disabled = false,
+    readOnly = false,
+    popoverTitle,
+    headerRight,
+    presets,
+    getPresetAnchor,
+    showPresets,
+    isDateDisabled = () => false,
+    popoverContentClassName,
+    triggerClassName,
+    align = 'start',
+    triggerAriaLabel,
+    triggerVariant = 'filter',
+    ...triggerProps
+  },
+  ref
+) {
+  /** FormControl `className` (e.g. flex-1) belongs on the layout wrapper, not the trigger. */
+  const { className: slotClassName, ...buttonPassthrough } = triggerProps;
   const isFormTrigger = triggerVariant === 'form';
   const calendarRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -210,12 +224,14 @@ export function ScheduledDatePopoverField({
   return (
     <div
       className={cn(
-        isFormTrigger ? 'w-full max-w-full min-w-0 flex-1' : 'min-w-0 flex-1'
+        isFormTrigger ? 'w-full max-w-full min-w-0 flex-1' : 'min-w-0 flex-1',
+        slotClassName
       )}
     >
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
+            ref={ref}
             type="button"
             variant="outline"
             size={isFormTrigger ? 'input' : 'sm'}
@@ -230,6 +246,7 @@ export function ScheduledDatePopoverField({
               viewOnly && READ_ONLY_STATIC_TRIGGER,
               triggerClassName
             )}
+            {...buttonPassthrough}
           >
             <CalendarIcon
               className={cn(
@@ -345,4 +362,4 @@ export function ScheduledDatePopoverField({
       </Popover>
     </div>
   );
-}
+});
