@@ -196,9 +196,9 @@ Total Changes: 10 lines across 5 files
    - Safari: Uses system spell-check
    - Edge: Full spell-check support (Chromium-based)
 
-2. **Database Content:** Historical data won't have language context
-   - Only newly created content will benefit from spell-check
-   - Existing content was created without language awareness
+2. **Database Content:** This change does not modify or validate stored content.
+   - Existing and newly created content use the same language context when opened in an editable field.
+   - Read-only content is not checked by the browser's spell-checker.
 
 3. **Static UI Text:** Hardcoded UI strings don't have spell-check
    - Labels, tooltips, error messages are not spell-checked
