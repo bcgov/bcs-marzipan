@@ -175,7 +175,7 @@ export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
     useEffect(() => {
       if (!popoverOpen || readOnly) return;
 
-      const onFocusIn = (ev: FocusEvent) => {
+      const onFocusIn = (ev: globalThis.FocusEvent) => {
         const el = ev.target;
         if (!(el instanceof Element)) return;
         if (anchorRef.current?.contains(el)) return;

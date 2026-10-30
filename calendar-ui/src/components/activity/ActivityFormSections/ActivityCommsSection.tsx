@@ -241,8 +241,8 @@ function TranslationLanguagesField({
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
-  dateStatuses,
-  timeStatuses,
+  dateStatuses: _dateStatuses,
+  timeStatuses: _timeStatuses,
   newsReleaseDistributionOptions,
   newsReleaseOriginOptions,
   translationRequiredStatuses,
@@ -389,10 +389,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   />
                 </>
               </FormLabel>
-              <p className="text-muted-foreground mb-2 text-sm">
-                Selecting News release shows additional fields below. Materials
-                with a Release badge may be published through the sister app.
-              </p>
+
               <FormControl data-field={field.name}>
                 <Combobox
                   items={comboboxItems}

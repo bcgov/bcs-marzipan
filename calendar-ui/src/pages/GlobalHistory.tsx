@@ -514,6 +514,22 @@ export function GlobalHistory() {
           case 'timeStatusId':
             formattedValue = timeStatusLabelMap.get(value) || String(value);
             return truncateChangeLogValue(formattedValue);
+          case 'translationsRequiredStatusId':
+            formattedValue =
+              translationRequiredStatusLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'newsReleaseOriginId':
+            formattedValue =
+              newsReleaseOriginLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'newsReleaseDistributionId':
+            formattedValue =
+              newsReleaseDistributionLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
+          case 'premierRequestedId':
+            formattedValue =
+              premierRequestedLabelMap.get(value) || String(value);
+            return truncateChangeLogValue(formattedValue);
         }
       }
 

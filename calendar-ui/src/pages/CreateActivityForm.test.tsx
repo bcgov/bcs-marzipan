@@ -48,6 +48,7 @@ vi.mock('../hooks/useActivityFormSetup', () => ({
       isLoading: false,
       hasError: false,
       translationRequiredStatuses: [],
+      commsMaterials: [],
     },
     leadTeamOptions: [],
     leadTeamOptionsError: null,
