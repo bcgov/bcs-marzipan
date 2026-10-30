@@ -9,14 +9,13 @@ import {
   useRef,
   useState,
   type ComponentPropsWithoutRef,
-  type KeyboardEvent,
 } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
   Popover,
-  PopoverAnchor,
   PopoverContent,
+  PopoverTrigger,
 } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { formatTime12h } from '@/lib/datetime-utils';
@@ -34,22 +33,6 @@ import {
   twelveHourPartsToHHmm,
 } from '@/lib/time-input-utils';
 import { cn } from '@/lib/utils';
-
-const SEGMENT_BASE_CLASS =
-  'min-w-0 border-0 bg-transparent text-sm tabular-nums shadow-none outline-none focus-visible:ring-0';
-
-const HOUR_SEGMENT_CLASS = cn(
-  SEGMENT_BASE_CLASS,
-  'w-[2ch] min-w-[2ch] text-right'
-);
-
-const MINUTE_SEGMENT_CLASS = cn(
-  SEGMENT_BASE_CLASS,
-  'w-[2ch] min-w-[2ch] text-left'
-);
-
-/** Debounce form commit while typing so parent `value` tracks drafts (picker uses drafts immediately). */
-const TYPING_COMMIT_DEBOUNCE_MS = 150;
 
 /** Hour/minute columns: shared width, padding, and scrollbar styling (see globals `.popover-list-scroll`). */
 const TIME_PICKER_SCROLL_COL_CLASS =
@@ -79,20 +62,20 @@ export type TimePickerProps = {
   readOnly?: boolean;
   /** When value is empty, muted trigger styling */
   placeholderMuted?: boolean;
-  /** sr-only / aria label for the composite control */
+  /** Accessible name for the trigger button */
   ariaLabel: string;
   popoverOpen: boolean;
   onPopoverOpenChange: (open: boolean) => void;
   /**
-   * All-day switch at top of popover; when true, trigger shows `label` instead of segments and the picker is disabled (no selection highlight).
+   * All-day switch at top of popover; when true, trigger shows `label` and the scroll columns are disabled.
    */
   allDay?: TimePickerAllDayProps;
 } & Omit<
-  ComponentPropsWithoutRef<'div'>,
-  'children' | 'onChange' | 'role' | 'aria-label'
+  ComponentPropsWithoutRef<typeof Button>,
+  'type' | 'variant' | 'size' | 'children' | 'onClick'
 >;
 
-export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
+export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
   function TimePicker(
     {
       value,
@@ -103,10 +86,12 @@ export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
       popoverOpen,
       onPopoverOpenChange,
       allDay,
-      ...surfaceProps
+      ...triggerProps
     },
     ref
   ) {
+    const { className: slotClassName, ...buttonPassthrough } = triggerProps;
+
     const baseId = useId();
     const allDaySwitchId = `${baseId}-all-day`;
 
@@ -114,17 +99,6 @@ export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
     const [minDraft, setMinDraft] = useState('');
     const [isPm, setIsPm] = useState(false);
 
-    const draftsRef = useRef({ hourDraft, minDraft, isPm });
-    useEffect(() => {
-      draftsRef.current = { hourDraft, minDraft, isPm };
-    }, [hourDraft, minDraft, isPm]);
-
-    const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    const anchorRef = useRef<HTMLDivElement>(null);
-    const hourRef = useRef<HTMLInputElement>(null);
-    const minRef = useRef<HTMLInputElement>(null);
-    const periodRef = useRef<HTMLButtonElement>(null);
     /** Ignore Radix dismiss callbacks briefly after open (avoids open→immediate close). */
     const suppressDismissRef = useRef(false);
 
@@ -169,74 +143,6 @@ export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
       [onPopoverOpenChange]
     );
 
-    useEffect(() => {
-      if (!popoverOpen || readOnly) return;
-
-      const onFocusIn = (ev: FocusEvent) => {
-        const el = ev.target;
-        if (!(el instanceof Element)) return;
-        if (anchorRef.current?.contains(el)) return;
-        if (el.closest('[data-time-picker-popover]')) return;
-        onPopoverOpenChange(false);
-      };
-
-      document.addEventListener('focusin', onFocusIn);
-      return () => document.removeEventListener('focusin', onFocusIn);
-    }, [popoverOpen, readOnly, onPopoverOpenChange]);
-
-    const commitFromDrafts = useCallback(
-      (hStr: string, mStr: string, pm: boolean) => {
-        const trimmedH = hStr.trim();
-        const trimmedM = mStr.trim();
-        if (!trimmedH && !trimmedM) {
-          onChange(undefined);
-          return;
-        }
-        const h = clampHour12(parseInt(trimmedH || '12', 10));
-        const rawMinute = parseInt(trimmedM || '0', 10);
-        const clampedMin = clampMinute(rawMinute);
-        /** Nearest 5 min when minute was entered with at least two digits; single digit may be incomplete. */
-        const m =
-          trimmedM.length >= 2 ? snapMinuteToFive(clampedMin) : clampedMin;
-        const next = twelveHourPartsToHHmm({
-          hour12: h,
-          minute: m,
-          isPm: pm,
-        });
-        onChange(next);
-      },
-      [onChange]
-    );
-
-    const clearCommitTimer = useCallback(() => {
-      if (commitTimerRef.current) {
-        clearTimeout(commitTimerRef.current);
-        commitTimerRef.current = null;
-      }
-    }, []);
-
-    useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
-
-    const scheduleDebouncedCommit = useCallback(() => {
-      clearCommitTimer();
-      commitTimerRef.current = setTimeout(() => {
-        commitTimerRef.current = null;
-        const d = draftsRef.current;
-        commitFromDrafts(d.hourDraft, d.minDraft, d.isPm);
-      }, TYPING_COMMIT_DEBOUNCE_MS);
-    }, [clearCommitTimer, commitFromDrafts]);
-
-    const handleBlurCommit = useCallback(() => {
-      clearCommitTimer();
-      commitFromDrafts(hourDraft, minDraft, isPm);
-    }, [clearCommitTimer, commitFromDrafts, hourDraft, minDraft, isPm]);
-
-    const handleFocusCapture = useCallback(() => {
-      if (!readOnly) {
-        onPopoverOpenChange(true);
-      }
-    }, [onPopoverOpenChange, readOnly]);
-
     const handleAllDayCheckedChange = useCallback(
       (checked: boolean) => {
         if (!allDay) return;
@@ -244,76 +150,6 @@ export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
       },
       [allDay]
     );
-
-    const focusSegment = (seg: 'hour' | 'minute' | 'period') => {
-      if (seg === 'hour') hourRef.current?.focus();
-      if (seg === 'minute') minRef.current?.focus();
-      if (seg === 'period') periodRef.current?.focus();
-    };
-
-    const onHourKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        e.stopPropagation();
-        focusSegment('minute');
-        return;
-      }
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        e.stopPropagation();
-        clearCommitTimer();
-        const num = clampHour12(parseInt(hourDraft || '12', 10) || 12);
-        const nextHour = clampHour12(num + (e.key === 'ArrowUp' ? 1 : -1));
-        const hStr = String(nextHour);
-        draftsRef.current = { hourDraft: hStr, minDraft, isPm };
-        setHourDraft(hStr);
-        commitFromDrafts(hStr, minDraft, isPm);
-      }
-    };
-
-    const onMinKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        e.stopPropagation();
-        focusSegment('period');
-        return;
-      }
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        e.stopPropagation();
-        focusSegment('hour');
-        return;
-      }
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        e.stopPropagation();
-        clearCommitTimer();
-        const current = clampMinute(parseInt(minDraft || '0', 10) || 0);
-        const delta = e.key === 'ArrowUp' ? 5 : -5;
-        const snapped = snapMinuteToFive(clampMinute(current + delta));
-        const mStr = String(snapped).padStart(2, '0');
-        draftsRef.current = { hourDraft, minDraft: mStr, isPm };
-        setMinDraft(mStr);
-        commitFromDrafts(hourDraft, mStr, isPm);
-      }
-    };
-
-    const onPeriodKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        e.stopPropagation();
-        focusSegment('minute');
-      }
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
 
     const pickerPreviewParts = useMemo(
       () =>
@@ -332,7 +168,6 @@ export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
         : null;
 
     const handlePickerHour = (h: number) => {
-      clearCommitTimer();
       const hClamped = clampHour12(h);
       const m = clampMinute(parseInt(minDraft || '0', 10) || 0);
       const mUse = snapMinuteToFive(m);
@@ -347,7 +182,6 @@ export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
     };
 
     const handlePickerMinute = (m: number) => {
-      clearCommitTimer();
       const h = clampHour12(parseInt(hourDraft || '12', 10));
       const snapped = snapMinuteToFive(m);
       setMinDraft(String(snapped).padStart(2, '0'));
@@ -360,7 +194,6 @@ export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
     };
 
     const handlePickerPeriod = (pm: boolean) => {
-      clearCommitTimer();
       setIsPm(pm);
       const h = clampHour12(parseInt(hourDraft || '12', 10));
       const m = clampMinute(parseInt(minDraft || '0', 10) || 0);
@@ -393,199 +226,105 @@ export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
       setMinuteRovingIndex(mi >= 0 ? mi : 0);
 
       setPeriodRovingIndex(pickerPreviewParts?.isPm ? 1 : 0);
+
+      const focusIndex = hi >= 0 ? hi : 0;
+      requestAnimationFrame(() => {
+        if (pickerDisabled) return;
+        focusPickerCell(hourBtnRefs.current[focusIndex]);
+      });
     }, [
       popoverOpen,
       readOnly,
       pickerPreviewParts,
       displayMinuteForPicker,
       minDraft,
+      pickerDisabled,
     ]);
 
     const handlePopoverOpenAutoFocus = useCallback((e: Event) => {
-      const active = document.activeElement;
-      const inAnchor = Boolean(
-        anchorRef.current &&
-        active instanceof Node &&
-        anchorRef.current.contains(active)
-      );
-      const keepFocusOnTrigger =
-        inAnchor &&
-        (active instanceof HTMLInputElement ||
-          (active instanceof HTMLElement &&
-            active.getAttribute('data-slot') === 'time-segment'));
-      if (keepFocusOnTrigger) {
-        e.preventDefault();
-      }
+      e.preventDefault();
     }, []);
 
     const viewOnly = readOnly;
     const showMuted =
       placeholderMuted && !value && !viewOnly && !allDay?.isAllDay;
 
+    const triggerText = allDay?.isAllDay
+      ? allDay.label
+      : value
+        ? formatTime12h(value)
+        : '--:--';
+
     if (viewOnly) {
-      const label = allDay?.isAllDay
-        ? allDay.label
-        : value
-          ? formatTime12h(value)
-          : '\u00a0';
       return (
-        <div
-          ref={ref}
-          {...surfaceProps}
-          className={cn(
-            'border-input bg-background flex h-(--input-height) w-full min-w-0 items-center justify-start rounded-md border px-3 text-left text-sm shadow-xs',
-            FORM_CONTROL_INVALID_RING_CLASS,
-            READ_ONLY_STATIC_TRIGGER,
-            !value && 'text-foreground',
-            surfaceProps.className
-          )}
-          aria-label={ariaLabel}
-        >
-          <Clock
+        <div className={cn('relative w-full min-w-0 flex-1', slotClassName)}>
+          <Button
+            ref={ref}
+            type="button"
+            variant="outline"
+            size="input"
+            tabIndex={-1}
+            aria-readonly
+            aria-label={ariaLabel}
             className={cn(
-              'mr-2 size-4 shrink-0',
-              value ? 'text-foreground' : 'text-muted-foreground'
+              'pointer-events-none w-full min-w-0 justify-start text-left font-normal',
+              FORM_CONTROL_INVALID_RING_CLASS,
+              READ_ONLY_STATIC_TRIGGER,
+              !value && !allDay?.isAllDay && 'text-foreground'
             )}
-            aria-hidden
-          />
-          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+            {...buttonPassthrough}
+          >
+            <Clock
+              className={cn(
+                'mr-2 size-4 shrink-0',
+                value || allDay?.isAllDay
+                  ? 'text-foreground'
+                  : 'text-muted-foreground'
+              )}
+              aria-hidden
+            />
+            <span className="min-w-0 flex-1 truncate text-left">
+              {triggerText === '--:--' && !allDay?.isAllDay
+                ? '\u00a0'
+                : triggerText}
+            </span>
+          </Button>
         </div>
       );
     }
 
     return (
-      <div ref={setPortalHostEl} className="relative w-full min-w-0 flex-1">
+      <div
+        ref={setPortalHostEl}
+        className={cn('relative w-full min-w-0 flex-1', slotClassName)}
+      >
         <Popover
           modal={false}
           open={popoverOpen}
           onOpenChange={handleRadixOpenChange}
         >
-          <PopoverAnchor asChild>
-            <div
-              ref={anchorRef}
-              className="w-full min-w-0"
-              onFocusCapture={handleFocusCapture}
+          <PopoverTrigger asChild>
+            <Button
+              ref={ref}
+              type="button"
+              variant="outline"
+              size="input"
+              aria-label={ariaLabel}
+              aria-expanded={popoverOpen}
+              className={cn(
+                'w-full min-w-0 justify-start text-left font-normal',
+                FORM_CONTROL_INVALID_RING_CLASS,
+                showMuted && 'text-muted-foreground',
+                buttonPassthrough.className
+              )}
+              {...buttonPassthrough}
             >
-              <div
-                ref={ref}
-                role="group"
-                aria-label={ariaLabel}
-                aria-expanded={popoverOpen}
-                {...surfaceProps}
-                className={cn(
-                  'border-input bg-background flex h-(--input-height) w-full min-w-0 items-center justify-start gap-0 rounded-md border px-3 text-left text-sm shadow-xs',
-                  'has-[[data-slot=time-segment]:focus-visible]:border-ring has-[[data-slot=time-segment]:focus-visible]:ring-ring/50 has-[[data-slot=time-segment]:focus-visible]:ring-[3px]',
-                  FORM_CONTROL_INVALID_RING_CLASS,
-                  showMuted && 'text-muted-foreground',
-                  surfaceProps.className
-                )}
-              >
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground focus-visible:ring-ring mr-2 shrink-0 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                  aria-label={`${ariaLabel}, open time picker`}
-                  onClick={() => {
-                    onPopoverOpenChange(true);
-                  }}
-                >
-                  <Clock className="size-4" aria-hidden />
-                </button>
-                {allDay?.isAllDay ? (
-                  <button
-                    type="button"
-                    className="text-foreground hover:text-foreground/90 focus-visible:ring-ring min-w-0 flex-1 truncate rounded-sm text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                    aria-label={`${ariaLabel}, open time picker`}
-                    onClick={() => onPopoverOpenChange(true)}
-                  >
-                    {allDay.label}
-                  </button>
-                ) : (
-                  <div className="flex min-w-0 flex-1 items-center justify-start gap-0">
-                    <input
-                      id={`${baseId}-hour`}
-                      ref={hourRef}
-                      data-slot="time-segment"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      maxLength={2}
-                      aria-label={`${ariaLabel}, hour`}
-                      className={HOUR_SEGMENT_CLASS}
-                      value={hourDraft}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(/\D/g, '').slice(0, 2);
-                        draftsRef.current = { hourDraft: v, minDraft, isPm };
-                        setHourDraft(v);
-                        scheduleDebouncedCommit();
-                      }}
-                      onFocus={(e) => e.target.select()}
-                      onBlur={handleBlurCommit}
-                      onKeyDown={onHourKeyDown}
-                    />
-                    <span
-                      className="text-muted-foreground shrink-0"
-                      aria-hidden
-                    >
-                      :
-                    </span>
-                    <input
-                      id={`${baseId}-minute`}
-                      ref={minRef}
-                      data-slot="time-segment"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="off"
-                      maxLength={2}
-                      aria-label={`${ariaLabel}, minutes`}
-                      className={MINUTE_SEGMENT_CLASS}
-                      value={minDraft}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(/\D/g, '').slice(0, 2);
-                        draftsRef.current = { hourDraft, minDraft: v, isPm };
-                        setMinDraft(v);
-                        scheduleDebouncedCommit();
-                      }}
-                      onFocus={(e) => e.target.select()}
-                      onBlur={handleBlurCommit}
-                      onKeyDown={onMinKeyDown}
-                    />
-                    <button
-                      type="button"
-                      id={`${baseId}-period`}
-                      ref={periodRef}
-                      data-slot="time-segment"
-                      aria-label={`${ariaLabel}, am or pm`}
-                      className={cn(
-                        SEGMENT_BASE_CLASS,
-                        'w-9 shrink-0 cursor-pointer px-0.5 text-left lowercase'
-                      )}
-                      onClick={() => {
-                        clearCommitTimer();
-                        const next = !isPm;
-                        setIsPm(next);
-                        commitFromDrafts(hourDraft, minDraft, next);
-                      }}
-                      onFocus={() => {
-                        onPopoverOpenChange(true);
-                      }}
-                      onKeyDown={(e) => {
-                        onPeriodKeyDown(e);
-                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                          e.preventDefault();
-                          clearCommitTimer();
-                          const next = !isPm;
-                          setIsPm(next);
-                          commitFromDrafts(hourDraft, minDraft, next);
-                        }
-                      }}
-                    >
-                      {isPm ? 'pm' : 'am'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </PopoverAnchor>
+              <Clock className="mr-2 size-4 shrink-0 opacity-70" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-left">
+                {triggerText}
+              </span>
+            </Button>
+          </PopoverTrigger>
           <PopoverContent
             container={portalHostEl}
             data-time-picker-popover=""
@@ -593,12 +332,6 @@ export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
             sideOffset={4}
             className="w-auto p-0 sm:flex"
             onOpenAutoFocus={handlePopoverOpenAutoFocus}
-            onInteractOutside={(e) => {
-              const target = e.target as Node | null;
-              if (target && anchorRef.current?.contains(target)) {
-                e.preventDefault();
-              }
-            }}
           >
             <div className="flex w-full flex-col outline-none">
               {allDay ? (

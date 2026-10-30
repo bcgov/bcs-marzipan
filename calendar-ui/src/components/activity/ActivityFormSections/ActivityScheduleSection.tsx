@@ -25,6 +25,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  RequiredFieldIndicator,
   useFormPathsFieldHighlight,
 } from '@/components/ui/form';
 import { Label } from '@/components/ui/label';
@@ -259,10 +260,12 @@ export function ActivityScheduleSection({
         <Label className="flex items-center gap-2">
           <span
             className={cn(
+              'inline-flex items-center gap-1',
               dateGroupHighlight.highlight && FORM_FIELD_LABEL_HIGHLIGHT_CLASS
             )}
           >
             Date
+            <RequiredFieldIndicator className="inline" />
             {dateGroupHighlight.screenReaderText ? (
               <span className="sr-only">
                 {dateGroupHighlight.screenReaderText}
@@ -294,7 +297,11 @@ export function ActivityScheduleSection({
                     'col-start-1 row-start-1'
                   )}
                 >
-                  <FormLabel className="sr-only" showDirtyIndicator={false}>
+                  <FormLabel
+                    className="sr-only"
+                    showDirtyIndicator={false}
+                    showRequired
+                  >
                     {getActivityFieldLabel(field.name)}
                   </FormLabel>
                   <FormControl
@@ -339,7 +346,11 @@ export function ActivityScheduleSection({
               name="endDate"
               render={({ field }) => (
                 <FormItem className={SCHEDULE_END_FIELD_GRID_FORM_ITEM_CLASS}>
-                  <FormLabel className="sr-only" showDirtyIndicator={false}>
+                  <FormLabel
+                    className="sr-only"
+                    showDirtyIndicator={false}
+                    showRequired
+                  >
                     {getActivityFieldLabel(field.name)}
                   </FormLabel>
                   <FormControl className="min-w-0 flex-1" data-field="endDate">

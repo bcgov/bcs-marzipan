@@ -1,5 +1,5 @@
 import { format, isSameMonth, startOfDay, startOfMonth } from 'date-fns';
-import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import {
   forwardRef,
   useCallback,
@@ -258,14 +258,6 @@ export const ScheduledDatePopoverField = forwardRef<
             <span className="min-w-0 flex-1 truncate text-left">
               {viewOnly && triggerMuted ? '\u00a0' : label}
             </span>
-            {!viewOnly ? (
-              <ChevronDown
-                className={cn(
-                  'ml-2 shrink-0 opacity-50',
-                  isFormTrigger ? 'size-4' : 'h-3.5 w-3.5'
-                )}
-              />
-            ) : null}
           </Button>
         </PopoverTrigger>
         <PopoverContent

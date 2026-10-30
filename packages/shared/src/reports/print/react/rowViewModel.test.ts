@@ -264,8 +264,8 @@ describe('toPrintRowViewModel', () => {
         variant: 'lookAhead',
       }
     );
-    expect(notConfirmed.dateTime.dateStatus).toBe('TBD');
-    expect(notConfirmed.dateTime.timeStatus).toBe('TBD');
+    expect(notConfirmed.dateTime.dateStatus).toBe('Date TBD');
+    expect(notConfirmed.dateTime.timeStatus).toBe('Time TBD');
 
     const execLa = toPrintRowViewModel(unsettled, {
       activityBaseUrl: 'http://localhost:3000',

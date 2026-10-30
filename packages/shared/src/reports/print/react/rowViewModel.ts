@@ -284,10 +284,26 @@ function isConfirmedStatusDisplay(value: string): boolean {
   return value.trim().toLowerCase() === 'confirmed';
 }
 
-function formatUnconfirmedStatus(value: string): string {
+function formatUnconfirmedDateStatus(value: string): string {
   const normalized = value.trim().toLowerCase();
-  if (normalized === 'not confirmed' || normalized === 'tbd') {
-    return 'TBD';
+  if (
+    normalized === 'not confirmed' ||
+    normalized === 'tbd' ||
+    normalized === 'date tbd'
+  ) {
+    return 'Date TBD';
+  }
+  return value;
+}
+
+function formatUnconfirmedTimeStatus(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === 'not confirmed' ||
+    normalized === 'tbd' ||
+    normalized === 'time tbd'
+  ) {
+    return 'Time TBD';
   }
   return value;
 }
@@ -303,7 +319,7 @@ function lookAheadDateStatusForPrint(
   if (!hasStartDate) return '';
   const t = raw.trim();
   if (!t || isConfirmedStatusDisplay(t)) return '';
-  return formatUnconfirmedStatus(t);
+  return formatUnconfirmedDateStatus(t);
 }
 
 function lookAheadTimeStatusForPrint(
@@ -313,7 +329,7 @@ function lookAheadTimeStatusForPrint(
   if (!hasTimeDisplay) return '';
   const t = raw.trim();
   if (!t || isConfirmedStatusDisplay(t)) return '';
-  return formatUnconfirmedStatus(t);
+  return formatUnconfirmedTimeStatus(t);
 }
 
 function shouldUseLookAheadDateTimeStatusRules(
