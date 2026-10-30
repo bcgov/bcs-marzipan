@@ -1,7 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
   boolean,
-  index,
   integer,
   pgTable,
   primaryKey,
@@ -15,7 +14,6 @@ import { activities } from './activity';
 import {
   categories,
   commsMaterials,
-  reports,
   sectors,
   tags,
   themes,
@@ -466,6 +464,40 @@ export const teamTagsRelations = relations(teamTags, ({ one }) => ({
 }));
 
 /**
+ * TeamCommsMaterials junction - team-scoped comms materials (visibility = 'team').
+ */
+export const teamCommsMaterials = pgTable(
+  'team_comms_materials',
+  {
+    commsMaterialId: integer('comms_material_id')
+      .notNull()
+      .references(() => commsMaterials.id),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => teams.id),
+    isActive: boolean('is_active').notNull().default(true),
+    timestamp: timestamp('timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.commsMaterialId, table.teamId] })]
+);
+
+export const teamCommsMaterialsRelations = relations(
+  teamCommsMaterials,
+  ({ one }) => ({
+    commsMaterial: one(commsMaterials, {
+      fields: [teamCommsMaterials.commsMaterialId],
+      references: [commsMaterials.id],
+    }),
+    team: one(teams, {
+      fields: [teamCommsMaterials.teamId],
+      references: [teams.id],
+    }),
+  })
+);
+
+/**
  * ActivityTags junction table - Many-to-many relationship between Activities and Tags
  * Renamed from activityKeywords. This table links activities to tags.
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/ActivityKeywords.cs
@@ -509,56 +541,6 @@ export const activitySectors = pgTable(
   (table) => [primaryKey({ columns: [table.activityId, table.sectorId] })]
 );
 
-/**
- * activityReportSettings junction table - Per-activity report settings
- * Stores whether an activity is omitted from a specific report.
- *
- * Every activity must have a setting for every active report.
- * When an activity is created, default rows are created with omitted=false.
- * Users can update the omitted value to exclude activities from specific reports.
- *
- * Inclusion logic:
- * - If omitted=true: activity is omitted from report (regardless of isConfidential)
- * - If omitted=false: activity is included in report data (regardless of isConfidential)
- *
- * `isConfidential` does not exclude activities from reports. It marks sensitivity for
- * UI/print badges and team visibility. For Corporate Look Ahead, admins enter
- * placeholder executive-summary copy as an editorial process; Executive Look Ahead
- * may include full summary/significance when configured.
- */
-export const activityReportSettings = pgTable(
-  'activity_report_settings',
-  {
-    activityId: integer('activity_id')
-      .notNull()
-      .references(() => activities.id),
-    reportId: integer('report_id')
-      .notNull()
-      .references(() => reports.id),
-
-    // Whether this activity is omitted from this report
-    // If true: activity is omitted (regardless of isConfidential)
-    // If false: activity is included (isConfidential affects badges/copy, not omission)
-    omitted: boolean('omitted').notNull().default(false),
-
-    // Book-keeping
-    timestamp: timestamp('timestamp', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.activityId, table.reportId] }),
-    // Indexes for performance
-    index('idx_activity_report_settings_activity_id').on(table.activityId),
-    index('idx_activity_report_settings_report_id').on(table.reportId),
-    index('idx_activity_report_settings_activity_report').on(
-      table.activityId,
-      table.reportId
-    ),
-    index('idx_activity_report_settings_omitted').on(table.omitted),
-  ]
-);
-
 // Relations for new junction tables
 export const activityTagsRelations = relations(activityTags, ({ one }) => ({
   activity: one(activities, {
@@ -581,20 +563,6 @@ export const activitySectorsRelations = relations(
     sector: one(sectors, {
       fields: [activitySectors.sectorId],
       references: [sectors.id],
-    }),
-  })
-);
-
-export const activityReportSettingsRelations = relations(
-  activityReportSettings,
-  ({ one }) => ({
-    activity: one(activities, {
-      fields: [activityReportSettings.activityId],
-      references: [activities.id],
-    }),
-    report: one(reports, {
-      fields: [activityReportSettings.reportId],
-      references: [reports.id],
     }),
   })
 );

@@ -22,10 +22,9 @@ import type { ActivityFormData } from './schemas/activity.schema';
 /** Section order as rendered in the activity form (left column, then right). */
 export const ACTIVITY_FORM_SECTION_IDS = [
   'overview',
-  'comms',
-  'reports',
+  'lookAhead',
   'schedule',
-  'newsRelease',
+  'comms',
   'event',
   'sharing',
 ] as const;
@@ -38,10 +37,9 @@ export const ACTIVITY_FORM_SECTION_LABELS: Record<
   string
 > = {
   overview: 'Overview',
-  comms: 'Comms',
-  reports: 'Reports',
+  lookAhead: 'Look Ahead',
   schedule: 'Schedule',
-  newsRelease: 'Release',
+  comms: 'Comms',
   event: 'Event',
   sharing: 'Sharing',
 };
@@ -56,25 +54,25 @@ export const ACTIVITY_FORM_SECTION_FIELDS = {
   overview: [
     'categoryIds',
     'title',
-    'summary',
     'isConfidential',
     'isIssue',
+    'summary',
     'significance',
-    'leadTeamId',
     'leadOrgId',
     'leadOrgName',
-    'pitchRequiredStatusId',
-    'pitchDate',
-    'notes',
     'tagIds',
+    'internalNotes',
+    'notes',
   ],
-  comms: ['commsContacts', 'strategy', 'commsMaterialIds'],
-  reports: [
-    'executiveSummary',
-    'lookAheadStatus',
-    'lookAheadSection',
-    'reportSettings',
+  comms: [
+    'commsMaterialIds',
+    'releaseTimeOffsetMinutes',
+    'newsReleaseOriginId',
+    'newsReleaseDistributionId',
+    'translationsRequiredStatusId',
+    'translationLanguageIds',
   ],
+  lookAhead: ['executiveSummary', 'lookAheadStatus', 'lookAheadSection'],
   schedule: [
     'startDate',
     'endDate',
@@ -85,13 +83,6 @@ export const ACTIVITY_FORM_SECTION_FIELDS = {
     'timeStatusId',
     'schedulingNotes',
   ],
-  newsRelease: [
-    'newsReleaseId',
-    'newsReleaseOriginId',
-    'newsReleaseDistributionId',
-    'translationsRequiredStatusId',
-    'translationLanguageIds',
-  ],
   event: [
     'premierRequestedId',
     'representatives',
@@ -99,7 +90,7 @@ export const ACTIVITY_FORM_SECTION_FIELDS = {
     'venueStatusId',
     'eventPlanners',
   ],
-  sharing: ['visibility', 'sharedWithTeamIds'],
+  sharing: ['leadTeamId', 'commsContacts', 'visibility', 'sharedWithTeamIds'],
 } as const satisfies Record<
   ActivityFormSectionId,
   readonly (keyof ActivityFormData)[]

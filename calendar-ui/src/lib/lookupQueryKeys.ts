@@ -28,8 +28,10 @@ export const lookupQueryKeys = {
   categoriesAdmin: () => ['lookups', 'categories', 'admin'] as const,
   cities: () => ['lookups', 'cities'] as const,
   commsMaterials: () => ['lookups', 'comms-materials'] as const,
+  commsMaterialsAdmin: () => ['lookups', 'comms-materials', 'admin'] as const,
+  releaseTypes: () => ['lookups', 'release-types'] as const,
+  releaseTypesAdmin: () => ['lookups', 'release-types', 'admin'] as const,
   activityStatuses: () => ['lookups', 'activity-statuses'] as const,
-  pitchStatuses: () => ['lookups', 'pitch-statuses'] as const,
   governmentRepresentatives: () =>
     ['lookups', 'government-representatives'] as const,
   ministries: () => ['lookups', 'ministries'] as const,
@@ -48,7 +50,6 @@ export const lookupQueryKeys = {
   premierRequested: () => ['lookups', 'premier-requested'] as const,
   dateStatuses: () => ['lookups', 'date-statuses'] as const,
   timeStatuses: () => ['lookups', 'time-statuses'] as const,
-  pitchRequiredStatuses: () => ['lookups', 'pitch-required-statuses'] as const,
   translationRequiredStatuses: () =>
     ['lookups', 'translation-required-statuses'] as const,
   translationLanguages: () => ['lookups', 'translation-languages'] as const,

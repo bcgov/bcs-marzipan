@@ -4,6 +4,7 @@ import {
   ACTIVITY_FORM_SECTION_FIELDS,
   ACTIVITY_FORM_SECTION_IDS,
 } from '../activity-form-sections';
+import { activitySchedulingSuperRefine } from '../validation/activity-scheduling-validation';
 import type { ActivityFormData } from './activity.schema';
 
 /**
@@ -72,16 +73,11 @@ export type CloneModalScheduleFieldKey =
   (typeof CLONE_MODAL_SCHEDULE_FIELD_KEYS)[number];
 
 /**
- * Source fields that must never be carried over to a clone. Mirrors the
- * scopes listed in the product spec: Look Ahead, pitch, translations, and
- * pitchDate are always reset to their create-time defaults.
+ * Source fields that must never be carried over to a clone. Translation fields
+ * reset to create-time defaults; Look Ahead fields are
+ * optional advanced clone checkboxes when the user has lookAhead.edit.
  */
 export const CLONE_NEVER_COPIED_FIELD_KEYS = [
-  'lookAheadStatus',
-  'lookAheadSection',
-  'executiveSummary',
-  'pitchRequiredStatusId',
-  'pitchDate',
   'translationsRequiredStatusId',
   'translationLanguageIds',
 ] as const satisfies readonly (keyof ActivityFormData)[];
@@ -119,6 +115,25 @@ export const CLONE_ALWAYS_COPIED_FIELD_KEYS = [
 export type CloneAlwaysCopiedFieldKey =
   (typeof CLONE_ALWAYS_COPIED_FIELD_KEYS)[number];
 
+/** Advanced clone fields unchecked by default when the modal opens. */
+export const CLONE_DEFAULT_UNCHECKED_FIELD_KEYS = [
+  'internalNotes',
+] as const satisfies readonly (keyof ActivityFormData)[];
+
+const CLONE_DEFAULT_UNCHECKED_SET = new Set<string>(
+  CLONE_DEFAULT_UNCHECKED_FIELD_KEYS
+);
+
+/**
+ * Default advanced field paths to include when opening the clone modal,
+ * given paths the user is allowed to edit (scope-filtered).
+ */
+export function getDefaultCloneIncludedFieldPaths(
+  editablePaths: readonly string[]
+): string[] {
+  return editablePaths.filter((path) => !CLONE_DEFAULT_UNCHECKED_SET.has(path));
+}
+
 /**
  * Top-level keys excluded from the clone modal advanced field list.
  * Section membership comes from {@link ACTIVITY_FORM_SECTION_FIELDS}; see
@@ -130,7 +145,6 @@ const CLONE_ADVANCED_FIELD_EXCLUSIONS = new Set<string>([
   ...CLONE_ALWAYS_COPIED_FIELD_KEYS,
   ...CLONE_SYSTEM_FIELD_KEYS,
   'title',
-  'newsReleaseId', // on schema only; not rendered or cloneable in UI
 ]);
 
 function isCloneAdvancedField(key: keyof ActivityFormData): boolean {
@@ -182,51 +196,55 @@ export const CLONE_ALLOWED_INCLUDE_PATHS: ReadonlySet<string> = new Set<string>(
 /**
  * Body for `POST /activities/:id/clone`. `id` comes from the URL.
  *
- * The schedule fields mirror the optionality used in
- * `activityCoreFieldsSchema`: dates / times are optional strings, while the
- * status ids are optional so the server can substitute lookup-based defaults
- * when the client omits them.
+ * Schedule dates are required (same as create). Times are nullable optional
+ * strings; status ids are optional so the server can apply lookup defaults
+ * when omitted. `activitySchedulingSuperRefine('clone')` enforces cross-field
+ * scheduling rules (date order, Confirmed status, etc.).
  *
  * `includeFieldPaths`: when omitted, the server does not apply the allow-list
  * (advanced fields follow the source after permission stripping). When present,
  * it restricts which optional advanced fields are copied.
  */
-export const cloneActivityRequestSchema = z.object({
-  title: z
-    .string()
-    .min(1)
-    .max(CLONE_TITLE_MAX_LENGTH)
-    .describe('Title for the new activity, typically prefixed (e.g. CLONED).'),
+export const cloneActivityRequestSchema = z
+  .object({
+    title: z
+      .string()
+      .min(1)
+      .max(CLONE_TITLE_MAX_LENGTH)
+      .describe(
+        'Title for the new activity, typically prefixed (e.g. CLONED).'
+      ),
 
-  startDate: z.string().date().nullable().optional(),
-  endDate: z.string().date().nullable().optional(),
-  startTime: z.string().time().nullable().optional(),
-  endTime: z.string().time().nullable().optional(),
-  isAllDay: z.boolean().optional(),
-  dateStatusId: z.number().int().optional(),
-  timeStatusId: z.number().int().optional(),
+    startDate: z.string().date(),
+    endDate: z.string().date(),
+    startTime: z.string().time().nullable().optional(),
+    endTime: z.string().time().nullable().optional(),
+    isAllDay: z.boolean().optional(),
+    dateStatusId: z.number().int().optional(),
+    timeStatusId: z.number().int().optional(),
 
-  includeFieldPaths: z
-    .array(z.string().min(1))
-    .optional()
-    .describe(
-      'When omitted, the allow-list is not applied and optional advanced fields are taken from the source (after field-level write rules). When present, only listed server-allowed paths are copied; other optional advanced fields are dropped. Unknown path strings are ignored. The in-app UI always sends an explicit array.'
-    ),
+    includeFieldPaths: z
+      .array(z.string().min(1))
+      .optional()
+      .describe(
+        'When omitted, the allow-list is not applied and optional advanced fields are taken from the source (after field-level write rules). When present, only listed server-allowed paths are copied; other optional advanced fields are dropped. Unknown path strings are ignored. The in-app UI always sends an explicit array.'
+      ),
 
-  markAsReviewed: z
-    .boolean()
-    .optional()
-    .describe(
-      'When true and the user has activities.review, initial status is Reviewed (same as create). Otherwise initial status is New. Ignored for initial status when the user cannot review.'
-    ),
+    markAsReviewed: z
+      .boolean()
+      .optional()
+      .describe(
+        'When true and the user has activities.review, initial status is Reviewed (same as create). Otherwise initial status is New. Ignored for initial status when the user cannot review.'
+      ),
 
-  activityHistoryNotes: z
-    .string()
-    .max(1000)
-    .optional()
-    .describe(
-      'Optional note recorded on the new activity created history and the source cloned history.'
-    ),
-});
+    activityHistoryNotes: z
+      .string()
+      .max(1000)
+      .optional()
+      .describe(
+        'Optional note recorded on the new activity created history and the source cloned history.'
+      ),
+  })
+  .superRefine(activitySchedulingSuperRefine('clone'));
 
 export type CloneActivityRequest = z.infer<typeof cloneActivityRequestSchema>;

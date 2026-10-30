@@ -6,6 +6,10 @@ import {
   EMPTY_RICH_TEXT_DOC,
   isActivityRichTextEffectivelyEmpty,
 } from './activity-rich-text';
+import {
+  stripCommsDependentFields,
+  type CommsMaterialReleaseFlagsById,
+} from './comms-material-form-rules';
 
 function isNullishOrEmptyString(v: unknown): boolean {
   return v === null || v === undefined || v === '';
@@ -70,8 +74,8 @@ export function canonicalizeActivityFormData(
         ? undefined
         : data.significance,
     schedulingNotes: canonOptString(data.schedulingNotes),
-    strategy: canonOptString(data.strategy),
     notes: canonOptString(data.notes),
+    internalNotes: canonOptString(data.internalNotes),
     executiveSummary:
       isNullishOrEmptyString(data.executiveSummary) ||
       isActivityRichTextEffectivelyEmpty(data.executiveSummary)
@@ -81,9 +85,7 @@ export function canonicalizeActivityFormData(
     endDate: canonOptString(data.endDate),
     startTime: canonOptString(data.startTime),
     endTime: canonOptString(data.endTime),
-    pitchDate: canonOptString(data.pitchDate),
     leadOrgName: canonOptString(data.leadOrgName),
-    newsReleaseId: canonOptString(data.newsReleaseId),
     lookAheadStatus:
       data.lookAheadStatus === null || data.lookAheadStatus === undefined
         ? undefined
@@ -102,13 +104,17 @@ export function canonicalizeActivityFormData(
       data.venueStatusId === null || data.venueStatusId === undefined
         ? undefined
         : data.venueStatusId,
+    releaseTimeOffsetMinutes:
+      data.releaseTimeOffsetMinutes === null ||
+      data.releaseTimeOffsetMinutes === undefined
+        ? undefined
+        : data.releaseTimeOffsetMinutes,
     venueAddress: normalizeVenueAddressForForm(
       data.venueAddress as ActivityResponse['venueAddress']
     ),
     eventPlanners: normalizeEventPlannerFormEntries(data.eventPlanners),
     representatives: canonObjectArray(data.representatives),
     commsContacts: canonObjectArray(data.commsContacts),
-    reportSettings: canonObjectArray(data.reportSettings),
   };
 }
 
@@ -118,6 +124,8 @@ export type PrepareActivityFormDataOptions = {
    * When set, {@link translationLanguageIds} are cleared unless status matches.
    */
   requiredTranslationStatusId?: number;
+  /** Selected comms materials → release-type flags for dependent-field cleanup. */
+  commsMaterialReleaseFlagsById?: CommsMaterialReleaseFlagsById;
 };
 
 /**
@@ -152,16 +160,20 @@ export function prepareActivityFormDataForSubmit(
   data: ActivityFormData,
   options?: PrepareActivityFormDataOptions
 ): ActivityFormData {
-  const stripped = stripTranslationLanguagesWhenNotRequired(
+  const afterComms = stripCommsDependentFields(
     data,
+    options?.commsMaterialReleaseFlagsById
+  );
+  const stripped = stripTranslationLanguagesWhenNotRequired(
+    afterComms,
     options?.requiredTranslationStatusId
   );
   const c = canonicalizeActivityFormData(stripped);
   return {
     ...c,
     notes: c.notes ?? null,
+    internalNotes: c.internalNotes ?? null,
     schedulingNotes: c.schedulingNotes ?? null,
-    strategy: c.strategy ?? null,
     significance: c.significance ?? null,
     executiveSummary: c.executiveSummary ?? null,
     lookAheadSection: c.lookAheadSection ?? null,

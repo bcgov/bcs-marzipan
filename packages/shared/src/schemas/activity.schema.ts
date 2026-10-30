@@ -1,11 +1,16 @@
 import { z } from 'zod';
 
 import { LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
+import { RELEASE_TIME_OFFSET_MAX_MINUTES } from '../utils/activity-release-time';
 import {
   ACTIVITY_RICH_TEXT_MAX_BYTES,
   isActivityRichTextStorageRefine,
   plainTextFromActivityRichField,
 } from '../utils/activity-rich-text';
+import {
+  activitySchedulingSuperRefine,
+  type ActivitySchedulingLookupResolvers,
+} from '../validation/activity-scheduling-validation';
 import {
   zodConstraintIssueParams,
   zodRequiredIssueParams,
@@ -163,15 +168,6 @@ const activityCoreFieldsSchema = z.object({
     )
     .optional()
     .nullable(),
-  strategy: z
-    .string()
-    .max(
-      ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
-      MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
-    )
-    .nullable()
-    .optional(),
-
   // Status IDs (numbers for database; venue optional when activity has no venue)
   // Note: These are numbers in requests (matching database schema) but converted to strings
   // in responses for consistent JSON serialization. See activity-response.schema.ts for details.
@@ -194,7 +190,6 @@ const activityCoreFieldsSchema = z.object({
   endDate: z.string().date().nullable().optional(),
   startTime: z.string().time().nullable().optional(),
   endTime: z.string().time().nullable().optional(),
-  pitchDate: z.string().date().nullable().optional(), // Date when activity was or will be pitched
 
   // Optional text fields
   notes: z
@@ -204,13 +199,20 @@ const activityCoreFieldsSchema = z.object({
       MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
     )
     .nullable()
-    .optional(), // Maps to legacy Comments
+    .optional(),
+  internalNotes: z
+    .string()
+    .max(
+      ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
+      MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
+    )
+    .nullable()
+    .optional(),
   executiveSummary: z.preprocess(
     emptyStringToNull,
     z.union([activityBriefRichTextStoredStringSchema, z.null()]).optional()
   ),
-  pitchRequiredStatusId: z.number().int().nullable().optional(), // pending, required, not_required
-  translationsRequiredStatusId: z.number().int().nullable().optional(), // pending, required, not_required
+  translationsRequiredStatusId: z.number().int().nullable().optional(), // tbd, required, not_required
 
   // Optional enum fields
   lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(),
@@ -232,11 +234,14 @@ const activityCoreFieldsSchema = z.object({
     .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
     .nullable()
     .optional(),
-  newsReleaseId: z.preprocess(
-    emptyStringToNull,
-    z.string().uuid().nullable().optional()
-  ),
   newsReleaseOriginId: z.number().int().nullable().optional(),
+  releaseTimeOffsetMinutes: z
+    .number()
+    .int()
+    .min(0)
+    .max(RELEASE_TIME_OFFSET_MAX_MINUTES)
+    .nullable()
+    .optional(),
   leadTeamId: z.number().int(), // Required - primary association for which team leads this activity
   leadMinistryId: z.preprocess(
     emptyStringToNull,
@@ -300,28 +305,6 @@ const eventPlannerSchema = z.object({
 });
 
 /**
- * Report setting schema
- * Defines whether an activity is omitted from a specific report
- */
-const reportSettingSchema = z.preprocess(
-  (val) => {
-    // Normalize incoming shape: accept `{ id: number }` (older clients)
-    // and map it to `{ reportId: number }` so validation passes.
-    if (val && typeof val === 'object' && !Array.isArray(val)) {
-      const v = val as Record<string, unknown>;
-      if (v.reportId === undefined && v.id !== undefined) {
-        return { ...v, reportId: v.id };
-      }
-    }
-    return val;
-  },
-  z.object({
-    reportId: z.number().int(),
-    omitted: z.boolean().default(false),
-  })
-);
-
-/**
  * Comms contact schema
  * Supports identifying the lead contact via isLead flag
  */
@@ -343,7 +326,6 @@ const junctionTableIdsSchema = z.object({
   representatives: z.array(representativeSchema).optional(),
   sharedWithTeamIds: z.array(z.number().int()).optional(), // Editor-type teams the activity is shared with
   commsContacts: z.array(commsContactSchema).optional(), // Comms contacts with isLead flag (exactly one must have isLead=true)
-  reportSettings: z.array(reportSettingSchema).optional(), // Report settings for the activity
 });
 
 const CATEGORY_IDS_MIN_MESSAGE = 'At least one category is required';
@@ -426,7 +408,7 @@ const createBaseSchema = activityCoreFieldsSchema
  * Excludes auto-generated fields (id, displayId, audit fields, rowVersion).
  * Requires at least one Comms contact with exactly one marked as lead.
  */
-export const createActivityRequestSchema = createBaseSchema
+const createActivityRequestSchemaBase = createBaseSchema
   .extend({
     commsContacts: createCommsContactsFieldSchema,
   })
@@ -448,6 +430,20 @@ export const createActivityRequestSchema = createBaseSchema
       ...zodRequiredIssueParams(),
     }
   );
+
+export const createActivityRequestSchema =
+  createActivityRequestSchemaBase.superRefine(
+    activitySchedulingSuperRefine('create')
+  );
+
+/** Create schema with lookup resolvers for Confirmed/Pitched cross-field rules in the UI. */
+export function createActivityRequestSchemaWithLookups(
+  resolvers: ActivitySchedulingLookupResolvers
+) {
+  return createActivityRequestSchemaBase.superRefine(
+    activitySchedulingSuperRefine('create', resolvers)
+  );
+}
 
 /**
  * Schema for updating an activity via HTTP request
@@ -490,7 +486,8 @@ export const updateActivityRequestSchema = createBaseSchema
       path: ['markAsCompleted'],
       ...zodConstraintIssueParams(),
     }
-  );
+  )
+  .superRefine(activitySchedulingSuperRefine('update'));
 
 /**
  * Administrative bulk action request. This intentionally permits only the
@@ -501,14 +498,12 @@ export const bulkUpdateActivitiesRequestSchema = z
     activityIds: z.array(z.number().int().positive()).min(1).max(100),
     operation: z.enum([
       'review',
-      'pitchStatus',
       'issue',
       'tags',
       'sharedWith',
       'flag',
       'delete',
     ]),
-    pitchRequiredStatusId: z.number().int().positive().optional(),
     tagIds: z.array(z.number().int().positive()).max(100).optional(),
     teamIds: z.array(z.number().int().positive()).max(100).optional(),
     flagTeamId: z.number().int().positive().optional(),
@@ -527,12 +522,6 @@ export const bulkUpdateActivitiesRequestSchema = z
         path: [field],
       });
     };
-    if (
-      data.operation === 'pitchStatus' &&
-      data.pitchRequiredStatusId === undefined
-    ) {
-      addRequiredIssue('pitchRequiredStatusId');
-    }
     if (data.operation === 'tags' && data.tagIds === undefined) {
       addRequiredIssue('tagIds');
     }
@@ -673,6 +662,12 @@ export type HardDeleteRequest = z.infer<typeof hardDeleteRequestSchema>;
 
 /**
  * Form data type for create/edit activity forms.
- * Single source of truth: same as CreateActivityRequest (schema-inferred).
+ * Schedule dates may be empty in UI state until filled; Zod requires them on submit.
  */
-export type ActivityFormData = CreateActivityRequest;
+export type ActivityFormData = Omit<
+  CreateActivityRequest,
+  'startDate' | 'endDate'
+> & {
+  startDate?: string;
+  endDate?: string;
+};

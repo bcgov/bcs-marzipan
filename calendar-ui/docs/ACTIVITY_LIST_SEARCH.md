@@ -9,7 +9,7 @@ The activity list uses **server-side** filtering only for:
 - **Archive:** `includeCompleted` and `includeDeleted` (driven by "Show completed" / "Show deleted" and by the Status filter when it includes Completed or Deleted).
 - **Tab context (array params, OR semantics):** `leadTeamIds`, `commsContactLeadUserIds`, `sharedWithTeamIds`, `flagAssigneeUserIds` when viewing a ministry, My activities, Shared with me, or Assigned to me tab. Tabs pass single-element arrays (e.g. `leadTeamIds: [teamId]`).
 
-All other filtering is **client-side** over the cached list: date range, status (dropdown), category, pitch, tags, leads, translations, and keyword search. At expected scale (~1–1.5k active rows, up to ~10k with archive), client-side filtering is performant and keeps a single pipeline for adding new filters without API changes.
+All other filtering is **client-side** over the cached list: date range, status (dropdown), category, tags, leads, translations, and keyword search. At expected scale (~1–1.5k active rows, up to ~10k with archive), client-side filtering is performant and keeps a single pipeline for adding new filters without API changes.
 
 ## Reports vs Activity List
 
@@ -32,7 +32,7 @@ Both surfaces interpret `ActivityFilterState` through one shared specification i
 
 Parity means the **same predicate rules**, not identical row **counts**. Counts can legitimately differ: Reports use report date windows, omitted-activity settings, and section pins, while the list applies tab scoping (ministry, favourites) and archive overlays.
 
-The Reports filter row now exposes the same dimensions as the Activity List, including **Look Ahead** and **Pitch** (Pitch is shown only to users with pitch field scope, identical to the list).
+The Reports filter row exposes the same dimensions as the Activity List, including **Look Ahead**.
 
 ## Implemented approach
 
@@ -40,7 +40,7 @@ The Reports filter row now exposes the same dimensions as the Activity List, inc
 
 Keyword search is implemented as **client-side filtering** over the cached activity list:
 
-- The list is already fetched for the current filter set (tab, include completed, include deleted) via TanStack Query. The query key does **not** include the search term, date, status, category, or pitch.
+- The list is already fetched for the current filter set (tab, include completed, include deleted) via TanStack Query. The query key does **not** include the search term, date, status, or category.
 - When the user types a search term, the client filters the in-memory `ActivityTableRow[]` before sorting and pagination. No new network request is made for search.
 - When the cache is invalidated or refetched (e.g. refetch interval or after a mutation), the same search term is reapplied to the new data.
 
@@ -108,4 +108,4 @@ If the list is paginated, client-side search is no longer possible (the client o
 | Scenario                                                   | Current behavior                                                           | Possible evolution                                                                          |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | Default list (include completed/deleted off, ~1–1.5k rows) | Full list fetched (archive + context only); all other filters client-side. | No change needed.                                                                           |
-| Include completed/deleted on (~10k rows max)               | Full list fetched once; client-side date, status, category, pitch, search. | Add server-side pagination (and then server-side search) only if needed for responsiveness. |
+| Include completed/deleted on (~10k rows max)               | Full list fetched once; client-side date, status, category, search.        | Add server-side pagination (and then server-side search) only if needed for responsiveness. |

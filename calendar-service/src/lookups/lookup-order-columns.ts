@@ -6,6 +6,7 @@ import {
   governmentRepresentatives,
   ministries,
   ministryGroups,
+  releaseTypes,
   tags,
   themes,
   translatedLanguages,
@@ -34,6 +35,11 @@ export const LOOKUP_LIST_ORDER_COLUMNS: Record<
     sortOrder: commsMaterials.sortOrder,
     id: commsMaterials.id,
     labelColumn: commsMaterials.displayName,
+  },
+  'release-types': {
+    sortOrder: releaseTypes.sortOrder,
+    id: releaseTypes.id,
+    labelColumn: releaseTypes.displayName,
   },
   'activity-statuses': {
     sortOrder: activityStatuses.sortOrder,

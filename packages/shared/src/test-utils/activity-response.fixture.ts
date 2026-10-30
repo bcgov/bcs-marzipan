@@ -59,12 +59,12 @@ export function createMockActivityResponse(
     timeStatusId: 1,
     venueStatusId: 1,
     schedulingNotes: null,
-    strategy: null,
 
     // News Release
     newsReleaseOriginId: null,
-    newsReleaseId: null,
     newsReleaseDistributionId: null,
+    releaseTimeOffsetMinutes: null,
+    releaseTime: null,
 
     // Look Ahead
     executiveSummary: null,
@@ -73,8 +73,7 @@ export function createMockActivityResponse(
 
     // Notes and additional fields
     notes: null,
-    pitchDate: null,
-    pitchRequiredStatusId: null,
+    internalNotes: null,
     translationsRequiredStatusId: null,
     premierRequestedId: null,
     visibility: DEFAULT_VISIBILITY,
@@ -113,13 +112,11 @@ export function createMockActivityResponse(
     newsReleaseOrigin: null,
     newsReleaseDistribution: null,
     premierRequested: null,
-    pitchRequiredStatus: null,
     translationsRequiredStatus: null,
     leadMinistry: null,
     leadMinistryAbbreviation: null,
     leadTeamDisplayName: null,
     venueAddress: null,
-    reportSettings: [],
     flags: [],
 
     // Apply overrides

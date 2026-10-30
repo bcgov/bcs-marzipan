@@ -73,7 +73,6 @@ import {
   useNewsReleaseDistributions,
   useNewsReleaseOrigins,
   useOrganizations,
-  usePitchRequiredStatuses,
   usePremierRequested,
   useTags,
   useTeams,
@@ -176,7 +175,6 @@ export default function ActivityHistory({
   const activityStatusesQuery = useActivityStatuses();
   const timeStatusesQuery = useTimeStatuses();
   const venueStatusesQuery = useVenueStatuses();
-  const pitchRequiredStatusesQuery = usePitchRequiredStatuses();
   const translationRequiredStatusesQuery = useTranslationRequiredStatuses();
   const newsReleaseOriginsQuery = useNewsReleaseOrigins();
   const newsReleaseDistributionsQuery = useNewsReleaseDistributions();
@@ -261,7 +259,6 @@ export default function ActivityHistory({
       venueStatusMap,
       activityStatusMap: toMap(activityStatusesQuery.data),
       timeStatusMap: toMap(timeStatusesQuery.data),
-      pitchRequiredStatusMap: toMap(pitchRequiredStatusesQuery.data),
       translationsRequiredStatusMap: toMap(
         translationRequiredStatusesQuery.data
       ),
@@ -286,7 +283,6 @@ export default function ActivityHistory({
     venueStatusesQuery.data,
     activityStatusesQuery.data,
     timeStatusesQuery.data,
-    pitchRequiredStatusesQuery.data,
     translationRequiredStatusesQuery.data,
     newsReleaseOriginsQuery.data,
     newsReleaseDistributionsQuery.data,

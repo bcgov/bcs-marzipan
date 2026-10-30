@@ -11,7 +11,6 @@ export * from './apply-update-activity-request';
 export * from './activity-field-labels';
 export * from '../validation';
 export * from './build-review-diff-lookups';
-export * from './report-settings';
 export * from './redact-activity-response';
 export {
   ACTIVITY_HISTORY_FIELD_ALIASES,
@@ -27,5 +26,7 @@ export * from './apply-field-level-write-policy';
 export * from './activity-rich-text';
 export * from './wcagContrast';
 export * from './lookup-selectability';
+export * from './comms-material-form-rules';
+export * from './activity-release-time';
 export * from './government-representative-sort';
 export * from './parse-gov-bc-display-name';

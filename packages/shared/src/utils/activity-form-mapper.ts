@@ -92,14 +92,6 @@ export function mapResponseToFormData(
         }))
       : undefined;
 
-  const reportSettings =
-    response.reportSettings?.length > 0
-      ? response.reportSettings.map((rs) => ({
-          reportId: rs.id,
-          omitted: rs.omitted,
-        }))
-      : undefined;
-
   const commsContacts =
     response.commsContacts?.length > 0
       ? response.commsContacts.map((c) => ({
@@ -127,7 +119,6 @@ export function mapResponseToFormData(
     summary: response.summary,
     significance: response.significance ?? undefined,
     schedulingNotes: response.schedulingNotes ?? undefined,
-    strategy: response.strategy ?? undefined,
     dateStatusId: response.dateStatusId ?? undefined,
     timeStatusId: response.timeStatusId ?? undefined,
     venueStatusId: response.venueStatusId ?? undefined,
@@ -140,17 +131,16 @@ export function mapResponseToFormData(
     endDate: response.endDate ?? undefined,
     startTime: response.startTime ?? undefined,
     endTime: response.endTime ?? undefined,
-    pitchRequiredStatusId: response.pitchRequiredStatusId ?? undefined,
     translationsRequiredStatusId:
       response.translationsRequiredStatusId ?? undefined,
-    pitchDate: response.pitchDate ?? undefined,
     notes: response.notes ?? undefined,
+    internalNotes: response.internalNotes ?? undefined,
     executiveSummary: response.executiveSummary ?? undefined,
     lookAheadStatus: response.lookAheadStatus ?? undefined,
     lookAheadSection: response.lookAheadSection ?? undefined,
     leadOrgId: response.leadOrgId ?? undefined,
     leadOrgName: response.leadOrgName ?? undefined,
-    newsReleaseId: response.newsReleaseId ?? undefined,
+    releaseTimeOffsetMinutes: response.releaseTimeOffsetMinutes ?? undefined,
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
     leadTeamId: response.leadTeamId ?? 0,
     leadMinistryId: response.leadMinistryId ?? undefined,
@@ -170,7 +160,6 @@ export function mapResponseToFormData(
       ? sharedWithTeamIds
       : undefined,
     commsContacts: commsContacts?.length ? commsContacts : undefined,
-    reportSettings: reportSettings?.length ? reportSettings : undefined,
     venueAddress: normalizeVenueAddressForForm(response.venueAddress),
   };
 }

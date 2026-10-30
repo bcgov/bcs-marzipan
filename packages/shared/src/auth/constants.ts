@@ -90,9 +90,7 @@ export const PERMISSIONS = {
     LOOK_AHEAD_VIEW: 'activities.lookAhead.view',
     LOOK_AHEAD_EDIT: 'activities.lookAhead.edit',
     TRANSLATIONS_EDIT: 'activities.translations.edit',
-    PITCH_STATUS_VIEW: 'activities.pitchStatus.view',
-    PITCH_STATUS_EDIT: 'activities.pitchStatus.edit',
-    PITCH_DATE_EDIT: 'activities.pitchDate.edit',
+    RELEASE_TIME_EDIT: 'activities.release_time.edit',
     /** Take edit lock from another user after grace period (admin). */
     LOCK_FORCE_HANDOFF: 'activities.lock.forceHandoff',
     /** Manually progress an activity to Completed status. */
@@ -131,6 +129,8 @@ export const PERMISSIONS = {
   LOOKUPS: {
     VIEW: 'lookups.view',
     MANAGE: 'lookups.manage',
+    MANAGE_COMMS_MATERIALS: 'lookups.manage.comms_materials',
+    MANAGE_RELEASE_TYPES: 'lookups.manage.release_types',
   },
   USERS: {
     VIEW: 'users.view',

@@ -8,7 +8,6 @@ import { buildIdArrayFilterSlot } from '@/components/activity/ActivityTable/Acti
 import { CategoriesFilterPanel } from '@/components/activity/ActivityTable/CategoriesFilter';
 import { LeadTeamFilterPanel } from '@/components/activity/ActivityTable/LeadTeamFilterPanel';
 import { LookAheadFilterPanel } from '@/components/activity/ActivityTable/LookAheadFilter';
-import { PitchFilterPanel } from '@/components/activity/ActivityTable/PitchFilter';
 import { ScheduledDateFilterPanel } from '@/components/activity/ActivityTable/ScheduledDateFilter';
 import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { TagsFilterPanel } from '@/components/activity/ActivityTable/TagsFilter';
@@ -19,13 +18,11 @@ import {
 } from '@/components/shared/ResponsiveFilterRow';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
-import { useActivityPitchFieldVisibility } from '@/hooks/useActivityTableFilterLookups';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useActivityStatuses,
   useCategories,
   useEventPlanners,
-  usePitchRequiredStatuses,
   useTags,
   useTeams,
   useTranslationLanguages,
@@ -114,15 +111,8 @@ export function ReportFiltersBar({
     [setPreferences]
   );
 
-  const pitchFieldVisibility = useActivityPitchFieldVisibility();
-  const canViewPitchStatus = pitchFieldVisibility.canViewPitchStatus;
-  const canViewPitchDate = pitchFieldVisibility.canViewPitchDate;
-  const showPitchFilter = canViewPitchStatus || canViewPitchDate;
-
   const { data: categoriesForFilter = [] } = useCategories();
   const { data: activityStatusesForFilter = [] } = useActivityStatuses();
-  const { data: pitchRequiredStatusesForFilter = [] } =
-    usePitchRequiredStatuses();
   const { data: tagsForFilter = [] } = useTags();
   const { data: usersForFilter = [] } = useUsers();
   const { data: eventPlannersForFilter = [] } = useEventPlanners();
@@ -152,15 +142,6 @@ export function ReportFiltersBar({
           label: s.displayName,
         })),
     [activityStatusesForFilter, canSeeDeleted]
-  );
-
-  const pitchRequiredStatusOptions = useMemo(
-    () =>
-      pitchRequiredStatusesForFilter.map((s) => ({
-        value: s.displayName,
-        label: s.displayName,
-      })),
-    [pitchRequiredStatusesForFilter]
   );
 
   const tagOptions = useMemo(
@@ -268,20 +249,10 @@ export function ReportFiltersBar({
   const hasClearableFilters = useMemo(
     () =>
       hasClearableFiltersProp ??
-      hasReportClearableFiltersActive(
-        filterState,
-        reportName,
-        searchKeyword,
-        pitchFieldVisibility,
-        { includeSearchKeyword: true }
-      ),
-    [
-      filterState,
-      reportName,
-      searchKeyword,
-      pitchFieldVisibility,
-      hasClearableFiltersProp,
-    ]
+      hasReportClearableFiltersActive(filterState, reportName, searchKeyword, {
+        includeSearchKeyword: true,
+      }),
+    [filterState, reportName, searchKeyword, hasClearableFiltersProp]
   );
 
   const baselineDatePatch = useMemo(
@@ -500,60 +471,6 @@ export function ReportFiltersBar({
           clearAriaLabel: 'Clear Translations filter',
         },
       },
-      ...(showPitchFilter
-        ? [
-            {
-              key: 'pitch',
-              label: 'Pitch',
-              panel: (
-                <PitchFilterPanel
-                  filterState={filterState}
-                  onFilterStateChange={onFilterStateChange}
-                  pitchRequiredStatusOptions={pitchRequiredStatusOptions}
-                  canViewPitchStatus={canViewPitchStatus}
-                  canViewPitchDate={canViewPitchDate}
-                />
-              ),
-              triggerProps: {
-                active: (() => {
-                  const pitchDateRangeActive =
-                    filterState.pitchDateFilter.kind === 'scheduled' &&
-                    isDateRangeActive(filterState.pitchDateFilter.dateRange);
-                  const statusPart =
-                    canViewPitchStatus &&
-                    filterState.pitchRequiredStatusNames.length > 0;
-                  const datePart =
-                    canViewPitchDate &&
-                    (filterState.pitchDateFilter.kind !== 'any' ||
-                      pitchDateRangeActive);
-                  return statusPart || datePart;
-                })(),
-                count: (() => {
-                  const pitchDateRangeActive =
-                    filterState.pitchDateFilter.kind === 'scheduled' &&
-                    isDateRangeActive(filterState.pitchDateFilter.dateRange);
-                  return (
-                    (canViewPitchStatus
-                      ? filterState.pitchRequiredStatusNames.length
-                      : 0) +
-                    (canViewPitchDate &&
-                    (filterState.pitchDateFilter.kind !== 'any' ||
-                      pitchDateRangeActive)
-                      ? 1
-                      : 0)
-                  );
-                })(),
-                onClear: () =>
-                  onFilterStateChange({
-                    ...filterState,
-                    pitchRequiredStatusNames: [],
-                    pitchDateFilter: { kind: 'any' },
-                  }),
-                clearAriaLabel: 'Clear Pitch filter',
-              },
-            } satisfies ResponsiveFilterSlot,
-          ]
-        : []),
       buildIdArrayFilterSlot(
         'eventPlanner',
         'Event planner',
@@ -588,10 +505,6 @@ export function ReportFiltersBar({
       dateConfirmedActive,
       dateRangeActive,
       timeConfirmedActive,
-      pitchRequiredStatusOptions,
-      showPitchFilter,
-      canViewPitchStatus,
-      canViewPitchDate,
     ]
   );
 
@@ -599,7 +512,7 @@ export function ReportFiltersBar({
     <div
       className="flex flex-col"
       role="search"
-      aria-label="Filter report activities by date, category, lead team, comms contact, status, Look Ahead, tags, translations, pitch, event planner, and keyword"
+      aria-label="Filter report activities by date, category, lead team, comms contact, status, Look Ahead, tags, translations, event planner, and keyword"
     >
       <div className="flex flex-nowrap items-center justify-between gap-8">
         <div className="flex min-w-0 flex-1 items-center gap-2">

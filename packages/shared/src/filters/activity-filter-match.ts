@@ -1,7 +1,6 @@
 import type { ActivityFilterState } from '../activity-filter-state';
 import {
   activityScheduledRangeOverlaps,
-  isDateInRange,
   isDateRangeActive,
 } from './activity-filter-date';
 import type { ActivityFilterMatchInput } from './activity-filter-match-input';
@@ -30,8 +29,8 @@ export interface ActivityFilterMatchOptions {
  * `calendar-service/.../activity-find-all-filters.ts` (the SQL builder is the
  * Reports/list API owner; this function is the canonical predicate spec).
  *
- * Field-scope visibility (e.g. whether a user can view pitch) is intentionally
- * NOT consulted here: predicates apply whenever criteria exist in state.
+ * Field-scope visibility is intentionally NOT consulted here: predicates apply
+ * whenever criteria exist in state.
  */
 export function activityMatchesFilterState(
   filterState: ActivityFilterState,
@@ -66,36 +65,6 @@ export function activityMatchesFilterState(
     }
   }
 
-  // Pitch required status (case-insensitive, trimmed; OR within).
-  if (filterState.pitchRequiredStatusNames.length > 0) {
-    const pitchSet = new Set(
-      filterState.pitchRequiredStatusNames.map((n) => n.trim().toLowerCase())
-    );
-    const status = input.pitchRequiredStatusName?.trim().toLowerCase() ?? '';
-    if (status === '' || !pitchSet.has(status)) return false;
-  }
-
-  // Pitch date.
-  const pdf = filterState.pitchDateFilter;
-  if (pdf.kind === 'not_scheduled') {
-    if (input.pitchDate != null) return false;
-  } else if (pdf.kind === 'scheduled') {
-    if (input.pitchDate == null) return false;
-    const pr = pdf.dateRange;
-    if (
-      isDateRangeActive(pr) &&
-      !isDateInRange(
-        input.pitchDate,
-        pr.startDate,
-        pr.endDate,
-        pr.noStartDate,
-        pr.noEndDate
-      )
-    ) {
-      return false;
-    }
-  }
-
   // Look Ahead status / section (OR within each; AND across the two).
   if (filterState.lookAheadStatusValues.length > 0) {
     if (
@@ -122,7 +91,7 @@ export function activityMatchesFilterState(
     return false;
   }
   if (
-    filterState.dateConfirmedFilter === 'not_confirmed' &&
+    filterState.dateConfirmedFilter === 'tbd' &&
     isConfirmedStatusLabel(input.dateStatusName)
   ) {
     return false;
@@ -134,7 +103,7 @@ export function activityMatchesFilterState(
     return false;
   }
   if (
-    filterState.timeConfirmedFilter === 'not_confirmed' &&
+    filterState.timeConfirmedFilter === 'tbd' &&
     isConfirmedStatusLabel(input.timeStatusName)
   ) {
     return false;

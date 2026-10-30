@@ -71,3 +71,9 @@ TipTap/jsdom: mock `@/components/ui/rich-text-field` via [`src/test-utils/rich-t
 - **Edit-form hydration** — `hydrateActivityFormData` canonicalizes API-mapped values, then `applyUiBaselineSentinels` re-applies UI-only sentinels (`''`, `EMPTY_RICH_TEXT_DOC`, etc.)
 
 Changing canonicalize semantics (e.g. a new empty edge case for diff) can change hydration baselines and controlled-input behaviour even when submit logic looks correct. Treat canonicalize + `UI_BASELINE_FIELD_SENTINELS` + hydrate tests as one change set.
+
+## Release time (`releaseTimeOffsetMinutes`)
+
+- Shown in the comms section when any selected material has a **public** release type; cleared on save when none remain (`stripCommsDependentFields`).
+- Optional nullable offset (minutes after schedule anchor); server recomputes read-only `releaseTime` on create/update (not tracked in history).
+- Edit requires `activities.release_time.edit` (field scope `releaseTime`).

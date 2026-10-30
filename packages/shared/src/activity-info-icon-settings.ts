@@ -6,22 +6,25 @@ export const ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH = 500 as const;
 export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
   'categoryIds',
   'title',
-  'summary',
-  'visibility',
-  'sharedWithTeamIds',
   'isConfidential',
   'isIssue',
-  'leadTeamId',
+  'summary',
   'leadOrgId',
   'significance',
-  'pitchRequiredStatusId',
-  'pitchDate',
-  'notes',
   'tagIds',
+  'internalNotes',
+  'notes',
 
+  'leadTeamId',
   'commsContacts',
-  'strategy',
+  'visibility',
+  'sharedWithTeamIds',
   'commsMaterialIds',
+  'releaseTimeOffsetMinutes',
+  'newsReleaseOriginId',
+  'newsReleaseDistributionId',
+  'translationsRequiredStatusId',
+  'translationLanguageIds',
 
   'startDate',
   'endDate',
@@ -31,11 +34,6 @@ export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
   'isAllDay',
   'timeStatusId',
   'schedulingNotes',
-
-  'newsReleaseOriginId',
-  'newsReleaseDistributionId',
-  'translationsRequiredStatusId',
-  'translationLanguageIds',
 
   'premierRequestedId',
   'representatives',
@@ -51,7 +49,6 @@ export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
   'executiveSummary',
   'lookAheadStatus',
   'lookAheadSection',
-  'reportSettings',
 ] as const;
 
 export type ActivityInfoIconFieldKey =
@@ -89,12 +86,12 @@ export const DEFAULT_ACTIVITY_INFO_ICON_SETTINGS: ActivityInfoIconSettings = {
       text: 'Describe how this will impact people and why it is important.',
     },
     {
-      fieldKey: 'strategy',
-      text: 'Describe any promotion, digital content, or visuals planned as part of the announcement vision.',
-    },
-    {
       fieldKey: 'schedulingNotes',
       text: 'Use this for the date or timeframe requested, approvals received or outstanding, criteria holding up the activity, and any date or time confirmed by a third party.',
+    },
+    {
+      fieldKey: 'releaseTimeOffsetMinutes',
+      text: 'Suggested release time for publication through NRMs (offset from scheduled start time).',
     },
   ],
 };

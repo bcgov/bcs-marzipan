@@ -131,6 +131,8 @@ describe('useActivityFormSubmitState', () => {
           categoryIds: [1],
           dateStatusId: 1,
           timeStatusId: 1,
+          startDate: '2026-06-01',
+          endDate: '2026-06-01',
           commsContacts: [{ userId: 1, isLead: true }],
         } as ActivityFormData,
       });

@@ -31,8 +31,6 @@ const mockLookups: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  pitchStatuses: [],
-  pitchRequiredStatuses: [],
   activityStatuses: [],
   commsMaterials: [],
   translationLanguages: [],
@@ -51,7 +49,7 @@ const mockLookups: FormLookupData = {
 const EMPTY_API_ACTIVITY_OVERRIDES = {
   notes: null,
   schedulingNotes: null,
-  strategy: null,
+  internalNotes: null,
   significance: null,
   executiveSummary: null,
   summary: '',
@@ -115,7 +113,6 @@ describe('hydrateActivityFormData', () => {
     const activity = createMockActivityResponse({
       startDate: null,
       endDate: null,
-      pitchDate: null,
       venueStatusId: null,
       lookAheadStatus: null,
       category: [],
@@ -125,7 +122,6 @@ describe('hydrateActivityFormData', () => {
 
     expect(data.startDate).toBeUndefined();
     expect(data.endDate).toBeUndefined();
-    expect(data.pitchDate).toBeUndefined();
     expect(data.venueStatusId).toBeUndefined();
     expect(data.lookAheadStatus).toBeUndefined();
     expect(data.categoryIds).toEqual([]);

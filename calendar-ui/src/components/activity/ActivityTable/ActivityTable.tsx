@@ -29,7 +29,6 @@ import {
   LeadContactLine,
   MaterialsCellCompact,
   OverviewIconsCell,
-  OverviewPitchLine,
   SchedulingCellCompact,
   SelectCheckboxCell,
   TitleSummaryCell,
@@ -62,7 +61,6 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
     toggleFavourite,
     isFavouriteToggling,
     userMap,
-    pitchFieldVisibility,
   } = core;
 
   const storedSizing = layoutPreferences.getColumnSizing();
@@ -122,11 +120,6 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
                 })
               }
               flagPending={syncFlagsMutation.isPending}
-            />
-            <OverviewPitchLine
-              row={row.original}
-              canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
-              showReviewHighlights={showReviewHighlights}
             />
             <CategoryBadgesCell
               row={row.original}
@@ -224,7 +217,6 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
       toggleFavourite,
       isFavouriteToggling,
       userMap,
-      pitchFieldVisibility,
     ]
   );
 

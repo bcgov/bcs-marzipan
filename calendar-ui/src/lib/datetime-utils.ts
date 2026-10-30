@@ -480,6 +480,7 @@ export const UNCONFIRMED_STATUS_NAMES = [
   'unknown',
   'not confirmed',
   'not_confirmed',
+  'tbd',
   'unconfirmed',
 ];
 

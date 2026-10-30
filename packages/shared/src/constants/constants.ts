@@ -16,6 +16,10 @@
 export const VISIBILITY = ['global', 'team'] as const;
 export type Visibility = (typeof VISIBILITY)[number];
 
+/** Sister-app release type audience (required on every release_types row). */
+export const RELEASE_TYPE_AUDIENCE = ['media', 'public'] as const;
+export type ReleaseTypeAudience = (typeof RELEASE_TYPE_AUDIENCE)[number];
+
 // ============================================================================
 // Activity Enum Constants
 // ============================================================================
@@ -222,10 +226,15 @@ export const DEFAULT_LOOK_AHEAD_STATUS = 'none' as const;
 export const DEFAULT_VISIBILITY = 'global' as const;
 
 /**
- * Lookup `name` for pitch_required_statuses and translation_required_statuses
- * when defaulting to "Pending review" on activity create.
+ * Lookup `name` for translation_required_statuses when defaulting on activity create.
  */
-export const PITCH_TRANSLATION_PENDING_LOOKUP_NAME = 'pending' as const;
+export const TBD_LOOKUP_NAME = 'tbd' as const;
+
+/** @deprecated Use {@link TBD_LOOKUP_NAME}. */
+export const PITCH_TRANSLATION_PENDING_LOOKUP_NAME = TBD_LOOKUP_NAME;
+
+/** Lookup `name` for date/time confirmed status and filter matching. */
+export const CONFIRMED_LOOKUP_NAME = 'confirmed' as const;
 
 /**
  * Lookup `name` for translation_required_statuses when translations are mandatory.

@@ -42,16 +42,14 @@ const BASE_ACTIVITY_RESPONSE = {
   timeStatusId: undefined,
   venueStatusId: null,
   schedulingNotes: null,
-  strategy: null,
   newsReleaseOriginId: null,
-  newsReleaseId: null,
   newsReleaseDistributionId: null,
+  releaseTimeOffsetMinutes: null,
+  releaseTime: null,
   executiveSummary: null,
   lookAheadStatus: 'none',
   lookAheadSection: 'events',
   notes: null,
-  pitchDate: null,
-  pitchRequiredStatusId: null,
   translationsRequiredStatusId: null,
   premierRequestedId: null,
   visibility: 'global',
@@ -84,13 +82,11 @@ const BASE_ACTIVITY_RESPONSE = {
   newsReleaseOrigin: null,
   newsReleaseDistribution: null,
   premierRequested: null,
-  pitchRequiredStatus: null,
   translationsRequiredStatus: null,
   leadMinistry: 'Education and Child Care',
   leadMinistryAbbreviation: 'ECC',
   leadTeamDisplayName: null,
   venueAddress: null,
-  reportSettings: [],
   flags: [],
 } satisfies ActivityResponse;
 
@@ -270,8 +266,8 @@ describe('toPrintRowViewModel', () => {
         variant: 'lookAhead',
       }
     );
-    expect(notConfirmed.dateTime.dateStatus).toBe('TBC');
-    expect(notConfirmed.dateTime.timeStatus).toBe('TBC');
+    expect(notConfirmed.dateTime.dateStatus).toBe('Date TBD');
+    expect(notConfirmed.dateTime.timeStatus).toBe('Time TBD');
 
     const execLa = toPrintRowViewModel(unsettled, {
       activityBaseUrl: 'http://localhost:3000',
@@ -362,11 +358,10 @@ describe('toPrintRowViewModel', () => {
     expect(row.release.translationsLine).toBe('');
   });
 
-  it('maps 30/60/90 comms and strategy fields on the row view-model', () => {
+  it('maps 30/60/90 comms fields on the row view-model', () => {
     const row = toPrintRowViewModel(
       {
         ...BASE_ACTIVITY,
-        strategy: 'Lead with housing affordability message.',
         commsMaterials: ['Media advisory', 'Backgrounder'],
         commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
         translationsRequired: ['FR'],
@@ -378,7 +373,6 @@ describe('toPrintRowViewModel', () => {
       }
     );
 
-    expect(row.strategyStored).toBe('Lead with housing affordability message.');
     expect(row.commsMaterials).toEqual(['Media advisory', 'Backgrounder']);
     expect(row.commsContactLead).toBe('Jordan Smith');
     expect(row.release.translationsLine).toBe('French');

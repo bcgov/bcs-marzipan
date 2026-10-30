@@ -15,6 +15,7 @@ SELECT setval('activity_statuses_id_seq', COALESCE((SELECT MAX(id) FROM activity
 SELECT setval('categories_id_seq', COALESCE((SELECT MAX(id) FROM categories), 1), true);
 SELECT setval('cities_id_seq', COALESCE((SELECT MAX(id) FROM cities), 1), true);
 SELECT setval('comms_materials_id_seq', COALESCE((SELECT MAX(id) FROM comms_materials), 1), true);
+SELECT setval('release_types_id_seq', COALESCE((SELECT MAX(id) FROM release_types), 1), true);
 SELECT setval('date_statuses_id_seq', COALESCE((SELECT MAX(id) FROM date_statuses), 1), true);
 SELECT setval('event_planners_id_seq', COALESCE((SELECT MAX(id) FROM event_planners), 1), true);
 SELECT setval('government_representatives_id_seq', COALESCE((SELECT MAX(id) FROM government_representatives), 1), true);
@@ -24,8 +25,6 @@ SELECT setval('news_release_distributions_id_seq', COALESCE((SELECT MAX(id) FROM
 SELECT setval('news_release_origins_id_seq', COALESCE((SELECT MAX(id) FROM news_release_origins), 1), true);
 SELECT setval('organizations_id_seq', COALESCE((SELECT MAX(id) FROM organizations), 1), true);
 SELECT setval('permissions_id_seq', COALESCE((SELECT MAX(id) FROM permissions), 1), true);
-SELECT setval('pitch_required_statuses_id_seq', COALESCE((SELECT MAX(id) FROM pitch_required_statuses), 1), true);
-SELECT setval('pitch_statuses_id_seq', COALESCE((SELECT MAX(id) FROM pitch_statuses), 1), true);
 SELECT setval('premier_requested_id_seq', COALESCE((SELECT MAX(id) FROM premier_requested), 1), true);
 SELECT setval('reports_id_seq', COALESCE((SELECT MAX(id) FROM reports), 1), true);
 SELECT setval('roles_id_seq', COALESCE((SELECT MAX(id) FROM roles), 1), true);

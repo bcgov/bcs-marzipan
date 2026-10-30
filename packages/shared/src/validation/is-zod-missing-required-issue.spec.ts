@@ -17,6 +17,8 @@ function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
   return {
     title: 'Test Activity',
     summary: 'Summary',
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
     dateStatusId: 1,
     timeStatusId: 1,
     leadTeamId: 1,

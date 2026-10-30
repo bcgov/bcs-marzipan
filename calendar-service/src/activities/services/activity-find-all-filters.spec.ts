@@ -126,8 +126,6 @@ describe('hasActivityFindAllFilterFields', () => {
     ['categoryIds', { categoryIds: [1] }],
     ['lookAheadSectionValues', { lookAheadSectionValues: ['events'] }],
     ['dateConfirmedFilter', { dateConfirmedFilter: 'confirmed' }],
-    ['pitchDateNotScheduled', { pitchDateNotScheduled: true }],
-    ['pitchDateScheduled', { pitchDateScheduled: true }],
     ['includeCompleted', { includeCompleted: false }],
     ['includeDeleted', { includeDeleted: true }],
   ] as const)('returns true when %s is set', (_label, query) => {
@@ -278,39 +276,12 @@ describe('buildActivityFindAllConditions', () => {
     expect(conditions).toHaveLength(5);
   });
 
-  it('adds pitch date null guard when pitchDateNotScheduled is true', () => {
-    const { db } = createMockDb();
-    const conditions = buildActivityFindAllConditions({
-      filters: baseFilters({ pitchDateNotScheduled: true }),
-      deletedStatusId: DELETED_STATUS_ID,
-      completedStatusId: COMPLETED_STATUS_ID,
-      allowIncludeDeleted: false,
-      db,
-      dataScope: BYPASS_DATA_SCOPE,
-    });
-    expect(conditions).toHaveLength(3);
-  });
-
-  it('adds pitch date scheduled guard when pitchDateScheduled is true', () => {
-    const { db } = createMockDb();
-    const conditions = buildActivityFindAllConditions({
-      filters: baseFilters({ pitchDateScheduled: true }),
-      deletedStatusId: DELETED_STATUS_ID,
-      completedStatusId: COMPLETED_STATUS_ID,
-      allowIncludeDeleted: false,
-      db,
-      dataScope: BYPASS_DATA_SCOPE,
-    });
-    // 2 archive exclusions + isNotNull
-    expect(conditions).toHaveLength(3);
-  });
-
   it('builds confirmed-status exists queries for date and time filters', () => {
     const { select, db } = createMockDb();
     buildActivityFindAllConditions({
       filters: baseFilters({
         dateConfirmedFilter: 'confirmed',
-        timeConfirmedFilter: 'not_confirmed',
+        timeConfirmedFilter: 'tbd',
       }),
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
@@ -338,19 +309,6 @@ describe('buildActivityFindAllConditions', () => {
     const { select, db } = createMockDb();
     buildActivityFindAllConditions({
       filters: baseFilters({ translationLanguageIds: [3] }),
-      deletedStatusId: DELETED_STATUS_ID,
-      completedStatusId: COMPLETED_STATUS_ID,
-      allowIncludeDeleted: false,
-      db,
-      dataScope: BYPASS_DATA_SCOPE,
-    });
-    expect(select).toHaveBeenCalledTimes(1);
-  });
-
-  it('builds an exists subquery for pitch required status names', () => {
-    const { select, db } = createMockDb();
-    buildActivityFindAllConditions({
-      filters: baseFilters({ pitchRequiredStatusNames: ['Required'] }),
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,

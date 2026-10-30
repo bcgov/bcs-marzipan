@@ -9,7 +9,6 @@ import type {
   GovernmentRepresentative,
   Ministry,
   Organization,
-  PitchStatus,
   Tag,
   TimeStatus,
   User,
@@ -25,7 +24,6 @@ import type {
   GovernmentRepresentativeResponse,
   MinistryResponse,
   OrganizationResponse,
-  PitchStatusResponse,
   TagResponse,
   TimeStatusResponse,
   UserResponse,
@@ -155,12 +153,6 @@ type AssertActivityStatusFieldsExist = {
     : `Field '${K & string}' in ActivityStatusResponse does not exist in ActivityStatus database type`;
 };
 
-type AssertPitchStatusFieldsExist = {
-  [K in keyof PitchStatusResponse]: K extends keyof PitchStatus
-    ? true
-    : `Field '${K & string}' in PitchStatusResponse does not exist in PitchStatus database type`;
-};
-
 type AssertDateStatusFieldsExist = {
   [K in keyof DateStatusResponse]: K extends keyof DateStatus
     ? true
@@ -203,8 +195,6 @@ const _assertUserFieldsExist: AssertUserFieldsExist =
   {} as AssertUserFieldsExist;
 const _assertActivityStatusFieldsExist: AssertActivityStatusFieldsExist =
   {} as AssertActivityStatusFieldsExist;
-const _assertPitchStatusFieldsExist: AssertPitchStatusFieldsExist =
-  {} as AssertPitchStatusFieldsExist;
 const _assertDateStatusFieldsExist: AssertDateStatusFieldsExist =
   {} as AssertDateStatusFieldsExist;
 const _assertTimeStatusFieldsExist: AssertTimeStatusFieldsExist =
@@ -223,7 +213,6 @@ void _assertOrganizationFieldsExist;
 void _assertMinistryFieldsExist;
 void _assertUserFieldsExist;
 void _assertActivityStatusFieldsExist;
-void _assertPitchStatusFieldsExist;
 void _assertDateStatusFieldsExist;
 void _assertTimeStatusFieldsExist;
 void _assertVenueStatusFieldsExist;

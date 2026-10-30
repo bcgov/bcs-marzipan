@@ -85,7 +85,7 @@ export function ScheduledDateFilterPanel({
 
   const handleDateNotConfirmedChange = useCallback(
     (checked: boolean) => {
-      const next: ConfirmedFilterValue = checked ? 'not_confirmed' : 'any';
+      const next: ConfirmedFilterValue = checked ? 'tbd' : 'any';
       onFilterStateChange({
         ...filterState,
         dateConfirmedFilter: next,
@@ -107,7 +107,7 @@ export function ScheduledDateFilterPanel({
 
   const handleTimeNotConfirmedChange = useCallback(
     (checked: boolean) => {
-      const next: ConfirmedFilterValue = checked ? 'not_confirmed' : 'any';
+      const next: ConfirmedFilterValue = checked ? 'tbd' : 'any';
       onFilterStateChange({
         ...filterState,
         timeConfirmedFilter: next,
@@ -146,10 +146,10 @@ export function ScheduledDateFilterPanel({
         Confirmed
       </FilterCheckboxItem>
       <FilterCheckboxItem
-        checked={dateConfirmedFilter === 'not_confirmed'}
+        checked={dateConfirmedFilter === 'tbd'}
         onCheckedChange={handleDateNotConfirmedChange}
       >
-        Not confirmed
+        TBD
       </FilterCheckboxItem>
       <div className={SECTION_TITLE_CLASS}>Time status</div>
       <FilterCheckboxItem
@@ -159,10 +159,10 @@ export function ScheduledDateFilterPanel({
         Confirmed
       </FilterCheckboxItem>
       <FilterCheckboxItem
-        checked={timeConfirmedFilter === 'not_confirmed'}
+        checked={timeConfirmedFilter === 'tbd'}
         onCheckedChange={handleTimeNotConfirmedChange}
       >
-        Not confirmed
+        TBD
       </FilterCheckboxItem>
     </div>
   );

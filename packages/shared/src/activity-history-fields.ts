@@ -48,7 +48,7 @@ export const ACTIVITY_HISTORY_NON_TRACKED_FIELDS: ReadonlySet<string> = new Set(
     'lastUpdatedBy',
     'reviewedFieldSnapshot',
     'reviewedFieldSnapshotVersion',
-    'newsReleaseDateTime',
+    'releaseTime',
     'markAsCompleted',
     'markAsReviewed',
     'activityHistoryNotes',

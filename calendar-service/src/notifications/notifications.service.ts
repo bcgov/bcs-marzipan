@@ -1421,7 +1421,7 @@ export class NotificationsService {
       entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
       entityId: activity.id,
       changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
-      summary: `Reminder: date status not confirmed (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
+      summary: `Reminder: date status TBD (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
       details: {
         activityId: activity.id,
         displayId: activity.displayId,
@@ -1512,7 +1512,7 @@ export class NotificationsService {
       entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
       entityId: activity.id,
       changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
-      summary: `Reminder: time status not confirmed (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
+      summary: `Reminder: time status TBD (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
       details: {
         activityId: activity.id,
         displayId: activity.displayId,

@@ -42,9 +42,6 @@ const mockEditorFieldPermissions: string[] = [
   PERMISSIONS.ACTIVITIES.NOTES_EDIT,
   PERMISSIONS.ACTIVITIES.LOOK_AHEAD_VIEW,
   PERMISSIONS.ACTIVITIES.LOOK_AHEAD_EDIT,
-  PERMISSIONS.ACTIVITIES.PITCH_STATUS_VIEW,
-  PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
-  PERMISSIONS.ACTIVITIES.PITCH_DATE_EDIT,
   PERMISSIONS.ACTIVITIES.TRANSLATIONS_EDIT,
 ];
 
@@ -96,16 +93,6 @@ const mockLookupsReady: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  pitchStatuses: [],
-  pitchRequiredStatuses: [
-    {
-      id: 1,
-      label: 'Pending',
-      value: 1,
-      name: 'pending',
-      displayName: 'Pending',
-    },
-  ],
   activityStatuses: [],
   commsMaterials: [],
   translationLanguages: [],
@@ -727,7 +714,6 @@ describe('ActivityPage optimistic inline edit', () => {
       activity: createMockActivityResponse({
         ...mockActivityWithLeadTeam,
         isIssue: false,
-        pitchRequiredStatusId: 1,
       }),
     });
 

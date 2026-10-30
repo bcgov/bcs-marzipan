@@ -9,8 +9,6 @@ import {
   cities,
   dateStatuses,
   governmentRepresentatives,
-  pitchRequiredStatuses,
-  pitchStatuses,
   tags,
   themes,
   timeStatuses,
@@ -84,21 +82,11 @@ export type Tag = InferSelectModel<typeof tags>;
 export type NewTag = InferInsertModel<typeof tags>;
 
 // Status lookups
-export type PitchStatus = InferSelectModel<typeof pitchStatuses>;
-export type NewPitchStatus = InferInsertModel<typeof pitchStatuses>;
-
 export type DateStatus = InferSelectModel<typeof dateStatuses>;
 export type NewDateStatus = InferInsertModel<typeof dateStatuses>;
 
 export type TimeStatus = InferSelectModel<typeof timeStatuses>;
 export type NewTimeStatus = InferInsertModel<typeof timeStatuses>;
-
-export type PitchRequiredStatus = InferSelectModel<
-  typeof pitchRequiredStatuses
->;
-export type NewPitchRequiredStatus = InferInsertModel<
-  typeof pitchRequiredStatuses
->;
 
 export type TranslationRequiredStatus = InferSelectModel<
   typeof translationRequiredStatuses

@@ -26,14 +26,15 @@ The activity form UI is composed in `calendar-ui/src/components/activity/Activit
 
 ## Section order (current)
 
-| Column | Sections                                       |
-| ------ | ---------------------------------------------- |
-| Left   | Overview → Comms                               |
-| Right  | Reports → Schedule → Release → Event → Sharing |
+| Column | Sections                                        |
+| ------ | ----------------------------------------------- |
+| Left   | Overview                                        |
+| Right  | Look Ahead → Schedule → Comms → Event → Sharing |
+
+Release lookup fields (origin, distribution, translations) live under **Comms**. **Sharing** order: lead team, comms contacts (divider below), then restrict access and share-with teams.
 
 ## Notes
 
-- **`newsReleaseId`** — still on `ActivityFormData` but not rendered in the form; listed under Release for review-exempt configurability only. Excluded from clone advanced options in `clone-activity.schema.ts`.
 - **Nested paths** (e.g. `venueAddress.city`) are not listed here; clone/review use top-level keys (`venueAddress`) where applicable.
 - **Code-exempt review fields** (`ACTIVITY_REVIEW_EXEMPT_CODE_KEYS`) remain in the registry but are filtered out of the admin Settings UI.
 

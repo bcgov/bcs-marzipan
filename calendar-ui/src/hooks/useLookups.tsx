@@ -7,7 +7,6 @@ import {
 import type {
   ActivityTeamSharingResponse,
   DateStatusLookupItem,
-  PitchRequiredStatusLookupItem,
   ReportResponse,
   TimeStatusLookupItem,
   TranslationRequiredStatusLookupItem,
@@ -27,8 +26,6 @@ import {
   fetchNewsReleaseDistributions,
   fetchNewsReleaseOrigins,
   fetchOrganizations,
-  fetchPitchRequiredStatuses,
-  fetchPitchStatuses,
   fetchPremierRequested,
   fetchReports,
   fetchTags,
@@ -45,7 +42,6 @@ import {
   type LookupQueryParams,
   type MinistryLookupItem,
   type OrganizationLookupItem,
-  type PitchStatusLookupItem,
   type TagLookupItem,
   type TranslationLanguageLookupItem,
   type UserLookupItem,
@@ -103,14 +99,6 @@ export function useTags() {
     queryKey: lookupQueryKeys.tags(),
     queryFn: () => fetchTags(),
     staleTime: DYNAMIC_LOOKUP_CACHE_MS, // user-specific results; don't cache as long as static lookups
-  });
-}
-
-export function usePitchStatuses() {
-  return useQuery<PitchStatusLookupItem[]>({
-    queryKey: lookupQueryKeys.pitchStatuses(),
-    queryFn: () => fetchPitchStatuses(),
-    staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }
 
@@ -216,14 +204,6 @@ export function useVenueStatuses() {
   return useQuery<VenueStatusLookupItem[]>({
     queryKey: lookupQueryKeys.venueStatuses(),
     queryFn: () => fetchVenueStatuses(),
-    staleTime: REFERENCE_LOOKUP_CACHE_MS,
-  });
-}
-
-export function usePitchRequiredStatuses() {
-  return useQuery<PitchRequiredStatusLookupItem[]>({
-    queryKey: lookupQueryKeys.pitchRequiredStatuses(),
-    queryFn: () => fetchPitchRequiredStatuses(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,
   });
 }

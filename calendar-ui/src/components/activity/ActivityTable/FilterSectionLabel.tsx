@@ -8,7 +8,7 @@ export interface FilterSectionLabelProps extends HTMLAttributes<HTMLDivElement> 
 }
 
 /**
- * Shared section heading for filter panels (e.g. Pitch, Look Ahead, Translations).
+ * Shared section heading for filter panels (e.g. Look Ahead, Translations).
  * Uses plain markup so it works inside Popover, DropdownMenuContent, or DropdownMenuSubContent.
  */
 export function FilterSectionLabel({

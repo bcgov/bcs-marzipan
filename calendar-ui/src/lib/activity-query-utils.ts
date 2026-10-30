@@ -74,8 +74,6 @@ function activityTableRowToFilterMatchInput(
     endDate: row.endDate,
     categoryIds: row.categoryIds,
     activityStatusId: row.activityStatusId,
-    pitchRequiredStatusName: row.pitchRequiredStatus,
-    pitchDate: row.pitchDate,
     lookAheadStatus: row.lookAheadStatus,
     lookAheadSection: row.lookAheadSection,
     dateStatusName: row.dateStatus,
@@ -121,7 +119,7 @@ export function canResolveTranslationLanguageFilter(
 }
 
 /**
- * Client-side filter by date range, category (IDs), status (IDs), pitch, tags, leads, translations, etc.
+ * Client-side filter by date range, category (IDs), status (IDs), tags, leads, translations, etc.
  * Delegates to the shared {@link activityMatchesFilterState} predicate so list and
  * Reports apply identical rules. Optional context resolves translation-language
  * IDs to labels (the only dimension that cannot be matched by ID on the client).
@@ -206,7 +204,6 @@ const OPTIMISTIC_MERGEABLE_KEYS = [
   'endTime',
   'lookAheadStatus',
   'lookAheadSection',
-  'pitchDate',
 ] as const satisfies readonly (keyof ActivityListItem &
   keyof UpdateActivityRequest)[];
 

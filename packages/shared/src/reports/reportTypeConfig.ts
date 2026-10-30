@@ -70,7 +70,6 @@ export const REPORT_TYPE_CONFIG_MAP: Record<ReportType, ReportTypeConfig> = {
       'significance',
       'category',
       'isIssue',
-      'strategy',
       'commsMaterials',
       'translationsRequired',
       'commsContact',

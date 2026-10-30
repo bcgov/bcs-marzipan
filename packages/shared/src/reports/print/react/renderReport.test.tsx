@@ -49,17 +49,15 @@ const BASE_ACTIVITY_RESPONSE = {
   timeStatusId: undefined,
   venueStatusId: null,
   schedulingNotes: null,
-  strategy: null,
   newsReleaseOriginId: null,
-  newsReleaseId: null,
   newsReleaseDistributionId: null,
+  releaseTimeOffsetMinutes: null,
+  releaseTime: null,
   executiveSummary:
     'Investment of $500M over three years to accelerate affordable housing near transit.',
   lookAheadStatus: 'new',
   lookAheadSection: 'events',
   notes: null,
-  pitchDate: null,
-  pitchRequiredStatusId: null,
   translationsRequiredStatusId: null,
   premierRequestedId: null,
   visibility: 'global',
@@ -95,7 +93,6 @@ const BASE_ACTIVITY_RESPONSE = {
   newsReleaseOrigin: 'Issued',
   newsReleaseDistribution: null,
   premierRequested: null,
-  pitchRequiredStatus: null,
   translationsRequiredStatus: null,
   leadMinistry: 'Housing',
   leadMinistryAbbreviation: 'HOUS',
@@ -108,7 +105,6 @@ const BASE_ACTIVITY_RESPONSE = {
     provinceOrState: 'BC',
     country: 'Canada',
   },
-  reportSettings: [],
   flags: [],
 } satisfies ActivityResponse;
 
@@ -314,7 +310,6 @@ describe('renderPrintReportFragmentHtml', () => {
       ...BASE_ACTIVITY,
       significance:
         'Major policy announcement with province-wide housing impact.',
-      strategy: 'Coordinate with HOUS and GCPE before announcement.',
       commsMaterials: ['Media advisory', 'Backgrounder'],
       commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
     };
@@ -350,7 +345,7 @@ describe('renderPrintReportFragmentHtml', () => {
     expect(html).not.toContain('>CONFIDENTIAL</span>');
     expect(html).toContain('corpcal-print-pdf-first-page-title');
     expect(html).toContain('30/60/90 Report');
-    expect(html).toContain('Comms &amp; strategy');
+    expect(html).toContain('Comms materials');
     expect(html).toContain('Minister announces housing investment');
     expect(html).toContain(
       'The Minister will announce new housing funding and respond to media questions'
@@ -359,9 +354,6 @@ describe('renderPrintReportFragmentHtml', () => {
       'Major policy announcement with province-wide housing impact.'
     );
     expect(html).toContain('Media advisory, Backgrounder');
-    expect(html).toContain(
-      'Coordinate with HOUS and GCPE before announcement.'
-    );
     expect(html).toContain('French, Punjabi');
     expect(html).toContain('Jordan Smith');
     expect(html).not.toContain('Investment of $500M');

@@ -38,6 +38,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import type { RequestContext } from '../policy/dto/user-context.dto';
 import {
   getCategoryScopeById,
+  getCommsMaterialScopeById,
   getTagScopeById,
 } from '../policy/lookup-scope.helper';
 import { PolicyService } from '../policy/policy.service';
@@ -55,6 +56,7 @@ import { ActivityUtilsService } from './services/activity-utils.service';
 
 vi.mock('../policy/lookup-scope.helper', () => ({
   getCategoryScopeById: vi.fn(),
+  getCommsMaterialScopeById: vi.fn(),
   getTagScopeById: vi.fn(),
 }));
 
@@ -76,6 +78,17 @@ function mockLookupScopeMaps(
     return Promise.resolve(scoped);
   });
   vi.mocked(getTagScopeById).mockImplementation((_db, ids) => {
+    const scoped = new Map<
+      number,
+      { visibility: 'global' | 'team'; teamIds?: number[] }
+    >();
+    for (const id of ids) {
+      const entry = map.get(id);
+      if (entry) scoped.set(id, entry);
+    }
+    return Promise.resolve(scoped);
+  });
+  vi.mocked(getCommsMaterialScopeById).mockImplementation((_db, ids) => {
     const scoped = new Map<
       number,
       { visibility: 'global' | 'team'; teamIds?: number[] }
@@ -235,8 +248,6 @@ describe('ActivitiesService', () => {
     updateRepresentatives: vi.fn().mockResolvedValue(undefined),
     insertVenueAddress: vi.fn().mockResolvedValue(undefined),
     upsertVenueAddress: vi.fn().mockResolvedValue(undefined),
-    createDefaultReportSettings: vi.fn().mockResolvedValue(undefined),
-    updateActivityReportSettings: vi.fn().mockResolvedValue(undefined),
     insertCommsContacts: vi.fn().mockResolvedValue(undefined),
     updateCommsContacts: vi.fn().mockResolvedValue(undefined),
     insertEventPlanners: vi.fn().mockResolvedValue(undefined),
@@ -466,16 +477,10 @@ describe('ActivitiesService', () => {
         leadOrgName: 'Test Organization',
         significance: 'High significance',
         notes: 'Some notes',
-        pitchDate: new Date('2024-02-15') as any,
         schedulingNotes: 'Consider scheduling',
-        newsReleaseId: '123e4567-e89b-12d3-a456-426614174001',
         newsReleaseDistributionId: 1,
         premierRequestedId: 2,
         eventPlanners: [{ eventPlannerId: 3, isLead: true }],
-        reportSettings: [
-          { reportId: 1, omitted: true },
-          { reportId: 2, omitted: true },
-        ],
         lookAheadStatus: 'new',
         lookAheadSection: 'issues',
         leadMinistryId: 1,
@@ -587,11 +592,9 @@ describe('ActivitiesService', () => {
       expect(result).toHaveProperty('title');
       expect(result).toHaveProperty('isIssue');
       expect(result).toHaveProperty('isAllDay');
-      expect(result).toHaveProperty('reportSettings');
-      expect(Array.isArray(result.reportSettings)).toBe(true);
       expect(result).toHaveProperty('sharedWith');
       expect(Array.isArray(result.sharedWith)).toBe(true);
-      expect(result).toHaveProperty('strategy');
+      expect(result).toHaveProperty('internalNotes');
       expect(result).toHaveProperty('lookAheadStatus');
       expect(result).toHaveProperty('lookAheadSection');
       expect(result).toHaveProperty('createdDateTime');
@@ -833,7 +836,6 @@ describe('ActivitiesService', () => {
         title: 'New Activity',
         isIssue: false,
         isAllDay: false,
-        reportSettings: [],
       });
 
       const createdActivity = createMockActivity({
@@ -922,7 +924,6 @@ describe('ActivitiesService', () => {
         title: 'New Activity',
         isIssue: false,
         isAllDay: false,
-        reportSettings: [],
         markAsReviewed: true,
       });
 
@@ -1009,7 +1010,6 @@ describe('ActivitiesService', () => {
         title: 'New Activity',
         isIssue: false,
         isAllDay: false,
-        reportSettings: [],
         markAsReviewed: true,
       });
 
@@ -1522,6 +1522,49 @@ describe('ActivitiesService', () => {
           teamIds: [1],
         })
       ).rejects.toThrow('Category IDs not available to your teams: 99');
+    });
+
+    it('includes forbidden comms material IDs in the create error message', async () => {
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [88, { visibility: 'team', teamIds: [5] }],
+      ]);
+      const createDto = createMockActivityRequest({ commsMaterialIds: [88] });
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [1],
+        })
+      ).rejects.toThrow('Comms material IDs not available to your teams: 88');
+      expect(getCommsMaterialScopeById).toHaveBeenCalledWith(
+        expect.anything(),
+        [88]
+      );
     });
   });
 
@@ -3668,10 +3711,6 @@ describe('ActivitiesService', () => {
       mockDataFetcherService.fetchPremierRequestedForActivities.mockResolvedValue(
         new Map([[1, null]])
       );
-      mockDataFetcherService.fetchReportSettingsForActivities.mockResolvedValue(
-        new Map([[1, []]])
-      );
-
       const txCapture: unknown[] = [];
       mockDatabaseService.db.transaction = vi.fn(async (callback) => {
         const tx = { _capture: true };
@@ -4601,7 +4640,6 @@ describe('ActivitiesService', () => {
           limit: vi.fn(),
         };
         chain.limit
-          .mockResolvedValueOnce(statusRow) // pitch pending status
           .mockResolvedValueOnce(statusRow) // translation pending status
           .mockResolvedValueOnce([{ id: 1 }]) // default dateStatusId
           .mockResolvedValueOnce([{ id: 1 }]) // default timeStatusId
@@ -4864,6 +4902,13 @@ describe('ActivitiesService', () => {
   });
 
   describe('clone', () => {
+    const cloneScheduleBody = {
+      startDate: '2025-03-01',
+      endDate: '2025-03-01',
+      startTime: null,
+      endTime: null,
+    } as const;
+
     const cloneContext = {
       roleName: 'Admin',
       permissions: [
@@ -4894,7 +4939,6 @@ describe('ActivitiesService', () => {
         displayId: 'GCPE-000100',
         title: 'Original activity',
         lookAheadStatus: 'changed',
-        pitchRequiredStatusId: 5,
         translationsRequiredStatusId: 7,
         startDate: '2025-01-15',
         endDate: '2025-01-15',
@@ -4949,7 +4993,6 @@ describe('ActivitiesService', () => {
 
       expect(dtoRecord.lookAheadStatus).toBeUndefined();
       expect(dtoRecord.lookAheadSection).toBeUndefined();
-      expect(dtoRecord.pitchRequiredStatusId).toBeUndefined();
       expect(dtoRecord.translationsRequiredStatusId).toBeUndefined();
       expect(dtoRecord.activityStatusId).toBeUndefined();
 
@@ -4976,10 +5019,7 @@ describe('ActivitiesService', () => {
         100,
         {
           title: 'CLONED',
-          startDate: null,
-          endDate: null,
-          startTime: null,
-          endTime: null,
+          ...cloneScheduleBody,
           markAsReviewed: true,
         },
         42,
@@ -5010,10 +5050,7 @@ describe('ActivitiesService', () => {
         100,
         {
           title: 'CLONED test',
-          startDate: null,
-          endDate: null,
-          startTime: null,
-          endTime: null,
+          ...cloneScheduleBody,
           activityHistoryNotes: 'same note',
         },
         42,
@@ -5042,6 +5079,7 @@ describe('ActivitiesService', () => {
         100,
         {
           title: 'CLONED',
+          ...cloneScheduleBody,
           includeFieldPaths: ['tagIds'],
         },
         42,
@@ -5055,10 +5093,11 @@ describe('ActivitiesService', () => {
       expect(dtoRecord.isConfidential).toBeUndefined();
     });
 
-    it('drops notes field when caller lacks activities.notes.edit', async () => {
+    it('drops internalNotes field when caller lacks activities.notes.edit', async () => {
       const source = createMockActivityResponse({
         id: 100,
-        notes: 'sensitive notes',
+        notes: 'general notes',
+        internalNotes: 'sensitive internal notes',
       });
       vi.spyOn(service, 'findOne').mockResolvedValue(source);
       const createSpy = vi
@@ -5069,6 +5108,7 @@ describe('ActivitiesService', () => {
         100,
         {
           title: 'CLONED',
+          ...cloneScheduleBody,
         },
         42,
         {
@@ -5083,7 +5123,8 @@ describe('ActivitiesService', () => {
 
       const [dto] = createSpy.mock.calls[0] ?? [];
       const dtoRecord = dto as Record<string, unknown>;
-      expect(dtoRecord.notes).toBeUndefined();
+      expect(dtoRecord.notes).toBe('general notes');
+      expect(dtoRecord.internalNotes).toBeUndefined();
     });
   });
 });

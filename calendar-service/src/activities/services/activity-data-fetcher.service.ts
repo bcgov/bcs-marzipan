@@ -7,7 +7,6 @@ import {
   activityCommsContacts,
   activityCommsMaterials,
   activityEventPlanners,
-  activityReportSettings,
   activityRepresentatives,
   activitySharedWithTeams,
   activityStatuses,
@@ -20,9 +19,7 @@ import {
   newsReleaseDistributions,
   newsReleaseOrigins,
   organizations,
-  pitchRequiredStatuses,
   premierRequested,
-  reports,
   tags,
   teams,
   timeStatuses,
@@ -964,128 +961,6 @@ export class ActivityDataFetcherService {
     }
 
     return sortedMap;
-  }
-
-  /**
-   * Fetch report settings for multiple activities
-   * Returns all report settings with omitted flags for each activity
-   */
-  async fetchReportSettingsForActivities(activityIds: number[]): Promise<
-    Map<
-      number,
-      Array<{
-        id: number;
-        name: string;
-        displayName: string;
-        omitted: boolean;
-      }>
-    >
-  > {
-    if (activityIds.length === 0) {
-      return new Map();
-    }
-
-    const results = await this.databaseService.db
-      .select({
-        activityId: activityReportSettings.activityId,
-        reportId: reports.id,
-        reportName: reports.name,
-        reportDisplayName: reports.displayName,
-        omitted: activityReportSettings.omitted,
-      })
-      .from(activityReportSettings)
-      .innerJoin(reports, eq(activityReportSettings.reportId, reports.id))
-      .where(
-        and(
-          inArray(activityReportSettings.activityId, activityIds),
-          eq(reports.isActive, true)
-        )
-      )
-      .orderBy(reports.sortOrder, reports.displayName);
-
-    const map = new Map<
-      number,
-      Array<{
-        id: number;
-        name: string;
-        displayName: string;
-        omitted: boolean;
-      }>
-    >();
-
-    for (const row of results) {
-      const existing = map.get(row.activityId) ?? [];
-      existing.push({
-        id: row.reportId,
-        name: row.reportName,
-        displayName: row.reportDisplayName,
-        omitted: row.omitted,
-      });
-      map.set(row.activityId, existing);
-    }
-
-    return map;
-  }
-
-  /**
-   * Fetch pitch required status display names for multiple activities
-   */
-  async fetchPitchRequiredStatusForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string | null>> {
-    if (activityIds.length === 0) {
-      return new Map();
-    }
-
-    const activityResults = await this.databaseService.db
-      .select({
-        id: activities.id,
-        pitchRequiredStatusId: activities.pitchRequiredStatusId,
-      })
-      .from(activities)
-      .where(inArray(activities.id, activityIds));
-
-    const statusIds = activityResults
-      .map((a) => a.pitchRequiredStatusId)
-      .filter((id): id is number => id !== null && id !== undefined);
-
-    if (statusIds.length === 0) {
-      const resultMap = new Map<number, string | null>();
-      for (const activity of activityResults) {
-        resultMap.set(activity.id, null);
-      }
-      return resultMap;
-    }
-
-    const statusResults = await this.databaseService.db
-      .select({
-        id: pitchRequiredStatuses.id,
-        name: pitchRequiredStatuses.displayName,
-      })
-      .from(pitchRequiredStatuses)
-      .where(
-        and(
-          inArray(pitchRequiredStatuses.id, statusIds),
-          eq(pitchRequiredStatuses.isActive, true)
-        )
-      );
-
-    const statusMap = new Map<number, string>(
-      statusResults.map((s) => [s.id, s.name])
-    );
-
-    const resultMap = new Map<number, string | null>();
-    for (const activity of activityResults) {
-      if (activity.pitchRequiredStatusId) {
-        resultMap.set(
-          activity.id,
-          statusMap.get(activity.pitchRequiredStatusId) ?? null
-        );
-      } else {
-        resultMap.set(activity.id, null);
-      }
-    }
-    return resultMap;
   }
 
   /**

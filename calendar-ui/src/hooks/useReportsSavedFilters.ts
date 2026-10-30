@@ -218,10 +218,8 @@ export function useReportsSavedFilters(options: {
       suppressedByClear: defaultSuppressedByClearRef.current,
       hasKnownUrlParams: hasAnyKnownParam(searchParams),
       hasRestoredActivePreferences:
-        hasAnyActivityTableFilterActive(
-          preferences.filterState,
-          lookups.pitchFieldVisibility
-        ) || preferences.searchKeyword.trim().length > 0,
+        hasAnyActivityTableFilterActive(preferences.filterState) ||
+        preferences.searchKeyword.trim().length > 0,
       hasDefaultFilter: savedFiltersHook.defaultFilter != null,
     });
 
@@ -264,7 +262,6 @@ export function useReportsSavedFilters(options: {
     setPreferences,
     validFilterLookups,
     savedFilterDefaultLookupsReady,
-    lookups.pitchFieldVisibility,
   ]);
 
   const handleClearPanelFilters = useCallback(() => {

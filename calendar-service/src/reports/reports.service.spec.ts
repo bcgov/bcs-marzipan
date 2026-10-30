@@ -8,6 +8,7 @@ import {
 } from '@corpcal/shared/reports/thirty-sixty-ninety';
 import { reportDataQuerySchema } from '@corpcal/shared/schemas';
 
+import type { RequestContext } from '../policy/dto/user-context.dto';
 import { ReportsService } from './reports.service';
 
 function createActivity(
@@ -65,7 +66,6 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       },
       description: null,
     });
-    vi.spyOn(service, 'getActivitiesForReport').mockResolvedValue([]);
     activitiesService.findAll.mockResolvedValue([]);
   });
 
@@ -180,17 +180,14 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     });
   });
 
-  it('filters omitted activities out of each month section', async () => {
+  it('includes all activities returned by findAll in month sections', async () => {
     const retainedActivityDate = '2026-05-10';
-    const omittedActivityDate = '2026-05-12';
+    const secondActivityDate = '2026-05-12';
     const expectedSectionId = retainedActivityDate.slice(0, 7);
 
     activitiesService.findAll.mockResolvedValue([
       createActivity(10, retainedActivityDate),
-      createActivity(11, omittedActivityDate),
-    ]);
-    vi.spyOn(service, 'getActivitiesForReport').mockResolvedValue([
-      { activityId: 11, omitted: true },
+      createActivity(11, secondActivityDate),
     ]);
 
     const result = await service.getReportData(
@@ -207,7 +204,7 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
     );
     expect(matchingSection).toBeDefined();
     expect(matchingSection?.activities.map((activity) => activity.id)).toEqual([
-      10,
+      10, 11,
     ]);
     expect(result.sections).toHaveLength(1);
   });
@@ -228,6 +225,60 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
       tagIds: [1, 2],
       activityStatusIds: [3],
       categoryIds: [1, 2],
+    });
+  });
+});
+
+describe('ReportsService.getReportData (look-ahead)', () => {
+  const activitiesService = { findAll: vi.fn() };
+  const ctx: RequestContext = {
+    dataScope: { bypass: true, teamIds: [] },
+  };
+  let service: ReportsService;
+
+  beforeEach(() => {
+    activitiesService.findAll.mockReset();
+    service = new ReportsService(
+      { db: {} } as never,
+      activitiesService as never,
+      {} as never,
+      { get: vi.fn() } as never,
+      {} as never,
+      {} as never
+    );
+    vi.spyOn(service, 'findReportByName').mockResolvedValue({
+      id: 1,
+      name: 'look-ahead',
+      displayName: 'Look Ahead',
+      sortOrder: 1,
+      isActive: true,
+      visibility: 'global',
+      config: {
+        fields: ['startDate', 'title'],
+        sections: [
+          {
+            id: 'events',
+            name: 'Events',
+            order: 1,
+            filter: { lookAheadSection: 'events' },
+          },
+        ],
+      },
+      description: null,
+    });
+    activitiesService.findAll.mockResolvedValue([]);
+  });
+
+  it('requires an assigned look ahead section for look-ahead queries', async () => {
+    await service.getReportData(
+      'look-ahead',
+      reportDataQuerySchema.parse({}),
+      ctx
+    );
+
+    expect(activitiesService.findAll).toHaveBeenCalledTimes(1);
+    expect(activitiesService.findAll.mock.calls[0]?.[0]).toMatchObject({
+      requireAssignedLookAheadSection: true,
     });
   });
 });

@@ -30,11 +30,7 @@ export function isReportBaselineDateRange(
 }
 
 function hasReportNonDatePanelFiltersActive(
-  filterState: ActivityFilterState,
-  pitchVisibility?: {
-    canViewPitchStatus: boolean;
-    canViewPitchDate: boolean;
-  }
+  filterState: ActivityFilterState
 ): boolean {
   const cleared = {
     ...filterState,
@@ -47,7 +43,7 @@ function hasReportNonDatePanelFiltersActive(
     dateConfirmedFilter: 'any' as const,
     timeConfirmedFilter: 'any' as const,
   };
-  return hasAnyActivityTableFilterActive(cleared, pitchVisibility);
+  return hasAnyActivityTableFilterActive(cleared);
 }
 
 /**
@@ -58,10 +54,6 @@ export function hasReportClearableFiltersActive(
   filterState: ActivityFilterState,
   reportName: string,
   searchKeyword: string,
-  pitchVisibility?: {
-    canViewPitchStatus: boolean;
-    canViewPitchDate: boolean;
-  },
   options?: { includeSearchKeyword?: boolean }
 ): boolean {
   if (options?.includeSearchKeyword && searchKeyword.trim() !== '') {
@@ -76,7 +68,7 @@ export function hasReportClearableFiltersActive(
   if (!isReportBaselineDateRange(filterState.dateRange, reportName)) {
     return true;
   }
-  return hasReportNonDatePanelFiltersActive(filterState, pitchVisibility);
+  return hasReportNonDatePanelFiltersActive(filterState);
 }
 
 /** Resets date-related panel filters to the report baseline window. */

@@ -78,6 +78,34 @@
       "when": 1792799645253,
       "tag": "0010_20261023_lookup_sort_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793137570586,
+      "tag": "0011_20261027_activity_form_restructure",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793206751461,
+      "tag": "0012_20261028_remove_pitch_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793386387740,
+      "tag": "0013_20261030_comms_materials_release_types_team_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793395288831,
+      "tag": "0014_20261030_activity_release_time",
+      "breakpoints": true
     }
   ]
 }

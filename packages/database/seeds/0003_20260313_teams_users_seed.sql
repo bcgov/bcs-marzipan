@@ -247,15 +247,13 @@ WHERE NOT EXISTS (
   WHERE uh.user_id = u.id AND uh.action_type = 'created'
 );
 
--- 3. Mock team field grants (teams seed ids 1-8). GCPE 1-7 + PREM (8): notes / lookAhead / pitchStatus view.
+-- 3. Mock team field grants (teams seed ids 1-8). GCPE 1-7 + PREM (8): lookAhead view.
 INSERT INTO team_permissions (team_id, permission_id)
 SELECT u.team_id, p.id
 FROM (VALUES (1), (2), (3), (4), (5), (6), (7), (8)) AS u(team_id)
 CROSS JOIN permissions p
 WHERE p.key IN (
-  'activities.notes.view',
-  'activities.lookAhead.view',
-  'activities.pitchStatus.view'
+  'activities.lookAhead.view'
 )
 ON CONFLICT (team_id, permission_id) DO NOTHING;
 
@@ -264,10 +262,8 @@ INSERT INTO team_permissions (team_id, permission_id)
 SELECT 2, p.id
 FROM permissions p
 WHERE p.key IN (
-  'activities.notes.edit',
   'activities.lookAhead.edit',
-  'activities.translations.edit',
-  'activities.pitchDate.edit'
+  'activities.translations.edit'
 )
 ON CONFLICT (team_id, permission_id) DO NOTHING;
 
@@ -277,11 +273,3 @@ SELECT 1, p.id
 FROM permissions p
 WHERE p.key = 'activities.translations.edit'
 ON CONFLICT (team_id, permission_id) DO NOTHING;
--- Enforce pitch-required status edit access for Advanced Editor+ roles only.
--- Idempotent and safe to re-run.
-
--- Remove legacy team-scoped edit grants that could allow non-elevated edits.
-DELETE FROM team_permissions tp
-USING permissions p
-WHERE tp.permission_id = p.id
-  AND p.key = 'activities.pitchStatus.edit';

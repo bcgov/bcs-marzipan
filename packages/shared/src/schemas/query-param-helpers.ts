@@ -98,8 +98,4 @@ export function commaSeparatedStringArray() {
     );
 }
 
-export const confirmedFilterEnum = z.enum([
-  'any',
-  'confirmed',
-  'not_confirmed',
-]);
+export const confirmedFilterEnum = z.enum(['any', 'confirmed', 'tbd']);

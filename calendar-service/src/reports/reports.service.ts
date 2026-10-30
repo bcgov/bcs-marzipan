@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, eq } from 'drizzle-orm';
 
-import { activityReportSettings, reports } from '@corpcal/database/schema';
+import { reports } from '@corpcal/database/schema';
 import {
   resolveReportHydrationProfile,
   type Visibility,
@@ -14,7 +14,10 @@ import type {
   ReportSectionData,
 } from '@corpcal/shared/api/types';
 import { DEFAULT_CUSTOM_REPORT_FIELD_CONFIG } from '@corpcal/shared/reports/customReportFieldConfig';
-import { resolveLookAheadSectionRows } from '@corpcal/shared/reports/look-ahead';
+import {
+  LOOK_AHEAD_SOURCE_REPORT_NAMES,
+  resolveLookAheadSectionRows,
+} from '@corpcal/shared/reports/look-ahead';
 import {
   buildLookAheadCoverDateRangeLine,
   buildTranslationLanguageLabelResolver,
@@ -119,6 +122,17 @@ function applyScheduledDateWindowToFilters(
 }
 
 /** User query filters ready to merge onto section-scoped activity queries. */
+function applyLookAheadReportInclusionFilters(
+  reportName: string,
+  filters: FilterActivitiesQueryParams
+): void {
+  if (
+    (LOOK_AHEAD_SOURCE_REPORT_NAMES as readonly string[]).includes(reportName)
+  ) {
+    filters.requireAssignedLookAheadSection = true;
+  }
+}
+
 function buildUserActivityFilterOverlay(
   filters: FilterActivitiesQueryParams,
   sectionPinsStartDateWindow: boolean
@@ -161,18 +175,6 @@ function withReportMeta(
     ...response,
     meta: buildReportDataMeta(dateWindow, response.sections),
   };
-}
-
-export interface ReportSettingsDto {
-  reportId: number;
-  reportName: string;
-  reportDisplayName: string;
-  omitted: boolean;
-}
-
-export interface ActivityReportInfo {
-  activityId: number;
-  omitted: boolean;
 }
 
 @Injectable()
@@ -294,158 +296,6 @@ export class ReportsService {
     };
   }
 
-  /**
-   * Get whether an activity is omitted from a report
-   * @param activityId - The activity ID
-   * @param reportId - The report ID
-   * @returns True if omitted, false if included
-   */
-  async isActivityOmittedFromReport(
-    activityId: number,
-    reportId: number
-  ): Promise<boolean> {
-    const [result] = await this.databaseService.db
-      .select()
-      .from(activityReportSettings)
-      .where(
-        and(
-          eq(activityReportSettings.activityId, activityId),
-          eq(activityReportSettings.reportId, reportId)
-        )
-      )
-      .limit(1);
-
-    if (!result) {
-      // If no row exists, default to not omitted
-      return false;
-    }
-
-    return result.omitted;
-  }
-
-  /**
-   * Get all report settings for an activity
-   * @param activityId - The activity ID
-   * @returns Array of report settings with omitted flags
-   */
-  async getActivityReportSettings(
-    activityId: number
-  ): Promise<ReportSettingsDto[]> {
-    const results = await this.databaseService.db
-      .select({
-        reportId: reports.id,
-        reportName: reports.name,
-        reportDisplayName: reports.displayName,
-        omitted: activityReportSettings.omitted,
-      })
-      .from(activityReportSettings)
-      .innerJoin(reports, eq(activityReportSettings.reportId, reports.id))
-      .where(
-        and(
-          eq(activityReportSettings.activityId, activityId),
-          eq(reports.isActive, true)
-        )
-      )
-      .orderBy(reports.sortOrder, reports.displayName);
-
-    return results.map((row) => ({
-      reportId: row.reportId,
-      reportName: row.reportName,
-      reportDisplayName: row.reportDisplayName,
-      omitted: row.omitted,
-    }));
-  }
-
-  /**
-   * Check if an activity should be included in a report (not omitted)
-   * @param activityId - The activity ID
-   * @param reportId - The report ID
-   * @returns True if the activity is included (not omitted), false if omitted
-   */
-  async isActivityIncludedInReport(
-    activityId: number,
-    reportId: number
-  ): Promise<boolean> {
-    const omitted = await this.isActivityOmittedFromReport(
-      activityId,
-      reportId
-    );
-    return !omitted;
-  }
-
-  /**
-   * Check if an activity should be included in a report by name
-   * @param activityId - The activity ID
-   * @param reportName - The report name (e.g., 'look-ahead')
-   * @returns True if the activity is included (not omitted), false if omitted
-   */
-  async isActivityIncludedInReportByName(
-    activityId: number,
-    reportName: string
-  ): Promise<boolean> {
-    const report = await this.findReportByName(reportName);
-    if (!report) {
-      return false;
-    }
-
-    return this.isActivityIncludedInReport(activityId, report.id);
-  }
-
-  /**
-   * Get activities for a report with their omitted flags
-   * Used for report generation
-   * @param reportId - The report ID
-   * @param options - Options for filtering
-   * @returns Array of activities with their omitted flags
-   */
-  async getActivitiesForReport(
-    reportId: number,
-    options?: { includeOmitted?: boolean }
-  ): Promise<ActivityReportInfo[]> {
-    const conditions = [eq(activityReportSettings.reportId, reportId)];
-
-    if (!options?.includeOmitted) {
-      conditions.push(eq(activityReportSettings.omitted, false));
-    }
-
-    const results = await this.databaseService.db
-      .select({
-        activityId: activityReportSettings.activityId,
-        omitted: activityReportSettings.omitted,
-      })
-      .from(activityReportSettings)
-      .where(and(...conditions));
-
-    return results.map((row) => ({
-      activityId: row.activityId,
-      omitted: row.omitted,
-    }));
-  }
-
-  /**
-   * Get all active report IDs
-   * Used for creating default report settings when activities are created
-   * @returns Array of active report IDs
-   */
-  async getActiveReportIds(): Promise<number[]> {
-    const results = await this.databaseService.db
-      .select({ id: reports.id })
-      .from(reports)
-      .where(eq(reports.isActive, true));
-
-    return results.map((r) => r.id);
-  }
-
-  private async getOmittedActivityIds(reportId: number): Promise<Set<number>> {
-    const reportActivities = await this.getActivitiesForReport(reportId, {
-      includeOmitted: true,
-    });
-    const omitted = reportActivities
-      .filter((r) => r.omitted)
-      .map((r) => r.activityId);
-    return new Set(omitted);
-  }
-
   private customReportEffectiveFieldKeys(): string[] {
     return DEFAULT_CUSTOM_REPORT_FIELD_CONFIG.filter((f) => f.selected).map(
       (f) => f.key
@@ -538,7 +388,6 @@ export class ReportsService {
       );
     }
 
-    const omittedActivityIds = await this.getOmittedActivityIds(report.id);
     const sections: ReportSectionData[] = [];
     const queryActivityFilters = reportDataQueryToActivityFindAllFilters(query);
     const reportLevelDateWindow = resolveReportActivityDateWindow({
@@ -572,6 +421,7 @@ export class ReportsService {
         filters,
         buildUserActivityFilterOverlay(queryActivityFilters, true)
       );
+      applyLookAheadReportInclusionFilters(report.name, filters);
 
       if (report.config.globalFilter?.lookAheadSection) {
         mergePinnedLookAheadSection(
@@ -587,9 +437,8 @@ export class ReportsService {
         query
       );
       activities = filterActivityResponsesBySearchKeyword(activities, search);
-      const filtered = activities.filter((a) => !omittedActivityIds.has(a.id));
       const activitiesByMonth = groupActivitiesByMonthSection(
-        filtered,
+        activities,
         monthSections
       );
 
@@ -635,6 +484,7 @@ export class ReportsService {
           filters,
           buildUserActivityFilterOverlay(queryActivityFilters, sectionPinsDates)
         );
+        applyLookAheadReportInclusionFilters(report.name, filters);
 
         if (mergedFilter?.lookAheadSection) {
           mergePinnedLookAheadSection(filters, mergedFilter.lookAheadSection);
@@ -647,11 +497,8 @@ export class ReportsService {
           query
         );
         activities = filterActivityResponsesBySearchKeyword(activities, search);
-        const filtered = activities.filter(
-          (a) => !omittedActivityIds.has(a.id)
-        );
 
-        return { sectionConfig, filtered };
+        return { sectionConfig, filtered: activities };
       })
     );
 

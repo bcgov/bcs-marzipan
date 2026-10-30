@@ -180,7 +180,7 @@ describe('useActivityTablePreferences', () => {
 
     it('parses confirmed filters from URL', () => {
       mockSearchParams = new URLSearchParams(
-        'sort=startDate&dateConfirmed=confirmed&timeConfirmed=not_confirmed'
+        'sort=startDate&dateConfirmed=confirmed&timeConfirmed=tbd'
       );
 
       const { result } = renderHook(() =>
@@ -191,7 +191,7 @@ describe('useActivityTablePreferences', () => {
         'confirmed'
       );
       expect(result.current.preferences.filterState.timeConfirmedFilter).toBe(
-        'not_confirmed'
+        'tbd'
       );
     });
 
@@ -212,8 +212,6 @@ describe('useActivityTablePreferences', () => {
           },
           categoryIds: [1],
           activityStatusIds: [1],
-          pitchRequiredStatusNames: [],
-          pitchDateFilter: { kind: 'any' },
           lookAheadStatusValues: [],
           lookAheadSectionValues: [],
           dateConfirmedFilter: 'any',
@@ -261,8 +259,6 @@ describe('useActivityTablePreferences', () => {
           },
           categoryIds: [] as number[],
           activityStatusIds: [] as number[],
-          pitchRequiredStatusNames: [] as string[],
-          pitchDateFilter: { kind: 'any' as const },
           lookAheadStatusValues: [] as string[],
           lookAheadSectionValues: [] as string[],
           dateConfirmedFilter: 'any' as const,
@@ -424,8 +420,6 @@ describe('getStoredActivityListSearch', () => {
         },
         categoryIds: [] as number[],
         activityStatusIds: [] as number[],
-        pitchRequiredStatusNames: [] as string[],
-        pitchDateFilter: { kind: 'any' as const },
         lookAheadStatusValues: [] as string[],
         lookAheadSectionValues: [] as string[],
         dateConfirmedFilter: 'any' as const,
