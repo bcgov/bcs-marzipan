@@ -452,12 +452,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
         }}
       />
 
-      {selectedFlags.showReleaseTime ? (
-        <ActivityReleaseTimeField
-          dateStatuses={dateStatuses}
-          timeStatuses={timeStatuses}
-        />
-      ) : null}
+      {selectedFlags.showReleaseTime ? <ActivityReleaseTimeField /> : null}
 
       {selectedFlags.requiresNewsReleaseDetails ? (
         <div className="space-y-6 rounded-md border border-gray-300 p-6">

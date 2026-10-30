@@ -1,12 +1,16 @@
 import { useFormContext, useWatch } from 'react-hook-form';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
-  computeActivityReleaseTimeInstant,
-  formatReleaseTimeOffsetLabel,
-  RELEASE_TIME_OFFSET_MAX_MINUTES,
+  customPartsToReleaseTimeOffsetMinutes,
+  getActivityReleaseTimePreview,
+  getReleaseTimeOffsetMaxAmountForUnit,
+  RELEASE_TIME_OFFSET_CUSTOM_UNITS,
   RELEASE_TIME_PRESET_OFFSETS,
+  releaseTimeOffsetMinutesToCustomParts,
+  releaseTimeOffsetMinutesToCustomPartsForUnit,
+  type ReleaseTimeOffsetCustomUnit,
 } from '@corpcal/shared/utils';
 import {
   FormSelectSafe,
@@ -19,24 +23,30 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from '@/components/ui/input-group';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
-import { formatExactDate } from '@/lib/datetime-utils';
+import { cn } from '@/lib/utils';
 
 import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
 import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 
-type StatusLookupItem = { id: number; name: string };
-
-type ActivityReleaseTimeFieldProps = {
-  dateStatuses: StatusLookupItem[];
-  timeStatuses: StatusLookupItem[];
-};
-
 type ReleaseTimeMode = 'unset' | 'preset' | 'custom';
+
+const RELEASE_TIME_OFFSET_UNIT_LABELS: Record<
+  ReleaseTimeOffsetCustomUnit,
+  string
+> = {
+  minutes: 'Minutes',
+  hours: 'Hours',
+  days: 'Days',
+};
 
 function offsetToMode(offset: number | null | undefined): {
   mode: ReleaseTimeMode;
@@ -52,14 +62,45 @@ function offsetToMode(offset: number | null | undefined): {
   return { mode: 'custom', custom: offset };
 }
 
-function formatInstantForDisplay(iso: string): string {
-  return formatExactDate(iso, { includeTime: true });
+type CustomOffsetDraft = {
+  amount: string;
+  unit: ReleaseTimeOffsetCustomUnit;
+};
+
+const EMPTY_CUSTOM_DRAFT: CustomOffsetDraft = {
+  amount: '',
+  unit: 'minutes',
+};
+
+function customDraftFromOffset(
+  offset: number | null | undefined
+): CustomOffsetDraft {
+  if (offset === null || offset === undefined) {
+    return EMPTY_CUSTOM_DRAFT;
+  }
+  const parts = releaseTimeOffsetMinutesToCustomParts(offset);
+  return { amount: String(parts.amount), unit: parts.unit };
 }
 
-export function ActivityReleaseTimeField({
-  dateStatuses,
-  timeStatuses,
-}: ActivityReleaseTimeFieldProps) {
+function resolveCustomDraftOffsetMinutes(
+  offsetValue: number | null | undefined,
+  draft: CustomOffsetDraft
+): number | null {
+  if (offsetValue !== null && offsetValue !== undefined) {
+    return offsetValue;
+  }
+  const trimmed = draft.amount.trim();
+  if (trimmed === '') {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isInteger(parsed)) {
+    return null;
+  }
+  return customPartsToReleaseTimeOffsetMinutes(parsed, draft.unit);
+}
+
+export function ActivityReleaseTimeField() {
   const form = useFormContext<ActivityFormData>();
   const releaseScope = useActivityFieldScopeControl('releaseTime');
   const offsetValue = useWatch({
@@ -69,66 +110,122 @@ export function ActivityReleaseTimeField({
   const startDate = useWatch({ control: form.control, name: 'startDate' });
   const startTime = useWatch({ control: form.control, name: 'startTime' });
   const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
-  const dateStatusId = useWatch({
-    control: form.control,
-    name: 'dateStatusId',
-  });
-  const timeStatusId = useWatch({
-    control: form.control,
-    name: 'timeStatusId',
-  });
+  const { mode } = offsetToMode(offsetValue);
+  const [customSelectActive, setCustomSelectActive] = useState(false);
+  const [customDraft, setCustomDraft] =
+    useState<CustomOffsetDraft>(EMPTY_CUSTOM_DRAFT);
+  const customDraftRef = useRef(customDraft);
+  customDraftRef.current = customDraft;
 
-  const { mode, custom: customOffset } = offsetToMode(offsetValue);
-  const customMinutes =
-    mode === 'custom' && customOffset != null ? String(customOffset) : '';
+  const showCustomOffsetInput = customSelectActive || mode === 'custom';
 
-  const dateStatusName = useMemo(
-    () => dateStatuses.find((s) => s.id === dateStatusId)?.name,
-    [dateStatuses, dateStatusId]
-  );
-  const timeStatusName = useMemo(
-    () => timeStatuses.find((s) => s.id === timeStatusId)?.name,
-    [timeStatuses, timeStatusId]
-  );
+  useEffect(() => {
+    if (!showCustomOffsetInput) {
+      return;
+    }
+    const draft = customDraftRef.current;
+    const parsedAmount =
+      draft.amount.trim() === '' ? null : Number(draft.amount);
+    const draftMinutes =
+      parsedAmount !== null && Number.isInteger(parsedAmount)
+        ? customPartsToReleaseTimeOffsetMinutes(parsedAmount, draft.unit)
+        : null;
+    if (draftMinutes === offsetValue) {
+      return;
+    }
+    setCustomDraft(customDraftFromOffset(offsetValue));
+  }, [offsetValue, showCustomOffsetInput]);
 
-  const computedInstant = useMemo(
+  const selectMode: ReleaseTimeMode =
+    customSelectActive || mode === 'custom'
+      ? 'custom'
+      : mode === 'unset'
+        ? 'unset'
+        : 'preset';
+
+  const releasePreview = useMemo(
     () =>
-      computeActivityReleaseTimeInstant({
+      getActivityReleaseTimePreview({
         releaseTimeOffsetMinutes: offsetValue ?? null,
         startDate: startDate ?? null,
         startTime: startTime ?? null,
         isAllDay: !!isAllDay,
-        dateStatusName,
-        timeStatusName,
       }),
-    [
-      offsetValue,
-      startDate,
-      startTime,
-      isAllDay,
-      dateStatusName,
-      timeStatusName,
-    ]
+    [offsetValue, startDate, startTime, isAllDay]
   );
 
   const UNSET_SELECT_VALUE = '__unset__';
 
   const selectValue =
-    mode === 'unset'
+    selectMode === 'unset'
       ? UNSET_SELECT_VALUE
-      : mode === 'custom'
+      : selectMode === 'custom'
         ? 'custom'
         : String(offsetValue ?? '');
 
-  const helperText = (() => {
-    if (offsetValue === null || offsetValue === undefined) {
-      return null;
+  const helperText = releasePreview
+    ? releasePreview.kind === 'preview'
+      ? releasePreview.label
+      : releasePreview.message
+    : null;
+
+  const customMaxAmount = getReleaseTimeOffsetMaxAmountForUnit(
+    customDraft.unit
+  );
+
+  const applyCustomDraft = (
+    fieldName: 'releaseTimeOffsetMinutes',
+    nextDraft: CustomOffsetDraft
+  ) => {
+    setCustomDraft(nextDraft);
+    const trimmed = nextDraft.amount.trim();
+    if (trimmed === '') {
+      setActivityFormFieldValue(form, fieldName, null);
+      return;
     }
-    if (computedInstant) {
-      return `Calculated release time: ${formatInstantForDisplay(computedInstant)} (${formatReleaseTimeOffsetLabel(offsetValue)})`;
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed)) {
+      return;
     }
-    return 'Start time not confirmed';
-  })();
+    const minutes = customPartsToReleaseTimeOffsetMinutes(
+      parsed,
+      nextDraft.unit
+    );
+    if (minutes === null) {
+      return;
+    }
+    setActivityFormFieldValue(form, fieldName, minutes);
+  };
+
+  const applyCustomUnitChange = (
+    fieldName: 'releaseTimeOffsetMinutes',
+    nextUnit: ReleaseTimeOffsetCustomUnit
+  ) => {
+    const baseMinutes = resolveCustomDraftOffsetMinutes(
+      offsetValue,
+      customDraft
+    );
+    if (baseMinutes === null) {
+      setCustomDraft({ ...customDraft, unit: nextUnit });
+      return;
+    }
+    const parts = releaseTimeOffsetMinutesToCustomPartsForUnit(
+      baseMinutes,
+      nextUnit
+    );
+    const minutes = customPartsToReleaseTimeOffsetMinutes(
+      parts.amount,
+      parts.unit
+    );
+    const nextDraft: CustomOffsetDraft = {
+      amount: String(parts.amount),
+      unit: parts.unit,
+    };
+    setCustomDraft(nextDraft);
+    if (minutes !== null) {
+      setActivityFormFieldValue(form, fieldName, minutes);
+    }
+  };
 
   return (
     <FormField
@@ -153,22 +250,18 @@ export function ActivityReleaseTimeField({
                 value={selectValue}
                 onValueChange={(value) => {
                   if (value === UNSET_SELECT_VALUE) {
+                    setCustomSelectActive(false);
+                    setCustomDraft(EMPTY_CUSTOM_DRAFT);
                     setActivityFormFieldValue(form, field.name, null);
                     return;
                   }
                   if (value === 'custom') {
-                    const parsed = Number(customMinutes);
-                    if (
-                      Number.isInteger(parsed) &&
-                      parsed >= 0 &&
-                      parsed <= RELEASE_TIME_OFFSET_MAX_MINUTES
-                    ) {
-                      setActivityFormFieldValue(form, field.name, parsed);
-                    } else {
-                      setActivityFormFieldValue(form, field.name, 0);
-                    }
+                    setCustomSelectActive(true);
+                    setCustomDraft(customDraftFromOffset(offsetValue));
                     return;
                   }
+                  setCustomSelectActive(false);
+                  setCustomDraft(EMPTY_CUSTOM_DRAFT);
                   setActivityFormFieldValue(form, field.name, Number(value));
                 }}
               >
@@ -190,35 +283,73 @@ export function ActivityReleaseTimeField({
                 </SelectContent>
               </FormSelectSafe>
 
-              {mode === 'custom' ? (
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={RELEASE_TIME_OFFSET_MAX_MINUTES}
-                    step={1}
-                    readOnly={releaseScope.readOnly}
-                    disabled={releaseScope.fieldScopeDisabled}
-                    placeholder="Minutes after scheduled start (max 7 days)"
-                    value={customMinutes}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      if (next === '') {
-                        setActivityFormFieldValue(form, field.name, null);
-                        return;
+              {showCustomOffsetInput ? (
+                <div className="space-y-1.5">
+                  <FormControl data-field={field.name}>
+                    <InputGroup
+                      data-disabled={
+                        releaseScope.fieldScopeDisabled ? true : undefined
                       }
-                      const parsed = Number(next);
-                      if (
-                        !Number.isInteger(parsed) ||
-                        parsed < 0 ||
-                        parsed > RELEASE_TIME_OFFSET_MAX_MINUTES
-                      ) {
-                        return;
-                      }
-                      setActivityFormFieldValue(form, field.name, parsed);
-                    }}
-                  />
-                </FormControl>
+                      className={cn(
+                        releaseScope.fieldScopeDisabled &&
+                          'pointer-events-none opacity-50'
+                      )}
+                    >
+                      <InputGroupInput
+                        type="number"
+                        min={0}
+                        max={customMaxAmount}
+                        step={1}
+                        readOnly={releaseScope.readOnly}
+                        disabled={releaseScope.fieldScopeDisabled}
+                        aria-label="Custom offset amount after scheduled start"
+                        placeholder="Amount"
+                        value={customDraft.amount}
+                        onChange={(e) => {
+                          applyCustomDraft(field.name, {
+                            ...customDraft,
+                            amount: e.target.value,
+                          });
+                        }}
+                      />
+                      <InputGroupAddon align="inline-end" className="pr-1">
+                        <FormSelectSafe
+                          readOnly={releaseScope.readOnly}
+                          disabled={releaseScope.fieldScopeDisabled}
+                          optionValues={[...RELEASE_TIME_OFFSET_CUSTOM_UNITS]}
+                          value={customDraft.unit}
+                          onValueChange={(unit) => {
+                            applyCustomUnitChange(
+                              field.name,
+                              unit as ReleaseTimeOffsetCustomUnit
+                            );
+                          }}
+                        >
+                          <FormSelectTrigger
+                            readOnly={
+                              releaseScope.readOnly &&
+                              !releaseScope.fieldScopeDisabled
+                            }
+                            className="h-8 w-29 border-0 bg-transparent shadow-none focus:ring-0"
+                            aria-label="Custom offset unit"
+                          >
+                            <SelectValue />
+                          </FormSelectTrigger>
+                          <SelectContent align="end">
+                            {RELEASE_TIME_OFFSET_CUSTOM_UNITS.map((unit) => (
+                              <SelectItem key={unit} value={unit}>
+                                {RELEASE_TIME_OFFSET_UNIT_LABELS[unit]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </FormSelectSafe>
+                      </InputGroupAddon>
+                    </InputGroup>
+                  </FormControl>
+                  <p className="text-muted-foreground text-xs">
+                    After scheduled start (max 7 days)
+                  </p>
+                </div>
               ) : null}
 
               {helperText ? (
