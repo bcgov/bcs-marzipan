@@ -316,4 +316,34 @@ describe('LookupsService', () => {
       );
     });
   });
+
+  it('clears comms material release type links when deactivating a release type', async () => {
+    const returning = vi.fn().mockResolvedValue([
+      {
+        id: 3,
+        name: 'news_release',
+        displayName: 'News release',
+        isActive: false,
+      },
+    ]);
+    const whereUpdate = vi.fn().mockReturnValue({ returning });
+    const setUpdate = vi.fn().mockReturnValue({ where: whereUpdate });
+    const whereUnlink = vi.fn().mockResolvedValue(undefined);
+    const setUnlink = vi.fn().mockReturnValue({ where: whereUnlink });
+
+    mockDatabaseService.db.transaction = vi.fn((callback) =>
+      callback({
+        update: vi
+          .fn()
+          .mockReturnValueOnce({ set: setUpdate })
+          .mockReturnValueOnce({ set: setUnlink }),
+      })
+    );
+
+    const result = await service.updateReleaseType(3, { isActive: false }, 99);
+
+    expect(result?.isActive).toBe(false);
+    expect(setUnlink).toHaveBeenCalledWith({ releaseTypeId: null });
+    expect(whereUnlink).toHaveBeenCalled();
+  });
 });

@@ -12,7 +12,12 @@ import {
 
 import { ministries, podSharedWithTeams } from './ministry';
 import { permissions, roles } from './rbac';
-import { teamCategories, teamTags, userTeams } from './relations';
+import {
+  teamCategories,
+  teamCommsMaterials,
+  teamTags,
+  userTeams,
+} from './relations';
 import { users } from './user';
 
 /**
@@ -106,6 +111,7 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
     references: [ministries.id],
   }),
   teamCategories: many(teamCategories),
+  teamCommsMaterials: many(teamCommsMaterials),
   teamTags: many(teamTags),
   teamPermissions: many(teamPermissions),
   userTeams: many(userTeams),

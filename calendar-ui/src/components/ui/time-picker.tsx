@@ -72,7 +72,7 @@ export type TimePickerProps = {
   allDay?: TimePickerAllDayProps;
 } & Omit<
   ComponentPropsWithoutRef<typeof Button>,
-  'type' | 'variant' | 'size' | 'children' | 'onClick'
+  'type' | 'variant' | 'size' | 'children' | 'onClick' | 'onChange'
 >;
 
 export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
@@ -315,7 +315,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
                 'w-full min-w-0 justify-start text-left font-normal',
                 FORM_CONTROL_INVALID_RING_CLASS,
                 showMuted && 'text-muted-foreground',
-                buttonPassthrough.className
+                slotClassName
               )}
               {...buttonPassthrough}
             >

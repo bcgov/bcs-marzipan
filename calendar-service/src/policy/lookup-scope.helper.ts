@@ -2,8 +2,10 @@ import { and, eq, inArray } from 'drizzle-orm';
 
 import {
   categories,
+  commsMaterials,
   tags,
   teamCategories,
+  teamCommsMaterials,
   teamTags,
 } from '@corpcal/database/schema';
 import type { LookupTeamScope } from '@corpcal/shared/utils';
@@ -14,9 +16,18 @@ async function loadTeamIdsByLookupId(
   db: Database,
   lookupIds: number[],
   junction: {
-    lookupIdColumn: typeof teamCategories.categoryId | typeof teamTags.tagId;
-    teamIdColumn: typeof teamCategories.teamId | typeof teamTags.teamId;
-    junctionTable: typeof teamCategories | typeof teamTags;
+    lookupIdColumn:
+      | typeof teamCategories.categoryId
+      | typeof teamTags.tagId
+      | typeof teamCommsMaterials.commsMaterialId;
+    teamIdColumn:
+      | typeof teamCategories.teamId
+      | typeof teamTags.teamId
+      | typeof teamCommsMaterials.teamId;
+    junctionTable:
+      | typeof teamCategories
+      | typeof teamTags
+      | typeof teamCommsMaterials;
   }
 ): Promise<Map<number, number[]>> {
   const teamIdsByLookupId = new Map<number, number[]>();
@@ -49,11 +60,20 @@ async function loadTeamIdsByLookupId(
 async function getLookupScopeById(
   db: Database,
   ids: number[],
-  table: typeof categories | typeof tags,
+  table: typeof categories | typeof tags | typeof commsMaterials,
   junction: {
-    lookupIdColumn: typeof teamCategories.categoryId | typeof teamTags.tagId;
-    teamIdColumn: typeof teamCategories.teamId | typeof teamTags.teamId;
-    junctionTable: typeof teamCategories | typeof teamTags;
+    lookupIdColumn:
+      | typeof teamCategories.categoryId
+      | typeof teamTags.tagId
+      | typeof teamCommsMaterials.commsMaterialId;
+    teamIdColumn:
+      | typeof teamCategories.teamId
+      | typeof teamTags.teamId
+      | typeof teamCommsMaterials.teamId;
+    junctionTable:
+      | typeof teamCategories
+      | typeof teamTags
+      | typeof teamCommsMaterials;
   }
 ): Promise<Map<number, LookupTeamScope>> {
   const uniqueIds = [...new Set(ids)];
@@ -111,5 +131,16 @@ export async function getTagScopeById(
     lookupIdColumn: teamTags.tagId,
     teamIdColumn: teamTags.teamId,
     junctionTable: teamTags,
+  });
+}
+
+export async function getCommsMaterialScopeById(
+  db: Database,
+  ids: number[]
+): Promise<Map<number, LookupTeamScope>> {
+  return getLookupScopeById(db, ids, commsMaterials, {
+    lookupIdColumn: teamCommsMaterials.commsMaterialId,
+    teamIdColumn: teamCommsMaterials.teamId,
+    junctionTable: teamCommsMaterials,
   });
 }

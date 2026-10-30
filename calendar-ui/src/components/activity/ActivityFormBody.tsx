@@ -190,6 +190,8 @@ export function ActivityFormBody({
                   lookups.translationRequiredStatuses
                 }
                 translationLanguageOptions={lookups.translationLanguages}
+                userTeamIds={user?.teamIds ?? []}
+                hasCreateAny={hasCreateAny}
               />
 
               <ActivityEventSection

@@ -32,6 +32,7 @@ type ComboboxRootProps<
   Multiple extends boolean | undefined = false,
 > = ComboboxPrimitive.Root.Props<Value, Multiple> & {
   'data-field'?: string;
+  'aria-invalid'?: boolean | 'true' | 'false';
 };
 
 /** Base UI root supports `readOnly` (non-muted) vs `disabled` (muted). */

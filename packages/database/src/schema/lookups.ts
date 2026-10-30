@@ -15,7 +15,7 @@ import {
 
 import { normalizedLookupName } from './lookup-name-index';
 import { ministries } from './ministry';
-import { teamCategories, teamTags } from './relations';
+import { teamCategories, teamCommsMaterials, teamTags } from './relations';
 import { users } from './user';
 
 /**
@@ -397,16 +397,22 @@ export const tags = pgTable(
 );
 
 /**
- * CommsMaterials lookup table - Comms materials types
- * Values: 'Backgrounder','Digital Content','Event or Media Plan','Factsheet','IGRS: Biography','IGRS: Briefing Note','IGRS: Gift','Information Bulletin','Issues Note','Itinerary','Key Messages','Media Advisory','Minister's Message','News Release','NYCU News You Can Use','Opinion Editorial','Press Conference','Q&As','Quote','Report','Speaking Notes','Statement','Tech Briefing' (user editable)
+ * Release types lookup - Sister-app publication kinds (audience + workflow flags).
+ * Linked from comms_materials when a material is syndicated to the sister app.
  */
-export const commsMaterials = pgTable(
-  'comms_materials',
+export const releaseTypes = pgTable(
+  'release_types',
   {
     id: serial('id').primaryKey(),
     name: varchar('name', { length: 255 }).notNull(),
     displayName: varchar('display_name', { length: 255 }).notNull(),
     sortOrder: integer('sort_order').notNull().default(0),
+    /** Sister-app audience: media or public (required on every row). */
+    audience: varchar('audience', { length: 50 }).notNull(),
+    allowsTranslation: boolean('allows_translation').notNull().default(false),
+    requiresNewsReleaseDetails: boolean('requires_news_release_details')
+      .notNull()
+      .default(false),
     isActive: boolean('is_active').notNull().default(true),
     description: text('description'),
     createdDateTime: timestamp('created_date_time', { withTimezone: true })
@@ -426,9 +432,55 @@ export const commsMaterials = pgTable(
   },
   (table) => ({
     normalizedNameUnique: uniqueIndex(
-      'comms_materials_normalized_name_unique'
+      'release_types_normalized_name_unique'
     ).on(normalizedLookupName(table.name)),
   })
+);
+
+/**
+ * CommsMaterials lookup table - Comms materials types
+ * Values: 'Backgrounder','Digital Content','Event or Media Plan','Factsheet','IGRS: Biography','IGRS: Briefing Note','IGRS: Gift','Information Bulletin','Issues Note','Itinerary','Key Messages','Media Advisory','Minister's Message','News Release','NYCU News You Can Use','Opinion Editorial','Press Conference','Q&As','Quote','Report','Speaking Notes','Statement','Tech Briefing' (user editable)
+ *
+ * Access Control:
+ * - visibility = 'global': viewable by all teams in list; selectable per form rules
+ * - visibility = 'team': selectable only by teams in teamCommsMaterials when visibility = 'team'
+ */
+export const commsMaterials = pgTable(
+  'comms_materials',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 255 }).notNull(),
+    displayName: varchar('display_name', { length: 255 }).notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    visibility: varchar('visibility', { length: 50 })
+      .notNull()
+      .default('global'),
+    releaseTypeId: integer('release_type_id').references(() => releaseTypes.id),
+    isActive: boolean('is_active').notNull().default(true),
+    description: text('description'),
+    createdDateTime: timestamp('created_date_time', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdBy: integer('created_by')
+      .notNull()
+      .references(() => users.id),
+    lastUpdatedDateTime: timestamp('last_updated_date_time', {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    lastUpdatedBy: integer('last_updated_by')
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => [
+    uniqueIndex('comms_materials_normalized_name_unique').on(
+      normalizedLookupName(table.name)
+    ),
+    uniqueIndex('comms_materials_release_type_id_unique')
+      .on(table.releaseTypeId)
+      .where(sql`${table.releaseTypeId} IS NOT NULL`),
+  ]
 );
 
 /**
@@ -690,3 +742,18 @@ export const categoriesRelations = relations(categories, ({ many }) => ({
 export const tagsRelations = relations(tags, ({ many }) => ({
   teamTags: many(teamTags),
 }));
+
+export const releaseTypesRelations = relations(releaseTypes, ({ many }) => ({
+  commsMaterials: many(commsMaterials),
+}));
+
+export const commsMaterialsRelations = relations(
+  commsMaterials,
+  ({ one, many }) => ({
+    releaseType: one(releaseTypes, {
+      fields: [commsMaterials.releaseTypeId],
+      references: [releaseTypes.id],
+    }),
+    teamCommsMaterials: many(teamCommsMaterials),
+  })
+);

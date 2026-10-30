@@ -32,6 +32,7 @@ import {
   deletionAudit,
   editLocks,
   ministries,
+  releaseTypes,
   teams,
   timeStatuses,
   translatedLanguages,
@@ -88,7 +89,10 @@ import {
   mapResponseToFormData,
   normalizeVenueAddressForForm,
   plainTextFromActivityRichField,
+  stripCommsDependentFields,
   tipTapDocJsonFromPlainText,
+  type CommsMaterialReleaseFlags,
+  type CommsMaterialReleaseFlagsById,
   type FieldScopeUser,
   type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
@@ -111,6 +115,7 @@ import {
 } from '../../policy/dto/user-context.dto';
 import {
   getCategoryScopeById,
+  getCommsMaterialScopeById,
   getTagScopeById,
 } from '../../policy/lookup-scope.helper';
 import { PolicyService } from '../../policy/policy.service';
@@ -336,6 +341,103 @@ export class ActivitiesService {
         `Category IDs not available to your teams: ${forbidden.join(', ')}`
       );
     }
+  }
+
+  private async validateCommsMaterialIdsForUser(
+    commsMaterialIds: number[],
+    teamIds: number[] | undefined,
+    permissions: string[] | undefined,
+    existingCommsMaterialIds?: number[]
+  ): Promise<void> {
+    if (!commsMaterialIds.length) return;
+    const canUseAny =
+      permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ?? false;
+    if (canUseAny) return;
+
+    const scopeById = await getCommsMaterialScopeById(this.databaseService.db, [
+      ...new Set([...commsMaterialIds, ...(existingCommsMaterialIds ?? [])]),
+    ]);
+    const forbidden = this.getForbiddenLookupIds(
+      commsMaterialIds,
+      existingCommsMaterialIds,
+      teamIds,
+      scopeById
+    );
+    if (forbidden.length > 0) {
+      throw new BadRequestException(
+        `Comms material IDs not available to your teams: ${forbidden.join(', ')}`
+      );
+    }
+  }
+
+  private async loadCommsMaterialReleaseFlagsById(
+    commsMaterialIds: number[]
+  ): Promise<CommsMaterialReleaseFlagsById> {
+    const uniqueIds = [...new Set(commsMaterialIds)];
+    if (uniqueIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.databaseService.db
+      .select({
+        id: commsMaterials.id,
+        allowsTranslation: releaseTypes.allowsTranslation,
+        requiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
+      })
+      .from(commsMaterials)
+      .leftJoin(releaseTypes, eq(commsMaterials.releaseTypeId, releaseTypes.id))
+      .where(inArray(commsMaterials.id, uniqueIds));
+
+    const map = new Map<number, CommsMaterialReleaseFlags>();
+    for (const row of rows) {
+      if (
+        row.allowsTranslation == null ||
+        row.requiresNewsReleaseDetails == null
+      ) {
+        continue;
+      }
+      map.set(row.id, {
+        allowsTranslation: row.allowsTranslation,
+        requiresNewsReleaseDetails: row.requiresNewsReleaseDetails,
+      });
+    }
+    return map;
+  }
+
+  private async applyCommsDependentFieldCleanup(
+    commsMaterialIds: number[] | undefined,
+    fields: Pick<
+      ActivityFormData,
+      | 'newsReleaseOriginId'
+      | 'newsReleaseDistributionId'
+      | 'translationsRequiredStatusId'
+      | 'translationLanguageIds'
+    >
+  ): Promise<
+    Pick<
+      ActivityFormData,
+      | 'newsReleaseOriginId'
+      | 'newsReleaseDistributionId'
+      | 'translationsRequiredStatusId'
+      | 'translationLanguageIds'
+    >
+  > {
+    const flagsById = await this.loadCommsMaterialReleaseFlagsById(
+      commsMaterialIds ?? []
+    );
+    const cleaned = stripCommsDependentFields(
+      {
+        ...fields,
+        commsMaterialIds: commsMaterialIds ?? [],
+      } as ActivityFormData,
+      flagsById
+    );
+    return {
+      newsReleaseOriginId: cleaned.newsReleaseOriginId ?? null,
+      newsReleaseDistributionId: cleaned.newsReleaseDistributionId ?? null,
+      translationsRequiredStatusId:
+        cleaned.translationsRequiredStatusId ?? null,
+      translationLanguageIds: cleaned.translationLanguageIds ?? [],
+    };
   }
 
   /**
@@ -1382,6 +1484,25 @@ export class ActivitiesService {
     if (tagIds?.length) {
       await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
     }
+    if (commsMaterialIds?.length) {
+      await this.validateCommsMaterialIdsForUser(
+        commsMaterialIds,
+        context?.teamIds,
+        context?.permissions
+      );
+    }
+    const commsCleaned = await this.applyCommsDependentFieldCleanup(
+      commsMaterialIds,
+      {
+        newsReleaseOriginId: activityData.newsReleaseOriginId ?? null,
+        newsReleaseDistributionId:
+          activityData.newsReleaseDistributionId ?? null,
+        translationsRequiredStatusId:
+          activityData.translationsRequiredStatusId ?? null,
+        translationLanguageIds: translationLanguageIds ?? [],
+      }
+    );
+    Object.assign(activityData, commsCleaned);
     await this.lookAheadPolicy.assertAllowedLookAheadSection(
       activityData.lookAheadSection
     );
@@ -2673,6 +2794,62 @@ export class ActivitiesService {
         );
       }
     }
+    if (commsMaterialIds !== undefined) {
+      const existingCommsRows = await this.databaseService.db
+        .select({ commsMaterialId: activityCommsMaterials.commsMaterialId })
+        .from(activityCommsMaterials)
+        .where(eq(activityCommsMaterials.activityId, id));
+      const existingCommsMaterialIds = existingCommsRows.map(
+        (r) => r.commsMaterialId
+      );
+      if (commsMaterialIds.length > 0) {
+        await this.validateCommsMaterialIdsForUser(
+          commsMaterialIds,
+          context?.teamIds,
+          context?.permissions,
+          existingCommsMaterialIds
+        );
+      }
+    }
+
+    if (commsMaterialIds !== undefined) {
+      const existingLangRows = await this.databaseService.db
+        .select({ languageId: activityTranslationsRequired.languageId })
+        .from(activityTranslationsRequired)
+        .where(
+          and(
+            eq(activityTranslationsRequired.activityId, id),
+            eq(activityTranslationsRequired.isActive, true)
+          )
+        );
+      const commsCleaned = await this.applyCommsDependentFieldCleanup(
+        commsMaterialIds,
+        {
+          newsReleaseOriginId:
+            dto.newsReleaseOriginId !== undefined
+              ? dto.newsReleaseOriginId
+              : oldActivity.newsReleaseOriginId,
+          newsReleaseDistributionId:
+            dto.newsReleaseDistributionId !== undefined
+              ? dto.newsReleaseDistributionId
+              : oldActivity.newsReleaseDistributionId,
+          translationsRequiredStatusId:
+            dto.translationsRequiredStatusId !== undefined
+              ? dto.translationsRequiredStatusId
+              : oldActivity.translationsRequiredStatusId,
+          translationLanguageIds:
+            translationLanguageIds !== undefined
+              ? translationLanguageIds
+              : existingLangRows.map((r) => r.languageId),
+        }
+      );
+      dto.newsReleaseOriginId = commsCleaned.newsReleaseOriginId;
+      dto.newsReleaseDistributionId = commsCleaned.newsReleaseDistributionId;
+      dto.translationsRequiredStatusId =
+        commsCleaned.translationsRequiredStatusId;
+      dto.translationLanguageIds = commsCleaned.translationLanguageIds;
+    }
+
     if (Object.prototype.hasOwnProperty.call(dto, 'lookAheadSection')) {
       await this.lookAheadPolicy.assertAllowedLookAheadSection(
         dto.lookAheadSection ?? null
@@ -3283,14 +3460,9 @@ export class ActivitiesService {
       },
     ];
 
-    const created = await this.create(
-      dto as CreateActivityRequest,
-      userId,
-      context,
-      {
-        extraCreateChanges: sourceProvenance,
-      }
-    );
+    const created = await this.create(dto, userId, context, {
+      extraCreateChanges: sourceProvenance,
+    });
 
     return created;
   }

@@ -174,36 +174,57 @@ ON CONFLICT (id) DO UPDATE SET
   last_updated_date_time = now();
 
 -- ============================================================================
+-- RELEASE TYPES (sister-app publication kinds)
+-- ============================================================================
+
+INSERT INTO release_types (
+  id, name, display_name, sort_order, audience, allows_translation,
+  requires_news_release_details, is_active, description, created_by, last_updated_by
+)
+VALUES
+  (1, 'factsheet', 'Factsheet', 1, 'public', false, false, true, 'Sister-app factsheet', 999, 999),
+  (2, 'information bulletin', 'Information bulletin', 2, 'public', false, false, true, 'Sister-app information bulletin', 999, 999),
+  (3, 'media advisory', 'Media advisory', 3, 'media', false, false, true, 'Sister-app media advisory', 999, 999),
+  (4, 'news release', 'News release', 4, 'public', true, true, true, 'Sister-app news release', 999, 999),
+  (5, 'nycu news you can use', 'NYCU', 5, 'public', false, false, true, 'Sister-app NYCU', 999, 999),
+  (6, 'opinion editorial', 'Opinion editorial', 6, 'public', false, false, true, 'Sister-app opinion editorial', 999, 999),
+  (7, 'statement', 'Statement', 7, 'public', false, false, true, 'Sister-app statement', 999, 999)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
 -- COMMS MATERIALS
 -- Communication materials types
 -- Updated with new values
 -- ============================================================================
 
-INSERT INTO comms_materials (id, name, display_name, sort_order, is_active, description, created_by, last_updated_by)
+INSERT INTO comms_materials (
+  id, name, display_name, sort_order, visibility, release_type_id, is_active, description,
+  created_by, last_updated_by
+)
 VALUES
-  (1, 'backgrounder', 'Backgrounder', 1, true, 'Background information materials', 999, 999),
-  (2, 'digital content', 'Digital content', 2, true, 'Digital content materials', 999, 999),
-  (3, 'event or media plan', 'Event or media plan', 3, true, 'Event or media planning materials', 999, 999),
-  (4, 'factsheet', 'Factsheet', 4, true, 'Fact sheet materials', 999, 999),
-  (5, 'information bulletin', 'Information bulletin', 5, true, 'Information bulletin materials', 999, 999),
-  (6, 'issues note', 'Issues note', 6, true, 'Issues note materials', 999, 999),
-  (7, 'itinerary', 'Itinerary', 7, true, 'Itinerary materials', 999, 999),
-  (8, 'key messages', 'Key messages', 8, true, 'Key messaging materials', 999, 999),
-  (9, 'media advisory', 'Media advisory', 9, true, 'Media advisory materials', 999, 999),
-  (10, 'ministers message', 'Minister''s message', 10, true, 'Minister''s message materials', 999, 999),
-  (11, 'news release', 'News release', 11, true, 'News release materials', 999, 999),
-  (12, 'nycu news you can use', 'NYCU', 12, true, 'NYCU (News You Can Use) materials', 999, 999),
-  (13, 'opinion editorial', 'Opinion editorial', 13, true, 'Opinion editorial materials', 999, 999),
-  (14, 'press conference', 'Press conference', 14, true, 'Press conference materials', 999, 999),
-  (15, 'q and a', 'Q&As', 15, true, 'Question and answer materials', 999, 999),
-  (16, 'quote', 'Quote', 16, true, 'Quote materials', 999, 999),
-  (17, 'report', 'Report', 17, true, 'Report materials', 999, 999),
-  (18, 'speaking notes', 'Speaking notes', 18, true, 'Speaking notes materials', 999, 999),
-  (19, 'statement', 'Statement', 19, true, 'Statement materials', 999, 999),
-  (20, 'tech briefing', 'Tech briefing', 20, true, 'Technical briefing materials', 999, 999),
-  (21, 'igrs biography', 'IGRS: Biography', 21, true, 'IGRS biography materials', 999, 999),
-  (22, 'igrs briefing note', 'IGRS: Briefing note', 22, true, 'IGRS briefing note materials', 999, 999),
-  (23, 'igrs gift', 'IGRS: Gift', 23, true, 'IGRS gift materials', 999, 999)
+  (1, 'backgrounder', 'Backgrounder', 1, 'global', NULL, true, 'Background information materials', 999, 999),
+  (2, 'digital content', 'Digital content', 2, 'global', NULL, true, 'Digital content materials', 999, 999),
+  (3, 'event or media plan', 'Event or media plan', 3, 'global', NULL, true, 'Event or media planning materials', 999, 999),
+  (4, 'factsheet', 'Factsheet', 4, 'global', 1, true, 'Fact sheet materials', 999, 999),
+  (5, 'information bulletin', 'Information bulletin', 5, 'global', 2, true, 'Information bulletin materials', 999, 999),
+  (6, 'issues note', 'Issues note', 6, 'global', NULL, true, 'Issues note materials', 999, 999),
+  (7, 'itinerary', 'Itinerary', 7, 'global', NULL, true, 'Itinerary materials', 999, 999),
+  (8, 'key messages', 'Key messages', 8, 'global', NULL, true, 'Key messaging materials', 999, 999),
+  (9, 'media advisory', 'Media advisory', 9, 'global', 3, true, 'Media advisory materials', 999, 999),
+  (10, 'ministers message', 'Minister''s message', 10, 'global', NULL, true, 'Minister''s message materials', 999, 999),
+  (11, 'news release', 'News release', 11, 'global', 4, true, 'News release materials', 999, 999),
+  (12, 'nycu news you can use', 'NYCU', 12, 'global', 5, true, 'NYCU (News You Can Use) materials', 999, 999),
+  (13, 'opinion editorial', 'Opinion editorial', 13, 'global', 6, true, 'Opinion editorial materials', 999, 999),
+  (14, 'press conference', 'Press conference', 14, 'global', NULL, true, 'Press conference materials', 999, 999),
+  (15, 'q and a', 'Q&As', 15, 'global', NULL, true, 'Question and answer materials', 999, 999),
+  (16, 'quote', 'Quote', 16, 'global', NULL, true, 'Quote materials', 999, 999),
+  (17, 'report', 'Report', 17, 'global', NULL, true, 'Report materials', 999, 999),
+  (18, 'speaking notes', 'Speaking notes', 18, 'global', NULL, true, 'Speaking notes materials', 999, 999),
+  (19, 'statement', 'Statement', 19, 'global', 7, true, 'Statement materials', 999, 999),
+  (20, 'tech briefing', 'Tech briefing', 20, 'global', NULL, true, 'Technical briefing materials', 999, 999),
+  (21, 'igrs biography', 'IGRS: Biography', 21, 'global', NULL, true, 'IGRS biography materials', 999, 999),
+  (22, 'igrs briefing note', 'IGRS: Briefing note', 22, 'global', NULL, true, 'IGRS briefing note materials', 999, 999),
+  (23, 'igrs gift', 'IGRS: Gift', 23, 'global', NULL, true, 'IGRS gift materials', 999, 999)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================

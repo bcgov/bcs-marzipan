@@ -38,6 +38,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import type { RequestContext } from '../policy/dto/user-context.dto';
 import {
   getCategoryScopeById,
+  getCommsMaterialScopeById,
   getTagScopeById,
 } from '../policy/lookup-scope.helper';
 import { PolicyService } from '../policy/policy.service';
@@ -55,6 +56,7 @@ import { ActivityUtilsService } from './services/activity-utils.service';
 
 vi.mock('../policy/lookup-scope.helper', () => ({
   getCategoryScopeById: vi.fn(),
+  getCommsMaterialScopeById: vi.fn(),
   getTagScopeById: vi.fn(),
 }));
 
@@ -76,6 +78,17 @@ function mockLookupScopeMaps(
     return Promise.resolve(scoped);
   });
   vi.mocked(getTagScopeById).mockImplementation((_db, ids) => {
+    const scoped = new Map<
+      number,
+      { visibility: 'global' | 'team'; teamIds?: number[] }
+    >();
+    for (const id of ids) {
+      const entry = map.get(id);
+      if (entry) scoped.set(id, entry);
+    }
+    return Promise.resolve(scoped);
+  });
+  vi.mocked(getCommsMaterialScopeById).mockImplementation((_db, ids) => {
     const scoped = new Map<
       number,
       { visibility: 'global' | 'team'; teamIds?: number[] }
@@ -1509,6 +1522,49 @@ describe('ActivitiesService', () => {
           teamIds: [1],
         })
       ).rejects.toThrow('Category IDs not available to your teams: 99');
+    });
+
+    it('includes forbidden comms material IDs in the create error message', async () => {
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [88, { visibility: 'team', teamIds: [5] }],
+      ]);
+      const createDto = createMockActivityRequest({ commsMaterialIds: [88] });
+
+      mockDatabaseService.db.select = vi.fn((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [1],
+        })
+      ).rejects.toThrow('Comms material IDs not available to your teams: 88');
+      expect(getCommsMaterialScopeById).toHaveBeenCalledWith(
+        expect.anything(),
+        [88]
+      );
     });
   });
 

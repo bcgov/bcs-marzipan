@@ -14,6 +14,7 @@ import {
   createGovernmentRepresentativeRequestSchema,
   createMinistryGroupRequestSchema,
   createMinistryRequestSchema,
+  createReleaseTypeRequestSchema,
   createResponseWrapperSchema,
   createTagRequestSchema,
   createThemeRequestSchema,
@@ -23,6 +24,7 @@ import {
   lookupItemSchema,
   ministryGroupResponseSchema,
   ministryResponseSchema,
+  releaseTypeResponseSchema,
   reorderLookupRequestSchema,
   tagResponseSchema,
   themeResponseSchema,
@@ -35,6 +37,7 @@ import {
   updateLookupSortModeRequestSchema,
   updateMinistryGroupRequestSchema,
   updateMinistryRequestSchema,
+  updateReleaseTypeRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
   updateTranslationLanguageRequestSchema,
@@ -234,6 +237,22 @@ export class CommsMaterialResponseDto extends createZodDto(
  */
 export class CommsMaterialResponseWrapperDto extends createZodDto(
   createResponseWrapperSchema(commsMaterialsResponseSchema)
+) {}
+
+// ============================================
+// Release Type DTOs
+// ============================================
+
+export class CreateReleaseTypeDto extends createZodDto(
+  createReleaseTypeRequestSchema
+) {}
+
+export class UpdateReleaseTypeDto extends createZodDto(
+  updateReleaseTypeRequestSchema
+) {}
+
+export class ReleaseTypeResponseDto extends createZodDto(
+  releaseTypeResponseSchema
 ) {}
 
 // ============================================

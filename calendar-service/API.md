@@ -615,7 +615,9 @@ Requires System Admin privileges (permission `system.manage_permissions`). Updat
 
 **GET** `/lookups/comms-materials`
 
-**Cache:** 1 hour
+Returns active materials for the activity form. Pass `includeAll=true` (requires `lookups.manage.comms_materials`) to include inactive rows for Settings admin; that path sets `Cache-Control: no-store`.
+
+**Cache:** 1 hour (default list)
 
 ```json
 {
@@ -626,11 +628,92 @@ Requires System Admin privileges (permission `system.manage_permissions`). Updat
       "name": "News Release",
       "displayName": "News Release",
       "label": "News Release",
-      "value": 1
+      "value": 1,
+      "visibility": "global",
+      "teamIds": [],
+      "teamNames": [],
+      "releaseType": {
+        "id": 1,
+        "name": "news_release",
+        "displayName": "News release",
+        "audience": "public",
+        "allowsTranslation": true,
+        "requiresNewsReleaseDetails": true
+      }
     }
   ]
 }
 ```
+
+`releaseType` is `null` when the material is not linked to a release type.
+
+---
+
+### Create Comms Material
+
+**POST** `/lookups/comms-materials`
+
+**Permission:** `lookups.manage.comms_materials`
+
+**Body:** `name`, `displayName`, `sortOrder`, `isActive`, `description`, `visibility` (`global` | `team`), `teamIds` (when `visibility` is `team`), optional `releaseTypeId` (each release type may bind to at most one material).
+
+---
+
+### Update Comms Material
+
+**PATCH** `/lookups/comms-materials/:id`
+
+**Permission:** `lookups.manage.comms_materials`
+
+**Body:** Same fields as create (partial update). Set `releaseTypeId` to `null` to unlink.
+
+---
+
+### Get Release Types
+
+**GET** `/lookups/release-types`
+
+Authenticated read for form and admin lists. Active rows only unless `includeAll=true` with `lookups.manage.release_types`.
+
+**Cache:** 1 hour (default list)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "news_release",
+      "displayName": "News release",
+      "label": "News release",
+      "value": 1,
+      "audience": "public",
+      "allowsTranslation": true,
+      "requiresNewsReleaseDetails": true
+    }
+  ]
+}
+```
+
+---
+
+### Create Release Type
+
+**POST** `/lookups/release-types`
+
+**Permission:** `lookups.manage.release_types`
+
+**Body:** `name`, `displayName`, `sortOrder`, `isActive`, `description`, `audience` (`media` | `public`), `allowsTranslation`, `requiresNewsReleaseDetails`.
+
+---
+
+### Update Release Type
+
+**PATCH** `/lookups/release-types/:id`
+
+**Permission:** `lookups.manage.release_types`
+
+**Body:** Same as create (partial update). Setting `isActive` to `false` unlinks all comms materials that referenced this release type.
 
 ---
 

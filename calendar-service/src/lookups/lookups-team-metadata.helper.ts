@@ -1,6 +1,11 @@
 import { and, eq, inArray } from 'drizzle-orm';
 
-import { teamCategories, teams, teamTags } from '@corpcal/database/schema';
+import {
+  teamCategories,
+  teamCommsMaterials,
+  teams,
+  teamTags,
+} from '@corpcal/database/schema';
 
 import type { DrizzleDbExecutor } from '../database/database.provider';
 
@@ -16,9 +21,18 @@ export async function loadTeamMetadataForLookupIds(
   db: DrizzleDbExecutor,
   lookupIds: number[],
   junction: {
-    lookupIdColumn: typeof teamCategories.categoryId | typeof teamTags.tagId;
-    teamIdColumn: typeof teamCategories.teamId | typeof teamTags.teamId;
-    junctionTable: typeof teamCategories | typeof teamTags;
+    lookupIdColumn:
+      | typeof teamCategories.categoryId
+      | typeof teamTags.tagId
+      | typeof teamCommsMaterials.commsMaterialId;
+    teamIdColumn:
+      | typeof teamCategories.teamId
+      | typeof teamTags.teamId
+      | typeof teamCommsMaterials.teamId;
+    junctionTable:
+      | typeof teamCategories
+      | typeof teamTags
+      | typeof teamCommsMaterials;
   }
 ): Promise<TeamMetadataMaps> {
   const teamNamesByLookupId = new Map<number, string[]>();

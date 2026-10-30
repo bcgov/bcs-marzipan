@@ -128,6 +128,8 @@ export const PERMISSIONS = {
   LOOKUPS: {
     VIEW: 'lookups.view',
     MANAGE: 'lookups.manage',
+    MANAGE_COMMS_MATERIALS: 'lookups.manage.comms_materials',
+    MANAGE_RELEASE_TYPES: 'lookups.manage.release_types',
   },
   USERS: {
     VIEW: 'users.view',

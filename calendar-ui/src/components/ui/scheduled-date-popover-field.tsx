@@ -119,7 +119,7 @@ export type ScheduledDatePopoverFieldProps = {
   triggerVariant?: 'filter' | 'form';
 } & Omit<
   ComponentPropsWithoutRef<typeof Button>,
-  'type' | 'variant' | 'size' | 'children' | 'onClick'
+  'type' | 'variant' | 'size' | 'children' | 'onClick' | 'onChange'
 >;
 
 export const ScheduledDatePopoverField = forwardRef<

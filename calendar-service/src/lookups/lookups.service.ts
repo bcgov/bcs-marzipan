@@ -26,6 +26,7 @@ import {
   permissions,
   permissionVisibilityAudit,
   premierRequested,
+  releaseTypes,
   reports,
   rolePermissionAudit,
   rolePermissions,
@@ -33,6 +34,7 @@ import {
   sessions,
   tags,
   teamCategories,
+  teamCommsMaterials,
   teams,
   teamTags,
   themes,
@@ -59,6 +61,7 @@ import type {
   MinistryGroupResponse,
   MinistryLookupItem,
   OrganizationLookupItem,
+  ReleaseTypeLookupItem,
   ReportResponse,
   TagLookupItem,
   ThemeLookupItem,
@@ -86,8 +89,10 @@ import {
 } from './lookups-team-metadata.helper';
 import {
   loadActiveCategoryTeamIds,
+  loadActiveCommsMaterialTeamIds,
   loadActiveTagTeamIds,
   syncCategoryTeams,
+  syncCommsMaterialTeams,
   syncTagTeams,
 } from './lookups-team-sync.helper';
 import { REORDERABLE_LOOKUP_TABLES } from './reorderable-lookups';
@@ -1378,9 +1383,11 @@ export class LookupsService {
   }
 
   /**
-   * Get all active comms materials
+   * Get all comms materials for lists and forms (includes team + release type metadata).
    */
-  async getCommsMaterials(): Promise<CommsMaterialsLookupItem[]> {
+  async getCommsMaterials(
+    includeAll?: boolean
+  ): Promise<CommsMaterialsLookupItem[]> {
     const orderBy = await this.listOrderBy('comms-materials');
     const results = await this.databaseService.db
       .select({
@@ -1389,18 +1396,106 @@ export class LookupsService {
         displayName: commsMaterials.displayName,
         sortOrder: commsMaterials.sortOrder,
         isActive: commsMaterials.isActive,
+        visibility: commsMaterials.visibility,
+        description: commsMaterials.description,
+        releaseTypeId: commsMaterials.releaseTypeId,
+        rtId: releaseTypes.id,
+        rtName: releaseTypes.name,
+        rtDisplayName: releaseTypes.displayName,
+        rtAudience: releaseTypes.audience,
+        rtAllowsTranslation: releaseTypes.allowsTranslation,
+        rtRequiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
       })
       .from(commsMaterials)
+      .leftJoin(releaseTypes, eq(commsMaterials.releaseTypeId, releaseTypes.id))
+      .where(includeAll ? undefined : eq(commsMaterials.isActive, true))
       .orderBy(...orderBy);
 
-    return results.map((material) => ({
-      id: material.id,
-      label: material.displayName,
-      value: material.id,
-      name: material.name,
-      displayName: material.displayName,
-      sortOrder: material.sortOrder,
-      isActive: material.isActive,
+    const teamScopedIds = results
+      .filter((m) => m.visibility === 'team')
+      .map((m) => m.id);
+    const teamMetadata = await loadTeamMetadataForLookupIds(
+      this.databaseService.db,
+      teamScopedIds,
+      {
+        lookupIdColumn: teamCommsMaterials.commsMaterialId,
+        teamIdColumn: teamCommsMaterials.teamId,
+        junctionTable: teamCommsMaterials,
+      }
+    );
+
+    return results.map((material) => {
+      const visibility = material.visibility as 'global' | 'team';
+      const { teamNames, teamIds } = teamMetadataForLookup(
+        material.id,
+        visibility,
+        teamMetadata
+      );
+      const releaseType =
+        material.rtId != null &&
+        material.rtAudience != null &&
+        material.rtAllowsTranslation != null &&
+        material.rtRequiresNewsReleaseDetails != null
+          ? {
+              id: material.rtId,
+              name: material.rtName!,
+              displayName: material.rtDisplayName!,
+              audience: material.rtAudience as 'media' | 'public',
+              allowsTranslation: material.rtAllowsTranslation,
+              requiresNewsReleaseDetails: material.rtRequiresNewsReleaseDetails,
+            }
+          : null;
+
+      return {
+        id: material.id,
+        label: material.displayName,
+        value: material.id,
+        name: material.name,
+        displayName: material.displayName,
+        sortOrder: material.sortOrder,
+        isActive: material.isActive,
+        visibility,
+        description: material.description,
+        teamNames,
+        teamIds,
+        releaseTypeId: material.releaseTypeId,
+        releaseType,
+      };
+    });
+  }
+
+  async getReleaseTypes(
+    includeAll?: boolean
+  ): Promise<ReleaseTypeLookupItem[]> {
+    const orderBy = await this.listOrderBy('release-types');
+    const results = await this.databaseService.db
+      .select({
+        id: releaseTypes.id,
+        name: releaseTypes.name,
+        displayName: releaseTypes.displayName,
+        sortOrder: releaseTypes.sortOrder,
+        isActive: releaseTypes.isActive,
+        audience: releaseTypes.audience,
+        allowsTranslation: releaseTypes.allowsTranslation,
+        requiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
+        description: releaseTypes.description,
+      })
+      .from(releaseTypes)
+      .where(includeAll ? undefined : eq(releaseTypes.isActive, true))
+      .orderBy(...orderBy);
+
+    return results.map((row) => ({
+      id: row.id,
+      label: row.displayName,
+      value: row.id,
+      name: row.name,
+      displayName: row.displayName,
+      sortOrder: row.sortOrder,
+      isActive: row.isActive,
+      audience: row.audience as 'media' | 'public',
+      allowsTranslation: row.allowsTranslation,
+      requiresNewsReleaseDetails: row.requiresNewsReleaseDetails,
+      description: row.description,
     }));
   }
 
@@ -1994,6 +2089,9 @@ export class LookupsService {
       sortOrder?: number;
       isActive?: boolean;
       description?: string | null;
+      visibility?: 'global' | 'team';
+      teamIds?: number[];
+      releaseTypeId?: number | null;
     },
     currentUserId: number
   ): Promise<typeof commsMaterials.$inferSelect> {
@@ -2003,22 +2101,92 @@ export class LookupsService {
       'comms material'
     );
 
+    const visibility = this.resolveLookupVisibility(
+      data.visibility,
+      data.teamIds
+    );
+    if (visibility === 'team' && (!data.teamIds || data.teamIds.length === 0)) {
+      throw new BadRequestException(
+        'At least one team is required when visibility is team'
+      );
+    }
+
+    if (data.releaseTypeId != null) {
+      await this.assertCommsMaterialReleaseTypeAvailable(data.releaseTypeId);
+    }
+
     const sortOrder = await this.sortOrderForCreate(
       'comms-materials',
       data.sortOrder
     );
     const now = new Date();
-    const [result] = await this.withLookupConflict(
+    return this.withLookupConflict(
       'comms_materials_normalized_name_unique',
       'A comms material with this name already exists.',
       () =>
+        this.databaseService.db.transaction(async (tx) => {
+          const [result] = await tx
+            .insert(commsMaterials)
+            .values({
+              name: this.normalizeLookupName(data.name),
+              displayName: data.displayName ?? data.name,
+              sortOrder,
+              isActive: data.isActive ?? true,
+              visibility,
+              releaseTypeId: data.releaseTypeId ?? null,
+              description: data.description ?? undefined,
+              createdBy: currentUserId,
+              lastUpdatedBy: currentUserId,
+              createdDateTime: now,
+              lastUpdatedDateTime: now,
+            })
+            .returning();
+
+          await syncCommsMaterialTeams(tx, result.id, visibility, data.teamIds);
+          return result;
+        })
+    );
+  }
+
+  async createReleaseType(
+    data: {
+      name: string;
+      displayName?: string | null;
+      sortOrder?: number;
+      isActive?: boolean;
+      description?: string | null;
+      audience: 'media' | 'public';
+      allowsTranslation?: boolean;
+      requiresNewsReleaseDetails?: boolean;
+    },
+    currentUserId: number
+  ): Promise<typeof releaseTypes.$inferSelect> {
+    await this.assertLookupNameIsUnique(
+      releaseTypes,
+      data.name,
+      'release type'
+    );
+
+    const sortOrder = await this.sortOrderForCreate(
+      'release-types',
+      data.sortOrder
+    );
+    const now = new Date();
+    const [result] = await this.withLookupConflict(
+      'release_types_normalized_name_unique',
+      'A release type with this name already exists.',
+      () =>
         this.databaseService.db
-          .insert(commsMaterials)
+          .insert(releaseTypes)
           .values({
             name: this.normalizeLookupName(data.name),
             displayName: data.displayName ?? data.name,
             sortOrder,
             isActive: data.isActive ?? true,
+            audience: data.audience,
+            allowsTranslation: data.allowsTranslation ?? false,
+            requiresNewsReleaseDetails:
+              data.requiresNewsReleaseDetails ?? false,
             description: data.description ?? undefined,
             createdBy: currentUserId,
             lastUpdatedBy: currentUserId,
@@ -2511,6 +2679,9 @@ export class LookupsService {
       sortOrder: number;
       isActive: boolean;
       description: string | null;
+      visibility: 'global' | 'team';
+      teamIds: number[];
+      releaseTypeId: number | null;
     }>,
     currentUserId: number
   ): Promise<typeof commsMaterials.$inferSelect | undefined> {
@@ -2523,8 +2694,104 @@ export class LookupsService {
       );
     }
 
-    // Build update object explicitly to ensure type safety
-    const updateData: Partial<typeof commsMaterials.$inferInsert> = {
+    if (data.releaseTypeId !== undefined && data.releaseTypeId != null) {
+      await this.assertCommsMaterialReleaseTypeAvailable(
+        data.releaseTypeId,
+        id
+      );
+    }
+
+    return this.withLookupConflict(
+      'comms_materials_normalized_name_unique',
+      'A comms material with this name already exists.',
+      () =>
+        this.databaseService.db.transaction(async (tx) => {
+          const [existing] = await tx
+            .select()
+            .from(commsMaterials)
+            .where(eq(commsMaterials.id, id))
+            .limit(1);
+          if (!existing) {
+            return undefined;
+          }
+
+          const updateData: Partial<typeof commsMaterials.$inferInsert> = {
+            lastUpdatedBy: currentUserId,
+            lastUpdatedDateTime: new Date(),
+          };
+
+          if (data.name !== undefined)
+            updateData.name = this.normalizeLookupName(data.name);
+          if (data.displayName !== undefined)
+            updateData.displayName = data.displayName ?? undefined;
+          if (data.sortOrder !== undefined)
+            updateData.sortOrder = data.sortOrder;
+          if (data.isActive !== undefined) updateData.isActive = data.isActive;
+          if (data.description !== undefined)
+            updateData.description = data.description ?? undefined;
+          if (data.releaseTypeId !== undefined)
+            updateData.releaseTypeId = data.releaseTypeId;
+
+          const shouldSyncTeams =
+            data.visibility !== undefined || data.teamIds !== undefined;
+          if (shouldSyncTeams) {
+            const visibility = this.resolveLookupUpdateVisibility(
+              existing.visibility as 'global' | 'team',
+              data.visibility,
+              data.teamIds
+            );
+            if (visibility === 'team') {
+              let teamIds = data.teamIds;
+              if (teamIds === undefined) {
+                teamIds = await loadActiveCommsMaterialTeamIds(tx, id);
+              }
+              if (!teamIds.length) {
+                throw new BadRequestException(
+                  'At least one team is required when visibility is team'
+                );
+              }
+              updateData.visibility = visibility;
+              await syncCommsMaterialTeams(tx, id, visibility, teamIds);
+            } else {
+              updateData.visibility = 'global';
+              await syncCommsMaterialTeams(tx, id, 'global', []);
+            }
+          }
+
+          const [result] = await tx
+            .update(commsMaterials)
+            .set(updateData)
+            .where(eq(commsMaterials.id, id))
+            .returning();
+          return result;
+        })
+    );
+  }
+
+  async updateReleaseType(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string | null;
+      sortOrder: number;
+      isActive: boolean;
+      description: string | null;
+      audience: 'media' | 'public';
+      allowsTranslation: boolean;
+      requiresNewsReleaseDetails: boolean;
+    }>,
+    currentUserId: number
+  ): Promise<typeof releaseTypes.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(
+        releaseTypes,
+        data.name,
+        'release type',
+        id
+      );
+    }
+
+    const updateData: Partial<typeof releaseTypes.$inferInsert> = {
       lastUpdatedBy: currentUserId,
       lastUpdatedDateTime: new Date(),
     };
@@ -2537,18 +2804,54 @@ export class LookupsService {
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.description !== undefined)
       updateData.description = data.description ?? undefined;
+    if (data.audience !== undefined) updateData.audience = data.audience;
+    if (data.allowsTranslation !== undefined)
+      updateData.allowsTranslation = data.allowsTranslation;
+    if (data.requiresNewsReleaseDetails !== undefined)
+      updateData.requiresNewsReleaseDetails = data.requiresNewsReleaseDetails;
 
-    const [result] = await this.withLookupConflict(
-      'comms_materials_normalized_name_unique',
-      'A comms material with this name already exists.',
+    return this.withLookupConflict(
+      'release_types_normalized_name_unique',
+      'A release type with this name already exists.',
       () =>
-        this.databaseService.db
-          .update(commsMaterials)
-          .set(updateData)
-          .where(eq(commsMaterials.id, id))
-          .returning()
+        this.databaseService.db.transaction(async (tx) => {
+          const [updated] = await tx
+            .update(releaseTypes)
+            .set(updateData)
+            .where(eq(releaseTypes.id, id))
+            .returning();
+          if (!updated) {
+            return undefined;
+          }
+          if (data.isActive === false) {
+            await tx
+              .update(commsMaterials)
+              .set({ releaseTypeId: null })
+              .where(eq(commsMaterials.releaseTypeId, id));
+          }
+          return updated;
+        })
     );
-    return result;
+  }
+
+  private async assertCommsMaterialReleaseTypeAvailable(
+    releaseTypeId: number,
+    excludeCommsMaterialId?: number
+  ): Promise<void> {
+    const conditions = [eq(commsMaterials.releaseTypeId, releaseTypeId)];
+    if (excludeCommsMaterialId != null) {
+      conditions.push(ne(commsMaterials.id, excludeCommsMaterialId));
+    }
+    const [existing] = await this.databaseService.db
+      .select({ id: commsMaterials.id })
+      .from(commsMaterials)
+      .where(and(...conditions))
+      .limit(1);
+    if (existing) {
+      throw new BadRequestException(
+        'That release type is already assigned to another comms material.'
+      );
+    }
   }
 
   async updateTranslationLanguage(

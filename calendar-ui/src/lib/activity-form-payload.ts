@@ -1,5 +1,8 @@
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { prepareActivityFormDataForSubmit } from '@corpcal/shared/utils';
+import {
+  prepareActivityFormDataForSubmit,
+  type CommsMaterialReleaseFlagsById,
+} from '@corpcal/shared/utils';
 
 function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
   if (!arr || arr.length === 0) return undefined;
@@ -9,6 +12,7 @@ function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
 export type ActivityFormPayloadOptions = {
   /** Lookup ID for translation_required_statuses.name === 'required'. */
   requiredTranslationStatusId?: number;
+  commsMaterialReleaseFlagsById?: CommsMaterialReleaseFlagsById;
 };
 
 export type CreatePayloadOptions = ActivityFormPayloadOptions & {
@@ -57,11 +61,11 @@ export function buildPayloadForCreate(
   formValues: ActivityFormData,
   options?: CreatePayloadOptions
 ): Record<string, unknown> {
-  const { requiredTranslationStatusId, ...createOptions } = options ?? {};
+  const { markAsReviewed, ...prepareOptions } = options ?? {};
   return buildPayloadFromPrepared(
-    prepareForSubmit(data, requiredTranslationStatusId),
-    prepareForSubmit(formValues, requiredTranslationStatusId),
-    createOptions
+    prepareForSubmit(data, prepareOptions),
+    prepareForSubmit(formValues, prepareOptions),
+    { markAsReviewed }
   );
 }
 
@@ -83,10 +87,11 @@ export type UpdatePayloadOptions = ActivityFormPayloadOptions & {
 
 function prepareForSubmit(
   data: ActivityFormData,
-  requiredTranslationStatusId: number | undefined
+  options?: ActivityFormPayloadOptions
 ): ActivityFormData {
   return prepareActivityFormDataForSubmit(data, {
-    requiredTranslationStatusId,
+    requiredTranslationStatusId: options?.requiredTranslationStatusId,
+    commsMaterialReleaseFlagsById: options?.commsMaterialReleaseFlagsById,
   });
 }
 
@@ -101,17 +106,14 @@ export function buildPayloadForUpdate(
   options?: UpdatePayloadOptions
 ): Record<string, unknown> {
   const {
-    requiredTranslationStatusId,
     markAsReviewed,
     markAsCompleted,
     includeRepresentatives = true,
     includeSharedWithTeamIds = true,
+    ...prepareOptions
   } = options ?? {};
-  const prepared = prepareForSubmit(data, requiredTranslationStatusId);
-  const preparedFormValues = prepareForSubmit(
-    formValues,
-    requiredTranslationStatusId
-  );
+  const prepared = prepareForSubmit(data, prepareOptions);
+  const preparedFormValues = prepareForSubmit(formValues, prepareOptions);
   const payload: Record<string, unknown> = {
     ...buildPayloadFromPrepared(prepared, preparedFormValues),
   };

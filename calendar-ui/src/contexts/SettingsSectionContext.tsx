@@ -21,6 +21,7 @@ export type SettingsSectionId =
   | 'categories'
   | 'cities'
   | 'comms'
+  | 'release-types'
   | 'representatives'
   | 'tags'
   | 'ministries'

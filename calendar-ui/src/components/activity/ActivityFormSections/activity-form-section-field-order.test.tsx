@@ -234,6 +234,7 @@ describe('activity form section field order', () => {
           newsReleaseOriginOptions={[]}
           translationRequiredStatuses={[]}
           translationLanguageOptions={[]}
+          userTeamIds={[]}
         />
       </SectionFormHarness>
     );

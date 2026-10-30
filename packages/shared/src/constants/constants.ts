@@ -16,6 +16,10 @@
 export const VISIBILITY = ['global', 'team'] as const;
 export type Visibility = (typeof VISIBILITY)[number];
 
+/** Sister-app release type audience (required on every release_types row). */
+export const RELEASE_TYPE_AUDIENCE = ['media', 'public'] as const;
+export type ReleaseTypeAudience = (typeof RELEASE_TYPE_AUDIENCE)[number];
+
 // ============================================================================
 // Activity Enum Constants
 // ============================================================================

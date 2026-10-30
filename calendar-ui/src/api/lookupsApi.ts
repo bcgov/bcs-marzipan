@@ -9,6 +9,7 @@ import type {
   MinistryGroupResponse,
   MinistryLookupItem,
   OrganizationLookupItem,
+  ReleaseTypeLookupItem,
   ReportResponse,
   TagLookupItem,
   ThemeLookupItem,
@@ -27,6 +28,7 @@ import type {
   CreateGovernmentRepresentativeRequest,
   CreateMinistryGroupRequest,
   CreateMinistryRequest,
+  CreateReleaseTypeRequest,
   CreateTagRequest,
   CreateThemeRequest,
   CreateTranslationLanguageRequest,
@@ -38,6 +40,7 @@ import type {
   UpdateGovernmentRepresentativeRequest,
   UpdateMinistryGroupRequest,
   UpdateMinistryRequest,
+  UpdateReleaseTypeRequest,
   UpdateTagRequest,
   UpdateThemeRequest,
   UpdateTranslationLanguageRequest,
@@ -132,6 +135,32 @@ export async function fetchCommsMaterials(): Promise<
     success: boolean;
     data: CommsMaterialsLookupItem[];
   }>('/lookups/comms-materials');
+  return res.data.data;
+}
+
+export async function fetchAllCommsMaterials(): Promise<
+  CommsMaterialsLookupItem[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: CommsMaterialsLookupItem[];
+  }>('/lookups/comms-materials', { params: { includeAll: 'true' } });
+  return res.data.data;
+}
+
+export async function fetchReleaseTypes(): Promise<ReleaseTypeLookupItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: ReleaseTypeLookupItem[];
+  }>('/lookups/release-types');
+  return res.data.data;
+}
+
+export async function fetchAllReleaseTypes(): Promise<ReleaseTypeLookupItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: ReleaseTypeLookupItem[];
+  }>('/lookups/release-types', { params: { includeAll: 'true' } });
   return res.data.data;
 }
 
@@ -599,6 +628,27 @@ export async function updateCommsMaterial(
 ): Promise<{ success: boolean; data: any }> {
   const res = await api.patch<{ success: boolean; data: any }>(
     `/lookups/comms-materials/${id}`,
+    data
+  );
+  return res.data;
+}
+
+export async function createReleaseType(
+  data: CreateReleaseTypeRequest
+): Promise<{ success: boolean; data: unknown }> {
+  const res = await api.post<{ success: boolean; data: unknown }>(
+    '/lookups/release-types',
+    data
+  );
+  return res.data;
+}
+
+export async function updateReleaseType(
+  id: number,
+  data: UpdateReleaseTypeRequest
+): Promise<{ success: boolean; data: unknown }> {
+  const res = await api.patch<{ success: boolean; data: unknown }>(
+    `/lookups/release-types/${id}`,
     data
   );
   return res.data;
