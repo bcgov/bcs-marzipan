@@ -41,24 +41,11 @@ export function twelveHourPartsToHHmm(parts: TwelveHourParts): string {
   return `${String(hour24).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`;
 }
 
-/** Snap minute to nearest 5 for picker selection (0–55). */
-export function snapMinuteToFive(minute: number): number {
-  const rounded = Math.round(minute / 5) * 5;
-  if (rounded >= 60) return 55;
-  if (rounded < 0) return 0;
-  return rounded;
-}
-
-/** Nearest 5-minute step for highlighting when current minute is not on the grid. */
-export function nearestFiveMinute(minute: number): number {
-  return snapMinuteToFive(minute);
-}
-
-const MINUTE_PICKER_STEPS = [
-  0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55,
-] as const;
-
-export const FIVE_MINUTE_OPTIONS: readonly number[] = [...MINUTE_PICKER_STEPS];
+/** Minute values for the scroll picker (0–59). */
+export const MINUTE_OPTIONS: readonly number[] = Array.from(
+  { length: 60 },
+  (_, i) => i
+);
 
 export const HOUR12_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
@@ -102,9 +89,7 @@ export function derivePickerPreviewParts(input: {
 
   let minute: number;
   if (mTrim !== '') {
-    const parsed = clampMinute(parseInt(mTrim, 10) || 0);
-    /** Single digit may be incomplete (e.g. typing toward "22"); snap once at least two digits. */
-    minute = mTrim.length >= 2 ? snapMinuteToFive(parsed) : parsed;
+    minute = clampMinute(parseInt(mTrim, 10) || 0);
   } else {
     minute = committed != null ? committed.minute : 0;
   }

@@ -9,13 +9,16 @@ import {
   useRef,
   useState,
   type ComponentPropsWithoutRef,
+  type FocusEvent,
+  type KeyboardEvent,
+  type MouseEvent,
 } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
 } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { formatTime12h } from '@/lib/datetime-utils';
@@ -25,14 +28,25 @@ import {
   clampHour12,
   clampMinute,
   derivePickerPreviewParts,
-  FIVE_MINUTE_OPTIONS,
   hhmmToTwelveHourParts,
   HOUR12_OPTIONS,
-  nearestFiveMinute,
-  snapMinuteToFive,
+  MINUTE_OPTIONS,
   twelveHourPartsToHHmm,
 } from '@/lib/time-input-utils';
 import { cn } from '@/lib/utils';
+
+const SEGMENT_BASE_CLASS =
+  'min-w-0 border-0 bg-transparent text-sm tabular-nums shadow-none outline-none focus-visible:ring-0';
+
+const HOUR_SEGMENT_CLASS = cn(
+  SEGMENT_BASE_CLASS,
+  'w-[2ch] min-w-[2ch] text-right'
+);
+
+const MINUTE_SEGMENT_CLASS = cn(
+  SEGMENT_BASE_CLASS,
+  'w-[2ch] min-w-[2ch] text-left'
+);
 
 /** Hour/minute columns: shared width, padding, and scrollbar styling (see globals `.popover-list-scroll`). */
 const TIME_PICKER_SCROLL_COL_CLASS =
@@ -62,7 +76,7 @@ export type TimePickerProps = {
   readOnly?: boolean;
   /** When value is empty, muted trigger styling */
   placeholderMuted?: boolean;
-  /** Accessible name for the trigger button */
+  /** Accessible name for the composite control */
   ariaLabel: string;
   popoverOpen: boolean;
   onPopoverOpenChange: (open: boolean) => void;
@@ -71,11 +85,11 @@ export type TimePickerProps = {
    */
   allDay?: TimePickerAllDayProps;
 } & Omit<
-  ComponentPropsWithoutRef<typeof Button>,
-  'type' | 'variant' | 'size' | 'children' | 'onClick' | 'onChange'
+  ComponentPropsWithoutRef<'div'>,
+  'children' | 'onChange' | 'role' | 'aria-label'
 >;
 
-export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
+export const TimePicker = forwardRef<HTMLDivElement, TimePickerProps>(
   function TimePicker(
     {
       value,
@@ -86,12 +100,10 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
       popoverOpen,
       onPopoverOpenChange,
       allDay,
-      ...triggerProps
+      ...surfaceProps
     },
     ref
   ) {
-    const { className: slotClassName, ...buttonPassthrough } = triggerProps;
-
     const baseId = useId();
     const allDaySwitchId = `${baseId}-all-day`;
 
@@ -99,6 +111,18 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
     const [minDraft, setMinDraft] = useState('');
     const [isPm, setIsPm] = useState(false);
 
+    const draftsRef = useRef({ hourDraft, minDraft, isPm });
+    useEffect(() => {
+      draftsRef.current = { hourDraft, minDraft, isPm };
+    }, [hourDraft, minDraft, isPm]);
+
+    /** While true, parent `value` must not overwrite local segment drafts (typing in progress). */
+    const isEditingSegmentsRef = useRef(false);
+
+    const anchorRef = useRef<HTMLDivElement>(null);
+    const hourRef = useRef<HTMLInputElement>(null);
+    const minRef = useRef<HTMLInputElement>(null);
+    const periodRef = useRef<HTMLButtonElement>(null);
     /** Ignore Radix dismiss callbacks briefly after open (avoids open→immediate close). */
     const suppressDismissRef = useRef(false);
 
@@ -113,8 +137,8 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
     const periodBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const rovingInitDoneRef = useRef(false);
 
-    useEffect(() => {
-      const nextParts = hhmmToTwelveHourParts(value);
+    const syncDraftsFromValue = useCallback((nextValue: string) => {
+      const nextParts = hhmmToTwelveHourParts(nextValue);
       if (nextParts) {
         setHourDraft(String(nextParts.hour12));
         setMinDraft(String(nextParts.minute).padStart(2, '0'));
@@ -124,7 +148,12 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
         setMinDraft('');
         setIsPm(false);
       }
-    }, [value]);
+    }, []);
+
+    useEffect(() => {
+      if (isEditingSegmentsRef.current) return;
+      syncDraftsFromValue(value);
+    }, [value, syncDraftsFromValue]);
 
     useLayoutEffect(() => {
       if (!popoverOpen) return;
@@ -143,6 +172,81 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
       [onPopoverOpenChange]
     );
 
+    useEffect(() => {
+      if (!popoverOpen || readOnly) return;
+
+      const onFocusIn = (ev: FocusEvent) => {
+        const el = ev.target;
+        if (!(el instanceof Element)) return;
+        if (anchorRef.current?.contains(el)) return;
+        if (el.closest('[data-time-picker-popover]')) return;
+        onPopoverOpenChange(false);
+      };
+
+      document.addEventListener('focusin', onFocusIn);
+      return () => document.removeEventListener('focusin', onFocusIn);
+    }, [popoverOpen, readOnly, onPopoverOpenChange]);
+
+    const commitFromDrafts = useCallback(
+      (hStr: string, mStr: string, pm: boolean) => {
+        const trimmedH = hStr.trim();
+        const trimmedM = mStr.trim();
+        if (!trimmedH && !trimmedM) {
+          onChange(undefined);
+          return;
+        }
+        const h = clampHour12(parseInt(trimmedH || '12', 10));
+        const rawMinute = parseInt(trimmedM || '0', 10);
+        const m = clampMinute(rawMinute);
+        const next = twelveHourPartsToHHmm({
+          hour12: h,
+          minute: m,
+          isPm: pm,
+        });
+        onChange(next);
+      },
+      [onChange]
+    );
+
+    const handleSegmentFocus = useCallback(() => {
+      isEditingSegmentsRef.current = true;
+    }, []);
+
+    const handleSegmentBlur = useCallback(
+      (e: FocusEvent<HTMLInputElement | HTMLButtonElement>) => {
+        const d = draftsRef.current;
+        commitFromDrafts(d.hourDraft, d.minDraft, d.isPm);
+
+        const next = e.relatedTarget;
+        if (next instanceof Node && anchorRef.current?.contains(next)) {
+          return;
+        }
+        isEditingSegmentsRef.current = false;
+      },
+      [commitFromDrafts]
+    );
+
+    const handleFocusCapture = useCallback(() => {
+      if (!readOnly) {
+        onPopoverOpenChange(true);
+      }
+    }, [onPopoverOpenChange, readOnly]);
+
+    const handleSurfaceClick = useCallback(
+      (e: MouseEvent<HTMLDivElement>) => {
+        if (readOnly) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('input, [data-slot="time-segment"]')) {
+          return;
+        }
+        onPopoverOpenChange(true);
+        if (!allDay?.isAllDay) {
+          hourRef.current?.focus();
+        }
+      },
+      [allDay?.isAllDay, onPopoverOpenChange, readOnly]
+    );
+
     const handleAllDayCheckedChange = useCallback(
       (checked: boolean) => {
         if (!allDay) return;
@@ -150,6 +254,74 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
       },
       [allDay]
     );
+
+    const focusSegment = (seg: 'hour' | 'minute' | 'period') => {
+      if (seg === 'hour') hourRef.current?.focus();
+      if (seg === 'minute') minRef.current?.focus();
+      if (seg === 'period') periodRef.current?.focus();
+    };
+
+    const onHourKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        focusSegment('minute');
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        const num = clampHour12(parseInt(hourDraft || '12', 10) || 12);
+        const nextHour = clampHour12(num + (e.key === 'ArrowUp' ? 1 : -1));
+        const hStr = String(nextHour);
+        draftsRef.current = { hourDraft: hStr, minDraft, isPm };
+        setHourDraft(hStr);
+        commitFromDrafts(hStr, minDraft, isPm);
+      }
+    };
+
+    const onMinKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        focusSegment('period');
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        focusSegment('hour');
+        return;
+      }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        const current = clampMinute(parseInt(minDraft || '0', 10) || 0);
+        const delta = e.key === 'ArrowUp' ? 1 : -1;
+        const nextMin = clampMinute(current + delta);
+        const mStr = String(nextMin).padStart(2, '0');
+        draftsRef.current = { hourDraft, minDraft: mStr, isPm };
+        setMinDraft(mStr);
+        commitFromDrafts(hourDraft, mStr, isPm);
+      }
+    };
+
+    const onPeriodKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        focusSegment('minute');
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
 
     const pickerPreviewParts = useMemo(
       () =>
@@ -162,15 +334,12 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
       [value, hourDraft, minDraft, isPm]
     );
 
-    const displayMinuteForPicker =
-      pickerPreviewParts != null
-        ? nearestFiveMinute(pickerPreviewParts.minute)
-        : null;
+    const displayMinuteForPicker = pickerPreviewParts?.minute ?? null;
 
     const handlePickerHour = (h: number) => {
+      isEditingSegmentsRef.current = false;
       const hClamped = clampHour12(h);
-      const m = clampMinute(parseInt(minDraft || '0', 10) || 0);
-      const mUse = snapMinuteToFive(m);
+      const mUse = clampMinute(parseInt(minDraft || '0', 10) || 0);
       setHourDraft(String(hClamped));
       setMinDraft(String(mUse).padStart(2, '0'));
       const next = twelveHourPartsToHHmm({
@@ -182,18 +351,20 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
     };
 
     const handlePickerMinute = (m: number) => {
+      isEditingSegmentsRef.current = false;
       const h = clampHour12(parseInt(hourDraft || '12', 10));
-      const snapped = snapMinuteToFive(m);
-      setMinDraft(String(snapped).padStart(2, '0'));
+      const minute = clampMinute(m);
+      setMinDraft(String(minute).padStart(2, '0'));
       const next = twelveHourPartsToHHmm({
         hour12: h,
-        minute: snapped,
+        minute,
         isPm,
       });
       onChange(next);
     };
 
     const handlePickerPeriod = (pm: boolean) => {
+      isEditingSegmentsRef.current = false;
       setIsPm(pm);
       const h = clampHour12(parseInt(hourDraft || '12', 10));
       const m = clampMinute(parseInt(minDraft || '0', 10) || 0);
@@ -221,110 +392,200 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
 
       const m =
         displayMinuteForPicker ??
-        nearestFiveMinute(clampMinute(parseInt(minDraft || '0', 10) || 0));
-      const mi = FIVE_MINUTE_OPTIONS.indexOf(m);
+        clampMinute(parseInt(minDraft || '0', 10) || 0);
+      const mi = MINUTE_OPTIONS.indexOf(m);
       setMinuteRovingIndex(mi >= 0 ? mi : 0);
 
       setPeriodRovingIndex(pickerPreviewParts?.isPm ? 1 : 0);
-
-      const focusIndex = hi >= 0 ? hi : 0;
-      requestAnimationFrame(() => {
-        if (pickerDisabled) return;
-        focusPickerCell(hourBtnRefs.current[focusIndex]);
-      });
     }, [
       popoverOpen,
       readOnly,
       pickerPreviewParts,
       displayMinuteForPicker,
       minDraft,
-      pickerDisabled,
     ]);
 
     const handlePopoverOpenAutoFocus = useCallback((e: Event) => {
-      e.preventDefault();
+      const active = document.activeElement;
+      const inAnchor = Boolean(
+        anchorRef.current &&
+        active instanceof Node &&
+        anchorRef.current.contains(active)
+      );
+      const keepFocusOnTrigger =
+        inAnchor &&
+        (active instanceof HTMLInputElement ||
+          (active instanceof HTMLElement &&
+            active.getAttribute('data-slot') === 'time-segment'));
+      if (keepFocusOnTrigger) {
+        e.preventDefault();
+      }
     }, []);
 
     const viewOnly = readOnly;
     const showMuted =
       placeholderMuted && !value && !viewOnly && !allDay?.isAllDay;
 
-    const triggerText = allDay?.isAllDay
-      ? allDay.label
-      : value
-        ? formatTime12h(value)
-        : '--:--';
-
     if (viewOnly) {
+      const label = allDay?.isAllDay
+        ? allDay.label
+        : value
+          ? formatTime12h(value)
+          : '\u00a0';
       return (
-        <div className={cn('relative w-full min-w-0 flex-1', slotClassName)}>
-          <Button
-            ref={ref}
-            type="button"
-            variant="outline"
-            size="input"
-            tabIndex={-1}
-            aria-readonly
-            aria-label={ariaLabel}
+        <div
+          ref={ref}
+          {...surfaceProps}
+          className={cn(
+            'border-input bg-background flex h-(--input-height) w-full min-w-0 items-center justify-start rounded-md border px-3 text-left text-sm shadow-xs',
+            FORM_CONTROL_INVALID_RING_CLASS,
+            READ_ONLY_STATIC_TRIGGER,
+            !value && 'text-foreground',
+            surfaceProps.className
+          )}
+          aria-label={ariaLabel}
+        >
+          <Clock
             className={cn(
-              'pointer-events-none w-full min-w-0 justify-start text-left font-normal',
-              FORM_CONTROL_INVALID_RING_CLASS,
-              READ_ONLY_STATIC_TRIGGER,
-              !value && !allDay?.isAllDay && 'text-foreground'
+              'mr-2 size-4 shrink-0',
+              value ? 'text-foreground' : 'text-muted-foreground'
             )}
-            {...buttonPassthrough}
-          >
-            <Clock
-              className={cn(
-                'mr-2 size-4 shrink-0',
-                value || allDay?.isAllDay
-                  ? 'text-foreground'
-                  : 'text-muted-foreground'
-              )}
-              aria-hidden
-            />
-            <span className="min-w-0 flex-1 truncate text-left">
-              {triggerText === '--:--' && !allDay?.isAllDay
-                ? '\u00a0'
-                : triggerText}
-            </span>
-          </Button>
+            aria-hidden
+          />
+          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
         </div>
       );
     }
 
     return (
-      <div
-        ref={setPortalHostEl}
-        className={cn('relative w-full min-w-0 flex-1', slotClassName)}
-      >
+      <div ref={setPortalHostEl} className="relative w-full min-w-0 flex-1">
         <Popover
           modal={false}
           open={popoverOpen}
           onOpenChange={handleRadixOpenChange}
         >
-          <PopoverTrigger asChild>
-            <Button
-              ref={ref}
-              type="button"
-              variant="outline"
-              size="input"
-              aria-label={ariaLabel}
-              aria-expanded={popoverOpen}
-              className={cn(
-                'w-full min-w-0 justify-start text-left font-normal',
-                FORM_CONTROL_INVALID_RING_CLASS,
-                showMuted && 'text-muted-foreground',
-                slotClassName
-              )}
-              {...buttonPassthrough}
+          <PopoverAnchor asChild>
+            <div
+              ref={anchorRef}
+              className="w-full min-w-0"
+              onFocusCapture={handleFocusCapture}
             >
-              <Clock className="mr-2 size-4 shrink-0 opacity-70" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-left">
-                {triggerText}
-              </span>
-            </Button>
-          </PopoverTrigger>
+              <div
+                ref={ref}
+                role="group"
+                aria-label={ariaLabel}
+                aria-expanded={popoverOpen}
+                onClick={handleSurfaceClick}
+                {...surfaceProps}
+                className={cn(
+                  'border-input bg-background hover:bg-accent hover:text-accent-foreground dark:hover:bg-input/50 flex h-(--input-height) w-full min-w-0 cursor-text items-center justify-start gap-0 rounded-md border px-3 text-left text-sm shadow-xs',
+                  'has-[[data-slot=time-segment]:focus-visible]:border-ring has-[[data-slot=time-segment]:focus-visible]:ring-ring/50 has-[[data-slot=time-segment]:focus-visible]:ring-[3px]',
+                  FORM_CONTROL_INVALID_RING_CLASS,
+                  showMuted && 'text-muted-foreground',
+                  surfaceProps.className
+                )}
+              >
+                <Clock
+                  className="text-muted-foreground pointer-events-none mr-2 size-4 shrink-0 opacity-70"
+                  aria-hidden
+                />
+                {allDay?.isAllDay ? (
+                  <span className="min-w-0 flex-1 truncate text-left text-sm">
+                    {allDay.label}
+                  </span>
+                ) : (
+                  <div className="flex min-w-0 flex-1 items-center justify-start gap-0">
+                    <input
+                      id={`${baseId}-hour`}
+                      ref={hourRef}
+                      data-slot="time-segment"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={2}
+                      aria-label={`${ariaLabel}, hour`}
+                      className={HOUR_SEGMENT_CLASS}
+                      value={hourDraft}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                        draftsRef.current = { hourDraft: v, minDraft, isPm };
+                        setHourDraft(v);
+                      }}
+                      onFocus={(e) => {
+                        handleSegmentFocus();
+                        e.target.select();
+                      }}
+                      onBlur={handleSegmentBlur}
+                      onKeyDown={onHourKeyDown}
+                    />
+                    <span
+                      className="text-muted-foreground shrink-0"
+                      aria-hidden
+                    >
+                      :
+                    </span>
+                    <input
+                      id={`${baseId}-minute`}
+                      ref={minRef}
+                      data-slot="time-segment"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={2}
+                      aria-label={`${ariaLabel}, minutes`}
+                      className={MINUTE_SEGMENT_CLASS}
+                      value={minDraft}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                        draftsRef.current = { hourDraft, minDraft: v, isPm };
+                        setMinDraft(v);
+                      }}
+                      onFocus={(e) => {
+                        handleSegmentFocus();
+                        e.target.select();
+                      }}
+                      onBlur={handleSegmentBlur}
+                      onKeyDown={onMinKeyDown}
+                    />
+                    <button
+                      type="button"
+                      id={`${baseId}-period`}
+                      ref={periodRef}
+                      data-slot="time-segment"
+                      aria-label={`${ariaLabel}, am or pm`}
+                      className={cn(
+                        SEGMENT_BASE_CLASS,
+                        'w-9 shrink-0 cursor-pointer px-0.5 text-left lowercase'
+                      )}
+                      onClick={() => {
+                        isEditingSegmentsRef.current = false;
+                        const next = !isPm;
+                        setIsPm(next);
+                        commitFromDrafts(hourDraft, minDraft, next);
+                      }}
+                      onFocus={() => {
+                        handleSegmentFocus();
+                        onPopoverOpenChange(true);
+                      }}
+                      onBlur={handleSegmentBlur}
+                      onKeyDown={(e) => {
+                        onPeriodKeyDown(e);
+                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          isEditingSegmentsRef.current = false;
+                          const next = !isPm;
+                          setIsPm(next);
+                          commitFromDrafts(hourDraft, minDraft, next);
+                        }
+                      }}
+                    >
+                      {isPm ? 'pm' : 'am'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </PopoverAnchor>
           <PopoverContent
             container={portalHostEl}
             data-time-picker-popover=""
@@ -332,6 +593,12 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
             sideOffset={4}
             className="w-auto p-0 sm:flex"
             onOpenAutoFocus={handlePopoverOpenAutoFocus}
+            onInteractOutside={(e) => {
+              const target = e.target as Node | null;
+              if (target && anchorRef.current?.contains(target)) {
+                e.preventDefault();
+              }
+            }}
           >
             <div className="flex w-full flex-col outline-none">
               {allDay ? (
@@ -425,7 +692,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
                   aria-label={`${ariaLabel}, minutes`}
                   aria-orientation="vertical"
                 >
-                  {FIVE_MINUTE_OPTIONS.map((m, i) => (
+                  {MINUTE_OPTIONS.map((m, i) => (
                     <Button
                       key={m}
                       ref={(el) => {
@@ -454,7 +721,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
                         if (e.key === 'ArrowDown') {
                           e.preventDefault();
                           const next = Math.min(
-                            FIVE_MINUTE_OPTIONS.length - 1,
+                            MINUTE_OPTIONS.length - 1,
                             i + 1
                           );
                           setMinuteRovingIndex(next);
@@ -470,7 +737,7 @@ export const TimePicker = forwardRef<HTMLButtonElement, TimePickerProps>(
                           focusPickerCell(minuteBtnRefs.current[0]);
                         } else if (e.key === 'End') {
                           e.preventDefault();
-                          const last = FIVE_MINUTE_OPTIONS.length - 1;
+                          const last = MINUTE_OPTIONS.length - 1;
                           setMinuteRovingIndex(last);
                           focusPickerCell(minuteBtnRefs.current[last]);
                         } else if (e.key === 'ArrowLeft') {
