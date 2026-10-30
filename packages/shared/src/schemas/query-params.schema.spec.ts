@@ -50,6 +50,7 @@ describe('filterActivitiesQuerySchema', () => {
     const result = filterActivitiesQuerySchema.parse({
       activityStatusIds: '1,2,3',
       leadTeamIds: '7,8',
+      leadMinistryIds: '3,4',
       commsContactLeadUserIds: '10',
       flagAssigneeUserIds: '20',
       sharedWithTeamIds: '1,2',
@@ -59,6 +60,7 @@ describe('filterActivitiesQuerySchema', () => {
     });
     expect(result.activityStatusIds).toEqual([1, 2, 3]);
     expect(result.leadTeamIds).toEqual([7, 8]);
+    expect(result.leadMinistryIds).toEqual([3, 4]);
     expect(result.commsContactLeadUserIds).toEqual([10]);
     expect(result.flagAssigneeUserIds).toEqual([20]);
     expect(result.sharedWithTeamIds).toEqual([1, 2]);

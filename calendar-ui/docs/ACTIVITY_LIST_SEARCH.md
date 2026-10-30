@@ -7,7 +7,7 @@ This document describes the activity list keyword search, the server vs client f
 The activity list uses **server-side** filtering only for:
 
 - **Archive:** `includeCompleted` and `includeDeleted` (driven by "Show completed" / "Show deleted" and by the Status filter when it includes Completed or Deleted).
-- **Tab context (array params, OR semantics):** `leadTeamIds`, `commsContactLeadUserIds`, `sharedWithTeamIds`, `flagAssigneeUserIds` when viewing a ministry, My activities, Shared with me, or Assigned to me tab. Tabs pass single-element arrays (e.g. `leadTeamIds: [teamId]`).
+- **Tab context (array params, OR semantics):** `leadMinistryIds`, `commsContactLeadUserIds`, `sharedWithTeamIds`, `flagAssigneeUserIds` when viewing a ministry, My activities, Shared with [ministry], or Assigned to me tab. The ministry tab passes the selected ministries; the shared tab passes the teams belonging to the selected ministries (the user's own teams when they have no ministry).
 
 All other filtering is **client-side** over the cached list: date range, status (dropdown), category, pitch, tags, leads, translations, and keyword search. At expected scale (~1–1.5k active rows, up to ~10k with archive), client-side filtering is performant and keeps a single pipeline for adding new filters without API changes.
 

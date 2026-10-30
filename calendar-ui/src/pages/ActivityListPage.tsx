@@ -1,4 +1,4 @@
-import { ChevronDown, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -8,20 +8,17 @@ import {
   ActivityTable,
   type ActivityTableActiveSavedFilter,
 } from '@/components/activity/ActivityTable';
+import { MinistryTabSelect } from '@/components/activity/MinistryTabSelect';
 import { PageHeader } from '@/components/layout';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useFavourites } from '@/hooks/useFavourites';
-import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
-import { useMinistries } from '@/hooks/useLookups';
+import { useActivityTeamSharing, useMinistries } from '@/hooks/useLookups';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
-import { cn } from '@/lib/utils';
+import { formatMinistrySelectionLabel } from '@/lib/ministry-tab-label';
+
+type UserTeam = Pick<TeamListItem, 'id' | 'ministryId' | 'ministryName'>;
 
 const ACTIVITY_LIST_TAB_STORAGE_KEY = 'activityListTab';
 
@@ -70,7 +67,9 @@ function setStoredActivityListTab(tab: ActivityListTabValue): void {
 /**
  * Activity list. Rendered inside Layout, which wraps content with
  * the shared PageContainer (max-width, padding) so this page fits viewport width.
- * Tabs filter the list: All, ministry lead team, My activities, Recent (disabled), Shared with me.
+ * Tabs filter the list: All, user's ministry(ies), My activities, Shared with [ministry], etc.
+ * Users in teams across several ministries can multiselect which ministries the
+ * ministry and shared tabs cover.
  */
 export const ActivityListPage = () => {
   const location = useLocation();
@@ -79,30 +78,96 @@ export const ActivityListPage = () => {
 
   const [activeTab, setActiveTab] = useState<ActivityListTabValue>('all');
   const initialTabAppliedRef = useRef(false);
-  const [selectedLeadTeamId, setSelectedLeadTeamId] = useState<number | null>(
-    null
+  const [ministryTabSelection, setMinistryTabSelection] = useState<number[]>(
+    []
   );
+  const [sharedTabSelection, setSharedTabSelection] = useState<number[]>([]);
   const [activeSavedFilter, setActiveSavedFilter] =
     useState<ActivityTableActiveSavedFilter | null>(null);
 
-  const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
+  const { data: activityTeamSharing } = useActivityTeamSharing();
   const { data: ministries = [] } = useMinistries();
+  const allTeams = activityTeamSharing?.teams;
   const { favouriteActivityIds } = useFavourites();
 
   const userTeamIds = useMemo(() => user?.teamIds ?? [], [user?.teamIds]);
-  const userTeams = useMemo(
-    () => leadTeamOptions.filter((t) => userTeamIds.includes(t.id)),
-    [leadTeamOptions, userTeamIds]
-  );
+  const userTeams = useMemo(() => {
+    return (allTeams ?? [])
+      .filter((team) => userTeamIds.includes(team.id))
+      .map(({ id, ministryId, ministryName }) => ({
+        id,
+        ministryId,
+        ministryName,
+      }));
+  }, [allTeams, userTeamIds]);
   const teamsWithMinistry = useMemo(
     () =>
       userTeams.filter(
-        (t): t is TeamListItem & { ministryId: number } => t.ministryId != null
+        (t): t is UserTeam & { ministryId: number } => t.ministryId != null
       ),
     [userTeams]
   );
 
-  const showMinistryTab = teamsWithMinistry.length > 0;
+  const userMinistryOptions = useMemo(() => {
+    const ids = [...new Set(teamsWithMinistry.map((t) => t.ministryId))];
+    return ids.map((id) => {
+      const ministry = ministries.find((m) => m.id === id);
+      const team = teamsWithMinistry.find((t) => t.ministryId === id);
+      return {
+        id,
+        label:
+          ministry?.abbreviation ??
+          ministry?.displayName ??
+          team?.ministryName ??
+          'Ministry',
+      };
+    });
+  }, [teamsWithMinistry, ministries]);
+
+  const showMinistryTab = userMinistryOptions.length > 0;
+  const hasMultipleMinistries = userMinistryOptions.length > 1;
+
+  // Fall back to the first ministry until the user picks a valid selection.
+  const resolveSelection = (selection: number[]): number[] => {
+    const valid = userMinistryOptions
+      .filter((o) => selection.includes(o.id))
+      .map((o) => o.id);
+    if (valid.length > 0) return valid;
+    return userMinistryOptions.length > 0 ? [userMinistryOptions[0].id] : [];
+  };
+  const ministryTabIds = useMemo(
+    () => resolveSelection(ministryTabSelection),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [userMinistryOptions, ministryTabSelection]
+  );
+  const sharedTabIds = useMemo(
+    () => resolveSelection(sharedTabSelection),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [userMinistryOptions, sharedTabSelection]
+  );
+
+  const selectionLabel = (ids: number[]) =>
+    formatMinistrySelectionLabel(
+      userMinistryOptions.filter((o) => ids.includes(o.id)).map((o) => o.label)
+    );
+  const ministryTabLabel = selectionLabel(ministryTabIds);
+  const sharedTabLabel = showMinistryTab
+    ? `Shared with ${selectionLabel(sharedTabIds)}`
+    : 'Shared with us';
+
+  const sharedWithTeamIds = useMemo(() => {
+    if (!showMinistryTab) return userTeamIds;
+    const ids = new Set<number>();
+    teamsWithMinistry.forEach((t) => {
+      if (sharedTabIds.includes(t.ministryId)) ids.add(t.id);
+    });
+    allTeams?.forEach((t) => {
+      if (t.ministryId != null && sharedTabIds.includes(t.ministryId)) {
+        ids.add(t.id);
+      }
+    });
+    return [...ids];
+  }, [showMinistryTab, userTeamIds, teamsWithMinistry, allTeams, sharedTabIds]);
 
   useEffect(() => {
     if (initialTabAppliedRef.current) return;
@@ -126,36 +191,14 @@ export const ActivityListPage = () => {
     setStoredActivityListTab(defaultTab);
   }, [showMinistryTab]);
 
-  const ministryAbbreviationByMinistryId = useMemo(() => {
-    const map = new Map<number, string>();
-    ministries.forEach((m) => {
-      if (m.abbreviation != null) map.set(m.id, m.abbreviation);
-    });
-    return map;
-  }, [ministries]);
-
-  const selectedLeadTeam =
-    selectedLeadTeamId != null
-      ? teamsWithMinistry.find((t) => t.id === selectedLeadTeamId)
-      : (teamsWithMinistry[0] ?? null);
-  const effectiveLeadTeamId = selectedLeadTeam?.id ?? selectedLeadTeamId;
-  const ministryTabLabel = selectedLeadTeam
-    ? (ministryAbbreviationByMinistryId.get(selectedLeadTeam.ministryId) ??
-      selectedLeadTeam.displayName ??
-      selectedLeadTeam.name ??
-      'Ministry')
-    : 'Ministry';
-
-  const hasMultipleTeamsWithMinistry = teamsWithMinistry.length > 1;
-
   const tableProps = useMemo(() => {
     const base = { watchlistActivityIds: favouriteActivityIds };
     switch (activeTab) {
       case 'all':
         return base;
       case 'ministry':
-        return effectiveLeadTeamId != null
-          ? { ...base, leadTeamIds: [effectiveLeadTeamId] }
+        return ministryTabIds.length > 0
+          ? { ...base, leadMinistryIds: ministryTabIds }
           : base;
       case 'my-activities':
         return user?.id != null
@@ -164,8 +207,8 @@ export const ActivityListPage = () => {
       case 'recent':
         return base;
       case 'shared-with-me':
-        return userTeamIds.length > 0
-          ? { ...base, sharedWithTeamIds: userTeamIds }
+        return sharedWithTeamIds.length > 0
+          ? { ...base, sharedWithTeamIds }
           : base;
       case 'favourites':
         return { ...base, favouriteActivityIds };
@@ -178,9 +221,9 @@ export const ActivityListPage = () => {
     }
   }, [
     activeTab,
-    effectiveLeadTeamId,
+    ministryTabIds,
     user?.id,
-    userTeamIds,
+    sharedWithTeamIds,
     favouriteActivityIds,
   ]);
 
@@ -222,53 +265,28 @@ export const ActivityListPage = () => {
             {showMinistryTab && (
               <TabsTrigger value="ministry" className="gap-2">
                 {ministryTabLabel}
-                {hasMultipleTeamsWithMinistry && (
-                  <Popover>
-                    <PopoverTrigger
-                      asChild
-                      onClick={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
-                    >
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        className="hover:bg-muted rounded p-0.5"
-                        aria-label="Choose team"
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </span>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-56 p-2">
-                      <ul className="space-y-0.5">
-                        {teamsWithMinistry.map((team) => (
-                          <li key={team.id}>
-                            <button
-                              type="button"
-                              className={cn(
-                                'hover:bg-muted w-full rounded-md px-2 py-1.5 text-left text-sm',
-                                effectiveLeadTeamId === team.id &&
-                                  'bg-muted font-medium'
-                              )}
-                              onClick={() => {
-                                setSelectedLeadTeamId(team.id);
-                              }}
-                            >
-                              {ministryAbbreviationByMinistryId.get(
-                                team.ministryId
-                              ) ??
-                                team.displayName ??
-                                team.name}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </PopoverContent>
-                  </Popover>
+                {hasMultipleMinistries && (
+                  <MinistryTabSelect
+                    options={userMinistryOptions}
+                    selectedIds={ministryTabIds}
+                    onChange={setMinistryTabSelection}
+                    ariaLabel="Choose ministries"
+                  />
                 )}
               </TabsTrigger>
             )}
             <TabsTrigger value="my-activities">My activities</TabsTrigger>
-            <TabsTrigger value="shared-with-me">Shared with us</TabsTrigger>
+            <TabsTrigger value="shared-with-me" className="gap-2">
+              {sharedTabLabel}
+              {hasMultipleMinistries && (
+                <MinistryTabSelect
+                  options={userMinistryOptions}
+                  selectedIds={sharedTabIds}
+                  onChange={setSharedTabSelection}
+                  ariaLabel="Choose ministries shared with"
+                />
+              )}
+            </TabsTrigger>
             <TabsTrigger value="assigned-to-me">Assigned to me</TabsTrigger>
             <TabsTrigger value="favourites">My watchlist</TabsTrigger>
           </TabsList>
