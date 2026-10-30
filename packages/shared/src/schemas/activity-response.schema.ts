@@ -69,6 +69,8 @@ export const activityDbFieldsSchema = z.object({
   // News Release
   newsReleaseOriginId: z.number().int().nullable(),
   newsReleaseDistributionId: z.number().int().nullable(),
+  releaseTimeOffsetMinutes: z.number().int().nullable(),
+  releaseTime: z.string().datetime().nullable(),
 
   // Look Ahead
   executiveSummary: z.string().nullable(),

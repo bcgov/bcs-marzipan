@@ -230,6 +230,8 @@ describe('activity form section field order', () => {
       <SectionFormHarness>
         <ActivityCommsSection
           commsMaterialOptions={[]}
+          dateStatuses={[]}
+          timeStatuses={[]}
           newsReleaseDistributionOptions={[]}
           newsReleaseOriginOptions={[]}
           translationRequiredStatuses={[]}

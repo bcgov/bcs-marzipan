@@ -182,6 +182,8 @@ export function ActivityFormBody({
 
               <ActivityCommsSection
                 commsMaterialOptions={lookups.commsMaterials}
+                dateStatuses={lookups.dateStatuses}
+                timeStatuses={lookups.timeStatuses}
                 newsReleaseDistributionOptions={
                   lookups.newsReleaseDistributions
                 }

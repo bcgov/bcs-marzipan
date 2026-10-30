@@ -27,5 +27,6 @@ export * from './activity-rich-text';
 export * from './wcagContrast';
 export * from './lookup-selectability';
 export * from './comms-material-form-rules';
+export * from './activity-release-time';
 export * from './government-representative-sort';
 export * from './parse-gov-bc-display-name';

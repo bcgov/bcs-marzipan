@@ -151,7 +151,8 @@ describe('getViewableFieldScopes', () => {
   it('returns only always-viewable scopes for Viewer without grants', () => {
     const result = getViewableFieldScopes(viewer);
     expect(result.has('translations')).toBe(true);
-    expect(result.size).toBe(1);
+    expect(result.has('releaseTime')).toBe(true);
+    expect(result.size).toBe(2);
   });
 
   it('returns bypass-eligible scopes for Advanced Viewer (not internalNotes)', () => {
@@ -165,7 +166,8 @@ describe('getViewableFieldScopes', () => {
     const result = getViewableFieldScopes(editorWithNotesGrant);
     expect(result.has('internalNotes')).toBe(true);
     expect(result.has('translations')).toBe(true);
-    expect(result.size).toBe(2);
+    expect(result.has('releaseTime')).toBe(true);
+    expect(result.size).toBe(3);
   });
 });
 

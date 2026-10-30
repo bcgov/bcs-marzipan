@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
+import { RELEASE_TIME_OFFSET_MAX_MINUTES } from '../utils/activity-release-time';
 import {
   ACTIVITY_RICH_TEXT_MAX_BYTES,
   isActivityRichTextStorageRefine,
@@ -234,6 +235,13 @@ const activityCoreFieldsSchema = z.object({
     .nullable()
     .optional(),
   newsReleaseOriginId: z.number().int().nullable().optional(),
+  releaseTimeOffsetMinutes: z
+    .number()
+    .int()
+    .min(0)
+    .max(RELEASE_TIME_OFFSET_MAX_MINUTES)
+    .nullable()
+    .optional(),
   leadTeamId: z.number().int(), // Required - primary association for which team leads this activity
   leadMinistryId: z.preprocess(
     emptyStringToNull,

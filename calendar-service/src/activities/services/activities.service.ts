@@ -83,6 +83,7 @@ import {
   applyUpdateActivityRequestToFormData,
   buildReviewDiffLookups,
   buildReviewSnapshot,
+  computeActivityReleaseTimeInstant,
   diffReviewFields,
   getEmptyReviewBaseline,
   isDeepEqual,
@@ -380,6 +381,7 @@ export class ActivitiesService {
     const rows = await this.databaseService.db
       .select({
         id: commsMaterials.id,
+        audience: releaseTypes.audience,
         allowsTranslation: releaseTypes.allowsTranslation,
         requiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
       })
@@ -389,18 +391,51 @@ export class ActivitiesService {
 
     const map = new Map<number, CommsMaterialReleaseFlags>();
     for (const row of rows) {
-      if (
-        row.allowsTranslation == null ||
-        row.requiresNewsReleaseDetails == null
-      ) {
+      if (row.audience == null) {
         continue;
       }
       map.set(row.id, {
-        allowsTranslation: row.allowsTranslation,
-        requiresNewsReleaseDetails: row.requiresNewsReleaseDetails,
+        audience: row.audience as 'media' | 'public',
+        allowsTranslation: row.allowsTranslation ?? false,
+        requiresNewsReleaseDetails: row.requiresNewsReleaseDetails ?? false,
       });
     }
     return map;
+  }
+
+  private async resolveReleaseTimePersistence(row: {
+    releaseTimeOffsetMinutes?: number | null;
+    startDate?: string | null;
+    startTime?: string | null;
+    isAllDay?: boolean | null;
+    dateStatusId?: number | null;
+    timeStatusId?: number | null;
+  }): Promise<{
+    releaseTimeOffsetMinutes: number | null;
+    releaseTime: Date | null;
+  }> {
+    const offset = row.releaseTimeOffsetMinutes ?? null;
+    const resolvers = await this.getSchedulingLookupResolvers();
+    const dateStatusName =
+      row.dateStatusId != null && resolvers.dateStatusNameForId != null
+        ? resolvers.dateStatusNameForId(row.dateStatusId)
+        : undefined;
+    const timeStatusName =
+      row.timeStatusId != null && resolvers.timeStatusNameForId != null
+        ? resolvers.timeStatusNameForId(row.timeStatusId)
+        : undefined;
+    const instantIso = computeActivityReleaseTimeInstant({
+      releaseTimeOffsetMinutes: offset,
+      startDate: row.startDate,
+      startTime: row.startTime,
+      isAllDay: row.isAllDay ?? false,
+      dateStatusName,
+      timeStatusName,
+    });
+    return {
+      releaseTimeOffsetMinutes: offset,
+      releaseTime: instantIso ? new Date(instantIso) : null,
+    };
   }
 
   private async applyCommsDependentFieldCleanup(
@@ -411,6 +446,7 @@ export class ActivitiesService {
       | 'newsReleaseDistributionId'
       | 'translationsRequiredStatusId'
       | 'translationLanguageIds'
+      | 'releaseTimeOffsetMinutes'
     >
   ): Promise<
     Pick<
@@ -419,6 +455,7 @@ export class ActivitiesService {
       | 'newsReleaseDistributionId'
       | 'translationsRequiredStatusId'
       | 'translationLanguageIds'
+      | 'releaseTimeOffsetMinutes'
     >
   > {
     const flagsById = await this.loadCommsMaterialReleaseFlagsById(
@@ -437,6 +474,7 @@ export class ActivitiesService {
       translationsRequiredStatusId:
         cleaned.translationsRequiredStatusId ?? null,
       translationLanguageIds: cleaned.translationLanguageIds ?? [],
+      releaseTimeOffsetMinutes: cleaned.releaseTimeOffsetMinutes ?? null,
     };
   }
 
@@ -1500,6 +1538,7 @@ export class ActivitiesService {
         translationsRequiredStatusId:
           activityData.translationsRequiredStatusId ?? null,
         translationLanguageIds: translationLanguageIds ?? [],
+        releaseTimeOffsetMinutes: activityData.releaseTimeOffsetMinutes ?? null,
       }
     );
     Object.assign(activityData, commsCleaned);
@@ -1541,6 +1580,10 @@ export class ActivitiesService {
       },
       'create'
     );
+
+    const releaseTimePersistence =
+      await this.resolveReleaseTimePersistence(activityRowForInsert);
+    Object.assign(activityRowForInsert, releaseTimePersistence);
 
     await this.validateCommsContactsForTeam(
       commsContactsArray,
@@ -2650,6 +2693,38 @@ export class ActivitiesService {
       }),
     };
 
+    const effectiveReleaseRow = {
+      releaseTimeOffsetMinutes:
+        updateData.releaseTimeOffsetMinutes !== undefined
+          ? updateData.releaseTimeOffsetMinutes
+          : oldActivity.releaseTimeOffsetMinutes,
+      startDate:
+        updateData.startDate !== undefined
+          ? updateData.startDate
+          : oldActivity.startDate,
+      startTime:
+        updateData.startTime !== undefined
+          ? updateData.startTime
+          : oldActivity.startTime,
+      isAllDay:
+        updateData.isAllDay !== undefined
+          ? updateData.isAllDay
+          : oldActivity.isAllDay,
+      dateStatusId:
+        updateData.dateStatusId !== undefined
+          ? updateData.dateStatusId
+          : oldActivity.dateStatusId,
+      timeStatusId:
+        updateData.timeStatusId !== undefined
+          ? updateData.timeStatusId
+          : oldActivity.timeStatusId,
+    };
+    const releaseTimePersistence =
+      await this.resolveReleaseTimePersistence(effectiveReleaseRow);
+    updateData.releaseTimeOffsetMinutes =
+      releaseTimePersistence.releaseTimeOffsetMinutes;
+    updateData.releaseTime = releaseTimePersistence.releaseTime;
+
     await this.assertActivitySchedulingRules(
       {
         startDate:
@@ -2841,6 +2916,10 @@ export class ActivitiesService {
             translationLanguageIds !== undefined
               ? translationLanguageIds
               : existingLangRows.map((r) => r.languageId),
+          releaseTimeOffsetMinutes:
+            dto.releaseTimeOffsetMinutes !== undefined
+              ? dto.releaseTimeOffsetMinutes
+              : oldActivity.releaseTimeOffsetMinutes,
         }
       );
       dto.newsReleaseOriginId = commsCleaned.newsReleaseOriginId;
@@ -2848,6 +2927,7 @@ export class ActivitiesService {
       dto.translationsRequiredStatusId =
         commsCleaned.translationsRequiredStatusId;
       dto.translationLanguageIds = commsCleaned.translationLanguageIds;
+      dto.releaseTimeOffsetMinutes = commsCleaned.releaseTimeOffsetMinutes;
     }
 
     if (Object.prototype.hasOwnProperty.call(dto, 'lookAheadSection')) {

@@ -2,6 +2,7 @@ import type { HistoryChange } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
   canonicalizeActivityFormData,
+  formatReleaseTimeOffsetLabel,
   getActivityFieldLabel as getSharedFieldLabel,
   isDeepEqual,
   plainTextFromActivityRichField,
@@ -86,6 +87,10 @@ export function formatHistoryFieldValue(
   ) {
     const formatted = formatTime12h(value);
     return formatted === '' ? '(empty)' : formatted;
+  }
+
+  if (field === 'releaseTimeOffsetMinutes' && typeof value === 'number') {
+    return formatReleaseTimeOffsetLabel(value);
   }
 
   if (

@@ -89,9 +89,8 @@ export const activities = pgTable(
     newsReleaseOriginId: integer('news_release_origin_id').references(
       () => newsReleaseOrigins.id
     ), // FK to NewsReleaseOrigin lookup table
-    newsReleaseDateTime: timestamp('news_release_date_time', {
-      withTimezone: true,
-    }), // News release date/time (legacy field)
+    releaseTimeOffsetMinutes: integer('release_time_offset_minutes'),
+    releaseTime: timestamp('release_time', { withTimezone: true }),
 
     // Look Ahead
     executiveSummary: text('executive_summary'), // maps to legacy HqComments field

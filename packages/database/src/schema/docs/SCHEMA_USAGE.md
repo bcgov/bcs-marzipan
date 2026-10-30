@@ -293,3 +293,7 @@ Communications materials use the same team visibility pattern as categories. **R
 
 - **`team_comms_materials`**: Junction for team-scoped materials when `visibility = 'team'`.
 - Activity selections still use **`activity_comms_materials`** (unchanged); form pickers and save validation respect material visibility like categories.
+
+### Activity release time (`activities`)
+
+When a selected comms material has a **public** release type, the form may capture **`release_time_offset_minutes`** (0–10,080 minutes after the schedule anchor). **`release_time`** is a derived `timestamptz` computed on save from `start_date` / `start_time` (or all-day midnight on `start_date`) when date/time statuses are confirmed; otherwise offset is stored and instant is null.

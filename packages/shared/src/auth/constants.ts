@@ -90,6 +90,7 @@ export const PERMISSIONS = {
     LOOK_AHEAD_VIEW: 'activities.lookAhead.view',
     LOOK_AHEAD_EDIT: 'activities.lookAhead.edit',
     TRANSLATIONS_EDIT: 'activities.translations.edit',
+    RELEASE_TIME_EDIT: 'activities.release_time.edit',
     /** Take edit lock from another user after grace period (admin). */
     LOCK_FORCE_HANDOFF: 'activities.lock.forceHandoff',
     /** Manually progress an activity to Completed status. */

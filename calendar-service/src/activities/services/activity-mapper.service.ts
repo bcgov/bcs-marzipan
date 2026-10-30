@@ -224,6 +224,10 @@ export class ActivityMapperService {
       commsMaterials: relatedData?.commsMaterials ?? [],
       newsReleaseOriginId: activity.newsReleaseOriginId ?? null,
       newsReleaseDistributionId: activity.newsReleaseDistributionId ?? null,
+      releaseTimeOffsetMinutes: activity.releaseTimeOffsetMinutes ?? null,
+      releaseTime: activity.releaseTime
+        ? activity.releaseTime.toISOString()
+        : null,
       translationsRequired: relatedData?.translationsRequired ?? [],
 
       // Event

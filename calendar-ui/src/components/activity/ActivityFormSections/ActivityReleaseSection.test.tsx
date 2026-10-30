@@ -97,8 +97,14 @@ const mockLookups = {
   newsReleaseOrigins: [{ value: '1', label: 'Origin A' }],
   sharedWithTeams: [],
   quickShareGroups: [],
-  dateStatuses: [],
-  timeStatuses: [],
+  dateStatuses: [
+    { id: 1, name: 'tbd', displayName: 'Date TBD' },
+    { id: 2, name: 'confirmed', displayName: 'Confirmed' },
+  ],
+  timeStatuses: [
+    { id: 1, name: 'tbd', displayName: 'Time TBD' },
+    { id: 2, name: 'confirmed', displayName: 'Confirmed' },
+  ],
   venueStatuses: [],
 };
 
@@ -137,6 +143,8 @@ function ActivityCommsSectionHarness({
       >
         <ActivityCommsSection
           commsMaterialOptions={commsMaterialOptions}
+          dateStatuses={mockLookups.dateStatuses}
+          timeStatuses={mockLookups.timeStatuses}
           newsReleaseDistributionOptions={mockLookups.newsReleaseDistributions}
           newsReleaseOriginOptions={mockLookups.newsReleaseOrigins}
           translationRequiredStatuses={translationRequiredStatuses}

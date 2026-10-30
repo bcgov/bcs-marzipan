@@ -104,6 +104,11 @@ export function canonicalizeActivityFormData(
       data.venueStatusId === null || data.venueStatusId === undefined
         ? undefined
         : data.venueStatusId,
+    releaseTimeOffsetMinutes:
+      data.releaseTimeOffsetMinutes === null ||
+      data.releaseTimeOffsetMinutes === undefined
+        ? undefined
+        : data.releaseTimeOffsetMinutes,
     venueAddress: normalizeVenueAddressForForm(
       data.venueAddress as ActivityResponse['venueAddress']
     ),

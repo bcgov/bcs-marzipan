@@ -86,6 +86,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   lookAheadStatus: 'Look Ahead status',
   lookAheadSection: 'Look Ahead section',
   translationsRequiredStatusId: 'Translations required',
+  releaseTimeOffsetMinutes: 'Release time',
   newsReleaseOriginId: 'News release origin',
   newsReleaseDistributionId: 'News release distribution',
   premierRequestedId: 'Premier requested',

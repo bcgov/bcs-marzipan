@@ -1,7 +1,9 @@
 import type { ActivityFormData } from '../schemas/activity.schema';
+import { activityNeedsReleaseTimeField } from './activity-release-time';
 
 /** Release-type workflow flags for a comms material (from lookup API). */
 export type CommsMaterialReleaseFlags = {
+  audience: 'media' | 'public' | null;
   allowsTranslation: boolean;
   requiresNewsReleaseDetails: boolean;
 };
@@ -23,9 +25,16 @@ function anySelectedHasFlag(
   return ids.some((id) => flagsById.get(id)?.[key] === true);
 }
 
+export function needsReleaseTimeDetails(
+  commsMaterialIds: number[] | undefined,
+  flagsById: CommsMaterialReleaseFlagsById | undefined
+): boolean {
+  return activityNeedsReleaseTimeField(commsMaterialIds, flagsById);
+}
+
 /**
- * Clears news-release and translation activity fields when no selected comms
- * material warrants them (client submit + server save).
+ * Clears news-release, translation, and release-time activity fields when no
+ * selected comms material warrants them (client submit + server save).
  */
 export function stripCommsDependentFields(
   data: ActivityFormData,
@@ -46,6 +55,7 @@ export function stripCommsDependentFields(
     flagsById,
     'allowsTranslation'
   );
+  const needsReleaseTime = needsReleaseTimeDetails(ids, flagsById);
 
   let next: ActivityFormData = { ...data };
 
@@ -65,6 +75,13 @@ export function stripCommsDependentFields(
     };
   }
 
+  if (!needsReleaseTime) {
+    next = {
+      ...next,
+      releaseTimeOffsetMinutes: null,
+    };
+  }
+
   return next;
 }
 
@@ -79,6 +96,7 @@ export function buildCommsMaterialReleaseFlagsById(
   for (const m of materials) {
     if (!m.releaseType) continue;
     map.set(m.id, {
+      audience: m.releaseType.audience ?? null,
       allowsTranslation: m.releaseType.allowsTranslation,
       requiresNewsReleaseDetails: m.releaseType.requiresNewsReleaseDetails,
     });

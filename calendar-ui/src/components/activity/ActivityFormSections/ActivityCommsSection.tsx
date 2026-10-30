@@ -50,6 +50,7 @@ import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-per
 import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
+import { ActivityReleaseTimeField } from './ActivityReleaseTimeField';
 import { OptionalLookupSelectField } from './OptionalLookupSelectField';
 
 type CommsMaterialOption = {
@@ -67,6 +68,8 @@ type CommsMaterialOption = {
 
 type ActivityCommsSectionProps = {
   commsMaterialOptions: CommsMaterialOption[];
+  dateStatuses: Array<{ id: number; name: string }>;
+  timeStatuses: Array<{ id: number; name: string }>;
   newsReleaseDistributionOptions: OptionItem[];
   newsReleaseOriginOptions: OptionItem[];
   translationRequiredStatuses: TranslationRequiredStatusLookupItem[];
@@ -238,6 +241,8 @@ function TranslationLanguagesField({
 
 export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   commsMaterialOptions,
+  dateStatuses,
+  timeStatuses,
   newsReleaseDistributionOptions,
   newsReleaseOriginOptions,
   translationRequiredStatuses,
@@ -325,12 +330,14 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
     const ids = commsMaterialIds ?? [];
     let requiresNewsReleaseDetails = false;
     let allowsTranslation = false;
+    let showReleaseTime = false;
     for (const id of ids) {
       const rt = materialById.get(id)?.releaseType;
       if (rt?.requiresNewsReleaseDetails) requiresNewsReleaseDetails = true;
       if (rt?.allowsTranslation) allowsTranslation = true;
+      if (rt?.audience === 'public') showReleaseTime = true;
     }
-    return { requiresNewsReleaseDetails, allowsTranslation };
+    return { requiresNewsReleaseDetails, allowsTranslation, showReleaseTime };
   }, [commsMaterialIds, materialById]);
 
   const translationLanguageComboboxOptions: OptionItem[] =
@@ -444,6 +451,13 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
           );
         }}
       />
+
+      {selectedFlags.showReleaseTime ? (
+        <ActivityReleaseTimeField
+          dateStatuses={dateStatuses}
+          timeStatuses={timeStatuses}
+        />
+      ) : null}
 
       {selectedFlags.requiresNewsReleaseDetails ? (
         <div className="space-y-6 rounded-md border border-gray-300 p-6">

@@ -17,6 +17,7 @@ export const ACTIVITY_FIELD_SCOPES = [
   'internalNotes',
   'lookAhead',
   'translations',
+  'releaseTime',
 ] as const;
 
 export type ActivityFieldScope = (typeof ACTIVITY_FIELD_SCOPES)[number];
@@ -62,6 +63,12 @@ export const ACTIVITY_FIELD_SCOPE_CONFIG: Record<
       'translationsRequired',
     ],
     requestFields: ['translationsRequiredStatusId', 'translationLanguageIds'],
+  },
+  releaseTime: {
+    viewKey: null,
+    editKey: PERMISSIONS.ACTIVITIES.RELEASE_TIME_EDIT,
+    responseFields: ['releaseTimeOffsetMinutes', 'releaseTime'],
+    requestFields: ['releaseTimeOffsetMinutes'],
   },
 } as const;
 
