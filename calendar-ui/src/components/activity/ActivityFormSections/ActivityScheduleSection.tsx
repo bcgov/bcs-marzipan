@@ -146,6 +146,9 @@ export function ActivityScheduleSection({
   const [activeTimePopover, setActiveTimePopover] = useState<
     'start' | 'end' | null
   >(null);
+  const [activeDatePopover, setActiveDatePopover] = useState<
+    'start' | 'end' | null
+  >(null);
 
   const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
   useEffect(() => {
@@ -325,12 +328,29 @@ export function ActivityScheduleSection({
                           setActivityFormFieldValue(form, 'endDate', iso);
                         }
                       }}
+                      onAfterSelect={() => {
+                        const end = form.getValues('endDate');
+                        if (!String(end ?? '').trim()) {
+                          requestAnimationFrame(() =>
+                            setActiveDatePopover('end')
+                          );
+                        }
+                      }}
+                      popoverOpen={activeDatePopover === 'start'}
+                      onPopoverOpenChange={(open) => {
+                        if (open) setActiveDatePopover('start');
+                        else
+                          setActiveDatePopover((prev) =>
+                            prev === 'start' ? null : prev
+                          );
+                      }}
                       label={startButtonLabel}
                       triggerMuted={!startStr}
                       readOnly={readOnly}
                       popoverTitle="Select start date"
                       presets={PRESETS_PAST_FROM_ANCHOR}
                       getPresetAnchor={getPresetAnchorToday}
+                      showPresets={false}
                       triggerAriaLabel="Activity start date"
                       triggerVariant="form"
                     />
@@ -367,12 +387,21 @@ export function ActivityScheduleSection({
                           iso || undefined
                         )
                       }
+                      popoverOpen={activeDatePopover === 'end'}
+                      onPopoverOpenChange={(open) => {
+                        if (open) setActiveDatePopover('end');
+                        else
+                          setActiveDatePopover((prev) =>
+                            prev === 'end' ? null : prev
+                          );
+                      }}
                       label={endButtonLabel}
                       triggerMuted={!endStr}
                       readOnly={readOnly}
                       popoverTitle="Select end date"
                       presets={PRESETS_FUTURE_FROM_ANCHOR}
                       getPresetAnchor={endPresetAnchor}
+                      showPresets={false}
                       isDateDisabled={isEndBeforeStart}
                       triggerAriaLabel="Activity end date"
                       triggerVariant="form"
