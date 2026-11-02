@@ -32,7 +32,6 @@ import {
   updateCityRequestSchema,
   updateCommsMaterialRequestSchema,
   updateGovernmentRepresentativeRequestSchema,
-  updateLookupSortModeRequestSchema,
   updateMinistryGroupRequestSchema,
   updateMinistryRequestSchema,
   updateTagRequestSchema,
@@ -131,10 +130,6 @@ export class UpdateCityDto extends createZodDto(updateCityRequestSchema) {}
  */
 export class ReorderLookupDto extends createZodDto(
   reorderLookupRequestSchema
-) {}
-
-export class UpdateLookupSortModeDto extends createZodDto(
-  updateLookupSortModeRequestSchema
 ) {}
 
 /**

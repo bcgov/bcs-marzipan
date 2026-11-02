@@ -318,14 +318,14 @@ export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
         activityId: vars.activityId,
       });
       if ((vars.assigneeNames?.length ?? 0) > 0) {
-        toast.success(`Activity flagged for ${vars.assigneeNames!.join(', ')}`);
+        toast.success(`Activity assigned to ${vars.assigneeNames!.join(', ')}`);
       } else {
-        toast.success('Activity flags updated');
+        toast.success('Activity assignments updated');
       }
       options?.onSuccess?.();
     },
     onError: (error) => {
-      showErrorToast(error, 'Failed to update activity flags');
+      showErrorToast(error, 'Failed to update activity assignments');
     },
   });
 }
@@ -357,8 +357,8 @@ export function useRemoveAssigneeActivityFlag(options?: {
       if (!vars.suppressSuccessToast) {
         toast.success(
           vars.assigneeName
-            ? `Activity unflagged for ${vars.assigneeName}`
-            : 'Activity unflagged'
+            ? `Activity unassigned from ${vars.assigneeName}`
+            : 'Activity unassigned'
         );
       }
       options?.onSuccess?.();

@@ -1,11 +1,12 @@
 import { Calendar, Clock, MapPin } from 'lucide-react';
 
-import {
-  formatCalendarDateCover,
-  toCalendarDateString,
-} from '@corpcal/shared/datetime';
 import { Badge } from '@/components/ui/badge';
-import { formatDateRange, formatTime12h } from '@/lib/datetime-utils';
+import {
+  formatDateRange,
+  formatExactDate,
+  formatTime12h,
+  parseDateOnlyString,
+} from '@/lib/datetime-utils';
 import { cn } from '@/lib/utils';
 
 import type { ActivityTableRow } from '../activityTableRow';
@@ -49,7 +50,9 @@ export function SchedulingCellCompact({
     row.startDate && row.endDate && row.endDate !== row.startDate
       ? formatDateRange(row.startDate, row.endDate)
       : row.startDate
-        ? formatCalendarDateCover(toCalendarDateString(row.startDate))
+        ? formatExactDate(parseDateOnlyString(row.startDate), {
+            includeYear: 'auto',
+          })
         : '';
 
   return (

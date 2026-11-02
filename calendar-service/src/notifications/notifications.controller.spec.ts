@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import type { AuthUser } from '@corpcal/shared';
 
-import { NotificationPreferencesService } from './notification-preferences.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 
@@ -16,11 +15,6 @@ describe('NotificationsController', () => {
     dismiss: vi.fn(),
     markAllRead: vi.fn(),
     dismissAll: vi.fn(),
-  };
-
-  const mockPreferencesService = {
-    getForUser: vi.fn(),
-    updateForUser: vi.fn(),
   };
 
   const mockUser: AuthUser = {
@@ -43,10 +37,6 @@ describe('NotificationsController', () => {
         {
           provide: NotificationsService,
           useValue: mockNotificationsService,
-        },
-        {
-          provide: NotificationPreferencesService,
-          useValue: mockPreferencesService,
         },
       ],
     }).compile();
@@ -135,35 +125,5 @@ describe('NotificationsController', () => {
 
     expect(mockNotificationsService.dismissAll).toHaveBeenCalledWith(99);
     expect(result).toEqual({ success: true, data: { updatedCount: 2 } });
-  });
-
-  it('getPreferences scopes to the current user', async () => {
-    const prefs = { emailEnabled: true, categories: [] };
-    mockPreferencesService.getForUser.mockResolvedValue(prefs);
-
-    const result = await controller.getPreferences(mockUser);
-
-    expect(mockPreferencesService.getForUser).toHaveBeenCalledWith(99);
-    expect(result).toEqual({ success: true, data: prefs });
-  });
-
-  it('updatePreferences scopes to the current user', async () => {
-    const body = {
-      emailEnabled: false,
-      categories: [
-        {
-          category: 'activity_reminders' as const,
-          inApp: false,
-          email: false,
-        },
-      ],
-    };
-    const prefs = { emailEnabled: false, categories: body.categories };
-    mockPreferencesService.updateForUser.mockResolvedValue(prefs);
-
-    const result = await controller.updatePreferences(mockUser, body);
-
-    expect(mockPreferencesService.updateForUser).toHaveBeenCalledWith(99, body);
-    expect(result).toEqual({ success: true, data: prefs });
   });
 });

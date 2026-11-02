@@ -1,5 +1,3 @@
-import { formatGovBcDisplayNameAsFirstLast } from '@corpcal/shared';
-
 type StaffNameId = number | string | null | undefined;
 
 function normalizeStaffName(value: string | null | undefined): string {
@@ -14,12 +12,17 @@ export function getFirstNameSortLabel(
   value: string | null | undefined
 ): string {
   const normalized = normalizeStaffDisplayName(value);
-  if (!normalized) {
-    return '';
+  const commaIndex = normalized.indexOf(',');
+
+  if (commaIndex > 0) {
+    const lastName = normalized.slice(0, commaIndex).trim();
+    const givenNames = normalized.slice(commaIndex + 1).trim();
+    if (givenNames && lastName) {
+      return normalizeStaffName(`${givenNames} ${lastName}`);
+    }
   }
 
-  const firstLastLabel = formatGovBcDisplayNameAsFirstLast(normalized);
-  return firstLastLabel || normalized;
+  return normalized;
 }
 
 export function compareStaffNames(
