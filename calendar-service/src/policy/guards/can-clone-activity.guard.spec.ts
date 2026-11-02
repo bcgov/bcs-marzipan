@@ -58,7 +58,7 @@ describe('CanCloneActivityGuard', () => {
     ...overrides,
   });
 
-  const adminUser = (): AuthUser => ({
+  const adminUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
     id: 18,
     username: 'admin',
     displayName: 'Admin User',
@@ -71,6 +71,7 @@ describe('CanCloneActivityGuard', () => {
       PERMISSIONS.ACTIVITIES.DELETE_ANY,
     ],
     teamIds: [],
+    ...overrides,
   });
 
   it('throws ForbiddenException when user is undefined', async () => {
@@ -143,6 +144,36 @@ describe('CanCloneActivityGuard', () => {
   it('throws ForbiddenException on a blocked source when user lacks delete.any', async () => {
     policyService.getActivityStatusNameForActivity.mockResolvedValue(
       'delete_requested'
+    );
+    policyService.isCommsContactForActivity.mockResolvedValue(true);
+    const ctx = createMockContext(editorUser());
+    await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(ctx)).rejects.toThrow(
+      /requires activities.delete.any/
+    );
+    expect(policyService.isCommsContactForActivity).not.toHaveBeenCalled();
+  });
+
+  it('throws ForbiddenException for admin on blocked source without delete.any (bypass does not skip blocked gate)', async () => {
+    policyService.getActivityStatusNameForActivity.mockResolvedValue('deleted');
+    const ctx = createMockContext(
+      adminUser({
+        permissions: [
+          PERMISSIONS.ACTIVITIES.CREATE,
+          PERMISSIONS.ACTIVITIES.EDIT,
+        ],
+      })
+    );
+    await expect(guard.canActivate(ctx)).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(ctx)).rejects.toThrow(
+      /requires activities.delete.any/
+    );
+    expect(policyService.isCommsContactForActivity).not.toHaveBeenCalled();
+  });
+
+  it('treats lookup display status labels as blocked', async () => {
+    policyService.getActivityStatusNameForActivity.mockResolvedValue(
+      'Delete requested'
     );
     policyService.isCommsContactForActivity.mockResolvedValue(true);
     const ctx = createMockContext(editorUser());

@@ -2,6 +2,7 @@ import { Flag } from 'lucide-react';
 import type { ReactElement } from 'react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { getInitials } from '@/lib/initials';
 import { cn } from '@/lib/utils';
 
 export type ActivityFlagIconSize = 'default' | 'compact';
@@ -18,15 +19,6 @@ type ActivityFlagOverflowIconProps = {
   className?: string;
   size?: ActivityFlagIconSize;
 };
-
-function getAssigneeInitials(assigneeName: string): string {
-  return assigneeName
-    .split(' ')
-    .slice(0, 2)
-    .map((namePart) => namePart[0])
-    .join('')
-    .toUpperCase();
-}
 
 function sizeClasses(size: ActivityFlagIconSize) {
   if (size === 'compact') {
@@ -83,7 +75,7 @@ export function ActivityFlagIcon({
     <span className={iconContainerClassName}>
       <Avatar size="sm" className={sizes.avatarClassName}>
         <AvatarFallback className={sizes.initials}>
-          {getAssigneeInitials(assigneeName)}
+          {getInitials(assigneeName)}
         </AvatarFallback>
       </Avatar>
       <Flag

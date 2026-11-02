@@ -155,7 +155,9 @@ jobs:
           fi
 
           # ── Resolve image tag ──────────────────────────────────────────────
-          # Priority: explicit input → APP_VERSION variable → short commit SHA.
+          # Standard deploys must use a versioned tag or an explicit rollback tag.
+          # A short SHA fallback creates orphaned Artifactory images that do not
+          # correspond to the deployed version and leads to tag churn in the repo.
           INPUT_TAG="${{ inputs.image_tag }}"
           APP_VER="${{ vars.APP_VERSION }}"
           if [[ -n "$INPUT_TAG" ]]; then
@@ -163,7 +165,8 @@ jobs:
           elif [[ -n "$APP_VER" ]]; then
             IMAGE_TAG="$APP_VER"
           else
-            IMAGE_TAG="${GITHUB_SHA::7}"
+            echo "::error::No image tag was provided and vars.APP_VERSION is empty. Set APP_VERSION or pass image_tag for this deployment."
+            exit 1
           fi
 
           # ── Resolve ArgoCD application name ───────────────────────────────

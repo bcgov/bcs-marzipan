@@ -39,6 +39,14 @@ describe('LookupsService category team scope', () => {
   });
 
   it('createCategory syncs team associations for team visibility', async () => {
+    mockDatabaseService.db.select.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+
     const categoryReturning = vi
       .fn()
       .mockResolvedValue([{ id: 42, name: 'cat', visibility: 'team' }]);

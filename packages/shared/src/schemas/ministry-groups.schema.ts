@@ -41,9 +41,14 @@ export const ministryGroupResponseSchema = z.object({
 
 export type MinistryGroupResponse = z.infer<typeof ministryGroupResponseSchema>;
 
+const optionalCreateSortOrderSchema = z.preprocess(
+  (v) => (v === '' || v == null ? undefined : v),
+  z.number().int().optional()
+);
+
 export const createMinistryGroupRequestSchema = z.object({
   name: z.string().min(1).max(200),
-  sortOrder: z.number().int(),
+  sortOrder: optionalCreateSortOrderSchema,
 });
 
 export type CreateMinistryGroupRequest = z.infer<

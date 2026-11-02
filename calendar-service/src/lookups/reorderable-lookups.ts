@@ -11,6 +11,11 @@ import {
   translatedLanguages,
   venuePresets,
 } from '@corpcal/database/schema';
+import {
+  isReorderableLookupKey,
+  REORDERABLE_LOOKUP_KEYS,
+  type ReorderableLookupKey,
+} from '@corpcal/shared/schemas';
 
 /** Lookup tables whose `sortOrder` admins can set; keys match the `/lookups/<key>` URL segment. */
 // Every table here has id, sortOrder, lastUpdatedBy and lastUpdatedDateTime; typed as one for a shared update.
@@ -26,10 +31,12 @@ export const REORDERABLE_LOOKUP_TABLES = {
   themes,
   'translation-languages': translatedLanguages,
   'venue-presets': venuePresets,
-} as unknown as Record<string, typeof cities>;
+} as unknown as Record<ReorderableLookupKey, typeof cities>;
 
-export const REORDERABLE_LOOKUPS = Object.keys(REORDERABLE_LOOKUP_TABLES);
+export const REORDERABLE_LOOKUPS = [...REORDERABLE_LOOKUP_KEYS];
 
-export function isReorderableLookup(entity: string): boolean {
-  return Object.hasOwn(REORDERABLE_LOOKUP_TABLES, entity);
+export function isReorderableLookup(
+  entity: string
+): entity is ReorderableLookupKey {
+  return isReorderableLookupKey(entity);
 }

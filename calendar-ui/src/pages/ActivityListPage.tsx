@@ -287,7 +287,7 @@ export const ActivityListPage = () => {
                 />
               )}
             </TabsTrigger>
-            <TabsTrigger value="assigned-to-me">Assigned to me</TabsTrigger>
+            <TabsTrigger value="assigned-to-me">Flagged for me</TabsTrigger>
             <TabsTrigger value="favourites">My watchlist</TabsTrigger>
           </TabsList>
         </div>

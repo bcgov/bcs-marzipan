@@ -10,9 +10,16 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { PERMISSIONS, SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 
@@ -167,13 +174,20 @@ export class LocksController {
   }
 
   @Post('heartbeat/:lockId')
-  @ApiOperation({ summary: 'Extend idle deadline while holding a lock' })
+  @ApiOperation({
+    summary:
+      'Extend idle deadline on user activity; with keepAlive=true only renews the connection lease',
+  })
   @ApiParam({ name: 'lockId', type: Number })
+  @ApiQuery({ name: 'keepAlive', required: false, type: Boolean })
   async heartbeat(
     @Param('lockId', ParseIntPipe) lockId: number,
-    @CurrentUser() user: AuthUser
+    @CurrentUser() user: AuthUser,
+    @Query('keepAlive') keepAlive?: string
   ) {
-    return this.locksService.heartbeatLock(lockId, user.id);
+    return this.locksService.heartbeatLock(lockId, user.id, {
+      keepAliveOnly: keepAlive === 'true',
+    });
   }
 
   @Get('idle-timeout-config')

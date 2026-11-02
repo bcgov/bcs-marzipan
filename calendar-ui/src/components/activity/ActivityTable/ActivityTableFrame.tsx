@@ -56,6 +56,8 @@ export interface ActivityTableFrameProps {
   core: ActivityTableCore;
   /** The grid's table element; rendered only when there are rows to show. */
   children: ReactNode;
+  /** Optional column visibility control shown on the count row. */
+  columnsMenu?: ReactNode;
 }
 
 /**
@@ -66,6 +68,7 @@ export interface ActivityTableFrameProps {
 export function ActivityTableFrame({
   core,
   children,
+  columnsMenu,
 }: ActivityTableFrameProps) {
   const {
     canBulkSelect,
@@ -291,6 +294,7 @@ export function ActivityTableFrame({
       showCount={bulkSelectionLeading == null}
       leading={bulkSelectionLeading}
       filters={booleanFilters}
+      actions={columnsMenu}
     />
   );
 

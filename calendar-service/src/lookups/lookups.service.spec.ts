@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
@@ -61,6 +62,70 @@ describe('LookupsService', () => {
 
     service = module.get<LookupsService>(LookupsService);
     vi.clearAllMocks();
+    mockDatabaseService.db.insert = vi.fn().mockReturnThis();
+    mockDatabaseService.db.values = vi.fn().mockResolvedValue(undefined);
+  });
+
+  it('rejects lookup names that already exist, ignoring case and whitespace', async () => {
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValue(createChain([{ id: 42 }], 'limit'));
+
+    await expect(
+      service.createCity({ name: '  victoria ', sortOrder: 0 }, 99)
+    ).rejects.toThrow(ConflictException);
+
+    expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
+  });
+
+  it('rejects renaming a lookup to another row name', async () => {
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValue(createChain([{ id: 42 }], 'limit'));
+
+    await expect(
+      service.updateTheme(13, { name: 'Operations' }, 99)
+    ).rejects.toThrow(ConflictException);
+
+    expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+  });
+
+  it('trims tabs and newlines before storing and checking lookup names', async () => {
+    const returning = vi.fn().mockResolvedValue([{ id: 23, name: 'Victoria' }]);
+    const values = vi.fn().mockReturnValue({ returning });
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValueOnce(createChain([], 'limit'))
+      .mockReturnValueOnce(createChain([{ id: 23 }], 'limit'));
+    mockDatabaseService.db.insert = vi.fn().mockReturnValue({ values });
+
+    await service.createCity({ name: '\tVictoria\t', sortOrder: 0 }, 99);
+
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Victoria' })
+    );
+    await expect(
+      service.createCity({ name: 'Victoria', sortOrder: 0 }, 99)
+    ).rejects.toThrow(ConflictException);
+    expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it('translates a database unique violation into a lookup conflict', async () => {
+    const returning = vi.fn().mockRejectedValue(
+      Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint_name: 'cities_normalized_name_unique',
+      })
+    );
+    const values = vi.fn().mockReturnValue({ returning });
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValue(createChain([], 'limit'));
+    mockDatabaseService.db.insert = vi.fn().mockReturnValue({ values });
+
+    await expect(
+      service.createCity({ name: 'Victoria', sortOrder: 0 }, 99)
+    ).rejects.toThrow(ConflictException);
   });
 
   it('inserts an audit row when toggling permission visibility', async () => {
@@ -113,33 +178,36 @@ describe('LookupsService', () => {
   });
 
   it('returns government representatives in admin sortOrder', async () => {
-    mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
-      createChain(
-        [
-          {
-            id: 2,
-            name: 'Niki Sharma',
-            displayName: 'Attorney General Niki Sharma',
-            title: 'Attorney General and Deputy Premier',
-            ministryId: 3,
-            representativeType: 'minister',
-            sortOrder: 1,
-            isActive: true,
-          },
-          {
-            id: 1,
-            name: 'Lana Popham',
-            displayName: 'Minister Lana Popham',
-            title: 'Minister of Agriculture and Food',
-            ministryId: 2,
-            representativeType: 'minister',
-            sortOrder: 2,
-            isActive: true,
-          },
-        ],
-        'orderBy'
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValueOnce(
+        createChain(
+          [
+            {
+              id: 2,
+              name: 'Niki Sharma',
+              displayName: 'Attorney General Niki Sharma',
+              title: 'Attorney General and Deputy Premier',
+              ministryId: 3,
+              representativeType: 'minister',
+              sortOrder: 1,
+              isActive: true,
+            },
+            {
+              id: 1,
+              name: 'Lana Popham',
+              displayName: 'Minister Lana Popham',
+              title: 'Minister of Agriculture and Food',
+              ministryId: 2,
+              representativeType: 'minister',
+              sortOrder: 2,
+              isActive: true,
+            },
+          ],
+          'orderBy'
+        )
       )
-    );
+      .mockReturnValueOnce(createChain([{ sortMode: 'manual' }], 'limit'));
 
     const result = await service.getGovernmentRepresentatives();
 
@@ -192,13 +260,29 @@ describe('LookupsService', () => {
   describe('reorderLookup', () => {
     const dialect = new PgDialect();
 
+    const mockSortMode = (sortMode: 'manual' | 'alphabetical') => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValue(createChain([{ sortMode }], 'limit'));
+    };
+
     const mockUpdate = (where: ReturnType<typeof vi.fn>) => {
       const set = vi.fn().mockReturnValue({ where });
       mockDatabaseService.db.update = vi.fn().mockReturnValue({ set });
       return set;
     };
 
+    it('rejects reorder when sort mode is alphabetical', async () => {
+      mockSortMode('alphabetical');
+
+      await expect(service.reorderLookup('themes', [1, 2], 7)).rejects.toThrow(
+        ConflictException
+      );
+      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
+    });
+
     it('assigns 1..n positions in a single UPDATE limited to the given ids', async () => {
+      mockSortMode('manual');
       const where = vi.fn().mockResolvedValue(undefined);
       const set = mockUpdate(where);
 
@@ -224,6 +308,7 @@ describe('LookupsService', () => {
     });
 
     it('propagates database failures', async () => {
+      mockSortMode('manual');
       mockUpdate(vi.fn().mockRejectedValue(new Error('deadlock detected')));
 
       await expect(service.reorderLookup('cities', [1, 2], 7)).rejects.toThrow(

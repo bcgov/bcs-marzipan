@@ -68,6 +68,10 @@ import {
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
+import {
+  optionItemsEqual,
+  uniqueOptionItems,
+} from '@/lib/combobox-option-utils';
 import { FORM_FIELD_LABEL_HIGHLIGHT_CLASS } from '@/lib/form-field-highlight';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { cn } from '@/lib/utils';
@@ -572,15 +576,17 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   value={selectedOptions}
                   onValueChange={(selected: OptionItem[]) => {
                     setRepresentativeSearch('');
+                    const deduped = uniqueOptionItems(selected);
                     setActivityFormFieldValue(
                       form,
                       field.name,
-                      selected.map((o) => ({
+                      deduped.map((o) => ({
                         representativeId: parseInt(o.value, 10),
                       }))
                     );
                   }}
                   itemToStringValue={(o: OptionItem) => o.label}
+                  isItemEqualToValue={optionItemsEqual}
                   readOnly={readOnly}
                 >
                   <ComboboxChips

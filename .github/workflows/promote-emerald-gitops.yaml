@@ -15,7 +15,7 @@ on:
           - test
           - prod
       image_tag:
-        description: Image tag to promote (defaults to APP_VERSION variable, else short SHA)
+        description: Image tag to promote; requires either APP_VERSION or an explicit image_tag
         required: false
         type: string
   workflow_call:
@@ -25,7 +25,7 @@ on:
         required: true
         type: string
       image_tag:
-        description: Image tag to promote (defaults to APP_VERSION variable, else short SHA)
+        description: Image tag to promote; requires either APP_VERSION or an explicit image_tag
         required: false
         type: string
 
@@ -68,7 +68,8 @@ jobs:
           elif [[ -n "${APP_VERSION}" ]]; then
             IMAGE_TAG="${APP_VERSION}"
           else
-            IMAGE_TAG="${GITHUB_SHA::7}"
+            echo "::error::No image tag was provided and vars.APP_VERSION is empty. Set APP_VERSION or pass image_tag for all Emerald promotions."
+            exit 1
           fi
 
           case "${{ inputs.target_environment }}" in

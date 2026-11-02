@@ -11,6 +11,10 @@ describe('staff-name-sort', () => {
     expect(getFirstNameSortLabel('Smith, Jane')).toBe('Jane Smith');
   });
 
+  it('strips ministry tags when building the first-name sort label', () => {
+    expect(getFirstNameSortLabel('Smith, Jane CITZ:EX')).toBe('Jane Smith');
+  });
+
   it('sorts staff names by first-name label and falls back to id', () => {
     const sorted = sortByStaffName(
       [

@@ -255,8 +255,8 @@ export function ActivityFlagPopover({
     if (!isFlagged || !iconFlag) return null;
     return (
       <span
-        title={`Assigned to ${flaggedLabel}`}
-        aria-label={`Assigned to ${flaggedLabel}`}
+        title={`Flagged for ${flaggedLabel}`}
+        aria-label={`Flagged for ${flaggedLabel}`}
       >
         <ActivityFlagIcon
           assigneeName={iconFlag.assigneeName}
@@ -275,11 +275,9 @@ export function ActivityFlagPopover({
           variant="ghost"
           size={triggerClassName ? 'icon-xs' : triggerContent ? 'sm' : 'icon'}
           aria-label={
-            isFlagged
-              ? 'Assigned — click to edit assignments'
-              : 'Assign activity'
+            isFlagged ? 'Flagged — click to edit assignments' : 'Flag activity'
           }
-          title={isFlagged ? `Assigned to ${flaggedLabel}` : 'Assign activity'}
+          title={isFlagged ? `Flagged for ${flaggedLabel}` : 'Flag activity'}
           disabled={isPending || !primaryTeamId}
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
@@ -312,7 +310,7 @@ export function ActivityFlagPopover({
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-muted-foreground px-3 pt-3 pb-1 text-[12px] font-medium tracking-wide uppercase">
-          Assign activity
+          Flag activity
         </p>
         {loadingMembers ? (
           <div className="text-muted-foreground px-3 py-4 text-center text-sm">
