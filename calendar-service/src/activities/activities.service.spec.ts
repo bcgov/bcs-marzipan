@@ -74,8 +74,10 @@ function isSchedulingStatusLookupSelect(selectArg: unknown): boolean {
 type DbSelectMock = Mock<(...args: unknown[]) => unknown>;
 
 /** Ensures `getSchedulingLookupResolvers` gets row arrays from `.from()`. */
-function createSelectMock(impl: (...args: any[]) => unknown): DbSelectMock {
-  return vi.fn((...args: any[]) => {
+function createSelectMock<A extends unknown[]>(
+  impl: (...args: A) => unknown
+): DbSelectMock {
+  return vi.fn((...args: A) => {
     if (args.length > 0 && isSchedulingStatusLookupSelect(args[0])) {
       return createSchedulingStatusLookupSelectChain();
     }
