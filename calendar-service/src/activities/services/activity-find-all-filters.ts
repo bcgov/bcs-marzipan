@@ -32,10 +32,6 @@ import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
 import type { DatabaseService } from '../../database/database.service';
 import type { DataScope } from '../../policy/dto/user-context.dto';
 
-function lowerTrimMatch(column: unknown, value: string): SQL {
-  return sql`lower(trim(${column})) = ${value.toLowerCase().trim()}`;
-}
-
 function buildConfirmedStatusMatch(
   db: DatabaseService['db'],
   statusIdColumn:

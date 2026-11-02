@@ -398,6 +398,7 @@ const FIELDS_TO_COMPARE = [
   'categoryIds',
   'tagIds',
   'commsMaterialIds',
+  'releaseTimeOffsetMinutes',
   'translationLanguageIds',
   'sharedWithTeamIds',
   'venueAddress',
