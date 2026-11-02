@@ -11,6 +11,7 @@ import {
   type ActivityFormData,
   type CreateActivityRequest,
 } from '@corpcal/shared/schemas';
+import { buildCommsMaterialReleaseFlagsById } from '@corpcal/shared/utils';
 import {
   ActivityFormBody,
   ActivityFormMissingFieldsHint,
@@ -125,6 +126,16 @@ export const CreateActivityForm: FC = () => {
       resolveTranslationRequiredStatusId(lookups.translationRequiredStatuses),
     [lookups.translationRequiredStatuses]
   );
+  const commsMaterialReleaseFlagsById = useMemo(
+    () =>
+      buildCommsMaterialReleaseFlagsById(
+        lookups.commsMaterials.map((m) => ({
+          id: m.id,
+          releaseType: m.releaseType ?? null,
+        }))
+      ),
+    [lookups.commsMaterials]
+  );
 
   useEffect(() => {
     if (!isBlockedByRecurringLockout) {
@@ -157,6 +168,7 @@ export const CreateActivityForm: FC = () => {
       const submitData = buildPayloadForCreate(validatedData, formValues, {
         markAsReviewed: canReviewActivities ? markAsReviewed : undefined,
         requiredTranslationStatusId,
+        commsMaterialReleaseFlagsById,
       });
       const payload = {
         ...submitData,

@@ -41,6 +41,7 @@ import {
   MinistriesAdmin,
   MinistryGroupsAdmin,
   PermissionsVisibilityAdminSection,
+  ReleaseTypesAdmin,
   TagsAdmin,
   ThemesAdmin,
   TranslationLanguagesAdmin,
@@ -71,6 +72,12 @@ export function Settings() {
   const isSystemAdmin = user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
   const canManageRecurringLockout = Boolean(
     user?.permissions?.includes(PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT)
+  );
+  const canManageCommsMaterials = Boolean(
+    user?.permissions?.includes(PERMISSIONS.LOOKUPS.MANAGE_COMMS_MATERIALS)
+  );
+  const canManageReleaseTypes = Boolean(
+    user?.permissions?.includes(PERMISSIONS.LOOKUPS.MANAGE_RELEASE_TYPES)
   );
 
   const sections = [
@@ -141,9 +148,16 @@ export function Settings() {
     { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
     { id: 'cities' as Section, label: 'Cities', icon: MapPin },
     {
+      id: 'release-types' as Section,
+      label: 'Release types',
+      icon: Share2,
+      show: canManageReleaseTypes,
+    },
+    {
       id: 'comms' as Section,
       label: 'Communications materials',
       icon: FileText,
+      show: canManageCommsMaterials,
     },
     { id: 'tags' as Section, label: 'Tags', icon: Tag },
     { id: 'statuses' as Section, label: 'Activity statuses', icon: Activity },
@@ -406,6 +420,10 @@ function SettingsPageContent({
 
           <div id="section-cities">
             <CitiesAdmin />
+          </div>
+
+          <div id="section-release-types">
+            <ReleaseTypesAdmin />
           </div>
 
           <div id="section-comms">

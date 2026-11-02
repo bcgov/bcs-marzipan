@@ -22,7 +22,9 @@ describe('Combobox invalid styling', () => {
         items={teamOptions}
         value={null}
         onValueChange={() => {}}
-        itemToStringValue={(option) => option.label}
+        itemToStringValue={(option: (typeof teamOptions)[number] | null) =>
+          option?.label ?? ''
+        }
         aria-invalid={true}
       >
         <ComboboxInput placeholder="Lead team" />

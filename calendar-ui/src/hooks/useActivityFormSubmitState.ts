@@ -17,23 +17,23 @@ import {
 
 const ACTIVITY_FORM_FIELD_ORDER = getActivityFormSectionFieldKeys();
 
-type ActivityFormValidationSchema<TFieldValues extends FieldValues> = {
+type ActivityFormValidationSchema = {
   safeParse: (data: unknown) =>
-    | { success: true; data: TFieldValues }
+    | { success: true; data: unknown }
     | {
         success: false;
         error: Parameters<typeof getMissingRequiredFieldItemsFromZodError>[0];
       };
 };
 
-type UseActivityFormSubmitStateOptions<TFieldValues extends FieldValues> = {
+type UseActivityFormSubmitStateOptions = {
   getFieldLabel?: (fieldName: string) => string;
   /**
    * When provided, validity and missing-field UI derive from live safeParse of
    * watched values so the sticky bar updates as the user edits (not only after
    * RHF async validation settles).
    */
-  schema?: ActivityFormValidationSchema<TFieldValues>;
+  schema?: ActivityFormValidationSchema;
 };
 
 export type ActivityFormSubmitState = {
@@ -49,7 +49,7 @@ export type ActivityFormSubmitState = {
  */
 export function useActivityFormSubmitState<TFieldValues extends FieldValues>(
   form: UseFormReturn<TFieldValues>,
-  options?: UseActivityFormSubmitStateOptions<TFieldValues>
+  options?: UseActivityFormSubmitStateOptions
 ): ActivityFormSubmitState {
   // useWatch subscribes to edits; getValues() reads the latest store on each render.
   // Do not memoize getValues() on watchedValues — RHF may reuse the watch object reference.

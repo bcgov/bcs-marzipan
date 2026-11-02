@@ -72,6 +72,18 @@ INSERT INTO team_categories (category_id, team_id, is_active) VALUES
 ON CONFLICT (category_id, team_id) DO NOTHING;
 
 -- ----------------------------------------------------------------------------
+-- TEAM_COMMS_MATERIALS
+-- Links team-scoped comms materials (comms_materials.visibility = team) to teams.
+-- Requires comms materials config (0001). IGRS team id=35.
+-- ----------------------------------------------------------------------------
+
+INSERT INTO team_comms_materials (comms_material_id, team_id, is_active) VALUES
+  (21, 35, true),
+  (22, 35, true),
+  (23, 35, true)
+ON CONFLICT (comms_material_id, team_id) DO NOTHING;
+
+-- ----------------------------------------------------------------------------
 -- TEAM MINISTRY (teams.ministry_id)
 -- Ministry Comms (8-32): PREM=1, AF=2, ... WLRS=25 (ministry id matches org id 1-25).
 -- Crown: BC Wildfire->FOR(11), BC Coroners->PSSG(21), EAO->EP(9).

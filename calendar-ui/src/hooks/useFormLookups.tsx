@@ -68,7 +68,18 @@ export interface FormLookupData {
   activityStatuses: Array<{ id: number; name: string; displayName?: string }>;
 
   // Comms Materials - for Badge components
-  commsMaterials: Array<{ id: number; name: string; displayName?: string }>;
+  commsMaterials: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+    visibility?: string;
+    teamIds?: number[];
+    releaseType?: {
+      audience: 'media' | 'public';
+      allowsTranslation: boolean;
+      requiresNewsReleaseDetails: boolean;
+    } | null;
+  }>;
 
   // Translation Languages - for Badge components (shortcode is an internal language code when set)
   translationLanguages: Array<{
@@ -261,6 +272,9 @@ export function useFormLookups(): FormLookupData {
         id: item.id,
         name: item.name || item.label,
         displayName: item.displayName || item.label,
+        visibility: item.visibility,
+        teamIds: item.teamIds,
+        releaseType: item.releaseType ?? null,
       })) || [];
 
     // Transform translation languages for Badge components

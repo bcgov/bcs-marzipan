@@ -3,6 +3,7 @@ export const REORDERABLE_LOOKUP_KEYS = [
   'categories',
   'cities',
   'comms-materials',
+  'release-types',
   'activity-statuses',
   'government-representatives',
   'ministries',

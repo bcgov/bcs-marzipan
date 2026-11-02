@@ -182,6 +182,8 @@ export function ActivityFormBody({
 
               <ActivityCommsSection
                 commsMaterialOptions={lookups.commsMaterials}
+                dateStatuses={lookups.dateStatuses}
+                timeStatuses={lookups.timeStatuses}
                 newsReleaseDistributionOptions={
                   lookups.newsReleaseDistributions
                 }
@@ -190,6 +192,8 @@ export function ActivityFormBody({
                   lookups.translationRequiredStatuses
                 }
                 translationLanguageOptions={lookups.translationLanguages}
+                userTeamIds={user?.teamIds ?? []}
+                hasCreateAny={hasCreateAny}
               />
 
               <ActivityEventSection

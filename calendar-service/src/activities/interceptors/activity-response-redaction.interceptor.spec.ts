@@ -61,7 +61,8 @@ describe('ActivityResponseRedactionInterceptor', () => {
 
   it('redacts a single ActivityResponse when user lacks view grants', async () => {
     const activity = createMockActivityResponse({
-      notes: 'secret',
+      notes: 'general notes',
+      internalNotes: 'secret',
       lookAheadStatus: 'new',
       lookAheadSection: 'events',
     });
@@ -69,38 +70,43 @@ describe('ActivityResponseRedactionInterceptor', () => {
     const handler = createHandler({ success: true, data: activity });
 
     const out = (await firstValueFrom(interceptor.intercept(ctx, handler))) as {
-      data: { notes?: string; lookAheadStatus?: string };
+      data: {
+        notes?: string;
+        internalNotes?: string;
+        lookAheadStatus?: string;
+      };
     };
 
-    expect(out.data.notes).toBeUndefined();
+    expect(out.data.notes).toBe('general notes');
+    expect(out.data.internalNotes).toBeUndefined();
     expect(out.data.lookAheadStatus).toBeUndefined();
   });
 
   it('does not strip fields when user has view grants', async () => {
-    const activity = createMockActivityResponse({ notes: 'keep' });
+    const activity = createMockActivityResponse({ internalNotes: 'keep' });
     const ctx = createContext(editorWithNotesLookAhead);
     const handler = createHandler({ success: true, data: activity });
 
     const out = (await firstValueFrom(interceptor.intercept(ctx, handler))) as {
-      data: { notes: string };
+      data: { internalNotes: string };
     };
 
-    expect(out.data.notes).toBe('keep');
+    expect(out.data.internalNotes).toBe('keep');
   });
 
   it('redacts each element in an ActivityResponse array', async () => {
-    const a = createMockActivityResponse({ id: 1, notes: 'a' });
-    const b = createMockActivityResponse({ id: 2, notes: 'b' });
+    const a = createMockActivityResponse({ id: 1, internalNotes: 'a' });
+    const b = createMockActivityResponse({ id: 2, internalNotes: 'b' });
     const ctx = createContext(viewerNoGrants);
     const handler = createHandler({ success: true, data: [a, b] });
 
     const out = (await firstValueFrom(interceptor.intercept(ctx, handler))) as {
-      data: { notes?: string }[];
+      data: { internalNotes?: string }[];
     };
 
     const data = out.data;
-    expect(data[0].notes).toBeUndefined();
-    expect(data[1].notes).toBeUndefined();
+    expect(data[0].internalNotes).toBeUndefined();
+    expect(data[1].internalNotes).toBeUndefined();
   });
 
   it('passes through category list payloads', async () => {
@@ -147,14 +153,14 @@ describe('ActivityResponseRedactionInterceptor', () => {
   });
 
   it('passes through when no user is present', async () => {
-    const activity = createMockActivityResponse({ notes: 'secret' });
+    const activity = createMockActivityResponse({ internalNotes: 'secret' });
     const ctx = createContext(undefined);
     const handler = createHandler({ success: true, data: activity });
 
     const out = (await firstValueFrom(interceptor.intercept(ctx, handler))) as {
-      data: { notes: string };
+      data: { internalNotes: string };
     };
-    expect(out.data.notes).toBe('secret');
+    expect(out.data.internalNotes).toBe('secret');
   });
 
   it('does not treat empty data array as activity list', async () => {

@@ -247,7 +247,7 @@ describe('ActivityHistoryService', () => {
           actionType: 'updated',
           changes: [
             { field: 'title', oldValue: 'A', newValue: 'B' },
-            { field: 'notes', oldValue: 'secret', newValue: 'updated' },
+            { field: 'internalNotes', oldValue: 'secret', newValue: 'updated' },
           ],
           notes: null,
           timestamp: new Date('2026-01-01T12:00:00.000Z'),
@@ -762,7 +762,11 @@ describe('ActivityHistoryService', () => {
           sampleRow({
             id: 1,
             changes: [
-              { field: 'notes', oldValue: 'secret', newValue: 'updated' },
+              {
+                field: 'internalNotes',
+                oldValue: 'secret',
+                newValue: 'updated',
+              },
             ],
           }),
           sampleRow({
@@ -795,7 +799,11 @@ describe('ActivityHistoryService', () => {
           sampleRow({
             changes: [
               { field: 'title', oldValue: 'A', newValue: 'B' },
-              { field: 'notes', oldValue: 'secret', newValue: 'updated' },
+              {
+                field: 'internalNotes',
+                oldValue: 'secret',
+                newValue: 'updated',
+              },
             ],
           }),
         ],

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { REPRESENTATIVE_TYPE, VISIBILITY } from '../constants/constants';
+import {
+  RELEASE_TYPE_AUDIENCE,
+  REPRESENTATIVE_TYPE,
+  VISIBILITY,
+} from '../constants/constants';
 import { venueAddressSchema } from './activity.schema';
 import {
   LOOKUP_SORT_MODES,
@@ -343,6 +347,42 @@ export const cityLookupItemSchema = lookupItemSchema.extend({
 });
 
 // ============================================
+// Release Types Schema
+// ============================================
+
+export const releaseTypeEmbeddedSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string(),
+  audience: z.enum(RELEASE_TYPE_AUDIENCE),
+  allowsTranslation: z.boolean(),
+  requiresNewsReleaseDetails: z.boolean(),
+});
+
+export const releaseTypeResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  displayName: z.string(),
+  sortOrder: z.number().int(),
+  audience: z.enum(RELEASE_TYPE_AUDIENCE),
+  allowsTranslation: z.boolean(),
+  requiresNewsReleaseDetails: z.boolean(),
+  isActive: z.boolean(),
+  description: z.string().nullable(),
+});
+
+export const releaseTypeLookupItemSchema = lookupItemSchema.extend({
+  name: z.string(),
+  displayName: z.string(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  audience: z.enum(RELEASE_TYPE_AUDIENCE),
+  allowsTranslation: z.boolean(),
+  requiresNewsReleaseDetails: z.boolean(),
+  description: z.string().nullable().optional(),
+});
+
+// ============================================
 // Comms Materials Schema
 // ============================================
 
@@ -357,11 +397,21 @@ export const commsMaterialsResponseSchema = z.object({
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   description: z.string().nullable(),
+  visibility: z.enum(VISIBILITY),
+  releaseTypeId: z.number().int().nullable(),
+  releaseType: releaseTypeEmbeddedSchema.nullable().optional(),
 });
 
 export const commsMaterialsLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string(),
+  sortOrder: z.number().int().optional(),
+  isActive: z.boolean().optional(),
+  visibility: z.enum(VISIBILITY).optional(),
+  teamNames: z.array(z.string()).optional(),
+  teamIds: z.array(z.number().int()).optional(),
+  releaseTypeId: z.number().int().nullable().optional(),
+  releaseType: releaseTypeEmbeddedSchema.nullable().optional(),
 });
 
 // ============================================
@@ -548,6 +598,9 @@ export type CommsMaterialsLookupItem = z.infer<
   typeof commsMaterialsLookupItemSchema
 >;
 
+export type ReleaseTypeResponse = z.infer<typeof releaseTypeResponseSchema>;
+export type ReleaseTypeLookupItem = z.infer<typeof releaseTypeLookupItemSchema>;
+
 export type TranslationLanguageResponse = z.infer<
   typeof translationLanguageResponseSchema
 >;
@@ -702,22 +755,44 @@ export const updateMinistryRequestSchema = z.object({
   ministryGroupId: z.number().int().nullable().optional(),
 });
 
-/**
- * Create Comms Material Request Schema
- */
-export const createCommsMaterialRequestSchema = z.object({
+const createCommsMaterialRequestBaseSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
   sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
   description: z.string().nullable().optional(),
+  visibility: z.enum(VISIBILITY).default('global').optional(),
+  teamIds: z.array(z.number().int()).optional(),
+  releaseTypeId: z.number().int().nullable().optional(),
 });
+
+/**
+ * Create Comms Material Request Schema
+ */
+export const createCommsMaterialRequestSchema = refineLookupTeamVisibility(
+  createCommsMaterialRequestBaseSchema
+);
 
 /**
  * Update Comms Material Request Schema
  */
-export const updateCommsMaterialRequestSchema =
-  createCommsMaterialRequestSchema.partial();
+export const updateCommsMaterialRequestSchema = refineLookupTeamVisibility(
+  createCommsMaterialRequestBaseSchema.partial()
+);
+
+export const createReleaseTypeRequestSchema = z.object({
+  name: z.string().min(1).max(255),
+  displayName: z.string().min(1).max(255),
+  sortOrder: optionalCreateSortOrderSchema,
+  isActive: z.boolean().default(true).optional(),
+  description: z.string().nullable().optional(),
+  audience: z.enum(RELEASE_TYPE_AUDIENCE),
+  allowsTranslation: z.boolean().default(false).optional(),
+  requiresNewsReleaseDetails: z.boolean().default(false).optional(),
+});
+
+export const updateReleaseTypeRequestSchema =
+  createReleaseTypeRequestSchema.partial();
 
 /**
  * Create Translation Language Request Schema
@@ -826,6 +901,12 @@ export type CreateCommsMaterialRequest = z.infer<
 >;
 export type UpdateCommsMaterialRequest = z.infer<
   typeof updateCommsMaterialRequestSchema
+>;
+export type CreateReleaseTypeRequest = z.infer<
+  typeof createReleaseTypeRequestSchema
+>;
+export type UpdateReleaseTypeRequest = z.infer<
+  typeof updateReleaseTypeRequestSchema
 >;
 export type CreateTranslationLanguageRequest = z.infer<
   typeof createTranslationLanguageRequestSchema

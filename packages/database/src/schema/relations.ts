@@ -464,6 +464,40 @@ export const teamTagsRelations = relations(teamTags, ({ one }) => ({
 }));
 
 /**
+ * TeamCommsMaterials junction - team-scoped comms materials (visibility = 'team').
+ */
+export const teamCommsMaterials = pgTable(
+  'team_comms_materials',
+  {
+    commsMaterialId: integer('comms_material_id')
+      .notNull()
+      .references(() => commsMaterials.id),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => teams.id),
+    isActive: boolean('is_active').notNull().default(true),
+    timestamp: timestamp('timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.commsMaterialId, table.teamId] })]
+);
+
+export const teamCommsMaterialsRelations = relations(
+  teamCommsMaterials,
+  ({ one }) => ({
+    commsMaterial: one(commsMaterials, {
+      fields: [teamCommsMaterials.commsMaterialId],
+      references: [commsMaterials.id],
+    }),
+    team: one(teams, {
+      fields: [teamCommsMaterials.teamId],
+      references: [teams.id],
+    }),
+  })
+);
+
+/**
  * ActivityTags junction table - Many-to-many relationship between Activities and Tags
  * Renamed from activityKeywords. This table links activities to tags.
  * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/ActivityKeywords.cs

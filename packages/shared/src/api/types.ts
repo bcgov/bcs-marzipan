@@ -115,6 +115,8 @@ export type {
   CityLookupItem,
   CommsMaterialsResponse,
   CommsMaterialsLookupItem,
+  ReleaseTypeResponse,
+  ReleaseTypeLookupItem,
   TranslationLanguageResponse,
   TranslationLanguageLookupItem,
   GovernmentRepresentativeResponse,
