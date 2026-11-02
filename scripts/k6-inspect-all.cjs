@@ -25,7 +25,10 @@ const targets = [
   },
   {
     script: 'performance_tests/browser/corpcal-mock-auth-flow.js',
-    env: { FRONTEND_URL: 'http://127.0.0.1:1', MOCK_LOGIN_USERNAME: 'thomas.garcia' },
+    env: {
+      FRONTEND_URL: 'http://127.0.0.1:1',
+      MOCK_LOGIN_USERNAME: 'thomas.garcia',
+    },
   },
 ];
 

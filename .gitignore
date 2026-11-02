@@ -20,6 +20,8 @@
 .tmp-vitest*
 !/openshift/build/
 !/openshift/build/**
+!/openshift/emerald/build/
+!/openshift/emerald/build/**
 
 # packages build output and dependencies
 /packages/*/dist/

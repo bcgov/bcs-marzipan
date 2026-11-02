@@ -37,9 +37,9 @@ export function normalizeReportSettings(
         typeof it.report.id === 'number' &&
         it.report.id);
     const omitted =
-      it && typeof (it as { omitted?: boolean }).omitted === 'boolean'
+      it && typeof it.omitted === 'boolean'
         ? (it as { omitted: boolean }).omitted
-        : !!(it as { omitted?: boolean })?.omitted;
+        : !!it?.omitted;
     if (typeof reportId === 'number') {
       normalized.push({ reportId, omitted });
     }

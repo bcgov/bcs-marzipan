@@ -4,10 +4,10 @@ import {
   formatExactDate,
   formatRelativeTime,
 } from '@/lib/datetime-utils';
+import { getInitials } from '@/lib/initials';
 import { cn } from '@/lib/utils';
 
 import type { ActivityTableRow } from '../activityTableRow';
-import { getInitialsFromName } from '../activityTableRowDisplay';
 
 /** Compact avatar for inline “updated by” / editor rows in Grid A status column. */
 const COMPACT_AVATAR_CLASS = 'size-[18px]';
@@ -34,7 +34,7 @@ function UserAvatar({
       <AvatarFallback
         className={compact ? COMPACT_AVATAR_FALLBACK_CLASS : undefined}
       >
-        {getInitialsFromName(userName)}
+        {getInitials(userName)}
       </AvatarFallback>
     </Avatar>
   );

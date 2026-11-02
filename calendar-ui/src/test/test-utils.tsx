@@ -1,6 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, type RenderOptions } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  type RenderOptions,
+} from '@testing-library/react';
 import {
   FormProvider,
   useForm,
@@ -74,6 +79,14 @@ export function renderWithProviders(
 
 export * from '@testing-library/react';
 export { renderWithProviders as render };
+
+/** Expands an {@link AdminSection} accordion so actions in the body are visible. */
+export function expandAdminSection(titlePattern: RegExp) {
+  const trigger = screen.getByRole('button', { name: titlePattern });
+  if (trigger.getAttribute('aria-expanded') !== 'true') {
+    fireEvent.click(trigger);
+  }
+}
 
 // Helper to fill form fields
 export function fillFormField(

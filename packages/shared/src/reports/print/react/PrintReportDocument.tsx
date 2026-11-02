@@ -4,12 +4,12 @@ import {
   effectiveReportFieldsIncludeEventLead,
   getEffectiveReportFields,
 } from '../../reportTypeConfig';
+import { buildPrintGroupedDayBlocks } from '../buildPrintGroupedDayBlocks';
 import {
   collectPrintReportSections,
   printReportHasAnyActivities,
   type PrintReportSortedSection,
 } from '../collectPrintReportSections';
-import { buildPrintGroupedDayBlocks } from '../buildPrintGroupedDayBlocks';
 import {
   VARIANT_TO_FIRST_PAGE_TITLE,
   VARIANT_TO_TEMPLATE_SLUG,

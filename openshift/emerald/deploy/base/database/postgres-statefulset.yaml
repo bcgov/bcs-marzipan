@@ -9,6 +9,7 @@ metadata:
     app.kubernetes.io/part-of: corporate-calendar
     app.kubernetes.io/version: '16'
     app.kubernetes.io/managed-by: github-actions
+    DataClass: Low
 spec:
   serviceName: corpcal-postgres
   replicas: 1
@@ -20,6 +21,7 @@ spec:
     metadata:
       labels:
         app: corpcal-postgres
+        DataClass: Low
     spec:
       # OpenShift restricted SCC safe
       securityContext: {}

@@ -223,6 +223,11 @@ function createFallbackApiError(detail: string): ApiError {
  * Create ApiError from axios error or other error types
  */
 export function createApiError(error: unknown): ApiError | NetworkError {
+  // Axios interceptors may have already normalized the failure.
+  if (error instanceof ApiError || error instanceof NetworkError) {
+    return error;
+  }
+
   // Check for network error (no response)
   if (isRecord(error) && hasKeys(error, 'code')) {
     const code = error.code;

@@ -8,7 +8,7 @@ const bcdsPath = resolve(packageRoot, 'styles/bcds-primitives.css');
 const corpcalPath = resolve(packageRoot, 'styles/corpcal-tokens.css');
 const outputPath = resolve(
   packageRoot,
-  'src/styles/corpcalTokensEmbedded.generated.ts',
+  'src/styles/corpcalTokensEmbedded.generated.ts'
 );
 
 // BCDS first so --bcsds-* are defined before corpcal references (standalone PDF)

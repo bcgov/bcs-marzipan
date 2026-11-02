@@ -36,6 +36,10 @@ import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { TimePicker } from '@/components/ui/time-picker';
 import {
+  isActivityConfirmBlocked,
+  type ActivityConfirmBlockedNotice,
+} from '@/lib/activity-edit-session-messages';
+import {
   getPresetAnchorToday,
   parseIsoDateLocal,
   PRESETS_FUTURE_FROM_ANCHOR,
@@ -45,6 +49,10 @@ import {
 import { useAuth } from '../../../hooks/useAuth';
 import type { FormLookupData } from '../../../hooks/useFormLookups';
 import { ACTIVITY_FORM_SECTION_LABELS } from '../../../lib/activity-form-section-labels';
+import {
+  ActivityConfirmHeaderBlockedNotice,
+  ActivityConfirmPrimaryActionGroup,
+} from './ActivityConfirmSubmitBlockedNotice';
 
 const NOT_CONFIRMED_STATUS_NAME = 'not_confirmed';
 
@@ -102,6 +110,7 @@ export interface CloneActivityModalProps {
   /** When true, show "Mark as reviewed" (default checked), mirroring the create confirm flow. */
   showMarkAsReviewed?: boolean;
   onConfirm: (payload: CloneActivityRequest) => void;
+  confirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }
 
 export function CloneActivityModal({
@@ -113,6 +122,7 @@ export function CloneActivityModal({
   isSubmitting,
   showMarkAsReviewed = false,
   onConfirm,
+  confirmBlockedNotice = null,
 }: CloneActivityModalProps) {
   const { user } = useAuth();
 
@@ -240,7 +250,8 @@ export function CloneActivityModal({
     endTimeMinutes <= startTimeMinutes;
 
   const titleIsValid = title.trim().length > 0;
-  const disableConfirm = isSubmitting || !titleIsValid;
+  const sessionBlocked = isActivityConfirmBlocked(confirmBlockedNotice);
+  const disableConfirm = isSubmitting || !titleIsValid || sessionBlocked;
 
   const togglePath = (path: string) => {
     setIncludedPaths((prev) => {
@@ -288,6 +299,8 @@ export function CloneActivityModal({
             Review the title and schedule before confirming.
           </DialogDescription>
         </DialogHeader>
+
+        <ActivityConfirmHeaderBlockedNotice notice={confirmBlockedNotice} />
 
         <div className="max-h-[65vh] space-y-5 overflow-y-auto pr-1">
           <div className="space-y-2">
@@ -632,13 +645,15 @@ export function CloneActivityModal({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            onClick={handleConfirm}
-            disabled={disableConfirm}
-          >
-            {isSubmitting ? 'Cloning...' : 'Confirm'}
-          </Button>
+          <ActivityConfirmPrimaryActionGroup notice={confirmBlockedNotice}>
+            <Button
+              type="button"
+              onClick={handleConfirm}
+              disabled={disableConfirm}
+            >
+              {isSubmitting ? 'Cloning...' : 'Confirm'}
+            </Button>
+          </ActivityConfirmPrimaryActionGroup>
         </DialogFooter>
       </DialogContent>
     </Dialog>

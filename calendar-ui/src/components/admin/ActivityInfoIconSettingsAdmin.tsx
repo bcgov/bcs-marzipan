@@ -41,8 +41,6 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { showErrorToast, showSuccessToast } from '@/lib/error-toast';
 import type { OptionItem } from '@/schemas/types';
 
-const DESCRIPTION = `Choose which activity form fields show an information icon, then edit the text shown in the popover. Each message is limited to ${ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH} characters.`;
-
 type InfoIconFieldState = {
   selectedFieldKeys: ActivityInfoIconFieldKey[];
   textsByFieldKey: Record<string, string>;
@@ -172,9 +170,10 @@ export function ActivityInfoIconSettingsAdmin(): ReactElement | null {
   return (
     <AdminSection
       title="Activity info icons"
-      description={DESCRIPTION}
+      description={`Tooltip text on selected activity form fields (max ${ACTIVITY_INFO_ICON_TEXT_MAX_LENGTH} characters).`}
+      sectionId="activity-info-icons"
       isLoading={isLoading}
-      headerAction={
+      footerAction={
         <Button
           type="button"
           onClick={() =>

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { render, screen, waitFor } from '@/test/test-utils';
+import { expandAdminSection, render, screen, waitFor } from '@/test/test-utils';
 
 // Controlled mocks
 const mockFetchBannerSettings = vi.fn();
@@ -48,6 +48,7 @@ describe('BannerSettingsAdmin', () => {
       timeout: 20000,
     });
     expect(screen.getByText(/System banner/i)).toBeInTheDocument();
+    expandAdminSection(/System banner/i);
     expect(
       screen.getByRole('button', { name: /Save banner/i })
     ).toBeInTheDocument();

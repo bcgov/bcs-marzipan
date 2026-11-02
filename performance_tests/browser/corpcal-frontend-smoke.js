@@ -11,8 +11,8 @@
  *   FRONTEND_URL — base URL without trailing slash (default http://127.0.0.1:3000)
  *   K6_BROWSER_HEADLESS — default true via launcher (Chromium headless)
  */
-import { browser } from 'k6/browser';
 import { check } from 'k6';
+import { browser } from 'k6/browser';
 
 import {
   assertAppShellVisible,
@@ -55,15 +55,20 @@ export default async function () {
 
     const title = await page.title();
     check(title, {
-      'document title is non-empty': (t) => typeof t === 'string' && t.trim().length > 0,
+      'document title is non-empty': (t) =>
+        typeof t === 'string' && t.trim().length > 0,
       'document title mentions Corporate Calendar': (t) =>
         typeof t === 'string' && t.includes('Corporate Calendar'),
     });
 
     await waitForAppReady(page);
 
-    check(await assertAppShellVisible(page), { 'app shell container is visible': Boolean });
-    check(await assertRootHasChildren(page), { '#root has rendered children': Boolean });
+    check(await assertAppShellVisible(page), {
+      'app shell container is visible': Boolean,
+    });
+    check(await assertRootHasChildren(page), {
+      '#root has rendered children': Boolean,
+    });
     check(await assertNoGlobalErrorFallback(page), {
       'no global error boundary screen': Boolean,
     });

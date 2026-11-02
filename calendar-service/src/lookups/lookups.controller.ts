@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Res,
 } from '@nestjs/common';
@@ -23,7 +24,7 @@ import {
 import type { Response } from 'express';
 import { z } from 'zod';
 
-import { DYNAMIC_LOOKUP_CACHE_SECONDS, type AuthUser } from '@corpcal/shared';
+import { SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 import type {
   ActivityTeamSharingResponse,
   CategoryLookupItem,
@@ -46,11 +47,13 @@ import {
   createThemeRequestSchema,
   createTranslationLanguageRequestSchema,
   createVenuePresetRequestSchema,
+  reorderLookupRequestSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
   updateCityRequestSchema,
   updateCommsMaterialRequestSchema,
   updateGovernmentRepresentativeRequestSchema,
+  updateLookupSortModeRequestSchema,
   updateMinistryGroupRequestSchema,
   updateMinistryRequestSchema,
   updateTagRequestSchema,
@@ -82,6 +85,7 @@ import {
   MinistryGroupArrayResponseWrapperDto,
   MinistryGroupResponseWrapperDto,
   MinistryResponseWrapperDto,
+  ReorderLookupDto,
   TagResponseWrapperDto,
   ThemeResponseWrapperDto,
   TranslationLanguageResponseWrapperDto,
@@ -90,6 +94,7 @@ import {
   UpdateCityDto,
   UpdateCommsMaterialDto,
   UpdateGovernmentRepresentativeDto,
+  UpdateLookupSortModeDto,
   UpdateMinistryDto,
   UpdateMinistryGroupDto,
   UpdateTagDto,
@@ -107,6 +112,10 @@ import { RequirePermission } from '../policy/decorators/require-permission.decor
 import { TeamsService } from '../teams/teams.service';
 import { lookupGetCacheControl } from './cache-control';
 import { LookupsService, type VenuePresetAdminItem } from './lookups.service';
+import {
+  isReorderableLookup,
+  REORDERABLE_LOOKUPS,
+} from './reorderable-lookups';
 
 @ApiTags('lookups')
 @Controller('lookups')
@@ -181,9 +190,7 @@ export class LookupsController {
       includeAll === 'true' && user.permissions.includes('lookups.manage');
     res?.setHeader(
       'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
     );
     const data = await this.lookupsService.getCategories(shouldIncludeAll);
     return { success: true, data };
@@ -293,6 +300,75 @@ export class LookupsController {
     return { success: true, data };
   }
 
+  @ApiOperation({
+    summary: 'Get system roles available for permission editing',
+  })
+  @Get('roles/admin')
+  @Header('Cache-Control', 'no-store')
+  @RequirePermission('system.manage_permissions')
+  async getPermissionAdminRoles(
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    this.ensureSystemAdmin(user);
+    const data = await this.lookupsService.getPermissionAdminRoles();
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Get the full permission catalog for a system role',
+  })
+  @Get('roles/admin/:id/permissions')
+  @Header('Cache-Control', 'no-store')
+  @RequirePermission('system.manage_permissions')
+  async getAdminRolePermissions(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    this.ensureSystemAdmin(user);
+    const roleId = Number(id);
+    if (!Number.isInteger(roleId))
+      throw new NotFoundException('Role not found');
+    const data = await this.lookupsService.getAdminRolePermissions(roleId);
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Replace editable permission assignments for a system role',
+  })
+  @Put('roles/admin/:id/permissions')
+  @RequirePermission('system.manage_permissions')
+  async updateAdminRolePermissions(
+    @Param('id') id: string,
+    @Body(
+      new ZodValidationPipe(
+        z.object({
+          permissionIds: z.array(z.number().int().positive()).max(500),
+        })
+      )
+    )
+    body: { permissionIds: number[] },
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: any[] }> {
+    const roleId = Number(id);
+    if (!Number.isInteger(roleId))
+      throw new NotFoundException('Role not found');
+    this.ensureSystemAdmin(user);
+    if (
+      roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN &&
+      user.roleId !== SYSTEM_ROLE_IDS.SYSTEM_ADMIN
+    ) {
+      throw new ForbiddenException(
+        'Only System Admin role members can change System Admin permissions.'
+      );
+    }
+    const data = await this.lookupsService.updateAdminRolePermissions(
+      roleId,
+      body.permissionIds,
+      user.id
+    );
+    return { success: true, data };
+  }
+
   @ApiOperation({ summary: 'Get permissions for all roles' })
   @ApiResponse({ status: 200, description: 'Permissions map retrieved' })
   @Get('roles/permissions')
@@ -373,7 +449,7 @@ export class LookupsController {
       !user.permissions.includes('system.manage_permissions')
     ) {
       throw new ForbiddenException(
-        'Only System Admin users can manage permission visibility.'
+        'Only System Admin users can manage permissions.'
       );
     }
   }
@@ -500,9 +576,7 @@ export class LookupsController {
     // Non-admin path: short private cache to reduce server load.
     res?.setHeader(
       'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
     );
     const data = await this.lookupsService.getTags(shouldIncludeAll);
     return { success: true, data };
@@ -756,9 +830,7 @@ export class LookupsController {
       includeAll === 'true' && user.permissions.includes('lookups.manage');
     res?.setHeader(
       'Cache-Control',
-      shouldIncludeAll
-        ? 'no-store'
-        : `private, max-age=${DYNAMIC_LOOKUP_CACHE_SECONDS}`
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
     );
     const data =
       await this.lookupsService.getTranslationLanguages(shouldIncludeAll);
@@ -1005,6 +1077,68 @@ export class LookupsController {
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.createCity(body, user.id);
     return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get sort mode for reorderable lookup types' })
+  @ApiResponse({ status: 200, description: 'Sort mode per lookup type' })
+  @RequirePermission('lookups.manage')
+  @Get('sort-settings')
+  async getLookupSortSettings(): Promise<{
+    success: boolean;
+    data: Record<string, string>;
+  }> {
+    const data = await this.lookupsService.getLookupSortSettings();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Set published sort mode for a lookup type' })
+  @ApiResponse({ status: 200, description: 'Sort mode updated' })
+  @ApiParam({
+    name: 'entity',
+    description: `One of: ${REORDERABLE_LOOKUPS.join(', ')}`,
+  })
+  @ApiBody({ type: UpdateLookupSortModeDto })
+  @RequirePermission('lookups.manage')
+  @Patch(':entity/sort-mode')
+  async updateLookupSortMode(
+    @Param('entity') entity: string,
+    @Body(new ZodValidationPipe(updateLookupSortModeRequestSchema))
+    body: UpdateLookupSortModeDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean }> {
+    if (!isReorderableLookup(entity)) {
+      throw new NotFoundException(
+        `Lookup '${entity}' does not support sort mode`
+      );
+    }
+    await this.lookupsService.updateLookupSortMode(
+      entity,
+      body.sortMode,
+      user.id
+    );
+    return { success: true };
+  }
+
+  @ApiOperation({ summary: 'Set lookup display order' })
+  @ApiResponse({ status: 200, description: 'Order saved' })
+  @ApiParam({
+    name: 'entity',
+    description: `One of: ${REORDERABLE_LOOKUPS.join(', ')}`,
+  })
+  @ApiBody({ type: ReorderLookupDto })
+  @RequirePermission('lookups.manage')
+  @Put(':entity/order')
+  async reorderLookup(
+    @Param('entity') entity: string,
+    @Body(new ZodValidationPipe(reorderLookupRequestSchema))
+    body: ReorderLookupDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean }> {
+    if (!isReorderableLookup(entity)) {
+      throw new NotFoundException(`Lookup '${entity}' cannot be reordered`);
+    }
+    await this.lookupsService.reorderLookup(entity, body.ids, user.id);
+    return { success: true };
   }
 
   @ApiOperation({ summary: 'Update a city' })

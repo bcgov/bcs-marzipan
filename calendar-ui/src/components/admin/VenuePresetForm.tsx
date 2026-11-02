@@ -89,7 +89,6 @@ function serializeFormData(data: VenuePresetFormData): Record<string, unknown> {
     city: data.city ?? null,
     provinceOrState: data.provinceOrState ?? null,
     country: data.country ?? null,
-    sortOrder: data.sortOrder ?? 0,
     isActive: data.isActive ?? true,
     isPinned: data.isPinned ?? false,
     pinnedSortOrder: data.pinnedSortOrder ?? 0,
@@ -311,49 +310,26 @@ export function VenuePresetForm({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label
-            htmlFor="venue-preset-sort-order"
-            className="text-sm font-medium"
-          >
-            Sort order
-          </Label>
-          <Input
-            id="venue-preset-sort-order"
-            type="number"
-            value={formData.sortOrder ?? 0}
-            onChange={(e) =>
-              notifyChange({
-                ...formData,
-                sortOrder: parseInt(e.target.value, 10) || 0,
-              })
-            }
-            disabled={isSubmitting}
-            className="w-full"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label
-            htmlFor="venue-preset-pinned-sort-order"
-            className="text-sm font-medium"
-          >
-            Pinned sort order
-          </Label>
-          <Input
-            id="venue-preset-pinned-sort-order"
-            type="number"
-            value={formData.pinnedSortOrder ?? 0}
-            onChange={(e) =>
-              notifyChange({
-                ...formData,
-                pinnedSortOrder: parseInt(e.target.value, 10) || 0,
-              })
-            }
-            disabled={isSubmitting}
-            className="w-full"
-          />
-        </div>
+      <div className="space-y-2">
+        <Label
+          htmlFor="venue-preset-pinned-sort-order"
+          className="text-sm font-medium"
+        >
+          Pinned sort order
+        </Label>
+        <Input
+          id="venue-preset-pinned-sort-order"
+          type="number"
+          value={formData.pinnedSortOrder ?? 0}
+          onChange={(e) =>
+            notifyChange({
+              ...formData,
+              pinnedSortOrder: parseInt(e.target.value, 10) || 0,
+            })
+          }
+          disabled={isSubmitting}
+          className="w-full max-w-xs"
+        />
       </div>
 
       <div className="flex items-center gap-6">

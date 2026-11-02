@@ -53,7 +53,7 @@ export function getEmptyReviewBaseline(): ActivityFormData {
     eventPlanners: [],
     representatives: [],
     reportSettings: [],
-  } as ActivityFormData);
+  });
 }
 
 /**

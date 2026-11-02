@@ -6,7 +6,6 @@ metadata:
     app.kubernetes.io/name: corpcal
     app.kubernetes.io/component: ui
     app.kubernetes.io/part-of: corporate-calendar
-    app.kubernetes.io/version: ${APP_VERSION}
     app.kubernetes.io/managed-by: github-actions
 spec:
   selector:

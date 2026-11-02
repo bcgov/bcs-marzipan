@@ -1,33 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { pacificCalendarDateFromInstant } from '@corpcal/shared/datetime';
 import {
-  lookAheadDateRangeFromTomorrow,
-  type LookAheadDayCount,
+  DEFAULT_LOOK_AHEAD_QUICK_PICK,
+  lookAheadQuickPickFromRange,
+  lookAheadQuickPickRange,
+  pacificCalendarDateFromInstant,
+  type LookAheadQuickPick,
 } from '@corpcal/shared/reports/look-ahead';
 import { isDateRangeActive } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
 
-const DAY_COUNTS = [1, 7, 14] as const;
 const PACIFIC_DATE_CHECK_MS = 60_000;
 
-function dayRangePreset(dayCount: LookAheadDayCount, anchor: Date) {
-  return lookAheadDateRangeFromTomorrow(dayCount, anchor);
+function quickPickTabValue(pick: LookAheadQuickPick): string {
+  return pick === 'today' ? 'today' : String(pick);
 }
 
-function activeDayCountFromRange(
-  startDate: string,
-  endDate: string,
-  anchor: Date
-): LookAheadDayCount | null {
-  if (!startDate || !endDate) return null;
-  for (const count of DAY_COUNTS) {
-    const preset = dayRangePreset(count, anchor);
-    if (preset.start === startDate && preset.end === endDate) {
-      return count;
-    }
-  }
+function parseQuickPickTabValue(value: string): LookAheadQuickPick | null {
+  if (value === 'today') return 'today';
+  const parsed = Number.parseInt(value, 10);
+  if (parsed === 7 || parsed === 14) return parsed;
   return null;
 }
 
@@ -37,7 +30,8 @@ export interface LookAheadDayRangeTabsProps {
 }
 
 /**
- * Quick-pick day windows for Look Ahead and Exec reports (starting tomorrow, Pacific).
+ * Quick-pick day windows for Look Ahead and Exec: Today, +7 days, +14 days
+ * (Pacific; forward picks exclude today).
  */
 export function LookAheadDayRangeTabs({
   preferences,
@@ -59,9 +53,9 @@ export function LookAheadDayRangeTabs({
     return () => window.clearInterval(id);
   }, []);
 
-  const applyDayCount = useCallback(
-    (dayCount: LookAheadDayCount) => {
-      const preset = dayRangePreset(dayCount, anchor);
+  const applyQuickPick = useCallback(
+    (pick: LookAheadQuickPick) => {
+      const preset = lookAheadQuickPickRange(pick, anchor);
       setPreferences({
         filterState: {
           ...preferences.filterState,
@@ -84,38 +78,42 @@ export function LookAheadDayRangeTabs({
     if (prevPacificToday === pacificToday) return;
     if (!isDateRangeActive(dateRange)) return;
 
-    const matchedOnPreviousDay = activeDayCountFromRange(
+    const matchedOnPreviousDay = lookAheadQuickPickFromRange(
       dateRange.startDate,
       dateRange.endDate,
-      new Date(clockTick - PACIFIC_DATE_CHECK_MS)
+      prevPacificToday
     );
     if (matchedOnPreviousDay != null) {
-      applyDayCount(matchedOnPreviousDay);
+      applyQuickPick(matchedOnPreviousDay);
     }
-  }, [applyDayCount, clockTick, dateRange, pacificToday]);
+  }, [applyQuickPick, dateRange, pacificToday]);
 
-  const activeCount = useMemo(() => {
+  const activeQuickPick = useMemo(() => {
+    if (!pacificToday) return DEFAULT_LOOK_AHEAD_QUICK_PICK;
     return (
-      activeDayCountFromRange(dateRange.startDate, dateRange.endDate, anchor) ??
-      (isDateRangeActive(dateRange) ? null : 7)
+      lookAheadQuickPickFromRange(
+        dateRange.startDate,
+        dateRange.endDate,
+        pacificToday
+      ) ?? (isDateRangeActive(dateRange) ? null : DEFAULT_LOOK_AHEAD_QUICK_PICK)
     );
-  }, [anchor, dateRange]);
+  }, [dateRange, pacificToday]);
 
   return (
     <Tabs
-      value={activeCount == null ? '' : String(activeCount)}
+      value={activeQuickPick == null ? '' : quickPickTabValue(activeQuickPick)}
       onValueChange={(value) => {
-        const parsed = Number.parseInt(value, 10);
-        if (parsed === 1 || parsed === 7 || parsed === 14) {
-          applyDayCount(parsed);
+        const pick = parseQuickPickTabValue(value);
+        if (pick != null) {
+          applyQuickPick(pick);
         }
       }}
       className="w-auto"
     >
       <TabsList size="sm" aria-label="Look Ahead day range">
-        <TabsTrigger value="1">1 day</TabsTrigger>
-        <TabsTrigger value="7">7 days</TabsTrigger>
-        <TabsTrigger value="14">14 days</TabsTrigger>
+        <TabsTrigger value="today">Today</TabsTrigger>
+        <TabsTrigger value="7">+7 days</TabsTrigger>
+        <TabsTrigger value="14">+14 days</TabsTrigger>
       </TabsList>
     </Tabs>
   );

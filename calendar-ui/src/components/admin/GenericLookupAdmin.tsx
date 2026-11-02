@@ -1,3 +1,4 @@
+import { arrayMove } from '@dnd-kit/sortable';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { Edit, Search, Trash2, XCircle } from 'lucide-react';
@@ -5,12 +6,22 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import api from '@/api/axios';
 import {
+  fetchLookupSortSettings,
+  updateLookupSortMode,
+  type LookupSortMode,
+} from '@/api/lookupsApi';
+import {
   AdminModal,
   AdminSection,
   FormField,
   LookupForm,
 } from '@/components/admin';
+import { LookupReorderMenu } from '@/components/admin/LookupReorderMenu';
 import { GenericDataTable } from '@/components/table/GenericDataTable';
+import {
+  tableContainer,
+  tableScrollWrapper,
+} from '@/components/table/tableConstants';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,12 +31,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { SettingsSectionId } from '@/contexts/SettingsSectionContext';
+import { useLookupReorderInteraction } from '@/hooks/useLookupReorderInteraction';
 import {
   ClientValidationError,
   showErrorToast,
   showSuccessToast,
 } from '@/lib/error-toast';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
+import { cn } from '@/lib/utils';
 
 const EMPTY_INITIAL: Record<string, unknown> = {};
 
@@ -52,6 +67,9 @@ export interface RenderModalContentProps {
 interface GenericLookupAdminProps<T extends BaseLookupItem> {
   title: string;
   description: string;
+  /** Optional note above the table (inside the expanded section). */
+  bodyLead?: ReactNode;
+  sectionId: SettingsSectionId;
   entityType: string;
   apiEndpoint: string;
   /**
@@ -77,6 +95,13 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   /** When false, hides active/inactive filter (entities without isActive). Default true. */
   showStatusFilter?: boolean;
   /**
+   * Enables published sort mode (A–Z vs Custom) and reorder controls.
+   * Requires `reorderEntityKey` and `PUT {apiEndpoint}/order`.
+   */
+  enableManualSort?: boolean;
+  /** Kebab-case lookup key (e.g. `cities`) for sort mode API. */
+  reorderEntityKey?: string;
+  /**
    * When set, runs instead of the default POST/PATCH mutations (e.g. multi-step saves).
    * Caller should invalidate relevant queries; this component only closes the modal on success.
    */
@@ -95,6 +120,8 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
 export function GenericLookupAdmin<T extends BaseLookupItem>({
   title,
   description,
+  bodyLead,
+  sectionId,
   entityType,
   apiEndpoint,
   queryKey,
@@ -111,9 +138,13 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   additionalInvalidateKeys,
   softDelete,
   showStatusFilter = true,
+  enableManualSort = false,
+  reorderEntityKey,
   submitOverride,
 }: GenericLookupAdminProps<T>) {
   const queryClient = useQueryClient();
+  const [reorderInteraction, setReorderInteraction] =
+    useLookupReorderInteraction();
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [search, setSearch] = useState('');
   const [submitOverridePending, setSubmitOverridePending] = useState(false);
@@ -140,12 +171,18 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     }
   }, [showModal]);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, isFetchedAfterMount } = useQuery({
     queryKey,
     queryFn: queryFn,
     // Always refetch when an admin section mounts so Settings reflects any
     // mutation or seed/schema change from another tab or the backend.
     refetchOnMount: 'always',
+  });
+
+  const { data: sortSettings } = useQuery({
+    queryKey: lookupQueryKeys.sortSettings(),
+    queryFn: fetchLookupSortSettings,
+    enabled: enableManualSort && Boolean(reorderEntityKey),
   });
 
   const invalidateListCaches = () => {
@@ -155,6 +192,36 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       void queryClient.invalidateQueries({ queryKey: key });
     }
   };
+
+  /** Reorder already optimistically updates `queryKey`; avoid invalidating all lookups. */
+  const invalidateReorderCaches = () => {
+    void queryClient.invalidateQueries({ queryKey });
+    for (const key of additionalInvalidateKeys ?? []) {
+      void queryClient.invalidateQueries({ queryKey: key });
+    }
+  };
+
+  const sortMode: LookupSortMode =
+    (reorderEntityKey && sortSettings?.[reorderEntityKey]) || 'manual';
+  const isCustomSort = sortMode === 'manual';
+
+  const sortModeMutation = useMutation({
+    mutationFn: (mode: LookupSortMode) => {
+      if (!reorderEntityKey) {
+        return Promise.reject(new Error('Missing reorder entity key'));
+      }
+      return updateLookupSortMode(reorderEntityKey, mode);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: lookupQueryKeys.sortSettings(),
+      });
+      invalidateListCaches();
+    },
+    onError: (err: unknown) => {
+      showErrorToast(err);
+    },
+  });
 
   const createMutation = useMutation({
     mutationFn: async (data: Partial<T>) => {
@@ -212,7 +279,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   const filteredData = useMemo(() => {
     if (!data) return [];
     const normalizedSearch = search.trim().toLowerCase();
-    return data.filter((item) => {
+    const matched = data.filter((item) => {
       const matchesStatus =
         !showStatusFilter ||
         filter === 'all' ||
@@ -225,7 +292,62 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
           searchableText.toLowerCase().includes(normalizedSearch))
       );
     });
+    return matched;
   }, [data, filter, getItemName, search, showStatusFilter]);
+
+  const reorderMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      await api.put(`${apiEndpoint}/order`, { ids });
+    },
+    onSuccess: () => {
+      invalidateReorderCaches();
+    },
+    onError: (error: unknown) => {
+      invalidateReorderCaches();
+      showErrorToast(error);
+    },
+  });
+
+  const saveOrder = (orderedIds: number[]) => {
+    const position = new Map(orderedIds.map((id, index) => [id, index + 1]));
+    queryClient.setQueryData<T[]>(queryKey, (old) =>
+      old?.map((item) => ({
+        ...item,
+        sortOrder: position.get(item.id) ?? item.sortOrder,
+      }))
+    );
+    reorderMutation.mutate(orderedIds);
+  };
+
+  // Ordering controls wait for the mount refetch so they never act on a cached list.
+  const orderControlsReady =
+    isFetchedAfterMount &&
+    !reorderMutation.isPending &&
+    !sortModeMutation.isPending &&
+    Boolean(sortSettings);
+
+  const canReorder =
+    enableManualSort &&
+    isCustomSort &&
+    search.trim() === '' &&
+    (!showStatusFilter || filter === 'all');
+
+  const handleReorder = (activeId: string, overId: string) => {
+    if (!orderControlsReady || !canReorder) return;
+    const from = filteredData.findIndex((i) => String(i.id) === activeId);
+    const to = filteredData.findIndex((i) => String(i.id) === overId);
+    if (from < 0 || to < 0) return;
+    saveOrder(arrayMove(filteredData, from, to).map((i) => i.id));
+  };
+
+  const handleMoveRow = (rowId: string, direction: 'up' | 'down') => {
+    if (!orderControlsReady || !canReorder) return;
+    const index = filteredData.findIndex((i) => String(i.id) === rowId);
+    if (index < 0) return;
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (target < 0 || target >= filteredData.length) return;
+    saveOrder(arrayMove(filteredData, index, target).map((i) => i.id));
+  };
 
   const baseColumns: ColumnDef<T>[] = useMemo(
     () => [
@@ -246,13 +368,17 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         ),
       },
       ...additionalColumns,
-      {
-        accessorKey: 'sortOrder',
-        header: 'Sort order',
-        cell: ({ row }) => (
-          <span className="text-slate-600">{row.original.sortOrder}</span>
-        ),
-      },
+      ...(enableManualSort
+        ? []
+        : [
+            {
+              accessorKey: 'sortOrder',
+              header: 'Sort order',
+              cell: ({ row }) => (
+                <span className="text-slate-600">{row.original.sortOrder}</span>
+              ),
+            } as ColumnDef<T>,
+          ]),
       {
         accessorKey: 'isActive',
         header: 'Status',
@@ -302,7 +428,13 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         ),
       },
     ],
-    [additionalColumns, deleteMutation, entityType, getItemName]
+    [
+      additionalColumns,
+      deleteMutation,
+      enableManualSort,
+      entityType,
+      getItemName,
+    ]
   );
 
   const handleSubmit = async () => {
@@ -362,6 +494,10 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       processedData = transformSubmitData(processedData);
     }
 
+    if (enableManualSort) {
+      delete processedData.sortOrder;
+    }
+
     if (editingItem) {
       updateMutation.mutate({ ...editingItem, ...processedData });
     } else {
@@ -380,8 +516,9 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     <AdminSection
       title={title}
       description={description}
+      sectionId={sectionId}
       onAdd={handleOpenModal}
-      addButtonLabel={`Add ${entityType}`}
+      addButtonLabel={`+ Add ${entityType.toLowerCase()}`}
       isLoading={isLoading}
       headerAction={
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -394,7 +531,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={`Search ${title}`}
+              placeholder="Search"
               aria-label={`Search ${title}`}
               className="h-9 w-44 rounded-md border border-slate-300 bg-white pr-3 pl-8 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none"
             />
@@ -417,15 +554,82 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         </div>
       }
     >
+      {bodyLead ? (
+        <div className="mb-4 text-sm text-slate-600">{bodyLead}</div>
+      ) : null}
+      {enableManualSort && reorderEntityKey ? (
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <Tabs
+            value={sortMode}
+            onValueChange={(value) => {
+              const mode = value as LookupSortMode;
+              if (
+                (mode === 'alphabetical' || mode === 'manual') &&
+                mode !== sortMode
+              ) {
+                sortModeMutation.mutate(mode);
+              }
+            }}
+            className="w-auto gap-0"
+          >
+            <TabsList size="sm" aria-label="Published sort order">
+              <TabsTrigger value="alphabetical" disabled={!orderControlsReady}>
+                A–Z
+              </TabsTrigger>
+              <TabsTrigger value="manual" disabled={!orderControlsReady}>
+                Custom
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {isCustomSort ? (
+            <LookupReorderMenu
+              dragEnabled={reorderInteraction === 'drag'}
+              disabled={!orderControlsReady}
+              onDragEnabledChange={(drag) =>
+                setReorderInteraction(drag ? 'drag' : 'step')
+              }
+            />
+          ) : null}
+        </div>
+      ) : null}
       {error && (
         <div className="text-destructive text-sm">
           Error loading {title.toLowerCase()}
         </div>
       )}
       {filteredData && filteredData.length > 0 && (
-        <div className="max-h-[min(480px,60vh)] overflow-auto rounded-lg border border-slate-200">
-          <GenericDataTable data={filteredData} columns={baseColumns} />
-        </div>
+        <>
+          <div
+            className={cn(
+              tableContainer,
+              'max-h-[min(720px,90vh)] bg-white shadow-none'
+            )}
+          >
+            <div
+              className={cn(
+                tableScrollWrapper,
+                'max-h-[min(720px,90vh)] [overflow-y:auto]'
+              )}
+            >
+              <GenericDataTable
+                data={filteredData}
+                columns={baseColumns}
+                showOrderColumn={enableManualSort && isCustomSort}
+                reorderInteraction={reorderInteraction}
+                onReorder={canReorder ? handleReorder : undefined}
+                reorderDisabled={!orderControlsReady}
+                onMoveUp={
+                  canReorder ? (rowId) => handleMoveRow(rowId, 'up') : undefined
+                }
+                onMoveDown={
+                  canReorder
+                    ? (rowId) => handleMoveRow(rowId, 'down')
+                    : undefined
+                }
+              />
+            </div>
+          </div>
+        </>
       )}
       {filteredData && filteredData.length === 0 && (
         <div className="py-8 text-center text-slate-600">
@@ -474,6 +678,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         ) : (
           <LookupForm
             fields={formFields}
+            omitDefaultSortOrder={enableManualSort}
             resetKey={
               editingItem != null
                 ? String(editingItem.id)

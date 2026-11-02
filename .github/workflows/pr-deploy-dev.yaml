@@ -1,3 +1,4 @@
+# GitHub Actions workflow for deploying to only Silver OpenShift Dev environment
 name: Deploy to OpenShift
 
 permissions:

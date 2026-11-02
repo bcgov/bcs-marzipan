@@ -2,7 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import {
+  getGovBcStaffNameFields,
+  PERMISSIONS,
+  SYSTEM_ROLE_IDS,
+} from '@corpcal/shared';
 import type {
   UpdateUserBody,
   UserDetail,
@@ -40,14 +44,11 @@ interface UserEditModalProps {
 export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
   const [roleId, setRoleId] = useState<string>(String(user.roleId));
   const [notes, setNotes] = useState('');
-  const displayInitial = user.adDisplayName || user.adUsername || '';
-  const displayParts = displayInitial.split(' ');
-  const [firstName, setFirstName] = useState(
-    displayParts.slice(0, -1).join(' ') || displayParts[0] || ''
+  const initialStaffName = getGovBcStaffNameFields(
+    user.adDisplayName || user.adUsername || ''
   );
-  const [lastName, setLastName] = useState(
-    displayParts.length > 1 ? displayParts[displayParts.length - 1] : ''
-  );
+  const [firstName, setFirstName] = useState(initialStaffName.firstName);
+  const [lastName, setLastName] = useState(initialStaffName.lastName);
   const [email, setEmail] = useState<string | null>(user.adEmail ?? '');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>('');
@@ -96,10 +97,11 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
       setRoleId(String(detail.roleId));
       setNotes(detail.notes ?? '');
       // populate new simplified fields
-      const display = detail.adDisplayName || detail.adUsername || '';
-      const parts = display.split(' ');
-      setFirstName(parts.slice(0, -1).join(' ') || parts[0] || '');
-      setLastName(parts.length > 1 ? parts[parts.length - 1] : '');
+      const staffName = getGovBcStaffNameFields(
+        detail.adDisplayName || detail.adUsername || ''
+      );
+      setFirstName(staffName.firstName);
+      setLastName(staffName.lastName);
       setEmail(detail.adEmail ?? '');
       setEmailError(null);
       setPhone(detail.phone ?? '');

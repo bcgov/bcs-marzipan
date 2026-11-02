@@ -6,20 +6,24 @@ import { useMemo, useRef, useState } from 'react';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
-import type { LockState } from './useActivityLock';
+import type { ActivityLockAcquireResult, LockState } from './useActivityLock';
 import {
   EDIT_LOCK_CONFLICT_TOAST,
   useEditLockIntent,
 } from './useEditLockIntent';
 
 describe('useEditLockIntent', () => {
-  const acquire = vi.fn(() => Promise.resolve(true));
+  const acquire = vi.fn(
+    (): Promise<ActivityLockAcquireResult> =>
+      Promise.resolve({ ok: true as const })
+  );
 
   function useHarness(props: {
     formHydrated: boolean;
     hydrationGeneration: number;
     mayEdit: boolean;
     lockState: LockState;
+    connectionBlocksEditStart?: boolean;
   }) {
     const form = useForm<ActivityFormData>({
       defaultValues: getDefaultFormValues() as ActivityFormData,
@@ -32,7 +36,7 @@ describe('useEditLockIntent', () => {
 
     const onAcquireConflict = useMemo(() => vi.fn(), []);
 
-    useEditLockIntent({
+    const { tryStartEditSessionFromDirty } = useEditLockIntent({
       formHydrated: props.formHydrated,
       hydrationGeneration: props.hydrationGeneration,
       mayEdit: props.mayEdit,
@@ -43,15 +47,16 @@ describe('useEditLockIntent', () => {
       form,
       initialFormDataRef,
       onAcquireConflict,
+      connectionBlocksEditStart: props.connectionBlocksEditStart ?? false,
     });
 
-    return { form, isEditing, onAcquireConflict };
+    return { form, isEditing, onAcquireConflict, tryStartEditSessionFromDirty };
   }
 
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     acquire.mockReset();
-    acquire.mockImplementation(() => Promise.resolve(true));
+    acquire.mockImplementation(() => Promise.resolve({ ok: true as const }));
   });
 
   afterEach(() => {
@@ -102,7 +107,13 @@ describe('useEditLockIntent', () => {
   });
 
   it('invokes onAcquireConflict once when acquire returns false', async () => {
-    acquire.mockImplementation(() => Promise.resolve(false));
+    acquire.mockImplementation(() =>
+      Promise.resolve({
+        ok: false,
+        reason: 'locked-by-other',
+        lockedByUsername: 'Other',
+      })
+    );
 
     const { result, rerender } = renderHook(
       (p: { hydrated: boolean; gen: number }) =>
@@ -124,6 +135,10 @@ describe('useEditLockIntent', () => {
     await waitFor(() => expect(acquire).toHaveBeenCalledTimes(1));
     await act(() => Promise.resolve());
     expect(result.current.onAcquireConflict).toHaveBeenCalledTimes(1);
+    expect(result.current.onAcquireConflict).toHaveBeenCalledWith({
+      reason: 'locked-by-other',
+      lockedByUsername: 'Other',
+    });
   });
 
   it('does not call acquire when mayEdit is false even if hydrated and dirty', async () => {
@@ -148,7 +163,13 @@ describe('useEditLockIntent', () => {
   });
 
   it('does not spam acquire while the same dirty state retries', async () => {
-    acquire.mockImplementation(() => Promise.resolve(false));
+    acquire.mockImplementation(() =>
+      Promise.resolve({
+        ok: false,
+        reason: 'network',
+        lockedByUsername: null,
+      })
+    );
 
     const { result, rerender } = renderHook(
       (p: { hydrated: boolean; gen: number }) =>
@@ -178,5 +199,50 @@ describe('useEditLockIntent', () => {
 
   it('exposes conflict message constant for UI copy', () => {
     expect(EDIT_LOCK_CONFLICT_TOAST).toContain('Another user');
+  });
+
+  it('does not call acquire or onAcquireConflict when connection blocks edit start', async () => {
+    const { result, rerender } = renderHook(
+      () =>
+        useHarness({
+          formHydrated: true,
+          hydrationGeneration: 0,
+          mayEdit: true,
+          lockState: 'idle',
+          connectionBlocksEditStart: true,
+        }),
+      { initialProps: {} }
+    );
+
+    act(() => {
+      result.current.form.setValue('title', 'X', { shouldDirty: true });
+    });
+    rerender({});
+    await act(() => vi.advanceTimersByTimeAsync(200));
+
+    expect(acquire).not.toHaveBeenCalled();
+    expect(result.current.onAcquireConflict).not.toHaveBeenCalled();
+    expect(result.current.isEditing).toBe(false);
+  });
+
+  it('tryStartEditSessionFromDirty acquires when dirty and connection allows', async () => {
+    const { result } = renderHook(() =>
+      useHarness({
+        formHydrated: true,
+        hydrationGeneration: 0,
+        mayEdit: true,
+        lockState: 'idle',
+        connectionBlocksEditStart: false,
+      })
+    );
+
+    act(() => {
+      result.current.form.setValue('title', 'X', { shouldDirty: true });
+    });
+    act(() => {
+      result.current.tryStartEditSessionFromDirty();
+    });
+
+    await waitFor(() => expect(acquire).toHaveBeenCalledTimes(1));
   });
 });

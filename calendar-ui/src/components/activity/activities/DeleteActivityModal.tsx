@@ -14,6 +14,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import type { ActivityConfirmBlockedNotice } from '@/lib/activity-edit-session-messages';
+
+import {
+  ActivityConfirmHeaderBlockedNotice,
+  ActivityConfirmPrimaryActionGroup,
+} from './ActivityConfirmSubmitBlockedNotice';
 
 const MIN_REASON_LENGTH = 10;
 const MAX_REASON_LENGTH = 1000;
@@ -28,6 +34,8 @@ interface DeleteActivityModalProps {
   isSubmitting: boolean;
   /** When provided, pre-populates the notes field when the modal opens (e.g. from Delete requested history). */
   initialNotes?: string;
+  confirmDisabled?: boolean;
+  confirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }
 
 export function DeleteActivityModal({
@@ -39,6 +47,8 @@ export function DeleteActivityModal({
   onHardDelete,
   isSubmitting,
   initialNotes,
+  confirmDisabled: confirmDisabledProp = false,
+  confirmBlockedNotice = null,
 }: DeleteActivityModalProps): React.ReactElement {
   const [notes, setNotes] = useState('');
   const [deletePermanently, setDeletePermanently] = useState(false);
@@ -54,6 +64,7 @@ export function DeleteActivityModal({
   const canConfirmSoft = notesValid;
   const canConfirmHard = notesValid && deletePermanently && confirmPhraseMatch;
   const canConfirm = deletePermanently ? canConfirmHard : canConfirmSoft;
+  const confirmDisabled = isSubmitting || !canConfirm || confirmDisabledProp;
   const showNotesError = touched && trimmedNotes.length > 0 && !notesValid;
 
   useEffect(() => {
@@ -98,6 +109,8 @@ export function DeleteActivityModal({
             reason (at least {MIN_REASON_LENGTH} characters).
           </DialogDescription>
         </DialogHeader>
+
+        <ActivityConfirmHeaderBlockedNotice notice={confirmBlockedNotice} />
 
         <div className="space-y-4">
           <div className="space-y-2">
@@ -154,7 +167,7 @@ export function DeleteActivityModal({
                   <span className="inline-flex items-center gap-2">
                     <OctagonAlertIcon className="text-destructive h-4 w-4" />
                     <strong>
-                      Deleting an activity completely is permanent is a
+                      Deleting an activity completely is permanent and
                       non-reversible.
                     </strong>{' '}
                   </span>
@@ -198,14 +211,16 @@ export function DeleteActivityModal({
           >
             Go back
           </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={isSubmitting || !canConfirm}
-          >
-            {isSubmitting ? 'Deleting...' : 'Confirm delete'}
-          </Button>
+          <ActivityConfirmPrimaryActionGroup notice={confirmBlockedNotice}>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirm}
+              disabled={confirmDisabled}
+            >
+              {isSubmitting ? 'Deleting...' : 'Confirm delete'}
+            </Button>
+          </ActivityConfirmPrimaryActionGroup>
         </DialogFooter>
       </DialogContent>
     </Dialog>

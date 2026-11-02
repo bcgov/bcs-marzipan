@@ -58,7 +58,7 @@ export function redactActivityResponse<
     Array.isArray(redacted.changedFieldsSinceReview)
   ) {
     redacted.changedFieldsSinceReview = filterChangedFields(
-      redacted.changedFieldsSinceReview as string[],
+      redacted.changedFieldsSinceReview,
       user
     );
   }

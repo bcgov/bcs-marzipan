@@ -24,21 +24,21 @@
 
 import { sleep } from 'k6';
 
-import { buildLoadOptions, loadTestConfig } from '../api/config.js';
 import {
   extractAccessToken,
   getActivities,
   getAuthAzureConfig,
   getAuthMe,
-  getHealth,
-  getReady,
-  getUsers,
-  getSettingsLookAheadReset,
-  postCreateActivity,
   getGlobalHistory,
+  getHealth,
   getLookupsReports,
+  getReady,
+  getSettingsLookAheadReset,
+  getUsers,
+  postCreateActivity,
   postLogin,
 } from '../api/client.js';
+import { buildLoadOptions, loadTestConfig } from '../api/config.js';
 
 const config = loadTestConfig();
 

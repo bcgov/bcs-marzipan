@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 
+import { formatGovBcDisplayNameAsFirstLast } from '@corpcal/shared';
 import { TOAST_DURATION_MS } from '@/lib/toast-durations';
 
 export type EntityToastVariant = 'success' | 'error' | 'info' | 'warning';
@@ -11,8 +12,12 @@ export function resolveUserDisplayName(user: {
   idirUsername?: string | null;
   id?: number;
 }): string {
+  const adDisplayName = user.adDisplayName?.trim();
+  if (adDisplayName) {
+    return formatGovBcDisplayNameAsFirstLast(adDisplayName) || adDisplayName;
+  }
+
   return (
-    user.adDisplayName?.trim() ||
     user.displayName?.trim() ||
     user.adUsername?.trim() ||
     user.idirUsername?.trim() ||

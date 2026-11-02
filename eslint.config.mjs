@@ -1,15 +1,15 @@
 // @ts-check
 
 import eslint from '@eslint/js';
-import { defineConfig } from 'eslint/config';
+import json from '@eslint/json';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
-import globals from 'globals';
-import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
-import json from '@eslint/json';
 import unusedImports from 'eslint-plugin-unused-imports';
+import { defineConfig } from 'eslint/config';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 /**
  * Creates a type-checked ESLint configuration for TypeScript files.

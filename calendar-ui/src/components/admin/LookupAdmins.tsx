@@ -132,7 +132,6 @@ const categoryFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -167,7 +166,6 @@ const cityFields: FormField[] = [
     type: 'text',
     placeholder: 'Canada',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -190,7 +188,6 @@ const commsMaterialFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -219,7 +216,6 @@ const translationLanguageFields: FormField[] = [
     type: 'text',
     placeholder: 'e.g. FR, AR, SC',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -248,7 +244,6 @@ const govRepFields: FormField[] = [
     type: 'text',
     placeholder: 'Minister, MLA, etc.',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -271,7 +266,6 @@ const tagFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -303,7 +297,6 @@ const ministryCoreFields: FormField[] = [
     required: true,
     placeholder: 'e.g., AG',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -351,7 +344,6 @@ async function persistMinistryWithMinister({
     name,
     displayName,
     abbreviation,
-    sortOrder: Number(formData.sortOrder ?? 0),
     isActive: formData.isActive !== false,
     ministryGroupId,
   };
@@ -389,7 +381,6 @@ async function persistMinistryWithMinister({
       name: trimmed,
       displayName: trimmed,
       title: 'Minister',
-      sortOrder: 0,
       isActive: true,
       representativeType: 'minister',
     });
@@ -414,7 +405,6 @@ const ministryGroupFields: FormField[] = [
     required: true,
     placeholder: 'e.g., Social, Resource',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
 ];
 
 const statusFields: FormField[] = [
@@ -431,7 +421,6 @@ const statusFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -454,7 +443,6 @@ const themeFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -507,7 +495,6 @@ const venuePresetFields: FormField[] = [
     type: 'text',
     placeholder: 'Canada',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -542,9 +529,12 @@ export function CategoriesAdmin() {
   return (
     <GenericLookupAdmin<Category>
       title="Categories"
-      description="Manage activity categories"
+      description="Lookup values for activity categories."
+      sectionId="categories"
       entityType="Category"
       apiEndpoint="/lookups/categories"
+      enableManualSort
+      reorderEntityKey="categories"
       queryKey={lookupQueryKeys.categoriesAdmin()}
       queryFn={fetchAllCategories}
       formFields={categoryFields}
@@ -584,12 +574,15 @@ export function CitiesAdmin() {
   return (
     <GenericLookupAdmin<City>
       title="Cities"
-      description="Manage city locations"
+      description="City locations used on activities."
+      sectionId="cities"
       entityType="City"
       apiEndpoint="/lookups/cities"
       queryKey={lookupQueryKeys.cities()}
       queryFn={fetchCities}
       formFields={cityFields}
+      enableManualSort
+      reorderEntityKey="cities"
       additionalColumns={[
         {
           accessorKey: 'provinceOrState',
@@ -618,9 +611,12 @@ export function CommsMaterialsAdmin() {
   return (
     <GenericLookupAdmin<CommsMaterial>
       title="Communications materials"
-      description="Manage communication material types"
+      description="Types of communication materials."
+      sectionId="comms"
       entityType="Communications Material"
       apiEndpoint="/lookups/comms-materials"
+      enableManualSort
+      reorderEntityKey="comms-materials"
       queryKey={lookupQueryKeys.commsMaterials()}
       queryFn={fetchCommsMaterials}
       formFields={commsMaterialFields}
@@ -632,9 +628,12 @@ export function TranslationLanguagesAdmin() {
   return (
     <GenericLookupAdmin<TranslationLanguage>
       title="Translation languages"
-      description="Manage languages available for activity translations"
+      description="Languages available for activity translations."
+      sectionId="translation-languages"
       entityType="Translation Language"
       apiEndpoint="/lookups/translation-languages"
+      enableManualSort
+      reorderEntityKey="translation-languages"
       queryKey={lookupQueryKeys.translationLanguagesAdmin()}
       queryFn={fetchAllTranslationLanguages}
       softDelete
@@ -659,9 +658,12 @@ export function GovernmentRepresentativesAdmin() {
   return (
     <GenericLookupAdmin<GovernmentRepresentative>
       title="Government representatives"
-      description="Manage government representatives. Ministers can be assigned from the Ministries section when creating or editing a ministry."
+      description="Representatives assignable as ministers from the Ministries form."
+      sectionId="representatives"
       entityType="Government Representative"
       apiEndpoint="/lookups/government-representatives"
+      enableManualSort
+      reorderEntityKey="government-representatives"
       queryKey={lookupQueryKeys.governmentRepresentatives()}
       queryFn={fetchGovernmentRepresentatives}
       formFields={govRepFields}
@@ -692,9 +694,12 @@ export function TagsAdmin() {
   return (
     <GenericLookupAdmin<Tag>
       title="Tags"
-      description="Manage activity tags"
+      description="Tags applied to activities."
+      sectionId="tags"
       entityType="Tag"
       apiEndpoint="/lookups/tags"
+      enableManualSort
+      reorderEntityKey="tags"
       queryKey={lookupQueryKeys.tagsAdmin()}
       queryFn={fetchAllTags}
       softDelete
@@ -736,9 +741,14 @@ export function MinistryGroupsAdmin() {
   return (
     <GenericLookupAdmin<MinistryGroupListItem>
       title="Ministry groups"
-      description="Named groups for activity “Shared with teams” shortcuts. Assign ministries to a group in the Ministries section."
+      description={
+        '“Shared with teams” shortcuts; assign ministries on the Ministries form.'
+      }
+      sectionId="ministry-groups"
       entityType="Ministry group"
       apiEndpoint="/lookups/ministry-groups"
+      enableManualSort
+      reorderEntityKey="ministry-groups"
       queryKey={lookupQueryKeys.ministryGroups()}
       queryFn={fetchMinistryGroups}
       formFields={ministryGroupFields}
@@ -854,9 +864,12 @@ export function MinistriesAdmin() {
   return (
     <GenericLookupAdmin<MinistryAdminItem>
       title="Ministries"
-      description="Manage BC government ministries. Choose a minister from existing government representatives or create a new one; the list below stays in sync."
+      description="Ministries, ministers, and sharing groups."
+      sectionId="ministries"
       entityType="Ministry"
       apiEndpoint="/lookups/ministries"
+      enableManualSort
+      reorderEntityKey="ministries"
       queryKey={lookupQueryKeys.ministries()}
       queryFn={fetchMinistries}
       formFields={ministryFields}
@@ -879,9 +892,12 @@ export function ActivityStatusesAdmin() {
   return (
     <GenericLookupAdmin<ActivityStatus>
       title="Activity statuses"
-      description="Manage activity status types"
+      description="Status types in the activity workflow."
+      sectionId="statuses"
       entityType="Activity Status"
       apiEndpoint="/lookups/activity-statuses"
+      enableManualSort
+      reorderEntityKey="activity-statuses"
       queryKey={lookupQueryKeys.activityStatuses()}
       queryFn={fetchActivityStatuses}
       formFields={statusFields}
@@ -893,9 +909,12 @@ export function ThemesAdmin() {
   return (
     <GenericLookupAdmin<ThemeLookupItem>
       title="Themes"
-      description="Manage activity themes"
+      description="Themes for activities."
+      sectionId="themes"
       entityType="Theme"
       apiEndpoint="/lookups/themes"
+      enableManualSort
+      reorderEntityKey="themes"
       queryKey={lookupQueryKeys.themes()}
       queryFn={fetchThemes}
       formFields={themeFields}
@@ -945,9 +964,12 @@ export function VenuePresetsAdmin() {
   return (
     <GenericLookupAdmin<VenuePreset>
       title="Venue presets"
-      description="Manage venue presets for the activity form"
+      description="Saved venues on the activity form."
+      sectionId="venue-presets"
       entityType="Venue Preset"
       apiEndpoint="/lookups/venue-presets"
+      enableManualSort
+      reorderEntityKey="venue-presets"
       queryKey={lookupQueryKeys.venuePresetsAdmin()}
       queryFn={fetchAllVenuePresets as () => Promise<VenuePreset[]>}
       formFields={venuePresetFields}

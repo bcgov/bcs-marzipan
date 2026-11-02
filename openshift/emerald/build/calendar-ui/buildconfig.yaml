@@ -1,0 +1,43 @@
+#Not used in Emerald OpenShift build & deployment workflow - Oct 2026
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: corpcal-ui-build
+  labels:
+    app.kubernetes.io/name: corpcal
+    app.kubernetes.io/component: build
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: corpcal-tools
+    app.kubernetes.io/managed-by: github-actions
+    env: tools
+spec:
+  source:
+    type: Git
+    git:
+      uri: https://github.com/bcgov/bcs-marzipan.git
+      ref: develop
+    # Use repository root as build context so Dockerfile can access root files
+    # (tsconfig.base.json, package*.json, packages/)
+    contextDir: .
+  strategy:
+    type: Docker
+    dockerStrategy:
+      resources:
+        limits:
+          memory: 4Gi
+        requests:
+          memory: 2Gi
+      env:
+        - name: VITE_API_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: corpcal-ui-build-config
+              key: VITE_API_BASE_URL
+      # Dockerfile path is relative to the contextDir above
+      dockerfilePath: calendar-ui/Dockerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: corpcal-ui:latest
+  triggers:
+    - type: ConfigChange

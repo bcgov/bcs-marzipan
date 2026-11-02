@@ -39,10 +39,6 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { showErrorToast, showSuccessToast } from '@/lib/error-toast';
 import type { OptionItem } from '@/schemas/types';
 
-const DESCRIPTION =
-  'Choose which form fields can change without moving a Reviewed activity to Changed. ' +
-  'Summary and scheduling fields (e.g. dates, times, date/time status) are always exempt and are not listed here.';
-
 export function ReviewExemptFieldsSettingsAdmin(): ReactElement | null {
   const queryClient = useQueryClient();
   const comboboxAnchorRef = useComboboxAnchor();
@@ -128,9 +124,10 @@ export function ReviewExemptFieldsSettingsAdmin(): ReactElement | null {
   return (
     <AdminSection
       title="Review-exempt activity fields"
-      description={DESCRIPTION}
+      description="Optional fields that can change without unsetting Reviewed."
+      sectionId="review-exempt-fields"
       isLoading={isLoading}
-      headerAction={
+      footerAction={
         <Button
           type="button"
           onClick={() =>
@@ -150,7 +147,11 @@ export function ReviewExemptFieldsSettingsAdmin(): ReactElement | null {
         <p className="text-destructive text-sm">Could not load settings.</p>
       )}
       {!isLoading && !error && data && (
-        <div className="max-w-4xl">
+        <div className="max-w-4xl space-y-3">
+          <p className="text-sm text-slate-600">
+            Summary and scheduling fields (dates, times, date/time status) are
+            always exempt and are not listed here.
+          </p>
           <Combobox
             items={allFieldOptions}
             multiple

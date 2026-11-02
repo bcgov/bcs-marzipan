@@ -8,11 +8,11 @@ This project uses multiple Git hooks to ensure code quality and consistency:
 
 ### Pre-Commit Hook
 
-The pre-commit hook ensures that:
+The pre-commit hook ensures that (on **staged** files only):
 
-- Code follows linting rules (ESLint)
-- Code is properly formatted (Prettier)
-- Tests related to changed files pass (Vitest)
+- TypeScript is formatted with Prettier, then linted with ESLint (auto-fix where possible)
+- Non-code assets (JSON, Markdown, YAML, etc.) are formatted with Prettier
+- Tests related to changed source files pass (Vitest)
 
 If any of these checks fail, the commit is blocked until the issues are resolved.
 
@@ -26,11 +26,14 @@ The commit-msg hook validates commit messages against the [Conventional Commits]
 
 ### Pre-Push Hook
 
-The pre-push hook validates branch names to ensure they follow the project's naming convention:
+The pre-push hook runs a **slim quality gate** before code reaches the remote (full build and tests run in CI via `npm run verify`):
 
-- Format: `<type>/CORPCAL-<number>-<short-description>`
-- Enforces Jira integration (CORPCAL issue keys)
-- Ensures consistent branch naming across the team
+- **Formatting** — `npm run format:check` (repo-wide)
+- **Lint and types** — `npm run check`
+- **Schema alignment** — `npm run validate-types --workspace=packages/shared`
+- **Branch naming** — feature branches must match `<type>/CORPCAL-<number>-<short-description>` (`main`, `master`, and `develop` skip naming only)
+
+See [CI and branch protection](CI.md) for GitHub required checks and `npm run verify`.
 
 ## How It Works
 
@@ -44,13 +47,19 @@ When you run `git commit`, Husky automatically executes `.husky/pre-commit`, whi
 
 #### TypeScript Files (`calendar-service/**/*.ts`)
 
-1. **ESLint** - Lints and auto-fixes issues:
+1. **Prettier** - Formats staged files:
+
+   ```bash
+   prettier --write
+   ```
+
+2. **ESLint** - Lints and auto-fixes issues:
 
    ```bash
    eslint --fix
    ```
 
-2. **Vitest** - Runs tests related to changed files:
+3. **Vitest** - Runs tests related to changed files:
 
    ```bash
    node scripts/test/vitest-related.js calendar-service
@@ -60,13 +69,9 @@ When you run `git commit`, Husky automatically executes `.husky/pre-commit`, whi
 
 #### TypeScript/TSX Files (`calendar-ui/**/*.{ts,tsx}`)
 
-1. **ESLint** - Lints and auto-fixes issues:
-
-   ```bash
-   eslint --fix
-   ```
-
-2. **Vitest** - Runs tests related to changed files:
+1. **Prettier** - Formats staged files
+2. **ESLint** - Lints and auto-fixes issues
+3. **Vitest** - Runs tests related to changed files:
 
    ```bash
    node scripts/test/vitest-related.js calendar-ui
@@ -76,10 +81,9 @@ When you run `git commit`, Husky automatically executes `.husky/pre-commit`, whi
 
 #### Package Files (`packages/**/*.ts`)
 
-1. **ESLint** - Lints and auto-fixes issues:
-   ```bash
-   eslint --fix
-   ```
+1. **Prettier** - Formats staged files
+2. **ESLint** - Lints and auto-fixes issues
+3. **Vitest** - Related tests where configured (`packages/database`, `packages/shared`)
 
 #### Non-Code Files (`**/*.{json,md,css,scss,less,html,yaml,yml}`)
 
@@ -105,7 +109,7 @@ See [scripts/test/README.md](../scripts/test/README.md) for detailed documentati
 2. You stage the file: `git add calendar-service/src/lookups/lookups.controller.ts`
 3. You commit: `git commit -m "Update lookups controller"`
 4. Pre-commit hook runs:
-   - ESLint checks and fixes `lookups.controller.ts`
+   - Prettier formats and ESLint checks/fixes `lookups.controller.ts`
    - Vitest finds and runs `lookups.controller.spec.ts`
    - If tests pass, commit succeeds
    - If tests fail, commit is blocked
@@ -122,7 +126,8 @@ See [scripts/test/README.md](../scripts/test/README.md) for detailed documentati
 
 - **`.husky/pre-commit`** - Husky hook that triggers lint-staged
 - **`.husky/commit-msg`** - Husky hook that validates commit messages using Commitlint
-- **`.husky/pre-push`** - Husky hook that validates branch names
+- **`.husky/pre-push`** - Husky hook: slim quality gate and branch naming
+- **[docs/CI.md](CI.md)** - GitHub Actions, `npm run verify`, branch protection for admins
 - **`commitlint.config.js`** - Commitlint configuration for Conventional Commits
 - **`package.json`** - Contains `lint-staged` configuration and Commitizen setup
 - **`scripts/test/vitest-related.js`** - Vitest test runner for all workspaces (calendar-service, calendar-ui, packages)

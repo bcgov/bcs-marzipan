@@ -1,0 +1,14 @@
+#Not used in Emerald OpenShift build & deployment workflow - Oct 2026
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: corpcal-ui-build-config
+  labels:
+    app.kubernetes.io/name: corpcal
+    app.kubernetes.io/component: build
+    app.kubernetes.io/part-of: corporate-calendar
+    app.kubernetes.io/instance: corpcal-tools
+    app.kubernetes.io/managed-by: github-actions
+    env: tools
+data:
+  VITE_API_BASE_URL: /api

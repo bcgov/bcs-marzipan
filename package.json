@@ -13,8 +13,8 @@
   "overrides": {
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "picomatch": "4.0.4",
-    "ws": "8.21.0",
+    "picomatch": "4.0.7",
+    "ws": "8.22.0",
     "esbuild": "0.28.1",
     "@esbuild-kit/core-utils": {
       "esbuild": "0.28.1"
@@ -28,15 +28,18 @@
       "multer": "2.2.0"
     },
     "@nestjs/swagger": {
-      "js-yaml": "5.2.2"
+      "js-yaml": "5.4.3"
+    },
+    "@eslint/eslintrc": {
+      "js-yaml": "5.4.3"
     },
     "fork-ts-checker-webpack-plugin": {
-      "js-yaml": "5.2.2"
+      "js-yaml": "5.4.3"
     },
     "cosmiconfig": {
-      "js-yaml": "5.2.2"
+      "js-yaml": "5.4.3"
     },
-    "js-yaml": "5.2.2",
+    "js-yaml": "5.4.3",
     "multer": "2.2.0",
     "lodash": ">=4.17.22",
     "tmp": "0.2.7",
@@ -55,12 +58,14 @@
     "test:env": "ts-node -r tsconfig-paths/register scripts/test-env-vars.ts",
     "test:config": "ts-node -r tsconfig-paths/register scripts/test-nestjs-config.ts",
     "prepare": "husky",
-    "format": "prettier --write \"calendar-service/**/*.{ts,json}\" \"calendar-ui/**/*.{ts,tsx,json}\" \"packages/**/*.{ts,json}\" \"*.{json,md}\"",
-    "format:check": "prettier --check \"calendar-service/**/*.{ts,json}\" \"calendar-ui/**/*.{ts,tsx,json}\" \"packages/**/*.{ts,json}\" \"*.{json,md}\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint \"calendar-service/**/*.ts\" \"calendar-ui/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"calendar-service/**/*.ts\" \"calendar-ui/**/*.{ts,tsx}\" --fix",
-    "check": "npm run lint && npm run typecheck",
-    "check:fix": "npm run lint:fix && npm run typecheck",
+    "check": "npm run lint && npm run lint --workspace=packages/shared && npm run typecheck",
+    "check:fix": "npm run lint:fix && npm run lint --workspace=packages/shared -- --fix && npm run typecheck",
+    "verify": "npm run format:check && npm run build && npm run check && npm run test && npm run perf:k6:inspect",
+    "verify:quick": "npm run format:check && npm run check",
     "perf:k6": "k6 run performance_tests/tests/corpcal-api.js",
     "perf:k6:api-smoke": "k6 run performance_tests/tests/corpcal-api-smoke.js -e PERF_PROFILE=smoke",
     "perf:k6:inspect": "node scripts/k6-inspect-all.cjs",
@@ -80,7 +85,7 @@
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@swc/core": "^1.15.11",
     "@vitest/coverage-v8": "^4.1.11",
-    "concurrently": "^10.0.3",
+    "concurrently": "^10.0.6",
     "dotenv": "^16.6.1",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^9.1.0",
@@ -91,7 +96,7 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "globals": "^16.0.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.2.11",
+    "lint-staged": "^17.6.0",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "typescript": "^5.3.3",
@@ -101,18 +106,22 @@
   },
   "lint-staged": {
     "calendar-service/**/*.ts": [
+      "prettier --write",
       "eslint --fix",
       "node scripts/test/vitest-related.js calendar-service"
     ],
     "calendar-ui/**/*.{ts,tsx}": [
+      "prettier --write",
       "eslint --fix",
       "node scripts/test/vitest-related.js calendar-ui"
     ],
     "packages/database/**/*.ts": [
+      "prettier --write",
       "eslint --fix",
       "node scripts/test/vitest-related.js database"
     ],
     "packages/shared/**/*.ts": [
+      "prettier --write",
       "eslint --fix",
       "node scripts/test/vitest-related.js shared"
     ],

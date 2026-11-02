@@ -36,12 +36,16 @@ if (lock.dependencies && typeof lock.dependencies === 'object') {
 if (removed > 0) {
   try {
     fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2));
-    console.log(`Removed ${removed} windows-specific entries from package-lock.json`);
+    console.log(
+      `Removed ${removed} windows-specific entries from package-lock.json`
+    );
   } catch (e) {
     console.error('Failed to write package-lock.json:', e.message);
     process.exit(1);
   }
 } else {
-  console.log('No windows-specific optional entries found in package-lock.json');
+  console.log(
+    'No windows-specific optional entries found in package-lock.json'
+  );
 }
 process.exit(0);

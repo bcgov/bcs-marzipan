@@ -67,6 +67,10 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import {
+  optionItemsEqual,
+  uniqueNumericIdsFromOptions,
+} from '@/lib/combobox-option-utils';
+import {
   getPresetAnchorToday,
   parseIsoDateLocal,
   PRESETS_FUTURE_SHORT,
@@ -142,15 +146,21 @@ function applyAllowedLookupSelection(
   existingIds: number[] | undefined,
   userTeamIds: number[],
   scopeById: Map<number, LookupTeamScope>,
+  hasCreateAny: boolean,
   onApply: (allowedIds: number[]) => void
 ): void {
+  const dedupedIds = [...new Set(submittedIds)];
+  if (hasCreateAny) {
+    onApply(dedupedIds);
+    return;
+  }
   const allowedIds = filterAllowedLookupIds(
-    submittedIds,
+    dedupedIds,
     existingIds,
     userTeamIds,
     scopeById
   );
-  if (allowedIds.length !== submittedIds.length) {
+  if (allowedIds.length !== dedupedIds.length) {
     toast.warning('That category or tag is not available to your teams.');
   }
   onApply(allowedIds);
@@ -493,9 +503,31 @@ export const ActivityOverviewSection: React.FC<
   const pickableTeamCategoryOptions = useMemo(
     () =>
       pickableCategories
-        .filter((c) => c.visibility === 'team')
+        .filter(
+          (c) =>
+            c.visibility === 'team' &&
+            isLookupSelectable(
+              toLookupScope(c.visibility, c.teamIds),
+              userTeamIds
+            )
+        )
         .map((c) => toLookupOption(c.id, c.displayName ?? c.name)),
-    [pickableCategories]
+    [pickableCategories, userTeamIds]
+  );
+  // Team-scoped categories outside the user's teams; only present for create.any holders.
+  const otherTeamCategoryOptions = useMemo(
+    () =>
+      pickableCategories
+        .filter(
+          (c) =>
+            c.visibility === 'team' &&
+            !isLookupSelectable(
+              toLookupScope(c.visibility, c.teamIds),
+              userTeamIds
+            )
+        )
+        .map((c) => toLookupOption(c.id, c.displayName ?? c.name)),
+    [pickableCategories, userTeamIds]
   );
   const pickableGlobalCategoryOptions = useMemo(
     () =>
@@ -505,8 +537,16 @@ export const ActivityOverviewSection: React.FC<
     [pickableCategories]
   );
   const pickableCategoryOptions = useMemo(
-    () => [...pickableTeamCategoryOptions, ...pickableGlobalCategoryOptions],
-    [pickableTeamCategoryOptions, pickableGlobalCategoryOptions]
+    () => [
+      ...pickableTeamCategoryOptions,
+      ...pickableGlobalCategoryOptions,
+      ...otherTeamCategoryOptions,
+    ],
+    [
+      pickableTeamCategoryOptions,
+      pickableGlobalCategoryOptions,
+      otherTeamCategoryOptions,
+    ]
   );
 
   const tagScopeById = useMemo(
@@ -574,18 +614,20 @@ export const ActivityOverviewSection: React.FC<
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected) => {
-                    const submittedIds = selected.map((o) => Number(o.value));
+                    const submittedIds = uniqueNumericIdsFromOptions(selected);
                     applyAllowedLookupSelection(
                       submittedIds,
                       field.value ?? [],
                       userTeamIds,
                       categoryScopeById,
+                      hasCreateAny,
                       (allowedIds) => {
                         setActivityFormFieldValue(form, field.name, allowedIds);
                       }
                     );
                   }}
                   itemToStringValue={(o) => o.label}
+                  isItemEqualToValue={optionItemsEqual}
                   readOnly={readOnly}
                 >
                   <ComboboxChips ref={categoriesAnchorRef} className="w-full">
@@ -628,6 +670,20 @@ export const ActivityOverviewSection: React.FC<
                           )}
                         </ComboboxCollection>
                       </ComboboxGroup>
+                      {otherTeamCategoryOptions.length > 0 && (
+                        <>
+                          <ComboboxSeparator />
+                          <ComboboxGroup items={otherTeamCategoryOptions}>
+                            <ComboboxCollection>
+                              {(option: OptionItem) => (
+                                <ComboboxItem key={option.value} value={option}>
+                                  {option.label}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxCollection>
+                          </ComboboxGroup>
+                        </>
+                      )}
                     </ComboboxList>
                   </ComboboxContent>
                 </Combobox>
@@ -1019,18 +1075,20 @@ export const ActivityOverviewSection: React.FC<
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected) => {
-                    const submittedIds = selected.map((o) => Number(o.value));
+                    const submittedIds = uniqueNumericIdsFromOptions(selected);
                     applyAllowedLookupSelection(
                       submittedIds,
                       field.value ?? [],
                       userTeamIds,
                       tagScopeById,
+                      hasCreateAny,
                       (allowedIds) => {
                         setActivityFormFieldValue(form, field.name, allowedIds);
                       }
                     );
                   }}
                   itemToStringValue={(o) => o.label}
+                  isItemEqualToValue={optionItemsEqual}
                   readOnly={readOnly}
                 >
                   <ComboboxChips ref={tagsAnchorRef} className="w-full">

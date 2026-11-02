@@ -68,6 +68,10 @@ import {
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
+import {
+  optionItemsEqual,
+  uniqueOptionItems,
+} from '@/lib/combobox-option-utils';
 import { FORM_FIELD_LABEL_HIGHLIGHT_CLASS } from '@/lib/form-field-highlight';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { cn } from '@/lib/utils';
@@ -436,13 +440,10 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
         value: venueStatusOptionValue(s.id),
         label: s.displayName ?? s.name,
       }));
-    const presetOptions: FreeformComboboxOption[] = allPresets
-      .slice()
-      .sort((a, b) => (a.venueName ?? '').localeCompare(b.venueName ?? ''))
-      .map((item) => ({
-        value: venuePresetOptionValue(item.id),
-        label: venueTagLabel(item),
-      }));
+    const presetOptions: FreeformComboboxOption[] = allPresets.map((item) => ({
+      value: venuePresetOptionValue(item.id),
+      label: venueTagLabel(item),
+    }));
     return [
       { id: 'venue-status', options: statusOptions },
       { id: 'venue-presets', options: presetOptions },
@@ -575,15 +576,17 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   value={selectedOptions}
                   onValueChange={(selected: OptionItem[]) => {
                     setRepresentativeSearch('');
+                    const deduped = uniqueOptionItems(selected);
                     setActivityFormFieldValue(
                       form,
                       field.name,
-                      selected.map((o) => ({
+                      deduped.map((o) => ({
                         representativeId: parseInt(o.value, 10),
                       }))
                     );
                   }}
                   itemToStringValue={(o: OptionItem) => o.label}
+                  isItemEqualToValue={optionItemsEqual}
                   readOnly={readOnly}
                 >
                   <ComboboxChips
