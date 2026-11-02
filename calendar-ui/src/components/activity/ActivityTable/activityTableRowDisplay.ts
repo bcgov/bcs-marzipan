@@ -64,7 +64,15 @@ export function formatRepresentativeBadgeText(name: string): string {
 export function toSentenceCase(s: string): string {
   if (!s) return s;
   if (s.toLowerCase() === 'tbd') return 'TBD';
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  return s
+    .charAt(0)
+    .toUpperCase()
+    .concat(
+      s
+        .slice(1)
+        .toLowerCase()
+        .replace(/\btbd\b/gi, 'TBD')
+    );
 }
 
 /** Two-letter initials for an avatar fallback. */

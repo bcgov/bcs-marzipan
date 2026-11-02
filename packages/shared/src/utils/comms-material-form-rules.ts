@@ -40,7 +40,7 @@ export function stripCommsDependentFields(
   data: ActivityFormData,
   flagsById: CommsMaterialReleaseFlagsById | undefined
 ): ActivityFormData {
-  if (!flagsById || flagsById.size === 0) {
+  if (flagsById === undefined) {
     return data;
   }
 

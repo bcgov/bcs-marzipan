@@ -45,6 +45,13 @@ describe('stripCommsDependentFields', () => {
     expect(result.releaseTimeOffsetMinutes).toBeNull();
   });
 
+  it('clears dependents when flags map is empty (server load with no material ids)', () => {
+    const result = stripCommsDependentFields(baseForm(), new Map());
+    expect(result.newsReleaseOriginId).toBeNull();
+    expect(result.translationLanguageIds).toEqual([]);
+    expect(result.releaseTimeOffsetMinutes).toBeNull();
+  });
+
   it('keeps fields when news release material is selected', () => {
     const result = stripCommsDependentFields(
       { ...baseForm(), commsMaterialIds: [11] },

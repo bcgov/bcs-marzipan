@@ -1497,12 +1497,6 @@ export class ActivitiesService {
       }
     }
 
-    // Override leadMinistryId with resolved value from team
-    const activityDataWithResolvedMinistry = {
-      ...activityData,
-      leadMinistryId: resolvedLeadMinistryId,
-    };
-
     if (!categoryIds?.length) {
       throw new BadRequestException('At least one category is required.');
     }
@@ -1535,6 +1529,12 @@ export class ActivitiesService {
       }
     );
     Object.assign(activityData, commsCleaned);
+    const translationLanguageIdsForInsert =
+      commsCleaned.translationLanguageIds ?? [];
+    const activityDataWithResolvedMinistry = {
+      ...activityData,
+      leadMinistryId: resolvedLeadMinistryId,
+    };
     await this.lookAheadPolicy.assertAllowedLookAheadSection(
       activityData.lookAheadSection
     );
@@ -1708,7 +1708,7 @@ export class ActivitiesService {
           tx,
           activityTranslationsRequired,
           activityId,
-          translationLanguageIds,
+          translationLanguageIdsForInsert,
           (id: number) => ({ languageId: id }),
           userId,
           now
@@ -2670,88 +2670,6 @@ export class ActivitiesService {
         ? this.normalizeVenueAddress(venueAddress)
         : undefined;
 
-    // Build update payload: activityUpdateData contains only core activity fields (junction/venue were destructured out).
-    // Cast is intentional: UpdateActivityRequest and Activity must stay in sync; only activity table columns are updated.
-    const now = new Date();
-
-    const updateData: Partial<Activity> = {
-      ...(activityUpdateData as Partial<Activity>),
-      activityStatusId: computedStatusId,
-      ...this.getActivityTimestampUpdateForWriteOrThrow({
-        context: timestampWriteContext,
-        permissions: context?.permissions,
-        renewPublicLastUpdated,
-        userId,
-        now,
-      }),
-    };
-
-    const effectiveReleaseRow = {
-      releaseTimeOffsetMinutes:
-        updateData.releaseTimeOffsetMinutes !== undefined
-          ? updateData.releaseTimeOffsetMinutes
-          : oldActivity.releaseTimeOffsetMinutes,
-      startDate:
-        updateData.startDate !== undefined
-          ? updateData.startDate
-          : oldActivity.startDate,
-      startTime:
-        updateData.startTime !== undefined
-          ? updateData.startTime
-          : oldActivity.startTime,
-      isAllDay:
-        updateData.isAllDay !== undefined
-          ? updateData.isAllDay
-          : oldActivity.isAllDay,
-      dateStatusId:
-        updateData.dateStatusId !== undefined
-          ? updateData.dateStatusId
-          : oldActivity.dateStatusId,
-      timeStatusId:
-        updateData.timeStatusId !== undefined
-          ? updateData.timeStatusId
-          : oldActivity.timeStatusId,
-    };
-    const releaseTimePersistence =
-      await this.resolveReleaseTimePersistence(effectiveReleaseRow);
-    updateData.releaseTimeOffsetMinutes =
-      releaseTimePersistence.releaseTimeOffsetMinutes;
-    updateData.releaseTime = releaseTimePersistence.releaseTime;
-
-    await this.assertActivitySchedulingRules(
-      {
-        startDate:
-          updateData.startDate !== undefined
-            ? updateData.startDate
-            : oldActivity.startDate,
-        endDate:
-          updateData.endDate !== undefined
-            ? updateData.endDate
-            : oldActivity.endDate,
-        startTime:
-          updateData.startTime !== undefined
-            ? updateData.startTime
-            : oldActivity.startTime,
-        endTime:
-          updateData.endTime !== undefined
-            ? updateData.endTime
-            : oldActivity.endTime,
-        isAllDay:
-          updateData.isAllDay !== undefined
-            ? updateData.isAllDay
-            : oldActivity.isAllDay,
-        dateStatusId:
-          updateData.dateStatusId !== undefined
-            ? updateData.dateStatusId
-            : oldActivity.dateStatusId,
-        timeStatusId:
-          updateData.timeStatusId !== undefined
-            ? updateData.timeStatusId
-            : oldActivity.timeStatusId,
-      },
-      'update'
-    );
-
     // Capture existing related data for history (before transaction)
     const venueRows = await this.databaseService.db
       .select()
@@ -2880,6 +2798,9 @@ export class ActivitiesService {
       }
     }
 
+    let effectiveTranslationLanguageIds: number[] | undefined =
+      translationLanguageIds;
+
     if (commsMaterialIds !== undefined) {
       const existingLangRows = await this.databaseService.db
         .select({ languageId: activityTranslationsRequired.languageId })
@@ -2915,13 +2836,95 @@ export class ActivitiesService {
               : oldActivity.releaseTimeOffsetMinutes,
         }
       );
-      dto.newsReleaseOriginId = commsCleaned.newsReleaseOriginId;
-      dto.newsReleaseDistributionId = commsCleaned.newsReleaseDistributionId;
-      dto.translationsRequiredStatusId =
-        commsCleaned.translationsRequiredStatusId;
-      dto.translationLanguageIds = commsCleaned.translationLanguageIds;
-      dto.releaseTimeOffsetMinutes = commsCleaned.releaseTimeOffsetMinutes;
+      Object.assign(activityUpdateData, {
+        newsReleaseOriginId: commsCleaned.newsReleaseOriginId,
+        newsReleaseDistributionId: commsCleaned.newsReleaseDistributionId,
+        translationsRequiredStatusId: commsCleaned.translationsRequiredStatusId,
+        releaseTimeOffsetMinutes: commsCleaned.releaseTimeOffsetMinutes,
+      });
+      effectiveTranslationLanguageIds = commsCleaned.translationLanguageIds;
     }
+
+    // Build update payload after comms cleanup so dependent fields persist correctly.
+    const now = new Date();
+
+    const updateData: Partial<Activity> = {
+      ...(activityUpdateData as Partial<Activity>),
+      activityStatusId: computedStatusId,
+      ...this.getActivityTimestampUpdateForWriteOrThrow({
+        context: timestampWriteContext,
+        permissions: context?.permissions,
+        renewPublicLastUpdated,
+        userId,
+        now,
+      }),
+    };
+
+    const effectiveReleaseRow = {
+      releaseTimeOffsetMinutes:
+        updateData.releaseTimeOffsetMinutes !== undefined
+          ? updateData.releaseTimeOffsetMinutes
+          : oldActivity.releaseTimeOffsetMinutes,
+      startDate:
+        updateData.startDate !== undefined
+          ? updateData.startDate
+          : oldActivity.startDate,
+      startTime:
+        updateData.startTime !== undefined
+          ? updateData.startTime
+          : oldActivity.startTime,
+      isAllDay:
+        updateData.isAllDay !== undefined
+          ? updateData.isAllDay
+          : oldActivity.isAllDay,
+      dateStatusId:
+        updateData.dateStatusId !== undefined
+          ? updateData.dateStatusId
+          : oldActivity.dateStatusId,
+      timeStatusId:
+        updateData.timeStatusId !== undefined
+          ? updateData.timeStatusId
+          : oldActivity.timeStatusId,
+    };
+    const releaseTimePersistence =
+      await this.resolveReleaseTimePersistence(effectiveReleaseRow);
+    updateData.releaseTimeOffsetMinutes =
+      releaseTimePersistence.releaseTimeOffsetMinutes;
+    updateData.releaseTime = releaseTimePersistence.releaseTime;
+
+    await this.assertActivitySchedulingRules(
+      {
+        startDate:
+          updateData.startDate !== undefined
+            ? updateData.startDate
+            : oldActivity.startDate,
+        endDate:
+          updateData.endDate !== undefined
+            ? updateData.endDate
+            : oldActivity.endDate,
+        startTime:
+          updateData.startTime !== undefined
+            ? updateData.startTime
+            : oldActivity.startTime,
+        endTime:
+          updateData.endTime !== undefined
+            ? updateData.endTime
+            : oldActivity.endTime,
+        isAllDay:
+          updateData.isAllDay !== undefined
+            ? updateData.isAllDay
+            : oldActivity.isAllDay,
+        dateStatusId:
+          updateData.dateStatusId !== undefined
+            ? updateData.dateStatusId
+            : oldActivity.dateStatusId,
+        timeStatusId:
+          updateData.timeStatusId !== undefined
+            ? updateData.timeStatusId
+            : oldActivity.timeStatusId,
+      },
+      'update'
+    );
 
     if (Object.prototype.hasOwnProperty.call(dto, 'lookAheadSection')) {
       await this.lookAheadPolicy.assertAllowedLookAheadSection(
@@ -3084,12 +3087,12 @@ export class ActivitiesService {
       }
 
       // Update translation languages
-      if (translationLanguageIds !== undefined) {
+      if (effectiveTranslationLanguageIds !== undefined) {
         await this.junctionService.updateJunctionRecords(
           tx,
           activityTranslationsRequired,
           id,
-          translationLanguageIds,
+          effectiveTranslationLanguageIds,
           (id: number) => ({ languageId: id }),
           'languageId',
           userId,
