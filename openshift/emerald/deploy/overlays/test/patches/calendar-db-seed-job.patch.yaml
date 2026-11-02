@@ -1,0 +1,12 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: corpcal-db-seed-job
+spec:
+  template:
+    spec:
+      containers:
+        - name: seed
+          env:
+            - name: SEED_SCOPE
+              value: all

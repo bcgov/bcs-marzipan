@@ -25,3 +25,4 @@ images:
 patches:
   - path: patches/calendar-service-configmap.patch.yaml
   - path: patches/calendar-ui-configmap.patch.yaml
+  - path: patches/calendar-db-seed-job.patch.yaml
