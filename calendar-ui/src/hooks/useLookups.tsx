@@ -19,6 +19,7 @@ import {
   fetchActivitiesForLookup,
   fetchActivityStatuses,
   fetchCategories,
+  fetchCodes,
   fetchCommsMaterials,
   fetchDateStatuses,
   fetchEventPlanners,
@@ -28,7 +29,6 @@ import {
   fetchNewsReleaseOrigins,
   fetchOrganizations,
   fetchPitchRequiredStatuses,
-  fetchPitchStatuses,
   fetchPremierRequested,
   fetchReports,
   fetchTags,
@@ -45,7 +45,6 @@ import {
   type LookupQueryParams,
   type MinistryLookupItem,
   type OrganizationLookupItem,
-  type PitchStatusLookupItem,
   type TagLookupItem,
   type TranslationLanguageLookupItem,
   type UserLookupItem,
@@ -106,11 +105,11 @@ export function useTags() {
   });
 }
 
-export function usePitchStatuses() {
-  return useQuery<PitchStatusLookupItem[]>({
-    queryKey: lookupQueryKeys.pitchStatuses(),
-    queryFn: () => fetchPitchStatuses(),
-    staleTime: REFERENCE_LOOKUP_CACHE_MS,
+export function useCodes() {
+  return useQuery<TagLookupItem[]>({
+    queryKey: lookupQueryKeys.codes(),
+    queryFn: () => fetchCodes(),
+    staleTime: DYNAMIC_LOOKUP_CACHE_MS,
   });
 }
 

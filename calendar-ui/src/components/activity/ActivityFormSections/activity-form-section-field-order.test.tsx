@@ -17,10 +17,12 @@ import type { FormLookupData } from '@/hooks/useFormLookups';
 import { getDefaultFormValues } from '@/lib/activity-form-defaults';
 
 import { ActivityEditProvider } from '../activity-edit-context';
+import { ActivityCommsSection } from './ActivityCommsSection';
 import { ActivityEventSection } from './ActivityEventSection';
+import { ActivityLookAheadSection } from './ActivityLookAheadSection';
 import { ActivityOverviewSection } from './ActivityOverviewSection';
-import { ActivityReportsSection } from './ActivityReportsSection';
 import { ActivityScheduleSection } from './ActivityScheduleSection';
+import { ActivitySharingSection } from './ActivitySharingSection';
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -63,13 +65,6 @@ vi.mock('@/hooks/useLookAheadSectionRows', () => ({
         value: row.lookAheadKey as string,
         label: row.uiLabel,
       })),
-}));
-
-vi.mock('@/hooks/useLookups', () => ({
-  useReports: () => ({
-    data: [{ id: 1, name: '306090', displayName: '30-60-90' }],
-    isLoading: false,
-  }),
 }));
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -179,31 +174,20 @@ describe('activity form section field order', () => {
     const { container } = render(
       <SectionFormHarness
         canViewFieldScope={(scope) =>
-          scope === 'pitchStatus' || scope === 'pitchDate' || scope === 'notes'
+          scope === 'pitchStatus' ||
+          scope === 'pitchDate' ||
+          scope === 'internalNotes' ||
+          scope === 'codes'
         }
       >
         <ActivityOverviewSection
           categories={mockLookups.categories}
           organizations={[]}
           tags={[]}
+          codes={[{ id: 1, text: 'Sample code', visibility: 'global' }]}
           pitchRequiredStatuses={mockLookups.pitchRequiredStatuses}
           userTeamIds={[5]}
           hasCreateAny={false}
-          leadTeamField={{
-            options: [
-              createMockTeamListItem({
-                id: 5,
-                name: 'Team',
-                displayName: 'Team',
-                abbreviation: 'TM',
-                ministryId: 1,
-                ministryName: 'Ministry',
-                memberCount: 1,
-              }),
-            ],
-            displayLabel: 'Team',
-            optionsFetching: false,
-          }}
         />
       </SectionFormHarness>
     );
@@ -215,16 +199,16 @@ describe('activity form section field order', () => {
     expect(renderedOrder[0]).toBe('categoryIds');
   });
 
-  it('matches registry order in reports', () => {
+  it('matches registry order in look ahead', () => {
     const { container } = render(
       <SectionFormHarness canViewFieldScope={(scope) => scope === 'lookAhead'}>
-        <ActivityReportsSection />
+        <ActivityLookAheadSection />
       </SectionFormHarness>
     );
 
     const renderedOrder = getRenderedTopLevelFieldOrder(container);
     expect(renderedOrder).toEqual(
-      expectedRegistryOrderForRenderedFields('reports', renderedOrder)
+      expectedRegistryOrderForRenderedFields('lookAhead', renderedOrder)
     );
   });
 
@@ -257,6 +241,58 @@ describe('activity form section field order', () => {
     const renderedOrder = getRenderedTopLevelFieldOrder(container);
     expect(renderedOrder).toEqual(
       expectedRegistryOrderForRenderedFields('schedule', renderedOrder)
+    );
+  });
+
+  it('matches registry order in comms', () => {
+    const { container } = render(
+      <SectionFormHarness>
+        <ActivityCommsSection
+          commsMaterialOptions={[]}
+          newsReleaseDistributionOptions={[]}
+          newsReleaseOriginOptions={[]}
+          translationRequiredStatuses={[]}
+          translationLanguageOptions={[]}
+        />
+      </SectionFormHarness>
+    );
+
+    const renderedOrder = getRenderedTopLevelFieldOrder(container);
+    expect(renderedOrder).toEqual(
+      expectedRegistryOrderForRenderedFields('comms', renderedOrder)
+    );
+  });
+
+  it('matches registry order in sharing', () => {
+    const { container } = render(
+      <SectionFormHarness>
+        <ActivitySharingSection
+          sharedWithTeams={[]}
+          quickShareGroups={[]}
+          commsLeadOptions={[]}
+          organizations={[]}
+          leadTeamField={{
+            options: [
+              createMockTeamListItem({
+                id: 5,
+                name: 'Team',
+                displayName: 'Team',
+                abbreviation: 'TM',
+                ministryId: 1,
+                ministryName: 'Ministry',
+                memberCount: 1,
+              }),
+            ],
+            displayLabel: 'Team',
+            optionsFetching: false,
+          }}
+        />
+      </SectionFormHarness>
+    );
+
+    const renderedOrder = getRenderedTopLevelFieldOrder(container);
+    expect(renderedOrder).toEqual(
+      expectedRegistryOrderForRenderedFields('sharing', renderedOrder)
     );
   });
 

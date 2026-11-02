@@ -4,7 +4,6 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { createMockTeamListItem } from '@corpcal/shared/test-utils';
 import { getDefaultFormValues } from '@/lib/activity-form-defaults';
 
 import { ActivityEditProvider } from '../activity-edit-context';
@@ -26,6 +25,10 @@ vi.mock('@/components/ui/rich-text-field', () =>
 
 vi.mock('../activity-info-icon-settings-context', () => ({
   ActivityFieldInfoIcon: () => null,
+}));
+
+vi.mock('@/hooks/useLeadTeamOptions', () => ({
+  useLeadTeamOptions: () => ({ data: [] }),
 }));
 
 const globalCategory = {
@@ -54,22 +57,6 @@ const teamTag = {
   text: 'Team Tag',
   visibility: 'team' as const,
   teamIds: [99],
-};
-
-const defaultLeadTeamField = {
-  options: [
-    createMockTeamListItem({
-      id: 5,
-      name: 'Team',
-      displayName: 'Team',
-      abbreviation: 'TM',
-      ministryId: 1,
-      ministryName: 'Ministry',
-      memberCount: 1,
-    }),
-  ],
-  displayLabel: 'Team',
-  optionsFetching: false,
 };
 
 function PicklistHarness({
@@ -124,10 +111,10 @@ function PicklistHarness({
           categories={categories}
           organizations={[]}
           tags={tags}
+          codes={[]}
           pitchRequiredStatuses={[]}
           userTeamIds={userTeamIds}
           hasCreateAny={hasCreateAny}
-          leadTeamField={defaultLeadTeamField}
         />
       </ActivityEditProvider>
     </FormProvider>

@@ -52,7 +52,6 @@ export function getEmptyReviewBaseline(): ActivityFormData {
     commsContacts: [],
     eventPlanners: [],
     representatives: [],
-    reportSettings: [],
   });
 }
 
@@ -113,7 +112,7 @@ function sortObjectArray<T extends Record<string, unknown>>(
  * paths that differ. These paths align with RHF field names used in the UI.
  *
  * ID arrays are compared order-independently; object arrays (commsContacts,
- * eventPlanners, representatives, reportSettings) are sorted by their primary
+ * eventPlanners, representatives) are sorted by their primary
  * key before comparison.
  */
 export function diffReviewFields(
@@ -185,7 +184,6 @@ const OBJECT_ARRAY_SORT_KEYS: Record<string, string> = {
   commsContacts: 'userId',
   eventPlanners: 'eventPlannerId',
   representatives: 'representativeName',
-  reportSettings: 'reportId',
 };
 
 function isIdArrayField(key: string): boolean {

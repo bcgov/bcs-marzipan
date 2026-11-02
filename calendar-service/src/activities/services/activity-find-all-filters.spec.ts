@@ -324,7 +324,7 @@ describe('buildActivityFindAllConditions', () => {
     buildActivityFindAllConditions({
       filters: baseFilters({
         dateConfirmedFilter: 'confirmed',
-        timeConfirmedFilter: 'not_confirmed',
+        timeConfirmedFilter: 'tbd',
       }),
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,

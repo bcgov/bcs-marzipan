@@ -5,7 +5,8 @@
  * and provides shared view/edit helpers used by both UI and service layers.
  *
  * View rule (scopes with a view permission): has <scope>.view OR <scope>.edit OR role is
- * Advanced Viewer / Advanced Editor / Admin / System Admin.
+ * Advanced Viewer / Advanced Editor / Admin / System Admin — unless
+ * {@link ScopeDefinition.allowRoleViewBypass} is false.
  * Scopes without a view permission (translations, pitchStatus, pitchDate) are always visible; edit is still gated.
  * Edit rule: has <scope>.edit only (no role bypass).
  */
@@ -13,7 +14,8 @@
 import { PERMISSIONS, SYSTEM_ROLES } from './constants';
 
 export const ACTIVITY_FIELD_SCOPES = [
-  'notes',
+  'internalNotes',
+  'codes',
   'lookAhead',
   'translations',
   'pitchStatus',
@@ -30,23 +32,36 @@ interface ScopeDefinition {
   responseFields: readonly string[];
   /** Request DTO field paths (create/update) that belong to this scope. */
   requestFields: readonly string[];
+  /**
+   * When false, Advanced Viewer/Editor/Admin/System Admin do not bypass view permission.
+   * Default true for backward compatibility on existing scopes.
+   */
+  allowRoleViewBypass?: boolean;
 }
 
 export const ACTIVITY_FIELD_SCOPE_CONFIG: Record<
   ActivityFieldScope,
   ScopeDefinition
 > = {
-  notes: {
+  internalNotes: {
     viewKey: PERMISSIONS.ACTIVITIES.NOTES_VIEW,
     editKey: PERMISSIONS.ACTIVITIES.NOTES_EDIT,
-    responseFields: ['notes'],
-    requestFields: ['notes'],
+    responseFields: ['internalNotes'],
+    requestFields: ['internalNotes'],
+    allowRoleViewBypass: false,
+  },
+  codes: {
+    viewKey: PERMISSIONS.ACTIVITIES.CODES_VIEW,
+    editKey: PERMISSIONS.ACTIVITIES.CODES_EDIT,
+    responseFields: ['codeIds', 'codes'],
+    requestFields: ['codeIds'],
+    allowRoleViewBypass: false,
   },
   lookAhead: {
     viewKey: PERMISSIONS.ACTIVITIES.LOOK_AHEAD_VIEW,
     editKey: PERMISSIONS.ACTIVITIES.LOOK_AHEAD_EDIT,
-    responseFields: ['lookAheadStatus', 'lookAheadSection'],
-    requestFields: ['lookAheadStatus', 'lookAheadSection'],
+    responseFields: ['executiveSummary', 'lookAheadStatus', 'lookAheadSection'],
+    requestFields: ['executiveSummary', 'lookAheadStatus', 'lookAheadSection'],
   },
   translations: {
     viewKey: null,
@@ -92,7 +107,9 @@ export function canViewActivityFieldScope(
   if (config.viewKey === null) return true;
   if (user.permissions.includes(config.viewKey)) return true;
   if (user.permissions.includes(config.editKey)) return true;
-  if (ROLES_WITH_FIELD_VIEW_BYPASS.includes(user.roleName)) return true;
+  if (config.allowRoleViewBypass !== false) {
+    if (ROLES_WITH_FIELD_VIEW_BYPASS.includes(user.roleName)) return true;
+  }
   return false;
 }
 

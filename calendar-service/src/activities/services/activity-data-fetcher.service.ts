@@ -4,16 +4,17 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   activities,
   activityCategories,
+  activityCodes,
   activityCommsContacts,
   activityCommsMaterials,
   activityEventPlanners,
-  activityReportSettings,
   activityRepresentatives,
   activitySharedWithTeams,
   activityStatuses,
   activityTags,
   activityTranslationsRequired,
   categories,
+  codes,
   commsMaterials,
   dateStatuses,
   ministries,
@@ -22,7 +23,6 @@ import {
   organizations,
   pitchRequiredStatuses,
   premierRequested,
-  reports,
   tags,
   teams,
   timeStatuses,
@@ -123,6 +123,42 @@ export class ActivityDataFetcherService {
       existing.push({
         id: row.tagId,
         text: row.tagDisplayName ?? row.tagName ?? '',
+      });
+      map.set(row.activityId, existing);
+    }
+    return map;
+  }
+
+  async fetchCodesForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, Array<{ id: number; text: string }>>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const results = await this.databaseService.db
+      .select({
+        activityId: activityCodes.activityId,
+        codeId: codes.id,
+        codeDisplayName: codes.displayName,
+        codeName: codes.name,
+      })
+      .from(activityCodes)
+      .innerJoin(codes, eq(activityCodes.codeId, codes.id))
+      .where(
+        and(
+          inArray(activityCodes.activityId, activityIds),
+          eq(activityCodes.isActive, true),
+          eq(codes.isActive, true)
+        )
+      );
+
+    const map = new Map<number, Array<{ id: number; text: string }>>();
+    for (const row of results) {
+      const existing = map.get(row.activityId) ?? [];
+      existing.push({
+        id: row.codeId,
+        text: row.codeDisplayName ?? row.codeName ?? '',
       });
       map.set(row.activityId, existing);
     }
@@ -964,67 +1000,6 @@ export class ActivityDataFetcherService {
     }
 
     return sortedMap;
-  }
-
-  /**
-   * Fetch report settings for multiple activities
-   * Returns all report settings with omitted flags for each activity
-   */
-  async fetchReportSettingsForActivities(activityIds: number[]): Promise<
-    Map<
-      number,
-      Array<{
-        id: number;
-        name: string;
-        displayName: string;
-        omitted: boolean;
-      }>
-    >
-  > {
-    if (activityIds.length === 0) {
-      return new Map();
-    }
-
-    const results = await this.databaseService.db
-      .select({
-        activityId: activityReportSettings.activityId,
-        reportId: reports.id,
-        reportName: reports.name,
-        reportDisplayName: reports.displayName,
-        omitted: activityReportSettings.omitted,
-      })
-      .from(activityReportSettings)
-      .innerJoin(reports, eq(activityReportSettings.reportId, reports.id))
-      .where(
-        and(
-          inArray(activityReportSettings.activityId, activityIds),
-          eq(reports.isActive, true)
-        )
-      )
-      .orderBy(reports.sortOrder, reports.displayName);
-
-    const map = new Map<
-      number,
-      Array<{
-        id: number;
-        name: string;
-        displayName: string;
-        omitted: boolean;
-      }>
-    >();
-
-    for (const row of results) {
-      const existing = map.get(row.activityId) ?? [];
-      existing.push({
-        id: row.reportId,
-        name: row.reportName,
-        displayName: row.reportDisplayName,
-        omitted: row.omitted,
-      });
-      map.set(row.activityId, existing);
-    }
-
-    return map;
   }
 
   /**

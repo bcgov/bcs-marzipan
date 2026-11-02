@@ -47,46 +47,72 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- PITCH STATUSES
--- Pitch approval statuses
--- Updated values: 'pending', 'required', 'not required'
--- ============================================================================
-
-INSERT INTO pitch_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
-SELECT * FROM (VALUES
-  ('pending', 'Pending', 1, true, 'Pitch approval is pending', 999, 999),
-  ('required', 'Required', 2, true, 'Pitch approval is required', 999, 999),
-  ('not required', 'Not required', 3, true, 'Pitch approval is not required', 999, 999)
-) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
-WHERE NOT EXISTS (SELECT 1 FROM pitch_statuses WHERE pitch_statuses.name = v.name);
-
--- ============================================================================
 -- DATE STATUSES
--- Date statuses for activities
--- Values: 'unknown', 'tentative', 'confirmed'
+-- Canonical active values: tbd, confirmed
 -- ============================================================================
 
 INSERT INTO date_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('not_confirmed', 'Not confirmed', 1, true, 'Date is not confirmed', 999, 999),
-  ('tentative', 'Tentative', 2, true, 'Date is tentatively scheduled', 999, 999),
-  ('confirmed', 'Confirmed', 3, true, 'Date is confirmed', 999, 999)
+  ('tbd', 'TBD', 1, true, 'Date is to be determined', 999, 999),
+  ('confirmed', 'Confirmed', 2, true, 'Date is confirmed', 999, 999)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM date_statuses WHERE date_statuses.name = v.name);
 
+UPDATE date_statuses SET
+  display_name = 'TBD',
+  sort_order = 1,
+  is_active = true,
+  last_updated_by = 999,
+  last_updated_date_time = now()
+WHERE name = 'tbd';
+
+UPDATE date_statuses SET
+  display_name = 'Confirmed',
+  sort_order = 2,
+  is_active = true,
+  last_updated_by = 999,
+  last_updated_date_time = now()
+WHERE name = 'confirmed';
+
+UPDATE date_statuses SET
+  is_active = false,
+  last_updated_by = 999,
+  last_updated_date_time = now()
+WHERE name IN ('not_confirmed', 'tentative');
+
 -- ============================================================================
 -- TIME STATUSES
--- Time statuses for activities
--- Values: 'unknown', 'tentative', 'confirmed'
+-- Canonical active values: tbd, confirmed
 -- ============================================================================
 
 INSERT INTO time_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('not_confirmed', 'Not confirmed', 1, true, 'Time is not confirmed', 999, 999),
-  ('tentative', 'Tentative', 2, true, 'Time is tentatively scheduled', 999, 999),
-  ('confirmed', 'Confirmed', 3, true, 'Time is confirmed', 999, 999)
+  ('tbd', 'TBD', 1, true, 'Time is to be determined', 999, 999),
+  ('confirmed', 'Confirmed', 2, true, 'Time is confirmed', 999, 999)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM time_statuses WHERE time_statuses.name = v.name);
+
+UPDATE time_statuses SET
+  display_name = 'TBD',
+  sort_order = 1,
+  is_active = true,
+  last_updated_by = 999,
+  last_updated_date_time = now()
+WHERE name = 'tbd';
+
+UPDATE time_statuses SET
+  display_name = 'Confirmed',
+  sort_order = 2,
+  is_active = true,
+  last_updated_by = 999,
+  last_updated_date_time = now()
+WHERE name = 'confirmed';
+
+UPDATE time_statuses SET
+  is_active = false,
+  last_updated_by = 999,
+  last_updated_date_time = now()
+WHERE name IN ('not_confirmed', 'tentative');
 
 -- ============================================================================
 -- VENUE STATUSES
@@ -100,24 +126,39 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM venue_statuses WHERE venue_statuses.name = v.name);
 
 -- ============================================================================
--- PITCH REQUIRED STATUSES (pending, required, not_required)
+-- PITCH REQUIRED STATUSES (tbd, not_required, required, pitched)
+-- Canonical (id, name): 1=tbd, 2=required, 3=not_required, 4=pitched
 -- ============================================================================
 INSERT INTO pitch_required_statuses (id, name, display_name, sort_order, is_active, created_by, last_updated_by)
 VALUES
-  (1, 'pending', 'Pending review', 1, true, 999, 999),
-  (2, 'required', 'Required', 2, true, 999, 999),
-  (3, 'not_required', 'Not Required', 3, true, 999, 999)
-ON CONFLICT (id) DO NOTHING;
+  (1, 'tbd', 'TBD', 1, true, 999, 999),
+  (2, 'required', 'Required', 3, true, 999, 999),
+  (3, 'not_required', 'Not required', 2, true, 999, 999),
+  (4, 'pitched', 'Pitched', 4, true, 999, 999)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  last_updated_by = EXCLUDED.last_updated_by,
+  last_updated_date_time = now();
 
 -- ============================================================================
--- TRANSLATION REQUIRED STATUSES (pending, required, not_required)
+-- TRANSLATION REQUIRED STATUSES (tbd, required, not_required)
+-- Canonical (id, name): 1=tbd, 2=required, 3=not_required
 -- ============================================================================
 INSERT INTO translation_required_statuses (id, name, display_name, sort_order, is_active, created_by, last_updated_by)
 VALUES
-  (1, 'pending', 'Pending review', 1, true, 999, 999),
+  (1, 'tbd', 'TBD', 1, true, 999, 999),
   (2, 'required', 'Required', 2, true, 999, 999),
   (3, 'not_required', 'Not required', 3, true, 999, 999)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  last_updated_by = EXCLUDED.last_updated_by,
+  last_updated_date_time = now();
 
 -- ============================================================================
 -- CATEGORIES
@@ -306,7 +347,7 @@ INSERT INTO reports (id, name, display_name, sort_order, is_active, visibility, 
     3,
     true,
     'team',
-    '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "summary", "significance", "category", "isIssue", "strategy", "commsMaterials", "translationsRequired", "commsContact", "publicLastUpdatedDateTime"], "printTemplate": "thirtySixtyNinetyV2", "sections": []}'::jsonb,
+    '{"fields": ["startDate", "endDate", "startTime", "displayId", "title", "isConfidential", "summary", "significance", "category", "isIssue", "commsMaterials", "translationsRequired", "commsContact", "publicLastUpdatedDateTime"], "printTemplate": "thirtySixtyNinetyV2", "sections": []}'::jsonb,
     '30/60/90 day report showing activities grouped by calendar month',
     999,
     999

@@ -14,11 +14,11 @@ import { and, eq, inArray, isNull, ne, type SQL } from 'drizzle-orm';
 import {
   activities,
   activityCategories,
+  activityCodes,
   activityCommsContacts,
   activityCommsMaterials,
   activityEventPlanners,
   activityHistory,
-  activityReportSettings,
   activityRepresentatives,
   activitySectors,
   activitySharedWithTeams,
@@ -28,6 +28,7 @@ import {
   activityThemes,
   activityTranslationsRequired,
   categories,
+  codes,
   commsMaterials,
   dateStatuses,
   deletionAudit,
@@ -49,10 +50,11 @@ import {
   normalizeActivityStatusLabel,
   pacificCalendarDateFromInstant,
   PERMISSIONS,
-  PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
+  PITCHED_LOOKUP_NAME,
   profileIncludesRelation,
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
+  TBD_LOOKUP_NAME,
   type ActivityHydrationProfile,
   type ActivityListItem,
   type ActivityStatusName,
@@ -94,6 +96,11 @@ import {
   type FieldScopeUser,
   type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
+import {
+  collectActivitySchedulingValidationErrors,
+  type ActivitySchedulingFields,
+  type ActivitySchedulingLookupResolvers,
+} from '@corpcal/shared/validation';
 
 import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
@@ -300,6 +307,19 @@ export class ActivitiesService {
     if (forbidden.length > 0) {
       throw new BadRequestException(
         `Tag IDs not available to your teams: ${forbidden.join(', ')}`
+      );
+    }
+  }
+
+  private async validateCodeIds(codeIds: number[]): Promise<void> {
+    if (!codeIds.length) return;
+    const rows = await this.databaseService.db
+      .select({ id: codes.id })
+      .from(codes)
+      .where(and(inArray(codes.id, codeIds), eq(codes.isActive, true)));
+    if (rows.length !== new Set(codeIds).size) {
+      throw new BadRequestException(
+        'One or more code IDs are invalid or inactive'
       );
     }
   }
@@ -788,6 +808,7 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
+      codes: related.codesMap.get(id) ?? [],
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
@@ -808,7 +829,6 @@ export class ActivitiesService {
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      reportSettings: related.reportSettingsMap.get(id) ?? [],
       pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
@@ -869,6 +889,7 @@ export class ActivitiesService {
       return {
         categoriesResult: this.emptyCategoriesResult(),
         tagsMap: new Map(),
+        codesMap: new Map(),
         activityStatusesMap: new Map(),
         dateStatusesMap: new Map(),
         timeStatusesMap: new Map(),
@@ -886,7 +907,6 @@ export class ActivitiesService {
         newsReleaseOriginsMap: new Map(),
         newsReleaseDistributionsMap: new Map(),
         premierRequestedMap: new Map(),
-        reportSettingsMap: new Map(),
         pitchRequiredStatusMap: new Map(),
         translationsRequiredStatusMap: new Map(),
         leadMinistryNamesMap: new Map(),
@@ -901,6 +921,7 @@ export class ActivitiesService {
     const [
       categoriesResult,
       tagsMap,
+      codesMap,
       activityStatusesMap,
       dateStatusesMap,
       timeStatusesMap,
@@ -916,7 +937,6 @@ export class ActivitiesService {
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
-      reportSettingsMap,
       pitchRequiredStatusMap,
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
@@ -928,6 +948,9 @@ export class ActivitiesService {
         : Promise.resolve(this.emptyCategoriesResult()),
       needs('tags')
         ? this.dataFetcherService.fetchTagsForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('codes')
+        ? this.dataFetcherService.fetchCodesForActivities(activityIds)
         : Promise.resolve(new Map()),
       needs('activityStatus')
         ? this.dataFetcherService.fetchActivityStatusesForActivities(
@@ -993,9 +1016,6 @@ export class ActivitiesService {
             activityIds
           )
         : Promise.resolve(new Map()),
-      needs('reportSettings')
-        ? this.dataFetcherService.fetchReportSettingsForActivities(activityIds)
-        : Promise.resolve(new Map()),
       needs('pitchRequiredStatus')
         ? this.dataFetcherService.fetchPitchRequiredStatusForActivities(
             activityIds
@@ -1040,6 +1060,7 @@ export class ActivitiesService {
     return {
       categoriesResult,
       tagsMap,
+      codesMap,
       activityStatusesMap,
       dateStatusesMap,
       timeStatusesMap,
@@ -1057,7 +1078,6 @@ export class ActivitiesService {
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
-      reportSettingsMap,
       pitchRequiredStatusMap,
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
@@ -1187,7 +1207,7 @@ export class ActivitiesService {
   }
 
   /**
-   * Resolve DB IDs for tri-state "pending" row (display "Pending review") used as create defaults.
+   * Resolve DB IDs for TBD row used as create defaults for pitch/translation.
    */
   private async resolvePendingPitchAndTranslationStatusIds(): Promise<{
     pitchRequiredStatusId: number;
@@ -1196,34 +1216,85 @@ export class ActivitiesService {
     const [pitchRow] = await this.databaseService.db
       .select({ id: pitchRequiredStatuses.id })
       .from(pitchRequiredStatuses)
-      .where(
-        eq(pitchRequiredStatuses.name, PITCH_TRANSLATION_PENDING_LOOKUP_NAME)
-      )
+      .where(eq(pitchRequiredStatuses.name, TBD_LOOKUP_NAME))
       .limit(1);
     const [translationRow] = await this.databaseService.db
       .select({ id: translationRequiredStatuses.id })
       .from(translationRequiredStatuses)
-      .where(
-        eq(
-          translationRequiredStatuses.name,
-          PITCH_TRANSLATION_PENDING_LOOKUP_NAME
-        )
-      )
+      .where(eq(translationRequiredStatuses.name, TBD_LOOKUP_NAME))
       .limit(1);
     if (pitchRow?.id == null) {
       throw new InternalServerErrorException(
-        'Pitch required status "pending" is not configured in lookups.'
+        'Pitch required status "tbd" is not configured in lookups.'
       );
     }
     if (translationRow?.id == null) {
       throw new InternalServerErrorException(
-        'Translation required status "pending" is not configured in lookups.'
+        'Translation required status "tbd" is not configured in lookups.'
       );
     }
     return {
       pitchRequiredStatusId: pitchRow.id,
       translationsRequiredStatusId: translationRow.id,
     };
+  }
+
+  private schedulingLookupResolversCache: ActivitySchedulingLookupResolvers | null =
+    null;
+
+  private async getSchedulingLookupResolvers(): Promise<ActivitySchedulingLookupResolvers> {
+    if (this.schedulingLookupResolversCache) {
+      return this.schedulingLookupResolversCache;
+    }
+    const [dateRows, timeRows, pitchRows] = await Promise.all([
+      this.databaseService.db
+        .select({ id: dateStatuses.id, name: dateStatuses.name })
+        .from(dateStatuses),
+      this.databaseService.db
+        .select({ id: timeStatuses.id, name: timeStatuses.name })
+        .from(timeStatuses),
+      this.databaseService.db
+        .select({
+          id: pitchRequiredStatuses.id,
+          name: pitchRequiredStatuses.name,
+        })
+        .from(pitchRequiredStatuses),
+    ]);
+    const dateMap = new Map(dateRows.map((r) => [r.id, r.name]));
+    const timeMap = new Map(timeRows.map((r) => [r.id, r.name]));
+    const pitchMap = new Map(pitchRows.map((r) => [r.id, r.name]));
+    this.schedulingLookupResolversCache = {
+      dateStatusNameForId: (id) => dateMap.get(id),
+      timeStatusNameForId: (id) => timeMap.get(id),
+      pitchRequiredStatusNameForId: (id) => pitchMap.get(id),
+    };
+    return this.schedulingLookupResolversCache;
+  }
+
+  private async assertActivitySchedulingRules(
+    data: ActivitySchedulingFields,
+    mode: 'create' | 'update' | 'clone'
+  ): Promise<void> {
+    const resolvers = await this.getSchedulingLookupResolvers();
+    const errors = collectActivitySchedulingValidationErrors(
+      data,
+      mode,
+      resolvers
+    );
+    if (errors.length > 0) {
+      throw new BadRequestException(errors[0]?.message ?? 'Invalid scheduling');
+    }
+  }
+
+  private async getPitchRequiredStatusIdByName(
+    name: string
+  ): Promise<number | null> {
+    const [row] = await this.databaseService.db
+      .select({ id: pitchRequiredStatuses.id })
+      .from(pitchRequiredStatuses)
+      .where(eq(pitchRequiredStatuses.name, name))
+      .limit(1);
+    return row?.id ?? null;
   }
 
   /**
@@ -1285,11 +1356,17 @@ export class ActivitiesService {
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId, context?.permissions);
 
+    applyFieldLevelWritePolicy(dto as Record<string, unknown>, {
+      permissions: context?.permissions ?? [],
+      roleName: context?.roleName ?? '',
+    });
+
     // Extract junction table IDs, venue address, and status/options from the DTO
     // activityStatusId is ignored (backend sets from markAsReviewed + activities.review permission)
     const {
       categoryIds,
       tagIds,
+      codeIds,
       commsMaterialIds,
       translationLanguageIds,
       sharedWithTeamIds,
@@ -1297,7 +1374,6 @@ export class ActivitiesService {
       eventPlanners: eventPlannersArray,
       representatives,
       venueAddress,
-      reportSettings: reportSettingsArray,
       activityHistoryNotes,
       activityStatusId: _activityStatusIdIgnored,
       markAsReviewed,
@@ -1375,6 +1451,9 @@ export class ActivitiesService {
     if (tagIds?.length) {
       await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
     }
+    if (codeIds?.length) {
+      await this.validateCodeIds(codeIds);
+    }
     await this.lookAheadPolicy.assertAllowedLookAheadSection(
       activityData.lookAheadSection
     );
@@ -1403,6 +1482,21 @@ export class ActivitiesService {
       translationsRequiredStatusId:
         dtoTranslationStatus ?? pendingStatuses.translationsRequiredStatusId,
     };
+
+    await this.assertActivitySchedulingRules(
+      {
+        startDate: activityRowForInsert.startDate,
+        endDate: activityRowForInsert.endDate,
+        startTime: activityRowForInsert.startTime,
+        endTime: activityRowForInsert.endTime,
+        isAllDay: activityRowForInsert.isAllDay,
+        dateStatusId: activityRowForInsert.dateStatusId,
+        timeStatusId: activityRowForInsert.timeStatusId,
+        pitchRequiredStatusId: activityRowForInsert.pitchRequiredStatusId,
+        pitchDate: activityRowForInsert.pitchDate,
+      },
+      'create'
+    );
 
     await this.validateCommsContactsForTeam(
       commsContactsArray,
@@ -1519,6 +1613,15 @@ export class ActivitiesService {
           userId,
           now
         ),
+        this.junctionService.insertJunctionRecords(
+          tx,
+          activityCodes,
+          activityId,
+          codeIds,
+          (id: number) => ({ codeId: id }),
+          userId,
+          now
+        ),
         // Comms Materials
         this.junctionService.insertJunctionRecords(
           tx,
@@ -1571,31 +1674,6 @@ export class ActivitiesService {
           now
         ),
       ]);
-
-      // Report settings - create defaults for all active reports, then apply custom settings if provided
-      await this.junctionService.createDefaultReportSettings(tx, activityId);
-      if (reportSettingsArray && reportSettingsArray.length > 0) {
-        // Convert array format to Map for service layer
-        const reportSettingsMap = new Map<number, boolean>();
-        for (const setting of reportSettingsArray) {
-          const reportId =
-            typeof setting.reportId === 'number' ? setting.reportId : undefined;
-          if (typeof reportId === 'number') {
-            reportSettingsMap.set(reportId, setting.omitted);
-          } else {
-            // Log and skip malformed entries
-            this.logger.warn(
-              'create: skipping malformed reportSettings entry',
-              setting
-            );
-          }
-        }
-        await this.junctionService.updateActivityReportSettings(
-          tx,
-          activityId,
-          reportSettingsMap
-        );
-      }
 
       return created;
     });
@@ -1983,7 +2061,6 @@ export class ActivitiesService {
         ctx.related.newsReleaseDistributionsMap.get(activity.id) ?? null,
       premierRequested:
         ctx.related.premierRequestedMap.get(activity.id) ?? null,
-      reportSettings: ctx.related.reportSettingsMap.get(activity.id) ?? [],
       pitchRequiredStatus:
         ctx.related.pitchRequiredStatusMap.get(activity.id) ?? null,
       translationsRequiredStatus:
@@ -2217,6 +2294,20 @@ export class ActivitiesService {
               'pitchRequiredStatusId is required for the pitchStatus operation.'
             );
           }
+          const pitchedId =
+            await this.getPitchRequiredStatusIdByName(PITCHED_LOOKUP_NAME);
+          if (pitchedId != null && pitchRequiredStatusId === pitchedId) {
+            const [activityRow] = await this.databaseService.db
+              .select({ pitchDate: activities.pitchDate })
+              .from(activities)
+              .where(eq(activities.id, activityId))
+              .limit(1);
+            if (!activityRow?.pitchDate) {
+              throw new BadRequestException(
+                'Pitch status Pitched requires a pitch date on each selected activity.'
+              );
+            }
+          }
           results.push(
             await this.update(
               activityId,
@@ -2445,13 +2536,16 @@ export class ActivitiesService {
       );
     }
 
-    // Strip fields the user lacks field-level edit permission for (keeps existing DB values)
-    // Note: Field-level write policy enforcement may be implemented in authorization guards
+    applyFieldLevelWritePolicy(dto as Record<string, unknown>, {
+      permissions: context?.permissions ?? [],
+      roleName: context?.roleName ?? '',
+    });
 
     // Extract junction table IDs and venue address from DTO; omit activityStatusId, markAsReviewed, markAsCompleted (backend sets status)
     const {
       categoryIds,
       tagIds,
+      codeIds,
       commsMaterialIds,
       translationLanguageIds,
       sharedWithTeamIds,
@@ -2459,7 +2553,6 @@ export class ActivitiesService {
       eventPlanners: eventPlannersArray,
       representatives,
       venueAddress,
-      reportSettings: reportSettingsArray,
       activityHistoryNotes,
       activityStatusId: _activityStatusIdIgnored,
       markAsReviewed: _markAsReviewedIgnored,
@@ -2554,6 +2647,48 @@ export class ActivitiesService {
       }),
     };
 
+    await this.assertActivitySchedulingRules(
+      {
+        startDate:
+          updateData.startDate !== undefined
+            ? updateData.startDate
+            : oldActivity.startDate,
+        endDate:
+          updateData.endDate !== undefined
+            ? updateData.endDate
+            : oldActivity.endDate,
+        startTime:
+          updateData.startTime !== undefined
+            ? updateData.startTime
+            : oldActivity.startTime,
+        endTime:
+          updateData.endTime !== undefined
+            ? updateData.endTime
+            : oldActivity.endTime,
+        isAllDay:
+          updateData.isAllDay !== undefined
+            ? updateData.isAllDay
+            : oldActivity.isAllDay,
+        dateStatusId:
+          updateData.dateStatusId !== undefined
+            ? updateData.dateStatusId
+            : oldActivity.dateStatusId,
+        timeStatusId:
+          updateData.timeStatusId !== undefined
+            ? updateData.timeStatusId
+            : oldActivity.timeStatusId,
+        pitchRequiredStatusId:
+          updateData.pitchRequiredStatusId !== undefined
+            ? updateData.pitchRequiredStatusId
+            : oldActivity.pitchRequiredStatusId,
+        pitchDate:
+          updateData.pitchDate !== undefined
+            ? updateData.pitchDate
+            : oldActivity.pitchDate,
+      },
+      'update'
+    );
+
     // Capture existing related data for history (before transaction)
     const venueRows = await this.databaseService.db
       .select()
@@ -2614,14 +2749,6 @@ export class ActivitiesService {
         )
       );
 
-    const existingReportSettings = await this.databaseService.db
-      .select({
-        reportId: activityReportSettings.reportId,
-        omitted: activityReportSettings.omitted,
-      })
-      .from(activityReportSettings)
-      .where(eq(activityReportSettings.activityId, id));
-
     // Data scope: when changing leadTeamId, user without create.any may only set a team they belong to.
     if (
       dto.leadTeamId !== undefined &&
@@ -2671,6 +2798,9 @@ export class ActivitiesService {
           existingTagIds
         );
       }
+    }
+    if (codeIds !== undefined && codeIds.length > 0) {
+      await this.validateCodeIds(codeIds);
     }
     if (Object.prototype.hasOwnProperty.call(dto, 'lookAheadSection')) {
       await this.lookAheadPolicy.assertAllowedLookAheadSection(
@@ -2818,6 +2948,19 @@ export class ActivitiesService {
         );
       }
 
+      if (codeIds !== undefined) {
+        await this.junctionService.updateJunctionRecords(
+          tx,
+          activityCodes,
+          id,
+          codeIds,
+          (id: number) => ({ codeId: id }),
+          'codeId',
+          userId,
+          now
+        );
+      }
+
       // Update comms materials
       if (commsMaterialIds !== undefined) {
         await this.junctionService.updateJunctionRecords(
@@ -2890,30 +3033,6 @@ export class ActivitiesService {
         );
       }
 
-      // Update report settings
-      if (reportSettingsArray !== undefined && reportSettingsArray.length > 0) {
-        // Convert array format to Map for service layer
-        const reportSettingsMap = new Map<number, boolean>();
-        for (const setting of reportSettingsArray) {
-          const reportId =
-            typeof setting.reportId === 'number' ? setting.reportId : undefined;
-          if (typeof reportId === 'number') {
-            reportSettingsMap.set(reportId, setting.omitted);
-          } else {
-            // Log and skip malformed entries
-            this.logger.warn(
-              'update: skipping malformed reportSettings entry',
-              setting
-            );
-          }
-        }
-        await this.junctionService.updateActivityReportSettings(
-          tx,
-          id,
-          reportSettingsMap
-        );
-      }
-
       return updatedActivity;
     });
 
@@ -2936,6 +3055,7 @@ export class ActivitiesService {
     const [
       categoriesResult,
       tagsList,
+      codesList,
       activityStatus,
       dateStatus,
       timeStatus,
@@ -2951,7 +3071,6 @@ export class ActivitiesService {
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
-      reportSettingsMap,
       pitchRequiredStatus,
       translationsRequiredStatus,
       leadMinistryName,
@@ -2960,6 +3079,7 @@ export class ActivitiesService {
     ] = await Promise.all([
       this.dataFetcherService.fetchCategoriesForActivities([id]),
       this.dataFetcherService.fetchTagsForActivities([id]),
+      this.dataFetcherService.fetchCodesForActivities([id]),
       this.dataFetcherService.fetchActivityStatusesForActivities([id]),
       this.dataFetcherService.fetchDateStatusesForActivities([id]),
       this.dataFetcherService.fetchTimeStatusesForActivities([id]),
@@ -2975,7 +3095,6 @@ export class ActivitiesService {
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchReportSettingsForActivities([id]),
       this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
       this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
         id,
@@ -2999,6 +3118,7 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: tagsList.get(id) ?? [],
+      codes: codesList.get(id) ?? [],
       activityStatus: activityStatus.get(id),
       dateStatus: dateStatus.get(id),
       timeStatus: timeStatus.get(id),
@@ -3019,7 +3139,6 @@ export class ActivitiesService {
       newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: premierRequestedMap.get(id) ?? null,
-      reportSettings: reportSettingsMap.get(id) ?? [],
       pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
@@ -3097,18 +3216,6 @@ export class ActivitiesService {
         field: 'representatives',
         oldValue: this.normalizeRepresentatives(existingRepresentatives),
         newValue: this.normalizeRepresentatives(representatives),
-      });
-    }
-
-    if (
-      reportSettingsArray !== undefined &&
-      reportSettingsArray.length > 0 &&
-      !isDeepEqual(existingReportSettings, reportSettingsArray)
-    ) {
-      allChanges.push({
-        field: 'reportSettings',
-        oldValue: existingReportSettings,
-        newValue: reportSettingsArray,
       });
     }
 
@@ -3220,8 +3327,9 @@ export class ActivitiesService {
    * The source activity's field values are mapped into a `CreateActivityRequest`
    * payload, then transformed per the clone rules:
    * - Schedule fields and title come from the request body (user re-enters them).
-   * - Never-copied fields (Look Ahead, pitch, translations, pitchDate, executive
-   *   summary) are reset to create-time defaults.
+   * - Never-copied fields (pitch, translations, pitchDate) are reset to
+   *   create-time defaults. Look Ahead fields copy when included in
+   *   `includeFieldPaths` and the user has lookAhead.edit.
    * - Optional `includeFieldPaths` acts as an allow-list across the advanced
    *   field inventory; fields not in the list are dropped so `create` applies
    *   its default values.
@@ -3249,7 +3357,7 @@ export class ActivitiesService {
     const lookups = await this.getReviewDiffLookups();
     const sourceFormData = mapResponseToFormData(source, lookups);
 
-    const dto: CreateActivityRequest = { ...sourceFormData };
+    const dto: ActivityFormData = { ...sourceFormData };
 
     for (const key of CLONE_NEVER_COPIED_FIELD_KEYS) {
       delete (dto as Record<string, unknown>)[key];
@@ -3280,8 +3388,8 @@ export class ActivitiesService {
     });
 
     dto.title = body.title;
-    dto.startDate = body.startDate ?? null;
-    dto.endDate = body.endDate ?? null;
+    dto.startDate = body.startDate;
+    dto.endDate = body.endDate;
     dto.startTime = body.startTime ?? null;
     dto.endTime = body.endTime ?? null;
     if (body.isAllDay !== undefined) {
@@ -3297,6 +3405,21 @@ export class ActivitiesService {
     dto.markAsReviewed = body.markAsReviewed === true;
     dto.activityHistoryNotes = body.activityHistoryNotes;
 
+    await this.assertActivitySchedulingRules(
+      {
+        startDate: dto.startDate,
+        endDate: dto.endDate,
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+        isAllDay: dto.isAllDay,
+        dateStatusId: dto.dateStatusId,
+        timeStatusId: dto.timeStatusId,
+        pitchRequiredStatusId: dto.pitchRequiredStatusId,
+        pitchDate: dto.pitchDate,
+      },
+      'clone'
+    );
+
     const sourceProvenance: HistoryChange[] = [
       {
         field: 'clonedFromActivityId',
@@ -3310,9 +3433,14 @@ export class ActivitiesService {
       },
     ];
 
-    const created = await this.create(dto, userId, context, {
-      extraCreateChanges: sourceProvenance,
-    });
+    const created = await this.create(
+      dto as CreateActivityRequest,
+      userId,
+      context,
+      {
+        extraCreateChanges: sourceProvenance,
+      }
+    );
 
     return created;
   }
@@ -3384,9 +3512,6 @@ export class ActivitiesService {
       await tx
         .delete(activityEventPlanners)
         .where(eq(activityEventPlanners.activityId, id));
-      await tx
-        .delete(activityReportSettings)
-        .where(eq(activityReportSettings.activityId, id));
       await tx
         .delete(activityRepresentatives)
         .where(eq(activityRepresentatives.activityId, id));
@@ -3778,6 +3903,7 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
+      codes: related.codesMap.get(id) ?? [],
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
@@ -3798,7 +3924,6 @@ export class ActivitiesService {
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      reportSettings: related.reportSettingsMap.get(id) ?? [],
       pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
@@ -3923,6 +4048,7 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
+      codes: related.codesMap.get(id) ?? [],
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
@@ -3943,7 +4069,6 @@ export class ActivitiesService {
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      reportSettings: related.reportSettingsMap.get(id) ?? [],
       pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
@@ -4060,6 +4185,7 @@ export class ActivitiesService {
       categories: categoriesList.get(id) ?? [],
       categoryIds: categoryIdsList.get(id) ?? [],
       tags: related.tagsMap.get(id) ?? [],
+      codes: related.codesMap.get(id) ?? [],
       activityStatus: related.activityStatusesMap.get(id),
       dateStatus: related.dateStatusesMap.get(id),
       timeStatus: related.timeStatusesMap.get(id),
@@ -4080,7 +4206,6 @@ export class ActivitiesService {
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      reportSettings: related.reportSettingsMap.get(id) ?? [],
       pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,

@@ -81,6 +81,8 @@ export type ActivityMapperRelatedData = {
   categories?: string[];
   categoryIds?: number[];
   tags?: Array<{ id: number; text: string }>;
+  codes?: Array<{ id: number; text: string }>;
+  codeIds?: number[];
   activityStatus?: string;
   dateStatus?: string;
   timeStatus?: string;
@@ -110,12 +112,6 @@ export type ActivityMapperRelatedData = {
   eventPlanners?: string[];
   eventPlannerLeadIds?: number[];
   leadOrgName?: string | null;
-  reportSettings?: Array<{
-    id: number;
-    name: string;
-    displayName: string;
-    omitted: boolean;
-  }>;
   pitchRequiredStatus?: string | null;
   translationsRequiredStatus?: string | null;
   leadMinistry?: string | null;
@@ -210,8 +206,13 @@ export class ActivityMapperService {
       leadOrgName: activity.leadOrgName ?? null,
       leadOrg: relatedData?.leadOrgName ?? null,
 
-      // Tags
+      // Tags / codes
       tags: relatedData?.tags ?? [],
+      codes: relatedData?.codes ?? [],
+      codeIds:
+        relatedData?.codeIds ??
+        relatedData?.codes?.map((code) => code.id) ??
+        [],
 
       // Approvals
       significance: activity.significance ?? null,
@@ -227,11 +228,9 @@ export class ActivityMapperService {
       endDate: formatDate(activity.endDate),
       endTime: formatTime(activity.endTime),
       schedulingNotes: activity.schedulingNotes ?? null,
-      strategy: activity.strategy ?? null,
 
       // Comms
       commsMaterials: relatedData?.commsMaterials ?? [],
-      newsReleaseId: activity.newsReleaseId ?? null,
       newsReleaseOriginId: activity.newsReleaseOriginId ?? null,
       newsReleaseDistributionId: activity.newsReleaseDistributionId ?? null,
       translationsRequired: relatedData?.translationsRequired ?? [],
@@ -262,6 +261,7 @@ export class ActivityMapperService {
 
       // Notes and additional fields
       notes: activity.notes ?? null,
+      internalNotes: activity.internalNotes ?? null,
       pitchDate: formatDate(activity.pitchDate),
       pitchRequiredStatusId: activity.pitchRequiredStatusId ?? null,
       translationsRequiredStatusId:
@@ -288,9 +288,6 @@ export class ActivityMapperService {
       leadMinistry: relatedData?.leadMinistry ?? null,
       leadMinistryAbbreviation: relatedData?.leadMinistryAbbreviation ?? null,
       leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
-
-      // Report settings
-      reportSettings: relatedData?.reportSettings ?? [],
 
       // Edit access for current user (set when authenticated)
       ...(relatedData?.canEdit !== undefined && {
@@ -345,7 +342,6 @@ export class ActivityMapperService {
       summary: activity.summary ?? '',
       executiveSummary: activity.executiveSummary ?? null,
       significance: activity.significance ?? null,
-      strategy: activity.strategy ?? null,
       schedulingNotes: activity.schedulingNotes ?? null,
       isIssue: activity.isIssue ?? false,
       isConfidential: activity.isConfidential ?? false,
