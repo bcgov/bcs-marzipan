@@ -19,8 +19,6 @@ function makeInput(
     endDate: null,
     categoryIds: [],
     activityStatusId: 0,
-    pitchRequiredStatusName: null,
-    pitchDate: null,
     lookAheadStatus: null,
     lookAheadSection: null,
     dateStatusName: '',
@@ -53,8 +51,6 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     endDate: '2025-01-12',
     categoryIds: [1, 2],
     activityStatusId: 1,
-    pitchRequiredStatusName: 'Required',
-    pitchDate: '2025-02-15',
     lookAheadStatus: 'new',
     lookAheadSection: 'events',
     dateStatusName: 'Confirmed',
@@ -74,8 +70,6 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     endDate: '2025-02-05', // end outside Jan window
     categoryIds: [3],
     activityStatusId: 2,
-    pitchRequiredStatusName: 'Not required',
-    pitchDate: null, // not scheduled
     lookAheadStatus: 'changed',
     lookAheadSection: 'issues',
     dateStatusName: 'Tentative',
@@ -94,8 +88,6 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     endDate: '2025-01-20',
     categoryIds: [],
     activityStatusId: 3,
-    pitchRequiredStatusName: null,
-    pitchDate: '2025-01-05',
     lookAheadStatus: null,
     lookAheadSection: null,
     dateStatusName: '',
@@ -114,8 +106,6 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     endDate: '2025-01-31',
     categoryIds: [1],
     activityStatusId: 1,
-    pitchRequiredStatusName: 'required', // lowercase variant
-    pitchDate: '2025-03-20',
     lookAheadStatus: 'new',
     lookAheadSection: 'news',
     dateStatusName: 'confirmed', // lowercase
@@ -188,58 +178,6 @@ describe('activityMatchesFilterState', () => {
     });
   });
 
-  describe('pitch required status (case-insensitive)', () => {
-    it('matches selected names and excludes null status', () => {
-      expect(
-        matchIds(state({ pitchRequiredStatusNames: ['Required'] }))
-      ).toEqual([1, 4]);
-    });
-  });
-
-  describe('pitch date', () => {
-    it('not_scheduled keeps only activities without a pitch date', () => {
-      expect(
-        matchIds(state({ pitchDateFilter: { kind: 'not_scheduled' } }))
-      ).toEqual([2]);
-    });
-
-    it('scheduled with range keeps pitch dates in window', () => {
-      expect(
-        matchIds(
-          state({
-            pitchDateFilter: {
-              kind: 'scheduled',
-              dateRange: {
-                startDate: '2025-02-01',
-                endDate: '2025-02-28',
-                noStartDate: false,
-                noEndDate: false,
-              },
-            },
-          })
-        )
-      ).toEqual([1]);
-    });
-
-    it('scheduled with empty range keeps any activity with a pitch date', () => {
-      expect(
-        matchIds(
-          state({
-            pitchDateFilter: {
-              kind: 'scheduled',
-              dateRange: {
-                startDate: '',
-                endDate: '',
-                noStartDate: false,
-                noEndDate: false,
-              },
-            },
-          })
-        )
-      ).toEqual([1, 3, 4]);
-    });
-  });
-
   describe('Look Ahead', () => {
     it('filters by status (OR within)', () => {
       expect(matchIds(state({ lookAheadStatusValues: ['new'] }))).toEqual([
@@ -272,10 +210,10 @@ describe('activityMatchesFilterState', () => {
       ]);
     });
 
-    it('time not_confirmed excludes confirmed', () => {
-      expect(matchIds(state({ timeConfirmedFilter: 'not_confirmed' }))).toEqual(
-        [2, 3, 4]
-      );
+    it('time tbd excludes confirmed', () => {
+      expect(matchIds(state({ timeConfirmedFilter: 'tbd' }))).toEqual([
+        2, 3, 4,
+      ]);
     });
   });
 

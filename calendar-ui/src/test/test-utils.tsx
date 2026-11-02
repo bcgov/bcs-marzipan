@@ -49,7 +49,6 @@ function AllTheProviders({ children, form }: AllTheProvidersProps) {
       translationLanguageIds: [],
       representatives: [],
       sharedWithTeamIds: [],
-      reportSettings: [],
     } as Partial<ActivityFormData>,
   });
 

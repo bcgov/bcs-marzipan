@@ -989,4 +989,34 @@ describe('FreeformCombobox', () => {
       });
     });
   });
+
+  describe('Invalid styling', () => {
+    it('sets aria-invalid on single-select InputGroup and combobox input', () => {
+      render(<FreeformCombobox {...defaultProps} aria-invalid={true} />);
+
+      expect(screen.getByRole('combobox')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
+      expect(
+        document.querySelector('[data-slot="input-group"]')
+      ).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('sets aria-invalid on chips container in multiple mode', () => {
+      render(
+        <FreeformCombobox
+          {...defaultProps}
+          multiple
+          useChips
+          value={[]}
+          aria-invalid={true}
+        />
+      );
+
+      expect(
+        document.querySelector('[data-slot="freeform-combobox-chips"]')
+      ).toHaveAttribute('aria-invalid', 'true');
+    });
+  });
 });

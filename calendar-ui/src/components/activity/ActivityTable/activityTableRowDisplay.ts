@@ -63,5 +63,14 @@ export function formatRepresentativeBadgeText(name: string): string {
 /** Sentence case for lookup display values: first letter upper, rest lower. */
 export function toSentenceCase(s: string): string {
   if (!s) return s;
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  if (s.toLowerCase() === 'tbd') return 'TBD';
+  return s
+    .charAt(0)
+    .toUpperCase()
+    .concat(
+      s
+        .slice(1)
+        .toLowerCase()
+        .replace(/\btbd\b/gi, 'TBD')
+    );
 }

@@ -65,12 +65,12 @@ export const activityDbFieldsSchema = z.object({
   timeStatusId: z.number().int().optional(),
   venueStatusId: z.number().int().nullable(),
   schedulingNotes: z.string().nullable(),
-  strategy: z.string().nullable(),
 
   // News Release
   newsReleaseOriginId: z.number().int().nullable(),
-  newsReleaseId: z.string().uuid().nullable(),
   newsReleaseDistributionId: z.number().int().nullable(),
+  releaseTimeOffsetMinutes: z.number().int().nullable(),
+  releaseTime: z.string().datetime().nullable(),
 
   // Look Ahead
   executiveSummary: z.string().nullable(),
@@ -78,10 +78,9 @@ export const activityDbFieldsSchema = z.object({
   /** Bucket key driven by report admin configuration; see activity.schema.ts. Omitted when user lacks lookAhead view. */
   lookAheadSection: z.string().min(1).max(50).nullable().optional(),
 
-  // notes / pitch: omitted from API when user lacks view for that scope. Translation fields are not view-redacted.
   notes: z.string().nullable().optional(),
-  pitchDate: z.string().nullable().optional(),
-  pitchRequiredStatusId: z.number().int().nullable().optional(),
+  /** Omitted when user lacks internal notes view permission. */
+  internalNotes: z.string().nullable().optional(),
   translationsRequiredStatusId: z.number().int().nullable().optional(),
   premierRequestedId: z.number().int().nullable(),
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
@@ -108,17 +107,6 @@ export const activityDbFieldsSchema = z.object({
 const tagSchema = z.object({
   id: z.number().int(),
   text: z.string(),
-});
-
-/**
- * Report Setting Schema
- * Includes whether the activity is omitted from this report
- */
-const reportSettingSchema = z.object({
-  id: z.number().int(),
-  name: z.string(),
-  displayName: z.string(),
-  omitted: z.boolean(),
 });
 
 /**
@@ -189,7 +177,6 @@ export const activityComputedFieldsSchema = z.object({
   newsReleaseOrigin: z.string().nullable(),
   newsReleaseDistribution: z.string().nullable(),
   premierRequested: z.string().nullable(),
-  pitchRequiredStatus: z.string().nullable().optional(),
   translationsRequiredStatus: z.string().nullable().optional(),
   leadMinistry: z.string().nullable(),
   leadMinistryAbbreviation: z.string().nullable(),
@@ -198,10 +185,6 @@ export const activityComputedFieldsSchema = z.object({
 
   // Venue address (from venue_addresses table join)
   venueAddress: venueAddressSchema,
-
-  // Report settings (from activityReportSettings junction table)
-  // Includes omitted flag for each report
-  reportSettings: z.array(reportSettingSchema).default([]),
 
   // Whether the current user may edit this activity (comms contact, lead-team member, or bypass).
   // When false, user has view-only access (e.g. shared-with only). Omitted when not authenticated.

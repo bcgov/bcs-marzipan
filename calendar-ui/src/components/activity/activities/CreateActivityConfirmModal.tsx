@@ -66,17 +66,15 @@ const ALL_DISPLAY_FIELDS: Array<keyof ActivityFormData> = [
   'venueStatusId',
   'significance',
   'schedulingNotes',
-  'strategy',
+  'internalNotes',
   'isIssue',
   'isAllDay',
   'isConfidential',
   'visibility',
-  'pitchDate',
   'notes',
   'executiveSummary',
   'leadOrgId',
   'eventPlanners',
-  'pitchRequiredStatusId',
   'translationsRequiredStatusId',
   'lookAheadStatus',
   'lookAheadSection',
@@ -180,8 +178,10 @@ function resolveDisplayValue(
       .join(', ');
   }
 
-  if (field === 'pitchRequiredStatusId' && typeof value === 'number') {
-    const status = lookups.pitchStatuses.find((s) => s.id === value);
+  if (field === 'translationsRequiredStatusId' && typeof value === 'number') {
+    const status = lookups.translationRequiredStatuses.find(
+      (s) => s.id === value
+    );
     return status?.displayName || status?.name || String(value);
   }
 

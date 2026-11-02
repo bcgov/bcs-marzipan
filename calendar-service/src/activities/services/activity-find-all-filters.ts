@@ -23,7 +23,6 @@ import {
   activityTags,
   activityTranslationsRequired,
   dateStatuses,
-  pitchRequiredStatuses,
   timeStatuses,
   venueAddresses,
 } from '@corpcal/database/schema';
@@ -32,10 +31,6 @@ import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
 
 import type { DatabaseService } from '../../database/database.service';
 import type { DataScope } from '../../policy/dto/user-context.dto';
-
-function lowerTrimMatch(column: unknown, value: string): SQL {
-  return sql`lower(trim(${column})) = ${value.toLowerCase().trim()}`;
-}
 
 function buildConfirmedStatusMatch(
   db: DatabaseService['db'],
@@ -233,6 +228,11 @@ export function buildActivityFindAllConditions(
     );
   }
 
+  if (filters.requireAssignedLookAheadSection === true) {
+    conditions.push(isNotNull(activities.lookAheadSection));
+    conditions.push(ne(activities.lookAheadSection, ''));
+  }
+
   if (
     filters.translationRequiredStatusIds != null &&
     filters.translationRequiredStatusIds.length > 0
@@ -256,24 +256,11 @@ export function buildActivityFindAllConditions(
     conditions.push(lte(activities.endDate, filters.endDateTo));
   }
 
-  if (filters.pitchDateNotScheduled === true) {
-    conditions.push(sql`${activities.pitchDate} IS NULL`);
-  } else if (filters.pitchDateScheduled === true) {
-    conditions.push(isNotNull(activities.pitchDate));
-  } else {
-    if (filters.pitchDateFrom) {
-      conditions.push(gte(activities.pitchDate, filters.pitchDateFrom));
-    }
-    if (filters.pitchDateTo) {
-      conditions.push(lte(activities.pitchDate, filters.pitchDateTo));
-    }
-  }
-
   if (filters.dateConfirmedFilter === 'confirmed') {
     conditions.push(
       buildConfirmedStatusMatch(db, activities.dateStatusId, dateStatuses, true)
     );
-  } else if (filters.dateConfirmedFilter === 'not_confirmed') {
+  } else if (filters.dateConfirmedFilter === 'tbd') {
     conditions.push(
       buildConfirmedStatusMatch(
         db,
@@ -288,7 +275,7 @@ export function buildActivityFindAllConditions(
     conditions.push(
       buildConfirmedStatusMatch(db, activities.timeStatusId, timeStatuses, true)
     );
-  } else if (filters.timeConfirmedFilter === 'not_confirmed') {
+  } else if (filters.timeConfirmedFilter === 'tbd') {
     conditions.push(
       buildConfirmedStatusMatch(
         db,
@@ -462,31 +449,6 @@ export function buildActivityFindAllConditions(
     );
   }
 
-  if (
-    filters.pitchRequiredStatusNames != null &&
-    filters.pitchRequiredStatusNames.length > 0
-  ) {
-    const pitchMatches = filters.pitchRequiredStatusNames.map((name) =>
-      or(
-        lowerTrimMatch(pitchRequiredStatuses.displayName, name),
-        lowerTrimMatch(pitchRequiredStatuses.name, name)
-      )
-    );
-    conditions.push(
-      exists(
-        db
-          .select({ one: sql`1` })
-          .from(pitchRequiredStatuses)
-          .where(
-            and(
-              eq(pitchRequiredStatuses.id, activities.pitchRequiredStatusId),
-              or(...pitchMatches)
-            )
-          )
-      )
-    );
-  }
-
   if (!dataScope.bypass) {
     conditions.push(buildActivityVisibilityCondition(db, dataScope.teamIds));
   }
@@ -517,18 +479,12 @@ export function hasActivityFindAllFilterFields(
       query.translationRequiredStatusIds.length > 0) ||
     (query.translationLanguageIds != null &&
       query.translationLanguageIds.length > 0) ||
-    (query.pitchRequiredStatusNames != null &&
-      query.pitchRequiredStatusNames.length > 0) ||
     (query.lookAheadStatusValues != null &&
       query.lookAheadStatusValues.length > 0) ||
     (query.lookAheadSectionValues != null &&
       query.lookAheadSectionValues.length > 0) ||
     query.dateConfirmedFilter !== undefined ||
     query.timeConfirmedFilter !== undefined ||
-    query.pitchDateNotScheduled === true ||
-    query.pitchDateScheduled === true ||
-    query.pitchDateFrom !== undefined ||
-    query.pitchDateTo !== undefined ||
     query.city !== undefined ||
     query.isIssue !== undefined ||
     query.includeCompleted !== undefined ||

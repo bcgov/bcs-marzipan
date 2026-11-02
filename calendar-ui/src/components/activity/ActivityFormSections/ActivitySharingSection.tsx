@@ -25,8 +25,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import { Switch } from '@/components/ui/switch';
-import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
@@ -39,7 +39,15 @@ import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
+import {
+  defaultActivityLeadTeamFieldConfig,
+  type ActivityLeadTeamFieldConfig,
+} from '../activity-lead-team-field-config';
 import { ActivityFormSection } from './ActivityFormSection';
+import {
+  ActivityLeadTeamField,
+  type LeadOrganizationOptionForLeadTeam,
+} from './ActivityLeadTeamField';
 
 export type SharingTeamLookup = {
   id: number;
@@ -118,9 +126,30 @@ function SharingShortcutRow({
   );
 }
 
+function buildCommsContactsFromSelection(
+  selected: OptionItem[],
+  currentContacts: Array<{ userId: number; isLead: boolean }> | undefined
+): Array<{ userId: number; isLead: boolean }> {
+  const newIds = selected.map((o) => parseInt(o.value, 10));
+  if (newIds.length === 0) return [];
+
+  const current = currentContacts ?? [];
+  const currentLeadId = current.find((c) => c.isLead)?.userId ?? null;
+  const leadStillPresent =
+    currentLeadId != null && newIds.includes(currentLeadId);
+
+  return newIds.map((userId, i) => ({
+    userId,
+    isLead: leadStillPresent ? userId === currentLeadId : i === 0,
+  }));
+}
+
 type ActivitySharingSectionProps = {
   sharedWithTeams: SharingTeamLookup[];
   quickShareGroups: QuickShareGroupLookup[];
+  commsLeadOptions: OptionItem[];
+  organizations: LeadOrganizationOptionForLeadTeam[];
+  leadTeamField?: ActivityLeadTeamFieldConfig;
 };
 
 const RESTRICT_ACCESS_SWITCH_ID = 'activity-visibility-restrict-access';
@@ -128,12 +157,23 @@ const RESTRICT_ACCESS_SWITCH_ID = 'activity-visibility-restrict-access';
 export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
   sharedWithTeams,
   quickShareGroups,
+  commsLeadOptions,
+  organizations,
+  leadTeamField: leadTeamFieldProp,
 }) => {
+  const {
+    options: leadTeamOptions,
+    displayLabel: leadTeamDisplayLabel,
+    optionsFetching: leadTeamOptionsFetching,
+  } = {
+    ...defaultActivityLeadTeamFieldConfig,
+    ...leadTeamFieldProp,
+  };
   const { readOnly } = useActivityEdit();
   const form = useFormContext<ActivityFormData>();
+  const commsContactsAnchorRef = useComboboxAnchor();
   const sharedWithAnchorRef = useComboboxAnchor();
   const leadTeamId = useWatch({ control: form.control, name: 'leadTeamId' });
-  const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
   const selectableTeams = useMemo(
     () =>
       sharedWithTeams.filter(
@@ -145,8 +185,13 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
   const leadTeamName = useMemo(() => {
     if (leadTeamId == null) return 'lead team';
     const team = leadTeamOptions.find((t) => t.id === leadTeamId);
-    return team?.displayName ?? team?.name ?? 'lead team';
-  }, [leadTeamId, leadTeamOptions]);
+    return (
+      team?.displayName ??
+      team?.name ??
+      leadTeamDisplayLabel?.trim() ??
+      'lead team'
+    );
+  }, [leadTeamId, leadTeamOptions, leadTeamDisplayLabel]);
 
   const sharedWithTeamOptions = useMemo<OptionItem[]>(
     () =>
@@ -173,6 +218,138 @@ export const ActivitySharingSection: FC<ActivitySharingSectionProps> = ({
 
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.sharing}>
+      <ActivityLeadTeamField
+        leadTeamOptions={leadTeamOptions}
+        leadTeamDisplayLabel={leadTeamDisplayLabel}
+        leadTeamOptionsFetching={leadTeamOptionsFetching}
+        organizations={organizations}
+        readOnly={readOnly}
+      />
+
+      <FormField
+        control={form.control}
+        name="commsContacts"
+        render={({ field }) => {
+          const contacts = field.value ?? [];
+          const leadFirst = [...contacts].sort((a, b) =>
+            a.isLead ? -1 : b.isLead ? 1 : 0
+          );
+          const selectedOptions: OptionItem[] = leadFirst.map((c) => {
+            const opt = commsLeadOptions.find(
+              (o) => o.value === String(c.userId)
+            );
+            return (
+              opt ?? {
+                value: String(c.userId),
+                label: `User ${c.userId}`,
+              }
+            );
+          });
+
+          const handleValueChange = (selected: OptionItem[]) => {
+            setActivityFormFieldValue(
+              form,
+              field.name,
+              buildCommsContactsFromSelection(selected, field.value)
+            );
+          };
+
+          const setLead = (userId: number) => {
+            const next = (field.value ?? []).map((c) => ({
+              ...c,
+              isLead: c.userId === userId,
+            }));
+            setActivityFormFieldValue(form, field.name, next);
+          };
+
+          return (
+            <FormItem>
+              <FormLabel showRequired>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="commsContacts"
+                    ariaLabel="About communications contacts"
+                  />
+                </>
+              </FormLabel>
+              <FormControl data-field={field.name}>
+                <Combobox
+                  items={commsLeadOptions}
+                  multiple
+                  value={selectedOptions}
+                  onValueChange={handleValueChange}
+                  itemToStringValue={(o) => o.value}
+                  isItemEqualToValue={(item, value) =>
+                    optionItemsEqual(item, value)
+                  }
+                  readOnly={readOnly}
+                >
+                  <ComboboxChips
+                    ref={commsContactsAnchorRef}
+                    className="w-full"
+                  >
+                    <ComboboxValue>
+                      {(values: OptionItem[]) => (
+                        <>
+                          {values.map((option) => {
+                            const contact = contacts.find(
+                              (c: { userId: number; isLead: boolean }) =>
+                                String(c.userId) === option.value
+                            );
+                            const isLead = contact?.isLead ?? false;
+                            const userId = parseInt(option.value, 10);
+                            return (
+                              <ComboboxChip key={option.value}>
+                                <span className="flex items-center gap-1.5">
+                                  <span>{option.label}</span>
+                                  {isLead && (
+                                    <span className="bg-primary/15 text-primary rounded px-1.5 py-0.5 text-[10px] font-medium">
+                                      Lead
+                                    </span>
+                                  )}
+                                  {!readOnly && !isLead && (
+                                    <button
+                                      type="button"
+                                      className="text-muted-foreground hover:text-foreground focus:ring-ring ml-0.5 text-[10px] underline focus:ring-1 focus:outline-none"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setLead(userId);
+                                      }}
+                                    >
+                                      Set as lead
+                                    </button>
+                                  )}
+                                </span>
+                              </ComboboxChip>
+                            );
+                          })}
+                          <ComboboxChipsInput placeholder="" />
+                        </>
+                      )}
+                    </ComboboxValue>
+                  </ComboboxChips>
+                  <ComboboxContent anchor={commsContactsAnchorRef}>
+                    <ComboboxEmpty>No contacts found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {(option: OptionItem) => (
+                        <ComboboxItem key={option.value} value={option}>
+                          {option.label}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
+      />
+
+      <FormSectionDivider />
+
       <FormField
         control={form.control}
         name="visibility"

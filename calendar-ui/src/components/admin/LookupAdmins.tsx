@@ -14,11 +14,12 @@ import api from '@/api/axios';
 import {
   fetchActivityStatuses,
   fetchAllCategories,
+  fetchAllCommsMaterials,
+  fetchAllReleaseTypes,
   fetchAllTags,
   fetchAllTranslationLanguages,
   fetchAllVenuePresets,
   fetchCities,
-  fetchCommsMaterials,
   fetchGovernmentRepresentatives,
   fetchMinistries,
   fetchMinistryGroups,
@@ -33,6 +34,7 @@ import type { FreeformComboboxOption } from '@/components/ui/freeform-combobox';
 import { ClientValidationError } from '@/lib/error-toast';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
+import { CommsMaterialAdminForm } from './CommsMaterialAdminForm';
 import { GenericLookupAdmin } from './GenericLookupAdmin';
 import { FormField } from './LookupForm';
 import {
@@ -68,6 +70,18 @@ type City = LookupItem & {
 type CommsMaterial = LookupItem & {
   name?: string;
   displayName?: string | null;
+  visibility?: 'global' | 'team';
+  teamNames?: string[];
+  teamIds?: number[];
+  releaseTypeId?: number | null;
+};
+
+type ReleaseType = LookupItem & {
+  name?: string;
+  displayName?: string | null;
+  audience?: 'media' | 'public';
+  allowsTranslation?: boolean;
+  requiresNewsReleaseDetails?: boolean;
 };
 
 type TranslationLanguage = LookupItem & {
@@ -165,6 +179,50 @@ const cityFields: FormField[] = [
     label: 'Country',
     type: 'text',
     placeholder: 'Canada',
+  },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
+];
+
+const releaseTypeFields: FormField[] = [
+  {
+    name: 'name',
+    label: 'Name',
+    type: 'text',
+    required: true,
+    placeholder: 'Enter release type name',
+  },
+  {
+    name: 'displayName',
+    label: 'Display name',
+    type: 'text',
+    placeholder: 'Optional display name',
+  },
+  {
+    name: 'audience',
+    label: 'Audience',
+    type: 'select',
+    required: true,
+    options: [
+      { value: 'public', label: 'Public' },
+      { value: 'media', label: 'Media' },
+    ],
+  },
+  {
+    name: 'allowsTranslation',
+    label: 'Allows translation',
+    type: 'checkbox',
+    placeholder: 'Show translation fields when this material is selected',
+  },
+  {
+    name: 'requiresNewsReleaseDetails',
+    label: 'Requires news release details',
+    type: 'checkbox',
+    placeholder: 'Show news release origin, distribution, and translations',
   },
   {
     name: 'isActive',
@@ -608,18 +666,139 @@ export function CitiesAdmin() {
 }
 
 export function CommsMaterialsAdmin() {
+  const { data: teams = [] } = useQuery({
+    queryKey: lookupQueryKeys.teams(),
+    queryFn: fetchTeams,
+  });
+  const { data: releaseTypes = [] } = useQuery({
+    queryKey: lookupQueryKeys.releaseTypesAdmin(),
+    queryFn: fetchAllReleaseTypes,
+  });
+
+  const teamOptions = teams.map((t) => ({
+    value: String(t.id),
+    label: t.displayName ?? t.name ?? String(t.id),
+  }));
+
+  const releaseTypeOptions = releaseTypes
+    .filter((rt) => rt.isActive !== false)
+    .map((rt) => ({
+      value: String(rt.id),
+      label: rt.displayName ?? rt.name ?? String(rt.id),
+    }));
+
   return (
     <GenericLookupAdmin<CommsMaterial>
       title="Communications materials"
-      description="Types of communication materials."
+      description="Types of communication materials (team scope and sister-app release types)."
       sectionId="comms"
       entityType="Communications Material"
       apiEndpoint="/lookups/comms-materials"
       enableManualSort
       reorderEntityKey="comms-materials"
-      queryKey={lookupQueryKeys.commsMaterials()}
-      queryFn={fetchCommsMaterials}
+      queryKey={lookupQueryKeys.commsMaterialsAdmin()}
+      queryFn={fetchAllCommsMaterials}
       formFields={commsMaterialFields}
+      additionalInvalidateKeys={[lookupQueryKeys.commsMaterials()]}
+      getInitialData={(item) => ({
+        ...lookupVisibilityInitialData(item),
+        releaseTypeId: item.releaseTypeId ?? null,
+      })}
+      transformSubmitData={(data) => {
+        try {
+          const base = transformLookupVisibilitySubmitData(data);
+          return {
+            ...base,
+            releaseTypeId:
+              data.releaseTypeId === null || data.releaseTypeId === undefined
+                ? null
+                : Number(data.releaseTypeId),
+          };
+        } catch {
+          toast.error('At least one team is required when visibility is team.');
+          throw new ClientValidationError();
+        }
+      }}
+      additionalColumns={[
+        {
+          accessorKey: 'visibility',
+          header: 'Visibility',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {renderLookupVisibilityColumn(row.original)}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'releaseTypeId',
+          header: 'Release type',
+          cell: ({ row }) => {
+            const id = row.original.releaseTypeId;
+            if (id == null) return <span className="text-slate-600">—</span>;
+            const rt = releaseTypes.find((r) => r.id === id);
+            return (
+              <span className="text-slate-600">
+                {rt?.displayName ?? rt?.name ?? id}
+              </span>
+            );
+          },
+        },
+      ]}
+      renderModalContent={(props) => (
+        <CommsMaterialAdminForm
+          {...props}
+          fields={commsMaterialFields}
+          teamOptions={teamOptions}
+          releaseTypeOptions={releaseTypeOptions}
+        />
+      )}
+    />
+  );
+}
+
+export function ReleaseTypesAdmin() {
+  return (
+    <GenericLookupAdmin<ReleaseType>
+      title="Release types"
+      description="BC Gov external release types. Defines materials that can be published through NRMs"
+      sectionId="release-types"
+      entityType="Release Type"
+      apiEndpoint="/lookups/release-types"
+      enableManualSort
+      reorderEntityKey="release-types"
+      queryKey={lookupQueryKeys.releaseTypesAdmin()}
+      queryFn={fetchAllReleaseTypes}
+      formFields={releaseTypeFields}
+      additionalInvalidateKeys={[lookupQueryKeys.releaseTypes()]}
+      additionalColumns={[
+        {
+          accessorKey: 'audience',
+          header: 'Audience',
+          cell: ({ row }) => (
+            <span className="text-slate-600 capitalize">
+              {row.original.audience ?? '—'}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'allowsTranslation',
+          header: 'Translation',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {row.original.allowsTranslation ? 'Yes' : 'No'}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'requiresNewsReleaseDetails',
+          header: 'News release details',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {row.original.requiresNewsReleaseDetails ? 'Yes' : 'No'}
+            </span>
+          ),
+        },
+      ]}
     />
   );
 }

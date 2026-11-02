@@ -17,8 +17,6 @@ function makeMatchInput(
     endDate: null,
     categoryIds: [],
     activityStatusId: 0,
-    pitchRequiredStatusName: null,
-    pitchDate: null,
     lookAheadStatus: null,
     lookAheadSection: null,
     dateStatusName: '',
@@ -85,13 +83,11 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
     expect(params.search).toBeUndefined();
   });
 
-  it('maps look-ahead and pitch filters', () => {
+  it('maps look-ahead filters', () => {
     const filterState: ActivityFilterState = {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
       lookAheadStatusValues: ['new', 'changed'],
       lookAheadSectionValues: ['events'],
-      pitchRequiredStatusNames: ['Required'],
-      pitchDateFilter: { kind: 'not_scheduled' },
     };
     const params = activityFilterStateToQueryParams(
       {
@@ -104,8 +100,6 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
     );
     expect(params.lookAheadStatusValues).toEqual(['new', 'changed']);
     expect(params.lookAheadSectionValues).toEqual(['events']);
-    expect(params.pitchRequiredStatusNames).toEqual(['Required']);
-    expect(params.pitchDateNotScheduled).toBe(true);
   });
 });
 
@@ -116,36 +110,6 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
  * cases document that both layers interpret state the same way.
  */
 describe('activityFilterStateToQueryParams + activityMatchesFilterState parity', () => {
-  it('pitch not_scheduled maps to a param and excludes scheduled pitches', () => {
-    const filterState: ActivityFilterState = {
-      ...DEFAULT_ACTIVITY_FILTER_STATE,
-      pitchDateFilter: { kind: 'not_scheduled' },
-    };
-    const params = activityFilterStateToQueryParams(
-      {
-        filterState,
-        showCompleted: false,
-        showDeleted: false,
-      },
-      {},
-      false
-    );
-    expect(params.pitchDateNotScheduled).toBe(true);
-
-    expect(
-      activityMatchesFilterState(
-        filterState,
-        makeMatchInput({ pitchDate: null })
-      )
-    ).toBe(true);
-    expect(
-      activityMatchesFilterState(
-        filterState,
-        makeMatchInput({ pitchDate: '2025-02-01' })
-      )
-    ).toBe(false);
-  });
-
   it('scheduled date range maps to bounds and uses span overlap', () => {
     const filterState: ActivityFilterState = {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
@@ -191,46 +155,6 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
       activityMatchesFilterState(
         filterState,
         makeMatchInput({ startDate: null, endDate: '2025-01-20' })
-      )
-    ).toBe(false);
-  });
-
-  it('pitch scheduled without date range maps to pitchDateScheduled', () => {
-    const filterState: ActivityFilterState = {
-      ...DEFAULT_ACTIVITY_FILTER_STATE,
-      pitchDateFilter: {
-        kind: 'scheduled',
-        dateRange: {
-          startDate: '',
-          endDate: '',
-          noStartDate: false,
-          noEndDate: false,
-        },
-      },
-    };
-    const params = activityFilterStateToQueryParams(
-      {
-        filterState,
-        showCompleted: false,
-        showDeleted: false,
-      },
-      {},
-      false
-    );
-    expect(params.pitchDateScheduled).toBe(true);
-    expect(params.pitchDateFrom).toBeUndefined();
-    expect(params.pitchDateTo).toBeUndefined();
-
-    expect(
-      activityMatchesFilterState(
-        filterState,
-        makeMatchInput({ pitchDate: '2025-02-01' })
-      )
-    ).toBe(true);
-    expect(
-      activityMatchesFilterState(
-        filterState,
-        makeMatchInput({ pitchDate: null })
       )
     ).toBe(false);
   });

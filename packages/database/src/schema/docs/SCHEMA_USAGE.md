@@ -8,8 +8,9 @@ This document provides detailed usage information, examples, and behavioral patt
 2. [Categories Access Control](#categories-access-control)
 3. [Pods Access Control](#pods-access-control)
 4. [Reports Configuration](#reports-configuration)
-5. [Activity Report Settings](#activity-report-settings)
+5. [Report activity inclusion](#report-activity-inclusion)
 6. [Venue Presets and Last-Used Addresses](#venue-presets-and-last-used-addresses)
+7. [Communications materials and release types](#communications-materials-and-release-types)
 
 ---
 
@@ -222,46 +223,11 @@ In this example, the global filter restricts activities to the week of January 1
 
 ---
 
-## Activity Report Settings
+## Report activity inclusion
 
-### Inclusion Logic
+Report datasets use the same activity visibility and list filters as the calendar UI (team access, query filters, scheduled date windows). `isConfidential` does **not** remove an activity from report data; it drives sensitivity badges and editorial copy in print.
 
-Activity inclusion in reports is determined primarily by `omitted` (on activityReportSettings). `isConfidential` (on activities) does **not** exclude an activity from report data.
-
-1. If `omitted=true` → Activity is omitted from report (regardless of isConfidential)
-2. If `omitted=false` → Activity is included in report data (regardless of isConfidential)
-
-**Confidential activities in print:** `isConfidential` drives badges and team visibility. Corporate Look Ahead relies on admins entering placeholder executive-summary copy as an editorial workflow; Executive Look Ahead and other report types may show full summary/significance fields when those columns are configured.
-
-### Behavior
-
-1. **Default Creation**: When an activity is created, default rows are automatically created for all active reports with `omitted=false`.
-
-2. **Omission Override**: Users can update the omitted value to exclude activities from specific reports.
-
-3. **Completeness**: Every activity must have a setting for every active report. Missing combinations are created with defaults when needed.
-
-### Legacy Mapping
-
-This table replaces the legacy boolean flags on the Activity table:
-
-- **`IsConfidential` (notForLookAhead)**:
-  - Legacy: Boolean flag indicating activity should not appear in look-ahead report or should appear redacted
-  - New: `isConfidential=true` on activities (sensitivity badge + team visibility); use `omitted=true` in activityReportSettings to exclude from a specific report
-  - Migration: `isConfidential=true` → `isConfidential=true` on activities
-
-- **`notForThirtySixtyNinety`**:
-  - Legacy: Boolean flag indicating activity should not appear in 30/60/90 day report
-  - New: `omitted=true` for 'thirty-sixty-ninety' report
-  - Migration: `notForThirtySixtyNinety=true` → `omitted=true` for thirty-sixty-ninety report
-
-### Indexes
-
-- Primary key on `(activityId, reportId)`
-- Index on `activityId` for efficient activity lookups
-- Index on `reportId` for efficient report lookups
-- Composite index on `(activityId, reportId)` for join performance
-- Index on `omitted` for filtering by omission status
+**Look Ahead and Executive Look Ahead** only include activities with a assigned `lookAheadSection` (not None / null). Section tabs further filter by the configured section key.
 
 ---
 
@@ -302,3 +268,32 @@ The activity form (Create/Edit) shows venue presets in the Venue Name combobox a
 
 - The form shows pinned preset badges plus last-used badges (total badge slots capped at 4: if 3 pinned presets are configured, only 1 last-used is shown).
 - Clicking a badge sets the form’s `venueAddress` (venueName, addressLine1, addressLine2, city, provinceOrState, country) and updates the address input via the controlled `value` prop on the address autocomplete.
+
+---
+
+## Communications materials and release types
+
+Communications materials use the same team visibility pattern as categories. **Release types** hold sister-app metadata (audience, translation flags, news-release detail flags) and optionally bind to a single comms material row.
+
+### Release types (`release_types`)
+
+- Standard lookup columns (`name`, `displayName`, `sortOrder`, `isActive`, etc.).
+- **`audience`**: `'media' | 'public'` (required on every row).
+- **`allows_translation`**: When true, the activity form may show translation status and languages for activities that select a linked comms material.
+- **`requires_news_release_details`**: When true, the form shows the “News release details” group (origin, distribution, translations inside that group).
+- Deactivating a release type clears `comms_materials.release_type_id` for any material that referenced it.
+
+### Communications materials (`comms_materials`)
+
+- **`visibility`**: `'global'` (default) or `'team'`, same semantics as categories.
+- **`release_type_id`**: Optional FK to `release_types`. At most one material may reference a given release type (partial unique index on non-null `release_type_id`).
+- Materials without a release type are internal-only in CorpCal (no sister-app audience badge).
+
+### Related tables
+
+- **`team_comms_materials`**: Junction for team-scoped materials when `visibility = 'team'`.
+- Activity selections still use **`activity_comms_materials`** (unchanged); form pickers and save validation respect material visibility like categories.
+
+### Activity release time (`activities`)
+
+When a selected comms material has a **public** release type, the form may capture **`release_time_offset_minutes`** (0–10,080 minutes after the schedule anchor). **`release_time`** is a derived `timestamptz` computed on save from `start_date` / `start_time` (or all-day midnight on `start_date`) when date/time statuses are confirmed; otherwise offset is stored and instant is null.

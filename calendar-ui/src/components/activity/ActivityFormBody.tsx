@@ -27,9 +27,8 @@ import {
 import {
   ActivityCommsSection,
   ActivityEventSection,
+  ActivityLookAheadSection,
   ActivityOverviewSection,
-  ActivityReleaseSection,
-  ActivityReportsSection,
   ActivityScheduleSection,
   ActivitySharingSection,
 } from './ActivityFormSections';
@@ -52,7 +51,7 @@ type ActivityFormBodyProps = {
   /** Persisted activity ID (edit/view only). Enables the unshare-own-team action. */
   activityId?: number;
   readOnly?: boolean;
-  /** When false, field change label highlights are hidden (e.g. on create form). Default true for edit/view. */
+  /** When false, field change label highlights are hidden (e.g. on create form). */
   showFieldChangeHighlights?: boolean;
   /** Dotted field paths changed since last review (reviewer-only). */
   reviewerChangedPaths?: ReadonlySet<string>;
@@ -168,27 +167,23 @@ export function ActivityFormBody({
                 categories={lookups.categories}
                 organizations={lookups.organizations}
                 tags={lookups.tags}
-                pitchRequiredStatuses={lookups.pitchRequiredStatuses}
-                leadTeamField={leadTeamField}
                 userTeamIds={user?.teamIds ?? []}
                 hasCreateAny={hasCreateAny}
-              />
-
-              <ActivityCommsSection
-                commsMaterialOptions={lookups.commsMaterials}
-                commsLeadOptions={commsLeadOptions}
               />
             </div>
 
             <div className="space-y-12">
-              <ActivityReportsSection />
+              <ActivityLookAheadSection />
 
               <ActivityScheduleSection
                 dateStatuses={lookups.dateStatuses}
                 timeStatuses={lookups.timeStatuses}
               />
 
-              <ActivityReleaseSection
+              <ActivityCommsSection
+                commsMaterialOptions={lookups.commsMaterials}
+                dateStatuses={lookups.dateStatuses}
+                timeStatuses={lookups.timeStatuses}
                 newsReleaseDistributionOptions={
                   lookups.newsReleaseDistributions
                 }
@@ -197,6 +192,8 @@ export function ActivityFormBody({
                   lookups.translationRequiredStatuses
                 }
                 translationLanguageOptions={lookups.translationLanguages}
+                userTeamIds={user?.teamIds ?? []}
+                hasCreateAny={hasCreateAny}
               />
 
               <ActivityEventSection
@@ -210,6 +207,9 @@ export function ActivityFormBody({
               <ActivitySharingSection
                 sharedWithTeams={lookups.sharedWithTeams}
                 quickShareGroups={lookups.quickShareGroups}
+                commsLeadOptions={commsLeadOptions}
+                organizations={lookups.organizations}
+                leadTeamField={leadTeamField}
               />
             </div>
           </div>

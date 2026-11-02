@@ -118,9 +118,7 @@ export interface PrintRowViewModel {
   executiveSummaryStored: string | null;
   /** Rich significance (Exec Look Ahead activity details). */
   significanceStored: string | null;
-  /** Plain-text strategy for 30/60/90 Comms & strategy column. */
-  strategyStored: string | null;
-  /** Comms material labels for 30/60/90 Comms & strategy column. */
+  /** Comms material labels for 30/60/90 comms materials column. */
   commsMaterials: readonly string[];
   /** Comms contact marked lead (`event_lead` / 30/60/90 Activity column). */
   commsContactLead: string | null;
@@ -286,8 +284,28 @@ function isConfirmedStatusDisplay(value: string): boolean {
   return value.trim().toLowerCase() === 'confirmed';
 }
 
-function formatUnconfirmedStatus(value: string): string {
-  return value.trim().toLowerCase() === 'not confirmed' ? 'TBC' : value;
+function formatUnconfirmedDateStatus(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === 'not confirmed' ||
+    normalized === 'tbd' ||
+    normalized === 'date tbd'
+  ) {
+    return 'Date TBD';
+  }
+  return value;
+}
+
+function formatUnconfirmedTimeStatus(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === 'not confirmed' ||
+    normalized === 'tbd' ||
+    normalized === 'time tbd'
+  ) {
+    return 'Time TBD';
+  }
+  return value;
 }
 
 /**
@@ -301,7 +319,7 @@ function lookAheadDateStatusForPrint(
   if (!hasStartDate) return '';
   const t = raw.trim();
   if (!t || isConfirmedStatusDisplay(t)) return '';
-  return formatUnconfirmedStatus(t);
+  return formatUnconfirmedDateStatus(t);
 }
 
 function lookAheadTimeStatusForPrint(
@@ -311,7 +329,7 @@ function lookAheadTimeStatusForPrint(
   if (!hasTimeDisplay) return '';
   const t = raw.trim();
   if (!t || isConfirmedStatusDisplay(t)) return '';
-  return formatUnconfirmedStatus(t);
+  return formatUnconfirmedTimeStatus(t);
 }
 
 function shouldUseLookAheadDateTimeStatusRules(
@@ -413,7 +431,6 @@ export function toPrintRowViewModel(
     summaryStored: toNonEmptyRichText(activity.summary),
     executiveSummaryStored: toNonEmptyRichText(activity.executiveSummary),
     significanceStored: toNonEmpty(activity.significance),
-    strategyStored: toNonEmpty(activity.strategy),
     commsMaterials: activity.commsMaterials ?? [],
     commsContactLead: getCommsContactLeadDisplayName(activity),
     schedulingNotesStored: toNonEmpty(activity.schedulingNotes),

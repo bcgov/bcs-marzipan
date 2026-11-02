@@ -24,7 +24,7 @@ import {
 import type { Response } from 'express';
 import { z } from 'zod';
 
-import { SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
+import { PERMISSIONS, SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 import type {
   ActivityTeamSharingResponse,
   CategoryLookupItem,
@@ -43,6 +43,7 @@ import {
   createGovernmentRepresentativeRequestSchema,
   createMinistryGroupRequestSchema,
   createMinistryRequestSchema,
+  createReleaseTypeRequestSchema,
   createTagRequestSchema,
   createThemeRequestSchema,
   createTranslationLanguageRequestSchema,
@@ -56,6 +57,7 @@ import {
   updateLookupSortModeRequestSchema,
   updateMinistryGroupRequestSchema,
   updateMinistryRequestSchema,
+  updateReleaseTypeRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
   updateTranslationLanguageRequestSchema,
@@ -76,6 +78,7 @@ import {
   CreateGovernmentRepresentativeDto,
   CreateMinistryDto,
   CreateMinistryGroupDto,
+  CreateReleaseTypeDto,
   CreateTagDto,
   CreateThemeDto,
   CreateTranslationLanguageDto,
@@ -97,6 +100,7 @@ import {
   UpdateLookupSortModeDto,
   UpdateMinistryDto,
   UpdateMinistryGroupDto,
+  UpdateReleaseTypeDto,
   UpdateTagDto,
   UpdateThemeDto,
   UpdateTranslationLanguageDto,
@@ -729,29 +733,60 @@ export class LookupsController {
     return { success: true, data };
   }
 
-  @ApiOperation({ summary: 'Get all pitch statuses' })
-  @ApiResponse({
-    status: 200,
-    description: 'Pitch statuses retrieved successfully',
-    type: LookupArrayResponseWrapperDto,
-  })
-  @Get('pitch-statuses')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getPitchStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
-    const data = await this.lookupsService.getPitchStatuses();
-    return { success: true, data };
-  }
-
   @ApiOperation({ summary: 'Get all comms materials' })
+  @ApiQuery({
+    name: 'includeAll',
+    required: false,
+    type: String,
+    enum: ['true'],
+    description:
+      'When `"true"` and the caller has `lookups.manage.comms_materials`, returns all materials including inactive.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Comms materials retrieved successfully',
     type: LookupArrayResponseWrapperDto,
   })
   @Get('comms-materials')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getCommsMaterials(): Promise<{ success: boolean; data: LookupItem[] }> {
-    const data = await this.lookupsService.getCommsMaterials();
+  async getCommsMaterials(
+    @CurrentUser() user: AuthUser,
+    @Query('includeAll') includeAll?: string,
+    @Res({ passthrough: true }) res?: Response
+  ): Promise<{ success: boolean; data: LookupItem[] }> {
+    const shouldIncludeAll =
+      includeAll === 'true' &&
+      user.permissions.includes(PERMISSIONS.LOOKUPS.MANAGE_COMMS_MATERIALS);
+    res?.setHeader(
+      'Cache-Control',
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
+    );
+    const data = await this.lookupsService.getCommsMaterials(shouldIncludeAll);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get all release types' })
+  @ApiQuery({
+    name: 'includeAll',
+    required: false,
+    type: String,
+    enum: ['true'],
+    description:
+      'When `"true"` and the caller has `lookups.manage.release_types`, returns all release types including inactive.',
+  })
+  @Get('release-types')
+  async getReleaseTypes(
+    @CurrentUser() user: AuthUser,
+    @Query('includeAll') includeAll?: string,
+    @Res({ passthrough: true }) res?: Response
+  ): Promise<{ success: boolean; data: LookupItem[] }> {
+    const shouldIncludeAll =
+      includeAll === 'true' &&
+      user.permissions.includes(PERMISSIONS.LOOKUPS.MANAGE_RELEASE_TYPES);
+    res?.setHeader(
+      'Cache-Control',
+      shouldIncludeAll ? 'no-store' : lookupGetCacheControl()
+    );
+    const data = await this.lookupsService.getReleaseTypes(shouldIncludeAll);
     return { success: true, data };
   }
 
@@ -762,7 +797,7 @@ export class LookupsController {
     type: CommsMaterialResponseWrapperDto,
   })
   @ApiBody({ type: CreateCommsMaterialDto })
-  @RequirePermission('lookups.manage')
+  @RequirePermission(PERMISSIONS.LOOKUPS.MANAGE_COMMS_MATERIALS)
   @Post('comms-materials')
   async createCommsMaterial(
     @Body(new ZodValidationPipe(createCommsMaterialRequestSchema))
@@ -770,6 +805,18 @@ export class LookupsController {
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.createCommsMaterial(body, user.id);
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Create a new release type' })
+  @RequirePermission(PERMISSIONS.LOOKUPS.MANAGE_RELEASE_TYPES)
+  @Post('release-types')
+  async createReleaseType(
+    @Body(new ZodValidationPipe(createReleaseTypeRequestSchema))
+    body: CreateReleaseTypeDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: unknown }> {
+    const data = await this.lookupsService.createReleaseType(body, user.id);
     return { success: true, data };
   }
 
@@ -781,7 +828,7 @@ export class LookupsController {
   })
   @ApiParam({ name: 'id', type: Number, description: 'Comms Material ID' })
   @ApiBody({ type: UpdateCommsMaterialDto })
-  @RequirePermission('lookups.manage')
+  @RequirePermission(PERMISSIONS.LOOKUPS.MANAGE_COMMS_MATERIALS)
   @Patch('comms-materials/:id')
   async updateCommsMaterial(
     @Param('id') id: string,
@@ -790,6 +837,23 @@ export class LookupsController {
     @CurrentUser() user: AuthUser
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.updateCommsMaterial(
+      Number(id),
+      body,
+      user.id
+    );
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Update a release type' })
+  @RequirePermission(PERMISSIONS.LOOKUPS.MANAGE_RELEASE_TYPES)
+  @Patch('release-types/:id')
+  async updateReleaseType(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateReleaseTypeRequestSchema))
+    body: UpdateReleaseTypeDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean; data: unknown }> {
+    const data = await this.lookupsService.updateReleaseType(
       Number(id),
       body,
       user.id
@@ -1343,22 +1407,6 @@ export class LookupsController {
   @Header('Cache-Control', lookupGetCacheControl())
   async getVenueStatuses(): Promise<{ success: boolean; data: LookupItem[] }> {
     const data = await this.lookupsService.getVenueStatuses();
-    return { success: true, data };
-  }
-
-  @ApiOperation({ summary: 'Get all pitch required statuses' })
-  @ApiResponse({
-    status: 200,
-    description: 'Pitch required statuses retrieved successfully',
-    type: LookupArrayResponseWrapperDto,
-  })
-  @Get('pitch-required-statuses')
-  @Header('Cache-Control', lookupGetCacheControl())
-  async getPitchRequiredStatuses(): Promise<{
-    success: boolean;
-    data: LookupItem[];
-  }> {
-    const data = await this.lookupsService.getPitchRequiredStatuses();
     return { success: true, data };
   }
 

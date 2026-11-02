@@ -12,7 +12,6 @@ const maps: LookupMaps = {
   venueStatusMap: new Map([[3, 'Confirmed']]),
   activityStatusMap: new Map([[4, 'Active']]),
   timeStatusMap: new Map([[5, 'Morning']]),
-  pitchRequiredStatusMap: new Map([[6, 'Required']]),
   translationsRequiredStatusMap: new Map([[7, 'Required']]),
   newsReleaseOriginMap: new Map([[8, 'Government']]),
   newsReleaseDistributionMap: new Map([[9, 'Wide']]),
@@ -118,7 +117,6 @@ describe('formatHistoryFieldValue', () => {
       ['venueStatusId', 3, 'Confirmed'],
       ['activityStatusId', 4, 'Active'],
       ['timeStatusId', 5, 'Morning'],
-      ['pitchRequiredStatusId', 6, 'Required'],
       ['translationsRequiredStatusId', 7, 'Required'],
       ['newsReleaseOriginId', 8, 'Government'],
       ['newsReleaseDistributionId', 9, 'Wide'],
@@ -383,26 +381,6 @@ describe('formatHistoryFieldValue', () => {
     });
   });
 
-  // ── reportSettings ────────────────────────────────────────────────────────
-
-  describe('reportSettings', () => {
-    it('returns "(no reports)" for empty array', () => {
-      expect(formatHistoryFieldValue('reportSettings', [])).toBe(
-        '(no reports)'
-      );
-    });
-
-    it('counts active and omitted reports', () => {
-      expect(
-        formatHistoryFieldValue('reportSettings', [
-          { reportId: 1, omitted: false },
-          { reportId: 2, omitted: true },
-          { reportId: 3, omitted: false },
-        ])
-      ).toBe('2 active, 1 omitted');
-    });
-  });
-
   // ── civil times ─────────────────────────────────────────────────────────
 
   describe('startTime / endTime', () => {
@@ -420,7 +398,7 @@ describe('formatHistoryFieldValue', () => {
     });
 
     it('returns number values as string for unknown fields', () => {
-      expect(formatHistoryFieldValue('newsReleaseId', 42)).toBe('42');
+      expect(formatHistoryFieldValue('premierRequestedId', 42)).toBe('42');
     });
 
     it('returns count fallback for unrecognised arrays', () => {

@@ -23,6 +23,8 @@ function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
     title: 'Test Activity',
     summary: 'Summary',
     significance: 'Significance',
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
     dateStatusId: 1,
     timeStatusId: 1,
     activityStatusId: 1,
@@ -40,6 +42,21 @@ describe('createActivityRequestSchema', () => {
     expect(result.title).toBe('Test Activity');
     expect(result.leadTeamId).toBe(validLeadTeamId);
     expect(result.leadMinistryId).toBe(validLeadMinistryId);
+  });
+
+  it('requires start and end dates with field-specific messages on create', () => {
+    const missingDates = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ startDate: undefined, endDate: undefined })
+    );
+    if (missingDates.success) throw new Error('Expected failure');
+    const startIssue = missingDates.error.issues.find(
+      (i) => i.path[0] === 'startDate'
+    );
+    const endIssue = missingDates.error.issues.find(
+      (i) => i.path[0] === 'endDate'
+    );
+    expect(startIssue?.message).toBe('Start date is required');
+    expect(endIssue?.message).toBe('End date is required');
   });
 
   it('enforces title min 1 and max 255', () => {
@@ -194,17 +211,17 @@ describe('createActivityRequestSchema', () => {
     ).toThrow();
   });
 
-  it('enforces strategy and notes max length (2000)', () => {
+  it('enforces internalNotes and notes max length (2000)', () => {
     createActivityRequestSchema.parse(
       minimalCreateRequest({
-        strategy: 'a'.repeat(2000),
+        internalNotes: 'a'.repeat(2000),
         notes: 'b'.repeat(2000),
       })
     );
 
     expect(() =>
       createActivityRequestSchema.parse(
-        minimalCreateRequest({ strategy: 'a'.repeat(2001) })
+        minimalCreateRequest({ internalNotes: 'a'.repeat(2001) })
       )
     ).toThrow();
 

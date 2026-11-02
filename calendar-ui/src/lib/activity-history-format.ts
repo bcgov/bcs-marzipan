@@ -2,6 +2,7 @@ import type { HistoryChange } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
   canonicalizeActivityFormData,
+  formatReleaseTimeOffsetLabel,
   getActivityFieldLabel as getSharedFieldLabel,
   isDeepEqual,
   plainTextFromActivityRichField,
@@ -33,7 +34,6 @@ export interface LookupMaps {
   venueStatusMap?: StatusLookupMap;
   activityStatusMap?: StatusLookupMap;
   timeStatusMap?: StatusLookupMap;
-  pitchRequiredStatusMap?: StatusLookupMap;
   translationsRequiredStatusMap?: StatusLookupMap;
   newsReleaseOriginMap?: StatusLookupMap;
   newsReleaseDistributionMap?: StatusLookupMap;
@@ -89,6 +89,10 @@ export function formatHistoryFieldValue(
     return formatted === '' ? '(empty)' : formatted;
   }
 
+  if (field === 'releaseTimeOffsetMinutes' && typeof value === 'number') {
+    return formatReleaseTimeOffsetLabel(value);
+  }
+
   if (
     (field === 'summary' ||
       field === 'executiveSummary' ||
@@ -139,14 +143,6 @@ export function formatHistoryFieldValue(
     lookupMaps?.timeStatusMap
   ) {
     return lookupMaps.timeStatusMap.get(value) || String(value);
-  }
-
-  if (
-    field === 'pitchRequiredStatusId' &&
-    typeof value === 'number' &&
-    lookupMaps?.pitchRequiredStatusMap
-  ) {
-    return lookupMaps.pitchRequiredStatusMap.get(value) || String(value);
   }
 
   if (
@@ -348,19 +344,6 @@ export function formatHistoryFieldValue(
     }
   }
 
-  if (field === 'reportSettings') {
-    if (Array.isArray(value)) {
-      const settings = value as Array<{
-        reportId?: number;
-        omitted?: boolean;
-      }>;
-      if (settings.length === 0) return '(no reports)';
-      const omitted = settings.filter((s) => s.omitted).length;
-      const active = settings.length - omitted;
-      return `${active} active, ${omitted} omitted`;
-    }
-  }
-
   if (Array.isArray(value)) {
     return `${value.length} item(s)`;
   }
@@ -386,7 +369,6 @@ const FIELDS_TO_COMPARE = [
   'summary',
   'significance',
   'schedulingNotes',
-  'strategy',
   'dateStatusId',
   'timeStatusId',
   'venueStatusId',
@@ -399,10 +381,9 @@ const FIELDS_TO_COMPARE = [
   'endDate',
   'startTime',
   'endTime',
-  'pitchDate',
   'notes',
+  'internalNotes',
   'executiveSummary',
-  'pitchRequiredStatusId',
   'translationsRequiredStatusId',
   'lookAheadStatus',
   'lookAheadSection',
@@ -413,17 +394,16 @@ const FIELDS_TO_COMPARE = [
   'eventPlanners',
   'newsReleaseDistributionId',
   'premierRequestedId',
-  'newsReleaseId',
   'newsReleaseOriginId',
   'categoryIds',
   'tagIds',
   'commsMaterialIds',
+  'releaseTimeOffsetMinutes',
   'translationLanguageIds',
   'sharedWithTeamIds',
   'venueAddress',
   'representatives',
   'commsContacts',
-  'reportSettings',
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
 type ComparableFormKey = Exclude<keyof ActivityFormData, ExcludedFromCompare>;

@@ -21,7 +21,6 @@ const editorWithAllViewGrants = {
     'activities.view',
     'activities.notes.view',
     'activities.lookAhead.view',
-    'activities.pitchStatus.view',
   ],
   roleName: SYSTEM_ROLES.EDITOR,
 };
@@ -84,70 +83,53 @@ describe('isActivityResponsePayload', () => {
 
 describe('redactActivityResponse', () => {
   const activity = createMockActivityResponse({
-    notes: 'secret notes',
+    notes: 'general notes',
+    internalNotes: 'secret internal notes',
     dateStatusId: 2,
     timeStatusId: 3,
     dateStatus: 'Set',
     timeStatus: 'Tentative',
+    executiveSummary: '{"type":"doc","content":[]}',
     lookAheadStatus: 'new',
     lookAheadSection: 'events',
     translationsRequired: ['French'],
     translationsRequiredStatusId: 1,
     translationsRequiredStatus: 'Pending',
-    pitchRequiredStatusId: 2,
-    pitchRequiredStatus: 'Required',
-    pitchDate: '2025-03-01',
   });
 
   it('returns all fields when user has all view grants for restricted scopes', () => {
     const result = redactActivityResponse(activity, editorWithAllViewGrants);
-    expect(result.notes).toBe('secret notes');
+    expect(result.notes).toBe('general notes');
+    expect(result.internalNotes).toBe('secret internal notes');
     expect(result.dateStatusId).toBe(2);
     expect(result.timeStatusId).toBe(3);
     expect(result.lookAheadStatus).toBe('new');
     expect(result.translationsRequired).toEqual(['French']);
-    expect(result.pitchDate).toBe('2025-03-01');
   });
 
-  it('keeps pitch status and pitch date when pitch status is globally viewable', () => {
-    const viewerNoPitchStatus = {
-      permissions: [
-        'activities.view',
-        'activities.notes.view',
-        'activities.lookAhead.view',
-      ],
-      roleName: SYSTEM_ROLES.EDITOR,
-    };
-    const result = redactActivityResponse(activity, viewerNoPitchStatus);
-    expect(result.pitchRequiredStatusId).toBe(2);
-    expect(result.pitchRequiredStatus).toBe('Required');
-    expect(result.pitchDate).toBe('2025-03-01');
-  });
-
-  it('strips view-restricted fields for Viewer without grants; keeps date/time status, translations, pitch status, and pitch date', () => {
+  it('strips view-restricted fields for Viewer without grants; keeps date/time status and translations', () => {
     const result = redactActivityResponse(activity, viewerNoGrants);
-    expect(result.notes).toBeUndefined();
+    expect(result.notes).toBe('general notes');
+    expect(result.internalNotes).toBeUndefined();
     expect(result.dateStatusId).toBe(2);
     expect(result.timeStatusId).toBe(3);
     expect(result.dateStatus).toBe('Set');
     expect(result.timeStatus).toBe('Tentative');
+    expect(result.executiveSummary).toBeUndefined();
     expect(result.lookAheadStatus).toBeUndefined();
     expect(result.lookAheadSection).toBeUndefined();
     expect(result.translationsRequired).toEqual(['French']);
     expect(result.translationsRequiredStatusId).toBe(1);
     expect(result.translationsRequiredStatus).toBe('Pending');
-    expect(result.pitchRequiredStatusId).toBe(2);
-    expect(result.pitchRequiredStatus).toBe('Required');
-    expect(result.pitchDate).toBe('2025-03-01');
   });
 
-  it('preserves all fields for Advanced Viewer (role bypass)', () => {
+  it('preserves general notes for Advanced Viewer but redacts internal notes without grant', () => {
     const result = redactActivityResponse(activity, advancedViewer);
-    expect(result.notes).toBe('secret notes');
+    expect(result.notes).toBe('general notes');
+    expect(result.internalNotes).toBeUndefined();
     expect(result.dateStatusId).toBe(2);
     expect(result.lookAheadStatus).toBe('new');
     expect(result.translationsRequired).toEqual(['French']);
-    expect(result.pitchDate).toBe('2025-03-01');
   });
 
   it('does not mutate the original', () => {
@@ -166,7 +148,7 @@ describe('redactActivityResponse', () => {
   it('filters changedFieldsSinceReview for redacted view-restricted scopes only', () => {
     const withChanges = createMockActivityResponse({
       changedFieldsSinceReview: [
-        'notes',
+        'internalNotes',
         'title',
         'dateStatusId',
         'lookAheadStatus',

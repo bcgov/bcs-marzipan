@@ -57,6 +57,8 @@ describe('canonicalizeActivityFormData eventPlanners', () => {
       visibility: 'global',
       leadTeamId: 1,
       categoryIds: [1],
+      startDate: '2026-06-01',
+      endDate: '2026-06-01',
       eventPlanners: [
         {
           eventPlannerId: 5,

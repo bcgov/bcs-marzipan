@@ -12,7 +12,7 @@ export const PRINT_SECTION_COLUMN_HEADERS = [
 const THIRTY_SIXTY_NINETY_COLUMN_HEADERS = [
   'Date & time',
   'Activity details',
-  'Comms & strategy',
+  'Comms materials',
   'CC ID',
 ] as const;
 
