@@ -14,6 +14,8 @@ describe('toSentenceCase', () => {
   it('keeps TBD in caps for scheduling status badges', () => {
     expect(toSentenceCase('TBD')).toBe('TBD');
     expect(toSentenceCase('tbd')).toBe('TBD');
+    expect(toSentenceCase('Date TBD')).toBe('Date TBD');
+    expect(toSentenceCase('Time TBD')).toBe('Time TBD');
   });
 });
 
