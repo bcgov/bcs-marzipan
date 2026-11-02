@@ -15,6 +15,7 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '@/components/ui/input-group';
+import { FORM_CONTROL_INVALID_RING_CLASS_COMBO } from '@/lib/form-field-tokens';
 import {
   READ_ONLY_STATIC_COMBOBOX_CHIPS,
   READ_ONLY_STATIC_PLACEHOLDER,
@@ -24,6 +25,7 @@ import { cn } from '@/lib/utils';
 
 const ComboboxReadOnlyContext = React.createContext(false);
 const ComboboxFieldContext = React.createContext<string | undefined>(undefined);
+const ComboboxAriaInvalidContext = React.createContext(false);
 
 type ComboboxRootProps<
   Value,
@@ -36,11 +38,20 @@ type ComboboxRootProps<
 function Combobox<Value, Multiple extends boolean | undefined = false>(
   props: ComboboxRootProps<Value, Multiple>
 ) {
-  const { readOnly, 'data-field': dataField, ...rest } = props;
+  const {
+    readOnly,
+    'data-field': dataField,
+    'aria-invalid': ariaInvalid,
+    ...rest
+  } = props;
   return (
     <ComboboxReadOnlyContext.Provider value={Boolean(readOnly)}>
       <ComboboxFieldContext.Provider value={dataField}>
-        <ComboboxPrimitive.Root readOnly={readOnly} {...rest} />
+        <ComboboxAriaInvalidContext.Provider
+          value={ariaInvalid === true || ariaInvalid === 'true'}
+        >
+          <ComboboxPrimitive.Root readOnly={readOnly} {...rest} />
+        </ComboboxAriaInvalidContext.Provider>
       </ComboboxFieldContext.Provider>
     </ComboboxReadOnlyContext.Provider>
   );
@@ -103,8 +114,13 @@ function ComboboxInput({
   showClear?: boolean;
 }) {
   const dataField = React.useContext(ComboboxFieldContext);
+  const ariaInvalid = React.useContext(ComboboxAriaInvalidContext);
   return (
-    <InputGroup className={cn('w-auto', className)} data-field={dataField}>
+    <InputGroup
+      aria-invalid={ariaInvalid || undefined}
+      className={cn('w-auto', FORM_CONTROL_INVALID_RING_CLASS_COMBO, className)}
+      data-field={dataField}
+    >
       <ComboboxPrimitive.Input
         render={<InputGroupInput disabled={disabled} />}
         {...(placeholder !== '' ? { placeholder } : {})}
@@ -278,13 +294,16 @@ function ComboboxChips({
   ComboboxPrimitive.Chips.Props) {
   const readOnly = React.useContext(ComboboxReadOnlyContext);
   const dataField = React.useContext(ComboboxFieldContext);
+  const ariaInvalid = React.useContext(ComboboxAriaInvalidContext);
   return (
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
       data-field={dataField}
       data-readonly={readOnly ? '' : undefined}
+      aria-invalid={ariaInvalid || undefined}
       className={cn(
-        'border-input focus-within:border-ring focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:bg-input/30 dark:has-aria-invalid:border-destructive/50 dark:has-aria-invalid:ring-destructive/40 flex min-h-(--input-height) flex-wrap items-center gap-1.5 rounded-md border bg-transparent bg-clip-padding px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-aria-invalid:ring-[3px] has-data-[slot=combobox-chip]:px-1.5',
+        'border-input focus-within:border-ring focus-within:ring-ring/50 dark:bg-input/30 flex min-h-(--input-height) flex-wrap items-center gap-1.5 rounded-md border bg-transparent bg-clip-padding px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-data-[slot=combobox-chip]:px-1.5',
+        FORM_CONTROL_INVALID_RING_CLASS_COMBO,
         readOnly && READ_ONLY_STATIC_COMBOBOX_CHIPS,
         className
       )}

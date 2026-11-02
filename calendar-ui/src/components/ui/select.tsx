@@ -2,6 +2,8 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import * as React from 'react';
 
+import { FORM_CONTROL_INVALID_RING_CLASS } from '@/lib/form-field-tokens';
+
 import { cn } from '../../lib/utils';
 
 const Select = SelectPrimitive.Root;
@@ -18,6 +20,7 @@ const SelectTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       'border-input bg-background text-foreground ring-offset-background focus:ring-ring data-placeholder:text-muted-foreground flex h-(--input-height) w-full touch-manipulation items-center justify-between rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
+      FORM_CONTROL_INVALID_RING_CLASS,
       className
     )}
     {...props}
