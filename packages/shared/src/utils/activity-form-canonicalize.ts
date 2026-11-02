@@ -70,8 +70,8 @@ export function canonicalizeActivityFormData(
         ? undefined
         : data.significance,
     schedulingNotes: canonOptString(data.schedulingNotes),
-    strategy: canonOptString(data.strategy),
     notes: canonOptString(data.notes),
+    internalNotes: canonOptString(data.internalNotes),
     executiveSummary:
       isNullishOrEmptyString(data.executiveSummary) ||
       isActivityRichTextEffectivelyEmpty(data.executiveSummary)
@@ -83,7 +83,6 @@ export function canonicalizeActivityFormData(
     endTime: canonOptString(data.endTime),
     pitchDate: canonOptString(data.pitchDate),
     leadOrgName: canonOptString(data.leadOrgName),
-    newsReleaseId: canonOptString(data.newsReleaseId),
     lookAheadStatus:
       data.lookAheadStatus === null || data.lookAheadStatus === undefined
         ? undefined
@@ -94,6 +93,7 @@ export function canonicalizeActivityFormData(
         : data.lookAheadSection,
     categoryIds: canonIdArray(data.categoryIds),
     tagIds: canonIdArray(data.tagIds),
+    codeIds: canonIdArray(data.codeIds),
     commsMaterialIds: canonIdArray(data.commsMaterialIds),
     translationLanguageIds: canonIdArray(data.translationLanguageIds),
     sharedWithTeamIds: canonIdArray(data.sharedWithTeamIds),
@@ -108,7 +108,6 @@ export function canonicalizeActivityFormData(
     eventPlanners: normalizeEventPlannerFormEntries(data.eventPlanners),
     representatives: canonObjectArray(data.representatives),
     commsContacts: canonObjectArray(data.commsContacts),
-    reportSettings: canonObjectArray(data.reportSettings),
   };
 }
 
@@ -160,8 +159,8 @@ export function prepareActivityFormDataForSubmit(
   return {
     ...c,
     notes: c.notes ?? null,
+    internalNotes: c.internalNotes ?? null,
     schedulingNotes: c.schedulingNotes ?? null,
-    strategy: c.strategy ?? null,
     significance: c.significance ?? null,
     executiveSummary: c.executiveSummary ?? null,
     lookAheadSection: c.lookAheadSection ?? null,

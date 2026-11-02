@@ -8,7 +8,7 @@ import { getDefaultFormValues } from '@/lib/activity-form-defaults';
 import { buildPayloadForUpdate } from '@/lib/activity-form-payload';
 
 import { ActivityEditProvider } from '../activity-edit-context';
-import { ActivityReportsSection } from './ActivityReportsSection';
+import { ActivityLookAheadSection } from './ActivityLookAheadSection';
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -49,20 +49,18 @@ vi.mock('@/hooks/useLookAheadSectionRows', () => ({
       })),
 }));
 
-vi.mock('@/hooks/useLookups', () => ({
-  useReports: () => ({ data: [], isLoading: false }),
-}));
-
 vi.mock('../activity-info-icon-settings-context', () => ({
   ActivityFieldInfoIcon: () => null,
 }));
 
-function ActivityReportsSectionHarness({
+function ActivityLookAheadSectionHarness({
   defaultValues,
   onFormReady,
+  canViewLookAhead = true,
 }: {
   defaultValues?: Partial<ActivityFormData>;
   onFormReady?: (form: ReturnType<typeof useForm<ActivityFormData>>) => void;
+  canViewLookAhead?: boolean;
 }) {
   const form = useForm<ActivityFormData>({
     defaultValues: {
@@ -78,11 +76,12 @@ function ActivityReportsSectionHarness({
       <ActivityEditProvider
         value={{
           readOnly: false,
-          canViewFieldScope: (scope) => scope === 'lookAhead',
+          canViewFieldScope: (scope) =>
+            scope === 'lookAhead' ? canViewLookAhead : false,
           canEditFieldScope: () => true,
         }}
       >
-        <ActivityReportsSection />
+        <ActivityLookAheadSection />
       </ActivityEditProvider>
     </FormProvider>
   );
@@ -96,9 +95,16 @@ function getLookAheadSectionNoneRadio(): HTMLElement {
   return radio;
 }
 
-describe('ActivityReportsSection Look Ahead section', () => {
+describe('ActivityLookAheadSection', () => {
+  it('renders nothing when user cannot view Look Ahead scope', () => {
+    const { container } = render(
+      <ActivityLookAheadSectionHarness canViewLookAhead={false} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('renders a None option for look-ahead section', () => {
-    render(<ActivityReportsSectionHarness />);
+    render(<ActivityLookAheadSectionHarness />);
 
     expect(getLookAheadSectionNoneRadio()).toBeInTheDocument();
     expect(screen.getByLabelText('Events')).toBeInTheDocument();
@@ -109,7 +115,7 @@ describe('ActivityReportsSection Look Ahead section', () => {
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
     render(
-      <ActivityReportsSectionHarness
+      <ActivityLookAheadSectionHarness
         defaultValues={{ lookAheadSection: 'events' }}
         onFormReady={(form) => {
           formRef = form;
@@ -127,7 +133,7 @@ describe('ActivityReportsSection Look Ahead section', () => {
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
     render(
-      <ActivityReportsSectionHarness
+      <ActivityLookAheadSectionHarness
         defaultValues={{ lookAheadSection: 'events' }}
         onFormReady={(form) => {
           formRef = form;

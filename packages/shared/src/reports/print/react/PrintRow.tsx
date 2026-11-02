@@ -317,12 +317,11 @@ function SignificanceCell({ row }: { row: PrintRowViewModel }) {
 
 function CommsStrategyCell({ row }: { row: PrintRowViewModel }) {
   const hasCommsMaterials = row.commsMaterials.length > 0;
-  const hasStrategy = Boolean(row.strategyStored);
   const translationsLine = row.release.translationsLine.trim();
   const hasTranslations =
     translationsLine.length > 0 && translationsLine !== 'none';
 
-  if (!hasCommsMaterials && !hasStrategy && !hasTranslations) {
+  if (!hasCommsMaterials && !hasTranslations) {
     return <span className="corpcal-print-meta-faint">—</span>;
   }
 
@@ -353,9 +352,6 @@ function CommsStrategyCell({ row }: { row: PrintRowViewModel }) {
             {translationsLine}
           </span>
         </div>
-      ) : null}
-      {hasStrategy ? (
-        <div className="corpcal-print-text">{row.strategyStored}</div>
       ) : null}
     </div>
   );

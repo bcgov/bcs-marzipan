@@ -24,7 +24,7 @@ const mockLookups: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  pitchStatuses: [],
+  codes: [],
   pitchRequiredStatuses: [
     {
       id: 1,

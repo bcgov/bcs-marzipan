@@ -5,16 +5,18 @@ import {
   type Resolver,
   type UseFormReturn,
 } from 'react-hook-form';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
+import { TBD_LOOKUP_NAME } from '@corpcal/shared';
 import type {
   CommsContactCandidate,
   TeamListItem,
 } from '@corpcal/shared/api/types';
 import {
-  createActivityRequestSchema,
+  createActivityRequestSchemaWithLookups,
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
+import type { ActivitySchedulingLookupResolvers } from '@corpcal/shared/validation';
 
 import { getDefaultFormValues } from '../lib/activity-form-defaults';
 import { useCommsContactCandidates } from './useCommsContactCandidates';
@@ -22,15 +24,23 @@ import { useCommsContactSync } from './useCommsContactSync';
 import { useFormLookups, type FormLookupData } from './useFormLookups';
 import { useLeadTeamOptions } from './useLeadTeamOptions';
 
-const NOT_CONFIRMED_STATUS_NAME = 'not_confirmed';
-
-function resolveNotConfirmedStatusId<
+function resolveTbdStatusId<
   T extends { id: number; name: string; displayName: string },
 >(statuses: T[]): number | undefined {
-  const notConfirmedByName = statuses.find(
-    (s) => s.name === NOT_CONFIRMED_STATUS_NAME
-  );
-  return notConfirmedByName?.id;
+  return statuses.find((s) => s.name === TBD_LOOKUP_NAME)?.id;
+}
+
+function buildSchedulingResolvers(
+  lookups: FormLookupData
+): ActivitySchedulingLookupResolvers {
+  return {
+    dateStatusNameForId: (id) =>
+      lookups.dateStatuses.find((s) => s.id === id)?.name,
+    timeStatusNameForId: (id) =>
+      lookups.timeStatuses.find((s) => s.id === id)?.name,
+    pitchRequiredStatusNameForId: (id) =>
+      lookups.pitchRequiredStatuses.find((s) => s.id === id)?.name,
+  };
 }
 
 export interface UseActivityFormSetupOptions {
@@ -74,10 +84,18 @@ export function useActivityFormSetup({
     refetch: refetchLeadTeamOptions,
   } = useLeadTeamOptions(leadTeamFetchEnabled);
 
+  const schedulingResolvers = useMemo(
+    () => buildSchedulingResolvers(lookups),
+    [lookups]
+  );
+
+  const formSchema = useMemo(
+    () => createActivityRequestSchemaWithLookups(schedulingResolvers),
+    [schedulingResolvers]
+  );
+
   const form = useForm<ActivityFormData>({
-    resolver: zodResolver(
-      createActivityRequestSchema
-    ) as Resolver<ActivityFormData>,
+    resolver: zodResolver(formSchema) as Resolver<ActivityFormData>,
     mode: 'onChange',
     // Create/edit pages focus invalid fields in layout order via onError + form-utils.
     shouldFocusError: false,
@@ -110,7 +128,7 @@ export function useActivityFormSetup({
     if (mode !== 'create') return;
     if (lookups.dateStatuses.length === 0) return;
 
-    const resolvedStatusId = resolveNotConfirmedStatusId(lookups.dateStatuses);
+    const resolvedStatusId = resolveTbdStatusId(lookups.dateStatuses);
     if (resolvedStatusId == null) return;
 
     const currentStatusId = form.getValues('dateStatusId');
@@ -128,7 +146,7 @@ export function useActivityFormSetup({
     if (mode !== 'create') return;
     if (lookups.timeStatuses.length === 0) return;
 
-    const resolvedStatusId = resolveNotConfirmedStatusId(lookups.timeStatuses);
+    const resolvedStatusId = resolveTbdStatusId(lookups.timeStatuses);
     if (resolvedStatusId == null) return;
 
     const currentStatusId = form.getValues('timeStatusId');

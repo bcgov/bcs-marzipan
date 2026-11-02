@@ -98,7 +98,7 @@ export const categories = pgTable(
 
 /**
  * DateStatus lookup table - Date statuses
- * Values: 'unknown', 'tentative', 'confirmed'
+ * Values: 'tbd', 'confirmed'
  */
 export const dateStatuses = pgTable('date_statuses', {
   id: serial('id').primaryKey(),
@@ -125,7 +125,7 @@ export const dateStatuses = pgTable('date_statuses', {
 
 /**
  * TimeStatus lookup table - Time statuses
- * Values: 'unknown', 'tentative', 'confirmed'
+ * Values: 'tbd', 'confirmed'
  */
 export const timeStatuses = pgTable('time_statuses', {
   id: serial('id').primaryKey(),
@@ -424,31 +424,43 @@ export const tags = pgTable(
 );
 
 /**
- * PitchStatus lookup table - Pitch approval statuses
- * Values: 'not required', 'submitted', 'pitched', 'approved'
+ * Code lookup table - Activity coding labels (similar shape to tags).
+ * All codes default to global visibility for now.
  */
-export const pitchStatuses = pgTable('pitch_statuses', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }).notNull(),
-  sortOrder: integer('sort_order').notNull().default(0),
-  isActive: boolean('is_active').notNull().default(true),
-  description: text('description'),
-  createdDateTime: timestamp('created_date_time', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdBy: integer('created_by')
-    .notNull()
-    .references(() => users.id),
-  lastUpdatedDateTime: timestamp('last_updated_date_time', {
-    withTimezone: true,
-  })
-    .notNull()
-    .defaultNow(),
-  lastUpdatedBy: integer('last_updated_by')
-    .notNull()
-    .references(() => users.id),
-});
+export const codes = pgTable(
+  'codes',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 255 }).notNull(),
+    displayName: varchar('display_name', { length: 255 }).notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    visibility: varchar('visibility', { length: 50 })
+      .notNull()
+      .default('global'),
+    isActive: boolean('is_active').notNull().default(true),
+    description: text('description'),
+    createdDateTime: timestamp('created_date_time', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdBy: integer('created_by')
+      .notNull()
+      .references(() => users.id),
+    lastUpdatedDateTime: timestamp('last_updated_date_time', {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    lastUpdatedBy: integer('last_updated_by')
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => [
+    index('idx_codes_display_name_trgm').using(
+      'gin',
+      sql`lower(${table.displayName}) gin_trgm_ops`
+    ),
+  ]
+);
 
 /**
  * CommsMaterials lookup table - Comms materials types
@@ -744,3 +756,5 @@ export const categoriesRelations = relations(categories, ({ many }) => ({
 export const tagsRelations = relations(tags, ({ many }) => ({
   teamTags: many(teamTags),
 }));
+
+export const codesRelations = relations(codes, ({ many }) => ({}));

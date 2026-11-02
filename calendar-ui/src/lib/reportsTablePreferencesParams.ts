@@ -174,12 +174,12 @@ function parseFromSearchParams(
 
   const dateConfirmedParam = searchParams.get(URL_PARAM_DATE_CONFIRMED)?.trim();
   const dateConfirmedFilter: ActivityFilterState['dateConfirmedFilter'] =
-    dateConfirmedParam === 'confirmed' || dateConfirmedParam === 'not_confirmed'
+    dateConfirmedParam === 'confirmed' || dateConfirmedParam === 'tbd'
       ? dateConfirmedParam
       : 'any';
   const timeConfirmedParam = searchParams.get(URL_PARAM_TIME_CONFIRMED)?.trim();
   const timeConfirmedFilter: ActivityFilterState['timeConfirmedFilter'] =
-    timeConfirmedParam === 'confirmed' || timeConfirmedParam === 'not_confirmed'
+    timeConfirmedParam === 'confirmed' || timeConfirmedParam === 'tbd'
       ? timeConfirmedParam
       : 'any';
 
@@ -331,13 +331,13 @@ function parseSinglePreferencesFromRaw(
       const dateConfirmedFilterValue = rawFilter.dateConfirmedFilter;
       const dateConfirmedFilter: ActivityFilterState['dateConfirmedFilter'] =
         dateConfirmedFilterValue === 'confirmed' ||
-        dateConfirmedFilterValue === 'not_confirmed'
+        dateConfirmedFilterValue === 'tbd'
           ? dateConfirmedFilterValue
           : 'any';
       const timeConfirmedFilterValue = rawFilter.timeConfirmedFilter;
       const timeConfirmedFilter: ActivityFilterState['timeConfirmedFilter'] =
         timeConfirmedFilterValue === 'confirmed' ||
-        timeConfirmedFilterValue === 'not_confirmed'
+        timeConfirmedFilterValue === 'tbd'
           ? timeConfirmedFilterValue
           : 'any';
       const tagIds = Array.isArray(rawFilter.tagIds)

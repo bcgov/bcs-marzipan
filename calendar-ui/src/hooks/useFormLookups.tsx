@@ -13,6 +13,7 @@ import {
   useActivityStatuses,
   useActivityTeamSharing,
   useCategories,
+  useCodes,
   useCommsMaterials,
   useDateStatuses,
   useEventPlanners,
@@ -22,7 +23,6 @@ import {
   useNewsReleaseOrigins,
   useOrganizations,
   usePitchRequiredStatuses,
-  usePitchStatuses,
   usePremierRequested,
   useTags,
   useTimeStatuses,
@@ -67,8 +67,13 @@ export interface FormLookupData {
     teamIds?: number[];
   }>;
 
-  // Pitch Statuses - for Select
-  pitchStatuses: Array<{ id: number; name: string; displayName?: string }>;
+  // Codes - activity coding labels (same shape as tags in the form)
+  codes: Array<{
+    id: number;
+    text: string;
+    visibility: 'global' | 'team';
+    teamIds?: number[];
+  }>;
 
   // Activity Statuses - for Select
   activityStatuses: Array<{ id: number; name: string; displayName?: string }>;
@@ -150,7 +155,7 @@ export function useFormLookups(): FormLookupData {
   const usersQuery = useUsers();
   const eventPlannersQuery = useEventPlanners();
   const tagsQuery = useTags();
-  const pitchStatusesQuery = usePitchStatuses();
+  const codesQuery = useCodes();
   const activityStatusesQuery = useActivityStatuses();
   const commsMaterialsQuery = useCommsMaterials();
   const translationLanguagesQuery = useTranslationLanguages();
@@ -172,7 +177,7 @@ export function useFormLookups(): FormLookupData {
     usersQuery.isLoading ||
     eventPlannersQuery.isLoading ||
     tagsQuery.isLoading ||
-    pitchStatusesQuery.isLoading ||
+    codesQuery.isLoading ||
     activityStatusesQuery.isLoading ||
     commsMaterialsQuery.isLoading ||
     translationLanguagesQuery.isLoading ||
@@ -194,7 +199,7 @@ export function useFormLookups(): FormLookupData {
     usersQuery.isError ||
     eventPlannersQuery.isError ||
     tagsQuery.isError ||
-    pitchStatusesQuery.isError ||
+    codesQuery.isError ||
     activityStatusesQuery.isError ||
     commsMaterialsQuery.isError ||
     translationLanguagesQuery.isError ||
@@ -262,12 +267,12 @@ export function useFormLookups(): FormLookupData {
         teamIds: item.teamIds,
       })) || [];
 
-    // Transform pitch statuses for Select
-    const pitchStatuses =
-      pitchStatusesQuery.data?.map((item) => ({
+    const codes =
+      codesQuery.data?.map((item) => ({
         id: item.id,
-        name: item.name || item.label,
-        displayName: item.displayName || item.label,
+        text: item.displayName || item.name || item.label,
+        visibility: item.visibility,
+        teamIds: item.teamIds,
       })) || [];
 
     // Transform activity statuses for Select
@@ -354,7 +359,7 @@ export function useFormLookups(): FormLookupData {
       users,
       eventPlanners,
       tags: tags,
-      pitchStatuses: pitchStatuses,
+      codes,
       activityStatuses: activityStatuses,
       commsMaterials: commsMaterials,
       translationLanguages: translationLanguages,
@@ -387,9 +392,9 @@ export function useFormLookups(): FormLookupData {
     newsReleaseOriginsQuery.data,
     organizationsQuery.data,
     pitchRequiredStatusesQuery.data,
-    pitchStatusesQuery.data,
     premierRequestedQuery.data,
     tagsQuery.data,
+    codesQuery.data,
     timeStatusesQuery.data,
     translationLanguagesQuery.data,
     translationRequiredStatusesQuery.data,

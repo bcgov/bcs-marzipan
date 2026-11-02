@@ -29,7 +29,6 @@ export const lookupQueryKeys = {
   cities: () => ['lookups', 'cities'] as const,
   commsMaterials: () => ['lookups', 'comms-materials'] as const,
   activityStatuses: () => ['lookups', 'activity-statuses'] as const,
-  pitchStatuses: () => ['lookups', 'pitch-statuses'] as const,
   governmentRepresentatives: () =>
     ['lookups', 'government-representatives'] as const,
   ministries: () => ['lookups', 'ministries'] as const,
@@ -66,6 +65,11 @@ export const lookupQueryKeys = {
   tags: () => ['lookups', 'tags'] as const,
   /** Admin tags list (`includeAll=true`). Shares the `['lookups', 'tags']` prefix. */
   tagsAdmin: () => ['lookups', 'tags', 'admin'] as const,
+
+  /** User-scoped codes list (no `includeAll`). */
+  codes: () => ['lookups', 'codes'] as const,
+  /** Admin codes list (`includeAll=true`). Shares the `['lookups', 'codes']` prefix. */
+  codesAdmin: () => ['lookups', 'codes', 'admin'] as const,
 
   /** Reports list (single source of truth for Settings/Reports page and activity form). */
   reports: () => ['lookups', 'reports'] as const,

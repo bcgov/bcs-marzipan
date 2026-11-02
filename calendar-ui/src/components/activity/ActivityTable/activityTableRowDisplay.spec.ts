@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { pathsIncludeFieldChange } from './activityTableRowDisplay';
+import {
+  pathsIncludeFieldChange,
+  toSentenceCase,
+} from './activityTableRowDisplay';
+
+describe('toSentenceCase', () => {
+  it('sentence-cases confirmed status labels', () => {
+    expect(toSentenceCase('confirmed')).toBe('Confirmed');
+    expect(toSentenceCase('Confirmed')).toBe('Confirmed');
+  });
+
+  it('keeps TBD in caps for scheduling status badges', () => {
+    expect(toSentenceCase('TBD')).toBe('TBD');
+    expect(toSentenceCase('tbd')).toBe('TBD');
+  });
+});
 
 describe('pathsIncludeFieldChange', () => {
   it('matches exact paths', () => {

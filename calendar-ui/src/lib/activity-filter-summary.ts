@@ -90,7 +90,7 @@ function confirmedLabel(
   v: ActivityFilterState['dateConfirmedFilter']
 ): string | null {
   if (v === 'confirmed') return 'Confirmed';
-  if (v === 'not_confirmed') return 'Not confirmed';
+  if (v === 'tbd') return 'TBD';
   return null;
 }
 

@@ -10,7 +10,6 @@ import {
   dateStatuses,
   governmentRepresentatives,
   pitchRequiredStatuses,
-  pitchStatuses,
   tags,
   themes,
   timeStatuses,
@@ -84,9 +83,6 @@ export type Tag = InferSelectModel<typeof tags>;
 export type NewTag = InferInsertModel<typeof tags>;
 
 // Status lookups
-export type PitchStatus = InferSelectModel<typeof pitchStatuses>;
-export type NewPitchStatus = InferInsertModel<typeof pitchStatuses>;
-
 export type DateStatus = InferSelectModel<typeof dateStatuses>;
 export type NewDateStatus = InferInsertModel<typeof dateStatuses>;
 

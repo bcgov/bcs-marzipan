@@ -92,14 +92,6 @@ export function mapResponseToFormData(
         }))
       : undefined;
 
-  const reportSettings =
-    response.reportSettings?.length > 0
-      ? response.reportSettings.map((rs) => ({
-          reportId: rs.id,
-          omitted: rs.omitted,
-        }))
-      : undefined;
-
   const commsContacts =
     response.commsContacts?.length > 0
       ? response.commsContacts.map((c) => ({
@@ -127,7 +119,6 @@ export function mapResponseToFormData(
     summary: response.summary,
     significance: response.significance ?? undefined,
     schedulingNotes: response.schedulingNotes ?? undefined,
-    strategy: response.strategy ?? undefined,
     dateStatusId: response.dateStatusId ?? undefined,
     timeStatusId: response.timeStatusId ?? undefined,
     venueStatusId: response.venueStatusId ?? undefined,
@@ -145,12 +136,12 @@ export function mapResponseToFormData(
       response.translationsRequiredStatusId ?? undefined,
     pitchDate: response.pitchDate ?? undefined,
     notes: response.notes ?? undefined,
+    internalNotes: response.internalNotes ?? undefined,
     executiveSummary: response.executiveSummary ?? undefined,
     lookAheadStatus: response.lookAheadStatus ?? undefined,
     lookAheadSection: response.lookAheadSection ?? undefined,
     leadOrgId: response.leadOrgId ?? undefined,
     leadOrgName: response.leadOrgName ?? undefined,
-    newsReleaseId: response.newsReleaseId ?? undefined,
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
     leadTeamId: response.leadTeamId ?? 0,
     leadMinistryId: response.leadMinistryId ?? undefined,
@@ -161,6 +152,12 @@ export function mapResponseToFormData(
     premierRequestedId: response.premierRequestedId ?? undefined,
     categoryIds: categoryIds?.length ? categoryIds : [],
     tagIds: tagIds?.length ? tagIds : undefined,
+    codeIds:
+      response.codeIds?.length > 0
+        ? response.codeIds
+        : response.codes?.length > 0
+          ? response.codes.map((c) => c.id)
+          : undefined,
     commsMaterialIds: commsMaterialIds?.length ? commsMaterialIds : undefined,
     translationLanguageIds: translationLanguageIds?.length
       ? translationLanguageIds
@@ -170,7 +167,6 @@ export function mapResponseToFormData(
       ? sharedWithTeamIds
       : undefined,
     commsContacts: commsContacts?.length ? commsContacts : undefined,
-    reportSettings: reportSettings?.length ? reportSettings : undefined,
     venueAddress: normalizeVenueAddressForForm(response.venueAddress),
   };
 }

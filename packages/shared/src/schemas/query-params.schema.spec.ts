@@ -91,14 +91,14 @@ describe('filterActivitiesQuerySchema', () => {
   it('parses confirmed filters and pitch date flags', () => {
     const result = filterActivitiesQuerySchema.parse({
       dateConfirmedFilter: 'confirmed',
-      timeConfirmedFilter: 'not_confirmed',
+      timeConfirmedFilter: 'tbd',
       pitchDateNotScheduled: 'true',
       pitchDateFrom: '2025-01-01',
       pitchDateTo: '2025-01-31',
       scheduledDateRangeOverlaps: 'true',
     });
     expect(result.dateConfirmedFilter).toBe('confirmed');
-    expect(result.timeConfirmedFilter).toBe('not_confirmed');
+    expect(result.timeConfirmedFilter).toBe('tbd');
     expect(result.pitchDateNotScheduled).toBe(true);
     expect(result.pitchDateFrom).toBe('2025-01-01');
     expect(result.scheduledDateRangeOverlaps).toBe(true);

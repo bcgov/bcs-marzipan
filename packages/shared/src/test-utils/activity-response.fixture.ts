@@ -59,11 +59,9 @@ export function createMockActivityResponse(
     timeStatusId: 1,
     venueStatusId: 1,
     schedulingNotes: null,
-    strategy: null,
 
     // News Release
     newsReleaseOriginId: null,
-    newsReleaseId: null,
     newsReleaseDistributionId: null,
 
     // Look Ahead
@@ -73,6 +71,7 @@ export function createMockActivityResponse(
 
     // Notes and additional fields
     notes: null,
+    internalNotes: null,
     pitchDate: null,
     pitchRequiredStatusId: null,
     translationsRequiredStatusId: null,
@@ -96,6 +95,8 @@ export function createMockActivityResponse(
     category: [],
     categoryIds: [],
     tags: [],
+    codes: [],
+    codeIds: [],
     commsMaterials: [],
     translationsRequired: [],
     representativesAttending: [],
@@ -119,7 +120,6 @@ export function createMockActivityResponse(
     leadMinistryAbbreviation: null,
     leadTeamDisplayName: null,
     venueAddress: null,
-    reportSettings: [],
     flags: [],
 
     // Apply overrides

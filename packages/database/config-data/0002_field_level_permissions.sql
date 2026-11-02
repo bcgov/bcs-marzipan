@@ -3,10 +3,12 @@
 
 -- 1. Permission catalog (pitch date has edit only; no view permission - all users with activity access may read it)
 INSERT INTO permissions (key, display_name, category, subcategory, description, resource, scope, action, sort_order) VALUES
-  ('activities.notes.view',          'View activity notes',              'Activities', 'Field Access', 'View the Notes field on activities',                              'activities', 'notes',          'view', 100),
-  ('activities.notes.edit',          'Edit activity notes',              'Activities', 'Field Access', 'Edit the Notes field on activities',                              'activities', 'notes',          'edit', 101),
-  ('activities.lookAhead.view',      'View Look Ahead fields',          'Activities', 'Field Access', 'View Look Ahead Status and Look Ahead Section on activities',    'activities', 'lookAhead',      'view', 102),
-  ('activities.lookAhead.edit',      'Edit Look Ahead fields',          'Activities', 'Field Access', 'Edit Look Ahead Status and Look Ahead Section on activities',    'activities', 'lookAhead',      'edit', 103),
+  ('activities.notes.view',          'View internal activity notes',     'Activities', 'Field Access', 'View the Internal notes field on activities',                     'activities', 'internalNotes',  'view', 100),
+  ('activities.notes.edit',          'Edit internal activity notes',     'Activities', 'Field Access', 'Edit the Internal notes field on activities',                     'activities', 'internalNotes',  'edit', 101),
+  ('activities.codes.view',          'View activity coding',             'Activities', 'Field Access', 'View the Coding field on activities',                             'activities', 'codes',          'view', 108),
+  ('activities.codes.edit',          'Edit activity coding',             'Activities', 'Field Access', 'Edit the Coding field on activities',                             'activities', 'codes',          'edit', 109),
+  ('activities.lookAhead.view',      'View Look Ahead fields',          'Activities', 'Field Access', 'View Executive summary, Look Ahead status, and Look Ahead section on activities', 'activities', 'lookAhead', 'view', 102),
+  ('activities.lookAhead.edit',      'Edit Look Ahead fields',          'Activities', 'Field Access', 'Edit Executive summary, Look Ahead status, and Look Ahead section on activities', 'activities', 'lookAhead', 'edit', 103),
   ('activities.translations.edit',   'Edit translation fields',         'Activities', 'Field Access', 'Edit Translations Required and Translation Languages on activities', 'activities', 'translations', 'edit', 104),
   ('activities.pitchStatus.view',    'View pitch status',               'Activities', 'Field Access', 'View Pitch required status on activities',                        'activities', 'pitchStatus',    'view', 105),
   ('activities.pitchStatus.edit',    'Edit pitch status',               'Activities', 'Field Access', 'Edit Pitch required status on activities',                        'activities', 'pitchStatus',    'edit', 106),

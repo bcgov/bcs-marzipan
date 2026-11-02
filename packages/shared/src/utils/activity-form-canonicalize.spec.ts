@@ -20,6 +20,8 @@ function minimalForm(overrides: Partial<ActivityFormData>): ActivityFormData {
     visibility: 'global',
     leadTeamId: 1,
     categoryIds: [1],
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
     ...overrides,
   };
 }
@@ -109,16 +111,16 @@ describe('prepareActivityFormDataForSubmit', () => {
     const prepared = prepareActivityFormDataForSubmit(
       minimalForm({
         notes: '',
+        internalNotes: '',
         schedulingNotes: '',
-        strategy: '',
         significance: EMPTY_RICH_TEXT_DOC,
         executiveSummary: EMPTY_RICH_TEXT_DOC,
       })
     );
 
     expect(prepared.notes).toBeNull();
+    expect(prepared.internalNotes).toBeNull();
     expect(prepared.schedulingNotes).toBeNull();
-    expect(prepared.strategy).toBeNull();
     expect(prepared.significance).toBeNull();
     expect(prepared.executiveSummary).toBeNull();
     expect(prepared.lookAheadSection).toBeNull();

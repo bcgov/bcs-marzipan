@@ -11,7 +11,6 @@ export * from './apply-update-activity-request';
 export * from './activity-field-labels';
 export * from '../validation';
 export * from './build-review-diff-lookups';
-export * from './report-settings';
 export * from './redact-activity-response';
 export {
   ACTIVITY_HISTORY_FIELD_ALIASES,

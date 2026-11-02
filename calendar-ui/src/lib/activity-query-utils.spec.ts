@@ -409,7 +409,7 @@ describe('filterActivityRowsByFilters', () => {
     expect(result.map((r) => r.id)).toEqual([1]);
   });
 
-  it('filters by time not_confirmed only', () => {
+  it('filters by time tbd only', () => {
     const rows = [
       makeRow({ id: 1, dateStatus: 'Confirmed', timeStatus: 'Confirmed' }),
       makeRow({ id: 2, dateStatus: 'Confirmed', timeStatus: 'Not confirmed' }),
@@ -418,7 +418,7 @@ describe('filterActivityRowsByFilters', () => {
     const result = filterActivityRowsByFilters(rows, {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
       dateConfirmedFilter: 'any',
-      timeConfirmedFilter: 'not_confirmed',
+      timeConfirmedFilter: 'tbd',
     });
     expect(result.map((r) => r.id)).toEqual([2, 3]);
   });

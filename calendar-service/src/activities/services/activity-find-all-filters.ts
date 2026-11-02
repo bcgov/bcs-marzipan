@@ -233,6 +233,11 @@ export function buildActivityFindAllConditions(
     );
   }
 
+  if (filters.requireAssignedLookAheadSection === true) {
+    conditions.push(isNotNull(activities.lookAheadSection));
+    conditions.push(ne(activities.lookAheadSection, ''));
+  }
+
   if (
     filters.translationRequiredStatusIds != null &&
     filters.translationRequiredStatusIds.length > 0
@@ -273,7 +278,7 @@ export function buildActivityFindAllConditions(
     conditions.push(
       buildConfirmedStatusMatch(db, activities.dateStatusId, dateStatuses, true)
     );
-  } else if (filters.dateConfirmedFilter === 'not_confirmed') {
+  } else if (filters.dateConfirmedFilter === 'tbd') {
     conditions.push(
       buildConfirmedStatusMatch(
         db,
@@ -288,7 +293,7 @@ export function buildActivityFindAllConditions(
     conditions.push(
       buildConfirmedStatusMatch(db, activities.timeStatusId, timeStatuses, true)
     );
-  } else if (filters.timeConfirmedFilter === 'not_confirmed') {
+  } else if (filters.timeConfirmedFilter === 'tbd') {
     conditions.push(
       buildConfirmedStatusMatch(
         db,

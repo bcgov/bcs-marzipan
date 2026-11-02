@@ -4,10 +4,8 @@ import { and, eq, inArray } from 'drizzle-orm';
 import {
   activityCommsContacts,
   activityEventPlanners,
-  activityReportSettings,
   activityRepresentatives,
   governmentRepresentatives,
-  reports,
   venueAddresses,
 } from '@corpcal/database/schema';
 import type { VenueAddress, VenueAddressBase } from '@corpcal/shared/schemas';
@@ -479,86 +477,6 @@ export class ActivityJunctionService {
         activityId,
         ...venueAddressToRowFields(venueAddress),
       });
-    }
-  }
-
-  /**
-   * Create default report settings for a new activity
-   * Creates rows for all active reports with omitted=false
-   * @param tx - Database transaction
-   * @param activityId - ID of the newly created activity
-   */
-  async createDefaultReportSettings(
-    tx: Parameters<
-      Parameters<typeof this.databaseService.db.transaction>[0]
-    >[0],
-    activityId: number
-  ): Promise<void> {
-    // Get all active reports
-    const activeReports = await tx
-      .select({
-        id: reports.id,
-      })
-      .from(reports)
-      .where(eq(reports.isActive, true));
-
-    if (activeReports.length === 0) {
-      return;
-    }
-
-    // Insert default rows for all active reports (omitted=false by default)
-    await tx.insert(activityReportSettings).values(
-      activeReports.map((report) => ({
-        activityId,
-        reportId: report.id,
-        omitted: false,
-      }))
-    );
-  }
-
-  /**
-   * Update report settings for an activity
-   * Updates omitted flags for specified activity-report combinations
-   * @param tx - Database transaction
-   * @param activityId - ID of the activity
-   * @param reportSettings - Map of reportId to omitted boolean value
-   */
-  async updateActivityReportSettings(
-    tx: Parameters<
-      Parameters<typeof this.databaseService.db.transaction>[0]
-    >[0],
-    activityId: number,
-    reportSettings: Map<number, boolean>
-  ): Promise<void> {
-    for (const [reportId, omitted] of reportSettings.entries()) {
-      const [existing] = await tx
-        .select()
-        .from(activityReportSettings)
-        .where(
-          and(
-            eq(activityReportSettings.activityId, activityId),
-            eq(activityReportSettings.reportId, reportId)
-          )
-        )
-        .limit(1);
-
-      if (existing) {
-        await tx
-          .update(activityReportSettings)
-          .set({ omitted })
-          .where(
-            and(
-              eq(activityReportSettings.activityId, activityId),
-              eq(activityReportSettings.reportId, reportId)
-            )
-          );
-      } else {
-        await tx.insert(activityReportSettings).values({
-          activityId,
-          reportId,
-          omitted,
-        });
-      }
     }
   }
 

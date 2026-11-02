@@ -23,6 +23,8 @@ function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
     title: 'Test Activity',
     summary: 'Summary',
     significance: 'Significance',
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
     dateStatusId: 1,
     timeStatusId: 1,
     activityStatusId: 1,
@@ -194,17 +196,17 @@ describe('createActivityRequestSchema', () => {
     ).toThrow();
   });
 
-  it('enforces strategy and notes max length (2000)', () => {
+  it('enforces internalNotes and notes max length (2000)', () => {
     createActivityRequestSchema.parse(
       minimalCreateRequest({
-        strategy: 'a'.repeat(2000),
+        internalNotes: 'a'.repeat(2000),
         notes: 'b'.repeat(2000),
       })
     );
 
     expect(() =>
       createActivityRequestSchema.parse(
-        minimalCreateRequest({ strategy: 'a'.repeat(2001) })
+        minimalCreateRequest({ internalNotes: 'a'.repeat(2001) })
       )
     ).toThrow();
 

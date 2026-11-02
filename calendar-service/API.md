@@ -28,10 +28,6 @@ Creates a new calendar activity with related junction table records.
   "activityStatusId": 1,
   "leadMinistryId": 1,
   "isIssue": false,
-  "reportSettings": [
-    { "reportId": 1, "omitted": false },
-    { "reportId": 2, "omitted": true }
-  ],
   "commsContacts": [
     { "userId": 8, "isLead": true },
     { "userId": 12, "isLead": false }
@@ -90,39 +86,39 @@ Retrieves all activities with optional filtering.
 
 Array filters accept comma-separated values in the query string (e.g. `tagIds=1,2`) or repeated keys. Multiple values use OR semantics (match any).
 
-| Parameter                      | Type                           | Description                                                                                                                     |
-| ------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `title`                        | string                         | Exact title match                                                                                                               |
-| `startDateFrom`                | ISO date                       | Lower bound of the scheduled-span overlap window (optional; may be used alone)                                                  |
-| `startDateTo`                  | ISO date                       | Upper bound of the scheduled-span overlap window (optional; may be used alone)                                                  |
-| `endDateFrom`                  | ISO date                       | Activity `endDate` on or after                                                                                                  |
-| `endDateTo`                    | ISO date                       | Activity `endDate` on or before                                                                                                 |
-| `scheduledDateRangeOverlaps`   | boolean (`true`)               | Requires both activity dates and span overlap; UI/reports set this with date bounds (see below)                                 |
-| `activityStatusIds`            | int[]                          | Filter by status IDs (OR). When omitted, deleted activities are excluded; completed are excluded unless `includeCompleted=true` |
-| `leadTeamIds`                  | int[]                          | Lead team IDs (OR). Replaces removed `leadMinistryIds` / `leadOrgIds` filter params                                             |
-| `commsContactLeadUserIds`      | int[]                          | Lead comms contact user IDs (OR)                                                                                                |
-| `flagAssigneeUserIds`          | int[]                          | Flag assignee user IDs (OR)                                                                                                     |
-| `sharedWithTeamIds`            | int[]                          | Shared-with team IDs (OR)                                                                                                       |
-| `eventPlannerLeadIds`          | int[]                          | Lead event planner IDs (OR)                                                                                                     |
-| `tagIds`                       | int[]                          | Tag IDs (OR)                                                                                                                    |
-| `categoryIds`                  | number[]                       | Category lookup IDs (OR)                                                                                                        |
-| `translationRequiredStatusIds` | int[]                          | Translations-required status IDs (OR)                                                                                           |
-| `translationLanguageIds`       | int[]                          | Required translation language IDs (OR)                                                                                          |
-| `pitchRequiredStatusNames`     | string[]                       | Pitch-required status names (OR, case-insensitive)                                                                              |
-| `lookAheadStatusValues`        | string[]                       | Look Ahead status values (OR)                                                                                                   |
-| `lookAheadSectionValues`       | string[]                       | Look Ahead section bucket keys (OR)                                                                                             |
-| `dateConfirmedFilter`          | `confirmed` \| `not_confirmed` | Date confirmation status                                                                                                        |
-| `timeConfirmedFilter`          | `confirmed` \| `not_confirmed` | Time confirmation status                                                                                                        |
-| `pitchDateNotScheduled`        | boolean (`true`)               | Activities with no pitch date                                                                                                   |
-| `pitchDateScheduled`           | boolean (`true`)               | Activities with any pitch date set (when no pitch date range bounds)                                                            |
-| `pitchDateFrom`                | ISO date                       | Pitch date on or after                                                                                                          |
-| `pitchDateTo`                  | ISO date                       | Pitch date on or before                                                                                                         |
-| `city`                         | string                         | Filter by venue city                                                                                                            |
-| `isIssue`                      | boolean                        | Filter by issue flag                                                                                                            |
-| `includeCompleted`             | boolean (`true`)               | Include completed-status activities when no `activityStatusIds` filter                                                          |
-| `includeDeleted`               | boolean (`true`)               | Include deleted-status activities (Admin/System Admin only)                                                                     |
-| `page`                         | integer                        | Page number (default `1`)                                                                                                       |
-| `limit`                        | integer                        | Page size (default `20`, max `100`; not applied to unpaginated list responses today)                                            |
+| Parameter                      | Type                 | Description                                                                                                                     |
+| ------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `title`                        | string               | Exact title match                                                                                                               |
+| `startDateFrom`                | ISO date             | Lower bound of the scheduled-span overlap window (optional; may be used alone)                                                  |
+| `startDateTo`                  | ISO date             | Upper bound of the scheduled-span overlap window (optional; may be used alone)                                                  |
+| `endDateFrom`                  | ISO date             | Activity `endDate` on or after                                                                                                  |
+| `endDateTo`                    | ISO date             | Activity `endDate` on or before                                                                                                 |
+| `scheduledDateRangeOverlaps`   | boolean (`true`)     | Requires both activity dates and span overlap; UI/reports set this with date bounds (see below)                                 |
+| `activityStatusIds`            | int[]                | Filter by status IDs (OR). When omitted, deleted activities are excluded; completed are excluded unless `includeCompleted=true` |
+| `leadTeamIds`                  | int[]                | Lead team IDs (OR). Replaces removed `leadMinistryIds` / `leadOrgIds` filter params                                             |
+| `commsContactLeadUserIds`      | int[]                | Lead comms contact user IDs (OR)                                                                                                |
+| `flagAssigneeUserIds`          | int[]                | Flag assignee user IDs (OR)                                                                                                     |
+| `sharedWithTeamIds`            | int[]                | Shared-with team IDs (OR)                                                                                                       |
+| `eventPlannerLeadIds`          | int[]                | Lead event planner IDs (OR)                                                                                                     |
+| `tagIds`                       | int[]                | Tag IDs (OR)                                                                                                                    |
+| `categoryIds`                  | number[]             | Category lookup IDs (OR)                                                                                                        |
+| `translationRequiredStatusIds` | int[]                | Translations-required status IDs (OR)                                                                                           |
+| `translationLanguageIds`       | int[]                | Required translation language IDs (OR)                                                                                          |
+| `pitchRequiredStatusNames`     | string[]             | Pitch-required status names (OR, case-insensitive)                                                                              |
+| `lookAheadStatusValues`        | string[]             | Look Ahead status values (OR)                                                                                                   |
+| `lookAheadSectionValues`       | string[]             | Look Ahead section bucket keys (OR)                                                                                             |
+| `dateConfirmedFilter`          | `confirmed` \| `tbd` | Date confirmation status                                                                                                        |
+| `timeConfirmedFilter`          | `confirmed` \| `tbd` | Time confirmation status                                                                                                        |
+| `pitchDateNotScheduled`        | boolean (`true`)     | Activities with no pitch date                                                                                                   |
+| `pitchDateScheduled`           | boolean (`true`)     | Activities with any pitch date set (when no pitch date range bounds)                                                            |
+| `pitchDateFrom`                | ISO date             | Pitch date on or after                                                                                                          |
+| `pitchDateTo`                  | ISO date             | Pitch date on or before                                                                                                         |
+| `city`                         | string               | Filter by venue city                                                                                                            |
+| `isIssue`                      | boolean              | Filter by issue flag                                                                                                            |
+| `includeCompleted`             | boolean (`true`)     | Include completed-status activities when no `activityStatusIds` filter                                                          |
+| `includeDeleted`               | boolean (`true`)     | Include deleted-status activities (Admin/System Admin only)                                                                     |
+| `page`                         | integer              | Page number (default `1`)                                                                                                       |
+| `limit`                        | integer              | Page size (default `20`, max `100`; not applied to unpaginated list responses today)                                            |
 
 **Scheduled date window (`startDateFrom` / `startDateTo`):** bounds use **span overlap**, not containment. An activity matches when its scheduled range intersects the window: `activity.end >= startDateFrom` (when set) and `activity.start <= startDateTo` (when set). Either bound may be omitted for an open-ended window. `startDate` must be set; activities with no start date never match.
 
@@ -1033,14 +1029,8 @@ Server error occurred.
 - **Audit Fields:** Activities store two last-updated pairs. **Operational** (`lastUpdatedBy`, `lastUpdatedDateTime`) always updates on in-scope writes and drives optimistic concurrency. **Public** (`publicLastUpdatedBy`, `publicLastUpdatedDateTime`) is the user-visible “last updated” for table sort, reports, and stale reminders; it is bumped on most writes unless the caller has `activities.publicLastUpdated.defer` and does not set `renewPublicLastUpdated: true` on PATCH. **List** and report bulk payloads include both pairs. **Detail** responses always include public fields; operational fields are also included when the caller may edit the activity. Soft delete, restore, delete-requested, and create force both. Bulk updates, history notes, shared-with removal, user transfer, display-id cascade, and scheduled auto-complete jobs bump operational only. Junction updates (categories, tags, themes, shared-with PUT) bump both for non-defer callers and operational only for defer holders. Manual complete/review via PATCH uses the same defer/renew rules as other saves; the background completion job does not bump public. Activity history records the user ID for each change.
   - **Timestamp write contexts (server-internal):** Defer-aware — activity PATCH and junction PUT. Lifecycle — create, soft delete, restore, delete-requested (always bump public). Operational only — bulk PATCH, history notes, shared-with DELETE, comms transfer (lead team change), display-id cascade, system jobs. All paths resolve through `resolveBumpPublicLastUpdated` in `@corpcal/shared`.
 - **Display ID:** Auto-generated as `<MINISTRY_ABBREV>-<6_DIGIT_ID>` (e.g., `MIN-000006`).
-- **Report Settings:** The `reportSettings` field controls whether activities are omitted from specific reports. Each setting includes:
-  - `reportId`: The ID of the report
-  - `omitted`: Boolean indicating if the activity is omitted from this report (default: false)
-  - Inclusion behavior is determined by `isConfidential` (on activity) and `omitted` (on reportSettings):
-    - `omitted=true` → Activity is omitted
-    - `omitted=false` and `isConfidential=false` → Activity included with standard details
-    - `omitted=false` and `isConfidential=true` → Activity included with placeholder (redacted) details
-- **isConfidential:** Activity-level boolean property. When true, activity shows as placeholder in reports (unless omitted).
+- **Reports:** Report datasets include activities the user can view that match the report date window and filters. Look Ahead reports require an assigned Look Ahead section (`lookAheadSection` not null).
+- **isConfidential:** Activity-level boolean property. When true, drives sensitivity badges and editorial placeholder copy in Corporate Look Ahead print; it does not remove the activity from report data.
 - **commsContacts:** Array of comms contacts for the activity. Each contact has:
   - `userId`: The ID of the user
   - `isLead`: Boolean indicating if this is the lead contact (exactly one must be true)

@@ -151,7 +151,10 @@ export type FilterActivitiesQueryParams = Pick<
   ParsedFilterActivitiesQueryParams,
   'page' | 'limit'
 > &
-  Partial<Omit<ParsedFilterActivitiesQueryParams, 'page' | 'limit'>>;
+  Partial<Omit<ParsedFilterActivitiesQueryParams, 'page' | 'limit'>> & {
+    /** Internal (report generation): exclude activities with no Look Ahead section. */
+    requireAssignedLookAheadSection?: boolean;
+  };
 
 /** Int-array query fields serialized as comma-separated strings in HTTP. */
 export const FILTER_ACTIVITIES_INT_ARRAY_KEYS = [

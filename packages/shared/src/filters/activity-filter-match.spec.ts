@@ -272,10 +272,10 @@ describe('activityMatchesFilterState', () => {
       ]);
     });
 
-    it('time not_confirmed excludes confirmed', () => {
-      expect(matchIds(state({ timeConfirmedFilter: 'not_confirmed' }))).toEqual(
-        [2, 3, 4]
-      );
+    it('time tbd excludes confirmed', () => {
+      expect(matchIds(state({ timeConfirmedFilter: 'tbd' }))).toEqual([
+        2, 3, 4,
+      ]);
     });
   });
 

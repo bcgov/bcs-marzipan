@@ -130,19 +130,6 @@ describe('LookupsController (e2e)', () => {
     });
   });
 
-  describe('/lookups/pitch-statuses (GET)', () => {
-    it('should return all pitch statuses', () => {
-      return createAuthRequest(app, accessToken)
-        .get('/lookups/pitch-statuses')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body).toHaveProperty('success', true);
-          expect(res.body).toHaveProperty('data');
-          expect(Array.isArray(res.body.data)).toBe(true);
-        });
-    });
-  });
-
   describe('/lookups/venue-presets (GET)', () => {
     it('should return venue presets array', () => {
       return createAuthRequest(app, accessToken)
@@ -176,7 +163,7 @@ describe('LookupsController (e2e)', () => {
         '/lookups/organizations',
         '/lookups/users',
         '/lookups/activity-statuses',
-        '/lookups/pitch-statuses',
+        '/lookups/pitch-required-statuses',
       ];
 
       for (const endpoint of endpoints) {

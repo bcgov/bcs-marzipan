@@ -143,17 +143,6 @@ export function formatCustomReportCell(
       .join(', ');
   }
 
-  if (key === 'reportSettings' && Array.isArray(raw)) {
-    return raw
-      .map((r) =>
-        r && typeof r === 'object' && 'displayName' in r
-          ? String(r.displayName)
-          : ''
-      )
-      .filter(Boolean)
-      .join(', ');
-  }
-
   if (key === 'changedFieldsSinceReview' && Array.isArray(raw)) {
     return raw.map(String).join(', ');
   }

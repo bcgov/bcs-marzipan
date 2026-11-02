@@ -8,7 +8,7 @@ This document provides detailed usage information, examples, and behavioral patt
 2. [Categories Access Control](#categories-access-control)
 3. [Pods Access Control](#pods-access-control)
 4. [Reports Configuration](#reports-configuration)
-5. [Activity Report Settings](#activity-report-settings)
+5. [Report activity inclusion](#report-activity-inclusion)
 6. [Venue Presets and Last-Used Addresses](#venue-presets-and-last-used-addresses)
 
 ---
@@ -222,46 +222,11 @@ In this example, the global filter restricts activities to the week of January 1
 
 ---
 
-## Activity Report Settings
+## Report activity inclusion
 
-### Inclusion Logic
+Report datasets use the same activity visibility and list filters as the calendar UI (team access, query filters, scheduled date windows). `isConfidential` does **not** remove an activity from report data; it drives sensitivity badges and editorial copy in print.
 
-Activity inclusion in reports is determined primarily by `omitted` (on activityReportSettings). `isConfidential` (on activities) does **not** exclude an activity from report data.
-
-1. If `omitted=true` → Activity is omitted from report (regardless of isConfidential)
-2. If `omitted=false` → Activity is included in report data (regardless of isConfidential)
-
-**Confidential activities in print:** `isConfidential` drives badges and team visibility. Corporate Look Ahead relies on admins entering placeholder executive-summary copy as an editorial workflow; Executive Look Ahead and other report types may show full summary/significance fields when those columns are configured.
-
-### Behavior
-
-1. **Default Creation**: When an activity is created, default rows are automatically created for all active reports with `omitted=false`.
-
-2. **Omission Override**: Users can update the omitted value to exclude activities from specific reports.
-
-3. **Completeness**: Every activity must have a setting for every active report. Missing combinations are created with defaults when needed.
-
-### Legacy Mapping
-
-This table replaces the legacy boolean flags on the Activity table:
-
-- **`IsConfidential` (notForLookAhead)**:
-  - Legacy: Boolean flag indicating activity should not appear in look-ahead report or should appear redacted
-  - New: `isConfidential=true` on activities (sensitivity badge + team visibility); use `omitted=true` in activityReportSettings to exclude from a specific report
-  - Migration: `isConfidential=true` → `isConfidential=true` on activities
-
-- **`notForThirtySixtyNinety`**:
-  - Legacy: Boolean flag indicating activity should not appear in 30/60/90 day report
-  - New: `omitted=true` for 'thirty-sixty-ninety' report
-  - Migration: `notForThirtySixtyNinety=true` → `omitted=true` for thirty-sixty-ninety report
-
-### Indexes
-
-- Primary key on `(activityId, reportId)`
-- Index on `activityId` for efficient activity lookups
-- Index on `reportId` for efficient report lookups
-- Composite index on `(activityId, reportId)` for join performance
-- Index on `omitted` for filtering by omission status
+**Look Ahead and Executive Look Ahead** only include activities with a assigned `lookAheadSection` (not None / null). Section tabs further filter by the configured section key.
 
 ---
 

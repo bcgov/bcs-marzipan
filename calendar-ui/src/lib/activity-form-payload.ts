@@ -1,8 +1,5 @@
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import {
-  normalizeReportSettings,
-  prepareActivityFormDataForSubmit,
-} from '@corpcal/shared/utils';
+import { prepareActivityFormDataForSubmit } from '@corpcal/shared/utils';
 
 function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
   if (!arr || arr.length === 0) return undefined;
@@ -92,7 +89,7 @@ function prepareForSubmit(
 
 /**
  * Builds the request payload for updating an activity from form values.
- * Includes commsContacts and normalized reportSettings.
+ * Includes commsContacts when present on the form.
  * Backend computes activityStatusId from markAsReviewed/markAsCompleted + role; do not send activityStatusId.
  */
 export function buildPayloadForUpdate(
@@ -112,12 +109,8 @@ export function buildPayloadForUpdate(
     formValues,
     requiredTranslationStatusId
   );
-  const normalizedReportSettings = normalizeReportSettings(
-    preparedFormValues.reportSettings
-  );
   const payload: Record<string, unknown> = {
     ...buildPayloadFromPrepared(prepared, preparedFormValues),
-    reportSettings: normalizedReportSettings,
   };
   if (includeRepresentatives) {
     // Include representatives when this update should persist representative edits,

@@ -13,6 +13,7 @@ import {
   activityStatuses,
   categories,
   cities,
+  codes,
   commsMaterials,
   dateStatuses,
   governmentRepresentatives,
@@ -26,7 +27,6 @@ import {
   permissions,
   permissionVisibilityAudit,
   pitchRequiredStatuses,
-  pitchStatuses,
   premierRequested,
   reports,
   rolePermissionAudit,
@@ -54,6 +54,7 @@ import {
 import type {
   ActivityTeamSharingQuickShare,
   CategoryLookupItem,
+  CodeLookupItem,
   CommsMaterialsLookupItem,
   GovernmentRepresentativeLookupItem,
   LookupItem,
@@ -61,7 +62,6 @@ import type {
   MinistryGroupResponse,
   MinistryLookupItem,
   OrganizationLookupItem,
-  PitchStatusLookupItem,
   ReportResponse,
   TagLookupItem,
   ThemeLookupItem,
@@ -819,25 +819,31 @@ export class LookupsService {
   }
 
   /**
-   * Get all active pitch statuses
+   * Get all codes for activity form and admin. Global visibility only for now.
    */
-  async getPitchStatuses(): Promise<PitchStatusLookupItem[]> {
+  async getCodes(includeAll?: boolean): Promise<CodeLookupItem[]> {
     const results = await this.databaseService.db
       .select({
-        id: pitchStatuses.id,
-        name: pitchStatuses.name,
-        displayName: pitchStatuses.displayName,
+        id: codes.id,
+        name: codes.name,
+        displayName: codes.displayName,
+        sortOrder: codes.sortOrder,
+        isActive: codes.isActive,
+        visibility: codes.visibility,
       })
-      .from(pitchStatuses)
-      .where(eq(pitchStatuses.isActive, true))
-      .orderBy(pitchStatuses.sortOrder);
+      .from(codes)
+      .where(includeAll ? undefined : eq(codes.isActive, true))
+      .orderBy(codes.sortOrder);
 
-    return results.map((status) => ({
-      id: status.id,
-      label: status.displayName,
-      value: status.id,
-      name: status.name,
-      displayName: status.displayName,
+    return results.map((code) => ({
+      id: code.id,
+      label: code.displayName,
+      value: code.id,
+      name: code.name,
+      displayName: code.displayName,
+      sortOrder: code.sortOrder,
+      isActive: code.isActive,
+      visibility: code.visibility as 'global' | 'team',
     }));
   }
 
@@ -2229,6 +2235,76 @@ export class LookupsService {
           return result;
         })
     );
+  }
+
+  async createCode(
+    data: {
+      name: string;
+      displayName?: string | null;
+      sortOrder?: number;
+      isActive?: boolean;
+      description?: string | null;
+    },
+    currentUserId: number
+  ): Promise<typeof codes.$inferSelect> {
+    const now = new Date();
+    const [result] = await this.databaseService.db
+      .insert(codes)
+      .values({
+        name: data.name,
+        displayName: data.displayName ?? data.name,
+        sortOrder: data.sortOrder ?? 0,
+        isActive: data.isActive ?? true,
+        visibility: 'global',
+        description: data.description ?? undefined,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return result;
+  }
+
+  async updateCode(
+    id: number,
+    data: {
+      name?: string;
+      displayName?: string | null;
+      sortOrder?: number;
+      isActive?: boolean;
+      description?: string | null;
+    },
+    currentUserId: number
+  ): Promise<typeof codes.$inferSelect | undefined> {
+    const [existing] = await this.databaseService.db
+      .select()
+      .from(codes)
+      .where(eq(codes.id, id))
+      .limit(1);
+    if (!existing) {
+      throw new NotFoundException(`Code with ID ${id} not found`);
+    }
+    const now = new Date();
+    const updateData: Partial<typeof codes.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: now,
+    };
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.displayName !== undefined) {
+      updateData.displayName = data.displayName ?? data.name ?? existing.name;
+    }
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.description !== undefined) {
+      updateData.description = data.description ?? undefined;
+    }
+    const [result] = await this.databaseService.db
+      .update(codes)
+      .set(updateData)
+      .where(eq(codes.id, id))
+      .returning();
+    return result;
   }
 
   /**
