@@ -242,3 +242,78 @@ jobs:
       app_name: ${{ needs.resolve-env.outputs.argocd_app_name }}
       image_tag: ${{ needs.resolve-env.outputs.image_tag }}
     secrets: inherit
+
+  cleanup-artifactory:
+    name: Cleanup Old Artifactory Tags — ${{ needs.resolve-env.outputs.environment }}
+    needs: [resolve-env, argocd-sync]
+    if: ${{ always() && needs.argocd-sync.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install JFrog CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL https://getcli.jfrog.io | sh
+          echo "$HOME/.jfrog/bin" >> "$GITHUB_PATH"
+
+      - name: Delete stale image tags
+        shell: bash
+        env:
+          ARTIFACTORY_URL: ${{ vars.ARTIFACTORY_REGISTRY }}
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          ARTIFACTORY_REPO: ${{ needs.resolve-env.outputs.artifactory_repo }}
+          CURRENT_TAG: ${{ needs.resolve-env.outputs.image_tag }}
+          KEEP_COUNT: ${{ vars.ARTIFACTORY_TAG_KEEP_COUNT || 5 }}
+        run: |
+          set -euo pipefail
+
+          : "${ARTIFACTORY_URL:?Set repo variable ARTIFACTORY_REGISTRY}"
+          : "${ARTIFACTORY_USERNAME:?Set secret ARTIFACTORY_USERNAME}"
+          : "${ARTIFACTORY_PASSWORD:?Set secret ARTIFACTORY_PASSWORD}"
+          : "${ARTIFACTORY_REPO:?Set repo variable ARTIFACTORY_DEV_IMAGE_REPO / ARTIFACTORY_TEST_IMAGE_REPO / ARTIFACTORY_PROD_IMAGE_REPO}"
+
+          ARTIFACTORY_BASE_URL="${ARTIFACTORY_URL}"
+          case "${ARTIFACTORY_BASE_URL}" in
+            http://*|https://*) ;;
+            *) ARTIFACTORY_BASE_URL="https://${ARTIFACTORY_BASE_URL}" ;;
+          esac
+
+          jf c add emerald-artifactory \
+            --url "${ARTIFACTORY_BASE_URL}" \
+            --user "${ARTIFACTORY_USERNAME}" \
+            --password "${ARTIFACTORY_PASSWORD}" \
+            --interactive=false
+
+          jf c use emerald-artifactory
+
+          for image in \
+            corpcal-service \
+            corpcal-ui \
+            corpcal-db-migrate \
+            corpcal-db-seed; do
+            echo "Checking $image in ${ARTIFACTORY_REPO}"
+
+            mapfile -t versions < <(jf rt s "${ARTIFACTORY_REPO}/${image}/*" --sort-by created --sort-order desc 2>/dev/null || true)
+            if [[ ${#versions[@]} -eq 0 ]]; then
+              continue
+            fi
+
+            keep_index=0
+            for version in "${versions[@]}"; do
+              tag="${version##*/}"
+              if [[ "$tag" == "$CURRENT_TAG" ]]; then
+                continue
+              fi
+
+              if (( keep_index < KEEP_COUNT )); then
+                keep_index=$((keep_index + 1))
+                continue
+              fi
+
+              echo "Deleting stale tag ${version}"
+              jf rt del "${version}" --quiet || true
+            done
+          done
+
+          echo "Kept the newest ${KEEP_COUNT} image tags per repository and removed older tags after successful deployment."
