@@ -14,11 +14,12 @@ import api from '@/api/axios';
 import {
   fetchActivityStatuses,
   fetchAllCategories,
+  fetchAllCommsMaterials,
+  fetchAllReleaseTypes,
   fetchAllTags,
   fetchAllTranslationLanguages,
   fetchAllVenuePresets,
   fetchCities,
-  fetchCommsMaterials,
   fetchGovernmentRepresentatives,
   fetchMinistries,
   fetchMinistryGroups,
@@ -33,6 +34,7 @@ import type { FreeformComboboxOption } from '@/components/ui/freeform-combobox';
 import { ClientValidationError } from '@/lib/error-toast';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
+import { CommsMaterialAdminForm } from './CommsMaterialAdminForm';
 import { GenericLookupAdmin } from './GenericLookupAdmin';
 import { FormField } from './LookupForm';
 import {
@@ -68,6 +70,18 @@ type City = LookupItem & {
 type CommsMaterial = LookupItem & {
   name?: string;
   displayName?: string | null;
+  visibility?: 'global' | 'team';
+  teamNames?: string[];
+  teamIds?: number[];
+  releaseTypeId?: number | null;
+};
+
+type ReleaseType = LookupItem & {
+  name?: string;
+  displayName?: string | null;
+  audience?: 'media' | 'public';
+  allowsTranslation?: boolean;
+  requiresNewsReleaseDetails?: boolean;
 };
 
 type TranslationLanguage = LookupItem & {
@@ -132,7 +146,6 @@ const categoryFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -167,7 +180,50 @@ const cityFields: FormField[] = [
     type: 'text',
     placeholder: 'Canada',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
+];
+
+const releaseTypeFields: FormField[] = [
+  {
+    name: 'name',
+    label: 'Name',
+    type: 'text',
+    required: true,
+    placeholder: 'Enter release type name',
+  },
+  {
+    name: 'displayName',
+    label: 'Display name',
+    type: 'text',
+    placeholder: 'Optional display name',
+  },
+  {
+    name: 'audience',
+    label: 'Audience',
+    type: 'select',
+    required: true,
+    options: [
+      { value: 'public', label: 'Public' },
+      { value: 'media', label: 'Media' },
+    ],
+  },
+  {
+    name: 'allowsTranslation',
+    label: 'Allows translation',
+    type: 'checkbox',
+    placeholder: 'Show translation fields when this material is selected',
+  },
+  {
+    name: 'requiresNewsReleaseDetails',
+    label: 'Requires news release details',
+    type: 'checkbox',
+    placeholder: 'Show news release origin, distribution, and translations',
+  },
   {
     name: 'isActive',
     label: 'Active',
@@ -190,7 +246,6 @@ const commsMaterialFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -219,7 +274,6 @@ const translationLanguageFields: FormField[] = [
     type: 'text',
     placeholder: 'e.g. FR, AR, SC',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -248,7 +302,6 @@ const govRepFields: FormField[] = [
     type: 'text',
     placeholder: 'Minister, MLA, etc.',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -271,7 +324,6 @@ const tagFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -303,7 +355,6 @@ const ministryCoreFields: FormField[] = [
     required: true,
     placeholder: 'e.g., AG',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -351,7 +402,6 @@ async function persistMinistryWithMinister({
     name,
     displayName,
     abbreviation,
-    sortOrder: Number(formData.sortOrder ?? 0),
     isActive: formData.isActive !== false,
     ministryGroupId,
   };
@@ -389,7 +439,6 @@ async function persistMinistryWithMinister({
       name: trimmed,
       displayName: trimmed,
       title: 'Minister',
-      sortOrder: 0,
       isActive: true,
       representativeType: 'minister',
     });
@@ -414,7 +463,6 @@ const ministryGroupFields: FormField[] = [
     required: true,
     placeholder: 'e.g., Social, Resource',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
 ];
 
 const statusFields: FormField[] = [
@@ -431,7 +479,6 @@ const statusFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -454,7 +501,6 @@ const themeFields: FormField[] = [
     type: 'text',
     placeholder: 'Optional display name',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -507,7 +553,6 @@ const venuePresetFields: FormField[] = [
     type: 'text',
     placeholder: 'Canada',
   },
-  { name: 'sortOrder', label: 'Sort order', type: 'number', placeholder: '0' },
   {
     name: 'isActive',
     label: 'Active',
@@ -547,6 +592,7 @@ export function CategoriesAdmin() {
       entityType="Category"
       apiEndpoint="/lookups/categories"
       enableManualSort
+      reorderEntityKey="categories"
       queryKey={lookupQueryKeys.categoriesAdmin()}
       queryFn={fetchAllCategories}
       formFields={categoryFields}
@@ -594,6 +640,7 @@ export function CitiesAdmin() {
       queryFn={fetchCities}
       formFields={cityFields}
       enableManualSort
+      reorderEntityKey="cities"
       additionalColumns={[
         {
           accessorKey: 'provinceOrState',
@@ -619,17 +666,139 @@ export function CitiesAdmin() {
 }
 
 export function CommsMaterialsAdmin() {
+  const { data: teams = [] } = useQuery({
+    queryKey: lookupQueryKeys.teams(),
+    queryFn: fetchTeams,
+  });
+  const { data: releaseTypes = [] } = useQuery({
+    queryKey: lookupQueryKeys.releaseTypesAdmin(),
+    queryFn: fetchAllReleaseTypes,
+  });
+
+  const teamOptions = teams.map((t) => ({
+    value: String(t.id),
+    label: t.displayName ?? t.name ?? String(t.id),
+  }));
+
+  const releaseTypeOptions = releaseTypes
+    .filter((rt) => rt.isActive !== false)
+    .map((rt) => ({
+      value: String(rt.id),
+      label: rt.displayName ?? rt.name ?? String(rt.id),
+    }));
+
   return (
     <GenericLookupAdmin<CommsMaterial>
       title="Communications materials"
-      description="Types of communication materials."
+      description="Types of communication materials (team scope and sister-app release types)."
       sectionId="comms"
       entityType="Communications Material"
       apiEndpoint="/lookups/comms-materials"
       enableManualSort
-      queryKey={lookupQueryKeys.commsMaterials()}
-      queryFn={fetchCommsMaterials}
+      reorderEntityKey="comms-materials"
+      queryKey={lookupQueryKeys.commsMaterialsAdmin()}
+      queryFn={fetchAllCommsMaterials}
       formFields={commsMaterialFields}
+      additionalInvalidateKeys={[lookupQueryKeys.commsMaterials()]}
+      getInitialData={(item) => ({
+        ...lookupVisibilityInitialData(item),
+        releaseTypeId: item.releaseTypeId ?? null,
+      })}
+      transformSubmitData={(data) => {
+        try {
+          const base = transformLookupVisibilitySubmitData(data);
+          return {
+            ...base,
+            releaseTypeId:
+              data.releaseTypeId === null || data.releaseTypeId === undefined
+                ? null
+                : Number(data.releaseTypeId),
+          };
+        } catch {
+          toast.error('At least one team is required when visibility is team.');
+          throw new ClientValidationError();
+        }
+      }}
+      additionalColumns={[
+        {
+          accessorKey: 'visibility',
+          header: 'Visibility',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {renderLookupVisibilityColumn(row.original)}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'releaseTypeId',
+          header: 'Release type',
+          cell: ({ row }) => {
+            const id = row.original.releaseTypeId;
+            if (id == null) return <span className="text-slate-600">—</span>;
+            const rt = releaseTypes.find((r) => r.id === id);
+            return (
+              <span className="text-slate-600">
+                {rt?.displayName ?? rt?.name ?? id}
+              </span>
+            );
+          },
+        },
+      ]}
+      renderModalContent={(props) => (
+        <CommsMaterialAdminForm
+          {...props}
+          fields={commsMaterialFields}
+          teamOptions={teamOptions}
+          releaseTypeOptions={releaseTypeOptions}
+        />
+      )}
+    />
+  );
+}
+
+export function ReleaseTypesAdmin() {
+  return (
+    <GenericLookupAdmin<ReleaseType>
+      title="Release types"
+      description="BC Gov external release types. Defines materials that can be published through NRMs"
+      sectionId="release-types"
+      entityType="Release Type"
+      apiEndpoint="/lookups/release-types"
+      enableManualSort
+      reorderEntityKey="release-types"
+      queryKey={lookupQueryKeys.releaseTypesAdmin()}
+      queryFn={fetchAllReleaseTypes}
+      formFields={releaseTypeFields}
+      additionalInvalidateKeys={[lookupQueryKeys.releaseTypes()]}
+      additionalColumns={[
+        {
+          accessorKey: 'audience',
+          header: 'Audience',
+          cell: ({ row }) => (
+            <span className="text-slate-600 capitalize">
+              {row.original.audience ?? '—'}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'allowsTranslation',
+          header: 'Translation',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {row.original.allowsTranslation ? 'Yes' : 'No'}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'requiresNewsReleaseDetails',
+          header: 'News release details',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {row.original.requiresNewsReleaseDetails ? 'Yes' : 'No'}
+            </span>
+          ),
+        },
+      ]}
     />
   );
 }
@@ -643,6 +812,7 @@ export function TranslationLanguagesAdmin() {
       entityType="Translation Language"
       apiEndpoint="/lookups/translation-languages"
       enableManualSort
+      reorderEntityKey="translation-languages"
       queryKey={lookupQueryKeys.translationLanguagesAdmin()}
       queryFn={fetchAllTranslationLanguages}
       softDelete
@@ -672,6 +842,7 @@ export function GovernmentRepresentativesAdmin() {
       entityType="Government Representative"
       apiEndpoint="/lookups/government-representatives"
       enableManualSort
+      reorderEntityKey="government-representatives"
       queryKey={lookupQueryKeys.governmentRepresentatives()}
       queryFn={fetchGovernmentRepresentatives}
       formFields={govRepFields}
@@ -707,6 +878,7 @@ export function TagsAdmin() {
       entityType="Tag"
       apiEndpoint="/lookups/tags"
       enableManualSort
+      reorderEntityKey="tags"
       queryKey={lookupQueryKeys.tagsAdmin()}
       queryFn={fetchAllTags}
       softDelete
@@ -755,6 +927,7 @@ export function MinistryGroupsAdmin() {
       entityType="Ministry group"
       apiEndpoint="/lookups/ministry-groups"
       enableManualSort
+      reorderEntityKey="ministry-groups"
       queryKey={lookupQueryKeys.ministryGroups()}
       queryFn={fetchMinistryGroups}
       formFields={ministryGroupFields}
@@ -875,6 +1048,7 @@ export function MinistriesAdmin() {
       entityType="Ministry"
       apiEndpoint="/lookups/ministries"
       enableManualSort
+      reorderEntityKey="ministries"
       queryKey={lookupQueryKeys.ministries()}
       queryFn={fetchMinistries}
       formFields={ministryFields}
@@ -902,6 +1076,7 @@ export function ActivityStatusesAdmin() {
       entityType="Activity Status"
       apiEndpoint="/lookups/activity-statuses"
       enableManualSort
+      reorderEntityKey="activity-statuses"
       queryKey={lookupQueryKeys.activityStatuses()}
       queryFn={fetchActivityStatuses}
       formFields={statusFields}
@@ -918,6 +1093,7 @@ export function ThemesAdmin() {
       entityType="Theme"
       apiEndpoint="/lookups/themes"
       enableManualSort
+      reorderEntityKey="themes"
       queryKey={lookupQueryKeys.themes()}
       queryFn={fetchThemes}
       formFields={themeFields}
@@ -972,6 +1148,7 @@ export function VenuePresetsAdmin() {
       entityType="Venue Preset"
       apiEndpoint="/lookups/venue-presets"
       enableManualSort
+      reorderEntityKey="venue-presets"
       queryKey={lookupQueryKeys.venuePresetsAdmin()}
       queryFn={fetchAllVenuePresets as () => Promise<VenuePreset[]>}
       formFields={venuePresetFields}

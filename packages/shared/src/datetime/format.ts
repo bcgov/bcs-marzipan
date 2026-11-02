@@ -88,6 +88,9 @@ const PACIFIC_TIME_FORMATTER = pacificDateFormatter({
 });
 
 const PACIFIC_WEEKDAY_FORMATTER = pacificDateFormatter({ weekday: 'long' });
+const PACIFIC_WEEKDAY_SHORT_FORMATTER = pacificDateFormatter({
+  weekday: 'short',
+});
 const PACIFIC_MONTH_SHORT_FORMATTER = pacificDateFormatter({ month: 'short' });
 const PACIFIC_DAY_FORMATTER = pacificDateFormatter({ day: 'numeric' });
 
@@ -243,6 +246,58 @@ export function formatInstantPacificTime(
 }
 
 /**
+ * Activity release-time preview from a UTC instant, e.g. `2:45 pm PT, Fri Mar 13`.
+ */
+export function formatInstantPacificReleasePreview(
+  instant: string | Date | number | null | undefined,
+  options?: { referenceInstant?: Date }
+): string {
+  const d = toDate(instant);
+  if (d == null) return '';
+  const referenceYear = pacificReferenceYear(options?.referenceInstant);
+  const time = PACIFIC_TIME_FORMATTER.format(d)
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+  const dateSuffix = formatReleasePreviewDateSuffixFromInstant(
+    d,
+    referenceYear
+  );
+  if (!dateSuffix) return '';
+  return `${time} PT, ${dateSuffix}`;
+}
+
+/**
+ * Release preview when schedule date is set but start time is not, e.g.
+ * `Time TBD, Fri Oct 30`.
+ */
+export function formatTimeTbdPacificReleasePreview(
+  instant: string | Date | number | null | undefined,
+  options?: { referenceInstant?: Date }
+): string {
+  const d = toDate(instant);
+  if (d == null) return '';
+  const referenceYear = pacificReferenceYear(options?.referenceInstant);
+  const dateSuffix = formatReleasePreviewDateSuffixFromInstant(
+    d,
+    referenceYear
+  );
+  if (!dateSuffix) return '';
+  return `Time TBD, ${dateSuffix}`;
+}
+
+/**
+ * Release-time preview when only start time is known, e.g. `2:45 pm PT, Date TBD`.
+ */
+export function formatCivilPacificReleasePreview(
+  civilTime: CivilTimeString | string,
+  dateSuffix: string
+): string {
+  const clock = formatCivilTime12h(civilTime);
+  if (clock === '') return '';
+  return `${clock} PT, ${dateSuffix}`;
+}
+
+/**
  * `Tuesday Apr 28, 9:38 pm` - print/PDF page footer "generated at" timestamp.
  * No year, lowercase am/pm, formatted in Pacific.
  */
@@ -293,6 +348,55 @@ const LOOK_AHEAD_DATE_RANGE_SEP_SPACED = ` ${LOOK_AHEAD_DATE_RANGE_SEP} `;
 
 function calendarDateYear(date: CalendarDateString): number {
   return Number.parseInt(date.slice(0, 4), 10);
+}
+
+function pacificReferenceYear(referenceInstant?: Date): number {
+  const referenceDate = pacificCalendarDateFromInstant(
+    referenceInstant ?? new Date()
+  );
+  return referenceDate
+    ? calendarDateYear(referenceDate)
+    : new Date().getFullYear();
+}
+
+function formatCalendarWeekdayShort(date: CalendarDateString): string {
+  return PACIFIC_WEEKDAY_SHORT_FORMATTER.format(
+    calendarDateToAnchorInstant(date)
+  );
+}
+
+function formatReleasePreviewDateSuffix(
+  date: CalendarDateString,
+  referenceYear: number
+): string {
+  const weekday = formatCalendarWeekdayShort(date);
+  const month = formatCalendarMonthShort(date);
+  const day = formatCalendarDayOfMonth(date);
+  const year = calendarDateYear(date);
+  if (year === referenceYear) {
+    return `${weekday} ${month} ${day}`;
+  }
+  return `${weekday} ${month} ${day}, ${year}`;
+}
+
+/** `Fri Oct 30` or `Fri Oct 30, 2027` when year differs from reference (Pacific). */
+export function formatCalendarDateReleasePreview(
+  date: CalendarDateString,
+  options?: { referenceInstant?: Date }
+): string {
+  return formatReleasePreviewDateSuffix(
+    date,
+    pacificReferenceYear(options?.referenceInstant)
+  );
+}
+
+function formatReleasePreviewDateSuffixFromInstant(
+  instant: Date,
+  referenceYear: number
+): string {
+  const dateKey = pacificCalendarDateFromInstant(instant);
+  if (dateKey == null) return '';
+  return formatReleasePreviewDateSuffix(dateKey, referenceYear);
 }
 
 function calendarDateMonth(date: CalendarDateString): number {

@@ -24,6 +24,7 @@ import {
   type CloneActivityRequest,
   type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
+import { buildCommsMaterialReleaseFlagsById } from '@corpcal/shared/utils';
 import {
   ActivityFormBody,
   ActivityFormMissingFieldsHint,
@@ -405,6 +406,16 @@ export function ActivityPage({
     () =>
       resolveTranslationRequiredStatusId(lookups.translationRequiredStatuses),
     [lookups.translationRequiredStatuses]
+  );
+  const commsMaterialReleaseFlagsById = useMemo(
+    () =>
+      buildCommsMaterialReleaseFlagsById(
+        lookups.commsMaterials.map((m) => ({
+          id: m.id,
+          releaseType: m.releaseType ?? null,
+        }))
+      ),
+    [lookups.commsMaterials]
   );
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const reviewerChangedPaths = useMemo<ReadonlySet<string>>(() => {
@@ -1308,6 +1319,7 @@ export function ActivityPage({
               ? {
                   markAsReviewed: true,
                   requiredTranslationStatusId,
+                  commsMaterialReleaseFlagsById,
                   includeRepresentatives:
                     !!form.formState.dirtyFields.representatives,
                   includeSharedWithTeamIds:
@@ -1317,6 +1329,7 @@ export function ActivityPage({
                 ? {
                     markAsCompleted: true,
                     requiredTranslationStatusId,
+                    commsMaterialReleaseFlagsById,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
                     includeSharedWithTeamIds:
@@ -1324,6 +1337,7 @@ export function ActivityPage({
                   }
                 : {
                     requiredTranslationStatusId,
+                    commsMaterialReleaseFlagsById,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
                     includeSharedWithTeamIds:
@@ -1419,6 +1433,7 @@ export function ActivityPage({
       ensureLockForSubmit,
       activitySocketConnection,
       editRecoveryState,
+      commsMaterialReleaseFlagsById,
     ]
   );
 

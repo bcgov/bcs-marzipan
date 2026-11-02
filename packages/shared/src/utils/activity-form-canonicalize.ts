@@ -6,6 +6,10 @@ import {
   EMPTY_RICH_TEXT_DOC,
   isActivityRichTextEffectivelyEmpty,
 } from './activity-rich-text';
+import {
+  stripCommsDependentFields,
+  type CommsMaterialReleaseFlagsById,
+} from './comms-material-form-rules';
 
 function isNullishOrEmptyString(v: unknown): boolean {
   return v === null || v === undefined || v === '';
@@ -100,6 +104,11 @@ export function canonicalizeActivityFormData(
       data.venueStatusId === null || data.venueStatusId === undefined
         ? undefined
         : data.venueStatusId,
+    releaseTimeOffsetMinutes:
+      data.releaseTimeOffsetMinutes === null ||
+      data.releaseTimeOffsetMinutes === undefined
+        ? undefined
+        : data.releaseTimeOffsetMinutes,
     venueAddress: normalizeVenueAddressForForm(
       data.venueAddress as ActivityResponse['venueAddress']
     ),
@@ -115,6 +124,8 @@ export type PrepareActivityFormDataOptions = {
    * When set, {@link translationLanguageIds} are cleared unless status matches.
    */
   requiredTranslationStatusId?: number;
+  /** Selected comms materials → release-type flags for dependent-field cleanup. */
+  commsMaterialReleaseFlagsById?: CommsMaterialReleaseFlagsById;
 };
 
 /**
@@ -149,8 +160,12 @@ export function prepareActivityFormDataForSubmit(
   data: ActivityFormData,
   options?: PrepareActivityFormDataOptions
 ): ActivityFormData {
-  const stripped = stripTranslationLanguagesWhenNotRequired(
+  const afterComms = stripCommsDependentFields(
     data,
+    options?.commsMaterialReleaseFlagsById
+  );
+  const stripped = stripTranslationLanguagesWhenNotRequired(
+    afterComms,
     options?.requiredTranslationStatusId
   );
   const c = canonicalizeActivityFormData(stripped);

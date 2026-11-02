@@ -140,6 +140,7 @@ export function mapResponseToFormData(
     lookAheadSection: response.lookAheadSection ?? undefined,
     leadOrgId: response.leadOrgId ?? undefined,
     leadOrgName: response.leadOrgName ?? undefined,
+    releaseTimeOffsetMinutes: response.releaseTimeOffsetMinutes ?? undefined,
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
     leadTeamId: response.leadTeamId ?? 0,
     leadMinistryId: response.leadMinistryId ?? undefined,

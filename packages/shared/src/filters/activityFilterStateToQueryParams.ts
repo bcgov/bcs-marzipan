@@ -17,11 +17,6 @@ function nonEmptyArray<T>(arr: T[]): T[] | undefined {
   return arr.length > 0 ? arr : undefined;
 }
 
-function nonEmptyTrimmedStrings(arr: string[]): string[] | undefined {
-  const trimmed = arr.map((s) => s.trim()).filter((s) => s.length > 0);
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
 /**
  * Maps activity filter panel state to report / activities API query params.
  * All ID-list filters use array params with OR semantics on the server.

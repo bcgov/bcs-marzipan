@@ -44,6 +44,8 @@ const BASE_ACTIVITY_RESPONSE = {
   schedulingNotes: null,
   newsReleaseOriginId: null,
   newsReleaseDistributionId: null,
+  releaseTimeOffsetMinutes: null,
+  releaseTime: null,
   executiveSummary: null,
   lookAheadStatus: 'none',
   lookAheadSection: 'events',

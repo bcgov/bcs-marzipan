@@ -57,7 +57,8 @@ scheduled time of day", e.g. `09:30`. It is the right type for activity
 
 An exact moment in time, the same value for every observer. Think audit and
 optimistic-concurrency timestamps such as `createdDateTime`,
-`lastUpdatedDateTime`, `news_release_date_time`.
+`lastUpdatedDateTime`, and derived activity `releaseTime` (stored as
+`release_time` when the schedule anchor and offset are confirmable).
 
 - **Wire format**: ISO 8601 with the trailing `Z`, e.g.
   `2026-04-27T15:30:00.000Z`.

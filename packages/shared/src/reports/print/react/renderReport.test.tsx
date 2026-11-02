@@ -51,6 +51,8 @@ const BASE_ACTIVITY_RESPONSE = {
   schedulingNotes: null,
   newsReleaseOriginId: null,
   newsReleaseDistributionId: null,
+  releaseTimeOffsetMinutes: null,
+  releaseTime: null,
   executiveSummary:
     'Investment of $500M over three years to accelerate affordable housing near transit.',
   lookAheadStatus: 'new',

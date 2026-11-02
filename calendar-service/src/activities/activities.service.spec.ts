@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import type { Mock } from 'vitest';
 
 import type { Activity } from '@corpcal/database/types';
 import {
@@ -38,6 +39,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import type { RequestContext } from '../policy/dto/user-context.dto';
 import {
   getCategoryScopeById,
+  getCommsMaterialScopeById,
   getTagScopeById,
 } from '../policy/lookup-scope.helper';
 import { PolicyService } from '../policy/policy.service';
@@ -53,8 +55,47 @@ import { ActivityJunctionService } from './services/activity-junction.service';
 import { ActivityMapperService } from './services/activity-mapper.service';
 import { ActivityUtilsService } from './services/activity-utils.service';
 
+/** Rows for `getSchedulingLookupResolvers` (select id/name from date/time status tables). */
+const MOCK_SCHEDULING_STATUS_LOOKUP_ROWS = [
+  { id: 1, name: 'TBD' },
+  { id: 2, name: 'Confirmed' },
+];
+
+function isSchedulingStatusLookupSelect(selectArg: unknown): boolean {
+  if (!selectArg || typeof selectArg !== 'object') return false;
+  const keys = Object.keys(selectArg);
+  // Date/time status tables: `{ id, name }` only (no `.where()`; `.from()` is awaited).
+  if (keys.length !== 2) return false;
+  if (!('id' in selectArg) || !('name' in selectArg)) return false;
+  if ('ministryId' in selectArg || 'abbreviation' in selectArg) return false;
+  return true;
+}
+
+type DbSelectMock = Mock<(...args: unknown[]) => unknown>;
+
+/** Ensures `getSchedulingLookupResolvers` gets row arrays from `.from()`. */
+function createSelectMock(impl: (...args: any[]) => unknown): DbSelectMock {
+  return vi.fn((...args: any[]) => {
+    if (args.length > 0 && isSchedulingStatusLookupSelect(args[0])) {
+      return createSchedulingStatusLookupSelectChain();
+    }
+    return impl(...args);
+  }) as DbSelectMock;
+}
+
+/** Drizzle resolves `select(...).from(table)` without an extra terminal call. */
+function createSchedulingStatusLookupSelectChain() {
+  return {
+    from: vi.fn().mockResolvedValue(MOCK_SCHEDULING_STATUS_LOOKUP_ROWS),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue(MOCK_SCHEDULING_STATUS_LOOKUP_ROWS),
+  };
+}
+
 vi.mock('../policy/lookup-scope.helper', () => ({
   getCategoryScopeById: vi.fn(),
+  getCommsMaterialScopeById: vi.fn(),
   getTagScopeById: vi.fn(),
 }));
 
@@ -76,6 +117,17 @@ function mockLookupScopeMaps(
     return Promise.resolve(scoped);
   });
   vi.mocked(getTagScopeById).mockImplementation((_db, ids) => {
+    const scoped = new Map<
+      number,
+      { visibility: 'global' | 'team'; teamIds?: number[] }
+    >();
+    for (const id of ids) {
+      const entry = map.get(id);
+      if (entry) scoped.set(id, entry);
+    }
+    return Promise.resolve(scoped);
+  });
+  vi.mocked(getCommsMaterialScopeById).mockImplementation((_db, ids) => {
     const scoped = new Map<
       number,
       { visibility: 'global' | 'team'; teamIds?: number[] }
@@ -136,7 +188,7 @@ describe('ActivitiesService', () => {
 
   // Helper to create a mock select function that handles both main queries and fetch methods
   const createMockSelect = (mainQueryResult: any) => {
-    return vi.fn((...args) => {
+    return createSelectMock((...args) => {
       if (args.length === 0) {
         // Main query: select().from().where().limit()
         return createMockQueryChain(mainQueryResult);
@@ -168,7 +220,7 @@ describe('ActivitiesService', () => {
           findFirst: vi.fn().mockResolvedValue(null),
         },
       },
-      select: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis() as DbSelectMock,
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
       leftJoin: vi.fn().mockReturnThis(),
@@ -865,7 +917,7 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.insert = vi.fn().mockReturnValue(mockInsert);
 
       // Mock select: team lookup returns team row; status lookup returns status id; findOne returns created activity
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0) {
           const selectArg = args[0];
           if (
@@ -952,7 +1004,7 @@ describe('ActivitiesService', () => {
 
       mockDatabaseService.db.insert = vi.fn().mockReturnValue(mockInsert);
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0) {
           const selectArg = args[0];
           if (
@@ -1038,7 +1090,7 @@ describe('ActivitiesService', () => {
 
       mockDatabaseService.db.insert = vi.fn().mockReturnValue(mockInsert);
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0) {
           const selectArg = args[0];
           if (
@@ -1083,7 +1135,7 @@ describe('ActivitiesService', () => {
         title: 'New Activity',
         leadTeamId: 1,
       });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
           if ('ministryId' in sel) {
@@ -1129,7 +1181,7 @@ describe('ActivitiesService', () => {
         title: 'New Activity',
         leadTeamId: 1,
       });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
           if ('ministryId' in sel) {
@@ -1165,7 +1217,7 @@ describe('ActivitiesService', () => {
         title: 'New Activity',
         leadTeamId: 99,
       });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
           if ('ministryId' in sel) {
@@ -1242,7 +1294,7 @@ describe('ActivitiesService', () => {
         };
         return await callback(tx);
       });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
           if ('ministryId' in sel) {
@@ -1282,7 +1334,7 @@ describe('ActivitiesService', () => {
       ]);
       const createDto = createMockActivityRequest({ tagIds: [99] });
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
           if ('ministryId' in sel) {
@@ -1322,7 +1374,7 @@ describe('ActivitiesService', () => {
       ]);
       const createDto = createMockActivityRequest({ tagIds: [99] });
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
           if ('ministryId' in sel) {
@@ -1395,7 +1447,7 @@ describe('ActivitiesService', () => {
         return await callback(tx);
       });
       mockDatabaseService.db.insert = vi.fn().mockReturnValue(mockInsert);
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
           if ('ministryId' in sel) {
@@ -1436,7 +1488,7 @@ describe('ActivitiesService', () => {
       ]);
       const createDto = createMockActivityRequest({ categoryIds: [99] });
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
           if ('ministryId' in sel) {
@@ -1479,7 +1531,7 @@ describe('ActivitiesService', () => {
       ]);
       const createDto = createMockActivityRequest({ categoryIds: [99] });
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
           if ('ministryId' in sel) {
@@ -1509,6 +1561,49 @@ describe('ActivitiesService', () => {
           teamIds: [1],
         })
       ).rejects.toThrow('Category IDs not available to your teams: 99');
+    });
+
+    it('includes forbidden comms material IDs in the create error message', async () => {
+      mockLookupScopeMaps([
+        [1, { visibility: 'global' }],
+        [88, { visibility: 'team', teamIds: [5] }],
+      ]);
+      const createDto = createMockActivityRequest({ commsMaterialIds: [88] });
+
+      mockDatabaseService.db.select = createSelectMock((...args) => {
+        if (args.length > 0 && typeof args[0] === 'object') {
+          const sel = args[0] as Record<string, unknown>;
+          if ('ministryId' in sel) {
+            return {
+              from: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 1, name: 'Test Team', ministryId: 1 },
+                ]),
+            };
+          }
+          return {
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue([{ id: 1 }]),
+          };
+        }
+        return createMockQueryChain([]);
+      });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Editor',
+          permissions: ['activities.create'],
+          teamIds: [1],
+        })
+      ).rejects.toThrow('Comms material IDs not available to your teams: 88');
+      expect(getCommsMaterialScopeById).toHaveBeenCalledWith(
+        expect.anything(),
+        [88]
+      );
     });
   });
 
@@ -1594,7 +1689,7 @@ describe('ActivitiesService', () => {
 
     it('throws BadRequestException when renewPublicLastUpdated is sent on bulk update', async () => {
       const existingActivity = createMockActivity({ id: 1 });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -1670,7 +1765,7 @@ describe('ActivitiesService', () => {
 
       let noArgsCallCount = 0;
       let withObjCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -1775,7 +1870,7 @@ describe('ActivitiesService', () => {
 
       let noArgsCallCount = 0;
       let withObjCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -1866,7 +1961,7 @@ describe('ActivitiesService', () => {
       // Mock select: no-args = existence check then updated activity; with-object = status name then status id then fetch methods
       let noArgsCallCount = 0;
       let withObjCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -1985,7 +2080,7 @@ describe('ActivitiesService', () => {
 
       let noArgsCallCount = 0;
       let withObjCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -2059,7 +2154,7 @@ describe('ActivitiesService', () => {
       });
 
       let noArgsCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -2120,7 +2215,7 @@ describe('ActivitiesService', () => {
       });
 
       let noArgsCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -2183,7 +2278,7 @@ describe('ActivitiesService', () => {
       });
 
       let noArgsCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -2255,7 +2350,7 @@ describe('ActivitiesService', () => {
       });
 
       let noArgsCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -2317,7 +2412,7 @@ describe('ActivitiesService', () => {
       });
 
       let noArgsCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -2372,7 +2467,7 @@ describe('ActivitiesService', () => {
       });
 
       let noArgsCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -2427,7 +2522,7 @@ describe('ActivitiesService', () => {
         targetStatusId: number
       ) => {
         let noArgsCallCount = 0;
-        return vi.fn((...args: unknown[]) => {
+        return createSelectMock((...args: unknown[]) => {
           if (args.length === 0) {
             noArgsCallCount++;
             return createMockQueryChain(
@@ -2770,7 +2865,7 @@ describe('ActivitiesService', () => {
       });
       mockDatabaseService.db.transaction = vi.fn();
       let _withObjCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -2841,7 +2936,7 @@ describe('ActivitiesService', () => {
 
       let noArgsCallCount = 0;
       let withObjCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCallCount++;
           return createMockQueryChain(
@@ -2895,7 +2990,7 @@ describe('ActivitiesService', () => {
         activityStatusId: 4,
       });
       mockDatabaseService.db.transaction = vi.fn();
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -2924,7 +3019,7 @@ describe('ActivitiesService', () => {
     it('should throw ForbiddenException when changing leadTeamId and user lacks create.any and context.teamIds is empty', async () => {
       const existingActivity = createMockActivity({ id: 1, leadTeamId: 1 });
       mockDatabaseService.db.transaction = vi.fn();
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -2964,7 +3059,7 @@ describe('ActivitiesService', () => {
     it('should throw ForbiddenException when changing leadTeamId and user lacks create.any and new leadTeamId not in context.teamIds', async () => {
       const existingActivity = createMockActivity({ id: 1, leadTeamId: 1 });
       mockDatabaseService.db.transaction = vi.fn();
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -3008,7 +3103,7 @@ describe('ActivitiesService', () => {
       vi.spyOn(service, 'findOne').mockResolvedValue(response);
 
       let capturedActivityTimestampSet: Record<string, unknown> | undefined;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         const selectArg = (args[0] ?? {}) as Record<string, unknown>;
         if ('teamId' in selectArg) {
           return {
@@ -3053,7 +3148,7 @@ describe('ActivitiesService', () => {
       const response = createMockActivityResponse({ id: 1 });
       vi.spyOn(service, 'findOne').mockResolvedValue(response);
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         const selectArg = (args[0] ?? {}) as Record<string, unknown>;
         if ('teamId' in selectArg) {
           return {
@@ -3089,7 +3184,7 @@ describe('ActivitiesService', () => {
       const response = createMockActivityResponse({ id: 1 });
       vi.spyOn(service, 'findOne').mockResolvedValue(response);
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         const selectArg = (args[0] ?? {}) as Record<string, unknown>;
         if ('teamId' in selectArg) {
           return {
@@ -3129,7 +3224,7 @@ describe('ActivitiesService', () => {
         activityStatusId: 5,
       });
       let selectCallCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           selectCallCount++;
           return createMockQueryChain(
@@ -3193,7 +3288,7 @@ describe('ActivitiesService', () => {
         id: 1,
         activityStatusId: 5,
       });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -3218,7 +3313,7 @@ describe('ActivitiesService', () => {
         id: 1,
         activityStatusId: 4,
       });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -3236,7 +3331,7 @@ describe('ActivitiesService', () => {
     });
 
     it('should throw NotFoundException when activity does not exist', async () => {
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([]);
         }
@@ -3273,7 +3368,7 @@ describe('ActivitiesService', () => {
       const existingActivity = createMockActivity({ id: 1 });
       let noArgsCount = 0;
       let withArgsCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCount++;
           return createMockQueryChain(
@@ -3384,7 +3479,7 @@ describe('ActivitiesService', () => {
 
       let noArgsCount = 0;
       let withArgsCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           noArgsCount++;
           return createMockQueryChain(
@@ -3462,7 +3557,7 @@ describe('ActivitiesService', () => {
       });
 
       let withArgsCount = 0;
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -3535,7 +3630,7 @@ describe('ActivitiesService', () => {
 
   describe('restore', () => {
     it('should add a standalone history note', async () => {
-      mockDatabaseService.db.select = vi.fn(() => ({
+      mockDatabaseService.db.select = createSelectMock(() => ({
         from: vi.fn().mockReturnThis(),
         where: vi.fn().mockReturnThis(),
         limit: vi.fn().mockResolvedValue([{ id: 1 }]),
@@ -3592,7 +3687,7 @@ describe('ActivitiesService', () => {
       mockActivityHistoryService.getPreviousStatusIdBeforeDelete.mockResolvedValue(
         2
       );
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -3704,7 +3799,7 @@ describe('ActivitiesService', () => {
         id: 1,
         activityStatusId: 1,
       });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -3725,7 +3820,7 @@ describe('ActivitiesService', () => {
     });
 
     it('should throw NotFoundException when activity does not exist', async () => {
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([]);
         }
@@ -3755,7 +3850,7 @@ describe('ActivitiesService', () => {
         2
       );
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -3807,7 +3902,7 @@ describe('ActivitiesService', () => {
   describe('remove', () => {
     it('should write to deletion_audit, delete child rows, and delete activity in a transaction', async () => {
       const existingActivity = createMockActivity({ id: 1 });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -3878,7 +3973,7 @@ describe('ActivitiesService', () => {
     it('should throw ForbiddenException when user lacks delete.any and is not comms/lead-team', async () => {
       mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
       mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([createMockActivity({ id: 1 })]);
         }
@@ -3911,7 +4006,7 @@ describe('ActivitiesService', () => {
       mockPolicyService.isCommsContactForActivity.mockResolvedValue(true);
       mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
       const existingActivity = createMockActivity({ id: 1 });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -3949,7 +4044,7 @@ describe('ActivitiesService', () => {
       mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
       mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
       const existingActivity = createMockActivity({ id: 1 });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -3983,7 +4078,7 @@ describe('ActivitiesService', () => {
     });
 
     it('should throw NotFoundException when activity does not exist', async () => {
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([]);
         }
@@ -4019,22 +4114,24 @@ describe('ActivitiesService', () => {
       existsRows: Array<{ id: number }>,
       sharedTeamRows: Array<{ teamId: number }>
     ) {
-      mockDatabaseService.db.select = vi.fn((cols: Record<string, unknown>) => {
-        if (cols && 'id' in cols) {
+      mockDatabaseService.db.select = createSelectMock(
+        (cols: Record<string, unknown>) => {
+          if (cols && 'id' in cols) {
+            return {
+              from: vi.fn().mockReturnValue({
+                where: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue(existsRows),
+                }),
+              }),
+            };
+          }
           return {
             from: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue(existsRows),
-              }),
+              where: vi.fn().mockResolvedValue(sharedTeamRows),
             }),
           };
         }
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue(sharedTeamRows),
-          }),
-        };
-      });
+      );
     }
 
     it('removes the given team from the shared-with list and records history', async () => {
@@ -4213,7 +4310,7 @@ describe('ActivitiesService', () => {
       mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
       mockPolicyService.getLeadTeamIdForActivity.mockResolvedValue(10);
       const existingActivity = createMockActivity({ id: 1 });
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -4249,7 +4346,7 @@ describe('ActivitiesService', () => {
         activityStatusId: 5,
       });
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -4326,7 +4423,7 @@ describe('ActivitiesService', () => {
         activityStatusId: 5,
       });
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -4388,7 +4485,7 @@ describe('ActivitiesService', () => {
     });
 
     it('should throw NotFoundException when activity does not exist', async () => {
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([]);
         }
@@ -4420,7 +4517,7 @@ describe('ActivitiesService', () => {
         activityStatusId: 5,
       });
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -4476,7 +4573,7 @@ describe('ActivitiesService', () => {
         activityStatusId: 5,
       });
 
-      mockDatabaseService.db.select = vi.fn((...args) => {
+      mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length === 0) {
           return createMockQueryChain([existingActivity]);
         }
@@ -4534,7 +4631,7 @@ describe('ActivitiesService', () => {
       const statusRow = [{ id: 3, name: 'new' }];
       const teamRow = [{ id: 5, name: 'Team', ministryId: 1 }];
 
-      mockDatabaseService.db.select = vi.fn(() => {
+      mockDatabaseService.db.select = createSelectMock(() => {
         const chain = {
           from: vi.fn().mockReturnThis(),
           where: vi.fn().mockReturnThis(),
@@ -4576,7 +4673,7 @@ describe('ActivitiesService', () => {
       const statusRow = [{ id: 3, name: 'new' }];
       const teamRow = [{ id: 5, name: 'Team', ministryId: 1 }];
 
-      mockDatabaseService.db.select = vi.fn(() => {
+      mockDatabaseService.db.select = createSelectMock(() => {
         const chain = {
           from: vi.fn().mockReturnThis(),
           where: vi.fn().mockReturnThis(),
@@ -4669,21 +4766,23 @@ describe('ActivitiesService', () => {
         reviewedFieldSnapshotVersion: REVIEW_SNAPSHOT_VERSION,
       });
 
-      mockDatabaseService.db.select = vi.fn((selection?: unknown) => {
-        if (selection === undefined) {
+      mockDatabaseService.db.select = createSelectMock(
+        (selection?: unknown) => {
+          if (selection === undefined) {
+            return {
+              from: vi.fn().mockResolvedValue([activity]),
+            };
+          }
+
           return {
-            from: vi.fn().mockResolvedValue([activity]),
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([]),
+              }),
+            }),
           };
         }
-
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([]),
-            }),
-          }),
-        };
-      });
+      );
 
       vi.spyOn(
         service as unknown as {
@@ -4775,21 +4874,23 @@ describe('ActivitiesService', () => {
     it('attaches editLock when includeEditLocks is true and skips lock fetch otherwise', async () => {
       const activity = createMockActivity();
 
-      mockDatabaseService.db.select = vi.fn((selection?: unknown) => {
-        if (selection === undefined) {
+      mockDatabaseService.db.select = createSelectMock(
+        (selection?: unknown) => {
+          if (selection === undefined) {
+            return {
+              from: vi.fn().mockResolvedValue([activity]),
+            };
+          }
+
           return {
-            from: vi.fn().mockResolvedValue([activity]),
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([]),
+              }),
+            }),
           };
         }
-
-        return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([]),
-            }),
-          }),
-        };
-      });
+      );
 
       mockLocksService.getActiveActivityLocksForIds.mockResolvedValue(
         new Map([[activity.id, { userId: 42, username: 'Editor User' }]])
