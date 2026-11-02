@@ -149,6 +149,9 @@ export function CloneActivityModal({
   const [activeTimePopover, setActiveTimePopover] = useState<
     'start' | 'end' | null
   >(null);
+  const [activeDatePopover, setActiveDatePopover] = useState<
+    'start' | 'end' | null
+  >(null);
 
   const editableFieldGroups = useMemo<
     Record<CloneAdvancedSection, string[]>
@@ -195,6 +198,7 @@ export function CloneActivityModal({
     setShowMoreOptions(false);
     setMarkAsReviewed(true);
     setActiveTimePopover(null);
+    setActiveDatePopover(null);
     setIncludedPaths(new Set(getDefaultCloneIncludedFieldPaths(editablePaths)));
   }, [
     open,
@@ -341,12 +345,28 @@ export function CloneActivityModal({
                         setEndDate(next);
                       }
                     }}
+                    onAfterSelect={() => {
+                      if (!String(endDate ?? '').trim()) {
+                        requestAnimationFrame(() =>
+                          setActiveDatePopover('end')
+                        );
+                      }
+                    }}
+                    popoverOpen={activeDatePopover === 'start'}
+                    onPopoverOpenChange={(open) => {
+                      if (open) setActiveDatePopover('start');
+                      else
+                        setActiveDatePopover((prev) =>
+                          prev === 'start' ? null : prev
+                        );
+                    }}
                     label={startButtonLabel}
                     triggerMuted={!startStr}
                     readOnly={false}
                     popoverTitle="Select start date"
                     presets={PRESETS_PAST_FROM_ANCHOR}
                     getPresetAnchor={getPresetAnchorToday}
+                    showPresets={false}
                     triggerAriaLabel="Activity start date"
                     triggerVariant="form"
                     headerRight={
@@ -374,12 +394,21 @@ export function CloneActivityModal({
                   <ScheduledDatePopoverField
                     value={endDate}
                     onChange={(iso) => setEndDate(iso || '')}
+                    popoverOpen={activeDatePopover === 'end'}
+                    onPopoverOpenChange={(open) => {
+                      if (open) setActiveDatePopover('end');
+                      else
+                        setActiveDatePopover((prev) =>
+                          prev === 'end' ? null : prev
+                        );
+                    }}
                     label={endButtonLabel}
                     triggerMuted={!endStr}
                     readOnly={false}
                     popoverTitle="Select end date"
                     presets={PRESETS_FUTURE_FROM_ANCHOR}
                     getPresetAnchor={endPresetAnchor}
+                    showPresets={false}
                     isDateDisabled={isEndBeforeStart}
                     triggerAriaLabel="Activity end date"
                     triggerVariant="form"

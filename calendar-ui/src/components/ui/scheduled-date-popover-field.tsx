@@ -117,6 +117,13 @@ export type ScheduledDatePopoverFieldProps = {
    * `filter`: compact row for table filters (default).
    */
   triggerVariant?: 'filter' | 'form';
+  /** When set with `onPopoverOpenChange`, popover open state is controlled by the parent. */
+  popoverOpen?: boolean;
+  onPopoverOpenChange?: (open: boolean) => void;
+  /** Close popover after a calendar day is selected (default true). */
+  closeOnSelect?: boolean;
+  /** Called after `onChange` and close when `closeOnSelect` is true. */
+  onAfterSelect?: (isoDate: string) => void;
 } & Omit<
   ComponentPropsWithoutRef<typeof Button>,
   'type' | 'variant' | 'size' | 'children' | 'onClick' | 'onChange'
@@ -144,6 +151,10 @@ export const ScheduledDatePopoverField = forwardRef<
     align = 'start',
     triggerAriaLabel,
     triggerVariant = 'filter',
+    popoverOpen: popoverOpenProp,
+    onPopoverOpenChange,
+    closeOnSelect = true,
+    onAfterSelect,
     ...triggerProps
   },
   ref
@@ -152,17 +163,46 @@ export const ScheduledDatePopoverField = forwardRef<
   const { className: slotClassName, ...buttonPassthrough } = triggerProps;
   const isFormTrigger = triggerVariant === 'form';
   const calendarRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = onPopoverOpenChange !== undefined;
+  const open = isControlled ? Boolean(popoverOpenProp) : internalOpen;
   const isMuted = Boolean(disabled);
   const viewOnly = Boolean(readOnly) && !isMuted;
 
-  const handleOpenChange = useCallback(
+  const setOpenState = useCallback(
     (next: boolean) => {
       if (viewOnly && next) return;
-      setOpen(next);
+      if (isControlled) {
+        onPopoverOpenChange(next);
+      } else {
+        setInternalOpen(next);
+      }
     },
-    [viewOnly]
+    [isControlled, onPopoverOpenChange, viewOnly]
   );
+
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      setOpenState(next);
+    },
+    [setOpenState]
+  );
+
+  useEffect(() => {
+    if (!open || viewOnly) return;
+
+    const onFocusIn = (ev: globalThis.FocusEvent) => {
+      const el = ev.target;
+      if (!(el instanceof Element)) return;
+      if (anchorRef.current?.contains(el)) return;
+      if (el.closest('[data-scheduled-date-popover]')) return;
+      setOpenState(false);
+    };
+
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
+  }, [open, setOpenState, viewOnly]);
 
   const effectivePresets = presets ?? [];
   const showPresetSection =
@@ -198,19 +238,26 @@ export const ScheduledDatePopoverField = forwardRef<
   const handleSelect = useCallback(
     (date: Date | undefined) => {
       if (!date) return;
-      onChange(format(date, 'yyyy-MM-dd'));
+      const iso = format(date, 'yyyy-MM-dd');
+      onChange(iso);
+      if (closeOnSelect) {
+        setOpenState(false);
+      }
+      onAfterSelect?.(iso);
     },
-    [onChange]
+    [closeOnSelect, onAfterSelect, onChange, setOpenState]
   );
 
   const handlePreset = useCallback(
     (preset: ScheduledDatePreset) => {
       if (!getPresetAnchor) return;
       const anchor = startOfDay(getPresetAnchor());
-      onChange(preset.toIsoDate(anchor));
-      setOpen(false);
+      const iso = preset.toIsoDate(anchor);
+      onChange(iso);
+      setOpenState(false);
+      onAfterSelect?.(iso);
     },
-    [getPresetAnchor, onChange]
+    [getPresetAnchor, onAfterSelect, onChange, setOpenState]
   );
 
   const handleMonthChange = useCallback((month: Date) => {
@@ -223,6 +270,7 @@ export const ScheduledDatePopoverField = forwardRef<
 
   return (
     <div
+      ref={anchorRef}
       className={cn(
         isFormTrigger ? 'w-full max-w-full min-w-0 flex-1' : 'min-w-0 flex-1',
         slotClassName
@@ -261,6 +309,7 @@ export const ScheduledDatePopoverField = forwardRef<
           </Button>
         </PopoverTrigger>
         <PopoverContent
+          data-scheduled-date-popover=""
           className={cn(
             FILTER_PANEL_MIN_WIDTH,
             'w-auto p-0',
