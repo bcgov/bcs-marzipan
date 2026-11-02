@@ -215,6 +215,12 @@ export function buildActivityFindAllConditions(
     conditions.push(inArray(activities.leadTeamId, filters.leadTeamIds));
   }
 
+  if (filters.leadMinistryIds != null && filters.leadMinistryIds.length > 0) {
+    conditions.push(
+      inArray(activities.leadMinistryId, filters.leadMinistryIds)
+    );
+  }
+
   if (
     filters.lookAheadStatusValues != null &&
     filters.lookAheadStatusValues.length > 0
@@ -506,6 +512,7 @@ export function hasActivityFindAllFilterFields(
     query.scheduledDateRangeOverlaps === true ||
     (query.activityStatusIds != null && query.activityStatusIds.length > 0) ||
     (query.leadTeamIds != null && query.leadTeamIds.length > 0) ||
+    (query.leadMinistryIds != null && query.leadMinistryIds.length > 0) ||
     (query.commsContactLeadUserIds != null &&
       query.commsContactLeadUserIds.length > 0) ||
     (query.flagAssigneeUserIds != null &&

@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
-  formatGovBcDisplayNameAsFirstLast,
   PERMISSIONS as SHARED_PERMISSIONS,
   SYSTEM_ROLE_IDS,
 } from '@corpcal/shared';
@@ -55,7 +54,6 @@ import { UserEditModal } from '@/components/users/UserEditModal';
 import { UserRoleField } from '@/components/users/UserRoleField';
 import { UserTransferTabContent } from '@/components/users/UserTransferTabContent';
 import { useAuth } from '@/hooks/useAuth';
-import { getInitials } from '@/lib/initials';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import {
   formatRemovedFromTeamDescription,
@@ -396,18 +394,16 @@ export default function UserDetailPage() {
               <div className="flex items-start gap-4">
                 <Avatar className="h-12 w-12">
                   <AvatarFallback className="text-lg font-semibold">
-                    {getInitials(
-                      userDetail.adDisplayName || userDetail.adUsername
-                    )}
+                    {(userDetail.adDisplayName || userDetail.adUsername || '')
+                      .split(' ')
+                      .map((s) => s[0])
+                      .slice(0, 2)
+                      .join('') || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <h2 className="text-2xl leading-tight font-semibold">
-                    {userDetail.adDisplayName
-                      ? formatGovBcDisplayNameAsFirstLast(
-                          userDetail.adDisplayName
-                        ) || userDetail.adDisplayName
-                      : userDetail.adUsername}
+                    {userDetail.adDisplayName || userDetail.adUsername}
                   </h2>
                   <div className="mt-1">
                     <div className="text-sm text-slate-900">

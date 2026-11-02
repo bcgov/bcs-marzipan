@@ -47,7 +47,6 @@ interface SettingsSectionContextValue {
   openSectionIds: ReadonlySet<SettingsSectionId>;
   openSection: (sectionId: SettingsSectionId) => void;
   toggleSection: (sectionId: SettingsSectionId) => void;
-  openAllSections: (sectionIds: readonly SettingsSectionId[]) => void;
   closeAllSections: () => void;
   isSectionOpen: (sectionId: SettingsSectionId) => boolean;
   hasOpenSections: boolean;
@@ -83,13 +82,6 @@ export function SettingsSectionProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const openAllSections = useCallback(
-    (sectionIds: readonly SettingsSectionId[]) => {
-      setOpenSectionIds(new Set(sectionIds));
-    },
-    []
-  );
-
   const closeAllSections = useCallback(() => {
     setOpenSectionIds(new Set());
   }, []);
@@ -106,7 +98,6 @@ export function SettingsSectionProvider({ children }: { children: ReactNode }) {
       openSectionIds,
       openSection,
       toggleSection,
-      openAllSections,
       closeAllSections,
       isSectionOpen,
       hasOpenSections,
@@ -115,7 +106,6 @@ export function SettingsSectionProvider({ children }: { children: ReactNode }) {
       openSectionIds,
       openSection,
       toggleSection,
-      openAllSections,
       closeAllSections,
       isSectionOpen,
       hasOpenSections,

@@ -257,10 +257,10 @@ export function AssignActivityModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Flag activity</DialogTitle>
+          <DialogTitle>Assign activity</DialogTitle>
           <DialogDescription>
-            Flag a teammate to assign for follow-up. Assignment flags are
-            visible to all teammates in the activities list.
+            Select teammates to assign for follow-up. Assignments are visible to
+            all teammates in the activities list.
           </DialogDescription>
         </DialogHeader>
 

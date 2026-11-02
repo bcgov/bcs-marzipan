@@ -1,5 +1,5 @@
 /**
- * Session-scoped preferences for Grid A column order, widths, and visibility.
+ * Session-scoped preferences for Grid A column order and widths.
  *
  * Stored in sessionStorage so column arrangement resets when the tab closes.
  */
@@ -9,42 +9,13 @@ export const ACTIVITY_GRID_STORAGE_KEY = 'activityTableGridPreferences';
 export interface ActivityGridLayoutPreferences {
   columnOrder: string[];
   columnSizing: Record<string, number>;
-  /** Column id -> visible; ids not listed fall back to visible. */
-  columnVisibility: Record<string, boolean>;
 }
-
-/** Comms is hidden until the user turns it on. */
-export const DEFAULT_ACTIVITY_GRID_COLUMN_VISIBILITY: Record<string, boolean> =
-  { materials: false };
 
 export const DEFAULT_ACTIVITY_GRID_LAYOUT_PREFERENCES: ActivityGridLayoutPreferences =
   {
     columnOrder: [],
     columnSizing: {},
-    columnVisibility: DEFAULT_ACTIVITY_GRID_COLUMN_VISIBILITY,
   };
-
-function parseVisibilityRecord(
-  value: unknown,
-  options?: { legacyAllVisible?: boolean }
-): Record<string, boolean> {
-  if (options?.legacyAllVisible) {
-    return {};
-  }
-  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
-    return DEFAULT_ACTIVITY_GRID_COLUMN_VISIBILITY;
-  }
-  const result: Record<string, boolean> = {};
-  for (const [key, visible] of Object.entries(
-    value as Record<string, unknown>
-  )) {
-    if (typeof visible === 'boolean') result[key] = visible;
-  }
-  if (Object.keys(result).length === 0) {
-    return DEFAULT_ACTIVITY_GRID_COLUMN_VISIBILITY;
-  }
-  return result;
-}
 
 function parseStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -79,19 +50,9 @@ export function normalizeActivityGridLayoutPreferences(
   const raw = value as Record<string, unknown>;
 
   if (!isLegacyPreferences(raw)) {
-    const columnOrder = parseStringArray(raw.columnOrder);
-    const columnSizing = parseSizingRecord(raw.columnSizing);
-    const hadVisibilityKey = 'columnVisibility' in raw;
-    const legacyLayoutWithoutVisibility =
-      !hadVisibilityKey &&
-      (columnOrder.length > 0 || Object.keys(columnSizing).length > 0);
-
     return {
-      columnOrder,
-      columnSizing,
-      columnVisibility: parseVisibilityRecord(raw.columnVisibility, {
-        legacyAllVisible: legacyLayoutWithoutVisibility,
-      }),
+      columnOrder: parseStringArray(raw.columnOrder),
+      columnSizing: parseSizingRecord(raw.columnSizing),
     };
   }
 
@@ -101,7 +62,6 @@ export function normalizeActivityGridLayoutPreferences(
   return {
     columnOrder: parseStringArray(columnOrder.A),
     columnSizing: parseSizingRecord(columnSizing.A),
-    columnVisibility: DEFAULT_ACTIVITY_GRID_COLUMN_VISIBILITY,
   };
 }
 

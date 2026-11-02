@@ -4,8 +4,7 @@ import { Interval } from '@nestjs/schedule';
 import { LocksService } from './locks.service';
 
 /**
- * Backup handoff finalization every 180s and expired-lock cleanup every 30 seconds
- * (cleanup broadcasts the release so other viewers drop the "locked" banner).
+ * Backup handoff finalization every 180s and expired-lock cleanup every 5 minutes.
  * Primary completion at `graceEndsAt` is scheduled by {@link LockHandoffDeadlineKickService}.
  */
 @Injectable()
@@ -39,7 +38,7 @@ export class LockHandoffPoller {
     }
   }
 
-  @Interval(30_000)
+  @Interval(300_000)
   async runExpiredLockCleanup(): Promise<void> {
     if (this.cleanupInFlight) {
       return;

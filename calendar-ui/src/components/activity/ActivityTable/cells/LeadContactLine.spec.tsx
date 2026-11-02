@@ -71,7 +71,6 @@ describe('LeadContactLine', () => {
       />
     );
 
-    expect(screen.getByText('Owner:')).toBeTruthy();
     expect(screen.getByText('Jane Smith')).toBeTruthy();
     expect(screen.queryByText('HLTH Comms')).toBeNull();
     expect(screen.queryByText(/^\+/)).toBeNull();

@@ -13,7 +13,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS, type Transform } from '@dnd-kit/utilities';
+import { CSS } from '@dnd-kit/utilities';
 import {
   flexRender,
   getCoreRowModel,
@@ -23,7 +23,7 @@ import {
   type Row,
   type SortingState,
 } from '@tanstack/react-table';
-import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
 import { useState } from 'react';
 
 import { SortIndicator } from '@/components/table/SortIndicator';
@@ -34,85 +34,30 @@ import {
   tableTh,
   tableThead,
 } from '@/components/table/tableConstants';
-import type { LookupReorderInteraction } from '@/lib/lookupReorderUiPreferences';
 import { cn } from '@/lib/utils';
 
-/** Order column: fixed width under table-fixed so header text does not force horizontal scroll. */
-const tableReorderCol =
-  'w-20 min-w-20 max-w-20 whitespace-nowrap px-2 py-3 pr-4 text-center';
+/** Padding for the drag-order column; width comes from {@link REORDER_COL_CLASS}. */
+const tableReorderCol = 'whitespace-nowrap px-2';
 
-const REORDER_COL_WIDTH_CLASS = 'w-20';
-
-/** Matches `@dnd-kit/modifiers` `restrictToVerticalAxis` (row reorder only needs Y). */
-function restrictToVerticalAxis({
-  transform,
-}: {
-  transform: Transform;
-}): Transform {
-  return { ...transform, x: 0 };
-}
+/** Fixed width so the header label fits; not driven by the row grip icon alone. */
+const REORDER_COL_CLASS = 'w-16';
 
 interface GenericDataTableProps<T extends object> {
   data: T[];
   columns: ColumnDef<T, unknown>[];
   getRowId?: (row: T) => string;
-  /** When set, rows can be reordered (drag and/or step, see reorderInteraction). */
+  /** When set, rows show a drag handle; data order is used as-is (column sorting disabled). */
   onReorder?: (activeId: string, overId: string) => void;
-  /** Shows the order column (e.g. lookup admin custom sort). */
-  showOrderColumn?: boolean;
-  /** Drag handle vs up/down step buttons when reordering. */
-  reorderInteraction?: LookupReorderInteraction;
-  /** Disables reorder controls while a save is in flight. */
+  /** Keeps drag handles visible but inert (e.g. while a reorder is saving). */
   reorderDisabled?: boolean;
-  onMoveUp?: (rowId: string) => void;
-  onMoveDown?: (rowId: string) => void;
-}
-
-function StepOrderControls({
-  rowId,
-  rowIndex,
-  rowCount,
-  disabled,
-  onMoveUp,
-  onMoveDown,
-}: {
-  rowId: string;
-  rowIndex: number;
-  rowCount: number;
-  disabled: boolean;
-  onMoveUp?: (rowId: string) => void;
-  onMoveDown?: (rowId: string) => void;
-}) {
-  return (
-    <div className="inline-flex flex-col items-center gap-0.5">
-      <button
-        type="button"
-        aria-label="Move up"
-        disabled={disabled || rowIndex === 0 || !onMoveUp}
-        className="text-slate-400 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
-        onClick={() => onMoveUp?.(rowId)}
-      >
-        <ChevronUp className="size-4" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        aria-label="Move down"
-        disabled={disabled || rowIndex >= rowCount - 1 || !onMoveDown}
-        className="text-slate-400 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
-        onClick={() => onMoveDown?.(rowId)}
-      >
-        <ChevronDown className="size-4" aria-hidden="true" />
-      </button>
-    </div>
-  );
 }
 
 function SortableRow<T extends object>({
   row,
-  reorderDisabled,
+  disabled,
 }: {
   row: Row<T>;
-  reorderDisabled: boolean;
+  disabled: boolean;
 }) {
   const {
     attributes,
@@ -122,7 +67,7 @@ function SortableRow<T extends object>({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: row.id, disabled: reorderDisabled });
+  } = useSortable({ id: row.id, disabled });
 
   return (
     <tr
@@ -144,11 +89,9 @@ function SortableRow<T extends object>({
         <button
           type="button"
           ref={setActivatorNodeRef}
-          aria-label="Drag to reorder. Space to pick up, arrow keys to move."
-          disabled={reorderDisabled}
-          className={cn(
-            'inline-flex cursor-grab touch-none text-slate-400 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50'
-          )}
+          aria-label="Drag to reorder"
+          disabled={disabled}
+          className="inline-flex cursor-grab touch-none text-slate-400 hover:text-slate-600 disabled:cursor-wait disabled:opacity-50"
           {...attributes}
           {...listeners}
         >
@@ -164,42 +107,6 @@ function SortableRow<T extends object>({
   );
 }
 
-function StepRowWithOrder<T extends object>({
-  row,
-  rowIndex,
-  rowCount,
-  reorderDisabled,
-  onMoveUp,
-  onMoveDown,
-}: {
-  row: Row<T>;
-  rowIndex: number;
-  rowCount: number;
-  reorderDisabled: boolean;
-  onMoveUp?: (rowId: string) => void;
-  onMoveDown?: (rowId: string) => void;
-}) {
-  return (
-    <tr className={tableBodyRow}>
-      {row.getVisibleCells().map((cell) => (
-        <td key={cell.id} className={tableTd}>
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-        </td>
-      ))}
-      <td className={cn(tableTd, tableReorderCol, 'text-center')}>
-        <StepOrderControls
-          rowId={row.id}
-          rowIndex={rowIndex}
-          rowCount={rowCount}
-          disabled={reorderDisabled}
-          onMoveUp={onMoveUp}
-          onMoveDown={onMoveDown}
-        />
-      </td>
-    </tr>
-  );
-}
-
 const NO_SORTING: SortingState = [];
 
 export function GenericDataTable<T extends object>({
@@ -207,11 +114,7 @@ export function GenericDataTable<T extends object>({
   columns,
   getRowId,
   onReorder,
-  showOrderColumn = false,
-  reorderInteraction = 'step',
   reorderDisabled = false,
-  onMoveUp,
-  onMoveDown,
 }: GenericDataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const sensors = useSensors(
@@ -221,18 +124,15 @@ export function GenericDataTable<T extends object>({
     })
   );
 
-  const orderColumnVisible = showOrderColumn || Boolean(onReorder);
-  const dragEnabled = Boolean(onReorder) && reorderInteraction === 'drag';
-
   const table = useReactTable({
     data,
     columns,
     getRowId:
       getRowId ??
       ((row, idx) => String((row as { id?: string | number }).id ?? idx)),
-    state: { sorting: dragEnabled ? NO_SORTING : sorting },
+    state: { sorting: onReorder ? NO_SORTING : sorting },
     onSortingChange: setSorting,
-    enableSorting: !dragEnabled,
+    enableSorting: !onReorder,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
@@ -248,17 +148,10 @@ export function GenericDataTable<T extends object>({
   const sortDirection = activeSort?.desc ? 'desc' : 'asc';
 
   const rows = table.getRowModel().rows;
-  const rowCount = rows.length;
-
-  const orderHeader = (
-    <th className={cn(tableTh, tableReorderCol)} scope="col">
-      Order
-    </th>
-  );
 
   const tableElement = (
     <table className={tableTable}>
-      {orderColumnVisible && (
+      {onReorder && (
         <colgroup>
           {columns.map((column, index) => (
             <col
@@ -272,7 +165,7 @@ export function GenericDataTable<T extends object>({
               }
             />
           ))}
-          <col className={REORDER_COL_WIDTH_CLASS} />
+          <col className={REORDER_COL_CLASS} />
         </colgroup>
       )}
       <thead className={tableThead}>
@@ -304,60 +197,50 @@ export function GenericDataTable<T extends object>({
                 </th>
               );
             })}
-            {orderColumnVisible && orderHeader}
+            {onReorder && (
+              <th
+                className={cn(tableTh, tableReorderCol, 'text-center')}
+                scope="col"
+              >
+                Order
+              </th>
+            )}
           </tr>
         ))}
       </thead>
-      {dragEnabled ? (
+      {onReorder ? (
         <SortableContext
           items={rows.map((r) => r.id)}
           strategy={verticalListSortingStrategy}
         >
           <tbody>
             {rows.map((row) => (
-              <SortableRow
-                key={row.id}
-                row={row}
-                reorderDisabled={reorderDisabled}
-              />
+              <SortableRow key={row.id} row={row} disabled={reorderDisabled} />
             ))}
           </tbody>
         </SortableContext>
       ) : (
         <tbody>
-          {rows.map((row, rowIndex) =>
-            orderColumnVisible ? (
-              <StepRowWithOrder
-                key={row.id}
-                row={row}
-                rowIndex={rowIndex}
-                rowCount={rowCount}
-                reorderDisabled={reorderDisabled}
-                onMoveUp={onMoveUp}
-                onMoveDown={onMoveDown}
-              />
-            ) : (
-              <tr key={row.id} className={tableBodyRow}>
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className={tableTd}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            )
-          )}
+          {rows.map((row) => (
+            <tr key={row.id} className={tableBodyRow}>
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id} className={tableTd}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+            </tr>
+          ))}
         </tbody>
       )}
     </table>
   );
 
-  if (!dragEnabled) return tableElement;
+  if (!onReorder) return tableElement;
 
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      modifiers={[restrictToVerticalAxis]}
       onDragEnd={handleDragEnd}
     >
       {tableElement}
