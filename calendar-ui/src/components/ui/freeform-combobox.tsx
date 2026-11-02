@@ -1,13 +1,17 @@
 import { Check, ChevronDown, X } from 'lucide-react';
 import {
+  forwardRef,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type ComponentPropsWithoutRef,
   type KeyboardEvent,
 } from 'react';
+
+import { FORM_CONTROL_INVALID_RING_CLASS_COMBO } from '@/lib/form-field-tokens';
 
 import {
   READ_ONLY_STATIC_COMBOBOX_CHIPS,
@@ -60,7 +64,7 @@ type ListEntry =
 const FREEFORM_BADGE_CLASSES =
   'bg-primary/15 text-primary shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium';
 
-export interface FreeformComboboxProps {
+export type FreeformComboboxProps = {
   /** Flat options (default). Ignored for listing when `sections` is set. */
   options?: FreeformComboboxOption[];
   /** Labels for selected option values that are intentionally absent from the selectable options. */
@@ -106,7 +110,10 @@ export interface FreeformComboboxProps {
    * Called with the index of the item to set as lead (parent should update value so only that item has isLead: true).
    */
   onSetLead?: (index: number) => void;
-}
+} & Omit<
+  ComponentPropsWithoutRef<'div'>,
+  'onChange' | 'children' | 'value' | 'defaultValue'
+>;
 
 function nextSelectableIndex(
   current: number,
@@ -131,25 +138,34 @@ function findExactMatchOption(
   );
 }
 
-export function FreeformCombobox({
-  options: optionsProp,
-  sections,
-  selectedOptionLabels,
-  value,
-  onChange,
-  placeholder = '',
-  searchPlaceholder = 'Search...',
-  emptyMessage = 'No results found.',
-  freeformBadgeLabel = 'Add custom value',
-  listFooterHint,
-  className,
-  disabled = false,
-  readOnly = false,
-  multiple = false,
-  maxInputLength,
-  useChips = true,
-  onSetLead,
-}: FreeformComboboxProps) {
+export const FreeformCombobox = forwardRef<
+  HTMLDivElement,
+  FreeformComboboxProps
+>(function FreeformCombobox(
+  {
+    options: optionsProp,
+    sections,
+    selectedOptionLabels,
+    value,
+    onChange,
+    placeholder = '',
+    searchPlaceholder = 'Search...',
+    emptyMessage = 'No results found.',
+    freeformBadgeLabel = 'Add custom value',
+    listFooterHint,
+    className,
+    disabled = false,
+    readOnly = false,
+    multiple = false,
+    maxInputLength,
+    useChips = true,
+    onSetLead,
+    'aria-invalid': ariaInvalidProp,
+    ...rootPassthrough
+  },
+  ref
+) {
+  const ariaInvalid = ariaInvalidProp === true || ariaInvalidProp === 'true';
   const flatOptions = useMemo(() => {
     if (sections && sections.length > 0) {
       return sections.flatMap((s) => s.options);
@@ -504,8 +520,10 @@ export function FreeformCombobox({
   const triggerContent = showChips ? (
     <div
       data-slot="freeform-combobox-chips"
+      aria-invalid={ariaInvalid || undefined}
       className={cn(
-        'border-input focus-within:border-ring focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:bg-input/30 flex min-h-(--input-height) w-full flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-[data-slot=chip]:px-1.5',
+        'border-input focus-within:border-ring focus-within:ring-ring/50 dark:bg-input/30 flex min-h-(--input-height) w-full flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-[data-slot=chip]:px-1.5',
+        FORM_CONTROL_INVALID_RING_CLASS_COMBO,
         isMuted && 'cursor-not-allowed opacity-50',
         readOnly && !disabled && READ_ONLY_STATIC_COMBOBOX_CHIPS,
         readOnly && !disabled && READ_ONLY_STATIC_TRIGGER
@@ -592,8 +610,10 @@ export function FreeformCombobox({
     </div>
   ) : (
     <InputGroup
+      aria-invalid={ariaInvalid || undefined}
       className={cn(
         'w-full',
+        FORM_CONTROL_INVALID_RING_CLASS_COMBO,
         readOnly && !disabled && READ_ONLY_STATIC_TRIGGER
       )}
     >
@@ -602,6 +622,7 @@ export function FreeformCombobox({
         data-slot="input-group-control"
         type="text"
         role="combobox"
+        aria-invalid={ariaInvalid || undefined}
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-controls="freeform-combobox-list"
@@ -678,7 +699,11 @@ export function FreeformCombobox({
   );
 
   return (
-    <div className={cn('w-full min-w-0', className)}>
+    <div
+      ref={ref}
+      className={cn('w-full min-w-0', className)}
+      {...rootPassthrough}
+    >
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {liveMessage}
       </div>
@@ -817,4 +842,4 @@ export function FreeformCombobox({
       </Popover>
     </div>
   );
-}
+});

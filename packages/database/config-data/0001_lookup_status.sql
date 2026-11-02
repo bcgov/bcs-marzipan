@@ -53,13 +53,13 @@ END $$;
 
 INSERT INTO date_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('tbd', 'TBD', 1, true, 'Date is to be determined', 999, 999),
+  ('tbd', 'Date TBD', 1, true, 'Date is to be determined', 999, 999),
   ('confirmed', 'Confirmed', 2, true, 'Date is confirmed', 999, 999)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM date_statuses WHERE date_statuses.name = v.name);
 
 UPDATE date_statuses SET
-  display_name = 'TBD',
+  display_name = 'Date TBD',
   sort_order = 1,
   is_active = true,
   last_updated_by = 999,
@@ -87,13 +87,13 @@ WHERE name IN ('not_confirmed', 'tentative');
 
 INSERT INTO time_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
-  ('tbd', 'TBD', 1, true, 'Time is to be determined', 999, 999),
+  ('tbd', 'Time TBD', 1, true, 'Time is to be determined', 999, 999),
   ('confirmed', 'Confirmed', 2, true, 'Time is confirmed', 999, 999)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM time_statuses WHERE time_statuses.name = v.name);
 
 UPDATE time_statuses SET
-  display_name = 'TBD',
+  display_name = 'Time TBD',
   sort_order = 1,
   is_active = true,
   last_updated_by = 999,

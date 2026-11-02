@@ -44,6 +44,21 @@ describe('createActivityRequestSchema', () => {
     expect(result.leadMinistryId).toBe(validLeadMinistryId);
   });
 
+  it('requires start and end dates with field-specific messages on create', () => {
+    const missingDates = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ startDate: undefined, endDate: undefined })
+    );
+    if (missingDates.success) throw new Error('Expected failure');
+    const startIssue = missingDates.error.issues.find(
+      (i) => i.path[0] === 'startDate'
+    );
+    const endIssue = missingDates.error.issues.find(
+      (i) => i.path[0] === 'endDate'
+    );
+    expect(startIssue?.message).toBe('Start date is required');
+    expect(endIssue?.message).toBe('End date is required');
+  });
+
   it('enforces title min 1 and max 255', () => {
     createActivityRequestSchema.parse(minimalCreateRequest({ title: 'x' }));
     expect(() =>
