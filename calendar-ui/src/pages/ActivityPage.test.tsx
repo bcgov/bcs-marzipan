@@ -667,6 +667,62 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(titleTextarea).toHaveValue('Test Activity unsaved');
   });
 
+  it.each([false, true])(
+    'keeps an idle-expired owned session blocked until resume (server changed: %s)',
+    async (serverChanged) => {
+      mockLockState = 'owned';
+      const user = userEvent.setup();
+      renderActivityPage();
+
+      const titleTextarea = await screen.findByRole('textbox', {
+        name: /Title/i,
+      });
+      await user.type(titleTextarea, ' unsaved');
+      await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+      mockWasLockIdleExpired.mockReturnValue(true);
+      act(() => {
+        mockActivityWebSocketOptions.onLockReleased?.();
+      });
+      await screen.findByText(/ended due to inactivity/i);
+
+      mockRefreshLockFromServer.mockResolvedValue('owned');
+      if (serverChanged) {
+        mockFetchActivity.mockResolvedValue(
+          createMockActivityResponse({
+            ...mockActivityWithLeadTeam,
+            title: 'Other tab title',
+            lastUpdatedDateTime: '2030-01-01T00:00:00.000Z',
+          })
+        );
+      }
+      await act(async () => {
+        mockActivityWebSocketOptions.onActivitySocketReconnect?.();
+        await Promise.resolve();
+      });
+
+      expect(mockRefreshLockFromServer).toHaveBeenCalled();
+      expect(screen.getByText(/ended due to inactivity/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Save$/i })).toBeDisabled();
+      expect(mockFetchActivity).not.toHaveBeenCalled();
+      expect(mockEnsureLockForSubmit).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: /Resume editing/i }));
+
+      await waitFor(() => expect(mockFetchActivity).toHaveBeenCalledTimes(1));
+      if (serverChanged) {
+        await screen.findByText(/updated elsewhere/i);
+        expect(screen.getByRole('button', { name: /^Save$/i })).toBeDisabled();
+      } else {
+        await waitFor(() =>
+          expect(screen.getByRole('button', { name: /^Save$/i })).toBeEnabled()
+        );
+      }
+      expect(mockEnsureLockForSubmit).not.toHaveBeenCalled();
+      expect(titleTextarea).toHaveValue('Test Activity unsaved');
+    }
+  );
+
   it.each(['onActivitySocketReconnect', 'onDataUpdated'] as const)(
     'preserves an in-flight explicit resume across %s',
     async (event) => {

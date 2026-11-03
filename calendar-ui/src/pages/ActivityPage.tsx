@@ -899,9 +899,6 @@ export function ActivityPage({
         if (editRecoveryStateRef.current === 'idle-expired' && !userInitiated) {
           const refreshResult = await refreshLockFromServer();
           if (generation !== resyncGenerationRef.current) return;
-          if (refreshResult === 'owned') {
-            setEditRecoveryState(null);
-          }
           notifyResyncOutcome(
             refreshResult === 'unavailable' ? 'failure' : 'success'
           );
