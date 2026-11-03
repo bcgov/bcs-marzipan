@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import type { LockInfo } from '@/api/locksApi';
 
+import { ACTIVITY_FORM_USER_EDIT_EVENT } from '../lib/activity-form-set-field';
 import type { HeartbeatOutcome, LockState } from './useActivityLock';
 
 /** Client activity send interval; the server's activity throttle (10s) must stay below this. */
@@ -17,6 +18,7 @@ const ACTIVITY_EVENTS = [
   'pointerdown',
   'wheel',
   'touchstart',
+  ACTIVITY_FORM_USER_EDIT_EVENT,
 ] as const;
 const IDLE_WARN_MS = 2 * 60 * 1000;
 const IDLE_CHECK_MS = 15_000;
