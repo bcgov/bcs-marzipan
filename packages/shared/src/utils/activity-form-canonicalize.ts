@@ -104,6 +104,11 @@ export function canonicalizeActivityFormData(
       data.venueStatusId === null || data.venueStatusId === undefined
         ? undefined
         : data.venueStatusId,
+    releaseSchedulingMode:
+      data.releaseSchedulingMode === null ||
+      data.releaseSchedulingMode === undefined
+        ? undefined
+        : data.releaseSchedulingMode,
     releaseTimeOffsetMinutes:
       data.releaseTimeOffsetMinutes === null ||
       data.releaseTimeOffsetMinutes === undefined

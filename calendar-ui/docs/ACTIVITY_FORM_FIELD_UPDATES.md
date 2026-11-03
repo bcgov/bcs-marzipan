@@ -72,8 +72,10 @@ TipTap/jsdom: mock `@/components/ui/rich-text-field` via [`src/test-utils/rich-t
 
 Changing canonicalize semantics (e.g. a new empty edge case for diff) can change hydration baselines and controlled-input behaviour even when submit logic looks correct. Treat canonicalize + `UI_BASELINE_FIELD_SENTINELS` + hydrate tests as one change set.
 
-## Release time (`releaseTimeOffsetMinutes`)
+## Release scheduling (`releaseSchedulingMode`, `releaseTimeOffsetMinutes`)
 
 - Shown in the comms section when any selected material has a **public** release type; cleared on save when none remain (`stripCommsDependentFields`).
-- Optional nullable offset (minutes after schedule anchor); server recomputes read-only `releaseTime` on create/update (not tracked in history).
-- Edit requires `activities.release_time.edit` (field scope `releaseTime`).
+- Radio UI: Not specified, presets, Custom, or **On signal** (no fixed time). Modes: `relative` | `on_signal` (optional at save).
+- For `relative`, optional offset (minutes after schedule anchor); server recomputes read-only `releaseTime` on create/update (not tracked in history). For `on_signal`, offset and instant are always null.
+- History tracks **Release scheduling** (mode) and **Release time** (offset) separately.
+- Edit requires `activities.release_time.edit` (field scope `releaseTime` for both fields).

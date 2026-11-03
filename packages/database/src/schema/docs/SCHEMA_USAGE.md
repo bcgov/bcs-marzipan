@@ -296,4 +296,4 @@ Communications materials use the same team visibility pattern as categories. **R
 
 ### Activity release time (`activities`)
 
-When a selected comms material has a **public** release type, the form may capture **`release_time_offset_minutes`** (0–10,080 minutes after the schedule anchor). **`release_time`** is a derived `timestamptz` computed on save from `start_date` / `start_time` (or all-day midnight on `start_date`) when date/time statuses are confirmed; otherwise offset is stored and instant is null.
+When a selected comms material has a **public** release type, the form may capture **`release_scheduling_mode`** (`relative` | `on_signal`, nullable), optional **`release_time_offset_minutes`** (0–10,080 minutes after the schedule anchor when mode is `relative`), and **`release_time`**. For **`relative`**, `release_time` is derived on save from the schedule anchor plus offset when date/time statuses are confirmed; otherwise offset is stored and instant is null. For **`on_signal`**, offset and `release_time` are always null.

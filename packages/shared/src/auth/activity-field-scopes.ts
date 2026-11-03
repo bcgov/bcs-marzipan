@@ -60,8 +60,12 @@ export const ACTIVITY_FIELD_SCOPE_CONFIG: Record<
   releaseTime: {
     viewKey: null,
     editKey: PERMISSIONS.ACTIVITIES.RELEASE_TIME_EDIT,
-    responseFields: ['releaseTimeOffsetMinutes', 'releaseTime'],
-    requestFields: ['releaseTimeOffsetMinutes'],
+    responseFields: [
+      'releaseSchedulingMode',
+      'releaseTimeOffsetMinutes',
+      'releaseTime',
+    ],
+    requestFields: ['releaseSchedulingMode', 'releaseTimeOffsetMinutes'],
   },
 } as const;
 

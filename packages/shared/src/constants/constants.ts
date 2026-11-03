@@ -20,6 +20,10 @@ export type Visibility = (typeof VISIBILITY)[number];
 export const RELEASE_TYPE_AUDIENCE = ['media', 'public'] as const;
 export type ReleaseTypeAudience = (typeof RELEASE_TYPE_AUDIENCE)[number];
 
+/** Activity release scheduling when public release comms are selected. */
+export const RELEASE_SCHEDULING_MODES = ['relative', 'on_signal'] as const;
+export type ReleaseSchedulingMode = (typeof RELEASE_SCHEDULING_MODES)[number];
+
 // ============================================================================
 // Activity Enum Constants
 // ============================================================================

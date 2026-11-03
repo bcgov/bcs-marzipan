@@ -50,6 +50,7 @@ const BASE_ACTIVITY_RESPONSE = {
   schedulingNotes: null,
   newsReleaseOriginId: null,
   newsReleaseDistributionId: null,
+  releaseSchedulingMode: null,
   releaseTimeOffsetMinutes: null,
   releaseTime: null,
   executiveSummary:

@@ -66,6 +66,7 @@ describe('activity-form-sections', () => {
 
     expect(commsKeys).toEqual([
       'commsMaterialIds',
+      'releaseSchedulingMode',
       'releaseTimeOffsetMinutes',
       'newsReleaseOriginId',
       'newsReleaseDistributionId',
@@ -109,6 +110,7 @@ describe('activity-form-sections', () => {
       ],
       comms: [
         'commsMaterialIds',
+        'releaseSchedulingMode',
         'releaseTimeOffsetMinutes',
         'newsReleaseOriginId',
         'newsReleaseDistributionId',

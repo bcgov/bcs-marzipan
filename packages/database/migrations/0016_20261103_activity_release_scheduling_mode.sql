@@ -1,0 +1,1 @@
+ALTER TABLE "activities" ADD COLUMN "release_scheduling_mode" varchar(50);

@@ -64,6 +64,7 @@ export const ACTIVITY_FORM_SECTION_FIELDS = {
   ],
   comms: [
     'commsMaterialIds',
+    'releaseSchedulingMode',
     'releaseTimeOffsetMinutes',
     'newsReleaseOriginId',
     'newsReleaseDistributionId',

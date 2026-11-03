@@ -34,6 +34,7 @@ describe('applyFieldLevelWritePolicy', () => {
       lookAheadSection: 'events',
       translationsRequiredStatusId: 1,
       translationLanguageIds: [1, 2],
+      releaseSchedulingMode: 'relative',
       releaseTimeOffsetMinutes: 30,
     };
 
@@ -48,6 +49,7 @@ describe('applyFieldLevelWritePolicy', () => {
     expect(dto.lookAheadSection).toBeUndefined();
     expect(dto.translationsRequiredStatusId).toBeUndefined();
     expect(dto.translationLanguageIds).toBeUndefined();
+    expect(dto.releaseSchedulingMode).toBeUndefined();
     expect(dto.releaseTimeOffsetMinutes).toBeUndefined();
     expect(stripped).toHaveLength(4);
     expect(stripped).toContain('notes');

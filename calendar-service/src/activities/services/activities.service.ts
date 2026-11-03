@@ -82,12 +82,13 @@ import {
   applyUpdateActivityRequestToFormData,
   buildReviewDiffLookups,
   buildReviewSnapshot,
-  computeActivityReleaseTimeInstant,
   diffReviewFields,
   getEmptyReviewBaseline,
   isDeepEqual,
   mapResponseToFormData,
+  normalizeReleaseSchedulingPersistence,
   normalizeVenueAddressForForm,
+  parseReleaseSchedulingMode,
   plainTextFromActivityRichField,
   stripCommsDependentFields,
   tipTapDocJsonFromPlainText,
@@ -403,6 +404,7 @@ export class ActivitiesService {
   }
 
   private async resolveReleaseTimePersistence(row: {
+    releaseSchedulingMode?: string | null;
     releaseTimeOffsetMinutes?: number | null;
     startDate?: string | null;
     startTime?: string | null;
@@ -410,10 +412,10 @@ export class ActivitiesService {
     dateStatusId?: number | null;
     timeStatusId?: number | null;
   }): Promise<{
+    releaseSchedulingMode: ReturnType<typeof parseReleaseSchedulingMode>;
     releaseTimeOffsetMinutes: number | null;
     releaseTime: Date | null;
   }> {
-    const offset = row.releaseTimeOffsetMinutes ?? null;
     const resolvers = await this.getSchedulingLookupResolvers();
     const dateStatusName =
       row.dateStatusId != null && resolvers.dateStatusNameForId != null
@@ -423,8 +425,11 @@ export class ActivitiesService {
       row.timeStatusId != null && resolvers.timeStatusNameForId != null
         ? resolvers.timeStatusNameForId(row.timeStatusId)
         : undefined;
-    const instantIso = computeActivityReleaseTimeInstant({
-      releaseTimeOffsetMinutes: offset,
+    const normalized = normalizeReleaseSchedulingPersistence({
+      releaseSchedulingMode: parseReleaseSchedulingMode(
+        row.releaseSchedulingMode
+      ),
+      releaseTimeOffsetMinutes: row.releaseTimeOffsetMinutes ?? null,
       startDate: row.startDate,
       startTime: row.startTime,
       isAllDay: row.isAllDay ?? false,
@@ -432,8 +437,11 @@ export class ActivitiesService {
       timeStatusName,
     });
     return {
-      releaseTimeOffsetMinutes: offset,
-      releaseTime: instantIso ? new Date(instantIso) : null,
+      releaseSchedulingMode: normalized.releaseSchedulingMode,
+      releaseTimeOffsetMinutes: normalized.releaseTimeOffsetMinutes,
+      releaseTime: normalized.releaseTime
+        ? new Date(normalized.releaseTime)
+        : null,
     };
   }
 
@@ -445,6 +453,7 @@ export class ActivitiesService {
       | 'newsReleaseDistributionId'
       | 'translationsRequiredStatusId'
       | 'translationLanguageIds'
+      | 'releaseSchedulingMode'
       | 'releaseTimeOffsetMinutes'
     >
   ): Promise<
@@ -454,6 +463,7 @@ export class ActivitiesService {
       | 'newsReleaseDistributionId'
       | 'translationsRequiredStatusId'
       | 'translationLanguageIds'
+      | 'releaseSchedulingMode'
       | 'releaseTimeOffsetMinutes'
     >
   > {
@@ -473,6 +483,7 @@ export class ActivitiesService {
       translationsRequiredStatusId:
         cleaned.translationsRequiredStatusId ?? null,
       translationLanguageIds: cleaned.translationLanguageIds ?? [],
+      releaseSchedulingMode: cleaned.releaseSchedulingMode ?? null,
       releaseTimeOffsetMinutes: cleaned.releaseTimeOffsetMinutes ?? null,
     };
   }
@@ -1525,6 +1536,7 @@ export class ActivitiesService {
         translationsRequiredStatusId:
           activityData.translationsRequiredStatusId ?? null,
         translationLanguageIds: translationLanguageIds ?? [],
+        releaseSchedulingMode: activityData.releaseSchedulingMode ?? null,
         releaseTimeOffsetMinutes: activityData.releaseTimeOffsetMinutes ?? null,
       }
     );
@@ -2814,6 +2826,10 @@ export class ActivitiesService {
             translationLanguageIds !== undefined
               ? translationLanguageIds
               : existingLangRows.map((r) => r.languageId),
+          releaseSchedulingMode:
+            dto.releaseSchedulingMode !== undefined
+              ? dto.releaseSchedulingMode
+              : parseReleaseSchedulingMode(oldActivity.releaseSchedulingMode),
           releaseTimeOffsetMinutes:
             dto.releaseTimeOffsetMinutes !== undefined
               ? dto.releaseTimeOffsetMinutes
@@ -2824,6 +2840,7 @@ export class ActivitiesService {
         newsReleaseOriginId: commsCleaned.newsReleaseOriginId,
         newsReleaseDistributionId: commsCleaned.newsReleaseDistributionId,
         translationsRequiredStatusId: commsCleaned.translationsRequiredStatusId,
+        releaseSchedulingMode: commsCleaned.releaseSchedulingMode,
         releaseTimeOffsetMinutes: commsCleaned.releaseTimeOffsetMinutes,
       });
       effectiveTranslationLanguageIds = commsCleaned.translationLanguageIds;
@@ -2845,6 +2862,10 @@ export class ActivitiesService {
     };
 
     const effectiveReleaseRow = {
+      releaseSchedulingMode:
+        updateData.releaseSchedulingMode !== undefined
+          ? parseReleaseSchedulingMode(updateData.releaseSchedulingMode)
+          : parseReleaseSchedulingMode(oldActivity.releaseSchedulingMode),
       releaseTimeOffsetMinutes:
         updateData.releaseTimeOffsetMinutes !== undefined
           ? updateData.releaseTimeOffsetMinutes
@@ -2872,6 +2893,8 @@ export class ActivitiesService {
     };
     const releaseTimePersistence =
       await this.resolveReleaseTimePersistence(effectiveReleaseRow);
+    updateData.releaseSchedulingMode =
+      releaseTimePersistence.releaseSchedulingMode;
     updateData.releaseTimeOffsetMinutes =
       releaseTimePersistence.releaseTimeOffsetMinutes;
     updateData.releaseTime = releaseTimePersistence.releaseTime;

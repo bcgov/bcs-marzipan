@@ -78,6 +78,7 @@ export function stripCommsDependentFields(
   if (!needsReleaseTime) {
     next = {
       ...next,
+      releaseSchedulingMode: null,
       releaseTimeOffsetMinutes: null,
     };
   }

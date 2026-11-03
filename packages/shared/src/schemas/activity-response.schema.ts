@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
+import {
+  LOOK_AHEAD_STATUS,
+  RELEASE_SCHEDULING_MODES,
+  VISIBILITY,
+} from '../constants/constants';
 import { activityFlagResponseSchema } from './activity-flag.schema';
 import { venueAddressSchema as baseVenueAddressSchema } from './activity.schema';
 
@@ -65,6 +69,7 @@ export const activityDbFieldsSchema = z.object({
   // News Release
   newsReleaseOriginId: z.number().int().nullable(),
   newsReleaseDistributionId: z.number().int().nullable(),
+  releaseSchedulingMode: z.enum(RELEASE_SCHEDULING_MODES).nullable().optional(),
   releaseTimeOffsetMinutes: z.number().int().nullable(),
   releaseTime: z.string().datetime().nullable(),
 

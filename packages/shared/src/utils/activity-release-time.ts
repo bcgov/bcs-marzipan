@@ -1,3 +1,4 @@
+import type { ReleaseSchedulingMode } from '../constants/constants';
 import {
   formatCivilPacificReleasePreview,
   formatInstantPacificReleasePreview,
@@ -153,11 +154,15 @@ function normalizeWallTime(value: string): string {
 }
 
 export type ActivityReleaseTimePreviewInput = {
+  releaseSchedulingMode?: ReleaseSchedulingMode | null;
   releaseTimeOffsetMinutes: number | null | undefined;
   startDate: string | null | undefined;
   startTime: string | null | undefined;
   isAllDay: boolean;
 };
+
+export const RELEASE_TIME_ON_SIGNAL_PREVIEW_MESSAGE =
+  'Release will be published on signal to Editors.';
 
 export type ActivityReleaseTimePreviewResult =
   | { kind: 'preview'; label: string }
@@ -206,6 +211,13 @@ function addOffsetToScheduleAnchor(
 export function getActivityReleaseTimePreview(
   input: ActivityReleaseTimePreviewInput
 ): ActivityReleaseTimePreviewResult | null {
+  if (input.releaseSchedulingMode === 'on_signal') {
+    return {
+      kind: 'hint',
+      message: RELEASE_TIME_ON_SIGNAL_PREVIEW_MESSAGE,
+    };
+  }
+
   const offset = input.releaseTimeOffsetMinutes;
   if (offset === null || offset === undefined) {
     return null;
