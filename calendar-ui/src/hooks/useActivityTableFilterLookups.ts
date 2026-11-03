@@ -93,10 +93,10 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
     return teamsForFilter.map((t) => ({
       value: String(t.id),
       label:
-        t.ministryId != null
+        t.primaryOrganizationId != null
           ? formatLeadTeamSelectLabel(t)
           : (t.displayName ?? t.name ?? String(t.id)),
-      ministryId: t.ministryId ?? null,
+      primaryOrganizationId: t.primaryOrganizationId ?? null,
     }));
   }, [teamsForFilter]);
 

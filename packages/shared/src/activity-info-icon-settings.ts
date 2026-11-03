@@ -9,10 +9,9 @@ export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
   'isConfidential',
   'isIssue',
   'summary',
-  'leadOrgId',
+  'organizations',
   'significance',
   'tagIds',
-  'internalNotes',
   'notes',
 
   'leadTeamId',

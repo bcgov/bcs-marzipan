@@ -205,7 +205,11 @@ export async function initiatePasswordReset(
 export async function fetchTeams(): Promise<
   Pick<
     TeamListItem,
-    'id' | 'name' | 'displayName' | 'ministryId' | 'ministryName'
+    | 'id'
+    | 'name'
+    | 'displayName'
+    | 'primaryOrganizationId'
+    | 'primaryOrganizationName'
   >[]
 > {
   const response = await api.get<{
@@ -216,8 +220,8 @@ export async function fetchTeams(): Promise<
     id: t.id,
     name: t.name,
     displayName: t.displayName,
-    ministryId: t.ministryId ?? null,
-    ministryName: t.ministryName ?? null,
+    primaryOrganizationId: t.primaryOrganizationId ?? null,
+    primaryOrganizationName: t.primaryOrganizationName ?? null,
   }));
 }
 

@@ -62,7 +62,7 @@ describe('activityResponseSchema', () => {
       createMockActivityResponse({
         lookAheadStatus: null,
         lookAheadSection: null,
-        leadOrgId: null,
+        organizationDetails: [],
       })
     );
   });

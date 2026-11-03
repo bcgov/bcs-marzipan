@@ -19,15 +19,15 @@ describe('teamListItemSchema', () => {
       appearsInShareWith: true,
       roleId: null,
       memberCount: 2,
-      ministryId: 1,
-      ministryName: 'Ministry One',
+      primaryOrganizationId: 1,
+      primaryOrganizationName: 'Ministry One',
     });
     expect(result.id).toBe(1);
     expect(result.name).toBe('Team A');
     expect(result.memberCount).toBe(2);
     expect(result.appearsInShareWith).toBe(true);
-    expect(result.ministryId).toBe(1);
-    expect(result.ministryName).toBe('Ministry One');
+    expect(result.primaryOrganizationId).toBe(1);
+    expect(result.primaryOrganizationName).toBe('Ministry One');
   });
 
   it('accepts null displayName, description, and ministry', () => {
@@ -42,13 +42,13 @@ describe('teamListItemSchema', () => {
       appearsInShareWith: false,
       roleId: null,
       memberCount: 0,
-      ministryId: null,
-      ministryName: null,
+      primaryOrganizationId: null,
+      primaryOrganizationName: null,
     });
     expect(result.displayName).toBeNull();
     expect(result.description).toBeNull();
     expect(result.appearsInShareWith).toBe(false);
-    expect(result.ministryId).toBeNull();
+    expect(result.primaryOrganizationId).toBeNull();
   });
 });
 
@@ -70,10 +70,10 @@ describe('createTeamBodySchema', () => {
       description: 'Desc',
       sortOrder: 1,
       isActive: true,
-      ministryId: 1,
+      primaryOrganizationId: 1,
       notes: 'Note',
     });
-    expect(result.ministryId).toBe(1);
+    expect(result.primaryOrganizationId).toBe(1);
   });
 
   it('enforces description max length (1000)', () => {

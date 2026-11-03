@@ -19,7 +19,6 @@ function emptyRichTextBaseline(
  */
 export const UI_BASELINE_EMPTY_STRING_FIELDS = [
   'notes',
-  'internalNotes',
   'schedulingNotes',
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
@@ -53,7 +52,6 @@ export const UI_BASELINE_FIELD_SENTINELS: {
   ) => ActivityFormData[K];
 } = {
   notes: emptyStringBaseline,
-  internalNotes: emptyStringBaseline,
   schedulingNotes: emptyStringBaseline,
   significance: emptyRichTextBaseline,
   executiveSummary: emptyRichTextBaseline,
@@ -65,7 +63,6 @@ export const UI_BASELINE_SENTINEL_VALUES: {
   readonly [K in UiBaselineSentinelField]: ActivityFormData[K];
 } = {
   notes: '',
-  internalNotes: '',
   schedulingNotes: '',
   significance: EMPTY_RICH_TEXT_DOC,
   executiveSummary: EMPTY_RICH_TEXT_DOC,
@@ -91,7 +88,7 @@ export const UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES = [
   {
     category: 'Optional string IDs cleared via Select',
     emptyShape: 'undefined',
-    examples: 'leadOrgName, internalNotes',
+    examples: 'leadOrgName, notes',
   },
   {
     category: 'ID arrays (Combobox multi-select)',

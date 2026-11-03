@@ -350,7 +350,7 @@ const ministryCoreFields: FormField[] = [
   },
   {
     name: 'abbreviation',
-    label: 'Abbreviation',
+    label: 'Acronym',
     type: 'text',
     required: true,
     placeholder: 'e.g., AG',
@@ -1138,6 +1138,92 @@ const venuePresetAdditionalColumns: ColumnDef<VenuePreset>[] = [
     ),
   },
 ];
+
+type OrganizationType = LookupItem & {
+  name?: string;
+  displayName?: string | null;
+  uuid?: string;
+};
+
+type OrganizationAdminItem = LookupItem & {
+  name?: string;
+  displayName?: string | null;
+  uuid?: string;
+  abbreviation?: string | null;
+  organizationTypeId?: number | null;
+  jurisdiction?: string | null;
+};
+
+const organizationTypeFields: FormField[] = [
+  { name: 'name', label: 'Name', type: 'text', required: true },
+  { name: 'displayName', label: 'Display name', type: 'text', required: true },
+  { name: 'sortOrder', label: 'Sort order', type: 'number' },
+  { name: 'isActive', label: 'Active', type: 'checkbox' },
+];
+
+const organizationFields: FormField[] = [
+  { name: 'name', label: 'Name', type: 'text', required: true },
+  { name: 'displayName', label: 'Display name', type: 'text', required: true },
+  { name: 'abbreviation', label: 'Abbreviation', type: 'text' },
+  {
+    name: 'organizationTypeId',
+    label: 'Organization type ID',
+    type: 'number',
+    required: true,
+  },
+  { name: 'jurisdiction', label: 'Jurisdiction', type: 'text', required: true },
+  { name: 'sortOrder', label: 'Sort order', type: 'number' },
+  { name: 'isActive', label: 'Active', type: 'checkbox' },
+  { name: 'description', label: 'Description', type: 'text' },
+];
+
+async function fetchOrganizationTypesAdmin(): Promise<OrganizationType[]> {
+  const res = await api.get<{ success: boolean; data: OrganizationType[] }>(
+    '/lookups/organization-types',
+    { params: { includeAll: true } }
+  );
+  return res.data.data;
+}
+
+async function fetchOrganizationsAdmin(): Promise<OrganizationAdminItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: OrganizationAdminItem[];
+  }>('/lookups/organizations');
+  return res.data.data;
+}
+
+export function OrganizationTypesAdmin() {
+  return (
+    <GenericLookupAdmin<OrganizationType>
+      title="Organization types"
+      description="Categories for ministries and organizations (Ministry, Agency, Crown Corporation, etc.)."
+      sectionId="organization-types"
+      entityType="Organization type"
+      apiEndpoint="/lookups/organization-types"
+      queryKey={['lookups', 'organization-types', 'admin']}
+      queryFn={fetchOrganizationTypesAdmin}
+      formFields={organizationTypeFields}
+      getItemName={(item) => item.displayName ?? item.name ?? String(item.id)}
+    />
+  );
+}
+
+export function OrganizationsAdmin() {
+  return (
+    <GenericLookupAdmin<OrganizationAdminItem>
+      title="Organizations"
+      description="Ministries and organizations catalog."
+      sectionId="organizations"
+      entityType="Organization"
+      apiEndpoint="/lookups/organizations"
+      queryKey={['lookups', 'organizations', 'admin']}
+      queryFn={fetchOrganizationsAdmin}
+      formFields={organizationFields}
+      getItemName={(item) => item.displayName ?? item.name ?? String(item.id)}
+    />
+  );
+}
 
 export function VenuePresetsAdmin() {
   return (

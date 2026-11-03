@@ -28,7 +28,8 @@ export interface ActivityFilterMatchInput {
   timeStatusName: string;
   tagIds: number[];
   leadTeamId: number | null;
-  leadMinistryId: number | null;
+  /** Lead organization id (legacy filters used ministry ids; same integer for ministry orgs). */
+  leadOrganizationId: number | null;
   leadOrgId: number | null;
   commsContactLeadUserId: number | null;
   eventPlannerLeadIds: number[];
@@ -70,8 +71,12 @@ export function activityResponseToFilterMatchInput(
     timeStatusName: activity.timeStatus ?? '',
     tagIds: activity.tags.map((t) => t.id),
     leadTeamId: activity.leadTeamId ?? null,
-    leadMinistryId: activity.leadMinistryId ?? null,
-    leadOrgId: activity.leadOrgId ?? null,
+    leadOrganizationId:
+      activity.organizationDetails?.find((o) => o.isLead)?.organizationId ??
+      null,
+    leadOrgId:
+      activity.organizationDetails?.find((o) => o.isLead)?.organizationId ??
+      null,
     commsContactLeadUserId: commsLead?.userId ?? null,
     eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],
     translationsRequiredStatusId: activity.translationsRequiredStatusId ?? null,

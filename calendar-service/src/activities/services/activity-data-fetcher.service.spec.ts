@@ -38,14 +38,11 @@ describe('ActivityDataFetcherService', () => {
       expect(mockDb.select).not.toHaveBeenCalled();
     });
 
-    it('returns Map with null for activities with no leadMinistryId', async () => {
-      const activityRows = [
-        { id: 1, leadMinistryId: null },
-        { id: 2, leadMinistryId: null },
-      ];
+    it('returns Map with null for activities with no lead organization', async () => {
       mockDb.select.mockReturnValue({
         from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue(activityRows),
+        innerJoin: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
       });
 
       const result = await service.fetchLeadMinistryAbbreviationsForActivities([
@@ -57,29 +54,15 @@ describe('ActivityDataFetcherService', () => {
       expect(result.get(2)).toBeNull();
     });
 
-    it('returns Map with abbreviation when activities have leadMinistryId and ministry exists', async () => {
-      const activityRows = [
-        { id: 1, leadMinistryId: 10 },
-        { id: 2, leadMinistryId: 10 },
+    it('returns Map with abbreviation when activities have a lead organization', async () => {
+      const junctionRows = [
+        { activityId: 1, abbreviation: 'ABC' },
+        { activityId: 2, abbreviation: 'ABC' },
       ];
-      const ministryRows = [{ id: 10, abbreviation: 'ABC' }];
-      mockDb.select.mockImplementation((arg: Record<string, unknown>) => {
-        if (arg && 'leadMinistryId' in arg) {
-          return {
-            from: vi.fn().mockReturnThis(),
-            where: vi.fn().mockResolvedValue(activityRows),
-          };
-        }
-        if (arg && 'abbreviation' in arg) {
-          return {
-            from: vi.fn().mockReturnThis(),
-            where: vi.fn().mockResolvedValue(ministryRows),
-          };
-        }
-        return {
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValue([]),
-        };
+      mockDb.select.mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        innerJoin: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(junctionRows),
       });
 
       const result = await service.fetchLeadMinistryAbbreviationsForActivities([
@@ -91,26 +74,11 @@ describe('ActivityDataFetcherService', () => {
       expect(result.get(2)).toBe('ABC');
     });
 
-    it('returns null for activity whose leadMinistryId has no matching active ministry', async () => {
-      const activityRows = [{ id: 1, leadMinistryId: 99 }];
-      const ministryRows: Array<{ id: number; abbreviation: string }> = [];
-      mockDb.select.mockImplementation((arg: Record<string, unknown>) => {
-        if (arg && 'leadMinistryId' in arg) {
-          return {
-            from: vi.fn().mockReturnThis(),
-            where: vi.fn().mockResolvedValue(activityRows),
-          };
-        }
-        if (arg && 'abbreviation' in arg) {
-          return {
-            from: vi.fn().mockReturnThis(),
-            where: vi.fn().mockResolvedValue(ministryRows),
-          };
-        }
-        return {
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValue([]),
-        };
+    it('returns null for activities missing from junction results', async () => {
+      mockDb.select.mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        innerJoin: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
       });
 
       const result = await service.fetchLeadMinistryAbbreviationsForActivities([
@@ -119,49 +87,6 @@ describe('ActivityDataFetcherService', () => {
 
       expect(result.size).toBe(1);
       expect(result.get(1)).toBeNull();
-    });
-  });
-
-  describe('fetchEventPlannerDetailsForActivities', () => {
-    it('sorts event planner details by canonical person name', async () => {
-      mockDb.select.mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        leftJoin: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue([
-          {
-            activityId: 1,
-            eventPlannerId: 2,
-            eventPlannerName: null,
-            isLead: false,
-            displayName: 'Niki Sharma Events',
-            name: 'Sharma, Niki',
-          },
-          {
-            activityId: 1,
-            eventPlannerId: 1,
-            eventPlannerName: null,
-            isLead: true,
-            displayName: 'Minister Lana Popham Events',
-            name: 'Lana Popham',
-          },
-          {
-            activityId: 1,
-            eventPlannerId: 3,
-            eventPlannerName: null,
-            isLead: false,
-            displayName: null,
-            name: 'planner@gov.bc.ca',
-          },
-        ]),
-      });
-
-      const result = await service.fetchEventPlannerDetailsForActivities([1]);
-
-      expect(result.get(1)?.map((planner) => planner.name)).toEqual([
-        'Minister Lana Popham Events',
-        'Niki Sharma Events',
-        'planner@gov.bc.ca',
-      ]);
     });
   });
 });

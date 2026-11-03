@@ -6,6 +6,7 @@ import {
   governmentRepresentatives,
   ministries,
   ministryGroups,
+  organizations,
   releaseTypes,
   tags,
   themes,
@@ -52,9 +53,9 @@ export const LOOKUP_LIST_ORDER_COLUMNS: Record<
     labelColumn: governmentRepresentatives.displayName,
   },
   ministries: {
-    sortOrder: ministries.sortOrder,
+    sortOrder: organizations.sortOrder,
     id: ministries.id,
-    labelColumn: ministries.displayName,
+    labelColumn: organizations.displayName,
   },
   'ministry-groups': {
     sortOrder: ministryGroups.sortOrder,

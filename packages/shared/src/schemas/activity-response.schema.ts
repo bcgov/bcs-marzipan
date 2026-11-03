@@ -51,10 +51,6 @@ export const activityDbFieldsSchema = z.object({
   summary: z.string(),
   significance: z.string().nullable(),
 
-  // Lead organization (mutually exclusive: either ID or Name)
-  leadOrgId: z.number().int().nullable(),
-  leadOrgName: z.string().nullable(),
-
   // Scheduling
   isAllDay: z.boolean(),
   startDate: z.string().nullable(),
@@ -78,16 +74,14 @@ export const activityDbFieldsSchema = z.object({
   /** Bucket key driven by report admin configuration; see activity.schema.ts. Omitted when user lacks lookAhead view. */
   lookAheadSection: z.string().min(1).max(50).nullable().optional(),
 
+  /** Omitted when user lacks notes view permission. */
   notes: z.string().nullable().optional(),
-  /** Omitted when user lacks internal notes view permission. */
-  internalNotes: z.string().nullable().optional(),
   translationsRequiredStatusId: z.number().int().nullable().optional(),
   premierRequestedId: z.number().int().nullable(),
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
 
   // Ownership
   leadTeamId: z.number().int(),
-  leadMinistryId: z.number().int().nullable(),
   activityStatusId: z.number().int(),
 
   // Audit fields (transformed to ISO strings for API)
@@ -124,6 +118,19 @@ export const eventPlannerDetailSchema = z.object({
 export type EventPlannerDetail = z.infer<typeof eventPlannerDetailSchema>;
 
 /**
+ * Organization detail item on an activity (lookup id/name + display + isLead).
+ */
+export const organizationDetailSchema = z.object({
+  organizationId: z.number().int().optional().nullable(),
+  organizationName: z.string().optional().nullable(),
+  name: z.string(),
+  abbreviation: z.string().nullable().optional(),
+  isLead: z.boolean(),
+});
+
+export type OrganizationDetail = z.infer<typeof organizationDetailSchema>;
+
+/**
  * Layer 2: Computed Fields Schema
  *
  * These fields are computed from joins and lookups - they don't exist
@@ -156,9 +163,9 @@ export const activityComputedFieldsSchema = z.object({
     )
     .default([]), // All comms contacts with isLead flag
 
-  // Computed organization names (from organization ID lookups or free text names)
-  // Uses organization displayName/name if leadOrgId is set, otherwise uses leadOrgName
+  /** Compact grid summary (lead token + joint count). */
   leadOrg: z.string().nullable(),
+  organizationDetails: z.array(organizationDetailSchema).default([]),
 
   // Event planner details (id/name + display name + isLead) for form hydration and display
   eventPlannerDetails: z.array(eventPlannerDetailSchema).default([]),

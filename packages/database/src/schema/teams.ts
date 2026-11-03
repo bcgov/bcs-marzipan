@@ -10,7 +10,8 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-import { ministries, podSharedWithTeams } from './ministry';
+import { podSharedWithTeams } from './ministry';
+import { organizations } from './organizations';
 import { permissions, roles } from './rbac';
 import {
   teamCategories,
@@ -71,9 +72,11 @@ export const teams = pgTable('teams', {
   roleId: integer('role_id').references(() => roles.id, {
     onDelete: 'set null',
   }),
-  ministryId: integer('ministry_id').references(() => ministries.id, {
-    onDelete: 'set null',
-  }),
+  /** Ministry org for team scoping (organization row with a ministries extension). */
+  primaryOrganizationId: integer('primary_organization_id').references(
+    () => organizations.id,
+    { onDelete: 'set null' }
+  ),
   createdDateTime: timestamp('created_date_time', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -106,9 +109,9 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
     fields: [teams.roleId],
     references: [roles.id],
   }),
-  ministry: one(ministries, {
-    fields: [teams.ministryId],
-    references: [ministries.id],
+  primaryOrganization: one(organizations, {
+    fields: [teams.primaryOrganizationId],
+    references: [organizations.id],
   }),
   teamCategories: many(teamCategories),
   teamCommsMaterials: many(teamCommsMaterials),

@@ -59,8 +59,7 @@ export interface ActivityTableRow {
   eventPlannerLeadIds: number[];
   /** Lead team ID for client-side team filter */
   leadTeamId: number | null;
-  leadMinistryId: number | null;
-  leadOrgId: number | null;
+  leadOrganizationId: number | null;
   commsContactLeadUserId: number | null;
 
   // Materials column
@@ -172,8 +171,9 @@ export function mapActivityToTableRow(
     eventPlanners: activity.eventPlanners ?? [],
     eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],
     leadTeamId: activity.leadTeamId ?? null,
-    leadMinistryId: activity.leadMinistryId ?? null,
-    leadOrgId: activity.leadOrgId ?? null,
+    leadOrganizationId:
+      activity.organizationDetails?.find((o) => o.isLead)?.organizationId ??
+      null,
     commsContactLeadUserId: commsLead?.userId ?? null,
 
     // Materials

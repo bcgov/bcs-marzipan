@@ -114,8 +114,8 @@ describe('LookupsController', () => {
         appearsInShareWith: true,
         roleId: null,
         memberCount: 2,
-        ministryId: 5,
-        ministryName: 'M1',
+        primaryOrganizationId: 5,
+        primaryOrganizationName: 'M1',
       },
     ];
 

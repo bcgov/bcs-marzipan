@@ -15,6 +15,7 @@ function baseForm(overrides: Partial<ActivityFormData> = {}): ActivityFormData {
     visibility: 'global',
     leadTeamId: 5,
     categoryIds: [1],
+    organizations: [{ organizationId: 1, isLead: true }],
     sharedWithTeamIds: [],
     ...overrides,
   };

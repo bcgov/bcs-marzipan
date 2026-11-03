@@ -17,7 +17,6 @@ const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   'markAsReviewed',
   'activityHistoryNotes',
   'commsContactLeadId',
-  'leadMinistryId',
 ]);
 
 export type DiffReviewFieldsOptions = {
@@ -51,6 +50,7 @@ export function getEmptyReviewBaseline(): ActivityFormData {
     venueAddress: normalizeVenueAddressForForm(null),
     commsContacts: [],
     eventPlanners: [],
+    organizations: [],
     representatives: [],
   });
 }
@@ -183,6 +183,7 @@ const ID_ARRAY_FIELDS: ReadonlySet<string> = new Set([
 const OBJECT_ARRAY_SORT_KEYS: Record<string, string> = {
   commsContacts: 'userId',
   eventPlanners: 'eventPlannerId',
+  organizations: 'organizationId',
   representatives: 'representativeName',
 };
 

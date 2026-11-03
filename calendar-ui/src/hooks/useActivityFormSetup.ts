@@ -165,22 +165,17 @@ export function useActivityFormSetup({
 
     const currentLeadTeamId = form.getValues('leadTeamId');
     if (currentLeadTeamId != null && currentLeadTeamId !== 0) {
-      const leadOrgId = form.getValues('leadOrgId');
-      const leadOrgName = form.getValues('leadOrgName');
-      const orgAlreadySet =
-        (leadOrgId != null && leadOrgId !== 0) ||
-        (leadOrgName != null && leadOrgName !== '');
-      if (orgAlreadySet) return;
+      const orgs = form.getValues('organizations') ?? [];
+      if (orgs.length > 0) return;
 
       const team = leadTeamOptions.find((t) => t.id === currentLeadTeamId);
-      if (team?.ministryId) {
-        const orgForMinistry = lookups.organizations.find(
-          (o) => o.ministryId != null && o.ministryId === team.ministryId
-        );
-        if (orgForMinistry) {
-          form.setValue('leadOrgId', orgForMinistry.value);
-          form.setValue('leadOrgName', null);
-        }
+      if (team?.primaryOrganizationId) {
+        form.setValue('organizations', [
+          {
+            organizationId: team.primaryOrganizationId,
+            isLead: true,
+          },
+        ]);
       }
       return;
     }
@@ -193,16 +188,14 @@ export function useActivityFormSetup({
     if (!defaultTeam) return;
 
     form.setValue('leadTeamId', defaultTeam.id);
-    form.setValue('leadMinistryId', defaultTeam.ministryId ?? undefined);
 
-    if (defaultTeam.ministryId) {
-      const orgForMinistry = lookups.organizations.find(
-        (o) => o.ministryId != null && o.ministryId === defaultTeam.ministryId
-      );
-      if (orgForMinistry) {
-        form.setValue('leadOrgId', orgForMinistry.value);
-        form.setValue('leadOrgName', null);
-      }
+    if (defaultTeam.primaryOrganizationId) {
+      form.setValue('organizations', [
+        {
+          organizationId: defaultTeam.primaryOrganizationId,
+          isLead: true,
+        },
+      ]);
     }
   }, [mode, leadTeamOptions, userTeamIds, lookups.organizations, form]);
 

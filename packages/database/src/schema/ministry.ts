@@ -9,39 +9,32 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-import { activities } from './activity';
 import { governmentRepresentatives } from './lookups';
 import { ministryGroups } from './ministry-groups';
+import { organizations } from './organizations';
 import { ministryUsers } from './relations';
 import { teams } from './teams';
 import { users } from './user';
 
 /**
- * Ministry table - Government departments
- * Inferred from Hub.Legacy/Gcpe.Calendar.Data/Entity/Ministry.cs
- * Legacy: used UUID primary key.
- * TODO: Consider ministry API for future.
- * TODO: This is a blend of ministries and groups. Use as basis for future group table.
+ * Ministry extension — 1:1 with an organization row (shared id).
+ * Catalog fields (name, displayName, abbreviation, sort, active) live on `organizations`.
  */
 export const ministries = pgTable('ministries', {
-  id: serial('id').primaryKey(),
-  sortOrder: integer('sort_order').notNull(),
-  isActive: boolean('is_active').notNull().default(true),
-  name: varchar('name', { length: 255 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }).notNull(),
-  abbreviation: varchar('abbreviation', { length: 5 }).notNull(),
+  id: integer('id')
+    .primaryKey()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
 
   /**
    * Designated minister (government representative) for this ministry.
-   * FK to government_representatives.id is enforced in SQL migrations (avoids circular schema inference).
+   * FK to government_representatives.id is enforced in SQL migrations.
    */
   ministerGovernmentRepId: integer('minister_government_rep_id'),
 
-  // Contacts
-  contactUserId: integer('contact_user_id').references(() => users.id), // FK to User
+  contactUserId: integer('contact_user_id').references(() => users.id),
   secondContactUserId: integer('second_contact_user_id').references(
     () => users.id
-  ), // FK to User
+  ),
 
   ministryGroupId: integer('ministry_group_id').references(
     () => ministryGroups.id,
@@ -65,6 +58,10 @@ export const ministries = pgTable('ministries', {
 });
 
 export const ministriesRelations = relations(ministries, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [ministries.id],
+    references: [organizations.id],
+  }),
   contactUser: one(users, {
     fields: [ministries.contactUserId],
     references: [users.id],
@@ -83,8 +80,6 @@ export const ministriesRelations = relations(ministries, ({ one, many }) => ({
     fields: [ministries.ministerGovernmentRepId],
     references: [governmentRepresentatives.id],
   }),
-  children: many(ministries, { relationName: 'parent' }),
-  activities: many(activities),
   ministryUsers: many(ministryUsers),
   podMinistries: many(podMinistries, { relationName: 'ministryPodMinistries' }),
 }));
@@ -98,8 +93,6 @@ export const ministryGroupsRelations = relations(
 
 /**
  * Pods table - Collections of ministries defined by users
- * Admins and editors can create pods with global, team-scoped, or private visibility.
- * Users access pods through their team memberships.
  */
 export const pods = pgTable('pods', {
   id: serial('id').primaryKey(),
@@ -107,7 +100,7 @@ export const pods = pgTable('pods', {
   description: varchar('description', { length: 500 }),
   visibility: varchar('visibility', { length: 50 })
     .notNull()
-    .default('private'), // 'global', 'team', 'private'
+    .default('private'),
   createdBy: integer('created_by')
     .notNull()
     .references(() => users.id),
@@ -125,10 +118,6 @@ export const pods = pgTable('pods', {
     .references(() => users.id),
 });
 
-/**
- * PodMinistries junction table - Many-to-many relationship between Pods and Ministries
- * Defines which ministries are included in a pod
- */
 export const podMinistries = pgTable(
   'pod_ministries',
   {
@@ -148,10 +137,6 @@ export const podMinistries = pgTable(
   (table) => [primaryKey({ columns: [table.podId, table.ministryId] })]
 );
 
-/**
- * PodSharedWithTeams junction table - Many-to-many relationship between Pods and Teams
- * Defines which teams can access a pod (used when visibility is 'team')
- */
 export const podSharedWithTeams = pgTable(
   'pod_shared_with_teams',
   {
@@ -169,7 +154,6 @@ export const podSharedWithTeams = pgTable(
   (table) => [primaryKey({ columns: [table.podId, table.teamId] })]
 );
 
-// Relations for Pods
 export const podsRelations = relations(pods, ({ one, many }) => ({
   creator: one(users, {
     fields: [pods.createdBy],
@@ -185,7 +169,6 @@ export const podsRelations = relations(pods, ({ one, many }) => ({
   sharedWithTeams: many(podSharedWithTeams),
 }));
 
-// Relations for PodMinistries
 export const podMinistriesRelations = relations(podMinistries, ({ one }) => ({
   pod: one(pods, {
     fields: [podMinistries.podId],
@@ -197,7 +180,6 @@ export const podMinistriesRelations = relations(podMinistries, ({ one }) => ({
   }),
 }));
 
-// Relations for PodSharedWithTeams
 export const podSharedWithTeamsRelations = relations(
   podSharedWithTeams,
   ({ one }) => ({

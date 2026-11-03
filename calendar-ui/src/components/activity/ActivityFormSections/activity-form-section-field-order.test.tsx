@@ -160,9 +160,7 @@ const mockLookups: Pick<FormLookupData, 'categories'> = {
 describe('activity form section field order', () => {
   it('matches registry order in overview', () => {
     const { container } = render(
-      <SectionFormHarness
-        canViewFieldScope={(scope) => scope === 'internalNotes'}
-      >
+      <SectionFormHarness canViewFieldScope={(scope) => scope === 'notes'}>
         <ActivityOverviewSection
           categories={mockLookups.categories}
           organizations={[]}
@@ -262,8 +260,8 @@ describe('activity form section field order', () => {
                 name: 'Team',
                 displayName: 'Team',
                 abbreviation: 'TM',
-                ministryId: 1,
-                ministryName: 'Ministry',
+                primaryOrganizationId: 1,
+                primaryOrganizationName: 'Ministry',
                 memberCount: 1,
               }),
             ],

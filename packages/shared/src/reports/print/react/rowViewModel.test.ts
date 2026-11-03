@@ -31,8 +31,7 @@ const BASE_ACTIVITY_RESPONSE = {
   title: 'Example activity',
   summary: 'plain summary',
   significance: null,
-  leadOrgId: null,
-  leadOrgName: null,
+  organizationDetails: [],
   isAllDay: false,
   startDate: '2026-04-27T00:00:00.000Z',
   endDate: null,
@@ -54,7 +53,6 @@ const BASE_ACTIVITY_RESPONSE = {
   premierRequestedId: null,
   visibility: 'global',
   leadTeamId: 1,
-  leadMinistryId: 1,
   activityStatusId: 1,
   createdBy: 1,
   lastUpdatedBy: 1,
@@ -550,18 +548,18 @@ describe('toPrintRowViewModel', () => {
 describe('splitActivityDisplayIdForPrint', () => {
   it('splits PREFIX-NUMERIC display ids', () => {
     expect(splitActivityDisplayIdForPrint('MOTT-123456')).toEqual({
-      acronym: 'MOTT',
+      abbreviation: 'MOTT',
       idForLink: '123456',
     });
     expect(splitActivityDisplayIdForPrint('ACT-000042')).toEqual({
-      acronym: 'ACT',
+      abbreviation: 'ACT',
       idForLink: '000042',
     });
   });
 
   it('puts the whole label in the link when no hyphen', () => {
     expect(splitActivityDisplayIdForPrint('ACT42')).toEqual({
-      acronym: '',
+      abbreviation: '',
       idForLink: 'ACT42',
     });
   });

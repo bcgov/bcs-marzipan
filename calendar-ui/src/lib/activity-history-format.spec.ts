@@ -149,8 +149,14 @@ describe('formatHistoryFieldValue', () => {
       );
     });
 
-    it('resolves leadOrgId to organization name', () => {
-      expect(formatHistoryFieldValue('leadOrgId', 13, maps)).toBe('Acme Corp');
+    it('formats organizations with resolved lookup names', () => {
+      expect(
+        formatHistoryFieldValue(
+          'organizations',
+          [{ organizationId: 13, isLead: true }],
+          maps
+        )
+      ).toBe('Acme Corp (lead)');
     });
 
     it('falls back to raw number when not in map', () => {

@@ -45,9 +45,7 @@ export function createMockActivityResponse(
     summary: 'Test summary',
     significance: 'Test significance',
 
-    // Lead organization
-    leadOrgId: null,
-    leadOrgName: null,
+    organizationDetails: [],
 
     // Scheduling
     isAllDay: false,
@@ -73,14 +71,12 @@ export function createMockActivityResponse(
 
     // Notes and additional fields
     notes: null,
-    internalNotes: null,
     translationsRequiredStatusId: null,
     premierRequestedId: null,
     visibility: DEFAULT_VISIBILITY,
 
     // Ownership
     leadTeamId: 1,
-    leadMinistryId: 1,
     activityStatusId: 1,
 
     // Audit fields (fixed timestamps for deterministic tests)

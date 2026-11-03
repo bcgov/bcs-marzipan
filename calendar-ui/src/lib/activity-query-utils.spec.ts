@@ -46,8 +46,7 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     eventPlanners: [],
     eventPlannerLeadIds: [],
     leadTeamId: null,
-    leadMinistryId: null,
-    leadOrgId: null,
+    leadOrganizationId: null,
     commsContactLeadUserId: null,
     translationsRequired: [],
     translationsRequiredStatus: null,
@@ -569,17 +568,19 @@ describe('buildOptimisticActivity', () => {
     const existingWithExtra = {
       ...minimalExisting,
       id: 42,
-      leadOrgId: 10,
+      organizationDetails: [
+        { organizationId: 10, name: 'Existing Org', isLead: true },
+      ],
     } as ActivityListItem;
     const update = {
       id: 999,
-      leadOrgId: 99,
+      organizations: [{ organizationId: 99, isLead: true }],
       title: 'New title',
     } as UpdateActivityRequest;
     const result = buildOptimisticActivity(existingWithExtra, update);
     expect(result.title).toBe('New title');
     expect(result.id).toBe(42);
-    expect(result.leadOrgId).toBe(10);
+    expect(result.organizationDetails?.[0]?.organizationId).toBe(10);
   });
 
   it('returns a copy of existing when update is empty', () => {

@@ -49,7 +49,6 @@ const mockLookups: FormLookupData = {
 const EMPTY_API_ACTIVITY_OVERRIDES = {
   notes: null,
   schedulingNotes: null,
-  internalNotes: null,
   significance: null,
   executiveSummary: null,
   summary: '',

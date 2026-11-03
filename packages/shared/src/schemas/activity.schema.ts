@@ -199,15 +199,7 @@ const activityCoreFieldsSchema = z.object({
       MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
     )
     .nullable()
-    .optional(),
-  internalNotes: z
-    .string()
-    .max(
-      ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
-      MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE
-    )
-    .nullable()
-    .optional(),
+    .optional(), // Maps to legacy Comments
   executiveSummary: z.preprocess(
     emptyStringToNull,
     z.union([activityBriefRichTextStoredStringSchema, z.null()]).optional()
@@ -224,16 +216,6 @@ const activityCoreFieldsSchema = z.object({
    */
   lookAheadSection: z.string().min(1).max(50).nullable().optional(),
 
-  // Optional foreign key fields (with empty string preprocessing)
-  leadOrgId: z.preprocess(
-    emptyStringToNull,
-    z.number().int().nullable().optional()
-  ),
-  leadOrgName: z
-    .string()
-    .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
-    .nullable()
-    .optional(),
   newsReleaseOriginId: z.number().int().nullable().optional(),
   releaseTimeOffsetMinutes: z
     .number()
@@ -243,10 +225,6 @@ const activityCoreFieldsSchema = z.object({
     .nullable()
     .optional(),
   leadTeamId: z.number().int(), // Required - primary association for which team leads this activity
-  leadMinistryId: z.preprocess(
-    emptyStringToNull,
-    z.number().int().nullable().optional()
-  ), // Optional; derived from lead team's ministry
 
   // Optional lookup ID fields
   newsReleaseDistributionId: z.number().int().nullable().optional(),
@@ -305,6 +283,37 @@ const eventPlannerSchema = z.object({
 });
 
 /**
+ * Activity organization schema (ministries and organizations on the activity).
+ * organizationId = lookup; organizationName = free text. Exactly one isLead when non-empty.
+ */
+const activityOrganizationSchema = z
+  .object({
+    organizationId: z.number().int().optional(),
+    organizationName: z
+      .string()
+      .max(255, MAX_CHARACTER_LIMIT_EXCEEDED_MESSAGE)
+      .optional(),
+    isLead: z.boolean().default(false),
+  })
+  .refine(
+    (data) => {
+      const hasId =
+        data.organizationId !== undefined && data.organizationId > 0;
+      const hasName =
+        typeof data.organizationName === 'string' &&
+        data.organizationName.trim().length > 0;
+      return hasId || hasName;
+    },
+    {
+      message:
+        'Each organization must have an organizationId or a non-empty organizationName',
+      ...zodConstraintIssueParams(),
+    }
+  );
+
+export { activityOrganizationSchema };
+
+/**
  * Comms contact schema
  * Supports identifying the lead contact via isLead flag
  */
@@ -323,12 +332,18 @@ const junctionTableIdsSchema = z.object({
   commsMaterialIds: z.array(z.number().int()).optional(),
   translationLanguageIds: z.array(z.number().int()).optional(),
   eventPlanners: z.array(eventPlannerSchema).optional(),
+  organizations: z.array(activityOrganizationSchema).optional(),
   representatives: z.array(representativeSchema).optional(),
   sharedWithTeamIds: z.array(z.number().int()).optional(), // Editor-type teams the activity is shared with
   commsContacts: z.array(commsContactSchema).optional(), // Comms contacts with isLead flag (exactly one must have isLead=true)
 });
 
 const CATEGORY_IDS_MIN_MESSAGE = 'At least one category is required';
+const ORGANIZATIONS_REQUIRED_MESSAGE =
+  'Ministries and organizations is required';
+const ORGANIZATION_LEAD_REFINE_MESSAGE =
+  'Exactly one ministries and organizations entry must be marked as lead';
+const ORGANIZATION_LEAD_REFINE_PATH = ['organizations'] as const;
 const LEAD_CONTACT_REFINE_MESSAGE = 'A lead contact is required';
 const LEAD_CONTACT_REFINE_PATH = ['commsContacts'] as const;
 
@@ -337,6 +352,9 @@ const createJunctionTableIdsSchema = junctionTableIdsSchema.extend({
   categoryIds: z
     .array(z.number().int())
     .min(1, { message: CATEGORY_IDS_MIN_MESSAGE }),
+  organizations: z
+    .array(activityOrganizationSchema)
+    .min(1, { message: ORGANIZATIONS_REQUIRED_MESSAGE }),
 });
 
 /** Field-level create validation so RHF trigger('commsContacts') catches empty arrays. */
@@ -386,6 +404,25 @@ function eventPlannerLeadRefine(data: {
   return planners.filter((p) => p.isLead === true).length === 1;
 }
 
+function organizationLeadRefine(data: {
+  organizations?: Array<{
+    organizationId?: number;
+    organizationName?: string;
+    isLead?: boolean;
+  }>;
+}): boolean {
+  const orgs = data.organizations ?? [];
+  if (orgs.length === 0) return true;
+  return orgs.filter((o) => o.isLead === true).length === 1;
+}
+
+/** Create: organizations must include at least one entry. */
+function createOrganizationPresenceRefine(data: {
+  organizations?: Array<unknown>;
+}): boolean {
+  return (data.organizations ?? []).length >= 1;
+}
+
 /**
  * Base schema for create (no refinements).
  * Used to build create and update schemas without calling .partial() on a refined schema (Zod v4).
@@ -422,6 +459,16 @@ const createActivityRequestSchemaBase = createBaseSchema
     path: [...EVENT_PLANNER_LEAD_REFINE_PATH],
     ...zodConstraintIssueParams(),
   })
+  .refine(createOrganizationPresenceRefine, {
+    message: ORGANIZATIONS_REQUIRED_MESSAGE,
+    path: [...ORGANIZATION_LEAD_REFINE_PATH],
+    ...zodRequiredIssueParams(),
+  })
+  .refine(organizationLeadRefine, {
+    message: ORGANIZATION_LEAD_REFINE_MESSAGE,
+    path: [...ORGANIZATION_LEAD_REFINE_PATH],
+    ...zodConstraintIssueParams(),
+  })
   .refine(
     (data) => plainTextFromActivityRichField(data.summary).trim().length > 0,
     {
@@ -452,8 +499,7 @@ export function createActivityRequestSchemaWithLookups(
  * ID comes from URL parameter, not request body.
  * When commsContacts is provided and non-empty, enforces the same lead-contact rule as create.
  *
- * Note: XOR validation (leadOrgId/leadOrgName, etc.) is handled by
- * database CHECK constraints, not duplicated here.
+ * When organizations is provided and non-empty, exactly one must be lead.
  */
 export const updateActivityRequestSchema = createBaseSchema
   .partial()
@@ -476,6 +522,11 @@ export const updateActivityRequestSchema = createBaseSchema
   .refine(eventPlannerLeadRefine, {
     message: EVENT_PLANNER_LEAD_REFINE_MESSAGE,
     path: [...EVENT_PLANNER_LEAD_REFINE_PATH],
+    ...zodConstraintIssueParams(),
+  })
+  .refine(organizationLeadRefine, {
+    message: ORGANIZATION_LEAD_REFINE_MESSAGE,
+    path: [...ORGANIZATION_LEAD_REFINE_PATH],
     ...zodConstraintIssueParams(),
   })
   .refine(

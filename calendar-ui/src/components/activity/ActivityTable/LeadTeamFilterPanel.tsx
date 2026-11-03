@@ -7,7 +7,7 @@ import {
 } from './FilterSearchableList';
 
 export interface LeadTeamFilterOption extends FilterSearchableListOption {
-  ministryId: number | null;
+  primaryOrganizationId: number | null;
 }
 
 export interface LeadTeamFilterPanelProps {
@@ -22,8 +22,8 @@ const OTHER_TEAMS_HEADING = 'Other teams';
 function buildLeadTeamSections(
   options: LeadTeamFilterOption[]
 ): FilterSearchableListSection[] {
-  const ministryTeams = options.filter((t) => t.ministryId != null);
-  const otherTeams = options.filter((t) => t.ministryId == null);
+  const ministryTeams = options.filter((t) => t.primaryOrganizationId != null);
+  const otherTeams = options.filter((t) => t.primaryOrganizationId == null);
   const sections: FilterSearchableListSection[] = [];
   if (ministryTeams.length > 0) {
     sections.push({ heading: MINISTRY_TEAMS_HEADING, options: ministryTeams });

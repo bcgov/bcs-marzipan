@@ -96,7 +96,6 @@ export const CLONE_SYSTEM_FIELD_KEYS = [
   'markAsCompleted',
   'activityHistoryNotes',
   'commsContactLeadId',
-  'leadMinistryId',
 ] as const;
 
 export type CloneSystemFieldKey = (typeof CLONE_SYSTEM_FIELD_KEYS)[number];
@@ -117,7 +116,7 @@ export type CloneAlwaysCopiedFieldKey =
 
 /** Advanced clone fields unchecked by default when the modal opens. */
 export const CLONE_DEFAULT_UNCHECKED_FIELD_KEYS = [
-  'internalNotes',
+  'notes',
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
 const CLONE_DEFAULT_UNCHECKED_SET = new Set<string>(

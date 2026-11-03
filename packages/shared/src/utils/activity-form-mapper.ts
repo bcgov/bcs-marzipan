@@ -1,6 +1,7 @@
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ActivityFormData } from '../schemas/activity.schema';
 import { normalizeEventPlannerFormEntries } from './activity-form-event-planner-normalize';
+import { normalizeOrganizationFormEntries } from './activity-form-organization-normalize';
 
 function trimVenueNullable(v: string | null | undefined): string | null {
   if (v == null) return null;
@@ -114,6 +115,15 @@ export function mapResponseToFormData(
           }))
         : undefined;
 
+  const organizations =
+    response.organizationDetails?.length > 0
+      ? response.organizationDetails.map((d) => ({
+          organizationId: d.organizationId ?? undefined,
+          organizationName: d.organizationName ?? undefined,
+          isLead: d.isLead,
+        }))
+      : undefined;
+
   return {
     title: response.title,
     summary: response.summary,
@@ -134,16 +144,13 @@ export function mapResponseToFormData(
     translationsRequiredStatusId:
       response.translationsRequiredStatusId ?? undefined,
     notes: response.notes ?? undefined,
-    internalNotes: response.internalNotes ?? undefined,
     executiveSummary: response.executiveSummary ?? undefined,
     lookAheadStatus: response.lookAheadStatus ?? undefined,
     lookAheadSection: response.lookAheadSection ?? undefined,
-    leadOrgId: response.leadOrgId ?? undefined,
-    leadOrgName: response.leadOrgName ?? undefined,
+    organizations: normalizeOrganizationFormEntries(organizations),
     releaseTimeOffsetMinutes: response.releaseTimeOffsetMinutes ?? undefined,
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
     leadTeamId: response.leadTeamId ?? 0,
-    leadMinistryId: response.leadMinistryId ?? undefined,
     eventPlanners: normalizeEventPlannerFormEntries(
       eventPlanners?.length ? eventPlanners : undefined
     ),

@@ -20,6 +20,7 @@ import {
   translatedLanguages,
 } from './lookups';
 import { ministries } from './ministry';
+import { organizations } from './organizations';
 import { teams } from './teams';
 import { users } from './user';
 
@@ -174,6 +175,25 @@ export const activityEventPlanners = pgTable('activity_event_planners', {
 });
 
 /**
+ * ActivityOrganizations junction table - Ministries and organizations per activity.
+ * organizationId = lookup; organizationName = one-off free text. Backend prefers id when present.
+ * isLead marks the lead org (exactly one per activity; required when any orgs exist).
+ */
+export const activityOrganizations = pgTable('activity_organizations', {
+  id: serial('id').primaryKey(),
+  activityId: integer('activity_id')
+    .notNull()
+    .references(() => activities.id),
+  organizationId: integer('organization_id').references(() => organizations.id),
+  organizationName: varchar('organization_name', { length: 255 }),
+  isLead: boolean('is_lead').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  timestamp: timestamp('timestamp', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/**
  * ActivityRepresentatives junction table - Many-to-many relationship between Activities and Representatives
  * Optional free text representativeName for representatives not in the governmentRepresentatives lookup table
  */
@@ -288,6 +308,20 @@ export const activityEventPlannersRelations = relations(
     eventPlanner: one(users, {
       fields: [activityEventPlanners.eventPlannerId],
       references: [users.id],
+    }),
+  })
+);
+
+export const activityOrganizationsRelations = relations(
+  activityOrganizations,
+  ({ one }) => ({
+    activity: one(activities, {
+      fields: [activityOrganizations.activityId],
+      references: [activities.id],
+    }),
+    organization: one(organizations, {
+      fields: [activityOrganizations.organizationId],
+      references: [organizations.id],
     }),
   })
 );

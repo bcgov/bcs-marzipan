@@ -4,6 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import {
   activityCommsContacts,
   activityEventPlanners,
+  activityOrganizations,
   activityRepresentatives,
   governmentRepresentatives,
   venueAddresses,
@@ -235,6 +236,86 @@ export class ActivityJunctionService {
             eventPlannerId: p.eventPlannerId ?? null,
             eventPlannerName: p.eventPlannerName?.trim() ?? null,
             isLead: p.isLead ?? false,
+            isActive: true,
+            timestamp: now,
+          }))
+        );
+      }
+    }
+  }
+
+  async insertOrganizations(
+    tx: Parameters<
+      Parameters<typeof this.databaseService.db.transaction>[0]
+    >[0],
+    activityId: number,
+    organizations:
+      | Array<{
+          organizationId?: number;
+          organizationName?: string;
+          isLead?: boolean;
+        }>
+      | undefined,
+    now: Date
+  ): Promise<void> {
+    if (
+      !organizations ||
+      !Array.isArray(organizations) ||
+      organizations.length === 0
+    ) {
+      return;
+    }
+    const valid = organizations.filter(
+      (o) =>
+        (typeof o.organizationId === 'number' && o.organizationId > 0) ||
+        (typeof o.organizationName === 'string' &&
+          o.organizationName.trim().length > 0)
+    );
+    if (valid.length === 0) return;
+    await tx.insert(activityOrganizations).values(
+      valid.map((o) => ({
+        activityId,
+        organizationId: o.organizationId ?? null,
+        organizationName: o.organizationName?.trim() ?? null,
+        isLead: o.isLead ?? false,
+        isActive: true,
+        timestamp: now,
+      }))
+    );
+  }
+
+  async updateOrganizations(
+    tx: Parameters<
+      Parameters<typeof this.databaseService.db.transaction>[0]
+    >[0],
+    activityId: number,
+    organizations:
+      | Array<{
+          organizationId?: number;
+          organizationName?: string;
+          isLead?: boolean;
+        }>
+      | undefined,
+    now: Date
+  ): Promise<void> {
+    await tx
+      .update(activityOrganizations)
+      .set({ isActive: false })
+      .where(eq(activityOrganizations.activityId, activityId));
+    if (organizations && organizations.length > 0) {
+      const valid = organizations.filter(
+        (o) =>
+          (typeof o.organizationId === 'number' && o.organizationId > 0) ||
+          (typeof o.organizationName === 'string' &&
+            o.organizationName.trim().length > 0)
+      );
+      if (valid.length > 0) {
+        await tx.insert(activityOrganizations).values(
+          valid.map((o) => ({
+            activityId,
+            organizationId: o.organizationId ?? null,
+            organizationName: o.organizationName?.trim() ?? null,
+            isLead: o.isLead ?? false,
             isActive: true,
             timestamp: now,
           }))

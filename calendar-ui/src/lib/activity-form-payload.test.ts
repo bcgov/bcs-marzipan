@@ -24,6 +24,7 @@ function minimalForm(
     visibility: 'global',
     leadTeamId: 1,
     categoryIds: [1],
+    organizations: [{ organizationId: 1, isLead: true }],
     commsContacts: [{ userId: 1, isLead: true }],
     ...overrides,
   };
@@ -128,7 +129,6 @@ describe('buildPayloadForUpdate', () => {
   it('strips UI sentinels from optional fields before sending to API', () => {
     const formValues = minimalForm({
       notes: '',
-      internalNotes: '',
       schedulingNotes: '',
       significance: EMPTY_RICH_TEXT_DOC,
     });
@@ -136,7 +136,6 @@ describe('buildPayloadForUpdate', () => {
     const payload = buildPayloadForUpdate(formValues, formValues);
 
     expect(payload.notes).toBeNull();
-    expect(payload.internalNotes).toBeNull();
     expect(payload.schedulingNotes).toBeNull();
     expect(payload.significance).toBeNull();
   });

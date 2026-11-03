@@ -131,6 +131,8 @@ export const PERMISSIONS = {
     MANAGE: 'lookups.manage',
     MANAGE_COMMS_MATERIALS: 'lookups.manage.comms_materials',
     MANAGE_RELEASE_TYPES: 'lookups.manage.release_types',
+    ORGANIZATIONS_MANAGE: 'lookups.organizations.manage',
+    ORGANIZATION_TYPES_MANAGE: 'lookups.organization_types.manage',
   },
   USERS: {
     VIEW: 'users.view',
