@@ -59,35 +59,35 @@ const editorWithViewOnlyGrant = {
 
 describe('canViewActivityFieldScope', () => {
   it('returns false for view-restricted scopes when Viewer lacks grants', () => {
-    expect(canViewActivityFieldScope(viewer, 'internalNotes')).toBe(false);
+    expect(canViewActivityFieldScope(viewer, 'notes')).toBe(false);
     expect(canViewActivityFieldScope(viewer, 'lookAhead')).toBe(false);
   });
 
-  it('returns true for translations without grants (no view permission)', () => {
+  it('returns true for translations and releaseTime without grants (no view permission)', () => {
     expect(canViewActivityFieldScope(viewer, 'translations')).toBe(true);
+    expect(canViewActivityFieldScope(viewer, 'releaseTime')).toBe(true);
   });
 
   it('returns false for view-restricted scopes when Editor lacks grants', () => {
-    expect(canViewActivityFieldScope(editor, 'internalNotes')).toBe(false);
+    expect(canViewActivityFieldScope(editor, 'notes')).toBe(false);
     expect(canViewActivityFieldScope(editor, 'lookAhead')).toBe(false);
   });
 
-  it('returns true for translations when Editor lacks other grants', () => {
+  it('returns true for translations and releaseTime when Editor lacks other grants', () => {
     expect(canViewActivityFieldScope(editor, 'translations')).toBe(true);
+    expect(canViewActivityFieldScope(editor, 'releaseTime')).toBe(true);
   });
 
-  it('returns true for Advanced Viewer (role bypass) on bypass-eligible scopes only', () => {
-    expect(canViewActivityFieldScope(advancedViewer, 'internalNotes')).toBe(
-      false
-    );
-    expect(canViewActivityFieldScope(advancedViewer, 'lookAhead')).toBe(true);
+  it('returns true for Advanced Viewer (role bypass) without scope grants', () => {
+    for (const scope of ACTIVITY_FIELD_SCOPES) {
+      expect(canViewActivityFieldScope(advancedViewer, scope)).toBe(true);
+    }
   });
 
-  it('returns true for Advanced Editor (role bypass) on bypass-eligible scopes only', () => {
-    expect(canViewActivityFieldScope(advancedEditor, 'internalNotes')).toBe(
-      false
-    );
-    expect(canViewActivityFieldScope(advancedEditor, 'lookAhead')).toBe(true);
+  it('returns true for Advanced Editor (role bypass) without scope grants', () => {
+    for (const scope of ACTIVITY_FIELD_SCOPES) {
+      expect(canViewActivityFieldScope(advancedEditor, scope)).toBe(true);
+    }
   });
 
   it('returns true for Admin with all grants', () => {
@@ -97,15 +97,13 @@ describe('canViewActivityFieldScope', () => {
   });
 
   it('returns true when user has .view grant', () => {
-    expect(
-      canViewActivityFieldScope(editorWithViewOnlyGrant, 'internalNotes')
-    ).toBe(true);
+    expect(canViewActivityFieldScope(editorWithViewOnlyGrant, 'notes')).toBe(
+      true
+    );
   });
 
   it('returns true when user has .edit grant (edit implies view)', () => {
-    expect(
-      canViewActivityFieldScope(editorWithNotesGrant, 'internalNotes')
-    ).toBe(true);
+    expect(canViewActivityFieldScope(editorWithNotesGrant, 'notes')).toBe(true);
   });
 });
 
@@ -135,15 +133,13 @@ describe('canEditActivityFieldScope', () => {
   });
 
   it('returns false when user only has .view grant', () => {
-    expect(
-      canEditActivityFieldScope(editorWithViewOnlyGrant, 'internalNotes')
-    ).toBe(false);
+    expect(canEditActivityFieldScope(editorWithViewOnlyGrant, 'notes')).toBe(
+      false
+    );
   });
 
   it('returns true when user has .edit grant', () => {
-    expect(
-      canEditActivityFieldScope(editorWithNotesGrant, 'internalNotes')
-    ).toBe(true);
+    expect(canEditActivityFieldScope(editorWithNotesGrant, 'notes')).toBe(true);
   });
 });
 
@@ -155,16 +151,15 @@ describe('getViewableFieldScopes', () => {
     expect(result.size).toBe(2);
   });
 
-  it('returns bypass-eligible scopes for Advanced Viewer (not internalNotes)', () => {
-    const result = getViewableFieldScopes(advancedViewer);
-    expect(result.has('internalNotes')).toBe(false);
-    expect(result.has('lookAhead')).toBe(true);
-    expect(result.size).toBe(ACTIVITY_FIELD_SCOPES.length - 1);
+  it('returns all scopes for Advanced Viewer', () => {
+    expect(getViewableFieldScopes(advancedViewer).size).toBe(
+      ACTIVITY_FIELD_SCOPES.length
+    );
   });
 
   it('returns granted scopes plus always-viewable scopes for Editor', () => {
     const result = getViewableFieldScopes(editorWithNotesGrant);
-    expect(result.has('internalNotes')).toBe(true);
+    expect(result.has('notes')).toBe(true);
     expect(result.has('translations')).toBe(true);
     expect(result.has('releaseTime')).toBe(true);
     expect(result.size).toBe(3);
@@ -184,7 +179,7 @@ describe('getEditableFieldScopes', () => {
 
   it('returns only edit-granted scopes for Editor', () => {
     const result = getEditableFieldScopes(editorWithNotesGrant);
-    expect(result.has('internalNotes')).toBe(true);
+    expect(result.has('notes')).toBe(true);
     expect(result.size).toBe(1);
   });
 });
