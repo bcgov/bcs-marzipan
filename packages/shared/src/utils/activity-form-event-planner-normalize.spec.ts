@@ -29,6 +29,18 @@ describe('normalizeEventPlannerFormEntry', () => {
 });
 
 describe('normalizeEventPlannerFormEntries', () => {
+  it('sorts lead planner first', () => {
+    expect(
+      normalizeEventPlannerFormEntries([
+        { eventPlannerId: 1, isLead: false },
+        { eventPlannerId: 2, isLead: true },
+      ])
+    ).toEqual([
+      { eventPlannerId: 2, isLead: true },
+      { eventPlannerId: 1, isLead: false },
+    ]);
+  });
+
   it('matches combobox round-trip shape for lookup planners', () => {
     const hydrated = normalizeEventPlannerFormEntries([
       {

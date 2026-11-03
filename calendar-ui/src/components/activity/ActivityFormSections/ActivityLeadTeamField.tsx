@@ -25,12 +25,6 @@ import type { OptionItem } from '@/schemas/types';
 
 import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 
-export type LeadOrganizationOptionForLeadTeam = {
-  value: number;
-  label: string;
-  primaryOrganizationId?: number | null;
-};
-
 /**
  * Isolated lead-team field using a value-controlled Combobox (single-select
  * with search). Unlike Radix Select, the Combobox does not emit phantom
@@ -40,13 +34,11 @@ export function ActivityLeadTeamField({
   leadTeamOptions,
   leadTeamDisplayLabel,
   leadTeamOptionsFetching,
-  organizations,
   readOnly,
 }: {
   leadTeamOptions: TeamListItem[];
   leadTeamDisplayLabel: string | null | undefined;
   leadTeamOptionsFetching: boolean;
-  organizations: LeadOrganizationOptionForLeadTeam[];
   readOnly: boolean;
 }) {
   const form = useFormContext<ActivityFormData>();

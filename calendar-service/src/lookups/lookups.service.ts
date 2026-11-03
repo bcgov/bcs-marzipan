@@ -326,10 +326,11 @@ export class LookupsService {
    * TODO: Implement scoping based on userId, role, organizationId
    */
   async getOrganizations(
-    _params?: LookupQueryParams
+    _params?: LookupQueryParams,
+    includeInactive = false
   ): Promise<OrganizationLookupItem[]> {
     const typeSortRanks = await this.organizationTypeSortRankById();
-    const results = await this.databaseService.db
+    const base = this.databaseService.db
       .select({
         id: organizations.id,
         uuid: organizations.uuid,
@@ -338,6 +339,8 @@ export class LookupsService {
         abbreviation: organizations.abbreviation,
         organizationTypeId: organizations.organizationTypeId,
         jurisdiction: organizations.jurisdiction,
+        sortOrder: organizations.sortOrder,
+        isActive: organizations.isActive,
         typeDisplayName: organizationTypes.displayName,
         typeSortOrder: organizationTypes.sortOrder,
       })
@@ -345,9 +348,11 @@ export class LookupsService {
       .leftJoin(
         organizationTypes,
         eq(organizations.organizationTypeId, organizationTypes.id)
-      )
-      .where(eq(organizations.isActive, true))
-      .orderBy(organizations.sortOrder);
+      );
+
+    const results = await (
+      includeInactive ? base : base.where(eq(organizations.isActive, true))
+    ).orderBy(organizations.sortOrder);
 
     return results.map((org) => ({
       id: org.id,
@@ -366,6 +371,8 @@ export class LookupsService {
             0)
           : null,
       jurisdiction: org.jurisdiction,
+      sortOrder: org.sortOrder,
+      isActive: org.isActive,
     }));
   }
 
@@ -445,6 +452,10 @@ export class LookupsService {
     },
     currentUserId: number
   ) {
+    const sortOrder =
+      data.sortOrder !== undefined
+        ? data.sortOrder
+        : await resolveNextSortOrder(this.databaseService.db, organizations);
     const now = new Date();
     const [row] = await this.databaseService.db
       .insert(organizations)
@@ -454,7 +465,7 @@ export class LookupsService {
         abbreviation: data.abbreviation ?? null,
         organizationTypeId: data.organizationTypeId,
         jurisdiction: data.jurisdiction,
-        sortOrder: data.sortOrder ?? 0,
+        sortOrder,
         isActive: data.isActive ?? true,
         description: data.description ?? null,
         createdBy: currentUserId,

@@ -918,6 +918,40 @@ describe('FreeformCombobox', () => {
     });
   });
 
+  describe('onSetLead', () => {
+    it('opens role badge popover and sets lead from menu action', async () => {
+      const user = userEvent.setup();
+      const onSetLead = vi.fn();
+      const value: FreeformComboboxItemWithLead[] = [
+        { type: 'option', value: 'option1' },
+        { type: 'option', value: 'option2', isLead: true },
+      ];
+
+      render(
+        <FreeformCombobox
+          {...defaultProps}
+          multiple
+          value={value}
+          onChange={vi.fn()}
+          onSetLead={onSetLead}
+          nonLeadPromoteBadge="set-lead"
+        />
+      );
+
+      const roleTrigger = screen.getByRole('button', {
+        name: 'Set lead options for Option 1',
+      });
+      expect(roleTrigger).not.toHaveAttribute('tabindex', '-1');
+
+      await user.click(roleTrigger);
+      const menuAction = await screen.findByRole('button', {
+        name: 'Set as lead',
+      });
+      await user.click(menuAction);
+      expect(onSetLead).toHaveBeenCalledWith(0);
+    });
+  });
+
   describe('Edge Cases', () => {
     it('handles option value that does not exist in options array', () => {
       const value: FreeformComboboxValue = {

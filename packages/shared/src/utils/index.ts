@@ -6,6 +6,7 @@ export * from './schema-helpers';
 export * from './activity-form-mapper';
 export * from './activity-form-event-planner-normalize';
 export * from './activity-form-organization-normalize';
+export * from './sort-form-entries-lead-first';
 export * from './activity-organization-display';
 export * from './build-organization-combobox-sections';
 export * from './activity-form-canonicalize';

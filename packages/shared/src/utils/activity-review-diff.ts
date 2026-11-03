@@ -7,6 +7,7 @@ import { canonicalizeActivityFormData } from './activity-form-canonicalize';
 import { normalizeVenueAddressForForm } from './activity-form-mapper';
 import { EMPTY_RICH_TEXT_DOC } from './activity-rich-text';
 import { isDeepEqual } from './isDeepEqual';
+import { sortOrganizationEntriesForDiff } from './sort-organization-entries-for-diff';
 
 /**
  * Fields excluded from the review diff: audit/system columns that are never
@@ -152,6 +153,17 @@ export function diffReviewFields(
     }
 
     if (isObjectArrayField(key)) {
+      if (key === 'organizations') {
+        if (
+          !isDeepEqual(
+            sortOrganizationEntriesForDiff(curVal),
+            sortOrganizationEntriesForDiff(baseVal)
+          )
+        ) {
+          changed.push(key);
+        }
+        continue;
+      }
       const sortKey = OBJECT_ARRAY_SORT_KEYS[key] ?? 'userId';
       if (
         !isDeepEqual(

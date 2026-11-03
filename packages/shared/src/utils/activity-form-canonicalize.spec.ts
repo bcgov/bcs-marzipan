@@ -34,6 +34,21 @@ describe('canonicalizeActivityFormData', () => {
     expect(isDeepEqual(a.notes, b.notes)).toBe(true);
   });
 
+  it('sorts comms contacts with lead first', () => {
+    const canon = canonicalizeActivityFormData(
+      minimalForm({
+        commsContacts: [
+          { userId: 1, isLead: false },
+          { userId: 2, isLead: true },
+        ],
+      })
+    );
+    expect(canon.commsContacts).toEqual([
+      { userId: 2, isLead: true },
+      { userId: 1, isLead: false },
+    ]);
+  });
+
   it('treats sharedWithTeamIds undefined like empty array', () => {
     const a = canonicalizeActivityFormData(
       minimalForm({ sharedWithTeamIds: undefined })

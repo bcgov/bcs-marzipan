@@ -251,7 +251,7 @@ export class LookupsController {
   @ApiOperation({
     summary: 'Get all organizations',
     description:
-      'Retrieves organizations filtered by user context. Results are cached for 1 hour.',
+      'Retrieves active organizations for activity forms. Admins with `lookups.organizations.manage` can pass `includeAll=true` to retrieve all organizations including inactive; that path sets `Cache-Control: no-store`.',
   })
   @ApiResponse({
     status: 200,
@@ -276,15 +276,36 @@ export class LookupsController {
     type: Number,
     description: 'Filter to a specific organization by ID',
   })
+  @ApiQuery({
+    name: 'includeAll',
+    required: false,
+    type: String,
+    enum: ['true'],
+    description:
+      'When set to `"true"` and the caller has the `lookups.organizations.manage` permission, returns all organizations including inactive.',
+  })
   @Get('organizations')
-  @Header('Cache-Control', lookupGetCacheControl())
   async getOrganizations(
     @Query('userId', new ParseOptionalIntPipe()) userId?: number,
     @Query('role') role?: string,
-    @Query('organizationId', new ParseOptionalIntPipe()) organizationId?: number
+    @Query('organizationId', new ParseOptionalIntPipe())
+    organizationId?: number,
+    @Query('includeAll') includeAll?: string,
+    @CurrentUser() user?: AuthUser,
+    @Res({ passthrough: true }) res?: Response
   ): Promise<{ success: boolean; data: OrganizationLookupItem[] }> {
+    const includeInactive =
+      includeAll === 'true' &&
+      (user?.permissions?.includes('lookups.organizations.manage') ?? false);
+    res?.setHeader(
+      'Cache-Control',
+      includeInactive ? 'no-store' : lookupGetCacheControl()
+    );
     const params: LookupQueryParams = { userId, role, organizationId };
-    const data = await this.lookupsService.getOrganizations(params);
+    const data = await this.lookupsService.getOrganizations(
+      params,
+      includeInactive
+    );
     return { success: true, data };
   }
 

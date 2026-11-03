@@ -2,6 +2,7 @@ import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ActivityFormData } from '../schemas/activity.schema';
 import { normalizeEventPlannerFormEntries } from './activity-form-event-planner-normalize';
 import { normalizeOrganizationFormEntries } from './activity-form-organization-normalize';
+import { sortFormEntriesLeadFirst } from './sort-form-entries-lead-first';
 
 function trimVenueNullable(v: string | null | undefined): string | null {
   if (v == null) return null;
@@ -166,7 +167,9 @@ export function mapResponseToFormData(
     sharedWithTeamIds: sharedWithTeamIds?.length
       ? sharedWithTeamIds
       : undefined,
-    commsContacts: commsContacts?.length ? commsContacts : undefined,
+    commsContacts: commsContacts?.length
+      ? sortFormEntriesLeadFirst(commsContacts)
+      : undefined,
     venueAddress: normalizeVenueAddressForForm(response.venueAddress),
   };
 }

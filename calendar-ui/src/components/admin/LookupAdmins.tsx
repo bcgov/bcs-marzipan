@@ -10,6 +10,10 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
 import { useCallback, useMemo } from 'react';
 
+import {
+  ORGANIZATION_JURISDICTION_LABELS,
+  ORGANIZATION_JURISDICTIONS,
+} from '@corpcal/shared';
 import api from '@/api/axios';
 import {
   fetchActivityStatuses,
@@ -1160,20 +1164,22 @@ const organizationTypeFields: FormField[] = [
   { name: 'isActive', label: 'Active', type: 'checkbox' },
 ];
 
-const organizationFields: FormField[] = [
+const organizationJurisdictionSelectOptions = ORGANIZATION_JURISDICTIONS.map(
+  (value) => ({
+    value,
+    label: ORGANIZATION_JURISDICTION_LABELS[value],
+  })
+);
+
+const organizationFieldsTail: FormField[] = [
+  { name: 'isActive', label: 'Active', type: 'checkbox' },
+  { name: 'description', label: 'Description', type: 'text' },
+];
+
+const organizationFieldsHead: FormField[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
   { name: 'displayName', label: 'Display name', type: 'text', required: true },
   { name: 'abbreviation', label: 'Abbreviation', type: 'text' },
-  {
-    name: 'organizationTypeId',
-    label: 'Organization type ID',
-    type: 'number',
-    required: true,
-  },
-  { name: 'jurisdiction', label: 'Jurisdiction', type: 'text', required: true },
-  { name: 'sortOrder', label: 'Sort order', type: 'number' },
-  { name: 'isActive', label: 'Active', type: 'checkbox' },
-  { name: 'description', label: 'Description', type: 'text' },
 ];
 
 async function fetchOrganizationTypesAdmin(): Promise<OrganizationType[]> {
@@ -1188,7 +1194,7 @@ async function fetchOrganizationsAdmin(): Promise<OrganizationAdminItem[]> {
   const res = await api.get<{
     success: boolean;
     data: OrganizationAdminItem[];
-  }>('/lookups/organizations');
+  }>('/lookups/organizations', { params: { includeAll: true } });
   return res.data.data;
 }
 
@@ -1212,6 +1218,36 @@ export function OrganizationTypesAdmin() {
 }
 
 export function OrganizationsAdmin() {
+  const organizationTypesQuery = useQuery({
+    queryKey: ['lookups', 'organization-types', 'admin'],
+    queryFn: fetchOrganizationTypesAdmin,
+  });
+
+  const organizationFields = useMemo((): FormField[] => {
+    const typeOptions = (organizationTypesQuery.data ?? []).map((t) => ({
+      value: String(t.id),
+      label: t.displayName ?? t.name ?? String(t.id),
+    }));
+    return [
+      ...organizationFieldsHead,
+      {
+        name: 'organizationTypeId',
+        label: 'Organization type',
+        type: 'select',
+        required: true,
+        options: typeOptions,
+      },
+      {
+        name: 'jurisdiction',
+        label: 'Jurisdiction',
+        type: 'select',
+        required: true,
+        options: organizationJurisdictionSelectOptions,
+      },
+      ...organizationFieldsTail,
+    ];
+  }, [organizationTypesQuery.data]);
+
   return (
     <GenericLookupAdmin<OrganizationAdminItem>
       title="Organizations"
@@ -1222,7 +1258,23 @@ export function OrganizationsAdmin() {
       queryKey={['lookups', 'organizations', 'admin']}
       queryFn={fetchOrganizationsAdmin}
       formFields={organizationFields}
+      showSortOrderColumn={false}
+      omitDefaultSortOrder
       getItemName={(item) => item.displayName ?? item.name ?? String(item.id)}
+      getInitialData={(item) => ({
+        ...item,
+        jurisdiction: item.jurisdiction ?? 'bcgov',
+      })}
+      transformSubmitData={(data) => {
+        const { sortOrder: _sortOrder, ...rest } = data;
+        return {
+          ...rest,
+          jurisdiction:
+            rest.jurisdiction === '' || rest.jurisdiction == null
+              ? 'bcgov'
+              : rest.jurisdiction,
+        };
+      }}
     />
   );
 }
