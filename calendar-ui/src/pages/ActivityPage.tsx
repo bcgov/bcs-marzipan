@@ -507,6 +507,7 @@ export function ActivityPage({
   const editSessionTokenRef = useRef<string | null>(null);
   const wasEditingRef = useRef(false);
   const resyncGenerationRef = useRef(0);
+  const userInitiatedResyncGenerationRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (isEditing && !wasEditingRef.current) {
@@ -876,6 +877,12 @@ export function ActivityPage({
   const resyncEditSession = useCallback(
     (options?: { userInitiated?: boolean }) => {
       const userInitiated = options?.userInitiated === true;
+      if (
+        !userInitiated &&
+        userInitiatedResyncGenerationRef.current === resyncGenerationRef.current
+      ) {
+        return;
+      }
       const generation = ++resyncGenerationRef.current;
       void (async () => {
         if (!isEditingRef.current) {
@@ -901,6 +908,9 @@ export function ActivityPage({
           return;
         }
 
+        if (userInitiated) {
+          userInitiatedResyncGenerationRef.current = generation;
+        }
         setEditRecoveryState('resyncing');
         try {
           const [latestActivity, serverLockState] = await Promise.all([
@@ -976,6 +986,10 @@ export function ActivityPage({
           if (generation === resyncGenerationRef.current) {
             setEditRecoveryState('retry');
             notifyResyncOutcome('failure');
+          }
+        } finally {
+          if (userInitiatedResyncGenerationRef.current === generation) {
+            userInitiatedResyncGenerationRef.current = null;
           }
         }
       })();

@@ -667,6 +667,63 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(titleTextarea).toHaveValue('Test Activity unsaved');
   });
 
+  it.each(['onActivitySocketReconnect', 'onDataUpdated'] as const)(
+    'preserves an in-flight explicit resume across %s',
+    async (event) => {
+      mockLockState = 'owned';
+      const user = userEvent.setup();
+      renderActivityPage();
+
+      const titleTextarea = await screen.findByRole('textbox', {
+        name: /Title/i,
+      });
+      await user.type(titleTextarea, ' unsaved');
+      await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+      mockWasLockIdleExpired.mockReturnValue(true);
+      act(() => {
+        mockActivityWebSocketOptions.onLockReleased?.();
+      });
+      await screen.findByText(/ended due to inactivity/i);
+
+      let resolveFetch!: (activity: typeof mockActivityWithLeadTeam) => void;
+      const pendingFetch = new Promise<typeof mockActivityWithLeadTeam>(
+        (resolve) => {
+          resolveFetch = resolve;
+        }
+      );
+      mockFetchActivity.mockReturnValueOnce(pendingFetch);
+      await user.click(screen.getByRole('button', { name: /Resume editing/i }));
+      await waitFor(() => expect(mockFetchActivity).toHaveBeenCalledTimes(1));
+
+      act(() => {
+        mockActivityWebSocketOptions[event]?.();
+      });
+      await act(async () => {
+        resolveFetch(mockActivityWithLeadTeam);
+        await pendingFetch;
+      });
+
+      await waitFor(() =>
+        expect(mockEnsureLockForSubmit).toHaveBeenCalledTimes(1)
+      );
+      expect(mockFetchActivity).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByText(/ended due to inactivity/i)
+      ).not.toBeInTheDocument();
+      expect(titleTextarea).toHaveValue('Test Activity unsaved');
+
+      mockWasLockIdleExpired.mockReturnValue(false);
+      act(() => {
+        mockActivityWebSocketOptions[event]?.();
+      });
+      await waitFor(() =>
+        expect(mockEnsureLockForSubmit).toHaveBeenCalledTimes(2)
+      );
+      expect(mockFetchActivity).toHaveBeenCalledTimes(2);
+    }
+  );
+
   it('resumes an idle-expired session after a custom control edit', async () => {
     mockLockState = 'owned';
     const user = userEvent.setup();
