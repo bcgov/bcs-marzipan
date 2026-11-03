@@ -261,6 +261,7 @@ function MinistriesAndOrganizationsField({
                 multiple
                 useChips
                 onSetLead={setLead}
+                nonLeadPromoteBadge="joint"
                 showJointBadge
               />
             </FormControl>

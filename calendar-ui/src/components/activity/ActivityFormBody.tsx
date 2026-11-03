@@ -217,7 +217,6 @@ export function ActivityFormBody({
                 sharedWithTeams={lookups.sharedWithTeams}
                 quickShareGroups={lookups.quickShareGroups}
                 commsLeadOptions={commsLeadOptions}
-                organizations={lookups.organizations}
                 leadTeamField={leadTeamField}
               />
             </div>

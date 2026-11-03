@@ -1015,6 +1015,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   multiple
                   useChips
                   onSetLead={setLead}
+                  nonLeadPromoteBadge="set-lead"
                 />
               </FormControl>
               <FormMessage />

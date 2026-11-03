@@ -11,6 +11,7 @@ import {
   stripCommsDependentFields,
   type CommsMaterialReleaseFlagsById,
 } from './comms-material-form-rules';
+import { sortFormEntriesLeadFirst } from './sort-form-entries-lead-first';
 
 function isNullishOrEmptyString(v: unknown): boolean {
   return v === null || v === undefined || v === '';
@@ -114,7 +115,9 @@ export function canonicalizeActivityFormData(
     eventPlanners: normalizeEventPlannerFormEntries(data.eventPlanners),
     organizations: normalizeOrganizationFormEntries(data.organizations),
     representatives: canonObjectArray(data.representatives),
-    commsContacts: canonObjectArray(data.commsContacts),
+    commsContacts: sortFormEntriesLeadFirst(
+      canonObjectArray<{ userId: number; isLead: boolean }>(data.commsContacts)
+    ),
   };
 }
 

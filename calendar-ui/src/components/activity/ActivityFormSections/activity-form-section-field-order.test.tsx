@@ -252,7 +252,6 @@ describe('activity form section field order', () => {
           sharedWithTeams={[]}
           quickShareGroups={[]}
           commsLeadOptions={[]}
-          organizations={[]}
           leadTeamField={{
             options: [
               createMockTeamListItem({

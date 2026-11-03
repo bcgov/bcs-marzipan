@@ -7,6 +7,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import {
   CHIP_LABEL_CLASSES,
+  CHIP_LEAD_CHIP_RING_CLASSES,
   CHIP_VISUAL_CLASSES,
 } from '@/components/ui/combobox-chip-styles';
 import {
@@ -15,6 +16,8 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '@/components/ui/input-group';
+import { LeadableChipLabelRow } from '@/components/ui/leadable-chip-label-row';
+import type { LeadableChipNonLeadPromoteBadge } from '@/components/ui/leadable-chip-role-badge';
 import { FORM_CONTROL_INVALID_RING_CLASS_COMBO } from '@/lib/form-field-tokens';
 import {
   READ_ONLY_STATIC_COMBOBOX_CHIPS,
@@ -313,6 +316,73 @@ function ComboboxChips({
   );
 }
 
+function ComboboxLeadableChip({
+  className,
+  displayLabel,
+  isLead,
+  showRemove = true,
+  onSetLead,
+  showJointBadge,
+  nonLeadPromoteBadge,
+  setLeadMenuLabel,
+  roleMenuOpen,
+  onRoleMenuOpenChange,
+  ...props
+}: ComboboxPrimitive.Chip.Props & {
+  displayLabel: string;
+  isLead: boolean;
+  showRemove?: boolean;
+  onSetLead?: () => void;
+  showJointBadge?: boolean;
+  nonLeadPromoteBadge?: LeadableChipNonLeadPromoteBadge;
+  setLeadMenuLabel?: string;
+  roleMenuOpen?: boolean;
+  onRoleMenuOpenChange?: (open: boolean) => void;
+}) {
+  const readOnly = React.useContext(ComboboxReadOnlyContext);
+  const showRemoveButton = showRemove && !readOnly;
+  return (
+    <ComboboxPrimitive.Chip
+      data-slot="combobox-chip"
+      className={cn(
+        CHIP_VISUAL_CLASSES,
+        isLead && onSetLead && CHIP_LEAD_CHIP_RING_CLASSES,
+        'has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-data-[slot=combobox-chip-remove]:pr-0',
+        readOnly && 'pointer-events-none',
+        className
+      )}
+      {...props}
+    >
+      <LeadableChipLabelRow
+        displayLabel={displayLabel}
+        isLead={isLead}
+        readOnly={readOnly}
+        onSetLead={onSetLead}
+        showJointBadge={showJointBadge}
+        nonLeadPromoteBadge={nonLeadPromoteBadge}
+        setLeadMenuLabel={setLeadMenuLabel}
+        roleMenuOpen={roleMenuOpen}
+        onRoleMenuOpenChange={onRoleMenuOpenChange}
+      />
+      {showRemoveButton && (
+        <ComboboxPrimitive.ChipRemove
+          render={<Button variant="ghost" size="icon-xs" />}
+          className="-ml-1 opacity-50 hover:opacity-100"
+          data-slot="combobox-chip-remove"
+        >
+          <XIcon className="pointer-events-none" />
+        </ComboboxPrimitive.ChipRemove>
+      )}
+    </ComboboxPrimitive.Chip>
+  );
+}
+
+function comboboxChipLabelTitle(children: React.ReactNode): string | undefined {
+  if (typeof children === 'string') return children;
+  if (typeof children === 'number') return String(children);
+  return undefined;
+}
+
 function ComboboxChip({
   className,
   children,
@@ -323,6 +393,7 @@ function ComboboxChip({
 }) {
   const readOnly = React.useContext(ComboboxReadOnlyContext);
   const showRemoveButton = showRemove && !readOnly;
+  const labelTitle = comboboxChipLabelTitle(children);
   return (
     <ComboboxPrimitive.Chip
       data-slot="combobox-chip"
@@ -334,7 +405,9 @@ function ComboboxChip({
       )}
       {...props}
     >
-      <span className={CHIP_LABEL_CLASSES}>{children}</span>
+      <span className={CHIP_LABEL_CLASSES} title={labelTitle}>
+        {children}
+      </span>
       {showRemoveButton && (
         <ComboboxPrimitive.ChipRemove
           render={<Button variant="ghost" size="icon-xs" />}
@@ -386,6 +459,7 @@ export {
   ComboboxSeparator,
   ComboboxChips,
   ComboboxChip,
+  ComboboxLeadableChip,
   ComboboxChipsInput,
   ComboboxTrigger,
   ComboboxValue,

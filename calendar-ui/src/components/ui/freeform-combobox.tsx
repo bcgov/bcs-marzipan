@@ -20,7 +20,7 @@ import {
 } from '../../lib/read-only-static-field';
 import { cn } from '../../lib/utils';
 import {
-  CHIP_LABEL_CLASSES,
+  CHIP_LEAD_CHIP_RING_CLASSES,
   CHIP_VISUAL_CLASSES,
 } from './combobox-chip-styles';
 import {
@@ -29,6 +29,8 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from './input-group';
+import { LeadableChipLabelRow } from './leadable-chip-label-row';
+import type { LeadableChipNonLeadPromoteBadge } from './leadable-chip-role-badge';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
 import { PopoverListSectionHeading } from './popover-list-section-heading';
 
@@ -119,11 +121,17 @@ export type FreeformComboboxProps = {
   useChips?: boolean;
   /**
    * When set, chips support a "lead" state: one item can be marked as lead.
-   * Value items may include isLead; chips show a Lead badge and "Set as lead" for non-lead items.
+   * Value items may include isLead; chips show Lead / role badges and a popover to promote non-lead rows.
    * Called with the index of the item to set as lead (parent should update value so only that item has isLead: true).
    */
   onSetLead?: (index: number) => void;
-  /** When true with onSetLead, non-lead chips show a Joint badge. */
+  /** Label for the set-lead action inside the non-lead role badge popover. */
+  setLeadMenuLabel?: string;
+  /**
+   * Edit-mode non-lead badge that opens the set-lead popover (`joint` for orgs, `set-lead` for event planners).
+   */
+  nonLeadPromoteBadge?: LeadableChipNonLeadPromoteBadge;
+  /** When true in read-only, non-lead chips show a static outline Joint badge. */
   showJointBadge?: boolean;
 } & Omit<
   ComponentPropsWithoutRef<'div'>,
@@ -175,6 +183,8 @@ export const FreeformCombobox = forwardRef<
     maxInputLength,
     useChips = true,
     onSetLead,
+    setLeadMenuLabel = 'Set as lead',
+    nonLeadPromoteBadge,
     showJointBadge = false,
     'aria-invalid': ariaInvalidProp,
     ...rootPassthrough
@@ -192,6 +202,9 @@ export const FreeformCombobox = forwardRef<
   const isLocked = disabled || readOnly;
   const isMuted = disabled;
   const [open, setOpen] = useState(false);
+  const [openRoleMenuIndex, setOpenRoleMenuIndex] = useState<number | null>(
+    null
+  );
   const [inputValue, setInputValue] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [liveMessage, setLiveMessage] = useState('');
@@ -390,6 +403,12 @@ export const FreeformCombobox = forwardRef<
     }
   }, [isLocked]);
 
+  useEffect(() => {
+    if (open) {
+      setOpenRoleMenuIndex(null);
+    }
+  }, [open]);
+
   useLayoutEffect(() => {
     const justOpened = open && !wasOpenRef.current;
     wasOpenRef.current = open;
@@ -556,38 +575,29 @@ export const FreeformCombobox = forwardRef<
     >
       {selectedList.map((v, i) => {
         const isLead = 'isLead' in v && v.isLead === true;
+        const displayLabel = getDisplayLabel(v);
         return (
           <span
             key={v.type === 'option' ? v.value : `freeform-${v.value}`}
             data-slot="chip"
-            className={CHIP_VISUAL_CLASSES}
+            className={cn(
+              CHIP_VISUAL_CLASSES,
+              isLead && onSetLead && CHIP_LEAD_CHIP_RING_CLASSES
+            )}
           >
-            <span className="flex min-w-0 flex-1 items-center gap-1.5">
-              <span className={CHIP_LABEL_CLASSES}>{getDisplayLabel(v)}</span>
-              {onSetLead && (
-                <>
-                  {isLead && (
-                    <span className={FREEFORM_BADGE_CLASSES}>Lead</span>
-                  )}
-                  {!isLead && showJointBadge && (
-                    <span className={FREEFORM_BADGE_CLASSES}>Joint</span>
-                  )}
-                  {!isLocked && !isLead && (
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground focus:ring-ring shrink-0 text-[10px] underline focus:ring-1 focus:outline-none"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onSetLead(i);
-                      }}
-                    >
-                      Set as lead
-                    </button>
-                  )}
-                </>
-              )}
-            </span>
+            <LeadableChipLabelRow
+              displayLabel={displayLabel}
+              isLead={isLead}
+              readOnly={isLocked}
+              onSetLead={onSetLead ? () => onSetLead(i) : undefined}
+              showJointBadge={showJointBadge}
+              nonLeadPromoteBadge={!isLocked ? nonLeadPromoteBadge : undefined}
+              setLeadMenuLabel={setLeadMenuLabel}
+              roleMenuOpen={openRoleMenuIndex === i}
+              onRoleMenuOpenChange={(next) =>
+                setOpenRoleMenuIndex(next ? i : null)
+              }
+            />
             {!isLocked ? (
               <button
                 type="button"

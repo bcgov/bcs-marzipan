@@ -166,6 +166,8 @@ export const organizationLookupItemSchema = z.object({
   organizationTypeDisplayName: z.string().nullable().optional(),
   organizationTypeSortOrder: z.number().int().nullable().optional(),
   jurisdiction: z.string().nullable().optional(),
+  sortOrder: z.number().int().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const createOrganizationTypeRequestSchema = z.object({
@@ -178,12 +180,37 @@ export const createOrganizationTypeRequestSchema = z.object({
 export const updateOrganizationTypeRequestSchema =
   createOrganizationTypeRequestSchema.partial();
 
+/** Allowed `organizations.jurisdiction` values (see `@corpcal/database` schema). */
+export const ORGANIZATION_JURISDICTIONS = [
+  'bcgov',
+  'federal',
+  'provincial',
+  'other',
+] as const;
+
+export type OrganizationJurisdiction =
+  (typeof ORGANIZATION_JURISDICTIONS)[number];
+
+export const ORGANIZATION_JURISDICTION_LABELS: Record<
+  OrganizationJurisdiction,
+  string
+> = {
+  bcgov: 'BC government',
+  federal: 'Federal',
+  provincial: 'Provincial',
+  other: 'Other',
+};
+
+export const organizationJurisdictionSchema = z.enum(
+  ORGANIZATION_JURISDICTIONS
+);
+
 export const createOrganizationRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
   abbreviation: z.string().max(8).nullable().optional(),
   organizationTypeId: z.number().int(),
-  jurisdiction: z.enum(['bcgov', 'federal', 'provincial', 'other']),
+  jurisdiction: organizationJurisdictionSchema,
   sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
   description: z.string().nullable().optional(),
