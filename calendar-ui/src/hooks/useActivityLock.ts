@@ -337,6 +337,7 @@ export function useActivityLock(
         const res = await heartbeatLock(currentLock.id, options);
         recordServerTime(res.serverTime);
         if (options?.keepAlive) {
+          mergeLockIdleExpiry(res.idleExpiresAt);
           return 'ok';
         }
         if (res.throttled) {
