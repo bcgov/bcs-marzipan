@@ -83,8 +83,7 @@ describe('isActivityResponsePayload', () => {
 
 describe('redactActivityResponse', () => {
   const activity = createMockActivityResponse({
-    notes: 'general notes',
-    internalNotes: 'secret internal notes',
+    notes: 'secret notes',
     dateStatusId: 2,
     timeStatusId: 3,
     dateStatus: 'Set',
@@ -99,8 +98,7 @@ describe('redactActivityResponse', () => {
 
   it('returns all fields when user has all view grants for restricted scopes', () => {
     const result = redactActivityResponse(activity, editorWithAllViewGrants);
-    expect(result.notes).toBe('general notes');
-    expect(result.internalNotes).toBe('secret internal notes');
+    expect(result.notes).toBe('secret notes');
     expect(result.dateStatusId).toBe(2);
     expect(result.timeStatusId).toBe(3);
     expect(result.lookAheadStatus).toBe('new');
@@ -109,8 +107,7 @@ describe('redactActivityResponse', () => {
 
   it('strips view-restricted fields for Viewer without grants; keeps date/time status and translations', () => {
     const result = redactActivityResponse(activity, viewerNoGrants);
-    expect(result.notes).toBe('general notes');
-    expect(result.internalNotes).toBeUndefined();
+    expect(result.notes).toBeUndefined();
     expect(result.dateStatusId).toBe(2);
     expect(result.timeStatusId).toBe(3);
     expect(result.dateStatus).toBe('Set');
@@ -123,10 +120,9 @@ describe('redactActivityResponse', () => {
     expect(result.translationsRequiredStatus).toBe('Pending');
   });
 
-  it('preserves general notes for Advanced Viewer but redacts internal notes without grant', () => {
+  it('preserves all fields for Advanced Viewer (role bypass)', () => {
     const result = redactActivityResponse(activity, advancedViewer);
-    expect(result.notes).toBe('general notes');
-    expect(result.internalNotes).toBeUndefined();
+    expect(result.notes).toBe('secret notes');
     expect(result.dateStatusId).toBe(2);
     expect(result.lookAheadStatus).toBe('new');
     expect(result.translationsRequired).toEqual(['French']);
@@ -148,7 +144,7 @@ describe('redactActivityResponse', () => {
   it('filters changedFieldsSinceReview for redacted view-restricted scopes only', () => {
     const withChanges = createMockActivityResponse({
       changedFieldsSinceReview: [
-        'internalNotes',
+        'notes',
         'title',
         'dateStatusId',
         'lookAheadStatus',

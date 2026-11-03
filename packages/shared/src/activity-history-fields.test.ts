@@ -45,15 +45,13 @@ describe('activity-history-fields', () => {
   it('redacts scoped fields the user cannot view', () => {
     const changes = [
       { field: 'title', oldValue: 'A', newValue: 'B' },
-      { field: 'notes', oldValue: 'general', newValue: 'updated general' },
-      { field: 'internalNotes', oldValue: 'secret', newValue: 'updated' },
+      { field: 'notes', oldValue: 'secret', newValue: 'updated' },
     ];
     expect(redactActivityHistoryChanges(changes, viewerWithoutNotes)).toEqual([
       { field: 'title', oldValue: 'A', newValue: 'B' },
-      { field: 'notes', oldValue: 'general', newValue: 'updated general' },
     ]);
-    expect(redactActivityHistoryChanges(changes, editorWithNotes)).toHaveLength(
-      3
+    expect(redactActivityHistoryChanges(changes, editorWithNotes)).toEqual(
+      changes
     );
   });
 });
