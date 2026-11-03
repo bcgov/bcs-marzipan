@@ -66,7 +66,7 @@ export function TeamEditModal({
     useState(false);
   const [isActive, setIsActive] = useState(true);
   const [appearsInShareWith, setAppearsInShareWith] = useState(true);
-  const [ministryId, setMinistryId] = useState<string | null>(null);
+  const [primaryOrganizationId, setMinistryId] = useState<string | null>(null);
 
   const isDuplicateAbbreviationError = (error: unknown): boolean => {
     return (
@@ -124,7 +124,9 @@ export function TeamEditModal({
       setIsActive(detail.isActive);
       setAppearsInShareWith(detail.appearsInShareWith);
       setMinistryId(
-        detail.ministryId != null ? String(detail.ministryId) : null
+        detail.primaryOrganizationId != null
+          ? String(detail.primaryOrganizationId)
+          : null
       );
       setAbbrevManuallyEdited(false);
     }
@@ -242,7 +244,10 @@ export function TeamEditModal({
           description: description.trim() || undefined,
           isActive,
           appearsInShareWith,
-          ministryId: ministryId != null ? parseInt(ministryId, 10) : undefined,
+          primaryOrganizationId:
+            primaryOrganizationId != null
+              ? parseInt(primaryOrganizationId, 10)
+              : undefined,
         },
       });
     } else if (team) {
@@ -257,14 +262,17 @@ export function TeamEditModal({
           description: description.trim() || undefined,
           isActive,
           appearsInShareWith,
-          ministryId: ministryId != null ? parseInt(ministryId, 10) : null,
+          primaryOrganizationId:
+            primaryOrganizationId != null
+              ? parseInt(primaryOrganizationId, 10)
+              : null,
         },
       });
     }
   };
 
-  const selectedMinistry = ministryId
-    ? (ministryOptions.find((m) => m.value === ministryId) ?? null)
+  const selectedMinistry = primaryOrganizationId
+    ? (ministryOptions.find((m) => m.value === primaryOrganizationId) ?? null)
     : null;
 
   const isLoading = !isCreate && isLoadingDetail;

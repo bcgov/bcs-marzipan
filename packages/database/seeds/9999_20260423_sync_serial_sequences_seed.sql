@@ -23,7 +23,9 @@ SELECT setval('ministries_id_seq', COALESCE((SELECT MAX(id) FROM ministries), 1)
 SELECT setval('ministry_groups_id_seq', COALESCE((SELECT MAX(id) FROM ministry_groups), 1), true);
 SELECT setval('news_release_distributions_id_seq', COALESCE((SELECT MAX(id) FROM news_release_distributions), 1), true);
 SELECT setval('news_release_origins_id_seq', COALESCE((SELECT MAX(id) FROM news_release_origins), 1), true);
+SELECT setval('organization_types_id_seq', COALESCE((SELECT MAX(id) FROM organization_types), 1), true);
 SELECT setval('organizations_id_seq', COALESCE((SELECT MAX(id) FROM organizations), 1), true);
+SELECT setval('activity_organizations_id_seq', COALESCE((SELECT MAX(id) FROM activity_organizations), 1), true);
 SELECT setval('permissions_id_seq', COALESCE((SELECT MAX(id) FROM permissions), 1), true);
 SELECT setval('premier_requested_id_seq', COALESCE((SELECT MAX(id) FROM premier_requested), 1), true);
 SELECT setval('reports_id_seq', COALESCE((SELECT MAX(id) FROM reports), 1), true);

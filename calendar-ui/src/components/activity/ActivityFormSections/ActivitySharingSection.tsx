@@ -53,7 +53,7 @@ export type SharingTeamLookup = {
   id: number;
   name: string;
   displayName?: string;
-  ministryId: number | null;
+  primaryOrganizationId: number | null;
   isActive: boolean;
   appearsInShareWith: boolean;
 };
@@ -71,7 +71,9 @@ function teamIdsForMinistries(
 ): number[] {
   const set = new Set(ministryIds);
   return teams
-    .filter((t) => t.ministryId != null && set.has(t.ministryId))
+    .filter(
+      (t) => t.primaryOrganizationId != null && set.has(t.primaryOrganizationId)
+    )
     .map((t) => t.id);
 }
 

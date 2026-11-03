@@ -127,7 +127,6 @@ describe('useActivityFormSubmitState', () => {
           title: 'Quarterly planning session',
           summary: validSummary,
           leadTeamId: 1,
-          leadMinistryId: 1,
           categoryIds: [1],
           dateStatusId: 1,
           timeStatusId: 1,

@@ -58,10 +58,8 @@ export const ACTIVITY_FORM_SECTION_FIELDS = {
     'isIssue',
     'summary',
     'significance',
-    'leadOrgId',
-    'leadOrgName',
+    'organizations',
     'tagIds',
-    'internalNotes',
     'notes',
   ],
   comms: [
@@ -106,7 +104,6 @@ export const ACTIVITY_FORM_SECTION_REGISTRY_OMITTED_KEYS = [
   'markAsReviewed',
   'activityHistoryNotes',
   'commsContactLeadId',
-  'leadMinistryId',
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
 type ActivityFormSectionFieldKey = {

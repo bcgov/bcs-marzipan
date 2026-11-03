@@ -56,9 +56,9 @@ export interface LookupMaps {
   governmentRepresentativesMap?: StatusLookupMap;
   /** Resolves leadTeamId → team display name */
   teamsMap?: StatusLookupMap;
-  /** Resolves leadMinistryId → ministry display name */
+  /** Resolves ministry org IDs → ministry display name (legacy history) */
   ministriesMap?: StatusLookupMap;
-  /** Resolves leadOrgId → organization display name */
+  /** Resolves organization lookup IDs → display names */
   organizationsMap?: StatusLookupMap;
 }
 
@@ -197,12 +197,25 @@ export function formatHistoryFieldValue(
     return lookupMaps.ministriesMap.get(value) || String(value);
   }
 
-  if (
-    field === 'leadOrgId' &&
-    typeof value === 'number' &&
-    lookupMaps?.organizationsMap
-  ) {
-    return lookupMaps.organizationsMap.get(value) || String(value);
+  if (field === 'organizations' && Array.isArray(value)) {
+    const orgs = value as Array<{
+      organizationId?: number;
+      organizationName?: string;
+      isLead?: boolean;
+    }>;
+    if (orgs.length === 0) return '(none)';
+    const labels = orgs.map((o) => {
+      const fromName = o.organizationName?.trim();
+      if (fromName) return o.isLead ? `${fromName} (lead)` : fromName;
+      if (typeof o.organizationId === 'number') {
+        const resolved =
+          lookupMaps?.organizationsMap?.get(o.organizationId) ??
+          String(o.organizationId);
+        return o.isLead ? `${resolved} (lead)` : resolved;
+      }
+      return o.isLead ? '(unknown) (lead)' : '(unknown)';
+    });
+    return labels.join(', ');
   }
 
   if (field === 'visibility' && typeof value === 'string') {
@@ -382,15 +395,12 @@ const FIELDS_TO_COMPARE = [
   'startTime',
   'endTime',
   'notes',
-  'internalNotes',
   'executiveSummary',
   'translationsRequiredStatusId',
   'lookAheadStatus',
   'lookAheadSection',
-  'leadOrgId',
-  'leadOrgName',
+  'organizations',
   'leadTeamId',
-  'leadMinistryId',
   'eventPlanners',
   'newsReleaseDistributionId',
   'premierRequestedId',

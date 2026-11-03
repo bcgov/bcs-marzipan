@@ -139,12 +139,21 @@ export function ActivityFormBody({
   );
 
   const teamMinistryRefs = useMemo(() => {
-    const byId = new Map<number, { id: number; ministryId: number | null }>();
+    const byId = new Map<
+      number,
+      { id: number; primaryOrganizationId: number | null }
+    >();
     for (const team of lookups.sharedWithTeams) {
-      byId.set(team.id, { id: team.id, ministryId: team.ministryId });
+      byId.set(team.id, {
+        id: team.id,
+        primaryOrganizationId: team.primaryOrganizationId,
+      });
     }
     for (const team of leadTeamField.options) {
-      byId.set(team.id, { id: team.id, ministryId: team.ministryId });
+      byId.set(team.id, {
+        id: team.id,
+        primaryOrganizationId: team.primaryOrganizationId,
+      });
     }
     return [...byId.values()];
   }, [leadTeamField.options, lookups.sharedWithTeams]);

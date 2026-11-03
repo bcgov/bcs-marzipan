@@ -23,6 +23,7 @@ import {
   newsReleaseOrigins,
   normalizedLookupName,
   organizations,
+  organizationTypes,
   permissions,
   permissionVisibilityAudit,
   premierRequested,
@@ -302,11 +303,19 @@ export class LookupsService {
     const results = await this.databaseService.db
       .select({
         id: organizations.id,
+        uuid: organizations.uuid,
         name: organizations.name,
         displayName: organizations.displayName,
-        ministryId: organizations.ministryId,
+        abbreviation: organizations.abbreviation,
+        organizationTypeId: organizations.organizationTypeId,
+        jurisdiction: organizations.jurisdiction,
+        typeDisplayName: organizationTypes.displayName,
       })
       .from(organizations)
+      .leftJoin(
+        organizationTypes,
+        eq(organizations.organizationTypeId, organizationTypes.id)
+      )
       .where(eq(organizations.isActive, true))
       .orderBy(organizations.sortOrder);
 
@@ -316,8 +325,133 @@ export class LookupsService {
       value: org.id,
       name: org.name,
       displayName: org.displayName,
-      ministryId: org.ministryId,
+      uuid: org.uuid,
+      abbreviation: org.abbreviation,
+      organizationTypeId: org.organizationTypeId,
+      organizationTypeDisplayName: org.typeDisplayName,
+      jurisdiction: org.jurisdiction,
     }));
+  }
+
+  async getOrganizationTypes(includeInactive = false) {
+    const base = this.databaseService.db.select().from(organizationTypes);
+    const rows = await (
+      includeInactive ? base : base.where(eq(organizationTypes.isActive, true))
+    ).orderBy(organizationTypes.sortOrder);
+    return rows;
+  }
+
+  async createOrganizationType(
+    data: {
+      name: string;
+      displayName: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    },
+    currentUserId: number
+  ) {
+    const sortOrder = data.sortOrder ?? 0;
+    const now = new Date();
+    const [row] = await this.databaseService.db
+      .insert(organizationTypes)
+      .values({
+        name: data.name,
+        displayName: data.displayName,
+        sortOrder,
+        isActive: data.isActive ?? true,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return row;
+  }
+
+  async updateOrganizationType(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      sortOrder: number;
+      isActive: boolean;
+    }>,
+    currentUserId: number
+  ) {
+    const now = new Date();
+    const [row] = await this.databaseService.db
+      .update(organizationTypes)
+      .set({
+        ...data,
+        lastUpdatedBy: currentUserId,
+        lastUpdatedDateTime: now,
+      })
+      .where(eq(organizationTypes.id, id))
+      .returning();
+    if (!row) throw new NotFoundException('Organization type not found');
+    return row;
+  }
+
+  async createOrganization(
+    data: {
+      name: string;
+      displayName: string;
+      abbreviation?: string | null;
+      organizationTypeId: number;
+      jurisdiction: string;
+      sortOrder?: number;
+      isActive?: boolean;
+      description?: string | null;
+    },
+    currentUserId: number
+  ) {
+    const now = new Date();
+    const [row] = await this.databaseService.db
+      .insert(organizations)
+      .values({
+        name: data.name,
+        displayName: data.displayName,
+        abbreviation: data.abbreviation ?? null,
+        organizationTypeId: data.organizationTypeId,
+        jurisdiction: data.jurisdiction,
+        sortOrder: data.sortOrder ?? 0,
+        isActive: data.isActive ?? true,
+        description: data.description ?? null,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return row;
+  }
+
+  async updateOrganization(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      abbreviation: string | null;
+      organizationTypeId: number;
+      jurisdiction: string;
+      sortOrder: number;
+      isActive: boolean;
+      description: string | null;
+    }>,
+    currentUserId: number
+  ) {
+    const now = new Date();
+    const [row] = await this.databaseService.db
+      .update(organizations)
+      .set({
+        ...data,
+        lastUpdatedBy: currentUserId,
+        lastUpdatedDateTime: now,
+      })
+      .where(eq(organizations.id, id))
+      .returning();
+    if (!row) throw new NotFoundException('Organization not found');
+    return row;
   }
 
   /**
@@ -1753,16 +1887,17 @@ export class LookupsService {
     const results = await this.databaseService.db
       .select({
         id: ministries.id,
-        name: ministries.name,
-        displayName: ministries.displayName,
-        abbreviation: ministries.abbreviation,
+        name: organizations.name,
+        displayName: organizations.displayName,
+        abbreviation: organizations.abbreviation,
         ministerGovernmentRepId: ministries.ministerGovernmentRepId,
         ministerRepDisplayName: governmentRepresentatives.displayName,
-        sortOrder: ministries.sortOrder,
-        isActive: ministries.isActive,
+        sortOrder: organizations.sortOrder,
+        isActive: organizations.isActive,
         ministryGroupId: ministries.ministryGroupId,
       })
       .from(ministries)
+      .innerJoin(organizations, eq(ministries.id, organizations.id))
       .leftJoin(
         governmentRepresentatives,
         eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
@@ -2357,7 +2492,7 @@ export class LookupsService {
     data: {
       name: string;
       displayName: string;
-      abbreviation: string; // Required by schema
+      abbreviation: string;
       ministerGovernmentRepId?: number | null;
       sortOrder?: number;
       isActive?: boolean;
@@ -2365,14 +2500,14 @@ export class LookupsService {
     },
     currentUserId: number
   ): Promise<typeof ministries.$inferSelect> {
-    await this.assertLookupNameIsUnique(ministries, data.name, 'ministry');
+    await this.assertLookupNameIsUnique(organizations, data.name, 'ministry');
 
     const sortOrder = await this.sortOrderForCreate(
       'ministries',
       data.sortOrder
     );
     return this.withLookupConflict(
-      'ministries_normalized_name_unique',
+      'organizations_normalized_name_unique',
       'A ministry with this name already exists.',
       () =>
         this.databaseService.db.transaction(async (tx) => {
@@ -2393,25 +2528,29 @@ export class LookupsService {
               );
           }
 
-          // Seeds insert explicit ministry ids without advancing the serial sequence.
-          await tx.execute(sql`
-            SELECT setval(
-              pg_get_serial_sequence('public.ministries', 'id'),
-              COALESCE((SELECT MAX(id) FROM ministries), 1),
-              EXISTS (SELECT 1 FROM ministries)
-            )
-          `);
-
-          const [result] = await tx
-            .insert(ministries)
+          const [org] = await tx
+            .insert(organizations)
             .values({
               name: this.normalizeLookupName(data.name),
               displayName: data.displayName,
               abbreviation: data.abbreviation,
-              ministerGovernmentRepId:
-                data.ministerGovernmentRepId ?? undefined,
+              organizationTypeId: 1,
+              jurisdiction: 'bcgov',
               sortOrder,
               isActive: data.isActive ?? true,
+              createdBy: currentUserId,
+              lastUpdatedBy: currentUserId,
+              createdDateTime: now,
+              lastUpdatedDateTime: now,
+            })
+            .returning({ id: organizations.id });
+
+          const [result] = await tx
+            .insert(ministries)
+            .values({
+              id: org.id,
+              ministerGovernmentRepId:
+                data.ministerGovernmentRepId ?? undefined,
               ministryGroupId: data.ministryGroupId ?? undefined,
               createdBy: currentUserId,
               lastUpdatedBy: currentUserId,
@@ -3051,52 +3190,40 @@ export class LookupsService {
   ): Promise<typeof ministries.$inferSelect | undefined> {
     if (data.name !== undefined) {
       await this.assertLookupNameIsUnique(
-        ministries,
+        organizations,
         data.name,
         'ministry',
         id
       );
     }
 
-    // Build update object explicitly to ensure type safety
-    const updateData: Partial<typeof ministries.$inferInsert> = {
+    const ministryUpdate: Partial<typeof ministries.$inferInsert> = {
       lastUpdatedBy: currentUserId,
       lastUpdatedDateTime: new Date(),
     };
-
-    if (data.name !== undefined)
-      updateData.name = this.normalizeLookupName(data.name);
-    if (data.displayName !== undefined)
-      updateData.displayName = data.displayName;
-    if (data.abbreviation !== undefined)
-      updateData.abbreviation = data.abbreviation;
     if (data.ministerGovernmentRepId !== undefined) {
-      updateData.ministerGovernmentRepId =
+      ministryUpdate.ministerGovernmentRepId =
         data.ministerGovernmentRepId === null
           ? null
           : data.ministerGovernmentRepId;
     }
-    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
-    if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.ministryGroupId !== undefined) {
-      updateData.ministryGroupId =
+      ministryUpdate.ministryGroupId =
         data.ministryGroupId === null ? null : data.ministryGroupId;
     }
 
-    // Read the current abbreviation so we can tell whether a cascade is needed.
-    let currentAbbreviation: string | null = null;
-    if (data.abbreviation !== undefined) {
-      const [current] = await this.databaseService.db
-        .select({ abbreviation: ministries.abbreviation })
-        .from(ministries)
-        .where(eq(ministries.id, id))
-        .limit(1);
-      currentAbbreviation = current?.abbreviation ?? null;
-    }
-
-    const abbreviationChanged =
-      data.abbreviation !== undefined &&
-      data.abbreviation !== currentAbbreviation;
+    const orgUpdate: Partial<typeof organizations.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+    if (data.name !== undefined)
+      orgUpdate.name = this.normalizeLookupName(data.name);
+    if (data.displayName !== undefined)
+      orgUpdate.displayName = data.displayName;
+    if (data.abbreviation !== undefined)
+      orgUpdate.abbreviation = data.abbreviation;
+    if (data.sortOrder !== undefined) orgUpdate.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) orgUpdate.isActive = data.isActive;
 
     const run = async (
       tx: DrizzleDbExecutor
@@ -3123,33 +3250,24 @@ export class LookupsService {
           );
       }
 
+      await tx
+        .update(organizations)
+        .set(orgUpdate)
+        .where(eq(organizations.id, id));
+
       const [updated] = await tx
         .update(ministries)
-        .set(updateData)
+        .set(ministryUpdate)
         .where(eq(ministries.id, id))
         .returning();
-
-      if (abbreviationChanged) {
-        await this.activityDisplayIdSyncService.refreshAfterMinistryAbbreviationChange(
-          tx,
-          id,
-          currentUserId
-        );
-      }
 
       return updated;
     };
 
     return this.withLookupConflict(
-      'ministries_normalized_name_unique',
+      'organizations_normalized_name_unique',
       'A ministry with this name already exists.',
-      () => {
-        if (abbreviationChanged) {
-          return this.databaseService.db.transaction(run);
-        }
-        // Use root pool when no cascade is needed to avoid unnecessary transaction overhead.
-        return run(this.databaseService.db);
-      }
+      () => run(this.databaseService.db)
     );
   }
 

@@ -103,10 +103,8 @@ describe('activity-form-sections', () => {
         'isConfidential',
         'isIssue',
         'significance',
-        'leadOrgId',
-        'leadOrgName',
+        'organizations',
         'tagIds',
-        'internalNotes',
         'notes',
       ],
       comms: [

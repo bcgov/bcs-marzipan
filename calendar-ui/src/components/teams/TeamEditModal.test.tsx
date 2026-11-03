@@ -96,8 +96,8 @@ const mockTeamListItem: TeamListItem = {
   appearsInShareWith: true,
   roleId: null,
   memberCount: 0,
-  ministryId: null,
-  ministryName: null,
+  primaryOrganizationId: null,
+  primaryOrganizationName: null,
 };
 
 const mockTeamDetail: TeamDetail = {
@@ -184,8 +184,8 @@ describe('TeamEditModal', () => {
           isActive: true,
           roleId: null,
           memberCount: 0,
-          ministryId: null,
-          ministryName: null,
+          primaryOrganizationId: null,
+          primaryOrganizationName: null,
         },
       ]);
 
@@ -236,8 +236,8 @@ describe('TeamEditModal', () => {
     it('calls toast.success with id team-updated-{id} when update succeeds', async () => {
       mockFetchTeamById.mockResolvedValue({
         ...mockTeamDetail,
-        ministryId: 1,
-        ministryName: 'Ministry 1',
+        primaryOrganizationId: 1,
+        primaryOrganizationName: 'Ministry 1',
       });
       mockUpdateTeam.mockResolvedValue({
         ...mockTeamListItem,
@@ -271,8 +271,8 @@ describe('TeamEditModal', () => {
     it('calls toast.error with id team-updated-{id} when update fails', async () => {
       mockFetchTeamById.mockResolvedValue({
         ...mockTeamDetail,
-        ministryId: 1,
-        ministryName: 'Ministry 1',
+        primaryOrganizationId: 1,
+        primaryOrganizationName: 'Ministry 1',
       });
       mockUpdateTeam.mockRejectedValue(new Error('Server error'));
       const user = userEvent.setup();

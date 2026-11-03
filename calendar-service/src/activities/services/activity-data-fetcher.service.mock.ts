@@ -29,7 +29,7 @@ const DEFAULTS = {
   },
   fetchCommsContactsForActivities: new Map(),
   fetchUserNamesForUserIds: new Map(),
-  fetchLeadOrgNamesForActivities: new Map(),
+  fetchOrganizationDetailsForActivities: new Map(),
   fetchEventPlannerDetailsForActivities: new Map() as Map<
     number,
     EventPlannerDetail[]

@@ -15,8 +15,6 @@ import {
 } from './activity.schema';
 
 const validLeadTeamId = 1;
-const validLeadMinistryId = 1;
-
 /** Minimal valid create request; includes required commsContacts with one lead. */
 function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
   return {
@@ -29,9 +27,9 @@ function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
     timeStatusId: 1,
     activityStatusId: 1,
     leadTeamId: validLeadTeamId,
-    leadMinistryId: validLeadMinistryId,
     categoryIds: [1],
     commsContacts: [{ userId: 1, isLead: true }],
+    organizations: [{ organizationId: 1, isLead: true }],
     ...overrides,
   };
 }
@@ -41,7 +39,6 @@ describe('createActivityRequestSchema', () => {
     const result = createActivityRequestSchema.parse(minimalCreateRequest());
     expect(result.title).toBe('Test Activity');
     expect(result.leadTeamId).toBe(validLeadTeamId);
-    expect(result.leadMinistryId).toBe(validLeadMinistryId);
   });
 
   it('requires start and end dates with field-specific messages on create', () => {
@@ -211,19 +208,12 @@ describe('createActivityRequestSchema', () => {
     ).toThrow();
   });
 
-  it('enforces internalNotes and notes max length (2000)', () => {
+  it('enforces notes max length (2000)', () => {
     createActivityRequestSchema.parse(
       minimalCreateRequest({
-        internalNotes: 'a'.repeat(2000),
         notes: 'b'.repeat(2000),
       })
     );
-
-    expect(() =>
-      createActivityRequestSchema.parse(
-        minimalCreateRequest({ internalNotes: 'a'.repeat(2001) })
-      )
-    ).toThrow();
 
     expect(() =>
       createActivityRequestSchema.parse(
@@ -307,11 +297,21 @@ describe('createActivityRequestSchema', () => {
     );
   });
 
-  it('transforms empty string to null for leadOrgId (emptyStringToNull)', () => {
+  it('requires at least one organization on create', () => {
+    expect(() =>
+      createActivityRequestSchema.parse(
+        minimalCreateRequest({ organizations: [] })
+      )
+    ).toThrow();
+  });
+
+  it('accepts organizations with lookup id and lead flag', () => {
     const result = createActivityRequestSchema.parse(
-      minimalCreateRequest({ leadOrgId: '' })
+      minimalCreateRequest({
+        organizations: [{ organizationId: 2, isLead: true }],
+      })
     );
-    expect(result.leadOrgId).toBeNull();
+    expect(result.organizations).toEqual([{ organizationId: 2, isLead: true }]);
   });
 
   it('requires leadTeamId', () => {
@@ -328,23 +328,6 @@ describe('createActivityRequestSchema', () => {
         minimalCreateRequest({ leadTeamId: 'not-a-number' })
       )
     ).toThrow();
-  });
-
-  it('validates leadMinistryId as integer when provided', () => {
-    expect(() =>
-      createActivityRequestSchema.parse(
-        minimalCreateRequest({ leadMinistryId: 'not-a-number' })
-      )
-    ).toThrow();
-  });
-
-  it('accepts leadMinistryId as null or undefined', () => {
-    createActivityRequestSchema.parse(
-      minimalCreateRequest({ leadMinistryId: null })
-    );
-    createActivityRequestSchema.parse(
-      minimalCreateRequest({ leadMinistryId: undefined })
-    );
   });
 
   it('accepts create with commsContacts having exactly one lead', () => {

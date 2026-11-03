@@ -2,7 +2,6 @@ import { relations, sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
-  check,
   date,
   index,
   integer,
@@ -25,13 +24,12 @@ import {
   translationRequiredStatuses,
   venueStatuses,
 } from './lookups';
-import { ministries } from './ministry';
-import { organizations } from './organizations';
 import {
   activityCategories,
   activityCommsContacts,
   activityCommsMaterials,
   activityEventPlanners,
+  activityOrganizations,
   activityRepresentatives,
   activitySectors,
   activitySharedWithTeams,
@@ -53,15 +51,13 @@ export const activities = pgTable(
   {
     id: serial('id').primaryKey().notNull(),
 
-    // Display ID (computed): <ministryOrTeamPrefix>-<numeric segment> (see shared buildActivityDisplayId)
-    // Prefix from lead ministry abbreviation when set and non-empty after normalize; else team abbreviation or TEAM fallback.
+    // Display ID (computed): <prefix>-<numeric segment> (see shared buildActivityDisplayId)
+    // Prefix from lead team abbreviation (normalized), or TEAM fallback when empty.
     // Numeric segment: full id zero-padded to min width 6 (e.g. AG-000123, HLTH-123456789).
     displayId: varchar('display_id', { length: 50 }).unique(),
 
     // Overview and approval
     title: varchar('title', { length: 255 }).notNull(),
-    leadOrgId: integer('lead_org_id').references(() => organizations.id), // FK to Organizations (mutually exclusive with leadOrgName)
-    leadOrgName: varchar('lead_org_name', { length: 255 }), // Free text for organizations not in Organizations table (mutually exclusive with leadOrgId)
     summary: text('summary').notNull(),
     significance: text('significance'),
     isIssue: boolean('is_issue').notNull().default(false),
@@ -101,8 +97,7 @@ export const activities = pgTable(
     isConfidential: boolean('is_confidential').notNull().default(false),
 
     // Notes and additional fields
-    notes: text('notes'),
-    internalNotes: text('internal_notes'),
+    notes: text('notes'), // Maps to legacy Comments field
     translationsRequiredStatusId: integer(
       'translations_required_status_id'
     ).references(() => translationRequiredStatuses.id), // pending, required, not_required
@@ -119,7 +114,6 @@ export const activities = pgTable(
     leadTeamId: integer('lead_team_id')
       .notNull()
       .references(() => teams.id), // FK to Teams - primary association for which team leads this activity
-    leadMinistryId: integer('lead_ministry_id').references(() => ministries.id), // FK to Ministry (nullable; derived from lead team's ministry for displayId/reporting)
     activityStatusId: integer('activity_status_id')
       .notNull()
       .references(() => activityStatuses.id), // FK to ActivityStatus
@@ -158,11 +152,6 @@ export const activities = pgTable(
     rowVersion: bigint('row_version', { mode: 'number' }).notNull().default(0), // Optimistic concurrency control
   },
   (table) => [
-    // CHECK constraint: at most one of leadOrgId or leadOrgName (both null allowed)
-    check(
-      'lead_org_at_most_one',
-      sql`NOT (${table.leadOrgId} IS NOT NULL AND ${table.leadOrgName} IS NOT NULL)`
-    ),
     // Trigram indexes for ILIKE search
     index('idx_activities_title_trgm').using(
       'gin',
@@ -193,10 +182,6 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     fields: [activities.venueStatusId],
     references: [venueStatuses.id],
   }),
-  leadOrg: one(organizations, {
-    fields: [activities.leadOrgId],
-    references: [organizations.id],
-  }),
   newsReleaseOrigin: one(newsReleaseOrigins, {
     fields: [activities.newsReleaseOriginId],
     references: [newsReleaseOrigins.id],
@@ -211,11 +196,6 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     fields: [activities.leadTeamId],
     references: [teams.id],
     relationName: 'leadTeam',
-  }),
-  leadMinistry: one(ministries, {
-    fields: [activities.leadMinistryId],
-    references: [ministries.id],
-    relationName: 'leadMinistry',
   }),
   newsReleaseDistribution: one(newsReleaseDistributions, {
     fields: [activities.newsReleaseDistributionId],
@@ -237,6 +217,7 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
   activityCategories: many(activityCategories),
   activityCommsMaterials: many(activityCommsMaterials),
   activityEventPlanners: many(activityEventPlanners),
+  activityOrganizations: many(activityOrganizations),
   activityTranslationsRequired: many(activityTranslationsRequired),
   activityRepresentatives: many(activityRepresentatives),
   activitySharedWithTeams: many(activitySharedWithTeams),

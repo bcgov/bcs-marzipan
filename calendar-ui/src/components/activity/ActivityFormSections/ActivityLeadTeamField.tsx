@@ -28,7 +28,7 @@ import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 export type LeadOrganizationOptionForLeadTeam = {
   value: number;
   label: string;
-  ministryId?: number | null;
+  primaryOrganizationId?: number | null;
 };
 
 /**
@@ -72,8 +72,8 @@ export function ActivityLeadTeamField({
               appearsInShareWith: true,
               roleId: null,
               memberCount: 0,
-              ministryId: null,
-              ministryName: null,
+              primaryOrganizationId: null,
+              primaryOrganizationName: null,
             });
           }
           return list;
@@ -81,8 +81,8 @@ export function ActivityLeadTeamField({
 
         const options: OptionItem[] = mergedTeams.map((t) => ({
           value: String(t.id),
-          label: t.ministryName
-            ? `${t.displayName || t.name} (${t.ministryName})`
+          label: t.primaryOrganizationName
+            ? `${t.displayName || t.name} (${t.primaryOrganizationName})`
             : t.displayName || t.name,
         }));
 
@@ -97,21 +97,16 @@ export function ActivityLeadTeamField({
             previousTeamId != null
               ? mergedTeams.find((t) => t.id === previousTeamId)
               : null;
-          const syncedOrgId =
-            previousTeam?.ministryId != null
-              ? (organizations.find(
-                  (o) => o.ministryId === previousTeam.ministryId
-                )?.value ?? null)
-              : null;
-          const currentLeadOrgId = form.getValues('leadOrgId') ?? null;
-          const currentLeadOrgName = form.getValues('leadOrgName') ?? null;
+          const syncedOrgId = previousTeam?.primaryOrganizationId ?? null;
+          const currentOrgs = form.getValues('organizations') ?? [];
+          const leadEntry = currentOrgs.find((o) => o.isLead) ?? currentOrgs[0];
           const leadOrgInSyncWithTeam =
-            (syncedOrgId != null &&
-              currentLeadOrgId === syncedOrgId &&
-              (currentLeadOrgName == null || currentLeadOrgName === '')) ||
-            (syncedOrgId == null &&
-              currentLeadOrgId == null &&
-              (currentLeadOrgName == null || currentLeadOrgName === ''));
+            currentOrgs.length === 0 ||
+            (currentOrgs.length === 1 &&
+              leadEntry?.organizationId != null &&
+              leadEntry.organizationId === syncedOrgId &&
+              !leadEntry.organizationName) ||
+            (syncedOrgId == null && currentOrgs.length === 0);
 
           const teamId = option
             ? optionalSelectIdValue(option.value)
@@ -123,34 +118,20 @@ export function ActivityLeadTeamField({
           );
 
           if (teamId == null) {
-            setActivityFormFieldValue(form, 'leadMinistryId', undefined);
             if (leadOrgInSyncWithTeam) {
-              setActivityFormFieldValue(form, 'leadOrgId', null);
-              setActivityFormFieldValue(form, 'leadOrgName', null);
+              setActivityFormFieldValue(form, 'organizations', []);
             }
           } else {
             const team = mergedTeams.find((t) => t.id === teamId);
-            setActivityFormFieldValue(
-              form,
-              'leadMinistryId',
-              team?.ministryId ?? undefined
-            );
-            if (leadOrgInSyncWithTeam && team) {
-              const orgForMinistry =
-                team.ministryId != null
-                  ? organizations.find((o) => o.ministryId === team.ministryId)
-                  : undefined;
-              if (orgForMinistry) {
-                setActivityFormFieldValue(
-                  form,
-                  'leadOrgId',
-                  orgForMinistry.value
-                );
-                setActivityFormFieldValue(form, 'leadOrgName', null);
-              } else {
-                setActivityFormFieldValue(form, 'leadOrgId', null);
-                setActivityFormFieldValue(form, 'leadOrgName', null);
-              }
+            if (leadOrgInSyncWithTeam && team?.primaryOrganizationId) {
+              setActivityFormFieldValue(form, 'organizations', [
+                {
+                  organizationId: team.primaryOrganizationId,
+                  isLead: true,
+                },
+              ]);
+            } else if (leadOrgInSyncWithTeam && team) {
+              setActivityFormFieldValue(form, 'organizations', []);
             }
           }
         };

@@ -43,6 +43,8 @@ import {
   createGovernmentRepresentativeRequestSchema,
   createMinistryGroupRequestSchema,
   createMinistryRequestSchema,
+  createOrganizationRequestSchema,
+  createOrganizationTypeRequestSchema,
   createReleaseTypeRequestSchema,
   createTagRequestSchema,
   createThemeRequestSchema,
@@ -57,6 +59,8 @@ import {
   updateLookupSortModeRequestSchema,
   updateMinistryGroupRequestSchema,
   updateMinistryRequestSchema,
+  updateOrganizationRequestSchema,
+  updateOrganizationTypeRequestSchema,
   updateReleaseTypeRequestSchema,
   updateTagRequestSchema,
   updateThemeRequestSchema,
@@ -283,6 +287,78 @@ export class LookupsController {
   ): Promise<{ success: boolean; data: OrganizationLookupItem[] }> {
     const params: LookupQueryParams = { userId, role, organizationId };
     const data = await this.lookupsService.getOrganizations(params);
+    return { success: true, data };
+  }
+
+  @Get('organization-types')
+  @Header('Cache-Control', lookupGetCacheControl())
+  async getOrganizationTypes(
+    @Query('includeAll') includeAll?: string,
+    @CurrentUser() user?: AuthUser
+  ) {
+    const includeInactive =
+      includeAll === 'true' &&
+      (user?.permissions?.includes('lookups.organization_types.manage') ??
+        false);
+    const data =
+      await this.lookupsService.getOrganizationTypes(includeInactive);
+    return { success: true, data };
+  }
+
+  @RequirePermission('lookups.organization_types.manage')
+  @Post('organization-types')
+  async createOrganizationType(
+    @Body(new ZodValidationPipe(createOrganizationTypeRequestSchema))
+    body: z.infer<typeof createOrganizationTypeRequestSchema>,
+    @CurrentUser() user: AuthUser
+  ) {
+    const data = await this.lookupsService.createOrganizationType(
+      body,
+      user.id
+    );
+    return { success: true, data };
+  }
+
+  @RequirePermission('lookups.organization_types.manage')
+  @Patch('organization-types/:id')
+  async updateOrganizationType(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateOrganizationTypeRequestSchema))
+    body: z.infer<typeof updateOrganizationTypeRequestSchema>,
+    @CurrentUser() user: AuthUser
+  ) {
+    const data = await this.lookupsService.updateOrganizationType(
+      Number(id),
+      body,
+      user.id
+    );
+    return { success: true, data };
+  }
+
+  @RequirePermission('lookups.organizations.manage')
+  @Post('organizations')
+  async createOrganization(
+    @Body(new ZodValidationPipe(createOrganizationRequestSchema))
+    body: z.infer<typeof createOrganizationRequestSchema>,
+    @CurrentUser() user: AuthUser
+  ) {
+    const data = await this.lookupsService.createOrganization(body, user.id);
+    return { success: true, data };
+  }
+
+  @RequirePermission('lookups.organizations.manage')
+  @Patch('organizations/:id')
+  async updateOrganization(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateOrganizationRequestSchema))
+    body: z.infer<typeof updateOrganizationRequestSchema>,
+    @CurrentUser() user: AuthUser
+  ) {
+    const data = await this.lookupsService.updateOrganization(
+      Number(id),
+      body,
+      user.id
+    );
     return { success: true, data };
   }
 

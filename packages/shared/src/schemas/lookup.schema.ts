@@ -132,12 +132,23 @@ export const tagLookupItemSchema = lookupItemSchema.extend({
  * Organization Response Schema
  * Fields from the organizations table exposed via API
  */
-export const organizationResponseSchema = z.object({
+export const organizationTypeResponseSchema = z.object({
   id: z.number().int(),
+  uuid: z.string().uuid(),
   name: z.string(),
   displayName: z.string(),
-  organizationType: z.string().nullable(),
-  ministryId: z.number().int().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+});
+
+export const organizationResponseSchema = z.object({
+  id: z.number().int(),
+  uuid: z.string().uuid(),
+  name: z.string(),
+  displayName: z.string(),
+  abbreviation: z.string().nullable(),
+  organizationTypeId: z.number().int().nullable(),
+  jurisdiction: z.string().nullable(),
   isActive: z.boolean(),
   sortOrder: z.number().int(),
   description: z.string().nullable(),
@@ -149,8 +160,36 @@ export const organizationLookupItemSchema = z.object({
   value: z.number().int(),
   name: z.string(),
   displayName: z.string(),
-  ministryId: z.number().int().nullable().optional(),
+  uuid: z.string().uuid().optional(),
+  abbreviation: z.string().nullable().optional(),
+  organizationTypeId: z.number().int().nullable().optional(),
+  organizationTypeDisplayName: z.string().nullable().optional(),
+  jurisdiction: z.string().nullable().optional(),
 });
+
+export const createOrganizationTypeRequestSchema = z.object({
+  name: z.string().min(1).max(100),
+  displayName: z.string().min(1).max(255),
+  sortOrder: optionalCreateSortOrderSchema,
+  isActive: z.boolean().default(true).optional(),
+});
+
+export const updateOrganizationTypeRequestSchema =
+  createOrganizationTypeRequestSchema.partial();
+
+export const createOrganizationRequestSchema = z.object({
+  name: z.string().min(1).max(255),
+  displayName: z.string().min(1).max(255),
+  abbreviation: z.string().max(8).nullable().optional(),
+  organizationTypeId: z.number().int(),
+  jurisdiction: z.enum(['bcgov', 'federal', 'provincial', 'other']),
+  sortOrder: optionalCreateSortOrderSchema,
+  isActive: z.boolean().default(true).optional(),
+  description: z.string().nullable().optional(),
+});
+
+export const updateOrganizationRequestSchema =
+  createOrganizationRequestSchema.partial();
 
 // ============================================
 // Ministry Schema
@@ -164,7 +203,7 @@ export const ministryResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
   displayName: z.string(),
-  abbreviation: z.string().min(1).max(5),
+  abbreviation: z.string().min(1).max(8),
   sortOrder: z.number().int(),
   isActive: z.boolean(),
   ministerGovernmentRepId: z.number().int().nullable(),
@@ -177,7 +216,7 @@ export const ministryLookupItemSchema = z.object({
   value: z.number().int(),
   name: z.string(),
   displayName: z.string(),
-  abbreviation: z.string().max(5).nullable(),
+  abbreviation: z.string().max(8).nullable(),
   ministerGovernmentRepId: z.number().int().nullable().optional(),
   /** Joined from government_representatives when minister_government_rep_id is set */
   ministerDisplayName: z.string().nullable().optional(),
@@ -735,7 +774,7 @@ export const reorderLookupRequestSchema = z.object({
 export const createMinistryRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  abbreviation: z.string().min(1).max(5),
+  abbreviation: z.string().min(1).max(8),
   ministerGovernmentRepId: z.number().int().nullable().optional(),
   sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().default(true).optional(),
@@ -748,7 +787,7 @@ export const createMinistryRequestSchema = z.object({
 export const updateMinistryRequestSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   displayName: z.string().min(1).max(255).optional(),
-  abbreviation: z.string().min(1).max(5).optional(),
+  abbreviation: z.string().min(1).max(8).optional(),
   ministerGovernmentRepId: z.number().int().nullable().optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),

@@ -161,12 +161,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "internal_notes": {
-          "name": "internal_notes",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "translations_required_status_id": {
           "name": "translations_required_status_id",
           "type": "integer",

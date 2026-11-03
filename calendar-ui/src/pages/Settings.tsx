@@ -40,6 +40,8 @@ import {
   GovernmentRepresentativesAdmin,
   MinistriesAdmin,
   MinistryGroupsAdmin,
+  OrganizationsAdmin,
+  OrganizationTypesAdmin,
   PermissionsVisibilityAdminSection,
   ReleaseTypesAdmin,
   TagsAdmin,
@@ -140,6 +142,18 @@ export function Settings() {
       icon: Share2,
     },
     { id: 'ministries' as Section, label: 'Ministries', icon: Building2 },
+    {
+      id: 'organization-types' as Section,
+      label: 'Organization types',
+      icon: Building2,
+      show: isSystemAdmin,
+    },
+    {
+      id: 'organizations' as Section,
+      label: 'Organizations',
+      icon: Building2,
+      show: isSystemAdmin,
+    },
     {
       id: 'representatives' as Section,
       label: 'Government representatives',
@@ -408,6 +422,14 @@ function SettingsPageContent({
 
           <div id="section-ministries">
             <MinistriesAdmin />
+          </div>
+
+          <div id="section-organization-types">
+            <OrganizationTypesAdmin />
+          </div>
+
+          <div id="section-organizations">
+            <OrganizationsAdmin />
           </div>
 
           <div id="section-representatives">

@@ -40,11 +40,9 @@ export interface FormLookupData {
     description?: string | null;
   }>;
 
-  // Organizations - for Select/Combobox (id is number; coerce to string where UI requires). ministryId used for Lead Org sync from Lead Team.
   organizations: Array<{
     value: number;
     label: string;
-    ministryId?: number | null;
   }>;
 
   // Ministries - for Select (id is number; coerce to string where UI requires)
@@ -113,7 +111,7 @@ export interface FormLookupData {
     id: number;
     name: string;
     displayName?: string;
-    ministryId: number | null;
+    primaryOrganizationId: number | null;
     isActive: boolean;
     appearsInShareWith: boolean;
   }>;
@@ -219,12 +217,10 @@ export function useFormLookups(): FormLookupData {
         description: item.description,
       })) || [];
 
-    // Transform organizations for Select/Combobox (lookup ids are numbers). Include ministryId for Lead Team -> Lead Org sync.
     const organizations =
       organizationsQuery.data?.map((item) => ({
         value: item.value,
         label: item.label,
-        ministryId: item.ministryId ?? undefined,
       })) || [];
 
     // Transform ministries for Select
@@ -325,7 +321,7 @@ export function useFormLookups(): FormLookupData {
         id: t.id,
         name: t.name,
         displayName: t.displayName ?? undefined,
-        ministryId: t.ministryId,
+        primaryOrganizationId: t.primaryOrganizationId,
         isActive: t.isActive,
         appearsInShareWith: t.appearsInShareWith,
       })) ?? [];

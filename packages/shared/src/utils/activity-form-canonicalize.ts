@@ -2,6 +2,7 @@ import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ActivityFormData } from '../schemas/activity.schema';
 import { normalizeEventPlannerFormEntries } from './activity-form-event-planner-normalize';
 import { normalizeVenueAddressForForm } from './activity-form-mapper';
+import { normalizeOrganizationFormEntries } from './activity-form-organization-normalize';
 import {
   EMPTY_RICH_TEXT_DOC,
   isActivityRichTextEffectivelyEmpty,
@@ -75,7 +76,6 @@ export function canonicalizeActivityFormData(
         : data.significance,
     schedulingNotes: canonOptString(data.schedulingNotes),
     notes: canonOptString(data.notes),
-    internalNotes: canonOptString(data.internalNotes),
     executiveSummary:
       isNullishOrEmptyString(data.executiveSummary) ||
       isActivityRichTextEffectivelyEmpty(data.executiveSummary)
@@ -85,7 +85,6 @@ export function canonicalizeActivityFormData(
     endDate: canonOptString(data.endDate),
     startTime: canonOptString(data.startTime),
     endTime: canonOptString(data.endTime),
-    leadOrgName: canonOptString(data.leadOrgName),
     lookAheadStatus:
       data.lookAheadStatus === null || data.lookAheadStatus === undefined
         ? undefined
@@ -113,6 +112,7 @@ export function canonicalizeActivityFormData(
       data.venueAddress as ActivityResponse['venueAddress']
     ),
     eventPlanners: normalizeEventPlannerFormEntries(data.eventPlanners),
+    organizations: normalizeOrganizationFormEntries(data.organizations),
     representatives: canonObjectArray(data.representatives),
     commsContacts: canonObjectArray(data.commsContacts),
   };
@@ -172,7 +172,6 @@ export function prepareActivityFormDataForSubmit(
   return {
     ...c,
     notes: c.notes ?? null,
-    internalNotes: c.internalNotes ?? null,
     schedulingNotes: c.schedulingNotes ?? null,
     significance: c.significance ?? null,
     executiveSummary: c.executiveSummary ?? null,

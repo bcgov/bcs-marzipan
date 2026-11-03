@@ -76,7 +76,6 @@ describe('setActivityFormFieldValue', () => {
           title: 'Test',
           summary: EMPTY_RICH_TEXT_DOC,
           leadTeamId: 1,
-          leadMinistryId: 1,
           categoryIds: [],
           commsContacts: [{ userId: 1, isLead: true }],
         } as ActivityFormData,

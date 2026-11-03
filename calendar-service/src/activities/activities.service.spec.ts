@@ -307,15 +307,12 @@ describe('ActivitiesService', () => {
     computeDisplayIdFromLeadContext: vi.fn(
       (input: {
         activityId: number;
-        leadMinistryId: number | null | undefined;
-        ministryAbbreviation: string | null | undefined;
+        organizationAcronym?: string | null | undefined;
         teamAbbreviation: string | null | undefined;
       }) => {
-        if (input.leadMinistryId != null && input.ministryAbbreviation) {
-          return buildActivityDisplayId(
-            input.ministryAbbreviation,
-            input.activityId
-          );
+        const orgAcronym = input.organizationAcronym?.trim();
+        if (orgAcronym) {
+          return buildActivityDisplayId(orgAcronym, input.activityId);
         }
         const prefix = normalizeTeamAbbreviationForActivityDisplayId(
           input.teamAbbreviation
@@ -514,8 +511,6 @@ describe('ActivitiesService', () => {
         displayId: 'MIN-000123',
         summary: 'A detailed summary',
         isIssue: true,
-        leadOrgId: 1,
-        leadOrgName: 'Test Organization',
         significance: 'High significance',
         notes: 'Some notes',
         schedulingNotes: 'Consider scheduling',
@@ -524,7 +519,7 @@ describe('ActivitiesService', () => {
         eventPlanners: [{ eventPlannerId: 3, isLead: true }],
         lookAheadStatus: 'new',
         lookAheadSection: 'issues',
-        leadMinistryId: 1,
+
         startDate: new Date('2024-02-20') as any,
         startTime: '14:30',
         endDate: new Date('2024-02-20') as any,
@@ -635,7 +630,7 @@ describe('ActivitiesService', () => {
       expect(result).toHaveProperty('isAllDay');
       expect(result).toHaveProperty('sharedWith');
       expect(Array.isArray(result.sharedWith)).toBe(true);
-      expect(result).toHaveProperty('internalNotes');
+      expect(result).toHaveProperty('notes');
       expect(result).toHaveProperty('lookAheadStatus');
       expect(result).toHaveProperty('lookAheadSection');
       expect(result).toHaveProperty('createdDateTime');
@@ -925,7 +920,7 @@ describe('ActivitiesService', () => {
           if (
             selectArg &&
             typeof selectArg === 'object' &&
-            'ministryId' in selectArg &&
+            'primaryOrganizationId' in selectArg &&
             'name' in selectArg
           ) {
             return {
@@ -935,7 +930,7 @@ describe('ActivitiesService', () => {
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 1, name: 'Test Team', ministryId: 1 },
+                  { id: 1, name: 'Test Team', primaryOrganizationId: 1 },
                 ]),
             };
           }
@@ -1012,7 +1007,7 @@ describe('ActivitiesService', () => {
           if (
             selectArg &&
             typeof selectArg === 'object' &&
-            'ministryId' in selectArg &&
+            'primaryOrganizationId' in selectArg &&
             'name' in selectArg
           ) {
             return {
@@ -1022,7 +1017,7 @@ describe('ActivitiesService', () => {
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 1, name: 'Test Team', ministryId: 1 },
+                  { id: 1, name: 'Test Team', primaryOrganizationId: 1 },
                 ]),
             };
           }
@@ -1098,7 +1093,7 @@ describe('ActivitiesService', () => {
           if (
             selectArg &&
             typeof selectArg === 'object' &&
-            'ministryId' in selectArg &&
+            'primaryOrganizationId' in selectArg &&
             'name' in selectArg
           ) {
             return {
@@ -1108,7 +1103,7 @@ describe('ActivitiesService', () => {
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 1, name: 'Test Team', ministryId: 1 },
+                  { id: 1, name: 'Test Team', primaryOrganizationId: 1 },
                 ]),
             };
           }
@@ -1140,14 +1135,14 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
-          if ('ministryId' in sel) {
+          if ('primaryOrganizationId' in sel) {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 1, name: 'Test Team', ministryId: 1 },
+                  { id: 1, name: 'Test Team', primaryOrganizationId: 1 },
                 ]),
             };
           }
@@ -1186,14 +1181,14 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
-          if ('ministryId' in sel) {
+          if ('primaryOrganizationId' in sel) {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 1, name: 'Test Team', ministryId: 1 },
+                  { id: 1, name: 'Test Team', primaryOrganizationId: 1 },
                 ]),
             };
           }
@@ -1222,14 +1217,14 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
-          if ('ministryId' in sel) {
+          if ('primaryOrganizationId' in sel) {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 99, name: 'Other Team', ministryId: 2 },
+                  { id: 99, name: 'Other Team', primaryOrganizationId: 2 },
                 ]),
             };
           }
@@ -1299,14 +1294,16 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
-          if ('ministryId' in sel) {
+          if ('primaryOrganizationId' in sel) {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
               orderBy: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
-                .mockResolvedValue([{ id: 5, name: 'Team', ministryId: 1 }]),
+                .mockResolvedValue([
+                  { id: 5, name: 'Team', primaryOrganizationId: 1 },
+                ]),
             };
           }
           return {
@@ -1339,14 +1336,14 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
-          if ('ministryId' in sel) {
+          if ('primaryOrganizationId' in sel) {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 1, name: 'Test Team', ministryId: 1 },
+                  { id: 1, name: 'Test Team', primaryOrganizationId: 1 },
                 ]),
             };
           }
@@ -1379,14 +1376,14 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
-          if ('ministryId' in sel) {
+          if ('primaryOrganizationId' in sel) {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 1, name: 'Test Team', ministryId: 1 },
+                  { id: 1, name: 'Test Team', primaryOrganizationId: 1 },
                 ]),
             };
           }
@@ -1452,7 +1449,7 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
-          if ('ministryId' in sel) {
+          if ('primaryOrganizationId' in sel) {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
@@ -1460,7 +1457,7 @@ describe('ActivitiesService', () => {
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 5, name: 'Any Team', ministryId: 1 },
+                  { id: 5, name: 'Any Team', primaryOrganizationId: 1 },
                 ]),
             };
           }
@@ -1493,14 +1490,14 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
-          if ('ministryId' in sel) {
+          if ('primaryOrganizationId' in sel) {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 1, name: 'Test Team', ministryId: 1 },
+                  { id: 1, name: 'Test Team', primaryOrganizationId: 1 },
                 ]),
             };
           }
@@ -1536,14 +1533,14 @@ describe('ActivitiesService', () => {
       mockDatabaseService.db.select = createSelectMock((...args) => {
         if (args.length > 0 && typeof args[0] === 'object') {
           const sel = args[0] as Record<string, unknown>;
-          if ('ministryId' in sel) {
+          if ('primaryOrganizationId' in sel) {
             return {
               from: vi.fn().mockReturnThis(),
               where: vi.fn().mockReturnThis(),
               limit: vi
                 .fn()
                 .mockResolvedValue([
-                  { id: 1, name: 'Test Team', ministryId: 1 },
+                  { id: 1, name: 'Test Team', primaryOrganizationId: 1 },
                 ]),
             };
           }
@@ -3737,8 +3734,8 @@ describe('ActivitiesService', () => {
       mockDataFetcherService.fetchCommsContactsForActivities.mockResolvedValue(
         new Map([[1, []]])
       );
-      mockDataFetcherService.fetchLeadOrgNamesForActivities.mockResolvedValue(
-        new Map([[1, null]])
+      mockDataFetcherService.fetchOrganizationDetailsForActivities.mockResolvedValue(
+        new Map([[1, []]])
       );
       mockDataFetcherService.fetchEventPlannerDetailsForActivities.mockResolvedValue(
         new Map([[1, []]])
@@ -4631,7 +4628,7 @@ describe('ActivitiesService', () => {
       });
 
       const statusRow = [{ id: 3, name: 'new' }];
-      const teamRow = [{ id: 5, name: 'Team', ministryId: 1 }];
+      const teamRow = [{ id: 5, name: 'Team', primaryOrganizationId: 1 }];
 
       mockDatabaseService.db.select = createSelectMock(() => {
         const chain = {
@@ -4673,7 +4670,7 @@ describe('ActivitiesService', () => {
       });
 
       const statusRow = [{ id: 3, name: 'new' }];
-      const teamRow = [{ id: 5, name: 'Team', ministryId: 1 }];
+      const teamRow = [{ id: 5, name: 'Team', primaryOrganizationId: 1 }];
 
       mockDatabaseService.db.select = createSelectMock(() => {
         const chain = {
@@ -5140,11 +5137,10 @@ describe('ActivitiesService', () => {
       expect(dtoRecord.isConfidential).toBeUndefined();
     });
 
-    it('drops internalNotes field when caller lacks activities.notes.edit', async () => {
+    it('drops notes field when caller lacks activities.notes.edit', async () => {
       const source = createMockActivityResponse({
         id: 100,
-        notes: 'general notes',
-        internalNotes: 'sensitive internal notes',
+        notes: 'sensitive notes',
       });
       vi.spyOn(service, 'findOne').mockResolvedValue(source);
       const createSpy = vi
@@ -5171,7 +5167,7 @@ describe('ActivitiesService', () => {
       const [dto] = createSpy.mock.calls[0] ?? [];
       const dtoRecord = dto as Record<string, unknown>;
       expect(dtoRecord.notes).toBe('general notes');
-      expect(dtoRecord.internalNotes).toBeUndefined();
+      expect(dtoRecord.notes).toBeUndefined();
     });
   });
 });

@@ -4,8 +4,12 @@ import {
   DEFAULT_ACTIVITY_FILTER_STATE,
   type ActivityFilterState,
 } from '../activity-filter-state';
+import { createMockActivityResponse } from '../test-utils/activity-response.fixture';
 import { activityMatchesFilterState } from './activity-filter-match';
-import type { ActivityFilterMatchInput } from './activity-filter-match-input';
+import {
+  activityResponseToFilterMatchInput,
+  type ActivityFilterMatchInput,
+} from './activity-filter-match-input';
 import { activityFilterStateToQueryParams } from './activityFilterStateToQueryParams';
 
 function makeMatchInput(
@@ -23,7 +27,7 @@ function makeMatchInput(
     timeStatusName: '',
     tagIds: [],
     leadTeamId: null,
-    leadMinistryId: null,
+    leadOrganizationId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,
     eventPlannerLeadIds: [],
@@ -37,6 +41,31 @@ function makeMatchInput(
  * Documents expected server query mapping for parity with
  * calendar-ui filterActivityRowsByFilters scenarios.
  */
+describe('activityResponseToFilterMatchInput', () => {
+  it('maps lead organization id from organizationDetails', () => {
+    const input = activityResponseToFilterMatchInput(
+      createMockActivityResponse({
+        organizationDetails: [
+          {
+            organizationId: 5,
+            name: 'Lead Org',
+            isLead: true,
+          },
+        ],
+        leadOrg: 'Lead Org',
+      })
+    );
+    expect(input.leadOrgId).toBe(5);
+  });
+
+  it('uses null leadOrgId when no lead organization row exists', () => {
+    const input = activityResponseToFilterMatchInput(
+      createMockActivityResponse({ organizationDetails: [] })
+    );
+    expect(input.leadOrgId).toBeNull();
+  });
+});
+
 describe('activityFilterStateToQueryParams parity mapping', () => {
   it('maps category and tag filters to array query params', () => {
     const filterState: ActivityFilterState = {

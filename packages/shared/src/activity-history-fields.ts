@@ -20,7 +20,6 @@ export const ACTIVITY_HISTORY_ONLY_TRACKED_FIELDS = [
 /** Registry-omitted form keys that still appear in activity history changes. */
 export const ACTIVITY_HISTORY_OMITTED_REGISTRY_TRACKED_FIELDS = [
   'activityStatusId',
-  'leadMinistryId',
   'commsContactLeadId',
 ] as const satisfies readonly string[];
 

@@ -4,11 +4,15 @@ import {
   DEFAULT_ACTIVITY_FILTER_STATE,
   type ActivityFilterState,
 } from '../activity-filter-state';
+import { createMockActivityResponse } from '../test-utils/activity-response.fixture';
 import {
   activityMatchesFilterState,
   type ActivityFilterMatchOptions,
 } from './activity-filter-match';
-import type { ActivityFilterMatchInput } from './activity-filter-match-input';
+import {
+  activityResponseToFilterMatchInput,
+  type ActivityFilterMatchInput,
+} from './activity-filter-match-input';
 
 function makeInput(
   overrides: Partial<ActivityFilterMatchInput> = {}
@@ -25,7 +29,7 @@ function makeInput(
     timeStatusName: '',
     tagIds: [],
     leadTeamId: null,
-    leadMinistryId: null,
+    leadOrganizationId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,
     eventPlannerLeadIds: [],
@@ -57,7 +61,7 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     timeStatusName: 'Confirmed',
     tagIds: [10, 20],
     leadTeamId: 9,
-    leadMinistryId: 100,
+    leadOrganizationId: 100,
     leadOrgId: 5,
     commsContactLeadUserId: 1000,
     eventPlannerLeadIds: [50],
@@ -75,7 +79,7 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     dateStatusName: 'Tentative',
     timeStatusName: 'Tentative',
     tagIds: [20],
-    leadMinistryId: 200,
+    leadOrganizationId: 200,
     leadOrgId: 6,
     commsContactLeadUserId: 2000,
     eventPlannerLeadIds: [51],
@@ -93,7 +97,7 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     dateStatusName: '',
     timeStatusName: '',
     tagIds: [],
-    leadMinistryId: null,
+    leadOrganizationId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,
     eventPlannerLeadIds: [],
@@ -111,7 +115,7 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     dateStatusName: 'confirmed', // lowercase
     timeStatusName: 'Not confirmed',
     tagIds: [30],
-    leadMinistryId: 100,
+    leadOrganizationId: 100,
     leadOrgId: 7,
     commsContactLeadUserId: 1000,
     eventPlannerLeadIds: [50, 52],
@@ -285,5 +289,18 @@ describe('activityMatchesFilterState', () => {
         })
       )
     ).toEqual([1, 4]);
+  });
+});
+
+describe('activityResponseToFilterMatchInput', () => {
+  it('derives leadOrgId from lead organizationDetails row', () => {
+    const input = activityResponseToFilterMatchInput(
+      createMockActivityResponse({
+        organizationDetails: [
+          { organizationId: 7, name: 'Org Seven', isLead: true },
+        ],
+      })
+    );
+    expect(input.leadOrgId).toBe(7);
   });
 });

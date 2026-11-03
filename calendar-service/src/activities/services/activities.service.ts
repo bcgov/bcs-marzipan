@@ -31,7 +31,6 @@ import {
   dateStatuses,
   deletionAudit,
   editLocks,
-  ministries,
   releaseTypes,
   teams,
   timeStatuses,
@@ -946,7 +945,7 @@ export class ActivitiesService {
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
-      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      organizationDetails: related.organizationDetailsMap.get(id) ?? [],
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
@@ -1020,7 +1019,7 @@ export class ActivitiesService {
         representativesAttendingMap: new Map(),
         sharedWithResult: this.emptySharedWithResult(),
         commsContactsMap: new Map(),
-        leadOrgNamesMap: new Map(),
+        organizationDetailsMap: new Map(),
         eventPlannerDetailsMap: new Map(),
         eventPlannersMap: new Map(),
         eventPlannerIdsMap: new Map(),
@@ -1050,7 +1049,7 @@ export class ActivitiesService {
       representativesAttendingMap,
       sharedWithResult,
       commsContactsMap,
-      leadOrgNamesMap,
+      organizationDetailsMap,
       eventPlannerDetailsMap,
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
@@ -1107,8 +1106,10 @@ export class ActivitiesService {
               Array<{ userId: number; name: string; isLead: boolean }>
             >()
           ),
-      needs('leadOrg')
-        ? this.dataFetcherService.fetchLeadOrgNamesForActivities(activityRows)
+      needs('organizationDetails')
+        ? this.dataFetcherService.fetchOrganizationDetailsForActivities(
+            activityIds
+          )
         : Promise.resolve(new Map()),
       needs('eventPlannerDetails')
         ? this.dataFetcherService.fetchEventPlannerDetailsForActivities(
@@ -1179,7 +1180,7 @@ export class ActivitiesService {
       representativesAttendingMap,
       sharedWithResult,
       commsContactsMap,
-      leadOrgNamesMap,
+      organizationDetailsMap,
       eventPlannerDetailsMap,
       eventPlannersMap,
       eventPlannerIdsMap,
@@ -1400,7 +1401,7 @@ export class ActivitiesService {
    * Create a new activity with related junction table records.
    * Initial activityStatusId is set by backend: 'reviewed' if user has activities.review and markAsReviewed, else 'new'.
    * Client activityStatusId is ignored.
-   * When context.permissions does not include activities.create.any, leadMinistryId must be in a ministry linked to context.teamIds.
+   * When context.permissions does not include activities.create.any, lead team must be in context.teamIds.
    */
   async create(
     dto: CreateActivityRequest,
@@ -1436,6 +1437,7 @@ export class ActivitiesService {
       sharedWithTeamIds,
       commsContacts: commsContactsArray,
       eventPlanners: eventPlannersArray,
+      organizations: organizationsArray,
       representatives,
       venueAddress,
       activityHistoryNotes,
@@ -1460,13 +1462,12 @@ export class ActivitiesService {
       throw new BadRequestException('leadTeamId is required');
     }
 
-    // Resolve lead team and derive leadMinistryId from team.ministryId
     const [leadTeam] = await this.databaseService.db
       .select({
         id: teams.id,
         name: teams.name,
         abbreviation: teams.abbreviation,
-        ministryId: teams.ministryId,
+        primaryOrganizationId: teams.primaryOrganizationId,
       })
       .from(teams)
       .where(eq(teams.id, activityData.leadTeamId))
@@ -1476,7 +1477,6 @@ export class ActivitiesService {
         `Team with ID ${activityData.leadTeamId} not found`
       );
     }
-    const resolvedLeadMinistryId = leadTeam.ministryId ?? null;
 
     // Data scope: without activities.create.any, user may only create for teams they belong to.
     // Guards enforce permission; service enforces scope.
@@ -1531,10 +1531,6 @@ export class ActivitiesService {
     Object.assign(activityData, commsCleaned);
     const translationLanguageIdsForInsert =
       commsCleaned.translationLanguageIds ?? [];
-    const activityDataWithResolvedMinistry = {
-      ...activityData,
-      leadMinistryId: resolvedLeadMinistryId,
-    };
     await this.lookAheadPolicy.assertAllowedLookAheadSection(
       activityData.lookAheadSection
     );
@@ -1547,7 +1543,7 @@ export class ActivitiesService {
       timeStatusId: dtoTimeStatus,
       significance: dtoSignificance,
       ...activityRowWithoutDefaults
-    } = activityDataWithResolvedMinistry;
+    } = activityData;
 
     const defaultDateTimeStatuses =
       await this.resolveDefaultDateTimeStatusIds();
@@ -1630,35 +1626,6 @@ export class ActivitiesService {
 
       const activityId = created.id;
 
-      // Generate displayId: use ministry abbreviation when leadMinistryId is set, else teams.abbreviation.
-      // Create enforces the stricter rule: ministry must have an abbreviation when set.
-      let ministryAbbreviation: string | null = null;
-      if (resolvedLeadMinistryId != null) {
-        const [ministry] = await tx
-          .select({ abbreviation: ministries.abbreviation })
-          .from(ministries)
-          .where(eq(ministries.id, resolvedLeadMinistryId))
-          .limit(1);
-        if (!ministry?.abbreviation) {
-          throw new BadRequestException(
-            `Ministry with ID ${resolvedLeadMinistryId} not found or missing abbreviation`
-          );
-        }
-        ministryAbbreviation = ministry.abbreviation;
-      }
-      const displayId = this.utilsService.computeDisplayIdFromLeadContext({
-        activityId,
-        leadMinistryId: resolvedLeadMinistryId,
-        ministryAbbreviation,
-        teamAbbreviation: leadTeam.abbreviation,
-      });
-
-      // Update activity with generated displayId
-      await tx
-        .update(activities)
-        .set({ displayId })
-        .where(eq(activities.id, activityId));
-
       // Insert venue address if provided
       if (venueAddress) {
         const normalizedVenue = this.normalizeVenueAddress(venueAddress);
@@ -1737,6 +1704,12 @@ export class ActivitiesService {
           eventPlannersArray,
           now
         ),
+        this.junctionService.insertOrganizations(
+          tx,
+          activityId,
+          organizationsArray,
+          now
+        ),
         // Representatives with attending status
         this.junctionService.insertRepresentatives(
           tx,
@@ -1746,7 +1719,16 @@ export class ActivitiesService {
         ),
       ]);
 
-      return created;
+      const displayId = this.utilsService.computeDisplayIdFromLeadContext({
+        activityId,
+        teamAbbreviation: leadTeam.abbreviation,
+      });
+      await tx
+        .update(activities)
+        .set({ displayId })
+        .where(eq(activities.id, activityId));
+
+      return { ...created, displayId };
     });
 
     // Fetch the created activity with all related data (bypass visibility — creator just inserted it)
@@ -2125,7 +2107,8 @@ export class ActivitiesService {
       eventPlanners: ctx.related.eventPlannersMap.get(activity.id) ?? [],
       eventPlannerLeadIds:
         ctx.related.eventPlannerIdsMap.get(activity.id) ?? [],
-      leadOrgName: ctx.related.leadOrgNamesMap.get(activity.id) ?? null,
+      organizationDetails:
+        ctx.related.organizationDetailsMap.get(activity.id) ?? [],
       newsReleaseOrigin:
         ctx.related.newsReleaseOriginsMap.get(activity.id) ?? null,
       newsReleaseDistribution:
@@ -2590,6 +2573,7 @@ export class ActivitiesService {
       sharedWithTeamIds,
       commsContacts: commsContactsArray,
       eventPlanners: eventPlannersArray,
+      organizations: organizationsArray,
       representatives,
       venueAddress,
       activityHistoryNotes,
@@ -2943,26 +2927,15 @@ export class ActivitiesService {
     const updated = await this.databaseService.db.transaction(async (tx) => {
       const effectiveLeadTeamId =
         dto.leadTeamId !== undefined ? dto.leadTeamId : oldActivity.leadTeamId;
-      const effectiveLeadMinistryId =
-        dto.leadMinistryId !== undefined
-          ? dto.leadMinistryId
-          : oldActivity.leadMinistryId;
-
-      // Recalculate displayId when lead team or ministry changes
-      const leadTeamOrMinistryChanged =
-        dto.leadTeamId !== undefined || dto.leadMinistryId !== undefined;
-      if (leadTeamOrMinistryChanged) {
-        // Resolve the team abbreviation for the effective lead team (new or existing).
+      const leadContextChanged =
+        dto.leadTeamId !== undefined || organizationsArray !== undefined;
+      if (leadContextChanged) {
         const effectiveTeamId =
           dto.leadTeamId !== undefined ? dto.leadTeamId : effectiveLeadTeamId;
         let teamAbbreviation: string | null = null;
-        let teamMinistryId: number | null = null;
         if (effectiveTeamId != null) {
           const [teamRow] = await tx
-            .select({
-              abbreviation: teams.abbreviation,
-              ministryId: teams.ministryId,
-            })
+            .select({ abbreviation: teams.abbreviation })
             .from(teams)
             .where(eq(teams.id, effectiveTeamId))
             .limit(1);
@@ -2972,33 +2945,11 @@ export class ActivitiesService {
             );
           }
           teamAbbreviation = teamRow?.abbreviation ?? null;
-          teamMinistryId = teamRow?.ministryId ?? null;
-        }
-
-        // When a new lead team is selected, inherit its ministry as the lead ministry.
-        if (dto.leadTeamId !== undefined) {
-          updateData.leadMinistryId = teamMinistryId;
-        }
-        const resolvedMinistryId =
-          dto.leadTeamId !== undefined
-            ? teamMinistryId
-            : effectiveLeadMinistryId;
-
-        let ministryAbbreviation: string | null = null;
-        if (resolvedMinistryId != null) {
-          const [ministry] = await tx
-            .select({ abbreviation: ministries.abbreviation })
-            .from(ministries)
-            .where(eq(ministries.id, resolvedMinistryId))
-            .limit(1);
-          ministryAbbreviation = ministry?.abbreviation ?? null;
         }
 
         updateData.displayId =
           this.utilsService.computeDisplayIdFromLeadContext({
             activityId: id,
-            leadMinistryId: resolvedMinistryId,
-            ministryAbbreviation,
             teamAbbreviation,
           });
       }
@@ -3144,6 +3095,15 @@ export class ActivitiesService {
         );
       }
 
+      if (organizationsArray !== undefined) {
+        await this.junctionService.updateOrganizations(
+          tx,
+          id,
+          organizationsArray,
+          now
+        );
+      }
+
       return updatedActivity;
     });
 
@@ -3176,7 +3136,7 @@ export class ActivitiesService {
       representativesAttending,
       sharedWithResult,
       commsContacts,
-      leadOrgNamesMap,
+      organizationDetailsMap,
       eventPlannerDetailsMap,
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
@@ -3198,7 +3158,7 @@ export class ActivitiesService {
       this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
       this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
       this.dataFetcherService.fetchCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities([updated]),
+      this.dataFetcherService.fetchOrganizationDetailsForActivities([id]),
       this.dataFetcherService.fetchEventPlannerDetailsForActivities([id]),
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
@@ -3241,7 +3201,7 @@ export class ActivitiesService {
       eventPlannerLeadIds: eventPlannerDetails
         .filter((d) => d.eventPlannerId != null)
         .map((d) => d.eventPlannerId as number),
-      leadOrgName: leadOrgNamesMap.get(id) ?? null,
+      organizationDetails: organizationDetailsMap.get(id) ?? [],
       newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: premierRequestedMap.get(id) ?? null,
@@ -4016,7 +3976,7 @@ export class ActivitiesService {
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
-      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      organizationDetails: related.organizationDetailsMap.get(id) ?? [],
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
@@ -4159,7 +4119,7 @@ export class ActivitiesService {
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
-      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      organizationDetails: related.organizationDetailsMap.get(id) ?? [],
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
@@ -4294,7 +4254,7 @@ export class ActivitiesService {
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
-      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      organizationDetails: related.organizationDetailsMap.get(id) ?? [],
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,

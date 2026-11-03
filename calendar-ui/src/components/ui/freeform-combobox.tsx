@@ -110,6 +110,8 @@ export type FreeformComboboxProps = {
    * Called with the index of the item to set as lead (parent should update value so only that item has isLead: true).
    */
   onSetLead?: (index: number) => void;
+  /** When true with onSetLead, non-lead chips show a Joint badge. */
+  showJointBadge?: boolean;
 } & Omit<
   ComponentPropsWithoutRef<'div'>,
   'onChange' | 'children' | 'value' | 'defaultValue'
@@ -160,6 +162,7 @@ export const FreeformCombobox = forwardRef<
     maxInputLength,
     useChips = true,
     onSetLead,
+    showJointBadge = false,
     'aria-invalid': ariaInvalidProp,
     ...rootPassthrough
   },
@@ -544,6 +547,9 @@ export const FreeformCombobox = forwardRef<
                 <>
                   {isLead && (
                     <span className={FREEFORM_BADGE_CLASSES}>Lead</span>
+                  )}
+                  {!isLead && showJointBadge && (
+                    <span className={FREEFORM_BADGE_CLASSES}>Joint</span>
                   )}
                   {!isLocked && !isLead && (
                     <button

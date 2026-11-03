@@ -38,8 +38,7 @@ const BASE_ACTIVITY_RESPONSE = {
   summary:
     'The Minister will announce new housing funding and respond to media questions. See https://news.gov.bc.ca/backgrounders/b-101 for background.',
   significance: null,
-  leadOrgId: null,
-  leadOrgName: null,
+  organizationDetails: [],
   isAllDay: false,
   startDate: '2026-04-27',
   endDate: null,
@@ -62,7 +61,6 @@ const BASE_ACTIVITY_RESPONSE = {
   premierRequestedId: null,
   visibility: 'global',
   leadTeamId: 1,
-  leadMinistryId: 1,
   activityStatusId: 1,
   createdBy: 1,
   lastUpdatedBy: 1,

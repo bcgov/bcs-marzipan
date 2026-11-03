@@ -12,6 +12,7 @@ import {
   type ActivityResponse,
   type EventPlannerDetail,
   type LookAheadStatus,
+  type OrganizationDetail,
   type Visibility,
 } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
@@ -20,6 +21,7 @@ import {
   activityListItemSchema,
   activityResponseSchema,
 } from '@corpcal/shared/schemas';
+import { formatActivityOrganizationsGridSummary } from '@corpcal/shared/utils';
 
 type ActivityAuditTimestampsBase = {
   createdDateTime: string;
@@ -109,7 +111,7 @@ export type ActivityMapperRelatedData = {
   eventPlannerDetails?: EventPlannerDetail[];
   eventPlanners?: string[];
   eventPlannerLeadIds?: number[];
-  leadOrgName?: string | null;
+  organizationDetails?: OrganizationDetail[];
   translationsRequiredStatus?: string | null;
   leadMinistry?: string | null;
   leadMinistryAbbreviation?: string | null;
@@ -198,10 +200,15 @@ export class ActivityMapperService {
       isIssue: activity.isIssue ?? false,
       isConfidential: activity.isConfidential ?? false,
 
-      // Organizations
-      leadOrgId: activity.leadOrgId ?? null,
-      leadOrgName: activity.leadOrgName ?? null,
-      leadOrg: relatedData?.leadOrgName ?? null,
+      organizationDetails: relatedData?.organizationDetails ?? [],
+      leadOrg: formatActivityOrganizationsGridSummary(
+        (relatedData?.organizationDetails ?? []).map((d) => ({
+          abbreviation: d.abbreviation,
+          displayName: d.name,
+          name: d.name,
+          isLead: d.isLead,
+        }))
+      ),
 
       tags: relatedData?.tags ?? [],
 
@@ -256,7 +263,6 @@ export class ActivityMapperService {
 
       // Notes and additional fields
       notes: activity.notes ?? null,
-      internalNotes: activity.internalNotes ?? null,
       translationsRequiredStatusId:
         activity.translationsRequiredStatusId ?? null,
       premierRequestedId: activity.premierRequestedId ?? null,
@@ -266,7 +272,6 @@ export class ActivityMapperService {
 
       // Sharing
       leadTeamId: activity.leadTeamId,
-      leadMinistryId: activity.leadMinistryId ?? null,
       sharedWith: relatedData?.sharedWith ?? [],
       sharedWithTeamIds: relatedData?.sharedWithTeamIds ?? [],
       commsContacts: relatedData?.commsContacts ?? [],
@@ -356,13 +361,22 @@ export class ActivityMapperService {
       venueAddress: relatedData?.venueAddress ?? null,
       premierRequested: relatedData?.premierRequested ?? null,
       representativesAttending: relatedData?.representativesAttending ?? [],
-      leadOrg: relatedData?.leadOrgName ?? null,
-      leadOrgId: activity.leadOrgId ?? null,
+      leadOrg: formatActivityOrganizationsGridSummary(
+        (relatedData?.organizationDetails ?? []).map((d) => ({
+          abbreviation: d.abbreviation,
+          displayName: d.name,
+          name: d.name,
+          isLead: d.isLead,
+        }))
+      ),
+      organizationDetails: relatedData?.organizationDetails ?? [],
       leadMinistry: relatedData?.leadMinistry ?? null,
       leadMinistryAbbreviation: relatedData?.leadMinistryAbbreviation ?? null,
       leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
       leadTeamId: activity.leadTeamId,
-      leadMinistryId: activity.leadMinistryId ?? null,
+      leadOrganizationId:
+        relatedData?.organizationDetails?.find((d) => d.isLead)
+          ?.organizationId ?? null,
       sharedWith: relatedData?.sharedWith ?? [],
       sharedWithTeamIds: relatedData?.sharedWithTeamIds ?? [],
       visibility:

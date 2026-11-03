@@ -20,6 +20,7 @@ function minimalForm(overrides: Partial<ActivityFormData>): ActivityFormData {
     visibility: 'global',
     leadTeamId: 1,
     categoryIds: [1],
+    organizations: [{ organizationId: 1, isLead: true }],
     startDate: '2026-06-01',
     endDate: '2026-06-01',
     ...overrides,
@@ -111,7 +112,6 @@ describe('prepareActivityFormDataForSubmit', () => {
     const prepared = prepareActivityFormDataForSubmit(
       minimalForm({
         notes: '',
-        internalNotes: '',
         schedulingNotes: '',
         significance: EMPTY_RICH_TEXT_DOC,
         executiveSummary: EMPTY_RICH_TEXT_DOC,
@@ -119,7 +119,6 @@ describe('prepareActivityFormDataForSubmit', () => {
     );
 
     expect(prepared.notes).toBeNull();
-    expect(prepared.internalNotes).toBeNull();
     expect(prepared.schedulingNotes).toBeNull();
     expect(prepared.significance).toBeNull();
     expect(prepared.executiveSummary).toBeNull();

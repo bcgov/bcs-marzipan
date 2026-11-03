@@ -1,37 +1,115 @@
 -- ============================================================================
--- MINISTRIES
--- Government departments
--- Legacy: used UUID primary key. Now uses serial (integer) id.
--- MUST be seeded before government_representatives as they reference ministries
--- abbreviation: varchar(5), used in activity displayId prefix (with lead ministry)
+-- ORGANIZATION TYPES (required before organizations.organization_type_id)
 -- ============================================================================
 
-INSERT INTO ministries (id, sort_order, is_active, name, display_name, abbreviation, created_by, last_updated_by) VALUES
-  (1, 1, true, 'PREM', 'Office of the Premier', 'PREM', 1, 1),
-  (2, 2, true, 'AF', 'Agriculture and Food', 'AF', 1, 1),
-  (3, 3, true, 'AG', 'Attorney General', 'AG', 1, 1),
-  (4, 4, true, 'MCFD', 'Children and Family Development', 'MCFD', 1, 1),
-  (5, 5, true, 'CITZ', 'Citizens'' Services', 'CITZ', 1, 1),
-  (6, 6, true, 'ECC', 'Education and Child Care', 'ECC', 1, 1),
-  (7, 7, true, 'EMCR', 'Emergency Management and Climate Readiness', 'EMCR', 1, 1),
-  (8, 8, true, 'ECS', 'Energy and Climate Solutions', 'ECS', 1, 1),
-  (9, 9, true, 'ENV', 'Environment and Parks', 'ENV', 1, 1),
-  (10, 10, true, 'FIN', 'Finance', 'FIN', 1, 1),
-  (11, 11, true, 'FOR', 'Forests', 'FOR', 1, 1),
-  (12, 12, true, 'HLTH', 'Health', 'HLTH', 1, 1),
-  (13, 13, true, 'HMA', 'Housing and Municipal Affairs', 'HMA', 1, 1),
-  (14, 14, true, 'IRR', 'Indigenous Relations and Reconciliation', 'IRR', 1, 1),
-  (15, 15, true, 'INF', 'Infrastructure', 'INF', 1, 1),
-  (16, 16, true, 'IGRS', 'Intergovernmental Relations Secretariat', 'IGRS', 1, 1),
-  (17, 17, true, 'JEG', 'Jobs and Economic Growth', 'JEG', 1, 1),
-  (18, 18, true, 'LRB', 'Labour', 'LRB', 1, 1),
-  (19, 19, true, 'MIN', 'Mining and Critical Minerals', 'MIN', 1, 1),
-  (20, 20, true, 'PSFS', 'Post-Secondary Education and Future Skills', 'PSFS', 1, 1),
-  (21, 21, true, 'PSSG', 'Public Safety and Solicitor General', 'PSSG', 1, 1),
-  (22, 22, true, 'SDPR', 'Social Development and Poverty Reduction', 'SDPR', 1, 1),
-  (23, 23, true, 'TACS', 'Tourism, Arts, Culture and Sport', 'TACS', 1, 1),
-  (24, 24, true, 'TT', 'Transportation and Transit', 'TT', 1, 1),
-  (25, 25, true, 'WLRS', 'Water, Land and Resource Stewardship', 'WLRS', 1, 1)
+INSERT INTO organization_types (id, uuid, name, display_name, sort_order, is_active, created_by, last_updated_by) VALUES
+  (1, 'a1000001-0000-4000-8000-000000000001', 'ministry', 'Ministry', 1, true, 1, 1),
+  (2, 'a1000002-0000-4000-8000-000000000002', 'agency', 'Agency', 2, true, 1, 1),
+  (3, 'a1000003-0000-4000-8000-000000000003', 'board_commission_council', 'Board / Commission / Council', 3, true, 1, 1),
+  (4, 'a1000004-0000-4000-8000-000000000004', 'crown_corporation', 'Crown Corporation', 4, true, 1, 1),
+  (5, 'a1000005-0000-4000-8000-000000000005', 'health_authority', 'Health Authority', 5, true, 1, 1),
+  (6, 'a1000006-0000-4000-8000-000000000006', 'tribunal', 'Tribunal', 6, true, 1, 1),
+  (7, 'a1000007-0000-4000-8000-000000000007', 'other', 'Other', 7, true, 1, 1)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- ORGANIZATIONS (ministry catalog rows; extension in ministries)
+-- MUST be seeded before ministries extension and government_representatives
+-- ============================================================================
+
+INSERT INTO organizations (id, name, display_name, abbreviation, organization_type_id, jurisdiction, is_active, sort_order, created_by, last_updated_by) VALUES
+  (1, 'PREM', 'Office of the Premier', 'PREM', 1, 'bcgov', true, 1, 1, 1),
+  (2, 'AF', 'Agriculture and Food', 'AF', 1, 'bcgov', true, 2, 1, 1),
+  (3, 'AG', 'Attorney General', 'AG', 1, 'bcgov', true, 3, 1, 1),
+  (4, 'MCFD', 'Children and Family Development', 'MCFD', 1, 'bcgov', true, 4, 1, 1),
+  (5, 'CITZ', 'Citizens'' Services', 'CITZ', 1, 'bcgov', true, 5, 1, 1),
+  (6, 'ECC', 'Education and Child Care', 'ECC', 1, 'bcgov', true, 6, 1, 1),
+  (7, 'EMCR', 'Emergency Management and Climate Readiness', 'EMCR', 1, 'bcgov', true, 7, 1, 1),
+  (8, 'ECS', 'Energy and Climate Solutions', 'ECS', 1, 'bcgov', true, 8, 1, 1),
+  (9, 'ENV', 'Environment and Parks', 'ENV', 1, 'bcgov', true, 9, 1, 1),
+  (10, 'FIN', 'Finance', 'FIN', 1, 'bcgov', true, 10, 1, 1),
+  (11, 'FOR', 'Forests', 'FOR', 1, 'bcgov', true, 11, 1, 1),
+  (12, 'HLTH', 'Health', 'HLTH', 1, 'bcgov', true, 12, 1, 1),
+  (13, 'HMA', 'Housing and Municipal Affairs', 'HMA', 1, 'bcgov', true, 13, 1, 1),
+  (14, 'IRR', 'Indigenous Relations and Reconciliation', 'IRR', 1, 'bcgov', true, 14, 1, 1),
+  (15, 'INF', 'Infrastructure', 'INF', 1, 'bcgov', true, 15, 1, 1),
+  (16, 'IGRS', 'Intergovernmental Relations Secretariat', 'IGRS', 1, 'bcgov', true, 16, 1, 1),
+  (17, 'JEG', 'Jobs and Economic Growth', 'JEG', 1, 'bcgov', true, 17, 1, 1),
+  (18, 'LRB', 'Labour', 'LRB', 1, 'bcgov', true, 18, 1, 1),
+  (19, 'MIN', 'Mining and Critical Minerals', 'MIN', 1, 'bcgov', true, 19, 1, 1),
+  (20, 'PSFS', 'Post-Secondary Education and Future Skills', 'PSFS', 1, 'bcgov', true, 20, 1, 1),
+  (21, 'PSSG', 'Public Safety and Solicitor General', 'PSSG', 1, 'bcgov', true, 21, 1, 1),
+  (22, 'SDPR', 'Social Development and Poverty Reduction', 'SDPR', 1, 'bcgov', true, 22, 1, 1),
+  (23, 'TACS', 'Tourism, Arts, Culture and Sport', 'TACS', 1, 'bcgov', true, 23, 1, 1),
+  (24, 'MOTT', 'Transportation and Transit', 'MOTT', 1, 'bcgov', true, 24, 1, 1),
+  (25, 'WLRS', 'Water, Land and Resource Stewardship', 'WLRS', 1, 'bcgov', true, 25, 1, 1)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- ORGANIZATIONS (ABC / non-ministry catalog)
+-- Ids 26+; ministries remain 1–25. Fixed UUIDs for stable external references.
+-- ============================================================================
+
+INSERT INTO organizations (id, name, display_name, abbreviation, organization_type_id, jurisdiction, is_active, sort_order, created_by, last_updated_by) VALUES
+  (26, 'BC Hydro', 'BC Hydro and Power Authority', NULL, 4, 'bcgov', true, 26, 1, 1),
+  (27, 'ICBC', 'Insurance Corporation of British Columbia', 'ICBC', 4, 'bcgov', true, 27, 1, 1),
+  (28, 'BCLC', 'British Columbia Lottery Corporation', 'BCLC', 4, 'bcgov', true, 28, 1, 1),
+  (29, 'BC Transit', 'BC Transit', NULL, 4, 'bcgov', true, 29, 1, 1),
+  (30, 'BC Housing', 'BC Housing Management Commission', NULL, 4, 'bcgov', true, 30, 1, 1),
+  (31, 'Dest BC', 'Destination British Columbia Corp.', NULL, 4, 'bcgov', true, 31, 1, 1),
+  (32, 'CLBC', 'Community Living British Columbia', NULL, 4, 'bcgov', true, 32, 1, 1),
+  (33, 'BCSC', 'British Columbia Securities Commission', 'BCSC', 4, 'bcgov', true, 33, 1, 1),
+  (34, 'BC Assessment', 'British Columbia Assessment Authority', NULL, 4, 'bcgov', true, 34, 1, 1),
+  (35, 'Legal Aid BC', 'Legal Aid BC', NULL, 4, 'bcgov', true, 35, 1, 1),
+  (36, 'RBCM', 'Royal BC Museum', 'RBCM', 4, 'bcgov', true, 36, 1, 1),
+  (37, 'Knowledge Network', 'Knowledge Network Corporation', NULL, 4, 'bcgov', true, 37, 1, 1),
+  (38, 'Innovate BC', 'Innovate BC', NULL, 4, 'bcgov', true, 38, 1, 1),
+  (39, 'IBC', 'Infrastructure BC', 'IBC', 4, 'bcgov', true, 39, 1, 1),
+  (40, 'SkilledTradesBC', 'SkilledTradesBC', NULL, 4, 'bcgov', true, 40, 1, 1),
+  (41, 'FHA', 'Fraser Health Authority', 'FHA', 5, 'bcgov', true, 41, 1, 1),
+  (42, 'IHA', 'Interior Health Authority', 'IHA', 5, 'bcgov', true, 42, 1, 1),
+  (43, 'NHA', 'Northern Health Authority', 'NHA', 5, 'bcgov', true, 43, 1, 1),
+  (44, 'VCH', 'Vancouver Coastal Health Authority', 'VCH', 5, 'bcgov', true, 44, 1, 1),
+  (45, 'VIHA', 'Vancouver Island Health Authority', 'VIHA', 5, 'bcgov', true, 45, 1, 1),
+  (46, 'PHSA', 'Provincial Health Services Authority', 'PHSA', 5, 'bcgov', true, 46, 1, 1),
+  (47, 'FNHA', 'First Nations Health Authority', 'FNHA', 5, 'bcgov', true, 47, 1, 1),
+  (48, 'BCCS', 'BC Coroners Service', 'BCCS', 2, 'bcgov', true, 48, 1, 1),
+  (49, 'CRT', 'Civil Resolution Tribunal', 'CRT', 6, 'bcgov', true, 49, 1, 1),
+  (50, 'BCHRT', 'BC Human Rights Tribunal', 'BCHRT', 6, 'bcgov', true, 50, 1, 1),
+  (51, 'BCUC', 'BC Utilities Commission', 'BCUC', 6, 'bcgov', true, 51, 1, 1),
+  (52, 'BCER', 'BC Energy Regulator', 'BCER', 2, 'bcgov', true, 52, 1, 1),
+  (53, 'BCAC', 'BC Arts Council', 'BCAC', 3, 'bcgov', true, 53, 1, 1),
+  (54, 'FPCC', 'First Peoples'' Cultural Council', 'FPCC', 3, 'bcgov', true, 54, 1, 1),
+  (55, 'CBT', 'Columbia Basin Trust', 'CBT', 7, 'bcgov', true, 55, 1, 1)
+ON CONFLICT (id) DO NOTHING;
+
+-- Ministry extension rows (shared id with organizations)
+INSERT INTO ministries (id, created_by, last_updated_by) VALUES
+  (1, 1, 1),
+  (2, 1, 1),
+  (3, 1, 1),
+  (4, 1, 1),
+  (5, 1, 1),
+  (6, 1, 1),
+  (7, 1, 1),
+  (8, 1, 1),
+  (9, 1, 1),
+  (10, 1, 1),
+  (11, 1, 1),
+  (12, 1, 1),
+  (13, 1, 1),
+  (14, 1, 1),
+  (15, 1, 1),
+  (16, 1, 1),
+  (17, 1, 1),
+  (18, 1, 1),
+  (19, 1, 1),
+  (20, 1, 1),
+  (21, 1, 1),
+  (22, 1, 1),
+  (23, 1, 1),
+  (24, 1, 1),
+  (25, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- Safe for incremental re-seed: only sets canonical mapping when the row differs.
@@ -46,41 +124,6 @@ UPDATE ministries SET ministry_group_id = 2 WHERE id IN (
 UPDATE ministries SET ministry_group_id = 3 WHERE id IN (
   10, 13, 15, 17, 18, 24
 ) AND ministry_group_id IS DISTINCT FROM 3;
--- ============================================================================
--- ORGANIZATIONS
--- Organizations (superset of ministries)
--- Legacy: used UUID primary key. Now uses serial (integer) id.
--- Links to ministries where applicable (BC government ministries)
--- ============================================================================
-
-INSERT INTO organizations (id, name, display_name, organization_type, ministry_id, is_active, sort_order, created_by, last_updated_by) VALUES
-  (1, 'PREM', 'Office of the Premier', 'bcgov', 1, true, 1, 1, 1),
-  (2, 'AF', 'Agriculture and Food', 'bcgov', 2, true, 2, 1, 1),
-  (3, 'AG', 'Attorney General', 'bcgov', 3, true, 3, 1, 1),
-  (4, 'MCFD', 'Children and Family Development', 'bcgov', 4, true, 4, 1, 1),
-  (5, 'CITZ', 'Citizens'' Services', 'bcgov', 5, true, 5, 1, 1),
-  (6, 'ECC', 'Education and Child Care', 'bcgov', 6, true, 6, 1, 1),
-  (7, 'EMCR', 'Emergency Management and Climate Readiness', 'bcgov', 7, true, 7, 1, 1),
-  (8, 'ECS', 'Energy and Climate Solutions', 'bcgov', 8, true, 8, 1, 1),
-  (9, 'ENV', 'Environment and Parks', 'bcgov', 9, true, 9, 1, 1),
-  (10, 'FIN', 'Finance', 'bcgov', 10, true, 10, 1, 1),
-  (11, 'FOR', 'Forests', 'bcgov', 11, true, 11, 1, 1),
-  (12, 'HLTH', 'Health', 'bcgov', 12, true, 12, 1, 1),
-  (13, 'HMA', 'Housing and Municipal Affairs', 'bcgov', 13, true, 13, 1, 1),
-  (14, 'IRR', 'Indigenous Relations and Reconciliation', 'bcgov', 14, true, 14, 1, 1),
-  (15, 'INF', 'Infrastructure', 'bcgov', 15, true, 15, 1, 1),
-  (16, 'IGRS', 'Intergovernmental Relations Secretariat', 'bcgov', 16, true, 16, 1, 1),
-  (17, 'JEG', 'Jobs and Economic Growth', 'bcgov', 17, true, 17, 1, 1),
-  (18, 'LRB', 'Labour', 'bcgov', 18, true, 18, 1, 1),
-  (19, 'MIN', 'Mining and Critical Minerals', 'bcgov', 19, true, 19, 1, 1),
-  (20, 'PSFS', 'Post-Secondary Education and Future Skills', 'bcgov', 20, true, 20, 1, 1),
-  (21, 'PSSG', 'Public Safety and Solicitor General', 'bcgov', 21, true, 21, 1, 1),
-  (22, 'SDPR', 'Social Development and Poverty Reduction', 'bcgov', 22, true, 22, 1, 1),
-  (23, 'TACS', 'Tourism, Arts, Culture and Sport', 'bcgov', 23, true, 23, 1, 1),
-  (24, 'MOTT', 'Transportation and Transit', 'bcgov', 24, true, 24, 1, 1),
-  (25, 'WLRS', 'Water, Land and Resource Stewardship', 'bcgov', 25, true, 25, 1, 1)
-ON CONFLICT (id) DO NOTHING;
-
 -- ============================================================================
 -- GOVERNMENT REPRESENTATIVES
 -- Representatives for activities

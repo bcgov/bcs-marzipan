@@ -6,6 +6,7 @@ export * from './userHistory';
 export * from './teamHistory';
 export * from './ministry';
 export * from './ministry-groups';
+export * from './organization-types';
 export * from './organizations';
 export * from './lookups';
 export * from './lookup-sort-settings';

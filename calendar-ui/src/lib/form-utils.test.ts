@@ -26,7 +26,6 @@ function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
     dateStatusId: 1,
     timeStatusId: 1,
     leadTeamId: 1,
-    leadMinistryId: 1,
     categoryIds: [1],
     commsContacts: [{ userId: 1, isLead: true }],
     ...overrides,

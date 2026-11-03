@@ -57,13 +57,14 @@ export const activityListItemSchema = z.object({
   representativesAttending:
     activityComputedFieldsSchema.shape.representativesAttending,
   leadOrg: activityComputedFieldsSchema.shape.leadOrg,
-  leadOrgId: activityDbFieldsSchema.shape.leadOrgId,
+  organizationDetails: activityComputedFieldsSchema.shape.organizationDetails,
   leadMinistry: activityComputedFieldsSchema.shape.leadMinistry,
   leadMinistryAbbreviation:
     activityComputedFieldsSchema.shape.leadMinistryAbbreviation,
   leadTeamDisplayName: activityComputedFieldsSchema.shape.leadTeamDisplayName,
   leadTeamId: activityDbFieldsSchema.shape.leadTeamId,
-  leadMinistryId: activityDbFieldsSchema.shape.leadMinistryId,
+  /** Lead organization id (ministry org when lead org is type ministry). */
+  leadOrganizationId: z.number().int().nullable(),
   /** Shared-with team display names, for the list table shares indicator. */
   sharedWith: activityComputedFieldsSchema.shape.sharedWith,
   /** Needed by list bulk actions to tell which of the user's teams can be unshared. */
@@ -149,12 +150,14 @@ export function activityResponseToListItem(
     premierRequested: activity.premierRequested ?? null,
     representativesAttending: activity.representativesAttending,
     leadOrg: activity.leadOrg,
-    leadOrgId: activity.leadOrgId,
+    organizationDetails: activity.organizationDetails ?? [],
     leadMinistry: activity.leadMinistry,
     leadMinistryAbbreviation: activity.leadMinistryAbbreviation ?? null,
     leadTeamDisplayName: activity.leadTeamDisplayName ?? null,
     leadTeamId: activity.leadTeamId,
-    leadMinistryId: activity.leadMinistryId,
+    leadOrganizationId:
+      activity.organizationDetails?.find((o) => o.isLead)?.organizationId ??
+      null,
     sharedWith: activity.sharedWith ?? [],
     sharedWithTeamIds: activity.sharedWithTeamIds ?? [],
     visibility: activity.visibility,
