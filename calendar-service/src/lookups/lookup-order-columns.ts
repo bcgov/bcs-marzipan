@@ -7,6 +7,7 @@ import {
   ministries,
   ministryGroups,
   organizations,
+  organizationTypes,
   releaseTypes,
   tags,
   themes,
@@ -61,6 +62,11 @@ export const LOOKUP_LIST_ORDER_COLUMNS: Record<
     sortOrder: ministryGroups.sortOrder,
     id: ministryGroups.id,
     labelColumn: ministryGroups.name,
+  },
+  'organization-types': {
+    sortOrder: organizationTypes.sortOrder,
+    id: organizationTypes.id,
+    labelColumn: organizationTypes.displayName,
   },
   tags: {
     sortOrder: tags.sortOrder,

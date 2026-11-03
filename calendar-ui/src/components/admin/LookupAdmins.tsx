@@ -1157,7 +1157,6 @@ type OrganizationAdminItem = LookupItem & {
 const organizationTypeFields: FormField[] = [
   { name: 'name', label: 'Name', type: 'text', required: true },
   { name: 'displayName', label: 'Display name', type: 'text', required: true },
-  { name: 'sortOrder', label: 'Sort order', type: 'number' },
   { name: 'isActive', label: 'Active', type: 'checkbox' },
 ];
 
@@ -1197,13 +1196,16 @@ export function OrganizationTypesAdmin() {
   return (
     <GenericLookupAdmin<OrganizationType>
       title="Organization types"
-      description="Categories for ministries and organizations (Ministry, Agency, Crown Corporation, etc.)."
+      description="Categories for ministries and organizations (Ministry, Agency, Crown Corporation, etc.). Order controls section headings on the activity form."
       sectionId="organization-types"
       entityType="Organization type"
       apiEndpoint="/lookups/organization-types"
+      enableManualSort
+      reorderEntityKey="organization-types"
       queryKey={['lookups', 'organization-types', 'admin']}
       queryFn={fetchOrganizationTypesAdmin}
       formFields={organizationTypeFields}
+      additionalInvalidateKeys={[lookupQueryKeys.organizations()]}
       getItemName={(item) => item.displayName ?? item.name ?? String(item.id)}
     />
   );

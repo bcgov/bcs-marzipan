@@ -294,12 +294,41 @@ export class LookupsService {
   }
 
   /**
+   * Published section order for organization types on the activity form
+   * (respects admin sort mode: manual sort_order vs alphabetical).
+   */
+  private async organizationTypeSortRankById(): Promise<Map<number, number>> {
+    const mode = await this.getLookupSortMode('organization-types');
+    const columns = LOOKUP_LIST_ORDER_COLUMNS['organization-types'];
+    const orderBy = lookupListOrderBy(columns, mode);
+    const rows = await this.databaseService.db
+      .select({
+        id: organizationTypes.id,
+        sortOrder: organizationTypes.sortOrder,
+      })
+      .from(organizationTypes)
+      .where(eq(organizationTypes.isActive, true))
+      .orderBy(...orderBy);
+
+    const map = new Map<number, number>();
+    if (mode === 'alphabetical') {
+      rows.forEach((row, index) => map.set(row.id, index));
+    } else {
+      for (const row of rows) {
+        map.set(row.id, row.sortOrder);
+      }
+    }
+    return map;
+  }
+
+  /**
    * Get all active organizations
    * TODO: Implement scoping based on userId, role, organizationId
    */
   async getOrganizations(
     _params?: LookupQueryParams
   ): Promise<OrganizationLookupItem[]> {
+    const typeSortRanks = await this.organizationTypeSortRankById();
     const results = await this.databaseService.db
       .select({
         id: organizations.id,
@@ -310,6 +339,7 @@ export class LookupsService {
         organizationTypeId: organizations.organizationTypeId,
         jurisdiction: organizations.jurisdiction,
         typeDisplayName: organizationTypes.displayName,
+        typeSortOrder: organizationTypes.sortOrder,
       })
       .from(organizations)
       .leftJoin(
@@ -329,15 +359,22 @@ export class LookupsService {
       abbreviation: org.abbreviation,
       organizationTypeId: org.organizationTypeId,
       organizationTypeDisplayName: org.typeDisplayName,
+      organizationTypeSortOrder:
+        org.organizationTypeId != null
+          ? (typeSortRanks.get(org.organizationTypeId) ??
+            org.typeSortOrder ??
+            0)
+          : null,
       jurisdiction: org.jurisdiction,
     }));
   }
 
   async getOrganizationTypes(includeInactive = false) {
+    const orderBy = await this.listOrderBy('organization-types');
     const base = this.databaseService.db.select().from(organizationTypes);
     const rows = await (
       includeInactive ? base : base.where(eq(organizationTypes.isActive, true))
-    ).orderBy(organizationTypes.sortOrder);
+    ).orderBy(...orderBy);
     return rows;
   }
 
@@ -350,7 +387,10 @@ export class LookupsService {
     },
     currentUserId: number
   ) {
-    const sortOrder = data.sortOrder ?? 0;
+    const sortOrder = await this.sortOrderForCreate(
+      'organization-types',
+      data.sortOrder
+    );
     const now = new Date();
     const [row] = await this.databaseService.db
       .insert(organizationTypes)

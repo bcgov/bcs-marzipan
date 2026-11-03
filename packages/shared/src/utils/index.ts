@@ -7,6 +7,7 @@ export * from './activity-form-mapper';
 export * from './activity-form-event-planner-normalize';
 export * from './activity-form-organization-normalize';
 export * from './activity-organization-display';
+export * from './build-organization-combobox-sections';
 export * from './activity-form-canonicalize';
 export * from './activity-review-diff';
 export * from './apply-update-activity-request';

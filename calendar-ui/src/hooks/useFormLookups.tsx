@@ -43,6 +43,9 @@ export interface FormLookupData {
   organizations: Array<{
     value: number;
     label: string;
+    organizationTypeId?: number | null;
+    organizationTypeDisplayName?: string | null;
+    organizationTypeSortOrder?: number | null;
   }>;
 
   // Ministries - for Select (id is number; coerce to string where UI requires)
@@ -221,6 +224,9 @@ export function useFormLookups(): FormLookupData {
       organizationsQuery.data?.map((item) => ({
         value: item.value,
         label: item.label,
+        organizationTypeId: item.organizationTypeId,
+        organizationTypeDisplayName: item.organizationTypeDisplayName,
+        organizationTypeSortOrder: item.organizationTypeSortOrder,
       })) || [];
 
     // Transform ministries for Select

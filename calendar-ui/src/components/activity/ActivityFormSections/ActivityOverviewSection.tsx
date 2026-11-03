@@ -9,12 +9,14 @@ import {
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
 import {
+  buildOrganizationComboboxSections,
   filterAllowedLookupIds,
   isActivityRichTextEffectivelyEmpty,
   isLookupSelectable,
   normalizeOrganizationFormEntries,
   tipTapDocJsonFromPlainText,
   type LookupTeamScope,
+  type OrganizationComboboxSourceOption,
 } from '@corpcal/shared/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -146,12 +148,7 @@ function applyAllowedLookupSelection(
   onApply(allowedIds);
 }
 
-type LeadOrganizationOption = {
-  value: number;
-  label: string;
-  ministryId?: number | null;
-  organizationTypeDisplayName?: string | null;
-};
+type LeadOrganizationOption = OrganizationComboboxSourceOption;
 
 function MinistriesAndOrganizationsField({
   organizationOptions,
@@ -162,24 +159,10 @@ function MinistriesAndOrganizationsField({
 }) {
   const form = useFormContext<ActivityFormData>();
 
-  const comboboxSections = useMemo(() => {
-    const byType = new Map<string, LeadOrganizationOption[]>();
-    for (const option of organizationOptions) {
-      const key = option.organizationTypeDisplayName?.trim() || 'Other';
-      const list = byType.get(key) ?? [];
-      list.push(option);
-      byType.set(key, list);
-    }
-    return [...byType.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([sectionLabel, options]) => ({
-        id: sectionLabel,
-        options: options.map((o) => ({
-          value: String(o.value),
-          label: o.label,
-        })),
-      }));
-  }, [organizationOptions]);
+  const comboboxSections = useMemo(
+    () => buildOrganizationComboboxSections(organizationOptions),
+    [organizationOptions]
+  );
 
   return (
     <FormField

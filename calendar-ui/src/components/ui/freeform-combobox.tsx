@@ -30,15 +30,18 @@ import {
   InputGroupInput,
 } from './input-group';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import { PopoverListSectionHeading } from './popover-list-section-heading';
 
 export interface FreeformComboboxOption {
   value: string;
   label: string;
 }
 
-/** Grouped options with visual separators between non-empty sections (dropdown only). */
+/** Grouped options for the dropdown list (dropdown only). */
 export interface FreeformComboboxSection {
   id: string;
+  /** When set, shown as a section heading (e.g. organization type). */
+  heading?: string;
   options: FreeformComboboxOption[];
 }
 
@@ -59,7 +62,17 @@ export type FreeformComboboxValueWithLead = FreeformComboboxItemWithLead | null;
 type ListEntry =
   | { kind: 'option'; value: string; label: string }
   | { kind: 'freeform'; value: string; label: string }
+  | { kind: 'heading'; label: string }
   | { kind: 'separator' };
+
+type SelectableListEntry = Extract<
+  ListEntry,
+  { kind: 'option' } | { kind: 'freeform' }
+>;
+
+function isSelectableListEntry(entry: ListEntry): entry is SelectableListEntry {
+  return entry.kind === 'option' || entry.kind === 'freeform';
+}
 
 const FREEFORM_BADGE_CLASSES =
   'bg-primary/15 text-primary shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium';
@@ -70,8 +83,8 @@ export type FreeformComboboxProps = {
   /** Labels for selected option values that are intentionally absent from the selectable options. */
   selectedOptionLabels?: Readonly<Record<string, string>>;
   /**
-   * When set, options are shown in order with a divider between consecutive
-   * sections that each have at least one visible (filtered) row.
+   * When set, options are grouped by section. Sections with `heading` show a
+   * label; otherwise a divider is inserted between consecutive non-empty sections.
    */
   sections?: FreeformComboboxSection[];
   /** The current selection - single value or array when multiple */
@@ -126,7 +139,7 @@ function nextSelectableIndex(
   let idx = current;
   for (let step = 0; step < entries.length; step++) {
     idx = (idx + direction + entries.length) % entries.length;
-    if (entries[idx].kind !== 'separator') return idx;
+    if (isSelectableListEntry(entries[idx])) return idx;
   }
   return current;
 }
@@ -229,6 +242,7 @@ export const FreeformCombobox = forwardRef<
     const q = trimmedInput.toLowerCase();
     return sections.map((s) => ({
       id: s.id,
+      heading: s.heading,
       options: s.options.filter((o) => o.label.toLowerCase().includes(q)),
     }));
   }, [sections, trimmedInput]);
@@ -248,7 +262,9 @@ export const FreeformCombobox = forwardRef<
     if (filteredSections) {
       for (const sec of filteredSections) {
         if (sec.options.length === 0) continue;
-        if (entries.length > 0) {
+        if (sec.heading?.trim()) {
+          entries.push({ kind: 'heading', label: sec.heading.trim() });
+        } else if (entries.length > 0) {
           entries.push({ kind: 'separator' });
         }
         for (const o of sec.options) {
@@ -280,15 +296,18 @@ export const FreeformCombobox = forwardRef<
 
   const isSelected = useCallback(
     (entry: ListEntry): boolean => {
-      if (entry.kind === 'separator') return false;
+      if (!isSelectableListEntry(entry)) return false;
       if (entry.kind === 'option') {
         return selectedList.some(
           (v) => v.type === 'option' && v.value === entry.value
         );
       }
-      return selectedList.some(
-        (v) => v.type === 'freeform' && v.value === entry.value
-      );
+      if (entry.kind === 'freeform') {
+        return selectedList.some(
+          (v) => v.type === 'freeform' && v.value === entry.value
+        );
+      }
+      return false;
     },
     [selectedList]
   );
@@ -402,7 +421,7 @@ export const FreeformCombobox = forwardRef<
       );
       if (matchIdx >= 0) targetIndex = matchIdx;
     } else {
-      const first = listEntries.findIndex((e) => e.kind !== 'separator');
+      const first = listEntries.findIndex((e) => isSelectableListEntry(e));
       targetIndex = first >= 0 ? first : 0;
     }
 
@@ -430,12 +449,14 @@ export const FreeformCombobox = forwardRef<
   const selectEntry = useCallback(
     (entry: ListEntry) => {
       if (isLocked) return;
-      if (entry.kind === 'separator') return;
+      if (!isSelectableListEntry(entry)) return;
       if (entry.kind === 'freeform') {
         commitItem({ type: 'freeform', value: entry.value });
         return;
       }
-      commitItem({ type: 'option', value: entry.value });
+      if (entry.kind === 'option') {
+        commitItem({ type: 'option', value: entry.value });
+      }
     },
     [commitItem, isLocked]
   );
@@ -779,6 +800,19 @@ export const FreeformCombobox = forwardRef<
                 {listEntries.map((entry, index) => {
                   const highlighted = index === highlightedIndex;
                   const selected = isSelected(entry);
+                  if (entry.kind === 'heading') {
+                    return (
+                      <li
+                        key={`heading-${index}-${entry.label}`}
+                        role="presentation"
+                        className="pointer-events-none list-none"
+                      >
+                        <PopoverListSectionHeading>
+                          {entry.label}
+                        </PopoverListSectionHeading>
+                      </li>
+                    );
+                  }
                   if (entry.kind === 'separator') {
                     return (
                       <li
