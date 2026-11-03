@@ -13,6 +13,7 @@ const baseForm = (): ActivityFormData =>
     newsReleaseDistributionId: 2,
     translationsRequiredStatusId: 3,
     translationLanguageIds: [10, 11],
+    releaseSchedulingMode: 'relative',
     releaseTimeOffsetMinutes: 15,
   }) as unknown as ActivityFormData;
 
@@ -42,6 +43,7 @@ describe('stripCommsDependentFields', () => {
     expect(result.newsReleaseDistributionId).toBeNull();
     expect(result.translationsRequiredStatusId).toBeNull();
     expect(result.translationLanguageIds).toEqual([]);
+    expect(result.releaseSchedulingMode).toBeNull();
     expect(result.releaseTimeOffsetMinutes).toBeNull();
   });
 
@@ -49,6 +51,7 @@ describe('stripCommsDependentFields', () => {
     const result = stripCommsDependentFields(baseForm(), new Map());
     expect(result.newsReleaseOriginId).toBeNull();
     expect(result.translationLanguageIds).toEqual([]);
+    expect(result.releaseSchedulingMode).toBeNull();
     expect(result.releaseTimeOffsetMinutes).toBeNull();
   });
 
@@ -108,6 +111,7 @@ describe('stripCommsDependentFields', () => {
       { ...baseForm(), commsMaterialIds: [9] },
       mediaFlags
     );
+    expect(result.releaseSchedulingMode).toBeNull();
     expect(result.releaseTimeOffsetMinutes).toBeNull();
   });
 });

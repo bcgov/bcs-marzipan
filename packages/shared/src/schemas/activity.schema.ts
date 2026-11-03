@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
+import {
+  LOOK_AHEAD_STATUS,
+  RELEASE_SCHEDULING_MODES,
+  VISIBILITY,
+} from '../constants/constants';
+import { releaseSchedulingSuperRefine } from '../utils/activity-release-scheduling';
 import { RELEASE_TIME_OFFSET_MAX_MINUTES } from '../utils/activity-release-time';
 import {
   ACTIVITY_RICH_TEXT_MAX_BYTES,
@@ -217,6 +222,7 @@ const activityCoreFieldsSchema = z.object({
   lookAheadSection: z.string().min(1).max(50).nullable().optional(),
 
   newsReleaseOriginId: z.number().int().nullable().optional(),
+  releaseSchedulingMode: z.enum(RELEASE_SCHEDULING_MODES).nullable().optional(),
   releaseTimeOffsetMinutes: z
     .number()
     .int()
@@ -478,18 +484,17 @@ const createActivityRequestSchemaBase = createBaseSchema
     }
   );
 
-export const createActivityRequestSchema =
-  createActivityRequestSchemaBase.superRefine(
-    activitySchedulingSuperRefine('create')
-  );
+export const createActivityRequestSchema = createActivityRequestSchemaBase
+  .superRefine(activitySchedulingSuperRefine('create'))
+  .superRefine(releaseSchedulingSuperRefine);
 
 /** Create schema with lookup resolvers for Confirmed/Pitched cross-field rules in the UI. */
 export function createActivityRequestSchemaWithLookups(
   resolvers: ActivitySchedulingLookupResolvers
 ) {
-  return createActivityRequestSchemaBase.superRefine(
-    activitySchedulingSuperRefine('create', resolvers)
-  );
+  return createActivityRequestSchemaBase
+    .superRefine(activitySchedulingSuperRefine('create', resolvers))
+    .superRefine(releaseSchedulingSuperRefine);
 }
 
 /**
@@ -538,7 +543,8 @@ export const updateActivityRequestSchema = createBaseSchema
       ...zodConstraintIssueParams(),
     }
   )
-  .superRefine(activitySchedulingSuperRefine('update'));
+  .superRefine(activitySchedulingSuperRefine('update'))
+  .superRefine(releaseSchedulingSuperRefine);
 
 /**
  * Administrative bulk action request. This intentionally permits only the

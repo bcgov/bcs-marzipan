@@ -85,6 +85,7 @@ export const activities = pgTable(
     newsReleaseOriginId: integer('news_release_origin_id').references(
       () => newsReleaseOrigins.id
     ), // FK to NewsReleaseOrigin lookup table
+    releaseSchedulingMode: varchar('release_scheduling_mode', { length: 50 }),
     releaseTimeOffsetMinutes: integer('release_time_offset_minutes'),
     releaseTime: timestamp('release_time', { withTimezone: true }),
 

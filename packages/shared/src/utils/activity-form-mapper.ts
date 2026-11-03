@@ -149,6 +149,7 @@ export function mapResponseToFormData(
     lookAheadStatus: response.lookAheadStatus ?? undefined,
     lookAheadSection: response.lookAheadSection ?? undefined,
     organizations: normalizeOrganizationFormEntries(organizations),
+    releaseSchedulingMode: response.releaseSchedulingMode ?? undefined,
     releaseTimeOffsetMinutes: response.releaseTimeOffsetMinutes ?? undefined,
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
     leadTeamId: response.leadTeamId ?? 0,

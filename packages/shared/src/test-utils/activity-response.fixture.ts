@@ -61,6 +61,7 @@ export function createMockActivityResponse(
     // News Release
     newsReleaseOriginId: null,
     newsReleaseDistributionId: null,
+    releaseSchedulingMode: null,
     releaseTimeOffsetMinutes: null,
     releaseTime: null,
 

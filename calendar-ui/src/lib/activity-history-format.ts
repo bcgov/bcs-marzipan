@@ -2,6 +2,7 @@ import type { HistoryChange } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
   canonicalizeActivityFormData,
+  formatReleaseSchedulingModeLabel,
   formatReleaseTimeOffsetLabel,
   getActivityFieldLabel as getSharedFieldLabel,
   isDeepEqual,
@@ -87,6 +88,13 @@ export function formatHistoryFieldValue(
   ) {
     const formatted = formatTime12h(value);
     return formatted === '' ? '(empty)' : formatted;
+  }
+
+  if (field === 'releaseSchedulingMode') {
+    if (value === 'relative' || value === 'on_signal') {
+      return formatReleaseSchedulingModeLabel(value);
+    }
+    return formatReleaseSchedulingModeLabel(null);
   }
 
   if (field === 'releaseTimeOffsetMinutes' && typeof value === 'number') {
@@ -408,6 +416,7 @@ const FIELDS_TO_COMPARE = [
   'categoryIds',
   'tagIds',
   'commsMaterialIds',
+  'releaseSchedulingMode',
   'releaseTimeOffsetMinutes',
   'translationLanguageIds',
   'sharedWithTeamIds',

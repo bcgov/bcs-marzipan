@@ -90,7 +90,7 @@ export const DEFAULT_ACTIVITY_INFO_ICON_SETTINGS: ActivityInfoIconSettings = {
     },
     {
       fieldKey: 'releaseTimeOffsetMinutes',
-      text: 'Suggested release time for publication through NRMs (offset from scheduled start time).',
+      text: 'When the release goes out for NRMs: offset from scheduled start, or On signal when an external go-ahead is required.',
     },
   ],
 };

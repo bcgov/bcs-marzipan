@@ -3,11 +3,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
+  applyReleaseSchedulingRadioChange,
   customPartsToReleaseTimeOffsetMinutes,
   getActivityReleaseTimePreview,
   getReleaseTimeOffsetMaxAmountForUnit,
+  RELEASE_SCHEDULING_RADIO_CUSTOM,
+  RELEASE_SCHEDULING_RADIO_NOT_SPECIFIED,
+  RELEASE_SCHEDULING_RADIO_ON_SIGNAL,
   RELEASE_TIME_OFFSET_CUSTOM_UNITS,
-  RELEASE_TIME_PRESET_OFFSETS,
+  releaseSchedulingRadioValueFromFields,
   releaseTimeOffsetMinutesToCustomParts,
   releaseTimeOffsetMinutesToCustomPartsForUnit,
   type ReleaseTimeOffsetCustomUnit,
@@ -28,6 +32,8 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from '@/components/ui/input-group';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
@@ -37,7 +43,14 @@ import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-per
 import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 
-type ReleaseTimeMode = 'unset' | 'preset' | 'custom';
+const RELEASE_SCHEDULING_RADIO_OPTIONS = [
+  { value: RELEASE_SCHEDULING_RADIO_NOT_SPECIFIED, label: 'Not specified' },
+  { value: '0', label: 'At start' },
+  { value: '15', label: '+15 minutes' },
+  { value: '30', label: '+30 minutes' },
+  { value: RELEASE_SCHEDULING_RADIO_CUSTOM, label: 'Custom' },
+  { value: RELEASE_SCHEDULING_RADIO_ON_SIGNAL, label: 'On signal' },
+] as const;
 
 const RELEASE_TIME_OFFSET_UNIT_LABELS: Record<
   ReleaseTimeOffsetCustomUnit,
@@ -47,20 +60,6 @@ const RELEASE_TIME_OFFSET_UNIT_LABELS: Record<
   hours: 'Hours',
   days: 'Days',
 };
-
-function offsetToMode(offset: number | null | undefined): {
-  mode: ReleaseTimeMode;
-  preset?: number;
-  custom?: number;
-} {
-  if (offset === null || offset === undefined) {
-    return { mode: 'unset' };
-  }
-  if (RELEASE_TIME_PRESET_OFFSETS.includes(offset as 0 | 15 | 30)) {
-    return { mode: 'preset', preset: offset };
-  }
-  return { mode: 'custom', custom: offset };
-}
 
 type CustomOffsetDraft = {
   amount: string;
@@ -103,6 +102,10 @@ function resolveCustomDraftOffsetMinutes(
 export function ActivityReleaseTimeField() {
   const form = useFormContext<ActivityFormData>();
   const releaseScope = useActivityFieldScopeControl('releaseTime');
+  const schedulingMode = useWatch({
+    control: form.control,
+    name: 'releaseSchedulingMode',
+  });
   const offsetValue = useWatch({
     control: form.control,
     name: 'releaseTimeOffsetMinutes',
@@ -110,14 +113,20 @@ export function ActivityReleaseTimeField() {
   const startDate = useWatch({ control: form.control, name: 'startDate' });
   const startTime = useWatch({ control: form.control, name: 'startTime' });
   const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
-  const { mode } = offsetToMode(offsetValue);
-  const [customSelectActive, setCustomSelectActive] = useState(false);
+
+  const radioValue = releaseSchedulingRadioValueFromFields(
+    schedulingMode ?? null,
+    offsetValue ?? null
+  );
+
+  const showCustomOffsetInput =
+    radioValue === RELEASE_SCHEDULING_RADIO_CUSTOM &&
+    schedulingMode !== 'on_signal';
+
   const [customDraft, setCustomDraft] =
     useState<CustomOffsetDraft>(EMPTY_CUSTOM_DRAFT);
   const customDraftRef = useRef(customDraft);
   customDraftRef.current = customDraft;
-
-  const showCustomOffsetInput = customSelectActive || mode === 'custom';
 
   useEffect(() => {
     if (!showCustomOffsetInput) {
@@ -136,32 +145,17 @@ export function ActivityReleaseTimeField() {
     setCustomDraft(customDraftFromOffset(offsetValue));
   }, [offsetValue, showCustomOffsetInput]);
 
-  const selectMode: ReleaseTimeMode =
-    customSelectActive || mode === 'custom'
-      ? 'custom'
-      : mode === 'unset'
-        ? 'unset'
-        : 'preset';
-
   const releasePreview = useMemo(
     () =>
       getActivityReleaseTimePreview({
+        releaseSchedulingMode: schedulingMode ?? null,
         releaseTimeOffsetMinutes: offsetValue ?? null,
         startDate: startDate ?? null,
         startTime: startTime ?? null,
         isAllDay: !!isAllDay,
       }),
-    [offsetValue, startDate, startTime, isAllDay]
+    [schedulingMode, offsetValue, startDate, startTime, isAllDay]
   );
-
-  const UNSET_SELECT_VALUE = '__unset__';
-
-  const selectValue =
-    selectMode === 'unset'
-      ? UNSET_SELECT_VALUE
-      : selectMode === 'custom'
-        ? 'custom'
-        : String(offsetValue ?? '');
 
   const helperText = releasePreview
     ? releasePreview.kind === 'preview'
@@ -173,14 +167,30 @@ export function ActivityReleaseTimeField() {
     customDraft.unit
   );
 
-  const applyCustomDraft = (
-    fieldName: 'releaseTimeOffsetMinutes',
-    nextDraft: CustomOffsetDraft
-  ) => {
+  const applySchedulingFields = (update: {
+    releaseSchedulingMode: ActivityFormData['releaseSchedulingMode'];
+    releaseTimeOffsetMinutes: ActivityFormData['releaseTimeOffsetMinutes'];
+  }) => {
+    setActivityFormFieldValue(
+      form,
+      'releaseSchedulingMode',
+      update.releaseSchedulingMode ?? null
+    );
+    setActivityFormFieldValue(
+      form,
+      'releaseTimeOffsetMinutes',
+      update.releaseTimeOffsetMinutes ?? null
+    );
+  };
+
+  const applyCustomDraft = (nextDraft: CustomOffsetDraft) => {
     setCustomDraft(nextDraft);
     const trimmed = nextDraft.amount.trim();
     if (trimmed === '') {
-      setActivityFormFieldValue(form, fieldName, null);
+      applySchedulingFields({
+        releaseSchedulingMode: 'relative',
+        releaseTimeOffsetMinutes: null,
+      });
       return;
     }
     const parsed = Number(trimmed);
@@ -194,13 +204,13 @@ export function ActivityReleaseTimeField() {
     if (minutes === null) {
       return;
     }
-    setActivityFormFieldValue(form, fieldName, minutes);
+    applySchedulingFields({
+      releaseSchedulingMode: 'relative',
+      releaseTimeOffsetMinutes: minutes,
+    });
   };
 
-  const applyCustomUnitChange = (
-    fieldName: 'releaseTimeOffsetMinutes',
-    nextUnit: ReleaseTimeOffsetCustomUnit
-  ) => {
+  const applyCustomUnitChange = (nextUnit: ReleaseTimeOffsetCustomUnit) => {
     const baseMinutes = resolveCustomDraftOffsetMinutes(
       offsetValue,
       customDraft
@@ -223,7 +233,10 @@ export function ActivityReleaseTimeField() {
     };
     setCustomDraft(nextDraft);
     if (minutes !== null) {
-      setActivityFormFieldValue(form, fieldName, minutes);
+      applySchedulingFields({
+        releaseSchedulingMode: 'relative',
+        releaseTimeOffsetMinutes: minutes,
+      });
     }
   };
 
@@ -231,11 +244,11 @@ export function ActivityReleaseTimeField() {
     <FormField
       control={form.control}
       name="releaseTimeOffsetMinutes"
-      render={({ field }) => (
+      render={() => (
         <FormItem>
           <FormLabel>
             <>
-              {getActivityFieldLabel(field.name)}
+              {getActivityFieldLabel('releaseTimeOffsetMinutes')}
               <ActivityFieldInfoIcon
                 fieldKey="releaseTimeOffsetMinutes"
                 ariaLabel="About release time"
@@ -244,48 +257,45 @@ export function ActivityReleaseTimeField() {
           </FormLabel>
           <ActivityFieldScopePermissionTooltip scope="releaseTime">
             <div className="space-y-3">
-              <FormSelectSafe
-                readOnly={releaseScope.readOnly}
-                disabled={releaseScope.fieldScopeDisabled}
-                value={selectValue}
-                onValueChange={(value) => {
-                  if (value === UNSET_SELECT_VALUE) {
-                    setCustomSelectActive(false);
-                    setCustomDraft(EMPTY_CUSTOM_DRAFT);
-                    setActivityFormFieldValue(form, field.name, null);
-                    return;
-                  }
-                  if (value === 'custom') {
-                    setCustomSelectActive(true);
-                    setCustomDraft(customDraftFromOffset(offsetValue));
-                    return;
-                  }
-                  setCustomSelectActive(false);
-                  setCustomDraft(EMPTY_CUSTOM_DRAFT);
-                  setActivityFormFieldValue(form, field.name, Number(value));
-                }}
-              >
-                <FormControl data-field={field.name}>
-                  <FormSelectTrigger
-                    readOnly={
-                      releaseScope.readOnly && !releaseScope.fieldScopeDisabled
+              <FormControl data-field="releaseSchedulingMode">
+                <RadioGroup
+                  readOnly={releaseScope.readOnly}
+                  disabled={releaseScope.fieldScopeDisabled}
+                  value={radioValue}
+                  onValueChange={(value) => {
+                    const next = applyReleaseSchedulingRadioChange(value);
+                    if (value === RELEASE_SCHEDULING_RADIO_CUSTOM) {
+                      setCustomDraft(customDraftFromOffset(offsetValue));
+                    } else {
+                      setCustomDraft(EMPTY_CUSTOM_DRAFT);
                     }
-                  >
-                    <SelectValue placeholder="Select release time" />
-                  </FormSelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value={UNSET_SELECT_VALUE}>Not set</SelectItem>
-                  <SelectItem value="0">At start</SelectItem>
-                  <SelectItem value="15">+15 minutes</SelectItem>
-                  <SelectItem value="30">+30 minutes</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </FormSelectSafe>
+                    applySchedulingFields(next);
+                  }}
+                  className="flex flex-row flex-wrap gap-x-4 gap-y-2"
+                >
+                  {RELEASE_SCHEDULING_RADIO_OPTIONS.map((option) => (
+                    <div
+                      key={option.value || 'not-specified'}
+                      className="flex items-center gap-2"
+                    >
+                      <RadioGroupItem
+                        value={option.value}
+                        id={`release-scheduling-${option.value || 'not-specified'}`}
+                      />
+                      <Label
+                        htmlFor={`release-scheduling-${option.value || 'not-specified'}`}
+                        className="cursor-pointer font-normal"
+                      >
+                        {option.label}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </FormControl>
 
               {showCustomOffsetInput ? (
                 <div className="space-y-1.5">
-                  <FormControl data-field={field.name}>
+                  <FormControl data-field="releaseTimeOffsetMinutes">
                     <InputGroup
                       data-disabled={
                         releaseScope.fieldScopeDisabled ? true : undefined
@@ -306,7 +316,7 @@ export function ActivityReleaseTimeField() {
                         placeholder="Amount"
                         value={customDraft.amount}
                         onChange={(e) => {
-                          applyCustomDraft(field.name, {
+                          applyCustomDraft({
                             ...customDraft,
                             amount: e.target.value,
                           });
@@ -320,7 +330,6 @@ export function ActivityReleaseTimeField() {
                           value={customDraft.unit}
                           onValueChange={(unit) => {
                             applyCustomUnitChange(
-                              field.name,
                               unit as ReleaseTimeOffsetCustomUnit
                             );
                           }}

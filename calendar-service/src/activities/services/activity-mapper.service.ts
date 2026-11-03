@@ -21,7 +21,10 @@ import {
   activityListItemSchema,
   activityResponseSchema,
 } from '@corpcal/shared/schemas';
-import { formatActivityOrganizationsGridSummary } from '@corpcal/shared/utils';
+import {
+  formatActivityOrganizationsGridSummary,
+  parseReleaseSchedulingMode,
+} from '@corpcal/shared/utils';
 
 type ActivityAuditTimestampsBase = {
   createdDateTime: string;
@@ -231,6 +234,9 @@ export class ActivityMapperService {
       commsMaterials: relatedData?.commsMaterials ?? [],
       newsReleaseOriginId: activity.newsReleaseOriginId ?? null,
       newsReleaseDistributionId: activity.newsReleaseDistributionId ?? null,
+      releaseSchedulingMode: parseReleaseSchedulingMode(
+        activity.releaseSchedulingMode
+      ),
       releaseTimeOffsetMinutes: activity.releaseTimeOffsetMinutes ?? null,
       releaseTime: activity.releaseTime
         ? activity.releaseTime.toISOString()

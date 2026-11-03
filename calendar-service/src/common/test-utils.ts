@@ -95,6 +95,7 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     endDate: '2024-01-15',
     endTime: '12:00',
     schedulingNotes: '',
+    releaseSchedulingMode: null,
     releaseTimeOffsetMinutes: null,
     releaseTime: null,
     newsReleaseOriginId: null,
