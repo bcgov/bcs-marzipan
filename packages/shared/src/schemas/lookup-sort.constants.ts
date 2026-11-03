@@ -8,6 +8,7 @@ export const REORDERABLE_LOOKUP_KEYS = [
   'government-representatives',
   'ministries',
   'ministry-groups',
+  'organization-types',
   'tags',
   'themes',
   'translation-languages',

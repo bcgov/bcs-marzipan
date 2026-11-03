@@ -164,6 +164,7 @@ export const organizationLookupItemSchema = z.object({
   abbreviation: z.string().nullable().optional(),
   organizationTypeId: z.number().int().nullable().optional(),
   organizationTypeDisplayName: z.string().nullable().optional(),
+  organizationTypeSortOrder: z.number().int().nullable().optional(),
   jurisdiction: z.string().nullable().optional(),
 });
 
