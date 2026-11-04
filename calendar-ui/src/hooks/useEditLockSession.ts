@@ -243,9 +243,10 @@ export function useEditLockSession({
 
     const syncLockStatus = (): void => {
       void refreshLockFromServer().then((state) => {
-        if (state !== 'owned') {
-          onEditLockLostRef.current();
+        if (state === 'unavailable' || state === 'owned') {
+          return;
         }
+        onEditLockLostRef.current();
       });
     };
 
