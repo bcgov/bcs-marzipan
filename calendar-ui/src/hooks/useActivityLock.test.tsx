@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError, NetworkError } from '../api/errors';
 import { useActivityLock } from './useActivityLock';
@@ -27,6 +27,7 @@ vi.mock('../api/locksApi', () => ({
 
 const ownLockStatus = {
   locked: true,
+  serverTime: '2026-10-08T18:00:00.000Z',
   isOwnLock: true,
   lockId: 7,
   lockedBy: {
@@ -53,8 +54,102 @@ const acquiredLock = {
 describe('useActivityLock', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getLockStatusMock.mockResolvedValue({ locked: false });
+    getLockStatusMock.mockResolvedValue({
+      locked: false,
+      serverTime: ownLockStatus.serverTime,
+    });
     acquireLockMock.mockResolvedValue(acquiredLock);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each([-60, 60])(
+    'restores an owned lock using server time with %i minutes of client clock skew',
+    async (skewMinutes) => {
+      const serverNow = Date.parse(ownLockStatus.serverTime);
+      const clientNow = serverNow + skewMinutes * 60_000;
+      const dateNowMock = vi.spyOn(Date, 'now').mockReturnValue(clientNow);
+      getLockStatusMock.mockResolvedValue(ownLockStatus);
+      const { result } = renderHook(() => useActivityLock(139, 1));
+
+      await waitFor(() => expect(result.current.lockState).toBe('owned'));
+
+      expect(result.current.getServerNowMs()).toBe(serverNow);
+      expect(result.current.wasLockIdleExpired()).toBe(false);
+
+      dateNowMock.mockReturnValue(clientNow + 30 * 60_000);
+
+      expect(result.current.getServerNowMs()).toBe(
+        Date.parse(ownLockStatus.lockedBy.idleExpiresAt)
+      );
+      expect(result.current.wasLockIdleExpired()).toBe(true);
+      expect(acquireLockMock).not.toHaveBeenCalled();
+      expect(heartbeatLockMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['refreshLockFromServer', 'ensureLockForSubmit'] as const)(
+    'updates the server clock on every %s status refresh',
+    async (refreshMethod) => {
+      const clientNow = Date.parse(ownLockStatus.serverTime) + 60 * 60_000;
+      vi.spyOn(Date, 'now').mockReturnValue(clientNow);
+      getLockStatusMock.mockResolvedValue(ownLockStatus);
+      const { result } = renderHook(() => useActivityLock(139, 1));
+      await waitFor(() => expect(result.current.lockState).toBe('owned'));
+
+      const serverTime = ownLockStatus.lockedBy.idleExpiresAt;
+      getLockStatusMock.mockResolvedValue({ ...ownLockStatus, serverTime });
+      await act(async () => {
+        await result.current[refreshMethod]();
+      });
+
+      expect(result.current.getServerNowMs()).toBe(Date.parse(serverTime));
+      expect(result.current.wasLockIdleExpired()).toBe(true);
+
+      const unlockedServerTime = '2026-10-08T18:31:00.000Z';
+      getLockStatusMock.mockResolvedValue({
+        locked: false,
+        serverTime: unlockedServerTime,
+      });
+      await act(async () => {
+        await result.current.refreshLockFromServer();
+      });
+
+      expect(result.current.lockState).toBe('idle');
+      expect(result.current.getServerNowMs()).toBe(
+        Date.parse(unlockedServerTime)
+      );
+    }
+  );
+
+  it('uses status server time when recovering an owned lock after acquisition conflict', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(
+      Date.parse(ownLockStatus.serverTime) + 60 * 60_000
+    );
+    acquireLockMock.mockRejectedValueOnce(
+      new ApiError({
+        type: 'about:blank',
+        title: 'Locked',
+        status: 423,
+        detail: 'Activity is already locked',
+        instance: '/locks',
+        correlationId: 'test',
+      })
+    );
+    const { result } = renderHook(() => useActivityLock(139, 1));
+    await waitFor(() => expect(result.current.lockState).toBe('idle'));
+    const serverTime = '2026-10-08T18:01:00.000Z';
+    getLockStatusMock.mockResolvedValue({ ...ownLockStatus, serverTime });
+
+    await act(async () => {
+      expect(await result.current.acquire()).toEqual({ ok: true });
+    });
+
+    expect(result.current.lockState).toBe('owned');
+    expect(result.current.getServerNowMs()).toBe(Date.parse(serverTime));
+    expect(result.current.wasLockIdleExpired()).toBe(false);
   });
 
   it('reports ready when the server confirms the current user owns the lock', async () => {

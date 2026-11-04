@@ -101,7 +101,7 @@ type UseActivityLockResult = {
   sendHeartbeat: (options?: {
     keepAlive?: boolean;
   }) => Promise<HeartbeatOutcome>;
-  /** Estimated server time (ms), from the last heartbeat `serverTime` offset. */
+  /** Estimated server time (ms), from the last server-stamped response. */
   getServerNowMs: () => number;
   /** Update lock idle expiry from heartbeat response without full acquire. */
   mergeLockIdleExpiry: (idleExpiresAt: string) => void;
@@ -252,6 +252,7 @@ export function useActivityLock(
     getLockStatus(activityId)
       .then((status) => {
         if (cancelled) return;
+        recordServerTime(status.serverTime);
         if (status.locked && !status.isOwnLock && status.lockedBy) {
           setLockState('locked-by-other');
           setLockedByUsername(status.lockedBy.username);
@@ -285,7 +286,7 @@ export function useActivityLock(
     return () => {
       cancelled = true;
     };
-  }, [activityId, currentUserId]);
+  }, [activityId, currentUserId, recordServerTime]);
 
   const mergeLockIdleExpiry = useCallback((idleExpiresAt: string) => {
     const cur = lockRef.current;
@@ -297,6 +298,7 @@ export function useActivityLock(
 
   const applyServerLockStatus = useCallback(
     (status: Awaited<ReturnType<typeof getLockStatus>>): SettledLockState => {
+      recordServerTime(status.serverTime);
       const info =
         currentUserId != null
           ? buildLockInfoFromStatus(activityId, currentUserId, status)
@@ -319,7 +321,7 @@ export function useActivityLock(
       setLockedByUsername(null);
       return 'idle';
     },
-    [activityId, currentUserId]
+    [activityId, currentUserId, recordServerTime]
   );
 
   const refreshLockFromServer =
@@ -407,6 +409,7 @@ export function useActivityLock(
         if (reason === 'locked_by_other' || status === LOCKED_STATUS) {
           try {
             const statusRes = await getLockStatus(activityId);
+            recordServerTime(statusRes.serverTime);
             if (statusRes.locked && !statusRes.isOwnLock) {
               const otherUsername = statusRes.lockedBy?.username ?? null;
               setLockedByUsername(otherUsername);

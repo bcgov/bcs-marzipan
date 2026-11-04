@@ -18,6 +18,7 @@ export type LockInfo = {
 
 export type LockStatusResponse = {
   locked: boolean;
+  serverTime: string;
   isOwnLock?: boolean;
   lockId?: number;
   lockedBy?: {

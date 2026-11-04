@@ -119,11 +119,13 @@ export class LocksController {
       'activity',
       activityId
     );
+    const serverTime = new Date().toISOString();
     if (!lock) {
-      return { locked: false };
+      return { locked: false, serverTime };
     }
     return {
       locked: true,
+      serverTime,
       isOwnLock: lock.userId === user.id,
       lockId: lock.id,
       lockedBy: {
