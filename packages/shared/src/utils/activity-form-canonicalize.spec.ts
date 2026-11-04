@@ -20,6 +20,9 @@ function minimalForm(overrides: Partial<ActivityFormData>): ActivityFormData {
     visibility: 'global',
     leadTeamId: 1,
     categoryIds: [1],
+    organizations: [{ organizationId: 1, isLead: true }],
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
     ...overrides,
   };
 }
@@ -29,6 +32,21 @@ describe('canonicalizeActivityFormData', () => {
     const a = canonicalizeActivityFormData(minimalForm({ notes: undefined }));
     const b = canonicalizeActivityFormData(minimalForm({ notes: '' }));
     expect(isDeepEqual(a.notes, b.notes)).toBe(true);
+  });
+
+  it('sorts comms contacts with lead first', () => {
+    const canon = canonicalizeActivityFormData(
+      minimalForm({
+        commsContacts: [
+          { userId: 1, isLead: false },
+          { userId: 2, isLead: true },
+        ],
+      })
+    );
+    expect(canon.commsContacts).toEqual([
+      { userId: 2, isLead: true },
+      { userId: 1, isLead: false },
+    ]);
   });
 
   it('treats sharedWithTeamIds undefined like empty array', () => {
@@ -110,7 +128,6 @@ describe('prepareActivityFormDataForSubmit', () => {
       minimalForm({
         notes: '',
         schedulingNotes: '',
-        strategy: '',
         significance: EMPTY_RICH_TEXT_DOC,
         executiveSummary: EMPTY_RICH_TEXT_DOC,
       })
@@ -118,7 +135,6 @@ describe('prepareActivityFormDataForSubmit', () => {
 
     expect(prepared.notes).toBeNull();
     expect(prepared.schedulingNotes).toBeNull();
-    expect(prepared.strategy).toBeNull();
     expect(prepared.significance).toBeNull();
     expect(prepared.executiveSummary).toBeNull();
     expect(prepared.lookAheadSection).toBeNull();

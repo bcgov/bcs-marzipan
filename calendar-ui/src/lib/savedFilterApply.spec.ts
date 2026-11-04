@@ -29,8 +29,6 @@ describe('applySavedFilterSelection', () => {
       },
       categoryIds: [],
       activityStatusIds: [],
-      pitchRequiredStatusNames: [],
-      pitchDateFilter: { kind: 'any' },
       lookAheadStatusValues: [],
       lookAheadSectionValues: [],
       dateConfirmedFilter: 'any',

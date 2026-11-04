@@ -7,12 +7,12 @@ export function buildTeamIdsByMinistryIdMap(
 ): Map<number, number[]> {
   const map = new Map<number, number[]>();
   for (const team of teams) {
-    if (team.ministryId == null) continue;
+    if (team.primaryOrganizationId == null) continue;
     const id = parseInt(team.value, 10);
     if (!Number.isFinite(id)) continue;
-    const list = map.get(team.ministryId) ?? [];
+    const list = map.get(team.primaryOrganizationId) ?? [];
     list.push(id);
-    map.set(team.ministryId, list);
+    map.set(team.primaryOrganizationId, list);
   }
   return map;
 }

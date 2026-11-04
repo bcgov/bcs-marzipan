@@ -114,8 +114,8 @@ describe('LookupsController', () => {
         appearsInShareWith: true,
         roleId: null,
         memberCount: 2,
-        ministryId: 5,
-        ministryName: 'M1',
+        primaryOrganizationId: 5,
+        primaryOrganizationName: 'M1',
       },
     ];
 
@@ -239,11 +239,14 @@ describe('LookupsController', () => {
         success: true,
         data: mockLookupItems,
       });
-      expect(mockLookupsService.getOrganizations).toHaveBeenCalledWith({
-        userId: undefined,
-        role: undefined,
-        organizationId: undefined,
-      });
+      expect(mockLookupsService.getOrganizations).toHaveBeenCalledWith(
+        {
+          userId: undefined,
+          role: undefined,
+          organizationId: undefined,
+        },
+        false
+      );
     });
 
     it('should return filtered organizations by userId', async () => {
@@ -255,11 +258,14 @@ describe('LookupsController', () => {
         success: true,
         data: mockLookupItems,
       });
-      expect(mockLookupsService.getOrganizations).toHaveBeenCalledWith({
-        userId: 1,
-        role: undefined,
-        organizationId: undefined,
-      });
+      expect(mockLookupsService.getOrganizations).toHaveBeenCalledWith(
+        {
+          userId: 1,
+          role: undefined,
+          organizationId: undefined,
+        },
+        false
+      );
     });
 
     it('should return filtered organizations by role', async () => {
@@ -271,11 +277,14 @@ describe('LookupsController', () => {
         success: true,
         data: mockLookupItems,
       });
-      expect(mockLookupsService.getOrganizations).toHaveBeenCalledWith({
-        userId: undefined,
-        role: 'admin',
-        organizationId: undefined,
-      });
+      expect(mockLookupsService.getOrganizations).toHaveBeenCalledWith(
+        {
+          userId: undefined,
+          role: 'admin',
+          organizationId: undefined,
+        },
+        false
+      );
     });
   });
 

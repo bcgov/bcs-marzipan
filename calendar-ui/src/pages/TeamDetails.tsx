@@ -229,7 +229,7 @@ export function TeamDetails() {
                   {team.abbreviation}
                 </p>
               ) : null}
-              {team.ministryName ? (
+              {team.primaryOrganizationName ? (
                 <p
                   className="text-slate-800"
                   style={{
@@ -241,7 +241,7 @@ export function TeamDetails() {
                     lineHeight: 'var(--Typescale-Body-2-line-height, 22px)',
                   }}
                 >
-                  {team.ministryName}
+                  {team.primaryOrganizationName}
                 </p>
               ) : null}
               {team.description ? (
@@ -448,8 +448,8 @@ export function TeamDetails() {
                 appearsInShareWith: team.appearsInShareWith,
                 roleId: null,
                 memberCount: team.members ? team.members.length : 0,
-                ministryId: team.ministryId ?? null,
-                ministryName: team.ministryName ?? null,
+                primaryOrganizationId: team.primaryOrganizationId ?? null,
+                primaryOrganizationName: team.primaryOrganizationName ?? null,
               }
             : null
         }

@@ -20,10 +20,6 @@ export interface ActivityFilterMatchInput {
   /** Category lookup IDs on the activity. */
   categoryIds: number[];
   activityStatusId: number;
-  /** Pitch required status display name (or null). */
-  pitchRequiredStatusName: string | null;
-  /** Pitch (panel) date as an ISO string, or null when not scheduled. */
-  pitchDate: string | null;
   lookAheadStatus: string | null;
   lookAheadSection: string | null;
   /** Date confirmation status name (matched case-insensitively against confirmed labels). */
@@ -32,7 +28,8 @@ export interface ActivityFilterMatchInput {
   timeStatusName: string;
   tagIds: number[];
   leadTeamId: number | null;
-  leadMinistryId: number | null;
+  /** Lead organization id (legacy filters used ministry ids; same integer for ministry orgs). */
+  leadOrganizationId: number | null;
   leadOrgId: number | null;
   commsContactLeadUserId: number | null;
   eventPlannerLeadIds: number[];
@@ -68,16 +65,18 @@ export function activityResponseToFilterMatchInput(
     endDate: activity.endDate,
     categoryIds: activity.categoryIds ?? [],
     activityStatusId: activity.activityStatusId,
-    pitchRequiredStatusName: activity.pitchRequiredStatus ?? null,
-    pitchDate: activity.pitchDate ?? null,
     lookAheadStatus: activity.lookAheadStatus ?? null,
     lookAheadSection: activity.lookAheadSection ?? null,
     dateStatusName: activity.dateStatus ?? '',
     timeStatusName: activity.timeStatus ?? '',
     tagIds: activity.tags.map((t) => t.id),
     leadTeamId: activity.leadTeamId ?? null,
-    leadMinistryId: activity.leadMinistryId ?? null,
-    leadOrgId: activity.leadOrgId ?? null,
+    leadOrganizationId:
+      activity.organizationDetails?.find((o) => o.isLead)?.organizationId ??
+      null,
+    leadOrgId:
+      activity.organizationDetails?.find((o) => o.isLead)?.organizationId ??
+      null,
     commsContactLeadUserId: commsLead?.userId ?? null,
     eventPlannerLeadIds: activity.eventPlannerLeadIds ?? [],
     translationsRequiredStatusId: activity.translationsRequiredStatusId ?? null,

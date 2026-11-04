@@ -74,16 +74,14 @@ function activityTableRowToFilterMatchInput(
     endDate: row.endDate,
     categoryIds: row.categoryIds,
     activityStatusId: row.activityStatusId,
-    pitchRequiredStatusName: row.pitchRequiredStatus,
-    pitchDate: row.pitchDate,
     lookAheadStatus: row.lookAheadStatus,
     lookAheadSection: row.lookAheadSection,
     dateStatusName: row.dateStatus,
     timeStatusName: row.timeStatus,
     tagIds: row.tags.map((t) => t.id),
     leadTeamId: row.leadTeamId,
-    leadMinistryId: row.leadMinistryId,
-    leadOrgId: row.leadOrgId,
+    leadOrganizationId: row.leadOrganizationId,
+    leadOrgId: null,
     commsContactLeadUserId: row.commsContactLeadUserId,
     eventPlannerLeadIds: row.eventPlannerLeadIds ?? [],
     translationsRequiredStatusId: row.translationsRequiredStatusId,
@@ -121,7 +119,7 @@ export function canResolveTranslationLanguageFilter(
 }
 
 /**
- * Client-side filter by date range, category (IDs), status (IDs), pitch, tags, leads, translations, etc.
+ * Client-side filter by date range, category (IDs), status (IDs), tags, leads, translations, etc.
  * Delegates to the shared {@link activityMatchesFilterState} predicate so list and
  * Reports apply identical rules. Optional context resolves translation-language
  * IDs to labels (the only dimension that cannot be matched by ID on the client).
@@ -150,7 +148,6 @@ export type ActivityListQueryParams = Partial<
     | 'includeCompleted'
     | 'includeDeleted'
     | 'leadTeamIds'
-    | 'leadMinistryIds'
     | 'commsContactLeadUserIds'
     | 'sharedWithTeamIds'
     | 'flagAssigneeUserIds'
@@ -169,7 +166,6 @@ export function normalizeListParams(
     includeCompleted,
     includeDeleted,
     leadTeamIds,
-    leadMinistryIds,
     commsContactLeadUserIds,
     sharedWithTeamIds,
     flagAssigneeUserIds,
@@ -179,9 +175,6 @@ export function normalizeListParams(
   if (includeDeleted !== undefined) out.includeDeleted = includeDeleted;
   if (leadTeamIds !== undefined && leadTeamIds.length > 0) {
     out.leadTeamIds = sortNumericArray(leadTeamIds);
-  }
-  if (leadMinistryIds !== undefined && leadMinistryIds.length > 0) {
-    out.leadMinistryIds = sortNumericArray(leadMinistryIds);
   }
   if (
     commsContactLeadUserIds !== undefined &&
@@ -211,7 +204,6 @@ const OPTIMISTIC_MERGEABLE_KEYS = [
   'endTime',
   'lookAheadStatus',
   'lookAheadSection',
-  'pitchDate',
 ] as const satisfies readonly (keyof ActivityListItem &
   keyof UpdateActivityRequest)[];
 

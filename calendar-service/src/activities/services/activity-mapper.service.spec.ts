@@ -15,30 +15,39 @@ describe('ActivityMapperService', () => {
   });
 
   describe('mapToResponseDto', () => {
-    it('should map leadTeamId and leadMinistryId from activity', () => {
+    it('should map leadTeamId and leadOrganizationId from related data', () => {
       const activity = createMockActivity({
         id: 1,
         leadTeamId: 5,
-        leadMinistryId: 2,
       });
 
-      const result = mapper.mapToResponseDto(activity);
+      const result = mapper.mapToListItemDto(activity, {
+        organizationDetails: [
+          {
+            organizationId: 2,
+            name: 'Ministry',
+            isLead: true,
+            abbreviation: 'MO',
+          },
+        ],
+      });
 
       expect(result.leadTeamId).toBe(5);
-      expect(result.leadMinistryId).toBe(2);
+      expect(result.leadOrganizationId).toBe(2);
     });
 
-    it('should map leadMinistryId to null when activity has null leadMinistryId', () => {
+    it('should map leadOrganizationId to null when no lead organization', () => {
       const activity = createMockActivity({
         id: 1,
         leadTeamId: 3,
-        leadMinistryId: null,
       });
 
-      const result = mapper.mapToResponseDto(activity);
+      const result = mapper.mapToListItemDto(activity, {
+        organizationDetails: [],
+      });
 
       expect(result.leadTeamId).toBe(3);
-      expect(result.leadMinistryId).toBeNull();
+      expect(result.leadOrganizationId).toBeNull();
     });
 
     it('should map null venueStatusId and omit computed venueStatus when not provided', () => {
@@ -100,14 +109,12 @@ describe('ActivityMapperService', () => {
         id: 42,
         startDate: '2026-04-27',
         endDate: '2026-04-28',
-        pitchDate: '2026-04-25',
       });
 
       const result = mapper.mapToResponseDto(activity);
 
       expect(result.startDate).toBe('2026-04-27');
       expect(result.endDate).toBe('2026-04-28');
-      expect(result.pitchDate).toBe('2026-04-25');
     });
 
     it('extracts UTC components when a Date arrives instead of a string', () => {
@@ -142,7 +149,6 @@ describe('ActivityMapperService', () => {
         endDate: null,
         startTime: null,
         endTime: null,
-        pitchDate: null,
       });
 
       const result = mapper.mapToResponseDto(activity);
@@ -151,7 +157,6 @@ describe('ActivityMapperService', () => {
       expect(result.endDate).toBeNull();
       expect(result.startTime).toBeNull();
       expect(result.endTime).toBeNull();
-      expect(result.pitchDate).toBeNull();
     });
 
     it('formats audit instants as UTC ISO strings ending in Z', () => {

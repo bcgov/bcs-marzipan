@@ -20,7 +20,6 @@ function emptyRichTextBaseline(
 export const UI_BASELINE_EMPTY_STRING_FIELDS = [
   'notes',
   'schedulingNotes',
-  'strategy',
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
 /**
@@ -54,7 +53,6 @@ export const UI_BASELINE_FIELD_SENTINELS: {
 } = {
   notes: emptyStringBaseline,
   schedulingNotes: emptyStringBaseline,
-  strategy: emptyStringBaseline,
   significance: emptyRichTextBaseline,
   executiveSummary: emptyRichTextBaseline,
   summary: emptyRichTextBaseline,
@@ -66,7 +64,6 @@ export const UI_BASELINE_SENTINEL_VALUES: {
 } = {
   notes: '',
   schedulingNotes: '',
-  strategy: '',
   significance: EMPTY_RICH_TEXT_DOC,
   executiveSummary: EMPTY_RICH_TEXT_DOC,
   summary: EMPTY_RICH_TEXT_DOC,
@@ -86,12 +83,12 @@ export const UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES = [
   {
     category: 'Optional dates / times (ScheduledDatePopoverField)',
     emptyShape: 'undefined',
-    examples: 'startDate, endDate, startTime, endTime, pitchDate',
+    examples: 'startDate, endDate, startTime, endTime',
   },
   {
     category: 'Optional string IDs cleared via Select',
     emptyShape: 'undefined',
-    examples: 'leadOrgName, newsReleaseId',
+    examples: 'leadOrgName, notes',
   },
   {
     category: 'ID arrays (Combobox multi-select)',
@@ -102,7 +99,7 @@ export const UI_BASELINE_CANONICAL_ONLY_FIELD_CATEGORIES = [
   {
     category: 'Object arrays',
     emptyShape: '[]',
-    examples: 'eventPlanners, representatives, commsContacts, reportSettings',
+    examples: 'eventPlanners, representatives, commsContacts',
   },
   {
     category: 'Booleans',

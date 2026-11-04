@@ -21,7 +21,7 @@ describe('ActivityResponseRedactionInterceptor', () => {
     teamIds: [],
   };
 
-  const editorWithNotesLookAheadPitch: AuthUser = {
+  const editorWithNotesLookAhead: AuthUser = {
     id: 2,
     username: 'editor',
     displayName: 'Editor',
@@ -32,7 +32,6 @@ describe('ActivityResponseRedactionInterceptor', () => {
       'activities.view',
       'activities.notes.view',
       'activities.lookAhead.view',
-      'activities.pitchStatus.view',
     ],
     teamIds: [],
   };
@@ -70,7 +69,10 @@ describe('ActivityResponseRedactionInterceptor', () => {
     const handler = createHandler({ success: true, data: activity });
 
     const out = (await firstValueFrom(interceptor.intercept(ctx, handler))) as {
-      data: { notes?: string; lookAheadStatus?: string };
+      data: {
+        notes?: string;
+        lookAheadStatus?: string;
+      };
     };
 
     expect(out.data.notes).toBeUndefined();
@@ -79,7 +81,7 @@ describe('ActivityResponseRedactionInterceptor', () => {
 
   it('does not strip fields when user has view grants', async () => {
     const activity = createMockActivityResponse({ notes: 'keep' });
-    const ctx = createContext(editorWithNotesLookAheadPitch);
+    const ctx = createContext(editorWithNotesLookAhead);
     const handler = createHandler({ success: true, data: activity });
 
     const out = (await firstValueFrom(interceptor.intercept(ctx, handler))) as {

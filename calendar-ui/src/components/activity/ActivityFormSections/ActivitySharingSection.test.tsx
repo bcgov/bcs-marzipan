@@ -17,12 +17,6 @@ beforeAll(() => {
   }
 });
 
-vi.mock('@/hooks/useLeadTeamOptions', () => ({
-  useLeadTeamOptions: () => ({
-    data: [{ id: 5, name: 'Comms Team', displayName: 'Comms Team' }],
-  }),
-}));
-
 vi.mock('../activity-info-icon-settings-context', () => ({
   ActivityFieldInfoIcon: () => null,
 }));
@@ -33,12 +27,14 @@ function ActivitySharingSectionHarness({
   onFormReady,
   sharedWithTeams = [],
   quickShareGroups = [],
+  commsLeadOptions = [],
 }: {
   readOnly?: boolean;
   defaultValues?: Partial<ActivityFormData>;
   onFormReady?: (form: ReturnType<typeof useForm<ActivityFormData>>) => void;
   sharedWithTeams?: import('./ActivitySharingSection').SharingTeamLookup[];
   quickShareGroups?: import('./ActivitySharingSection').QuickShareGroupLookup[];
+  commsLeadOptions?: import('@/schemas/types').OptionItem[];
 }) {
   const form = useForm<ActivityFormData>({
     defaultValues: {
@@ -62,11 +58,70 @@ function ActivitySharingSectionHarness({
         <ActivitySharingSection
           sharedWithTeams={sharedWithTeams}
           quickShareGroups={quickShareGroups}
+          commsLeadOptions={commsLeadOptions}
+          leadTeamField={{
+            options: [
+              {
+                id: 5,
+                name: 'Comms Team',
+                displayName: 'Comms Team',
+                abbreviation: 'CT',
+                description: null,
+                sortOrder: 0,
+                isActive: true,
+                appearsInShareWith: true,
+                roleId: null,
+                memberCount: 1,
+                primaryOrganizationId: null,
+                primaryOrganizationName: null,
+              },
+            ],
+            displayLabel: 'Comms Team',
+            optionsFetching: false,
+          }}
         />
       </ActivityEditProvider>
     </FormProvider>
   );
 }
+
+describe('ActivitySharingSection comms contacts leadable chips', () => {
+  it('promotes comms lead via Set lead badge popover', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    render(
+      <ActivitySharingSectionHarness
+        defaultValues={{
+          commsContacts: [
+            { userId: 1, isLead: false },
+            { userId: 2, isLead: true },
+          ],
+        }}
+        onFormReady={(form) => {
+          formRef = form;
+        }}
+        commsLeadOptions={[
+          { value: '1', label: 'Alice Example' },
+          { value: '2', label: 'Bob Example' },
+        ]}
+      />
+    );
+
+    const roleTrigger = screen.getByRole('button', {
+      name: 'Set lead options for Alice Example',
+    });
+    await user.click(roleTrigger);
+    await user.click(
+      await screen.findByRole('button', { name: 'Set as lead' })
+    );
+
+    expect(formRef?.getValues('commsContacts')).toEqual([
+      { userId: 1, isLead: true },
+      { userId: 2, isLead: false },
+    ]);
+  });
+});
 
 describe('ActivitySharingSection visibility switch', () => {
   it('maps the switch to team visibility when checked', async () => {
@@ -142,7 +197,7 @@ describe('ActivitySharingSection hidden assigned teams', () => {
             id: 1,
             name: 'Visible team',
             displayName: 'Visible team',
-            ministryId: 6,
+            primaryOrganizationId: 6,
             isActive: true,
             appearsInShareWith: true,
           },
@@ -150,7 +205,7 @@ describe('ActivitySharingSection hidden assigned teams', () => {
             id: 2,
             name: 'Former share team',
             displayName: 'Former share team',
-            ministryId: 5,
+            primaryOrganizationId: 5,
             isActive: true,
             appearsInShareWith: false,
           },

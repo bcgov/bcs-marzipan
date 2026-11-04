@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -79,6 +80,32 @@ export const notificationRecipients = pgTable(
   ]
 );
 
+/**
+ * Per-user, per-category notification opt-outs. A missing row means the
+ * category is enabled for both channels (default opt-in).
+ */
+export const userNotificationPreferences = pgTable(
+  'user_notification_preferences',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    category: varchar('category', { length: 60 }).notNull(),
+    inAppEnabled: boolean('in_app_enabled').notNull().default(true),
+    emailEnabled: boolean('email_enabled').notNull().default(true),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('uq_user_notification_preferences_user_category').on(
+      table.userId,
+      table.category
+    ),
+  ]
+);
+
 export const notificationEventsRelations = relations(
   notificationEvents,
   ({ one, many }) => ({
@@ -108,3 +135,5 @@ export const notificationRecipientsRelations = relations(
 
 export type NotificationEvent = typeof notificationEvents.$inferSelect;
 export type NotificationRecipient = typeof notificationRecipients.$inferSelect;
+export type UserNotificationPreference =
+  typeof userNotificationPreferences.$inferSelect;

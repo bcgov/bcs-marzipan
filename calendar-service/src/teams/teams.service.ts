@@ -9,7 +9,7 @@ import {
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
-  ministries,
+  organizations,
   permissions,
   rolePermissions,
   teamHistory,
@@ -174,7 +174,7 @@ export class TeamsService {
         isActive: teams.isActive,
         appearsInShareWith: teams.appearsInShareWith,
         roleId: teams.roleId,
-        ministryId: teams.ministryId,
+        primaryOrganizationId: teams.primaryOrganizationId,
       })
       .from(teams)
       .where(and(inArray(teams.id, teamIds), eq(teams.isActive, true)))
@@ -192,32 +192,34 @@ export class TeamsService {
       .groupBy(userTeams.teamId);
     const memberMap = new Map(memberCounts.map((m) => [m.teamId, m.count]));
 
-    const ministryIds = [
+    const primaryOrganizationIds = [
       ...new Set(
         teamRows
-          .map((t) => t.ministryId)
+          .map((t) => t.primaryOrganizationId)
           .filter((id): id is number => id != null)
       ),
     ];
-    const ministryNameRows =
-      ministryIds.length > 0
+    const primaryOrganizationNameRows =
+      primaryOrganizationIds.length > 0
         ? await this.databaseService.db
             .select({
-              id: ministries.id,
-              displayName: ministries.displayName,
+              id: organizations.id,
+              displayName: organizations.displayName,
             })
-            .from(ministries)
-            .where(inArray(ministries.id, ministryIds))
+            .from(organizations)
+            .where(inArray(organizations.id, primaryOrganizationIds))
         : [];
     const ministryMap = new Map(
-      ministryNameRows.map((m) => [m.id, m.displayName])
+      primaryOrganizationNameRows.map((m) => [m.id, m.displayName])
     );
 
     return teamRows.map((t) => ({
       ...t,
       memberCount: memberMap.get(t.id) ?? 0,
-      ministryName:
-        t.ministryId != null ? (ministryMap.get(t.ministryId) ?? null) : null,
+      primaryOrganizationName:
+        t.primaryOrganizationId != null
+          ? (ministryMap.get(t.primaryOrganizationId) ?? null)
+          : null,
     }));
   }
 
@@ -233,7 +235,7 @@ export class TeamsService {
         isActive: teams.isActive,
         appearsInShareWith: teams.appearsInShareWith,
         roleId: teams.roleId,
-        ministryId: teams.ministryId,
+        primaryOrganizationId: teams.primaryOrganizationId,
       })
       .from(teams)
       .where(activeOnly ? eq(teams.isActive, true) : undefined)
@@ -255,32 +257,34 @@ export class TeamsService {
 
     const memberMap = new Map(memberCounts.map((m) => [m.teamId, m.count]));
 
-    const ministryIds = [
+    const primaryOrganizationIds = [
       ...new Set(
         teamRows
-          .map((t) => t.ministryId)
+          .map((t) => t.primaryOrganizationId)
           .filter((id): id is number => id != null)
       ),
     ];
-    const ministryNameRows =
-      ministryIds.length > 0
+    const primaryOrganizationNameRows =
+      primaryOrganizationIds.length > 0
         ? await this.databaseService.db
             .select({
-              id: ministries.id,
-              displayName: ministries.displayName,
+              id: organizations.id,
+              displayName: organizations.displayName,
             })
-            .from(ministries)
-            .where(inArray(ministries.id, ministryIds))
+            .from(organizations)
+            .where(inArray(organizations.id, primaryOrganizationIds))
         : [];
     const ministryMap = new Map(
-      ministryNameRows.map((m) => [m.id, m.displayName])
+      primaryOrganizationNameRows.map((m) => [m.id, m.displayName])
     );
 
     return teamRows.map((t) => ({
       ...t,
       memberCount: memberMap.get(t.id) ?? 0,
-      ministryName:
-        t.ministryId != null ? (ministryMap.get(t.ministryId) ?? null) : null,
+      primaryOrganizationName:
+        t.primaryOrganizationId != null
+          ? (ministryMap.get(t.primaryOrganizationId) ?? null)
+          : null,
     }));
   }
 
@@ -299,7 +303,7 @@ export class TeamsService {
         isActive: teams.isActive,
         appearsInShareWith: teams.appearsInShareWith,
         roleId: teams.roleId,
-        ministryId: teams.ministryId,
+        primaryOrganizationId: teams.primaryOrganizationId,
       })
       .from(teams)
       .where(eq(teams.id, id))
@@ -340,19 +344,19 @@ export class TeamsService {
       ])
     );
 
-    let ministryName: string | null = null;
-    if (t.ministryId != null) {
+    let primaryOrganizationName: string | null = null;
+    if (t.primaryOrganizationId != null) {
       const [m] = await this.databaseService.db
-        .select({ displayName: ministries.displayName })
-        .from(ministries)
-        .where(eq(ministries.id, t.ministryId))
+        .select({ displayName: organizations.displayName })
+        .from(organizations)
+        .where(eq(organizations.id, t.primaryOrganizationId))
         .limit(1);
-      ministryName = m?.displayName ?? null;
+      primaryOrganizationName = m?.displayName ?? null;
     }
 
     return {
       ...t,
-      ministryName,
+      primaryOrganizationName,
       memberCount: memberRows.length,
       members: sortByStaffName(
         memberRows.map((m) => ({
@@ -407,18 +411,18 @@ export class TeamsService {
         isActive: dto.isActive ?? true,
         appearsInShareWith: dto.appearsInShareWith ?? true,
         roleId: dto.roleId ?? null,
-        ministryId: dto.ministryId ?? null,
+        primaryOrganizationId: dto.primaryOrganizationId ?? null,
         createdBy,
         lastUpdatedBy: createdBy,
       })
       .returning();
 
     const changes: HistoryChange[] = [];
-    if (dto.ministryId != null) {
+    if (dto.primaryOrganizationId != null) {
       changes.push({
-        field: 'ministryId',
+        field: 'primaryOrganizationId',
         oldValue: null,
-        newValue: dto.ministryId,
+        newValue: dto.primaryOrganizationId,
       });
     }
     await this.recordTeamHistory(
@@ -456,8 +460,8 @@ export class TeamsService {
     if (dto.appearsInShareWith !== undefined)
       updates.appearsInShareWith = dto.appearsInShareWith;
     if (dto.roleId !== undefined) updates.roleId = dto.roleId;
-    if (dto.ministryId !== undefined)
-      updates.ministryId = dto.ministryId ?? null;
+    if (dto.primaryOrganizationId !== undefined)
+      updates.primaryOrganizationId = dto.primaryOrganizationId ?? null;
 
     const abbreviationChanged =
       dto.abbreviation !== undefined &&
@@ -545,13 +549,14 @@ export class TeamsService {
       });
     }
     if (
-      dto.ministryId !== undefined &&
-      (dto.ministryId ?? null) !== (existing.ministryId ?? null)
+      dto.primaryOrganizationId !== undefined &&
+      (dto.primaryOrganizationId ?? null) !==
+        (existing.primaryOrganizationId ?? null)
     ) {
       changes.push({
-        field: 'ministryId',
-        oldValue: existing.ministryId ?? null,
-        newValue: dto.ministryId ?? null,
+        field: 'primaryOrganizationId',
+        oldValue: existing.primaryOrganizationId ?? null,
+        newValue: dto.primaryOrganizationId ?? null,
       });
     }
 
@@ -592,7 +597,7 @@ export class TeamsService {
 
     const notifyFields = changes
       .map((change) => change.field)
-      .filter((field) => field === 'name' || field === 'ministryId');
+      .filter((field) => field === 'name' || field === 'primaryOrganizationId');
 
     if (notifyFields.length > 0) {
       await this.notificationsService.notifyTeamUpdated({

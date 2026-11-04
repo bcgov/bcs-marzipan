@@ -4,7 +4,6 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { categories } from '@corpcal/database/schema';
 import {
   buildActivityDisplayId,
-  normalizeMinistryAbbreviationForActivityDisplayId,
   normalizeTeamAbbreviationForActivityDisplayId,
 } from '@corpcal/shared';
 
@@ -19,24 +18,16 @@ export class ActivityUtilsService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   /**
-   * Generate displayId from a prefix (ministry or team abbreviation) and activity ID
+   * Generate displayId from a prefix (team abbreviation) and activity ID
    * Format: <PREFIX>-<numeric segment> (min 6 digits; full id when longer)
-   * Example: AG-000123 (Attorney General, activity ID 123)
-   * Example: HLTH-123456789 (Health, activity ID 123456789)
-   * Example: MR-000123 (`teams.abbreviation` when the lead has no ministry)
-   *
-   * @param prefix - Ministry abbreviation or `teams.abbreviation` (normalized)
-   * @param activityId - Activity ID (serial)
-   * @returns Formatted displayId string
    */
   generateDisplayId(prefix: string, activityId: number): string {
     return buildActivityDisplayId(prefix, activityId);
   }
 
   /**
-   * Normalizes `teams.abbreviation` for use in displayId when the lead has no ministry
-   * (or when a ministry row has no abbreviation and we fall back to the team). Strips
-   * surrounding whitespace, removes internal spaces, and uppercases. If empty after
+   * Normalizes `teams.abbreviation` for use in displayId. Strips surrounding
+   * whitespace, removes internal spaces, and uppercases. If empty after
    * normalizing, returns `TEAM_PREFIX_FALLBACK` via
    * `normalizeTeamAbbreviationForActivityDisplayId`.
    */
@@ -47,32 +38,17 @@ export class ActivityUtilsService {
   }
 
   /**
-   * Compute an activity's displayId from its current lead context.
-   *
-   * Rule (must match runtime lead-team/ministry-change semantics in
-   * `ActivitiesService.update`):
-   * - When `leadMinistryId` is set AND the ministry abbreviation is non-empty after
-   *   the same normalization as team abbreviations (strip, collapse spaces, uppercase),
-   *   prefix = that normalized ministry abbreviation.
-   * - Otherwise, prefix = normalized team abbreviation, or `TEAM_PREFIX_FALLBACK`
-   *   when the team abbreviation is empty after normalization.
+   * Compute an activity's displayId from its lead team (activity owner).
+   * Prefix = normalized team abbreviation, or TEAM_PREFIX_FALLBACK when empty.
    */
   computeDisplayIdFromLeadContext(input: {
     activityId: number;
-    leadMinistryId: number | null | undefined;
-    ministryAbbreviation: string | null | undefined;
     teamAbbreviation: string | null | undefined;
   }): string {
-    const { activityId, leadMinistryId, ministryAbbreviation } = input;
-    const normalizedMinistry =
-      normalizeMinistryAbbreviationForActivityDisplayId(ministryAbbreviation);
-    if (leadMinistryId != null && normalizedMinistry.length > 0) {
-      return this.generateDisplayId(normalizedMinistry, activityId);
-    }
     const prefix = this.getDisplayIdPrefixFromTeamAbbreviation(
       input.teamAbbreviation
     );
-    return this.generateDisplayId(prefix, activityId);
+    return this.generateDisplayId(prefix, input.activityId);
   }
 
   /**

@@ -1,21 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  and,
-  eq,
-  inArray,
-  isNull,
-  notInArray,
-  or,
-  sql,
-  type SQL,
-} from 'drizzle-orm';
+import { and, eq, inArray, notInArray, type SQL } from 'drizzle-orm';
 
-import {
-  activities,
-  activityStatuses,
-  ministries,
-  teams,
-} from '@corpcal/database/schema';
+import { activities, activityStatuses, teams } from '@corpcal/database/schema';
 
 import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
@@ -23,12 +9,6 @@ import { getActivityTimestampUpdateForWrite } from '../utils/activity-timestamp-
 import { ActivityHistoryService } from './activity-history.service';
 import { ActivityUtilsService } from './activity-utils.service';
 
-/**
- * Status names excluded from the displayId cascade. Activities in these
- * statuses keep their existing `displayId` when a referenced ministry or team
- * abbreviation is updated. `delete_requested` is cascaded so that if an
- * activity is restored, its id already matches the current abbreviations.
- */
 const DISPLAY_ID_CASCADE_EXCLUDED_STATUS_NAMES = [
   'completed',
   'deleted',
@@ -37,9 +17,7 @@ const DISPLAY_ID_CASCADE_EXCLUDED_STATUS_NAMES = [
 type CandidateRow = {
   id: number;
   displayId: string | null;
-  leadMinistryId: number | null;
   teamAbbreviation: string | null;
-  ministryAbbreviation: string | null;
 };
 
 type UpdateEntry = {
@@ -48,20 +26,10 @@ type UpdateEntry = {
   newDisplayId: string;
 };
 
-/**
- * Service that cascades `activities.displayId` when a referenced team or
- * ministry `abbreviation` changes. Only `completed` and `deleted` activities
- * are skipped; `delete_requested` is updated so restored activities stay aligned.
- */
 @Injectable()
 export class ActivityDisplayIdSyncService {
   private readonly logger = new Logger(ActivityDisplayIdSyncService.name);
 
-  /**
-   * Batch size for chunked `UPDATE` + history inserts. Chosen to keep
-   * per-statement parameter counts well under Postgres limits while still
-   * amortizing round-trips for large cascades.
-   */
   private static readonly CHUNK_SIZE = 200;
 
   constructor(
@@ -71,45 +39,36 @@ export class ActivityDisplayIdSyncService {
   ) {}
 
   /**
-   * Refresh `displayId` for every eligible activity whose lead ministry is the
-   * given ministry (excluding completed/deleted). Prefix resolution follows
-   * the update-time rule: when the ministry has a truthy abbreviation the
-   * ministry drives the prefix; otherwise the lead team abbreviation is used.
+   * Organization abbreviation changes do not affect displayId (prefix is lead team only).
    */
-  async refreshAfterMinistryAbbreviationChange(
-    tx: DrizzleDbExecutor,
-    ministryId: number,
-    actorUserId: number
+  refreshAfterOrganizationAbbreviationChange(
+    _tx: DrizzleDbExecutor,
+    _organizationId: number,
+    _actorUserId: number
   ): Promise<{ updatedCount: number }> {
-    const candidates = await this.fetchCandidates(tx, {
-      filter: eq(activities.leadMinistryId, ministryId),
-    });
-    return this.applyUpdates(tx, candidates, actorUserId, {
-      notes: 'displayId refreshed after ministry abbreviation change',
-    });
+    return Promise.resolve({ updatedCount: 0 });
   }
 
-  /**
-   * Refresh `displayId` for every eligible activity whose lead team is the
-   * given team AND whose displayId is driven by the team abbreviation (no lead
-   * ministry, or lead ministry has no truthy abbreviation), excluding
-   * completed/deleted.
-   */
+  /** @deprecated Use refreshAfterOrganizationAbbreviationChange (no-op). */
+  async refreshAfterMinistryAbbreviationChange(
+    tx: DrizzleDbExecutor,
+    organizationId: number,
+    actorUserId: number
+  ): Promise<{ updatedCount: number }> {
+    return this.refreshAfterOrganizationAbbreviationChange(
+      tx,
+      organizationId,
+      actorUserId
+    );
+  }
+
   async refreshAfterTeamAbbreviationChange(
     tx: DrizzleDbExecutor,
     teamId: number,
     actorUserId: number
   ): Promise<{ updatedCount: number }> {
     const candidates = await this.fetchCandidates(tx, {
-      filter: and(
-        eq(activities.leadTeamId, teamId),
-        // Team abbreviation only drives the prefix when the ministry prefix
-        // is not in effect.
-        or(
-          isNull(activities.leadMinistryId),
-          sql`COALESCE(NULLIF(${ministries.abbreviation}, ''), NULL) IS NULL`
-        )
-      ),
+      filter: eq(activities.leadTeamId, teamId),
     });
     return this.applyUpdates(tx, candidates, actorUserId, {
       notes: 'displayId refreshed after team abbreviation change',
@@ -129,25 +88,20 @@ export class ActivityDisplayIdSyncService {
         ])
       );
 
-    const rows = await tx
+    return tx
       .select({
         id: activities.id,
         displayId: activities.displayId,
-        leadMinistryId: activities.leadMinistryId,
         teamAbbreviation: teams.abbreviation,
-        ministryAbbreviation: ministries.abbreviation,
       })
       .from(activities)
       .leftJoin(teams, eq(teams.id, activities.leadTeamId))
-      .leftJoin(ministries, eq(ministries.id, activities.leadMinistryId))
       .where(
         and(
           params.filter,
           notInArray(activities.activityStatusId, excludedStatusIdsSubquery)
         )
       );
-
-    return rows;
   }
 
   private async applyUpdates(
@@ -162,8 +116,6 @@ export class ActivityDisplayIdSyncService {
     for (const row of candidates) {
       const newDisplayId = this.utilsService.computeDisplayIdFromLeadContext({
         activityId: row.id,
-        leadMinistryId: row.leadMinistryId,
-        ministryAbbreviation: row.ministryAbbreviation,
         teamAbbreviation: row.teamAbbreviation,
       });
       if (newDisplayId === row.displayId) continue;
@@ -187,9 +139,6 @@ export class ActivityDisplayIdSyncService {
         i + ActivityDisplayIdSyncService.CHUNK_SIZE
       );
 
-      // Apply per-row UPDATE within the chunk (one statement per activity keeps
-      // the unique constraint on `display_id` easy to reason about and lets us
-      // surface a precise error if a value ever collides).
       for (const entry of chunk) {
         await tx
           .update(activities)

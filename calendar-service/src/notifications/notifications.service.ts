@@ -13,9 +13,9 @@ import {
   activityEventPlanners,
   activityFlags,
   activityStatuses,
-  ministries,
   notificationEvents,
   notificationRecipients,
+  organizations,
   permissions,
   rolePermissions,
   roles,
@@ -87,7 +87,7 @@ type TeamIdentity = {
   id: number;
   name: string;
   displayName: string | null;
-  ministryId: number | null;
+  primaryOrganizationId: number | null;
 };
 
 const ACTIVITY_HARD_DELETED_EVENT_TYPE =
@@ -176,7 +176,7 @@ export class NotificationsService {
         id: teams.id,
         name: teams.name,
         displayName: teams.displayName,
-        ministryId: teams.ministryId,
+        primaryOrganizationId: teams.primaryOrganizationId,
       })
       .from(teams)
       .where(eq(teams.id, teamId))
@@ -583,7 +583,7 @@ export class NotificationsService {
         changedFields: input.changedFields,
         name: team.name,
         displayName: team.displayName,
-        ministryId: team.ministryId,
+        primaryOrganizationId: team.primaryOrganizationId,
       },
       actorUserId: input.actorUserId,
       recipientUserIds: [...adminUserIds, ...memberUserIds],
@@ -1090,10 +1090,13 @@ export class NotificationsService {
           id: teams.id,
           teamName: teams.name,
           teamDisplayName: teams.displayName,
-          ministryDisplayName: ministries.displayName,
+          ministryDisplayName: organizations.displayName,
         })
         .from(teams)
-        .leftJoin(ministries, eq(ministries.id, teams.ministryId))
+        .leftJoin(
+          organizations,
+          eq(organizations.id, teams.primaryOrganizationId)
+        )
         .where(
           and(inArray(teams.id, dedupedTeamIds), eq(teams.isActive, true))
         ),
@@ -1376,7 +1379,7 @@ export class NotificationsService {
       entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
       entityId: activity.id,
       changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
-      summary: `Reminder: date status not confirmed (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
+      summary: `Reminder: date status TBD (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
       details: {
         activityId: activity.id,
         displayId: activity.displayId,
@@ -1467,7 +1470,7 @@ export class NotificationsService {
       entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
       entityId: activity.id,
       changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
-      summary: `Reminder: time status not confirmed (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
+      summary: `Reminder: time status TBD (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
       details: {
         activityId: activity.id,
         displayId: activity.displayId,

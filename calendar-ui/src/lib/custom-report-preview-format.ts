@@ -15,7 +15,7 @@ const RICH_TEXT_KEYS = new Set([
   'notes',
 ]);
 
-const DATE_KEYS = new Set(['startDate', 'endDate', 'pitchDate']);
+const DATE_KEYS = new Set(['startDate', 'endDate']);
 
 const TIME_KEYS = new Set(['startTime', 'endTime']);
 
@@ -138,17 +138,6 @@ export function formatCustomReportCell(
     return raw
       .map((p) =>
         p && typeof p === 'object' && 'name' in p ? String(p.name) : ''
-      )
-      .filter(Boolean)
-      .join(', ');
-  }
-
-  if (key === 'reportSettings' && Array.isArray(raw)) {
-    return raw
-      .map((r) =>
-        r && typeof r === 'object' && 'displayName' in r
-          ? String(r.displayName)
-          : ''
       )
       .filter(Boolean)
       .join(', ');

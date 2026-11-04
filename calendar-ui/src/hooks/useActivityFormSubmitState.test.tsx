@@ -127,11 +127,13 @@ describe('useActivityFormSubmitState', () => {
           title: 'Quarterly planning session',
           summary: validSummary,
           leadTeamId: 1,
-          leadMinistryId: 1,
           categoryIds: [1],
           dateStatusId: 1,
           timeStatusId: 1,
+          startDate: '2026-06-01',
+          endDate: '2026-06-01',
           commsContacts: [{ userId: 1, isLead: true }],
+          organizations: [{ organizationId: 1, isLead: true }],
         } as ActivityFormData,
       });
 

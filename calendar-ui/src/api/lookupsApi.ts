@@ -9,8 +9,7 @@ import type {
   MinistryGroupResponse,
   MinistryLookupItem,
   OrganizationLookupItem,
-  PitchRequiredStatusLookupItem,
-  PitchStatusLookupItem,
+  ReleaseTypeLookupItem,
   ReportResponse,
   TagLookupItem,
   ThemeLookupItem,
@@ -29,6 +28,7 @@ import type {
   CreateGovernmentRepresentativeRequest,
   CreateMinistryGroupRequest,
   CreateMinistryRequest,
+  CreateReleaseTypeRequest,
   CreateTagRequest,
   CreateThemeRequest,
   CreateTranslationLanguageRequest,
@@ -40,6 +40,7 @@ import type {
   UpdateGovernmentRepresentativeRequest,
   UpdateMinistryGroupRequest,
   UpdateMinistryRequest,
+  UpdateReleaseTypeRequest,
   UpdateTagRequest,
   UpdateThemeRequest,
   UpdateTranslationLanguageRequest,
@@ -127,14 +128,6 @@ export async function fetchActivityStatuses(): Promise<
   return res.data.data;
 }
 
-export async function fetchPitchStatuses(): Promise<PitchStatusLookupItem[]> {
-  const res = await api.get<{
-    success: boolean;
-    data: PitchStatusLookupItem[];
-  }>('/lookups/pitch-statuses');
-  return res.data.data;
-}
-
 export async function fetchCommsMaterials(): Promise<
   CommsMaterialsLookupItem[]
 > {
@@ -142,6 +135,32 @@ export async function fetchCommsMaterials(): Promise<
     success: boolean;
     data: CommsMaterialsLookupItem[];
   }>('/lookups/comms-materials');
+  return res.data.data;
+}
+
+export async function fetchAllCommsMaterials(): Promise<
+  CommsMaterialsLookupItem[]
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: CommsMaterialsLookupItem[];
+  }>('/lookups/comms-materials', { params: { includeAll: 'true' } });
+  return res.data.data;
+}
+
+export async function fetchReleaseTypes(): Promise<ReleaseTypeLookupItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: ReleaseTypeLookupItem[];
+  }>('/lookups/release-types');
+  return res.data.data;
+}
+
+export async function fetchAllReleaseTypes(): Promise<ReleaseTypeLookupItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: ReleaseTypeLookupItem[];
+  }>('/lookups/release-types', { params: { includeAll: 'true' } });
   return res.data.data;
 }
 
@@ -239,16 +258,6 @@ export async function fetchVenueStatuses(): Promise<VenueStatusLookupItem[]> {
   return res.data.data;
 }
 
-export async function fetchPitchRequiredStatuses(): Promise<
-  PitchRequiredStatusLookupItem[]
-> {
-  const res = await api.get<{
-    success: boolean;
-    data: PitchRequiredStatusLookupItem[];
-  }>('/lookups/pitch-required-statuses');
-  return res.data.data;
-}
-
 export async function fetchTranslationRequiredStatuses(): Promise<
   TranslationRequiredStatusLookupItem[]
 > {
@@ -313,6 +322,25 @@ export async function fetchAllVenuePresets(): Promise<VenuePresetItem[]> {
     data: VenuePresetItem[];
   }>('/lookups/venue-presets', { params: { includeAll: 'true' } });
   return res.data.data;
+}
+
+export type LookupSortMode = 'manual' | 'alphabetical';
+
+export async function fetchLookupSortSettings(): Promise<
+  Record<string, LookupSortMode>
+> {
+  const res = await api.get<{
+    success: boolean;
+    data: Record<string, LookupSortMode>;
+  }>('/lookups/sort-settings');
+  return res.data.data;
+}
+
+export async function updateLookupSortMode(
+  entityKey: string,
+  sortMode: LookupSortMode
+): Promise<void> {
+  await api.patch(`/lookups/${entityKey}/sort-mode`, { sortMode });
 }
 
 // ============================================
@@ -605,6 +633,27 @@ export async function updateCommsMaterial(
   return res.data;
 }
 
+export async function createReleaseType(
+  data: CreateReleaseTypeRequest
+): Promise<{ success: boolean; data: unknown }> {
+  const res = await api.post<{ success: boolean; data: unknown }>(
+    '/lookups/release-types',
+    data
+  );
+  return res.data;
+}
+
+export async function updateReleaseType(
+  id: number,
+  data: UpdateReleaseTypeRequest
+): Promise<{ success: boolean; data: unknown }> {
+  const res = await api.patch<{ success: boolean; data: unknown }>(
+    `/lookups/release-types/${id}`,
+    data
+  );
+  return res.data;
+}
+
 // Translation Languages
 export async function createTranslationLanguage(
   data: CreateTranslationLanguageRequest
@@ -707,7 +756,6 @@ export type {
   OrganizationLookupItem,
   UserLookupItem,
   TagLookupItem,
-  PitchStatusLookupItem,
   ActivityStatusLookupItem,
   CommsMaterialsLookupItem,
   TranslationLanguageLookupItem,

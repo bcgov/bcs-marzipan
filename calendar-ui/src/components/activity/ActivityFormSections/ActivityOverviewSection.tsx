@@ -1,13 +1,7 @@
-import { format } from 'date-fns';
-import { useFormContext, useWatch, type FieldPathValue } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useMemo } from 'react';
 
-import { TEAM_PREFIX_FALLBACK } from '@corpcal/shared';
-import type {
-  PitchRequiredStatusLookupItem,
-  TeamListItem,
-} from '@corpcal/shared/api/types';
 import {
   ACTIVITY_BRIEF_RICH_TEXT_MAX_LENGTH,
   ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH,
@@ -15,17 +9,15 @@ import {
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
 import {
+  buildOrganizationComboboxSections,
   filterAllowedLookupIds,
   isActivityRichTextEffectivelyEmpty,
   isLookupSelectable,
+  normalizeOrganizationFormEntries,
   tipTapDocJsonFromPlainText,
   type LookupTeamScope,
+  type OrganizationComboboxSourceOption,
 } from '@corpcal/shared/utils';
-import {
-  FormSelectSafe,
-  FormSelectTrigger,
-} from '@/components/app/form-select';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Combobox,
@@ -36,7 +28,6 @@ import {
   ComboboxContent,
   ComboboxEmpty,
   ComboboxGroup,
-  ComboboxInput,
   ComboboxItem,
   ComboboxList,
   ComboboxSeparator,
@@ -53,33 +44,20 @@ import {
 import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
   FreeformCombobox,
+  type FreeformComboboxItemWithLead,
   type FreeformComboboxValue,
 } from '@/components/ui/freeform-combobox';
 import { RichTextField } from '@/components/ui/rich-text-field';
-import { ScheduledDatePopoverField } from '@/components/ui/scheduled-date-popover-field';
-import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  optionalIdSelectDisplayValue,
-  optionalSelectIdValue,
-} from '@/lib/activity-form-coerce-value';
+import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
-import {
-  getPresetAnchorToday,
-  parseIsoDateLocal,
-  PRESETS_FUTURE_SHORT,
-} from '@/lib/scheduled-date-presets';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-permission-tooltip';
 import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
-import {
-  defaultActivityLeadTeamFieldConfig,
-  type ActivityLeadTeamFieldConfig,
-} from '../activity-lead-team-field-config';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
 
@@ -161,226 +139,97 @@ function applyAllowedLookupSelection(
   onApply(allowedIds);
 }
 
-type LeadOrganizationOption = {
-  value: number;
-  label: string;
-  ministryId?: number | null;
-};
+type LeadOrganizationOption = OrganizationComboboxSourceOption;
 
-/**
- * Isolated so `useWatch('leadOrgName')` only re-renders this subtree when that
- * field changes, not the entire overview section.
- */
-function LeadOrganizationField({
-  organizations,
+function MinistriesAndOrganizationsField({
+  organizationOptions,
   readOnly,
 }: {
-  organizations: LeadOrganizationOption[];
+  organizationOptions: LeadOrganizationOption[];
   readOnly: boolean;
 }) {
   const form = useFormContext<ActivityFormData>();
-  const leadOrgName = useWatch({ control: form.control, name: 'leadOrgName' });
+
+  const comboboxSections = useMemo(
+    () => buildOrganizationComboboxSections(organizationOptions),
+    [organizationOptions]
+  );
 
   return (
     <FormField
       control={form.control}
-      name="leadOrgId"
+      name="organizations"
       render={({ field }) => {
-        const leadOrgId = field.value;
-
-        const comboboxValue: FreeformComboboxValue =
-          leadOrgId != null
-            ? { type: 'option', value: String(leadOrgId) }
-            : leadOrgName
-              ? { type: 'freeform', value: leadOrgName }
-              : null;
+        const list = field.value ?? [];
+        const comboboxValue: FreeformComboboxItemWithLead[] = list.map((o) => {
+          const base: FreeformComboboxItemWithLead =
+            o.organizationId != null
+              ? { type: 'option', value: String(o.organizationId) }
+              : o.organizationName
+                ? { type: 'freeform', value: o.organizationName }
+                : { type: 'freeform', value: '' };
+          return { ...base, isLead: o.isLead ?? false };
+        });
 
         const handleChange = (
           value: FreeformComboboxValue | FreeformComboboxValue[] | null
         ) => {
-          const single =
+          const arr =
             value == null
-              ? null
+              ? []
               : Array.isArray(value)
-                ? (value[0] ?? null)
-                : value;
-          if (!single) {
-            setActivityFormFieldValue(form, field.name, null);
-            setActivityFormFieldValue(form, 'leadOrgName', null);
-          } else if (single.type === 'option') {
-            setActivityFormFieldValue(
-              form,
-              field.name,
-              optionalSelectIdValue(single.value) ?? null
-            );
-            setActivityFormFieldValue(form, 'leadOrgName', null);
-          } else {
-            setActivityFormFieldValue(form, field.name, null);
-            setActivityFormFieldValue(form, 'leadOrgName', single.value);
+                ? value.filter(
+                    (v): v is NonNullable<FreeformComboboxValue> => v != null
+                  )
+                : [value];
+          if (arr.length === 0) {
+            setActivityFormFieldValue(form, field.name, []);
+            return;
           }
-        };
-
-        return (
-          <FormItem>
-            <FormLabel>
-              <>
-                {getActivityFieldLabel(field.name)}
-                <ActivityFieldInfoIcon
-                  fieldKey="leadOrgId"
-                  ariaLabel="About lead organization"
-                />
-              </>
-            </FormLabel>
-            <FormControl data-field={field.name}>
-              <FreeformCombobox
-                readOnly={readOnly}
-                options={organizations.map((o) => ({
-                  value: String(o.value),
-                  label: o.label,
-                }))}
-                value={comboboxValue}
-                onChange={handleChange}
-                placeholder=""
-                searchPlaceholder=""
-                emptyMessage="No organizations found."
-                freeformBadgeLabel="Add custom organization"
-                listFooterHint="Custom organization names allowed"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        );
-      }}
-    />
-  );
-}
-
-/**
- * Isolated lead-team field using a value-controlled Combobox (single-select
- * with search). Unlike Radix Select, the Combobox does not emit phantom
- * onValueChange events when options reconcile during async loading.
- */
-function LeadTeamField({
-  leadTeamOptions,
-  leadTeamDisplayLabel,
-  leadTeamOptionsFetching,
-  organizations,
-  readOnly,
-}: {
-  leadTeamOptions: TeamListItem[];
-  leadTeamDisplayLabel: string | null | undefined;
-  leadTeamOptionsFetching: boolean;
-  organizations: LeadOrganizationOption[];
-  readOnly: boolean;
-}) {
-  const form = useFormContext<ActivityFormData>();
-
-  return (
-    <FormField
-      control={form.control}
-      name="leadTeamId"
-      render={({ field }) => {
-        const mergedTeams: TeamListItem[] = (() => {
-          const list = [...leadTeamOptions];
-          const lid = field.value;
-          if (lid != null && lid > 0 && !list.some((t) => t.id === lid)) {
-            const label = leadTeamDisplayLabel?.trim() || `Team ${lid}`;
-            list.unshift({
-              id: lid,
-              name: label,
-              displayName: leadTeamDisplayLabel ?? null,
-              abbreviation: TEAM_PREFIX_FALLBACK,
-              description: null,
-              sortOrder: 0,
-              isActive: true,
-              appearsInShareWith: true,
-              roleId: null,
-              memberCount: 0,
-              ministryId: null,
-              ministryName: null,
-            });
+          const current = field.value ?? [];
+          const prevLead = current.find((o) => o.isLead);
+          const leadKey =
+            prevLead?.organizationId != null
+              ? `id:${prevLead.organizationId}`
+              : prevLead?.organizationName != null
+                ? `name:${prevLead.organizationName}`
+                : null;
+          const next = arr.map((v, i) => {
+            const key =
+              v.type === 'option'
+                ? `id:${parseInt(v.value, 10)}`
+                : `name:${v.value}`;
+            const isLead = leadKey != null ? key === leadKey : i === 0;
+            if (v.type === 'option') {
+              return {
+                organizationId: parseInt(v.value, 10),
+                isLead,
+              };
+            }
+            return { organizationName: v.value, isLead };
+          });
+          if (next.length > 0 && !next.some((o) => o.isLead)) {
+            next[0] = { ...next[0], isLead: true };
           }
-          return list;
-        })();
-
-        const options: OptionItem[] = mergedTeams.map((t) => ({
-          value: String(t.id),
-          label: t.ministryName
-            ? `${t.displayName || t.name} (${t.ministryName})`
-            : t.displayName || t.name,
-        }));
-
-        const selectedOption: OptionItem | null =
-          field.value != null && field.value > 0
-            ? (options.find((o) => o.value === String(field.value)) ?? null)
-            : null;
-
-        const handleTeamChange = (option: OptionItem | null) => {
-          const previousTeamId = field.value ?? null;
-          const previousTeam =
-            previousTeamId != null
-              ? mergedTeams.find((t) => t.id === previousTeamId)
-              : null;
-          const syncedOrgId =
-            previousTeam?.ministryId != null
-              ? (organizations.find(
-                  (o) => o.ministryId === previousTeam.ministryId
-                )?.value ?? null)
-              : null;
-          const currentLeadOrgId = form.getValues('leadOrgId') ?? null;
-          const currentLeadOrgName = form.getValues('leadOrgName') ?? null;
-          const leadOrgInSyncWithTeam =
-            (syncedOrgId != null &&
-              currentLeadOrgId === syncedOrgId &&
-              (currentLeadOrgName == null || currentLeadOrgName === '')) ||
-            (syncedOrgId == null &&
-              currentLeadOrgId == null &&
-              (currentLeadOrgName == null || currentLeadOrgName === ''));
-
-          const teamId = option
-            ? optionalSelectIdValue(option.value)
-            : undefined;
           setActivityFormFieldValue(
             form,
             field.name,
-            teamId as FieldPathValue<ActivityFormData, typeof field.name>
+            normalizeOrganizationFormEntries(next)
           );
-
-          if (teamId == null) {
-            setActivityFormFieldValue(form, 'leadMinistryId', undefined);
-            if (leadOrgInSyncWithTeam) {
-              setActivityFormFieldValue(form, 'leadOrgId', null);
-              setActivityFormFieldValue(form, 'leadOrgName', null);
-            }
-          } else {
-            const team = mergedTeams.find((t) => t.id === teamId);
-            setActivityFormFieldValue(
-              form,
-              'leadMinistryId',
-              team?.ministryId ?? undefined
-            );
-            if (leadOrgInSyncWithTeam && team) {
-              const orgForMinistry =
-                team.ministryId != null
-                  ? organizations.find((o) => o.ministryId === team.ministryId)
-                  : undefined;
-              if (orgForMinistry) {
-                setActivityFormFieldValue(
-                  form,
-                  'leadOrgId',
-                  orgForMinistry.value
-                );
-                setActivityFormFieldValue(form, 'leadOrgName', null);
-              } else {
-                setActivityFormFieldValue(form, 'leadOrgId', null);
-                setActivityFormFieldValue(form, 'leadOrgName', null);
-              }
-            }
-          }
         };
 
-        const showOptionsLoading =
-          leadTeamOptionsFetching && leadTeamOptions.length === 0;
+        const setLead = (index: number) => {
+          setActivityFormFieldValue(
+            form,
+            field.name,
+            normalizeOrganizationFormEntries(
+              (field.value ?? []).map((o, i) => ({
+                ...o,
+                isLead: i === index,
+              }))
+            )
+          );
+        };
 
         return (
           <FormItem>
@@ -388,35 +237,28 @@ function LeadTeamField({
               <>
                 {getActivityFieldLabel(field.name)}
                 <ActivityFieldInfoIcon
-                  fieldKey="leadTeamId"
-                  ariaLabel="About lead team"
+                  fieldKey="organizations"
+                  ariaLabel="About ministries and organizations"
                 />
               </>
             </FormLabel>
             <FormControl data-field={field.name}>
-              <Combobox
-                items={options}
-                value={selectedOption}
-                onValueChange={handleTeamChange}
-                itemToStringValue={(o: OptionItem) => o.label}
+              <FreeformCombobox
                 readOnly={readOnly}
-              >
-                <ComboboxInput placeholder="" disabled={showOptionsLoading} />
-                <ComboboxContent>
-                  <ComboboxEmpty>
-                    {showOptionsLoading
-                      ? 'Loading teams...'
-                      : 'No teams found.'}
-                  </ComboboxEmpty>
-                  <ComboboxList>
-                    {(option: OptionItem) => (
-                      <ComboboxItem key={option.value} value={option}>
-                        {option.label}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
+                sections={comboboxSections}
+                value={comboboxValue}
+                onChange={handleChange}
+                placeholder=""
+                searchPlaceholder=""
+                emptyMessage="No organizations found."
+                freeformBadgeLabel="Add custom organization"
+                listFooterHint="Custom organization names allowed"
+                multiple
+                useChips
+                onSetLead={setLead}
+                nonLeadPromoteBadge="joint"
+                showJointBadge
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -442,8 +284,6 @@ type ActivityOverviewSectionProps = {
     visibility?: string;
     teamIds?: number[];
   }>;
-  pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
-  leadTeamField?: ActivityLeadTeamFieldConfig;
   userTeamIds: number[];
   hasCreateAny?: boolean;
 };
@@ -454,25 +294,12 @@ export const ActivityOverviewSection: React.FC<
   categories,
   organizations,
   tags,
-  pitchRequiredStatuses,
-  leadTeamField: leadTeamFieldProp,
   userTeamIds,
   hasCreateAny = false,
 }) => {
-  const {
-    options: leadTeamOptions,
-    displayLabel: leadTeamDisplayLabel,
-    optionsFetching: leadTeamOptionsFetching,
-  } = {
-    ...defaultActivityLeadTeamFieldConfig,
-    ...leadTeamFieldProp,
-  };
   const { readOnly, canViewFieldScope } = useActivityEdit();
-  const canViewPitchStatus = canViewFieldScope?.('pitchStatus') ?? false;
-  const canViewPitchDate = canViewFieldScope?.('pitchDate') ?? false;
+  const { data: leadTeamOptions = [] } = useLeadTeamOptions(true);
   const canViewNotes = canViewFieldScope?.('notes') ?? false;
-  const pitchStatusScope = useActivityFieldScopeControl('pitchStatus');
-  const pitchDateScope = useActivityFieldScopeControl('pitchDate');
   const notesScope = useActivityFieldScopeControl('notes');
   const form = useFormContext<ActivityFormData>();
   const categoriesAnchorRef = useComboboxAnchor();
@@ -716,40 +543,6 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      {/* Lead team/organization moved below Significance per layout changes */}
-      <FormField
-        control={form.control}
-        name="summary"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel showRequired>
-              <>
-                {getActivityFieldLabel(field.name)}
-                <ActivityFieldInfoIcon
-                  fieldKey="summary"
-                  ariaLabel="About summary"
-                />
-              </>
-            </FormLabel>
-            <FormControl data-field={field.name}>
-              <RichTextField
-                name={field.name}
-                value={field.value ?? ''}
-                onChange={(json) =>
-                  setActivityFormFieldValue(form, field.name, json)
-                }
-                onBlur={field.onBlur}
-                maxLength={ACTIVITY_SUMMARY_MAX_LENGTH}
-                readOnly={readOnly}
-                editorProfile="links"
-                toolbar="links"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
       <FormField
         control={form.control}
         name="isConfidential"
@@ -773,7 +566,7 @@ export const ActivityOverviewSection: React.FC<
                           ? leadTeamOptions.find((t) => t.id === leadTeamId)
                           : undefined;
                       const holdFor = team
-                        ? team.ministryName ||
+                        ? team.primaryOrganizationName ||
                           team.displayName ||
                           team.name ||
                           'team'
@@ -831,6 +624,40 @@ export const ActivityOverviewSection: React.FC<
           </FormItem>
         )}
       />
+
+      <FormField
+        control={form.control}
+        name="summary"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel showRequired>
+              <>
+                {getActivityFieldLabel(field.name)}
+                <ActivityFieldInfoIcon
+                  fieldKey="summary"
+                  ariaLabel="About summary"
+                />
+              </>
+            </FormLabel>
+            <FormControl data-field={field.name}>
+              <RichTextField
+                name={field.name}
+                value={field.value ?? ''}
+                onChange={(json) =>
+                  setActivityFormFieldValue(form, field.name, json)
+                }
+                onBlur={field.onBlur}
+                maxLength={ACTIVITY_SUMMARY_MAX_LENGTH}
+                readOnly={readOnly}
+                editorProfile="links"
+                toolbar="links"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
       <FormField
         control={form.control}
         name="significance"
@@ -864,181 +691,12 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      {/* Lead team and lead organization moved below Significance */}
-      <LeadTeamField
-        leadTeamOptions={leadTeamOptions}
-        leadTeamDisplayLabel={leadTeamDisplayLabel}
-        leadTeamOptionsFetching={leadTeamOptionsFetching}
-        organizations={organizations}
-        readOnly={readOnly}
-      />
-
-      <LeadOrganizationField
-        organizations={organizations}
+      <MinistriesAndOrganizationsField
+        organizationOptions={organizations}
         readOnly={readOnly}
       />
 
       <FormSectionDivider />
-
-      {canViewPitchStatus ? (
-        <FormField
-          control={form.control}
-          name="pitchRequiredStatusId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <>
-                  {getActivityFieldLabel(field.name)}
-                  <ActivityFieldInfoIcon
-                    fieldKey="pitchRequiredStatusId"
-                    ariaLabel="About pitch required"
-                  />
-                </>
-              </FormLabel>
-              <FormSelectSafe
-                readOnly={pitchStatusScope.readOnly}
-                disabled={pitchStatusScope.fieldScopeDisabled}
-                optionValues={pitchRequiredStatuses.map((s) => String(s.id))}
-                value={optionalIdSelectDisplayValue(field.value)}
-                onValueChange={(value) =>
-                  setActivityFormFieldValue(
-                    form,
-                    field.name,
-                    optionalSelectIdValue(value)
-                  )
-                }
-              >
-                <ActivityFieldScopePermissionTooltip scope="pitchStatus">
-                  <FormControl data-field={field.name}>
-                    <FormSelectTrigger
-                      readOnly={
-                        pitchStatusScope.readOnly &&
-                        !pitchStatusScope.fieldScopeDisabled
-                      }
-                    >
-                      <SelectValue placeholder="" />
-                    </FormSelectTrigger>
-                  </FormControl>
-                </ActivityFieldScopePermissionTooltip>
-                <SelectContent>
-                  {pitchRequiredStatuses.map((status) => (
-                    <SelectItem key={status.id} value={String(status.id)}>
-                      {status.displayName ?? status.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </FormSelectSafe>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      ) : null}
-
-      {canViewPitchDate ? (
-        <FormField
-          control={form.control}
-          name="pitchDate"
-          render={({ field }) => {
-            const raw = field.value ?? '';
-            const pitchLabel = raw
-              ? format(parseIsoDateLocal(raw), 'MMM d, yyyy')
-              : 'Select pitch date';
-            return (
-              <FormItem>
-                <FormLabel>
-                  <>
-                    {getActivityFieldLabel(field.name)}
-                    <ActivityFieldInfoIcon
-                      fieldKey="pitchDate"
-                      ariaLabel="About pitch date"
-                    />
-                  </>
-                </FormLabel>
-                <ActivityFieldScopePermissionTooltip scope="pitchDate">
-                  <FormControl className="w-full" data-field={field.name}>
-                    <ScheduledDatePopoverField
-                      triggerVariant="form"
-                      value={raw}
-                      onChange={(iso) =>
-                        setActivityFormFieldValue(
-                          form,
-                          field.name,
-                          iso || undefined
-                        )
-                      }
-                      label={pitchLabel}
-                      triggerMuted={!raw}
-                      readOnly={pitchDateScope.readOnly}
-                      disabled={pitchDateScope.fieldScopeDisabled}
-                      popoverTitle="Select pitch date"
-                      presets={PRESETS_FUTURE_SHORT}
-                      getPresetAnchor={getPresetAnchorToday}
-                      headerRight={
-                        raw &&
-                        !pitchDateScope.readOnly &&
-                        !pitchDateScope.fieldScopeDisabled ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary text-sm"
-                            onClick={() =>
-                              setActivityFormFieldValue(
-                                form,
-                                field.name,
-                                undefined
-                              )
-                            }
-                          >
-                            Clear
-                          </Button>
-                        ) : null
-                      }
-                    />
-                  </FormControl>
-                </ActivityFieldScopePermissionTooltip>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
-        />
-      ) : null}
-
-      {canViewNotes && (
-        <>
-          <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <>
-                    {getActivityFieldLabel(field.name)}
-                    <ActivityFieldInfoIcon
-                      fieldKey="notes"
-                      ariaLabel="About notes"
-                    />
-                  </>
-                </FormLabel>
-                <ActivityFieldScopePermissionTooltip scope="notes">
-                  <FormControl data-field={field.name}>
-                    <Textarea
-                      placeholder=""
-                      readOnly={notesScope.readOnly}
-                      disabled={notesScope.fieldScopeDisabled}
-                      rows={4}
-                      maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                </ActivityFieldScopePermissionTooltip>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </>
-      )}
 
       <FormField
         control={form.control}
@@ -1133,6 +791,40 @@ export const ActivityOverviewSection: React.FC<
           );
         }}
       />
+
+      {canViewNotes ? (
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <>
+                  {getActivityFieldLabel(field.name)}
+                  <ActivityFieldInfoIcon
+                    fieldKey="notes"
+                    ariaLabel="About notes"
+                  />
+                </>
+              </FormLabel>
+              <ActivityFieldScopePermissionTooltip scope="notes">
+                <FormControl data-field={field.name}>
+                  <Textarea
+                    placeholder=""
+                    readOnly={notesScope.readOnly}
+                    disabled={notesScope.fieldScopeDisabled}
+                    rows={4}
+                    maxLength={ACTIVITY_OPTIONAL_TEXT_MAX_LENGTH}
+                    {...field}
+                    value={field.value ?? ''}
+                  />
+                </FormControl>
+              </ActivityFieldScopePermissionTooltip>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      ) : null}
     </ActivityFormSection>
   );
 };

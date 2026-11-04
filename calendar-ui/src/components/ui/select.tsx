@@ -2,6 +2,8 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import * as React from 'react';
 
+import { FORM_CONTROL_INVALID_RING_CLASS } from '@/lib/form-field-tokens';
+
 import { cn } from '../../lib/utils';
 
 const Select = SelectPrimitive.Root;
@@ -18,6 +20,7 @@ const SelectTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       'border-input bg-background text-foreground ring-offset-background focus:ring-ring data-placeholder:text-muted-foreground flex h-(--input-height) w-full touch-manipulation items-center justify-between rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
+      FORM_CONTROL_INVALID_RING_CLASS,
       className
     )}
     {...props}
@@ -65,15 +68,22 @@ const SelectScrollDownButton = React.forwardRef<
 SelectScrollDownButton.displayName =
   SelectPrimitive.ScrollDownButton.displayName;
 
+type SelectContentProps = React.ComponentPropsWithoutRef<
+  typeof SelectPrimitive.Content
+> & {
+  /** Pinned below the scrollable list (does not scroll with {@link SelectItem}s). */
+  footer?: React.ReactNode;
+};
+
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = 'popper', ...props }, ref) => (
+  SelectContentProps
+>(({ className, children, position = 'popper', footer, ...props }, ref) => (
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 pointer-events-auto relative z-[60] flex max-h-[min(var(--popover-list-max-height),var(--radix-select-content-available-height))] min-h-0 min-w-[8rem] origin-[--radix-select-content-transform-origin] flex-col overflow-hidden rounded-md border shadow-md',
+        'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 pointer-events-auto relative z-[110] flex max-h-[min(var(--popover-list-max-height),var(--radix-select-content-available-height))] min-h-0 min-w-[8rem] origin-[--radix-select-content-transform-origin] flex-col overflow-hidden rounded-md border shadow-md',
         position === 'popper' &&
           'data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1',
         className
@@ -90,6 +100,9 @@ const SelectContent = React.forwardRef<
       >
         {children}
       </SelectPrimitive.Viewport>
+      {footer != null ? (
+        <div className="bg-popover shrink-0 overflow-hidden">{footer}</div>
+      ) : null}
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 ));

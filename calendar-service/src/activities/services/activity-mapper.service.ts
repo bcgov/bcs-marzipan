@@ -12,6 +12,7 @@ import {
   type ActivityResponse,
   type EventPlannerDetail,
   type LookAheadStatus,
+  type OrganizationDetail,
   type Visibility,
 } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
@@ -20,6 +21,10 @@ import {
   activityListItemSchema,
   activityResponseSchema,
 } from '@corpcal/shared/schemas';
+import {
+  formatActivityOrganizationsGridSummary,
+  parseReleaseSchedulingMode,
+} from '@corpcal/shared/utils';
 
 type ActivityAuditTimestampsBase = {
   createdDateTime: string;
@@ -109,14 +114,7 @@ export type ActivityMapperRelatedData = {
   eventPlannerDetails?: EventPlannerDetail[];
   eventPlanners?: string[];
   eventPlannerLeadIds?: number[];
-  leadOrgName?: string | null;
-  reportSettings?: Array<{
-    id: number;
-    name: string;
-    displayName: string;
-    omitted: boolean;
-  }>;
-  pitchRequiredStatus?: string | null;
+  organizationDetails?: OrganizationDetail[];
   translationsRequiredStatus?: string | null;
   leadMinistry?: string | null;
   leadMinistryAbbreviation?: string | null;
@@ -205,12 +203,16 @@ export class ActivityMapperService {
       isIssue: activity.isIssue ?? false,
       isConfidential: activity.isConfidential ?? false,
 
-      // Organizations
-      leadOrgId: activity.leadOrgId ?? null,
-      leadOrgName: activity.leadOrgName ?? null,
-      leadOrg: relatedData?.leadOrgName ?? null,
+      organizationDetails: relatedData?.organizationDetails ?? [],
+      leadOrg: formatActivityOrganizationsGridSummary(
+        (relatedData?.organizationDetails ?? []).map((d) => ({
+          abbreviation: d.abbreviation,
+          displayName: d.name,
+          name: d.name,
+          isLead: d.isLead,
+        }))
+      ),
 
-      // Tags
       tags: relatedData?.tags ?? [],
 
       // Approvals
@@ -227,13 +229,18 @@ export class ActivityMapperService {
       endDate: formatDate(activity.endDate),
       endTime: formatTime(activity.endTime),
       schedulingNotes: activity.schedulingNotes ?? null,
-      strategy: activity.strategy ?? null,
 
       // Comms
       commsMaterials: relatedData?.commsMaterials ?? [],
-      newsReleaseId: activity.newsReleaseId ?? null,
       newsReleaseOriginId: activity.newsReleaseOriginId ?? null,
       newsReleaseDistributionId: activity.newsReleaseDistributionId ?? null,
+      releaseSchedulingMode: parseReleaseSchedulingMode(
+        activity.releaseSchedulingMode
+      ),
+      releaseTimeOffsetMinutes: activity.releaseTimeOffsetMinutes ?? null,
+      releaseTime: activity.releaseTime
+        ? activity.releaseTime.toISOString()
+        : null,
       translationsRequired: relatedData?.translationsRequired ?? [],
 
       // Event
@@ -262,8 +269,6 @@ export class ActivityMapperService {
 
       // Notes and additional fields
       notes: activity.notes ?? null,
-      pitchDate: formatDate(activity.pitchDate),
-      pitchRequiredStatusId: activity.pitchRequiredStatusId ?? null,
       translationsRequiredStatusId:
         activity.translationsRequiredStatusId ?? null,
       premierRequestedId: activity.premierRequestedId ?? null,
@@ -273,7 +278,6 @@ export class ActivityMapperService {
 
       // Sharing
       leadTeamId: activity.leadTeamId,
-      leadMinistryId: activity.leadMinistryId ?? null,
       sharedWith: relatedData?.sharedWith ?? [],
       sharedWithTeamIds: relatedData?.sharedWithTeamIds ?? [],
       commsContacts: relatedData?.commsContacts ?? [],
@@ -282,15 +286,11 @@ export class ActivityMapperService {
       newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,
       newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
       premierRequested: relatedData?.premierRequested ?? null,
-      pitchRequiredStatus: relatedData?.pitchRequiredStatus ?? null,
       translationsRequiredStatus:
         relatedData?.translationsRequiredStatus ?? null,
       leadMinistry: relatedData?.leadMinistry ?? null,
       leadMinistryAbbreviation: relatedData?.leadMinistryAbbreviation ?? null,
       leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
-
-      // Report settings
-      reportSettings: relatedData?.reportSettings ?? [],
 
       // Edit access for current user (set when authenticated)
       ...(relatedData?.canEdit !== undefined && {
@@ -345,15 +345,12 @@ export class ActivityMapperService {
       summary: activity.summary ?? '',
       executiveSummary: activity.executiveSummary ?? null,
       significance: activity.significance ?? null,
-      strategy: activity.strategy ?? null,
       schedulingNotes: activity.schedulingNotes ?? null,
       isIssue: activity.isIssue ?? false,
       isConfidential: activity.isConfidential ?? false,
       category: relatedData?.categories ?? [],
       categoryIds: relatedData?.categoryIds ?? [],
       tags: relatedData?.tags ?? [],
-      pitchDate: formatDate(activity.pitchDate),
-      pitchRequiredStatus: relatedData?.pitchRequiredStatus ?? null,
       lookAheadStatus: LOOK_AHEAD_STATUS.includes(
         activity.lookAheadStatus as LookAheadStatus
       )
@@ -370,13 +367,22 @@ export class ActivityMapperService {
       venueAddress: relatedData?.venueAddress ?? null,
       premierRequested: relatedData?.premierRequested ?? null,
       representativesAttending: relatedData?.representativesAttending ?? [],
-      leadOrg: relatedData?.leadOrgName ?? null,
-      leadOrgId: activity.leadOrgId ?? null,
+      leadOrg: formatActivityOrganizationsGridSummary(
+        (relatedData?.organizationDetails ?? []).map((d) => ({
+          abbreviation: d.abbreviation,
+          displayName: d.name,
+          name: d.name,
+          isLead: d.isLead,
+        }))
+      ),
+      organizationDetails: relatedData?.organizationDetails ?? [],
       leadMinistry: relatedData?.leadMinistry ?? null,
       leadMinistryAbbreviation: relatedData?.leadMinistryAbbreviation ?? null,
       leadTeamDisplayName: relatedData?.leadTeamDisplayName ?? null,
       leadTeamId: activity.leadTeamId,
-      leadMinistryId: activity.leadMinistryId ?? null,
+      leadOrganizationId:
+        relatedData?.organizationDetails?.find((d) => d.isLead)
+          ?.organizationId ?? null,
       sharedWith: relatedData?.sharedWith ?? [],
       sharedWithTeamIds: relatedData?.sharedWithTeamIds ?? [],
       visibility:

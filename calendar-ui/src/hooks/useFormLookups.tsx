@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 
 import type {
   DateStatusLookupItem,
-  PitchRequiredStatusLookupItem,
   TimeStatusLookupItem,
   TranslationRequiredStatusLookupItem,
   VenueStatusLookupItem,
@@ -21,8 +20,6 @@ import {
   useNewsReleaseDistributions,
   useNewsReleaseOrigins,
   useOrganizations,
-  usePitchRequiredStatuses,
-  usePitchStatuses,
   usePremierRequested,
   useTags,
   useTimeStatuses,
@@ -43,11 +40,12 @@ export interface FormLookupData {
     description?: string | null;
   }>;
 
-  // Organizations - for Select/Combobox (id is number; coerce to string where UI requires). ministryId used for Lead Org sync from Lead Team.
   organizations: Array<{
     value: number;
     label: string;
-    ministryId?: number | null;
+    organizationTypeId?: number | null;
+    organizationTypeDisplayName?: string | null;
+    organizationTypeSortOrder?: number | null;
   }>;
 
   // Ministries - for Select (id is number; coerce to string where UI requires)
@@ -67,14 +65,22 @@ export interface FormLookupData {
     teamIds?: number[];
   }>;
 
-  // Pitch Statuses - for Select
-  pitchStatuses: Array<{ id: number; name: string; displayName?: string }>;
-
   // Activity Statuses - for Select
   activityStatuses: Array<{ id: number; name: string; displayName?: string }>;
 
   // Comms Materials - for Badge components
-  commsMaterials: Array<{ id: number; name: string; displayName?: string }>;
+  commsMaterials: Array<{
+    id: number;
+    name: string;
+    displayName?: string;
+    visibility?: string;
+    teamIds?: number[];
+    releaseType?: {
+      audience: 'media' | 'public';
+      allowsTranslation: boolean;
+      requiresNewsReleaseDetails: boolean;
+    } | null;
+  }>;
 
   // Translation Languages - for Badge components (shortcode is an internal language code when set)
   translationLanguages: Array<{
@@ -108,7 +114,7 @@ export interface FormLookupData {
     id: number;
     name: string;
     displayName?: string;
-    ministryId: number | null;
+    primaryOrganizationId: number | null;
     isActive: boolean;
     appearsInShareWith: boolean;
   }>;
@@ -130,9 +136,6 @@ export interface FormLookupData {
   // Venue Statuses - Event section (next to venue name)
   venueStatuses: VenueStatusLookupItem[];
 
-  // Pitch Required Statuses - for Overview section
-  pitchRequiredStatuses: PitchRequiredStatusLookupItem[];
-
   // Translation Required Statuses - for Comms section
   translationRequiredStatuses: TranslationRequiredStatusLookupItem[];
 
@@ -150,7 +153,6 @@ export function useFormLookups(): FormLookupData {
   const usersQuery = useUsers();
   const eventPlannersQuery = useEventPlanners();
   const tagsQuery = useTags();
-  const pitchStatusesQuery = usePitchStatuses();
   const activityStatusesQuery = useActivityStatuses();
   const commsMaterialsQuery = useCommsMaterials();
   const translationLanguagesQuery = useTranslationLanguages();
@@ -162,7 +164,6 @@ export function useFormLookups(): FormLookupData {
   const dateStatusesQuery = useDateStatuses();
   const timeStatusesQuery = useTimeStatuses();
   const venueStatusesQuery = useVenueStatuses();
-  const pitchRequiredStatusesQuery = usePitchRequiredStatuses();
   const translationRequiredStatusesQuery = useTranslationRequiredStatuses();
 
   const isLoading =
@@ -172,7 +173,6 @@ export function useFormLookups(): FormLookupData {
     usersQuery.isLoading ||
     eventPlannersQuery.isLoading ||
     tagsQuery.isLoading ||
-    pitchStatusesQuery.isLoading ||
     activityStatusesQuery.isLoading ||
     commsMaterialsQuery.isLoading ||
     translationLanguagesQuery.isLoading ||
@@ -184,7 +184,6 @@ export function useFormLookups(): FormLookupData {
     dateStatusesQuery.isLoading ||
     timeStatusesQuery.isLoading ||
     venueStatusesQuery.isLoading ||
-    pitchRequiredStatusesQuery.isLoading ||
     translationRequiredStatusesQuery.isLoading;
 
   const hasError =
@@ -194,7 +193,6 @@ export function useFormLookups(): FormLookupData {
     usersQuery.isError ||
     eventPlannersQuery.isError ||
     tagsQuery.isError ||
-    pitchStatusesQuery.isError ||
     activityStatusesQuery.isError ||
     commsMaterialsQuery.isError ||
     translationLanguagesQuery.isError ||
@@ -206,7 +204,6 @@ export function useFormLookups(): FormLookupData {
     dateStatusesQuery.isError ||
     timeStatusesQuery.isError ||
     venueStatusesQuery.isError ||
-    pitchRequiredStatusesQuery.isError ||
     translationRequiredStatusesQuery.isError;
 
   // Memoized so consumers (e.g. ActivityPage hydration) only see a new
@@ -223,12 +220,13 @@ export function useFormLookups(): FormLookupData {
         description: item.description,
       })) || [];
 
-    // Transform organizations for Select/Combobox (lookup ids are numbers). Include ministryId for Lead Team -> Lead Org sync.
     const organizations =
       organizationsQuery.data?.map((item) => ({
         value: item.value,
         label: item.label,
-        ministryId: item.ministryId ?? undefined,
+        organizationTypeId: item.organizationTypeId,
+        organizationTypeDisplayName: item.organizationTypeDisplayName,
+        organizationTypeSortOrder: item.organizationTypeSortOrder,
       })) || [];
 
     // Transform ministries for Select
@@ -262,14 +260,6 @@ export function useFormLookups(): FormLookupData {
         teamIds: item.teamIds,
       })) || [];
 
-    // Transform pitch statuses for Select
-    const pitchStatuses =
-      pitchStatusesQuery.data?.map((item) => ({
-        id: item.id,
-        name: item.name || item.label,
-        displayName: item.displayName || item.label,
-      })) || [];
-
     // Transform activity statuses for Select
     const activityStatuses =
       activityStatusesQuery.data?.map((item) => ({
@@ -284,6 +274,9 @@ export function useFormLookups(): FormLookupData {
         id: item.id,
         name: item.name || item.label,
         displayName: item.displayName || item.label,
+        visibility: item.visibility,
+        teamIds: item.teamIds,
+        releaseType: item.releaseType ?? null,
       })) || [];
 
     // Transform translation languages for Badge components
@@ -334,7 +327,7 @@ export function useFormLookups(): FormLookupData {
         id: t.id,
         name: t.name,
         displayName: t.displayName ?? undefined,
-        ministryId: t.ministryId,
+        primaryOrganizationId: t.primaryOrganizationId,
         isActive: t.isActive,
         appearsInShareWith: t.appearsInShareWith,
       })) ?? [];
@@ -354,7 +347,6 @@ export function useFormLookups(): FormLookupData {
       users,
       eventPlanners,
       tags: tags,
-      pitchStatuses: pitchStatuses,
       activityStatuses: activityStatuses,
       commsMaterials: commsMaterials,
       translationLanguages: translationLanguages,
@@ -367,7 +359,6 @@ export function useFormLookups(): FormLookupData {
       dateStatuses: dateStatusesQuery.data ?? [],
       timeStatuses: timeStatusesQuery.data ?? [],
       venueStatuses: venueStatusesQuery.data ?? [],
-      pitchRequiredStatuses: pitchRequiredStatusesQuery.data ?? [],
       translationRequiredStatuses: translationRequiredStatusesQuery.data ?? [],
       isLoading,
       hasError,
@@ -386,8 +377,6 @@ export function useFormLookups(): FormLookupData {
     newsReleaseDistributionsQuery.data,
     newsReleaseOriginsQuery.data,
     organizationsQuery.data,
-    pitchRequiredStatusesQuery.data,
-    pitchStatusesQuery.data,
     premierRequestedQuery.data,
     tagsQuery.data,
     timeStatusesQuery.data,

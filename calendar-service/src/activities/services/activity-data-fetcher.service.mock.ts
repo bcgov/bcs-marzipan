@@ -29,15 +29,10 @@ const DEFAULTS = {
   },
   fetchCommsContactsForActivities: new Map(),
   fetchUserNamesForUserIds: new Map(),
-  fetchLeadOrgNamesForActivities: new Map(),
+  fetchOrganizationDetailsForActivities: new Map(),
   fetchEventPlannerDetailsForActivities: new Map() as Map<
     number,
     EventPlannerDetail[]
-  >,
-  fetchReportSettingsForActivities: new Map(),
-  fetchPitchRequiredStatusForActivities: new Map() as Map<
-    number,
-    string | null
   >,
   fetchTranslationsRequiredStatusForActivities: new Map() as Map<
     number,
