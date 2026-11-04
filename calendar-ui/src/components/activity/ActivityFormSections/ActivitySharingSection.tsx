@@ -32,6 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
+import { optionItemsEqual } from '@/lib/combobox-option-utils';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
 

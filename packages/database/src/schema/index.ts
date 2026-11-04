@@ -9,6 +9,8 @@ export * from './ministry-groups';
 export * from './organization-types';
 export * from './organizations';
 export * from './lookups';
+export * from './lookup-sort-settings';
+export * from './lookup-name-index';
 export * from './relations';
 export * from './formDrafts';
 export * from './teams';
