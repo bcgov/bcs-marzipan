@@ -12,6 +12,7 @@ import { getDefaultFormValues } from '@/lib/activity-form-defaults';
 
 import {
   ACTIVITY_FIELD_SET_OPTS,
+  ACTIVITY_FORM_USER_EDIT_EVENT,
   setActivityFormFieldValue,
 } from './activity-form-set-field';
 
@@ -59,6 +60,24 @@ describe('setActivityFormFieldValue', () => {
     );
     expect(triggerSpy).toHaveBeenCalledWith('tagIds');
     expect(triggerSpy).toHaveBeenCalledWith('venueAddress.provinceOrState');
+  });
+
+  it('signals a user edit for custom form controls', () => {
+    const onUserEdit = vi.fn();
+    window.addEventListener(ACTIVITY_FORM_USER_EDIT_EVENT, onUserEdit);
+
+    const { result } = renderHook(() =>
+      useForm<ActivityFormData>({
+        defaultValues: getDefaultFormValues() as ActivityFormData,
+      })
+    );
+
+    act(() => {
+      setActivityFormFieldValue(result.current, 'isIssue', true);
+    });
+
+    expect(onUserEdit).toHaveBeenCalledTimes(1);
+    window.removeEventListener(ACTIVITY_FORM_USER_EDIT_EVENT, onUserEdit);
   });
 
   it('updates formState errors after filling a required custom field', async () => {

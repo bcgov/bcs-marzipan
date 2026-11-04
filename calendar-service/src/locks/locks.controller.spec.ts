@@ -83,7 +83,7 @@ describe('LocksController', () => {
       entityId: 22,
       userId: 7,
       username: 'Editor Seven',
-      acquiredAt: new Date(),
+      acquiredAt: new Date('2020-01-01T00:00:00.000Z'),
       expiresAt: new Date(),
       idleExpiresAt: new Date(),
     });
@@ -94,6 +94,9 @@ describe('LocksController', () => {
     });
 
     expect(result).toMatchObject({ id: 100, entityId: 22, userId: 7 });
+    expect(Date.parse(result.serverTime ?? '')).toBeGreaterThan(
+      Date.parse('2020-01-01T00:00:00.000Z')
+    );
     expect(tryAcquireLockMock).toHaveBeenCalledTimes(1);
   });
 });

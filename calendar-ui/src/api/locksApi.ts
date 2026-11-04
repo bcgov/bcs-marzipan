@@ -29,7 +29,9 @@ export type LockStatusResponse = {
   };
 };
 
-export type AcquireLockResponse = LockInfo;
+export type AcquireLockResponse = LockInfo & {
+  serverTime: string;
+};
 
 export type HeartbeatLockResponse = {
   serverTime: string;
@@ -106,10 +108,13 @@ export async function releaseLock(lockId: number): Promise<void> {
 }
 
 export async function heartbeatLock(
-  lockId: number
+  lockId: number,
+  options: { keepAlive?: boolean } = {}
 ): Promise<HeartbeatLockResponse> {
   const res = await api.post<HeartbeatLockResponse>(
-    `/locks/heartbeat/${lockId}`
+    `/locks/heartbeat/${lockId}`,
+    undefined,
+    options.keepAlive ? { params: { keepAlive: true } } : undefined
   );
   return res.data;
 }

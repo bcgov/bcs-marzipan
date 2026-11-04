@@ -658,4 +658,142 @@ describe('LocksService', () => {
       expect(notifyLockReleased).not.toHaveBeenCalled();
     });
   });
+
+  describe('heartbeatLock', () => {
+    const NOW = new Date('2030-01-01T12:00:00.000Z');
+    const IDLE_MINUTES = 1;
+
+    async function createServiceWithLockRow(row: {
+      lastActivityAt: Date;
+      lastRenewedAt: Date;
+      idleExpiresAt: Date;
+    }) {
+      const returning = vi.fn().mockResolvedValue([
+        {
+          idleExpiresAt: new Date(NOW.getTime() + IDLE_MINUTES * 60_000),
+        },
+      ]);
+      const where = vi.fn().mockReturnValue({ returning });
+      const set = vi.fn().mockReturnValue({ where });
+      const update = vi.fn().mockReturnValue({ set });
+      const findFirst = vi.fn().mockResolvedValue({
+        id: 1,
+        userId: 7,
+        expiresAt: new Date(NOW.getTime() + 5 * 60_000),
+        ...row,
+      });
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          LocksService,
+          {
+            provide: DatabaseService,
+            useValue: {
+              db: { transaction, update, query: { editLocks: { findFirst } } },
+            },
+          },
+          {
+            provide: ApplicationSettingsService,
+            useValue: {
+              getEditLockIdleTimeoutMinutes: vi
+                .fn()
+                .mockResolvedValue(IDLE_MINUTES),
+            },
+          },
+          { provide: ActivitiesGateway, useValue: { notifyLockReleased } },
+          {
+            provide: LockHandoffDeadlineKickService,
+            useValue: { clearScheduledKick, scheduleHandoffKick },
+          },
+        ],
+      }).compile();
+      return { localService: module.get(LocksService), set };
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(NOW);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('extends the idle deadline for activity arriving just under 30s after the last one', async () => {
+      // Client paces activity at 30s; arrival jitter must not cause throttling.
+      const lastActivityAt = new Date(NOW.getTime() - 29_900);
+      const { localService, set } = await createServiceWithLockRow({
+        lastActivityAt,
+        lastRenewedAt: lastActivityAt,
+        idleExpiresAt: new Date(
+          lastActivityAt.getTime() + IDLE_MINUTES * 60_000
+        ),
+      });
+
+      const result = await localService.heartbeatLock(1, 7);
+
+      expect(result.throttled).toBe(false);
+      expect(result.idleExpiresAt).toBe(
+        new Date(NOW.getTime() + IDLE_MINUTES * 60_000).toISOString()
+      );
+      expect(set).toHaveBeenCalledWith(
+        expect.objectContaining({ lastActivityAt: NOW })
+      );
+    });
+
+    it('extends activity even when a recent keep-alive renewed the lease', async () => {
+      const lastActivityAt = new Date(NOW.getTime() - 40_000);
+      const { localService } = await createServiceWithLockRow({
+        lastActivityAt,
+        lastRenewedAt: new Date(NOW.getTime() - 1_000),
+        idleExpiresAt: new Date(
+          lastActivityAt.getTime() + IDLE_MINUTES * 60_000
+        ),
+      });
+
+      const result = await localService.heartbeatLock(1, 7);
+
+      expect(result.throttled).toBe(false);
+    });
+
+    it('throttles activity heartbeats inside the activity interval', async () => {
+      const lastActivityAt = new Date(NOW.getTime() - 5_000);
+      const idleExpiresAt = new Date(
+        lastActivityAt.getTime() + IDLE_MINUTES * 60_000
+      );
+      const { localService, set } = await createServiceWithLockRow({
+        lastActivityAt,
+        lastRenewedAt: lastActivityAt,
+        idleExpiresAt,
+      });
+
+      const result = await localService.heartbeatLock(1, 7);
+
+      expect(result.throttled).toBe(true);
+      expect(result.idleExpiresAt).toBe(idleExpiresAt.toISOString());
+      expect(set).not.toHaveBeenCalled();
+    });
+
+    it('keep-alive renews only the lease, leaving the idle deadline', async () => {
+      const lastActivityAt = new Date(NOW.getTime() - 50_000);
+      const idleExpiresAt = new Date(
+        lastActivityAt.getTime() + IDLE_MINUTES * 60_000
+      );
+      const { localService, set } = await createServiceWithLockRow({
+        lastActivityAt,
+        lastRenewedAt: new Date(NOW.getTime() - 40_000),
+        idleExpiresAt,
+      });
+
+      const result = await localService.heartbeatLock(1, 7, {
+        keepAliveOnly: true,
+      });
+
+      expect(result.throttled).toBe(false);
+      expect(result.idleExpiresAt).toBe(idleExpiresAt.toISOString());
+      expect(set).toHaveBeenCalledWith({
+        lastRenewedAt: NOW,
+        expiresAt: new Date(NOW.getTime() + 5 * 60_000),
+      });
+    });
+  });
 });
