@@ -47,7 +47,7 @@ export const users = pgTable(
     notes: text('notes'),
     enableEmailNotification: boolean('enable_email_notification')
       .notNull()
-      .default(true),
+      .default(false),
 
     // Audit fields
     lastLoginDateTime: timestamp('last_login_date_time', {
