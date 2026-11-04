@@ -25,10 +25,7 @@ export type ActivityTimestampWriteInput = {
 
 /** Contexts that always bump public last-updated (see resolveBumpPublicLastUpdated). */
 export type LifecycleTimestampWriteContext =
-  | 'create'
-  | 'softDelete'
-  | 'restore'
-  | 'deleteRequested';
+  'create' | 'softDelete' | 'restore' | 'deleteRequested';
 
 export type ActivityTimestampPolicyErrorCode = 'forbidden' | 'bad_request';
 

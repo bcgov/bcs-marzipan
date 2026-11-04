@@ -48,10 +48,7 @@ export function isSamePacificCalendarDay(a: Date, b: Date): boolean {
 
 export type ActivityHistoryRecencyBucket = 'Today' | 'This week' | 'Earlier';
 export type HistoryRecencyBucket =
-  | 'Today'
-  | 'Yesterday'
-  | 'This week'
-  | 'Earlier';
+  'Today' | 'Yesterday' | 'This week' | 'Earlier';
 
 export const HISTORY_RECENCY_BUCKETS: readonly HistoryRecencyBucket[] = [
   'Today',

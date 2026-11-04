@@ -165,8 +165,7 @@ export const RELEASE_TIME_ON_SIGNAL_PREVIEW_MESSAGE =
   'Release will be published on signal to Editors.';
 
 export type ActivityReleaseTimePreviewResult =
-  | { kind: 'preview'; label: string }
-  | { kind: 'hint'; message: string };
+  { kind: 'preview'; label: string } | { kind: 'hint'; message: string };
 
 function addMinutesToCivilWallTime(
   wallTime: string,

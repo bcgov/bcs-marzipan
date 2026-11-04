@@ -108,7 +108,9 @@ export const ACTIVITY_FORM_SECTION_REGISTRY_OMITTED_KEYS = [
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
 type ActivityFormSectionFieldKey = {
-  [Section in ActivityFormSectionId]: (typeof ACTIVITY_FORM_SECTION_FIELDS)[Section][number];
+  [
+    Section in ActivityFormSectionId
+  ]: (typeof ACTIVITY_FORM_SECTION_FIELDS)[Section][number];
 }[ActivityFormSectionId];
 
 type UnaccountedActivityFormDataKey = Exclude<

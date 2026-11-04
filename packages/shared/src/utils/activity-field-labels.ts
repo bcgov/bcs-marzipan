@@ -19,9 +19,7 @@ export type CloneProvenanceFieldKey =
  * nudge to add a label.
  */
 export type ActivityFieldLabelKey =
-  | keyof ActivityFormData
-  | keyof VenueAddressBase
-  | CloneProvenanceFieldKey;
+  keyof ActivityFormData | keyof VenueAddressBase | CloneProvenanceFieldKey;
 
 /**
  * Form/API field keys that are required on create (matches createActivityRequestSchema

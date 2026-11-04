@@ -81,9 +81,7 @@ function deriveInitialMinisterSelection(
   ministerOptionIds: Set<string>
 ): MinisterFormSelection {
   const designatedId = initial.ministerGovernmentRepId as
-    | number
-    | null
-    | undefined;
+    number | null | undefined;
   if (designatedId != null && ministerOptionIds.has(String(designatedId))) {
     return { mode: 'existing', repId: designatedId };
   }

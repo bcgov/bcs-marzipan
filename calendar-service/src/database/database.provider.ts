@@ -64,7 +64,7 @@ export const databaseProvider = {
     });
 
     // Create Drizzle client with schema
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
     const db = drizzle(queryClient, { schema });
 
     return db;
@@ -80,5 +80,4 @@ export type Database = ReturnType<typeof drizzle<typeof schema>>;
  * idle while awaiting a second pool checkout (avoids pool self-deadlock).
  */
 export type DrizzleDbExecutor =
-  | Database
-  | Parameters<Parameters<Database['transaction']>[0]>[0];
+  Database | Parameters<Parameters<Database['transaction']>[0]>[0];

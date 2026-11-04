@@ -1,9 +1,6 @@
 /** User-facing connection state for the per-activity Socket.IO client. */
 export type ActivitySocketConnectionDisplay =
-  | 'connected'
-  | 'reconnecting'
-  | 'browser-offline'
-  | 'disconnected';
+  'connected' | 'reconnecting' | 'browser-offline' | 'disconnected';
 
 export const ACTIVITY_SOCKET_DISCONNECTED_AFTER_MS = 3_000;
 
