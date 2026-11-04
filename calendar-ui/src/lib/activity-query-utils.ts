@@ -148,7 +148,6 @@ export type ActivityListQueryParams = Partial<
     | 'includeCompleted'
     | 'includeDeleted'
     | 'leadTeamIds'
-    | 'leadMinistryIds'
     | 'commsContactLeadUserIds'
     | 'sharedWithTeamIds'
     | 'flagAssigneeUserIds'
@@ -167,7 +166,6 @@ export function normalizeListParams(
     includeCompleted,
     includeDeleted,
     leadTeamIds,
-    leadMinistryIds,
     commsContactLeadUserIds,
     sharedWithTeamIds,
     flagAssigneeUserIds,
@@ -177,9 +175,6 @@ export function normalizeListParams(
   if (includeDeleted !== undefined) out.includeDeleted = includeDeleted;
   if (leadTeamIds !== undefined && leadTeamIds.length > 0) {
     out.leadTeamIds = sortNumericArray(leadTeamIds);
-  }
-  if (leadMinistryIds !== undefined && leadMinistryIds.length > 0) {
-    out.leadMinistryIds = sortNumericArray(leadMinistryIds);
   }
   if (
     commsContactLeadUserIds !== undefined &&

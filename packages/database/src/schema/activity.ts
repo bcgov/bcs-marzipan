@@ -24,7 +24,6 @@ import {
   translationRequiredStatuses,
   venueStatuses,
 } from './lookups';
-import { ministries } from './ministry';
 import {
   activityCategories,
   activityCommsContacts,
@@ -116,7 +115,6 @@ export const activities = pgTable(
     leadTeamId: integer('lead_team_id')
       .notNull()
       .references(() => teams.id), // FK to Teams - primary association for which team leads this activity
-    leadMinistryId: integer('lead_ministry_id').references(() => ministries.id), // FK to Ministry (nullable; derived from lead team's ministry for filtering/reporting)
     activityStatusId: integer('activity_status_id')
       .notNull()
       .references(() => activityStatuses.id), // FK to ActivityStatus
@@ -199,11 +197,6 @@ export const activitiesRelations = relations(activities, ({ one, many }) => ({
     fields: [activities.leadTeamId],
     references: [teams.id],
     relationName: 'leadTeam',
-  }),
-  leadMinistry: one(ministries, {
-    fields: [activities.leadMinistryId],
-    references: [ministries.id],
-    relationName: 'leadMinistry',
   }),
   newsReleaseDistribution: one(newsReleaseDistributions, {
     fields: [activities.newsReleaseDistributionId],

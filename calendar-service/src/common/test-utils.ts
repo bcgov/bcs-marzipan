@@ -108,7 +108,6 @@ export const createMockActivity = (overrides?: Partial<Activity>): Activity => {
     premierRequestedId: null,
     visibility: 'global',
     leadTeamId: 1,
-    leadMinistryId: null,
     createdDateTime: now,
     createdBy: 1,
     lastUpdatedDateTime: now,

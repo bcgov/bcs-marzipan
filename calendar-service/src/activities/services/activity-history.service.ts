@@ -1003,7 +1003,7 @@ export class ActivityHistoryService {
   /**
    * Fetches display-name maps for user, team, ministry, and org IDs that appear
    * in the given old/new activity objects for the five FK fields that store raw
-   * IDs (lastUpdatedBy, createdBy, leadTeamId, leadMinistryId, organizationId in organizations).
+   * IDs (lastUpdatedBy, createdBy, leadTeamId, organizationId in organizations).
    *
    * Returns a map of field name → (id → displayName) so that
    * generateChangeList can substitute readable labels instead of numeric IDs.

@@ -53,15 +53,6 @@ import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
-import {
-  optionItemsEqual,
-  uniqueNumericIdsFromOptions,
-} from '@/lib/combobox-option-utils';
-import {
-  getPresetAnchorToday,
-  parseIsoDateLocal,
-  PRESETS_FUTURE_SHORT,
-} from '@/lib/scheduled-date-presets';
 import type { OptionItem } from '@/schemas/types';
 
 import { useActivityEdit } from '../activity-edit-context';

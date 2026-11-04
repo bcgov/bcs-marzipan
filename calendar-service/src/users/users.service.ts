@@ -1341,7 +1341,7 @@ export class UsersService {
    *   - mode 'transfer', cross-team: left as-is if the source user remains
    *     comms-eligible on the new lead team, otherwise deleted.
    * - When `toTeamId !== fromTeamId`, each affected activity's `leadTeamId`
-   *   (and derived `leadMinistryId`/`displayId`) moves with it, matching the
+   *   (and derived `displayId`) moves with it, matching the
    *   Activity Form's lead-team-change behavior.
    */
   private async applyActivityCommsChanges(

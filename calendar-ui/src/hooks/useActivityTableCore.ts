@@ -83,8 +83,6 @@ export type ActivityBulkDialog =
 export interface ActivityTableCoreOptions {
   /** When set, only activities with any of these lead teams are shown (e.g. ministry tab). */
   leadTeamIds?: number[];
-  /** When set, only activities whose lead ministry is any of these are shown (ministry tab). */
-  leadMinistryIds?: number[];
   /** When set, only activities where any of these users is comms contact lead are shown. */
   commsContactLeadUserIds?: number[];
   /** When set, only activities shared with any of these teams are shown. */
@@ -117,7 +115,6 @@ const MAX_BULK_SELECTION = 100;
  */
 export function useActivityTableCore({
   leadTeamIds,
-  leadMinistryIds,
   commsContactLeadUserIds,
   sharedWithTeamIds,
   favouriteActivityIds,
@@ -367,8 +364,6 @@ export function useActivityTableCore({
       includeDeleted: effectiveShowDeleted,
       ...(leadTeamIds !== undefined &&
         leadTeamIds.length > 0 && { leadTeamIds }),
-      ...(leadMinistryIds !== undefined &&
-        leadMinistryIds.length > 0 && { leadMinistryIds }),
       ...(commsContactLeadUserIds !== undefined &&
         commsContactLeadUserIds.length > 0 && { commsContactLeadUserIds }),
       ...(sharedWithTeamIds !== undefined &&
@@ -380,7 +375,6 @@ export function useActivityTableCore({
     effectiveShowCompleted,
     effectiveShowDeleted,
     leadTeamIds,
-    leadMinistryIds,
     commsContactLeadUserIds,
     sharedWithTeamIds,
     flagAssigneeUserIds,
@@ -404,7 +398,6 @@ export function useActivityTableCore({
       prev.includeCompleted === activityFilters.includeCompleted &&
       prev.includeDeleted === activityFilters.includeDeleted &&
       sameNumericArray(prev.leadTeamIds, activityFilters.leadTeamIds) &&
-      sameNumericArray(prev.leadMinistryIds, activityFilters.leadMinistryIds) &&
       sameNumericArray(
         prev.commsContactLeadUserIds,
         activityFilters.commsContactLeadUserIds
