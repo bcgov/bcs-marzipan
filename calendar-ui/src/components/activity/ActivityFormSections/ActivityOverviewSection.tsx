@@ -67,10 +67,6 @@ import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import {
-  optionItemsEqual,
-  uniqueNumericIdsFromOptions,
-} from '@/lib/combobox-option-utils';
-import {
   getPresetAnchorToday,
   parseIsoDateLocal,
   PRESETS_FUTURE_SHORT,
@@ -149,18 +145,17 @@ function applyAllowedLookupSelection(
   hasCreateAny: boolean,
   onApply: (allowedIds: number[]) => void
 ): void {
-  const dedupedIds = [...new Set(submittedIds)];
   if (hasCreateAny) {
-    onApply(dedupedIds);
+    onApply(submittedIds);
     return;
   }
   const allowedIds = filterAllowedLookupIds(
-    dedupedIds,
+    submittedIds,
     existingIds,
     userTeamIds,
     scopeById
   );
-  if (allowedIds.length !== dedupedIds.length) {
+  if (allowedIds.length !== submittedIds.length) {
     toast.warning('That category or tag is not available to your teams.');
   }
   onApply(allowedIds);
@@ -614,7 +609,7 @@ export const ActivityOverviewSection: React.FC<
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected) => {
-                    const submittedIds = uniqueNumericIdsFromOptions(selected);
+                    const submittedIds = selected.map((o) => Number(o.value));
                     applyAllowedLookupSelection(
                       submittedIds,
                       field.value ?? [],
@@ -627,7 +622,6 @@ export const ActivityOverviewSection: React.FC<
                     );
                   }}
                   itemToStringValue={(o) => o.label}
-                  isItemEqualToValue={optionItemsEqual}
                   readOnly={readOnly}
                 >
                   <ComboboxChips ref={categoriesAnchorRef} className="w-full">
@@ -1075,7 +1069,7 @@ export const ActivityOverviewSection: React.FC<
                   multiple
                   value={selectedOptions}
                   onValueChange={(selected) => {
-                    const submittedIds = uniqueNumericIdsFromOptions(selected);
+                    const submittedIds = selected.map((o) => Number(o.value));
                     applyAllowedLookupSelection(
                       submittedIds,
                       field.value ?? [],
@@ -1088,7 +1082,6 @@ export const ActivityOverviewSection: React.FC<
                     );
                   }}
                   itemToStringValue={(o) => o.label}
-                  isItemEqualToValue={optionItemsEqual}
                   readOnly={readOnly}
                 >
                   <ComboboxChips ref={tagsAnchorRef} className="w-full">

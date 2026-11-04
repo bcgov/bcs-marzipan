@@ -69,8 +69,6 @@ describe('LookupsController', () => {
     updatePermissionVisibility: vi.fn(),
     getRolesPermissionsMap: vi.fn(),
     reorderLookup: vi.fn(),
-    getLookupSortSettings: vi.fn(),
-    updateLookupSortMode: vi.fn(),
   };
 
   const mockTeamsService = {
@@ -540,50 +538,6 @@ describe('LookupsController', () => {
       expect(
         mockLookupsService.updatePermissionVisibility
       ).toHaveBeenCalledWith(10, true, sysAdminUser.id);
-    });
-  });
-
-  describe('lookup sort settings', () => {
-    it('getLookupSortSettings requires lookups.manage', () => {
-      const handler = Object.getOwnPropertyDescriptor(
-        LookupsController.prototype,
-        'getLookupSortSettings'
-      )!.value as object;
-
-      expect(Reflect.getMetadata(PERMISSIONS_METADATA_KEY, handler)).toEqual({
-        keys: ['lookups.manage'],
-        mode: 'any',
-      });
-    });
-
-    it('returns sort settings from the service', async () => {
-      mockLookupsService.getLookupSortSettings.mockResolvedValue({
-        cities: 'manual',
-      });
-
-      const result = await controller.getLookupSortSettings();
-
-      expect(result).toEqual({
-        success: true,
-        data: { cities: 'manual' },
-      });
-    });
-
-    it('updateLookupSortMode delegates to the service', async () => {
-      mockLookupsService.updateLookupSortMode.mockResolvedValue(undefined);
-
-      const result = await controller.updateLookupSortMode(
-        'cities',
-        { sortMode: 'alphabetical' },
-        mockUser
-      );
-
-      expect(result).toEqual({ success: true });
-      expect(mockLookupsService.updateLookupSortMode).toHaveBeenCalledWith(
-        'cities',
-        'alphabetical',
-        mockUser.id
-      );
     });
   });
 

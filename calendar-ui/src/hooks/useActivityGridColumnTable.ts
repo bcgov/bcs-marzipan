@@ -9,7 +9,6 @@ import {
   type ColumnSizingState,
   type PaginationState,
   type Updater,
-  type VisibilityState,
 } from '@tanstack/react-table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -58,14 +57,8 @@ export function useActivityGridColumnTable({
     userMap,
     handleHeaderSort,
   } = core;
-  const {
-    getColumnOrder,
-    setColumnOrder,
-    getColumnSizing,
-    setColumnSizing,
-    getColumnVisibility,
-    setColumnVisibility,
-  } = layoutPreferences;
+  const { getColumnOrder, setColumnOrder, getColumnSizing, setColumnSizing } =
+    layoutPreferences;
 
   const storedOrder = getColumnOrder();
   const storedSizing = getColumnSizing();
@@ -113,19 +106,6 @@ export function useActivityGridColumnTable({
     [onPaginationChange, pagination]
   );
 
-  const storedVisibility = getColumnVisibility();
-  const columnVisibility = useMemo<VisibilityState>(
-    () => ({ ...storedVisibility }),
-    [storedVisibility]
-  );
-
-  const handleColumnVisibilityChange = useCallback(
-    (updater: Updater<VisibilityState>) => {
-      setColumnVisibility(applyUpdater(updater, columnVisibility));
-    },
-    [columnVisibility, setColumnVisibility]
-  );
-
   const columnPinning = useMemo<ColumnPinningState>(
     () => ({ left: [...GRID_A_PINNED_COLUMN_IDS] }),
     []
@@ -134,14 +114,7 @@ export function useActivityGridColumnTable({
   const table = useReactTable({
     data: sortedData,
     columns,
-    state: {
-      columnOrder,
-      columnSizing,
-      pagination,
-      columnPinning,
-      columnVisibility,
-    },
-    onColumnVisibilityChange: handleColumnVisibilityChange,
+    state: { columnOrder, columnSizing, pagination, columnPinning },
     onColumnOrderChange: (updater) => {
       setColumnOrderState((prev) => {
         const next = applyUpdater(updater, prev);
@@ -161,17 +134,12 @@ export function useActivityGridColumnTable({
   });
 
   /** Column ids that participate in header drag-and-drop (select stays fixed). */
-  const visibleColumnOrder = useMemo(
-    () => columnOrder.filter((id) => columnVisibility[id] !== false),
-    [columnOrder, columnVisibility]
-  );
-
   const draggableColumnIds = useMemo(
     () =>
-      visibleColumnOrder.filter(
+      columnOrder.filter(
         (id) => !(GRID_A_PINNED_COLUMN_IDS as readonly string[]).includes(id)
       ),
-    [visibleColumnOrder]
+    [columnOrder]
   );
 
   const moveColumn = useCallback(
@@ -194,22 +162,5 @@ export function useActivityGridColumnTable({
     [setColumnOrder]
   );
 
-  const toggleColumnVisibility = useCallback(
-    (columnId: string, visible: boolean) => {
-      if ((GRID_A_PINNED_COLUMN_IDS as readonly string[]).includes(columnId)) {
-        return;
-      }
-      setColumnVisibility({ ...columnVisibility, [columnId]: visible });
-    },
-    [columnVisibility, setColumnVisibility]
-  );
-
-  return {
-    table,
-    columnOrder: visibleColumnOrder,
-    columnVisibility,
-    toggleColumnVisibility,
-    draggableColumnIds,
-    moveColumn,
-  };
+  return { table, columnOrder, draggableColumnIds, moveColumn };
 }

@@ -106,13 +106,10 @@ export async function releaseLock(lockId: number): Promise<void> {
 }
 
 export async function heartbeatLock(
-  lockId: number,
-  options: { keepAlive?: boolean } = {}
+  lockId: number
 ): Promise<HeartbeatLockResponse> {
   const res = await api.post<HeartbeatLockResponse>(
-    `/locks/heartbeat/${lockId}`,
-    undefined,
-    options.keepAlive ? { params: { keepAlive: true } } : undefined
+    `/locks/heartbeat/${lockId}`
   );
   return res.data;
 }

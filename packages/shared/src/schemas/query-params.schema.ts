@@ -77,6 +77,7 @@ export const filterActivitiesQuerySchema = z.object({
     ),
   activityStatusIds: commaSeparatedIntArray(),
   leadTeamIds: commaSeparatedIntArray(),
+  leadMinistryIds: commaSeparatedIntArray(),
   commsContactLeadUserIds: commaSeparatedIntArray(),
   flagAssigneeUserIds: commaSeparatedIntArray(),
   sharedWithTeamIds: commaSeparatedIntArray(),
@@ -157,6 +158,7 @@ export type FilterActivitiesQueryParams = Pick<
 export const FILTER_ACTIVITIES_INT_ARRAY_KEYS = [
   'activityStatusIds',
   'leadTeamIds',
+  'leadMinistryIds',
   'commsContactLeadUserIds',
   'flagAssigneeUserIds',
   'sharedWithTeamIds',
