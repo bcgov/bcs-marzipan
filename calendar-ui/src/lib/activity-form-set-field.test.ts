@@ -77,7 +77,10 @@ describe('setActivityFormFieldValue', () => {
           summary: EMPTY_RICH_TEXT_DOC,
           leadTeamId: 1,
           categoryIds: [],
+          startDate: '2026-06-01',
+          endDate: '2026-06-01',
           commsContacts: [{ userId: 1, isLead: true }],
+          organizations: [{ organizationId: 1, isLead: true }],
         } as ActivityFormData,
       })
     );
@@ -97,7 +100,7 @@ describe('setActivityFormFieldValue', () => {
     });
 
     await act(async () => {
-      const valid = await result.current.trigger('summary');
+      const valid = await result.current.trigger();
       expect(valid).toBe(false);
     });
     expect(result.current.getFieldState('summary').error).toBeDefined();
@@ -125,7 +128,10 @@ describe('setActivityFormFieldValue', () => {
             '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Summary text"}]}]}',
           leadTeamId: 1,
           categoryIds: [1],
+          startDate: '2026-06-01',
+          endDate: '2026-06-01',
           commsContacts: [{ userId: 1, isLead: true }],
+          organizations: [{ organizationId: 1, isLead: true }],
         } as ActivityFormData,
       })
     );

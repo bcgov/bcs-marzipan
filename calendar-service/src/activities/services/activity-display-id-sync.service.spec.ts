@@ -32,20 +32,31 @@ describe('ActivityDisplayIdSyncService', () => {
 
   describe('refreshAfterTeamAbbreviationChange', () => {
     it('updates activities whose computed displayId differs and records history', async () => {
+      let selectCallCount = 0;
       const stub = {
         tx: {
-          select: vi.fn().mockReturnValue({
-            from: vi.fn().mockReturnValue({
-              leftJoin: vi.fn().mockReturnValue({
-                where: vi.fn().mockResolvedValue([
-                  {
-                    id: 100,
-                    displayId: 'OLD-000100',
-                    teamAbbreviation: 'NEW',
-                  },
-                ]),
+          select: vi.fn().mockImplementation(() => {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from: vi.fn().mockReturnValue({
+                  where: vi.fn().mockResolvedValue([{ id: 99 }, { id: 100 }]),
+                }),
+              };
+            }
+            return {
+              from: vi.fn().mockReturnValue({
+                leftJoin: vi.fn().mockReturnValue({
+                  where: vi.fn().mockResolvedValue([
+                    {
+                      id: 100,
+                      displayId: 'OLD-000100',
+                      teamAbbreviation: 'NEW',
+                    },
+                  ]),
+                }),
               }),
-            }),
+            };
           }),
           update: vi.fn().mockReturnValue({
             set: vi.fn().mockReturnValue({

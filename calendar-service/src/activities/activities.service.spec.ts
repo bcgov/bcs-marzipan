@@ -285,6 +285,7 @@ describe('ActivitiesService', () => {
   const mockJunctionService = {
     insertJunctionRecords: vi.fn().mockResolvedValue(undefined),
     updateJunctionRecords: vi.fn().mockResolvedValue(undefined),
+    insertOrganizations: vi.fn().mockResolvedValue(undefined),
     insertRepresentatives: vi.fn().mockResolvedValue(undefined),
     updateRepresentatives: vi.fn().mockResolvedValue(undefined),
     insertVenueAddress: vi.fn().mockResolvedValue(undefined),
@@ -5166,7 +5167,6 @@ describe('ActivitiesService', () => {
 
       const [dto] = createSpy.mock.calls[0] ?? [];
       const dtoRecord = dto as Record<string, unknown>;
-      expect(dtoRecord.notes).toBe('general notes');
       expect(dtoRecord.notes).toBeUndefined();
     });
   });

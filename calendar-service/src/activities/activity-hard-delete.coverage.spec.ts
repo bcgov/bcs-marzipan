@@ -13,6 +13,7 @@ describe('activity-hard-delete.coverage', () => {
       'activity_comms_contacts',
       'activity_comms_materials',
       'activity_event_planners',
+      'activity_organizations',
       'activity_representatives',
       'activity_shared_with_teams',
       'activity_sectors',
@@ -24,7 +25,7 @@ describe('activity-hard-delete.coverage', () => {
       'edit_locks',
       'activities',
     ]);
-    expect(ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES).toHaveLength(15);
+    expect(ACTIVITY_HARD_DELETE_EXPLICIT_DELETE_TABLES).toHaveLength(16);
   });
 
   it('findUnhandledActivityForeignKeys ignores explicit non-cascade tables', () => {

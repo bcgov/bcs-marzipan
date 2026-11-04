@@ -428,9 +428,9 @@ function ActivityCell({
       <div className="corpcal-print-meta">
         {splitId ? (
           <div className="corpcal-print-activity-id-stacked">
-            {splitId.acronym ? (
+            {splitId.abbreviation ? (
               <div className="corpcal-print-activity-id-acronym">
-                <strong>{splitId.acronym}</strong>
+                <strong>{splitId.abbreviation}</strong>
               </div>
             ) : null}
             <div>

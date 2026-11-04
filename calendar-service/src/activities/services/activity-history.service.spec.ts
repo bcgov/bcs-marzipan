@@ -293,11 +293,6 @@ describe('ActivityHistoryService', () => {
       expect(result).toHaveLength(1);
       expect(result[0]?.changes).toEqual([
         { field: 'title', oldValue: 'A', newValue: 'B' },
-        {
-          field: 'notes',
-          oldValue: 'general',
-          newValue: 'updated general',
-        },
       ]);
     });
   });
@@ -826,11 +821,6 @@ describe('ActivityHistoryService', () => {
       expect(result.items).toHaveLength(1);
       expect(result.items[0]?.changes).toEqual([
         { field: 'title', oldValue: 'A', newValue: 'B' },
-        {
-          field: 'notes',
-          oldValue: 'general',
-          newValue: 'updated general',
-        },
       ]);
     });
 

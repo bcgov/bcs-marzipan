@@ -74,16 +74,16 @@ export interface ActivityIdBlock {
  * linked numeric segment only.
  */
 export function splitActivityDisplayIdForPrint(label: string): {
-  acronym: string;
+  abbreviation: string;
   idForLink: string;
 } {
   const trimmed = label.trim();
   const dash = trimmed.indexOf('-');
   if (dash <= 0) {
-    return { acronym: '', idForLink: trimmed };
+    return { abbreviation: '', idForLink: trimmed };
   }
   return {
-    acronym: trimmed.slice(0, dash),
+    abbreviation: trimmed.slice(0, dash),
     idForLink: trimmed.slice(dash + 1),
   };
 }

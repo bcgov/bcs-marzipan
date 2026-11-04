@@ -49,6 +49,8 @@ vi.mock('@/components/admin/LookupAdmins', () => ({
   GovernmentRepresentativesAdmin: () => <div>GovernmentRepresentatives</div>,
   MinistriesAdmin: () => <div>Ministries</div>,
   MinistryGroupsAdmin: () => <div>MinistryGroups</div>,
+  OrganizationTypesAdmin: () => <div>OrganizationTypes</div>,
+  OrganizationsAdmin: () => <div>Organizations</div>,
   TagsAdmin: () => <div>Tags</div>,
   ThemesAdmin: () => <div>Themes</div>,
   TranslationLanguagesAdmin: () => <div>TranslationLanguages</div>,
@@ -88,6 +90,8 @@ const SYSTEM_ADMIN_ONLY_LINKS = [
   'Review-exempt fields',
   'Permission visibility',
   'Role permissions',
+  'Organization types',
+  'Organizations',
 ];
 
 const RECURRING_LOCKOUT_LINK = 'Recurring edit lockout';
