@@ -39,7 +39,6 @@ import {
   hasUserClearableFilters,
 } from '@/lib/management-filter-summary';
 
-const IDIR_PLACEHOLDER = 'MYIDIR';
 const SKELETON_ROW_COUNT = 8;
 const SKELETON_DELAY_MS = 300;
 const TABLE_COLUMN_COUNT = 7;
@@ -340,7 +339,6 @@ export function UsersTabContent() {
                   </span>
                 </th>
                 <th className={tableTh}>Email</th>
-                <th className={tableTh}>IDIR</th>
                 <th className={tableTh}>
                   <span className="inline-flex items-center gap-1">
                     Role
@@ -437,9 +435,6 @@ export function UsersTabContent() {
                     </td>
                     <td className={`${tableTd} text-slate-600`}>
                       {user.adEmail ?? '-'}
-                    </td>
-                    <td className={`${tableTd} text-slate-600`}>
-                      {IDIR_PLACEHOLDER}
                     </td>
                     <td className={tableTd}>
                       <span className="rounded border border-slate-200 px-2 py-0.5 text-xs">
