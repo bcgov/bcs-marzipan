@@ -298,6 +298,29 @@ describe('shouldWarnActivityEditBeforeUnload', () => {
     expect(shouldWarnActivityEditBeforeUnload(savableSession)).toBe(true);
   });
 
+  it('warns for dirty edits after the edit lock expires while idle', () => {
+    expect(
+      shouldWarnActivityEditBeforeUnload({
+        ...savableSession,
+        isActiveEditSession: false,
+        socketConnection: 'disconnected',
+        editRecoveryState: 'idle-expired',
+      })
+    ).toBe(true);
+  });
+
+  it('does not warn for a clean idle-expired session', () => {
+    expect(
+      shouldWarnActivityEditBeforeUnload({
+        ...savableSession,
+        isDirty: false,
+        isActiveEditSession: false,
+        socketConnection: 'disconnected',
+        editRecoveryState: 'idle-expired',
+      })
+    ).toBe(false);
+  });
+
   it('does not warn when clean, inactive, disconnected, or save blocked', () => {
     expect(
       shouldWarnActivityEditBeforeUnload({ ...savableSession, isDirty: false })

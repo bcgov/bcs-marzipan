@@ -11,10 +11,12 @@ import { RecurringLockoutService } from './recurring-lockout.service';
 
 describe('LocksController', () => {
   const tryAcquireLockMock = vi.fn();
+  const getLockForEntityMock = vi.fn();
   const assertUserCanEditDuringLockoutMock = vi.fn();
 
   const mockLocksService = {
     tryAcquireLock: tryAcquireLockMock,
+    getLockForEntity: getLockForEntityMock,
   } as unknown as LocksService;
 
   const mockRecurringLockoutService = {
@@ -44,6 +46,39 @@ describe('LocksController', () => {
     permissions: [],
     teamIds: [],
   };
+
+  it.each([null, 7, 8])(
+    'includes current server time in lock status for owner %s',
+    async (ownerId) => {
+      getLockForEntityMock.mockImplementation(() => {
+        vi.setSystemTime(new Date('2026-11-04T12:00:01.000Z'));
+        return ownerId == null
+          ? null
+          : {
+              id: 100,
+              userId: ownerId,
+              username: 'Editor',
+              acquiredAt: new Date('2026-11-04T11:59:00.000Z'),
+              expiresAt: new Date('2026-11-04T12:01:00.000Z'),
+              idleExpiresAt: new Date('2026-11-04T12:05:00.000Z'),
+            };
+      });
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-11-04T12:00:00.000Z'));
+      try {
+        const result = await controller.getActivityLockStatus(22, user);
+
+        expect(result.serverTime).toBe('2026-11-04T12:00:01.000Z');
+        expect(result.locked).toBe(ownerId != null);
+        if (ownerId != null) {
+          expect(result.isOwnLock).toBe(ownerId === user.id);
+        }
+        expect(getLockForEntityMock).toHaveBeenCalledWith('activity', 22);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
 
   it('returns 403 with reason time_lockout for users without bypass permission during lockout window', async () => {
     assertUserCanEditDuringLockoutMock.mockRejectedValue(
@@ -83,7 +118,7 @@ describe('LocksController', () => {
       entityId: 22,
       userId: 7,
       username: 'Editor Seven',
-      acquiredAt: new Date(),
+      acquiredAt: new Date('2020-01-01T00:00:00.000Z'),
       expiresAt: new Date(),
       idleExpiresAt: new Date(),
     });
@@ -94,6 +129,9 @@ describe('LocksController', () => {
     });
 
     expect(result).toMatchObject({ id: 100, entityId: 22, userId: 7 });
+    expect(Date.parse(result.serverTime ?? '')).toBeGreaterThan(
+      Date.parse('2020-01-01T00:00:00.000Z')
+    );
     expect(tryAcquireLockMock).toHaveBeenCalledTimes(1);
   });
 });
