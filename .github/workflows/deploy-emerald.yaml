@@ -246,7 +246,7 @@ jobs:
   cleanup-artifactory:
     name: Cleanup Old Artifactory Tags — ${{ needs.resolve-env.outputs.environment }}
     needs: [resolve-env, argocd-sync]
-    if: ${{ always() && needs.argocd-sync.result == 'success' }}
+    if: ${{ always() && needs.argocd-sync.result == 'success' && needs.argocd-sync.outputs.verified_deployment == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Install JFrog CLI
@@ -294,7 +294,11 @@ jobs:
             corpcal-db-seed; do
             echo "Checking $image in ${ARTIFACTORY_REPO}"
 
-            mapfile -t versions < <(jf rt s "${ARTIFACTORY_REPO}/${image}/*" --sort-by created --sort-order desc 2>/dev/null || true)
+            mapfile -t versions < <(
+              jf rt s "${ARTIFACTORY_REPO}/${image}/*" --sort-by created --sort-order desc 2>/dev/null \
+                | jq -r '.[].path' \
+                | awk '!seen[$0]++'
+            )
             if [[ ${#versions[@]} -eq 0 ]]; then
               continue
             fi

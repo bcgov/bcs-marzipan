@@ -64,6 +64,10 @@ on:
         required: false
         type: number
         default: 300
+    outputs:
+      verified_deployment:
+        description: Whether ArgoCD sync and health verification completed successfully.
+        value: ${{ jobs.argocd-sync.outputs.verified_deployment }}
 
 permissions:
   contents: read
@@ -71,6 +75,8 @@ permissions:
 jobs:
   argocd-sync:
     name: ArgoCD Sync — ${{ inputs.target_environment }}
+    outputs:
+      verified_deployment: ${{ steps.verify.outputs.verified_deployment || steps.validate.outputs.verified_deployment }}
     runs-on: ubuntu-latest
     # Generous job timeout: covers ArgoCD wait + CLI install + network retries.
     timeout-minutes: 15
@@ -92,11 +98,13 @@ jobs:
           if [[ -z "$ARGOCD_SERVER" ]]; then
             echo "::warning::vars.ARGOCD_SERVER is not configured — ArgoCD sync wait is skipped."
             echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "verified_deployment=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [[ -z "$ARGOCD_AUTH_TOKEN" ]]; then
             echo "::warning::secrets.ARGOCD_AUTH_TOKEN is not configured — ArgoCD sync wait is skipped."
             echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "verified_deployment=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [[ -z "${{ inputs.app_name }}" ]]; then
@@ -105,6 +113,7 @@ jobs:
           fi
 
           echo "configured=true" >> "$GITHUB_OUTPUT"
+          echo "verified_deployment=false" >> "$GITHUB_OUTPUT"
           echo "ArgoCD server : $ARGOCD_SERVER"
           echo "Application   : ${{ inputs.app_name }}"
 
@@ -184,6 +193,7 @@ jobs:
 
           echo "sync_status=${SYNC_STATUS}"     >> "$GITHUB_OUTPUT"
           echo "health_status=${HEALTH_STATUS}" >> "$GITHUB_OUTPUT"
+          echo "verified_deployment=false" >> "$GITHUB_OUTPUT"
 
           # Hard-fail if the app did not reach the expected terminal state.
           if [[ "$SYNC_STATUS" != "Synced" ]]; then
@@ -205,6 +215,8 @@ jobs:
               echo "::warning::Expected tag '${EXPECTED_TAG}' not found in deployed image list. Verify manually if needed."
             fi
           fi
+
+          echo "verified_deployment=true" >> "$GITHUB_OUTPUT"
 
       # ── 7. Write step summary ───────────────────────────────────────────────
       - name: Write deployment summary
