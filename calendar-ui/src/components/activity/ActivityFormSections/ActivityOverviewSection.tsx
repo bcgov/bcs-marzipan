@@ -186,7 +186,7 @@ function LeadOrganizationField({
       control={form.control}
       name="leadOrgId"
       render={({ field }) => {
-        const leadOrgId = field.value;
+        const leadOrgId = field.value as number | null | undefined;
 
         const comboboxValue: FreeformComboboxValue =
           leadOrgId != null
