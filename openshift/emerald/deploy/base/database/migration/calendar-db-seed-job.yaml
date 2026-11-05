@@ -17,6 +17,8 @@ spec:
     metadata:
       labels:
         app: corpcal-db-seed-job
+        DataClass: Low
+        Internet-Ingress: DENY
     spec:
       restartPolicy: Never
       containers:
