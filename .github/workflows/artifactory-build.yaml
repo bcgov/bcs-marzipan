@@ -105,14 +105,14 @@ jobs:
       - name: Build DB migrate job
         run: |
           docker build \
-            -f corpcal-db-migrate/Dockerfile \
+            -f Dockerfile.migrate \
             -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-db-migrate:$BUILD_IMAGE_TAG" \
             .
 
       - name: Build DB seed job
         run: |
           docker build \
-            -f corpcal-db-seed/Dockerfile \
+            -f Dockerfile.seed \
             -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-db-seed:$BUILD_IMAGE_TAG" \
             .
       - name: Push calendar-service
