@@ -41,7 +41,7 @@ import {
 
 const SKELETON_ROW_COUNT = 8;
 const SKELETON_DELAY_MS = 300;
-const TABLE_COLUMN_COUNT = 7;
+const TABLE_COLUMN_COUNT = 6;
 const DEFAULT_SORT_KEY = 'name';
 const DEFAULT_SORT_DIRECTION = 'asc' as const;
 const DEFAULT_PAGE_SIZE = 10;
@@ -314,12 +314,11 @@ export function UsersTabContent() {
           >
             <colgroup>
               <col style={{ width: '18%' }} />
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '10%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '18%' }} />
             </colgroup>
             <thead className={tableThead}>
               <tr>
@@ -384,19 +383,16 @@ export function UsersTabContent() {
                       <Skeleton className="h-5 w-36" />
                     </td>
                     <td className={tableTd}>
-                      <Skeleton className="h-5 w-14" />
-                    </td>
-                    <td className={tableTd}>
                       <Skeleton className="h-5 w-20" />
                     </td>
                     <td className={tableTd}>
                       <Skeleton className="h-5 w-24" />
                     </td>
                     <td className={tableTd}>
-                      <Skeleton className="h-5 w-14" />
+                      <Skeleton className="h-5 w-20" />
                     </td>
                     <td className={tableTd}>
-                      <Skeleton className="h-5 w-20" />
+                      <Skeleton className="h-5 w-24" />
                     </td>
                   </tr>
                 ))
