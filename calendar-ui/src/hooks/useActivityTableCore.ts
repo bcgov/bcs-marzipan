@@ -72,13 +72,7 @@ export type ActivityTableActiveSavedFilter = {
 };
 
 export type ActivityBulkDialog =
-  | 'review'
-  | 'issue'
-  | 'tags'
-  | 'sharing'
-  | 'flag'
-  | 'delete'
-  | null;
+  'review' | 'issue' | 'tags' | 'sharing' | 'flag' | 'delete' | null;
 
 export interface ActivityTableCoreOptions {
   /** When set, only activities with any of these lead teams are shown (e.g. ministry tab). */
@@ -453,8 +447,7 @@ export function useActivityTableCore({
   const onPaginationChange = useCallback(
     (
       updaterOrValue:
-        | ((prev: typeof pagination) => typeof pagination)
-        | typeof pagination
+        ((prev: typeof pagination) => typeof pagination) | typeof pagination
     ) => {
       const prev = pagination;
       const next =

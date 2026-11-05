@@ -134,7 +134,6 @@ export function useSettingsSection(): SettingsSectionContextValue {
 }
 
 export function useSettingsSectionOptional():
-  | SettingsSectionContextValue
-  | undefined {
+  SettingsSectionContextValue | undefined {
   return useContext(SettingsSectionContext);
 }

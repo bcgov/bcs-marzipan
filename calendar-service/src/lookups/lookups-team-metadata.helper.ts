@@ -30,9 +30,7 @@ export async function loadTeamMetadataForLookupIds(
       | typeof teamTags.teamId
       | typeof teamCommsMaterials.teamId;
     junctionTable:
-      | typeof teamCategories
-      | typeof teamTags
-      | typeof teamCommsMaterials;
+      typeof teamCategories | typeof teamTags | typeof teamCommsMaterials;
   }
 ): Promise<TeamMetadataMaps> {
   const teamNamesByLookupId = new Map<number, string[]>();

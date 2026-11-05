@@ -25,9 +25,7 @@ async function loadTeamIdsByLookupId(
       | typeof teamTags.teamId
       | typeof teamCommsMaterials.teamId;
     junctionTable:
-      | typeof teamCategories
-      | typeof teamTags
-      | typeof teamCommsMaterials;
+      typeof teamCategories | typeof teamTags | typeof teamCommsMaterials;
   }
 ): Promise<Map<number, number[]>> {
   const teamIdsByLookupId = new Map<number, number[]>();
@@ -71,9 +69,7 @@ async function getLookupScopeById(
       | typeof teamTags.teamId
       | typeof teamCommsMaterials.teamId;
     junctionTable:
-      | typeof teamCategories
-      | typeof teamTags
-      | typeof teamCommsMaterials;
+      typeof teamCategories | typeof teamTags | typeof teamCommsMaterials;
   }
 ): Promise<Map<number, LookupTeamScope>> {
   const uniqueIds = [...new Set(ids)];

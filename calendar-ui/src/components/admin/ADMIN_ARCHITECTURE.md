@@ -145,11 +145,7 @@ const fields: FormField[] = [
   queryKey="categories"
   queryFn={fetchCategories}
   formFields={categoryFields}
-  additionalColumns={
-    [
-      /* extra columns */
-    ]
-  }
+  additionalColumns={[/* extra columns */]}
 />
 ```
 
