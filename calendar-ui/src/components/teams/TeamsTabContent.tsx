@@ -146,7 +146,8 @@ export function TeamsTabContent() {
   const onPaginationChangeStable = useCallback(
     (
       updaterOrValue:
-        ((prev: typeof pagination) => typeof pagination) | typeof pagination
+        | ((prev: typeof pagination) => typeof pagination)
+        | typeof pagination
     ) => {
       setPagination((prev) => {
         const next =

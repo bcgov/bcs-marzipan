@@ -46,7 +46,12 @@ import { HistoryRecencyDateTime } from './HistoryRecencyDateTime';
 export const HISTORY_TABLE_COLUMN_COUNT = 6;
 
 export type HistoryTableColumnId =
-  'user' | 'type' | 'title' | 'activityId' | 'date' | 'details';
+  | 'user'
+  | 'type'
+  | 'title'
+  | 'activityId'
+  | 'date'
+  | 'details';
 
 type HistoryTableColumnLayoutEntry = {
   width: string;
