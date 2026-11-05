@@ -1,3 +1,5 @@
+import { Bot } from 'lucide-react';
+
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   CORP_PACIFIC_TIME_ZONE,
@@ -34,7 +36,11 @@ function UserAvatar({
       <AvatarFallback
         className={compact ? COMPACT_AVATAR_FALLBACK_CLASS : undefined}
       >
-        {getInitialsFromName(userName)}
+        {userName === 'Calendar System' ? (
+          <Bot className={compact ? 'h-2.5 w-2.5' : 'h-4 w-4'} />
+        ) : (
+          getInitialsFromName(userName)
+        )}
       </AvatarFallback>
     </Avatar>
   );

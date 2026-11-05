@@ -94,4 +94,38 @@ describe('ActivityTimestampsCell', () => {
       longName
     );
   });
+
+  it('renders Bot icon for Calendar System user in avatars', () => {
+    const userMap = new Map([
+      ['1', { name: 'Calendar System', jobTitle: null }],
+    ]);
+    const { container } = render(
+      <ActivityTimestampsCell row={baseRow} userMap={userMap} />
+    );
+
+    // Check that Bot icon SVG is rendered (lucide-react icons render as inline SVG)
+    const svgs = container.querySelectorAll('svg');
+    expect(svgs.length).toBeGreaterThan(0);
+    expect(screen.getByTitle('Calendar System')).toBeInTheDocument();
+  });
+
+  it('renders Bot icon for Calendar System in editLock avatar', () => {
+    const userMap = new Map([
+      ['99', { name: 'Calendar System', jobTitle: null }],
+    ]);
+    const { container } = render(
+      <ActivityTimestampsCell
+        row={{
+          ...baseRow,
+          editLock: { userId: 99, username: 'system' },
+        }}
+        userMap={userMap}
+      />
+    );
+
+    expect(screen.getByTitle('Calendar System is editing')).toBeInTheDocument();
+    // Check that Bot icon SVG is rendered (lucide-react icons render as inline SVG)
+    const svgs = container.querySelectorAll('svg');
+    expect(svgs.length).toBeGreaterThan(0);
+  });
 });
