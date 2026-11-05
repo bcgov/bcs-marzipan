@@ -68,6 +68,13 @@ describe('LookupsService category team scope', () => {
         .fn()
         .mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
     });
+    mockDatabaseService.db.select = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
 
     await service.createCategory(
       {

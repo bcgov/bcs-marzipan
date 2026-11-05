@@ -322,9 +322,6 @@ const setupRelatedDataMocks = () => {
   vi.spyOn(service as any, 'fetchTagsForActivities').mockResolvedValue(
     new Map()
   );
-  vi.spyOn(service as any, 'fetchPitchStatusesForActivities').mockResolvedValue(
-    new Map([[1, 'Not Started']])
-  );
   vi.spyOn(
     service as any,
     'fetchSchedulingStatusesForActivities'

@@ -1,4 +1,5 @@
 import type { ActivityFormData } from '../schemas/activity.schema';
+import { sortFormEntriesLeadFirst } from './sort-form-entries-lead-first';
 
 export type EventPlannerFormEntry = NonNullable<
   ActivityFormData['eventPlanners']
@@ -47,5 +48,5 @@ export function normalizeEventPlannerFormEntries(
     const normalized = normalizeEventPlannerFormEntry(item);
     if (normalized) out.push(normalized);
   }
-  return out;
+  return sortFormEntriesLeadFirst(out);
 }

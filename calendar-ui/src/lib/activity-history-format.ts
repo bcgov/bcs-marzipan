@@ -2,6 +2,8 @@ import type { HistoryChange } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
   canonicalizeActivityFormData,
+  formatReleaseSchedulingModeLabel,
+  formatReleaseTimeOffsetLabel,
   getActivityFieldLabel as getSharedFieldLabel,
   isDeepEqual,
   plainTextFromActivityRichField,
@@ -33,7 +35,6 @@ export interface LookupMaps {
   venueStatusMap?: StatusLookupMap;
   activityStatusMap?: StatusLookupMap;
   timeStatusMap?: StatusLookupMap;
-  pitchRequiredStatusMap?: StatusLookupMap;
   translationsRequiredStatusMap?: StatusLookupMap;
   newsReleaseOriginMap?: StatusLookupMap;
   newsReleaseDistributionMap?: StatusLookupMap;
@@ -56,9 +57,9 @@ export interface LookupMaps {
   governmentRepresentativesMap?: StatusLookupMap;
   /** Resolves leadTeamId → team display name */
   teamsMap?: StatusLookupMap;
-  /** Resolves leadMinistryId → ministry display name */
+  /** Resolves ministry org IDs → ministry display name (legacy history) */
   ministriesMap?: StatusLookupMap;
-  /** Resolves leadOrgId → organization display name */
+  /** Resolves organization lookup IDs → display names */
   organizationsMap?: StatusLookupMap;
 }
 
@@ -87,6 +88,17 @@ export function formatHistoryFieldValue(
   ) {
     const formatted = formatTime12h(value);
     return formatted === '' ? '(empty)' : formatted;
+  }
+
+  if (field === 'releaseSchedulingMode') {
+    if (value === 'relative' || value === 'on_signal') {
+      return formatReleaseSchedulingModeLabel(value);
+    }
+    return formatReleaseSchedulingModeLabel(null);
+  }
+
+  if (field === 'releaseTimeOffsetMinutes' && typeof value === 'number') {
+    return formatReleaseTimeOffsetLabel(value);
   }
 
   if (
@@ -142,14 +154,6 @@ export function formatHistoryFieldValue(
   }
 
   if (
-    field === 'pitchRequiredStatusId' &&
-    typeof value === 'number' &&
-    lookupMaps?.pitchRequiredStatusMap
-  ) {
-    return lookupMaps.pitchRequiredStatusMap.get(value) || String(value);
-  }
-
-  if (
     field === 'translationsRequiredStatusId' &&
     typeof value === 'number' &&
     lookupMaps?.translationsRequiredStatusMap
@@ -201,12 +205,25 @@ export function formatHistoryFieldValue(
     return lookupMaps.ministriesMap.get(value) || String(value);
   }
 
-  if (
-    field === 'leadOrgId' &&
-    typeof value === 'number' &&
-    lookupMaps?.organizationsMap
-  ) {
-    return lookupMaps.organizationsMap.get(value) || String(value);
+  if (field === 'organizations' && Array.isArray(value)) {
+    const orgs = value as Array<{
+      organizationId?: number;
+      organizationName?: string;
+      isLead?: boolean;
+    }>;
+    if (orgs.length === 0) return '(none)';
+    const labels = orgs.map((o) => {
+      const fromName = o.organizationName?.trim();
+      if (fromName) return o.isLead ? `${fromName} (lead)` : fromName;
+      if (typeof o.organizationId === 'number') {
+        const resolved =
+          lookupMaps?.organizationsMap?.get(o.organizationId) ??
+          String(o.organizationId);
+        return o.isLead ? `${resolved} (lead)` : resolved;
+      }
+      return o.isLead ? '(unknown) (lead)' : '(unknown)';
+    });
+    return labels.join(', ');
   }
 
   if (field === 'visibility' && typeof value === 'string') {
@@ -348,19 +365,6 @@ export function formatHistoryFieldValue(
     }
   }
 
-  if (field === 'reportSettings') {
-    if (Array.isArray(value)) {
-      const settings = value as Array<{
-        reportId?: number;
-        omitted?: boolean;
-      }>;
-      if (settings.length === 0) return '(no reports)';
-      const omitted = settings.filter((s) => s.omitted).length;
-      const active = settings.length - omitted;
-      return `${active} active, ${omitted} omitted`;
-    }
-  }
-
   if (Array.isArray(value)) {
     return `${value.length} item(s)`;
   }
@@ -386,7 +390,6 @@ const FIELDS_TO_COMPARE = [
   'summary',
   'significance',
   'schedulingNotes',
-  'strategy',
   'dateStatusId',
   'timeStatusId',
   'venueStatusId',
@@ -399,31 +402,27 @@ const FIELDS_TO_COMPARE = [
   'endDate',
   'startTime',
   'endTime',
-  'pitchDate',
   'notes',
   'executiveSummary',
-  'pitchRequiredStatusId',
   'translationsRequiredStatusId',
   'lookAheadStatus',
   'lookAheadSection',
-  'leadOrgId',
-  'leadOrgName',
+  'organizations',
   'leadTeamId',
-  'leadMinistryId',
   'eventPlanners',
   'newsReleaseDistributionId',
   'premierRequestedId',
-  'newsReleaseId',
   'newsReleaseOriginId',
   'categoryIds',
   'tagIds',
   'commsMaterialIds',
+  'releaseSchedulingMode',
+  'releaseTimeOffsetMinutes',
   'translationLanguageIds',
   'sharedWithTeamIds',
   'venueAddress',
   'representatives',
   'commsContacts',
-  'reportSettings',
 ] as const satisfies readonly (keyof ActivityFormData)[];
 
 type ComparableFormKey = Exclude<keyof ActivityFormData, ExcludedFromCompare>;

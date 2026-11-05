@@ -1,7 +1,7 @@
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
-  normalizeReportSettings,
   prepareActivityFormDataForSubmit,
+  type CommsMaterialReleaseFlagsById,
 } from '@corpcal/shared/utils';
 
 function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
@@ -12,6 +12,7 @@ function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
 export type ActivityFormPayloadOptions = {
   /** Lookup ID for translation_required_statuses.name === 'required'. */
   requiredTranslationStatusId?: number;
+  commsMaterialReleaseFlagsById?: CommsMaterialReleaseFlagsById;
 };
 
 export type CreatePayloadOptions = ActivityFormPayloadOptions & {
@@ -32,6 +33,9 @@ function buildPayloadFromPrepared(
     startTime: prepared.startTime ?? null,
     endTime: prepared.endTime ?? null,
     lookAheadSection: prepared.lookAheadSection ?? null,
+    newsReleaseOriginId: prepared.newsReleaseOriginId ?? null,
+    newsReleaseDistributionId: prepared.newsReleaseDistributionId ?? null,
+    premierRequestedId: prepared.premierRequestedId ?? null,
     categoryIds: toUndefinedIfEmpty(preparedFormValues.categoryIds),
     tagIds: toUndefinedIfEmpty(preparedFormValues.tagIds),
     commsMaterialIds: toUndefinedIfEmpty(preparedFormValues.commsMaterialIds),
@@ -57,11 +61,11 @@ export function buildPayloadForCreate(
   formValues: ActivityFormData,
   options?: CreatePayloadOptions
 ): Record<string, unknown> {
-  const { requiredTranslationStatusId, ...createOptions } = options ?? {};
+  const { markAsReviewed, ...prepareOptions } = options ?? {};
   return buildPayloadFromPrepared(
-    prepareForSubmit(data, requiredTranslationStatusId),
-    prepareForSubmit(formValues, requiredTranslationStatusId),
-    createOptions
+    prepareForSubmit(data, prepareOptions),
+    prepareForSubmit(formValues, prepareOptions),
+    { markAsReviewed }
   );
 }
 
@@ -83,16 +87,17 @@ export type UpdatePayloadOptions = ActivityFormPayloadOptions & {
 
 function prepareForSubmit(
   data: ActivityFormData,
-  requiredTranslationStatusId: number | undefined
+  options?: ActivityFormPayloadOptions
 ): ActivityFormData {
   return prepareActivityFormDataForSubmit(data, {
-    requiredTranslationStatusId,
+    requiredTranslationStatusId: options?.requiredTranslationStatusId,
+    commsMaterialReleaseFlagsById: options?.commsMaterialReleaseFlagsById,
   });
 }
 
 /**
  * Builds the request payload for updating an activity from form values.
- * Includes commsContacts and normalized reportSettings.
+ * Includes commsContacts when present on the form.
  * Backend computes activityStatusId from markAsReviewed/markAsCompleted + role; do not send activityStatusId.
  */
 export function buildPayloadForUpdate(
@@ -101,23 +106,16 @@ export function buildPayloadForUpdate(
   options?: UpdatePayloadOptions
 ): Record<string, unknown> {
   const {
-    requiredTranslationStatusId,
     markAsReviewed,
     markAsCompleted,
     includeRepresentatives = true,
     includeSharedWithTeamIds = true,
+    ...prepareOptions
   } = options ?? {};
-  const prepared = prepareForSubmit(data, requiredTranslationStatusId);
-  const preparedFormValues = prepareForSubmit(
-    formValues,
-    requiredTranslationStatusId
-  );
-  const normalizedReportSettings = normalizeReportSettings(
-    preparedFormValues.reportSettings
-  );
+  const prepared = prepareForSubmit(data, prepareOptions);
+  const preparedFormValues = prepareForSubmit(formValues, prepareOptions);
   const payload: Record<string, unknown> = {
     ...buildPayloadFromPrepared(prepared, preparedFormValues),
-    reportSettings: normalizedReportSettings,
   };
   if (includeRepresentatives) {
     // Include representatives when this update should persist representative edits,

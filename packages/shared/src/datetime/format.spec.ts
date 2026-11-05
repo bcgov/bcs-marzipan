@@ -5,17 +5,21 @@ import {
   formatCalendarDateHeading,
   formatCalendarDateLong,
   formatCalendarDateRangeHeading,
+  formatCalendarDateReleasePreview,
   formatCalendarDateShort,
   formatCalendarDateShortNoYear,
   formatCalendarDateShortNullable,
   formatCalendarMonthYear,
   formatCivilOrInstantTime,
+  formatCivilPacificReleasePreview,
   formatCivilTime12h,
   formatInstantInPacific,
   formatInstantPacificDate,
+  formatInstantPacificReleasePreview,
   formatInstantPacificTime,
   formatLookAheadActivityDate,
   formatPacificFooterTimestamp,
+  formatTimeTbdPacificReleasePreview,
 } from './format';
 import { toCalendarDateString, toCivilTimeString } from './types';
 
@@ -111,6 +115,42 @@ describe('instant formatters', () => {
   it('formatPacificFooterTimestamp omits the year', () => {
     expect(formatPacificFooterTimestamp(INSTANT)).toBe(
       'Monday Apr 27, 8:30 am'
+    );
+  });
+
+  it('formatInstantPacificReleasePreview uses time PT and short weekday date', () => {
+    expect(formatInstantPacificReleasePreview(INSTANT)).toBe(
+      '8:30 am PT, Mon Apr 27'
+    );
+  });
+
+  it('formatInstantPacificReleasePreview includes year when not reference year', () => {
+    const reference = new Date('2026-10-30T12:00:00.000Z');
+    expect(
+      formatInstantPacificReleasePreview('2027-04-27T15:30:00.000Z', {
+        referenceInstant: reference,
+      })
+    ).toBe('8:30 am PT, Tue Apr 27, 2027');
+  });
+
+  it('formatTimeTbdPacificReleasePreview formats date-only preview', () => {
+    expect(formatTimeTbdPacificReleasePreview('2026-03-13T07:15:00.000Z')).toBe(
+      'Time TBD, Fri Mar 13'
+    );
+  });
+
+  it('formatCalendarDateReleasePreview omits year in reference year', () => {
+    const reference = new Date('2026-10-30T12:00:00.000Z');
+    expect(
+      formatCalendarDateReleasePreview(toCalendarDateString('2026-03-13'), {
+        referenceInstant: reference,
+      })
+    ).toBe('Fri Mar 13');
+  });
+
+  it('formatCivilPacificReleasePreview formats civil clock with suffix', () => {
+    expect(formatCivilPacificReleasePreview('14:45', 'Date TBD')).toBe(
+      '2:45 pm PT, Date TBD'
     );
   });
 

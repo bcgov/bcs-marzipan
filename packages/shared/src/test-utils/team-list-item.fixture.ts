@@ -20,8 +20,8 @@ export function createMockTeamListItem(
     appearsInShareWith: true,
     roleId: null,
     memberCount: 2,
-    ministryId: 1,
-    ministryName: 'Office of the Premier',
+    primaryOrganizationId: 1,
+    primaryOrganizationName: 'Office of the Premier',
     ...overrides,
   };
 }

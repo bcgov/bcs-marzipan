@@ -77,7 +77,6 @@ export const filterActivitiesQuerySchema = z.object({
     ),
   activityStatusIds: commaSeparatedIntArray(),
   leadTeamIds: commaSeparatedIntArray(),
-  leadMinistryIds: commaSeparatedIntArray(),
   commsContactLeadUserIds: commaSeparatedIntArray(),
   flagAssigneeUserIds: commaSeparatedIntArray(),
   sharedWithTeamIds: commaSeparatedIntArray(),
@@ -86,29 +85,10 @@ export const filterActivitiesQuerySchema = z.object({
   categoryIds: commaSeparatedIntArray(),
   translationRequiredStatusIds: commaSeparatedIntArray(),
   translationLanguageIds: commaSeparatedIntArray(),
-  pitchRequiredStatusNames: commaSeparatedStringArray(),
   lookAheadStatusValues: commaSeparatedStringArray(),
   lookAheadSectionValues: commaSeparatedStringArray(),
   dateConfirmedFilter: confirmedFilterEnum.optional(),
   timeConfirmedFilter: confirmedFilterEnum.optional(),
-  pitchDateNotScheduled: z
-    .string()
-    .optional()
-    .transform((val): boolean | undefined =>
-      val === undefined ? undefined : val === 'true'
-    ),
-  /**
-   * When true, activity must have a pitch date set (no bounds). Used when the UI
-   * selects "scheduled" without an active pitch date range.
-   */
-  pitchDateScheduled: z
-    .string()
-    .optional()
-    .transform((val): boolean | undefined =>
-      val === undefined ? undefined : val === 'true'
-    ),
-  pitchDateFrom: z.string().date().optional(),
-  pitchDateTo: z.string().date().optional(),
   search: z.string().optional(),
   city: z.string().optional(),
   isIssue: z
@@ -152,13 +132,15 @@ export type FilterActivitiesQueryParams = Pick<
   ParsedFilterActivitiesQueryParams,
   'page' | 'limit'
 > &
-  Partial<Omit<ParsedFilterActivitiesQueryParams, 'page' | 'limit'>>;
+  Partial<Omit<ParsedFilterActivitiesQueryParams, 'page' | 'limit'>> & {
+    /** Internal (report generation): exclude activities with no Look Ahead section. */
+    requireAssignedLookAheadSection?: boolean;
+  };
 
 /** Int-array query fields serialized as comma-separated strings in HTTP. */
 export const FILTER_ACTIVITIES_INT_ARRAY_KEYS = [
   'activityStatusIds',
   'leadTeamIds',
-  'leadMinistryIds',
   'commsContactLeadUserIds',
   'flagAssigneeUserIds',
   'sharedWithTeamIds',
@@ -171,7 +153,6 @@ export const FILTER_ACTIVITIES_INT_ARRAY_KEYS = [
 
 /** String-array query fields serialized as comma-separated strings in HTTP. */
 export const FILTER_ACTIVITIES_STRING_ARRAY_KEYS = [
-  'pitchRequiredStatusNames',
   'lookAheadStatusValues',
   'lookAheadSectionValues',
 ] as const satisfies readonly (keyof FilterActivitiesQueryParams)[];

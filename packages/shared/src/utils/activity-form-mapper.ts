@@ -1,6 +1,8 @@
 import type { ActivityResponse } from '../schemas/activity-response.schema';
 import type { ActivityFormData } from '../schemas/activity.schema';
 import { normalizeEventPlannerFormEntries } from './activity-form-event-planner-normalize';
+import { normalizeOrganizationFormEntries } from './activity-form-organization-normalize';
+import { sortFormEntriesLeadFirst } from './sort-form-entries-lead-first';
 
 function trimVenueNullable(v: string | null | undefined): string | null {
   if (v == null) return null;
@@ -92,14 +94,6 @@ export function mapResponseToFormData(
         }))
       : undefined;
 
-  const reportSettings =
-    response.reportSettings?.length > 0
-      ? response.reportSettings.map((rs) => ({
-          reportId: rs.id,
-          omitted: rs.omitted,
-        }))
-      : undefined;
-
   const commsContacts =
     response.commsContacts?.length > 0
       ? response.commsContacts.map((c) => ({
@@ -122,12 +116,20 @@ export function mapResponseToFormData(
           }))
         : undefined;
 
+  const organizations =
+    response.organizationDetails?.length > 0
+      ? response.organizationDetails.map((d) => ({
+          organizationId: d.organizationId ?? undefined,
+          organizationName: d.organizationName ?? undefined,
+          isLead: d.isLead,
+        }))
+      : undefined;
+
   return {
     title: response.title,
     summary: response.summary,
     significance: response.significance ?? undefined,
     schedulingNotes: response.schedulingNotes ?? undefined,
-    strategy: response.strategy ?? undefined,
     dateStatusId: response.dateStatusId ?? undefined,
     timeStatusId: response.timeStatusId ?? undefined,
     venueStatusId: response.venueStatusId ?? undefined,
@@ -140,20 +142,17 @@ export function mapResponseToFormData(
     endDate: response.endDate ?? undefined,
     startTime: response.startTime ?? undefined,
     endTime: response.endTime ?? undefined,
-    pitchRequiredStatusId: response.pitchRequiredStatusId ?? undefined,
     translationsRequiredStatusId:
       response.translationsRequiredStatusId ?? undefined,
-    pitchDate: response.pitchDate ?? undefined,
     notes: response.notes ?? undefined,
     executiveSummary: response.executiveSummary ?? undefined,
     lookAheadStatus: response.lookAheadStatus ?? undefined,
     lookAheadSection: response.lookAheadSection ?? undefined,
-    leadOrgId: response.leadOrgId ?? undefined,
-    leadOrgName: response.leadOrgName ?? undefined,
-    newsReleaseId: response.newsReleaseId ?? undefined,
+    organizations: normalizeOrganizationFormEntries(organizations),
+    releaseSchedulingMode: response.releaseSchedulingMode ?? undefined,
+    releaseTimeOffsetMinutes: response.releaseTimeOffsetMinutes ?? undefined,
     newsReleaseOriginId: response.newsReleaseOriginId ?? undefined,
     leadTeamId: response.leadTeamId ?? 0,
-    leadMinistryId: response.leadMinistryId ?? undefined,
     eventPlanners: normalizeEventPlannerFormEntries(
       eventPlanners?.length ? eventPlanners : undefined
     ),
@@ -169,8 +168,9 @@ export function mapResponseToFormData(
     sharedWithTeamIds: sharedWithTeamIds?.length
       ? sharedWithTeamIds
       : undefined,
-    commsContacts: commsContacts?.length ? commsContacts : undefined,
-    reportSettings: reportSettings?.length ? reportSettings : undefined,
+    commsContacts: commsContacts?.length
+      ? sortFormEntriesLeadFirst(commsContacts)
+      : undefined,
     venueAddress: normalizeVenueAddressForForm(response.venueAddress),
   };
 }

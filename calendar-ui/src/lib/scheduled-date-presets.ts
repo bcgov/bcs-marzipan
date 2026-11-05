@@ -87,7 +87,7 @@ export const PRESETS_FUTURE_FROM_ANCHOR: ScheduledDatePreset[] = [
   },
 ];
 
-/** Subset for compact form rows (pitch / optional shorter lists). */
+/** Subset for compact form rows (optional shorter lists). */
 export const PRESETS_FUTURE_SHORT: ScheduledDatePreset[] = [
   PRESETS_FUTURE_FROM_ANCHOR[0],
   PRESETS_FUTURE_FROM_ANCHOR[1],

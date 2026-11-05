@@ -1,7 +1,7 @@
 import { format, startOfDay } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 
-import { CORP_PACIFIC_LABEL } from '@corpcal/shared';
+import { CORP_PACIFIC_LABEL, TBD_LOOKUP_NAME } from '@corpcal/shared';
 import {
   ACTIVITY_FIELD_SCOPE_CONFIG,
   ACTIVITY_FIELD_SCOPES,
@@ -12,6 +12,7 @@ import {
   CLONE_ADVANCED_FIELD_GROUPS,
   CLONE_ADVANCED_SECTIONS,
   CLONE_TITLE_MAX_LENGTH,
+  getDefaultCloneIncludedFieldPaths,
   type CloneActivityRequest,
   type CloneAdvancedSection,
 } from '@corpcal/shared/schemas';
@@ -54,17 +55,12 @@ import {
   ActivityConfirmPrimaryActionGroup,
 } from './ActivityConfirmSubmitBlockedNotice';
 
-const NOT_CONFIRMED_STATUS_NAME = 'not_confirmed';
-
-function resolveNotConfirmedStatusId<
+function resolveTbdStatusId<
   T extends { id: number; name: string; displayName: string },
 >(statuses: T[]): number | undefined {
-  const notConfirmedByName = statuses.find(
-    (s) => s.name === NOT_CONFIRMED_STATUS_NAME
+  return (
+    statuses.find((s) => s.name === TBD_LOOKUP_NAME)?.id ?? statuses[0]?.id
   );
-  if (notConfirmedByName) return notConfirmedByName.id;
-  const firstByDisplay = statuses[0];
-  return firstByDisplay?.id;
 }
 
 /**
@@ -127,11 +123,11 @@ export function CloneActivityModal({
   const { user } = useAuth();
 
   const defaultDateStatusId = useMemo(
-    () => resolveNotConfirmedStatusId(lookups.dateStatuses),
+    () => resolveTbdStatusId(lookups.dateStatuses),
     [lookups.dateStatuses]
   );
   const defaultTimeStatusId = useMemo(
-    () => resolveNotConfirmedStatusId(lookups.timeStatuses),
+    () => resolveTbdStatusId(lookups.timeStatuses),
     [lookups.timeStatuses]
   );
 
@@ -151,6 +147,9 @@ export function CloneActivityModal({
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [markAsReviewed, setMarkAsReviewed] = useState(true);
   const [activeTimePopover, setActiveTimePopover] = useState<
+    'start' | 'end' | null
+  >(null);
+  const [activeDatePopover, setActiveDatePopover] = useState<
     'start' | 'end' | null
   >(null);
 
@@ -182,7 +181,7 @@ export function CloneActivityModal({
   );
 
   const [includedPaths, setIncludedPaths] = useState<Set<string>>(
-    () => new Set(editablePaths)
+    () => new Set(getDefaultCloneIncludedFieldPaths(editablePaths))
   );
 
   useEffect(() => {
@@ -199,7 +198,8 @@ export function CloneActivityModal({
     setShowMoreOptions(false);
     setMarkAsReviewed(true);
     setActiveTimePopover(null);
-    setIncludedPaths(new Set(editablePaths));
+    setActiveDatePopover(null);
+    setIncludedPaths(new Set(getDefaultCloneIncludedFieldPaths(editablePaths)));
   }, [
     open,
     sourceTitle,
@@ -250,8 +250,13 @@ export function CloneActivityModal({
     endTimeMinutes <= startTimeMinutes;
 
   const titleIsValid = title.trim().length > 0;
+  const startDateIsValid = startStr.length > 0;
+  const endDateIsValid = endStr.length > 0;
+  const scheduleDatesAreValid =
+    startDateIsValid && endDateIsValid && !hasDateOrderWarning;
   const sessionBlocked = isActivityConfirmBlocked(confirmBlockedNotice);
-  const disableConfirm = isSubmitting || !titleIsValid || sessionBlocked;
+  const disableConfirm =
+    isSubmitting || !titleIsValid || !scheduleDatesAreValid || sessionBlocked;
 
   const togglePath = (path: string) => {
     setIncludedPaths((prev) => {
@@ -268,8 +273,8 @@ export function CloneActivityModal({
   const handleConfirm = () => {
     const payload: CloneActivityRequest = {
       title: title.trim(),
-      startDate: startDate ? startDate : null,
-      endDate: endDate ? endDate : null,
+      startDate: startStr,
+      endDate: endStr,
       startTime: isAllDay ? null : startTime ? startTime : null,
       endTime: isAllDay ? null : endTime ? endTime : null,
       isAllDay,
@@ -340,12 +345,28 @@ export function CloneActivityModal({
                         setEndDate(next);
                       }
                     }}
+                    onAfterSelect={() => {
+                      if (!String(endDate ?? '').trim()) {
+                        requestAnimationFrame(() =>
+                          setActiveDatePopover('end')
+                        );
+                      }
+                    }}
+                    popoverOpen={activeDatePopover === 'start'}
+                    onPopoverOpenChange={(open) => {
+                      if (open) setActiveDatePopover('start');
+                      else
+                        setActiveDatePopover((prev) =>
+                          prev === 'start' ? null : prev
+                        );
+                    }}
                     label={startButtonLabel}
                     triggerMuted={!startStr}
                     readOnly={false}
                     popoverTitle="Select start date"
                     presets={PRESETS_PAST_FROM_ANCHOR}
                     getPresetAnchor={getPresetAnchorToday}
+                    showPresets={false}
                     triggerAriaLabel="Activity start date"
                     triggerVariant="form"
                     headerRight={
@@ -373,12 +394,21 @@ export function CloneActivityModal({
                   <ScheduledDatePopoverField
                     value={endDate}
                     onChange={(iso) => setEndDate(iso || '')}
+                    popoverOpen={activeDatePopover === 'end'}
+                    onPopoverOpenChange={(open) => {
+                      if (open) setActiveDatePopover('end');
+                      else
+                        setActiveDatePopover((prev) =>
+                          prev === 'end' ? null : prev
+                        );
+                    }}
                     label={endButtonLabel}
                     triggerMuted={!endStr}
                     readOnly={false}
                     popoverTitle="Select end date"
                     presets={PRESETS_FUTURE_FROM_ANCHOR}
                     getPresetAnchor={endPresetAnchor}
+                    showPresets={false}
                     isDateDisabled={isEndBeforeStart}
                     triggerAriaLabel="Activity end date"
                     triggerVariant="form"
@@ -426,6 +456,16 @@ export function CloneActivityModal({
                 </FormSelectSafe>
               </div>
             </div>
+            {!startDateIsValid ? (
+              <p className="text-destructive text-sm font-medium">
+                Start date is required.
+              </p>
+            ) : null}
+            {!endDateIsValid ? (
+              <p className="text-destructive text-sm font-medium">
+                End date is required.
+              </p>
+            ) : null}
             {hasDateOrderWarning ? (
               <p className="text-sm font-medium text-amber-700">
                 End date must be later than or equal to start date.

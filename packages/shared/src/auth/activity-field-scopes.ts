@@ -6,7 +6,7 @@
  *
  * View rule (scopes with a view permission): has <scope>.view OR <scope>.edit OR role is
  * Advanced Viewer / Advanced Editor / Admin / System Admin.
- * Scopes without a view permission (translations, pitchStatus, pitchDate) are always visible; edit is still gated.
+ * Scopes without a view permission (translations, releaseTime) are always visible; edit is still gated.
  * Edit rule: has <scope>.edit only (no role bypass).
  */
 
@@ -16,8 +16,7 @@ export const ACTIVITY_FIELD_SCOPES = [
   'notes',
   'lookAhead',
   'translations',
-  'pitchStatus',
-  'pitchDate',
+  'releaseTime',
 ] as const;
 
 export type ActivityFieldScope = (typeof ACTIVITY_FIELD_SCOPES)[number];
@@ -45,8 +44,8 @@ export const ACTIVITY_FIELD_SCOPE_CONFIG: Record<
   lookAhead: {
     viewKey: PERMISSIONS.ACTIVITIES.LOOK_AHEAD_VIEW,
     editKey: PERMISSIONS.ACTIVITIES.LOOK_AHEAD_EDIT,
-    responseFields: ['lookAheadStatus', 'lookAheadSection'],
-    requestFields: ['lookAheadStatus', 'lookAheadSection'],
+    responseFields: ['executiveSummary', 'lookAheadStatus', 'lookAheadSection'],
+    requestFields: ['executiveSummary', 'lookAheadStatus', 'lookAheadSection'],
   },
   translations: {
     viewKey: null,
@@ -58,17 +57,15 @@ export const ACTIVITY_FIELD_SCOPE_CONFIG: Record<
     ],
     requestFields: ['translationsRequiredStatusId', 'translationLanguageIds'],
   },
-  pitchStatus: {
+  releaseTime: {
     viewKey: null,
-    editKey: PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
-    responseFields: ['pitchRequiredStatusId', 'pitchRequiredStatus'],
-    requestFields: ['pitchRequiredStatusId'],
-  },
-  pitchDate: {
-    viewKey: null,
-    editKey: PERMISSIONS.ACTIVITIES.PITCH_DATE_EDIT,
-    responseFields: ['pitchDate'],
-    requestFields: ['pitchDate'],
+    editKey: PERMISSIONS.ACTIVITIES.RELEASE_TIME_EDIT,
+    responseFields: [
+      'releaseSchedulingMode',
+      'releaseTimeOffsetMinutes',
+      'releaseTime',
+    ],
+    requestFields: ['releaseSchedulingMode', 'releaseTimeOffsetMinutes'],
   },
 } as const;
 

@@ -146,8 +146,7 @@ export function TeamsTabContent() {
   const onPaginationChangeStable = useCallback(
     (
       updaterOrValue:
-        | ((prev: typeof pagination) => typeof pagination)
-        | typeof pagination
+        ((prev: typeof pagination) => typeof pagination) | typeof pagination
     ) => {
       setPagination((prev) => {
         const next =
@@ -359,7 +358,7 @@ export function TeamsTabContent() {
                         {team.memberCount === 1 ? 'member' : 'members'}
                       </td>
                       <td className={`${tableTd} text-slate-600`}>
-                        {team.ministryName ?? '-'}
+                        {team.primaryOrganizationName ?? '-'}
                       </td>
                       <td className={tableTd}>{statusBadge(team.isActive)}</td>
                     </tr>

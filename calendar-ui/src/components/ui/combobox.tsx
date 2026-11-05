@@ -7,6 +7,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import {
   CHIP_LABEL_CLASSES,
+  CHIP_LEAD_CHIP_RING_CLASSES,
   CHIP_VISUAL_CLASSES,
 } from '@/components/ui/combobox-chip-styles';
 import {
@@ -15,6 +16,9 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '@/components/ui/input-group';
+import { LeadableChipLabelRow } from '@/components/ui/leadable-chip-label-row';
+import type { LeadableChipNonLeadPromoteBadge } from '@/components/ui/leadable-chip-role-badge';
+import { FORM_CONTROL_INVALID_RING_CLASS_COMBO } from '@/lib/form-field-tokens';
 import {
   READ_ONLY_STATIC_COMBOBOX_CHIPS,
   READ_ONLY_STATIC_PLACEHOLDER,
@@ -24,23 +28,34 @@ import { cn } from '@/lib/utils';
 
 const ComboboxReadOnlyContext = React.createContext(false);
 const ComboboxFieldContext = React.createContext<string | undefined>(undefined);
+const ComboboxAriaInvalidContext = React.createContext(false);
 
 type ComboboxRootProps<
   Value,
   Multiple extends boolean | undefined = false,
 > = ComboboxPrimitive.Root.Props<Value, Multiple> & {
   'data-field'?: string;
+  'aria-invalid'?: boolean | 'true' | 'false';
 };
 
 /** Base UI root supports `readOnly` (non-muted) vs `disabled` (muted). */
 function Combobox<Value, Multiple extends boolean | undefined = false>(
   props: ComboboxRootProps<Value, Multiple>
 ) {
-  const { readOnly, 'data-field': dataField, ...rest } = props;
+  const {
+    readOnly,
+    'data-field': dataField,
+    'aria-invalid': ariaInvalid,
+    ...rest
+  } = props;
   return (
     <ComboboxReadOnlyContext.Provider value={Boolean(readOnly)}>
       <ComboboxFieldContext.Provider value={dataField}>
-        <ComboboxPrimitive.Root readOnly={readOnly} {...rest} />
+        <ComboboxAriaInvalidContext.Provider
+          value={ariaInvalid === true || ariaInvalid === 'true'}
+        >
+          <ComboboxPrimitive.Root readOnly={readOnly} {...rest} />
+        </ComboboxAriaInvalidContext.Provider>
       </ComboboxFieldContext.Provider>
     </ComboboxReadOnlyContext.Provider>
   );
@@ -103,8 +118,13 @@ function ComboboxInput({
   showClear?: boolean;
 }) {
   const dataField = React.useContext(ComboboxFieldContext);
+  const ariaInvalid = React.useContext(ComboboxAriaInvalidContext);
   return (
-    <InputGroup className={cn('w-auto', className)} data-field={dataField}>
+    <InputGroup
+      aria-invalid={ariaInvalid || undefined}
+      className={cn('w-auto', FORM_CONTROL_INVALID_RING_CLASS_COMBO, className)}
+      data-field={dataField}
+    >
       <ComboboxPrimitive.Input
         render={<InputGroupInput disabled={disabled} />}
         {...(placeholder !== '' ? { placeholder } : {})}
@@ -278,19 +298,89 @@ function ComboboxChips({
   ComboboxPrimitive.Chips.Props) {
   const readOnly = React.useContext(ComboboxReadOnlyContext);
   const dataField = React.useContext(ComboboxFieldContext);
+  const ariaInvalid = React.useContext(ComboboxAriaInvalidContext);
   return (
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
       data-field={dataField}
       data-readonly={readOnly ? '' : undefined}
+      aria-invalid={ariaInvalid || undefined}
       className={cn(
-        'border-input focus-within:border-ring focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:bg-input/30 dark:has-aria-invalid:border-destructive/50 dark:has-aria-invalid:ring-destructive/40 flex min-h-(--input-height) flex-wrap items-center gap-1.5 rounded-md border bg-transparent bg-clip-padding px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-aria-invalid:ring-[3px] has-data-[slot=combobox-chip]:px-1.5',
+        'border-input focus-within:border-ring focus-within:ring-ring/50 dark:bg-input/30 flex min-h-(--input-height) flex-wrap items-center gap-1.5 rounded-md border bg-transparent bg-clip-padding px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-data-[slot=combobox-chip]:px-1.5',
+        FORM_CONTROL_INVALID_RING_CLASS_COMBO,
         readOnly && READ_ONLY_STATIC_COMBOBOX_CHIPS,
         className
       )}
       {...props}
     />
   );
+}
+
+function ComboboxLeadableChip({
+  className,
+  displayLabel,
+  isLead,
+  showRemove = true,
+  onSetLead,
+  showJointBadge,
+  nonLeadPromoteBadge,
+  setLeadMenuLabel,
+  roleMenuOpen,
+  onRoleMenuOpenChange,
+  ...props
+}: ComboboxPrimitive.Chip.Props & {
+  displayLabel: string;
+  isLead: boolean;
+  showRemove?: boolean;
+  onSetLead?: () => void;
+  showJointBadge?: boolean;
+  nonLeadPromoteBadge?: LeadableChipNonLeadPromoteBadge;
+  setLeadMenuLabel?: string;
+  roleMenuOpen?: boolean;
+  onRoleMenuOpenChange?: (open: boolean) => void;
+}) {
+  const readOnly = React.useContext(ComboboxReadOnlyContext);
+  const showRemoveButton = showRemove && !readOnly;
+  return (
+    <ComboboxPrimitive.Chip
+      data-slot="combobox-chip"
+      className={cn(
+        CHIP_VISUAL_CLASSES,
+        isLead && onSetLead && CHIP_LEAD_CHIP_RING_CLASSES,
+        'has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-data-[slot=combobox-chip-remove]:pr-0',
+        readOnly && 'pointer-events-none',
+        className
+      )}
+      {...props}
+    >
+      <LeadableChipLabelRow
+        displayLabel={displayLabel}
+        isLead={isLead}
+        readOnly={readOnly}
+        onSetLead={onSetLead}
+        showJointBadge={showJointBadge}
+        nonLeadPromoteBadge={nonLeadPromoteBadge}
+        setLeadMenuLabel={setLeadMenuLabel}
+        roleMenuOpen={roleMenuOpen}
+        onRoleMenuOpenChange={onRoleMenuOpenChange}
+      />
+      {showRemoveButton && (
+        <ComboboxPrimitive.ChipRemove
+          render={<Button variant="ghost" size="icon-xs" />}
+          className="-ml-1 opacity-50 hover:opacity-100"
+          data-slot="combobox-chip-remove"
+        >
+          <XIcon className="pointer-events-none" />
+        </ComboboxPrimitive.ChipRemove>
+      )}
+    </ComboboxPrimitive.Chip>
+  );
+}
+
+function comboboxChipLabelTitle(children: React.ReactNode): string | undefined {
+  if (typeof children === 'string') return children;
+  if (typeof children === 'number') return String(children);
+  return undefined;
 }
 
 function ComboboxChip({
@@ -303,6 +393,7 @@ function ComboboxChip({
 }) {
   const readOnly = React.useContext(ComboboxReadOnlyContext);
   const showRemoveButton = showRemove && !readOnly;
+  const labelTitle = comboboxChipLabelTitle(children);
   return (
     <ComboboxPrimitive.Chip
       data-slot="combobox-chip"
@@ -314,7 +405,9 @@ function ComboboxChip({
       )}
       {...props}
     >
-      <span className={CHIP_LABEL_CLASSES}>{children}</span>
+      <span className={CHIP_LABEL_CLASSES} title={labelTitle}>
+        {children}
+      </span>
       {showRemoveButton && (
         <ComboboxPrimitive.ChipRemove
           render={<Button variant="ghost" size="icon-xs" />}
@@ -366,6 +459,7 @@ export {
   ComboboxSeparator,
   ComboboxChips,
   ComboboxChip,
+  ComboboxLeadableChip,
   ComboboxChipsInput,
   ComboboxTrigger,
   ComboboxValue,

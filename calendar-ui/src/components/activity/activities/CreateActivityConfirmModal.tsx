@@ -66,17 +66,14 @@ const ALL_DISPLAY_FIELDS: Array<keyof ActivityFormData> = [
   'venueStatusId',
   'significance',
   'schedulingNotes',
-  'strategy',
   'isIssue',
   'isAllDay',
   'isConfidential',
   'visibility',
-  'pitchDate',
   'notes',
   'executiveSummary',
-  'leadOrgId',
+  'organizations',
   'eventPlanners',
-  'pitchRequiredStatusId',
   'translationsRequiredStatusId',
   'lookAheadStatus',
   'lookAheadSection',
@@ -97,8 +94,8 @@ function resolveDisplayValue(
   if (field === 'leadTeamId' && typeof value === 'number' && leadTeamOptions) {
     const team = leadTeamOptions.find((t) => t.id === value);
     if (team) {
-      return team.ministryName
-        ? `${team.displayName || team.name} (${team.ministryName})`
+      return team.primaryOrganizationName
+        ? `${team.displayName || team.name} (${team.primaryOrganizationName})`
         : team.displayName || team.name;
     }
   }
@@ -111,11 +108,6 @@ function resolveDisplayValue(
         return cat?.displayName || cat?.name || String(id);
       })
       .join(', ');
-  }
-
-  if (field === 'leadMinistryId' && typeof value === 'number') {
-    const ministry = lookups.ministries.find((m) => m.id === value);
-    return ministry?.displayName || ministry?.name || String(value);
   }
 
   if (field === 'commsContacts' && Array.isArray(value)) {
@@ -155,9 +147,27 @@ function resolveDisplayValue(
     return status?.displayName ?? status?.name ?? String(value);
   }
 
-  if (field === 'leadOrgId' && typeof value === 'number') {
-    const org = lookups.organizations.find((o) => o.value === value);
-    return org?.label || String(value);
+  if (field === 'organizations' && Array.isArray(value)) {
+    if (value.length === 0) return '(none)';
+    const items = value as Array<{
+      organizationId?: number;
+      organizationName?: string;
+      isLead?: boolean;
+    }>;
+    return items
+      .map((o) => {
+        const fromName = o.organizationName?.trim();
+        if (fromName) return o.isLead ? `${fromName} (Lead)` : fromName;
+        if (o.organizationId != null) {
+          const org = lookups.organizations.find(
+            (entry) => String(entry.value) === String(o.organizationId)
+          );
+          const label = org?.label ?? String(o.organizationId);
+          return o.isLead ? `${label} (Lead)` : label;
+        }
+        return o.isLead ? '(unknown) (Lead)' : '(unknown)';
+      })
+      .join(', ');
   }
 
   if (field === 'eventPlanners' && Array.isArray(value)) {
@@ -180,8 +190,10 @@ function resolveDisplayValue(
       .join(', ');
   }
 
-  if (field === 'pitchRequiredStatusId' && typeof value === 'number') {
-    const status = lookups.pitchStatuses.find((s) => s.id === value);
+  if (field === 'translationsRequiredStatusId' && typeof value === 'number') {
+    const status = lookups.translationRequiredStatuses.find(
+      (s) => s.id === value
+    );
     return status?.displayName || status?.name || String(value);
   }
 

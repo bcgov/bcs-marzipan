@@ -24,18 +24,16 @@ export function CategoryBadgesCell({
 
   return (
     <BadgeGroup
-      items={row.activityCategories.map(
-        (category, index): BadgeGroupItem => ({
-          key: `${category}:${index}`,
-          label: category,
-          variant: 'outline',
-          className: cn(
-            'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
-            categoriesChanged && 'border-transparent',
-            categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
-          ),
-        })
-      )}
+      items={row.activityCategories.map((category, index): BadgeGroupItem => ({
+        key: `${category}:${index}`,
+        label: category,
+        variant: 'outline',
+        className: cn(
+          'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
+          categoriesChanged && 'border-transparent',
+          categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
+        ),
+      }))}
       maxLines={1}
       lineHeight={24}
       badgeVariant="outline"

@@ -33,7 +33,6 @@ import {
 } from '@/hooks/useLiveActivitySyncContext';
 import {
   useCategories,
-  usePitchRequiredStatuses,
   useTags,
   useTeams,
   useTranslationLanguages,
@@ -73,20 +72,11 @@ export type ActivityTableActiveSavedFilter = {
 };
 
 export type ActivityBulkDialog =
-  | 'review'
-  | 'pitch'
-  | 'issue'
-  | 'tags'
-  | 'sharing'
-  | 'flag'
-  | 'delete'
-  | null;
+  'review' | 'issue' | 'tags' | 'sharing' | 'flag' | 'delete' | null;
 
 export interface ActivityTableCoreOptions {
   /** When set, only activities with any of these lead teams are shown (e.g. ministry tab). */
   leadTeamIds?: number[];
-  /** When set, only activities whose lead ministry is any of these are shown (ministry tab). */
-  leadMinistryIds?: number[];
   /** When set, only activities where any of these users is comms contact lead are shown. */
   commsContactLeadUserIds?: number[];
   /** When set, only activities shared with any of these teams are shown. */
@@ -119,7 +109,6 @@ const MAX_BULK_SELECTION = 100;
  */
 export function useActivityTableCore({
   leadTeamIds,
-  leadMinistryIds,
   commsContactLeadUserIds,
   sharedWithTeamIds,
   favouriteActivityIds,
@@ -151,10 +140,8 @@ export function useActivityTableCore({
   const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
 
   const {
-    pitchFieldVisibility,
     statusArchiveIds,
     statusOptions,
-    pitchRequiredStatusOptions,
     tagOptions,
     leadTeamOptions,
     commsContactOptions,
@@ -211,7 +198,6 @@ export function useActivityTableCore({
     new Set()
   );
   const [bulkDialog, setBulkDialog] = useState<ActivityBulkDialog>(null);
-  const [selectedPitchStatusId, setSelectedPitchStatusId] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
   const [selectedFlagTeamId, setSelectedFlagTeamId] = useState('');
@@ -228,7 +214,6 @@ export function useActivityTableCore({
   } = useFavourites();
 
   const { data: categoriesForFilter = [] } = useCategories();
-  const { data: pitchRequiredStatuses = [] } = usePitchRequiredStatuses();
   const { data: tags = [] } = useTags();
   const { data: teams = [] } = useTeams();
   const {
@@ -245,15 +230,6 @@ export function useActivityTableCore({
           label: c.displayName ?? c.name,
         })),
     [categoriesForFilter]
-  );
-
-  const bulkPitchStatusOptions = useMemo(
-    () =>
-      pitchRequiredStatuses.map((status) => ({
-        value: String(status.id),
-        label: status.displayName,
-      })),
-    [pitchRequiredStatuses]
   );
 
   const translationLanguageOptionsForFilter = useMemo(
@@ -311,7 +287,7 @@ export function useActivityTableCore({
       suppressedByClear: defaultSuppressedByClearRef.current,
       hasKnownUrlParams: hasAnyKnownParam(currentSearchParams),
       hasRestoredActivePreferences:
-        hasAnyActivityTableFilterActive(filterState, pitchFieldVisibility) ||
+        hasAnyActivityTableFilterActive(filterState) ||
         searchKeyword.trim().length > 0,
       hasDefaultFilter: savedFiltersHook.defaultFilter != null,
     });
@@ -360,7 +336,6 @@ export function useActivityTableCore({
     setActiveSavedFilter,
     validFilterLookupsForDefaultApply,
     savedFilterDefaultLookupsReady,
-    pitchFieldVisibility,
   ]);
 
   const { hasStatusFilter, effectiveShowCompleted, effectiveShowDeleted } =
@@ -383,8 +358,6 @@ export function useActivityTableCore({
       includeDeleted: effectiveShowDeleted,
       ...(leadTeamIds !== undefined &&
         leadTeamIds.length > 0 && { leadTeamIds }),
-      ...(leadMinistryIds !== undefined &&
-        leadMinistryIds.length > 0 && { leadMinistryIds }),
       ...(commsContactLeadUserIds !== undefined &&
         commsContactLeadUserIds.length > 0 && { commsContactLeadUserIds }),
       ...(sharedWithTeamIds !== undefined &&
@@ -396,7 +369,6 @@ export function useActivityTableCore({
     effectiveShowCompleted,
     effectiveShowDeleted,
     leadTeamIds,
-    leadMinistryIds,
     commsContactLeadUserIds,
     sharedWithTeamIds,
     flagAssigneeUserIds,
@@ -420,7 +392,6 @@ export function useActivityTableCore({
       prev.includeCompleted === activityFilters.includeCompleted &&
       prev.includeDeleted === activityFilters.includeDeleted &&
       sameNumericArray(prev.leadTeamIds, activityFilters.leadTeamIds) &&
-      sameNumericArray(prev.leadMinistryIds, activityFilters.leadMinistryIds) &&
       sameNumericArray(
         prev.commsContactLeadUserIds,
         activityFilters.commsContactLeadUserIds
@@ -476,8 +447,7 @@ export function useActivityTableCore({
   const onPaginationChange = useCallback(
     (
       updaterOrValue:
-        | ((prev: typeof pagination) => typeof pagination)
-        | typeof pagination
+        ((prev: typeof pagination) => typeof pagination) | typeof pagination
     ) => {
       const prev = pagination;
       const next =
@@ -690,40 +660,11 @@ export function useActivityTableCore({
     }
   }, [selectedActivityIds, bulkUpdateActivitiesMutation]);
 
-  const handleBulkSetPitchStatus = useCallback(async () => {
-    const pitchRequiredStatusId = Number(selectedPitchStatusId);
-    if (!Number.isFinite(pitchRequiredStatusId)) return;
-    const activityIds = [...selectedActivityIds];
-    try {
-      await bulkUpdateActivitiesMutation.mutateAsync({
-        activityIds,
-        operation: 'pitchStatus',
-        pitchRequiredStatusId,
-      });
-      setSelectedActivityIds(new Set());
-      setBulkDialog(null);
-      setSelectedPitchStatusId('');
-      toast.success(
-        `Pitch status updated for ${activityIds.length} activit${activityIds.length === 1 ? 'y' : 'ies'}.`
-      );
-    } catch (error) {
-      toast.error(getFriendlyErrorMessage(error));
-    }
-  }, [
-    selectedActivityIds,
-    selectedPitchStatusId,
-    bulkUpdateActivitiesMutation,
-  ]);
-
   const handleBulkOperation = useCallback(async () => {
     const activityIds = [...selectedActivityIds];
     if (!bulkDialog || activityIds.length === 0) return;
     if (bulkDialog === 'review') {
       await handleBulkReview();
-      return;
-    }
-    if (bulkDialog === 'pitch') {
-      await handleBulkSetPitchStatus();
       return;
     }
     const operation = bulkDialog === 'sharing' ? 'sharedWith' : bulkDialog;
@@ -752,7 +693,6 @@ export function useActivityTableCore({
     bulkUpdateActivitiesMutation,
     deleteReason,
     handleBulkReview,
-    handleBulkSetPitchStatus,
     selectedActivityIds,
     selectedAssigneeIds,
     selectedFlagTeamId,
@@ -901,14 +841,8 @@ export function useActivityTableCore({
           filterState,
           searchKeyword,
           filterSummaryContext: filterSummaryContextForBar,
-          pitchFieldVisibility,
         }),
-      [
-        filterState,
-        searchKeyword,
-        filterSummaryContextForBar,
-        pitchFieldVisibility,
-      ]
+      [filterState, searchKeyword, filterSummaryContextForBar]
     );
 
   const handleClearAllCriteria = useCallback(() => {
@@ -935,8 +869,6 @@ export function useActivityTableCore({
     canSeeDeleted,
     canFlag,
     showReviewHighlights,
-    pitchFieldVisibility,
-
     // Query state
     loading,
     error,
@@ -974,8 +906,6 @@ export function useActivityTableCore({
     setBulkDialog,
     bulkActionPending,
     handleBulkOperation,
-    selectedPitchStatusId,
-    setSelectedPitchStatusId,
     selectedTagIds,
     setSelectedTagIds,
     selectedTeamIds,
@@ -1023,14 +953,12 @@ export function useActivityTableCore({
     // Lookup options used by the filter bar and bulk dialogs
     categoryOptions,
     statusOptions,
-    pitchRequiredStatusOptions,
     tagOptions,
     leadTeamOptions,
     commsContactOptions,
     eventPlannerOptions,
     translationOptions,
     translationStatusOptions,
-    bulkPitchStatusOptions,
     tags,
     teams,
   };

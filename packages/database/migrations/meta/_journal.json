@@ -64,6 +64,62 @@
       "when": 1791407635577,
       "tag": "0008_20261007_role-permission-audit",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792194273667,
+      "tag": "0009_20261016_user-notification-preferences",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792799645253,
+      "tag": "0010_20261023_lookup_sort_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793137570586,
+      "tag": "0011_20261027_activity_form_restructure",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793206751461,
+      "tag": "0012_20261028_remove_pitch_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793386387740,
+      "tag": "0013_20261030_comms_materials_release_types_team_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793395288831,
+      "tag": "0014_20261030_activity_release_time",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793721764827,
+      "tag": "0015_20261102_ministry_org_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793740454983,
+      "tag": "0016_20261103_activity_release_scheduling_mode",
+      "breakpoints": true
     }
   ]
 }

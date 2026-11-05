@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { isDateRangeActive, type DateRangeValue } from '@corpcal/shared';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,10 @@ export function ScheduledDateRangeFields({
   showClearButton = true,
   onAfterClear,
 }: ScheduledDateRangeFieldsProps) {
+  const [activeDatePopover, setActiveDatePopover] = useState<
+    'start' | 'end' | null
+  >(null);
+
   const startLabel = useMemo(() => {
     if (value.noStartDate) return 'No start date';
     if (value.startDate)
@@ -115,11 +119,24 @@ export function ScheduledDateRangeFields({
         <ScheduledDatePopoverField
           value={value.noStartDate ? '' : value.startDate}
           onChange={handleStartChange}
+          onAfterSelect={() => {
+            const endWasUnset = !value.endDate && !value.noEndDate;
+            if (endWasUnset) {
+              requestAnimationFrame(() => setActiveDatePopover('end'));
+            }
+          }}
+          popoverOpen={activeDatePopover === 'start'}
+          onPopoverOpenChange={(open) => {
+            if (open) setActiveDatePopover('start');
+            else
+              setActiveDatePopover((prev) => (prev === 'start' ? null : prev));
+          }}
           label={startLabel}
           triggerMuted={!value.startDate && !value.noStartDate}
           popoverTitle="Select start date"
           presets={PRESETS_PAST_FROM_ANCHOR}
           getPresetAnchor={getPresetAnchorToday}
+          showPresets={false}
           isDateDisabled={isStartDisabled}
           headerRight={
             <Button
@@ -140,11 +157,17 @@ export function ScheduledDateRangeFields({
         <ScheduledDatePopoverField
           value={value.noEndDate ? '' : value.endDate}
           onChange={handleEndChange}
+          popoverOpen={activeDatePopover === 'end'}
+          onPopoverOpenChange={(open) => {
+            if (open) setActiveDatePopover('end');
+            else setActiveDatePopover((prev) => (prev === 'end' ? null : prev));
+          }}
           label={endLabel}
           triggerMuted={!value.endDate && !value.noEndDate}
           popoverTitle="Select end date"
           presets={PRESETS_FUTURE_FROM_ANCHOR}
           getPresetAnchor={getPresetAnchorToday}
+          showPresets={false}
           isDateDisabled={isEndDisabled}
           headerRight={
             <Button

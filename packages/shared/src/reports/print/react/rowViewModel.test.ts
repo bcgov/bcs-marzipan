@@ -31,8 +31,7 @@ const BASE_ACTIVITY_RESPONSE = {
   title: 'Example activity',
   summary: 'plain summary',
   significance: null,
-  leadOrgId: null,
-  leadOrgName: null,
+  organizationDetails: [],
   isAllDay: false,
   startDate: '2026-04-27T00:00:00.000Z',
   endDate: null,
@@ -42,21 +41,19 @@ const BASE_ACTIVITY_RESPONSE = {
   timeStatusId: undefined,
   venueStatusId: null,
   schedulingNotes: null,
-  strategy: null,
   newsReleaseOriginId: null,
-  newsReleaseId: null,
   newsReleaseDistributionId: null,
+  releaseSchedulingMode: null,
+  releaseTimeOffsetMinutes: null,
+  releaseTime: null,
   executiveSummary: null,
   lookAheadStatus: 'none',
   lookAheadSection: 'events',
   notes: null,
-  pitchDate: null,
-  pitchRequiredStatusId: null,
   translationsRequiredStatusId: null,
   premierRequestedId: null,
   visibility: 'global',
   leadTeamId: 1,
-  leadMinistryId: 1,
   activityStatusId: 1,
   createdBy: 1,
   lastUpdatedBy: 1,
@@ -84,13 +81,11 @@ const BASE_ACTIVITY_RESPONSE = {
   newsReleaseOrigin: null,
   newsReleaseDistribution: null,
   premierRequested: null,
-  pitchRequiredStatus: null,
   translationsRequiredStatus: null,
   leadMinistry: 'Education and Child Care',
   leadMinistryAbbreviation: 'ECC',
   leadTeamDisplayName: null,
   venueAddress: null,
-  reportSettings: [],
   flags: [],
 } satisfies ActivityResponse;
 
@@ -270,8 +265,8 @@ describe('toPrintRowViewModel', () => {
         variant: 'lookAhead',
       }
     );
-    expect(notConfirmed.dateTime.dateStatus).toBe('TBC');
-    expect(notConfirmed.dateTime.timeStatus).toBe('TBC');
+    expect(notConfirmed.dateTime.dateStatus).toBe('Date TBD');
+    expect(notConfirmed.dateTime.timeStatus).toBe('Time TBD');
 
     const execLa = toPrintRowViewModel(unsettled, {
       activityBaseUrl: 'http://localhost:3000',
@@ -362,11 +357,10 @@ describe('toPrintRowViewModel', () => {
     expect(row.release.translationsLine).toBe('');
   });
 
-  it('maps 30/60/90 comms and strategy fields on the row view-model', () => {
+  it('maps 30/60/90 comms fields on the row view-model', () => {
     const row = toPrintRowViewModel(
       {
         ...BASE_ACTIVITY,
-        strategy: 'Lead with housing affordability message.',
         commsMaterials: ['Media advisory', 'Backgrounder'],
         commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
         translationsRequired: ['FR'],
@@ -378,7 +372,6 @@ describe('toPrintRowViewModel', () => {
       }
     );
 
-    expect(row.strategyStored).toBe('Lead with housing affordability message.');
     expect(row.commsMaterials).toEqual(['Media advisory', 'Backgrounder']);
     expect(row.commsContactLead).toBe('Jordan Smith');
     expect(row.release.translationsLine).toBe('French');
@@ -556,18 +549,18 @@ describe('toPrintRowViewModel', () => {
 describe('splitActivityDisplayIdForPrint', () => {
   it('splits PREFIX-NUMERIC display ids', () => {
     expect(splitActivityDisplayIdForPrint('MOTT-123456')).toEqual({
-      acronym: 'MOTT',
+      abbreviation: 'MOTT',
       idForLink: '123456',
     });
     expect(splitActivityDisplayIdForPrint('ACT-000042')).toEqual({
-      acronym: 'ACT',
+      abbreviation: 'ACT',
       idForLink: '000042',
     });
   });
 
   it('puts the whole label in the link when no hyphen', () => {
     expect(splitActivityDisplayIdForPrint('ACT42')).toEqual({
-      acronym: '',
+      abbreviation: '',
       idForLink: 'ACT42',
     });
   });

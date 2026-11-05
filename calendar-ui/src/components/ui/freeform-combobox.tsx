@@ -1,13 +1,17 @@
 import { Check, ChevronDown, X } from 'lucide-react';
 import {
+  forwardRef,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type ComponentPropsWithoutRef,
   type KeyboardEvent,
 } from 'react';
+
+import { FORM_CONTROL_INVALID_RING_CLASS_COMBO } from '@/lib/form-field-tokens';
 
 import {
   READ_ONLY_STATIC_COMBOBOX_CHIPS,
@@ -16,7 +20,7 @@ import {
 } from '../../lib/read-only-static-field';
 import { cn } from '../../lib/utils';
 import {
-  CHIP_LABEL_CLASSES,
+  CHIP_LEAD_CHIP_RING_CLASSES,
   CHIP_VISUAL_CLASSES,
 } from './combobox-chip-styles';
 import {
@@ -25,16 +29,21 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from './input-group';
+import { LeadableChipLabelRow } from './leadable-chip-label-row';
+import type { LeadableChipNonLeadPromoteBadge } from './leadable-chip-role-badge';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import { PopoverListSectionHeading } from './popover-list-section-heading';
 
 export interface FreeformComboboxOption {
   value: string;
   label: string;
 }
 
-/** Grouped options with visual separators between non-empty sections (dropdown only). */
+/** Grouped options for the dropdown list (dropdown only). */
 export interface FreeformComboboxSection {
   id: string;
+  /** When set, shown as a section heading (e.g. organization type). */
+  heading?: string;
   options: FreeformComboboxOption[];
 }
 
@@ -55,19 +64,29 @@ export type FreeformComboboxValueWithLead = FreeformComboboxItemWithLead | null;
 type ListEntry =
   | { kind: 'option'; value: string; label: string }
   | { kind: 'freeform'; value: string; label: string }
+  | { kind: 'heading'; label: string }
   | { kind: 'separator' };
+
+type SelectableListEntry = Extract<
+  ListEntry,
+  { kind: 'option' } | { kind: 'freeform' }
+>;
+
+function isSelectableListEntry(entry: ListEntry): entry is SelectableListEntry {
+  return entry.kind === 'option' || entry.kind === 'freeform';
+}
 
 const FREEFORM_BADGE_CLASSES =
   'bg-primary/15 text-primary shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium';
 
-export interface FreeformComboboxProps {
+export type FreeformComboboxProps = {
   /** Flat options (default). Ignored for listing when `sections` is set. */
   options?: FreeformComboboxOption[];
   /** Labels for selected option values that are intentionally absent from the selectable options. */
   selectedOptionLabels?: Readonly<Record<string, string>>;
   /**
-   * When set, options are shown in order with a divider between consecutive
-   * sections that each have at least one visible (filtered) row.
+   * When set, options are grouped by section. Sections with `heading` show a
+   * label; otherwise a divider is inserted between consecutive non-empty sections.
    */
   sections?: FreeformComboboxSection[];
   /** The current selection - single value or array when multiple */
@@ -102,11 +121,22 @@ export interface FreeformComboboxProps {
   useChips?: boolean;
   /**
    * When set, chips support a "lead" state: one item can be marked as lead.
-   * Value items may include isLead; chips show a Lead badge and "Set as lead" for non-lead items.
+   * Value items may include isLead; chips show Lead / role badges and a popover to promote non-lead rows.
    * Called with the index of the item to set as lead (parent should update value so only that item has isLead: true).
    */
   onSetLead?: (index: number) => void;
-}
+  /** Label for the set-lead action inside the non-lead role badge popover. */
+  setLeadMenuLabel?: string;
+  /**
+   * Edit-mode non-lead badge that opens the set-lead popover (`joint` for orgs, `set-lead` for event planners).
+   */
+  nonLeadPromoteBadge?: LeadableChipNonLeadPromoteBadge;
+  /** When true in read-only, non-lead chips show a static outline Joint badge. */
+  showJointBadge?: boolean;
+} & Omit<
+  ComponentPropsWithoutRef<'div'>,
+  'onChange' | 'children' | 'value' | 'defaultValue'
+>;
 
 function nextSelectableIndex(
   current: number,
@@ -117,7 +147,7 @@ function nextSelectableIndex(
   let idx = current;
   for (let step = 0; step < entries.length; step++) {
     idx = (idx + direction + entries.length) % entries.length;
-    if (entries[idx].kind !== 'separator') return idx;
+    if (isSelectableListEntry(entries[idx])) return idx;
   }
   return current;
 }
@@ -131,25 +161,37 @@ function findExactMatchOption(
   );
 }
 
-export function FreeformCombobox({
-  options: optionsProp,
-  sections,
-  selectedOptionLabels,
-  value,
-  onChange,
-  placeholder = '',
-  searchPlaceholder = 'Search...',
-  emptyMessage = 'No results found.',
-  freeformBadgeLabel = 'Add custom value',
-  listFooterHint,
-  className,
-  disabled = false,
-  readOnly = false,
-  multiple = false,
-  maxInputLength,
-  useChips = true,
-  onSetLead,
-}: FreeformComboboxProps) {
+export const FreeformCombobox = forwardRef<
+  HTMLDivElement,
+  FreeformComboboxProps
+>(function FreeformCombobox(
+  {
+    options: optionsProp,
+    sections,
+    selectedOptionLabels,
+    value,
+    onChange,
+    placeholder = '',
+    searchPlaceholder = 'Search...',
+    emptyMessage = 'No results found.',
+    freeformBadgeLabel = 'Add custom value',
+    listFooterHint,
+    className,
+    disabled = false,
+    readOnly = false,
+    multiple = false,
+    maxInputLength,
+    useChips = true,
+    onSetLead,
+    setLeadMenuLabel = 'Set as lead',
+    nonLeadPromoteBadge,
+    showJointBadge = false,
+    'aria-invalid': ariaInvalidProp,
+    ...rootPassthrough
+  },
+  ref
+) {
+  const ariaInvalid = ariaInvalidProp === true || ariaInvalidProp === 'true';
   const flatOptions = useMemo(() => {
     if (sections && sections.length > 0) {
       return sections.flatMap((s) => s.options);
@@ -160,6 +202,9 @@ export function FreeformCombobox({
   const isLocked = disabled || readOnly;
   const isMuted = disabled;
   const [open, setOpen] = useState(false);
+  const [openRoleMenuIndex, setOpenRoleMenuIndex] = useState<number | null>(
+    null
+  );
   const [inputValue, setInputValue] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [liveMessage, setLiveMessage] = useState('');
@@ -210,6 +255,7 @@ export function FreeformCombobox({
     const q = trimmedInput.toLowerCase();
     return sections.map((s) => ({
       id: s.id,
+      heading: s.heading,
       options: s.options.filter((o) => o.label.toLowerCase().includes(q)),
     }));
   }, [sections, trimmedInput]);
@@ -229,7 +275,9 @@ export function FreeformCombobox({
     if (filteredSections) {
       for (const sec of filteredSections) {
         if (sec.options.length === 0) continue;
-        if (entries.length > 0) {
+        if (sec.heading?.trim()) {
+          entries.push({ kind: 'heading', label: sec.heading.trim() });
+        } else if (entries.length > 0) {
           entries.push({ kind: 'separator' });
         }
         for (const o of sec.options) {
@@ -261,15 +309,18 @@ export function FreeformCombobox({
 
   const isSelected = useCallback(
     (entry: ListEntry): boolean => {
-      if (entry.kind === 'separator') return false;
+      if (!isSelectableListEntry(entry)) return false;
       if (entry.kind === 'option') {
         return selectedList.some(
           (v) => v.type === 'option' && v.value === entry.value
         );
       }
-      return selectedList.some(
-        (v) => v.type === 'freeform' && v.value === entry.value
-      );
+      if (entry.kind === 'freeform') {
+        return selectedList.some(
+          (v) => v.type === 'freeform' && v.value === entry.value
+        );
+      }
+      return false;
     },
     [selectedList]
   );
@@ -352,6 +403,12 @@ export function FreeformCombobox({
     }
   }, [isLocked]);
 
+  useEffect(() => {
+    if (open) {
+      setOpenRoleMenuIndex(null);
+    }
+  }, [open]);
+
   useLayoutEffect(() => {
     const justOpened = open && !wasOpenRef.current;
     wasOpenRef.current = open;
@@ -383,7 +440,7 @@ export function FreeformCombobox({
       );
       if (matchIdx >= 0) targetIndex = matchIdx;
     } else {
-      const first = listEntries.findIndex((e) => e.kind !== 'separator');
+      const first = listEntries.findIndex((e) => isSelectableListEntry(e));
       targetIndex = first >= 0 ? first : 0;
     }
 
@@ -411,12 +468,14 @@ export function FreeformCombobox({
   const selectEntry = useCallback(
     (entry: ListEntry) => {
       if (isLocked) return;
-      if (entry.kind === 'separator') return;
+      if (!isSelectableListEntry(entry)) return;
       if (entry.kind === 'freeform') {
         commitItem({ type: 'freeform', value: entry.value });
         return;
       }
-      commitItem({ type: 'option', value: entry.value });
+      if (entry.kind === 'option') {
+        commitItem({ type: 'option', value: entry.value });
+      }
     },
     [commitItem, isLocked]
   );
@@ -504,8 +563,10 @@ export function FreeformCombobox({
   const triggerContent = showChips ? (
     <div
       data-slot="freeform-combobox-chips"
+      aria-invalid={ariaInvalid || undefined}
       className={cn(
-        'border-input focus-within:border-ring focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:bg-input/30 flex min-h-(--input-height) w-full flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-[data-slot=chip]:px-1.5',
+        'border-input focus-within:border-ring focus-within:ring-ring/50 dark:bg-input/30 flex min-h-(--input-height) w-full flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2.5 py-1.5 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] has-[data-slot=chip]:px-1.5',
+        FORM_CONTROL_INVALID_RING_CLASS_COMBO,
         isMuted && 'cursor-not-allowed opacity-50',
         readOnly && !disabled && READ_ONLY_STATIC_COMBOBOX_CHIPS,
         readOnly && !disabled && READ_ONLY_STATIC_TRIGGER
@@ -514,35 +575,29 @@ export function FreeformCombobox({
     >
       {selectedList.map((v, i) => {
         const isLead = 'isLead' in v && v.isLead === true;
+        const displayLabel = getDisplayLabel(v);
         return (
           <span
             key={v.type === 'option' ? v.value : `freeform-${v.value}`}
             data-slot="chip"
-            className={CHIP_VISUAL_CLASSES}
+            className={cn(
+              CHIP_VISUAL_CLASSES,
+              isLead && onSetLead && CHIP_LEAD_CHIP_RING_CLASSES
+            )}
           >
-            <span className="flex min-w-0 flex-1 items-center gap-1.5">
-              <span className={CHIP_LABEL_CLASSES}>{getDisplayLabel(v)}</span>
-              {onSetLead && (
-                <>
-                  {isLead && (
-                    <span className={FREEFORM_BADGE_CLASSES}>Lead</span>
-                  )}
-                  {!isLocked && !isLead && (
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground focus:ring-ring shrink-0 text-[10px] underline focus:ring-1 focus:outline-none"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onSetLead(i);
-                      }}
-                    >
-                      Set as lead
-                    </button>
-                  )}
-                </>
-              )}
-            </span>
+            <LeadableChipLabelRow
+              displayLabel={displayLabel}
+              isLead={isLead}
+              readOnly={isLocked}
+              onSetLead={onSetLead ? () => onSetLead(i) : undefined}
+              showJointBadge={showJointBadge}
+              nonLeadPromoteBadge={!isLocked ? nonLeadPromoteBadge : undefined}
+              setLeadMenuLabel={setLeadMenuLabel}
+              roleMenuOpen={openRoleMenuIndex === i}
+              onRoleMenuOpenChange={(next) =>
+                setOpenRoleMenuIndex(next ? i : null)
+              }
+            />
             {!isLocked ? (
               <button
                 type="button"
@@ -592,8 +647,10 @@ export function FreeformCombobox({
     </div>
   ) : (
     <InputGroup
+      aria-invalid={ariaInvalid || undefined}
       className={cn(
         'w-full',
+        FORM_CONTROL_INVALID_RING_CLASS_COMBO,
         readOnly && !disabled && READ_ONLY_STATIC_TRIGGER
       )}
     >
@@ -602,6 +659,7 @@ export function FreeformCombobox({
         data-slot="input-group-control"
         type="text"
         role="combobox"
+        aria-invalid={ariaInvalid || undefined}
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-controls="freeform-combobox-list"
@@ -678,7 +736,11 @@ export function FreeformCombobox({
   );
 
   return (
-    <div className={cn('w-full min-w-0', className)}>
+    <div
+      ref={ref}
+      className={cn('w-full min-w-0', className)}
+      {...rootPassthrough}
+    >
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {liveMessage}
       </div>
@@ -748,6 +810,19 @@ export function FreeformCombobox({
                 {listEntries.map((entry, index) => {
                   const highlighted = index === highlightedIndex;
                   const selected = isSelected(entry);
+                  if (entry.kind === 'heading') {
+                    return (
+                      <li
+                        key={`heading-${index}-${entry.label}`}
+                        role="presentation"
+                        className="pointer-events-none list-none"
+                      >
+                        <PopoverListSectionHeading>
+                          {entry.label}
+                        </PopoverListSectionHeading>
+                      </li>
+                    );
+                  }
                   if (entry.kind === 'separator') {
                     return (
                       <li
@@ -817,4 +892,4 @@ export function FreeformCombobox({
       </Popover>
     </div>
   );
-}
+});

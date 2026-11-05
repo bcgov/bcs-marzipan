@@ -50,8 +50,8 @@ describe('activity-history-fields', () => {
     expect(redactActivityHistoryChanges(changes, viewerWithoutNotes)).toEqual([
       { field: 'title', oldValue: 'A', newValue: 'B' },
     ]);
-    expect(redactActivityHistoryChanges(changes, editorWithNotes)).toHaveLength(
-      2
+    expect(redactActivityHistoryChanges(changes, editorWithNotes)).toEqual(
+      changes
     );
   });
 });

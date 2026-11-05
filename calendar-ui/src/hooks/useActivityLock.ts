@@ -18,11 +18,7 @@ import {
 import { releaseLockWithRetry as releaseLockApiWithRetry } from '../lib/release-lock-with-retry';
 
 export type LockState =
-  | 'idle'
-  | 'checking'
-  | 'acquiring'
-  | 'owned'
-  | 'locked-by-other';
+  'idle' | 'checking' | 'acquiring' | 'owned' | 'locked-by-other';
 
 type SettledLockState = Extract<
   LockState,
@@ -33,11 +29,7 @@ export type LockRefreshResult = SettledLockState | 'unavailable';
 
 /** Result of a heartbeat; `throttled` means the server did not record the activity. */
 export type HeartbeatOutcome =
-  | 'ok'
-  | 'throttled'
-  | 'failed'
-  | 'lock-gone'
-  | 'no-lock';
+  'ok' | 'throttled' | 'failed' | 'lock-gone' | 'no-lock';
 
 export type EnsureLockForSubmitResult =
   | 'ready'
@@ -64,8 +56,7 @@ export type ActivityLockAcquireFailure = {
 };
 
 export type ActivityLockAcquireResult =
-  | { ok: true }
-  | ({ ok: false } & ActivityLockAcquireFailure);
+  { ok: true } | ({ ok: false } & ActivityLockAcquireFailure);
 
 function acquireFailureReasonFromClassified(
   result: Exclude<

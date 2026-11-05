@@ -16,34 +16,6 @@ describe('savedFilterPayloadIsEmpty', () => {
     expect(savedFilterPayloadIsEmpty({ categoryIds: [1] }, '')).toBe(false);
   });
 
-  it('returns false for pitch not_scheduled', () => {
-    expect(
-      savedFilterPayloadIsEmpty(
-        { pitchDateFilter: { kind: 'not_scheduled' } },
-        ''
-      )
-    ).toBe(false);
-  });
-
-  it('returns false for pitch scheduled even with empty date range', () => {
-    expect(
-      savedFilterPayloadIsEmpty(
-        {
-          pitchDateFilter: {
-            kind: 'scheduled',
-            dateRange: {
-              startDate: '',
-              endDate: '',
-              noStartDate: false,
-              noEndDate: false,
-            },
-          },
-        },
-        ''
-      )
-    ).toBe(false);
-  });
-
   it('returns false for date range with start', () => {
     expect(
       savedFilterPayloadIsEmpty(
@@ -65,8 +37,6 @@ describe('savedFilterPayloadIsEmpty', () => {
           },
           categoryIds: [],
           activityStatusIds: [],
-          pitchRequiredStatusNames: [],
-          pitchDateFilter: { kind: 'any' },
           lookAheadStatusValues: [],
           lookAheadSectionValues: [],
           dateConfirmedFilter: 'any',
@@ -95,8 +65,6 @@ describe('savedFilterPayloadIsEmpty', () => {
           },
           categoryIds: [],
           activityStatusIds: [],
-          pitchRequiredStatusNames: [],
-          pitchDateFilter: { kind: 'any' },
           lookAheadStatusValues: [],
           lookAheadSectionValues: [],
           dateConfirmedFilter: 'any',

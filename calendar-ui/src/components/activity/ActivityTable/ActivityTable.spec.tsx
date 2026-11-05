@@ -17,8 +17,6 @@ function makeActivity(id: number) {
     displayId: `INF-${String(id).padStart(6, '0')}`,
     title: `Test Activity ${id}`,
     category: ['Release'],
-    pitchDate: null,
-    pitchRequiredStatus: null,
     isConfidential: false,
     isIssue: false,
     summary: `Summary ${id}`,
@@ -43,8 +41,7 @@ function makeActivity(id: number) {
     eventPlanners: [],
     eventPlannerLeadIds: [],
     leadTeamId: null,
-    leadMinistryId: null,
-    leadOrgId: null,
+    leadOrganizationId: null,
     translationsRequired: [],
     translationsRequiredStatus: null,
     translationsRequiredStatusId: null,
@@ -87,13 +84,8 @@ vi.mock('@/hooks/useAuth', () => ({
 
 vi.mock('@/hooks/useActivityTableFilterLookups', () => ({
   useActivityTableFilterLookups: () => ({
-    pitchFieldVisibility: {
-      canViewPitchStatus: false,
-      canViewPitchDate: false,
-    },
     statusArchiveIds: {},
     statusOptions: [],
-    pitchRequiredStatusOptions: [],
     tagOptions: [],
     leadTeamOptions: [],
     commsContactOptions: [],
@@ -102,7 +94,6 @@ vi.mock('@/hooks/useActivityTableFilterLookups', () => ({
     translationStatusOptions: [],
     filterSummaryContext: {
       statusOptions: [],
-      pitchRequiredStatusOptions: [],
       tagOptions: [],
       leadTeamOptions: [],
       commsContactOptions: [],
@@ -139,7 +130,6 @@ vi.mock('@/hooks/useSavedFilters', () => ({
 
 vi.mock('@/hooks/useLookups', () => ({
   useCategories: () => ({ data: [] }),
-  usePitchRequiredStatuses: () => ({ data: [] }),
   useTags: () => ({ data: [] }),
   useTeams: () => ({ data: [] }),
   useTranslationLanguages: () => ({ data: [], isLoading: false }),

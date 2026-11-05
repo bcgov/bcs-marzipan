@@ -12,6 +12,10 @@ import { LookupsService } from './lookups.service';
 describe('LookupsService', () => {
   let service: LookupsService;
 
+  const mockLookupSortModeSelect = (
+    sortMode: 'manual' | 'alphabetical' = 'manual'
+  ) => createChain([{ sortMode }], 'limit');
+
   const createChain = (resolvedValue: unknown, terminal = 'limit') => {
     const value = Array.isArray(resolvedValue)
       ? resolvedValue
@@ -113,33 +117,36 @@ describe('LookupsService', () => {
   });
 
   it('returns government representatives in admin sortOrder', async () => {
-    mockDatabaseService.db.select = vi.fn().mockReturnValueOnce(
-      createChain(
-        [
-          {
-            id: 2,
-            name: 'Niki Sharma',
-            displayName: 'Attorney General Niki Sharma',
-            title: 'Attorney General and Deputy Premier',
-            ministryId: 3,
-            representativeType: 'minister',
-            sortOrder: 1,
-            isActive: true,
-          },
-          {
-            id: 1,
-            name: 'Lana Popham',
-            displayName: 'Minister Lana Popham',
-            title: 'Minister of Agriculture and Food',
-            ministryId: 2,
-            representativeType: 'minister',
-            sortOrder: 2,
-            isActive: true,
-          },
-        ],
-        'orderBy'
+    mockDatabaseService.db.select = vi
+      .fn()
+      .mockReturnValueOnce(
+        createChain(
+          [
+            {
+              id: 2,
+              name: 'Niki Sharma',
+              displayName: 'Attorney General Niki Sharma',
+              title: 'Attorney General and Deputy Premier',
+              ministryId: 3,
+              representativeType: 'minister',
+              sortOrder: 1,
+              isActive: true,
+            },
+            {
+              id: 1,
+              name: 'Lana Popham',
+              displayName: 'Minister Lana Popham',
+              title: 'Minister of Agriculture and Food',
+              ministryId: 2,
+              representativeType: 'minister',
+              sortOrder: 2,
+              isActive: true,
+            },
+          ],
+          'orderBy'
+        )
       )
-    );
+      .mockReturnValueOnce(mockLookupSortModeSelect('manual'));
 
     const result = await service.getGovernmentRepresentatives();
 
@@ -199,6 +206,9 @@ describe('LookupsService', () => {
     };
 
     it('assigns 1..n positions in a single UPDATE limited to the given ids', async () => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(mockLookupSortModeSelect('manual'));
       const where = vi.fn().mockResolvedValue(undefined);
       const set = mockUpdate(where);
 
@@ -224,11 +234,44 @@ describe('LookupsService', () => {
     });
 
     it('propagates database failures', async () => {
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(mockLookupSortModeSelect('manual'));
       mockUpdate(vi.fn().mockRejectedValue(new Error('deadlock detected')));
 
       await expect(service.reorderLookup('cities', [1, 2], 7)).rejects.toThrow(
         'deadlock detected'
       );
     });
+  });
+
+  it('clears comms material release type links when deactivating a release type', async () => {
+    const returning = vi.fn().mockResolvedValue([
+      {
+        id: 3,
+        name: 'news_release',
+        displayName: 'News release',
+        isActive: false,
+      },
+    ]);
+    const whereUpdate = vi.fn().mockReturnValue({ returning });
+    const setUpdate = vi.fn().mockReturnValue({ where: whereUpdate });
+    const whereUnlink = vi.fn().mockResolvedValue(undefined);
+    const setUnlink = vi.fn().mockReturnValue({ where: whereUnlink });
+
+    mockDatabaseService.db.transaction = vi.fn((callback) =>
+      callback({
+        update: vi
+          .fn()
+          .mockReturnValueOnce({ set: setUpdate })
+          .mockReturnValueOnce({ set: setUnlink }),
+      })
+    );
+
+    const result = await service.updateReleaseType(3, { isActive: false }, 99);
+
+    expect(result?.isActive).toBe(false);
+    expect(setUnlink).toHaveBeenCalledWith({ releaseTypeId: null });
+    expect(whereUnlink).toHaveBeenCalled();
   });
 });

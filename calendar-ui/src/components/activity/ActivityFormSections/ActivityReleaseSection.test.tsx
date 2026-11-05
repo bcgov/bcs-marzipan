@@ -8,7 +8,7 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 import { getDefaultFormValues } from '@/lib/activity-form-defaults';
 
 import { ActivityEditProvider } from '../activity-edit-context';
-import { ActivityReleaseSection } from './ActivityReleaseSection';
+import { ActivityCommsSection } from './ActivityCommsSection';
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) {
@@ -46,6 +46,32 @@ const mockTranslationRequiredStatuses = [
   },
 ];
 
+const mockNewsReleaseCommsMaterial = {
+  id: 4,
+  name: 'news_release',
+  displayName: 'News release',
+  visibility: 'global' as const,
+  teamIds: [] as number[],
+  releaseType: {
+    audience: 'public' as const,
+    allowsTranslation: true,
+    requiresNewsReleaseDetails: true,
+  },
+};
+
+const mockTranslationOnlyCommsMaterial = {
+  id: 5,
+  name: 'syndicated',
+  displayName: 'Syndicated content',
+  visibility: 'global' as const,
+  teamIds: [] as number[],
+  releaseType: {
+    audience: 'public' as const,
+    allowsTranslation: true,
+    requiresNewsReleaseDetails: false,
+  },
+};
+
 const mockLookups = {
   isLoading: false,
   hasError: false,
@@ -55,10 +81,11 @@ const mockLookups = {
   users: [],
   eventPlanners: [],
   tags: [],
-  pitchStatuses: [],
-  pitchRequiredStatuses: [],
   activityStatuses: [],
-  commsMaterials: [],
+  commsMaterials: [
+    mockNewsReleaseCommsMaterial,
+    mockTranslationOnlyCommsMaterial,
+  ],
   translationLanguages: [
     { id: 1, name: 'French', displayName: 'French' },
     { id: 2, name: 'Spanish', displayName: 'Spanish' },
@@ -70,21 +97,29 @@ const mockLookups = {
   newsReleaseOrigins: [{ value: '1', label: 'Origin A' }],
   sharedWithTeams: [],
   quickShareGroups: [],
-  dateStatuses: [],
-  timeStatuses: [],
+  dateStatuses: [
+    { id: 1, name: 'tbd', displayName: 'Date TBD' },
+    { id: 2, name: 'confirmed', displayName: 'Confirmed' },
+  ],
+  timeStatuses: [
+    { id: 1, name: 'tbd', displayName: 'Time TBD' },
+    { id: 2, name: 'confirmed', displayName: 'Confirmed' },
+  ],
   venueStatuses: [],
 };
 
-function ActivityReleaseSectionHarness({
+function ActivityCommsSectionHarness({
   readOnly,
   canEditFieldScope,
   defaultValues,
+  commsMaterialOptions = mockLookups.commsMaterials,
   translationRequiredStatuses = mockLookups.translationRequiredStatuses,
   onFormReady,
 }: {
   readOnly: boolean;
   canEditFieldScope?: (s: string) => boolean;
   defaultValues?: Partial<ActivityFormData>;
+  commsMaterialOptions?: typeof mockLookups.commsMaterials;
   translationRequiredStatuses?: TranslationRequiredStatusLookupItem[];
   onFormReady?: (form: ReturnType<typeof useForm<ActivityFormData>>) => void;
 }) {
@@ -106,20 +141,78 @@ function ActivityReleaseSectionHarness({
           canEditFieldScope: canEditFieldScope ?? (() => true),
         }}
       >
-        <ActivityReleaseSection
+        <ActivityCommsSection
+          commsMaterialOptions={commsMaterialOptions}
+          dateStatuses={mockLookups.dateStatuses}
+          timeStatuses={mockLookups.timeStatuses}
           newsReleaseDistributionOptions={mockLookups.newsReleaseDistributions}
           newsReleaseOriginOptions={mockLookups.newsReleaseOrigins}
           translationRequiredStatuses={translationRequiredStatuses}
           translationLanguageOptions={mockLookups.translationLanguages}
+          userTeamIds={[]}
         />
       </ActivityEditProvider>
     </FormProvider>
   );
 }
 
-describe('ActivityReleaseSection permissions', () => {
+describe('ActivityCommsSection optional lookup clear', () => {
+  it('clears news release origin when Clear is clicked', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    render(
+      <ActivityCommsSectionHarness
+        readOnly={false}
+        defaultValues={{
+          commsMaterialIds: [4],
+          newsReleaseOriginId: 1,
+        }}
+        onFormReady={(form) => {
+          formRef = form;
+        }}
+      />
+    );
+
+    const origin = await screen.findByRole('combobox', {
+      name: /News release origin/i,
+    });
+    await user.click(origin);
+    await user.click(
+      await screen.findByRole('button', { name: /Clear News release origin/i })
+    );
+
+    await waitFor(() => {
+      expect(formRef!.getValues('newsReleaseOriginId')).toBeUndefined();
+      expect(formRef!.formState.dirtyFields.newsReleaseOriginId).toBe(true);
+    });
+  });
+
+  it('hides Clear for news release origin when read-only', () => {
+    render(
+      <ActivityCommsSectionHarness
+        readOnly
+        defaultValues={{
+          commsMaterialIds: [4],
+          newsReleaseOriginId: 1,
+        }}
+      />
+    );
+
+    expect(
+      screen.queryByRole('button', { name: /Clear News release origin/i })
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('ActivityCommsSection release fields permissions', () => {
   it('renders news release selects as readOnly when activity is view-only', async () => {
-    render(<ActivityReleaseSectionHarness readOnly={true} />);
+    render(
+      <ActivityCommsSectionHarness
+        readOnly={true}
+        defaultValues={{ commsMaterialIds: [4] }}
+      />
+    );
 
     const origin = await screen.findByRole('combobox', {
       name: /News release origin/i,
@@ -129,10 +222,13 @@ describe('ActivityReleaseSection permissions', () => {
 
   it('disables translation languages when field scope forbids edit', async () => {
     render(
-      <ActivityReleaseSectionHarness
+      <ActivityCommsSectionHarness
         readOnly={false}
         canEditFieldScope={(s: string) => s !== 'translations'}
-        defaultValues={{ translationsRequiredStatusId: 2 }}
+        defaultValues={{
+          commsMaterialIds: [4],
+          translationsRequiredStatusId: 2,
+        }}
       />
     );
 
@@ -143,12 +239,45 @@ describe('ActivityReleaseSection permissions', () => {
   });
 });
 
-describe('ActivityReleaseSection translation languages visibility', () => {
+describe('ActivityCommsSection conditional comms groups', () => {
+  it('shows news release details when a material requires them', async () => {
+    render(
+      <ActivityCommsSectionHarness
+        readOnly={false}
+        defaultValues={{ commsMaterialIds: [4] }}
+      />
+    );
+
+    expect(await screen.findByText('News release details')).toBeInTheDocument();
+  });
+
+  it('shows translation fields without NR group when only allowsTranslation', async () => {
+    render(
+      <ActivityCommsSectionHarness
+        readOnly={false}
+        defaultValues={{
+          commsMaterialIds: [5],
+          translationsRequiredStatusId: 2,
+        }}
+      />
+    );
+
+    expect(screen.queryByText('News release details')).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('combobox', { name: /^Translations required$/i })
+    ).toBeInTheDocument();
+  });
+});
+
+describe('ActivityCommsSection translation languages visibility', () => {
   it('hides translation languages when status is not Required', () => {
     render(
-      <ActivityReleaseSectionHarness
+      <ActivityCommsSectionHarness
         readOnly={false}
-        defaultValues={{ translationsRequiredStatusId: 1 }}
+        defaultValues={{
+          commsMaterialIds: [4],
+          translationsRequiredStatusId: 1,
+        }}
       />
     );
 
@@ -159,9 +288,12 @@ describe('ActivityReleaseSection translation languages visibility', () => {
 
   it('shows translation languages when status is Required', async () => {
     render(
-      <ActivityReleaseSectionHarness
+      <ActivityCommsSectionHarness
         readOnly={false}
-        defaultValues={{ translationsRequiredStatusId: 2 }}
+        defaultValues={{
+          commsMaterialIds: [4],
+          translationsRequiredStatusId: 2,
+        }}
       />
     );
 
@@ -176,15 +308,16 @@ const translationRequiredStatusesWithoutRequired =
     (status) => status.name !== 'required'
   );
 
-describe('ActivityReleaseSection translation status change', () => {
+describe('ActivityCommsSection translation status change', () => {
   it('clears translation languages when status changes away from required', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
     render(
-      <ActivityReleaseSectionHarness
+      <ActivityCommsSectionHarness
         readOnly={false}
         defaultValues={{
+          commsMaterialIds: [4],
           translationsRequiredStatusId: 2,
           translationLanguageIds: [1, 2],
         }}
@@ -211,10 +344,11 @@ describe('ActivityReleaseSection translation status change', () => {
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
     render(
-      <ActivityReleaseSectionHarness
+      <ActivityCommsSectionHarness
         readOnly={false}
         translationRequiredStatuses={translationRequiredStatusesWithoutRequired}
         defaultValues={{
+          commsMaterialIds: [4],
           translationsRequiredStatusId: 1,
           translationLanguageIds: [1, 2],
         }}

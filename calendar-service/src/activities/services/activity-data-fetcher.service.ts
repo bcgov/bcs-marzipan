@@ -7,7 +7,7 @@ import {
   activityCommsContacts,
   activityCommsMaterials,
   activityEventPlanners,
-  activityReportSettings,
+  activityOrganizations,
   activityRepresentatives,
   activitySharedWithTeams,
   activityStatuses,
@@ -16,13 +16,10 @@ import {
   categories,
   commsMaterials,
   dateStatuses,
-  ministries,
   newsReleaseDistributions,
   newsReleaseOrigins,
   organizations,
-  pitchRequiredStatuses,
   premierRequested,
-  reports,
   tags,
   teams,
   timeStatuses,
@@ -32,8 +29,10 @@ import {
   venueAddresses,
   venueStatuses,
 } from '@corpcal/database/schema';
-import type { Activity } from '@corpcal/database/types';
-import type { EventPlannerDetail } from '@corpcal/shared/schemas';
+import type {
+  EventPlannerDetail,
+  OrganizationDetail,
+} from '@corpcal/shared/schemas';
 
 import { DatabaseService } from '../../database/database.service';
 import { sortByStaffName } from '../../users/staff-name-sort';
@@ -825,61 +824,67 @@ export class ActivityDataFetcherService {
   }
 
   /**
-   * Fetch organization names for leadOrg and eventLeadOrg
-   * Returns maps of activityId -> organization name
-   * Uses free text name if available, otherwise looks up from organizations table
+   * Fetch ministries/organizations junction rows for activities.
    */
-  async fetchLeadOrgNamesForActivities(
-    activities: Activity[]
-  ): Promise<Map<number, string | null>> {
-    const map = new Map<number, string | null>();
+  async fetchOrganizationDetailsForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, OrganizationDetail[]>> {
+    const map = new Map<number, OrganizationDetail[]>();
+    if (activityIds.length === 0) return map;
 
-    // Collect organization IDs that need to be looked up
-    const orgIdsToLookup = new Set<number>();
-    const activityIdToOrgId = new Map<number, number>();
-
-    for (const activity of activities) {
-      // If free text name exists, use it
-      if (activity.leadOrgName) {
-        map.set(activity.id, activity.leadOrgName);
-      } else if (activity.leadOrgId) {
-        // Need to look up organization name
-        orgIdsToLookup.add(activity.leadOrgId);
-        activityIdToOrgId.set(activity.id, activity.leadOrgId);
-      } else {
-        // No lead org
-        map.set(activity.id, null);
-      }
-    }
-
-    // Bulk lookup organization display: use ministry abbreviation when org links to ministry, else display name
-    if (orgIdsToLookup.size > 0) {
-      const results = await this.databaseService.db
-        .select({
-          orgId: organizations.id,
-          orgName:
-            sql<string>`COALESCE(${ministries.abbreviation}, ${organizations.displayName}, ${organizations.name})`.as(
-              'orgName'
-            ),
-        })
-        .from(organizations)
-        .leftJoin(ministries, eq(organizations.ministryId, ministries.id))
-        .where(
-          and(
-            inArray(organizations.id, Array.from(orgIdsToLookup)),
-            eq(organizations.isActive, true)
-          )
-        );
-
-      const orgIdToName = new Map<number, string>(
-        results.map((row) => [row.orgId, row.orgName])
+    const rows = await this.databaseService.db
+      .select({
+        activityId: activityOrganizations.activityId,
+        organizationId: activityOrganizations.organizationId,
+        organizationName: activityOrganizations.organizationName,
+        isLead: activityOrganizations.isLead,
+        displayName: organizations.displayName,
+        orgName: organizations.name,
+        orgAbbreviation: organizations.abbreviation,
+      })
+      .from(activityOrganizations)
+      .leftJoin(
+        organizations,
+        eq(activityOrganizations.organizationId, organizations.id)
+      )
+      .where(
+        and(
+          inArray(activityOrganizations.activityId, activityIds),
+          eq(activityOrganizations.isActive, true)
+        )
       );
 
-      // Map organization names back to activities
-      for (const [activityId, orgId] of activityIdToOrgId.entries()) {
-        const orgName = orgIdToName.get(orgId);
-        map.set(activityId, orgName ?? null);
-      }
+    for (const row of rows) {
+      const fromFreeform = row.organizationName?.trim() ?? '';
+      const fromLookup =
+        row.organizationId != null
+          ? (row.orgAbbreviation ?? row.displayName ?? row.orgName ?? '').trim()
+          : '';
+      const name =
+        fromFreeform ||
+        fromLookup ||
+        (row.organizationId != null
+          ? `Organization #${row.organizationId}`
+          : 'Unknown organization');
+      const abbreviation = row.orgAbbreviation?.trim() || null;
+
+      const list = map.get(row.activityId) ?? [];
+      list.push({
+        organizationId: row.organizationId ?? undefined,
+        organizationName: row.organizationName ?? undefined,
+        name,
+        abbreviation,
+        isLead: row.isLead ?? false,
+      });
+      map.set(row.activityId, list);
+    }
+
+    for (const [activityId, details] of map.entries()) {
+      details.sort((a, b) => {
+        if (a.isLead !== b.isLead) return a.isLead ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+      map.set(activityId, details);
     }
 
     return map;
@@ -967,128 +972,6 @@ export class ActivityDataFetcherService {
   }
 
   /**
-   * Fetch report settings for multiple activities
-   * Returns all report settings with omitted flags for each activity
-   */
-  async fetchReportSettingsForActivities(activityIds: number[]): Promise<
-    Map<
-      number,
-      Array<{
-        id: number;
-        name: string;
-        displayName: string;
-        omitted: boolean;
-      }>
-    >
-  > {
-    if (activityIds.length === 0) {
-      return new Map();
-    }
-
-    const results = await this.databaseService.db
-      .select({
-        activityId: activityReportSettings.activityId,
-        reportId: reports.id,
-        reportName: reports.name,
-        reportDisplayName: reports.displayName,
-        omitted: activityReportSettings.omitted,
-      })
-      .from(activityReportSettings)
-      .innerJoin(reports, eq(activityReportSettings.reportId, reports.id))
-      .where(
-        and(
-          inArray(activityReportSettings.activityId, activityIds),
-          eq(reports.isActive, true)
-        )
-      )
-      .orderBy(reports.sortOrder, reports.displayName);
-
-    const map = new Map<
-      number,
-      Array<{
-        id: number;
-        name: string;
-        displayName: string;
-        omitted: boolean;
-      }>
-    >();
-
-    for (const row of results) {
-      const existing = map.get(row.activityId) ?? [];
-      existing.push({
-        id: row.reportId,
-        name: row.reportName,
-        displayName: row.reportDisplayName,
-        omitted: row.omitted,
-      });
-      map.set(row.activityId, existing);
-    }
-
-    return map;
-  }
-
-  /**
-   * Fetch pitch required status display names for multiple activities
-   */
-  async fetchPitchRequiredStatusForActivities(
-    activityIds: number[]
-  ): Promise<Map<number, string | null>> {
-    if (activityIds.length === 0) {
-      return new Map();
-    }
-
-    const activityResults = await this.databaseService.db
-      .select({
-        id: activities.id,
-        pitchRequiredStatusId: activities.pitchRequiredStatusId,
-      })
-      .from(activities)
-      .where(inArray(activities.id, activityIds));
-
-    const statusIds = activityResults
-      .map((a) => a.pitchRequiredStatusId)
-      .filter((id): id is number => id !== null && id !== undefined);
-
-    if (statusIds.length === 0) {
-      const resultMap = new Map<number, string | null>();
-      for (const activity of activityResults) {
-        resultMap.set(activity.id, null);
-      }
-      return resultMap;
-    }
-
-    const statusResults = await this.databaseService.db
-      .select({
-        id: pitchRequiredStatuses.id,
-        name: pitchRequiredStatuses.displayName,
-      })
-      .from(pitchRequiredStatuses)
-      .where(
-        and(
-          inArray(pitchRequiredStatuses.id, statusIds),
-          eq(pitchRequiredStatuses.isActive, true)
-        )
-      );
-
-    const statusMap = new Map<number, string>(
-      statusResults.map((s) => [s.id, s.name])
-    );
-
-    const resultMap = new Map<number, string | null>();
-    for (const activity of activityResults) {
-      if (activity.pitchRequiredStatusId) {
-        resultMap.set(
-          activity.id,
-          statusMap.get(activity.pitchRequiredStatusId) ?? null
-        );
-      } else {
-        resultMap.set(activity.id, null);
-      }
-    }
-    return resultMap;
-  }
-
-  /**
    * Fetch translations required status display names for multiple activities
    */
   async fetchTranslationsRequiredStatusForActivities(
@@ -1155,54 +1038,32 @@ export class ActivityDataFetcherService {
   async fetchLeadMinistryNamesForActivities(
     activityIds: number[]
   ): Promise<Map<number, string | null>> {
-    if (activityIds.length === 0) {
-      return new Map();
-    }
+    const resultMap = new Map<number, string | null>();
+    if (activityIds.length === 0) return resultMap;
 
-    const activityResults = await this.databaseService.db
+    const rows = await this.databaseService.db
       .select({
-        id: activities.id,
-        leadMinistryId: activities.leadMinistryId,
+        activityId: activityOrganizations.activityId,
+        displayName: organizations.displayName,
       })
-      .from(activities)
-      .where(inArray(activities.id, activityIds));
-
-    const ministryIds = activityResults
-      .map((a) => a.leadMinistryId)
-      .filter((id): id is number => id !== null && id !== undefined);
-
-    if (ministryIds.length === 0) {
-      const resultMap = new Map<number, string | null>();
-      for (const activity of activityResults) {
-        resultMap.set(activity.id, null);
-      }
-      return resultMap;
-    }
-
-    const ministryResults = await this.databaseService.db
-      .select({
-        id: ministries.id,
-        displayName: ministries.displayName,
-      })
-      .from(ministries)
+      .from(activityOrganizations)
+      .innerJoin(
+        organizations,
+        eq(organizations.id, activityOrganizations.organizationId)
+      )
       .where(
-        and(inArray(ministries.id, ministryIds), eq(ministries.isActive, true))
+        and(
+          inArray(activityOrganizations.activityId, activityIds),
+          eq(activityOrganizations.isLead, true),
+          eq(activityOrganizations.isActive, true)
+        )
       );
 
-    const ministryMap = new Map<number, string>(
-      ministryResults.map((m) => [m.id, m.displayName])
-    );
-
-    const resultMap = new Map<number, string | null>();
-    for (const activity of activityResults) {
-      if (activity.leadMinistryId != null) {
-        resultMap.set(
-          activity.id,
-          ministryMap.get(activity.leadMinistryId) ?? null
-        );
-      } else {
-        resultMap.set(activity.id, null);
-      }
+    for (const id of activityIds) {
+      resultMap.set(id, null);
+    }
+    for (const row of rows) {
+      resultMap.set(row.activityId, row.displayName);
     }
     return resultMap;
   }
@@ -1213,54 +1074,32 @@ export class ActivityDataFetcherService {
   async fetchLeadMinistryAbbreviationsForActivities(
     activityIds: number[]
   ): Promise<Map<number, string | null>> {
-    if (activityIds.length === 0) {
-      return new Map();
-    }
+    const resultMap = new Map<number, string | null>();
+    if (activityIds.length === 0) return resultMap;
 
-    const activityResults = await this.databaseService.db
+    const rows = await this.databaseService.db
       .select({
-        id: activities.id,
-        leadMinistryId: activities.leadMinistryId,
+        activityId: activityOrganizations.activityId,
+        abbreviation: organizations.abbreviation,
       })
-      .from(activities)
-      .where(inArray(activities.id, activityIds));
-
-    const ministryIds = activityResults
-      .map((a) => a.leadMinistryId)
-      .filter((id): id is number => id !== null && id !== undefined);
-
-    if (ministryIds.length === 0) {
-      const resultMap = new Map<number, string | null>();
-      for (const activity of activityResults) {
-        resultMap.set(activity.id, null);
-      }
-      return resultMap;
-    }
-
-    const ministryResults = await this.databaseService.db
-      .select({
-        id: ministries.id,
-        abbreviation: ministries.abbreviation,
-      })
-      .from(ministries)
+      .from(activityOrganizations)
+      .innerJoin(
+        organizations,
+        eq(organizations.id, activityOrganizations.organizationId)
+      )
       .where(
-        and(inArray(ministries.id, ministryIds), eq(ministries.isActive, true))
+        and(
+          inArray(activityOrganizations.activityId, activityIds),
+          eq(activityOrganizations.isLead, true),
+          eq(activityOrganizations.isActive, true)
+        )
       );
 
-    const ministryMap = new Map<number, string>(
-      ministryResults.map((m) => [m.id, m.abbreviation])
-    );
-
-    const resultMap = new Map<number, string | null>();
-    for (const activity of activityResults) {
-      if (activity.leadMinistryId != null) {
-        resultMap.set(
-          activity.id,
-          ministryMap.get(activity.leadMinistryId) ?? null
-        );
-      } else {
-        resultMap.set(activity.id, null);
-      }
+    for (const id of activityIds) {
+      resultMap.set(id, null);
+    }
+    for (const row of rows) {
+      resultMap.set(row.activityId, row.abbreviation);
     }
     return resultMap;
   }
@@ -1282,31 +1121,29 @@ export class ActivityDataFetcherService {
         id: teams.id,
         name: teams.name,
         displayName: teams.displayName,
-        ministryId: teams.ministryId,
+        primaryOrganizationId: teams.primaryOrganizationId,
       })
       .from(teams)
       .where(inArray(teams.id, teamIds));
 
-    const ministryIds = [
+    const orgIds = [
       ...new Set(
         teamRows
-          .map((t) => t.ministryId)
+          .map((t) => t.primaryOrganizationId)
           .filter((id): id is number => id != null)
       ),
     ];
-    const ministryNameRows =
-      ministryIds.length > 0
+    const orgNameRows =
+      orgIds.length > 0
         ? await this.databaseService.db
             .select({
-              id: ministries.id,
-              displayName: ministries.displayName,
+              id: organizations.id,
+              displayName: organizations.displayName,
             })
-            .from(ministries)
-            .where(inArray(ministries.id, ministryIds))
+            .from(organizations)
+            .where(inArray(organizations.id, orgIds))
         : [];
-    const ministryMap = new Map(
-      ministryNameRows.map((m) => [m.id, m.displayName ?? ''])
-    );
+    const orgMap = new Map(orgNameRows.map((m) => [m.id, m.displayName ?? '']));
 
     const teamIdToLabel = new Map<number, string>();
     for (const t of teamRows) {
@@ -1314,7 +1151,9 @@ export class ActivityDataFetcherService {
       const base =
         baseRaw != null && baseRaw.length > 0 ? baseRaw : `Team ${t.id}`;
       const ministryName =
-        t.ministryId != null ? ministryMap.get(t.ministryId) : undefined;
+        t.primaryOrganizationId != null
+          ? orgMap.get(t.primaryOrganizationId)
+          : undefined;
       const label =
         ministryName != null && ministryName.length > 0
           ? `${base} (${ministryName})`

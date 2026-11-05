@@ -50,7 +50,6 @@ describe('filterActivitiesQuerySchema', () => {
     const result = filterActivitiesQuerySchema.parse({
       activityStatusIds: '1,2,3',
       leadTeamIds: '7,8',
-      leadMinistryIds: '3,4',
       commsContactLeadUserIds: '10',
       flagAssigneeUserIds: '20',
       sharedWithTeamIds: '1,2',
@@ -60,7 +59,6 @@ describe('filterActivitiesQuerySchema', () => {
     });
     expect(result.activityStatusIds).toEqual([1, 2, 3]);
     expect(result.leadTeamIds).toEqual([7, 8]);
-    expect(result.leadMinistryIds).toEqual([3, 4]);
     expect(result.commsContactLeadUserIds).toEqual([10]);
     expect(result.flagAssigneeUserIds).toEqual([20]);
     expect(result.sharedWithTeamIds).toEqual([1, 2]);
@@ -90,19 +88,14 @@ describe('filterActivitiesQuerySchema', () => {
     }
   });
 
-  it('parses confirmed filters and pitch date flags', () => {
+  it('parses confirmed filters and scheduled overlap flag', () => {
     const result = filterActivitiesQuerySchema.parse({
       dateConfirmedFilter: 'confirmed',
-      timeConfirmedFilter: 'not_confirmed',
-      pitchDateNotScheduled: 'true',
-      pitchDateFrom: '2025-01-01',
-      pitchDateTo: '2025-01-31',
+      timeConfirmedFilter: 'tbd',
       scheduledDateRangeOverlaps: 'true',
     });
     expect(result.dateConfirmedFilter).toBe('confirmed');
-    expect(result.timeConfirmedFilter).toBe('not_confirmed');
-    expect(result.pitchDateNotScheduled).toBe(true);
-    expect(result.pitchDateFrom).toBe('2025-01-01');
+    expect(result.timeConfirmedFilter).toBe('tbd');
     expect(result.scheduledDateRangeOverlaps).toBe(true);
   });
 

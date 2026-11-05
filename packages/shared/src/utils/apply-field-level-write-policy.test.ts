@@ -17,8 +17,7 @@ const adminWithAll = {
     'activities.notes.edit',
     'activities.lookAhead.edit',
     'activities.translations.edit',
-    'activities.pitchStatus.edit',
-    'activities.pitchDate.edit',
+    'activities.release_time.edit',
   ],
   roleName: SYSTEM_ROLES.ADMIN,
 };
@@ -30,12 +29,13 @@ describe('applyFieldLevelWritePolicy', () => {
       notes: 'Strip me',
       dateStatusId: 1,
       timeStatusId: 1,
+      executiveSummary: '{"type":"doc","content":[]}',
       lookAheadStatus: 'new',
       lookAheadSection: 'events',
       translationsRequiredStatusId: 1,
       translationLanguageIds: [1, 2],
-      pitchRequiredStatusId: 1,
-      pitchDate: '2025-01-01',
+      releaseSchedulingMode: 'relative',
+      releaseTimeOffsetMinutes: 30,
     };
 
     const stripped = applyFieldLevelWritePolicy(dto, viewerNoGrants);
@@ -44,13 +44,15 @@ describe('applyFieldLevelWritePolicy', () => {
     expect(dto.notes).toBeUndefined();
     expect(dto.dateStatusId).toBe(1);
     expect(dto.timeStatusId).toBe(1);
+    expect(dto.executiveSummary).toBeUndefined();
     expect(dto.lookAheadStatus).toBeUndefined();
     expect(dto.lookAheadSection).toBeUndefined();
     expect(dto.translationsRequiredStatusId).toBeUndefined();
     expect(dto.translationLanguageIds).toBeUndefined();
-    expect(dto.pitchRequiredStatusId).toBeUndefined();
-    expect(dto.pitchDate).toBeUndefined();
-    expect(stripped).toHaveLength(5);
+    expect(dto.releaseSchedulingMode).toBeUndefined();
+    expect(dto.releaseTimeOffsetMinutes).toBeUndefined();
+    expect(stripped).toHaveLength(4);
+    expect(stripped).toContain('notes');
   });
 
   it('preserves fields the user can edit', () => {

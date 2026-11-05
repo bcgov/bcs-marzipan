@@ -5,7 +5,6 @@ import {
   hasActivityFilterCriteria,
   type ActivityFilterState,
 } from '@corpcal/shared';
-import { canViewActivityFieldScope } from '@corpcal/shared/auth';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import {
   ResponsiveFilterRow,
@@ -17,7 +16,6 @@ import {
 } from '@/components/table/SortDropdown';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
-import { useAuth } from '@/hooks/useAuth';
 import {
   getLookAheadSectionLabelFromRows,
   useLookAheadSectionRows,
@@ -44,7 +42,6 @@ import {
   type LeadTeamFilterOption,
 } from './LeadTeamFilterPanel';
 import { LookAheadFilterPanel } from './LookAheadFilter';
-import { PitchFilterPanel } from './PitchFilter';
 import { ScheduledDateFilterPanel } from './ScheduledDateFilter';
 import { isDateRangeActive } from './ScheduledDateRangeFields';
 import { TagsFilterPanel, type TagFilterOption } from './TagsFilter';
@@ -104,7 +101,6 @@ export interface ActivityTableFiltersProps {
   defaultSortDirection: 'asc' | 'desc';
   sortColumns: SortColumnConfig[];
   categoryOptions: CategoryFilterOption[];
-  pitchRequiredStatusOptions: OptionItem[];
   statusOptions: OptionItem[];
   tagOptions: TagFilterOption[];
   leadTeamOptions: LeadTeamFilterOption[];
@@ -123,28 +119,13 @@ export interface ActivityTableFiltersProps {
   onResetAll?: () => void;
   /** When true, overflow filter trigger shows a clear-all control wired to `onResetAll`. */
   hasClearableFilters?: boolean;
-  /** When omitted, derived from the current user (for tests). */
-  pitchFieldVisibility?: {
-    canViewPitchStatus: boolean;
-    canViewPitchDate: boolean;
-  };
 }
 
 /**
  * True when any filter criteria are present in `filterState`.
- *
- * Delegates to the shared {@link hasActivityFilterCriteria}: detection is purely
- * value-based, so applied pitch / look-ahead criteria count as active even when
- * their controls are hidden by field scope. The optional `pitchVisibility`
- * parameter is retained for call-site compatibility but no longer affects the
- * result (pitch criteria always count when present).
  */
 export function hasAnyActivityTableFilterActive(
-  filterState: ActivityFilterState,
-  _pitchVisibility?: {
-    canViewPitchStatus: boolean;
-    canViewPitchDate: boolean;
-  }
+  filterState: ActivityFilterState
 ): boolean {
   return hasActivityFilterCriteria(filterState);
 }
@@ -161,7 +142,6 @@ export function ActivityTableFilters({
   defaultSortDirection,
   sortColumns,
   categoryOptions,
-  pitchRequiredStatusOptions,
   statusOptions,
   tagOptions,
   leadTeamOptions,
@@ -174,21 +154,7 @@ export function ActivityTableFilters({
   activeSavedFilterId = null,
   onResetAll,
   hasClearableFilters = false,
-  pitchFieldVisibility: pitchFieldVisibilityProp,
 }: ActivityTableFiltersProps) {
-  const { user } = useAuth();
-  const pitchFieldVisibility = useMemo(() => {
-    if (pitchFieldVisibilityProp) return pitchFieldVisibilityProp;
-    if (!user) {
-      return { canViewPitchStatus: false, canViewPitchDate: false };
-    }
-    const ctx = { permissions: user.permissions, roleName: user.roleName };
-    return {
-      canViewPitchStatus: canViewActivityFieldScope(ctx, 'pitchStatus'),
-      canViewPitchDate: canViewActivityFieldScope(ctx, 'pitchDate'),
-    };
-  }, [pitchFieldVisibilityProp, user]);
-
   const { rows: lookAheadSectionRows } = useLookAheadSectionRows();
   const getLookAheadSectionLabel = useCallback(
     (value: string) =>
@@ -200,7 +166,6 @@ export function ActivityTableFilters({
     return {
       statusOptions,
       categoryOptions,
-      pitchRequiredStatusOptions,
       tagOptions,
       leadTeamOptions,
       commsContactOptions,
@@ -212,7 +177,6 @@ export function ActivityTableFilters({
   }, [
     statusOptions,
     categoryOptions,
-    pitchRequiredStatusOptions,
     tagOptions,
     leadTeamOptions,
     commsContactOptions,
@@ -325,10 +289,6 @@ export function ActivityTableFilters({
 
   const categorySelectedIds = filterState.categoryIds;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
-
-  const canViewPitchStatus = pitchFieldVisibility.canViewPitchStatus;
-  const canViewPitchDate = pitchFieldVisibility.canViewPitchDate;
-  const showPitchFilter = canViewPitchStatus || canViewPitchDate;
 
   const filterSlots = useMemo<ResponsiveFilterSlot[]>(
     () => [
@@ -503,60 +463,6 @@ export function ActivityTableFilters({
           clearAriaLabel: 'Clear Translations filter',
         },
       },
-      ...(showPitchFilter
-        ? [
-            {
-              key: 'pitch',
-              label: 'Pitch',
-              panel: (
-                <PitchFilterPanel
-                  filterState={filterState}
-                  onFilterStateChange={onFilterStateChange}
-                  pitchRequiredStatusOptions={pitchRequiredStatusOptions}
-                  canViewPitchStatus={canViewPitchStatus}
-                  canViewPitchDate={canViewPitchDate}
-                />
-              ),
-              triggerProps: {
-                active: (() => {
-                  const pitchDateRangeActive =
-                    filterState.pitchDateFilter.kind === 'scheduled' &&
-                    isDateRangeActive(filterState.pitchDateFilter.dateRange);
-                  const statusPart =
-                    canViewPitchStatus &&
-                    filterState.pitchRequiredStatusNames.length > 0;
-                  const datePart =
-                    canViewPitchDate &&
-                    (filterState.pitchDateFilter.kind !== 'any' ||
-                      pitchDateRangeActive);
-                  return statusPart || datePart;
-                })(),
-                count: (() => {
-                  const pitchDateRangeActive =
-                    filterState.pitchDateFilter.kind === 'scheduled' &&
-                    isDateRangeActive(filterState.pitchDateFilter.dateRange);
-                  return (
-                    (canViewPitchStatus
-                      ? filterState.pitchRequiredStatusNames.length
-                      : 0) +
-                    (canViewPitchDate &&
-                    (filterState.pitchDateFilter.kind !== 'any' ||
-                      pitchDateRangeActive)
-                      ? 1
-                      : 0)
-                  );
-                })(),
-                onClear: () =>
-                  onFilterStateChange({
-                    ...filterState,
-                    pitchRequiredStatusNames: [],
-                    pitchDateFilter: { kind: 'any' },
-                  }),
-                clearAriaLabel: 'Clear Pitch filter',
-              },
-            } satisfies ResponsiveFilterSlot,
-          ]
-        : []),
       buildIdArrayFilterSlot(
         'eventPlanner',
         'Event planner',
@@ -579,7 +485,6 @@ export function ActivityTableFilters({
       handleTagIdsChange,
       handleTranslationRequiredStatusIdsChange,
       handleTranslationLanguageIdsChange,
-      pitchRequiredStatusOptions,
       statusOptions,
       statusSelectedValues,
       tagOptions,
@@ -588,9 +493,6 @@ export function ActivityTableFilters({
       leadTeamOptions,
       commsContactOptions,
       eventPlannerOptions,
-      showPitchFilter,
-      canViewPitchStatus,
-      canViewPitchDate,
     ]
   );
 
@@ -598,7 +500,7 @@ export function ActivityTableFilters({
     <div
       className="flex flex-nowrap items-center justify-between gap-8"
       role="search"
-      aria-label="Filter activities by date, category, lead team, comms contact, status, Look Ahead, tags, translations, pitch, event planner, and keyword"
+      aria-label="Filter activities by date, category, lead team, comms contact, status, Look Ahead, tags, translations, event planner, and keyword"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <div className="relative max-w-md min-w-[240px] shrink-0">

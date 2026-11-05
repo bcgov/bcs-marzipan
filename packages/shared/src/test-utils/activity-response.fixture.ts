@@ -45,9 +45,7 @@ export function createMockActivityResponse(
     summary: 'Test summary',
     significance: 'Test significance',
 
-    // Lead organization
-    leadOrgId: null,
-    leadOrgName: null,
+    organizationDetails: [],
 
     // Scheduling
     isAllDay: false,
@@ -59,12 +57,13 @@ export function createMockActivityResponse(
     timeStatusId: 1,
     venueStatusId: 1,
     schedulingNotes: null,
-    strategy: null,
 
     // News Release
     newsReleaseOriginId: null,
-    newsReleaseId: null,
     newsReleaseDistributionId: null,
+    releaseSchedulingMode: null,
+    releaseTimeOffsetMinutes: null,
+    releaseTime: null,
 
     // Look Ahead
     executiveSummary: null,
@@ -73,15 +72,12 @@ export function createMockActivityResponse(
 
     // Notes and additional fields
     notes: null,
-    pitchDate: null,
-    pitchRequiredStatusId: null,
     translationsRequiredStatusId: null,
     premierRequestedId: null,
     visibility: DEFAULT_VISIBILITY,
 
     // Ownership
     leadTeamId: 1,
-    leadMinistryId: 1,
     activityStatusId: 1,
 
     // Audit fields (fixed timestamps for deterministic tests)
@@ -113,13 +109,11 @@ export function createMockActivityResponse(
     newsReleaseOrigin: null,
     newsReleaseDistribution: null,
     premierRequested: null,
-    pitchRequiredStatus: null,
     translationsRequiredStatus: null,
     leadMinistry: null,
     leadMinistryAbbreviation: null,
     leadTeamDisplayName: null,
     venueAddress: null,
-    reportSettings: [],
     flags: [],
 
     // Apply overrides

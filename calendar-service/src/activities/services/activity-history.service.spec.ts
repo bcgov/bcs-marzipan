@@ -247,6 +247,11 @@ describe('ActivityHistoryService', () => {
           actionType: 'updated',
           changes: [
             { field: 'title', oldValue: 'A', newValue: 'B' },
+            {
+              field: 'notes',
+              oldValue: 'general',
+              newValue: 'updated general',
+            },
             { field: 'notes', oldValue: 'secret', newValue: 'updated' },
           ],
           notes: null,
@@ -544,28 +549,16 @@ describe('ActivityHistoryService', () => {
       expect(result.get('leadTeamId')?.get(10)).toBe('Team Alpha');
     });
 
-    it('should resolve leadMinistryId to ministry display name', async () => {
-      terminalDb.where.mockResolvedValueOnce([
-        { id: 3, displayName: 'Ministry of Finance' },
-      ]);
-      const result = await service.buildEntityResolutionMaps(
-        terminalDb as never,
-        { leadMinistryId: 3 },
-        { leadMinistryId: 4 }
-      );
-      expect(result.get('leadMinistryId')?.get(3)).toBe('Ministry of Finance');
-    });
-
-    it('should resolve leadOrgId to organization display name', async () => {
+    it('should resolve organizationId in organizations to display name', async () => {
       terminalDb.where.mockResolvedValueOnce([
         { id: 7, displayName: 'Acme Corp' },
       ]);
       const result = await service.buildEntityResolutionMaps(
         terminalDb as never,
-        { leadOrgId: 7 },
-        { leadOrgId: 8 }
+        { organizations: [{ organizationId: 7, isLead: true }] },
+        { organizations: [{ organizationId: 8, isLead: true }] }
       );
-      expect(result.get('leadOrgId')?.get(7)).toBe('Acme Corp');
+      expect(result.get('organizationId')?.get(7)).toBe('Acme Corp');
     });
 
     it('should make separate DB queries for each FK field type present', async () => {
@@ -762,7 +755,11 @@ describe('ActivityHistoryService', () => {
           sampleRow({
             id: 1,
             changes: [
-              { field: 'notes', oldValue: 'secret', newValue: 'updated' },
+              {
+                field: 'notes',
+                oldValue: 'secret',
+                newValue: 'updated',
+              },
             ],
           }),
           sampleRow({
@@ -795,7 +792,16 @@ describe('ActivityHistoryService', () => {
           sampleRow({
             changes: [
               { field: 'title', oldValue: 'A', newValue: 'B' },
-              { field: 'notes', oldValue: 'secret', newValue: 'updated' },
+              {
+                field: 'notes',
+                oldValue: 'general',
+                newValue: 'updated general',
+              },
+              {
+                field: 'notes',
+                oldValue: 'secret',
+                newValue: 'updated',
+              },
             ],
           }),
         ],
