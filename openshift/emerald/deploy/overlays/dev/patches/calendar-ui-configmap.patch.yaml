@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: corpcal-ui-config
-data:
-  API_PROXY_UPSTREAM: http://corpcal-service:3001

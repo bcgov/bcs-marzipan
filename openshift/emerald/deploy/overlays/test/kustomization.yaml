@@ -2,7 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
-
 namespace: dc4c90-test
 labels:
   - pairs:
@@ -10,7 +9,6 @@ labels:
       env: test
     includeSelectors: false
 
-# Replace images built into the OpenShift internal registry.
 images:
   - name: corpcal-service:latest
     newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-test/corpcal-service
@@ -20,6 +18,9 @@ images:
     newTag: 0.0.1
   - name: corpcal-db-migrate:latest
     newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-test/corpcal-db-migrate
+    newTag: 0.0.1
+  - name: corpcal-db-seed:latest
+    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-test/corpcal-db-seed
     newTag: 0.0.1
 
 patches:

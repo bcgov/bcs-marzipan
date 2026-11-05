@@ -4,8 +4,7 @@ metadata:
   name: corpcal-db-seed-job
   annotations:
     argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
-    argocd.argoproj.io/sync-wave: '2'
+    argocd.argoproj.io/sync-wave: '1'
   labels:
     app: corpcal-db-seed-job
     app.kubernetes.io/name: corpcal
