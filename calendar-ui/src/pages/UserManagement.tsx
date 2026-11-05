@@ -62,7 +62,12 @@ export function Users() {
           </TabsList>
         </div>
 
-        <TabsContent value="users" className="mt-0">
+        <TabsContent
+          value="users"
+          forceMount
+          hidden={activeTab !== 'users'}
+          className="mt-0"
+        >
           <UsersTabContent />
 
           <UserCreateModal
@@ -71,7 +76,12 @@ export function Users() {
           />
         </TabsContent>
 
-        <TabsContent value="teams" className="mt-0">
+        <TabsContent
+          value="teams"
+          forceMount
+          hidden={activeTab !== 'teams'}
+          className="mt-0"
+        >
           {canViewTeams && <TeamsTabContent />}
         </TabsContent>
       </Tabs>
