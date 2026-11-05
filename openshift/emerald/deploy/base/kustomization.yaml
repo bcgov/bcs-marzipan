@@ -19,6 +19,5 @@ resources:
   - database/postgres-backup-configmap.yaml
   - database/migration/calendar-db-migrate-job.yaml
   - database/migration/calendar-db-seed-job.yaml
-
 # secrets are not included in the resources list to avoid exposing sensitive information in the kustomization.yaml file
 # apply secrets separately using kubectl apply -f calendar-service/secret.yaml, kubectl apply -f calendar-ui/secret.yaml, kubectl apply -f database/postgres-secret.yaml, and kubectl apply -f database/postgres-backup-secret.yaml

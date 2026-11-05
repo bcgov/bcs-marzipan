@@ -2,7 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
-
 namespace: dc4c90-dev
 labels:
   - pairs:
@@ -10,7 +9,6 @@ labels:
       env: dev
     includeSelectors: false
 
-# Replace images built into the OpenShift internal registry.
 images:
   - name: corpcal-service:latest
     newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/corpcal-service
@@ -21,8 +19,10 @@ images:
   - name: corpcal-db-migrate:latest
     newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/corpcal-db-migrate
     newTag: 0.0.1
+  - name: corpcal-db-seed:latest
+    newName: artifacts.developer.gov.bc.ca/gdc4-corpcal-dev/corpcal-db-seed
+    newTag: 0.0.1
 
 patches:
   - path: patches/calendar-service-configmap.patch.yaml
-  - path: patches/calendar-ui-configmap.patch.yaml
   - path: patches/calendar-db-seed-job.patch.yaml
