@@ -199,8 +199,10 @@ let mockActivityWebSocketOptions: {
   onDataUpdated?: () => void;
 } = {};
 let mockActivitySocketConnection:
-  'connected' | 'reconnecting' | 'browser-offline' | 'disconnected' =
-  'connected';
+  | 'connected'
+  | 'reconnecting'
+  | 'browser-offline'
+  | 'disconnected' = 'connected';
 vi.mock('../hooks/useActivityWebSocket', () => ({
   useActivityWebSocket: (
     _activityId: number,

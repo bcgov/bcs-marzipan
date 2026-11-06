@@ -103,7 +103,11 @@ export function isManualCompleteEligible(
 // ============================================================================
 
 export type CompletionSchedule =
-  'every_15_minutes' | 'hourly' | 'twice_daily' | 'daily' | 'never';
+  | 'every_15_minutes'
+  | 'hourly'
+  | 'twice_daily'
+  | 'daily'
+  | 'never';
 export type CompletionBufferMinutes = 0 | 15 | 30 | 45;
 
 export const COMPLETION_SCHEDULES: readonly CompletionSchedule[] = [
@@ -175,7 +179,9 @@ export const ACTIVITY_COMPLETION_BUFFER_KEY =
  * Used by calendar-service and calendar-ui for a stable API contract.
  */
 export type ActivityCompletionBatchSkipReason =
-  'in_flight' | 'advisory_lock' | 'error';
+  | 'in_flight'
+  | 'advisory_lock'
+  | 'error';
 
 export type ActivityCompletionBatchRunResult = {
   updated: number;

@@ -75,8 +75,11 @@ export function toSentenceCase(s: string): string {
     );
 }
 
-/** Two-letter initials for an avatar fallback. */
+/** Two-letter initials for an avatar fallback. Returns "SYSTEM" for Calendar System user. */
 export function getInitialsFromName(name: string): string {
+  if (name === 'Calendar System') {
+    return 'SYSTEM';
+  }
   return name
     .split(' ')
     .map((part) => part[0])

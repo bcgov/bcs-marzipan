@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
+  Bot,
   ChevronDown,
   LogOut,
   Pencil,
@@ -47,9 +48,12 @@ import { getNotificationTargetPath } from '@/lib/notification-links';
 import { SystemBanner } from './SystemBanner';
 
 /**
- * Get initials from display name
+ * Get initials from display name. Returns "SYSTEM" for Calendar System user.
  */
 function getInitials(name: string): string {
+  if (name === 'Calendar System') {
+    return 'SYSTEM';
+  }
   return name
     .split(' ')
     .map((part) => part[0])
@@ -422,7 +426,11 @@ const Header = () => {
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                        {getInitials(user.displayName)}
+                        {user.displayName === 'Calendar System' ? (
+                          <Bot className="h-4 w-4" />
+                        ) : (
+                          getInitials(user.displayName)
+                        )}
                       </AvatarFallback>
                     </Avatar>
                     <span className="hidden text-sm font-medium text-slate-700 sm:inline">

@@ -537,7 +537,9 @@ Returns a map where keys are role IDs and values are arrays of permission rows. 
         "hasPermission": false
       }
     ],
-    "3": [/* role 3 permissions */]
+    "3": [
+      /* role 3 permissions */
+    ]
   }
 }
 ```

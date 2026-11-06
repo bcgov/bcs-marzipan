@@ -1,5 +1,8 @@
 type ActivityTableEmptyStateVariant =
-  'no-data' | 'no-search-match' | 'no-filter-match' | 'no-favourites';
+  | 'no-data'
+  | 'no-search-match'
+  | 'no-filter-match'
+  | 'no-favourites';
 
 const EMPTY_MESSAGES: Record<
   ActivityTableEmptyStateVariant,
