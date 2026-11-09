@@ -105,6 +105,26 @@ export const PERMISSIONS = {
     UNSHARE_ALL: 'activities.unshare.all',
     /** May omit public last-updated on save unless renewPublicLastUpdated is true. */
     PUBLIC_LAST_UPDATED_DEFER: 'activities.publicLastUpdated.defer',
+    FILTERS: {
+      /**
+       * Show the Look Ahead filter. Admin+ only to reduce UI clutter.
+       * Look Ahead is an operational metric primarily relevant to administrators.
+       * Assigned to: Advanced Editor, Admin, System Admin.
+       */
+      VIEW_LOOK_AHEAD: 'activities.filter.view_look_ahead',
+      /**
+       * Show Event Planner filter. Advanced Viewer+ only.
+       * Event planner details are relevant for planning and coordination workflows.
+       * Assigned to: Advanced Viewer, Advanced Editor, Admin, System Admin.
+       */
+      VIEW_EVENT_PLANNER: 'activities.filter.view_event_planner',
+      /**
+       * Show Translation Status and Language filters. Advanced Viewer+ only.
+       * Translation filtering is part of the editorial workflow.
+       * Assigned to: Advanced Viewer, Advanced Editor, Admin, System Admin.
+       */
+      VIEW_TRANSLATIONS: 'activities.filter.view_translations',
+    },
   },
   DRAFTS: {
     VIEW: 'drafts.view',
@@ -181,9 +201,17 @@ export const PERMISSIONS = {
  * Extract all permission string values as a union type from PERMISSIONS constant.
  * Results in: 'activities.view' | 'activities.create' | ... | 'system.manage_permissions'
  *
- * Uses a conditional type to properly distribute over the union of category objects,
- * extracting all values from each category and unioning them together.
+ * Recursively extracts all string values, including those in nested objects like FILTERS.
  */
 type PermissionCategory = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
-type ExtractValues<T> = T extends Record<string, string> ? T[keyof T] : never;
+type ExtractValues<T> =
+  T extends Record<string, infer U>
+    ? U extends string
+      ? U
+      : U extends Record<string, infer V>
+        ? V extends string
+          ? V
+          : never
+        : never
+    : never;
 export type PermissionKey = ExtractValues<PermissionCategory>;

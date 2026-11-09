@@ -16,6 +16,7 @@ import {
 } from '@/components/table/SortDropdown';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
+import { useActivityFilterVisibility } from '@/hooks/useActivityFilterVisibility';
 import {
   getLookAheadSectionLabelFromRows,
   useLookAheadSectionRows,
@@ -156,6 +157,8 @@ export function ActivityTableFilters({
   hasClearableFilters = false,
 }: ActivityTableFiltersProps) {
   const { rows: lookAheadSectionRows } = useLookAheadSectionRows();
+  const filterVisibility = useActivityFilterVisibility();
+
   const getLookAheadSectionLabel = useCallback(
     (value: string) =>
       getLookAheadSectionLabelFromRows(lookAheadSectionRows, value),
@@ -290,8 +293,11 @@ export function ActivityTableFilters({
   const categorySelectedIds = filterState.categoryIds;
   const statusSelectedValues = filterState.activityStatusIds.map(String);
 
-  const filterSlots = useMemo<ResponsiveFilterSlot[]>(
-    () => [
+  // Build filter slots dynamically, conditionally including permission-scoped filters.
+  // This reduces UI clutter for users without advanced permissions.
+  // See useActivityFilterVisibility for visibility rules per role.
+  const filterSlots = useMemo<ResponsiveFilterSlot[]>(() => {
+    const slots: ResponsiveFilterSlot[] = [
       {
         key: 'scheduledDate',
         label: 'Date',
@@ -346,7 +352,7 @@ export function ActivityTableFilters({
       },
       {
         key: 'lead',
-        label: 'Lead',
+        label: 'Lead team',
         panel: (
           <LeadTeamFilterPanel
             teamOptions={leadTeamOptions}
@@ -361,7 +367,7 @@ export function ActivityTableFilters({
           count: filterState.leadTeamIds.length,
           onClear: () =>
             onFilterStateChange({ ...filterState, leadTeamIds: [] }),
-          clearAriaLabel: 'Clear Lead filter',
+          clearAriaLabel: 'Clear Lead team filter',
         },
       },
       buildIdArrayFilterSlot(
@@ -392,7 +398,12 @@ export function ActivityTableFilters({
           clearAriaLabel: 'Clear Status filter',
         },
       },
-      {
+    ];
+
+    // Look Ahead filter: Admin+ only to reduce clutter for regular users.
+    // This operational metric is only relevant for administrators.
+    if (filterVisibility.lookAhead) {
+      slots.push({
         key: 'lookAhead',
         label: 'Look Ahead',
         panel: (
@@ -416,25 +427,32 @@ export function ActivityTableFilters({
             }),
           clearAriaLabel: 'Clear Look Ahead filter',
         },
+      });
+    }
+
+    // Tags (always visible)
+    slots.push({
+      key: 'tags',
+      label: 'Tags',
+      panel: (
+        <TagsFilterPanel
+          tagOptions={tagOptions}
+          selectedTagIds={filterState.tagIds}
+          onTagIdsChange={handleTagIdsChange}
+        />
+      ),
+      triggerProps: {
+        active: filterState.tagIds.length > 0,
+        count: filterState.tagIds.length,
+        onClear: () => handleTagIdsChange([]),
+        clearAriaLabel: 'Clear Tags filter',
       },
-      {
-        key: 'tags',
-        label: 'Tags',
-        panel: (
-          <TagsFilterPanel
-            tagOptions={tagOptions}
-            selectedTagIds={filterState.tagIds}
-            onTagIdsChange={handleTagIdsChange}
-          />
-        ),
-        triggerProps: {
-          active: filterState.tagIds.length > 0,
-          count: filterState.tagIds.length,
-          onClear: () => handleTagIdsChange([]),
-          clearAriaLabel: 'Clear Tags filter',
-        },
-      },
-      {
+    });
+
+    // Translations filter: Advanced Viewer+ only.
+    // Editorial workflow (translation status and languages) is relevant for planners and above.
+    if (filterVisibility.translations) {
+      slots.push({
         key: 'translations',
         label: 'Translations',
         panel: (
@@ -462,39 +480,48 @@ export function ActivityTableFilters({
             }),
           clearAriaLabel: 'Clear Translations filter',
         },
-      },
-      buildIdArrayFilterSlot(
-        'eventPlanner',
-        'Event planner',
-        'eventPlannerLeadIds',
-        eventPlannerOptions,
-        filterState,
-        onFilterStateChange,
-        'Search event planners...',
-        'Search event planners'
-      ),
-    ],
-    [
-      filterState,
-      onFilterStateChange,
-      categoryOptions,
-      categorySelectedIds,
-      handleCategoryChange,
-      handleDateRangeChange,
-      handleStatusChange,
-      handleTagIdsChange,
-      handleTranslationRequiredStatusIdsChange,
-      handleTranslationLanguageIdsChange,
-      statusOptions,
-      statusSelectedValues,
-      tagOptions,
-      translationStatusOptions,
-      translationOptions,
-      leadTeamOptions,
-      commsContactOptions,
-      eventPlannerOptions,
-    ]
-  );
+      });
+    }
+
+    // Event Planner filter: Advanced Viewer+ only.
+    // Detailed event planning details are relevant for planners and above.
+    if (filterVisibility.eventPlanner) {
+      slots.push(
+        buildIdArrayFilterSlot(
+          'eventPlanner',
+          'Event planner',
+          'eventPlannerLeadIds',
+          eventPlannerOptions,
+          filterState,
+          onFilterStateChange,
+          'Search event planners...',
+          'Search event planners'
+        )
+      );
+    }
+
+    return slots;
+  }, [
+    filterState,
+    onFilterStateChange,
+    categoryOptions,
+    categorySelectedIds,
+    handleCategoryChange,
+    handleDateRangeChange,
+    handleStatusChange,
+    handleTagIdsChange,
+    handleTranslationRequiredStatusIdsChange,
+    handleTranslationLanguageIdsChange,
+    statusOptions,
+    statusSelectedValues,
+    tagOptions,
+    translationStatusOptions,
+    translationOptions,
+    leadTeamOptions,
+    commsContactOptions,
+    eventPlannerOptions,
+    filterVisibility,
+  ]);
 
   return (
     <div
