@@ -13,8 +13,9 @@ import {
 } from './useEditLockIntent';
 
 describe('useEditLockIntent', () => {
-  const acquire = vi.fn((): Promise<ActivityLockAcquireResult> =>
-    Promise.resolve({ ok: true as const })
+  const acquire = vi.fn(
+    (): Promise<ActivityLockAcquireResult> =>
+      Promise.resolve({ ok: true as const })
   );
 
   function useHarness(props: {

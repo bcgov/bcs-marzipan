@@ -3,7 +3,10 @@ import type { ActivityResponse } from '@corpcal/shared/schemas';
 import { getActivityConcurrencyToken } from './activity-concurrency-token';
 
 export type ServerLockState =
-  'idle' | 'owned' | 'locked-by-other' | 'unavailable';
+  | 'idle'
+  | 'owned'
+  | 'locked-by-other'
+  | 'unavailable';
 
 export type ActivityEditResyncAction =
   | 'continue-owned'

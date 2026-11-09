@@ -40,7 +40,10 @@ describe('useEditLockSession activity heartbeat', () => {
       isEditing?: boolean;
       idleExpiresAt?: string;
       socketConnection?:
-        'connected' | 'reconnecting' | 'browser-offline' | 'disconnected';
+        | 'connected'
+        | 'reconnecting'
+        | 'browser-offline'
+        | 'disconnected';
     } = {}
   ) {
     const form = useForm<ActivityFormData>({

@@ -1,5 +1,8 @@
 type HistoryListEmptyStateVariant =
-  'no-data' | 'no-search-match' | 'no-filter-match' | 'no-timeframe';
+  | 'no-data'
+  | 'no-search-match'
+  | 'no-filter-match'
+  | 'no-timeframe';
 
 const EMPTY_MESSAGES: Record<
   HistoryListEmptyStateVariant,

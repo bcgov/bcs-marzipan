@@ -12,9 +12,11 @@ describe('useActivityFilterVisibility', () => {
       user: null,
       isLoading: false,
       isAuthenticated: false,
+      pendingLoginModal: false,
       login: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
+      dismissLoginModal: vi.fn(),
       hasPermission: () => true, // All permissions granted
       hasAnyPermission: () => true,
       hasAllPermissions: () => true,
@@ -33,9 +35,11 @@ describe('useActivityFilterVisibility', () => {
       user: null,
       isLoading: false,
       isAuthenticated: false,
+      pendingLoginModal: false,
       login: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
+      dismissLoginModal: vi.fn(),
       hasPermission: () => false, // No permissions granted
       hasAnyPermission: () => false,
       hasAllPermissions: () => false,
@@ -54,9 +58,11 @@ describe('useActivityFilterVisibility', () => {
       user: null,
       isLoading: false,
       isAuthenticated: false,
+      pendingLoginModal: false,
       login: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
+      dismissLoginModal: vi.fn(),
       hasPermission: (key: string) => {
         // Advanced Viewer has eventPlanner and translations, not look ahead
         return (
@@ -81,9 +87,11 @@ describe('useActivityFilterVisibility', () => {
       user: null,
       isLoading: false,
       isAuthenticated: false,
+      pendingLoginModal: false,
       login: vi.fn(),
       logout: vi.fn(),
       refreshUser: vi.fn(),
+      dismissLoginModal: vi.fn(),
       hasPermission: () => false, // Editors don't have any of the scoped filter permissions
       hasAnyPermission: () => false,
       hasAllPermissions: () => false,

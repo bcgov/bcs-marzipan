@@ -34,7 +34,11 @@ export type CheckEmailBody = z.infer<typeof checkEmailBodySchema>;
  * - `inactive` — deactivated, unknown email, or not eligible for local login
  */
 export type CheckEmailStatus =
-  'active' | 'pending' | 'requires_reset' | 'sso_recommended' | 'inactive';
+  | 'active'
+  | 'pending'
+  | 'requires_reset'
+  | 'sso_recommended'
+  | 'inactive';
 
 export interface CheckEmailResponse {
   status: CheckEmailStatus;

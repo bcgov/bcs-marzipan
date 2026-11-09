@@ -31,7 +31,8 @@ export type ResolveBumpPublicLastUpdatedError = {
 };
 
 export type ResolveBumpPublicLastUpdatedResult =
-  { ok: true; bumpPublic: boolean } | ResolveBumpPublicLastUpdatedError;
+  | { ok: true; bumpPublic: boolean }
+  | ResolveBumpPublicLastUpdatedError;
 
 export function hasPublicLastUpdatedDeferPermission(
   permissions: string[]

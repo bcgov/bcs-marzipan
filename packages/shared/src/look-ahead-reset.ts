@@ -92,7 +92,11 @@ export const LOOK_AHEAD_RESET_JOB_ADVISORY_KEY = 1;
 // ============================================================================
 
 export type LookAheadResetBatchSkipReason =
-  'in_flight' | 'advisory_lock' | 'error' | 'cron_stopped' | 'paused_today';
+  | 'in_flight'
+  | 'advisory_lock'
+  | 'error'
+  | 'cron_stopped'
+  | 'paused_today';
 
 export type LookAheadResetBatchRunResult = {
   updated: number;
