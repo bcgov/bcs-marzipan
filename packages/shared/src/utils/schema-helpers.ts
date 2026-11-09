@@ -178,9 +178,7 @@ type AssertCityFieldsExist = {
 };
 
 type AssertGovernmentRepresentativeFieldsExist = {
-  [
-    K in keyof GovernmentRepresentativeResponse
-  ]: K extends keyof GovernmentRepresentative
+  [K in keyof GovernmentRepresentativeResponse]: K extends keyof GovernmentRepresentative
     ? true
     : `Field '${K & string}' in GovernmentRepresentativeResponse does not exist in GovernmentRepresentative database type`;
 };

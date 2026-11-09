@@ -35,7 +35,8 @@ import type { DataScope } from '../../policy/dto/user-context.dto';
 function buildConfirmedStatusMatch(
   db: DatabaseService['db'],
   statusIdColumn:
-    typeof activities.dateStatusId | typeof activities.timeStatusId,
+    | typeof activities.dateStatusId
+    | typeof activities.timeStatusId,
   statusTable: typeof dateStatuses | typeof timeStatuses,
   wantConfirmed: boolean
 ): SQL {

@@ -14,7 +14,9 @@ export type LockHandoffPendingPayload = {
 };
 
 export type LockHandoffResolvedOutcome =
-  'completed' | 'cancelled' | 'aborted_no_holder_lock';
+  | 'completed'
+  | 'cancelled'
+  | 'aborted_no_holder_lock';
 
 export type LockHandoffResolvedPayload = {
   activityId: number;
