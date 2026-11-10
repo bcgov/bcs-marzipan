@@ -51,3 +51,9 @@ Configure in GitHub **Settings → Branches → Branch protection rules** for `d
 | CI / pre-merge | Full `npm run verify`                                                                              |
 
 Run `npm run verify` locally before opening or updating a PR when you want full parity with CI without waiting on Actions.
+
+## Editor formatting vs CI
+
+CI enforces formatting with **`npm run format:check`** (Prettier from `package-lock.json` after `npm ci`). That is the canonical bar—not the Prettier version bundled inside the VS Code extension.
+
+Committed **`.vscode/settings.json`** pins the editor to `./node_modules/prettier` and formats `.ts` / `.tsx` with Prettier on save. See [Pre-Commit Hooks — Editor setup](PRE_COMMIT_HOOKS.md#editor-setup-vs-code--cursor). After pulling changes, run `npm ci` and reload the editor if format-on-save misbehaves.
