@@ -1,6 +1,15 @@
 /**
- * Re-export from shared for a single source of truth for activity field labels.
- * Use for form validation messages, history/changelog, confirm modals, and anywhere
- * activity field names are displayed.
+ * Activity field labels for calendar-ui (wraps shared labels with form-specific aliases).
  */
-export { getActivityFieldLabel } from '@corpcal/shared/utils';
+import { getActivityFieldLabel as getSharedActivityFieldLabel } from '@corpcal/shared/utils';
+
+/**
+ * Maps an activity field name to a user-friendly label.
+ * `organizations` validation maps to Lead organization in the split form UI.
+ */
+export function getActivityFieldLabel(fieldName: string): string {
+  if (fieldName === 'organizations') {
+    return getSharedActivityFieldLabel('leadOrganization');
+  }
+  return getSharedActivityFieldLabel(fieldName);
+}

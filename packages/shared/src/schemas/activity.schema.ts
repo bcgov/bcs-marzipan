@@ -352,10 +352,9 @@ const junctionTableIdsSchema = z.object({
   commsContacts: z.array(commsContactSchema).optional(), // Comms contacts with isLead flag (exactly one must have isLead=true)
 });
 
-const ORGANIZATIONS_REQUIRED_MESSAGE =
-  'Ministries and organizations is required';
+const ORGANIZATIONS_REQUIRED_MESSAGE = 'Lead organization is required';
 const ORGANIZATION_LEAD_REFINE_MESSAGE =
-  'Exactly one ministries and organizations entry must be marked as lead';
+  'Exactly one lead organization must be selected';
 const ORGANIZATION_LEAD_REFINE_PATH = ['organizations'] as const;
 const LEAD_CONTACT_REFINE_MESSAGE = 'A lead contact is required';
 const LEAD_CONTACT_REFINE_PATH = ['commsContacts'] as const;

@@ -265,6 +265,9 @@ export function CloneActivityModal({
         next.delete(path);
       } else {
         next.add(path);
+        if (path === 'jointOrganizations') {
+          next.add('leadOrganization');
+        }
       }
       return next;
     });

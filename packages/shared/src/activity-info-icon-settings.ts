@@ -9,7 +9,8 @@ export const ACTIVITY_INFO_ICON_FIELD_KEYS = [
   'isConfidential',
   'isIssue',
   'summary',
-  'organizations',
+  'leadOrganization',
+  'jointOrganizations',
   'significance',
   'tagIds',
   'notes',
@@ -102,5 +103,16 @@ export const ACTIVITY_INFO_ICON_FIELD_KEY_SET: ReadonlySet<string> = new Set(
 export function buildActivityInfoIconSettingsMap(
   settings: ActivityInfoIconSettings
 ): Map<ActivityInfoIconFieldKey, string> {
-  return new Map(settings.items.map((item) => [item.fieldKey, item.text]));
+  const map = new Map(settings.items.map((item) => [item.fieldKey, item.text]));
+  const legacyOrganizations = settings.items.find(
+    (item) => (item.fieldKey as string) === 'organizations'
+  )?.text;
+  if (
+    legacyOrganizations != null &&
+    !map.has('leadOrganization') &&
+    !map.has('jointOrganizations')
+  ) {
+    map.set('leadOrganization', legacyOrganizations);
+  }
+  return map;
 }

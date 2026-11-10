@@ -66,6 +66,7 @@ import {
   CLONE_ALLOWED_INCLUDE_PATHS,
   CLONE_MODAL_SCHEDULE_FIELD_KEYS,
   CLONE_NEVER_COPIED_FIELD_KEYS,
+  CLONE_ORGANIZATION_FIELD_PATHS,
   CLONE_SYSTEM_FIELD_KEYS,
   type ActivityFormData,
   type ActivityHistoryEntry,
@@ -3468,6 +3469,25 @@ export class ActivitiesService {
       for (const path of CLONE_ADVANCED_FIELD_PATHS) {
         if (!includedSet.has(path)) {
           delete (dto as Record<string, unknown>)[path];
+        }
+      }
+
+      const includeLeadOrg = includedSet.has(CLONE_ORGANIZATION_FIELD_PATHS[0]);
+      const includeJointOrgs = includedSet.has(
+        CLONE_ORGANIZATION_FIELD_PATHS[1]
+      );
+      const dtoRecord = dto as Record<string, unknown>;
+      if (!includeLeadOrg && !includeJointOrgs) {
+        delete dtoRecord.organizations;
+      } else if (Array.isArray(dto.organizations)) {
+        const filtered = dto.organizations.filter((o) => {
+          if (o.isLead === true) return includeLeadOrg;
+          return includeJointOrgs;
+        });
+        if (filtered.length === 0) {
+          delete dtoRecord.organizations;
+        } else {
+          dto.organizations = filtered;
         }
       }
     }

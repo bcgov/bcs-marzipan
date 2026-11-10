@@ -157,15 +157,35 @@ export const CLONE_ADVANCED_SECTIONS = ACTIVITY_FORM_SECTION_IDS.filter((id) =>
 
 export type CloneAdvancedSection = (typeof CLONE_ADVANCED_SECTIONS)[number];
 
+/** Virtual clone paths replacing the single `organizations` form field. */
+export const CLONE_ORGANIZATION_FIELD_PATHS = [
+  'leadOrganization',
+  'jointOrganizations',
+] as const;
+
+function replaceOrganizationsClonePaths(
+  paths: readonly string[]
+): readonly string[] {
+  const out: string[] = [];
+  for (const path of paths) {
+    if (path === 'organizations') {
+      out.push(...CLONE_ORGANIZATION_FIELD_PATHS);
+    } else {
+      out.push(path);
+    }
+  }
+  return out;
+}
+
 function buildCloneAdvancedFieldGroups(): Record<
   CloneAdvancedSection,
   readonly string[]
 > {
   const groups = {} as Record<CloneAdvancedSection, readonly string[]>;
   for (const id of CLONE_ADVANCED_SECTIONS) {
-    groups[id] = ACTIVITY_FORM_SECTION_FIELDS[id]
-      .filter(isCloneAdvancedField)
-      .map(String);
+    groups[id] = replaceOrganizationsClonePaths(
+      ACTIVITY_FORM_SECTION_FIELDS[id].filter(isCloneAdvancedField).map(String)
+    );
   }
   return groups;
 }

@@ -2,7 +2,10 @@ import { useState } from 'react';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { plainTextFromActivityRichField } from '@corpcal/shared/utils';
+import {
+  plainTextFromActivityRichField,
+  splitOrganizationFormEntries,
+} from '@corpcal/shared/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -16,6 +19,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { FormLookupData } from '@/hooks/useFormLookups';
+import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { getHistoryFieldLabel } from '@/lib/activity-history-format';
 import { formatTime12h } from '@/lib/datetime-utils';
 
@@ -301,6 +305,47 @@ export function CreateActivityConfirmModal({
               if (value === undefined || value === null || value === '')
                 return null;
               if (Array.isArray(value) && value.length === 0) return null;
+
+              if (field === 'organizations' && Array.isArray(value)) {
+                const orgRows = value as NonNullable<
+                  ActivityFormData['organizations']
+                >;
+                const { lead, joints } = splitOrganizationFormEntries(orgRows);
+                const formatOrg = (o: NonNullable<typeof lead>): string => {
+                  if (o.organizationName?.trim())
+                    return o.organizationName.trim();
+                  if (o.organizationId != null) {
+                    const org = lookups.organizations.find(
+                      (entry) =>
+                        String(entry.value) === String(o.organizationId)
+                    );
+                    return org?.label ?? String(o.organizationId);
+                  }
+                  return '(unknown)';
+                };
+                return (
+                  <div key={field} className="space-y-2">
+                    <div className="flex gap-2 text-sm">
+                      <span className="min-w-[120px] shrink-0 font-medium">
+                        {getActivityFieldLabel('leadOrganization')}:
+                      </span>
+                      <span className="text-muted-foreground break-words">
+                        {lead ? formatOrg(lead) : '(empty)'}
+                      </span>
+                    </div>
+                    {joints.length > 0 ? (
+                      <div className="flex gap-2 text-sm">
+                        <span className="min-w-[120px] shrink-0 font-medium">
+                          {getActivityFieldLabel('jointOrganizations')}:
+                        </span>
+                        <span className="text-muted-foreground break-words">
+                          {joints.map(formatOrg).join(', ')}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              }
 
               return (
                 <div key={field} className="flex gap-2 text-sm">
