@@ -65,10 +65,18 @@ jobs:
 
           if [[ -n "${{ inputs.image_tag }}" ]]; then
             IMAGE_TAG="${{ inputs.image_tag }}"
+          elif [[ "${{ inputs.target_environment }}" == "dev" ]]; then
+            if [[ -n "${APP_VERSION}" ]]; then
+              IMAGE_TAG="${APP_VERSION}-${GITHUB_SHA::7}"
+            else
+              echo "::error::No image tag was provided and vars.APP_VERSION is empty. Dev promotions require APP_VERSION or an explicit image_tag."
+              exit 1
+            fi
           elif [[ -n "${APP_VERSION}" ]]; then
             IMAGE_TAG="${APP_VERSION}"
           else
-            IMAGE_TAG="${GITHUB_SHA::7}"
+            echo "::error::No image tag was provided and vars.APP_VERSION is empty. Set APP_VERSION or pass image_tag for all Emerald promotions."
+            exit 1
           fi
 
           case "${{ inputs.target_environment }}" in
