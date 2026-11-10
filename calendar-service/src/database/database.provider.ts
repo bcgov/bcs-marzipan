@@ -64,7 +64,7 @@ export const databaseProvider = {
     });
 
     // Create Drizzle client with schema
-
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const db = drizzle(queryClient, { schema });
 
     return db;
