@@ -18,11 +18,7 @@ import {
 import { releaseLockWithRetry as releaseLockApiWithRetry } from '../lib/release-lock-with-retry';
 
 export type LockState =
-  | 'idle'
-  | 'checking'
-  | 'acquiring'
-  | 'owned'
-  | 'locked-by-other';
+  'idle' | 'checking' | 'acquiring' | 'owned' | 'locked-by-other';
 
 type SettledLockState = Extract<
   LockState,
@@ -33,11 +29,7 @@ export type LockRefreshResult = SettledLockState | 'unavailable';
 
 /** Result of a heartbeat; `throttled` means the server did not record the activity. */
 export type HeartbeatOutcome =
-  | 'ok'
-  | 'throttled'
-  | 'failed'
-  | 'lock-gone'
-  | 'no-lock';
+  'ok' | 'throttled' | 'failed' | 'lock-gone' | 'no-lock';
 
 export type EnsureLockForSubmitResult =
   | 'ready'
@@ -64,8 +56,7 @@ export type ActivityLockAcquireFailure = {
 };
 
 export type ActivityLockAcquireResult =
-  | { ok: true }
-  | ({ ok: false } & ActivityLockAcquireFailure);
+  { ok: true } | ({ ok: false } & ActivityLockAcquireFailure);
 
 function acquireFailureReasonFromClassified(
   result: Exclude<
@@ -101,7 +92,7 @@ type UseActivityLockResult = {
   sendHeartbeat: (options?: {
     keepAlive?: boolean;
   }) => Promise<HeartbeatOutcome>;
-  /** Estimated server time (ms), from the last heartbeat `serverTime` offset. */
+  /** Estimated server time (ms), from the last server-stamped response. */
   getServerNowMs: () => number;
   /** Update lock idle expiry from heartbeat response without full acquire. */
   mergeLockIdleExpiry: (idleExpiresAt: string) => void;
@@ -252,6 +243,7 @@ export function useActivityLock(
     getLockStatus(activityId)
       .then((status) => {
         if (cancelled) return;
+        recordServerTime(status.serverTime);
         if (status.locked && !status.isOwnLock && status.lockedBy) {
           setLockState('locked-by-other');
           setLockedByUsername(status.lockedBy.username);
@@ -285,7 +277,7 @@ export function useActivityLock(
     return () => {
       cancelled = true;
     };
-  }, [activityId, currentUserId]);
+  }, [activityId, currentUserId, recordServerTime]);
 
   const mergeLockIdleExpiry = useCallback((idleExpiresAt: string) => {
     const cur = lockRef.current;
@@ -297,6 +289,7 @@ export function useActivityLock(
 
   const applyServerLockStatus = useCallback(
     (status: Awaited<ReturnType<typeof getLockStatus>>): SettledLockState => {
+      recordServerTime(status.serverTime);
       const info =
         currentUserId != null
           ? buildLockInfoFromStatus(activityId, currentUserId, status)
@@ -319,7 +312,7 @@ export function useActivityLock(
       setLockedByUsername(null);
       return 'idle';
     },
-    [activityId, currentUserId]
+    [activityId, currentUserId, recordServerTime]
   );
 
   const refreshLockFromServer =
@@ -383,7 +376,7 @@ export function useActivityLock(
       lastAcquireFailureRef.current = { reason: null, lockedByUsername: null };
       try {
         const acquired = await acquireLock(activityId);
-        recordServerTime(acquired.acquiredAt);
+        recordServerTime(acquired.serverTime);
         unconfirmedActivityAtRef.current = null;
         lockRef.current = acquired;
         setLock(acquired);
@@ -407,6 +400,7 @@ export function useActivityLock(
         if (reason === 'locked_by_other' || status === LOCKED_STATUS) {
           try {
             const statusRes = await getLockStatus(activityId);
+            recordServerTime(statusRes.serverTime);
             if (statusRes.locked && !statusRes.isOwnLock) {
               const otherUsername = statusRes.lockedBy?.username ?? null;
               setLockedByUsername(otherUsername);

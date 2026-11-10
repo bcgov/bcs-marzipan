@@ -1,5 +1,6 @@
 import {
   Activity,
+  ArrowUp,
   Bookmark,
   Building2,
   Eraser,
@@ -40,7 +41,10 @@ import {
   GovernmentRepresentativesAdmin,
   MinistriesAdmin,
   MinistryGroupsAdmin,
+  OrganizationsAdmin,
+  OrganizationTypesAdmin,
   PermissionsVisibilityAdminSection,
+  ReleaseTypesAdmin,
   TagsAdmin,
   ThemesAdmin,
   TranslationLanguagesAdmin,
@@ -71,6 +75,12 @@ export function Settings() {
   const isSystemAdmin = user?.roleId === SYSTEM_ROLE_IDS.SYSTEM_ADMIN;
   const canManageRecurringLockout = Boolean(
     user?.permissions?.includes(PERMISSIONS.SETTINGS.MANAGE_RECURRING_LOCKOUT)
+  );
+  const canManageCommsMaterials = Boolean(
+    user?.permissions?.includes(PERMISSIONS.LOOKUPS.MANAGE_COMMS_MATERIALS)
+  );
+  const canManageReleaseTypes = Boolean(
+    user?.permissions?.includes(PERMISSIONS.LOOKUPS.MANAGE_RELEASE_TYPES)
   );
 
   const sections = [
@@ -134,6 +144,18 @@ export function Settings() {
     },
     { id: 'ministries' as Section, label: 'Ministries', icon: Building2 },
     {
+      id: 'organization-types' as Section,
+      label: 'Organization types',
+      icon: Building2,
+      show: isSystemAdmin,
+    },
+    {
+      id: 'organizations' as Section,
+      label: 'Organizations',
+      icon: Building2,
+      show: isSystemAdmin,
+    },
+    {
       id: 'representatives' as Section,
       label: 'Government representatives',
       icon: Users,
@@ -141,9 +163,16 @@ export function Settings() {
     { id: 'categories' as Section, label: 'Categories', icon: FolderTree },
     { id: 'cities' as Section, label: 'Cities', icon: MapPin },
     {
+      id: 'release-types' as Section,
+      label: 'Release types',
+      icon: Share2,
+      show: canManageReleaseTypes,
+    },
+    {
       id: 'comms' as Section,
       label: 'Communications materials',
       icon: FileText,
+      show: canManageCommsMaterials,
     },
     { id: 'tags' as Section, label: 'Tags', icon: Tag },
     { id: 'statuses' as Section, label: 'Activity statuses', icon: Activity },
@@ -195,7 +224,7 @@ function SettingsPageContent({
     icon: typeof Megaphone;
   }>;
 }) {
-  const { closeAllSections, hasOpenSections, openAllSections, openSection } =
+  const { closeAllSections, hasOpenSections, openSection } =
     useSettingsSection();
   const [showBackToNavigation, setShowBackToNavigation] = useState(false);
   const [footerBarRect, setFooterBarRect] = useState<{
@@ -215,17 +244,6 @@ function SettingsPageContent({
     () => new Set(visibleSections.map((section) => section.id)),
     [visibleSections]
   );
-
-  const sectionBulkActionClassName =
-    'shrink-0 rounded-md px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none';
-
-  const handleToggleAllSections = useCallback(() => {
-    if (hasOpenSections) {
-      closeAllSections();
-      return;
-    }
-    openAllSections(visibleSections.map((section) => section.id));
-  }, [closeAllSections, hasOpenSections, openAllSections, visibleSections]);
 
   const scrollToSection = useCallback((sectionId: Section) => {
     document
@@ -319,12 +337,11 @@ function SettingsPageContent({
             </div>
             <button
               type="button"
-              onClick={handleToggleAllSections}
-              className={sectionBulkActionClassName}
+              onClick={closeAllSections}
+              disabled={!hasOpenSections}
+              className="shrink-0 rounded-md px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
             >
-              {hasOpenSections
-                ? 'Collapse all sections'
-                : 'Expand all sections'}
+              Close all sections
             </button>
           </div>
           <div className="p-4 sm:p-6">
@@ -396,6 +413,14 @@ function SettingsPageContent({
             <MinistriesAdmin />
           </div>
 
+          <div id="section-organization-types">
+            <OrganizationTypesAdmin />
+          </div>
+
+          <div id="section-organizations">
+            <OrganizationsAdmin />
+          </div>
+
           <div id="section-representatives">
             <GovernmentRepresentativesAdmin />
           </div>
@@ -406,6 +431,10 @@ function SettingsPageContent({
 
           <div id="section-cities">
             <CitiesAdmin />
+          </div>
+
+          <div id="section-release-types">
+            <ReleaseTypesAdmin />
           </div>
 
           <div id="section-comms">
@@ -462,8 +491,9 @@ function SettingsPageContent({
                 block: 'start',
               })
             }
-            className="rounded-md px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
+            className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
           >
+            <ArrowUp className="h-4 w-4" aria-hidden />
             Scroll to top
           </button>
         </div>

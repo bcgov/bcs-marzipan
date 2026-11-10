@@ -12,6 +12,7 @@ import { getDefaultFormValues } from '@/lib/activity-form-defaults';
 
 import {
   ACTIVITY_FIELD_SET_OPTS,
+  ACTIVITY_FORM_USER_EDIT_EVENT,
   setActivityFormFieldValue,
 } from './activity-form-set-field';
 
@@ -61,6 +62,24 @@ describe('setActivityFormFieldValue', () => {
     expect(triggerSpy).toHaveBeenCalledWith('venueAddress.provinceOrState');
   });
 
+  it('signals a user edit for custom form controls', () => {
+    const onUserEdit = vi.fn();
+    window.addEventListener(ACTIVITY_FORM_USER_EDIT_EVENT, onUserEdit);
+
+    const { result } = renderHook(() =>
+      useForm<ActivityFormData>({
+        defaultValues: getDefaultFormValues() as ActivityFormData,
+      })
+    );
+
+    act(() => {
+      setActivityFormFieldValue(result.current, 'isIssue', true);
+    });
+
+    expect(onUserEdit).toHaveBeenCalledTimes(1);
+    window.removeEventListener(ACTIVITY_FORM_USER_EDIT_EVENT, onUserEdit);
+  });
+
   it('updates formState errors after filling a required custom field', async () => {
     const validSummary =
       '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Summary text"}]}]}';
@@ -76,9 +95,11 @@ describe('setActivityFormFieldValue', () => {
           title: 'Test',
           summary: EMPTY_RICH_TEXT_DOC,
           leadTeamId: 1,
-          leadMinistryId: 1,
           categoryIds: [],
+          startDate: '2026-06-01',
+          endDate: '2026-06-01',
           commsContacts: [{ userId: 1, isLead: true }],
+          organizations: [{ organizationId: 1, isLead: true }],
         } as ActivityFormData,
       })
     );
@@ -98,7 +119,7 @@ describe('setActivityFormFieldValue', () => {
     });
 
     await act(async () => {
-      const valid = await result.current.trigger('summary');
+      const valid = await result.current.trigger();
       expect(valid).toBe(false);
     });
     expect(result.current.getFieldState('summary').error).toBeDefined();
@@ -126,7 +147,10 @@ describe('setActivityFormFieldValue', () => {
             '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Summary text"}]}]}',
           leadTeamId: 1,
           categoryIds: [1],
+          startDate: '2026-06-01',
+          endDate: '2026-06-01',
           commsContacts: [{ userId: 1, isLead: true }],
+          organizations: [{ organizationId: 1, isLead: true }],
         } as ActivityFormData,
       })
     );

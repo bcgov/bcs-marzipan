@@ -11,8 +11,6 @@ function row(partial: Partial<ActivityTableRow>): ActivityTableRow {
     title: 'Test',
     activityCategories: [],
     categoryIds: [],
-    pitchDate: null,
-    pitchRequiredStatus: null,
     isConfidential: false,
     isIssue: false,
     summary: '',
@@ -39,8 +37,7 @@ function row(partial: Partial<ActivityTableRow>): ActivityTableRow {
     eventPlanners: [],
     eventPlannerLeadIds: [],
     leadTeamId: null,
-    leadMinistryId: null,
-    leadOrgId: null,
+    leadOrganizationId: null,
     commsContactLeadUserId: null,
     translationsRequired: [],
     translationsRequiredStatus: null,
@@ -71,7 +68,6 @@ describe('LeadContactLine', () => {
       />
     );
 
-    expect(screen.getByText('Owner:')).toBeTruthy();
     expect(screen.getByText('Jane Smith')).toBeTruthy();
     expect(screen.queryByText('HLTH Comms')).toBeNull();
     expect(screen.queryByText(/^\+/)).toBeNull();

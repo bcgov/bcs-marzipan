@@ -63,10 +63,9 @@ describe('canViewActivityFieldScope', () => {
     expect(canViewActivityFieldScope(viewer, 'lookAhead')).toBe(false);
   });
 
-  it('returns true for translations, pitchStatus, and pitchDate without grants (no view permission)', () => {
+  it('returns true for translations and releaseTime without grants (no view permission)', () => {
     expect(canViewActivityFieldScope(viewer, 'translations')).toBe(true);
-    expect(canViewActivityFieldScope(viewer, 'pitchStatus')).toBe(true);
-    expect(canViewActivityFieldScope(viewer, 'pitchDate')).toBe(true);
+    expect(canViewActivityFieldScope(viewer, 'releaseTime')).toBe(true);
   });
 
   it('returns false for view-restricted scopes when Editor lacks grants', () => {
@@ -74,10 +73,9 @@ describe('canViewActivityFieldScope', () => {
     expect(canViewActivityFieldScope(editor, 'lookAhead')).toBe(false);
   });
 
-  it('returns true for translations, pitchStatus, and pitchDate when Editor lacks other grants', () => {
+  it('returns true for translations and releaseTime when Editor lacks other grants', () => {
     expect(canViewActivityFieldScope(editor, 'translations')).toBe(true);
-    expect(canViewActivityFieldScope(editor, 'pitchStatus')).toBe(true);
-    expect(canViewActivityFieldScope(editor, 'pitchDate')).toBe(true);
+    expect(canViewActivityFieldScope(editor, 'releaseTime')).toBe(true);
   });
 
   it('returns true for Advanced Viewer (role bypass) without scope grants', () => {
@@ -149,9 +147,8 @@ describe('getViewableFieldScopes', () => {
   it('returns only always-viewable scopes for Viewer without grants', () => {
     const result = getViewableFieldScopes(viewer);
     expect(result.has('translations')).toBe(true);
-    expect(result.has('pitchDate')).toBe(true);
-    expect(result.has('pitchStatus')).toBe(true);
-    expect(result.size).toBe(3);
+    expect(result.has('releaseTime')).toBe(true);
+    expect(result.size).toBe(2);
   });
 
   it('returns all scopes for Advanced Viewer', () => {
@@ -164,9 +161,8 @@ describe('getViewableFieldScopes', () => {
     const result = getViewableFieldScopes(editorWithNotesGrant);
     expect(result.has('notes')).toBe(true);
     expect(result.has('translations')).toBe(true);
-    expect(result.has('pitchStatus')).toBe(true);
-    expect(result.has('pitchDate')).toBe(true);
-    expect(result.size).toBe(4);
+    expect(result.has('releaseTime')).toBe(true);
+    expect(result.size).toBe(3);
   });
 });
 

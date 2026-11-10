@@ -19,9 +19,7 @@ export type CloneProvenanceFieldKey =
  * nudge to add a label.
  */
 export type ActivityFieldLabelKey =
-  | keyof ActivityFormData
-  | keyof VenueAddressBase
-  | CloneProvenanceFieldKey;
+  keyof ActivityFormData | keyof VenueAddressBase | CloneProvenanceFieldKey;
 
 /**
  * Form/API field keys that are required on create (matches createActivityRequestSchema
@@ -36,6 +34,8 @@ export const ACTIVITY_CREATE_REQUIRED_FIELD_KEYS = [
   'title',
   'summary',
   'leadTeamId',
+  'startDate',
+  'endDate',
   'dateStatusId',
   'timeStatusId',
   'commsContacts',
@@ -58,9 +58,7 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   venueStatusId: 'Venue status',
   activityStatusId: 'Activity status',
   leadTeamId: 'Lead team',
-  leadMinistryId: 'Lead ministry',
-  leadOrgId: 'Lead organization',
-  leadOrgName: 'Lead organization name',
+  organizations: 'Ministries and organizations',
   commsContactLeadId: 'Comms lead',
   commsContacts: 'Comms contacts',
   eventPlanners: 'Event planners',
@@ -70,7 +68,6 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   sharedWithTeamIds: 'Share with',
   visibility: 'Restrict access',
   notes: 'Notes',
-  strategy: 'Strategy',
   isIssue: 'Issue',
   isAllDay: 'All day',
   isConfidential: 'Confidential (details not for Look Ahead)',
@@ -79,18 +76,16 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   endDate: 'End date',
   startTime: 'Start time',
   endTime: 'End time',
-  pitchDate: 'Pitch date',
   executiveSummary: 'Executive summary',
   schedulingNotes: 'Scheduling and approval notes',
   lookAheadStatus: 'Look Ahead status',
   lookAheadSection: 'Look Ahead section',
-  pitchRequiredStatusId: 'Pitch required',
   translationsRequiredStatusId: 'Translations required',
-  newsReleaseId: 'News release',
+  releaseSchedulingMode: 'Release scheduling',
+  releaseTimeOffsetMinutes: 'Release time',
   newsReleaseOriginId: 'News release origin',
   newsReleaseDistributionId: 'News release distribution',
   premierRequestedId: 'Premier requested',
-  reportSettings: 'Report settings',
   representatives: 'Representatives',
   // Clone provenance (recorded in history `changes` only)
   clonedFromActivityId: 'Cloned from activity',

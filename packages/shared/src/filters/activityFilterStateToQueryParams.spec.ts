@@ -96,29 +96,4 @@ describe('activityFilterStateToQueryParams', () => {
     expect(result.categoryIds).toEqual([1, 2]);
     expect(result.leadTeamIds).toEqual([10]);
   });
-
-  it('maps pitch scheduled without bounds to pitchDateScheduled', () => {
-    const result = activityFilterStateToQueryParams(
-      {
-        filterState: {
-          ...DEFAULT_ACTIVITY_FILTER_STATE,
-          pitchDateFilter: {
-            kind: 'scheduled',
-            dateRange: {
-              startDate: '',
-              endDate: '',
-              noStartDate: false,
-              noEndDate: false,
-            },
-          },
-        },
-        showCompleted: false,
-        showDeleted: false,
-      },
-      {},
-      false
-    );
-    expect(result.pitchDateScheduled).toBe(true);
-    expect(result.pitchDateFrom).toBeUndefined();
-  });
 });

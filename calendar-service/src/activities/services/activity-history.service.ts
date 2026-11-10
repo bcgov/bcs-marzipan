@@ -7,7 +7,6 @@ import {
   activityHistory,
   activitySubscriptions,
   categories,
-  ministries,
   organizations,
   tags,
   teams,
@@ -1004,7 +1003,7 @@ export class ActivityHistoryService {
   /**
    * Fetches display-name maps for user, team, ministry, and org IDs that appear
    * in the given old/new activity objects for the five FK fields that store raw
-   * IDs (lastUpdatedBy, createdBy, leadTeamId, leadMinistryId, leadOrgId).
+   * IDs (lastUpdatedBy, createdBy, leadTeamId, organizationId in organizations).
    *
    * Returns a map of field name → (id → displayName) so that
    * generateChangeList can substitute readable labels instead of numeric IDs.
@@ -1064,35 +1063,34 @@ export class ActivityHistoryService {
       result.set('leadTeamId', teamMap);
     }
 
-    // Ministries: leadMinistryId
-    const ministryIds = collectIds('leadMinistryId');
-    if (ministryIds.length > 0) {
-      const rows = await db
-        .select({ id: ministries.id, displayName: ministries.displayName })
-        .from(ministries)
-        .where(inArray(ministries.id, ministryIds));
-      const ministryMap = new Map<number, string>();
-      for (const r of rows) {
-        ministryMap.set(r.id, r.displayName);
+    const orgIds = new Set<number>();
+    for (const obj of [oldActivity, newActivity]) {
+      const rows = obj.organizations;
+      if (!Array.isArray(rows)) continue;
+      for (const item of rows) {
+        if (
+          item &&
+          typeof item === 'object' &&
+          typeof (item as { organizationId?: unknown }).organizationId ===
+            'number'
+        ) {
+          orgIds.add((item as { organizationId: number }).organizationId);
+        }
       }
-      result.set('leadMinistryId', ministryMap);
     }
-
-    // Organizations: leadOrgId
-    const orgIds = collectIds('leadOrgId');
-    if (orgIds.length > 0) {
+    if (orgIds.size > 0) {
       const rows = await db
         .select({
           id: organizations.id,
           displayName: organizations.displayName,
         })
         .from(organizations)
-        .where(inArray(organizations.id, orgIds));
+        .where(inArray(organizations.id, [...orgIds]));
       const orgMap = new Map<number, string>();
       for (const r of rows) {
         orgMap.set(r.id, r.displayName);
       }
-      result.set('leadOrgId', orgMap);
+      result.set('organizationId', orgMap);
     }
 
     return result;

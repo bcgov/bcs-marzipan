@@ -35,6 +35,19 @@ The pre-push hook runs a **slim quality gate** before code reaches the remote (f
 
 See [CI and branch protection](CI.md) for GitHub required checks and `npm run verify`.
 
+## Editor setup (VS Code / Cursor)
+
+Format-on-save should match **`npm run format:check`** and CI. The repo commits [`.vscode/settings.json`](../.vscode/settings.json) and [`.vscode/extensions.json`](../.vscode/extensions.json) for that.
+
+1. Open the **repository root** as the workspace (not a subfolder only).
+2. Run **`npm ci`** so `node_modules/prettier` and Prettier plugins exist.
+3. Install the recommended **Prettier** extension when prompted (`esbenp.prettier-vscode`).
+4. Confirm the CLI version: `npx prettier --version` should match the version in `package-lock.json`.
+
+Workspace settings use **`prettier.prettierPath`: `./node_modules/prettier`** so the editor does not use the extension’s bundled Prettier (which can drift from CI). TypeScript (`.ts`), TSX, JavaScript, JSON, and JSONC all use Prettier on save.
+
+If formatting fails in the editor, run `npm ci` at the repo root and reload the window. For bulk fixes before push, run `npm run format` then `npm run format:check`.
+
 ## How It Works
 
 ### 1. Pre-Commit Hook Trigger
@@ -124,6 +137,8 @@ See [scripts/test/README.md](../scripts/test/README.md) for detailed documentati
 
 ## Configuration Files
 
+- **`.vscode/settings.json`** - VS Code / Cursor format-on-save; workspace Prettier binary and plugins
+- **`.vscode/extensions.json`** - Recommends the Prettier extension
 - **`.husky/pre-commit`** - Husky hook that triggers lint-staged
 - **`.husky/commit-msg`** - Husky hook that validates commit messages using Commitlint
 - **`.husky/pre-push`** - Husky hook: slim quality gate and branch naming

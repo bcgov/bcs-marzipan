@@ -88,19 +88,14 @@ describe('filterActivitiesQuerySchema', () => {
     }
   });
 
-  it('parses confirmed filters and pitch date flags', () => {
+  it('parses confirmed filters and scheduled overlap flag', () => {
     const result = filterActivitiesQuerySchema.parse({
       dateConfirmedFilter: 'confirmed',
-      timeConfirmedFilter: 'not_confirmed',
-      pitchDateNotScheduled: 'true',
-      pitchDateFrom: '2025-01-01',
-      pitchDateTo: '2025-01-31',
+      timeConfirmedFilter: 'tbd',
       scheduledDateRangeOverlaps: 'true',
     });
     expect(result.dateConfirmedFilter).toBe('confirmed');
-    expect(result.timeConfirmedFilter).toBe('not_confirmed');
-    expect(result.pitchDateNotScheduled).toBe(true);
-    expect(result.pitchDateFrom).toBe('2025-01-01');
+    expect(result.timeConfirmedFilter).toBe('tbd');
     expect(result.scheduledDateRangeOverlaps).toBe(true);
   });
 

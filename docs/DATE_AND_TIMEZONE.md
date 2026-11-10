@@ -28,7 +28,7 @@ and `@corpcal/database`.
 
 A specific calendar day with no time and no timezone, e.g. `2026-04-27`. This
 is a label for "the scheduled day" in the corp calendar. It is the right type
-for activity `startDate`, `endDate`, and `pitchDate`.
+for activity `startDate` and `endDate`.
 
 - **Wire format**: `YYYY-MM-DD` string.
 - **Database**: PostgreSQL `DATE` (timezone-agnostic).
@@ -57,7 +57,8 @@ scheduled time of day", e.g. `09:30`. It is the right type for activity
 
 An exact moment in time, the same value for every observer. Think audit and
 optimistic-concurrency timestamps such as `createdDateTime`,
-`lastUpdatedDateTime`, `news_release_date_time`.
+`lastUpdatedDateTime`, and derived activity `releaseTime` (stored as
+`release_time` when the schedule anchor and offset are confirmable).
 
 - **Wire format**: ISO 8601 with the trailing `Z`, e.g.
   `2026-04-27T15:30:00.000Z`.
@@ -173,7 +174,7 @@ calling `toLocaleDateString` / `toLocaleTimeString` without `timeZone`.
 
 ## Wire contract for the API
 
-- `startDate`, `endDate`, `pitchDate`: `CalendarDateString | null`
+- `startDate`, `endDate`: `CalendarDateString | null`
   (`YYYY-MM-DD`).
 - `startTime`, `endTime`: `CivilTimeString | null` (`HH:mm`).
 - `createdDateTime`, `lastUpdatedDateTime`, and other instants:

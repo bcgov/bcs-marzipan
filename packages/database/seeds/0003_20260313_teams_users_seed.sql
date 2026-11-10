@@ -2,7 +2,7 @@
 -- TEAMS AND USER-TEAM ASSIGNMENTS
 -- Seeds teams for datascoping; run after lookups (users, ministries) and
 -- optionally after activities seed. Idempotent: ON CONFLICT DO NOTHING.
--- Team ministry (teams.ministry_id) is set below for scoping.
+-- Team primary organization (teams.primary_organization_id) is set below for scoping.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -72,37 +72,49 @@ INSERT INTO team_categories (category_id, team_id, is_active) VALUES
 ON CONFLICT (category_id, team_id) DO NOTHING;
 
 -- ----------------------------------------------------------------------------
--- TEAM MINISTRY (teams.ministry_id)
+-- TEAM_COMMS_MATERIALS
+-- Links team-scoped comms materials (comms_materials.visibility = team) to teams.
+-- Requires comms materials config (0001). IGRS team id=35.
+-- ----------------------------------------------------------------------------
+
+INSERT INTO team_comms_materials (comms_material_id, team_id, is_active) VALUES
+  (21, 35, true),
+  (22, 35, true),
+  (23, 35, true)
+ON CONFLICT (comms_material_id, team_id) DO NOTHING;
+
+-- ----------------------------------------------------------------------------
+-- TEAM PRIMARY ORGANIZATION (teams.primary_organization_id)
 -- Ministry Comms (8-32): PREM=1, AF=2, ... WLRS=25 (ministry id matches org id 1-25).
 -- Crown: BC Wildfire->FOR(11), BC Coroners->PSSG(21), EAO->EP(9).
 -- ----------------------------------------------------------------------------
 
-UPDATE teams SET ministry_id = 1 WHERE id = 8;
-UPDATE teams SET ministry_id = 2 WHERE id = 9;
-UPDATE teams SET ministry_id = 3 WHERE id = 10;
-UPDATE teams SET ministry_id = 4 WHERE id = 11;
-UPDATE teams SET ministry_id = 5 WHERE id = 12;
-UPDATE teams SET ministry_id = 6 WHERE id = 13;
-UPDATE teams SET ministry_id = 7 WHERE id = 14;
-UPDATE teams SET ministry_id = 8 WHERE id = 15;
-UPDATE teams SET ministry_id = 9 WHERE id = 16;
-UPDATE teams SET ministry_id = 10 WHERE id = 17;
-UPDATE teams SET ministry_id = 11 WHERE id IN (18, 33);
-UPDATE teams SET ministry_id = 12 WHERE id = 19;
-UPDATE teams SET ministry_id = 13 WHERE id = 20;
-UPDATE teams SET ministry_id = 14 WHERE id = 21;
-UPDATE teams SET ministry_id = 15 WHERE id = 22;
-UPDATE teams SET ministry_id = 16 WHERE id = 23;
-UPDATE teams SET ministry_id = 17 WHERE id = 24;
-UPDATE teams SET ministry_id = 18 WHERE id = 25;
-UPDATE teams SET ministry_id = 19 WHERE id = 26;
-UPDATE teams SET ministry_id = 20 WHERE id = 27;
-UPDATE teams SET ministry_id = 21 WHERE id IN (28, 34);
-UPDATE teams SET ministry_id = 22 WHERE id = 29;
-UPDATE teams SET ministry_id = 23 WHERE id = 30;
-UPDATE teams SET ministry_id = 24 WHERE id = 31;
-UPDATE teams SET ministry_id = 25 WHERE id = 32;
-UPDATE teams SET ministry_id = 9 WHERE id = 36;
+UPDATE teams SET primary_organization_id = 1 WHERE id = 8;
+UPDATE teams SET primary_organization_id = 2 WHERE id = 9;
+UPDATE teams SET primary_organization_id = 3 WHERE id = 10;
+UPDATE teams SET primary_organization_id = 4 WHERE id = 11;
+UPDATE teams SET primary_organization_id = 5 WHERE id = 12;
+UPDATE teams SET primary_organization_id = 6 WHERE id = 13;
+UPDATE teams SET primary_organization_id = 7 WHERE id = 14;
+UPDATE teams SET primary_organization_id = 8 WHERE id = 15;
+UPDATE teams SET primary_organization_id = 9 WHERE id = 16;
+UPDATE teams SET primary_organization_id = 10 WHERE id = 17;
+UPDATE teams SET primary_organization_id = 11 WHERE id IN (18, 33);
+UPDATE teams SET primary_organization_id = 12 WHERE id = 19;
+UPDATE teams SET primary_organization_id = 13 WHERE id = 20;
+UPDATE teams SET primary_organization_id = 14 WHERE id = 21;
+UPDATE teams SET primary_organization_id = 15 WHERE id = 22;
+UPDATE teams SET primary_organization_id = 16 WHERE id = 23;
+UPDATE teams SET primary_organization_id = 17 WHERE id = 24;
+UPDATE teams SET primary_organization_id = 18 WHERE id = 25;
+UPDATE teams SET primary_organization_id = 19 WHERE id = 26;
+UPDATE teams SET primary_organization_id = 20 WHERE id = 27;
+UPDATE teams SET primary_organization_id = 21 WHERE id IN (28, 34);
+UPDATE teams SET primary_organization_id = 22 WHERE id = 29;
+UPDATE teams SET primary_organization_id = 23 WHERE id = 30;
+UPDATE teams SET primary_organization_id = 24 WHERE id = 31;
+UPDATE teams SET primary_organization_id = 25 WHERE id = 32;
+UPDATE teams SET primary_organization_id = 9 WHERE id = 36;
 
 -- ----------------------------------------------------------------------------
 -- TEAM ROLE (teams.role_id)
@@ -247,15 +259,13 @@ WHERE NOT EXISTS (
   WHERE uh.user_id = u.id AND uh.action_type = 'created'
 );
 
--- 3. Mock team field grants (teams seed ids 1-8). GCPE 1-7 + PREM (8): notes / lookAhead / pitchStatus view.
+-- 3. Mock team field grants (teams seed ids 1-8). GCPE 1-7 + PREM (8): lookAhead view.
 INSERT INTO team_permissions (team_id, permission_id)
 SELECT u.team_id, p.id
 FROM (VALUES (1), (2), (3), (4), (5), (6), (7), (8)) AS u(team_id)
 CROSS JOIN permissions p
 WHERE p.key IN (
-  'activities.notes.view',
-  'activities.lookAhead.view',
-  'activities.pitchStatus.view'
+  'activities.lookAhead.view'
 )
 ON CONFLICT (team_id, permission_id) DO NOTHING;
 
@@ -264,10 +274,8 @@ INSERT INTO team_permissions (team_id, permission_id)
 SELECT 2, p.id
 FROM permissions p
 WHERE p.key IN (
-  'activities.notes.edit',
   'activities.lookAhead.edit',
-  'activities.translations.edit',
-  'activities.pitchDate.edit'
+  'activities.translations.edit'
 )
 ON CONFLICT (team_id, permission_id) DO NOTHING;
 
@@ -277,11 +285,3 @@ SELECT 1, p.id
 FROM permissions p
 WHERE p.key = 'activities.translations.edit'
 ON CONFLICT (team_id, permission_id) DO NOTHING;
--- Enforce pitch-required status edit access for Advanced Editor+ roles only.
--- Idempotent and safe to re-run.
-
--- Remove legacy team-scoped edit grants that could allow non-elevated edits.
-DELETE FROM team_permissions tp
-USING permissions p
-WHERE tp.permission_id = p.id
-  AND p.key = 'activities.pitchStatus.edit';

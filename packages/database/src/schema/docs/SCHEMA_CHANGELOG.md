@@ -2,6 +2,15 @@
 
 Append-only log of notable schema and constraint changes. Regenerate SQL migrations with Drizzle Kit from `packages/database` when Drizzle schema changes.
 
+## 2026-11-02 — Ministries and organizations catalog (pending migration 0015)
+
+- **`organization_types`**: Lookup for org category (Ministry, Agency, etc.).
+- **`organizations`**: Unified catalog (`uuid`, `organization_type_id`, `jurisdiction`, **`abbreviation`**); 1:1 **`ministries`** extension (shared `id`).
+- **`activity_organizations`**: Replaces `activities.lead_org_id`, `lead_org_name`, and `lead_ministry_id`; rows are catalog id and/or freeform name with exactly one `is_lead`.
+- **`teams.primary_organization_id`**: Replaces `teams.ministry_id`.
+- **Legacy migration (external apps)**: Backfill one `activity_organizations` lead row per activity from `lead_org_id` or `lead_org_name`; map team `ministry_id` to `primary_organization_id` via org ids; copy ministry display fields onto `organizations` before dropping duplicate columns on `ministries`.
+- **`activities.display_id`**: Prefix is **lead team `abbreviation` only** (not organization abbreviation).
+
 ## 2026-10-02 — Event planners from users; teams "Share with" flag
 
 - **`users.is_event_planner`** (boolean, default false): users offered as Event planner options on activities.

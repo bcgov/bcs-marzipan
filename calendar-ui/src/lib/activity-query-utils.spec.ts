@@ -20,8 +20,6 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     title: '',
     activityCategories: [],
     categoryIds: [],
-    pitchDate: null,
-    pitchRequiredStatus: null,
     isConfidential: false,
     isIssue: false,
     summary: '',
@@ -48,8 +46,7 @@ function makeRow(overrides: Partial<ActivityTableRow> = {}): ActivityTableRow {
     eventPlanners: [],
     eventPlannerLeadIds: [],
     leadTeamId: null,
-    leadMinistryId: null,
-    leadOrgId: null,
+    leadOrganizationId: null,
     commsContactLeadUserId: null,
     translationsRequired: [],
     translationsRequiredStatus: null,
@@ -223,88 +220,6 @@ describe('filterActivityRowsByFilters', () => {
     expect(result.map((r) => r.id)).toEqual([1, 3]);
   });
 
-  it('filters by pitch required status names (case-insensitive)', () => {
-    const rows = [
-      makeRow({ id: 1, pitchRequiredStatus: 'Required' }),
-      makeRow({ id: 2, pitchRequiredStatus: 'Not required' }),
-      makeRow({ id: 3, pitchRequiredStatus: 'TBD' }),
-      makeRow({ id: 4, pitchRequiredStatus: null }),
-    ];
-    const result = filterActivityRowsByFilters(rows, {
-      ...DEFAULT_ACTIVITY_FILTER_STATE,
-      pitchRequiredStatusNames: ['required', 'tbd'],
-    });
-    expect(result.map((r) => r.id)).toEqual([1, 3]);
-  });
-
-  it('does not filter by pitch status when pitchRequiredStatusNames is empty', () => {
-    const rows = [
-      makeRow({ id: 1, pitchRequiredStatus: 'Required' }),
-      makeRow({ id: 2, pitchRequiredStatus: null }),
-    ];
-    const result = filterActivityRowsByFilters(rows, {
-      ...DEFAULT_ACTIVITY_FILTER_STATE,
-      pitchRequiredStatusNames: [],
-    });
-    expect(result.map((r) => r.id)).toEqual([1, 2]);
-  });
-
-  it('filters by pitch date not_scheduled (row must have no pitch date)', () => {
-    const rows = [
-      makeRow({ id: 1, pitchDate: null }),
-      makeRow({ id: 2, pitchDate: '2025-03-01' }),
-      makeRow({ id: 3, pitchDate: null }),
-    ];
-    const result = filterActivityRowsByFilters(rows, {
-      ...DEFAULT_ACTIVITY_FILTER_STATE,
-      pitchDateFilter: { kind: 'not_scheduled' },
-    });
-    expect(result.map((r) => r.id)).toEqual([1, 3]);
-  });
-
-  it('filters by pitch date scheduled with date range', () => {
-    const rows = [
-      makeRow({ id: 1, pitchDate: '2025-02-15' }),
-      makeRow({ id: 2, pitchDate: '2025-01-10' }),
-      makeRow({ id: 3, pitchDate: '2025-03-20' }),
-      makeRow({ id: 4, pitchDate: null }),
-    ];
-    const result = filterActivityRowsByFilters(rows, {
-      ...DEFAULT_ACTIVITY_FILTER_STATE,
-      pitchDateFilter: {
-        kind: 'scheduled',
-        dateRange: {
-          startDate: '2025-02-01',
-          endDate: '2025-02-28',
-          noStartDate: false,
-          noEndDate: false,
-        },
-      },
-    });
-    expect(result.map((r) => r.id)).toEqual([1]);
-  });
-
-  it('pitch date scheduled with empty range includes all rows with pitch date', () => {
-    const rows = [
-      makeRow({ id: 1, pitchDate: '2025-02-15' }),
-      makeRow({ id: 2, pitchDate: '2024-01-01' }),
-      makeRow({ id: 3, pitchDate: null }),
-    ];
-    const result = filterActivityRowsByFilters(rows, {
-      ...DEFAULT_ACTIVITY_FILTER_STATE,
-      pitchDateFilter: {
-        kind: 'scheduled',
-        dateRange: {
-          startDate: '',
-          endDate: '',
-          noStartDate: false,
-          noEndDate: false,
-        },
-      },
-    });
-    expect(result.map((r) => r.id)).toEqual([1, 2]);
-  });
-
   it('filters by date range (activity span must overlap range)', () => {
     const rows = [
       makeRow({
@@ -409,7 +324,7 @@ describe('filterActivityRowsByFilters', () => {
     expect(result.map((r) => r.id)).toEqual([1]);
   });
 
-  it('filters by time not_confirmed only', () => {
+  it('filters by time tbd only', () => {
     const rows = [
       makeRow({ id: 1, dateStatus: 'Confirmed', timeStatus: 'Confirmed' }),
       makeRow({ id: 2, dateStatus: 'Confirmed', timeStatus: 'Not confirmed' }),
@@ -418,7 +333,7 @@ describe('filterActivityRowsByFilters', () => {
     const result = filterActivityRowsByFilters(rows, {
       ...DEFAULT_ACTIVITY_FILTER_STATE,
       dateConfirmedFilter: 'any',
-      timeConfirmedFilter: 'not_confirmed',
+      timeConfirmedFilter: 'tbd',
     });
     expect(result.map((r) => r.id)).toEqual([2, 3]);
   });
@@ -612,7 +527,6 @@ describe('buildOptimisticActivity', () => {
     endTime: null,
     lookAheadStatus: null,
     lookAheadSection: null,
-    pitchDate: null,
     createdDateTime: '2025-01-01T00:00:00Z',
     lastUpdatedDateTime: '2025-01-02T00:00:00Z',
     lastUpdatedBy: 2,
@@ -654,17 +568,19 @@ describe('buildOptimisticActivity', () => {
     const existingWithExtra = {
       ...minimalExisting,
       id: 42,
-      leadOrgId: 10,
+      organizationDetails: [
+        { organizationId: 10, name: 'Existing Org', isLead: true },
+      ],
     } as ActivityListItem;
     const update = {
       id: 999,
-      leadOrgId: 99,
+      organizations: [{ organizationId: 99, isLead: true }],
       title: 'New title',
     } as UpdateActivityRequest;
     const result = buildOptimisticActivity(existingWithExtra, update);
     expect(result.title).toBe('New title');
     expect(result.id).toBe(42);
-    expect(result.leadOrgId).toBe(10);
+    expect(result.organizationDetails?.[0]?.organizationId).toBe(10);
   });
 
   it('returns a copy of existing when update is empty', () => {

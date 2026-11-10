@@ -44,7 +44,9 @@ lerna-debug.log*
 # editor and OS specific files
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 *.patch
 

@@ -23,11 +23,11 @@ import {
   newsReleaseOrigins,
   normalizedLookupName,
   organizations,
+  organizationTypes,
   permissions,
   permissionVisibilityAudit,
-  pitchRequiredStatuses,
-  pitchStatuses,
   premierRequested,
+  releaseTypes,
   reports,
   rolePermissionAudit,
   rolePermissions,
@@ -35,6 +35,7 @@ import {
   sessions,
   tags,
   teamCategories,
+  teamCommsMaterials,
   teams,
   teamTags,
   themes,
@@ -61,7 +62,7 @@ import type {
   MinistryGroupResponse,
   MinistryLookupItem,
   OrganizationLookupItem,
-  PitchStatusLookupItem,
+  ReleaseTypeLookupItem,
   ReportResponse,
   TagLookupItem,
   ThemeLookupItem,
@@ -89,8 +90,10 @@ import {
 } from './lookups-team-metadata.helper';
 import {
   loadActiveCategoryTeamIds,
+  loadActiveCommsMaterialTeamIds,
   loadActiveTagTeamIds,
   syncCategoryTeams,
+  syncCommsMaterialTeams,
   syncTagTeams,
 } from './lookups-team-sync.helper';
 import { REORDERABLE_LOOKUP_TABLES } from './reorderable-lookups';
@@ -291,22 +294,65 @@ export class LookupsService {
   }
 
   /**
+   * Published section order for organization types on the activity form
+   * (respects admin sort mode: manual sort_order vs alphabetical).
+   */
+  private async organizationTypeSortRankById(): Promise<Map<number, number>> {
+    const mode = await this.getLookupSortMode('organization-types');
+    const columns = LOOKUP_LIST_ORDER_COLUMNS['organization-types'];
+    const orderBy = lookupListOrderBy(columns, mode);
+    const rows = await this.databaseService.db
+      .select({
+        id: organizationTypes.id,
+        sortOrder: organizationTypes.sortOrder,
+      })
+      .from(organizationTypes)
+      .where(eq(organizationTypes.isActive, true))
+      .orderBy(...orderBy);
+
+    const map = new Map<number, number>();
+    if (mode === 'alphabetical') {
+      rows.forEach((row, index) => map.set(row.id, index));
+    } else {
+      for (const row of rows) {
+        map.set(row.id, row.sortOrder);
+      }
+    }
+    return map;
+  }
+
+  /**
    * Get all active organizations
    * TODO: Implement scoping based on userId, role, organizationId
    */
   async getOrganizations(
-    _params?: LookupQueryParams
+    _params?: LookupQueryParams,
+    includeInactive = false
   ): Promise<OrganizationLookupItem[]> {
-    const results = await this.databaseService.db
+    const typeSortRanks = await this.organizationTypeSortRankById();
+    const base = this.databaseService.db
       .select({
         id: organizations.id,
+        uuid: organizations.uuid,
         name: organizations.name,
         displayName: organizations.displayName,
-        ministryId: organizations.ministryId,
+        abbreviation: organizations.abbreviation,
+        organizationTypeId: organizations.organizationTypeId,
+        jurisdiction: organizations.jurisdiction,
+        sortOrder: organizations.sortOrder,
+        isActive: organizations.isActive,
+        typeDisplayName: organizationTypes.displayName,
+        typeSortOrder: organizationTypes.sortOrder,
       })
       .from(organizations)
-      .where(eq(organizations.isActive, true))
-      .orderBy(organizations.sortOrder);
+      .leftJoin(
+        organizationTypes,
+        eq(organizations.organizationTypeId, organizationTypes.id)
+      );
+
+    const results = await (
+      includeInactive ? base : base.where(eq(organizations.isActive, true))
+    ).orderBy(organizations.sortOrder);
 
     return results.map((org) => ({
       id: org.id,
@@ -314,8 +360,149 @@ export class LookupsService {
       value: org.id,
       name: org.name,
       displayName: org.displayName,
-      ministryId: org.ministryId,
+      uuid: org.uuid,
+      abbreviation: org.abbreviation,
+      organizationTypeId: org.organizationTypeId,
+      organizationTypeDisplayName: org.typeDisplayName,
+      organizationTypeSortOrder:
+        org.organizationTypeId != null
+          ? (typeSortRanks.get(org.organizationTypeId) ??
+            org.typeSortOrder ??
+            0)
+          : null,
+      jurisdiction: org.jurisdiction,
+      sortOrder: org.sortOrder,
+      isActive: org.isActive,
     }));
+  }
+
+  async getOrganizationTypes(includeInactive = false) {
+    const orderBy = await this.listOrderBy('organization-types');
+    const base = this.databaseService.db.select().from(organizationTypes);
+    const rows = await (
+      includeInactive ? base : base.where(eq(organizationTypes.isActive, true))
+    ).orderBy(...orderBy);
+    return rows;
+  }
+
+  async createOrganizationType(
+    data: {
+      name: string;
+      displayName: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    },
+    currentUserId: number
+  ) {
+    const sortOrder = await this.sortOrderForCreate(
+      'organization-types',
+      data.sortOrder
+    );
+    const now = new Date();
+    const [row] = await this.databaseService.db
+      .insert(organizationTypes)
+      .values({
+        name: data.name,
+        displayName: data.displayName,
+        sortOrder,
+        isActive: data.isActive ?? true,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return row;
+  }
+
+  async updateOrganizationType(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      sortOrder: number;
+      isActive: boolean;
+    }>,
+    currentUserId: number
+  ) {
+    const now = new Date();
+    const [row] = await this.databaseService.db
+      .update(organizationTypes)
+      .set({
+        ...data,
+        lastUpdatedBy: currentUserId,
+        lastUpdatedDateTime: now,
+      })
+      .where(eq(organizationTypes.id, id))
+      .returning();
+    if (!row) throw new NotFoundException('Organization type not found');
+    return row;
+  }
+
+  async createOrganization(
+    data: {
+      name: string;
+      displayName: string;
+      abbreviation?: string | null;
+      organizationTypeId: number;
+      jurisdiction: string;
+      sortOrder?: number;
+      isActive?: boolean;
+      description?: string | null;
+    },
+    currentUserId: number
+  ) {
+    const sortOrder =
+      data.sortOrder !== undefined
+        ? data.sortOrder
+        : await resolveNextSortOrder(this.databaseService.db, organizations);
+    const now = new Date();
+    const [row] = await this.databaseService.db
+      .insert(organizations)
+      .values({
+        name: data.name,
+        displayName: data.displayName,
+        abbreviation: data.abbreviation ?? null,
+        organizationTypeId: data.organizationTypeId,
+        jurisdiction: data.jurisdiction,
+        sortOrder,
+        isActive: data.isActive ?? true,
+        description: data.description ?? null,
+        createdBy: currentUserId,
+        lastUpdatedBy: currentUserId,
+        createdDateTime: now,
+        lastUpdatedDateTime: now,
+      })
+      .returning();
+    return row;
+  }
+
+  async updateOrganization(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string;
+      abbreviation: string | null;
+      organizationTypeId: number;
+      jurisdiction: string;
+      sortOrder: number;
+      isActive: boolean;
+      description: string | null;
+    }>,
+    currentUserId: number
+  ) {
+    const now = new Date();
+    const [row] = await this.databaseService.db
+      .update(organizations)
+      .set({
+        ...data,
+        lastUpdatedBy: currentUserId,
+        lastUpdatedDateTime: now,
+      })
+      .where(eq(organizations.id, id))
+      .returning();
+    if (!row) throw new NotFoundException('Organization not found');
+    return row;
   }
 
   /**
@@ -819,29 +1006,6 @@ export class LookupsService {
   }
 
   /**
-   * Get all active pitch statuses
-   */
-  async getPitchStatuses(): Promise<PitchStatusLookupItem[]> {
-    const results = await this.databaseService.db
-      .select({
-        id: pitchStatuses.id,
-        name: pitchStatuses.name,
-        displayName: pitchStatuses.displayName,
-      })
-      .from(pitchStatuses)
-      .where(eq(pitchStatuses.isActive, true))
-      .orderBy(pitchStatuses.sortOrder);
-
-    return results.map((status) => ({
-      id: status.id,
-      label: status.displayName,
-      value: status.id,
-      name: status.name,
-      displayName: status.displayName,
-    }));
-  }
-
-  /**
    * Return all permissions (for admin management)
    */
   async getAllPermissions(): Promise<
@@ -962,29 +1126,6 @@ export class LookupsService {
       .from(venueStatuses)
       .where(eq(venueStatuses.isActive, true))
       .orderBy(venueStatuses.sortOrder);
-
-    return results.map((status) => ({
-      id: status.id,
-      label: status.displayName,
-      value: status.id,
-      name: status.name,
-      displayName: status.displayName,
-    }));
-  }
-
-  /**
-   * Get all active pitch required statuses (pending, required, not_required)
-   */
-  async getPitchRequiredStatuses(): Promise<LookupItem[]> {
-    const results = await this.databaseService.db
-      .select({
-        id: pitchRequiredStatuses.id,
-        name: pitchRequiredStatuses.name,
-        displayName: pitchRequiredStatuses.displayName,
-      })
-      .from(pitchRequiredStatuses)
-      .where(eq(pitchRequiredStatuses.isActive, true))
-      .orderBy(pitchRequiredStatuses.sortOrder);
 
     return results.map((status) => ({
       id: status.id,
@@ -1427,9 +1568,11 @@ export class LookupsService {
   }
 
   /**
-   * Get all active comms materials
+   * Get all comms materials for lists and forms (includes team + release type metadata).
    */
-  async getCommsMaterials(): Promise<CommsMaterialsLookupItem[]> {
+  async getCommsMaterials(
+    includeAll?: boolean
+  ): Promise<CommsMaterialsLookupItem[]> {
     const orderBy = await this.listOrderBy('comms-materials');
     const results = await this.databaseService.db
       .select({
@@ -1438,18 +1581,106 @@ export class LookupsService {
         displayName: commsMaterials.displayName,
         sortOrder: commsMaterials.sortOrder,
         isActive: commsMaterials.isActive,
+        visibility: commsMaterials.visibility,
+        description: commsMaterials.description,
+        releaseTypeId: commsMaterials.releaseTypeId,
+        rtId: releaseTypes.id,
+        rtName: releaseTypes.name,
+        rtDisplayName: releaseTypes.displayName,
+        rtAudience: releaseTypes.audience,
+        rtAllowsTranslation: releaseTypes.allowsTranslation,
+        rtRequiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
       })
       .from(commsMaterials)
+      .leftJoin(releaseTypes, eq(commsMaterials.releaseTypeId, releaseTypes.id))
+      .where(includeAll ? undefined : eq(commsMaterials.isActive, true))
       .orderBy(...orderBy);
 
-    return results.map((material) => ({
-      id: material.id,
-      label: material.displayName,
-      value: material.id,
-      name: material.name,
-      displayName: material.displayName,
-      sortOrder: material.sortOrder,
-      isActive: material.isActive,
+    const teamScopedIds = results
+      .filter((m) => m.visibility === 'team')
+      .map((m) => m.id);
+    const teamMetadata = await loadTeamMetadataForLookupIds(
+      this.databaseService.db,
+      teamScopedIds,
+      {
+        lookupIdColumn: teamCommsMaterials.commsMaterialId,
+        teamIdColumn: teamCommsMaterials.teamId,
+        junctionTable: teamCommsMaterials,
+      }
+    );
+
+    return results.map((material) => {
+      const visibility = material.visibility as 'global' | 'team';
+      const { teamNames, teamIds } = teamMetadataForLookup(
+        material.id,
+        visibility,
+        teamMetadata
+      );
+      const releaseType =
+        material.rtId != null &&
+        material.rtAudience != null &&
+        material.rtAllowsTranslation != null &&
+        material.rtRequiresNewsReleaseDetails != null
+          ? {
+              id: material.rtId,
+              name: material.rtName!,
+              displayName: material.rtDisplayName!,
+              audience: material.rtAudience as 'media' | 'public',
+              allowsTranslation: material.rtAllowsTranslation,
+              requiresNewsReleaseDetails: material.rtRequiresNewsReleaseDetails,
+            }
+          : null;
+
+      return {
+        id: material.id,
+        label: material.displayName,
+        value: material.id,
+        name: material.name,
+        displayName: material.displayName,
+        sortOrder: material.sortOrder,
+        isActive: material.isActive,
+        visibility,
+        description: material.description,
+        teamNames,
+        teamIds,
+        releaseTypeId: material.releaseTypeId,
+        releaseType,
+      };
+    });
+  }
+
+  async getReleaseTypes(
+    includeAll?: boolean
+  ): Promise<ReleaseTypeLookupItem[]> {
+    const orderBy = await this.listOrderBy('release-types');
+    const results = await this.databaseService.db
+      .select({
+        id: releaseTypes.id,
+        name: releaseTypes.name,
+        displayName: releaseTypes.displayName,
+        sortOrder: releaseTypes.sortOrder,
+        isActive: releaseTypes.isActive,
+        audience: releaseTypes.audience,
+        allowsTranslation: releaseTypes.allowsTranslation,
+        requiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
+        description: releaseTypes.description,
+      })
+      .from(releaseTypes)
+      .where(includeAll ? undefined : eq(releaseTypes.isActive, true))
+      .orderBy(...orderBy);
+
+    return results.map((row) => ({
+      id: row.id,
+      label: row.displayName,
+      value: row.id,
+      name: row.name,
+      displayName: row.displayName,
+      sortOrder: row.sortOrder,
+      isActive: row.isActive,
+      audience: row.audience as 'media' | 'public',
+      allowsTranslation: row.allowsTranslation,
+      requiresNewsReleaseDetails: row.requiresNewsReleaseDetails,
+      description: row.description,
     }));
   }
 
@@ -1707,16 +1938,17 @@ export class LookupsService {
     const results = await this.databaseService.db
       .select({
         id: ministries.id,
-        name: ministries.name,
-        displayName: ministries.displayName,
-        abbreviation: ministries.abbreviation,
+        name: organizations.name,
+        displayName: organizations.displayName,
+        abbreviation: organizations.abbreviation,
         ministerGovernmentRepId: ministries.ministerGovernmentRepId,
         ministerRepDisplayName: governmentRepresentatives.displayName,
-        sortOrder: ministries.sortOrder,
-        isActive: ministries.isActive,
+        sortOrder: organizations.sortOrder,
+        isActive: organizations.isActive,
         ministryGroupId: ministries.ministryGroupId,
       })
       .from(ministries)
+      .innerJoin(organizations, eq(ministries.id, organizations.id))
       .leftJoin(
         governmentRepresentatives,
         eq(ministries.ministerGovernmentRepId, governmentRepresentatives.id)
@@ -2043,6 +2275,9 @@ export class LookupsService {
       sortOrder?: number;
       isActive?: boolean;
       description?: string | null;
+      visibility?: 'global' | 'team';
+      teamIds?: number[];
+      releaseTypeId?: number | null;
     },
     currentUserId: number
   ): Promise<typeof commsMaterials.$inferSelect> {
@@ -2052,22 +2287,92 @@ export class LookupsService {
       'comms material'
     );
 
+    const visibility = this.resolveLookupVisibility(
+      data.visibility,
+      data.teamIds
+    );
+    if (visibility === 'team' && (!data.teamIds || data.teamIds.length === 0)) {
+      throw new BadRequestException(
+        'At least one team is required when visibility is team'
+      );
+    }
+
+    if (data.releaseTypeId != null) {
+      await this.assertCommsMaterialReleaseTypeAvailable(data.releaseTypeId);
+    }
+
     const sortOrder = await this.sortOrderForCreate(
       'comms-materials',
       data.sortOrder
     );
     const now = new Date();
-    const [result] = await this.withLookupConflict(
+    return this.withLookupConflict(
       'comms_materials_normalized_name_unique',
       'A comms material with this name already exists.',
       () =>
+        this.databaseService.db.transaction(async (tx) => {
+          const [result] = await tx
+            .insert(commsMaterials)
+            .values({
+              name: this.normalizeLookupName(data.name),
+              displayName: data.displayName ?? data.name,
+              sortOrder,
+              isActive: data.isActive ?? true,
+              visibility,
+              releaseTypeId: data.releaseTypeId ?? null,
+              description: data.description ?? undefined,
+              createdBy: currentUserId,
+              lastUpdatedBy: currentUserId,
+              createdDateTime: now,
+              lastUpdatedDateTime: now,
+            })
+            .returning();
+
+          await syncCommsMaterialTeams(tx, result.id, visibility, data.teamIds);
+          return result;
+        })
+    );
+  }
+
+  async createReleaseType(
+    data: {
+      name: string;
+      displayName?: string | null;
+      sortOrder?: number;
+      isActive?: boolean;
+      description?: string | null;
+      audience: 'media' | 'public';
+      allowsTranslation?: boolean;
+      requiresNewsReleaseDetails?: boolean;
+    },
+    currentUserId: number
+  ): Promise<typeof releaseTypes.$inferSelect> {
+    await this.assertLookupNameIsUnique(
+      releaseTypes,
+      data.name,
+      'release type'
+    );
+
+    const sortOrder = await this.sortOrderForCreate(
+      'release-types',
+      data.sortOrder
+    );
+    const now = new Date();
+    const [result] = await this.withLookupConflict(
+      'release_types_normalized_name_unique',
+      'A release type with this name already exists.',
+      () =>
         this.databaseService.db
-          .insert(commsMaterials)
+          .insert(releaseTypes)
           .values({
             name: this.normalizeLookupName(data.name),
             displayName: data.displayName ?? data.name,
             sortOrder,
             isActive: data.isActive ?? true,
+            audience: data.audience,
+            allowsTranslation: data.allowsTranslation ?? false,
+            requiresNewsReleaseDetails:
+              data.requiresNewsReleaseDetails ?? false,
             description: data.description ?? undefined,
             createdBy: currentUserId,
             lastUpdatedBy: currentUserId,
@@ -2238,7 +2543,7 @@ export class LookupsService {
     data: {
       name: string;
       displayName: string;
-      abbreviation: string; // Required by schema
+      abbreviation: string;
       ministerGovernmentRepId?: number | null;
       sortOrder?: number;
       isActive?: boolean;
@@ -2246,14 +2551,14 @@ export class LookupsService {
     },
     currentUserId: number
   ): Promise<typeof ministries.$inferSelect> {
-    await this.assertLookupNameIsUnique(ministries, data.name, 'ministry');
+    await this.assertLookupNameIsUnique(organizations, data.name, 'ministry');
 
     const sortOrder = await this.sortOrderForCreate(
       'ministries',
       data.sortOrder
     );
     return this.withLookupConflict(
-      'ministries_normalized_name_unique',
+      'organizations_normalized_name_unique',
       'A ministry with this name already exists.',
       () =>
         this.databaseService.db.transaction(async (tx) => {
@@ -2274,25 +2579,29 @@ export class LookupsService {
               );
           }
 
-          // Seeds insert explicit ministry ids without advancing the serial sequence.
-          await tx.execute(sql`
-            SELECT setval(
-              pg_get_serial_sequence('public.ministries', 'id'),
-              COALESCE((SELECT MAX(id) FROM ministries), 1),
-              EXISTS (SELECT 1 FROM ministries)
-            )
-          `);
-
-          const [result] = await tx
-            .insert(ministries)
+          const [org] = await tx
+            .insert(organizations)
             .values({
               name: this.normalizeLookupName(data.name),
               displayName: data.displayName,
               abbreviation: data.abbreviation,
-              ministerGovernmentRepId:
-                data.ministerGovernmentRepId ?? undefined,
+              organizationTypeId: 1,
+              jurisdiction: 'bcgov',
               sortOrder,
               isActive: data.isActive ?? true,
+              createdBy: currentUserId,
+              lastUpdatedBy: currentUserId,
+              createdDateTime: now,
+              lastUpdatedDateTime: now,
+            })
+            .returning({ id: organizations.id });
+
+          const [result] = await tx
+            .insert(ministries)
+            .values({
+              id: org.id,
+              ministerGovernmentRepId:
+                data.ministerGovernmentRepId ?? undefined,
               ministryGroupId: data.ministryGroupId ?? undefined,
               createdBy: currentUserId,
               lastUpdatedBy: currentUserId,
@@ -2560,6 +2869,9 @@ export class LookupsService {
       sortOrder: number;
       isActive: boolean;
       description: string | null;
+      visibility: 'global' | 'team';
+      teamIds: number[];
+      releaseTypeId: number | null;
     }>,
     currentUserId: number
   ): Promise<typeof commsMaterials.$inferSelect | undefined> {
@@ -2572,8 +2884,104 @@ export class LookupsService {
       );
     }
 
-    // Build update object explicitly to ensure type safety
-    const updateData: Partial<typeof commsMaterials.$inferInsert> = {
+    if (data.releaseTypeId !== undefined && data.releaseTypeId != null) {
+      await this.assertCommsMaterialReleaseTypeAvailable(
+        data.releaseTypeId,
+        id
+      );
+    }
+
+    return this.withLookupConflict(
+      'comms_materials_normalized_name_unique',
+      'A comms material with this name already exists.',
+      () =>
+        this.databaseService.db.transaction(async (tx) => {
+          const [existing] = await tx
+            .select()
+            .from(commsMaterials)
+            .where(eq(commsMaterials.id, id))
+            .limit(1);
+          if (!existing) {
+            return undefined;
+          }
+
+          const updateData: Partial<typeof commsMaterials.$inferInsert> = {
+            lastUpdatedBy: currentUserId,
+            lastUpdatedDateTime: new Date(),
+          };
+
+          if (data.name !== undefined)
+            updateData.name = this.normalizeLookupName(data.name);
+          if (data.displayName !== undefined)
+            updateData.displayName = data.displayName ?? undefined;
+          if (data.sortOrder !== undefined)
+            updateData.sortOrder = data.sortOrder;
+          if (data.isActive !== undefined) updateData.isActive = data.isActive;
+          if (data.description !== undefined)
+            updateData.description = data.description ?? undefined;
+          if (data.releaseTypeId !== undefined)
+            updateData.releaseTypeId = data.releaseTypeId;
+
+          const shouldSyncTeams =
+            data.visibility !== undefined || data.teamIds !== undefined;
+          if (shouldSyncTeams) {
+            const visibility = this.resolveLookupUpdateVisibility(
+              existing.visibility as 'global' | 'team',
+              data.visibility,
+              data.teamIds
+            );
+            if (visibility === 'team') {
+              let teamIds = data.teamIds;
+              if (teamIds === undefined) {
+                teamIds = await loadActiveCommsMaterialTeamIds(tx, id);
+              }
+              if (!teamIds.length) {
+                throw new BadRequestException(
+                  'At least one team is required when visibility is team'
+                );
+              }
+              updateData.visibility = visibility;
+              await syncCommsMaterialTeams(tx, id, visibility, teamIds);
+            } else {
+              updateData.visibility = 'global';
+              await syncCommsMaterialTeams(tx, id, 'global', []);
+            }
+          }
+
+          const [result] = await tx
+            .update(commsMaterials)
+            .set(updateData)
+            .where(eq(commsMaterials.id, id))
+            .returning();
+          return result;
+        })
+    );
+  }
+
+  async updateReleaseType(
+    id: number,
+    data: Partial<{
+      name: string;
+      displayName: string | null;
+      sortOrder: number;
+      isActive: boolean;
+      description: string | null;
+      audience: 'media' | 'public';
+      allowsTranslation: boolean;
+      requiresNewsReleaseDetails: boolean;
+    }>,
+    currentUserId: number
+  ): Promise<typeof releaseTypes.$inferSelect | undefined> {
+    if (data.name !== undefined) {
+      await this.assertLookupNameIsUnique(
+        releaseTypes,
+        data.name,
+        'release type',
+        id
+      );
+    }
+
+    const updateData: Partial<typeof releaseTypes.$inferInsert> = {
       lastUpdatedBy: currentUserId,
       lastUpdatedDateTime: new Date(),
     };
@@ -2586,18 +2994,54 @@ export class LookupsService {
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.description !== undefined)
       updateData.description = data.description ?? undefined;
+    if (data.audience !== undefined) updateData.audience = data.audience;
+    if (data.allowsTranslation !== undefined)
+      updateData.allowsTranslation = data.allowsTranslation;
+    if (data.requiresNewsReleaseDetails !== undefined)
+      updateData.requiresNewsReleaseDetails = data.requiresNewsReleaseDetails;
 
-    const [result] = await this.withLookupConflict(
-      'comms_materials_normalized_name_unique',
-      'A comms material with this name already exists.',
+    return this.withLookupConflict(
+      'release_types_normalized_name_unique',
+      'A release type with this name already exists.',
       () =>
-        this.databaseService.db
-          .update(commsMaterials)
-          .set(updateData)
-          .where(eq(commsMaterials.id, id))
-          .returning()
+        this.databaseService.db.transaction(async (tx) => {
+          const [updated] = await tx
+            .update(releaseTypes)
+            .set(updateData)
+            .where(eq(releaseTypes.id, id))
+            .returning();
+          if (!updated) {
+            return undefined;
+          }
+          if (data.isActive === false) {
+            await tx
+              .update(commsMaterials)
+              .set({ releaseTypeId: null })
+              .where(eq(commsMaterials.releaseTypeId, id));
+          }
+          return updated;
+        })
     );
-    return result;
+  }
+
+  private async assertCommsMaterialReleaseTypeAvailable(
+    releaseTypeId: number,
+    excludeCommsMaterialId?: number
+  ): Promise<void> {
+    const conditions = [eq(commsMaterials.releaseTypeId, releaseTypeId)];
+    if (excludeCommsMaterialId != null) {
+      conditions.push(ne(commsMaterials.id, excludeCommsMaterialId));
+    }
+    const [existing] = await this.databaseService.db
+      .select({ id: commsMaterials.id })
+      .from(commsMaterials)
+      .where(and(...conditions))
+      .limit(1);
+    if (existing) {
+      throw new BadRequestException(
+        'That release type is already assigned to another comms material.'
+      );
+    }
   }
 
   async updateTranslationLanguage(
@@ -2797,52 +3241,40 @@ export class LookupsService {
   ): Promise<typeof ministries.$inferSelect | undefined> {
     if (data.name !== undefined) {
       await this.assertLookupNameIsUnique(
-        ministries,
+        organizations,
         data.name,
         'ministry',
         id
       );
     }
 
-    // Build update object explicitly to ensure type safety
-    const updateData: Partial<typeof ministries.$inferInsert> = {
+    const ministryUpdate: Partial<typeof ministries.$inferInsert> = {
       lastUpdatedBy: currentUserId,
       lastUpdatedDateTime: new Date(),
     };
-
-    if (data.name !== undefined)
-      updateData.name = this.normalizeLookupName(data.name);
-    if (data.displayName !== undefined)
-      updateData.displayName = data.displayName;
-    if (data.abbreviation !== undefined)
-      updateData.abbreviation = data.abbreviation;
     if (data.ministerGovernmentRepId !== undefined) {
-      updateData.ministerGovernmentRepId =
+      ministryUpdate.ministerGovernmentRepId =
         data.ministerGovernmentRepId === null
           ? null
           : data.ministerGovernmentRepId;
     }
-    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
-    if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.ministryGroupId !== undefined) {
-      updateData.ministryGroupId =
+      ministryUpdate.ministryGroupId =
         data.ministryGroupId === null ? null : data.ministryGroupId;
     }
 
-    // Read the current abbreviation so we can tell whether a cascade is needed.
-    let currentAbbreviation: string | null = null;
-    if (data.abbreviation !== undefined) {
-      const [current] = await this.databaseService.db
-        .select({ abbreviation: ministries.abbreviation })
-        .from(ministries)
-        .where(eq(ministries.id, id))
-        .limit(1);
-      currentAbbreviation = current?.abbreviation ?? null;
-    }
-
-    const abbreviationChanged =
-      data.abbreviation !== undefined &&
-      data.abbreviation !== currentAbbreviation;
+    const orgUpdate: Partial<typeof organizations.$inferInsert> = {
+      lastUpdatedBy: currentUserId,
+      lastUpdatedDateTime: new Date(),
+    };
+    if (data.name !== undefined)
+      orgUpdate.name = this.normalizeLookupName(data.name);
+    if (data.displayName !== undefined)
+      orgUpdate.displayName = data.displayName;
+    if (data.abbreviation !== undefined)
+      orgUpdate.abbreviation = data.abbreviation;
+    if (data.sortOrder !== undefined) orgUpdate.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) orgUpdate.isActive = data.isActive;
 
     const run = async (
       tx: DrizzleDbExecutor
@@ -2869,33 +3301,24 @@ export class LookupsService {
           );
       }
 
+      await tx
+        .update(organizations)
+        .set(orgUpdate)
+        .where(eq(organizations.id, id));
+
       const [updated] = await tx
         .update(ministries)
-        .set(updateData)
+        .set(ministryUpdate)
         .where(eq(ministries.id, id))
         .returning();
-
-      if (abbreviationChanged) {
-        await this.activityDisplayIdSyncService.refreshAfterMinistryAbbreviationChange(
-          tx,
-          id,
-          currentUserId
-        );
-      }
 
       return updated;
     };
 
     return this.withLookupConflict(
-      'ministries_normalized_name_unique',
+      'organizations_normalized_name_unique',
       'A ministry with this name already exists.',
-      () => {
-        if (abbreviationChanged) {
-          return this.databaseService.db.transaction(run);
-        }
-        // Use root pool when no cascade is needed to avoid unnecessary transaction overhead.
-        return run(this.databaseService.db);
-      }
+      () => run(this.databaseService.db)
     );
   }
 

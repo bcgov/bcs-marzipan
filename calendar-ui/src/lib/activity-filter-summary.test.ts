@@ -13,7 +13,6 @@ import {
 
 const emptyCtx: ActivityFilterSummaryContext = {
   statusOptions: [],
-  pitchRequiredStatusOptions: [],
   tagOptions: [],
   leadTeamOptions: [],
   commsContactOptions: [],

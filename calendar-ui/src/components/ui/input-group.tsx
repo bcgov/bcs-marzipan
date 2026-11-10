@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { FORM_CONTROL_INVALID_RING_CLASS_COMBO } from '@/lib/form-field-tokens';
 import { cn } from '@/lib/utils';
 
 function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
@@ -24,8 +25,9 @@ function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
         // Focus state.
         'has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot=input-group-control]:focus-visible]:ring-[3px]',
 
-        // Error state.
+        // Error state (invalid on group root or nested control).
         'has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:ring-destructive/20 dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40',
+        FORM_CONTROL_INVALID_RING_CLASS_COMBO,
 
         className
       )}

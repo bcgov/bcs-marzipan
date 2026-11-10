@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { LOOK_AHEAD_STATUS, VISIBILITY } from '../constants/constants';
+import {
+  LOOK_AHEAD_STATUS,
+  RELEASE_SCHEDULING_MODES,
+  VISIBILITY,
+} from '../constants/constants';
 import { activityFlagResponseSchema } from './activity-flag.schema';
 import { venueAddressSchema as baseVenueAddressSchema } from './activity.schema';
 
@@ -51,10 +55,6 @@ export const activityDbFieldsSchema = z.object({
   summary: z.string(),
   significance: z.string().nullable(),
 
-  // Lead organization (mutually exclusive: either ID or Name)
-  leadOrgId: z.number().int().nullable(),
-  leadOrgName: z.string().nullable(),
-
   // Scheduling
   isAllDay: z.boolean(),
   startDate: z.string().nullable(),
@@ -65,12 +65,13 @@ export const activityDbFieldsSchema = z.object({
   timeStatusId: z.number().int().optional(),
   venueStatusId: z.number().int().nullable(),
   schedulingNotes: z.string().nullable(),
-  strategy: z.string().nullable(),
 
   // News Release
   newsReleaseOriginId: z.number().int().nullable(),
-  newsReleaseId: z.string().uuid().nullable(),
   newsReleaseDistributionId: z.number().int().nullable(),
+  releaseSchedulingMode: z.enum(RELEASE_SCHEDULING_MODES).nullable().optional(),
+  releaseTimeOffsetMinutes: z.number().int().nullable(),
+  releaseTime: z.string().datetime().nullable(),
 
   // Look Ahead
   executiveSummary: z.string().nullable(),
@@ -78,17 +79,14 @@ export const activityDbFieldsSchema = z.object({
   /** Bucket key driven by report admin configuration; see activity.schema.ts. Omitted when user lacks lookAhead view. */
   lookAheadSection: z.string().min(1).max(50).nullable().optional(),
 
-  // notes / pitch: omitted from API when user lacks view for that scope. Translation fields are not view-redacted.
+  /** Omitted when user lacks notes view permission. */
   notes: z.string().nullable().optional(),
-  pitchDate: z.string().nullable().optional(),
-  pitchRequiredStatusId: z.number().int().nullable().optional(),
   translationsRequiredStatusId: z.number().int().nullable().optional(),
   premierRequestedId: z.number().int().nullable(),
   visibility: z.enum(VISIBILITY), // 'global' or 'team' - controls base access visibility
 
   // Ownership
   leadTeamId: z.number().int(),
-  leadMinistryId: z.number().int().nullable(),
   activityStatusId: z.number().int(),
 
   // Audit fields (transformed to ISO strings for API)
@@ -111,17 +109,6 @@ const tagSchema = z.object({
 });
 
 /**
- * Report Setting Schema
- * Includes whether the activity is omitted from this report
- */
-const reportSettingSchema = z.object({
-  id: z.number().int(),
-  name: z.string(),
-  displayName: z.string(),
-  omitted: z.boolean(),
-});
-
-/**
  * Event planner detail item (id/name + display name + isLead).
  * Matches activity_event_planners junction: eventPlannerId and eventPlannerName can be null from DB
  * (event planner is optional on the form). name is the computed display name for API/UI.
@@ -134,6 +121,19 @@ export const eventPlannerDetailSchema = z.object({
 });
 
 export type EventPlannerDetail = z.infer<typeof eventPlannerDetailSchema>;
+
+/**
+ * Organization detail item on an activity (lookup id/name + display + isLead).
+ */
+export const organizationDetailSchema = z.object({
+  organizationId: z.number().int().optional().nullable(),
+  organizationName: z.string().optional().nullable(),
+  name: z.string(),
+  abbreviation: z.string().nullable().optional(),
+  isLead: z.boolean(),
+});
+
+export type OrganizationDetail = z.infer<typeof organizationDetailSchema>;
 
 /**
  * Layer 2: Computed Fields Schema
@@ -168,9 +168,9 @@ export const activityComputedFieldsSchema = z.object({
     )
     .default([]), // All comms contacts with isLead flag
 
-  // Computed organization names (from organization ID lookups or free text names)
-  // Uses organization displayName/name if leadOrgId is set, otherwise uses leadOrgName
+  /** Compact grid summary (lead token + joint count). */
   leadOrg: z.string().nullable(),
+  organizationDetails: z.array(organizationDetailSchema).default([]),
 
   // Event planner details (id/name + display name + isLead) for form hydration and display
   eventPlannerDetails: z.array(eventPlannerDetailSchema).default([]),
@@ -189,7 +189,6 @@ export const activityComputedFieldsSchema = z.object({
   newsReleaseOrigin: z.string().nullable(),
   newsReleaseDistribution: z.string().nullable(),
   premierRequested: z.string().nullable(),
-  pitchRequiredStatus: z.string().nullable().optional(),
   translationsRequiredStatus: z.string().nullable().optional(),
   leadMinistry: z.string().nullable(),
   leadMinistryAbbreviation: z.string().nullable(),
@@ -198,10 +197,6 @@ export const activityComputedFieldsSchema = z.object({
 
   // Venue address (from venue_addresses table join)
   venueAddress: venueAddressSchema,
-
-  // Report settings (from activityReportSettings junction table)
-  // Includes omitted flag for each report
-  reportSettings: z.array(reportSettingSchema).default([]),
 
   // Whether the current user may edit this activity (comms contact, lead-team member, or bypass).
   // When false, user has view-only access (e.g. shared-with only). Omitted when not authenticated.

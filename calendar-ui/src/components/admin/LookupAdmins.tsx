@@ -10,15 +10,20 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
 import { useCallback, useMemo } from 'react';
 
+import {
+  ORGANIZATION_JURISDICTION_LABELS,
+  ORGANIZATION_JURISDICTIONS,
+} from '@corpcal/shared';
 import api from '@/api/axios';
 import {
   fetchActivityStatuses,
   fetchAllCategories,
+  fetchAllCommsMaterials,
+  fetchAllReleaseTypes,
   fetchAllTags,
   fetchAllTranslationLanguages,
   fetchAllVenuePresets,
   fetchCities,
-  fetchCommsMaterials,
   fetchGovernmentRepresentatives,
   fetchMinistries,
   fetchMinistryGroups,
@@ -33,6 +38,7 @@ import type { FreeformComboboxOption } from '@/components/ui/freeform-combobox';
 import { ClientValidationError } from '@/lib/error-toast';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
+import { CommsMaterialAdminForm } from './CommsMaterialAdminForm';
 import { GenericLookupAdmin } from './GenericLookupAdmin';
 import { FormField } from './LookupForm';
 import {
@@ -68,6 +74,18 @@ type City = LookupItem & {
 type CommsMaterial = LookupItem & {
   name?: string;
   displayName?: string | null;
+  visibility?: 'global' | 'team';
+  teamNames?: string[];
+  teamIds?: number[];
+  releaseTypeId?: number | null;
+};
+
+type ReleaseType = LookupItem & {
+  name?: string;
+  displayName?: string | null;
+  audience?: 'media' | 'public';
+  allowsTranslation?: boolean;
+  requiresNewsReleaseDetails?: boolean;
 };
 
 type TranslationLanguage = LookupItem & {
@@ -165,6 +183,50 @@ const cityFields: FormField[] = [
     label: 'Country',
     type: 'text',
     placeholder: 'Canada',
+  },
+  {
+    name: 'isActive',
+    label: 'Active',
+    type: 'checkbox',
+    placeholder: 'Item is active',
+  },
+];
+
+const releaseTypeFields: FormField[] = [
+  {
+    name: 'name',
+    label: 'Name',
+    type: 'text',
+    required: true,
+    placeholder: 'Enter release type name',
+  },
+  {
+    name: 'displayName',
+    label: 'Display name',
+    type: 'text',
+    placeholder: 'Optional display name',
+  },
+  {
+    name: 'audience',
+    label: 'Audience',
+    type: 'select',
+    required: true,
+    options: [
+      { value: 'public', label: 'Public' },
+      { value: 'media', label: 'Media' },
+    ],
+  },
+  {
+    name: 'allowsTranslation',
+    label: 'Allows translation',
+    type: 'checkbox',
+    placeholder: 'Show translation fields when this material is selected',
+  },
+  {
+    name: 'requiresNewsReleaseDetails',
+    label: 'Requires news release details',
+    type: 'checkbox',
+    placeholder: 'Show news release origin, distribution, and translations',
   },
   {
     name: 'isActive',
@@ -292,7 +354,7 @@ const ministryCoreFields: FormField[] = [
   },
   {
     name: 'abbreviation',
-    label: 'Abbreviation',
+    label: 'Acronym',
     type: 'text',
     required: true,
     placeholder: 'e.g., AG',
@@ -329,8 +391,7 @@ async function persistMinistryWithMinister({
   }
 
   const ministerPick = (formData._ministerSelection as
-    | MinisterFormSelection
-    | undefined) ?? {
+    MinisterFormSelection | undefined) ?? {
     mode: 'none',
   };
 
@@ -608,18 +669,139 @@ export function CitiesAdmin() {
 }
 
 export function CommsMaterialsAdmin() {
+  const { data: teams = [] } = useQuery({
+    queryKey: lookupQueryKeys.teams(),
+    queryFn: fetchTeams,
+  });
+  const { data: releaseTypes = [] } = useQuery({
+    queryKey: lookupQueryKeys.releaseTypesAdmin(),
+    queryFn: fetchAllReleaseTypes,
+  });
+
+  const teamOptions = teams.map((t) => ({
+    value: String(t.id),
+    label: t.displayName ?? t.name ?? String(t.id),
+  }));
+
+  const releaseTypeOptions = releaseTypes
+    .filter((rt) => rt.isActive !== false)
+    .map((rt) => ({
+      value: String(rt.id),
+      label: rt.displayName ?? rt.name ?? String(rt.id),
+    }));
+
   return (
     <GenericLookupAdmin<CommsMaterial>
       title="Communications materials"
-      description="Types of communication materials."
+      description="Types of communication materials (team scope and sister-app release types)."
       sectionId="comms"
       entityType="Communications Material"
       apiEndpoint="/lookups/comms-materials"
       enableManualSort
       reorderEntityKey="comms-materials"
-      queryKey={lookupQueryKeys.commsMaterials()}
-      queryFn={fetchCommsMaterials}
+      queryKey={lookupQueryKeys.commsMaterialsAdmin()}
+      queryFn={fetchAllCommsMaterials}
       formFields={commsMaterialFields}
+      additionalInvalidateKeys={[lookupQueryKeys.commsMaterials()]}
+      getInitialData={(item) => ({
+        ...lookupVisibilityInitialData(item),
+        releaseTypeId: item.releaseTypeId ?? null,
+      })}
+      transformSubmitData={(data) => {
+        try {
+          const base = transformLookupVisibilitySubmitData(data);
+          return {
+            ...base,
+            releaseTypeId:
+              data.releaseTypeId === null || data.releaseTypeId === undefined
+                ? null
+                : Number(data.releaseTypeId),
+          };
+        } catch {
+          toast.error('At least one team is required when visibility is team.');
+          throw new ClientValidationError();
+        }
+      }}
+      additionalColumns={[
+        {
+          accessorKey: 'visibility',
+          header: 'Visibility',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {renderLookupVisibilityColumn(row.original)}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'releaseTypeId',
+          header: 'Release type',
+          cell: ({ row }) => {
+            const id = row.original.releaseTypeId;
+            if (id == null) return <span className="text-slate-600">—</span>;
+            const rt = releaseTypes.find((r) => r.id === id);
+            return (
+              <span className="text-slate-600">
+                {rt?.displayName ?? rt?.name ?? id}
+              </span>
+            );
+          },
+        },
+      ]}
+      renderModalContent={(props) => (
+        <CommsMaterialAdminForm
+          {...props}
+          fields={commsMaterialFields}
+          teamOptions={teamOptions}
+          releaseTypeOptions={releaseTypeOptions}
+        />
+      )}
+    />
+  );
+}
+
+export function ReleaseTypesAdmin() {
+  return (
+    <GenericLookupAdmin<ReleaseType>
+      title="Release types"
+      description="BC Gov external release types. Defines materials that can be published through NRMs"
+      sectionId="release-types"
+      entityType="Release Type"
+      apiEndpoint="/lookups/release-types"
+      enableManualSort
+      reorderEntityKey="release-types"
+      queryKey={lookupQueryKeys.releaseTypesAdmin()}
+      queryFn={fetchAllReleaseTypes}
+      formFields={releaseTypeFields}
+      additionalInvalidateKeys={[lookupQueryKeys.releaseTypes()]}
+      additionalColumns={[
+        {
+          accessorKey: 'audience',
+          header: 'Audience',
+          cell: ({ row }) => (
+            <span className="text-slate-600 capitalize">
+              {row.original.audience ?? '—'}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'allowsTranslation',
+          header: 'Translation',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {row.original.allowsTranslation ? 'Yes' : 'No'}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'requiresNewsReleaseDetails',
+          header: 'News release details',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {row.original.requiresNewsReleaseDetails ? 'Yes' : 'No'}
+            </span>
+          ),
+        },
+      ]}
     />
   );
 }
@@ -959,6 +1141,142 @@ const venuePresetAdditionalColumns: ColumnDef<VenuePreset>[] = [
     ),
   },
 ];
+
+type OrganizationType = LookupItem & {
+  name?: string;
+  displayName?: string | null;
+  uuid?: string;
+};
+
+type OrganizationAdminItem = LookupItem & {
+  name?: string;
+  displayName?: string | null;
+  uuid?: string;
+  abbreviation?: string | null;
+  organizationTypeId?: number | null;
+  jurisdiction?: string | null;
+};
+
+const organizationTypeFields: FormField[] = [
+  { name: 'name', label: 'Name', type: 'text', required: true },
+  { name: 'displayName', label: 'Display name', type: 'text', required: true },
+  { name: 'isActive', label: 'Active', type: 'checkbox' },
+];
+
+const organizationJurisdictionSelectOptions = ORGANIZATION_JURISDICTIONS.map(
+  (value) => ({
+    value,
+    label: ORGANIZATION_JURISDICTION_LABELS[value],
+  })
+);
+
+const organizationFieldsTail: FormField[] = [
+  { name: 'isActive', label: 'Active', type: 'checkbox' },
+  { name: 'description', label: 'Description', type: 'text' },
+];
+
+const organizationFieldsHead: FormField[] = [
+  { name: 'name', label: 'Name', type: 'text', required: true },
+  { name: 'displayName', label: 'Display name', type: 'text', required: true },
+  { name: 'abbreviation', label: 'Abbreviation', type: 'text' },
+];
+
+async function fetchOrganizationTypesAdmin(): Promise<OrganizationType[]> {
+  const res = await api.get<{ success: boolean; data: OrganizationType[] }>(
+    '/lookups/organization-types',
+    { params: { includeAll: true } }
+  );
+  return res.data.data;
+}
+
+async function fetchOrganizationsAdmin(): Promise<OrganizationAdminItem[]> {
+  const res = await api.get<{
+    success: boolean;
+    data: OrganizationAdminItem[];
+  }>('/lookups/organizations', { params: { includeAll: true } });
+  return res.data.data;
+}
+
+export function OrganizationTypesAdmin() {
+  return (
+    <GenericLookupAdmin<OrganizationType>
+      title="Organization types"
+      description="Categories for ministries and organizations (Ministry, Agency, Crown Corporation, etc.). Order controls section headings on the activity form."
+      sectionId="organization-types"
+      entityType="Organization type"
+      apiEndpoint="/lookups/organization-types"
+      enableManualSort
+      reorderEntityKey="organization-types"
+      queryKey={['lookups', 'organization-types', 'admin']}
+      queryFn={fetchOrganizationTypesAdmin}
+      formFields={organizationTypeFields}
+      additionalInvalidateKeys={[lookupQueryKeys.organizations()]}
+      getItemName={(item) => item.displayName ?? item.name ?? String(item.id)}
+    />
+  );
+}
+
+export function OrganizationsAdmin() {
+  const organizationTypesQuery = useQuery({
+    queryKey: ['lookups', 'organization-types', 'admin'],
+    queryFn: fetchOrganizationTypesAdmin,
+  });
+
+  const organizationFields = useMemo((): FormField[] => {
+    const typeOptions = (organizationTypesQuery.data ?? []).map((t) => ({
+      value: String(t.id),
+      label: t.displayName ?? t.name ?? String(t.id),
+    }));
+    return [
+      ...organizationFieldsHead,
+      {
+        name: 'organizationTypeId',
+        label: 'Organization type',
+        type: 'select',
+        required: true,
+        options: typeOptions,
+      },
+      {
+        name: 'jurisdiction',
+        label: 'Jurisdiction',
+        type: 'select',
+        required: true,
+        options: organizationJurisdictionSelectOptions,
+      },
+      ...organizationFieldsTail,
+    ];
+  }, [organizationTypesQuery.data]);
+
+  return (
+    <GenericLookupAdmin<OrganizationAdminItem>
+      title="Organizations"
+      description="Ministries and organizations catalog."
+      sectionId="organizations"
+      entityType="Organization"
+      apiEndpoint="/lookups/organizations"
+      queryKey={['lookups', 'organizations', 'admin']}
+      queryFn={fetchOrganizationsAdmin}
+      formFields={organizationFields}
+      showSortOrderColumn={false}
+      omitDefaultSortOrder
+      getItemName={(item) => item.displayName ?? item.name ?? String(item.id)}
+      getInitialData={(item) => ({
+        ...item,
+        jurisdiction: item.jurisdiction ?? 'bcgov',
+      })}
+      transformSubmitData={(data) => {
+        const { sortOrder: _sortOrder, ...rest } = data;
+        return {
+          ...rest,
+          jurisdiction:
+            rest.jurisdiction === '' || rest.jurisdiction == null
+              ? 'bcgov'
+              : rest.jurisdiction,
+        };
+      }}
+    />
+  );
+}
 
 export function VenuePresetsAdmin() {
   return (

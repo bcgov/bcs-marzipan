@@ -7,6 +7,7 @@ INSERT INTO lookup_sort_settings (lookup_key, sort_mode, last_updated_by) VALUES
   ('government-representatives', 'manual', 1),
   ('ministries', 'manual', 1),
   ('ministry-groups', 'manual', 1),
+  ('organization-types', 'manual', 1),
   ('tags', 'manual', 1),
   ('themes', 'manual', 1),
   ('translation-languages', 'manual', 1),

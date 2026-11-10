@@ -8,7 +8,7 @@ describe('formatLeadTeamSelectLabel', () => {
       formatLeadTeamSelectLabel({
         name: 'comms',
         displayName: 'Comms Team',
-        ministryName: 'Executive Council',
+        primaryOrganizationName: 'Executive Council',
       })
     ).toBe('Comms Team (Executive Council)');
   });
@@ -18,7 +18,7 @@ describe('formatLeadTeamSelectLabel', () => {
       formatLeadTeamSelectLabel({
         name: 'Legacy Team',
         displayName: null,
-        ministryName: 'Ministry of Example',
+        primaryOrganizationName: 'Ministry of Example',
       })
     ).toBe('Legacy Team (Ministry of Example)');
   });
@@ -28,7 +28,7 @@ describe('formatLeadTeamSelectLabel', () => {
       formatLeadTeamSelectLabel({
         name: 'Standalone',
         displayName: null,
-        ministryName: null,
+        primaryOrganizationName: null,
       })
     ).toBe('Standalone');
   });

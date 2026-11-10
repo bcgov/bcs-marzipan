@@ -20,6 +20,7 @@ function minimalForm(overrides: Partial<ActivityFormData>): ActivityFormData {
     visibility: 'global',
     leadTeamId: 1,
     categoryIds: [1],
+    organizations: [{ organizationId: 1, isLead: true }],
     ...overrides,
   };
 }

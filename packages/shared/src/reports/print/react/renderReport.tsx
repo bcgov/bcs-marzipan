@@ -14,11 +14,7 @@ export { CORPCAL_PRINT_ROOT_CLASS, PRINT_STYLES } from './printStyles';
 
 /** Report types supported by the shared React print/PDF pipeline. */
 export type ReactRenderableReportType =
-  | 'look-ahead'
-  | 'thirty-sixty-ninety'
-  | 'exec'
-  | 'planning'
-  | 'custom';
+  'look-ahead' | 'thirty-sixty-ninety' | 'exec' | 'planning' | 'custom';
 
 export interface RenderReportOptions {
   activityBaseUrl: string;

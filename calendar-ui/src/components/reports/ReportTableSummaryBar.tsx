@@ -4,7 +4,6 @@ import {
   TableContentSummary,
   TableFilterSummary,
 } from '@/components/table/TableSummaryBar';
-import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import { useActivityTableSummaryBarState } from '@/hooks/useActivityTableSummaryBarState';
 import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
 import {
@@ -32,8 +31,6 @@ export function useReportTableSummaryState({
   ReportTableSummaryBarProps,
   'activityCount' | 'appliedSavedFilterName'
 >) {
-  const { pitchFieldVisibility } = useActivityTableFilterLookups(canSeeDeleted);
-
   const getResetFilterState = useCallback(
     () => buildReportClearFilterState(reportName),
     [reportName]
@@ -45,15 +42,9 @@ export function useReportTableSummaryState({
         preferences.filterState,
         reportName,
         preferences.searchKeyword,
-        pitchFieldVisibility,
         { includeSearchKeyword: true }
       ),
-    [
-      preferences.filterState,
-      preferences.searchKeyword,
-      reportName,
-      pitchFieldVisibility,
-    ]
+    [preferences.filterState, preferences.searchKeyword, reportName]
   );
 
   return useActivityTableSummaryBarState({

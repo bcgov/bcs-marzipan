@@ -13,7 +13,7 @@ describe('activity-hard-delete.coverage', () => {
       'activity_comms_contacts',
       'activity_comms_materials',
       'activity_event_planners',
-      'activity_report_settings',
+      'activity_organizations',
       'activity_representatives',
       'activity_shared_with_teams',
       'activity_sectors',

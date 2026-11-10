@@ -41,41 +41,43 @@ describe('activity-form-sections', () => {
     }
   });
 
-  it('derives review-exempt sections in form order with Release after Schedule', () => {
+  it('derives review-exempt sections in form order', () => {
     const sectionIds = ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS.map(
       (s) => s.id
     );
     expect(sectionIds).toEqual([
       'overview',
-      'comms',
-      'reports',
+      'lookAhead',
       'schedule',
-      'newsRelease',
+      'comms',
       'event',
       'sharing',
     ]);
   });
 
-  it('places release fields under newsRelease, not comms', () => {
+  it('places release fields under comms and comms contacts under sharing', () => {
     const commsKeys =
       ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS.find((s) => s.id === 'comms')
         ?.keys ?? [];
-    const releaseKeys =
+    const sharingKeys =
       ACTIVITY_REVIEW_EXEMPT_CONFIGURABLE_SECTIONS.find(
-        (s) => s.id === 'newsRelease'
+        (s) => s.id === 'sharing'
       )?.keys ?? [];
 
     expect(commsKeys).toEqual([
-      'commsContacts',
-      'strategy',
       'commsMaterialIds',
-    ]);
-    expect(releaseKeys).toEqual([
-      'newsReleaseId',
+      'releaseSchedulingMode',
+      'releaseTimeOffsetMinutes',
       'newsReleaseOriginId',
       'newsReleaseDistributionId',
       'translationsRequiredStatusId',
       'translationLanguageIds',
+    ]);
+    expect(sharingKeys).toEqual([
+      'leadTeamId',
+      'commsContacts',
+      'visibility',
+      'sharedWithTeamIds',
     ]);
   });
 
@@ -91,10 +93,9 @@ describe('activity-form-sections', () => {
   it('derives clone advanced field groups from registry minus clone exclusions', () => {
     expect(CLONE_ADVANCED_SECTIONS).toEqual([
       'overview',
-      'comms',
-      'reports',
+      'lookAhead',
       'schedule',
-      'newsRelease',
+      'comms',
       'event',
       'sharing',
     ]);
@@ -103,15 +104,19 @@ describe('activity-form-sections', () => {
         'isConfidential',
         'isIssue',
         'significance',
-        'leadOrgId',
-        'leadOrgName',
-        'notes',
+        'organizations',
         'tagIds',
+        'notes',
       ],
-      comms: ['strategy', 'commsMaterialIds'],
-      reports: ['reportSettings'],
+      comms: [
+        'commsMaterialIds',
+        'releaseSchedulingMode',
+        'releaseTimeOffsetMinutes',
+        'newsReleaseOriginId',
+        'newsReleaseDistributionId',
+      ],
+      lookAhead: ['executiveSummary', 'lookAheadStatus', 'lookAheadSection'],
       schedule: ['schedulingNotes'],
-      newsRelease: ['newsReleaseOriginId', 'newsReleaseDistributionId'],
       event: [
         'premierRequestedId',
         'representatives',
@@ -121,7 +126,6 @@ describe('activity-form-sections', () => {
       ],
       sharing: ['visibility', 'sharedWithTeamIds'],
     });
-    expect(CLONE_ADVANCED_FIELD_PATHS).not.toContain('newsReleaseId');
     expect(CLONE_ADVANCED_FIELD_PATHS).not.toContain(
       'translationsRequiredStatusId'
     );

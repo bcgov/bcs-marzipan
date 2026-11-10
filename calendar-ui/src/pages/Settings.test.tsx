@@ -45,9 +45,12 @@ vi.mock('@/components/admin/LookupAdmins', () => ({
   CategoriesAdmin: () => <div>Categories</div>,
   CitiesAdmin: () => <div>Cities</div>,
   CommsMaterialsAdmin: () => <div>CommsMaterials</div>,
+  ReleaseTypesAdmin: () => <div>ReleaseTypes</div>,
   GovernmentRepresentativesAdmin: () => <div>GovernmentRepresentatives</div>,
   MinistriesAdmin: () => <div>Ministries</div>,
   MinistryGroupsAdmin: () => <div>MinistryGroups</div>,
+  OrganizationTypesAdmin: () => <div>OrganizationTypes</div>,
+  OrganizationsAdmin: () => <div>Organizations</div>,
   TagsAdmin: () => <div>Tags</div>,
   ThemesAdmin: () => <div>Themes</div>,
   TranslationLanguagesAdmin: () => <div>TranslationLanguages</div>,
@@ -71,6 +74,12 @@ vi.mock('@/hooks/useAuth', () => ({
 const SYSTEM_ADMIN_ROLE_ID = 6;
 const ADMIN_ROLE_ID = 5;
 
+/** Comms materials and release types quick-nav sections are permission-gated. */
+const SCOPED_LOOKUP_PERMISSIONS = [
+  PERMISSIONS.LOOKUPS.MANAGE_COMMS_MATERIALS,
+  PERMISSIONS.LOOKUPS.MANAGE_RELEASE_TYPES,
+] as const;
+
 const SYSTEM_ADMIN_ONLY_LINKS = [
   'System banner',
   'Login modal',
@@ -81,6 +90,8 @@ const SYSTEM_ADMIN_ONLY_LINKS = [
   'Review-exempt fields',
   'Permission visibility',
   'Role permissions',
+  'Organization types',
+  'Organizations',
 ];
 
 const RECURRING_LOCKOUT_LINK = 'Recurring edit lockout';
@@ -93,6 +104,7 @@ const LOOKUP_LINKS = [
   'Categories',
   'Cities',
   'Communications materials',
+  'Release types',
   'Tags',
   'Activity statuses',
   'Themes',
@@ -117,7 +129,10 @@ describe('Settings quick navigation', () => {
         user: {
           id: 1,
           roleId: SYSTEM_ADMIN_ROLE_ID,
-          permissions: [PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS],
+          permissions: [
+            PERMISSIONS.SYSTEM.MANAGE_PERMISSIONS,
+            ...SCOPED_LOOKUP_PERMISSIONS,
+          ],
         },
         hasPermission: () => true,
       });
@@ -149,7 +164,11 @@ describe('Settings quick navigation', () => {
   describe('as Admin (not System Admin)', () => {
     beforeEach(() => {
       mockUseAuth.mockReturnValue({
-        user: { id: 2, roleId: ADMIN_ROLE_ID },
+        user: {
+          id: 2,
+          roleId: ADMIN_ROLE_ID,
+          permissions: [...SCOPED_LOOKUP_PERMISSIONS],
+        },
         hasPermission: () => true,
       });
     });

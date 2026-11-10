@@ -42,9 +42,6 @@ const mockEditorFieldPermissions: string[] = [
   PERMISSIONS.ACTIVITIES.NOTES_EDIT,
   PERMISSIONS.ACTIVITIES.LOOK_AHEAD_VIEW,
   PERMISSIONS.ACTIVITIES.LOOK_AHEAD_EDIT,
-  PERMISSIONS.ACTIVITIES.PITCH_STATUS_VIEW,
-  PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
-  PERMISSIONS.ACTIVITIES.PITCH_DATE_EDIT,
   PERMISSIONS.ACTIVITIES.TRANSLATIONS_EDIT,
 ];
 
@@ -96,16 +93,6 @@ const mockLookupsReady: FormLookupData = {
   users: [],
   eventPlanners: [],
   tags: [],
-  pitchStatuses: [],
-  pitchRequiredStatuses: [
-    {
-      id: 1,
-      label: 'Pending',
-      value: 1,
-      name: 'pending',
-      displayName: 'Pending',
-    },
-  ],
   activityStatuses: [],
   commsMaterials: [],
   translationLanguages: [],
@@ -176,7 +163,6 @@ vi.mock('../hooks/useActivityLock', () => ({
     refreshLockFromServer: mockRefreshLockFromServer,
     ensureLockForSubmit: mockEnsureLockForSubmit,
     sendHeartbeat: vi.fn().mockResolvedValue('ok'),
-    getServerNowMs: vi.fn(() => Date.now()),
     wasLockIdleExpired: mockWasLockIdleExpired,
     applyExternalLockReleased: mockApplyExternalLockReleased,
     setLockedByOther: mockSetLockedByOther,
@@ -213,10 +199,8 @@ let mockActivityWebSocketOptions: {
   onDataUpdated?: () => void;
 } = {};
 let mockActivitySocketConnection:
-  | 'connected'
-  | 'reconnecting'
-  | 'browser-offline'
-  | 'disconnected' = 'connected';
+  'connected' | 'reconnecting' | 'browser-offline' | 'disconnected' =
+  'connected';
 vi.mock('../hooks/useActivityWebSocket', () => ({
   useActivityWebSocket: (
     _activityId: number,
@@ -336,8 +320,8 @@ describe('ActivityPage form readiness', () => {
           id: 5,
           name: 'Test Team',
           displayName: 'Test Team',
-          ministryId: 1,
-          ministryName: 'Ministry One',
+          primaryOrganizationId: 1,
+          primaryOrganizationName: 'Ministry One',
           memberCount: 2,
         }),
       ],
@@ -376,8 +360,8 @@ describe('ActivityPage restore button visibility', () => {
           id: 5,
           name: 'T',
           displayName: 'Test',
-          ministryId: 1,
-          ministryName: 'M',
+          primaryOrganizationId: 1,
+          primaryOrganizationName: 'M',
           memberCount: 1,
         }),
       ],
@@ -528,8 +512,8 @@ describe('ActivityPage optimistic inline edit', () => {
           id: 5,
           name: 'Test',
           displayName: 'Test',
-          ministryId: 1,
-          ministryName: 'M',
+          primaryOrganizationId: 1,
+          primaryOrganizationName: 'M',
           memberCount: 1,
         }),
       ],
@@ -668,6 +652,149 @@ describe('ActivityPage optimistic inline edit', () => {
     expect(titleTextarea).toHaveValue('Test Activity unsaved');
   });
 
+  it.each([false, true])(
+    'keeps an idle-expired owned session blocked until resume (server changed: %s)',
+    async (serverChanged) => {
+      mockLockState = 'owned';
+      const user = userEvent.setup();
+      renderActivityPage();
+
+      const titleTextarea = await screen.findByRole('textbox', {
+        name: /Title/i,
+      });
+      await user.type(titleTextarea, ' unsaved');
+      await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+      mockWasLockIdleExpired.mockReturnValue(true);
+      act(() => {
+        mockActivityWebSocketOptions.onLockReleased?.();
+      });
+      await screen.findByText(/ended due to inactivity/i);
+
+      mockRefreshLockFromServer.mockResolvedValue('owned');
+      if (serverChanged) {
+        mockFetchActivity.mockResolvedValue(
+          createMockActivityResponse({
+            ...mockActivityWithLeadTeam,
+            title: 'Other tab title',
+            lastUpdatedDateTime: '2030-01-01T00:00:00.000Z',
+          })
+        );
+      }
+      await act(async () => {
+        mockActivityWebSocketOptions.onActivitySocketReconnect?.();
+        await Promise.resolve();
+      });
+
+      expect(mockRefreshLockFromServer).toHaveBeenCalled();
+      expect(screen.getByText(/ended due to inactivity/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Save$/i })).toBeDisabled();
+      expect(mockFetchActivity).not.toHaveBeenCalled();
+      expect(mockEnsureLockForSubmit).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: /Resume editing/i }));
+
+      await waitFor(() => expect(mockFetchActivity).toHaveBeenCalledTimes(1));
+      if (serverChanged) {
+        await screen.findByText(/updated elsewhere/i);
+        expect(screen.getByRole('button', { name: /^Save$/i })).toBeDisabled();
+      } else {
+        await waitFor(() =>
+          expect(screen.getByRole('button', { name: /^Save$/i })).toBeEnabled()
+        );
+      }
+      expect(mockEnsureLockForSubmit).not.toHaveBeenCalled();
+      expect(titleTextarea).toHaveValue('Test Activity unsaved');
+    }
+  );
+
+  it.each(['onActivitySocketReconnect', 'onDataUpdated'] as const)(
+    'preserves an in-flight explicit resume across %s',
+    async (event) => {
+      mockLockState = 'owned';
+      const user = userEvent.setup();
+      renderActivityPage();
+
+      const titleTextarea = await screen.findByRole('textbox', {
+        name: /Title/i,
+      });
+      await user.type(titleTextarea, ' unsaved');
+      await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+      mockWasLockIdleExpired.mockReturnValue(true);
+      act(() => {
+        mockActivityWebSocketOptions.onLockReleased?.();
+      });
+      await screen.findByText(/ended due to inactivity/i);
+
+      let resolveFetch!: (activity: typeof mockActivityWithLeadTeam) => void;
+      const pendingFetch = new Promise<typeof mockActivityWithLeadTeam>(
+        (resolve) => {
+          resolveFetch = resolve;
+        }
+      );
+      mockFetchActivity.mockReturnValueOnce(pendingFetch);
+      await user.click(screen.getByRole('button', { name: /Resume editing/i }));
+      await waitFor(() => expect(mockFetchActivity).toHaveBeenCalledTimes(1));
+
+      act(() => {
+        mockActivityWebSocketOptions[event]?.();
+      });
+      await act(async () => {
+        resolveFetch(mockActivityWithLeadTeam);
+        await pendingFetch;
+      });
+
+      await waitFor(() =>
+        expect(mockEnsureLockForSubmit).toHaveBeenCalledTimes(1)
+      );
+      expect(mockFetchActivity).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByText(/ended due to inactivity/i)
+      ).not.toBeInTheDocument();
+      expect(titleTextarea).toHaveValue('Test Activity unsaved');
+
+      mockWasLockIdleExpired.mockReturnValue(false);
+      act(() => {
+        mockActivityWebSocketOptions[event]?.();
+      });
+      await waitFor(() =>
+        expect(mockEnsureLockForSubmit).toHaveBeenCalledTimes(2)
+      );
+      expect(mockFetchActivity).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it('resumes an idle-expired session after a custom control edit', async () => {
+    mockLockState = 'owned';
+    const user = userEvent.setup();
+    renderActivityPage();
+
+    const titleTextarea = await screen.findByRole('textbox', {
+      name: /Title/i,
+    });
+    await user.type(titleTextarea, ' unsaved');
+    await waitFor(() => expect(mockAcquire).toHaveBeenCalled());
+
+    mockWasLockIdleExpired.mockReturnValue(true);
+    act(() => {
+      mockActivityWebSocketOptions.onLockReleased?.();
+    });
+    await screen.findByText(/ended due to inactivity/i);
+
+    await user.click(screen.getByRole('checkbox', { name: /Issue/i }));
+
+    await waitFor(() =>
+      expect(mockEnsureLockForSubmit).toHaveBeenCalledTimes(1)
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/ended due to inactivity/i)
+      ).not.toBeInTheDocument()
+    );
+    expect(titleTextarea).toHaveValue('Test Activity unsaved');
+  });
+
   it('auto-recovers when the lock is released for a non-idle reason', async () => {
     mockLockState = 'owned';
     const user = userEvent.setup();
@@ -727,7 +854,6 @@ describe('ActivityPage optimistic inline edit', () => {
       activity: createMockActivityResponse({
         ...mockActivityWithLeadTeam,
         isIssue: false,
-        pitchRequiredStatusId: 1,
       }),
     });
 
@@ -1097,8 +1223,8 @@ describe('ActivityPage clone button', () => {
           id: 5,
           name: 'Test',
           displayName: 'Test',
-          ministryId: 1,
-          ministryName: 'M',
+          primaryOrganizationId: 1,
+          primaryOrganizationName: 'M',
           memberCount: 1,
         }),
       ],

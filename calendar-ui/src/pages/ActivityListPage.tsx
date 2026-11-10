@@ -97,7 +97,8 @@ export const ActivityListPage = () => {
   const teamsWithMinistry = useMemo(
     () =>
       userTeams.filter(
-        (t): t is TeamListItem & { ministryId: number } => t.ministryId != null
+        (t): t is TeamListItem & { primaryOrganizationId: number } =>
+          t.primaryOrganizationId != null
       ),
     [userTeams]
   );
@@ -140,7 +141,9 @@ export const ActivityListPage = () => {
       : (teamsWithMinistry[0] ?? null);
   const effectiveLeadTeamId = selectedLeadTeam?.id ?? selectedLeadTeamId;
   const ministryTabLabel = selectedLeadTeam
-    ? (ministryAbbreviationByMinistryId.get(selectedLeadTeam.ministryId) ??
+    ? (ministryAbbreviationByMinistryId.get(
+        selectedLeadTeam.primaryOrganizationId
+      ) ??
       selectedLeadTeam.displayName ??
       selectedLeadTeam.name ??
       'Ministry')
@@ -254,7 +257,7 @@ export const ActivityListPage = () => {
                               }}
                             >
                               {ministryAbbreviationByMinistryId.get(
-                                team.ministryId
+                                team.primaryOrganizationId
                               ) ??
                                 team.displayName ??
                                 team.name}

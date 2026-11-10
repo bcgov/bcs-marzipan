@@ -7,6 +7,7 @@ import { canonicalizeActivityFormData } from './activity-form-canonicalize';
 import { normalizeVenueAddressForForm } from './activity-form-mapper';
 import { EMPTY_RICH_TEXT_DOC } from './activity-rich-text';
 import { isDeepEqual } from './isDeepEqual';
+import { sortOrganizationEntriesForDiff } from './sort-organization-entries-for-diff';
 
 /**
  * Fields excluded from the review diff: audit/system columns that are never
@@ -17,7 +18,6 @@ const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   'markAsReviewed',
   'activityHistoryNotes',
   'commsContactLeadId',
-  'leadMinistryId',
 ]);
 
 export type DiffReviewFieldsOptions = {
@@ -51,8 +51,8 @@ export function getEmptyReviewBaseline(): ActivityFormData {
     venueAddress: normalizeVenueAddressForForm(null),
     commsContacts: [],
     eventPlanners: [],
+    organizations: [],
     representatives: [],
-    reportSettings: [],
   });
 }
 
@@ -113,7 +113,7 @@ function sortObjectArray<T extends Record<string, unknown>>(
  * paths that differ. These paths align with RHF field names used in the UI.
  *
  * ID arrays are compared order-independently; object arrays (commsContacts,
- * eventPlanners, representatives, reportSettings) are sorted by their primary
+ * eventPlanners, representatives) are sorted by their primary
  * key before comparison.
  */
 export function diffReviewFields(
@@ -153,6 +153,17 @@ export function diffReviewFields(
     }
 
     if (isObjectArrayField(key)) {
+      if (key === 'organizations') {
+        if (
+          !isDeepEqual(
+            sortOrganizationEntriesForDiff(curVal),
+            sortOrganizationEntriesForDiff(baseVal)
+          )
+        ) {
+          changed.push(key);
+        }
+        continue;
+      }
       const sortKey = OBJECT_ARRAY_SORT_KEYS[key] ?? 'userId';
       if (
         !isDeepEqual(
@@ -184,8 +195,8 @@ const ID_ARRAY_FIELDS: ReadonlySet<string> = new Set([
 const OBJECT_ARRAY_SORT_KEYS: Record<string, string> = {
   commsContacts: 'userId',
   eventPlanners: 'eventPlannerId',
+  organizations: 'organizationId',
   representatives: 'representativeName',
-  reportSettings: 'reportId',
 };
 
 function isIdArrayField(key: string): boolean {

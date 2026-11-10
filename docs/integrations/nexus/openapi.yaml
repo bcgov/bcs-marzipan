@@ -1,0 +1,584 @@
+openapi: 3.1.0
+info:
+  title: Marzipan ↔ Nexus integration API (v1 draft)
+  version: 0.0.2
+  x-contract-revision: '0.0.2'
+  x-last-updated: '2026-11-06'
+  x-integration-doc: INTEGRATION.md
+  x-changelog: CHANGELOG-nexus-integration.md
+  description: |
+    Contract for Corporate Calendar (Marzipan) endpoints consumed by Nexus,
+    and the payload Nexus sends to Marzipan to update the release mirror.
+
+    Behaviour, ownership, and workflows are defined in INTEGRATION.md (§0 conformance legend).
+    Contract revision 0.0.x is pre-release WIP; match INTEGRATION.md header and changelog.
+
+    Nexus → Marzipan mirror ingest: status, public URL, themes, schedule mirrors, optional job
+    schedule, hasTranslations, and actual publish time are auto-applied to per-release link rows. Proposals for
+    organizations or translation languages that would change Marzipan junction data are delivered
+    in optional *PendingReview* fields and require Marzipan admin confirm (card/dialog) before
+    persistence — see NexusReleaseMirrorIngestRequest.
+
+    Each operation includes x-integration-status: decision | proposed | open | future.
+    Implement v1 production requirements only for operations marked decision unless
+    INTEGRATION.md promotes proposed/open items to decision.
+
+    Legacy proposal shapes remain in ../NEXUS_METADATA_SYNC.md for reference only.
+
+    Operational baseline (HTTP status, eventId vs Idempotency-Key, atomic v1, proposed /api/v1 path shapes) is Proposed in INTEGRATION.md §9 — Open O-23; path list here remains draft until aligned.
+
+servers:
+  - url: https://{marzipanHost}
+    description: Marzipan Calendar Service (TBD per environment)
+    variables:
+      marzipanHost:
+        default: api.example.invalid
+
+tags:
+  - name: NexusLink
+    description: Activity discovery and snapshot for linking a Nexus release
+  - name: NexusMirror
+    description: Ingest Nexus release metadata into Marzipan
+
+paths:
+  /api/v1/integrations/nexus/activities:
+    get:
+      tags: [NexusLink]
+      summary: Search activities eligible for Nexus linking
+      operationId: listActivitiesForNexusLink
+      x-integration-status: decision
+      description: |
+        Returns activities that are not Completed or Deleted. Future filters (category Release,
+        comms release type) may be added. Nexus UI may search by activity id or displayId.
+      parameters:
+        - name: q
+          in: query
+          description: Optional search (title, displayId)
+          schema:
+            type: string
+        - name: displayId
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Page of activity link summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarzipanActivityLinkListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/integrations/nexus/activities/{activityId}:
+    get:
+      tags: [NexusLink]
+      summary: Get full activity snapshot for Nexus prepopulation
+      operationId: getActivitySnapshotForNexus
+      x-integration-status: decision
+      parameters:
+        - $ref: '#/components/parameters/MarzipanActivityId'
+      responses:
+        '200':
+          description: Activity snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarzipanActivitySnapshotResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/integrations/nexus/releases/mirror:
+    post:
+      tags: [NexusMirror]
+      summary: Apply Nexus release metadata to Marzipan mirror
+      operationId: ingestNexusReleaseMirror
+      x-integration-status: proposed
+      description: |
+        Webhook/callback from Nexus when release fields change (transport Open O-13).
+        Per INTEGRATION.md §6 WF-3: auto-updates per-release mirror for Nexus-owned fields
+        (status, releaseUrl, themes, schedule mirrors, hasTranslations, actualPublishDateTime when completed).
+        Optional organizationsPendingReview / translationLanguagesPendingReview hold Nexus-sourced
+        proposals for Marzipan-owned junctions — stored as pending until admin confirm.
+        Idempotency/stale-reject Open O-6. x-integration-status proposed until O-13 is Decision.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NexusReleaseMirrorIngestRequest'
+      responses:
+        '200':
+          description: Mirror updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NexusReleaseMirrorIngestResponse'
+        '202':
+          description: Accepted for async processing
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Stale updatedAt or conflict with current mirror
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  parameters:
+    MarzipanActivityId:
+      name: activityId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+    Forbidden:
+      description: Caller not permitted
+    NotFound:
+      description: Resource not found
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/IntegrationError'
+
+  schemas:
+    IntegrationError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        traceId:
+          type: string
+      required: [code, message]
+
+    MarzipanActivityLinkSummary:
+      type: object
+      properties:
+        activityId:
+          type: integer
+        displayId:
+          type: string
+          nullable: true
+        title:
+          type: string
+        activityStatus:
+          type: string
+          description: Marzipan workflow status name (not Nexus release status)
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        leadTeamDisplayName:
+          type: string
+          nullable: true
+      required: [activityId, title]
+
+    MarzipanActivityLinkListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/MarzipanActivityLinkSummary'
+            nextCursor:
+              type: string
+              nullable: true
+          required: [items]
+      required: [success, data]
+
+    SyncOrganizationCatalog:
+      type: object
+      properties:
+        kind:
+          type: string
+          const: catalog
+        organizationUuid:
+          type: string
+          format: uuid
+        marzipanOrganizationId:
+          type: integer
+          description: Optional Marzipan organizations.id
+        displayName:
+          type: string
+        acronym:
+          type: string
+          nullable: true
+        isLead:
+          type: boolean
+      required: [kind, organizationUuid, displayName, isLead]
+
+    SyncOrganizationFreeform:
+      type: object
+      properties:
+        kind:
+          type: string
+          const: freeform
+        organizationName:
+          type: string
+        displayName:
+          type: string
+        isLead:
+          type: boolean
+      required: [kind, organizationName, displayName, isLead]
+
+    SyncOrganization:
+      oneOf:
+        - $ref: '#/components/schemas/SyncOrganizationCatalog'
+        - $ref: '#/components/schemas/SyncOrganizationFreeform'
+      discriminator:
+        propertyName: kind
+
+    ActivityCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: Stable lookup name
+        displayName:
+          type: string
+      required: [id, name, displayName]
+
+    TranslationLanguage:
+      type: object
+      properties:
+        id:
+          type: integer
+        shortcode:
+          type: string
+          nullable: true
+          description: Must align with Nexus Language.culture when set
+        displayName:
+          type: string
+      required: [id, displayName]
+
+    VenueAddressSubset:
+      type: object
+      nullable: true
+      properties:
+        city:
+          type: string
+          nullable: true
+        provinceOrState:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+
+    MarzipanActivitySnapshot:
+      type: object
+      description: Full snapshot for Nexus prepopulation and refresh (payloadVersion 1.0)
+      properties:
+        payloadVersion:
+          type: string
+          const: '1.0'
+        activityId:
+          type: integer
+        displayId:
+          type: string
+          nullable: true
+        categories:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ActivityCategory'
+        title:
+          type: string
+        isAllDay:
+          type: boolean
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        startTime:
+          type: string
+          nullable: true
+          description: Wall time HH:mm or HH:mm:ss
+        endTime:
+          type: string
+          nullable: true
+        dateStatusId:
+          type: integer
+        dateStatus:
+          type: string
+          nullable: true
+        timeStatusId:
+          type: integer
+        timeStatus:
+          type: string
+          nullable: true
+        venueAddress:
+          $ref: '#/components/schemas/VenueAddressSubset'
+        leadTeamId:
+          type: integer
+        leadTeamDisplayName:
+          type: string
+          nullable: true
+        organizations:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SyncOrganization'
+        leadMinistry:
+          type: string
+          nullable: true
+        leadMinistryAbbreviation:
+          type: string
+          nullable: true
+        newsReleaseOriginId:
+          type: integer
+          nullable: true
+        newsReleaseOrigin:
+          type: string
+          nullable: true
+        newsReleaseDistributionId:
+          type: integer
+          nullable: true
+        newsReleaseDistribution:
+          type: string
+          nullable: true
+        releaseSchedulingMode:
+          type: string
+          nullable: true
+          enum: [relative, on_signal]
+        releaseTimeOffsetMinutes:
+          type: integer
+          nullable: true
+        releaseTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Marzipan recommended publication instant (computed from anchor + mode/offset when gates allow).
+            Nexus must treat as recommendation only; accepted schedule lives on Release after Nexus save.
+        rowVersion:
+          type: integer
+          minimum: 0
+          description: activities.row_version — monotonic snapshot version for ordering/dedup (maps to sourceVersion in contract docs)
+        translationsRequiredStatusId:
+          type: integer
+          nullable: true
+        translationsRequiredStatus:
+          type: string
+          nullable: true
+        translationLanguages:
+          type: array
+          items:
+            $ref: '#/components/schemas/TranslationLanguage'
+        lastUpdatedDateTime:
+          type: string
+          format: date-time
+        lastUpdatedBy:
+          type: integer
+      required:
+        - payloadVersion
+        - activityId
+        - categories
+        - title
+        - isAllDay
+        - dateStatusId
+        - timeStatusId
+        - leadTeamId
+        - organizations
+        - lastUpdatedDateTime
+        - lastUpdatedBy
+        - rowVersion
+
+    MarzipanActivitySnapshotResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/MarzipanActivitySnapshot'
+      required: [success, data]
+
+    NexusReleaseMirrorIngestRequest:
+      type: object
+      description: |
+        Nexus → Marzipan mirror update (payloadVersion 1.0). One row per nexusReleaseId on
+        activity_nexus_release_link (name TBD). Fields below marked auto-apply update mirror only.
+        PendingReview fields do not update activity junctions until Marzipan admin confirms.
+      properties:
+        payloadVersion:
+          type: string
+          const: '1.0'
+        sourceSystem:
+          type: string
+          const: nexus
+        nexusReleaseId:
+          type: string
+          format: uuid
+        marzipanActivityId:
+          type: integer
+        nexusDocumentTypeKey:
+          type: string
+          nullable: true
+          description: >
+            DocumentType.name on Nexus (API bootstrap key), e.g. NEWS_RELEASE, ADVISORY. One mirror row
+            per Release; use separate nexusReleaseId per document type (see INTEGRATION.md §3).
+        releaseStatus:
+          type: string
+          nullable: true
+          description: >
+            Derived by Nexus (not a DB column). See NEXUS_PRISMA_SCHEMA_REFERENCE.md and INTEGRATION.md §12.1.
+          enum:
+            - Draft
+            - Scheduled
+            - Publishing
+            - Published
+            - Sent
+            - Failed
+        scheduledPublishDateTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            Release.publishDateTime — persisted editorial schedule when Nexus saves (draft or publishing).
+            Not Marzipan recommendation. “Scheduled” UX also requires isCommitted/job rules on Nexus.
+        publicationJobScheduledFor:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Optional. Latest PublicationJob.scheduledFor by createdAt. Omit when null. Redundant with
+            scheduledPublishDateTime for normal scheduled publishes today (INTEGRATION.md §5).
+        publicationCompleted:
+          type: boolean
+          default: false
+          description: >
+            When true, publication has finished; Marzipan UI should show actualPublishDateTime as
+            “Published at”. When false, show scheduledPublishDateTime (and optional publicationJobScheduledFor)
+            as intended schedule only (see INTEGRATION.md §5).
+        actualPublishDateTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Latest PublicationJob.completedAt (same job ordering as publicationJobScheduledFor).
+            Meaningful when publicationCompleted is true.
+        releaseUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: >
+            Public URL for this release (Open O-27 — typically DestinationResult.publicUrl). One URL
+            per nexusReleaseId, not separate MA/backgrounder fields on one row.
+        hasTranslations:
+          type: boolean
+          default: false
+          description: Release.hasTranslations. Per-locale translation artifact URLs are future work in Nexus.
+        themes:
+          type: array
+          items:
+            type: string
+          description: ReleaseTheme junction — theme key or displayName per Nexus bootstrap (document in O-24).
+        organizationsPendingReview:
+          type: array
+          description: >
+            Optional. If present, Nexus proposal for org rows that would change activity_organizations —
+            Marzipan stores as pending; admin must confirm before persist (INTEGRATION.md §8).
+          items:
+            $ref: '#/components/schemas/SyncOrganization'
+        translationLanguagesPendingReview:
+          type: array
+          description: >
+            Optional. If present, Nexus proposal for translation language set — pending until admin confirm.
+            Distinct from published translation artifact URLs (not in v1 mirror).
+          items:
+            $ref: '#/components/schemas/TranslationLanguage'
+        updatedAt:
+          type: string
+          format: date-time
+          description: |
+            `Release.updatedAt` when the mirror payload was built. Used for stale/reject ordering
+            with mirror state (see INTEGRATION.md §9, O-6). Not `Activity.sourceUpdatedAt`.
+      required:
+        - payloadVersion
+        - sourceSystem
+        - nexusReleaseId
+        - marzipanActivityId
+        - updatedAt
+
+    NexusReleaseMirrorIngestResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        marzipanActivityId:
+          type: integer
+        nexusReleaseId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [accepted, queued, rejected, partial]
+        message:
+          type: string
+          nullable: true
+        processedAt:
+          type: string
+          format: date-time
+        mirrorApplied:
+          type: boolean
+          default: true
+          description: Whether auto-mirror fields were written to the per-release link row
+        pendingReview:
+          type: object
+          nullable: true
+          description: Present when org/language proposals were stored for admin review
+          properties:
+            organizations:
+              type: boolean
+            translationLanguages:
+              type: boolean
+        warnings:
+          type: array
+          items:
+            type: string
+      required:
+        [success, marzipanActivityId, nexusReleaseId, status, processedAt]

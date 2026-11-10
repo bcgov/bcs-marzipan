@@ -1,6 +1,10 @@
 import { and, eq } from 'drizzle-orm';
 
-import { teamCategories, teamTags } from '@corpcal/database/schema';
+import {
+  teamCategories,
+  teamCommsMaterials,
+  teamTags,
+} from '@corpcal/database/schema';
 
 import type { DrizzleDbExecutor } from '../database/database.provider';
 
@@ -76,5 +80,51 @@ export async function loadActiveTagTeamIds(
     .select({ teamId: teamTags.teamId })
     .from(teamTags)
     .where(and(eq(teamTags.tagId, tagId), eq(teamTags.isActive, true)));
+  return rows.map((r) => r.teamId);
+}
+
+export async function syncCommsMaterialTeams(
+  tx: DrizzleDbExecutor,
+  commsMaterialId: number,
+  visibility: 'global' | 'team',
+  teamIds: number[] | undefined
+): Promise<void> {
+  await tx
+    .update(teamCommsMaterials)
+    .set({ isActive: false })
+    .where(eq(teamCommsMaterials.commsMaterialId, commsMaterialId));
+
+  if (visibility !== 'team' || !teamIds?.length) {
+    return;
+  }
+
+  await tx
+    .insert(teamCommsMaterials)
+    .values(
+      teamIds.map((teamId) => ({
+        commsMaterialId,
+        teamId,
+        isActive: true,
+      }))
+    )
+    .onConflictDoUpdate({
+      target: [teamCommsMaterials.commsMaterialId, teamCommsMaterials.teamId],
+      set: { isActive: true },
+    });
+}
+
+export async function loadActiveCommsMaterialTeamIds(
+  tx: DrizzleDbExecutor,
+  commsMaterialId: number
+): Promise<number[]> {
+  const rows = await tx
+    .select({ teamId: teamCommsMaterials.teamId })
+    .from(teamCommsMaterials)
+    .where(
+      and(
+        eq(teamCommsMaterials.commsMaterialId, commsMaterialId),
+        eq(teamCommsMaterials.isActive, true)
+      )
+    );
   return rows.map((r) => r.teamId);
 }

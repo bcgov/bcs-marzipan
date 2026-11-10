@@ -11,11 +11,9 @@ import {
 } from '@/hooks/useActivityTableCore';
 
 import { ActivityBulkSelectHeader } from './ActivityBulkSelectHeader';
-import { ActivityColumnVisibilityMenu } from './ActivityColumnVisibilityMenu';
 import {
   GRID_A_COLUMN_ORDER,
   GRID_A_COLUMN_WIDTHS,
-  GRID_A_HIDEABLE_COLUMNS,
   gridColumnSize,
 } from './activityGridDefaults';
 import { ActivityGridTable } from './ActivityGridTable';
@@ -26,10 +24,8 @@ import {
   ActivityStatusCell,
   ActivityTimestampsCell,
   CategoryBadgesCell,
-  LeadContactLine,
   MaterialsCellCompact,
   OverviewIconsCell,
-  OverviewPitchLine,
   SchedulingCellCompact,
   SelectCheckboxCell,
   TitleSummaryCell,
@@ -62,7 +58,6 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
     toggleFavourite,
     isFavouriteToggling,
     userMap,
-    pitchFieldVisibility,
   } = core;
 
   const storedSizing = layoutPreferences.getColumnSizing();
@@ -122,11 +117,6 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
                 })
               }
               flagPending={syncFlagsMutation.isPending}
-            />
-            <OverviewPitchLine
-              row={row.original}
-              canViewPitchStatus={pitchFieldVisibility.canViewPitchStatus}
-              showReviewHighlights={showReviewHighlights}
             />
             <CategoryBadgesCell
               row={row.original}
@@ -202,7 +192,6 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
               userMap={userMap}
               showUpdatedByAvatar={false}
             />
-            <LeadContactLine row={row.original} />
           </div>
         ),
       }),
@@ -224,51 +213,19 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
       toggleFavourite,
       isFavouriteToggling,
       userMap,
-      pitchFieldVisibility,
     ]
   );
 
-  const {
-    table,
-    columnOrder,
-    columnVisibility,
-    toggleColumnVisibility,
-    draggableColumnIds,
-    moveColumn,
-  } = useActivityGridColumnTable({
-    columns,
-    defaultColumnOrder,
-    core,
-    layoutPreferences,
-  });
-
-  const columnOptions = useMemo(
-    () => [
-      {
-        id: 'overview',
-        label: 'Overview',
-        visible: true,
-        disabled: true,
-      },
-      ...GRID_A_HIDEABLE_COLUMNS.map(({ id, label }) => ({
-        id,
-        label,
-        visible: columnVisibility[id] !== false,
-      })),
-    ],
-    [columnVisibility]
-  );
+  const { table, columnOrder, draggableColumnIds, moveColumn } =
+    useActivityGridColumnTable({
+      columns,
+      defaultColumnOrder,
+      core,
+      layoutPreferences,
+    });
 
   return (
-    <ActivityTableFrame
-      core={core}
-      columnsMenu={
-        <ActivityColumnVisibilityMenu
-          options={columnOptions}
-          onToggle={toggleColumnVisibility}
-        />
-      }
-    >
+    <ActivityTableFrame core={core}>
       <ActivityGridTable
         table={table}
         columnOrder={columnOrder}

@@ -25,9 +25,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -56,8 +53,6 @@ export interface ActivityTableFrameProps {
   core: ActivityTableCore;
   /** The grid's table element; rendered only when there are rows to show. */
   children: ReactNode;
-  /** Optional column visibility control shown on the count row. */
-  columnsMenu?: ReactNode;
 }
 
 /**
@@ -68,7 +63,6 @@ export interface ActivityTableFrameProps {
 export function ActivityTableFrame({
   core,
   children,
-  columnsMenu,
 }: ActivityTableFrameProps) {
   const {
     canBulkSelect,
@@ -92,8 +86,6 @@ export function ActivityTableFrame({
     setBulkDialog,
     bulkActionPending,
     handleBulkOperation,
-    selectedPitchStatusId,
-    setSelectedPitchStatusId,
     selectedTagIds,
     setSelectedTagIds,
     selectedTeamIds,
@@ -129,17 +121,14 @@ export function ActivityTableFrame({
     booleanFilters,
     leadFilterConflictsWithMinistryTab,
     favouriteActivityIds,
-    pitchFieldVisibility,
     categoryOptions,
     statusOptions,
-    pitchRequiredStatusOptions,
     tagOptions,
     leadTeamOptions,
     commsContactOptions,
     eventPlannerOptions,
     translationOptions,
     translationStatusOptions,
-    bulkPitchStatusOptions,
     tags,
     teams,
     user,
@@ -162,7 +151,6 @@ export function ActivityTableFrame({
       defaultSortDirection={DEFAULT_SORT_DIRECTION}
       sortColumns={ACTIVITY_SORT_COLUMNS}
       categoryOptions={categoryOptions}
-      pitchRequiredStatusOptions={pitchRequiredStatusOptions}
       statusOptions={statusOptions}
       tagOptions={tagOptions}
       translationStatusOptions={translationStatusOptions}
@@ -170,7 +158,6 @@ export function ActivityTableFrame({
       leadTeamOptions={leadTeamOptions}
       commsContactOptions={commsContactOptions}
       eventPlannerOptions={eventPlannerOptions}
-      pitchFieldVisibility={pitchFieldVisibility}
       savedFilters={savedFiltersHook}
       activeSavedFilterId={activeSavedFilter?.id ?? null}
       onApplySavedFilter={handleApplySavedFilter}
@@ -237,14 +224,6 @@ export function ActivityTableFrame({
                 <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
                   Issue
                 </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>Pitch status</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuItem onSelect={() => setBulkDialog('pitch')}>
-                      Update pitch status
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
                 {canBulkShareActivities && (
                   <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
                     Shared with
@@ -294,7 +273,6 @@ export function ActivityTableFrame({
       showCount={bulkSelectionLeading == null}
       leading={bulkSelectionLeading}
       filters={booleanFilters}
-      actions={columnsMenu}
     />
   );
 
@@ -416,7 +394,6 @@ export function ActivityTableFrame({
               <DialogTitle>
                 {bulkDialog === 'review' &&
                   'Mark selected activities reviewed?'}
-                {bulkDialog === 'pitch' && 'Set pitch status'}
                 {bulkDialog === 'issue' &&
                   'Mark selected activities as issues?'}
                 {bulkDialog === 'tags' && 'Replace tags'}
@@ -430,23 +407,6 @@ export function ActivityTableFrame({
                   : `This updates ${selectedActivityCount} selected activit${selectedActivityCount === 1 ? 'y' : 'ies'}.`}
               </DialogDescription>
             </DialogHeader>
-            {bulkDialog === 'pitch' && (
-              <Select
-                value={selectedPitchStatusId}
-                onValueChange={setSelectedPitchStatusId}
-              >
-                <SelectTrigger aria-label="Pitch status">
-                  <SelectValue placeholder="Choose a pitch status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {bulkPitchStatusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
             {bulkDialog === 'tags' && (
               <div className="max-h-56 space-y-2 overflow-y-auto">
                 {tags.map((tag) => (
@@ -551,7 +511,6 @@ export function ActivityTableFrame({
                 type="button"
                 disabled={
                   bulkActionPending ||
-                  (bulkDialog === 'pitch' && !selectedPitchStatusId) ||
                   (bulkDialog === 'flag' &&
                     (!selectedFlagTeamId ||
                       selectedAssigneeIds.length === 0)) ||

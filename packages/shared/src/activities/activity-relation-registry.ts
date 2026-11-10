@@ -22,13 +22,11 @@ export const ACTIVITY_RELATION_KEYS = [
   'representativesAttending',
   'sharedWith',
   'commsContacts',
-  'leadOrg',
+  'organizationDetails',
   'eventPlannerDetails',
   'newsReleaseOrigin',
   'newsReleaseDistribution',
   'premierRequested',
-  'reportSettings',
-  'pitchRequiredStatus',
   'translationsRequiredStatus',
   'leadMinistry',
   'leadMinistryAbbreviation',
@@ -52,7 +50,7 @@ export const SEARCH_ACTIVITY_RELATION_KEYS: ReadonlySet<ActivityRelationKey> =
     'representativesAttending',
     'leadMinistry',
     'leadMinistryAbbreviation',
-    'leadOrg',
+    'organizationDetails',
   ]);
 
 /**
@@ -65,7 +63,6 @@ export const LIST_FILTER_RELATION_KEYS: ReadonlySet<ActivityRelationKey> =
     'timeStatus',
     'translationsRequired',
     'translationsRequiredStatus',
-    'pitchRequiredStatus',
   ]);
 
 /** Relations required for list table UI columns not covered by filter/search keys alone. */
@@ -126,13 +123,11 @@ const REPORT_FIELD_RELATIONS: Readonly<
   newsReleaseOrigin: ['newsReleaseOrigin'],
   newsReleaseDistribution: ['newsReleaseDistribution'],
   premierRequested: ['premierRequested'],
-  pitchRequiredStatus: ['pitchRequiredStatus'],
-  pitchDate: ['pitchRequiredStatus'],
-  leadOrg: ['leadOrg'],
+  leadOrg: ['organizationDetails'],
+  organizationDetails: ['organizationDetails'],
   leadMinistry: ['leadMinistry', 'leadMinistryAbbreviation'],
   leadMinistryAbbreviation: ['leadMinistryAbbreviation'],
   leadTeamDisplayName: ['leadTeamDisplay'],
-  strategy: [],
   significance: [],
   schedulingNotes: [],
   notes: [],
@@ -213,12 +208,6 @@ export function relationsForQueryFilters(
     addRelations(result, ['translationsRequired']);
   }
   if (
-    query.pitchRequiredStatusNames != null &&
-    query.pitchRequiredStatusNames.length > 0
-  ) {
-    addRelations(result, ['pitchRequiredStatus']);
-  }
-  if (
     query.lookAheadStatusValues != null &&
     query.lookAheadStatusValues.length > 0
   ) {
@@ -242,15 +231,6 @@ export function relationsForQueryFilters(
   ) {
     addRelations(result, ['timeStatus']);
   }
-  if (
-    query.pitchDateNotScheduled === true ||
-    query.pitchDateScheduled === true ||
-    query.pitchDateFrom != null ||
-    query.pitchDateTo != null
-  ) {
-    addRelations(result, ['pitchRequiredStatus']);
-  }
-
   return result;
 }
 

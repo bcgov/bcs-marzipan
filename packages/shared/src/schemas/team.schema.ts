@@ -41,8 +41,8 @@ export const teamListItemSchema = z.object({
   appearsInShareWith: z.boolean(),
   roleId: z.number().int().nullable(),
   memberCount: z.number().int(),
-  ministryId: z.number().int().nullable(),
-  ministryName: z.string().nullable(),
+  primaryOrganizationId: z.number().int().nullable(),
+  primaryOrganizationName: z.string().nullable(),
 });
 
 export type TeamListItem = z.infer<typeof teamListItemSchema>;
@@ -60,7 +60,7 @@ export type TeamMember = z.infer<typeof teamMemberSchema>;
 
 /**
  * Team detail returned by GET /teams/:id.
- * Extends TeamListItem with members. Ministry is on the list item (ministryId, ministryName).
+ * Extends TeamListItem with members. Primary org is on the list item.
  */
 export const teamDetailSchema = teamListItemSchema.extend({
   members: z.array(teamMemberSchema),
@@ -97,7 +97,7 @@ export const createTeamBodySchema = z.object({
   isActive: z.boolean().optional(),
   appearsInShareWith: z.boolean().optional(),
   roleId: z.number().int().nullable().optional(),
-  ministryId: z.number().int().nullable().optional(),
+  primaryOrganizationId: z.number().int().nullable().optional(),
   notes: z.string().optional(),
 });
 
@@ -115,7 +115,7 @@ export const updateTeamBodySchema = z.object({
   isActive: z.boolean().optional(),
   appearsInShareWith: z.boolean().optional(),
   roleId: z.number().int().nullable().optional(),
-  ministryId: z.number().int().nullable().optional(),
+  primaryOrganizationId: z.number().int().nullable().optional(),
   notes: z.string().optional(),
 });
 

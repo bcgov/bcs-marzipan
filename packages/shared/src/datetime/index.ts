@@ -43,6 +43,10 @@ export {
   formatInstantInPacific,
   formatInstantPacificDate,
   formatInstantPacificTime,
+  formatInstantPacificReleasePreview,
+  formatTimeTbdPacificReleasePreview,
+  formatCalendarDateReleasePreview,
+  formatCivilPacificReleasePreview,
   formatLookAheadActivityDate,
   formatPacificFooterTimestamp,
 } from './format';

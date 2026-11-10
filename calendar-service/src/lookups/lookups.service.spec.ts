@@ -1,4 +1,3 @@
-import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
@@ -12,6 +11,10 @@ import { LookupsService } from './lookups.service';
 
 describe('LookupsService', () => {
   let service: LookupsService;
+
+  const mockLookupSortModeSelect = (
+    sortMode: 'manual' | 'alphabetical' = 'manual'
+  ) => createChain([{ sortMode }], 'limit');
 
   const createChain = (resolvedValue: unknown, terminal = 'limit') => {
     const value = Array.isArray(resolvedValue)
@@ -62,70 +65,6 @@ describe('LookupsService', () => {
 
     service = module.get<LookupsService>(LookupsService);
     vi.clearAllMocks();
-    mockDatabaseService.db.insert = vi.fn().mockReturnThis();
-    mockDatabaseService.db.values = vi.fn().mockResolvedValue(undefined);
-  });
-
-  it('rejects lookup names that already exist, ignoring case and whitespace', async () => {
-    mockDatabaseService.db.select = vi
-      .fn()
-      .mockReturnValue(createChain([{ id: 42 }], 'limit'));
-
-    await expect(
-      service.createCity({ name: '  victoria ', sortOrder: 0 }, 99)
-    ).rejects.toThrow(ConflictException);
-
-    expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
-  });
-
-  it('rejects renaming a lookup to another row name', async () => {
-    mockDatabaseService.db.select = vi
-      .fn()
-      .mockReturnValue(createChain([{ id: 42 }], 'limit'));
-
-    await expect(
-      service.updateTheme(13, { name: 'Operations' }, 99)
-    ).rejects.toThrow(ConflictException);
-
-    expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
-  });
-
-  it('trims tabs and newlines before storing and checking lookup names', async () => {
-    const returning = vi.fn().mockResolvedValue([{ id: 23, name: 'Victoria' }]);
-    const values = vi.fn().mockReturnValue({ returning });
-    mockDatabaseService.db.select = vi
-      .fn()
-      .mockReturnValueOnce(createChain([], 'limit'))
-      .mockReturnValueOnce(createChain([{ id: 23 }], 'limit'));
-    mockDatabaseService.db.insert = vi.fn().mockReturnValue({ values });
-
-    await service.createCity({ name: '\tVictoria\t', sortOrder: 0 }, 99);
-
-    expect(values).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Victoria' })
-    );
-    await expect(
-      service.createCity({ name: 'Victoria', sortOrder: 0 }, 99)
-    ).rejects.toThrow(ConflictException);
-    expect(mockDatabaseService.db.insert).toHaveBeenCalledTimes(1);
-  });
-
-  it('translates a database unique violation into a lookup conflict', async () => {
-    const returning = vi.fn().mockRejectedValue(
-      Object.assign(new Error('duplicate key'), {
-        code: '23505',
-        constraint_name: 'cities_normalized_name_unique',
-      })
-    );
-    const values = vi.fn().mockReturnValue({ returning });
-    mockDatabaseService.db.select = vi
-      .fn()
-      .mockReturnValue(createChain([], 'limit'));
-    mockDatabaseService.db.insert = vi.fn().mockReturnValue({ values });
-
-    await expect(
-      service.createCity({ name: 'Victoria', sortOrder: 0 }, 99)
-    ).rejects.toThrow(ConflictException);
   });
 
   it('inserts an audit row when toggling permission visibility', async () => {
@@ -207,7 +146,7 @@ describe('LookupsService', () => {
           'orderBy'
         )
       )
-      .mockReturnValueOnce(createChain([{ sortMode: 'manual' }], 'limit'));
+      .mockReturnValueOnce(mockLookupSortModeSelect('manual'));
 
     const result = await service.getGovernmentRepresentatives();
 
@@ -260,29 +199,16 @@ describe('LookupsService', () => {
   describe('reorderLookup', () => {
     const dialect = new PgDialect();
 
-    const mockSortMode = (sortMode: 'manual' | 'alphabetical') => {
-      mockDatabaseService.db.select = vi
-        .fn()
-        .mockReturnValue(createChain([{ sortMode }], 'limit'));
-    };
-
     const mockUpdate = (where: ReturnType<typeof vi.fn>) => {
       const set = vi.fn().mockReturnValue({ where });
       mockDatabaseService.db.update = vi.fn().mockReturnValue({ set });
       return set;
     };
 
-    it('rejects reorder when sort mode is alphabetical', async () => {
-      mockSortMode('alphabetical');
-
-      await expect(service.reorderLookup('themes', [1, 2], 7)).rejects.toThrow(
-        ConflictException
-      );
-      expect(mockDatabaseService.db.update).not.toHaveBeenCalled();
-    });
-
     it('assigns 1..n positions in a single UPDATE limited to the given ids', async () => {
-      mockSortMode('manual');
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(mockLookupSortModeSelect('manual'));
       const where = vi.fn().mockResolvedValue(undefined);
       const set = mockUpdate(where);
 
@@ -308,12 +234,44 @@ describe('LookupsService', () => {
     });
 
     it('propagates database failures', async () => {
-      mockSortMode('manual');
+      mockDatabaseService.db.select = vi
+        .fn()
+        .mockReturnValueOnce(mockLookupSortModeSelect('manual'));
       mockUpdate(vi.fn().mockRejectedValue(new Error('deadlock detected')));
 
       await expect(service.reorderLookup('cities', [1, 2], 7)).rejects.toThrow(
         'deadlock detected'
       );
     });
+  });
+
+  it('clears comms material release type links when deactivating a release type', async () => {
+    const returning = vi.fn().mockResolvedValue([
+      {
+        id: 3,
+        name: 'news_release',
+        displayName: 'News release',
+        isActive: false,
+      },
+    ]);
+    const whereUpdate = vi.fn().mockReturnValue({ returning });
+    const setUpdate = vi.fn().mockReturnValue({ where: whereUpdate });
+    const whereUnlink = vi.fn().mockResolvedValue(undefined);
+    const setUnlink = vi.fn().mockReturnValue({ where: whereUnlink });
+
+    mockDatabaseService.db.transaction = vi.fn((callback) =>
+      callback({
+        update: vi
+          .fn()
+          .mockReturnValueOnce({ set: setUpdate })
+          .mockReturnValueOnce({ set: setUnlink }),
+      })
+    );
+
+    const result = await service.updateReleaseType(3, { isActive: false }, 99);
+
+    expect(result?.isActive).toBe(false);
+    expect(setUnlink).toHaveBeenCalledWith({ releaseTypeId: null });
+    expect(whereUnlink).toHaveBeenCalled();
   });
 });

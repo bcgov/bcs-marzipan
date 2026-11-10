@@ -15,6 +15,7 @@ import {
   isEditLockIdleDeadlinePassed,
 } from '@/lib/edit-lock-idle-expiry';
 
+import { ACTIVITY_FORM_USER_EDIT_EVENT } from '../lib/activity-form-set-field';
 import type {
   HeartbeatOutcome,
   LockRefreshResult,
@@ -31,6 +32,7 @@ const ACTIVITY_EVENTS = [
   'pointerdown',
   'wheel',
   'touchstart',
+  ACTIVITY_FORM_USER_EDIT_EVENT,
 ] as const;
 const IDLE_CHECK_MS = 15_000;
 /** Lock status poll while the activity socket is down (aligns with server cleanup cadence). */
@@ -241,9 +243,10 @@ export function useEditLockSession({
 
     const syncLockStatus = (): void => {
       void refreshLockFromServer().then((state) => {
-        if (state !== 'owned') {
-          onEditLockLostRef.current();
+        if (state === 'unavailable' || state === 'owned') {
+          return;
         }
+        onEditLockLostRef.current();
       });
     };
 

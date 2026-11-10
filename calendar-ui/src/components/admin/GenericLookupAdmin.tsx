@@ -95,6 +95,12 @@ interface GenericLookupAdminProps<T extends BaseLookupItem> {
   /** When false, hides active/inactive filter (entities without isActive). Default true. */
   showStatusFilter?: boolean;
   /**
+   * When false, hides the read-only sort order column (default: shown when manual sort is off).
+   */
+  showSortOrderColumn?: boolean;
+  /** When true, form omits default `sortOrder` and submit strips it (server assigns on create). */
+  omitDefaultSortOrder?: boolean;
+  /**
    * Enables published sort mode (A–Z vs Custom) and reorder controls.
    * Requires `reorderEntityKey` and `PUT {apiEndpoint}/order`.
    */
@@ -138,10 +144,14 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
   additionalInvalidateKeys,
   softDelete,
   showStatusFilter = true,
+  showSortOrderColumn,
+  omitDefaultSortOrder: omitDefaultSortOrderProp,
   enableManualSort = false,
   reorderEntityKey,
   submitOverride,
 }: GenericLookupAdminProps<T>) {
+  const shouldShowSortOrderColumn = showSortOrderColumn ?? !enableManualSort;
+  const omitDefaultSortOrder = omitDefaultSortOrderProp ?? enableManualSort;
   const queryClient = useQueryClient();
   const [reorderInteraction, setReorderInteraction] =
     useLookupReorderInteraction();
@@ -368,9 +378,8 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         ),
       },
       ...additionalColumns,
-      ...(enableManualSort
-        ? []
-        : [
+      ...(shouldShowSortOrderColumn
+        ? [
             {
               accessorKey: 'sortOrder',
               header: 'Sort order',
@@ -378,7 +387,8 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
                 <span className="text-slate-600">{row.original.sortOrder}</span>
               ),
             } as ColumnDef<T>,
-          ]),
+          ]
+        : []),
       {
         accessorKey: 'isActive',
         header: 'Status',
@@ -431,9 +441,9 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     [
       additionalColumns,
       deleteMutation,
-      enableManualSort,
       entityType,
       getItemName,
+      shouldShowSortOrderColumn,
     ]
   );
 
@@ -467,6 +477,11 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         processedData[field.name] =
           v === '__none__' || v === '' || v == null ? null : Number(v);
       }
+      if (field.type === 'select' && field.name === 'organizationTypeId') {
+        const v = processedData[field.name];
+        processedData[field.name] =
+          v === '' || v == null ? undefined : Number(v);
+      }
     });
 
     if (submitOverride) {
@@ -494,7 +509,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       processedData = transformSubmitData(processedData);
     }
 
-    if (enableManualSort) {
+    if (omitDefaultSortOrder) {
       delete processedData.sortOrder;
     }
 
@@ -678,7 +693,7 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
         ) : (
           <LookupForm
             fields={formFields}
-            omitDefaultSortOrder={enableManualSort}
+            omitDefaultSortOrder={omitDefaultSortOrder}
             resetKey={
               editingItem != null
                 ? String(editingItem.id)

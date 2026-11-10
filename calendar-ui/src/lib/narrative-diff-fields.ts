@@ -2,7 +2,6 @@ const NARRATIVE_DIFF_FIELDS = new Set([
   'title',
   'summary',
   'significance',
-  'strategy',
   'executiveSummary',
   'schedulingNotes',
   'notes',

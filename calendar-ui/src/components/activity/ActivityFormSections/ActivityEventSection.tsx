@@ -19,10 +19,6 @@ import {
 } from '@corpcal/shared/utils';
 import { fetchCities, fetchVenuePresets } from '@/api/lookupsApi';
 import {
-  FormSelectSafe,
-  FormSelectTrigger,
-} from '@/components/app/form-select';
-import {
   AddressAutocomplete,
   type AddressData,
 } from '@/components/ui/address-autocomplete';
@@ -60,18 +56,9 @@ import {
   type FreeformComboboxValueWithLead,
 } from '@/components/ui/freeform-combobox';
 import { Input } from '@/components/ui/input';
-import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
-import {
-  optionalIdSelectDisplayValue,
-  optionalSelectIdValue,
-} from '@/lib/activity-form-coerce-value';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { ACTIVITY_FORM_SECTION_LABELS } from '@/lib/activity-form-section-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
-import {
-  optionItemsEqual,
-  uniqueOptionItems,
-} from '@/lib/combobox-option-utils';
 import { FORM_FIELD_LABEL_HIGHLIGHT_CLASS } from '@/lib/form-field-highlight';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import { cn } from '@/lib/utils';
@@ -81,6 +68,7 @@ import { useActivityEdit } from '../activity-edit-context';
 import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { ActivityFormHeading } from './ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSection';
+import { OptionalLookupSelectField } from './OptionalLookupSelectField';
 
 const PINNED_BADGE_MAX_TOTAL = 4;
 
@@ -495,48 +483,12 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
 
   return (
     <ActivityFormSection title={ACTIVITY_FORM_SECTION_LABELS.event}>
-      <FormField
+      <OptionalLookupSelectField
         control={form.control}
         name="premierRequestedId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              <>
-                {getActivityFieldLabel(field.name)}
-                <ActivityFieldInfoIcon
-                  fieldKey="premierRequestedId"
-                  ariaLabel="About premier requested"
-                />
-              </>
-            </FormLabel>
-            <FormSelectSafe
-              readOnly={readOnly}
-              optionValues={premierRequestedOptions.map((o) => o.value)}
-              value={optionalIdSelectDisplayValue(field.value)}
-              onValueChange={(value) =>
-                setActivityFormFieldValue(
-                  form,
-                  field.name,
-                  optionalSelectIdValue(value)
-                )
-              }
-            >
-              <FormControl data-field={field.name}>
-                <FormSelectTrigger readOnly={readOnly}>
-                  <SelectValue placeholder="" />
-                </FormSelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {premierRequestedOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </FormSelectSafe>
-            <FormMessage />
-          </FormItem>
-        )}
+        options={premierRequestedOptions}
+        readOnly={readOnly}
+        infoAriaLabel="About premier requested"
       />
 
       <FormField
@@ -576,17 +528,15 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   value={selectedOptions}
                   onValueChange={(selected: OptionItem[]) => {
                     setRepresentativeSearch('');
-                    const deduped = uniqueOptionItems(selected);
                     setActivityFormFieldValue(
                       form,
                       field.name,
-                      deduped.map((o) => ({
+                      selected.map((o) => ({
                         representativeId: parseInt(o.value, 10),
                       }))
                     );
                   }}
                   itemToStringValue={(o: OptionItem) => o.label}
-                  isItemEqualToValue={optionItemsEqual}
                   readOnly={readOnly}
                 >
                   <ComboboxChips
@@ -1059,6 +1009,7 @@ export const ActivityEventSection: FC<ActivityEventSectionProps> = ({
                   multiple
                   useChips
                   onSetLead={setLead}
+                  nonLeadPromoteBadge="set-lead"
                 />
               </FormControl>
               <FormMessage />

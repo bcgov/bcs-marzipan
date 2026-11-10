@@ -16,7 +16,6 @@ import {
   useNewsReleaseDistributions,
   useNewsReleaseOrigins,
   useOrganizations,
-  usePitchRequiredStatuses,
   usePremierRequested,
   useTags,
   useTeams,
@@ -49,7 +48,6 @@ export function ActivityFormChangesList({
   const dateStatusesQuery = useDateStatuses();
   const timeStatusesQuery = useTimeStatuses();
   const venueStatusesQuery = useVenueStatuses();
-  const pitchRequiredStatusesQuery = usePitchRequiredStatuses();
   const translationRequiredStatusesQuery = useTranslationRequiredStatuses();
   const newsReleaseOriginsQuery = useNewsReleaseOrigins();
   const newsReleaseDistributionsQuery = useNewsReleaseDistributions();
@@ -121,7 +119,6 @@ export function ActivityFormChangesList({
       venueStatusMap,
       activityStatusMap: toMap(activityStatusesQuery.data),
       timeStatusMap: toMap(timeStatusesQuery.data),
-      pitchRequiredStatusMap: toMap(pitchRequiredStatusesQuery.data),
       translationsRequiredStatusMap: toMap(
         translationRequiredStatusesQuery.data
       ),
@@ -144,7 +141,6 @@ export function ActivityFormChangesList({
     venueStatusesQuery.data,
     activityStatusesQuery.data,
     timeStatusesQuery.data,
-    pitchRequiredStatusesQuery.data,
     translationRequiredStatusesQuery.data,
     newsReleaseOriginsQuery.data,
     newsReleaseDistributionsQuery.data,

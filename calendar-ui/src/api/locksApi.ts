@@ -18,6 +18,7 @@ export type LockInfo = {
 
 export type LockStatusResponse = {
   locked: boolean;
+  serverTime: string;
   isOwnLock?: boolean;
   lockId?: number;
   lockedBy?: {
@@ -29,7 +30,9 @@ export type LockStatusResponse = {
   };
 };
 
-export type AcquireLockResponse = LockInfo;
+export type AcquireLockResponse = LockInfo & {
+  serverTime: string;
+};
 
 export type HeartbeatLockResponse = {
   serverTime: string;

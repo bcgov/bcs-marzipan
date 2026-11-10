@@ -24,6 +24,7 @@ import {
   type CloneActivityRequest,
   type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
+import { buildCommsMaterialReleaseFlagsById } from '@corpcal/shared/utils';
 import {
   ActivityFormBody,
   ActivityFormMissingFieldsHint,
@@ -124,6 +125,7 @@ import {
   buildPayloadForUpdate,
   type UpdatePayloadOptions,
 } from '../lib/activity-form-payload';
+import { ACTIVITY_FORM_USER_EDIT_EVENT } from '../lib/activity-form-set-field';
 import { resolveTranslationRequiredStatusId } from '../lib/activity-form-translation-required';
 import { computeFormChanges } from '../lib/activity-history-format';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
@@ -406,6 +408,16 @@ export function ActivityPage({
       resolveTranslationRequiredStatusId(lookups.translationRequiredStatuses),
     [lookups.translationRequiredStatuses]
   );
+  const commsMaterialReleaseFlagsById = useMemo(
+    () =>
+      buildCommsMaterialReleaseFlagsById(
+        lookups.commsMaterials.map((m) => ({
+          id: m.id,
+          releaseType: m.releaseType ?? null,
+        }))
+      ),
+    [lookups.commsMaterials]
+  );
   const canReviewActivities = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const reviewerChangedPaths = useMemo<ReadonlySet<string>>(() => {
     const paths = canReviewActivities
@@ -507,6 +519,7 @@ export function ActivityPage({
   const editSessionTokenRef = useRef<string | null>(null);
   const wasEditingRef = useRef(false);
   const resyncGenerationRef = useRef(0);
+  const userInitiatedResyncGenerationRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (isEditing && !wasEditingRef.current) {
@@ -559,6 +572,10 @@ export function ActivityPage({
    * when an intentional edit-session teardown needs to close internal overlays.
    */
   const [formUiEpoch, setFormUiEpoch] = useState(0);
+
+  const dismissFormFloatingUi = useCallback(() => {
+    setFormUiEpoch((epoch) => epoch + 1);
+  }, []);
 
   const [isRestoring, setIsRestoring] = useState(false);
   const [isRequestDeleteSubmitting, setIsRequestDeleteSubmitting] =
@@ -867,6 +884,12 @@ export function ActivityPage({
   const resyncEditSession = useCallback(
     (options?: { userInitiated?: boolean }) => {
       const userInitiated = options?.userInitiated === true;
+      if (
+        !userInitiated &&
+        userInitiatedResyncGenerationRef.current === resyncGenerationRef.current
+      ) {
+        return;
+      }
       const generation = ++resyncGenerationRef.current;
       void (async () => {
         if (!isEditingRef.current) {
@@ -883,15 +906,15 @@ export function ActivityPage({
         if (editRecoveryStateRef.current === 'idle-expired' && !userInitiated) {
           const refreshResult = await refreshLockFromServer();
           if (generation !== resyncGenerationRef.current) return;
-          if (refreshResult === 'owned') {
-            setEditRecoveryState(null);
-          }
           notifyResyncOutcome(
             refreshResult === 'unavailable' ? 'failure' : 'success'
           );
           return;
         }
 
+        if (userInitiated) {
+          userInitiatedResyncGenerationRef.current = generation;
+        }
         setEditRecoveryState('resyncing');
         try {
           const [latestActivity, serverLockState] = await Promise.all([
@@ -968,6 +991,10 @@ export function ActivityPage({
             setEditRecoveryState('retry');
             notifyResyncOutcome('failure');
           }
+        } finally {
+          if (userInitiatedResyncGenerationRef.current === generation) {
+            userInitiatedResyncGenerationRef.current = null;
+          }
         }
       })();
     },
@@ -1016,12 +1043,22 @@ export function ActivityPage({
   useEffect(() => {
     if (editRecoveryState !== 'idle-expired') return undefined;
     let resumed = false;
-    const subscription = form.watch((_values, info) => {
-      if (resumed || info.type !== 'change') return;
+    const resumeOnUserEdit = () => {
+      if (resumed) return;
       resumed = true;
       resyncEditSessionRef.current({ userInitiated: true });
+    };
+    const subscription = form.watch((_values, info) => {
+      if (info.type === 'change') resumeOnUserEdit();
     });
-    return () => subscription.unsubscribe();
+    window.addEventListener(ACTIVITY_FORM_USER_EDIT_EVENT, resumeOnUserEdit);
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener(
+        ACTIVITY_FORM_USER_EDIT_EVENT,
+        resumeOnUserEdit
+      );
+    };
   }, [editRecoveryState, form]);
 
   const editSessionActionsBlocked = useMemo(
@@ -1181,8 +1218,9 @@ export function ActivityPage({
     } else {
       setDeleteModalInitialNotes(undefined);
     }
+    dismissFormFloatingUi();
     setShowDeleteModal(true);
-  }, [id, normalizedStatus]);
+  }, [dismissFormFloatingUi, id, normalizedStatus]);
 
   const ensureEditThen = useCallback(
     (action: () => void) => {
@@ -1242,6 +1280,7 @@ export function ActivityPage({
 
   const onSubmit = (data: ActivityFormData) => {
     setValidatedData(data);
+    dismissFormFloatingUi();
     setShowConfirmModal(true);
   };
 
@@ -1370,6 +1409,7 @@ export function ActivityPage({
               ? {
                   markAsReviewed: true,
                   requiredTranslationStatusId,
+                  commsMaterialReleaseFlagsById,
                   includeRepresentatives:
                     !!form.formState.dirtyFields.representatives,
                   includeSharedWithTeamIds:
@@ -1379,6 +1419,7 @@ export function ActivityPage({
                 ? {
                     markAsCompleted: true,
                     requiredTranslationStatusId,
+                    commsMaterialReleaseFlagsById,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
                     includeSharedWithTeamIds:
@@ -1386,6 +1427,7 @@ export function ActivityPage({
                   }
                 : {
                     requiredTranslationStatusId,
+                    commsMaterialReleaseFlagsById,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
                     includeSharedWithTeamIds:
@@ -1481,6 +1523,7 @@ export function ActivityPage({
       ensureLockForSubmit,
       activitySocketConnection,
       editRecoveryState,
+      commsMaterialReleaseFlagsById,
     ]
   );
 
@@ -1808,7 +1851,10 @@ export function ActivityPage({
           PERMISSIONS.ACTIVITIES.PUBLIC_LAST_UPDATED_DEFER
         )}
         createdDateTime={activity.createdDateTime ?? null}
-        onHistoryClick={() => setHistoryOpen(true)}
+        onHistoryClick={() => {
+          dismissFormFloatingUi();
+          setHistoryOpen(true);
+        }}
         flags={activity.flags ?? []}
         canFlag={canFlag}
         onFlagSync={
@@ -1853,7 +1899,10 @@ export function ActivityPage({
                     : '…',
                 disabled: unshareDisabled,
                 disabledReason: unshareDisabledReason,
-                onClick: () => setUnshareModalOpen(true),
+                onClick: () => {
+                  dismissFormFloatingUi();
+                  setUnshareModalOpen(true);
+                },
                 isPending: unshareMutation.isPending,
               }
             : undefined
@@ -1861,7 +1910,10 @@ export function ActivityPage({
       />
       <UnshareActivityModal
         open={unshareModalOpen}
-        onOpenChange={setUnshareModalOpen}
+        onOpenChange={(open) => {
+          if (open) dismissFormFloatingUi();
+          setUnshareModalOpen(open);
+        }}
         mode="single"
         activityIds={[id]}
         activities={[
@@ -1884,7 +1936,10 @@ export function ActivityPage({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setShowLeaveConfirm(true)}
+              onClick={() => {
+                dismissFormFloatingUi();
+                setShowLeaveConfirm(true);
+              }}
             >
               Discard and reload
             </Button>
@@ -2005,12 +2060,27 @@ export function ActivityPage({
             editSessionActionsBlocked={editSessionActionsBlocked}
             connectionBlocksEditStart={connectionBlocksEditStart}
             ensureEditThen={ensureEditThen}
-            onRequestDelete={() => setShowRequestDeleteModal(true)}
+            onRequestDelete={() => {
+              dismissFormFloatingUi();
+              setShowRequestDeleteModal(true);
+            }}
             onDelete={() => void handleOpenDeleteModal()}
-            onDiscard={() => setShowLeaveConfirm(true)}
-            onClone={() => setShowCloneModal(true)}
-            onReview={() => setShowReviewModal(true)}
-            onComplete={() => setShowCompleteModal(true)}
+            onDiscard={() => {
+              dismissFormFloatingUi();
+              setShowLeaveConfirm(true);
+            }}
+            onClone={() => {
+              dismissFormFloatingUi();
+              setShowCloneModal(true);
+            }}
+            onReview={() => {
+              dismissFormFloatingUi();
+              setShowReviewModal(true);
+            }}
+            onComplete={() => {
+              dismissFormFloatingUi();
+              setShowCompleteModal(true);
+            }}
           />
         </form>
       </Form>
@@ -2018,7 +2088,10 @@ export function ActivityPage({
         activityId={id}
         displayId={displayId}
         open={historyOpen}
-        onOpenChange={(v) => setHistoryOpen(!!v)}
+        onOpenChange={(v) => {
+          if (v) dismissFormFloatingUi();
+          setHistoryOpen(!!v);
+        }}
         dateStatuses={lookups.dateStatuses}
         venueStatuses={lookups.venueStatuses}
         canAddNote={mayEditFormFields}
@@ -2034,7 +2107,10 @@ export function ActivityPage({
       />
       <DiscardActivityChangesDialog
         open={showLeaveConfirm}
-        onOpenChange={setShowLeaveConfirm}
+        onOpenChange={(open) => {
+          if (open) dismissFormFloatingUi();
+          setShowLeaveConfirm(open);
+        }}
         changes={discardModalChanges}
         onReturnToEdit={() => setShowLeaveConfirm(false)}
         onDiscard={() => void handleConfirmLeave()}
@@ -2042,6 +2118,7 @@ export function ActivityPage({
       <EditActivityConfirmModal
         open={showConfirmModal}
         onOpenChange={(open) => {
+          if (open) dismissFormFloatingUi();
           setShowConfirmModal(open);
           if (!open) setValidatedData(null);
         }}
@@ -2053,7 +2130,10 @@ export function ActivityPage({
       />
       <ReviewActivityModal
         open={showReviewModal}
-        onOpenChange={setShowReviewModal}
+        onOpenChange={(open) => {
+          if (open) dismissFormFloatingUi();
+          setShowReviewModal(open);
+        }}
         changes={reviewModalChanges}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
@@ -2069,7 +2149,10 @@ export function ActivityPage({
       />
       <CompleteActivityModal
         open={showCompleteModal}
-        onOpenChange={setShowCompleteModal}
+        onOpenChange={(open) => {
+          if (open) dismissFormFloatingUi();
+          setShowCompleteModal(open);
+        }}
         isDirty={isDirty}
         isSubmitting={isSubmitting}
         onConfirm={(payload) => void handleCompleteConfirm(payload)}
@@ -2079,7 +2162,10 @@ export function ActivityPage({
       />
       <RequestDeleteActivityModal
         open={showRequestDeleteModal}
-        onOpenChange={setShowRequestDeleteModal}
+        onOpenChange={(open) => {
+          if (open) dismissFormFloatingUi();
+          setShowRequestDeleteModal(open);
+        }}
         onConfirm={handleRequestDeleteConfirm}
         isSubmitting={isRequestDeleteSubmitting}
         confirmDisabled={editSessionActionsBlocked}
@@ -2087,7 +2173,10 @@ export function ActivityPage({
       />
       <CloneActivityModal
         open={showCloneModal}
-        onOpenChange={setShowCloneModal}
+        onOpenChange={(open) => {
+          if (open) dismissFormFloatingUi();
+          setShowCloneModal(open);
+        }}
         sourceTitle={activity.title ?? ''}
         sourceDisplayId={activity.displayId ?? null}
         lookups={lookups}
@@ -2099,6 +2188,7 @@ export function ActivityPage({
       <DeleteActivityModal
         open={showDeleteModal}
         onOpenChange={(open) => {
+          if (open) dismissFormFloatingUi();
           setShowDeleteModal(open);
           if (!open) setDeleteModalInitialNotes(undefined);
         }}

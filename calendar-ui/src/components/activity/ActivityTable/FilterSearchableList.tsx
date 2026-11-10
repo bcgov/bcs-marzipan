@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { Input } from '@/components/ui/input';
+import { PopoverListSectionHeading } from '@/components/ui/popover-list-section-heading';
 import { filterPopoverMenuItemClass } from '@/components/users/filterPopoverMenuItemClasses';
 import { cn } from '@/lib/utils';
 
@@ -234,9 +235,9 @@ export function FilterSearchableList({
           filteredSections.map((section) => (
             <div key={section.heading || '_flat'}>
               {useSectionHeadings && section.heading ? (
-                <div className="text-muted-foreground px-3 pt-2 pb-1 text-xs tracking-wide uppercase">
+                <PopoverListSectionHeading>
                   {section.heading}
-                </div>
+                </PopoverListSectionHeading>
               ) : null}
               {section.options.map((opt) => {
                 const checked = isOptionSelected(opt.value);

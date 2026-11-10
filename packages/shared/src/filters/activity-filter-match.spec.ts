@@ -4,11 +4,15 @@ import {
   DEFAULT_ACTIVITY_FILTER_STATE,
   type ActivityFilterState,
 } from '../activity-filter-state';
+import { createMockActivityResponse } from '../test-utils/activity-response.fixture';
 import {
   activityMatchesFilterState,
   type ActivityFilterMatchOptions,
 } from './activity-filter-match';
-import type { ActivityFilterMatchInput } from './activity-filter-match-input';
+import {
+  activityResponseToFilterMatchInput,
+  type ActivityFilterMatchInput,
+} from './activity-filter-match-input';
 
 function makeInput(
   overrides: Partial<ActivityFilterMatchInput> = {}
@@ -19,15 +23,13 @@ function makeInput(
     endDate: null,
     categoryIds: [],
     activityStatusId: 0,
-    pitchRequiredStatusName: null,
-    pitchDate: null,
     lookAheadStatus: null,
     lookAheadSection: null,
     dateStatusName: '',
     timeStatusName: '',
     tagIds: [],
     leadTeamId: null,
-    leadMinistryId: null,
+    leadOrganizationId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,
     eventPlannerLeadIds: [],
@@ -53,15 +55,13 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     endDate: '2025-01-12',
     categoryIds: [1, 2],
     activityStatusId: 1,
-    pitchRequiredStatusName: 'Required',
-    pitchDate: '2025-02-15',
     lookAheadStatus: 'new',
     lookAheadSection: 'events',
     dateStatusName: 'Confirmed',
     timeStatusName: 'Confirmed',
     tagIds: [10, 20],
     leadTeamId: 9,
-    leadMinistryId: 100,
+    leadOrganizationId: 100,
     leadOrgId: 5,
     commsContactLeadUserId: 1000,
     eventPlannerLeadIds: [50],
@@ -74,14 +74,12 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     endDate: '2025-02-05', // end outside Jan window
     categoryIds: [3],
     activityStatusId: 2,
-    pitchRequiredStatusName: 'Not required',
-    pitchDate: null, // not scheduled
     lookAheadStatus: 'changed',
     lookAheadSection: 'issues',
     dateStatusName: 'Tentative',
     timeStatusName: 'Tentative',
     tagIds: [20],
-    leadMinistryId: 200,
+    leadOrganizationId: 200,
     leadOrgId: 6,
     commsContactLeadUserId: 2000,
     eventPlannerLeadIds: [51],
@@ -94,14 +92,12 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     endDate: '2025-01-20',
     categoryIds: [],
     activityStatusId: 3,
-    pitchRequiredStatusName: null,
-    pitchDate: '2025-01-05',
     lookAheadStatus: null,
     lookAheadSection: null,
     dateStatusName: '',
     timeStatusName: '',
     tagIds: [],
-    leadMinistryId: null,
+    leadOrganizationId: null,
     leadOrgId: null,
     commsContactLeadUserId: null,
     eventPlannerLeadIds: [],
@@ -114,14 +110,12 @@ const FIXTURES: ActivityFilterMatchInput[] = [
     endDate: '2025-01-31',
     categoryIds: [1],
     activityStatusId: 1,
-    pitchRequiredStatusName: 'required', // lowercase variant
-    pitchDate: '2025-03-20',
     lookAheadStatus: 'new',
     lookAheadSection: 'news',
     dateStatusName: 'confirmed', // lowercase
     timeStatusName: 'Not confirmed',
     tagIds: [30],
-    leadMinistryId: 100,
+    leadOrganizationId: 100,
     leadOrgId: 7,
     commsContactLeadUserId: 1000,
     eventPlannerLeadIds: [50, 52],
@@ -188,58 +182,6 @@ describe('activityMatchesFilterState', () => {
     });
   });
 
-  describe('pitch required status (case-insensitive)', () => {
-    it('matches selected names and excludes null status', () => {
-      expect(
-        matchIds(state({ pitchRequiredStatusNames: ['Required'] }))
-      ).toEqual([1, 4]);
-    });
-  });
-
-  describe('pitch date', () => {
-    it('not_scheduled keeps only activities without a pitch date', () => {
-      expect(
-        matchIds(state({ pitchDateFilter: { kind: 'not_scheduled' } }))
-      ).toEqual([2]);
-    });
-
-    it('scheduled with range keeps pitch dates in window', () => {
-      expect(
-        matchIds(
-          state({
-            pitchDateFilter: {
-              kind: 'scheduled',
-              dateRange: {
-                startDate: '2025-02-01',
-                endDate: '2025-02-28',
-                noStartDate: false,
-                noEndDate: false,
-              },
-            },
-          })
-        )
-      ).toEqual([1]);
-    });
-
-    it('scheduled with empty range keeps any activity with a pitch date', () => {
-      expect(
-        matchIds(
-          state({
-            pitchDateFilter: {
-              kind: 'scheduled',
-              dateRange: {
-                startDate: '',
-                endDate: '',
-                noStartDate: false,
-                noEndDate: false,
-              },
-            },
-          })
-        )
-      ).toEqual([1, 3, 4]);
-    });
-  });
-
   describe('Look Ahead', () => {
     it('filters by status (OR within)', () => {
       expect(matchIds(state({ lookAheadStatusValues: ['new'] }))).toEqual([
@@ -272,10 +214,10 @@ describe('activityMatchesFilterState', () => {
       ]);
     });
 
-    it('time not_confirmed excludes confirmed', () => {
-      expect(matchIds(state({ timeConfirmedFilter: 'not_confirmed' }))).toEqual(
-        [2, 3, 4]
-      );
+    it('time tbd excludes confirmed', () => {
+      expect(matchIds(state({ timeConfirmedFilter: 'tbd' }))).toEqual([
+        2, 3, 4,
+      ]);
     });
   });
 
@@ -347,5 +289,18 @@ describe('activityMatchesFilterState', () => {
         })
       )
     ).toEqual([1, 4]);
+  });
+});
+
+describe('activityResponseToFilterMatchInput', () => {
+  it('derives leadOrgId from lead organizationDetails row', () => {
+    const input = activityResponseToFilterMatchInput(
+      createMockActivityResponse({
+        organizationDetails: [
+          { organizationId: 7, name: 'Org Seven', isLead: true },
+        ],
+      })
+    );
+    expect(input.leadOrgId).toBe(7);
   });
 });

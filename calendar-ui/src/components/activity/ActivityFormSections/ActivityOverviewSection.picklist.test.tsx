@@ -4,7 +4,6 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
-import { createMockTeamListItem } from '@corpcal/shared/test-utils';
 import { getDefaultFormValues } from '@/lib/activity-form-defaults';
 
 import { ActivityEditProvider } from '../activity-edit-context';
@@ -26,6 +25,10 @@ vi.mock('@/components/ui/rich-text-field', () =>
 
 vi.mock('../activity-info-icon-settings-context', () => ({
   ActivityFieldInfoIcon: () => null,
+}));
+
+vi.mock('@/hooks/useLeadTeamOptions', () => ({
+  useLeadTeamOptions: () => ({ data: [] }),
 }));
 
 const globalCategory = {
@@ -54,22 +57,6 @@ const teamTag = {
   text: 'Team Tag',
   visibility: 'team' as const,
   teamIds: [99],
-};
-
-const defaultLeadTeamField = {
-  options: [
-    createMockTeamListItem({
-      id: 5,
-      name: 'Team',
-      displayName: 'Team',
-      abbreviation: 'TM',
-      ministryId: 1,
-      ministryName: 'Ministry',
-      memberCount: 1,
-    }),
-  ],
-  displayLabel: 'Team',
-  optionsFetching: false,
 };
 
 function PicklistHarness({
@@ -124,10 +111,8 @@ function PicklistHarness({
           categories={categories}
           organizations={[]}
           tags={tags}
-          pitchRequiredStatuses={[]}
           userTeamIds={userTeamIds}
           hasCreateAny={hasCreateAny}
-          leadTeamField={defaultLeadTeamField}
         />
       </ActivityEditProvider>
     </FormProvider>
@@ -242,47 +227,6 @@ describe('ActivityOverviewSection lookup picklist selectability', () => {
     await waitFor(() => {
       expect(formRef!.getValues('tagIds')).toEqual([teamTag.id]);
     });
-  });
-
-  it('matches category options by value so re-selecting toggles instead of duplicating', async () => {
-    const user = userEvent.setup();
-    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
-
-    render(
-      <PicklistHarness
-        onFormReady={(form) => {
-          formRef = form;
-        }}
-      />
-    );
-
-    await openCategoryPicklist(user);
-    await user.click(
-      await screen.findByRole('option', { name: 'Global Category' })
-    );
-
-    await waitFor(() => {
-      expect(formRef!.getValues('categoryIds')).toEqual([globalCategory.id]);
-    });
-    expect(
-      document.querySelectorAll(
-        '[data-field="categoryIds"] [data-slot=combobox-chip]'
-      )
-    ).toHaveLength(1);
-
-    await openCategoryPicklist(user);
-    await user.click(
-      await screen.findByRole('option', { name: 'Global Category' })
-    );
-
-    await waitFor(() => {
-      expect(formRef!.getValues('categoryIds')).toEqual([]);
-    });
-    expect(
-      document.querySelectorAll(
-        '[data-field="categoryIds"] [data-slot=combobox-chip]'
-      )
-    ).toHaveLength(0);
   });
 
   it('keeps grandfathered category chips visible and not re-addable after removal', async () => {

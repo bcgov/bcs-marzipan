@@ -6,6 +6,9 @@ import {
   governmentRepresentatives,
   ministries,
   ministryGroups,
+  organizations,
+  organizationTypes,
+  releaseTypes,
   tags,
   themes,
   translatedLanguages,
@@ -35,6 +38,11 @@ export const LOOKUP_LIST_ORDER_COLUMNS: Record<
     id: commsMaterials.id,
     labelColumn: commsMaterials.displayName,
   },
+  'release-types': {
+    sortOrder: releaseTypes.sortOrder,
+    id: releaseTypes.id,
+    labelColumn: releaseTypes.displayName,
+  },
   'activity-statuses': {
     sortOrder: activityStatuses.sortOrder,
     id: activityStatuses.id,
@@ -46,14 +54,19 @@ export const LOOKUP_LIST_ORDER_COLUMNS: Record<
     labelColumn: governmentRepresentatives.displayName,
   },
   ministries: {
-    sortOrder: ministries.sortOrder,
+    sortOrder: organizations.sortOrder,
     id: ministries.id,
-    labelColumn: ministries.displayName,
+    labelColumn: organizations.displayName,
   },
   'ministry-groups': {
     sortOrder: ministryGroups.sortOrder,
     id: ministryGroups.id,
     labelColumn: ministryGroups.name,
+  },
+  'organization-types': {
+    sortOrder: organizationTypes.sortOrder,
+    id: organizationTypes.id,
+    labelColumn: organizationTypes.displayName,
   },
   tags: {
     sortOrder: tags.sortOrder,

@@ -12,7 +12,7 @@ import {
   activityCommsContacts,
   activityFlags,
   activityStatuses,
-  ministries,
+  organizations,
   roles,
   teams,
   userHistory,
@@ -56,8 +56,7 @@ interface ScopedCommsRow {
 /** Resolved lead-team context (abbreviation, ministry) used to recompute displayId on cross-team moves. */
 interface CrossTeamContext {
   teamAbbreviation: string | null;
-  leadMinistryId: number | null;
-  ministryAbbreviation: string | null;
+  organizationAbbreviation: string | null;
 }
 
 const GOV_BC_EMAIL_SUFFIX = '@gov.bc.ca';
@@ -1222,7 +1221,7 @@ export class UsersService {
     const [teamRow] = await this.databaseService.db
       .select({
         abbreviation: teams.abbreviation,
-        ministryId: teams.ministryId,
+        primaryOrganizationId: teams.primaryOrganizationId,
       })
       .from(teams)
       .where(eq(teams.id, toTeamId))
@@ -1232,20 +1231,19 @@ export class UsersService {
       throw new BadRequestException(`Team with ID ${toTeamId} not found`);
     }
 
-    let ministryAbbreviation: string | null = null;
-    if (teamRow.ministryId != null) {
-      const [ministry] = await this.databaseService.db
-        .select({ abbreviation: ministries.abbreviation })
-        .from(ministries)
-        .where(eq(ministries.id, teamRow.ministryId))
+    let organizationAbbreviation: string | null = null;
+    if (teamRow.primaryOrganizationId != null) {
+      const [org] = await this.databaseService.db
+        .select({ abbreviation: organizations.abbreviation })
+        .from(organizations)
+        .where(eq(organizations.id, teamRow.primaryOrganizationId))
         .limit(1);
-      ministryAbbreviation = ministry?.abbreviation ?? null;
+      organizationAbbreviation = org?.abbreviation ?? null;
     }
 
     return {
       teamAbbreviation: teamRow.abbreviation ?? null,
-      leadMinistryId: teamRow.ministryId ?? null,
-      ministryAbbreviation,
+      organizationAbbreviation,
     };
   }
 
@@ -1343,7 +1341,7 @@ export class UsersService {
    *   - mode 'transfer', cross-team: left as-is if the source user remains
    *     comms-eligible on the new lead team, otherwise deleted.
    * - When `toTeamId !== fromTeamId`, each affected activity's `leadTeamId`
-   *   (and derived `leadMinistryId`/`displayId`) moves with it, matching the
+   *   (and derived `displayId`) moves with it, matching the
    *   Activity Form's lead-team-change behavior.
    */
   private async applyActivityCommsChanges(
@@ -1391,8 +1389,6 @@ export class UsersService {
         const displayId =
           this.activityUtilsService.computeDisplayIdFromLeadContext({
             activityId: row.activityId,
-            leadMinistryId: crossTeamContext.leadMinistryId,
-            ministryAbbreviation: crossTeamContext.ministryAbbreviation,
             teamAbbreviation: crossTeamContext.teamAbbreviation,
           });
 
@@ -1401,7 +1397,6 @@ export class UsersService {
           .update(activities)
           .set({
             leadTeamId: toTeamId,
-            leadMinistryId: crossTeamContext.leadMinistryId,
             displayId,
             ...getActivityTimestampUpdateForWrite({
               context: 'transfer',

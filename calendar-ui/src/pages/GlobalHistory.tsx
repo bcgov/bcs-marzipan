@@ -18,7 +18,6 @@ import {
   fetchDateStatuses,
   fetchNewsReleaseDistributions,
   fetchNewsReleaseOrigins,
-  fetchPitchRequiredStatuses,
   fetchPremierRequested,
   fetchTimeStatuses,
   fetchTranslationRequiredStatuses,
@@ -76,7 +75,6 @@ import {
 } from '@/hooks/useLookups';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import { formatHistoryFieldValue } from '@/lib/activity-history-format';
-import { getInitials } from '@/lib/initials';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 
 const MAX_CHANGE_VALUE_LENGTH = 120;
@@ -142,7 +140,16 @@ function getActorDisplayName(entry: GlobalActivityHistoryEntry): string {
 }
 
 export function getActorInitials(entry: GlobalActivityHistoryEntry): string {
-  return getInitials(getActorDisplayName(entry));
+  const displayName = getActorDisplayName(entry);
+  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return 'U';
+  }
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
 }
 
 function DateFilter({
@@ -295,12 +302,6 @@ export function GlobalHistory() {
     staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
   });
 
-  const pitchRequiredStatusesQuery = useQuery({
-    queryKey: [...lookupQueryKeys.pitchRequiredStatuses(), 'history-filters'],
-    queryFn: fetchPitchRequiredStatuses,
-    staleTime: HISTORY_FILTER_LOOKUP_STALE_MS,
-  });
-
   const translationRequiredStatusesQuery = useQuery({
     queryKey: [
       ...lookupQueryKeys.translationRequiredStatuses(),
@@ -445,17 +446,6 @@ export function GlobalHistory() {
     [timeStatusesQuery.data]
   );
 
-  const pitchRequiredStatusLabelMap = useMemo(
-    () =>
-      new Map(
-        (pitchRequiredStatusesQuery.data ?? []).map((status) => [
-          status.id,
-          status.displayName || status.label || status.name,
-        ])
-      ),
-    [pitchRequiredStatusesQuery.data]
-  );
-
   const translationRequiredStatusLabelMap = useMemo(
     () =>
       new Map(
@@ -532,10 +522,6 @@ export function GlobalHistory() {
           case 'timeStatusId':
             formattedValue = timeStatusLabelMap.get(value) || String(value);
             return truncateChangeLogValue(formattedValue);
-          case 'pitchRequiredStatusId':
-            formattedValue =
-              pitchRequiredStatusLabelMap.get(value) || String(value);
-            return truncateChangeLogValue(formattedValue);
           case 'translationsRequiredStatusId':
             formattedValue =
               translationRequiredStatusLabelMap.get(value) || String(value);
@@ -552,8 +538,6 @@ export function GlobalHistory() {
             formattedValue =
               premierRequestedLabelMap.get(value) || String(value);
             return truncateChangeLogValue(formattedValue);
-          default:
-            break;
         }
       }
 
@@ -567,7 +551,6 @@ export function GlobalHistory() {
       newsReleaseDistributionLabelMap,
       newsReleaseOriginLabelMap,
       organizationLabelMap,
-      pitchRequiredStatusLabelMap,
       premierRequestedLabelMap,
       timeStatusLabelMap,
       translationRequiredStatusLabelMap,

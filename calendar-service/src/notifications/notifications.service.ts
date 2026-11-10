@@ -13,9 +13,9 @@ import {
   activityEventPlanners,
   activityFlags,
   activityStatuses,
-  ministries,
   notificationEvents,
   notificationRecipients,
+  organizations,
   permissions,
   rolePermissions,
   roles,
@@ -43,12 +43,9 @@ import { ActivitiesGateway } from '../activities/activities.gateway';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { NotificationEmailService } from './notification-email.service';
-import { NotificationPreferencesService } from './notification-preferences.service';
 
 export type PendingNotificationSideEffect = {
   recipientUserIds: number[];
-  /** Users to email; defaults to `recipientUserIds` when omitted. */
-  emailRecipientUserIds?: number[];
   eventType: string;
   entityType: string;
   entityId: number;
@@ -90,7 +87,7 @@ type TeamIdentity = {
   id: number;
   name: string;
   displayName: string | null;
-  ministryId: number | null;
+  primaryOrganizationId: number | null;
 };
 
 const ACTIVITY_HARD_DELETED_EVENT_TYPE =
@@ -122,8 +119,7 @@ export class NotificationsService {
     private readonly databaseService: DatabaseService,
     @Inject(forwardRef(() => ActivitiesGateway))
     private readonly activitiesGateway: ActivitiesGateway,
-    private readonly notificationEmailService: NotificationEmailService,
-    private readonly notificationPreferencesService: NotificationPreferencesService
+    private readonly notificationEmailService: NotificationEmailService
   ) {}
 
   private async resolveActorUsername(
@@ -180,7 +176,7 @@ export class NotificationsService {
         id: teams.id,
         name: teams.name,
         displayName: teams.displayName,
-        ministryId: teams.ministryId,
+        primaryOrganizationId: teams.primaryOrganizationId,
       })
       .from(teams)
       .where(eq(teams.id, teamId))
@@ -587,7 +583,7 @@ export class NotificationsService {
         changedFields: input.changedFields,
         name: team.name,
         displayName: team.displayName,
-        ministryId: team.ministryId,
+        primaryOrganizationId: team.primaryOrganizationId,
       },
       actorUserId: input.actorUserId,
       recipientUserIds: [...adminUserIds, ...memberUserIds],
@@ -859,20 +855,12 @@ export class NotificationsService {
   private async deliverNotificationSideEffects(
     sideEffect: PendingNotificationSideEffect
   ): Promise<void> {
-    const { recipientUserIds: inAppRecipients } = sideEffect;
-    const emailRecipientUserIds =
-      sideEffect.emailRecipientUserIds ?? inAppRecipients;
-    if (inAppRecipients.length === 0 && emailRecipientUserIds.length === 0) {
+    const { recipientUserIds: dedupedRecipients } = sideEffect;
+    if (dedupedRecipients.length === 0) {
       return;
     }
 
-    if (inAppRecipients.length > 0) {
-      this.activitiesGateway.notifyNotificationsChanged(inAppRecipients);
-    }
-
-    if (emailRecipientUserIds.length === 0) {
-      return;
-    }
+    this.activitiesGateway.notifyNotificationsChanged(dedupedRecipients);
 
     try {
       const [actorUsername, recipients] = await Promise.all([
@@ -881,7 +869,7 @@ export class NotificationsService {
           this.databaseService.db
         ),
         this.resolveEmailRecipients(
-          emailRecipientUserIds,
+          dedupedRecipients,
           this.databaseService.db,
           {
             includeInactive: sideEffect.includeInactiveRecipients ?? false,
@@ -907,12 +895,10 @@ export class NotificationsService {
 
   private buildPendingSideEffect(
     params: CreateEventParams,
-    inAppRecipients: number[],
-    emailRecipients: number[]
+    dedupedRecipients: number[]
   ): PendingNotificationSideEffect {
     return {
-      recipientUserIds: inAppRecipients,
-      emailRecipientUserIds: emailRecipients,
+      recipientUserIds: dedupedRecipients,
       eventType: params.eventType,
       entityType: params.entityType,
       entityId: params.entityId,
@@ -934,29 +920,6 @@ export class NotificationsService {
       return [];
     }
 
-    const optOuts = await this.notificationPreferencesService.resolveOptOuts(
-      params.eventType,
-      dedupedRecipients,
-      params.executor ?? this.databaseService.db
-    );
-    const inAppRecipients = dedupedRecipients.filter(
-      (id) => !optOuts.inApp.has(id)
-    );
-    const emailRecipients = dedupedRecipients.filter(
-      (id) => !optOuts.email.has(id)
-    );
-
-    if (inAppRecipients.length === 0 && emailRecipients.length === 0) {
-      return [];
-    }
-
-    // Anyone reached by at least one channel; this is what callers report on.
-    const notifiedRecipients = dedupedRecipients.filter(
-      (id) => !optOuts.inApp.has(id) || !optOuts.email.has(id)
-    );
-
-    // The event row is always written (even for email-only delivery) because
-    // reminder deduplication reads notification_events.
     const persistEventAndRecipients = async (executor: DrizzleDbExecutor) => {
       const actorUsername = await this.resolveActorUsername(
         params.actorUserId,
@@ -977,14 +940,10 @@ export class NotificationsService {
         })
         .returning({ id: notificationEvents.id });
 
-      if (inAppRecipients.length === 0) {
-        return;
-      }
-
       await executor
         .insert(notificationRecipients)
         .values(
-          inAppRecipients.map((userId) => ({
+          dedupedRecipients.map((userId) => ({
             eventId: eventRow.id,
             userId,
             status: NOTIFICATION_RECIPIENT_STATUSES.UNREAD,
@@ -993,11 +952,7 @@ export class NotificationsService {
         .onConflictDoNothing();
     };
 
-    const sideEffect = this.buildPendingSideEffect(
-      params,
-      inAppRecipients,
-      emailRecipients
-    );
+    const sideEffect = this.buildPendingSideEffect(params, dedupedRecipients);
 
     if (params.executor) {
       // When called within an external transaction, persist only and defer side effects until commit.
@@ -1005,7 +960,7 @@ export class NotificationsService {
         params.deferredSideEffects.push(sideEffect);
       }
       await persistEventAndRecipients(params.executor);
-      return notifiedRecipients;
+      return dedupedRecipients;
     }
 
     await this.databaseService.db.transaction(async (tx) => {
@@ -1013,7 +968,7 @@ export class NotificationsService {
     });
     await this.deliverNotificationSideEffects(sideEffect);
 
-    return notifiedRecipients;
+    return dedupedRecipients;
   }
 
   async notifyActivityCreateOrStatusChange(input: {
@@ -1135,10 +1090,13 @@ export class NotificationsService {
           id: teams.id,
           teamName: teams.name,
           teamDisplayName: teams.displayName,
-          ministryDisplayName: ministries.displayName,
+          ministryDisplayName: organizations.displayName,
         })
         .from(teams)
-        .leftJoin(ministries, eq(ministries.id, teams.ministryId))
+        .leftJoin(
+          organizations,
+          eq(organizations.id, teams.primaryOrganizationId)
+        )
         .where(
           and(inArray(teams.id, dedupedTeamIds), eq(teams.isActive, true))
         ),
@@ -1421,7 +1379,7 @@ export class NotificationsService {
       entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
       entityId: activity.id,
       changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
-      summary: `Reminder: date status not confirmed (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
+      summary: `Reminder: date status TBD (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
       details: {
         activityId: activity.id,
         displayId: activity.displayId,
@@ -1512,7 +1470,7 @@ export class NotificationsService {
       entityType: NOTIFICATION_ENTITY_TYPES.ACTIVITY,
       entityId: activity.id,
       changeType: NOTIFICATION_CHANGE_TYPES.REMINDER,
-      summary: `Reminder: time status not confirmed (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
+      summary: `Reminder: time status TBD (${input.leadDays} day window): ${this.formatActivityLabel(activity)}`,
       details: {
         activityId: activity.id,
         displayId: activity.displayId,

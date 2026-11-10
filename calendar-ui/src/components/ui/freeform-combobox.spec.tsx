@@ -919,7 +919,7 @@ describe('FreeformCombobox', () => {
   });
 
   describe('onSetLead', () => {
-    it('supports keyboard focus and activation for Set as lead', async () => {
+    it('opens role badge popover and sets lead from menu action', async () => {
       const user = userEvent.setup();
       const onSetLead = vi.fn();
       const value: FreeformComboboxItemWithLead[] = [
@@ -934,22 +934,20 @@ describe('FreeformCombobox', () => {
           value={value}
           onChange={vi.fn()}
           onSetLead={onSetLead}
+          nonLeadPromoteBadge="set-lead"
         />
       );
 
-      const setLeadButton = screen.getByRole('button', {
+      const roleTrigger = screen.getByRole('button', {
+        name: 'Set lead options for Option 1',
+      });
+      expect(roleTrigger).not.toHaveAttribute('tabindex', '-1');
+
+      await user.click(roleTrigger);
+      const menuAction = await screen.findByRole('button', {
         name: 'Set as lead',
       });
-      expect(setLeadButton).not.toHaveAttribute('tabindex', '-1');
-
-      setLeadButton.focus();
-      expect(setLeadButton).toHaveFocus();
-
-      await user.keyboard('{Enter}');
-      expect(onSetLead).toHaveBeenCalledWith(0);
-
-      onSetLead.mockClear();
-      await user.keyboard(' ');
+      await user.click(menuAction);
       expect(onSetLead).toHaveBeenCalledWith(0);
     });
   });
@@ -987,6 +985,36 @@ describe('FreeformCombobox', () => {
           screen.queryByRole('option', { name: /Add custom value/i })
         ).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Invalid styling', () => {
+    it('sets aria-invalid on single-select InputGroup and combobox input', () => {
+      render(<FreeformCombobox {...defaultProps} aria-invalid={true} />);
+
+      expect(screen.getByRole('combobox')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
+      expect(
+        document.querySelector('[data-slot="input-group"]')
+      ).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('sets aria-invalid on chips container in multiple mode', () => {
+      render(
+        <FreeformCombobox
+          {...defaultProps}
+          multiple
+          useChips
+          value={[]}
+          aria-invalid={true}
+        />
+      );
+
+      expect(
+        document.querySelector('[data-slot="freeform-combobox-chips"]')
+      ).toHaveAttribute('aria-invalid', 'true');
     });
   });
 });

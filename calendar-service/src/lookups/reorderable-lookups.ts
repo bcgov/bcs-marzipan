@@ -4,18 +4,15 @@ import {
   cities,
   commsMaterials,
   governmentRepresentatives,
-  ministries,
   ministryGroups,
+  organizations,
+  organizationTypes,
+  releaseTypes,
   tags,
   themes,
   translatedLanguages,
   venuePresets,
 } from '@corpcal/database/schema';
-import {
-  isReorderableLookupKey,
-  REORDERABLE_LOOKUP_KEYS,
-  type ReorderableLookupKey,
-} from '@corpcal/shared/schemas';
 
 /** Lookup tables whose `sortOrder` admins can set; keys match the `/lookups/<key>` URL segment. */
 // Every table here has id, sortOrder, lastUpdatedBy and lastUpdatedDateTime; typed as one for a shared update.
@@ -23,20 +20,20 @@ export const REORDERABLE_LOOKUP_TABLES = {
   categories,
   cities,
   'comms-materials': commsMaterials,
+  'release-types': releaseTypes,
   'activity-statuses': activityStatuses,
   'government-representatives': governmentRepresentatives,
-  ministries,
+  ministries: organizations,
   'ministry-groups': ministryGroups,
+  'organization-types': organizationTypes,
   tags,
   themes,
   'translation-languages': translatedLanguages,
   'venue-presets': venuePresets,
-} as unknown as Record<ReorderableLookupKey, typeof cities>;
+} as unknown as Record<string, typeof cities>;
 
-export const REORDERABLE_LOOKUPS = [...REORDERABLE_LOOKUP_KEYS];
+export const REORDERABLE_LOOKUPS = Object.keys(REORDERABLE_LOOKUP_TABLES);
 
-export function isReorderableLookup(
-  entity: string
-): entity is ReorderableLookupKey {
-  return isReorderableLookupKey(entity);
+export function isReorderableLookup(entity: string): boolean {
+  return Object.hasOwn(REORDERABLE_LOOKUP_TABLES, entity);
 }

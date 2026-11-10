@@ -18,7 +18,7 @@ import {
   activityCommsMaterials,
   activityEventPlanners,
   activityHistory,
-  activityReportSettings,
+  activityOrganizations,
   activityRepresentatives,
   activitySectors,
   activitySharedWithTeams,
@@ -32,8 +32,7 @@ import {
   dateStatuses,
   deletionAudit,
   editLocks,
-  ministries,
-  pitchRequiredStatuses,
+  releaseTypes,
   teams,
   timeStatuses,
   translatedLanguages,
@@ -49,10 +48,10 @@ import {
   normalizeActivityStatusLabel,
   pacificCalendarDateFromInstant,
   PERMISSIONS,
-  PITCH_TRANSLATION_PENDING_LOOKUP_NAME,
   profileIncludesRelation,
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
+  TBD_LOOKUP_NAME,
   type ActivityHydrationProfile,
   type ActivityListItem,
   type ActivityStatusName,
@@ -88,12 +87,22 @@ import {
   getEmptyReviewBaseline,
   isDeepEqual,
   mapResponseToFormData,
+  normalizeReleaseSchedulingPersistence,
   normalizeVenueAddressForForm,
+  parseReleaseSchedulingMode,
   plainTextFromActivityRichField,
+  stripCommsDependentFields,
   tipTapDocJsonFromPlainText,
+  type CommsMaterialReleaseFlags,
+  type CommsMaterialReleaseFlagsById,
   type FieldScopeUser,
   type MapResponseToFormDataLookups,
 } from '@corpcal/shared/utils';
+import {
+  collectActivitySchedulingValidationErrors,
+  type ActivitySchedulingFields,
+  type ActivitySchedulingLookupResolvers,
+} from '@corpcal/shared/validation';
 
 import type { DrizzleDbExecutor } from '../../database/database.provider';
 import { DatabaseService } from '../../database/database.service';
@@ -108,6 +117,7 @@ import {
 } from '../../policy/dto/user-context.dto';
 import {
   getCategoryScopeById,
+  getCommsMaterialScopeById,
   getTagScopeById,
 } from '../../policy/lookup-scope.helper';
 import { PolicyService } from '../../policy/policy.service';
@@ -333,6 +343,150 @@ export class ActivitiesService {
         `Category IDs not available to your teams: ${forbidden.join(', ')}`
       );
     }
+  }
+
+  private async validateCommsMaterialIdsForUser(
+    commsMaterialIds: number[],
+    teamIds: number[] | undefined,
+    permissions: string[] | undefined,
+    existingCommsMaterialIds?: number[]
+  ): Promise<void> {
+    if (!commsMaterialIds.length) return;
+    const canUseAny =
+      permissions?.includes(PERMISSIONS.ACTIVITIES.CREATE_ANY) ?? false;
+    if (canUseAny) return;
+
+    const scopeById = await getCommsMaterialScopeById(this.databaseService.db, [
+      ...new Set([...commsMaterialIds, ...(existingCommsMaterialIds ?? [])]),
+    ]);
+    const forbidden = this.getForbiddenLookupIds(
+      commsMaterialIds,
+      existingCommsMaterialIds,
+      teamIds,
+      scopeById
+    );
+    if (forbidden.length > 0) {
+      throw new BadRequestException(
+        `Comms material IDs not available to your teams: ${forbidden.join(', ')}`
+      );
+    }
+  }
+
+  private async loadCommsMaterialReleaseFlagsById(
+    commsMaterialIds: number[]
+  ): Promise<CommsMaterialReleaseFlagsById> {
+    const uniqueIds = [...new Set(commsMaterialIds)];
+    if (uniqueIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.databaseService.db
+      .select({
+        id: commsMaterials.id,
+        audience: releaseTypes.audience,
+        allowsTranslation: releaseTypes.allowsTranslation,
+        requiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
+      })
+      .from(commsMaterials)
+      .leftJoin(releaseTypes, eq(commsMaterials.releaseTypeId, releaseTypes.id))
+      .where(inArray(commsMaterials.id, uniqueIds));
+
+    const map = new Map<number, CommsMaterialReleaseFlags>();
+    for (const row of rows) {
+      if (row.audience == null) {
+        continue;
+      }
+      map.set(row.id, {
+        audience: row.audience as 'media' | 'public',
+        allowsTranslation: row.allowsTranslation ?? false,
+        requiresNewsReleaseDetails: row.requiresNewsReleaseDetails ?? false,
+      });
+    }
+    return map;
+  }
+
+  private async resolveReleaseTimePersistence(row: {
+    releaseSchedulingMode?: string | null;
+    releaseTimeOffsetMinutes?: number | null;
+    startDate?: string | null;
+    startTime?: string | null;
+    isAllDay?: boolean | null;
+    dateStatusId?: number | null;
+    timeStatusId?: number | null;
+  }): Promise<{
+    releaseSchedulingMode: ReturnType<typeof parseReleaseSchedulingMode>;
+    releaseTimeOffsetMinutes: number | null;
+    releaseTime: Date | null;
+  }> {
+    const resolvers = await this.getSchedulingLookupResolvers();
+    const dateStatusName =
+      row.dateStatusId != null && resolvers.dateStatusNameForId != null
+        ? resolvers.dateStatusNameForId(row.dateStatusId)
+        : undefined;
+    const timeStatusName =
+      row.timeStatusId != null && resolvers.timeStatusNameForId != null
+        ? resolvers.timeStatusNameForId(row.timeStatusId)
+        : undefined;
+    const normalized = normalizeReleaseSchedulingPersistence({
+      releaseSchedulingMode: parseReleaseSchedulingMode(
+        row.releaseSchedulingMode
+      ),
+      releaseTimeOffsetMinutes: row.releaseTimeOffsetMinutes ?? null,
+      startDate: row.startDate,
+      startTime: row.startTime,
+      isAllDay: row.isAllDay ?? false,
+      dateStatusName,
+      timeStatusName,
+    });
+    return {
+      releaseSchedulingMode: normalized.releaseSchedulingMode,
+      releaseTimeOffsetMinutes: normalized.releaseTimeOffsetMinutes,
+      releaseTime: normalized.releaseTime
+        ? new Date(normalized.releaseTime)
+        : null,
+    };
+  }
+
+  private async applyCommsDependentFieldCleanup(
+    commsMaterialIds: number[] | undefined,
+    fields: Pick<
+      ActivityFormData,
+      | 'newsReleaseOriginId'
+      | 'newsReleaseDistributionId'
+      | 'translationsRequiredStatusId'
+      | 'translationLanguageIds'
+      | 'releaseSchedulingMode'
+      | 'releaseTimeOffsetMinutes'
+    >
+  ): Promise<
+    Pick<
+      ActivityFormData,
+      | 'newsReleaseOriginId'
+      | 'newsReleaseDistributionId'
+      | 'translationsRequiredStatusId'
+      | 'translationLanguageIds'
+      | 'releaseSchedulingMode'
+      | 'releaseTimeOffsetMinutes'
+    >
+  > {
+    const flagsById = await this.loadCommsMaterialReleaseFlagsById(
+      commsMaterialIds ?? []
+    );
+    const cleaned = stripCommsDependentFields(
+      {
+        ...fields,
+        commsMaterialIds: commsMaterialIds ?? [],
+      } as ActivityFormData,
+      flagsById
+    );
+    return {
+      newsReleaseOriginId: cleaned.newsReleaseOriginId ?? null,
+      newsReleaseDistributionId: cleaned.newsReleaseDistributionId ?? null,
+      translationsRequiredStatusId:
+        cleaned.translationsRequiredStatusId ?? null,
+      translationLanguageIds: cleaned.translationLanguageIds ?? [],
+      releaseSchedulingMode: cleaned.releaseSchedulingMode ?? null,
+      releaseTimeOffsetMinutes: cleaned.releaseTimeOffsetMinutes ?? null,
+    };
   }
 
   /**
@@ -803,13 +957,11 @@ export class ActivitiesService {
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
-      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      organizationDetails: related.organizationDetailsMap.get(id) ?? [],
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      reportSettings: related.reportSettingsMap.get(id) ?? [],
-      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
@@ -879,15 +1031,13 @@ export class ActivitiesService {
         representativesAttendingMap: new Map(),
         sharedWithResult: this.emptySharedWithResult(),
         commsContactsMap: new Map(),
-        leadOrgNamesMap: new Map(),
+        organizationDetailsMap: new Map(),
         eventPlannerDetailsMap: new Map(),
         eventPlannersMap: new Map(),
         eventPlannerIdsMap: new Map(),
         newsReleaseOriginsMap: new Map(),
         newsReleaseDistributionsMap: new Map(),
         premierRequestedMap: new Map(),
-        reportSettingsMap: new Map(),
-        pitchRequiredStatusMap: new Map(),
         translationsRequiredStatusMap: new Map(),
         leadMinistryNamesMap: new Map(),
         leadMinistryAbbreviationsMap: new Map(),
@@ -911,13 +1061,11 @@ export class ActivitiesService {
       representativesAttendingMap,
       sharedWithResult,
       commsContactsMap,
-      leadOrgNamesMap,
+      organizationDetailsMap,
       eventPlannerDetailsMap,
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
-      reportSettingsMap,
-      pitchRequiredStatusMap,
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
       leadMinistryAbbreviationsMap,
@@ -970,8 +1118,10 @@ export class ActivitiesService {
               Array<{ userId: number; name: string; isLead: boolean }>
             >()
           ),
-      needs('leadOrg')
-        ? this.dataFetcherService.fetchLeadOrgNamesForActivities(activityRows)
+      needs('organizationDetails')
+        ? this.dataFetcherService.fetchOrganizationDetailsForActivities(
+            activityIds
+          )
         : Promise.resolve(new Map()),
       needs('eventPlannerDetails')
         ? this.dataFetcherService.fetchEventPlannerDetailsForActivities(
@@ -990,14 +1140,6 @@ export class ActivitiesService {
         : Promise.resolve(new Map()),
       needs('premierRequested')
         ? this.dataFetcherService.fetchPremierRequestedForActivities(
-            activityIds
-          )
-        : Promise.resolve(new Map()),
-      needs('reportSettings')
-        ? this.dataFetcherService.fetchReportSettingsForActivities(activityIds)
-        : Promise.resolve(new Map()),
-      needs('pitchRequiredStatus')
-        ? this.dataFetcherService.fetchPitchRequiredStatusForActivities(
             activityIds
           )
         : Promise.resolve(new Map()),
@@ -1050,15 +1192,13 @@ export class ActivitiesService {
       representativesAttendingMap,
       sharedWithResult,
       commsContactsMap,
-      leadOrgNamesMap,
+      organizationDetailsMap,
       eventPlannerDetailsMap,
       eventPlannersMap,
       eventPlannerIdsMap,
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
-      reportSettingsMap,
-      pitchRequiredStatusMap,
       translationsRequiredStatusMap,
       leadMinistryNamesMap,
       leadMinistryAbbreviationsMap,
@@ -1187,43 +1327,52 @@ export class ActivitiesService {
   }
 
   /**
-   * Resolve DB IDs for tri-state "pending" row (display "Pending review") used as create defaults.
+   * Resolve DB ID for TBD row used as create default for translations required.
    */
-  private async resolvePendingPitchAndTranslationStatusIds(): Promise<{
-    pitchRequiredStatusId: number;
-    translationsRequiredStatusId: number;
-  }> {
-    const [pitchRow] = await this.databaseService.db
-      .select({ id: pitchRequiredStatuses.id })
-      .from(pitchRequiredStatuses)
-      .where(
-        eq(pitchRequiredStatuses.name, PITCH_TRANSLATION_PENDING_LOOKUP_NAME)
-      )
-      .limit(1);
+  private async resolvePendingTranslationStatusId(): Promise<number> {
     const [translationRow] = await this.databaseService.db
       .select({ id: translationRequiredStatuses.id })
       .from(translationRequiredStatuses)
-      .where(
-        eq(
-          translationRequiredStatuses.name,
-          PITCH_TRANSLATION_PENDING_LOOKUP_NAME
-        )
-      )
+      .where(eq(translationRequiredStatuses.name, TBD_LOOKUP_NAME))
       .limit(1);
-    if (pitchRow?.id == null) {
-      throw new InternalServerErrorException(
-        'Pitch required status "pending" is not configured in lookups.'
-      );
-    }
     if (translationRow?.id == null) {
       throw new InternalServerErrorException(
-        'Translation required status "pending" is not configured in lookups.'
+        'Translation required status "tbd" is not configured in lookups.'
       );
     }
+    return translationRow.id;
+  }
+
+  private async getSchedulingLookupResolvers(): Promise<ActivitySchedulingLookupResolvers> {
+    const [dateRows, timeRows] = await Promise.all([
+      this.databaseService.db
+        .select({ id: dateStatuses.id, name: dateStatuses.name })
+        .from(dateStatuses),
+      this.databaseService.db
+        .select({ id: timeStatuses.id, name: timeStatuses.name })
+        .from(timeStatuses),
+    ]);
+    const dateMap = new Map(dateRows.map((r) => [r.id, r.name]));
+    const timeMap = new Map(timeRows.map((r) => [r.id, r.name]));
     return {
-      pitchRequiredStatusId: pitchRow.id,
-      translationsRequiredStatusId: translationRow.id,
+      dateStatusNameForId: (id) => dateMap.get(id),
+      timeStatusNameForId: (id) => timeMap.get(id),
     };
+  }
+
+  private async assertActivitySchedulingRules(
+    data: ActivitySchedulingFields,
+    mode: 'create' | 'update' | 'clone'
+  ): Promise<void> {
+    const resolvers = await this.getSchedulingLookupResolvers();
+    const errors = collectActivitySchedulingValidationErrors(
+      data,
+      mode,
+      resolvers
+    );
+    if (errors.length > 0) {
+      throw new BadRequestException(errors[0]?.message ?? 'Invalid scheduling');
+    }
   }
 
   /**
@@ -1264,7 +1413,7 @@ export class ActivitiesService {
    * Create a new activity with related junction table records.
    * Initial activityStatusId is set by backend: 'reviewed' if user has activities.review and markAsReviewed, else 'new'.
    * Client activityStatusId is ignored.
-   * When context.permissions does not include activities.create.any, leadMinistryId must be in a ministry linked to context.teamIds.
+   * When context.permissions does not include activities.create.any, lead team must be in context.teamIds.
    */
   async create(
     dto: CreateActivityRequest,
@@ -1285,6 +1434,11 @@ export class ActivitiesService {
   ): Promise<ActivityResponse> {
     await this.assertCanEditDuringLockout(userId, context?.permissions);
 
+    applyFieldLevelWritePolicy(dto as Record<string, unknown>, {
+      permissions: context?.permissions ?? [],
+      roleName: context?.roleName ?? '',
+    });
+
     // Extract junction table IDs, venue address, and status/options from the DTO
     // activityStatusId is ignored (backend sets from markAsReviewed + activities.review permission)
     const {
@@ -1295,9 +1449,9 @@ export class ActivitiesService {
       sharedWithTeamIds,
       commsContacts: commsContactsArray,
       eventPlanners: eventPlannersArray,
+      organizations: organizationsArray,
       representatives,
       venueAddress,
-      reportSettings: reportSettingsArray,
       activityHistoryNotes,
       activityStatusId: _activityStatusIdIgnored,
       markAsReviewed,
@@ -1320,13 +1474,12 @@ export class ActivitiesService {
       throw new BadRequestException('leadTeamId is required');
     }
 
-    // Resolve lead team and derive leadMinistryId from team.ministryId
     const [leadTeam] = await this.databaseService.db
       .select({
         id: teams.id,
         name: teams.name,
         abbreviation: teams.abbreviation,
-        ministryId: teams.ministryId,
+        primaryOrganizationId: teams.primaryOrganizationId,
       })
       .from(teams)
       .where(eq(teams.id, activityData.leadTeamId))
@@ -1336,7 +1489,6 @@ export class ActivitiesService {
         `Team with ID ${activityData.leadTeamId} not found`
       );
     }
-    const resolvedLeadMinistryId = leadTeam.ministryId ?? null;
 
     // Data scope: without activities.create.any, user may only create for teams they belong to.
     // Guards enforce permission; service enforces scope.
@@ -1357,12 +1509,6 @@ export class ActivitiesService {
       }
     }
 
-    // Override leadMinistryId with resolved value from team
-    const activityDataWithResolvedMinistry = {
-      ...activityData,
-      leadMinistryId: resolvedLeadMinistryId,
-    };
-
     if (!categoryIds?.length) {
       throw new BadRequestException('At least one category is required.');
     }
@@ -1375,20 +1521,42 @@ export class ActivitiesService {
     if (tagIds?.length) {
       await this.validateTagIds(tagIds, context?.teamIds, context?.permissions);
     }
+    if (commsMaterialIds?.length) {
+      await this.validateCommsMaterialIdsForUser(
+        commsMaterialIds,
+        context?.teamIds,
+        context?.permissions
+      );
+    }
+    const commsCleaned = await this.applyCommsDependentFieldCleanup(
+      commsMaterialIds,
+      {
+        newsReleaseOriginId: activityData.newsReleaseOriginId ?? null,
+        newsReleaseDistributionId:
+          activityData.newsReleaseDistributionId ?? null,
+        translationsRequiredStatusId:
+          activityData.translationsRequiredStatusId ?? null,
+        translationLanguageIds: translationLanguageIds ?? [],
+        releaseSchedulingMode: activityData.releaseSchedulingMode ?? null,
+        releaseTimeOffsetMinutes: activityData.releaseTimeOffsetMinutes ?? null,
+      }
+    );
+    Object.assign(activityData, commsCleaned);
+    const translationLanguageIdsForInsert =
+      commsCleaned.translationLanguageIds ?? [];
     await this.lookAheadPolicy.assertAllowedLookAheadSection(
       activityData.lookAheadSection
     );
 
-    const pendingStatuses =
-      await this.resolvePendingPitchAndTranslationStatusIds();
+    const pendingTranslationStatusId =
+      await this.resolvePendingTranslationStatusId();
     const {
-      pitchRequiredStatusId: dtoPitchStatus,
       translationsRequiredStatusId: dtoTranslationStatus,
       dateStatusId: dtoDateStatus,
       timeStatusId: dtoTimeStatus,
       significance: dtoSignificance,
       ...activityRowWithoutDefaults
-    } = activityDataWithResolvedMinistry;
+    } = activityData;
 
     const defaultDateTimeStatuses =
       await this.resolveDefaultDateTimeStatusIds();
@@ -1398,11 +1566,26 @@ export class ActivitiesService {
       significance: dtoSignificance ?? null,
       dateStatusId: dtoDateStatus ?? defaultDateTimeStatuses.dateStatusId,
       timeStatusId: dtoTimeStatus ?? defaultDateTimeStatuses.timeStatusId,
-      pitchRequiredStatusId:
-        dtoPitchStatus ?? pendingStatuses.pitchRequiredStatusId,
       translationsRequiredStatusId:
-        dtoTranslationStatus ?? pendingStatuses.translationsRequiredStatusId,
+        dtoTranslationStatus ?? pendingTranslationStatusId,
     };
+
+    await this.assertActivitySchedulingRules(
+      {
+        startDate: activityRowForInsert.startDate,
+        endDate: activityRowForInsert.endDate,
+        startTime: activityRowForInsert.startTime,
+        endTime: activityRowForInsert.endTime,
+        isAllDay: activityRowForInsert.isAllDay,
+        dateStatusId: activityRowForInsert.dateStatusId,
+        timeStatusId: activityRowForInsert.timeStatusId,
+      },
+      'create'
+    );
+
+    const releaseTimePersistence =
+      await this.resolveReleaseTimePersistence(activityRowForInsert);
+    Object.assign(activityRowForInsert, releaseTimePersistence);
 
     await this.validateCommsContactsForTeam(
       commsContactsArray,
@@ -1456,35 +1639,6 @@ export class ActivitiesService {
 
       const activityId = created.id;
 
-      // Generate displayId: use ministry abbreviation when leadMinistryId is set, else teams.abbreviation.
-      // Create enforces the stricter rule: ministry must have an abbreviation when set.
-      let ministryAbbreviation: string | null = null;
-      if (resolvedLeadMinistryId != null) {
-        const [ministry] = await tx
-          .select({ abbreviation: ministries.abbreviation })
-          .from(ministries)
-          .where(eq(ministries.id, resolvedLeadMinistryId))
-          .limit(1);
-        if (!ministry?.abbreviation) {
-          throw new BadRequestException(
-            `Ministry with ID ${resolvedLeadMinistryId} not found or missing abbreviation`
-          );
-        }
-        ministryAbbreviation = ministry.abbreviation;
-      }
-      const displayId = this.utilsService.computeDisplayIdFromLeadContext({
-        activityId,
-        leadMinistryId: resolvedLeadMinistryId,
-        ministryAbbreviation,
-        teamAbbreviation: leadTeam.abbreviation,
-      });
-
-      // Update activity with generated displayId
-      await tx
-        .update(activities)
-        .set({ displayId })
-        .where(eq(activities.id, activityId));
-
       // Insert venue address if provided
       if (venueAddress) {
         const normalizedVenue = this.normalizeVenueAddress(venueAddress);
@@ -1534,7 +1688,7 @@ export class ActivitiesService {
           tx,
           activityTranslationsRequired,
           activityId,
-          translationLanguageIds,
+          translationLanguageIdsForInsert,
           (id: number) => ({ languageId: id }),
           userId,
           now
@@ -1563,6 +1717,12 @@ export class ActivitiesService {
           eventPlannersArray,
           now
         ),
+        this.junctionService.insertOrganizations(
+          tx,
+          activityId,
+          organizationsArray,
+          now
+        ),
         // Representatives with attending status
         this.junctionService.insertRepresentatives(
           tx,
@@ -1572,32 +1732,16 @@ export class ActivitiesService {
         ),
       ]);
 
-      // Report settings - create defaults for all active reports, then apply custom settings if provided
-      await this.junctionService.createDefaultReportSettings(tx, activityId);
-      if (reportSettingsArray && reportSettingsArray.length > 0) {
-        // Convert array format to Map for service layer
-        const reportSettingsMap = new Map<number, boolean>();
-        for (const setting of reportSettingsArray) {
-          const reportId =
-            typeof setting.reportId === 'number' ? setting.reportId : undefined;
-          if (typeof reportId === 'number') {
-            reportSettingsMap.set(reportId, setting.omitted);
-          } else {
-            // Log and skip malformed entries
-            this.logger.warn(
-              'create: skipping malformed reportSettings entry',
-              setting
-            );
-          }
-        }
-        await this.junctionService.updateActivityReportSettings(
-          tx,
-          activityId,
-          reportSettingsMap
-        );
-      }
+      const displayId = this.utilsService.computeDisplayIdFromLeadContext({
+        activityId,
+        teamAbbreviation: leadTeam.abbreviation,
+      });
+      await tx
+        .update(activities)
+        .set({ displayId })
+        .where(eq(activities.id, activityId));
 
-      return created;
+      return { ...created, displayId };
     });
 
     // Fetch the created activity with all related data (bypass visibility — creator just inserted it)
@@ -1976,16 +2120,14 @@ export class ActivitiesService {
       eventPlanners: ctx.related.eventPlannersMap.get(activity.id) ?? [],
       eventPlannerLeadIds:
         ctx.related.eventPlannerIdsMap.get(activity.id) ?? [],
-      leadOrgName: ctx.related.leadOrgNamesMap.get(activity.id) ?? null,
+      organizationDetails:
+        ctx.related.organizationDetailsMap.get(activity.id) ?? [],
       newsReleaseOrigin:
         ctx.related.newsReleaseOriginsMap.get(activity.id) ?? null,
       newsReleaseDistribution:
         ctx.related.newsReleaseDistributionsMap.get(activity.id) ?? null,
       premierRequested:
         ctx.related.premierRequestedMap.get(activity.id) ?? null,
-      reportSettings: ctx.related.reportSettingsMap.get(activity.id) ?? [],
-      pitchRequiredStatus:
-        ctx.related.pitchRequiredStatusMap.get(activity.id) ?? null,
       translationsRequiredStatus:
         ctx.related.translationsRequiredStatusMap.get(activity.id) ?? null,
       leadMinistry: ctx.related.leadMinistryNamesMap.get(activity.id) ?? null,
@@ -2149,7 +2291,6 @@ export class ActivitiesService {
   ): Promise<ActivityResponse[]> {
     const requiredOperationPermissionByOperation = {
       review: PERMISSIONS.ACTIVITIES.REVIEW,
-      pitchStatus: PERMISSIONS.ACTIVITIES.PITCH_STATUS_EDIT,
       issue: PERMISSIONS.ACTIVITIES.EDIT,
       tags: PERMISSIONS.ACTIVITIES.EDIT,
       sharedWith: PERMISSIONS.ACTIVITIES.EDIT,
@@ -2158,6 +2299,11 @@ export class ActivitiesService {
     } as const;
     const requiredOperationPermission =
       requiredOperationPermissionByOperation[dto.operation];
+    if (requiredOperationPermission == null) {
+      throw new BadRequestException(
+        `Unsupported bulk activity operation: ${dto.operation}`
+      );
+    }
     if (!context.permissions?.includes(requiredOperationPermission)) {
       throw new ForbiddenException(
         `You do not have permission to perform this bulk activity operation.`
@@ -2190,7 +2336,6 @@ export class ActivitiesService {
     for (const activityId of dto.activityIds) {
       if (
         dto.operation === 'review' ||
-        dto.operation === 'pitchStatus' ||
         dto.operation === 'issue' ||
         dto.operation === 'tags' ||
         dto.operation === 'sharedWith'
@@ -2210,24 +2355,6 @@ export class ActivitiesService {
             )
           );
           break;
-        case 'pitchStatus': {
-          const { pitchRequiredStatusId } = dto;
-          if (pitchRequiredStatusId === undefined) {
-            throw new BadRequestException(
-              'pitchRequiredStatusId is required for the pitchStatus operation.'
-            );
-          }
-          results.push(
-            await this.update(
-              activityId,
-              { pitchRequiredStatusId },
-              userId,
-              context,
-              { bypassEditLock: true, timestampWriteContext: 'bulk' }
-            )
-          );
-          break;
-        }
         case 'issue':
           results.push(
             await this.update(activityId, { isIssue: true }, userId, context, {
@@ -2445,8 +2572,10 @@ export class ActivitiesService {
       );
     }
 
-    // Strip fields the user lacks field-level edit permission for (keeps existing DB values)
-    // Note: Field-level write policy enforcement may be implemented in authorization guards
+    applyFieldLevelWritePolicy(dto as Record<string, unknown>, {
+      permissions: context?.permissions ?? [],
+      roleName: context?.roleName ?? '',
+    });
 
     // Extract junction table IDs and venue address from DTO; omit activityStatusId, markAsReviewed, markAsCompleted (backend sets status)
     const {
@@ -2457,9 +2586,9 @@ export class ActivitiesService {
       sharedWithTeamIds,
       commsContacts: commsContactsArray,
       eventPlanners: eventPlannersArray,
+      organizations: organizationsArray,
       representatives,
       venueAddress,
-      reportSettings: reportSettingsArray,
       activityHistoryNotes,
       activityStatusId: _activityStatusIdIgnored,
       markAsReviewed: _markAsReviewedIgnored,
@@ -2538,22 +2667,6 @@ export class ActivitiesService {
         ? this.normalizeVenueAddress(venueAddress)
         : undefined;
 
-    // Build update payload: activityUpdateData contains only core activity fields (junction/venue were destructured out).
-    // Cast is intentional: UpdateActivityRequest and Activity must stay in sync; only activity table columns are updated.
-    const now = new Date();
-
-    const updateData: Partial<Activity> = {
-      ...(activityUpdateData as Partial<Activity>),
-      activityStatusId: computedStatusId,
-      ...this.getActivityTimestampUpdateForWriteOrThrow({
-        context: timestampWriteContext,
-        permissions: context?.permissions,
-        renewPublicLastUpdated,
-        userId,
-        now,
-      }),
-    };
-
     // Capture existing related data for history (before transaction)
     const venueRows = await this.databaseService.db
       .select()
@@ -2614,14 +2727,6 @@ export class ActivitiesService {
         )
       );
 
-    const existingReportSettings = await this.databaseService.db
-      .select({
-        reportId: activityReportSettings.reportId,
-        omitted: activityReportSettings.omitted,
-      })
-      .from(activityReportSettings)
-      .where(eq(activityReportSettings.activityId, id));
-
     // Data scope: when changing leadTeamId, user without create.any may only set a team they belong to.
     if (
       dto.leadTeamId !== undefined &&
@@ -2672,6 +2777,163 @@ export class ActivitiesService {
         );
       }
     }
+    if (commsMaterialIds !== undefined) {
+      const existingCommsRows = await this.databaseService.db
+        .select({ commsMaterialId: activityCommsMaterials.commsMaterialId })
+        .from(activityCommsMaterials)
+        .where(eq(activityCommsMaterials.activityId, id));
+      const existingCommsMaterialIds = existingCommsRows.map(
+        (r) => r.commsMaterialId
+      );
+      if (commsMaterialIds.length > 0) {
+        await this.validateCommsMaterialIdsForUser(
+          commsMaterialIds,
+          context?.teamIds,
+          context?.permissions,
+          existingCommsMaterialIds
+        );
+      }
+    }
+
+    let effectiveTranslationLanguageIds: number[] | undefined =
+      translationLanguageIds;
+
+    if (commsMaterialIds !== undefined) {
+      const existingLangRows = await this.databaseService.db
+        .select({ languageId: activityTranslationsRequired.languageId })
+        .from(activityTranslationsRequired)
+        .where(
+          and(
+            eq(activityTranslationsRequired.activityId, id),
+            eq(activityTranslationsRequired.isActive, true)
+          )
+        );
+      const commsCleaned = await this.applyCommsDependentFieldCleanup(
+        commsMaterialIds,
+        {
+          newsReleaseOriginId:
+            dto.newsReleaseOriginId !== undefined
+              ? dto.newsReleaseOriginId
+              : oldActivity.newsReleaseOriginId,
+          newsReleaseDistributionId:
+            dto.newsReleaseDistributionId !== undefined
+              ? dto.newsReleaseDistributionId
+              : oldActivity.newsReleaseDistributionId,
+          translationsRequiredStatusId:
+            dto.translationsRequiredStatusId !== undefined
+              ? dto.translationsRequiredStatusId
+              : oldActivity.translationsRequiredStatusId,
+          translationLanguageIds:
+            translationLanguageIds !== undefined
+              ? translationLanguageIds
+              : existingLangRows.map((r) => r.languageId),
+          releaseSchedulingMode:
+            dto.releaseSchedulingMode !== undefined
+              ? dto.releaseSchedulingMode
+              : parseReleaseSchedulingMode(oldActivity.releaseSchedulingMode),
+          releaseTimeOffsetMinutes:
+            dto.releaseTimeOffsetMinutes !== undefined
+              ? dto.releaseTimeOffsetMinutes
+              : oldActivity.releaseTimeOffsetMinutes,
+        }
+      );
+      Object.assign(activityUpdateData, {
+        newsReleaseOriginId: commsCleaned.newsReleaseOriginId,
+        newsReleaseDistributionId: commsCleaned.newsReleaseDistributionId,
+        translationsRequiredStatusId: commsCleaned.translationsRequiredStatusId,
+        releaseSchedulingMode: commsCleaned.releaseSchedulingMode,
+        releaseTimeOffsetMinutes: commsCleaned.releaseTimeOffsetMinutes,
+      });
+      effectiveTranslationLanguageIds = commsCleaned.translationLanguageIds;
+    }
+
+    // Build update payload after comms cleanup so dependent fields persist correctly.
+    const now = new Date();
+
+    const updateData: Partial<Activity> = {
+      ...(activityUpdateData as Partial<Activity>),
+      activityStatusId: computedStatusId,
+      ...this.getActivityTimestampUpdateForWriteOrThrow({
+        context: timestampWriteContext,
+        permissions: context?.permissions,
+        renewPublicLastUpdated,
+        userId,
+        now,
+      }),
+    };
+
+    const effectiveReleaseRow = {
+      releaseSchedulingMode:
+        updateData.releaseSchedulingMode !== undefined
+          ? parseReleaseSchedulingMode(updateData.releaseSchedulingMode)
+          : parseReleaseSchedulingMode(oldActivity.releaseSchedulingMode),
+      releaseTimeOffsetMinutes:
+        updateData.releaseTimeOffsetMinutes !== undefined
+          ? updateData.releaseTimeOffsetMinutes
+          : oldActivity.releaseTimeOffsetMinutes,
+      startDate:
+        updateData.startDate !== undefined
+          ? updateData.startDate
+          : oldActivity.startDate,
+      startTime:
+        updateData.startTime !== undefined
+          ? updateData.startTime
+          : oldActivity.startTime,
+      isAllDay:
+        updateData.isAllDay !== undefined
+          ? updateData.isAllDay
+          : oldActivity.isAllDay,
+      dateStatusId:
+        updateData.dateStatusId !== undefined
+          ? updateData.dateStatusId
+          : oldActivity.dateStatusId,
+      timeStatusId:
+        updateData.timeStatusId !== undefined
+          ? updateData.timeStatusId
+          : oldActivity.timeStatusId,
+    };
+    const releaseTimePersistence =
+      await this.resolveReleaseTimePersistence(effectiveReleaseRow);
+    updateData.releaseSchedulingMode =
+      releaseTimePersistence.releaseSchedulingMode;
+    updateData.releaseTimeOffsetMinutes =
+      releaseTimePersistence.releaseTimeOffsetMinutes;
+    updateData.releaseTime = releaseTimePersistence.releaseTime;
+
+    await this.assertActivitySchedulingRules(
+      {
+        startDate:
+          updateData.startDate !== undefined
+            ? updateData.startDate
+            : oldActivity.startDate,
+        endDate:
+          updateData.endDate !== undefined
+            ? updateData.endDate
+            : oldActivity.endDate,
+        startTime:
+          updateData.startTime !== undefined
+            ? updateData.startTime
+            : oldActivity.startTime,
+        endTime:
+          updateData.endTime !== undefined
+            ? updateData.endTime
+            : oldActivity.endTime,
+        isAllDay:
+          updateData.isAllDay !== undefined
+            ? updateData.isAllDay
+            : oldActivity.isAllDay,
+        dateStatusId:
+          updateData.dateStatusId !== undefined
+            ? updateData.dateStatusId
+            : oldActivity.dateStatusId,
+        timeStatusId:
+          updateData.timeStatusId !== undefined
+            ? updateData.timeStatusId
+            : oldActivity.timeStatusId,
+      },
+      'update'
+    );
+
     if (Object.prototype.hasOwnProperty.call(dto, 'lookAheadSection')) {
       await this.lookAheadPolicy.assertAllowedLookAheadSection(
         dto.lookAheadSection ?? null
@@ -2689,26 +2951,15 @@ export class ActivitiesService {
     const updated = await this.databaseService.db.transaction(async (tx) => {
       const effectiveLeadTeamId =
         dto.leadTeamId !== undefined ? dto.leadTeamId : oldActivity.leadTeamId;
-      const effectiveLeadMinistryId =
-        dto.leadMinistryId !== undefined
-          ? dto.leadMinistryId
-          : oldActivity.leadMinistryId;
-
-      // Recalculate displayId when lead team or ministry changes
-      const leadTeamOrMinistryChanged =
-        dto.leadTeamId !== undefined || dto.leadMinistryId !== undefined;
-      if (leadTeamOrMinistryChanged) {
-        // Resolve the team abbreviation for the effective lead team (new or existing).
+      const leadContextChanged =
+        dto.leadTeamId !== undefined || organizationsArray !== undefined;
+      if (leadContextChanged) {
         const effectiveTeamId =
           dto.leadTeamId !== undefined ? dto.leadTeamId : effectiveLeadTeamId;
         let teamAbbreviation: string | null = null;
-        let teamMinistryId: number | null = null;
         if (effectiveTeamId != null) {
           const [teamRow] = await tx
-            .select({
-              abbreviation: teams.abbreviation,
-              ministryId: teams.ministryId,
-            })
+            .select({ abbreviation: teams.abbreviation })
             .from(teams)
             .where(eq(teams.id, effectiveTeamId))
             .limit(1);
@@ -2718,33 +2969,11 @@ export class ActivitiesService {
             );
           }
           teamAbbreviation = teamRow?.abbreviation ?? null;
-          teamMinistryId = teamRow?.ministryId ?? null;
-        }
-
-        // When a new lead team is selected, inherit its ministry as the lead ministry.
-        if (dto.leadTeamId !== undefined) {
-          updateData.leadMinistryId = teamMinistryId;
-        }
-        const resolvedMinistryId =
-          dto.leadTeamId !== undefined
-            ? teamMinistryId
-            : effectiveLeadMinistryId;
-
-        let ministryAbbreviation: string | null = null;
-        if (resolvedMinistryId != null) {
-          const [ministry] = await tx
-            .select({ abbreviation: ministries.abbreviation })
-            .from(ministries)
-            .where(eq(ministries.id, resolvedMinistryId))
-            .limit(1);
-          ministryAbbreviation = ministry?.abbreviation ?? null;
         }
 
         updateData.displayId =
           this.utilsService.computeDisplayIdFromLeadContext({
             activityId: id,
-            leadMinistryId: resolvedMinistryId,
-            ministryAbbreviation,
             teamAbbreviation,
           });
       }
@@ -2833,12 +3062,12 @@ export class ActivitiesService {
       }
 
       // Update translation languages
-      if (translationLanguageIds !== undefined) {
+      if (effectiveTranslationLanguageIds !== undefined) {
         await this.junctionService.updateJunctionRecords(
           tx,
           activityTranslationsRequired,
           id,
-          translationLanguageIds,
+          effectiveTranslationLanguageIds,
           (id: number) => ({ languageId: id }),
           'languageId',
           userId,
@@ -2890,27 +3119,12 @@ export class ActivitiesService {
         );
       }
 
-      // Update report settings
-      if (reportSettingsArray !== undefined && reportSettingsArray.length > 0) {
-        // Convert array format to Map for service layer
-        const reportSettingsMap = new Map<number, boolean>();
-        for (const setting of reportSettingsArray) {
-          const reportId =
-            typeof setting.reportId === 'number' ? setting.reportId : undefined;
-          if (typeof reportId === 'number') {
-            reportSettingsMap.set(reportId, setting.omitted);
-          } else {
-            // Log and skip malformed entries
-            this.logger.warn(
-              'update: skipping malformed reportSettings entry',
-              setting
-            );
-          }
-        }
-        await this.junctionService.updateActivityReportSettings(
+      if (organizationsArray !== undefined) {
+        await this.junctionService.updateOrganizations(
           tx,
           id,
-          reportSettingsMap
+          organizationsArray,
+          now
         );
       }
 
@@ -2946,13 +3160,11 @@ export class ActivitiesService {
       representativesAttending,
       sharedWithResult,
       commsContacts,
-      leadOrgNamesMap,
+      organizationDetailsMap,
       eventPlannerDetailsMap,
       newsReleaseOriginsMap,
       newsReleaseDistributionsMap,
       premierRequestedMap,
-      reportSettingsMap,
-      pitchRequiredStatus,
       translationsRequiredStatus,
       leadMinistryName,
       leadMinistryAbbreviation,
@@ -2970,13 +3182,11 @@ export class ActivitiesService {
       this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
       this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
       this.dataFetcherService.fetchCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchLeadOrgNamesForActivities([updated]),
+      this.dataFetcherService.fetchOrganizationDetailsForActivities([id]),
       this.dataFetcherService.fetchEventPlannerDetailsForActivities([id]),
       this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
       this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
       this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchReportSettingsForActivities([id]),
-      this.dataFetcherService.fetchPitchRequiredStatusForActivities([id]),
       this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
         id,
       ]),
@@ -3015,12 +3225,10 @@ export class ActivitiesService {
       eventPlannerLeadIds: eventPlannerDetails
         .filter((d) => d.eventPlannerId != null)
         .map((d) => d.eventPlannerId as number),
-      leadOrgName: leadOrgNamesMap.get(id) ?? null,
+      organizationDetails: organizationDetailsMap.get(id) ?? [],
       newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: premierRequestedMap.get(id) ?? null,
-      reportSettings: reportSettingsMap.get(id) ?? [],
-      pitchRequiredStatus: pitchRequiredStatus.get(id) ?? null,
       translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
       leadMinistry: leadMinistryName.get(id) ?? null,
       leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
@@ -3097,18 +3305,6 @@ export class ActivitiesService {
         field: 'representatives',
         oldValue: this.normalizeRepresentatives(existingRepresentatives),
         newValue: this.normalizeRepresentatives(representatives),
-      });
-    }
-
-    if (
-      reportSettingsArray !== undefined &&
-      reportSettingsArray.length > 0 &&
-      !isDeepEqual(existingReportSettings, reportSettingsArray)
-    ) {
-      allChanges.push({
-        field: 'reportSettings',
-        oldValue: existingReportSettings,
-        newValue: reportSettingsArray,
       });
     }
 
@@ -3220,8 +3416,9 @@ export class ActivitiesService {
    * The source activity's field values are mapped into a `CreateActivityRequest`
    * payload, then transformed per the clone rules:
    * - Schedule fields and title come from the request body (user re-enters them).
-   * - Never-copied fields (Look Ahead, pitch, translations, pitchDate, executive
-   *   summary) are reset to create-time defaults.
+   * - Never-copied fields (translations) are reset to create-time defaults.
+   *   Look Ahead fields copy when included in
+   *   `includeFieldPaths` and the user has lookAhead.edit.
    * - Optional `includeFieldPaths` acts as an allow-list across the advanced
    *   field inventory; fields not in the list are dropped so `create` applies
    *   its default values.
@@ -3249,7 +3446,7 @@ export class ActivitiesService {
     const lookups = await this.getReviewDiffLookups();
     const sourceFormData = mapResponseToFormData(source, lookups);
 
-    const dto: CreateActivityRequest = { ...sourceFormData };
+    const dto: ActivityFormData = { ...sourceFormData };
 
     for (const key of CLONE_NEVER_COPIED_FIELD_KEYS) {
       delete (dto as Record<string, unknown>)[key];
@@ -3280,8 +3477,8 @@ export class ActivitiesService {
     });
 
     dto.title = body.title;
-    dto.startDate = body.startDate ?? null;
-    dto.endDate = body.endDate ?? null;
+    dto.startDate = body.startDate;
+    dto.endDate = body.endDate;
     dto.startTime = body.startTime ?? null;
     dto.endTime = body.endTime ?? null;
     if (body.isAllDay !== undefined) {
@@ -3296,6 +3493,19 @@ export class ActivitiesService {
 
     dto.markAsReviewed = body.markAsReviewed === true;
     dto.activityHistoryNotes = body.activityHistoryNotes;
+
+    await this.assertActivitySchedulingRules(
+      {
+        startDate: dto.startDate,
+        endDate: dto.endDate,
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+        isAllDay: dto.isAllDay,
+        dateStatusId: dto.dateStatusId,
+        timeStatusId: dto.timeStatusId,
+      },
+      'clone'
+    );
 
     const sourceProvenance: HistoryChange[] = [
       {
@@ -3385,8 +3595,8 @@ export class ActivitiesService {
         .delete(activityEventPlanners)
         .where(eq(activityEventPlanners.activityId, id));
       await tx
-        .delete(activityReportSettings)
-        .where(eq(activityReportSettings.activityId, id));
+        .delete(activityOrganizations)
+        .where(eq(activityOrganizations.activityId, id));
       await tx
         .delete(activityRepresentatives)
         .where(eq(activityRepresentatives.activityId, id));
@@ -3793,13 +4003,11 @@ export class ActivitiesService {
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
-      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      organizationDetails: related.organizationDetailsMap.get(id) ?? [],
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      reportSettings: related.reportSettingsMap.get(id) ?? [],
-      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
@@ -3938,13 +4146,11 @@ export class ActivitiesService {
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
-      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      organizationDetails: related.organizationDetailsMap.get(id) ?? [],
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      reportSettings: related.reportSettingsMap.get(id) ?? [],
-      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
@@ -4075,13 +4281,11 @@ export class ActivitiesService {
       eventPlannerDetails: related.eventPlannerDetailsMap.get(id) ?? [],
       eventPlanners: related.eventPlannersMap.get(id) ?? [],
       eventPlannerLeadIds: related.eventPlannerIdsMap.get(id) ?? [],
-      leadOrgName: related.leadOrgNamesMap.get(id) ?? null,
+      organizationDetails: related.organizationDetailsMap.get(id) ?? [],
       newsReleaseOrigin: related.newsReleaseOriginsMap.get(id) ?? null,
       newsReleaseDistribution:
         related.newsReleaseDistributionsMap.get(id) ?? null,
       premierRequested: related.premierRequestedMap.get(id) ?? null,
-      reportSettings: related.reportSettingsMap.get(id) ?? [],
-      pitchRequiredStatus: related.pitchRequiredStatusMap.get(id) ?? null,
       translationsRequiredStatus:
         related.translationsRequiredStatusMap.get(id) ?? null,
       leadMinistry: related.leadMinistryNamesMap.get(id) ?? null,
