@@ -300,6 +300,10 @@ npm run format:check
 npm run check
 ```
 
+### Editor (VS Code / Cursor)
+
+Workspace settings in `.vscode/` align format-on-save with **`npm run format:check`** and CI (Prettier from `node_modules`, including `.ts` files). Install the recommended Prettier extension and run `npm ci` at the repo root. Details: [Editor setup](docs/PRE_COMMIT_HOOKS.md#editor-setup-vs-code--cursor).
+
 ### Git Hooks
 
 This project uses **Husky** to enforce code quality. See [Pre-Commit Hooks Documentation](docs/PRE_COMMIT_HOOKS.md) for details.
