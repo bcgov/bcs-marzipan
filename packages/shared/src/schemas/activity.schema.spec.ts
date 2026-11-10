@@ -251,6 +251,14 @@ describe('createActivityRequestSchema', () => {
     ).toThrow();
   });
 
+  it('rejects create when categoryIds has more than one id', () => {
+    const err = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ categoryIds: [1, 2] })
+    );
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['categoryIds']);
+  });
+
   it('accepts valid enums for visibility, lookAheadStatus, lookAheadSection', () => {
     for (const v of VISIBILITY) {
       createActivityRequestSchema.parse(
@@ -627,8 +635,14 @@ describe('updateActivityRequestSchema', () => {
     if (err.success) throw new Error('Expected failure');
     expect(err.error.issues[0].path).toEqual(['categoryIds']);
     expect(err.error.issues[0].message).toBe(
-      'At least one category is required'
+      'Exactly one category is required'
     );
+  });
+
+  it('rejects update when categoryIds has more than one id', () => {
+    const err = updateActivityRequestSchema.safeParse({ categoryIds: [1, 2] });
+    if (err.success) throw new Error('Expected failure');
+    expect(err.error.issues[0].path).toEqual(['categoryIds']);
   });
 
   it('accepts update when categoryIds is omitted', () => {

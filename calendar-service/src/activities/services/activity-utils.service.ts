@@ -3,6 +3,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 
 import { categories } from '@corpcal/database/schema';
 import {
+  ACTIVITY_CATEGORY_IDS_MESSAGE,
   buildActivityDisplayId,
   normalizeTeamAbbreviationForActivityDisplayId,
 } from '@corpcal/shared';
@@ -57,6 +58,9 @@ export class ActivityUtilsService {
   async validateCategoryIds(categoryIds: number[]): Promise<void> {
     if (categoryIds.length === 0) {
       return;
+    }
+    if (categoryIds.length > 1) {
+      throw new BadRequestException(ACTIVITY_CATEGORY_IDS_MESSAGE);
     }
 
     const existingCategories = await this.databaseService.db

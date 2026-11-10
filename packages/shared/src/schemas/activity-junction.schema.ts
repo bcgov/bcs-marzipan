@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { activityCategoryIdsSchema } from './activity.schema';
+
 /**
  * Activity Junction Table Update Schemas
  *
@@ -11,7 +13,7 @@ import { z } from 'zod';
  * Schema for updating activity categories
  */
 export const updateCategoriesSchema = z.object({
-  categoryIds: z.array(z.number().int()),
+  categoryIds: activityCategoryIdsSchema,
 });
 
 /**

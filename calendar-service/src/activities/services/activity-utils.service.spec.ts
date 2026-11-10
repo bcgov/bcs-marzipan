@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -68,6 +69,12 @@ describe('ActivityUtilsService', () => {
   describe('validateCategoryIds', () => {
     it('does not throw for empty array', async () => {
       await expect(service.validateCategoryIds([])).resolves.toBeUndefined();
+    });
+
+    it('throws when more than one category id is provided', async () => {
+      await expect(service.validateCategoryIds([1, 2])).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 });

@@ -11,6 +11,7 @@ import type { Mock } from 'vitest';
 
 import type { Activity } from '@corpcal/database/types';
 import {
+  ACTIVITY_CATEGORY_IDS_MESSAGE,
   buildActivityDisplayId,
   HYDRATION_PROFILES,
   normalizeTeamAbbreviationForActivityDisplayId,
@@ -321,7 +322,12 @@ describe('ActivitiesService', () => {
         return buildActivityDisplayId(prefix, input.activityId);
       }
     ),
-    validateCategoryIds: vi.fn().mockResolvedValue(undefined),
+    validateCategoryIds: vi.fn((categoryIds: number[]) => {
+      if (categoryIds.length > 1) {
+        throw new BadRequestException(ACTIVITY_CATEGORY_IDS_MESSAGE);
+      }
+      return Promise.resolve();
+    }),
   };
 
   // Mock locks service (added when ActivitiesService started using LocksService)
@@ -1479,6 +1485,18 @@ describe('ActivitiesService', () => {
       });
 
       expect(getTagScopeById).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when more than one categoryId is submitted', async () => {
+      const createDto = createMockActivityRequest({ categoryIds: [1, 2] });
+
+      await expect(
+        service.create(createDto, 1, {
+          roleName: 'Admin',
+          permissions: [PERMISSIONS.ACTIVITIES.CREATE_ANY],
+          teamIds: [],
+        })
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('throws BadRequestException when a submitted categoryId is not selectable', async () => {
@@ -3615,7 +3633,7 @@ describe('ActivitiesService', () => {
         [1, { visibility: 'global' }],
         [99, { visibility: 'team', teamIds: [5] }],
       ]);
-      const updateDto = createMockUpdateRequest({ categoryIds: [1, 99] });
+      const updateDto = createMockUpdateRequest({ categoryIds: [99] });
 
       setupUpdateSelectMock();
       await expect(
