@@ -22,7 +22,6 @@ The workspace uses npm workspaces to manage dependencies across packages. Intern
 - **Node.js**: >= 24.0.0
 - **npm**: >= 11.0.0
 - **PostgreSQL**: Database server (version 12+)
-- **Docker** (optional): For containerized development
 
 ## Quick Start
 
@@ -163,7 +162,6 @@ bcs-marzipan/
 │   ├── ERROR_HANDLING.md      # Error handling (backend, frontend, database)
 │   ├── TESTING.md             # Testing strategy and standards
 │   ├── SCHEMA_README.md       # Schema and type safety documentation
-│   ├── DOCKER_DEPLOYMENT.md   # Docker deployment guide
 │   └── PRE_COMMIT_HOOKS.md    # Git hooks documentation
 └── package.json               # Root workspace configuration
 ```
@@ -251,7 +249,6 @@ import { createActivityRequestSchema } from '@corpcal/shared/schemas';
 - **[Testing](docs/TESTING.md)**: Testing strategy, standards, naming conventions (`*.spec.ts` / `*.spec.tsx`), and what to test
 - **[Schema Documentation](packages/database/src/schema/docs/SCHEMA_README.md)**: Detailed information about schema flow, type safety, and how to update schemas
 - **[Schema Mapping](packages/database/src/schema/docs/SCHEMA_MAPPING.md)**: Legacy to new schema field mappings
-- **[Docker Deployment](docs/DOCKER_DEPLOYMENT.md)**: Guide for Docker and docker-compose usage
 - **[Database Module](calendar-service/src/database/README.md)**: Database module usage in NestJS services
 - **[Database Package](packages/database/README.md)**: Database package setup and usage
 
