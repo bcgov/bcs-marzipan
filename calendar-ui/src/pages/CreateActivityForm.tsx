@@ -45,7 +45,12 @@ import {
   ACCESS_DENIED_TITLE,
 } from '../lib/error-messages';
 import { showErrorToast } from '../lib/error-toast';
-import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
+import {
+  buildActivityFormValidationFailureLog,
+  focusFirstInvalidField,
+  focusRequiredField,
+  getMissingRequiredFieldItemsFromZodError,
+} from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 import { getRecurringEditLockoutErrorMessage } from '../lib/recurring-edit-lockout-error';
 import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
@@ -99,6 +104,7 @@ export const CreateActivityForm: FC = () => {
 
   const {
     form,
+    resolverSchema,
     lookups,
     leadTeamOptions,
     leadTeamOptionsError,
@@ -216,16 +222,41 @@ export const CreateActivityForm: FC = () => {
   };
 
   const onError = (errors: FieldErrors<ActivityFormData>) => {
-    logger.error('Form validation failed');
+    const values = form.getValues();
+    const validationLog = buildActivityFormValidationFailureLog(
+      errors,
+      values,
+      resolverSchema,
+      createActivityRequestSchema
+    );
+    logger.error('Form validation failed', validationLog);
     focusFirstInvalidField(errors, {
       getFieldLabel: getActivityFieldLabel,
       fieldOrder: getActivityFormSectionFieldKeys(),
       root: createActivityFormRef.current,
     });
+    const resolverParse = resolverSchema.safeParse(values);
+    const missingLabels = !resolverParse.success
+      ? getMissingRequiredFieldItemsFromZodError(
+          resolverParse.error,
+          getActivityFieldLabel,
+          getActivityFormSectionFieldKeys()
+        ).map((field) => field.label)
+      : [];
     const detail =
-      missingFields.length > 0
-        ? `Required fields missing: ${missingFields.join(', ')}`
-        : 'Please fix the validation errors and try again.';
+      missingLabels.length > 0
+        ? `Required fields missing: ${missingLabels.join(', ')}`
+        : validationLog.resolverIssues.length > 0
+          ? validationLog.resolverIssues
+              .map((issue) =>
+                issue.path
+                  ? `${getActivityFieldLabel(issue.path.split('.')[0] ?? issue.path) ?? issue.path}: ${issue.message}`
+                  : issue.message
+              )
+              .join('; ')
+          : missingFields.length > 0
+            ? `Required fields missing: ${missingFields.join(', ')}`
+            : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
       duration: TOAST_DURATION_MS.error,
