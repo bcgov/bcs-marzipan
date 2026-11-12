@@ -12,7 +12,9 @@ and `@corpcal/database`.
 1. We model **three** datetime concepts and never mix them: `CalendarDate`,
    `CivilTime`, and `Instant`.
 2. The single business display zone is **corp Pacific Time, fixed UTC&minus;7,
-   year-round (no DST)**. We format with **`Etc/GMT+7`** (fixed offset). We do not
+   year-round (no DST)**. User-visible wall-clock times append the BC
+   abbreviation **`PCT`** (`CORP_PACIFIC_ABBREV`). We format with **`Etc/GMT+7`**
+   (fixed offset). We do not
    use **`America/Vancouver`** today; tzdb **2026b** already models BC as permanent
    UTC&minus;07 there (see **Why fixed UTC−7** below).
 3. Use the helpers in `@corpcal/shared` (the `datetime` module) for everything
@@ -139,6 +141,8 @@ All shared helpers live in `@corpcal/shared` under the `datetime` module:
 import {
   // Calendar arithmetic
   addCalendarDays,
+  CORP_PACIFIC_ABBREV, // 'PCT' — BC wall-clock abbreviation in UI copy
+  CORP_PACIFIC_ABBREV_SUFFIX, // ' PCT'
   CORP_PACIFIC_LABEL, // 'Pacific Time (UTC-7)'
   CORP_PACIFIC_OFFSET_MS, // 7 * 60 * 60 * 1000
   // Constants

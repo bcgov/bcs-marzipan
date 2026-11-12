@@ -101,7 +101,7 @@ export const activities = pgTable(
     notes: text('notes'), // Maps to legacy Comments field
     translationsRequiredStatusId: integer(
       'translations_required_status_id'
-    ).references(() => translationRequiredStatuses.id), // pending, required, not_required
+    ).references(() => translationRequiredStatuses.id), // tbd, required, no_translations, or null (N/A)
     newsReleaseDistributionId: integer(
       'news_release_distribution_id'
     ).references(() => newsReleaseDistributions.id), // FK to NewsReleaseDistribution - maps to legacy NRDistributionId

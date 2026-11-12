@@ -1333,23 +1333,6 @@ export class ActivitiesService {
     return row?.name ?? 'unknown';
   }
 
-  /**
-   * Resolve DB ID for TBD row used as create default for translations required.
-   */
-  private async resolvePendingTranslationStatusId(): Promise<number> {
-    const [translationRow] = await this.databaseService.db
-      .select({ id: translationRequiredStatuses.id })
-      .from(translationRequiredStatuses)
-      .where(eq(translationRequiredStatuses.name, TBD_LOOKUP_NAME))
-      .limit(1);
-    if (translationRow?.id == null) {
-      throw new InternalServerErrorException(
-        'Translation required status "tbd" is not configured in lookups.'
-      );
-    }
-    return translationRow.id;
-  }
-
   private async resolveTranslationStatusLookupIds(): Promise<TranslationStatusLookupIds> {
     const rows = await this.databaseService.db
       .select({

@@ -915,9 +915,9 @@ Returns the recurring lockout warning banner when settings are active and the cu
     "banner": {
       "id": 1,
       "isActive": true,
-      "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PT. Please make updates before lockout begins.",
-      "activeContent": "Updates to activities are locked out until <lockEndTime> PT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.",
-      "content": "Updates to activities will be locked 3:00 pm - 11:59 pm PT. Please make updates before lockout begins.",
+      "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PCT. Please make updates before lockout begins.",
+      "activeContent": "Updates to activities are locked out until <lockEndTime> PCT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.",
+      "content": "Updates to activities will be locked 3:00 pm - 11:59 pm PCT. Please make updates before lockout begins.",
       "phase": "lead-up",
       "backgroundColor": "#E6A635",
       "textColor": "#000000",
@@ -965,8 +965,8 @@ Returns the latest recurring lockout configuration, or `null` if never configure
 ```json
 {
   "isActive": true,
-  "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.",
-  "activeContent": "Updates to activities are locked out until <lockEndTime> PT.",
+  "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PCT.",
+  "activeContent": "Updates to activities are locked out until <lockEndTime> PCT.",
   "backgroundColor": "#E6A635",
   "textColor": "#000000",
   "variant": "warning",

@@ -1,5 +1,7 @@
 import {
   addCalendarDays,
+  CORP_PACIFIC_ABBREV,
+  CORP_PACIFIC_ABBREV_SUFFIX,
   CORP_PACIFIC_LABEL,
   CORP_PACIFIC_TIME_ZONE,
   formatCalendarDateShort,
@@ -31,10 +33,12 @@ export type IntlTimeZoneOption = {
   timeZone?: string;
 };
 
-export { CORP_PACIFIC_LABEL, CORP_PACIFIC_TIME_ZONE };
-
-/** Suffix for Pacific (fixed UTC-7) wall-clock times in UI copy. */
-const PACIFIC_TIME_ABBREV_SUFFIX = ' PT';
+export {
+  CORP_PACIFIC_ABBREV,
+  CORP_PACIFIC_ABBREV_SUFFIX,
+  CORP_PACIFIC_LABEL,
+  CORP_PACIFIC_TIME_ZONE,
+};
 
 /**
  * True when both instants fall on the same calendar day in corp Pacific
@@ -211,11 +215,11 @@ export function pacificInclusiveCalendarRangeEndingToday(
 
 /**
  * Pacific wall-clock time for labels like "Updated today at …", including
- * `PT` so the zone is explicit (e.g. `4:21 pm PT`).
+ * `PCT` so the zone is explicit (e.g. `4:21 pm PCT`).
  */
 export function formatPacificTimeWithAbbrev(date: Date): string {
   const clock = formatTime(date, { timeZone: CORP_PACIFIC_TIME_ZONE });
-  return clock === '' ? '' : `${clock}${PACIFIC_TIME_ABBREV_SUFFIX}`;
+  return clock === '' ? '' : `${clock}${CORP_PACIFIC_ABBREV_SUFFIX}`;
 }
 
 export type PacificRecencyDateTimeLines = {
@@ -224,7 +228,7 @@ export type PacificRecencyDateTimeLines = {
 };
 
 /**
- * Two-line Pacific timestamp for compact UI: recency date + time with PT suffix.
+ * Two-line Pacific timestamp for compact UI: recency date + time with PCT suffix.
  */
 export function formatPacificRecencyDateTime(
   timestamp: Date,
@@ -328,7 +332,7 @@ export type FormatExactDateOptions = IntlTimeZoneOption & {
    */
   includeYear?: boolean | 'auto';
   /**
-   * When true with {@link includeTime}, appends ` PT` after the time so Pacific
+   * When true with {@link includeTime}, appends ` PCT` after the time so Pacific
    * (fixed UTC-7) wall-clock is explicit in UI copy.
    */
   appendPacificTimeAbbrev?: boolean;
@@ -380,7 +384,7 @@ export function formatExactDate(
   if (!includeTime) return datePart;
   const withTime = `${datePart} at ${formatTime(date, { timeZone })}`;
   if (options?.appendPacificTimeAbbrev) {
-    return `${withTime}${PACIFIC_TIME_ABBREV_SUFFIX}`;
+    return `${withTime}${CORP_PACIFIC_ABBREV_SUFFIX}`;
   }
   return withTime;
 }
@@ -394,7 +398,7 @@ export function formatInstantInPacific(
   instant: string | Date | number | null | undefined
 ): string {
   const s = formatInstantInPacificShared(instant);
-  return s === '' ? '' : `${s}${PACIFIC_TIME_ABBREV_SUFFIX}`;
+  return s === '' ? '' : `${s}${CORP_PACIFIC_ABBREV_SUFFIX}`;
 }
 
 export function formatInstantPacificDate(
@@ -407,7 +411,7 @@ export function formatInstantPacificTime(
   instant: string | Date | number | null | undefined
 ): string {
   const s = formatInstantPacificTimeShared(instant);
-  return s === '' ? '' : `${s}${PACIFIC_TIME_ABBREV_SUFFIX}`;
+  return s === '' ? '' : `${s}${CORP_PACIFIC_ABBREV_SUFFIX}`;
 }
 
 /**

@@ -151,8 +151,9 @@ export const timeStatuses = pgTable('time_statuses', {
 });
 
 /**
- * TranslationRequiredStatus lookup table - Tri-state for whether translations are required
- * Values: 'pending', 'required', 'not_required'
+ * Translation required status lookup (comms-driven activity field).
+ * Seeded names: `tbd`, `required` (implicit when languages selected), `no_translations`.
+ * Activities may also leave the FK null when translations do not apply.
  */
 export const translationRequiredStatuses = pgTable(
   'translation_required_statuses',

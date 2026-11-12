@@ -57,16 +57,55 @@ import { ActivityJunctionService } from './services/activity-junction.service';
 import { ActivityMapperService } from './services/activity-mapper.service';
 import { ActivityUtilsService } from './services/activity-utils.service';
 
-/** Rows for `getSchedulingLookupResolvers` (select id/name from date/time status tables). */
-const MOCK_SCHEDULING_STATUS_LOOKUP_ROWS = [
-  { id: 1, name: 'TBD' },
-  { id: 2, name: 'Confirmed' },
+const DRIZZLE_TABLE_NAME = Symbol.for('drizzle:Name');
+
+/** Rows for `getSchedulingLookupResolvers` / scheduling validation (date status table). */
+const MOCK_DATE_STATUS_LOOKUP_ROWS = [
+  { id: 1, name: 'tbd' },
+  { id: 2, name: 'confirmed' },
 ];
 
-function isSchedulingStatusLookupSelect(selectArg: unknown): boolean {
+/** Rows for `getSchedulingLookupResolvers` (time status table). */
+const MOCK_TIME_STATUS_LOOKUP_ROWS = [
+  { id: 1, name: 'tbd' },
+  { id: 2, name: 'confirmed' },
+];
+
+/** Rows for `resolveTranslationStatusLookupIds`. */
+const MOCK_TRANSLATION_STATUS_LOOKUP_ROWS = [
+  { id: 1, name: 'tbd' },
+  { id: 2, name: 'required' },
+  { id: 3, name: 'no_translations' },
+];
+
+function lookupIdNameSelectTableName(selectArg: unknown): string | null {
+  if (!selectArg || typeof selectArg !== 'object') return null;
+  const idCol = (selectArg as { id?: { table?: Record<symbol, string> } }).id;
+  const table = idCol?.table;
+  if (!table) return null;
+  const name = table[DRIZZLE_TABLE_NAME];
+  return typeof name === 'string' ? name : null;
+}
+
+function rowsForIdNameLookupTable(
+  tableName: string | null
+): { id: number; name: string }[] {
+  switch (tableName) {
+    case 'translation_required_statuses':
+      return MOCK_TRANSLATION_STATUS_LOOKUP_ROWS;
+    case 'time_statuses':
+      return MOCK_TIME_STATUS_LOOKUP_ROWS;
+    case 'date_statuses':
+      return MOCK_DATE_STATUS_LOOKUP_ROWS;
+    default:
+      return MOCK_DATE_STATUS_LOOKUP_ROWS;
+  }
+}
+
+function isIdNameLookupSelect(selectArg: unknown): boolean {
   if (!selectArg || typeof selectArg !== 'object') return false;
   const keys = Object.keys(selectArg);
-  // Date/time status tables: `{ id, name }` only (no `.where()`; `.from()` is awaited).
+  // Lookup tables: `{ id, name }` only (no `.where()`; `.from()` is often awaited).
   if (keys.length !== 2) return false;
   if (!('id' in selectArg) || !('name' in selectArg)) return false;
   if ('ministryId' in selectArg || 'abbreviation' in selectArg) return false;
@@ -75,25 +114,26 @@ function isSchedulingStatusLookupSelect(selectArg: unknown): boolean {
 
 type DbSelectMock = Mock<(...args: unknown[]) => unknown>;
 
-/** Ensures `getSchedulingLookupResolvers` gets row arrays from `.from()`. */
+/** Routes id/name lookup selects (scheduling + translation status) to the right mock rows. */
 function createSelectMock<A extends unknown[]>(
   impl: (...args: A) => unknown
 ): DbSelectMock {
   return vi.fn((...args: A) => {
-    if (args.length > 0 && isSchedulingStatusLookupSelect(args[0])) {
-      return createSchedulingStatusLookupSelectChain();
+    if (args.length > 0 && isIdNameLookupSelect(args[0])) {
+      return createIdNameLookupSelectChain(args[0]);
     }
     return impl(...args);
   }) as DbSelectMock;
 }
 
 /** Drizzle resolves `select(...).from(table)` without an extra terminal call. */
-function createSchedulingStatusLookupSelectChain() {
+function createIdNameLookupSelectChain(selectArg: unknown) {
+  const rows = rowsForIdNameLookupTable(lookupIdNameSelectTableName(selectArg));
   return {
-    from: vi.fn().mockResolvedValue(MOCK_SCHEDULING_STATUS_LOOKUP_ROWS),
+    from: vi.fn().mockResolvedValue(rows),
     where: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue(MOCK_SCHEDULING_STATUS_LOOKUP_ROWS),
+    limit: vi.fn().mockResolvedValue(rows),
   };
 }
 

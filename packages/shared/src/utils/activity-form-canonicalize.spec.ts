@@ -186,7 +186,7 @@ describe('prepareActivityFormDataForSubmit', () => {
     const prepared = prepareActivityFormDataForSubmit(
       minimalForm({
         commsMaterialIds: [99],
-        translationsRequiredStatusId: 3,
+        translationsRequiredStatusId: 1,
         translationLanguageIds: [1],
       }),
       {

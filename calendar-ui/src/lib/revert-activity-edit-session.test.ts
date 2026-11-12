@@ -5,7 +5,7 @@ import { getRecurringLockoutInlineMessage } from './recurring-lockout-inline-mes
 describe('getRecurringLockoutInlineMessage', () => {
   it('includes the formatted lockout end time and read-only guidance', () => {
     expect(getRecurringLockoutInlineMessage({ endTimeOfDay: '16:00' })).toBe(
-      'Updates to activities are locked until 4:00 pm PT. You can view in read-only.'
+      'Updates to activities are locked until 4:00 pm PCT. You can view in read-only.'
     );
   });
 });

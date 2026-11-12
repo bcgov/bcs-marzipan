@@ -41,10 +41,10 @@ describe('useRecurringLockoutBanner', () => {
         id: 1,
         isActive: true,
         leadContent:
-          'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
+          'Updates to activities will be locked <lockStartTime> - <lockEndTime> PCT.',
         activeContent:
-          'Updates to activities are locked out until <lockEndTime> PT.',
-        content: 'Updates to activities will be locked 2:00 pm - 4:00 pm PT.',
+          'Updates to activities are locked out until <lockEndTime> PCT.',
+        content: 'Updates to activities will be locked 2:00 pm - 4:00 pm PCT.',
         phase: 'lead-up',
         backgroundColor: '#E6A635',
         textColor: '#000000',
@@ -75,7 +75,7 @@ describe('useRecurringLockoutBanner', () => {
 
     await waitFor(() => {
       expect(result.current?.content).toBe(
-        'Updates to activities will be locked 2:00 pm - 4:00 pm PT.'
+        'Updates to activities will be locked 2:00 pm - 4:00 pm PCT.'
       );
     });
   });

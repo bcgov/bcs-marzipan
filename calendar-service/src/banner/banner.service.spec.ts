@@ -86,7 +86,7 @@ describe('BannerService', () => {
     expect(result).not.toBeNull();
     expect(result?.phase).toBe('lead-up');
     expect(result?.content).toBe(
-      'Updates to activities will be locked 2:00 pm - 4:00 pm PT. Please make updates before lockout begins.'
+      'Updates to activities will be locked 2:00 pm - 4:00 pm PCT. Please make updates before lockout begins.'
     );
     vi.useRealTimers();
   });
@@ -108,7 +108,7 @@ describe('BannerService', () => {
     expect(result).not.toBeNull();
     expect(result?.phase).toBe('active');
     expect(result?.content).toBe(
-      'Updates to activities are locked out until 4:00 pm PT. Contact <a href="mailto:gcpe@example.com">gcpe@example.com</a> to make emerging or urgent updates.'
+      'Updates to activities are locked out until 4:00 pm PCT. Contact <a href="mailto:gcpe@example.com">gcpe@example.com</a> to make emerging or urgent updates.'
     );
     vi.useRealTimers();
   });

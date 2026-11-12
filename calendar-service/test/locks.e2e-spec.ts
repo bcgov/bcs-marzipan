@@ -134,9 +134,9 @@ describe('LocksController (API integration)', () => {
       const lockoutBody = {
         isActive: true,
         leadContent:
-          'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
+          'Updates to activities will be locked <lockStartTime> - <lockEndTime> PCT.',
         activeContent:
-          'Updates to activities are locked out until <lockEndTime> PT.',
+          'Updates to activities are locked out until <lockEndTime> PCT.',
         backgroundColor: '#E6A635',
         textColor: '#000000',
         variant: 'warning',
@@ -193,10 +193,10 @@ describe('LocksController (API integration)', () => {
           isActive: false,
           leadContent:
             previousSettings?.leadContent ??
-            'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
+            'Updates to activities will be locked <lockStartTime> - <lockEndTime> PCT.',
           activeContent:
             previousSettings?.activeContent ??
-            'Updates to activities are locked out until <lockEndTime> PT.',
+            'Updates to activities are locked out until <lockEndTime> PCT.',
           backgroundColor: previousSettings?.backgroundColor ?? '#E6A635',
           textColor: previousSettings?.textColor ?? '#000000',
           variant: previousSettings?.variant ?? 'warning',

@@ -166,7 +166,7 @@ describe('ActivityCompletionJobService', () => {
       .mockImplementation(() => undefined);
 
     vi.useFakeTimers();
-    // 19:00 UTC -> synthetic PT 12:00 (daily + buffer 0 only matches 00:00)
+    // 19:00 UTC -> synthetic PCT 12:00 (daily + buffer 0 only matches 00:00)
     vi.setSystemTime(new Date(Date.UTC(2026, 3, 17, 19, 0, 0)));
 
     try {
