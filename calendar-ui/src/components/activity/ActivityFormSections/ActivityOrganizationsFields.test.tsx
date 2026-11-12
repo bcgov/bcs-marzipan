@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { ActivityFormData } from '@corpcal/shared/schemas';
@@ -40,8 +40,10 @@ const orgOptions = [
 
 function Harness({
   organizations = [] as ActivityFormData['organizations'],
+  onFormReady,
 }: {
   organizations?: ActivityFormData['organizations'];
+  onFormReady?: (form: UseFormReturn<ActivityFormData>) => void;
 }) {
   const form = useForm<ActivityFormData>({
     defaultValues: {
@@ -49,6 +51,7 @@ function Harness({
       organizations,
     } as ActivityFormData,
   });
+  onFormReady?.(form);
 
   return (
     <FormProvider {...form}>
@@ -108,5 +111,30 @@ describe('ActivityOrganizationsFields', () => {
     expect(
       container.querySelector('[data-field="organizations"]')
     ).toBeInTheDocument();
+  });
+
+  it('clears lead but keeps joint organizations in form state', async () => {
+    const user = userEvent.setup();
+    let form: UseFormReturn<ActivityFormData> | undefined;
+
+    render(
+      <Harness
+        organizations={[
+          { organizationId: 1, isLead: true },
+          { organizationId: 2, isLead: false },
+        ]}
+        onFormReady={(f) => {
+          form = f;
+        }}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Clear' }));
+
+    await waitFor(() => {
+      expect(form?.getValues('organizations')).toEqual([
+        { organizationId: 2, isLead: false },
+      ]);
+    });
   });
 });
