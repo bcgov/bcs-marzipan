@@ -9,17 +9,18 @@ import {
 } from './translationLanguageDisplayLabels';
 
 const SAMPLE_LOOKUPS: readonly TranslationLanguageLookup[] = [
-  { shortcode: 'FR', displayName: 'French' },
-  { shortcode: 'PUN', displayName: 'Punjabi' },
-  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
-  { shortcode: 'SPA', displayName: 'Spanish' },
+  { shortcode: 'fr', displayName: 'French' },
+  { shortcode: 'pa', displayName: 'Punjabi' },
+  { shortcode: 'zh-Hans', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'es', displayName: 'Spanish' },
 ];
 
 describe('buildTranslationLanguageLabelResolver', () => {
   it('maps shortcodes to display names case-insensitively', () => {
     const resolve = buildTranslationLanguageLabelResolver(SAMPLE_LOOKUPS);
     expect(resolve('FR')).toBe('French');
-    expect(resolve('pun')).toBe('Punjabi');
+    expect(resolve('PA')).toBe('Punjabi');
+    expect(resolve('zh-hans')).toBe('Chinese (Simplified)');
   });
 
   it('canonicalizes values that are already display names', () => {
@@ -56,7 +57,7 @@ describe('resolveTranslationLanguageDisplayLabels', () => {
   it('maps each entry in order via resolver', () => {
     const resolve = buildTranslationLanguageLabelResolver(SAMPLE_LOOKUPS);
     expect(
-      resolveTranslationLanguageDisplayLabels(['FR', 'PUN'], resolve)
+      resolveTranslationLanguageDisplayLabels(['fr', 'pa'], resolve)
     ).toEqual(['French', 'Punjabi']);
   });
 });

@@ -18,10 +18,10 @@ import {
 import { buildTranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
 
 const TEST_TRANSLATION_RESOLVER = buildTranslationLanguageLabelResolver([
-  { shortcode: 'FR', displayName: 'French' },
-  { shortcode: 'PUN', displayName: 'Punjabi' },
-  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
-  { shortcode: 'SPA', displayName: 'Spanish' },
+  { shortcode: 'fr', displayName: 'French' },
+  { shortcode: 'pa', displayName: 'Punjabi' },
+  { shortcode: 'zh-Hans', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'es', displayName: 'Spanish' },
 ]);
 
 const TEST_RENDER_OPTIONS = {
@@ -73,7 +73,7 @@ const BASE_ACTIVITY_RESPONSE = {
   categoryIds: [1],
   tags: [],
   commsMaterials: [],
-  translationsRequired: ['FR', 'PUN'],
+  translationsRequired: ['fr', 'pa'],
   representativesAttending: [],
   sharedWith: [],
   sharedWithTeamIds: [],
@@ -533,7 +533,7 @@ describe('renderPrintReportFragmentHtml', () => {
               ...BASE_ACTIVITY,
               category: ['Announcement'],
               newsReleaseOrigin: null,
-              translationsRequired: ['FR', 'PUN'],
+              translationsRequired: ['fr', 'pa'],
             },
           ],
         },
@@ -581,7 +581,7 @@ describe('renderPrintReportFragmentHtml', () => {
           activities: [
             {
               ...BASE_ACTIVITY,
-              translationsRequired: ['FR', 'PUN', 'ZH', 'ES'],
+              translationsRequired: ['fr', 'pa', 'zh-Hans', 'es'],
             },
           ],
         },

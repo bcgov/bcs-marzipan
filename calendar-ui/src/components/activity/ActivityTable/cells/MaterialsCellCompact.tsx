@@ -1,5 +1,7 @@
 import { Languages, NotebookText } from 'lucide-react';
 
+import { formatLanguageTagForDisplay } from '@corpcal/shared';
+
 import type { ActivityTableRow } from '../activityTableRow';
 import { toSentenceCase } from '../activityTableRowDisplay';
 import { ACTIVITY_GRID_ROW_ICON_TOP_CLASS } from './activityGridRowIcons';
@@ -17,7 +19,9 @@ export interface MaterialsCellCompactProps {
  */
 export function MaterialsCellCompact({ row }: MaterialsCellCompactProps) {
   const status = row.translationsRequiredStatus;
-  const languages = row.translationsRequired.map((s) => s.toUpperCase());
+  const languages = row.translationsRequired.map((s) =>
+    formatLanguageTagForDisplay(s)
+  );
   const hasLanguages = languages.length > 0;
   const hasMaterials = row.commsMaterials.length > 0;
 

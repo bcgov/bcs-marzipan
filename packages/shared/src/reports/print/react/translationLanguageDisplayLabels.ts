@@ -1,3 +1,5 @@
+import { normalizeLanguageTagForCompare } from '../../../utils/bcp47-language-tag';
+
 /** Minimal lookup row for resolving translation language labels in print. */
 export type TranslationLanguageLookup = {
   shortcode?: string | null;
@@ -20,8 +22,10 @@ export function buildTranslationLanguageLabelResolver(
   for (const item of lookups) {
     const display = item.displayName?.trim() || item.name?.trim();
     if (!display) continue;
-    const shortcode = item.shortcode?.trim().toUpperCase();
-    if (shortcode) byShortcode.set(shortcode, display);
+    const shortcode = item.shortcode?.trim();
+    if (shortcode) {
+      byShortcode.set(normalizeLanguageTagForCompare(shortcode), display);
+    }
     byDisplayLower.set(display.toLowerCase(), display);
   }
 
@@ -29,7 +33,9 @@ export function buildTranslationLanguageLabelResolver(
     const trimmed = code.trim();
     if (!trimmed) return trimmed;
 
-    const fromShortcode = byShortcode.get(trimmed.toUpperCase());
+    const fromShortcode = byShortcode.get(
+      normalizeLanguageTagForCompare(trimmed)
+    );
     if (fromShortcode) return fromShortcode;
 
     return byDisplayLower.get(trimmed.toLowerCase()) ?? trimmed;

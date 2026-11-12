@@ -4,24 +4,24 @@ This document audits where each table value comes from (API/backend) and any ext
 
 ## Backend (activity-data-fetcher)
 
-| Field / source               | Backend value used                                         | Table column / usage              |
-| ---------------------------- | ---------------------------------------------------------- | --------------------------------- |
-| Categories                   | `categories.displayName`                                   | Overview – category badges        |
-| Tags                         | `tags.displayName` (fallback `tags.name`)                  | Summary – tag badges              |
-| Activity status              | `activity_statuses.displayName`                            | Status – status badge             |
-| Date status                  | `date_statuses.displayName`                                | Scheduling – date status badge    |
-| Time status                  | `time_statuses.displayName`                                | Scheduling – time status badge    |
-| Premier requested            | `premier_requested.displayName`                            | Scheduling – premier badge        |
-| Translations required status | `translation_required_statuses.displayName`                | Materials – when no language list |
-| Translations required (list) | `translated_languages.shortcode` (fallback `displayName`)  | Materials – language list         |
-| Comms materials              | `comms_materials.displayName`                              | Materials – materials list        |
-| Lead ministry                | `ministries.displayName`                                   | Leads – lead ministry             |
-| Lead org                     | From lead org lookup / name                                | Leads – lead org                  |
-| Event lead                   | From user lookup                                           | Leads – event lead                |
-| Representatives attending    | `activity_representatives.representative_name` (free text) | Scheduling – rep badges           |
-| Comms contacts               | User names (for lead)                                      | Leads – comms lead name           |
-| Venue                        | Joined `venue_addresses` (see below)                       | Scheduling – formatted address    |
-| Look Ahead status / section  | DB enum values (not from lookup table)                     | Summary – Look Ahead badge        |
+| Field / source               | Backend value used                                                | Table column / usage              |
+| ---------------------------- | ----------------------------------------------------------------- | --------------------------------- |
+| Categories                   | `categories.displayName`                                          | Overview – category badges        |
+| Tags                         | `tags.displayName` (fallback `tags.name`)                         | Summary – tag badges              |
+| Activity status              | `activity_statuses.displayName`                                   | Status – status badge             |
+| Date status                  | `date_statuses.displayName`                                       | Scheduling – date status badge    |
+| Time status                  | `time_statuses.displayName`                                       | Scheduling – time status badge    |
+| Premier requested            | `premier_requested.displayName`                                   | Scheduling – premier badge        |
+| Translations required status | `translation_required_statuses.displayName`                       | Materials – when no language list |
+| Translations required (list) | `translated_languages.shortcode` (BCP 47; fallback `displayName`) | Materials – language list         |
+| Comms materials              | `comms_materials.displayName`                                     | Materials – materials list        |
+| Lead ministry                | `ministries.displayName`                                          | Leads – lead ministry             |
+| Lead org                     | From lead org lookup / name                                       | Leads – lead org                  |
+| Event lead                   | From user lookup                                                  | Leads – event lead                |
+| Representatives attending    | `activity_representatives.representative_name` (free text)        | Scheduling – rep badges           |
+| Comms contacts               | User names (for lead)                                             | Leads – comms lead name           |
+| Venue                        | Joined `venue_addresses` (see below)                              | Scheduling – formatted address    |
+| Look Ahead status / section  | DB enum values (not from lookup table)                            | Summary – Look Ahead badge        |
 
 ## Values not from lookups
 
@@ -42,7 +42,7 @@ This document audits where each table value comes from (API/backend) and any ext
 | Time status badge          | Time status displayName                  | `toSentenceCase(row.timeStatus)`                                                                   |
 | Premier badge              | Premier requested displayName            | None (display as-is)                                                                               |
 | Representative badges      | Representative name (free text)          | `formatRepresentativeBadgeText(name)` (e.g. "Minister &lt;LastName&gt;")                           |
-| Translations (list)        | Language displayName                     | `.toUpperCase()` when shown as badge-style list                                                    |
+| Translations (list)        | BCP 47 shortcode from backend            | `formatLanguageTagForDisplay` in `MaterialsCellCompact`                                            |
 | Translations (status only) | Translations required status displayName | `toSentenceCase(row.translationsRequiredStatus)`                                                   |
 | Comms materials            | Comms materials displayName              | `toSentenceCase(m)` per item, joined with ", "                                                     |
 | Venue                      | Venue address fields                     | `formatVenueAddress()` – parts joined ", ", country omitted when Canada                            |

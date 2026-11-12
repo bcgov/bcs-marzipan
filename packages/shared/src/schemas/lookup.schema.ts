@@ -488,7 +488,7 @@ export const commsMaterialsLookupItemSchema = lookupItemSchema.extend({
 /**
  * Translation Language Response Schema
  * Fields from the translated_languages table exposed via API.
- * shortcode: internal language code when set.
+ * shortcode: BCP 47 language tag when set.
  */
 export const translationLanguageResponseSchema = z.object({
   id: z.number().int(),
@@ -502,7 +502,7 @@ export const translationLanguageResponseSchema = z.object({
 
 /**
  * Translation Language Lookup Item Schema.
- * shortcode: internal language code when set.
+ * shortcode: BCP 47 language tag when set.
  */
 export const translationLanguageLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),

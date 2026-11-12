@@ -276,7 +276,7 @@ const translationLanguageFields: FormField[] = [
     name: 'shortcode',
     label: 'Shortcode',
     type: 'text',
-    placeholder: 'e.g. FR, AR, SC',
+    placeholder: 'e.g. fr, ar, zh-Hans',
   },
   {
     name: 'isActive',
