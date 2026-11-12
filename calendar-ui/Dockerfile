@@ -2,6 +2,7 @@ FROM artifacts.developer.gov.bc.ca/docker-remote/node:24-alpine AS build
 WORKDIR /app
 
 ARG APP_VERSION=dev
+ARG VITE_API_BASE_URL=/api
 
 COPY package*.json ./
 COPY tsconfig.base.json ./
@@ -11,6 +12,7 @@ COPY calendar-ui/ ./calendar-ui/
 RUN npm ci --ignore-scripts
 
 ENV VITE_APP_VERSION=$APP_VERSION
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 RUN NODE_OPTIONS=--max-old-space-size=4096 \
     npm run build --workspace=packages/database && \

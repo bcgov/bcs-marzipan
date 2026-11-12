@@ -99,6 +99,7 @@ jobs:
         run: |
           docker build \
             --build-arg APP_VERSION="$BUILD_IMAGE_TAG" \
+            --build-arg VITE_API_BASE_URL=/api \
             -f calendar-ui/Dockerfile \
             -t "$REGISTRY/$ARTIFACTORY_IMAGE_REPO/corpcal-ui:$BUILD_IMAGE_TAG" \
             .
