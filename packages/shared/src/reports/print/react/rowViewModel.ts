@@ -206,7 +206,12 @@ function isTranslationsPendingReviewDisplay(
   status: string | null | undefined
 ): boolean {
   const n = norm(status);
-  return n === 'pending review' || n === 'pending';
+  return (
+    n === 'pending review' ||
+    n === 'pending' ||
+    n === 'tbd' ||
+    n.includes('translations tbd')
+  );
 }
 
 /**

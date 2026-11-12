@@ -25,9 +25,9 @@ vi.mock('../activity-info-icon-settings-context', () => ({
 const mockTranslationRequiredStatuses = [
   {
     id: 1,
-    name: 'pending',
-    displayName: 'Pending review',
-    label: 'Pending review',
+    name: 'tbd',
+    displayName: 'Translations TBD',
+    label: 'Translations TBD',
     value: 1,
   },
   {
@@ -39,9 +39,9 @@ const mockTranslationRequiredStatuses = [
   },
   {
     id: 3,
-    name: 'not_required',
-    displayName: 'Not required',
-    label: 'Not required',
+    name: 'no_translations',
+    displayName: 'No translations',
+    label: 'No translations',
     value: 3,
   },
 ];
@@ -303,22 +303,21 @@ describe('ActivityCommsSection release fields permissions', () => {
     expect(origin).toHaveAttribute('aria-readonly', 'true');
   });
 
-  it('disables translation languages when field scope forbids edit', async () => {
+  it('renders translations combobox as readOnly when activity is view-only', async () => {
     render(
       <ActivityCommsSectionHarness
-        readOnly={false}
-        canEditFieldScope={(s: string) => s !== 'translations'}
+        readOnly={true}
         defaultValues={{
           commsMaterialIds: [4],
-          translationsRequiredStatusId: 2,
+          translationsRequiredStatusId: 1,
         }}
       />
     );
 
     const input = await screen.findByRole('combobox', {
-      name: /Translation languages/i,
+      name: /^Translations$/i,
     });
-    expect(input).toBeDisabled();
+    expect(input).toHaveAttribute('aria-readonly', 'true');
   });
 });
 
@@ -347,52 +346,67 @@ describe('ActivityCommsSection conditional comms groups', () => {
 
     expect(screen.queryByText('News release details')).not.toBeInTheDocument();
     expect(
-      await screen.findByRole('combobox', { name: /^Translations required$/i })
+      await screen.findByRole('combobox', { name: /^Translations$/i })
     ).toBeInTheDocument();
   });
 });
 
-describe('ActivityCommsSection translation languages visibility', () => {
-  it('hides translation languages when status is not Required', () => {
+describe('ActivityCommsSection translations combobox', () => {
+  it('shows Translations TBD placeholder when status is tbd without languages', async () => {
     render(
       <ActivityCommsSectionHarness
         readOnly={false}
         defaultValues={{
           commsMaterialIds: [4],
           translationsRequiredStatusId: 1,
+          translationLanguageIds: [],
         }}
       />
     );
 
+    expect(screen.getByText('Translations TBD')).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    const combobox = await screen.findByRole('combobox', {
+      name: /^Translations$/i,
+    });
+    await user.click(combobox);
     expect(
-      screen.queryByRole('combobox', { name: /Translation languages/i })
-    ).not.toBeInTheDocument();
+      screen.queryByRole('option', { name: 'Translations TBD' })
+    ).toBeNull();
   });
 
-  it('shows translation languages when status is Required', async () => {
+  it('sets implicit required when a language is selected', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
     render(
       <ActivityCommsSectionHarness
         readOnly={false}
         defaultValues={{
           commsMaterialIds: [4],
-          translationsRequiredStatusId: 2,
+          translationsRequiredStatusId: 1,
+          translationLanguageIds: [],
+        }}
+        onFormReady={(form) => {
+          formRef = form;
         }}
       />
     );
 
-    expect(
-      await screen.findByRole('combobox', { name: /Translation languages/i })
-    ).toBeInTheDocument();
+    const combobox = await screen.findByRole('combobox', {
+      name: /^Translations$/i,
+    });
+    await user.click(combobox);
+    await user.click(await screen.findByText('French'));
+
+    await waitFor(() => {
+      expect(formRef!.getValues('translationsRequiredStatusId')).toBe(2);
+      expect(formRef!.getValues('translationLanguageIds')).toEqual([1]);
+    });
   });
-});
 
-const translationRequiredStatusesWithoutRequired =
-  mockTranslationRequiredStatuses.filter(
-    (status) => status.name !== 'required'
-  );
-
-describe('ActivityCommsSection translation status change', () => {
-  it('clears translation languages when status changes away from required', async () => {
+  it('clears languages when No translations is selected', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
@@ -410,46 +424,15 @@ describe('ActivityCommsSection translation status change', () => {
       />
     );
 
-    const statusSelect = await screen.findByRole('combobox', {
-      name: /^Translations required$/i,
+    const combobox = await screen.findByRole('combobox', {
+      name: /^Translations$/i,
     });
-    await user.click(statusSelect);
-    await user.click(await screen.findByText('Not required'));
+    await user.click(combobox);
+    await user.click(await screen.findByText('No translations'));
 
     await waitFor(() => {
       expect(formRef!.getValues('translationsRequiredStatusId')).toBe(3);
       expect(formRef!.getValues('translationLanguageIds')).toEqual([]);
-    });
-  });
-
-  it('preserves translation languages when required status lookup is unresolved', async () => {
-    const user = userEvent.setup();
-    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
-
-    render(
-      <ActivityCommsSectionHarness
-        readOnly={false}
-        translationRequiredStatuses={translationRequiredStatusesWithoutRequired}
-        defaultValues={{
-          commsMaterialIds: [4],
-          translationsRequiredStatusId: 1,
-          translationLanguageIds: [1, 2],
-        }}
-        onFormReady={(form) => {
-          formRef = form;
-        }}
-      />
-    );
-
-    const statusSelect = await screen.findByRole('combobox', {
-      name: /^Translations required$/i,
-    });
-    await user.click(statusSelect);
-    await user.click(await screen.findByText('Not required'));
-
-    await waitFor(() => {
-      expect(formRef!.getValues('translationsRequiredStatusId')).toBe(3);
-      expect(formRef!.getValues('translationLanguageIds')).toEqual([1, 2]);
     });
   });
 });

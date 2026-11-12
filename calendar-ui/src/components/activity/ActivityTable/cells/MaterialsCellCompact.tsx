@@ -21,11 +21,11 @@ export function MaterialsCellCompact({ row }: MaterialsCellCompactProps) {
   const hasLanguages = languages.length > 0;
   const hasMaterials = row.commsMaterials.length > 0;
 
-  const statusLower = status?.toLowerCase();
+  const statusLower = status?.toLowerCase() ?? '';
   const showStatusLabel =
-    status != null &&
-    (!hasLanguages ||
-      statusLower === 'pending review' ||
+    !hasLanguages &&
+    (statusLower.includes('tbd') ||
+      statusLower.includes('no translation') ||
       statusLower === 'not required');
 
   const hasCommsContact = row.commsContactName != null;

@@ -146,14 +146,15 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM venue_statuses WHERE venue_statuses.name = v.name);
 
 -- ============================================================================
--- TRANSLATION REQUIRED STATUSES (tbd, required, not_required)
--- Canonical (id, name): 1=tbd, 2=required, 3=not_required
+-- TRANSLATION REQUIRED STATUSES (tbd, required, no_translations)
+-- Canonical (id, name): 1=tbd, 2=required, 3=no_translations
+-- "required" is set implicitly when translation languages are selected.
 -- ============================================================================
 INSERT INTO translation_required_statuses (id, name, display_name, sort_order, is_active, created_by, last_updated_by)
 VALUES
-  (1, 'tbd', 'TBD', 1, true, 999, 999),
+  (1, 'tbd', 'Translations TBD', 1, true, 999, 999),
   (2, 'required', 'Required', 2, true, 999, 999),
-  (3, 'not_required', 'Not required', 3, true, 999, 999)
+  (3, 'no_translations', 'No translations', 3, true, 999, 999)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

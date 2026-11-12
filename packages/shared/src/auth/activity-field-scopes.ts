@@ -6,7 +6,7 @@
  *
  * View rule (scopes with a view permission): has <scope>.view OR <scope>.edit OR role is
  * Advanced Viewer / Advanced Editor / Admin / System Admin.
- * Scopes without a view permission (translations, releaseTime) are always visible; edit is still gated.
+ * Scopes without a view permission (releaseTime) are always visible; edit is still gated.
  * Edit rule: has <scope>.edit only (no role bypass).
  */
 
@@ -15,7 +15,6 @@ import { PERMISSIONS, SYSTEM_ROLES } from './constants';
 export const ACTIVITY_FIELD_SCOPES = [
   'notes',
   'lookAhead',
-  'translations',
   'releaseTime',
 ] as const;
 
@@ -46,16 +45,6 @@ export const ACTIVITY_FIELD_SCOPE_CONFIG: Record<
     editKey: PERMISSIONS.ACTIVITIES.LOOK_AHEAD_EDIT,
     responseFields: ['executiveSummary', 'lookAheadStatus', 'lookAheadSection'],
     requestFields: ['executiveSummary', 'lookAheadStatus', 'lookAheadSection'],
-  },
-  translations: {
-    viewKey: null,
-    editKey: PERMISSIONS.ACTIVITIES.TRANSLATIONS_EDIT,
-    responseFields: [
-      'translationsRequiredStatusId',
-      'translationsRequiredStatus',
-      'translationsRequired',
-    ],
-    requestFields: ['translationsRequiredStatusId', 'translationLanguageIds'],
   },
   releaseTime: {
     viewKey: null,

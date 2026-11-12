@@ -148,39 +148,55 @@ describe('prepareActivityFormDataForSubmit', () => {
     expect(prepared.lookAheadSection).toBe('events');
   });
 
-  it('clears translationLanguageIds when status is not required', () => {
+  const translationLookupIds = {
+    tbdId: 1,
+    requiredId: 2,
+    noTranslationsId: 3,
+  };
+
+  const allowsTranslationFlags = new Map([
+    [
+      99,
+      {
+        allowsTranslation: true,
+        audience: null,
+        requiresNewsReleaseDetails: false,
+      },
+    ],
+  ]) as import('./comms-material-form-rules').CommsMaterialReleaseFlagsById;
+
+  it('sets required status when languages are selected and workflow is active', () => {
     const prepared = prepareActivityFormDataForSubmit(
       minimalForm({
+        commsMaterialIds: [99],
         translationsRequiredStatusId: 1,
         translationLanguageIds: [1, 2],
       }),
-      { requiredTranslationStatusId: 2 }
+      {
+        translationStatusLookupIds: translationLookupIds,
+        commsMaterialReleaseFlagsById: allowsTranslationFlags,
+      }
     );
 
-    expect(prepared.translationLanguageIds).toEqual([]);
+    expect(prepared.translationLanguageIds).toEqual([1, 2]);
+    expect(prepared.translationsRequiredStatusId).toBe(2);
   });
 
-  it('preserves translationLanguageIds when status is required', () => {
+  it('coerces tbd + languages mismatch by keeping languages and required status', () => {
     const prepared = prepareActivityFormDataForSubmit(
       minimalForm({
-        translationsRequiredStatusId: 2,
-        translationLanguageIds: [1, 2],
+        commsMaterialIds: [99],
+        translationsRequiredStatusId: 3,
+        translationLanguageIds: [1],
       }),
-      { requiredTranslationStatusId: 2 }
+      {
+        translationStatusLookupIds: translationLookupIds,
+        commsMaterialReleaseFlagsById: allowsTranslationFlags,
+      }
     );
 
-    expect(prepared.translationLanguageIds).toEqual([1, 2]);
-  });
-
-  it('preserves translationLanguageIds when required status lookup is unresolved', () => {
-    const prepared = prepareActivityFormDataForSubmit(
-      minimalForm({
-        translationsRequiredStatusId: 2,
-        translationLanguageIds: [1, 2],
-      })
-    );
-
-    expect(prepared.translationLanguageIds).toEqual([1, 2]);
+    expect(prepared.translationsRequiredStatusId).toBe(2);
+    expect(prepared.translationLanguageIds).toEqual([1]);
   });
 
   it('preserves non-empty optional field values', () => {

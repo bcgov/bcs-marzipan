@@ -492,7 +492,7 @@ Users who can see an activity only because it is **shared with** one of their te
 
 List and detail activity responses run `redactActivityResponse` in the activities controller. For scopes that have an `activities.<scope>.view` permission, the user must hold that permission, the matching `activities.<scope>.edit` permission (edit implies view), or a role that bypasses field view checks (Advanced Viewer, Advanced Editor, Admin, System Admin). Otherwise those response fields are omitted.
 
-Some scopes **do not** enforce a view permission: **translations** are always included for users who can access the activity; editing still requires the corresponding `activities.<scope>.edit` grant.
+Some scopes **do not** enforce a view permission: **release time** fields are always included for users who can access the activity; editing still requires `activities.release_time.edit`. Translation fields follow normal activity edit eligibility (`activities.edit`); the retired `activities.translations.edit` grant is no longer enforced.
 
 #### Activity history visibility and field redaction
 

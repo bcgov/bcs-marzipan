@@ -73,19 +73,38 @@ describe('buildPayloadForCreate', () => {
     expect(payload.significance).not.toBe(EMPTY_RICH_TEXT_DOC);
   });
 
-  it('strips orphan translationLanguageIds when status is not required', () => {
+  it('canonicalizes languages with implicit required status on create', () => {
     const formValues = minimalForm({
+      commsMaterialIds: [99],
       translationsRequiredStatusId: 1,
       translationLanguageIds: [1, 2],
     });
 
     const payload = buildPayloadForCreate(formValues, formValues, {
-      requiredTranslationStatusId: 2,
+      translationStatusLookupIds: translationLookupIds,
+      commsMaterialReleaseFlagsById: allowsTranslationFlags,
     });
 
-    expect(payload.translationLanguageIds).toBeUndefined();
+    expect(payload.translationLanguageIds).toEqual([1, 2]);
+    expect(payload.translationsRequiredStatusId).toBe(2);
   });
 });
+
+const translationLookupIds = {
+  tbdId: 1,
+  requiredId: 2,
+  noTranslationsId: 3,
+};
+const allowsTranslationFlags = new Map([
+  [
+    99,
+    {
+      allowsTranslation: true,
+      audience: null,
+      requiresNewsReleaseDetails: false,
+    },
+  ],
+]) as import('@corpcal/shared/utils').CommsMaterialReleaseFlagsById;
 
 describe('buildPayloadForUpdate', () => {
   it('maps cleared lookAheadSection to null so PATCH clears the DB column', () => {
@@ -140,17 +159,20 @@ describe('buildPayloadForUpdate', () => {
     expect(payload.significance).toBeNull();
   });
 
-  it('strips orphan translationLanguageIds when status is not required', () => {
+  it('clears orphan languages when no_translations is selected', () => {
     const formValues = minimalForm({
+      commsMaterialIds: [99],
       translationsRequiredStatusId: 3,
       translationLanguageIds: [1],
     });
 
     const payload = buildPayloadForUpdate(formValues, formValues, {
-      requiredTranslationStatusId: 2,
+      translationStatusLookupIds: translationLookupIds,
+      commsMaterialReleaseFlagsById: allowsTranslationFlags,
     });
 
     expect(payload.translationLanguageIds).toBeUndefined();
+    expect(payload.translationsRequiredStatusId).toBe(3);
   });
 
   it('omits representatives when includeRepresentatives is false', () => {

@@ -16,7 +16,6 @@ const adminWithAll = {
     'activities.view',
     'activities.notes.edit',
     'activities.lookAhead.edit',
-    'activities.translations.edit',
     'activities.release_time.edit',
   ],
   roleName: SYSTEM_ROLES.ADMIN,
@@ -47,11 +46,11 @@ describe('applyFieldLevelWritePolicy', () => {
     expect(dto.executiveSummary).toBeUndefined();
     expect(dto.lookAheadStatus).toBeUndefined();
     expect(dto.lookAheadSection).toBeUndefined();
-    expect(dto.translationsRequiredStatusId).toBeUndefined();
-    expect(dto.translationLanguageIds).toBeUndefined();
+    expect(dto.translationsRequiredStatusId).toBe(1);
+    expect(dto.translationLanguageIds).toEqual([1, 2]);
     expect(dto.releaseSchedulingMode).toBeUndefined();
     expect(dto.releaseTimeOffsetMinutes).toBeUndefined();
-    expect(stripped).toHaveLength(4);
+    expect(stripped).toHaveLength(3);
     expect(stripped).toContain('notes');
   });
 

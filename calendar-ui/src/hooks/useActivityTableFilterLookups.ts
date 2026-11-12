@@ -131,10 +131,12 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
 
   const translationStatusOptions = useMemo(
     () =>
-      translationRequiredStatusesForFilter.map((s) => ({
-        value: String(s.id),
-        label: s.displayName ?? s.name ?? String(s.id),
-      })),
+      translationRequiredStatusesForFilter
+        .filter((s) => s.name !== 'required')
+        .map((s) => ({
+          value: String(s.id),
+          label: s.displayName ?? s.name ?? String(s.id),
+        })),
     [translationRequiredStatusesForFilter]
   );
 

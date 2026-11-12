@@ -347,7 +347,7 @@ export const timeStatusLookupItemSchema = lookupItemSchema.extend({
 
 /**
  * Translation Required Status Response Schema
- * Values: pending, required, not_required
+ * Values: tbd, required (implicit when languages set), no_translations
  */
 export const translationRequiredStatusResponseSchema = z.object({
   id: z.number().int(),

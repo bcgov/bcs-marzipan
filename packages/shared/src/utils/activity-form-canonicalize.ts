@@ -8,6 +8,11 @@ import {
   isActivityRichTextEffectivelyEmpty,
 } from './activity-rich-text';
 import {
+  activityTranslationWorkflowActive,
+  canonicalizeTranslationFields,
+  type TranslationStatusLookupIds,
+} from './activity-translations-canonicalize';
+import {
   stripCommsDependentFields,
   type CommsMaterialReleaseFlagsById,
 } from './comms-material-form-rules';
@@ -127,34 +132,11 @@ export function canonicalizeActivityFormData(
 }
 
 export type PrepareActivityFormDataOptions = {
-  /**
-   * Lookup ID for `translation_required_statuses.name === 'required'`.
-   * When set, {@link translationLanguageIds} are cleared unless status matches.
-   */
-  requiredTranslationStatusId?: number;
+  /** Resolved `translation_required_statuses` ids for canonicalization. */
+  translationStatusLookupIds?: TranslationStatusLookupIds;
   /** Selected comms materials → release-type flags for dependent-field cleanup. */
   commsMaterialReleaseFlagsById?: CommsMaterialReleaseFlagsById;
 };
-
-/**
- * Removes translation language IDs when translations are not required for the
- * current status (hidden in the release section UI).
- */
-export function stripTranslationLanguagesWhenNotRequired(
-  data: ActivityFormData,
-  requiredTranslationStatusId: number | undefined
-): ActivityFormData {
-  if (requiredTranslationStatusId == null) {
-    return data;
-  }
-  if (data.translationsRequiredStatusId === requiredTranslationStatusId) {
-    return data;
-  }
-  if (!data.translationLanguageIds?.length) {
-    return data;
-  }
-  return { ...data, translationLanguageIds: [] };
-}
 
 /**
  * Normalizes hydrated form values for create/update API payloads.
@@ -172,10 +154,16 @@ export function prepareActivityFormDataForSubmit(
     data,
     options?.commsMaterialReleaseFlagsById
   );
-  const stripped = stripTranslationLanguagesWhenNotRequired(
-    afterComms,
-    options?.requiredTranslationStatusId
+  const workflowActive = activityTranslationWorkflowActive(
+    afterComms.commsMaterialIds,
+    options?.commsMaterialReleaseFlagsById
   );
+  const translated = canonicalizeTranslationFields(
+    afterComms,
+    options?.translationStatusLookupIds,
+    { translationWorkflowActive: workflowActive }
+  );
+  const stripped = { ...afterComms, ...translated };
   const c = canonicalizeActivityFormData(stripped);
   return {
     ...c,

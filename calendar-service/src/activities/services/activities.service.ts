@@ -53,6 +53,8 @@ import {
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
   TBD_LOOKUP_NAME,
+  TRANSLATION_NO_TRANSLATIONS_LOOKUP_NAME,
+  TRANSLATION_REQUIRED_LOOKUP_NAME,
   type ActivityHydrationProfile,
   type ActivityListItem,
   type ActivityStatusName,
@@ -81,10 +83,12 @@ import {
   type VenueAddressBase,
 } from '@corpcal/shared/schemas';
 import {
+  activityTranslationWorkflowActive,
   applyFieldLevelWritePolicy,
   applyUpdateActivityRequestToFormData,
   buildReviewDiffLookups,
   buildReviewSnapshot,
+  canonicalizeTranslationFields,
   diffReviewFields,
   getEmptyReviewBaseline,
   isDeepEqual,
@@ -99,6 +103,7 @@ import {
   type CommsMaterialReleaseFlagsById,
   type FieldScopeUser,
   type MapResponseToFormDataLookups,
+  type TranslationStatusLookupIds,
 } from '@corpcal/shared/utils';
 import {
   collectActivitySchedulingValidationErrors,
@@ -1345,6 +1350,69 @@ export class ActivitiesService {
     return translationRow.id;
   }
 
+  private async resolveTranslationStatusLookupIds(): Promise<TranslationStatusLookupIds> {
+    const rows = await this.databaseService.db
+      .select({
+        id: translationRequiredStatuses.id,
+        name: translationRequiredStatuses.name,
+      })
+      .from(translationRequiredStatuses);
+
+    const byName = new Map(rows.map((row) => [row.name, row.id]));
+    const tbdId = byName.get(TBD_LOOKUP_NAME);
+    const requiredId = byName.get(TRANSLATION_REQUIRED_LOOKUP_NAME);
+    const noTranslationsId =
+      byName.get(TRANSLATION_NO_TRANSLATIONS_LOOKUP_NAME) ??
+      byName.get('not_required');
+
+    if (tbdId == null || requiredId == null || noTranslationsId == null) {
+      throw new InternalServerErrorException(
+        'Translation required statuses are not fully configured in lookups.'
+      );
+    }
+
+    return { tbdId, requiredId, noTranslationsId };
+  }
+
+  private async applyTranslationFieldCanonicalization(
+    commsMaterialIds: number[],
+    fields: Pick<
+      ActivityFormData,
+      'translationsRequiredStatusId' | 'translationLanguageIds'
+    >
+  ): Promise<
+    Pick<
+      ActivityFormData,
+      'translationsRequiredStatusId' | 'translationLanguageIds'
+    >
+  > {
+    const flagsById =
+      await this.loadCommsMaterialReleaseFlagsById(commsMaterialIds);
+    const cleaned = stripCommsDependentFields(
+      {
+        commsMaterialIds,
+        translationsRequiredStatusId:
+          fields.translationsRequiredStatusId ?? null,
+        translationLanguageIds: fields.translationLanguageIds ?? [],
+      } as ActivityFormData,
+      flagsById
+    );
+    const lookupIds = await this.resolveTranslationStatusLookupIds();
+    const workflowActive = activityTranslationWorkflowActive(
+      commsMaterialIds,
+      flagsById
+    );
+    return canonicalizeTranslationFields(
+      {
+        translationsRequiredStatusId:
+          cleaned.translationsRequiredStatusId ?? null,
+        translationLanguageIds: cleaned.translationLanguageIds ?? [],
+      },
+      lookupIds,
+      { translationWorkflowActive: workflowActive }
+    );
+  }
+
   private async getSchedulingLookupResolvers(): Promise<ActivitySchedulingLookupResolvers> {
     const [dateRows, timeRows] = await Promise.all([
       this.databaseService.db
@@ -1544,14 +1612,20 @@ export class ActivitiesService {
       }
     );
     Object.assign(activityData, commsCleaned);
+    const translatedFields = await this.applyTranslationFieldCanonicalization(
+      commsMaterialIds ?? [],
+      {
+        translationsRequiredStatusId:
+          commsCleaned.translationsRequiredStatusId ?? null,
+        translationLanguageIds: commsCleaned.translationLanguageIds ?? [],
+      }
+    );
+    Object.assign(activityData, translatedFields);
     const translationLanguageIdsForInsert =
-      commsCleaned.translationLanguageIds ?? [];
+      translatedFields.translationLanguageIds ?? [];
     await this.lookAheadPolicy.assertAllowedLookAheadSection(
       activityData.lookAheadSection
     );
-
-    const pendingTranslationStatusId =
-      await this.resolvePendingTranslationStatusId();
     const {
       translationsRequiredStatusId: dtoTranslationStatus,
       dateStatusId: dtoDateStatus,
@@ -1568,8 +1642,7 @@ export class ActivitiesService {
       significance: dtoSignificance ?? null,
       dateStatusId: dtoDateStatus ?? defaultDateTimeStatuses.dateStatusId,
       timeStatusId: dtoTimeStatus ?? defaultDateTimeStatuses.timeStatusId,
-      translationsRequiredStatusId:
-        dtoTranslationStatus ?? pendingTranslationStatusId,
+      translationsRequiredStatusId: dtoTranslationStatus ?? null,
     };
 
     await this.assertActivitySchedulingRules(
@@ -2839,14 +2912,59 @@ export class ActivitiesService {
               : oldActivity.releaseTimeOffsetMinutes,
         }
       );
+      const translatedFields = await this.applyTranslationFieldCanonicalization(
+        commsMaterialIds,
+        {
+          translationsRequiredStatusId:
+            commsCleaned.translationsRequiredStatusId ?? null,
+          translationLanguageIds: commsCleaned.translationLanguageIds ?? [],
+        }
+      );
       Object.assign(activityUpdateData, {
         newsReleaseOriginId: commsCleaned.newsReleaseOriginId,
         newsReleaseDistributionId: commsCleaned.newsReleaseDistributionId,
-        translationsRequiredStatusId: commsCleaned.translationsRequiredStatusId,
+        translationsRequiredStatusId:
+          translatedFields.translationsRequiredStatusId,
         releaseSchedulingMode: commsCleaned.releaseSchedulingMode,
         releaseTimeOffsetMinutes: commsCleaned.releaseTimeOffsetMinutes,
       });
-      effectiveTranslationLanguageIds = commsCleaned.translationLanguageIds;
+      effectiveTranslationLanguageIds = translatedFields.translationLanguageIds;
+    } else if (
+      translationLanguageIds !== undefined ||
+      dto.translationsRequiredStatusId !== undefined
+    ) {
+      const existingCommsRows = await this.databaseService.db
+        .select({ commsMaterialId: activityCommsMaterials.commsMaterialId })
+        .from(activityCommsMaterials)
+        .where(eq(activityCommsMaterials.activityId, id));
+      const existingCommsMaterialIds = existingCommsRows.map(
+        (r) => r.commsMaterialId
+      );
+      const existingLangRows = await this.databaseService.db
+        .select({ languageId: activityTranslationsRequired.languageId })
+        .from(activityTranslationsRequired)
+        .where(
+          and(
+            eq(activityTranslationsRequired.activityId, id),
+            eq(activityTranslationsRequired.isActive, true)
+          )
+        );
+      const translatedFields = await this.applyTranslationFieldCanonicalization(
+        existingCommsMaterialIds,
+        {
+          translationsRequiredStatusId:
+            dto.translationsRequiredStatusId !== undefined
+              ? dto.translationsRequiredStatusId
+              : oldActivity.translationsRequiredStatusId,
+          translationLanguageIds:
+            translationLanguageIds !== undefined
+              ? translationLanguageIds
+              : existingLangRows.map((r) => r.languageId),
+        }
+      );
+      (activityUpdateData as Partial<Activity>).translationsRequiredStatusId =
+        translatedFields.translationsRequiredStatusId ?? null;
+      effectiveTranslationLanguageIds = translatedFields.translationLanguageIds;
     }
 
     // Build update payload after comms cleanup so dependent fields persist correctly.
