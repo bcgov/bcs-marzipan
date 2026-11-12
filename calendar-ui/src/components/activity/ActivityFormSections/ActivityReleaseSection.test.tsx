@@ -99,11 +99,13 @@ const mockLookups = {
   quickShareGroups: [],
   dateStatuses: [
     { id: 1, name: 'tbd', displayName: 'Date TBD' },
-    { id: 2, name: 'confirmed', displayName: 'Confirmed' },
+    { id: 2, name: 'tentative', displayName: 'Tentative' },
+    { id: 3, name: 'confirmed', displayName: 'Confirmed' },
   ],
   timeStatuses: [
     { id: 1, name: 'tbd', displayName: 'Time TBD' },
-    { id: 2, name: 'confirmed', displayName: 'Confirmed' },
+    { id: 2, name: 'tentative', displayName: 'Tentative' },
+    { id: 3, name: 'confirmed', displayName: 'Confirmed' },
   ],
   venueStatuses: [],
 };
