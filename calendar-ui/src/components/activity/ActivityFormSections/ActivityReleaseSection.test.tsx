@@ -114,6 +114,7 @@ function ActivityCommsSectionHarness({
   defaultValues,
   commsMaterialOptions = mockLookups.commsMaterials,
   translationRequiredStatuses = mockLookups.translationRequiredStatuses,
+  newsReleaseOriginOptions = mockLookups.newsReleaseOrigins,
   onFormReady,
 }: {
   readOnly: boolean;
@@ -121,6 +122,7 @@ function ActivityCommsSectionHarness({
   defaultValues?: Partial<ActivityFormData>;
   commsMaterialOptions?: typeof mockLookups.commsMaterials;
   translationRequiredStatuses?: TranslationRequiredStatusLookupItem[];
+  newsReleaseOriginOptions?: typeof mockLookups.newsReleaseOrigins;
   onFormReady?: (form: ReturnType<typeof useForm<ActivityFormData>>) => void;
 }) {
   const form = useForm<ActivityFormData>({
@@ -146,7 +148,7 @@ function ActivityCommsSectionHarness({
           dateStatuses={mockLookups.dateStatuses}
           timeStatuses={mockLookups.timeStatuses}
           newsReleaseDistributionOptions={mockLookups.newsReleaseDistributions}
-          newsReleaseOriginOptions={mockLookups.newsReleaseOrigins}
+          newsReleaseOriginOptions={newsReleaseOriginOptions}
           translationRequiredStatuses={translationRequiredStatuses}
           translationLanguageOptions={mockLookups.translationLanguages}
           userTeamIds={[]}
@@ -156,18 +158,93 @@ function ActivityCommsSectionHarness({
   );
 }
 
+describe('ActivityCommsSection release time', () => {
+  it('renders release scheduling select when public comms is selected', async () => {
+    render(
+      <ActivityCommsSectionHarness
+        readOnly={false}
+        defaultValues={{
+          commsMaterialIds: [4],
+          releaseSchedulingMode: 'relative',
+          releaseTimeOffsetMinutes: 15,
+          startDate: '2026-03-13',
+          startTime: '14:30:00',
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText('Release time is relative to start date and time.')
+    ).toBeInTheDocument();
+    expect(await screen.findByText('15 minutes after')).toBeInTheDocument();
+    expect(screen.getByText('2:45 pm')).toBeInTheDocument();
+  });
+});
+
 describe('ActivityCommsSection optional lookup clear', () => {
   it('clears news release origin when Clear is clicked', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    const newsReleaseOrigins = [
+      { value: '1', label: 'TBD' },
+      { value: '2', label: 'Ministry release' },
+      { value: '3', label: 'Federal release' },
+    ];
 
     render(
       <ActivityCommsSectionHarness
         readOnly={false}
         defaultValues={{
           commsMaterialIds: [4],
-          newsReleaseOriginId: 1,
+          newsReleaseOriginId: 3,
         }}
+        newsReleaseOriginOptions={newsReleaseOrigins}
+        onFormReady={(form) => {
+          formRef = form;
+        }}
+      />
+    );
+
+    const origin = await screen.findByRole('combobox', {
+      name: /News release origin/i,
+    });
+    expect(origin).toHaveTextContent('Federal release');
+
+    await user.click(origin);
+    await user.click(
+      await screen.findByRole('button', { name: /Clear News release origin/i })
+    );
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(formRef!.getValues('newsReleaseOriginId')).toBeNull();
+      expect(formRef!.formState.dirtyFields.newsReleaseOriginId).toBe(true);
+      const clearedOrigin = screen.getByRole('combobox', {
+        name: /News release origin/i,
+      });
+      expect(clearedOrigin).not.toHaveTextContent('Ministry release');
+      expect(clearedOrigin).not.toHaveTextContent('Federal release');
+    });
+  });
+
+  it('clears news release origin UI when hydrated value was Ministry release', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    const newsReleaseOrigins = [
+      { value: '1', label: 'TBD' },
+      { value: '2', label: 'Ministry release' },
+    ];
+
+    render(
+      <ActivityCommsSectionHarness
+        readOnly={false}
+        defaultValues={{
+          commsMaterialIds: [4],
+          newsReleaseOriginId: 2,
+        }}
+        newsReleaseOriginOptions={newsReleaseOrigins}
         onFormReady={(form) => {
           formRef = form;
         }}
@@ -181,10 +258,14 @@ describe('ActivityCommsSection optional lookup clear', () => {
     await user.click(
       await screen.findByRole('button', { name: /Clear News release origin/i })
     );
+    await user.keyboard('{Escape}');
 
     await waitFor(() => {
-      expect(formRef!.getValues('newsReleaseOriginId')).toBeUndefined();
-      expect(formRef!.formState.dirtyFields.newsReleaseOriginId).toBe(true);
+      expect(formRef!.getValues('newsReleaseOriginId')).toBeNull();
+      const clearedOrigin = screen.getByRole('combobox', {
+        name: /News release origin/i,
+      });
+      expect(clearedOrigin).not.toHaveTextContent('Ministry release');
     });
   });
 

@@ -73,7 +73,6 @@ export function OptionalLookupSelectField({
         const hasValue = field.value != null;
         const canClear = hasValue && !readOnly && !disabled;
         const fieldLabel = getActivityFieldLabel(field.name);
-
         const controlNode = (
           <FormControl data-field={field.name}>
             <FormSelectTrigger readOnly={effectiveTriggerReadOnly}>
@@ -83,7 +82,8 @@ export function OptionalLookupSelectField({
         );
 
         const handleClear = () => {
-          setActivityFormFieldValue(form, field.name, undefined);
+          // `null` — not `undefined` — so RHF does not fall back to `defaultValues` on re-render.
+          setActivityFormFieldValue(form, field.name, null);
         };
 
         return (
