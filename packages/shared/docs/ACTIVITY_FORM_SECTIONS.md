@@ -36,6 +36,7 @@ Release lookup fields (origin, distribution, translations) live under **Comms**.
 ## Notes
 
 - **Nested paths** (e.g. `venueAddress.city`) are not listed here; clone/review use top-level keys (`venueAddress`) where applicable.
+- **Organizations UI** uses `leadOrganization` / `jointOrganizations` labels and clone checkboxes; the form still persists `organizations` (focus/`data-field="organizations"` on the lead control).
 - **Code-exempt review fields** (`ACTIVITY_REVIEW_EXEMPT_CODE_KEYS`) remain in the registry but are filtered out of the admin Settings UI.
 
 ## Keys intentionally omitted from the registry

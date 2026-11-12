@@ -3,6 +3,7 @@ import { useFormContext, type FieldPathValue } from 'react-hook-form';
 import { TEAM_PREFIX_FALLBACK } from '@corpcal/shared';
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
+import { mergeLeadAndJointOrganizations } from '@corpcal/shared/utils';
 import {
   Combobox,
   ComboboxContent,
@@ -91,10 +92,11 @@ export function ActivityLeadTeamField({
               : null;
           const syncedOrgId = previousTeam?.primaryOrganizationId ?? null;
           const currentOrgs = form.getValues('organizations') ?? [];
-          const leadEntry = currentOrgs.find((o) => o.isLead) ?? currentOrgs[0];
+          const joints = currentOrgs.filter((o) => o.isLead !== true);
+          const leadEntry = currentOrgs.find((o) => o.isLead) ?? null;
           const leadOrgInSyncWithTeam =
             currentOrgs.length === 0 ||
-            (currentOrgs.length === 1 &&
+            (joints.length === 0 &&
               leadEntry?.organizationId != null &&
               leadEntry.organizationId === syncedOrgId &&
               !leadEntry.organizationName) ||
@@ -111,19 +113,40 @@ export function ActivityLeadTeamField({
 
           if (teamId == null) {
             if (leadOrgInSyncWithTeam) {
-              setActivityFormFieldValue(form, 'organizations', []);
+              if (joints.length === 0) {
+                setActivityFormFieldValue(form, 'organizations', []);
+              } else {
+                setActivityFormFieldValue(
+                  form,
+                  'organizations',
+                  mergeLeadAndJointOrganizations(null, joints)
+                );
+              }
             }
           } else {
             const team = mergedTeams.find((t) => t.id === teamId);
             if (leadOrgInSyncWithTeam && team?.primaryOrganizationId) {
-              setActivityFormFieldValue(form, 'organizations', [
-                {
-                  organizationId: team.primaryOrganizationId,
-                  isLead: true,
-                },
-              ]);
+              setActivityFormFieldValue(
+                form,
+                'organizations',
+                mergeLeadAndJointOrganizations(
+                  {
+                    organizationId: team.primaryOrganizationId,
+                    isLead: true,
+                  },
+                  joints
+                )
+              );
             } else if (leadOrgInSyncWithTeam && team) {
-              setActivityFormFieldValue(form, 'organizations', []);
+              if (joints.length === 0) {
+                setActivityFormFieldValue(form, 'organizations', []);
+              } else {
+                setActivityFormFieldValue(
+                  form,
+                  'organizations',
+                  mergeLeadAndJointOrganizations(null, joints)
+                );
+              }
             }
           }
         };

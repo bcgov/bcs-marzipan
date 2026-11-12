@@ -18,8 +18,14 @@ export type CloneProvenanceFieldKey =
  * clone provenance fields). Typed so new ActivityFormData keys get a compile-time
  * nudge to add a label.
  */
+export type ActivityUiOnlyFieldLabelKey =
+  'leadOrganization' | 'jointOrganizations';
+
 export type ActivityFieldLabelKey =
-  keyof ActivityFormData | keyof VenueAddressBase | CloneProvenanceFieldKey;
+  | keyof ActivityFormData
+  | keyof VenueAddressBase
+  | CloneProvenanceFieldKey
+  | ActivityUiOnlyFieldLabelKey;
 
 /**
  * Form/API field keys that are required on create (matches createActivityRequestSchema
@@ -59,6 +65,8 @@ export const ACTIVITY_FIELD_LABELS: Partial<
   activityStatusId: 'Activity status',
   leadTeamId: 'Lead team',
   organizations: 'Ministries and organizations',
+  leadOrganization: 'Lead organization',
+  jointOrganizations: 'Joint organizations',
   commsContactLeadId: 'Comms lead',
   commsContacts: 'Comms contacts',
   eventPlanners: 'Event planners',

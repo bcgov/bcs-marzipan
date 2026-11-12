@@ -9,11 +9,9 @@ import {
   type ActivityFormData,
 } from '@corpcal/shared/schemas';
 import {
-  buildOrganizationComboboxSections,
   filterAllowedLookupIds,
   isActivityRichTextEffectivelyEmpty,
   isLookupSelectable,
-  normalizeOrganizationFormEntries,
   tipTapDocJsonFromPlainText,
   type LookupTeamScope,
   type OrganizationComboboxSourceOption,
@@ -43,11 +41,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { FormSectionDivider } from '@/components/ui/form-section-divider';
-import {
-  FreeformCombobox,
-  type FreeformComboboxItemWithLead,
-  type FreeformComboboxValue,
-} from '@/components/ui/freeform-combobox';
 import { RichTextField } from '@/components/ui/rich-text-field';
 import { Textarea } from '@/components/ui/textarea';
 import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
@@ -61,6 +54,7 @@ import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-per
 import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 import { ActivityFormSection } from './ActivityFormSection';
+import { ActivityOrganizationsFields } from './ActivityOrganizationsFields';
 
 type LookupScopeItem = {
   id: number;
@@ -141,133 +135,6 @@ function applyAllowedLookupSelection(
 }
 
 type LeadOrganizationOption = OrganizationComboboxSourceOption;
-
-function MinistriesAndOrganizationsField({
-  organizationOptions,
-  readOnly,
-}: {
-  organizationOptions: LeadOrganizationOption[];
-  readOnly: boolean;
-}) {
-  const form = useFormContext<ActivityFormData>();
-
-  const comboboxSections = useMemo(
-    () => buildOrganizationComboboxSections(organizationOptions),
-    [organizationOptions]
-  );
-
-  return (
-    <FormField
-      control={form.control}
-      name="organizations"
-      render={({ field }) => {
-        const list = field.value ?? [];
-        const comboboxValue: FreeformComboboxItemWithLead[] = list.map((o) => {
-          const base: FreeformComboboxItemWithLead =
-            o.organizationId != null
-              ? { type: 'option', value: String(o.organizationId) }
-              : o.organizationName
-                ? { type: 'freeform', value: o.organizationName }
-                : { type: 'freeform', value: '' };
-          return { ...base, isLead: o.isLead ?? false };
-        });
-
-        const handleChange = (
-          value: FreeformComboboxValue | FreeformComboboxValue[] | null
-        ) => {
-          const arr =
-            value == null
-              ? []
-              : Array.isArray(value)
-                ? value.filter(
-                    (v): v is NonNullable<FreeformComboboxValue> => v != null
-                  )
-                : [value];
-          if (arr.length === 0) {
-            setActivityFormFieldValue(form, field.name, []);
-            return;
-          }
-          const current = field.value ?? [];
-          const prevLead = current.find((o) => o.isLead);
-          const leadKey =
-            prevLead?.organizationId != null
-              ? `id:${prevLead.organizationId}`
-              : prevLead?.organizationName != null
-                ? `name:${prevLead.organizationName}`
-                : null;
-          const next = arr.map((v, i) => {
-            const key =
-              v.type === 'option'
-                ? `id:${parseInt(v.value, 10)}`
-                : `name:${v.value}`;
-            const isLead = leadKey != null ? key === leadKey : i === 0;
-            if (v.type === 'option') {
-              return {
-                organizationId: parseInt(v.value, 10),
-                isLead,
-              };
-            }
-            return { organizationName: v.value, isLead };
-          });
-          if (next.length > 0 && !next.some((o) => o.isLead)) {
-            next[0] = { ...next[0], isLead: true };
-          }
-          setActivityFormFieldValue(
-            form,
-            field.name,
-            normalizeOrganizationFormEntries(next)
-          );
-        };
-
-        const setLead = (index: number) => {
-          setActivityFormFieldValue(
-            form,
-            field.name,
-            normalizeOrganizationFormEntries(
-              (field.value ?? []).map((o, i) => ({
-                ...o,
-                isLead: i === index,
-              }))
-            )
-          );
-        };
-
-        return (
-          <FormItem>
-            <FormLabel showRequired>
-              <>
-                {getActivityFieldLabel(field.name)}
-                <ActivityFieldInfoIcon
-                  fieldKey="organizations"
-                  ariaLabel="About ministries and organizations"
-                />
-              </>
-            </FormLabel>
-            <FormControl data-field={field.name}>
-              <FreeformCombobox
-                readOnly={readOnly}
-                sections={comboboxSections}
-                value={comboboxValue}
-                onChange={handleChange}
-                placeholder=""
-                searchPlaceholder=""
-                emptyMessage="No organizations found."
-                freeformBadgeLabel="Add custom organization"
-                listFooterHint="Custom organization names allowed"
-                multiple
-                useChips
-                onSetLead={setLead}
-                nonLeadPromoteBadge="joint"
-                showJointBadge
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        );
-      }}
-    />
-  );
-}
 
 type ActivityOverviewSectionProps = {
   categories: Array<{
@@ -680,7 +547,7 @@ export const ActivityOverviewSection: React.FC<
         )}
       />
 
-      <MinistriesAndOrganizationsField
+      <ActivityOrganizationsFields
         organizationOptions={organizations}
         readOnly={readOnly}
       />

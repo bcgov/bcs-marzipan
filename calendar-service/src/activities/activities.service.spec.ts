@@ -22,6 +22,7 @@ import {
 } from '@corpcal/shared';
 import {
   activityResponseSchema,
+  type ActivityFormData,
   type UpdateActivityRequest,
 } from '@corpcal/shared/schemas';
 
@@ -5121,6 +5122,73 @@ describe('ActivitiesService', () => {
       );
 
       expect(mockActivityHistoryService.recordChange).not.toHaveBeenCalled();
+    });
+
+    it('filters organizations by leadOrganization and jointOrganizations clone paths', async () => {
+      vi.spyOn(
+        service as unknown as {
+          assertActivitySchedulingRules: () => Promise<void>;
+        },
+        'assertActivitySchedulingRules'
+      ).mockResolvedValue(undefined);
+      const source = createMockActivityResponse({
+        id: 100,
+        organizationDetails: [
+          {
+            organizationId: 1,
+            organizationName: null,
+            name: 'Lead Org',
+            isLead: true,
+          },
+          {
+            organizationId: 2,
+            organizationName: null,
+            name: 'Joint A',
+            isLead: false,
+          },
+          {
+            organizationId: 3,
+            organizationName: null,
+            name: 'Joint B',
+            isLead: false,
+          },
+        ],
+      });
+      vi.spyOn(service, 'findOne').mockResolvedValue(source);
+      const createSpy = vi
+        .spyOn(service, 'create')
+        .mockResolvedValue(createMockActivityResponse({ id: 200 }));
+
+      await service.clone(
+        100,
+        {
+          title: 'CLONED',
+          ...cloneScheduleBody,
+          includeFieldPaths: ['leadOrganization'],
+        },
+        42,
+        cloneContext
+      );
+      let dto = createSpy.mock.calls[0]?.[0] as ActivityFormData;
+      expect(dto.organizations).toEqual([{ organizationId: 1, isLead: true }]);
+
+      createSpy.mockClear();
+      vi.spyOn(service, 'findOne').mockResolvedValue(source);
+      await service.clone(
+        100,
+        {
+          title: 'CLONED',
+          ...cloneScheduleBody,
+          includeFieldPaths: ['jointOrganizations'],
+        },
+        42,
+        cloneContext
+      );
+      dto = createSpy.mock.calls[0]?.[0] as ActivityFormData;
+      expect(dto.organizations).toEqual([
+        { organizationId: 2, isLead: false },
+        { organizationId: 3, isLead: false },
+      ]);
     });
 
     it('omits advanced field paths not present in includeFieldPaths', async () => {
