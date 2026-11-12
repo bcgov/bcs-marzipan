@@ -155,15 +155,23 @@ jobs:
           fi
 
           # ── Resolve image tag ──────────────────────────────────────────────
-          # Priority: explicit input → APP_VERSION variable → short commit SHA.
+          # Dev deploys must always use a unique tag so ArgoCD sees a change.
+          # Test and prod use stable version tags, or an explicit rollback tag.
           INPUT_TAG="${{ inputs.image_tag }}"
           APP_VER="${{ vars.APP_VERSION }}"
           if [[ -n "$INPUT_TAG" ]]; then
             IMAGE_TAG="$INPUT_TAG"
+          elif [[ "$ENV" == "dev" ]]; then
+            if [[ -n "$APP_VER" ]]; then
+              IMAGE_TAG="${APP_VER}-${GITHUB_SHA::7}"
+            else
+              IMAGE_TAG="dev-${GITHUB_SHA::7}"
+            fi
           elif [[ -n "$APP_VER" ]]; then
             IMAGE_TAG="$APP_VER"
           else
-            IMAGE_TAG="${GITHUB_SHA::7}"
+            echo "::error::No image tag was provided and vars.APP_VERSION is empty. Set APP_VERSION or pass image_tag for this deployment."
+            exit 1
           fi
 
           # ── Resolve ArgoCD application name ───────────────────────────────
