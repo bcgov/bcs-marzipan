@@ -248,6 +248,13 @@ export const TENTATIVE_LOOKUP_NAME = 'tentative' as const;
  */
 export const TRANSLATION_REQUIRED_LOOKUP_NAME = 'required' as const;
 
+/** Lookup `name` when the user explicitly chose no translation languages. */
+export const TRANSLATION_NO_TRANSLATIONS_LOOKUP_NAME =
+  'no_translations' as const;
+
+/** @deprecated Renamed to {@link TRANSLATION_NO_TRANSLATIONS_LOOKUP_NAME}. */
+export const TRANSLATION_NOT_REQUIRED_LOOKUP_NAME = 'not_required' as const;
+
 // ============================================================================
 // Auth Constants
 // ============================================================================

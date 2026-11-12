@@ -139,7 +139,7 @@ Lookup tables use a consistent shape for type safety and generic UI components:
 | `timeStatusId`                 | `integer`     | `notNull`, FK               | FK to TimeStatus - new field for time confirmation status                                                                |
 | `newsReleaseOriginId`          | `integer`     | nullable, FK                | FK to NewsReleaseOrigin lookup table                                                                                     |
 | `newsReleaseId`                | `uuid`        | nullable                    | Reference to news release                                                                                                |
-| `translationsRequiredStatusId` | `integer`     | nullable, FK                | FK to translation_required_statuses (pending, required, not_required)                                                    |
+| `translationsRequiredStatusId` | `integer`     | nullable, FK                | FK to translation_required_statuses (`tbd`, `required` implicit w/ languages, `no_translations`, or null when N/A)       |
 | `isConfidential`               | `boolean`     | `notNull`, `default(false)` | Activity-level sensitivity flag (badges, team visibility); does not remove activities from report datasets               |
 
 ### Moved to Separate Tables
@@ -393,19 +393,19 @@ Categories use an explicit visibility model aligned with the pods visibility pat
 
 **Table Name:** `translation_required_statuses`
 
-**Description:** Lookup table for tri-state "required" status on activities (`pending`, `required`, `not_required`). Activities reference it via nullable FK `translationsRequiredStatusId`.
+**Description:** Lookup for translation intent on activities (`tbd`, `required`, `no_translations`). `required` is set when translation languages are selected. Activities reference it via nullable FK `translationsRequiredStatusId` (null when translations do not apply).
 
 ### Field Mappings (each table)
 
-| Column         | Type           | Constraints            | Notes                                          |
-| -------------- | -------------- | ---------------------- | ---------------------------------------------- |
-| `id`           | `serial`       | primary key            | 1=pending, 2=required, 3=not_required (seeded) |
-| `name`         | `varchar(255)` | notNull                | Internal name                                  |
-| `display_name` | `varchar(255)` | notNull                | Display label                                  |
-| `sort_order`   | `integer`      | notNull, default(0)    | Order in UI                                    |
-| `is_active`    | `boolean`      | notNull, default(true) |                                                |
-| `description`  | `text`         | nullable               |                                                |
-| Audit columns  |                |                        | created_by, last_updated_by, etc.              |
+| Column         | Type           | Constraints            | Notes                                         |
+| -------------- | -------------- | ---------------------- | --------------------------------------------- |
+| `id`           | `serial`       | primary key            | 1=tbd, 2=required, 3=no_translations (seeded) |
+| `name`         | `varchar(255)` | notNull                | Internal name                                 |
+| `display_name` | `varchar(255)` | notNull                | Display label                                 |
+| `sort_order`   | `integer`      | notNull, default(0)    | Order in UI                                   |
+| `is_active`    | `boolean`      | notNull, default(true) |                                               |
+| `description`  | `text`         | nullable               |                                               |
+| Audit columns  |                |                        | created_by, last_updated_by, etc.             |
 
 ---
 

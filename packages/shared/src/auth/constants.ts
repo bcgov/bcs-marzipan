@@ -89,6 +89,7 @@ export const PERMISSIONS = {
     NOTES_EDIT: 'activities.notes.edit',
     LOOK_AHEAD_VIEW: 'activities.lookAhead.view',
     LOOK_AHEAD_EDIT: 'activities.lookAhead.edit',
+    /** @deprecated Field-level translations scope retired; use {@link PERMISSIONS.ACTIVITIES.EDIT}. */
     TRANSLATIONS_EDIT: 'activities.translations.edit',
     RELEASE_TIME_EDIT: 'activities.release_time.edit',
     /** Take edit lock from another user after grace period (admin). */

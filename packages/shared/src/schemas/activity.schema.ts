@@ -209,7 +209,7 @@ const activityCoreFieldsSchema = z.object({
     emptyStringToNull,
     z.union([activityBriefRichTextStoredStringSchema, z.null()]).optional()
   ),
-  translationsRequiredStatusId: z.number().int().nullable().optional(), // tbd, required, not_required
+  translationsRequiredStatusId: z.number().int().nullable().optional(), // tbd, required, no_translations, or null (N/A)
 
   // Optional enum fields
   lookAheadStatus: z.enum(LOOK_AHEAD_STATUS).nullable().optional(),
