@@ -1,7 +1,10 @@
 import { Search, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
-import type { ActivityFilterState } from '@corpcal/shared';
+import {
+  formatLanguageTagForDisplay,
+  type ActivityFilterState,
+} from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import type { SavedFilterResponse } from '@corpcal/shared/schemas';
 import { buildIdArrayFilterSlot } from '@/components/activity/ActivityTable/ActivityTableFilters';
@@ -185,7 +188,7 @@ export function ReportFiltersBar({
     () =>
       translationLanguagesForFilter.map((l) => {
         const displayLabel = l.shortcode
-          ? `${l.displayName} (${l.shortcode.toUpperCase()})`
+          ? `${l.displayName} (${formatLanguageTagForDisplay(l.shortcode)})`
           : (l.displayName ?? String(l.id));
         return { value: String(l.id), label: displayLabel };
       }),

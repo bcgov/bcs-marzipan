@@ -2,7 +2,11 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { DEFAULT_ACTIVITY_FILTER_STATE, PERMISSIONS } from '@corpcal/shared';
+import {
+  DEFAULT_ACTIVITY_FILTER_STATE,
+  formatLanguageTagForDisplay,
+  PERMISSIONS,
+} from '@corpcal/shared';
 import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { hasAnyActivityTableFilterActive } from '@/components/activity/ActivityTable/ActivityTableFilters';
 import {
@@ -236,7 +240,9 @@ export function useActivityTableCore({
     () =>
       translationLanguagesForFilter.map((l) => ({
         value: String(l.id),
-        label: l.shortcode ?? l.displayName ?? String(l.id),
+        label: l.shortcode
+          ? formatLanguageTagForDisplay(l.shortcode)
+          : (l.displayName ?? String(l.id)),
       })),
     [translationLanguagesForFilter]
   );

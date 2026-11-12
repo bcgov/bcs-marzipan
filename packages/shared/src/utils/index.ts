@@ -36,3 +36,4 @@ export * from './comms-material-form-rules';
 export * from './activity-release-time';
 export * from './activity-release-scheduling';
 export * from './government-representative-sort';
+export * from './bcp47-language-tag';

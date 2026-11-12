@@ -485,7 +485,7 @@ export const commsMaterials = pgTable(
 
 /**
  * TranslatedLanguage lookup table - Languages for translations (user-editable list).
- * shortcode: internal language code for display and APIs (not necessarily BCP 47).
+ * shortcode: BCP 47 language tag for display, APIs, and external integrations (e.g. Nexus culture).
  */
 export const translatedLanguages = pgTable(
   'translated_languages',
@@ -493,7 +493,7 @@ export const translatedLanguages = pgTable(
     id: serial('id').primaryKey(),
     name: varchar('name', { length: 255 }).notNull(),
     displayName: varchar('display_name', { length: 255 }).notNull(),
-    /** Internal language code (e.g. AR, SC, FR) */
+    /** BCP 47 language tag (e.g. fr, zh-Hans) */
     shortcode: varchar('shortcode', { length: 15 }),
     sortOrder: integer('sort_order').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),
