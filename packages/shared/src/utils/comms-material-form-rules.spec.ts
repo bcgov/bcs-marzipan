@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ActivityFormData } from '../schemas/activity.schema';
+import { DEFAULT_RELEASE_TIME_OFFSET_MINUTES } from './activity-release-time';
 import {
+  applyReleaseTimeDefaultWhenCommsEnablesRelease,
   buildCommsMaterialReleaseFlagsById,
   stripCommsDependentFields,
 } from './comms-material-form-rules';
@@ -16,6 +18,55 @@ const baseForm = (): ActivityFormData =>
     releaseSchedulingMode: 'relative',
     releaseTimeOffsetMinutes: 15,
   }) as unknown as ActivityFormData;
+
+describe('applyReleaseTimeDefaultWhenCommsEnablesRelease', () => {
+  const flags = buildCommsMaterialReleaseFlagsById([
+    {
+      id: 4,
+      releaseType: {
+        audience: 'public',
+        allowsTranslation: false,
+        requiresNewsReleaseDetails: false,
+      },
+    },
+  ]);
+
+  it('returns default when public comms is first added and release is unset', () => {
+    expect(
+      applyReleaseTimeDefaultWhenCommsEnablesRelease([], [4], flags, null, null)
+    ).toEqual({
+      releaseSchedulingMode: 'relative',
+      releaseTimeOffsetMinutes: DEFAULT_RELEASE_TIME_OFFSET_MINUTES,
+    });
+  });
+
+  it('does not default when release time was already required', () => {
+    expect(
+      applyReleaseTimeDefaultWhenCommsEnablesRelease(
+        [4],
+        [4, 4],
+        flags,
+        null,
+        null
+      )
+    ).toBeNull();
+  });
+
+  it('does not default when offset or mode is already set', () => {
+    expect(
+      applyReleaseTimeDefaultWhenCommsEnablesRelease(
+        [],
+        [4],
+        flags,
+        'on_signal',
+        null
+      )
+    ).toBeNull();
+    expect(
+      applyReleaseTimeDefaultWhenCommsEnablesRelease([], [4], flags, null, 0)
+    ).toBeNull();
+  });
+});
 
 describe('stripCommsDependentFields', () => {
   const flags = buildCommsMaterialReleaseFlagsById([

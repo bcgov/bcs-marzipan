@@ -56,7 +56,7 @@ Creates a new calendar activity with related junction table records.
 
 **`venueAddress`:** Optional object. Fields are nullable strings: `venueName`, `addressLine1`, `addressLine2` (floor, suite, unit, etc.), `city`, `provinceOrState`, `country`. Per-activity addresses persist `addressLine2` on `venue_addresses`; admin **venue presets** also store `addressLine2` (see lookups below).
 
-**`releaseSchedulingMode`:** Optional nullable enum: `relative` | `on_signal`. When `on_signal`, offset and derived instant are cleared. When `relative`, optional `releaseTimeOffsetMinutes` applies. Cleared when no selected comms material has a public release type. Requires `activities.release_time.edit` to change.
+**`releaseSchedulingMode`:** Optional nullable enum: `relative` | `on_signal`. When `on_signal`, offset and derived instant are cleared. When `relative`, optional `releaseTimeOffsetMinutes` applies. Cleared when no selected comms material has a public release type. Requires `activities.release_time.edit` to change (granted to Editor and Advanced Editor by default).
 
 **`releaseTimeOffsetMinutes`:** Optional nullable integer (0–10,080). Minutes after the activity schedule anchor when mode is `relative` (or inferred when offset is sent without mode). Must be null when mode is `on_signal`.
 

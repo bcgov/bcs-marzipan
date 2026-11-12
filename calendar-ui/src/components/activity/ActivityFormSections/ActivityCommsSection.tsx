@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import type { TranslationRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
+  applyReleaseTimeDefaultWhenCommsEnablesRelease,
+  buildCommsMaterialReleaseFlagsById,
   isLookupSelectable,
   type LookupTeamScope,
 } from '@corpcal/shared/utils';
@@ -269,6 +271,11 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
     [commsMaterialOptions]
   );
 
+  const commsReleaseFlagsById = useMemo(
+    () => buildCommsMaterialReleaseFlagsById(commsMaterialOptions),
+    [commsMaterialOptions]
+  );
+
   const pickableMaterials = useMemo(
     () =>
       commsMaterialOptions.filter((m) =>
@@ -395,13 +402,31 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
                   items={comboboxItems}
                   multiple
                   value={selectedOptions}
-                  onValueChange={(selected) =>
-                    setActivityFormFieldValue(
-                      form,
-                      field.name,
-                      uniqueNumericIdsFromOptions(selected)
-                    )
-                  }
+                  onValueChange={(selected) => {
+                    const previousIds = field.value ?? [];
+                    const nextIds = uniqueNumericIdsFromOptions(selected);
+                    setActivityFormFieldValue(form, field.name, nextIds);
+                    const defaultRelease =
+                      applyReleaseTimeDefaultWhenCommsEnablesRelease(
+                        previousIds,
+                        nextIds,
+                        commsReleaseFlagsById,
+                        form.getValues('releaseSchedulingMode'),
+                        form.getValues('releaseTimeOffsetMinutes')
+                      );
+                    if (defaultRelease) {
+                      setActivityFormFieldValue(
+                        form,
+                        'releaseSchedulingMode',
+                        defaultRelease.releaseSchedulingMode
+                      );
+                      setActivityFormFieldValue(
+                        form,
+                        'releaseTimeOffsetMinutes',
+                        defaultRelease.releaseTimeOffsetMinutes
+                      );
+                    }
+                  }}
                   itemToStringValue={(o) => o.label}
                   isItemEqualToValue={optionItemsEqual}
                   readOnly={readOnly}

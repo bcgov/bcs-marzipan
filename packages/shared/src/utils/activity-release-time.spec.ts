@@ -4,6 +4,7 @@ import {
   computeActivityReleaseTimeInstant,
   customPartsToReleaseTimeOffsetMinutes,
   formatReleaseTimeOffsetLabel,
+  formatReleaseTimePreviewTriggerClock,
   getActivityReleaseTimePreview,
   getReleaseTimeOffsetMaxAmountForUnit,
   isValidCustomReleaseTimeOffsetAmount,
@@ -141,6 +142,27 @@ describe('getActivityReleaseTimePreview', () => {
     if (result?.kind === 'preview') {
       expect(result.label).toMatch(/1:00 am PT, Fri Mar 13/);
     }
+  });
+});
+
+describe('formatReleaseTimePreviewTriggerClock', () => {
+  it('extracts clock without PT or date suffix', () => {
+    const preview = getActivityReleaseTimePreview({
+      releaseTimeOffsetMinutes: 15,
+      startDate: '2026-03-13',
+      startTime: '14:30',
+      isAllDay: false,
+    });
+    expect(formatReleaseTimePreviewTriggerClock(preview)).toBe('2:45 pm');
+  });
+
+  it('returns null for hints', () => {
+    expect(
+      formatReleaseTimePreviewTriggerClock({
+        kind: 'hint',
+        message: 'Start date required',
+      })
+    ).toBeNull();
   });
 });
 
