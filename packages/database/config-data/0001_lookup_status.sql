@@ -48,13 +48,14 @@ END $$;
 
 -- ============================================================================
 -- DATE STATUSES
--- Canonical active values: tbd, confirmed
+-- Canonical active values: tbd, tentative, confirmed
 -- ============================================================================
 
 INSERT INTO date_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
   ('tbd', 'Date TBD', 1, true, 'Date is to be determined', 999, 999),
-  ('confirmed', 'Confirmed', 2, true, 'Date is confirmed', 999, 999)
+  ('tentative', 'Tentative', 2, true, 'Date is tentatively scheduled', 999, 999),
+  ('confirmed', 'Confirmed', 3, true, 'Date is confirmed', 999, 999)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM date_statuses WHERE date_statuses.name = v.name);
 
@@ -67,8 +68,17 @@ UPDATE date_statuses SET
 WHERE name = 'tbd';
 
 UPDATE date_statuses SET
-  display_name = 'Confirmed',
+  display_name = 'Tentative',
   sort_order = 2,
+  is_active = true,
+  description = 'Date is tentatively scheduled',
+  last_updated_by = 999,
+  last_updated_date_time = now()
+WHERE name = 'tentative';
+
+UPDATE date_statuses SET
+  display_name = 'Confirmed',
+  sort_order = 3,
   is_active = true,
   last_updated_by = 999,
   last_updated_date_time = now()
@@ -78,17 +88,18 @@ UPDATE date_statuses SET
   is_active = false,
   last_updated_by = 999,
   last_updated_date_time = now()
-WHERE name IN ('not_confirmed', 'tentative');
+WHERE name = 'not_confirmed';
 
 -- ============================================================================
 -- TIME STATUSES
--- Canonical active values: tbd, confirmed
+-- Canonical active values: tbd, tentative, confirmed
 -- ============================================================================
 
 INSERT INTO time_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
   ('tbd', 'Time TBD', 1, true, 'Time is to be determined', 999, 999),
-  ('confirmed', 'Confirmed', 2, true, 'Time is confirmed', 999, 999)
+  ('tentative', 'Tentative', 2, true, 'Time is tentatively scheduled', 999, 999),
+  ('confirmed', 'Confirmed', 3, true, 'Time is confirmed', 999, 999)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM time_statuses WHERE time_statuses.name = v.name);
 
@@ -101,8 +112,17 @@ UPDATE time_statuses SET
 WHERE name = 'tbd';
 
 UPDATE time_statuses SET
-  display_name = 'Confirmed',
+  display_name = 'Tentative',
   sort_order = 2,
+  is_active = true,
+  description = 'Time is tentatively scheduled',
+  last_updated_by = 999,
+  last_updated_date_time = now()
+WHERE name = 'tentative';
+
+UPDATE time_statuses SET
+  display_name = 'Confirmed',
+  sort_order = 3,
   is_active = true,
   last_updated_by = 999,
   last_updated_date_time = now()
@@ -112,7 +132,7 @@ UPDATE time_statuses SET
   is_active = false,
   last_updated_by = 999,
   last_updated_date_time = now()
-WHERE name IN ('not_confirmed', 'tentative');
+WHERE name = 'not_confirmed';
 
 -- ============================================================================
 -- VENUE STATUSES

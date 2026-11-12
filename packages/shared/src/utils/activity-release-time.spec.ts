@@ -41,6 +41,15 @@ describe('computeActivityReleaseTimeInstant', () => {
     ).toBeNull();
   });
 
+  it('returns null when date is tentative', () => {
+    expect(
+      computeActivityReleaseTimeInstant({
+        ...confirmedTimed,
+        dateStatusName: 'tentative',
+      })
+    ).toBeNull();
+  });
+
   it('returns null when time is not confirmed for timed events', () => {
     expect(
       computeActivityReleaseTimeInstant({

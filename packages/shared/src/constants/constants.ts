@@ -240,6 +240,9 @@ export const PITCH_TRANSLATION_PENDING_LOOKUP_NAME = TBD_LOOKUP_NAME;
 /** Lookup `name` for date/time confirmed status and filter matching. */
 export const CONFIRMED_LOOKUP_NAME = 'confirmed' as const;
 
+/** Lookup `name` for date/time tentative scheduling status. */
+export const TENTATIVE_LOOKUP_NAME = 'tentative' as const;
+
 /**
  * Lookup `name` for translation_required_statuses when translations are mandatory.
  */
