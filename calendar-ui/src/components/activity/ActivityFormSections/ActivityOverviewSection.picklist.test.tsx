@@ -229,7 +229,7 @@ describe('ActivityOverviewSection lookup picklist selectability', () => {
     });
   });
 
-  it('keeps grandfathered category chips visible and not re-addable after removal', async () => {
+  it('shows grandfathered category in the control but not in the dropdown; replacement selects one id', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
@@ -242,32 +242,22 @@ describe('ActivityOverviewSection lookup picklist selectability', () => {
       />
     );
 
-    expect(screen.getByText('Team Category')).toBeInTheDocument();
+    const categoryControl = screen.getByRole('combobox', { name: /Category/i });
+    expect(categoryControl).toHaveValue('Team Category');
 
     await openCategoryPicklist(user);
     expect(
       screen.queryByRole('option', { name: 'Team Category' })
     ).not.toBeInTheDocument();
 
-    const chip = screen
-      .getByText('Team Category')
-      .closest('[data-slot=combobox-chip]');
-    expect(chip).toBeTruthy();
-    const removeButton = (chip as HTMLElement).querySelector(
-      '[data-slot=combobox-chip-remove]'
+    await user.click(
+      await screen.findByRole('option', { name: 'Global Category' })
     );
-    expect(removeButton).toBeTruthy();
-    await user.click(removeButton as HTMLElement);
 
     await waitFor(() => {
-      expect(formRef!.getValues('categoryIds')).toEqual([]);
+      expect(formRef!.getValues('categoryIds')).toEqual([globalCategory.id]);
     });
-    expect(screen.queryByText('Team Category')).not.toBeInTheDocument();
-
-    await openCategoryPicklist(user);
-    expect(
-      screen.queryByRole('option', { name: 'Team Category' })
-    ).not.toBeInTheDocument();
+    expect(categoryControl).toHaveValue('Global Category');
   });
 
   it('hides non-selectable team tags from the dropdown', async () => {

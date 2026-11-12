@@ -42,7 +42,7 @@ function createFullyPopulatedE2eActivityRequest(
 ): CreateActivityRequest {
   return createE2eActivityRequest({
     title: 'E2E Hard Delete Full Relations',
-    categoryIds: [1, 2],
+    categoryIds: [1],
     tagIds: [1],
     commsMaterialIds: [1],
     translationLanguageIds: [1],

@@ -41,8 +41,12 @@ Append-only log of notable schema and constraint changes. Regenerate SQL migrati
 
 ## 2026-03-22 — Activity categories (API / service)
 
-- **Cardinality**: At least one category is required on **create** (Zod + `ActivitiesService.create`). Updates that send `categoryIds` must send a non-empty array.
+- **Cardinality**: Exactly one category is required on **create** (Zod + `ActivitiesService.create`). Updates that send `categoryIds` must send an array of length 1. Wire format remains `number[]`; no DB cardinality migration.
 - **Database**: No additional DB constraint in repo migrations (FK `activity_categories.activity_id` remains `ON DELETE NO ACTION`); enforcement is API/service layer.
+
+## 2026-11-10 — Activity categories: single-select
+
+- **API / UI**: `categoryIds` must contain exactly one id when present on create/update. List/report filters may still pass multiple category ids (OR match).
 
 ## 2026-03-22 — Activities: venue status
 

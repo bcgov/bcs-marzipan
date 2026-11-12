@@ -28,6 +28,7 @@ import {
   ComboboxContent,
   ComboboxEmpty,
   ComboboxGroup,
+  ComboboxInput,
   ComboboxItem,
   ComboboxList,
   ComboboxSeparator,
@@ -302,7 +303,6 @@ export const ActivityOverviewSection: React.FC<
   const canViewNotes = canViewFieldScope?.('notes') ?? false;
   const notesScope = useActivityFieldScopeControl('notes');
   const form = useFormContext<ActivityFormData>();
-  const categoriesAnchorRef = useComboboxAnchor();
   const tagsAnchorRef = useComboboxAnchor();
 
   const categoryScopeById = useMemo(
@@ -419,6 +419,21 @@ export const ActivityOverviewSection: React.FC<
             pickableCategoryOptions,
             selectedOptions
           );
+          const selectedOption: OptionItem | null = selectedOptions[0] ?? null;
+          const handleCategoryChange = (option: OptionItem | null) => {
+            const submittedIds = option ? [Number(option.value)] : [];
+            applyAllowedLookupSelection(
+              submittedIds,
+              field.value ?? [],
+              userTeamIds,
+              categoryScopeById,
+              hasCreateAny,
+              (allowedIds) => {
+                setActivityFormFieldValue(form, field.name, allowedIds);
+              }
+            );
+          };
+
           return (
             <FormItem>
               <FormLabel showRequired>
@@ -426,46 +441,20 @@ export const ActivityOverviewSection: React.FC<
                   {getActivityFieldLabel(field.name)}
                   <ActivityFieldInfoIcon
                     fieldKey="categoryIds"
-                    ariaLabel="About categories"
+                    ariaLabel="About category"
                   />
                 </>
               </FormLabel>
               <FormControl data-field={field.name}>
                 <Combobox
                   items={categoryComboboxItems}
-                  multiple
-                  value={selectedOptions}
-                  onValueChange={(selected) => {
-                    const submittedIds = selected.map((o) => Number(o.value));
-                    applyAllowedLookupSelection(
-                      submittedIds,
-                      field.value ?? [],
-                      userTeamIds,
-                      categoryScopeById,
-                      hasCreateAny,
-                      (allowedIds) => {
-                        setActivityFormFieldValue(form, field.name, allowedIds);
-                      }
-                    );
-                  }}
-                  itemToStringValue={(o) => o.label}
+                  value={selectedOption}
+                  onValueChange={handleCategoryChange}
+                  itemToStringValue={(o: OptionItem) => o.label}
                   readOnly={readOnly}
                 >
-                  <ComboboxChips ref={categoriesAnchorRef} className="w-full">
-                    <ComboboxValue>
-                      {(values: OptionItem[]) => (
-                        <>
-                          {values.map((option) => (
-                            <ComboboxChip key={option.value}>
-                              {option.label}
-                            </ComboboxChip>
-                          ))}
-                          <ComboboxChipsInput placeholder="" />
-                        </>
-                      )}
-                    </ComboboxValue>
-                  </ComboboxChips>
-                  <ComboboxContent anchor={categoriesAnchorRef}>
+                  <ComboboxInput placeholder="" />
+                  <ComboboxContent>
                     <ComboboxEmpty>No categories found.</ComboboxEmpty>
                     <ComboboxList>
                       {pickableTeamCategoryOptions.length > 0 && (

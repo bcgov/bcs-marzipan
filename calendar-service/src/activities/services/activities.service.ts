@@ -41,6 +41,7 @@ import {
 } from '@corpcal/database/schema';
 import type { Activity } from '@corpcal/database/types';
 import {
+  ACTIVITY_CATEGORY_IDS_MESSAGE,
   buildEffectiveReviewExemptKeys,
   DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
   HYDRATION_PROFILES,
@@ -1510,7 +1511,7 @@ export class ActivitiesService {
     }
 
     if (!categoryIds?.length) {
-      throw new BadRequestException('At least one category is required.');
+      throw new BadRequestException(ACTIVITY_CATEGORY_IDS_MESSAGE);
     }
     await this.utilsService.validateCategoryIds(categoryIds);
     await this.validateCategoryIdsForUser(
@@ -4318,7 +4319,7 @@ export class ActivitiesService {
     await this.findOne(id);
 
     if (categoryIds.length === 0) {
-      throw new BadRequestException('At least one category is required.');
+      throw new BadRequestException(ACTIVITY_CATEGORY_IDS_MESSAGE);
     }
     await this.utilsService.validateCategoryIds(categoryIds);
 

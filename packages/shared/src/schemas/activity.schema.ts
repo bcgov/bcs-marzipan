@@ -328,12 +328,20 @@ const commsContactSchema = z.object({
   isLead: z.boolean().default(false),
 });
 
+/** User-facing validation when create/update payloads include categoryIds. */
+export const ACTIVITY_CATEGORY_IDS_MESSAGE = 'Exactly one category is required';
+
+/** Exactly one category per activity (wire format remains an array for future multi-select). */
+export const activityCategoryIdsSchema = z
+  .array(z.number().int())
+  .length(1, { message: ACTIVITY_CATEGORY_IDS_MESSAGE });
+
 /**
  * Junction table ID arrays for request payloads
  * These fields create many-to-many relationships
  */
 const junctionTableIdsSchema = z.object({
-  categoryIds: z.array(z.number().int()).optional(),
+  categoryIds: activityCategoryIdsSchema.optional(),
   tagIds: z.array(z.number().int()).optional(),
   commsMaterialIds: z.array(z.number().int()).optional(),
   translationLanguageIds: z.array(z.number().int()).optional(),
@@ -344,7 +352,6 @@ const junctionTableIdsSchema = z.object({
   commsContacts: z.array(commsContactSchema).optional(), // Comms contacts with isLead flag (exactly one must have isLead=true)
 });
 
-const CATEGORY_IDS_MIN_MESSAGE = 'At least one category is required';
 const ORGANIZATIONS_REQUIRED_MESSAGE =
   'Ministries and organizations is required';
 const ORGANIZATION_LEAD_REFINE_MESSAGE =
@@ -353,11 +360,9 @@ const ORGANIZATION_LEAD_REFINE_PATH = ['organizations'] as const;
 const LEAD_CONTACT_REFINE_MESSAGE = 'A lead contact is required';
 const LEAD_CONTACT_REFINE_PATH = ['commsContacts'] as const;
 
-/** Create requests require at least one category ID. */
+/** Create requests require exactly one category ID. */
 const createJunctionTableIdsSchema = junctionTableIdsSchema.extend({
-  categoryIds: z
-    .array(z.number().int())
-    .min(1, { message: CATEGORY_IDS_MIN_MESSAGE }),
+  categoryIds: activityCategoryIdsSchema,
   organizations: z
     .array(activityOrganizationSchema)
     .min(1, { message: ORGANIZATIONS_REQUIRED_MESSAGE }),
