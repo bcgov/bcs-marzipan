@@ -90,16 +90,16 @@ function ActivityOrganizationsFieldsInner({
   ) => {
     const single = Array.isArray(value) ? (value[0] ?? null) : value;
     if (single == null) {
-      if (joints.length === 0) {
-        commitOrganizations([]);
-      }
+      commitOrganizations(
+        joints.length === 0 ? [] : mergeLeadAndJointOrganizations(null, joints)
+      );
       return;
     }
     const nextLead = comboboxValueToEntry(single, true);
     if (!nextLead) {
-      if (joints.length === 0) {
-        commitOrganizations([]);
-      }
+      commitOrganizations(
+        joints.length === 0 ? [] : mergeLeadAndJointOrganizations(null, joints)
+      );
       return;
     }
     commitOrganizations(mergeLeadAndJointOrganizations(nextLead, joints));
