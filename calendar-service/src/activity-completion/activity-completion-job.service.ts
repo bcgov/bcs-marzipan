@@ -52,20 +52,20 @@ export class ActivityCompletionJobService {
 
     if (!shouldRunCompletionJob(schedule, bufferMinutes, hour, minute)) {
       this.logger.debug(
-        `Completion tick skipped: schedule=${schedule}, buffer=${bufferMinutes}, PT ${hour}:${String(minute).padStart(2, '0')} (cadence did not match)`
+        `Completion tick skipped: schedule=${schedule}, buffer=${bufferMinutes}, PCT ${hour}:${String(minute).padStart(2, '0')} (cadence did not match)`
       );
       return;
     }
 
     if (this.inFlight) {
       this.logger.warn(
-        `Completion tick matched (schedule=${schedule}, buffer=${bufferMinutes}, PT ${hour}:${String(minute).padStart(2, '0')}) but batch already in flight on this pod — skipping`
+        `Completion tick matched (schedule=${schedule}, buffer=${bufferMinutes}, PCT ${hour}:${String(minute).padStart(2, '0')}) but batch already in flight on this pod — skipping`
       );
       return;
     }
 
     this.logger.log(
-      `Completion tick matched (schedule=${schedule}, buffer=${bufferMinutes}, PT ${hour}:${String(minute).padStart(2, '0')})`
+      `Completion tick matched (schedule=${schedule}, buffer=${bufferMinutes}, PCT ${hour}:${String(minute).padStart(2, '0')})`
     );
 
     const result = await this.runBatch();

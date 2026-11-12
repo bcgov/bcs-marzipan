@@ -89,7 +89,7 @@ describe('resolveRecurringLockoutBannerContent', () => {
     });
 
     expect(result).toBe(
-      'Updates to activities will be locked 3:00 pm - 11:59 pm PT. Please make updates before lockout begins.'
+      'Updates to activities will be locked 3:00 pm - 11:59 pm PCT. Please make updates before lockout begins.'
     );
   });
 
@@ -104,7 +104,7 @@ describe('resolveRecurringLockoutBannerContent', () => {
     });
 
     expect(result).toBe(
-      'Updates to activities are locked out until 11:59 pm PT. Contact <a href="mailto:gcpe@example.com">gcpe@example.com</a> to make emerging or urgent updates.'
+      'Updates to activities are locked out until 11:59 pm PCT. Contact <a href="mailto:gcpe@example.com">gcpe@example.com</a> to make emerging or urgent updates.'
     );
   });
 });

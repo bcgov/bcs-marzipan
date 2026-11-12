@@ -127,6 +127,13 @@
       "when": 1794515148608,
       "tag": "0017_20261112_ministry_groups_venue_email_config",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794521675108,
+      "tag": "0018_20261112_lockout-banner-pct-abbrev",
+      "breakpoints": true
     }
   ]
 }

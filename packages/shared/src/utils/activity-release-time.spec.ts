@@ -98,7 +98,7 @@ describe('getActivityReleaseTimePreview', () => {
     });
     expect(result?.kind).toBe('preview');
     if (result?.kind === 'preview') {
-      expect(result.label).toMatch(/2:45 pm PT, Fri Mar 13/);
+      expect(result.label).toMatch(/2:45 pm PCT, Fri Mar 13/);
     }
   });
 
@@ -125,7 +125,7 @@ describe('getActivityReleaseTimePreview', () => {
       })
     ).toEqual({
       kind: 'preview',
-      label: '2:45 pm PT, Date TBD',
+      label: '2:45 pm PCT, Date TBD',
     });
   });
 
@@ -149,13 +149,13 @@ describe('getActivityReleaseTimePreview', () => {
     });
     expect(result?.kind).toBe('preview');
     if (result?.kind === 'preview') {
-      expect(result.label).toMatch(/1:00 am PT, Fri Mar 13/);
+      expect(result.label).toMatch(/1:00 am PCT, Fri Mar 13/);
     }
   });
 });
 
 describe('formatReleaseTimePreviewTriggerClock', () => {
-  it('extracts clock without PT or date suffix', () => {
+  it('extracts clock without PCT or date suffix', () => {
     const preview = getActivityReleaseTimePreview({
       releaseTimeOffsetMinutes: 15,
       startDate: '2026-03-13',
@@ -163,6 +163,15 @@ describe('formatReleaseTimePreviewTriggerClock', () => {
       isAllDay: false,
     });
     expect(formatReleaseTimePreviewTriggerClock(preview)).toBe('2:45 pm');
+  });
+
+  it('strips legacy PT abbrev from stored preview labels', () => {
+    expect(
+      formatReleaseTimePreviewTriggerClock({
+        kind: 'preview',
+        label: '2:45 pm PT, Fri Mar 13',
+      })
+    ).toBe('2:45 pm');
   });
 
   it('returns null for hints', () => {

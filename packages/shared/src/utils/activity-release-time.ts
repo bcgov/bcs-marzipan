@@ -287,7 +287,7 @@ export function formatReleaseTimePreviewTriggerClock(
   const commaIdx = preview.label.indexOf(',');
   const timePart =
     commaIdx >= 0 ? preview.label.slice(0, commaIdx) : preview.label;
-  const withoutPt = timePart.replace(/\s+PT$/i, '').trim();
+  const withoutPt = timePart.replace(/\s+(PT|PCT)$/i, '').trim();
   return withoutPt.length > 0 ? withoutPt : null;
 }
 

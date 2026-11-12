@@ -11,10 +11,10 @@ import {
 import { users } from './user';
 
 const DEFAULT_RECURRING_LOCKOUT_LEAD_CONTENT =
-  'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT. Please make updates before lockout begins.';
+  'Updates to activities will be locked <lockStartTime> - <lockEndTime> PCT. Please make updates before lockout begins.';
 
 const DEFAULT_RECURRING_LOCKOUT_ACTIVE_CONTENT =
-  'Updates to activities are locked out until <lockEndTime> PT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.';
+  'Updates to activities are locked out until <lockEndTime> PCT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.';
 
 export const recurringLockoutBannerSettings = pgTable(
   'recurring_lockout_banner_settings',
