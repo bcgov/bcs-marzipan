@@ -753,7 +753,7 @@ Returns active languages by default. Admins with `lookups.manage` can pass `incl
 
 **Permission:** `lookups.manage`
 
-**Body:** `name` (required), `displayName` (required), `shortcode` (optional BCP 47 tag, e.g. `fr`, `zh-Hans`), `sortOrder` (required), `isActive` (default true), `description`.
+**Body:** `name` (required), `displayName` (required), `shortcode` (required BCP 47 tag, e.g. `fr`, `zh-Hans`), `sortOrder` (required), `isActive` (default true), `description`.
 
 ---
 

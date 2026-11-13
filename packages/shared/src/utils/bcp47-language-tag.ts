@@ -1,3 +1,18 @@
+/** Max length for `translated_languages.shortcode` (varchar). */
+export const BCP47_LANGUAGE_TAG_MAX_LENGTH = 15;
+
+/**
+ * Validates admin/API input for a BCP 47 language tag (language + optional subtags).
+ * Accepts common tags used in CorpCal (e.g. fr, ar, zh-Hans, en-US).
+ */
+export function isPlausibleBcp47LanguageTag(tag: string): boolean {
+  const trimmed = tag.trim();
+  if (!trimmed || trimmed.length > BCP47_LANGUAGE_TAG_MAX_LENGTH) {
+    return false;
+  }
+  return /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/.test(trimmed);
+}
+
 /**
  * Normalize a BCP 47 language tag for case-insensitive comparison.
  * Language subtag lowercased; script subtag title-cased (e.g. zh-Hans).

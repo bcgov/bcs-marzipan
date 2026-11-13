@@ -456,6 +456,9 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
     if (typeof processedData.displayName === 'string') {
       processedData.displayName = processedData.displayName.trim();
     }
+    if (typeof processedData.shortcode === 'string') {
+      processedData.shortcode = processedData.shortcode.trim();
+    }
 
     // Default display name from name when left empty (API schemas require both)
     const nameStr =
