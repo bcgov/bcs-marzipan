@@ -15,4 +15,10 @@ describe('newsReleaseOriginReportLine', () => {
       'Fed'
     );
   });
+
+  it('maps local government release to Local gov', () => {
+    expect(
+      newsReleaseOriginReportLine(NEWS_RELEASE_ORIGIN_IDS.localGovernment)
+    ).toBe('Local gov');
+  });
 });

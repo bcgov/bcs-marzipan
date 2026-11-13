@@ -13,7 +13,7 @@ const REPORT_LINE_BY_ORIGIN_NAME: Record<string, string> = {
   [NEWS_RELEASE_ORIGIN_NAMES.ministryRelease]: 'BCGov',
   [NEWS_RELEASE_ORIGIN_NAMES.jointMinistry3rdParty]: 'Joint',
   [NEWS_RELEASE_ORIGIN_NAMES.jointMinistryFederal]: 'Joint',
-  [NEWS_RELEASE_ORIGIN_NAMES.localGovernment]: 'Local government',
+  [NEWS_RELEASE_ORIGIN_NAMES.localGovernment]: 'Local gov',
   [NEWS_RELEASE_ORIGIN_NAMES.thirdParty]: '3rd party',
   [NEWS_RELEASE_ORIGIN_NAMES.federal]: 'Fed',
 };
@@ -23,7 +23,7 @@ const REPORT_LINE_BY_ID: Record<number, string> = {
   [NEWS_RELEASE_ORIGIN_IDS.ministryRelease]: 'BCGov',
   [NEWS_RELEASE_ORIGIN_IDS.jointMinistry3rdParty]: 'Joint',
   [NEWS_RELEASE_ORIGIN_IDS.jointMinistryFederal]: 'Joint',
-  [NEWS_RELEASE_ORIGIN_IDS.localGovernment]: 'Local government',
+  [NEWS_RELEASE_ORIGIN_IDS.localGovernment]: 'Local gov',
   [NEWS_RELEASE_ORIGIN_IDS.thirdParty]: '3rd party',
   [NEWS_RELEASE_ORIGIN_IDS.federal]: 'Fed',
 };

@@ -7,6 +7,7 @@ import {
 import type {
   ActivityTeamSharingResponse,
   DateStatusLookupItem,
+  ExtendedLookupItem,
   ReportResponse,
   TimeStatusLookupItem,
   TranslationRequiredStatusLookupItem,
@@ -159,7 +160,7 @@ export function usePremierRequested() {
 }
 
 export function useNewsReleaseOrigins() {
-  return useQuery<LookupItem[]>({
+  return useQuery<ExtendedLookupItem[]>({
     queryKey: lookupQueryKeys.newsReleaseOrigins(),
     queryFn: () => fetchNewsReleaseOrigins(),
     staleTime: REFERENCE_LOOKUP_CACHE_MS,

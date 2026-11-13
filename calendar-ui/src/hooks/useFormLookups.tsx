@@ -6,6 +6,10 @@ import type {
   TranslationRequiredStatusLookupItem,
   VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
+import {
+  organizationJurisdictionSchema,
+  type OrganizationJurisdiction,
+} from '@corpcal/shared/schemas';
 import type { OptionItem } from '@/schemas/types';
 
 import {
@@ -29,6 +33,14 @@ import {
   useVenueStatuses,
 } from './useLookups';
 
+function parseOrganizationJurisdiction(
+  value: string | null | undefined
+): OrganizationJurisdiction | null {
+  if (value == null) return null;
+  const parsed = organizationJurisdictionSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
 export interface FormLookupData {
   // Categories - for Badge components
   categories: Array<{
@@ -46,7 +58,7 @@ export interface FormLookupData {
     organizationTypeId?: number | null;
     organizationTypeDisplayName?: string | null;
     organizationTypeSortOrder?: number | null;
-    jurisdiction?: string | null;
+    jurisdiction?: OrganizationJurisdiction | null;
     abbreviation?: string | null;
     name?: string;
     displayName?: string;
@@ -237,7 +249,7 @@ export function useFormLookups(): FormLookupData {
         organizationTypeId: item.organizationTypeId,
         organizationTypeDisplayName: item.organizationTypeDisplayName,
         organizationTypeSortOrder: item.organizationTypeSortOrder,
-        jurisdiction: item.jurisdiction ?? null,
+        jurisdiction: parseOrganizationJurisdiction(item.jurisdiction),
         abbreviation: item.abbreviation ?? null,
         name: item.name,
         displayName: item.displayName ?? item.label,
