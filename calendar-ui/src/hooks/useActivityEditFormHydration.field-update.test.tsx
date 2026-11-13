@@ -32,6 +32,7 @@ const mockLookups: FormLookupData = {
   newsReleaseDistributions: [{ value: '2', label: 'A' }],
   premierRequested: [{ value: '3', label: 'B' }],
   newsReleaseOrigins: [{ value: '4', label: 'C' }],
+  newsReleaseOriginLookups: [],
   sharedWithTeams: [],
   quickShareGroups: [],
   dateStatuses: [],

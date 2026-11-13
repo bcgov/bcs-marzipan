@@ -21,6 +21,34 @@ function leadAndJoints(organizations: readonly OrganizationDetail[]): {
   return { lead, joints };
 }
 
+/** Placeholders from lookup `display_name` (e.g. "Joint ministry / 3rd party release"). */
+function jointOriginLabelPlaceholders(displayName: string): {
+  lead: string;
+  joint: string;
+} {
+  const trimmed = displayName.trim();
+  const jointPrefix = 'Joint ';
+  if (!trimmed.startsWith(jointPrefix)) {
+    return { lead: trimmed, joint: trimmed };
+  }
+  const slash = trimmed.indexOf(' / ');
+  if (slash === -1) {
+    return {
+      lead: trimmed.slice(jointPrefix.length).trim() || trimmed,
+      joint: trimmed,
+    };
+  }
+  const lead = trimmed.slice(jointPrefix.length, slash).trim();
+  const afterSlash = trimmed
+    .slice(slash + 3)
+    .replace(/\s+release$/i, '')
+    .trim();
+  return {
+    lead: lead || trimmed,
+    joint: afterSlash || trimmed,
+  };
+}
+
 /**
  * Legacy-style dynamic label for the origin select (per lookup row + orgs).
  */
@@ -40,9 +68,12 @@ export function formatNewsReleaseOriginFormLabel(
     }
     case NEWS_RELEASE_ORIGIN_NAMES.jointMinistry3rdParty:
     case NEWS_RELEASE_ORIGIN_NAMES.jointMinistryFederal: {
-      const leadToken = lead ? organizationDetailToken(lead) : '—';
+      const { lead: leadPlaceholder, joint: jointPlaceholder } =
+        jointOriginLabelPlaceholders(origin.displayName);
+      const leadToken = lead ? organizationDetailToken(lead) : leadPlaceholder;
       const jointTokens = joints.map((j) => organizationDetailToken(j));
-      const jointPart = jointTokens.length > 0 ? jointTokens.join(' / ') : '—';
+      const jointPart =
+        jointTokens.length > 0 ? jointTokens.join(' / ') : jointPlaceholder;
       return `Joint ${leadToken} / ${jointPart} release`;
     }
     case NEWS_RELEASE_ORIGIN_NAMES.thirdParty: {
