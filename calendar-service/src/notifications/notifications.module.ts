@@ -7,6 +7,7 @@ import { LocksModule } from '../locks/locks.module';
 import { ActivityReminderJobService } from './activity-reminder-job.service';
 import { ActivityReminderSettingsController } from './activity-reminder-settings.controller';
 import { NotificationEmailService } from './notification-email.service';
+import { NotificationPreferencesService } from './notification-preferences.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 
@@ -21,6 +22,7 @@ import { NotificationsService } from './notifications.service';
   providers: [
     NotificationsService,
     NotificationEmailService,
+    NotificationPreferencesService,
     ActivityReminderJobService,
   ],
   exports: [NotificationsService],
