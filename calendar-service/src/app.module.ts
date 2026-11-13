@@ -18,6 +18,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
 import { DatabaseModule } from './database/database.module';
 import { DraftsModule } from './drafts/drafts.module';
 import { FavouritesModule } from './favourites/favourites.module';
+import { LegacyActivitiesModule } from './legacy-activities/legacy-activities.module';
 import { LocksModule } from './locks/locks.module';
 import { LoginModalModule } from './login-modal/login-modal.module';
 import { LookAheadResetModule } from './look-ahead-reset/look-ahead-reset.module';
@@ -60,6 +61,7 @@ function resolveRootEnvPath(): string {
     LoginModalModule,
     ActivitiesModule,
     ActivityCompletionModule,
+    LegacyActivitiesModule,
     LookAheadResetModule,
     LocksModule,
     LookupsModule,
