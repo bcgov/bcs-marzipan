@@ -641,8 +641,7 @@ Returns active materials for the activity form. Pass `includeAll=true` (requires
         "name": "news_release",
         "displayName": "News release",
         "audience": "public",
-        "allowsTranslation": true,
-        "requiresNewsReleaseDetails": true
+        "allowsTranslation": true
       }
     }
   ]
@@ -692,8 +691,7 @@ Authenticated read for form and admin lists. Active rows only unless `includeAll
       "label": "News release",
       "value": 1,
       "audience": "public",
-      "allowsTranslation": true,
-      "requiresNewsReleaseDetails": true
+      "allowsTranslation": true
     }
   ]
 }
@@ -707,7 +705,7 @@ Authenticated read for form and admin lists. Active rows only unless `includeAll
 
 **Permission:** `lookups.manage.release_types`
 
-**Body:** `name`, `displayName`, `sortOrder`, `isActive`, `description`, `audience` (`media` | `public`), `allowsTranslation`, `requiresNewsReleaseDetails`.
+**Body:** `name`, `displayName`, `sortOrder`, `isActive`, `description`, `audience` (`media` | `public`), `allowsTranslation`.
 
 ---
 

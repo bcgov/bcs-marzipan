@@ -391,7 +391,6 @@ export class ActivitiesService {
         id: commsMaterials.id,
         audience: releaseTypes.audience,
         allowsTranslation: releaseTypes.allowsTranslation,
-        requiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
       })
       .from(commsMaterials)
       .leftJoin(releaseTypes, eq(commsMaterials.releaseTypeId, releaseTypes.id))
@@ -405,7 +404,6 @@ export class ActivitiesService {
       map.set(row.id, {
         audience: row.audience as 'media' | 'public',
         allowsTranslation: row.allowsTranslation ?? false,
-        requiresNewsReleaseDetails: row.requiresNewsReleaseDetails ?? false,
         isReleaseType: true,
       });
     }

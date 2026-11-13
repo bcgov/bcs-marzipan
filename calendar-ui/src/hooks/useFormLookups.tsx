@@ -100,7 +100,6 @@ export interface FormLookupData {
     releaseType?: {
       audience: 'media' | 'public';
       allowsTranslation: boolean;
-      requiresNewsReleaseDetails: boolean;
     } | null;
   }>;
 

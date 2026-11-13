@@ -60,7 +60,6 @@ type CommsMaterialOption = {
   releaseType?: {
     audience: 'media' | 'public';
     allowsTranslation: boolean;
-    requiresNewsReleaseDetails: boolean;
   } | null;
 };
 
@@ -423,8 +422,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
       {selectedFlags.showReleaseTime ? <ActivityReleaseTimeField /> : null}
 
       {selectedFlags.hasReleaseTypeComms ? (
-        <div className="space-y-6 rounded-md border border-gray-300 p-6">
-          <p className="font-bold text-slate-800">Release details</p>
+        <>
           <OptionalLookupSelectField
             control={form.control}
             name="newsReleaseOriginId"
@@ -513,7 +511,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
               />
             </>
           ) : null}
-        </div>
+        </>
       ) : null}
     </ActivityFormSection>
   );
