@@ -11,9 +11,11 @@ import {
 } from '@/hooks/useActivityTableCore';
 
 import { ActivityBulkSelectHeader } from './ActivityBulkSelectHeader';
+import { ActivityColumnVisibilityMenu } from './ActivityColumnVisibilityMenu';
 import {
   GRID_A_COLUMN_ORDER,
   GRID_A_COLUMN_WIDTHS,
+  GRID_A_HIDEABLE_COLUMNS,
   gridColumnSize,
 } from './activityGridDefaults';
 import { ActivityGridTable } from './ActivityGridTable';
@@ -216,16 +218,47 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
     ]
   );
 
-  const { table, columnOrder, draggableColumnIds, moveColumn } =
-    useActivityGridColumnTable({
-      columns,
-      defaultColumnOrder,
-      core,
-      layoutPreferences,
-    });
+  const {
+    table,
+    columnOrder,
+    columnVisibility,
+    toggleColumnVisibility,
+    draggableColumnIds,
+    moveColumn,
+  } = useActivityGridColumnTable({
+    columns,
+    defaultColumnOrder,
+    core,
+    layoutPreferences,
+  });
+
+  const columnOptions = useMemo(
+    () => [
+      {
+        id: 'overview',
+        label: 'Overview',
+        visible: true,
+        disabled: true,
+      },
+      ...GRID_A_HIDEABLE_COLUMNS.map(({ id, label }) => ({
+        id,
+        label,
+        visible: columnVisibility[id] !== false,
+      })),
+    ],
+    [columnVisibility]
+  );
 
   return (
-    <ActivityTableFrame core={core}>
+    <ActivityTableFrame
+      core={core}
+      columnsMenu={
+        <ActivityColumnVisibilityMenu
+          options={columnOptions}
+          onToggle={toggleColumnVisibility}
+        />
+      }
+    >
       <ActivityGridTable
         table={table}
         columnOrder={columnOrder}
