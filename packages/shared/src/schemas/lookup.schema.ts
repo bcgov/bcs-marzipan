@@ -5,6 +5,10 @@ import {
   REPRESENTATIVE_TYPE,
   VISIBILITY,
 } from '../constants/constants';
+import {
+  BCP47_LANGUAGE_TAG_MAX_LENGTH,
+  isPlausibleBcp47LanguageTag,
+} from '../utils/bcp47-language-tag';
 import { venueAddressSchema } from './activity.schema';
 import {
   LOOKUP_SORT_MODES,
@@ -861,13 +865,22 @@ export const createReleaseTypeRequestSchema = z.object({
 export const updateReleaseTypeRequestSchema =
   createReleaseTypeRequestSchema.partial();
 
+const translationLanguageShortcodeSchema = z
+  .string()
+  .trim()
+  .min(1, 'Shortcode is required')
+  .max(BCP47_LANGUAGE_TAG_MAX_LENGTH)
+  .refine(isPlausibleBcp47LanguageTag, {
+    message: 'Shortcode must be a valid BCP 47 language tag (e.g. fr, zh-Hans)',
+  });
+
 /**
  * Create Translation Language Request Schema
  */
 export const createTranslationLanguageRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  shortcode: z.string().max(15).nullable().optional(),
+  shortcode: translationLanguageShortcodeSchema,
   sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().optional(),
   description: z.string().nullable().optional(),
