@@ -1,5 +1,9 @@
+import type { ReleaseSchedulingMode } from '../constants/constants';
 import type { ActivityFormData } from '../schemas/activity.schema';
-import { activityNeedsReleaseTimeField } from './activity-release-time';
+import {
+  activityNeedsReleaseTimeField,
+  DEFAULT_RELEASE_TIME_OFFSET_MINUTES,
+} from './activity-release-time';
 
 /** Release-type workflow flags for a comms material (from lookup API). */
 export type CommsMaterialReleaseFlags = {
@@ -30,6 +34,43 @@ export function needsReleaseTimeDetails(
   flagsById: CommsMaterialReleaseFlagsById | undefined
 ): boolean {
   return activityNeedsReleaseTimeField(commsMaterialIds, flagsById);
+}
+
+export type ReleaseTimeDefaultWhenCommsEnables = {
+  releaseSchedulingMode: 'relative';
+  releaseTimeOffsetMinutes: number;
+};
+
+/**
+ * When public comms newly requires release time and scheduling is unset, default to +15 minutes.
+ */
+export function applyReleaseTimeDefaultWhenCommsEnablesRelease(
+  previousCommsMaterialIds: number[] | undefined,
+  nextCommsMaterialIds: number[] | undefined,
+  flagsById: CommsMaterialReleaseFlagsById,
+  releaseSchedulingMode: ReleaseSchedulingMode | null | undefined,
+  releaseTimeOffsetMinutes: number | null | undefined
+): ReleaseTimeDefaultWhenCommsEnables | null {
+  const prevIds = previousCommsMaterialIds ?? [];
+  const nextIds = nextCommsMaterialIds ?? [];
+  const prevNeeds = needsReleaseTimeDetails(prevIds, flagsById);
+  const nextNeeds = needsReleaseTimeDetails(nextIds, flagsById);
+  if (prevNeeds || !nextNeeds) {
+    return null;
+  }
+  if (releaseSchedulingMode !== null && releaseSchedulingMode !== undefined) {
+    return null;
+  }
+  if (
+    releaseTimeOffsetMinutes !== null &&
+    releaseTimeOffsetMinutes !== undefined
+  ) {
+    return null;
+  }
+  return {
+    releaseSchedulingMode: 'relative',
+    releaseTimeOffsetMinutes: DEFAULT_RELEASE_TIME_OFFSET_MINUTES,
+  };
 }
 
 /**

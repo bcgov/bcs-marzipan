@@ -36,7 +36,7 @@ describe('startLockoutCountdownToast', () => {
     });
 
     expect(toastMock.warning).toHaveBeenCalledWith(
-      expect.stringContaining('Activity editing will be locked at 2:00 pm PT'),
+      expect.stringContaining('Activity editing will be locked at 2:00 pm PCT'),
       expect.objectContaining({
         description: 'Unsaved changes will be lost in 1 minute.',
         duration: Infinity,
@@ -67,7 +67,7 @@ describe('showLockoutChangesDiscardedToast', () => {
       'Unsaved changes discarded',
       expect.objectContaining({
         id: 'lockout-discarded-9',
-        description: expect.stringContaining('4:00 pm PT'),
+        description: expect.stringContaining('4:00 pm PCT'),
       })
     );
   });

@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -5,15 +6,18 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
   applyReleaseSchedulingRadioChange,
   customPartsToReleaseTimeOffsetMinutes,
+  formatReleaseTimePreviewTriggerClock,
   getActivityReleaseTimePreview,
   getReleaseTimeOffsetMaxAmountForUnit,
   RELEASE_SCHEDULING_RADIO_CUSTOM,
   RELEASE_SCHEDULING_RADIO_NOT_SPECIFIED,
   RELEASE_SCHEDULING_RADIO_ON_SIGNAL,
   RELEASE_TIME_OFFSET_CUSTOM_UNITS,
+  RELEASE_TIME_ON_SIGNAL_PREVIEW_MESSAGE,
   releaseSchedulingRadioValueFromFields,
   releaseTimeOffsetMinutesToCustomParts,
   releaseTimeOffsetMinutesToCustomPartsForUnit,
+  type ReleaseSchedulingRadioValue,
   type ReleaseTimeOffsetCustomUnit,
 } from '@corpcal/shared/utils';
 import {
@@ -32,9 +36,8 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from '@/components/ui/input-group';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { filterPopoverMenuItemClass } from '@/components/users/filterPopoverMenuItemClasses';
 import { getActivityFieldLabel } from '@/lib/activity-form-labels';
 import { setActivityFormFieldValue } from '@/lib/activity-form-set-field';
 import { cn } from '@/lib/utils';
@@ -43,14 +46,19 @@ import { ActivityFieldScopePermissionTooltip } from '../activity-field-scope-per
 import { ActivityFieldInfoIcon } from '../activity-info-icon-settings-context';
 import { useActivityFieldScopeControl } from '../use-activity-field-scope-control';
 
-const RELEASE_SCHEDULING_RADIO_OPTIONS = [
-  { value: RELEASE_SCHEDULING_RADIO_NOT_SPECIFIED, label: 'Not specified' },
-  { value: '0', label: 'At start' },
-  { value: '15', label: '+15 minutes' },
-  { value: '30', label: '+30 minutes' },
-  { value: RELEASE_SCHEDULING_RADIO_CUSTOM, label: 'Custom' },
+const RELEASE_SCHEDULING_SELECT_OPTIONS = [
+  { value: '0', label: 'At start time' },
+  { value: '15', label: '15 minutes after' },
   { value: RELEASE_SCHEDULING_RADIO_ON_SIGNAL, label: 'On signal' },
+  { value: RELEASE_SCHEDULING_RADIO_CUSTOM, label: 'Custom' },
 ] as const;
+
+const RELEASE_SCHEDULING_SELECT_LABELS: Record<string, string> = {
+  '0': 'At start time',
+  '15': '15 minutes after',
+  [RELEASE_SCHEDULING_RADIO_ON_SIGNAL]: 'On signal',
+  [RELEASE_SCHEDULING_RADIO_CUSTOM]: 'Custom',
+};
 
 const RELEASE_TIME_OFFSET_UNIT_LABELS: Record<
   ReleaseTimeOffsetCustomUnit,
@@ -60,6 +68,9 @@ const RELEASE_TIME_OFFSET_UNIT_LABELS: Record<
   hours: 'Hours',
   days: 'Days',
 };
+
+const RELEASE_TIME_FIELD_SUPPORT =
+  'Release time is relative to start date and time.';
 
 type CustomOffsetDraft = {
   amount: string;
@@ -99,6 +110,77 @@ function resolveCustomDraftOffsetMinutes(
   return customPartsToReleaseTimeOffsetMinutes(parsed, draft.unit);
 }
 
+function schedulingSelectValueFromDerived(
+  derived: ReleaseSchedulingRadioValue
+): string {
+  if (derived === RELEASE_SCHEDULING_RADIO_NOT_SPECIFIED) {
+    return '';
+  }
+  return derived;
+}
+
+const RELEASE_SCHEDULING_OPTION_OFFSET_MINUTES: Partial<
+  Record<string, number>
+> = {
+  '0': 0,
+  '15': 15,
+};
+
+function releasePreviewClockForOffsetMinutes(
+  minutes: number,
+  schedule: {
+    startDate: string | null | undefined;
+    startTime: string | null | undefined;
+    isAllDay: boolean;
+  }
+): string | null {
+  return formatReleaseTimePreviewTriggerClock(
+    getActivityReleaseTimePreview({
+      releaseSchedulingMode: 'relative',
+      releaseTimeOffsetMinutes: minutes,
+      startDate: schedule.startDate ?? null,
+      startTime: schedule.startTime ?? null,
+      isAllDay: schedule.isAllDay,
+    })
+  );
+}
+
+function ReleaseSchedulingOptionMenuLabel({
+  primaryLabel,
+  previewClock,
+}: {
+  primaryLabel: string;
+  previewClock: string | null;
+}) {
+  if (!previewClock) {
+    return <span>{primaryLabel}</span>;
+  }
+  return (
+    <span className="flex w-full min-w-0 items-center justify-between gap-3">
+      <span className="truncate">{primaryLabel}</span>
+      <span className="text-muted-foreground shrink-0">{previewClock}</span>
+    </span>
+  );
+}
+
+function ReleaseSchedulingSelectTriggerLabel({
+  primaryLabel,
+  previewClock,
+}: {
+  primaryLabel: string;
+  previewClock: string | null;
+}) {
+  if (!previewClock) {
+    return <span>{primaryLabel}</span>;
+  }
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="truncate">{primaryLabel}</span>
+      <span className="text-muted-foreground truncate">{previewClock}</span>
+    </span>
+  );
+}
+
 export function ActivityReleaseTimeField() {
   const form = useFormContext<ActivityFormData>();
   const releaseScope = useActivityFieldScopeControl('releaseTime');
@@ -114,13 +196,19 @@ export function ActivityReleaseTimeField() {
   const startTime = useWatch({ control: form.control, name: 'startTime' });
   const isAllDay = useWatch({ control: form.control, name: 'isAllDay' });
 
-  const radioValue = releaseSchedulingRadioValueFromFields(
+  const derivedSchedulingValue = releaseSchedulingRadioValueFromFields(
     schedulingMode ?? null,
     offsetValue ?? null
   );
 
+  const [customSelectPinned, setCustomSelectPinned] = useState(false);
+
+  const selectValue = customSelectPinned
+    ? RELEASE_SCHEDULING_RADIO_CUSTOM
+    : schedulingSelectValueFromDerived(derivedSchedulingValue);
+
   const showCustomOffsetInput =
-    radioValue === RELEASE_SCHEDULING_RADIO_CUSTOM &&
+    selectValue === RELEASE_SCHEDULING_RADIO_CUSTOM &&
     schedulingMode !== 'on_signal';
 
   const [customDraft, setCustomDraft] =
@@ -157,15 +245,71 @@ export function ActivityReleaseTimeField() {
     [schedulingMode, offsetValue, startDate, startTime, isAllDay]
   );
 
-  const helperText = releasePreview
-    ? releasePreview.kind === 'preview'
-      ? releasePreview.label
-      : releasePreview.message
-    : null;
+  const schedulePreviewContext = useMemo(
+    () => ({
+      startDate: startDate ?? null,
+      startTime: startTime ?? null,
+      isAllDay: !!isAllDay,
+    }),
+    [startDate, startTime, isAllDay]
+  );
+
+  const previewClock =
+    schedulingMode === 'on_signal'
+      ? null
+      : formatReleaseTimePreviewTriggerClock(releasePreview);
+
+  const customOffsetPreviewClock = useMemo(() => {
+    const minutes = resolveCustomDraftOffsetMinutes(offsetValue, customDraft);
+    if (minutes === null) {
+      return null;
+    }
+    return releasePreviewClockForOffsetMinutes(minutes, schedulePreviewContext);
+  }, [offsetValue, customDraft, schedulePreviewContext]);
+
+  const triggerPreviewClock =
+    selectValue === RELEASE_SCHEDULING_RADIO_CUSTOM
+      ? customOffsetPreviewClock
+      : selectValue === RELEASE_SCHEDULING_RADIO_ON_SIGNAL
+        ? RELEASE_TIME_ON_SIGNAL_PREVIEW_MESSAGE
+        : previewClock;
+
+  const optionPreviewClockByValue = useMemo(() => {
+    const clocks: Partial<Record<string, string | null>> = {
+      [RELEASE_SCHEDULING_RADIO_ON_SIGNAL]:
+        RELEASE_TIME_ON_SIGNAL_PREVIEW_MESSAGE,
+    };
+    for (const [value, minutes] of Object.entries(
+      RELEASE_SCHEDULING_OPTION_OFFSET_MINUTES
+    )) {
+      if (minutes === undefined) continue;
+      clocks[value] = releasePreviewClockForOffsetMinutes(
+        minutes,
+        schedulePreviewContext
+      );
+    }
+    return clocks;
+  }, [schedulePreviewContext]);
+
+  const hintMessage =
+    schedulingMode === 'on_signal'
+      ? null
+      : releasePreview?.kind === 'hint'
+        ? releasePreview.message
+        : null;
 
   const customMaxAmount = getReleaseTimeOffsetMaxAmountForUnit(
     customDraft.unit
   );
+
+  const hasSchedulingValue =
+    (schedulingMode !== null && schedulingMode !== undefined) ||
+    (offsetValue !== null && offsetValue !== undefined);
+
+  const canClear =
+    hasSchedulingValue &&
+    !releaseScope.readOnly &&
+    !releaseScope.fieldScopeDisabled;
 
   const applySchedulingFields = (update: {
     releaseSchedulingMode: ActivityFormData['releaseSchedulingMode'];
@@ -181,6 +325,15 @@ export function ActivityReleaseTimeField() {
       'releaseTimeOffsetMinutes',
       update.releaseTimeOffsetMinutes ?? null
     );
+  };
+
+  const handleClear = () => {
+    setCustomSelectPinned(false);
+    setCustomDraft(EMPTY_CUSTOM_DRAFT);
+    applySchedulingFields({
+      releaseSchedulingMode: null,
+      releaseTimeOffsetMinutes: null,
+    });
   };
 
   const applyCustomDraft = (nextDraft: CustomOffsetDraft) => {
@@ -240,6 +393,12 @@ export function ActivityReleaseTimeField() {
     }
   };
 
+  const primaryTriggerLabel = selectValue
+    ? (RELEASE_SCHEDULING_SELECT_LABELS[selectValue] ?? 'Custom')
+    : '';
+
+  const fieldLabel = getActivityFieldLabel('releaseTimeOffsetMinutes');
+
   return (
     <FormField
       control={form.control}
@@ -248,7 +407,7 @@ export function ActivityReleaseTimeField() {
         <FormItem>
           <FormLabel>
             <>
-              {getActivityFieldLabel('releaseTimeOffsetMinutes')}
+              {fieldLabel}
               <ActivityFieldInfoIcon
                 fieldKey="releaseTimeOffsetMinutes"
                 ariaLabel="About release time"
@@ -256,113 +415,162 @@ export function ActivityReleaseTimeField() {
             </>
           </FormLabel>
           <ActivityFieldScopePermissionTooltip scope="releaseTime">
-            <div className="space-y-3">
-              <FormControl data-field="releaseSchedulingMode">
-                <RadioGroup
-                  readOnly={releaseScope.readOnly}
-                  disabled={releaseScope.fieldScopeDisabled}
-                  value={radioValue}
-                  onValueChange={(value) => {
-                    const next = applyReleaseSchedulingRadioChange(value);
-                    if (value === RELEASE_SCHEDULING_RADIO_CUSTOM) {
-                      setCustomDraft(customDraftFromOffset(offsetValue));
-                    } else {
-                      setCustomDraft(EMPTY_CUSTOM_DRAFT);
-                    }
-                    applySchedulingFields(next);
-                  }}
-                  className="flex flex-row flex-wrap gap-x-4 gap-y-2"
+            <div className="space-y-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                <div
+                  className={cn(
+                    'min-w-0 transition-[flex-grow,flex-basis,max-width] duration-200 ease-out motion-reduce:transition-none',
+                    showCustomOffsetInput ? 'sm:flex-[0_0_50%]' : 'sm:flex-1'
+                  )}
                 >
-                  {RELEASE_SCHEDULING_RADIO_OPTIONS.map((option) => (
-                    <div
-                      key={option.value || 'not-specified'}
-                      className="flex items-center gap-2"
-                    >
-                      <RadioGroupItem
-                        value={option.value}
-                        id={`release-scheduling-${option.value || 'not-specified'}`}
-                      />
-                      <Label
-                        htmlFor={`release-scheduling-${option.value || 'not-specified'}`}
-                        className="cursor-pointer font-normal"
-                      >
-                        {option.label}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </FormControl>
-
-              {showCustomOffsetInput ? (
-                <div className="space-y-1.5">
-                  <FormControl data-field="releaseTimeOffsetMinutes">
-                    <InputGroup
-                      data-disabled={
-                        releaseScope.fieldScopeDisabled ? true : undefined
-                      }
-                      className={cn(
-                        releaseScope.fieldScopeDisabled &&
-                          'pointer-events-none opacity-50'
+                  <FormControl data-field="releaseSchedulingMode">
+                    <FormSelectSafe
+                      readOnly={releaseScope.readOnly}
+                      disabled={releaseScope.fieldScopeDisabled}
+                      optionValues={RELEASE_SCHEDULING_SELECT_OPTIONS.map(
+                        (o) => o.value
                       )}
+                      value={selectValue}
+                      onValueChange={(value) => {
+                        if (value === RELEASE_SCHEDULING_RADIO_CUSTOM) {
+                          setCustomSelectPinned(true);
+                          setCustomDraft(customDraftFromOffset(offsetValue));
+                        } else {
+                          setCustomSelectPinned(false);
+                          setCustomDraft(EMPTY_CUSTOM_DRAFT);
+                        }
+                        applySchedulingFields(
+                          applyReleaseSchedulingRadioChange(value)
+                        );
+                      }}
                     >
-                      <InputGroupInput
-                        type="number"
-                        min={0}
-                        max={customMaxAmount}
-                        step={1}
-                        readOnly={releaseScope.readOnly}
-                        disabled={releaseScope.fieldScopeDisabled}
-                        aria-label="Custom offset amount after scheduled start"
-                        placeholder="Amount"
-                        value={customDraft.amount}
-                        onChange={(e) => {
-                          applyCustomDraft({
-                            ...customDraft,
-                            amount: e.target.value,
-                          });
-                        }}
-                      />
-                      <InputGroupAddon align="inline-end" className="pr-1">
-                        <FormSelectSafe
+                      <FormSelectTrigger
+                        readOnly={
+                          releaseScope.readOnly &&
+                          !releaseScope.fieldScopeDisabled
+                        }
+                        className="w-full"
+                      >
+                        <SelectValue placeholder="Not specified">
+                          {selectValue ? (
+                            <ReleaseSchedulingSelectTriggerLabel
+                              primaryLabel={primaryTriggerLabel}
+                              previewClock={triggerPreviewClock}
+                            />
+                          ) : null}
+                        </SelectValue>
+                      </FormSelectTrigger>
+                      <SelectContent
+                        footer={
+                          canClear ? (
+                            <>
+                              <div className="border-t" />
+                              <button
+                                type="button"
+                                className={cn(
+                                  'text-muted-foreground flex w-full items-center gap-2 border-0 px-3 py-2 text-sm',
+                                  filterPopoverMenuItemClass,
+                                  'rounded-none focus-visible:rounded-none'
+                                )}
+                                aria-label={`Clear ${fieldLabel}`}
+                                onPointerDown={(event) =>
+                                  event.preventDefault()
+                                }
+                                onClick={handleClear}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                                Clear
+                              </button>
+                            </>
+                          ) : undefined
+                        }
+                      >
+                        {RELEASE_SCHEDULING_SELECT_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <ReleaseSchedulingOptionMenuLabel
+                              primaryLabel={option.label}
+                              previewClock={
+                                optionPreviewClockByValue[option.value] ?? null
+                              }
+                            />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </FormSelectSafe>
+                  </FormControl>
+                </div>
+
+                {showCustomOffsetInput ? (
+                  <div className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-left-1 min-w-0 duration-200 sm:flex-[0_0_50%]">
+                    <FormControl data-field="releaseTimeOffsetMinutes">
+                      <InputGroup
+                        data-disabled={
+                          releaseScope.fieldScopeDisabled ? true : undefined
+                        }
+                        className={cn(
+                          releaseScope.fieldScopeDisabled &&
+                            'pointer-events-none opacity-50'
+                        )}
+                      >
+                        <InputGroupInput
+                          type="number"
+                          min={0}
+                          max={customMaxAmount}
+                          step={1}
                           readOnly={releaseScope.readOnly}
                           disabled={releaseScope.fieldScopeDisabled}
-                          optionValues={[...RELEASE_TIME_OFFSET_CUSTOM_UNITS]}
-                          value={customDraft.unit}
-                          onValueChange={(unit) => {
-                            applyCustomUnitChange(
-                              unit as ReleaseTimeOffsetCustomUnit
-                            );
+                          aria-label="Custom offset amount after scheduled start"
+                          placeholder="Set time"
+                          value={customDraft.amount}
+                          onChange={(e) => {
+                            applyCustomDraft({
+                              ...customDraft,
+                              amount: e.target.value,
+                            });
                           }}
-                        >
-                          <FormSelectTrigger
-                            readOnly={
-                              releaseScope.readOnly &&
-                              !releaseScope.fieldScopeDisabled
-                            }
-                            className="h-8 w-29 border-0 bg-transparent shadow-none focus:ring-0"
-                            aria-label="Custom offset unit"
+                        />
+                        <InputGroupAddon align="inline-end" className="pr-1">
+                          <FormSelectSafe
+                            readOnly={releaseScope.readOnly}
+                            disabled={releaseScope.fieldScopeDisabled}
+                            optionValues={[...RELEASE_TIME_OFFSET_CUSTOM_UNITS]}
+                            value={customDraft.unit}
+                            onValueChange={(unit) => {
+                              applyCustomUnitChange(
+                                unit as ReleaseTimeOffsetCustomUnit
+                              );
+                            }}
                           >
-                            <SelectValue />
-                          </FormSelectTrigger>
-                          <SelectContent align="end">
-                            {RELEASE_TIME_OFFSET_CUSTOM_UNITS.map((unit) => (
-                              <SelectItem key={unit} value={unit}>
-                                {RELEASE_TIME_OFFSET_UNIT_LABELS[unit]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </FormSelectSafe>
-                      </InputGroupAddon>
-                    </InputGroup>
-                  </FormControl>
-                  <p className="text-muted-foreground text-xs">
-                    After scheduled start (max 7 days)
-                  </p>
-                </div>
-              ) : null}
+                            <FormSelectTrigger
+                              readOnly={
+                                releaseScope.readOnly &&
+                                !releaseScope.fieldScopeDisabled
+                              }
+                              className="h-8 w-29 border-0 bg-transparent shadow-none focus:ring-0"
+                              aria-label="Custom offset unit"
+                            >
+                              <SelectValue />
+                            </FormSelectTrigger>
+                            <SelectContent align="end">
+                              {RELEASE_TIME_OFFSET_CUSTOM_UNITS.map((unit) => (
+                                <SelectItem key={unit} value={unit}>
+                                  {RELEASE_TIME_OFFSET_UNIT_LABELS[unit]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </FormSelectSafe>
+                        </InputGroupAddon>
+                      </InputGroup>
+                    </FormControl>
+                  </div>
+                ) : null}
+              </div>
 
-              {helperText ? (
-                <p className="text-muted-foreground text-sm">{helperText}</p>
+              <p className="text-muted-foreground text-xs">
+                {RELEASE_TIME_FIELD_SUPPORT}
+              </p>
+              {hintMessage ? (
+                <p className="text-muted-foreground text-sm">{hintMessage}</p>
               ) : null}
             </div>
           </ActivityFieldScopePermissionTooltip>

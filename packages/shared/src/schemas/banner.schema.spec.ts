@@ -61,9 +61,9 @@ function validRecurringBannerBody(overrides: Record<string, unknown> = {}) {
   return {
     isActive: true,
     leadContent:
-      'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.',
+      'Updates to activities will be locked <lockStartTime> - <lockEndTime> PCT.',
     activeContent:
-      'Updates to activities are locked out until <lockEndTime> PT. Contact <report_look_ahead_cover_contact_email>.',
+      'Updates to activities are locked out until <lockEndTime> PCT. Contact <report_look_ahead_cover_contact_email>.',
     backgroundColor: '#E6A635',
     textColor: '#000000',
     variant: 'warning',

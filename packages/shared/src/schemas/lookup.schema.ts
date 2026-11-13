@@ -5,6 +5,10 @@ import {
   REPRESENTATIVE_TYPE,
   VISIBILITY,
 } from '../constants/constants';
+import {
+  BCP47_LANGUAGE_TAG_MAX_LENGTH,
+  isPlausibleBcp47LanguageTag,
+} from '../utils/bcp47-language-tag';
 import { venueAddressSchema } from './activity.schema';
 import {
   LOOKUP_SORT_MODES,
@@ -347,7 +351,7 @@ export const timeStatusLookupItemSchema = lookupItemSchema.extend({
 
 /**
  * Translation Required Status Response Schema
- * Values: pending, required, not_required
+ * Values: tbd, required (implicit when languages set), no_translations
  */
 export const translationRequiredStatusResponseSchema = z.object({
   id: z.number().int(),
@@ -488,7 +492,7 @@ export const commsMaterialsLookupItemSchema = lookupItemSchema.extend({
 /**
  * Translation Language Response Schema
  * Fields from the translated_languages table exposed via API.
- * shortcode: internal language code when set.
+ * shortcode: BCP 47 language tag when set.
  */
 export const translationLanguageResponseSchema = z.object({
   id: z.number().int(),
@@ -502,7 +506,7 @@ export const translationLanguageResponseSchema = z.object({
 
 /**
  * Translation Language Lookup Item Schema.
- * shortcode: internal language code when set.
+ * shortcode: BCP 47 language tag when set.
  */
 export const translationLanguageLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -861,13 +865,22 @@ export const createReleaseTypeRequestSchema = z.object({
 export const updateReleaseTypeRequestSchema =
   createReleaseTypeRequestSchema.partial();
 
+const translationLanguageShortcodeSchema = z
+  .string()
+  .trim()
+  .min(1, 'Shortcode is required')
+  .max(BCP47_LANGUAGE_TAG_MAX_LENGTH)
+  .refine(isPlausibleBcp47LanguageTag, {
+    message: 'Shortcode must be a valid BCP 47 language tag (e.g. fr, zh-Hans)',
+  });
+
 /**
  * Create Translation Language Request Schema
  */
 export const createTranslationLanguageRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  shortcode: z.string().max(15).nullable().optional(),
+  shortcode: translationLanguageShortcodeSchema,
   sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().optional(),
   description: z.string().nullable().optional(),

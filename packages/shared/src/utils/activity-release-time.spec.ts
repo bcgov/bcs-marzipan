@@ -4,6 +4,7 @@ import {
   computeActivityReleaseTimeInstant,
   customPartsToReleaseTimeOffsetMinutes,
   formatReleaseTimeOffsetLabel,
+  formatReleaseTimePreviewTriggerClock,
   getActivityReleaseTimePreview,
   getReleaseTimeOffsetMaxAmountForUnit,
   isValidCustomReleaseTimeOffsetAmount,
@@ -36,6 +37,15 @@ describe('computeActivityReleaseTimeInstant', () => {
       computeActivityReleaseTimeInstant({
         ...confirmedTimed,
         dateStatusName: 'tbd',
+      })
+    ).toBeNull();
+  });
+
+  it('returns null when date is tentative', () => {
+    expect(
+      computeActivityReleaseTimeInstant({
+        ...confirmedTimed,
+        dateStatusName: 'tentative',
       })
     ).toBeNull();
   });
@@ -88,7 +98,7 @@ describe('getActivityReleaseTimePreview', () => {
     });
     expect(result?.kind).toBe('preview');
     if (result?.kind === 'preview') {
-      expect(result.label).toMatch(/2:45 pm PT, Fri Mar 13/);
+      expect(result.label).toMatch(/2:45 pm PCT, Fri Mar 13/);
     }
   });
 
@@ -115,7 +125,7 @@ describe('getActivityReleaseTimePreview', () => {
       })
     ).toEqual({
       kind: 'preview',
-      label: '2:45 pm PT, Date TBD',
+      label: '2:45 pm PCT, Date TBD',
     });
   });
 
@@ -139,8 +149,38 @@ describe('getActivityReleaseTimePreview', () => {
     });
     expect(result?.kind).toBe('preview');
     if (result?.kind === 'preview') {
-      expect(result.label).toMatch(/1:00 am PT, Fri Mar 13/);
+      expect(result.label).toMatch(/1:00 am PCT, Fri Mar 13/);
     }
+  });
+});
+
+describe('formatReleaseTimePreviewTriggerClock', () => {
+  it('extracts clock without PCT or date suffix', () => {
+    const preview = getActivityReleaseTimePreview({
+      releaseTimeOffsetMinutes: 15,
+      startDate: '2026-03-13',
+      startTime: '14:30',
+      isAllDay: false,
+    });
+    expect(formatReleaseTimePreviewTriggerClock(preview)).toBe('2:45 pm');
+  });
+
+  it('strips legacy PT abbrev from stored preview labels', () => {
+    expect(
+      formatReleaseTimePreviewTriggerClock({
+        kind: 'preview',
+        label: '2:45 pm PT, Fri Mar 13',
+      })
+    ).toBe('2:45 pm');
+  });
+
+  it('returns null for hints', () => {
+    expect(
+      formatReleaseTimePreviewTriggerClock({
+        kind: 'hint',
+        message: 'Start date required',
+      })
+    ).toBeNull();
   });
 });
 

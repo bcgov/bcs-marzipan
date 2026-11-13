@@ -37,7 +37,7 @@ import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import { buildPayloadForCreate } from '../lib/activity-form-payload';
-import { resolveTranslationRequiredStatusId } from '../lib/activity-form-translation-required';
+import { resolveTranslationStatusLookupIds } from '../lib/activity-form-translation-required';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import {
@@ -121,9 +121,9 @@ export const CreateActivityForm: FC = () => {
       schema: createActivityRequestSchema,
     });
 
-  const requiredTranslationStatusId = useMemo(
+  const translationStatusLookupIds = useMemo(
     () =>
-      resolveTranslationRequiredStatusId(lookups.translationRequiredStatuses),
+      resolveTranslationStatusLookupIds(lookups.translationRequiredStatuses),
     [lookups.translationRequiredStatuses]
   );
   const commsMaterialReleaseFlagsById = useMemo(
@@ -167,7 +167,7 @@ export const CreateActivityForm: FC = () => {
       const formValues = form.getValues();
       const submitData = buildPayloadForCreate(validatedData, formValues, {
         markAsReviewed: canReviewActivities ? markAsReviewed : undefined,
-        requiredTranslationStatusId,
+        translationStatusLookupIds,
         commsMaterialReleaseFlagsById,
       });
       const payload = {

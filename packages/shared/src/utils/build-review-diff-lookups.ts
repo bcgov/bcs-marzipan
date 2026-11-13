@@ -1,4 +1,5 @@
 import type { MapResponseToFormDataLookups } from './activity-form-mapper';
+import { normalizeLanguageTagForCompare } from './bcp47-language-tag';
 
 /** Minimal row shape for name-to-ID resolution (categories, comms materials, teams). */
 export interface NameIdRow {
@@ -7,7 +8,7 @@ export interface NameIdRow {
   displayName?: string | null;
 }
 
-/** Extended row shape for translation languages (also matches by shortcode). */
+/** Extended row shape for translation languages (also matches by BCP 47 shortcode). */
 export interface TranslationLanguageRow extends NameIdRow {
   shortcode?: string | null;
 }
@@ -53,7 +54,9 @@ export function buildReviewDiffLookups(
       const key = normalizeForMatch(value);
       return rows.translationLanguages.find(
         (l) =>
-          (l.shortcode != null && normalizeForMatch(l.shortcode) === key) ||
+          (l.shortcode != null &&
+            normalizeLanguageTagForCompare(l.shortcode) ===
+              normalizeLanguageTagForCompare(value)) ||
           normalizeForMatch(l.name) === key ||
           (l.displayName != null && normalizeForMatch(l.displayName) === key)
       )?.id;

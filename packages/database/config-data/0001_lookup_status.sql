@@ -48,13 +48,14 @@ END $$;
 
 -- ============================================================================
 -- DATE STATUSES
--- Canonical active values: tbd, confirmed
+-- Canonical active values: tbd, tentative, confirmed
 -- ============================================================================
 
 INSERT INTO date_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
   ('tbd', 'Date TBD', 1, true, 'Date is to be determined', 999, 999),
-  ('confirmed', 'Confirmed', 2, true, 'Date is confirmed', 999, 999)
+  ('tentative', 'Tentative', 2, true, 'Date is tentatively scheduled', 999, 999),
+  ('confirmed', 'Confirmed', 3, true, 'Date is confirmed', 999, 999)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM date_statuses WHERE date_statuses.name = v.name);
 
@@ -67,8 +68,17 @@ UPDATE date_statuses SET
 WHERE name = 'tbd';
 
 UPDATE date_statuses SET
-  display_name = 'Confirmed',
+  display_name = 'Tentative',
   sort_order = 2,
+  is_active = true,
+  description = 'Date is tentatively scheduled',
+  last_updated_by = 999,
+  last_updated_date_time = now()
+WHERE name = 'tentative';
+
+UPDATE date_statuses SET
+  display_name = 'Confirmed',
+  sort_order = 3,
   is_active = true,
   last_updated_by = 999,
   last_updated_date_time = now()
@@ -78,17 +88,18 @@ UPDATE date_statuses SET
   is_active = false,
   last_updated_by = 999,
   last_updated_date_time = now()
-WHERE name IN ('not_confirmed', 'tentative');
+WHERE name = 'not_confirmed';
 
 -- ============================================================================
 -- TIME STATUSES
--- Canonical active values: tbd, confirmed
+-- Canonical active values: tbd, tentative, confirmed
 -- ============================================================================
 
 INSERT INTO time_statuses (name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 SELECT * FROM (VALUES
   ('tbd', 'Time TBD', 1, true, 'Time is to be determined', 999, 999),
-  ('confirmed', 'Confirmed', 2, true, 'Time is confirmed', 999, 999)
+  ('tentative', 'Tentative', 2, true, 'Time is tentatively scheduled', 999, 999),
+  ('confirmed', 'Confirmed', 3, true, 'Time is confirmed', 999, 999)
 ) AS v(name, display_name, sort_order, is_active, description, created_by, last_updated_by)
 WHERE NOT EXISTS (SELECT 1 FROM time_statuses WHERE time_statuses.name = v.name);
 
@@ -101,8 +112,17 @@ UPDATE time_statuses SET
 WHERE name = 'tbd';
 
 UPDATE time_statuses SET
-  display_name = 'Confirmed',
+  display_name = 'Tentative',
   sort_order = 2,
+  is_active = true,
+  description = 'Time is tentatively scheduled',
+  last_updated_by = 999,
+  last_updated_date_time = now()
+WHERE name = 'tentative';
+
+UPDATE time_statuses SET
+  display_name = 'Confirmed',
+  sort_order = 3,
   is_active = true,
   last_updated_by = 999,
   last_updated_date_time = now()
@@ -112,7 +132,7 @@ UPDATE time_statuses SET
   is_active = false,
   last_updated_by = 999,
   last_updated_date_time = now()
-WHERE name IN ('not_confirmed', 'tentative');
+WHERE name = 'not_confirmed';
 
 -- ============================================================================
 -- VENUE STATUSES
@@ -126,14 +146,15 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM venue_statuses WHERE venue_statuses.name = v.name);
 
 -- ============================================================================
--- TRANSLATION REQUIRED STATUSES (tbd, required, not_required)
--- Canonical (id, name): 1=tbd, 2=required, 3=not_required
+-- TRANSLATION REQUIRED STATUSES (tbd, required, no_translations)
+-- Canonical (id, name): 1=tbd, 2=required, 3=no_translations
+-- "required" is set implicitly when translation languages are selected.
 -- ============================================================================
 INSERT INTO translation_required_statuses (id, name, display_name, sort_order, is_active, created_by, last_updated_by)
 VALUES
-  (1, 'tbd', 'TBD', 1, true, 999, 999),
+  (1, 'tbd', 'Translations TBD', 1, true, 999, 999),
   (2, 'required', 'Required', 2, true, 999, 999),
-  (3, 'not_required', 'Not required', 3, true, 999, 999)
+  (3, 'no_translations', 'No translations', 3, true, 999, 999)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -248,36 +269,44 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- ============================================================================
 -- TRANSLATED LANGUAGES
--- Languages for translations. shortcode values are internal language codes.
+-- Languages for translations. shortcode values are BCP 47 language tags.
 -- ============================================================================
 
 INSERT INTO translated_languages (id, name, display_name, shortcode, sort_order, is_active, description, created_by, last_updated_by)
 VALUES
-  (1, 'arabic', 'Arabic', 'AR', 1, true, 'Arabic', 999, 999),
-  (2, 'chinese simplified', 'Chinese (Simplified)', 'SC', 2, true, 'Chinese (Simplified)', 999, 999),
-  (3, 'chinese traditional', 'Chinese (Traditional)', 'TC', 3, true, 'Chinese (Traditional)', 999, 999),
-  (4, 'dutch', 'Dutch', 'DUT', 4, true, 'Dutch', 999, 999),
-  (5, 'farsi', 'Farsi', 'FAR', 5, true, 'Farsi', 999, 999),
-  (6, 'finnish', 'Finnish', 'FIN', 6, true, 'Finnish', 999, 999),
-  (7, 'french', 'French', 'FR', 7, true, 'French', 999, 999),
-  (8, 'gujarati', 'Gujarati', 'GUJ', 8, true, 'Gujarati', 999, 999),
-  (9, 'hebrew', 'Hebrew', 'HE', 9, true, 'Hebrew', 999, 999),
-  (10, 'hindi', 'Hindi', 'HI', 10, true, 'Hindi', 999, 999),
-  (11, 'indonesian', 'Indonesian', 'IND', 11, true, 'Indonesian', 999, 999),
-  (12, 'italian', 'Italian', 'IT', 12, true, 'Italian', 999, 999),
-  (13, 'japanese', 'Japanese', 'JP', 13, true, 'Japanese', 999, 999),
-  (14, 'korean', 'Korean', 'KO', 14, true, 'Korean', 999, 999),
-  (15, 'portuguese', 'Portuguese', 'POR', 15, true, 'Portuguese', 999, 999),
-  (16, 'punjabi', 'Punjabi', 'PUN', 16, true, 'Punjabi', 999, 999),
-  (17, 'russian', 'Russian', 'RU', 17, true, 'Russian', 999, 999),
-  (18, 'somali', 'Somali', 'SOM', 18, true, 'Somali', 999, 999),
-  (19, 'spanish', 'Spanish', 'SPA', 19, true, 'Spanish', 999, 999),
-  (20, 'swahili', 'Swahili', 'SWA', 20, true, 'Swahili', 999, 999),
-  (21, 'tagalog', 'Tagalog', 'TL', 21, true, 'Tagalog', 999, 999),
-  (22, 'ukrainian', 'Ukrainian', 'UKR', 22, true, 'Ukrainian', 999, 999),
-  (23, 'urdu', 'Urdu', 'URD', 23, true, 'Urdu', 999, 999),
-  (24, 'vietnamese', 'Vietnamese', 'VN', 24, true, 'Vietnamese', 999, 999)
-ON CONFLICT (id) DO NOTHING;
+  (1, 'arabic', 'Arabic', 'ar', 1, true, 'Arabic', 999, 999),
+  (2, 'chinese simplified', 'Chinese (Simplified)', 'zh-Hans', 2, true, 'Simplified Chinese', 999, 999),
+  (3, 'chinese traditional', 'Chinese (Traditional)', 'zh-Hant', 3, true, 'Traditional Chinese', 999, 999),
+  (4, 'dutch', 'Dutch', 'nl', 4, true, 'Dutch', 999, 999),
+  (5, 'farsi', 'Farsi', 'fa', 5, true, 'Farsi', 999, 999),
+  (6, 'finnish', 'Finnish', 'fi', 6, true, 'Finnish', 999, 999),
+  (7, 'french', 'French', 'fr', 7, true, 'French', 999, 999),
+  (8, 'gujarati', 'Gujarati', 'gu', 8, true, 'Gujarati', 999, 999),
+  (9, 'hebrew', 'Hebrew', 'he', 9, true, 'Hebrew', 999, 999),
+  (10, 'hindi', 'Hindi', 'hi', 10, true, 'Hindi', 999, 999),
+  (11, 'indonesian', 'Indonesian', 'id', 11, true, 'Indonesian', 999, 999),
+  (12, 'italian', 'Italian', 'it', 12, true, 'Italian', 999, 999),
+  (13, 'japanese', 'Japanese', 'ja', 13, true, 'Japanese', 999, 999),
+  (14, 'korean', 'Korean', 'ko', 14, true, 'Korean', 999, 999),
+  (15, 'portuguese', 'Portuguese', 'pt', 15, true, 'Portuguese', 999, 999),
+  (16, 'punjabi', 'Punjabi', 'pa', 16, true, 'Punjabi', 999, 999),
+  (17, 'russian', 'Russian', 'ru', 17, true, 'Russian', 999, 999),
+  (18, 'somali', 'Somali', 'so', 18, true, 'Somali', 999, 999),
+  (19, 'spanish', 'Spanish', 'es', 19, true, 'Spanish', 999, 999),
+  (20, 'swahili', 'Swahili', 'sw', 20, true, 'Swahili', 999, 999),
+  (21, 'tagalog', 'Tagalog', 'tl', 21, true, 'Tagalog', 999, 999),
+  (22, 'ukrainian', 'Ukrainian', 'uk', 22, true, 'Ukrainian', 999, 999),
+  (23, 'urdu', 'Urdu', 'ur', 23, true, 'Urdu', 999, 999),
+  (24, 'vietnamese', 'Vietnamese', 'vi', 24, true, 'Vietnamese', 999, 999)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  shortcode = EXCLUDED.shortcode,
+  sort_order = EXCLUDED.sort_order,
+  is_active = EXCLUDED.is_active,
+  description = EXCLUDED.description,
+  last_updated_by = EXCLUDED.last_updated_by,
+  last_updated_date_time = now();
 
 -- ============================================================================
 -- CITIES

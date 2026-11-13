@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { formatLanguageTagForDisplay } from '@corpcal/shared';
 import type { LeadTeamFilterOption } from '@/components/activity/ActivityTable/LeadTeamFilterPanel';
 import {
   useActivityStatuses,
@@ -122,7 +123,7 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
     () =>
       translationLanguagesForFilter.map((l) => {
         const displayLabel = l.shortcode
-          ? `${l.displayName} (${l.shortcode.toUpperCase()})`
+          ? `${l.displayName} (${formatLanguageTagForDisplay(l.shortcode)})`
           : (l.displayName ?? String(l.id));
         return { value: String(l.id), label: displayLabel };
       }),
@@ -131,10 +132,12 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
 
   const translationStatusOptions = useMemo(
     () =>
-      translationRequiredStatusesForFilter.map((s) => ({
-        value: String(s.id),
-        label: s.displayName ?? s.name ?? String(s.id),
-      })),
+      translationRequiredStatusesForFilter
+        .filter((s) => s.name !== 'required')
+        .map((s) => ({
+          value: String(s.id),
+          label: s.displayName ?? s.name ?? String(s.id),
+        })),
     [translationRequiredStatusesForFilter]
   );
 

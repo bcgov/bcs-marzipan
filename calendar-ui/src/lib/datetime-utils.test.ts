@@ -168,7 +168,7 @@ describe('formatActivityEndDateTimeLabel', () => {
 
   it('formats timed end with date, time, and Pacific abbrev', () => {
     expect(formatActivityEndDateTimeLabel('2026-04-10', '14:30', false)).toBe(
-      'Apr 10, 2026 at 2:30 pm PT'
+      'Apr 10, 2026 at 2:30 pm PCT'
     );
   });
 
@@ -308,16 +308,16 @@ describe('corp Pacific instant formatting', () => {
   // 2026-04-27 15:30 UTC == 2026-04-27 08:30 Pacific (UTC-7).
   const INSTANT = '2026-04-27T15:30:00.000Z';
 
-  it('formatInstantInPacific renders Pacific date and time with PT suffix', () => {
-    expect(formatInstantInPacific(INSTANT)).toBe('Apr 27, 2026 8:30 am PT');
+  it('formatInstantInPacific renders Pacific date and time with PCT suffix', () => {
+    expect(formatInstantInPacific(INSTANT)).toBe('Apr 27, 2026 8:30 am PCT');
   });
 
   it('formatInstantPacificDate renders the Pacific calendar day only', () => {
     expect(formatInstantPacificDate(INSTANT)).toBe('Apr 27, 2026');
   });
 
-  it('formatInstantPacificTime renders the Pacific civil time only with PT', () => {
-    expect(formatInstantPacificTime(INSTANT)).toBe('8:30 am PT');
+  it('formatInstantPacificTime renders the Pacific civil time only with PCT', () => {
+    expect(formatInstantPacificTime(INSTANT)).toBe('8:30 am PCT');
   });
 
   it('formatLongDate accepts a timeZone option for instants', () => {
@@ -340,7 +340,7 @@ describe('corp Pacific instant formatting', () => {
         timeZone: CORP_PACIFIC_TIME_ZONE,
         appendPacificTimeAbbrev: true,
       })
-    ).toBe('Apr 27, 2026 at 8:30 am PT');
+    ).toBe('Apr 27, 2026 at 8:30 am PCT');
   });
 
   it('formatExactDate accepts a timeZone option for instants', () => {
@@ -451,7 +451,7 @@ describe('Pacific history grouping / filters', () => {
         )
       ).toEqual({
         dateLine: 'Today',
-        timeLine: '3:00 am PT',
+        timeLine: '3:00 am PCT',
       });
     });
   });

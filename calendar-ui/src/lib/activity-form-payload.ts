@@ -2,6 +2,7 @@ import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
   prepareActivityFormDataForSubmit,
   type CommsMaterialReleaseFlagsById,
+  type TranslationStatusLookupIds,
 } from '@corpcal/shared/utils';
 
 function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
@@ -10,8 +11,7 @@ function toUndefinedIfEmpty<T>(arr: T[] | undefined): T[] | undefined {
 }
 
 export type ActivityFormPayloadOptions = {
-  /** Lookup ID for translation_required_statuses.name === 'required'. */
-  requiredTranslationStatusId?: number;
+  translationStatusLookupIds?: TranslationStatusLookupIds;
   commsMaterialReleaseFlagsById?: CommsMaterialReleaseFlagsById;
 };
 
@@ -90,7 +90,7 @@ function prepareForSubmit(
   options?: ActivityFormPayloadOptions
 ): ActivityFormData {
   return prepareActivityFormDataForSubmit(data, {
-    requiredTranslationStatusId: options?.requiredTranslationStatusId,
+    translationStatusLookupIds: options?.translationStatusLookupIds,
     commsMaterialReleaseFlagsById: options?.commsMaterialReleaseFlagsById,
   });
 }
