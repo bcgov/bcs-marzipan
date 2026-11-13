@@ -52,6 +52,8 @@ export interface UseActivityFormSetupOptions {
 
 export interface ActivityFormSetupResult {
   form: UseFormReturn<ActivityFormData>;
+  /** Same Zod schema used by the RHF resolver (includes scheduling lookup refinements). */
+  resolverSchema: ReturnType<typeof createActivityRequestSchemaWithLookups>;
   lookups: FormLookupData;
   leadTeamOptions: TeamListItem[];
   leadTeamOptionsError: boolean;
@@ -201,6 +203,7 @@ export function useActivityFormSetup({
 
   return {
     form,
+    resolverSchema: formSchema,
     lookups,
     leadTeamOptions,
     leadTeamOptionsError,

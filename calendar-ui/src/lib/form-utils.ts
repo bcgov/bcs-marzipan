@@ -1,7 +1,9 @@
 import type { FieldErrors, FieldValues, FormState } from 'react-hook-form';
 
 import {
+  getZodIssueKind,
   isZodMissingRequiredIssue,
+  type ZodIssueKind,
   type ZodIssueLike,
 } from '@corpcal/shared/validation';
 
@@ -328,4 +330,122 @@ export function formatMissingRequiredFieldsCountMessage(
   return count === 1
     ? '1 more required field'
     : `${count} more required fields`;
+}
+
+function formatZodIssuePath(path: ReadonlyArray<PropertyKey>): string {
+  return path
+    .filter(
+      (segment): segment is string | number =>
+        typeof segment === 'string' || typeof segment === 'number'
+    )
+    .join('.');
+}
+
+/** Flat RHF `FieldErrors` for console logging (paths + messages, no form values). */
+export function summarizeFieldErrorsForLog<TFieldValues extends FieldValues>(
+  errors: FieldErrors<TFieldValues>
+): Array<{ path: string; message: string; type?: string }> {
+  const out: Array<{ path: string; message: string; type?: string }> = [];
+
+  const walk = (node: unknown, path: string) => {
+    if (!node || typeof node !== 'object') {
+      return;
+    }
+
+    if (
+      'message' in node &&
+      typeof (node as { message?: unknown }).message === 'string'
+    ) {
+      const field = node as { message: string; type?: string };
+      out.push({ path, message: field.message, type: field.type });
+      return;
+    }
+
+    for (const key of Object.keys(node)) {
+      walk(
+        (node as Record<string, unknown>)[key],
+        path ? `${path}.${key}` : key
+      );
+    }
+  };
+
+  walk(errors, '');
+  return out;
+}
+
+/** Zod `safeParse` issues for console logging (paths, codes, required vs constraint). */
+export function summarizeZodIssuesForLog(error: {
+  issues: ReadonlyArray<ZodIssueLike>;
+}): Array<{
+  path: string;
+  message: string;
+  code?: string;
+  issueKind?: ZodIssueKind;
+}> {
+  return error.issues.map((issue) => ({
+    path: formatZodIssuePath(issue.path),
+    message:
+      typeof issue.message === 'string'
+        ? issue.message
+        : issue.message == null
+          ? ''
+          : JSON.stringify(issue.message),
+    code: issue.code,
+    issueKind: getZodIssueKind(issue),
+  }));
+}
+
+export type ActivityFormValidationFailureLog = {
+  rhfFieldErrors: Array<{ path: string; message: string; type?: string }>;
+  resolverIssues: Array<{
+    path: string;
+    message: string;
+    code?: string;
+    issueKind?: ZodIssueKind;
+  }>;
+  /** Present when comparing resolver vs sticky-bar `safeParse` schemas. */
+  stickyBarIssues?: Array<{
+    path: string;
+    message: string;
+    code?: string;
+    issueKind?: ZodIssueKind;
+  }>;
+};
+
+type ActivityFormZodParseSchema = {
+  safeParse: (
+    data: unknown
+  ) =>
+    | { success: true }
+    | { success: false; error: { issues: ReadonlyArray<ZodIssueLike> } };
+};
+
+/**
+ * Structured validation context for activity create/edit submit failures.
+ * Pass the result to `logger.error` alongside the message (no PII / field values).
+ */
+export function buildActivityFormValidationFailureLog(
+  errors: FieldErrors<FieldValues>,
+  values: unknown,
+  resolverSchema: ActivityFormZodParseSchema,
+  stickyBarSchema?: ActivityFormZodParseSchema
+): ActivityFormValidationFailureLog {
+  const resolverParse = resolverSchema.safeParse(values);
+  const resolverIssues = resolverParse.success
+    ? []
+    : summarizeZodIssuesForLog(resolverParse.error);
+
+  let stickyBarIssues: ActivityFormValidationFailureLog['stickyBarIssues'];
+  if (stickyBarSchema) {
+    const stickyParse = stickyBarSchema.safeParse(values);
+    stickyBarIssues = stickyParse.success
+      ? []
+      : summarizeZodIssuesForLog(stickyParse.error);
+  }
+
+  return {
+    rhfFieldErrors: summarizeFieldErrorsForLog(errors),
+    resolverIssues,
+    stickyBarIssues,
+  };
 }
