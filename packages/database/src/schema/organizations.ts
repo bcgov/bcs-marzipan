@@ -20,6 +20,7 @@ export const ORGANIZATION_JURISDICTIONS = [
   'bcgov',
   'federal',
   'provincial',
+  'local_government',
   'other',
 ] as const;
 
@@ -45,7 +46,7 @@ export const organizations = pgTable(
     organizationTypeId: integer('organization_type_id').references(
       () => organizationTypes.id
     ),
-    /** bcgov | federal | provincial | other */
+    /** bcgov | federal | provincial | local_government | other */
     jurisdiction: varchar('jurisdiction', { length: 50 }),
     isActive: boolean('is_active').notNull().default(true),
     sortOrder: integer('sort_order').notNull().default(0),

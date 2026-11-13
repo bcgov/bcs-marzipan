@@ -20,6 +20,7 @@ import {
   newsReleaseOrigins,
   organizations,
   premierRequested,
+  releaseTypes,
   tags,
   teams,
   timeStatuses,
@@ -30,6 +31,7 @@ import {
   venueStatuses,
 } from '@corpcal/database/schema';
 import type {
+  CommsMaterialReleaseSummary,
   EventPlannerDetail,
   OrganizationDetail,
 } from '@corpcal/shared/schemas';
@@ -612,6 +614,59 @@ export class ActivityDataFetcherService {
   }
 
   /**
+   * Sister-app release types selected on activities (for Look Ahead release column).
+   */
+  async fetchCommsMaterialReleasesForActivities(
+    activityIds: number[]
+  ): Promise<Map<number, CommsMaterialReleaseSummary[]>> {
+    if (activityIds.length === 0) {
+      return new Map();
+    }
+
+    const results = await this.databaseService.db
+      .select({
+        activityId: activityCommsMaterials.activityId,
+        releaseTypeId: releaseTypes.id,
+        reportAbbrev: releaseTypes.reportAbbreviation,
+        reportSortOrder: releaseTypes.reportSortOrder,
+        allowsTranslation: releaseTypes.allowsTranslation,
+      })
+      .from(activityCommsMaterials)
+      .innerJoin(
+        commsMaterials,
+        eq(activityCommsMaterials.commsMaterialId, commsMaterials.id)
+      )
+      .innerJoin(
+        releaseTypes,
+        eq(commsMaterials.releaseTypeId, releaseTypes.id)
+      )
+      .where(
+        and(
+          inArray(activityCommsMaterials.activityId, activityIds),
+          eq(activityCommsMaterials.isActive, true),
+          eq(commsMaterials.isActive, true),
+          eq(releaseTypes.isActive, true)
+        )
+      );
+
+    const map = new Map<number, CommsMaterialReleaseSummary[]>();
+    for (const row of results) {
+      if (row.releaseTypeId == null) continue;
+      const abbrev = row.reportAbbrev?.trim() ?? '';
+      if (!abbrev) continue;
+      const list = map.get(row.activityId) ?? [];
+      list.push({
+        releaseTypeId: row.releaseTypeId,
+        reportAbbrev: abbrev,
+        reportSortOrder: row.reportSortOrder ?? 0,
+        allowsTranslation: row.allowsTranslation ?? false,
+      });
+      map.set(row.activityId, list);
+    }
+    return map;
+  }
+
+  /**
    * Fetch translation languages for multiple activities
    */
   async fetchTranslationsRequiredForActivities(
@@ -841,6 +896,8 @@ export class ActivityDataFetcherService {
         displayName: organizations.displayName,
         orgName: organizations.name,
         orgAbbreviation: organizations.abbreviation,
+        jurisdiction: organizations.jurisdiction,
+        organizationTypeId: organizations.organizationTypeId,
       })
       .from(activityOrganizations)
       .leftJoin(
@@ -875,6 +932,8 @@ export class ActivityDataFetcherService {
         name,
         abbreviation,
         isLead: row.isLead ?? false,
+        jurisdiction: row.jurisdiction as OrganizationDetail['jurisdiction'],
+        organizationTypeId: row.organizationTypeId ?? null,
       });
       map.set(row.activityId, list);
     }

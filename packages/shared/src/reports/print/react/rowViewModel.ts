@@ -1,4 +1,6 @@
 import { pacificDayKey } from '../../../datetime';
+import { newsReleaseOriginReportLine } from '../../../news-release-origin/news-release-origin-report-line';
+import { formatLookAheadReleaseTypesLine } from '../../../releases/format-look-ahead-release-types';
 import type { ActivityListItem } from '../../../schemas/activity-list-item.schema';
 import { isActivityRichTextEffectivelyEmpty } from '../../../utils/activity-rich-text';
 import { trimTrailingSlashes } from '../../../utils/trimTrailingSlashes';
@@ -89,14 +91,19 @@ export function splitActivityDisplayIdForPrint(label: string): {
 }
 
 export interface ReleaseBlock {
-  newsReleaseOrigin: string | null;
+  /** Short report origin token (BCGov, Fed, …). */
+  originLine: string | null;
+  /** Sister-app release type abbrevs (max 2 +N). */
+  releaseTypesLine: string;
   /**
-   * Release column text after the optional {@link newsReleaseOrigin} line.
+   * Release column text after origin and types.
    * Look Ahead / Exec / 30/60/90: language display names or `TBD` / `none` /
    * `N translations` — no `Translations:` prefix (Languages icon in {@link PrintRow}).
    * Other variants: full {@link buildTranslationsLine} string including `Translations:`.
    */
   translationsLine: string;
+  /** @deprecated Use {@link originLine}. Kept for custom report paths during migration. */
+  newsReleaseOrigin: string | null;
 }
 
 /** Look Ahead print: pending review with no languages — shown with Languages icon in UI. */
@@ -183,23 +190,22 @@ export function buildTranslationsLine(
   return `Translations: ${translations.length} languages`;
 }
 
-function activityCategoryIncludesRelease(activity: ActivityListItem): boolean {
-  return Array.isArray(activity.category)
-    ? activity.category.some((c) => norm(c) === 'release')
-    : false;
+function activityAllowsTranslationReleaseComms(
+  activity: ActivityListItem
+): boolean {
+  return (
+    activity.commsMaterialReleases?.some((r) => r.allowsTranslation) ?? false
+  );
 }
 
 /**
- * Look Ahead / Exec Look Ahead: show a translations line only for release-style
- * activities (Release category and/or news release origin).
+ * Look Ahead / Exec Look Ahead: show translations when a release-type comms
+ * material allows translation.
  */
 export function lookAheadShowsTranslationsLine(
   activity: ActivityListItem
 ): boolean {
-  return (
-    activityCategoryIncludesRelease(activity) ||
-    toNonEmpty(activity.newsReleaseOrigin) !== null
-  );
+  return activityAllowsTranslationReleaseComms(activity);
 }
 
 function isTranslationsPendingReviewDisplay(
@@ -436,7 +442,17 @@ export function toPrintRowViewModel(
     schedulingNotesStored: toNonEmpty(activity.schedulingNotes),
     premierRequested: toNonEmpty(activity.premierRequested),
     release: {
-      newsReleaseOrigin: toNonEmpty(activity.newsReleaseOrigin),
+      originLine: newsReleaseOriginReportLine(
+        activity.newsReleaseOriginId,
+        activity.newsReleaseOrigin
+      ),
+      releaseTypesLine: formatLookAheadReleaseTypesLine(
+        activity.commsMaterialReleases
+      ),
+      newsReleaseOrigin: newsReleaseOriginReportLine(
+        activity.newsReleaseOriginId,
+        activity.newsReleaseOrigin
+      ),
       translationsLine:
         options.variant === 'planning'
           ? ''

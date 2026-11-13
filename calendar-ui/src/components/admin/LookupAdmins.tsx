@@ -83,6 +83,8 @@ type CommsMaterial = LookupItem & {
 type ReleaseType = LookupItem & {
   name?: string;
   displayName?: string | null;
+  reportAbbreviation?: string | null;
+  reportSortOrder?: number;
   audience?: 'media' | 'public';
   allowsTranslation?: boolean;
   requiresNewsReleaseDetails?: boolean;
@@ -217,6 +219,19 @@ const releaseTypeFields: FormField[] = [
     ],
   },
   {
+    name: 'reportAbbreviation',
+    label: 'Report abbreviation',
+    type: 'text',
+    required: true,
+    placeholder: 'Up to 6 characters (e.g. NR)',
+  },
+  {
+    name: 'reportSortOrder',
+    label: 'Report sort order',
+    type: 'number',
+    placeholder: 'Look Ahead column ordering (NR first)',
+  },
+  {
     name: 'allowsTranslation',
     label: 'Allows translation',
     type: 'checkbox',
@@ -226,7 +241,7 @@ const releaseTypeFields: FormField[] = [
     name: 'requiresNewsReleaseDetails',
     label: 'Requires news release details',
     type: 'checkbox',
-    placeholder: 'Show news release origin, distribution, and translations',
+    placeholder: 'Legacy sister-app flag for news release workflow',
   },
   {
     name: 'isActive',
@@ -774,6 +789,24 @@ export function ReleaseTypesAdmin() {
       formFields={releaseTypeFields}
       additionalInvalidateKeys={[lookupQueryKeys.releaseTypes()]}
       additionalColumns={[
+        {
+          accessorKey: 'reportAbbreviation',
+          header: 'Report abbrev',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {row.original.reportAbbreviation ?? '—'}
+            </span>
+          ),
+        },
+        {
+          accessorKey: 'reportSortOrder',
+          header: 'Report order',
+          cell: ({ row }) => (
+            <span className="text-slate-600">
+              {row.original.reportSortOrder ?? '—'}
+            </span>
+          ),
+        },
         {
           accessorKey: 'audience',
           header: 'Audience',

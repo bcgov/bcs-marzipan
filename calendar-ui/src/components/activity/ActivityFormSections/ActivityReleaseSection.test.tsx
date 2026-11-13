@@ -147,6 +147,12 @@ function ActivityCommsSectionHarness({
           timeStatuses={mockLookups.timeStatuses}
           newsReleaseDistributionOptions={mockLookups.newsReleaseDistributions}
           newsReleaseOriginOptions={mockLookups.newsReleaseOrigins}
+          newsReleaseOriginLookups={mockLookups.newsReleaseOrigins.map((o) => ({
+            id: Number(o.value),
+            name: o.label,
+            displayName: o.label,
+          }))}
+          organizationCatalog={[]}
           translationRequiredStatuses={translationRequiredStatuses}
           translationLanguageOptions={mockLookups.translationLanguages}
           userTeamIds={[]}
@@ -248,7 +254,7 @@ describe('ActivityCommsSection conditional comms groups', () => {
       />
     );
 
-    expect(await screen.findByText('News release details')).toBeInTheDocument();
+    expect(await screen.findByText('Release details')).toBeInTheDocument();
   });
 
   it('shows translation fields without NR group when only allowsTranslation', async () => {
@@ -262,7 +268,7 @@ describe('ActivityCommsSection conditional comms groups', () => {
       />
     );
 
-    expect(screen.queryByText('News release details')).not.toBeInTheDocument();
+    expect(await screen.findByText('Release details')).toBeInTheDocument();
     expect(
       await screen.findByRole('combobox', { name: /^Translations required$/i })
     ).toBeInTheDocument();

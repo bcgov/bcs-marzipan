@@ -21,6 +21,7 @@ const DEFAULTS = {
   fetchVenueAddressesForActivities: new Map(),
   fetchActivityStatusesForActivities: new Map(),
   fetchCommsMaterialsForActivities: new Map(),
+  fetchCommsMaterialReleasesForActivities: new Map(),
   fetchTranslationsRequiredForActivities: new Map(),
   fetchRepresentativesAttendingForActivities: new Map(),
   fetchSharedWithTeamsForActivities: {

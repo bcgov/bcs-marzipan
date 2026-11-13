@@ -80,8 +80,8 @@ describe('stripCommsDependentFields', () => {
       { ...baseForm(), commsMaterialIds: [99] },
       flagsTranslationOnly
     );
-    expect(result.newsReleaseOriginId).toBeNull();
-    expect(result.newsReleaseDistributionId).toBeNull();
+    expect(result.newsReleaseOriginId).toBe(1);
+    expect(result.newsReleaseDistributionId).toBe(2);
     expect(result.translationsRequiredStatusId).toBe(3);
     expect(result.releaseTimeOffsetMinutes).toBe(15);
   });

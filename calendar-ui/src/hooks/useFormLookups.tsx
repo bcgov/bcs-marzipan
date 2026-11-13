@@ -46,6 +46,16 @@ export interface FormLookupData {
     organizationTypeId?: number | null;
     organizationTypeDisplayName?: string | null;
     organizationTypeSortOrder?: number | null;
+    jurisdiction?: string | null;
+    abbreviation?: string | null;
+    name?: string;
+    displayName?: string;
+  }>;
+
+  newsReleaseOriginLookups: Array<{
+    id: number;
+    name: string;
+    displayName: string;
   }>;
 
   // Ministries - for Select (id is number; coerce to string where UI requires)
@@ -227,6 +237,10 @@ export function useFormLookups(): FormLookupData {
         organizationTypeId: item.organizationTypeId,
         organizationTypeDisplayName: item.organizationTypeDisplayName,
         organizationTypeSortOrder: item.organizationTypeSortOrder,
+        jurisdiction: item.jurisdiction ?? null,
+        abbreviation: item.abbreviation ?? null,
+        name: item.name,
+        displayName: item.displayName ?? item.label,
       })) || [];
 
     // Transform ministries for Select
@@ -320,6 +334,13 @@ export function useFormLookups(): FormLookupData {
         label: item.label,
       })) || [];
 
+    const newsReleaseOriginLookups =
+      newsReleaseOriginsQuery.data?.map((item) => ({
+        id: Number(item.value),
+        name: item.name ?? item.label,
+        displayName: item.displayName ?? item.label,
+      })) ?? [];
+
     // Teams for Shared With dropdown and response->form mapping (name to id)
     const sharingPayload = activityTeamSharingQuery.data;
     const sharedWithTeams =
@@ -354,6 +375,7 @@ export function useFormLookups(): FormLookupData {
       newsReleaseDistributions,
       premierRequested,
       newsReleaseOrigins,
+      newsReleaseOriginLookups,
       sharedWithTeams,
       quickShareGroups,
       dateStatuses: dateStatusesQuery.data ?? [],
