@@ -1589,7 +1589,6 @@ export class LookupsService {
         rtDisplayName: releaseTypes.displayName,
         rtAudience: releaseTypes.audience,
         rtAllowsTranslation: releaseTypes.allowsTranslation,
-        rtRequiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
         rtReportAbbreviation: releaseTypes.reportAbbreviation,
         rtReportSortOrder: releaseTypes.reportSortOrder,
       })
@@ -1621,8 +1620,7 @@ export class LookupsService {
       const releaseType =
         material.rtId != null &&
         material.rtAudience != null &&
-        material.rtAllowsTranslation != null &&
-        material.rtRequiresNewsReleaseDetails != null
+        material.rtAllowsTranslation != null
           ? {
               id: material.rtId,
               name: material.rtName!,
@@ -1631,7 +1629,6 @@ export class LookupsService {
               reportSortOrder: material.rtReportSortOrder ?? 0,
               audience: material.rtAudience as 'media' | 'public',
               allowsTranslation: material.rtAllowsTranslation,
-              requiresNewsReleaseDetails: material.rtRequiresNewsReleaseDetails,
             }
           : null;
 
@@ -1668,7 +1665,6 @@ export class LookupsService {
         isActive: releaseTypes.isActive,
         audience: releaseTypes.audience,
         allowsTranslation: releaseTypes.allowsTranslation,
-        requiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
         description: releaseTypes.description,
       })
       .from(releaseTypes)
@@ -1687,7 +1683,6 @@ export class LookupsService {
       isActive: row.isActive,
       audience: row.audience as 'media' | 'public',
       allowsTranslation: row.allowsTranslation,
-      requiresNewsReleaseDetails: row.requiresNewsReleaseDetails,
       description: row.description,
     }));
   }
@@ -2351,7 +2346,6 @@ export class LookupsService {
       description?: string | null;
       audience: 'media' | 'public';
       allowsTranslation?: boolean;
-      requiresNewsReleaseDetails?: boolean;
       reportAbbreviation?: string | null;
       reportSortOrder?: number;
     },
@@ -2381,8 +2375,6 @@ export class LookupsService {
             isActive: data.isActive ?? true,
             audience: data.audience,
             allowsTranslation: data.allowsTranslation ?? false,
-            requiresNewsReleaseDetails:
-              data.requiresNewsReleaseDetails ?? false,
             reportAbbreviation: data.reportAbbreviation ?? null,
             reportSortOrder: data.reportSortOrder ?? 0,
             description: data.description ?? undefined,
@@ -2980,7 +2972,6 @@ export class LookupsService {
       description: string | null;
       audience: 'media' | 'public';
       allowsTranslation: boolean;
-      requiresNewsReleaseDetails: boolean;
       reportAbbreviation: string | null;
       reportSortOrder: number;
     }>,
@@ -3011,8 +3002,6 @@ export class LookupsService {
     if (data.audience !== undefined) updateData.audience = data.audience;
     if (data.allowsTranslation !== undefined)
       updateData.allowsTranslation = data.allowsTranslation;
-    if (data.requiresNewsReleaseDetails !== undefined)
-      updateData.requiresNewsReleaseDetails = data.requiresNewsReleaseDetails;
     if (data.reportAbbreviation !== undefined)
       updateData.reportAbbreviation = data.reportAbbreviation;
     if (data.reportSortOrder !== undefined)

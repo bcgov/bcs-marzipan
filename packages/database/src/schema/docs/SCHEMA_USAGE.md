@@ -273,16 +273,16 @@ The activity form (Create/Edit) shows venue presets in the Venue Name combobox a
 
 ## Communications materials and release types
 
-Communications materials use the same team visibility pattern as categories. **Release types** hold sister-app metadata (audience, translation flags, news-release detail flags) and optionally bind to a single comms material row.
+Communications materials use the same team visibility pattern as categories. **Release types** hold sister-app metadata (audience, translation flags) and optionally bind to a single comms material row.
 
 ### Release types (`release_types`)
 
 - Standard lookup columns (`name`, `displayName`, `sortOrder`, `isActive`, etc.).
 - **`audience`**: `'media' | 'public'` (required on every row).
-- **`allows_translation`**: When true, the activity form may show translation status and languages for activities that select a linked comms material.
+- **`allows_translation`**: When true, the activity form may show translation status and languages for activities that select a linked comms material. Sister-app types in config-data default this to true.
 - **`report_abbreviation`**: Short label (max 6 characters) for Look Ahead / Exec release column type lines.
 - **`report_sort_order`**: Ordering on Look Ahead reports (news release first via seed/config).
-- **`requires_news_release_details`**: Sister-app workflow flag for news release materials (legacy NRMs); activity **Release details** (origin, distribution) show for any linked release type.
+- **Activity form**: Origin and distribution show when any selected comms material is linked to a release type; translation fields follow `allows_translation`.
 - Deactivating a release type clears `comms_materials.release_type_id` for any material that referenced it.
 
 ### Communications materials (`comms_materials`)

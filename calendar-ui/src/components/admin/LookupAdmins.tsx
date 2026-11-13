@@ -87,7 +87,6 @@ type ReleaseType = LookupItem & {
   reportSortOrder?: number;
   audience?: 'media' | 'public';
   allowsTranslation?: boolean;
-  requiresNewsReleaseDetails?: boolean;
 };
 
 type TranslationLanguage = LookupItem & {
@@ -235,13 +234,8 @@ const releaseTypeFields: FormField[] = [
     name: 'allowsTranslation',
     label: 'Allows translation',
     type: 'checkbox',
-    placeholder: 'Show translation fields when this material is selected',
-  },
-  {
-    name: 'requiresNewsReleaseDetails',
-    label: 'Requires news release details',
-    type: 'checkbox',
-    placeholder: 'Legacy sister-app flag for news release workflow',
+    placeholder:
+      'Show translation fields when an activity selects the linked comms material',
   },
   {
     name: 'isActive',
@@ -822,15 +816,6 @@ export function ReleaseTypesAdmin() {
           cell: ({ row }) => (
             <span className="text-slate-600">
               {row.original.allowsTranslation ? 'Yes' : 'No'}
-            </span>
-          ),
-        },
-        {
-          accessorKey: 'requiresNewsReleaseDetails',
-          header: 'News release details',
-          cell: ({ row }) => (
-            <span className="text-slate-600">
-              {row.original.requiresNewsReleaseDetails ? 'Yes' : 'No'}
             </span>
           ),
         },

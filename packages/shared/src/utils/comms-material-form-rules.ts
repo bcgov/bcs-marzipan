@@ -6,7 +6,6 @@ import { activityNeedsReleaseTimeField } from './activity-release-time';
 export type CommsMaterialReleaseFlags = {
   audience: 'media' | 'public' | null;
   allowsTranslation: boolean;
-  requiresNewsReleaseDetails: boolean;
   /** Present when material is linked to a sister-app release type. */
   isReleaseType?: boolean;
 };
@@ -101,7 +100,6 @@ export function buildCommsMaterialReleaseFlagsById(
     map.set(m.id, {
       audience: m.releaseType.audience ?? null,
       allowsTranslation: m.releaseType.allowsTranslation,
-      requiresNewsReleaseDetails: m.releaseType.requiresNewsReleaseDetails,
       isReleaseType: true,
     });
   }

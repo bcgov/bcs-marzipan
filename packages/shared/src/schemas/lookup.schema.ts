@@ -427,7 +427,6 @@ export const releaseTypeEmbeddedSchema = z.object({
   reportSortOrder: z.number().int().optional(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean(),
-  requiresNewsReleaseDetails: z.boolean(),
 });
 
 export const releaseTypeResponseSchema = z.object({
@@ -439,7 +438,6 @@ export const releaseTypeResponseSchema = z.object({
   reportSortOrder: z.number().int(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean(),
-  requiresNewsReleaseDetails: z.boolean(),
   isActive: z.boolean(),
   description: z.string().nullable(),
 });
@@ -453,7 +451,6 @@ export const releaseTypeLookupItemSchema = lookupItemSchema.extend({
   isActive: z.boolean(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean(),
-  requiresNewsReleaseDetails: z.boolean(),
   description: z.string().nullable().optional(),
 });
 
@@ -865,7 +862,6 @@ export const createReleaseTypeRequestSchema = z.object({
   description: z.string().nullable().optional(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean().default(false).optional(),
-  requiresNewsReleaseDetails: z.boolean().default(false).optional(),
 });
 
 export const updateReleaseTypeRequestSchema =

@@ -179,17 +179,17 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO release_types (
   id, name, display_name, sort_order, report_abbreviation, report_sort_order,
-  audience, allows_translation, requires_news_release_details, is_active, description,
+  audience, allows_translation, is_active, description,
   created_by, last_updated_by
 )
 VALUES
-  (1, 'factsheet', 'Factsheet', 1, 'FS', 5, 'public', false, false, true, 'Sister-app factsheet', 999, 999),
-  (2, 'information bulletin', 'Information bulletin', 2, 'IB', 4, 'public', false, false, true, 'Sister-app information bulletin', 999, 999),
-  (3, 'media advisory', 'Media advisory', 3, 'MA', 3, 'media', false, false, true, 'Sister-app media advisory', 999, 999),
-  (4, 'news release', 'News release', 4, 'NR', 1, 'public', true, true, true, 'Sister-app news release', 999, 999),
-  (5, 'nycu news you can use', 'NYCU', 5, 'NYCU', 7, 'public', false, false, true, 'Sister-app NYCU', 999, 999),
-  (6, 'opinion editorial', 'Opinion editorial', 6, 'OE', 6, 'public', false, false, true, 'Sister-app opinion editorial', 999, 999),
-  (7, 'statement', 'Statement', 7, 'STMT', 2, 'public', false, false, true, 'Sister-app statement', 999, 999)
+  (1, 'factsheet', 'Factsheet', 1, 'FS', 5, 'public', true, true, 'Sister-app factsheet', 999, 999),
+  (2, 'information bulletin', 'Information bulletin', 2, 'IB', 4, 'public', true, true, 'Sister-app information bulletin', 999, 999),
+  (3, 'media advisory', 'Media advisory', 3, 'MA', 3, 'media', true, true, 'Sister-app media advisory', 999, 999),
+  (4, 'news release', 'News release', 4, 'NR', 1, 'public', true, true, 'Sister-app news release', 999, 999),
+  (5, 'nycu news you can use', 'NYCU', 5, 'NYCU', 7, 'public', true, true, 'Sister-app NYCU', 999, 999),
+  (6, 'opinion editorial', 'Opinion editorial', 6, 'OE', 6, 'public', true, true, 'Sister-app opinion editorial', 999, 999),
+  (7, 'statement', 'Statement', 7, 'STMT', 2, 'public', true, true, 'Sister-app statement', 999, 999)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -198,7 +198,6 @@ ON CONFLICT (id) DO UPDATE SET
   report_sort_order = EXCLUDED.report_sort_order,
   audience = EXCLUDED.audience,
   allows_translation = EXCLUDED.allows_translation,
-  requires_news_release_details = EXCLUDED.requires_news_release_details,
   is_active = EXCLUDED.is_active,
   description = EXCLUDED.description,
   last_updated_by = EXCLUDED.last_updated_by,

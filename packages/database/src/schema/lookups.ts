@@ -414,9 +414,6 @@ export const releaseTypes = pgTable(
     /** Sister-app audience: media or public (required on every row). */
     audience: varchar('audience', { length: 50 }).notNull(),
     allowsTranslation: boolean('allows_translation').notNull().default(false),
-    requiresNewsReleaseDetails: boolean('requires_news_release_details')
-      .notNull()
-      .default(false),
     isActive: boolean('is_active').notNull().default(true),
     description: text('description'),
     createdDateTime: timestamp('created_date_time', { withTimezone: true })
