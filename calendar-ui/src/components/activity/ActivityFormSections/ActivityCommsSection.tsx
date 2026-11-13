@@ -1,6 +1,13 @@
 import { useFormContext, useWatch } from 'react-hook-form';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
+import {
+  buildNewsReleaseOriginSelectOptions,
+  formOrganizationsToOriginLabelDetails,
+  inferNewsReleaseOriginId,
+  resolveOrganizationsForOriginInference,
+  type OrganizationCatalogRow,
+} from '@corpcal/shared';
 import type { TranslationRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
@@ -62,7 +69,14 @@ type ActivityCommsSectionProps = {
   dateStatuses: Array<{ id: number; name: string }>;
   timeStatuses: Array<{ id: number; name: string }>;
   newsReleaseDistributionOptions: OptionItem[];
+  /** @deprecated use {@link newsReleaseOriginLookups} + dynamic labels */
   newsReleaseOriginOptions: OptionItem[];
+  newsReleaseOriginLookups: Array<{
+    id: number;
+    name: string;
+    displayName: string;
+  }>;
+  organizationCatalog: OrganizationCatalogRow[];
   translationRequiredStatuses: TranslationRequiredStatusLookupItem[];
   translationLanguageOptions: Array<{
     id: number;
@@ -132,7 +146,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   dateStatuses: _dateStatuses,
   timeStatuses: _timeStatuses,
   newsReleaseDistributionOptions,
-  newsReleaseOriginOptions,
+  newsReleaseOriginOptions: _newsReleaseOriginOptions,
+  newsReleaseOriginLookups,
+  organizationCatalog,
   translationRequiredStatuses,
   translationLanguageOptions,
   userTeamIds,
@@ -145,6 +161,15 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
     control: form.control,
     name: 'commsMaterialIds',
   });
+  const organizations = useWatch({
+    control: form.control,
+    name: 'organizations',
+  });
+  const newsReleaseOriginId = useWatch({
+    control: form.control,
+    name: 'newsReleaseOriginId',
+  });
+  const originDirty = Boolean(form.formState.dirtyFields.newsReleaseOriginId);
 
   const materialById = useMemo(
     () => new Map(commsMaterialOptions.map((m) => [m.id, m] as const)),
@@ -215,17 +240,64 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
   const selectedFlags = useMemo(() => {
     const ids = commsMaterialIds ?? [];
-    let requiresNewsReleaseDetails = false;
+    let hasReleaseTypeComms = false;
     let allowsTranslation = false;
     let showReleaseTime = false;
     for (const id of ids) {
       const rt = materialById.get(id)?.releaseType;
-      if (rt?.requiresNewsReleaseDetails) requiresNewsReleaseDetails = true;
+      if (rt != null) hasReleaseTypeComms = true;
       if (rt?.allowsTranslation) allowsTranslation = true;
       if (rt?.audience === 'public') showReleaseTime = true;
     }
-    return { requiresNewsReleaseDetails, allowsTranslation, showReleaseTime };
+    return { hasReleaseTypeComms, allowsTranslation, showReleaseTime };
   }, [commsMaterialIds, materialById]);
+
+  const organizationLabelDetails = useMemo(
+    () =>
+      formOrganizationsToOriginLabelDetails(
+        organizations ?? [],
+        organizationCatalog
+      ),
+    [organizations, organizationCatalog]
+  );
+
+  const newsReleaseOriginSelectOptions = useMemo(
+    () =>
+      buildNewsReleaseOriginSelectOptions(
+        newsReleaseOriginLookups,
+        organizationLabelDetails
+      ),
+    [newsReleaseOriginLookups, organizationLabelDetails]
+  );
+
+  useEffect(() => {
+    if (originDirty) return;
+    if (newsReleaseOriginId != null) return;
+    if (!selectedFlags.hasReleaseTypeComms) return;
+    const orgs = resolveOrganizationsForOriginInference(
+      organizations ?? [],
+      organizationCatalog
+    );
+    const suggested = inferNewsReleaseOriginId(orgs);
+    form.setValue('newsReleaseOriginId', suggested, {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate: false,
+    });
+  }, [
+    form,
+    newsReleaseOriginId,
+    originDirty,
+    organizations,
+    organizationCatalog,
+    selectedFlags.hasReleaseTypeComms,
+  ]);
+
+  const translationLanguageComboboxOptions: OptionItem[] =
+    translationLanguageOptions.map((l) => ({
+      value: String(l.id),
+      label: l.displayName ?? l.name,
+    }));
 
   const mergeComboboxItems = (
     pickable: CommsMaterialOptionItem[],
@@ -350,13 +422,13 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
       {selectedFlags.showReleaseTime ? <ActivityReleaseTimeField /> : null}
 
-      {selectedFlags.requiresNewsReleaseDetails ? (
+      {selectedFlags.hasReleaseTypeComms ? (
         <div className="space-y-6 rounded-md border border-gray-300 p-6">
-          <p className="font-bold text-slate-800">News release details</p>
+          <p className="font-bold text-slate-800">Release details</p>
           <OptionalLookupSelectField
             control={form.control}
             name="newsReleaseOriginId"
-            options={newsReleaseOriginOptions}
+            options={newsReleaseOriginSelectOptions}
             readOnly={readOnly}
             infoAriaLabel="About news release origin"
           />
@@ -367,19 +439,81 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             readOnly={readOnly}
             infoAriaLabel="About news release distribution"
           />
-          <ActivityTranslationsField
-            translationRequiredStatuses={translationRequiredStatuses}
-            translationLanguageOptions={translationLanguageOptions}
-          />
+          {selectedFlags.allowsTranslation ? (
+            <>
+              <FormField
+                control={form.control}
+                name="translationsRequiredStatusId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      <>
+                        {getActivityFieldLabel(field.name)}
+                        <ActivityFieldInfoIcon
+                          fieldKey="translationsRequiredStatusId"
+                          ariaLabel="About translations required"
+                        />
+                      </>
+                    </FormLabel>
+                    <FormSelectSafe
+                      readOnly={translationsScope.readOnly}
+                      disabled={translationsScope.fieldScopeDisabled}
+                      optionValues={translationRequiredStatuses.map((s) =>
+                        String(s.id)
+                      )}
+                      value={optionalIdSelectDisplayValue(field.value)}
+                      onValueChange={(value) => {
+                        const nextStatusId = optionalSelectIdValue(value);
+                        setActivityFormFieldValue(
+                          form,
+                          field.name,
+                          nextStatusId
+                        );
+                        if (
+                          requiredTranslationStatusId != null &&
+                          nextStatusId !== requiredTranslationStatusId
+                        ) {
+                          setActivityFormFieldValue(
+                            form,
+                            'translationLanguageIds',
+                            []
+                          );
+                        }
+                      }}
+                    >
+                      <ActivityFieldScopePermissionTooltip scope="translations">
+                        <FormControl data-field={field.name}>
+                          <FormSelectTrigger
+                            readOnly={
+                              translationsScope.readOnly &&
+                              !translationsScope.fieldScopeDisabled
+                            }
+                          >
+                            <SelectValue placeholder="" />
+                          </FormSelectTrigger>
+                        </FormControl>
+                      </ActivityFieldScopePermissionTooltip>
+                      <SelectContent>
+                        {translationRequiredStatuses.map((status) => (
+                          <SelectItem key={status.id} value={String(status.id)}>
+                            {status.displayName ?? status.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </FormSelectSafe>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <TranslationLanguagesField
+                requiredTranslationStatusId={requiredTranslationStatusId}
+                translationLanguageComboboxOptions={
+                  translationLanguageComboboxOptions
+                }
+              />
+            </>
+          ) : null}
         </div>
-      ) : null}
-
-      {selectedFlags.allowsTranslation &&
-      !selectedFlags.requiresNewsReleaseDetails ? (
-        <ActivityTranslationsField
-          translationRequiredStatuses={translationRequiredStatuses}
-          translationLanguageOptions={translationLanguageOptions}
-        />
       ) : null}
     </ActivityFormSection>
   );

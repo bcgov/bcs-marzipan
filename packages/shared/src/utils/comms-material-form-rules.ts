@@ -1,4 +1,5 @@
 import type { ReleaseSchedulingMode } from '../constants/constants';
+import { activityHasReleaseTypeCommsMaterial } from '../releases/comms-material-release';
 import type { ActivityFormData } from '../schemas/activity.schema';
 import {
   activityNeedsReleaseTimeField,
@@ -10,6 +11,8 @@ export type CommsMaterialReleaseFlags = {
   audience: 'media' | 'public' | null;
   allowsTranslation: boolean;
   requiresNewsReleaseDetails: boolean;
+  /** Present when material is linked to a sister-app release type. */
+  isReleaseType?: boolean;
 };
 
 export type CommsMaterialReleaseFlagsById = ReadonlyMap<
@@ -86,10 +89,9 @@ export function stripCommsDependentFields(
   }
 
   const ids = selectedMaterialIds(data.commsMaterialIds);
-  const needsNewsReleaseDetails = anySelectedHasFlag(
+  const hasReleaseTypeComms = activityHasReleaseTypeCommsMaterial(
     ids,
-    flagsById,
-    'requiresNewsReleaseDetails'
+    flagsById
   );
   const allowsTranslation = anySelectedHasFlag(
     ids,
@@ -100,7 +102,7 @@ export function stripCommsDependentFields(
 
   let next: ActivityFormData = { ...data };
 
-  if (!needsNewsReleaseDetails) {
+  if (!hasReleaseTypeComms) {
     next = {
       ...next,
       newsReleaseOriginId: null,
@@ -141,6 +143,7 @@ export function buildCommsMaterialReleaseFlagsById(
       audience: m.releaseType.audience ?? null,
       allowsTranslation: m.releaseType.allowsTranslation,
       requiresNewsReleaseDetails: m.releaseType.requiresNewsReleaseDetails,
+      isReleaseType: true,
     });
   }
   return map;

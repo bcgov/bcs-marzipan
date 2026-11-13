@@ -406,6 +406,7 @@ export class ActivitiesService {
         audience: row.audience as 'media' | 'public',
         allowsTranslation: row.allowsTranslation ?? false,
         requiresNewsReleaseDetails: row.requiresNewsReleaseDetails ?? false,
+        isReleaseType: true,
       });
     }
     return map;
@@ -955,6 +956,7 @@ export class ActivitiesService {
       venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      commsMaterialReleases: related.commsMaterialReleasesMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
@@ -1034,6 +1036,7 @@ export class ActivitiesService {
         venueStatusesMap: new Map(),
         venueAddressesMap: new Map(),
         commsMaterialsMap: new Map(),
+        commsMaterialReleasesMap: new Map(),
         translationsRequiredMap: new Map(),
         representativesAttendingMap: new Map(),
         sharedWithResult: this.emptySharedWithResult(),
@@ -1064,6 +1067,7 @@ export class ActivitiesService {
       venueStatusesMap,
       venueAddressesMap,
       commsMaterialsMap,
+      commsMaterialReleasesMap,
       translationsRequiredMap,
       representativesAttendingMap,
       sharedWithResult,
@@ -1103,6 +1107,11 @@ export class ActivitiesService {
         : Promise.resolve(new Map()),
       needs('commsMaterials')
         ? this.dataFetcherService.fetchCommsMaterialsForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('commsMaterialReleases')
+        ? this.dataFetcherService.fetchCommsMaterialReleasesForActivities(
+            activityIds
+          )
         : Promise.resolve(new Map()),
       needs('translationsRequired')
         ? this.dataFetcherService.fetchTranslationsRequiredForActivities(
@@ -1195,6 +1204,7 @@ export class ActivitiesService {
       venueStatusesMap,
       venueAddressesMap,
       commsMaterialsMap,
+      commsMaterialReleasesMap,
       translationsRequiredMap,
       representativesAttendingMap,
       sharedWithResult,
@@ -2165,6 +2175,8 @@ export class ActivitiesService {
       venueStatus: ctx.related.venueStatusesMap.get(activity.id),
       venueAddress: ctx.related.venueAddressesMap.get(activity.id) ?? null,
       commsMaterials: ctx.related.commsMaterialsMap.get(activity.id) ?? [],
+      commsMaterialReleases:
+        ctx.related.commsMaterialReleasesMap.get(activity.id) ?? [],
       translationsRequired:
         ctx.related.translationsRequiredMap.get(activity.id) ?? [],
       representativesAttending:
@@ -4116,6 +4128,7 @@ export class ActivitiesService {
       venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      commsMaterialReleases: related.commsMaterialReleasesMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
@@ -4259,6 +4272,7 @@ export class ActivitiesService {
       venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      commsMaterialReleases: related.commsMaterialReleasesMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
@@ -4394,6 +4408,7 @@ export class ActivitiesService {
       venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      commsMaterialReleases: related.commsMaterialReleasesMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
