@@ -6,6 +6,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import {
@@ -20,10 +21,13 @@ import { createZodDto } from 'nestjs-zod';
 import { PERMISSIONS, type AuthUser } from '@corpcal/shared';
 import {
   notificationListQuerySchema,
+  notificationPreferencesUpdateSchema,
   notificationRecipientPatchSchema,
   type NotificationBulkActionResult,
   type NotificationListQuery,
   type NotificationPage,
+  type NotificationPreferences,
+  type NotificationPreferencesUpdate,
   type NotificationRecipientPatch,
 } from '@corpcal/shared/schemas';
 
@@ -31,12 +35,15 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
   NotificationBulkActionResultResponseWrapperDto,
   NotificationPageResponseWrapperDto,
+  NotificationPreferencesResponseWrapperDto,
+  NotificationPreferencesUpdateDto,
   NotificationUpdatedResponseWrapperDto,
   UnreadNotificationCountResponseWrapperDto,
 } from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import { NotificationPreferencesService } from './notification-preferences.service';
 import { NotificationsService } from './notifications.service';
 
 class NotificationRecipientPatchDto extends createZodDto(
@@ -47,7 +54,52 @@ class NotificationRecipientPatchDto extends createZodDto(
 @Controller('notifications')
 @RequirePermission(PERMISSIONS.NOTIFICATIONS.VIEW)
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly notificationPreferencesService: NotificationPreferencesService
+  ) {}
+
+  @ApiOperation({
+    summary: 'Get notification preferences for current user',
+    description:
+      'Returns the email master switch and per-category in-app/email settings. Categories default to enabled.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Preferences retrieved',
+    type: NotificationPreferencesResponseWrapperDto,
+  })
+  @Get('preferences')
+  async getPreferences(
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: true; data: NotificationPreferences }> {
+    const data = await this.notificationPreferencesService.getForUser(user.id);
+    return { success: true, data };
+  }
+
+  @ApiOperation({
+    summary: 'Update notification preferences for current user',
+    description:
+      'Updates the email master switch and/or the supplied categories. Omitted categories are unchanged.',
+  })
+  @ApiBody({ type: NotificationPreferencesUpdateDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Preferences updated',
+    type: NotificationPreferencesResponseWrapperDto,
+  })
+  @Put('preferences')
+  async updatePreferences(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(notificationPreferencesUpdateSchema))
+    body: NotificationPreferencesUpdate
+  ): Promise<{ success: true; data: NotificationPreferences }> {
+    const data = await this.notificationPreferencesService.updateForUser(
+      user.id,
+      body
+    );
+    return { success: true, data };
+  }
 
   @ApiOperation({
     summary: 'List notifications for current user',
