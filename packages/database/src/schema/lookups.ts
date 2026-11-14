@@ -407,12 +407,13 @@ export const releaseTypes = pgTable(
     name: varchar('name', { length: 255 }).notNull(),
     displayName: varchar('display_name', { length: 255 }).notNull(),
     sortOrder: integer('sort_order').notNull().default(0),
+    /** Look Ahead report abbrev (max 6 chars). */
+    reportAbbreviation: varchar('report_abbreviation', { length: 6 }),
+    /** Sort order for release abbrevs on Look Ahead reports (NR first). */
+    reportSortOrder: integer('report_sort_order').notNull().default(0),
     /** Sister-app audience: media or public (required on every row). */
     audience: varchar('audience', { length: 50 }).notNull(),
     allowsTranslation: boolean('allows_translation').notNull().default(false),
-    requiresNewsReleaseDetails: boolean('requires_news_release_details')
-      .notNull()
-      .default(false),
     isActive: boolean('is_active').notNull().default(true),
     description: text('description'),
     createdDateTime: timestamp('created_date_time', { withTimezone: true })

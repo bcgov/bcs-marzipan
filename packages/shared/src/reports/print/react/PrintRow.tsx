@@ -368,18 +368,22 @@ function ReleaseCell({
   const translationsClass = isLookAheadRollupVariant(variant)
     ? 'corpcal-print-release-translation'
     : 'corpcal-print-release-value';
-  if (!release.newsReleaseOrigin && !release.translationsLine) {
+  const originLine = release.originLine?.trim() ?? '';
+  const typesLine = release.releaseTypesLine?.trim() ?? '';
+  const translationsLine = release.translationsLine?.trim() ?? '';
+  if (!originLine && !typesLine && !translationsLine) {
     return <span className="corpcal-print-meta-faint">—</span>;
   }
 
   return (
     <div className="corpcal-print-stack">
-      {release.newsReleaseOrigin ? (
-        <div className="corpcal-print-release-value">
-          {release.newsReleaseOrigin}
-        </div>
+      {originLine ? (
+        <div className="corpcal-print-release-value">{originLine}</div>
       ) : null}
-      {release.translationsLine ? (
+      {typesLine ? (
+        <div className="corpcal-print-release-value">{typesLine}</div>
+      ) : null}
+      {translationsLine ? (
         <div
           className={
             isLookAheadRollupVariant(variant)

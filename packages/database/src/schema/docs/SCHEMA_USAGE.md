@@ -273,14 +273,16 @@ The activity form (Create/Edit) shows venue presets in the Venue Name combobox a
 
 ## Communications materials and release types
 
-Communications materials use the same team visibility pattern as categories. **Release types** hold sister-app metadata (audience, translation flags, news-release detail flags) and optionally bind to a single comms material row.
+Communications materials use the same team visibility pattern as categories. **Release types** hold sister-app metadata (audience, translation flags) and optionally bind to a single comms material row.
 
 ### Release types (`release_types`)
 
 - Standard lookup columns (`name`, `displayName`, `sortOrder`, `isActive`, etc.).
 - **`audience`**: `'media' | 'public'` (required on every row).
-- **`allows_translation`**: When true, the activity form may show translation status and languages for activities that select a linked comms material.
-- **`requires_news_release_details`**: When true, the form shows the “News release details” group (origin, distribution, translations inside that group).
+- **`allows_translation`**: When true, the activity form may show translation status and languages for activities that select a linked comms material. Sister-app types in config-data default this to true.
+- **`report_abbreviation`**: Short label (max 6 characters) for Look Ahead / Exec release column type lines.
+- **`report_sort_order`**: Ordering on Look Ahead reports (news release first via seed/config).
+- **Activity form**: Origin and distribution show when any selected comms material is linked to a release type; translation fields follow `allows_translation`.
 - Deactivating a release type clears `comms_materials.release_type_id` for any material that referenced it.
 
 ### Communications materials (`comms_materials`)
@@ -295,5 +297,9 @@ Communications materials use the same team visibility pattern as categories. **R
 - Activity selections still use **`activity_comms_materials`** (unchanged); form pickers and save validation respect material visibility like categories.
 
 ### Activity release time (`activities`)
+
+### Organizations jurisdiction
+
+`organizations.jurisdiction` includes `bcgov`, `federal`, `provincial`, `local_government`, and `other`. Jurisdiction supports inferring the activity **news release origin** on the client when orgs change.
 
 When a selected comms material has a **public** release type, the form may capture **`release_scheduling_mode`** (`relative` | `on_signal`, nullable), optional **`release_time_offset_minutes`** (0–10,080 minutes after the schedule anchor when mode is `relative`), and **`release_time`**. For **`relative`**, `release_time` is derived on save from the schedule anchor plus offset when date/time statuses are confirmed; otherwise offset is stored and instant is null. For **`on_signal`**, offset and `release_time` are always null.

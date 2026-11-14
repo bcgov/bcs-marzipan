@@ -20,6 +20,7 @@ import {
   ACTIVITY_LIST_ITEM_SHAPE,
   activityListItemSchema,
   activityResponseSchema,
+  type CommsMaterialReleaseSummary,
 } from '@corpcal/shared/schemas';
 import {
   formatActivityOrganizationsGridSummary,
@@ -102,6 +103,7 @@ export type ActivityMapperRelatedData = {
     country: string | null;
   } | null;
   commsMaterials?: string[];
+  commsMaterialReleases?: CommsMaterialReleaseSummary[];
   translationsRequired?: string[];
   representativesAttending?: string[];
   sharedWith?: string[];
@@ -232,6 +234,7 @@ export class ActivityMapperService {
 
       // Comms
       commsMaterials: relatedData?.commsMaterials ?? [],
+      commsMaterialReleases: relatedData?.commsMaterialReleases ?? [],
       newsReleaseOriginId: activity.newsReleaseOriginId ?? null,
       newsReleaseDistributionId: activity.newsReleaseDistributionId ?? null,
       releaseSchedulingMode: parseReleaseSchedulingMode(
@@ -398,6 +401,8 @@ export class ActivityMapperService {
       translationsRequiredStatusId:
         activity.translationsRequiredStatusId ?? null,
       commsMaterials: relatedData?.commsMaterials ?? [],
+      commsMaterialReleases: relatedData?.commsMaterialReleases ?? [],
+      newsReleaseOriginId: activity.newsReleaseOriginId ?? null,
       newsReleaseOrigin: relatedData?.newsReleaseOrigin ?? null,
       newsReleaseDistribution: relatedData?.newsReleaseDistribution ?? null,
       activityStatus: relatedData?.activityStatus ?? DEFAULT_STATUS,

@@ -55,7 +55,6 @@ const mockNewsReleaseCommsMaterial = {
   releaseType: {
     audience: 'public' as const,
     allowsTranslation: true,
-    requiresNewsReleaseDetails: true,
   },
 };
 
@@ -68,7 +67,6 @@ const mockTranslationOnlyCommsMaterial = {
   releaseType: {
     audience: 'public' as const,
     allowsTranslation: true,
-    requiresNewsReleaseDetails: false,
   },
 };
 
@@ -147,6 +145,12 @@ function ActivityCommsSectionHarness({
           timeStatuses={mockLookups.timeStatuses}
           newsReleaseDistributionOptions={mockLookups.newsReleaseDistributions}
           newsReleaseOriginOptions={mockLookups.newsReleaseOrigins}
+          newsReleaseOriginLookups={mockLookups.newsReleaseOrigins.map((o) => ({
+            id: Number(o.value),
+            name: o.label,
+            displayName: o.label,
+          }))}
+          organizationCatalog={[]}
           translationRequiredStatuses={translationRequiredStatuses}
           translationLanguageOptions={mockLookups.translationLanguages}
           userTeamIds={[]}
@@ -240,7 +244,7 @@ describe('ActivityCommsSection release fields permissions', () => {
 });
 
 describe('ActivityCommsSection conditional comms groups', () => {
-  it('shows news release details when a material requires them', async () => {
+  it('shows origin and distribution when a release-type material is selected', async () => {
     render(
       <ActivityCommsSectionHarness
         readOnly={false}
@@ -248,10 +252,15 @@ describe('ActivityCommsSection conditional comms groups', () => {
       />
     );
 
-    expect(await screen.findByText('News release details')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('combobox', { name: /News release origin/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: /News release distribution/i })
+    ).toBeInTheDocument();
   });
 
-  it('shows translation fields without NR group when only allowsTranslation', async () => {
+  it('shows translation fields for release types that allow translation', async () => {
     render(
       <ActivityCommsSectionHarness
         readOnly={false}
@@ -262,7 +271,6 @@ describe('ActivityCommsSection conditional comms groups', () => {
       />
     );
 
-    expect(screen.queryByText('News release details')).not.toBeInTheDocument();
     expect(
       await screen.findByRole('combobox', { name: /^Translations required$/i })
     ).toBeInTheDocument();

@@ -6,6 +6,10 @@ import type {
   TranslationRequiredStatusLookupItem,
   VenueStatusLookupItem,
 } from '@corpcal/shared/api/types';
+import {
+  organizationJurisdictionSchema,
+  type OrganizationJurisdiction,
+} from '@corpcal/shared/schemas';
 import type { OptionItem } from '@/schemas/types';
 
 import {
@@ -29,6 +33,14 @@ import {
   useVenueStatuses,
 } from './useLookups';
 
+function parseOrganizationJurisdiction(
+  value: string | null | undefined
+): OrganizationJurisdiction | null {
+  if (value == null) return null;
+  const parsed = organizationJurisdictionSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
 export interface FormLookupData {
   // Categories - for Badge components
   categories: Array<{
@@ -46,6 +58,16 @@ export interface FormLookupData {
     organizationTypeId?: number | null;
     organizationTypeDisplayName?: string | null;
     organizationTypeSortOrder?: number | null;
+    jurisdiction?: OrganizationJurisdiction | null;
+    abbreviation?: string | null;
+    name?: string;
+    displayName?: string;
+  }>;
+
+  newsReleaseOriginLookups: Array<{
+    id: number;
+    name: string;
+    displayName: string;
   }>;
 
   // Ministries - for Select (id is number; coerce to string where UI requires)
@@ -78,7 +100,6 @@ export interface FormLookupData {
     releaseType?: {
       audience: 'media' | 'public';
       allowsTranslation: boolean;
-      requiresNewsReleaseDetails: boolean;
     } | null;
   }>;
 
@@ -227,6 +248,10 @@ export function useFormLookups(): FormLookupData {
         organizationTypeId: item.organizationTypeId,
         organizationTypeDisplayName: item.organizationTypeDisplayName,
         organizationTypeSortOrder: item.organizationTypeSortOrder,
+        jurisdiction: parseOrganizationJurisdiction(item.jurisdiction),
+        abbreviation: item.abbreviation ?? null,
+        name: item.name,
+        displayName: item.displayName ?? item.label,
       })) || [];
 
     // Transform ministries for Select
@@ -320,6 +345,13 @@ export function useFormLookups(): FormLookupData {
         label: item.label,
       })) || [];
 
+    const newsReleaseOriginLookups =
+      newsReleaseOriginsQuery.data?.map((item) => ({
+        id: Number(item.value),
+        name: item.name ?? item.label,
+        displayName: item.displayName ?? item.label,
+      })) ?? [];
+
     // Teams for Shared With dropdown and response->form mapping (name to id)
     const sharingPayload = activityTeamSharingQuery.data;
     const sharedWithTeams =
@@ -354,6 +386,7 @@ export function useFormLookups(): FormLookupData {
       newsReleaseDistributions,
       premierRequested,
       newsReleaseOrigins,
+      newsReleaseOriginLookups,
       sharedWithTeams,
       quickShareGroups,
       dateStatuses: dateStatusesQuery.data ?? [],

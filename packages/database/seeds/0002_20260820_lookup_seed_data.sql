@@ -83,6 +83,24 @@ INSERT INTO organizations (id, name, display_name, abbreviation, organization_ty
   (55, 'CBT', 'Columbia Basin Trust', 'CBT', 7, 'bcgov', true, 55, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
+-- Federal departments (catalog orgs for joint/federal release scenarios)
+INSERT INTO organizations (id, name, display_name, abbreviation, organization_type_id, jurisdiction, is_active, sort_order, created_by, last_updated_by) VALUES
+  (56, 'Health Canada', 'Health Canada', 'HC', 2, 'federal', true, 56, 1, 1),
+  (57, 'Department of Justice Canada', 'Department of Justice Canada', 'DOJ', 2, 'federal', true, 57, 1, 1),
+  (58, 'Veterans Affairs Canada', 'Veterans Affairs Canada', 'VAC', 2, 'federal', true, 58, 1, 1),
+  (59, 'Housing Infrastructure and Communities Canada', 'Housing, Infrastructure and Communities Canada', 'HICC', 2, 'federal', true, 59, 1, 1),
+  (60, 'Employment and Social Development Canada', 'Employment and Social Development Canada', 'ESDC', 2, 'federal', true, 60, 1, 1),
+  (61, 'Natural Resources Canada', 'Natural Resources Canada', 'NRCan', 2, 'federal', true, 61, 1, 1),
+  (62, 'Indigenous Services Canada', 'Indigenous Services Canada', 'ISC', 2, 'federal', true, 62, 1, 1),
+  (63, 'Innovation Science and Economic Development Canada', 'Innovation, Science and Economic Development Canada', 'ISED', 2, 'federal', true, 63, 1, 1)
+ON CONFLICT (id) DO NOTHING;
+
+-- Local government examples
+INSERT INTO organizations (id, name, display_name, abbreviation, organization_type_id, jurisdiction, is_active, sort_order, created_by, last_updated_by) VALUES
+  (64, 'City of Vancouver', 'City of Vancouver', 'Van', 7, 'local_government', true, 64, 1, 1),
+  (65, 'Capital Regional District', 'Capital Regional District', 'CRD', 7, 'local_government', true, 65, 1, 1)
+ON CONFLICT (id) DO NOTHING;
+
 -- Ministry extension rows (shared id with organizations)
 INSERT INTO ministries (id, created_by, last_updated_by) VALUES
   (1, 1, 1),

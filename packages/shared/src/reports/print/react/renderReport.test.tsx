@@ -73,6 +73,7 @@ const BASE_ACTIVITY_RESPONSE = {
   categoryIds: [1],
   tags: [],
   commsMaterials: [],
+  commsMaterialReleases: [],
   translationsRequired: ['FR', 'PUN'],
   representativesAttending: [],
   sharedWith: [],

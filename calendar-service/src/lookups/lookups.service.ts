@@ -1589,7 +1589,8 @@ export class LookupsService {
         rtDisplayName: releaseTypes.displayName,
         rtAudience: releaseTypes.audience,
         rtAllowsTranslation: releaseTypes.allowsTranslation,
-        rtRequiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
+        rtReportAbbreviation: releaseTypes.reportAbbreviation,
+        rtReportSortOrder: releaseTypes.reportSortOrder,
       })
       .from(commsMaterials)
       .leftJoin(releaseTypes, eq(commsMaterials.releaseTypeId, releaseTypes.id))
@@ -1619,15 +1620,15 @@ export class LookupsService {
       const releaseType =
         material.rtId != null &&
         material.rtAudience != null &&
-        material.rtAllowsTranslation != null &&
-        material.rtRequiresNewsReleaseDetails != null
+        material.rtAllowsTranslation != null
           ? {
               id: material.rtId,
               name: material.rtName!,
               displayName: material.rtDisplayName!,
+              reportAbbreviation: material.rtReportAbbreviation ?? null,
+              reportSortOrder: material.rtReportSortOrder ?? 0,
               audience: material.rtAudience as 'media' | 'public',
               allowsTranslation: material.rtAllowsTranslation,
-              requiresNewsReleaseDetails: material.rtRequiresNewsReleaseDetails,
             }
           : null;
 
@@ -1659,10 +1660,11 @@ export class LookupsService {
         name: releaseTypes.name,
         displayName: releaseTypes.displayName,
         sortOrder: releaseTypes.sortOrder,
+        reportAbbreviation: releaseTypes.reportAbbreviation,
+        reportSortOrder: releaseTypes.reportSortOrder,
         isActive: releaseTypes.isActive,
         audience: releaseTypes.audience,
         allowsTranslation: releaseTypes.allowsTranslation,
-        requiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
         description: releaseTypes.description,
       })
       .from(releaseTypes)
@@ -1676,10 +1678,11 @@ export class LookupsService {
       name: row.name,
       displayName: row.displayName,
       sortOrder: row.sortOrder,
+      reportAbbreviation: row.reportAbbreviation,
+      reportSortOrder: row.reportSortOrder,
       isActive: row.isActive,
       audience: row.audience as 'media' | 'public',
       allowsTranslation: row.allowsTranslation,
-      requiresNewsReleaseDetails: row.requiresNewsReleaseDetails,
       description: row.description,
     }));
   }
@@ -2343,7 +2346,8 @@ export class LookupsService {
       description?: string | null;
       audience: 'media' | 'public';
       allowsTranslation?: boolean;
-      requiresNewsReleaseDetails?: boolean;
+      reportAbbreviation?: string | null;
+      reportSortOrder?: number;
     },
     currentUserId: number
   ): Promise<typeof releaseTypes.$inferSelect> {
@@ -2371,8 +2375,8 @@ export class LookupsService {
             isActive: data.isActive ?? true,
             audience: data.audience,
             allowsTranslation: data.allowsTranslation ?? false,
-            requiresNewsReleaseDetails:
-              data.requiresNewsReleaseDetails ?? false,
+            reportAbbreviation: data.reportAbbreviation ?? null,
+            reportSortOrder: data.reportSortOrder ?? 0,
             description: data.description ?? undefined,
             createdBy: currentUserId,
             lastUpdatedBy: currentUserId,
@@ -2968,7 +2972,8 @@ export class LookupsService {
       description: string | null;
       audience: 'media' | 'public';
       allowsTranslation: boolean;
-      requiresNewsReleaseDetails: boolean;
+      reportAbbreviation: string | null;
+      reportSortOrder: number;
     }>,
     currentUserId: number
   ): Promise<typeof releaseTypes.$inferSelect | undefined> {
@@ -2997,8 +3002,10 @@ export class LookupsService {
     if (data.audience !== undefined) updateData.audience = data.audience;
     if (data.allowsTranslation !== undefined)
       updateData.allowsTranslation = data.allowsTranslation;
-    if (data.requiresNewsReleaseDetails !== undefined)
-      updateData.requiresNewsReleaseDetails = data.requiresNewsReleaseDetails;
+    if (data.reportAbbreviation !== undefined)
+      updateData.reportAbbreviation = data.reportAbbreviation;
+    if (data.reportSortOrder !== undefined)
+      updateData.reportSortOrder = data.reportSortOrder;
 
     return this.withLookupConflict(
       'release_types_normalized_name_unique',

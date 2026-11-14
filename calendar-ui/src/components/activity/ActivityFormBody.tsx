@@ -197,6 +197,15 @@ export function ActivityFormBody({
                   lookups.newsReleaseDistributions
                 }
                 newsReleaseOriginOptions={lookups.newsReleaseOrigins}
+                newsReleaseOriginLookups={lookups.newsReleaseOriginLookups}
+                organizationCatalog={lookups.organizations.map((o) => ({
+                  id: o.value,
+                  name: o.name ?? o.label,
+                  displayName: o.displayName ?? o.label,
+                  abbreviation: o.abbreviation ?? null,
+                  jurisdiction: o.jurisdiction ?? null,
+                  organizationTypeId: o.organizationTypeId ?? null,
+                }))}
                 translationRequiredStatuses={
                   lookups.translationRequiredStatuses
                 }

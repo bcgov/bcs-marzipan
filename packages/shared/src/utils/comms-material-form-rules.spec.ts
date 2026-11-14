@@ -24,7 +24,6 @@ describe('stripCommsDependentFields', () => {
       releaseType: {
         audience: 'public',
         allowsTranslation: true,
-        requiresNewsReleaseDetails: true,
       },
     },
     {
@@ -32,7 +31,6 @@ describe('stripCommsDependentFields', () => {
       releaseType: {
         audience: 'public',
         allowsTranslation: false,
-        requiresNewsReleaseDetails: false,
       },
     },
   ]);
@@ -65,14 +63,13 @@ describe('stripCommsDependentFields', () => {
     expect(result.releaseTimeOffsetMinutes).toBe(15);
   });
 
-  it('clears NR fields but keeps translation when only allowsTranslation material selected', () => {
+  it('keeps origin and translation when release type allows translation', () => {
     const flagsTranslationOnly = buildCommsMaterialReleaseFlagsById([
       {
         id: 99,
         releaseType: {
           audience: 'public',
           allowsTranslation: true,
-          requiresNewsReleaseDetails: false,
         },
       },
     ]);
@@ -80,8 +77,8 @@ describe('stripCommsDependentFields', () => {
       { ...baseForm(), commsMaterialIds: [99] },
       flagsTranslationOnly
     );
-    expect(result.newsReleaseOriginId).toBeNull();
-    expect(result.newsReleaseDistributionId).toBeNull();
+    expect(result.newsReleaseOriginId).toBe(1);
+    expect(result.newsReleaseDistributionId).toBe(2);
     expect(result.translationsRequiredStatusId).toBe(3);
     expect(result.releaseTimeOffsetMinutes).toBe(15);
   });
@@ -103,7 +100,6 @@ describe('stripCommsDependentFields', () => {
         releaseType: {
           audience: 'media',
           allowsTranslation: false,
-          requiresNewsReleaseDetails: false,
         },
       },
     ]);
