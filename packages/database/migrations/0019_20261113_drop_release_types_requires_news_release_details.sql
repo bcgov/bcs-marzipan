@@ -1,1 +1,0 @@
-ALTER TABLE "release_types" DROP COLUMN "requires_news_release_details";
