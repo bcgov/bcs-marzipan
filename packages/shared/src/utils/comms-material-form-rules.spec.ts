@@ -26,7 +26,6 @@ describe('applyReleaseTimeDefaultWhenCommsEnablesRelease', () => {
       releaseType: {
         audience: 'public',
         allowsTranslation: false,
-        requiresNewsReleaseDetails: false,
       },
     },
   ]);

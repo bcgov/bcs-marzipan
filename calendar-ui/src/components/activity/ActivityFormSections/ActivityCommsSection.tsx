@@ -292,12 +292,6 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
     selectedFlags.hasReleaseTypeComms,
   ]);
 
-  const translationLanguageComboboxOptions: OptionItem[] =
-    translationLanguageOptions.map((l) => ({
-      value: String(l.id),
-      label: l.displayName ?? l.name,
-    }));
-
   const mergeComboboxItems = (
     pickable: CommsMaterialOptionItem[],
     selected: CommsMaterialOptionItem[]
@@ -438,78 +432,10 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             infoAriaLabel="About news release distribution"
           />
           {selectedFlags.allowsTranslation ? (
-            <>
-              <FormField
-                control={form.control}
-                name="translationsRequiredStatusId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      <>
-                        {getActivityFieldLabel(field.name)}
-                        <ActivityFieldInfoIcon
-                          fieldKey="translationsRequiredStatusId"
-                          ariaLabel="About translations required"
-                        />
-                      </>
-                    </FormLabel>
-                    <FormSelectSafe
-                      readOnly={translationsScope.readOnly}
-                      disabled={translationsScope.fieldScopeDisabled}
-                      optionValues={translationRequiredStatuses.map((s) =>
-                        String(s.id)
-                      )}
-                      value={optionalIdSelectDisplayValue(field.value)}
-                      onValueChange={(value) => {
-                        const nextStatusId = optionalSelectIdValue(value);
-                        setActivityFormFieldValue(
-                          form,
-                          field.name,
-                          nextStatusId
-                        );
-                        if (
-                          requiredTranslationStatusId != null &&
-                          nextStatusId !== requiredTranslationStatusId
-                        ) {
-                          setActivityFormFieldValue(
-                            form,
-                            'translationLanguageIds',
-                            []
-                          );
-                        }
-                      }}
-                    >
-                      <ActivityFieldScopePermissionTooltip scope="translations">
-                        <FormControl data-field={field.name}>
-                          <FormSelectTrigger
-                            readOnly={
-                              translationsScope.readOnly &&
-                              !translationsScope.fieldScopeDisabled
-                            }
-                          >
-                            <SelectValue placeholder="" />
-                          </FormSelectTrigger>
-                        </FormControl>
-                      </ActivityFieldScopePermissionTooltip>
-                      <SelectContent>
-                        {translationRequiredStatuses.map((status) => (
-                          <SelectItem key={status.id} value={String(status.id)}>
-                            {status.displayName ?? status.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </FormSelectSafe>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <TranslationLanguagesField
-                requiredTranslationStatusId={requiredTranslationStatusId}
-                translationLanguageComboboxOptions={
-                  translationLanguageComboboxOptions
-                }
-              />
-            </>
+            <ActivityTranslationsField
+              translationRequiredStatuses={translationRequiredStatuses}
+              translationLanguageOptions={translationLanguageOptions}
+            />
           ) : null}
         </>
       ) : null}

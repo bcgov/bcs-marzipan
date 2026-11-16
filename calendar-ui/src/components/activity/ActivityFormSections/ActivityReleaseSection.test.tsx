@@ -148,8 +148,8 @@ function ActivityCommsSectionHarness({
           dateStatuses={mockLookups.dateStatuses}
           timeStatuses={mockLookups.timeStatuses}
           newsReleaseDistributionOptions={mockLookups.newsReleaseDistributions}
-          newsReleaseOriginOptions={mockLookups.newsReleaseOrigins}
-          newsReleaseOriginLookups={mockLookups.newsReleaseOrigins.map((o) => ({
+          newsReleaseOriginOptions={newsReleaseOriginOptions}
+          newsReleaseOriginLookups={newsReleaseOriginOptions.map((o) => ({
             id: Number(o.value),
             name: o.label,
             displayName: o.label,

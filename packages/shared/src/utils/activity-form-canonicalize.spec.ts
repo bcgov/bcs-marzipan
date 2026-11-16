@@ -160,7 +160,6 @@ describe('prepareActivityFormDataForSubmit', () => {
       {
         allowsTranslation: true,
         audience: null,
-        requiresNewsReleaseDetails: false,
       },
     ],
   ]) as import('./comms-material-form-rules').CommsMaterialReleaseFlagsById;

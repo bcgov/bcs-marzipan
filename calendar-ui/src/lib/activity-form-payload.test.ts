@@ -101,7 +101,6 @@ const allowsTranslationFlags = new Map([
     {
       allowsTranslation: true,
       audience: null,
-      requiresNewsReleaseDetails: false,
     },
   ],
 ]) as import('@corpcal/shared/utils').CommsMaterialReleaseFlagsById;
