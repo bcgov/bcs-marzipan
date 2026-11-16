@@ -54,9 +54,9 @@ describe('applyReleaseSchedulingRadioChange', () => {
   });
 
   it('sets relative preset', () => {
-    expect(applyReleaseSchedulingRadioChange('30')).toEqual({
+    expect(applyReleaseSchedulingRadioChange('15')).toEqual({
       releaseSchedulingMode: 'relative',
-      releaseTimeOffsetMinutes: 30,
+      releaseTimeOffsetMinutes: 15,
     });
   });
 });

@@ -274,14 +274,6 @@ INSERT INTO team_permissions (team_id, permission_id)
 SELECT 2, p.id
 FROM permissions p
 WHERE p.key IN (
-  'activities.lookAhead.edit',
-  'activities.translations.edit'
+  'activities.lookAhead.edit'
 )
-ON CONFLICT (team_id, permission_id) DO NOTHING;
-
--- MR (1): translations edit only
-INSERT INTO team_permissions (team_id, permission_id)
-SELECT 1, p.id
-FROM permissions p
-WHERE p.key = 'activities.translations.edit'
 ON CONFLICT (team_id, permission_id) DO NOTHING;

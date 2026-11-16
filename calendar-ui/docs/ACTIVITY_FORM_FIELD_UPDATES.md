@@ -75,7 +75,8 @@ Changing canonicalize semantics (e.g. a new empty edge case for diff) can change
 ## Release scheduling (`releaseSchedulingMode`, `releaseTimeOffsetMinutes`)
 
 - Shown in the comms section when any selected material has a **public** release type; cleared on save when none remain (`stripCommsDependentFields`).
-- Radio UI: Not specified, presets, Custom, or **On signal** (no fixed time). Modes: `relative` | `on_signal` (optional at save).
+- Clearable select: **Not specified** (placeholder), **At start**, **+15 minutes**, **Custom** (inline amount + unit), or **On signal**. Modes: `relative` | `on_signal` (optional at save).
+- First public comms selection with unset release defaults to **+15 minutes** (comms transition only, not on hydrate).
 - For `relative`, optional offset (minutes after schedule anchor); server recomputes read-only `releaseTime` on create/update (not tracked in history). For `on_signal`, offset and instant are always null.
 - History tracks **Release scheduling** (mode) and **Release time** (offset) separately.
-- Edit requires `activities.release_time.edit` (field scope `releaseTime` for both fields).
+- Edit requires `activities.release_time.edit` (Editor and Advanced Editor via config-data; field scope `releaseTime`).

@@ -17,10 +17,10 @@ import {
 import { buildTranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
 
 const TEST_TRANSLATION_RESOLVER = buildTranslationLanguageLabelResolver([
-  { shortcode: 'FR', displayName: 'French' },
-  { shortcode: 'PUN', displayName: 'Punjabi' },
-  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
-  { shortcode: 'SPA', displayName: 'Spanish' },
+  { shortcode: 'fr', displayName: 'French' },
+  { shortcode: 'pa', displayName: 'Punjabi' },
+  { shortcode: 'zh-Hans', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'es', displayName: 'Spanish' },
 ]);
 
 const BASE_ACTIVITY_RESPONSE = {
@@ -363,7 +363,7 @@ describe('toPrintRowViewModel', () => {
         ...BASE_ACTIVITY,
         commsMaterials: ['Media advisory', 'Backgrounder'],
         commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
-        translationsRequired: ['FR'],
+        translationsRequired: ['fr'],
       },
       {
         activityBaseUrl: 'http://localhost:3000',
@@ -426,7 +426,7 @@ describe('toPrintRowViewModel', () => {
         ...BASE_ACTIVITY,
         category: ['Release'],
         newsReleaseOrigin: null,
-        translationsRequired: ['FR', 'PUN'],
+        translationsRequired: ['fr', 'pa'],
       },
       {
         activityBaseUrl: 'http://localhost:3000',
@@ -443,7 +443,7 @@ describe('toPrintRowViewModel', () => {
         ...BASE_ACTIVITY,
         category: ['Release'],
         newsReleaseOrigin: null,
-        translationsRequired: ['FR', 'PUN', 'SC', 'SPA'],
+        translationsRequired: ['fr', 'pa', 'zh-Hans', 'es'],
       },
       {
         activityBaseUrl: 'http://localhost:3000',

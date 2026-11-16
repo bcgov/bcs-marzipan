@@ -13,7 +13,11 @@
  */
 
 import { pacificCalendarDateFromInstant, pacificDayKey } from './calendar';
-import { CORP_PACIFIC_OFFSET_MS, CORP_PACIFIC_TIME_ZONE } from './constants';
+import {
+  CORP_PACIFIC_ABBREV,
+  CORP_PACIFIC_OFFSET_MS,
+  CORP_PACIFIC_TIME_ZONE,
+} from './constants';
 import {
   isCalendarDateString,
   isCivilTimeString,
@@ -246,7 +250,7 @@ export function formatInstantPacificTime(
 }
 
 /**
- * Activity release-time preview from a UTC instant, e.g. `2:45 pm PT, Fri Mar 13`.
+ * Activity release-time preview from a UTC instant, e.g. `2:45 pm PCT, Fri Mar 13`.
  */
 export function formatInstantPacificReleasePreview(
   instant: string | Date | number | null | undefined,
@@ -263,7 +267,7 @@ export function formatInstantPacificReleasePreview(
     referenceYear
   );
   if (!dateSuffix) return '';
-  return `${time} PT, ${dateSuffix}`;
+  return `${time} ${CORP_PACIFIC_ABBREV}, ${dateSuffix}`;
 }
 
 /**
@@ -286,7 +290,7 @@ export function formatTimeTbdPacificReleasePreview(
 }
 
 /**
- * Release-time preview when only start time is known, e.g. `2:45 pm PT, Date TBD`.
+ * Release-time preview when only start time is known, e.g. `2:45 pm PCT, Date TBD`.
  */
 export function formatCivilPacificReleasePreview(
   civilTime: CivilTimeString | string,
@@ -294,7 +298,7 @@ export function formatCivilPacificReleasePreview(
 ): string {
   const clock = formatCivilTime12h(civilTime);
   if (clock === '') return '';
-  return `${clock} PT, ${dateSuffix}`;
+  return `${clock} ${CORP_PACIFIC_ABBREV}, ${dateSuffix}`;
 }
 
 /**

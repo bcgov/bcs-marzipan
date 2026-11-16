@@ -240,10 +240,20 @@ export const PITCH_TRANSLATION_PENDING_LOOKUP_NAME = TBD_LOOKUP_NAME;
 /** Lookup `name` for date/time confirmed status and filter matching. */
 export const CONFIRMED_LOOKUP_NAME = 'confirmed' as const;
 
+/** Lookup `name` for date/time tentative scheduling status. */
+export const TENTATIVE_LOOKUP_NAME = 'tentative' as const;
+
 /**
  * Lookup `name` for translation_required_statuses when translations are mandatory.
  */
 export const TRANSLATION_REQUIRED_LOOKUP_NAME = 'required' as const;
+
+/** Lookup `name` when the user explicitly chose no translation languages. */
+export const TRANSLATION_NO_TRANSLATIONS_LOOKUP_NAME =
+  'no_translations' as const;
+
+/** @deprecated Renamed to {@link TRANSLATION_NO_TRANSLATIONS_LOOKUP_NAME}. */
+export const TRANSLATION_NOT_REQUIRED_LOOKUP_NAME = 'not_required' as const;
 
 // ============================================================================
 // Auth Constants

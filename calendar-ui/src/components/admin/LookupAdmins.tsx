@@ -276,7 +276,9 @@ const translationLanguageFields: FormField[] = [
     name: 'shortcode',
     label: 'Shortcode',
     type: 'text',
-    placeholder: 'e.g. FR, AR, SC',
+    required: true,
+    placeholder: 'e.g. fr, ar, zh-Hans',
+    helperText: 'Valid BCP 47 format',
   },
   {
     name: 'isActive',

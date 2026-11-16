@@ -25,9 +25,9 @@ vi.mock('../activity-info-icon-settings-context', () => ({
 const mockTranslationRequiredStatuses = [
   {
     id: 1,
-    name: 'pending',
-    displayName: 'Pending review',
-    label: 'Pending review',
+    name: 'tbd',
+    displayName: 'Translations TBD',
+    label: 'Translations TBD',
     value: 1,
   },
   {
@@ -39,9 +39,9 @@ const mockTranslationRequiredStatuses = [
   },
   {
     id: 3,
-    name: 'not_required',
-    displayName: 'Not required',
-    label: 'Not required',
+    name: 'no_translations',
+    displayName: 'No translations',
+    label: 'No translations',
     value: 3,
   },
 ];
@@ -99,11 +99,13 @@ const mockLookups = {
   quickShareGroups: [],
   dateStatuses: [
     { id: 1, name: 'tbd', displayName: 'Date TBD' },
-    { id: 2, name: 'confirmed', displayName: 'Confirmed' },
+    { id: 2, name: 'tentative', displayName: 'Tentative' },
+    { id: 3, name: 'confirmed', displayName: 'Confirmed' },
   ],
   timeStatuses: [
     { id: 1, name: 'tbd', displayName: 'Time TBD' },
-    { id: 2, name: 'confirmed', displayName: 'Confirmed' },
+    { id: 2, name: 'tentative', displayName: 'Tentative' },
+    { id: 3, name: 'confirmed', displayName: 'Confirmed' },
   ],
   venueStatuses: [],
 };
@@ -114,6 +116,7 @@ function ActivityCommsSectionHarness({
   defaultValues,
   commsMaterialOptions = mockLookups.commsMaterials,
   translationRequiredStatuses = mockLookups.translationRequiredStatuses,
+  newsReleaseOriginOptions = mockLookups.newsReleaseOrigins,
   onFormReady,
 }: {
   readOnly: boolean;
@@ -121,6 +124,7 @@ function ActivityCommsSectionHarness({
   defaultValues?: Partial<ActivityFormData>;
   commsMaterialOptions?: typeof mockLookups.commsMaterials;
   translationRequiredStatuses?: TranslationRequiredStatusLookupItem[];
+  newsReleaseOriginOptions?: typeof mockLookups.newsReleaseOrigins;
   onFormReady?: (form: ReturnType<typeof useForm<ActivityFormData>>) => void;
 }) {
   const form = useForm<ActivityFormData>({
@@ -146,7 +150,7 @@ function ActivityCommsSectionHarness({
           dateStatuses={mockLookups.dateStatuses}
           timeStatuses={mockLookups.timeStatuses}
           newsReleaseDistributionOptions={mockLookups.newsReleaseDistributions}
-          newsReleaseOriginOptions={mockLookups.newsReleaseOrigins}
+          newsReleaseOriginOptions={newsReleaseOriginOptions}
           translationRequiredStatuses={translationRequiredStatuses}
           translationLanguageOptions={mockLookups.translationLanguages}
           userTeamIds={[]}
@@ -156,18 +160,93 @@ function ActivityCommsSectionHarness({
   );
 }
 
+describe('ActivityCommsSection release time', () => {
+  it('renders release scheduling select when public comms is selected', async () => {
+    render(
+      <ActivityCommsSectionHarness
+        readOnly={false}
+        defaultValues={{
+          commsMaterialIds: [4],
+          releaseSchedulingMode: 'relative',
+          releaseTimeOffsetMinutes: 15,
+          startDate: '2026-03-13',
+          startTime: '14:30:00',
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText('Release time is relative to start date and time.')
+    ).toBeInTheDocument();
+    expect(await screen.findByText('15 minutes after')).toBeInTheDocument();
+    expect(screen.getByText('2:45 pm')).toBeInTheDocument();
+  });
+});
+
 describe('ActivityCommsSection optional lookup clear', () => {
   it('clears news release origin when Clear is clicked', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    const newsReleaseOrigins = [
+      { value: '1', label: 'TBD' },
+      { value: '2', label: 'Ministry release' },
+      { value: '3', label: 'Federal release' },
+    ];
 
     render(
       <ActivityCommsSectionHarness
         readOnly={false}
         defaultValues={{
           commsMaterialIds: [4],
-          newsReleaseOriginId: 1,
+          newsReleaseOriginId: 3,
         }}
+        newsReleaseOriginOptions={newsReleaseOrigins}
+        onFormReady={(form) => {
+          formRef = form;
+        }}
+      />
+    );
+
+    const origin = await screen.findByRole('combobox', {
+      name: /News release origin/i,
+    });
+    expect(origin).toHaveTextContent('Federal release');
+
+    await user.click(origin);
+    await user.click(
+      await screen.findByRole('button', { name: /Clear News release origin/i })
+    );
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(formRef!.getValues('newsReleaseOriginId')).toBeNull();
+      expect(formRef!.formState.dirtyFields.newsReleaseOriginId).toBe(true);
+      const clearedOrigin = screen.getByRole('combobox', {
+        name: /News release origin/i,
+      });
+      expect(clearedOrigin).not.toHaveTextContent('Ministry release');
+      expect(clearedOrigin).not.toHaveTextContent('Federal release');
+    });
+  });
+
+  it('clears news release origin UI when hydrated value was Ministry release', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
+    const newsReleaseOrigins = [
+      { value: '1', label: 'TBD' },
+      { value: '2', label: 'Ministry release' },
+    ];
+
+    render(
+      <ActivityCommsSectionHarness
+        readOnly={false}
+        defaultValues={{
+          commsMaterialIds: [4],
+          newsReleaseOriginId: 2,
+        }}
+        newsReleaseOriginOptions={newsReleaseOrigins}
         onFormReady={(form) => {
           formRef = form;
         }}
@@ -181,10 +260,14 @@ describe('ActivityCommsSection optional lookup clear', () => {
     await user.click(
       await screen.findByRole('button', { name: /Clear News release origin/i })
     );
+    await user.keyboard('{Escape}');
 
     await waitFor(() => {
-      expect(formRef!.getValues('newsReleaseOriginId')).toBeUndefined();
-      expect(formRef!.formState.dirtyFields.newsReleaseOriginId).toBe(true);
+      expect(formRef!.getValues('newsReleaseOriginId')).toBeNull();
+      const clearedOrigin = screen.getByRole('combobox', {
+        name: /News release origin/i,
+      });
+      expect(clearedOrigin).not.toHaveTextContent('Ministry release');
     });
   });
 
@@ -220,22 +303,21 @@ describe('ActivityCommsSection release fields permissions', () => {
     expect(origin).toHaveAttribute('aria-readonly', 'true');
   });
 
-  it('disables translation languages when field scope forbids edit', async () => {
+  it('renders translations combobox as readOnly when activity is view-only', async () => {
     render(
       <ActivityCommsSectionHarness
-        readOnly={false}
-        canEditFieldScope={(s: string) => s !== 'translations'}
+        readOnly={true}
         defaultValues={{
           commsMaterialIds: [4],
-          translationsRequiredStatusId: 2,
+          translationsRequiredStatusId: 1,
         }}
       />
     );
 
     const input = await screen.findByRole('combobox', {
-      name: /Translation languages/i,
+      name: /^Translations$/i,
     });
-    expect(input).toBeDisabled();
+    expect(input).toHaveAttribute('aria-readonly', 'true');
   });
 });
 
@@ -264,52 +346,67 @@ describe('ActivityCommsSection conditional comms groups', () => {
 
     expect(screen.queryByText('News release details')).not.toBeInTheDocument();
     expect(
-      await screen.findByRole('combobox', { name: /^Translations required$/i })
+      await screen.findByRole('combobox', { name: /^Translations$/i })
     ).toBeInTheDocument();
   });
 });
 
-describe('ActivityCommsSection translation languages visibility', () => {
-  it('hides translation languages when status is not Required', () => {
+describe('ActivityCommsSection translations combobox', () => {
+  it('shows Translations TBD placeholder when status is tbd without languages', async () => {
     render(
       <ActivityCommsSectionHarness
         readOnly={false}
         defaultValues={{
           commsMaterialIds: [4],
           translationsRequiredStatusId: 1,
+          translationLanguageIds: [],
         }}
       />
     );
 
+    expect(screen.getByText('Translations TBD')).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    const combobox = await screen.findByRole('combobox', {
+      name: /^Translations$/i,
+    });
+    await user.click(combobox);
     expect(
-      screen.queryByRole('combobox', { name: /Translation languages/i })
-    ).not.toBeInTheDocument();
+      screen.queryByRole('option', { name: 'Translations TBD' })
+    ).toBeNull();
   });
 
-  it('shows translation languages when status is Required', async () => {
+  it('sets implicit required when a language is selected', async () => {
+    const user = userEvent.setup();
+    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
+
     render(
       <ActivityCommsSectionHarness
         readOnly={false}
         defaultValues={{
           commsMaterialIds: [4],
-          translationsRequiredStatusId: 2,
+          translationsRequiredStatusId: 1,
+          translationLanguageIds: [],
+        }}
+        onFormReady={(form) => {
+          formRef = form;
         }}
       />
     );
 
-    expect(
-      await screen.findByRole('combobox', { name: /Translation languages/i })
-    ).toBeInTheDocument();
+    const combobox = await screen.findByRole('combobox', {
+      name: /^Translations$/i,
+    });
+    await user.click(combobox);
+    await user.click(await screen.findByText('French'));
+
+    await waitFor(() => {
+      expect(formRef!.getValues('translationsRequiredStatusId')).toBe(2);
+      expect(formRef!.getValues('translationLanguageIds')).toEqual([1]);
+    });
   });
-});
 
-const translationRequiredStatusesWithoutRequired =
-  mockTranslationRequiredStatuses.filter(
-    (status) => status.name !== 'required'
-  );
-
-describe('ActivityCommsSection translation status change', () => {
-  it('clears translation languages when status changes away from required', async () => {
+  it('clears languages when No translations is selected', async () => {
     const user = userEvent.setup();
     let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
 
@@ -327,46 +424,15 @@ describe('ActivityCommsSection translation status change', () => {
       />
     );
 
-    const statusSelect = await screen.findByRole('combobox', {
-      name: /^Translations required$/i,
+    const combobox = await screen.findByRole('combobox', {
+      name: /^Translations$/i,
     });
-    await user.click(statusSelect);
-    await user.click(await screen.findByText('Not required'));
+    await user.click(combobox);
+    await user.click(await screen.findByText('No translations'));
 
     await waitFor(() => {
       expect(formRef!.getValues('translationsRequiredStatusId')).toBe(3);
       expect(formRef!.getValues('translationLanguageIds')).toEqual([]);
-    });
-  });
-
-  it('preserves translation languages when required status lookup is unresolved', async () => {
-    const user = userEvent.setup();
-    let formRef: ReturnType<typeof useForm<ActivityFormData>> | undefined;
-
-    render(
-      <ActivityCommsSectionHarness
-        readOnly={false}
-        translationRequiredStatuses={translationRequiredStatusesWithoutRequired}
-        defaultValues={{
-          commsMaterialIds: [4],
-          translationsRequiredStatusId: 1,
-          translationLanguageIds: [1, 2],
-        }}
-        onFormReady={(form) => {
-          formRef = form;
-        }}
-      />
-    );
-
-    const statusSelect = await screen.findByRole('combobox', {
-      name: /^Translations required$/i,
-    });
-    await user.click(statusSelect);
-    await user.click(await screen.findByText('Not required'));
-
-    await waitFor(() => {
-      expect(formRef!.getValues('translationsRequiredStatusId')).toBe(3);
-      expect(formRef!.getValues('translationLanguageIds')).toEqual([1, 2]);
     });
   });
 });

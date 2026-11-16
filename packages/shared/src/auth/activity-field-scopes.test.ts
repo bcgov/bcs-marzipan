@@ -63,8 +63,7 @@ describe('canViewActivityFieldScope', () => {
     expect(canViewActivityFieldScope(viewer, 'lookAhead')).toBe(false);
   });
 
-  it('returns true for translations and releaseTime without grants (no view permission)', () => {
-    expect(canViewActivityFieldScope(viewer, 'translations')).toBe(true);
+  it('returns true for releaseTime without grants (no view permission)', () => {
     expect(canViewActivityFieldScope(viewer, 'releaseTime')).toBe(true);
   });
 
@@ -73,8 +72,7 @@ describe('canViewActivityFieldScope', () => {
     expect(canViewActivityFieldScope(editor, 'lookAhead')).toBe(false);
   });
 
-  it('returns true for translations and releaseTime when Editor lacks other grants', () => {
-    expect(canViewActivityFieldScope(editor, 'translations')).toBe(true);
+  it('returns true for releaseTime when Editor lacks other grants', () => {
     expect(canViewActivityFieldScope(editor, 'releaseTime')).toBe(true);
   });
 
@@ -146,9 +144,8 @@ describe('canEditActivityFieldScope', () => {
 describe('getViewableFieldScopes', () => {
   it('returns only always-viewable scopes for Viewer without grants', () => {
     const result = getViewableFieldScopes(viewer);
-    expect(result.has('translations')).toBe(true);
     expect(result.has('releaseTime')).toBe(true);
-    expect(result.size).toBe(2);
+    expect(result.size).toBe(1);
   });
 
   it('returns all scopes for Advanced Viewer', () => {
@@ -160,9 +157,8 @@ describe('getViewableFieldScopes', () => {
   it('returns granted scopes plus always-viewable scopes for Editor', () => {
     const result = getViewableFieldScopes(editorWithNotesGrant);
     expect(result.has('notes')).toBe(true);
-    expect(result.has('translations')).toBe(true);
     expect(result.has('releaseTime')).toBe(true);
-    expect(result.size).toBe(3);
+    expect(result.size).toBe(2);
   });
 });
 

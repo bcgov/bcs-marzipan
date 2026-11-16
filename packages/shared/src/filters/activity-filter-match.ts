@@ -1,4 +1,5 @@
 import type { ActivityFilterState } from '../activity-filter-state';
+import { normalizeLanguageTagForCompare } from '../utils/bcp47-language-tag';
 import {
   activityScheduledRangeOverlaps,
   isDateRangeActive,
@@ -168,8 +169,13 @@ export function activityMatchesFilterState(
         filterState.translationLanguageIds
           .map((id) => resolver.get(id))
           .filter((label): label is string => label != null)
+          .map((label) => normalizeLanguageTagForCompare(label))
       );
-      if (!input.translationLanguageNames.some((n) => labelSet.has(n))) {
+      if (
+        !input.translationLanguageNames.some((n) =>
+          labelSet.has(normalizeLanguageTagForCompare(n))
+        )
+      ) {
         return false;
       }
     }
