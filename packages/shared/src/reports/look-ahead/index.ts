@@ -31,6 +31,17 @@ export {
   type LookAheadQuickPick,
 } from './lookAheadDateRange';
 export {
+  DEFAULT_LOOK_AHEAD_CURATED_PRESET,
+  defaultLookAheadCuratedDateRange,
+  LOOK_AHEAD_CURATED_PRESET_IDS,
+  LOOK_AHEAD_CURATED_PRESET_META,
+  lookAheadCuratedPresetFromRange,
+  lookAheadCuratedPresetRange,
+  type LookAheadCuratedDateRange,
+  type LookAheadCuratedPresetId,
+  type LookAheadCuratedPresetMeta,
+} from './lookAheadCuratedDateRange';
+export {
   pacificCalendarDateFromInstant,
   type CalendarDateString,
 } from '../../datetime';

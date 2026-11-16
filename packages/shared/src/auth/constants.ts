@@ -126,6 +126,14 @@ export const PERMISSIONS = {
     VIEW: 'reports.view',
     EXPORT: 'reports.export',
     CREATE_CUSTOM: 'reports.create_custom',
+    /** Use the Look Ahead publisher date preset (e.g. Next 7 days starting tomorrow). */
+    PUBLISHED_LOOK_AHEAD_RANGE: 'reports.published_look_ahead_range',
+  },
+  LOOK_AHEAD: {
+    /** Curated Look Ahead page and look-ahead report data. */
+    VIEW: 'look_ahead.view',
+    /** Exec Look Ahead detail on the curated page. */
+    EXEC_VIEW: 'look_ahead.exec.view',
   },
   LOOKUPS: {
     VIEW: 'lookups.view',

@@ -737,10 +737,10 @@ The `key` is the source of truth. `resource`, `scope`, and `action` are denormal
 
 | Role            | Permissions                                                                                                 |
 | --------------- | ----------------------------------------------------------------------------------------------------------- |
-| Viewer          | activities.view, drafts.view, reports.view, lookups.view                                                    |
-| Editor          | Viewer + activities.create/edit, drafts.create/edit/delete                                                  |
-| Advanced Viewer | Same as Viewer (view only; bypasses team scoping)                                                           |
-| Advanced Editor | Editor + activities.approve, reports.export, drafts.recover                                                 |
+| Viewer          | activities.view, drafts.view, reports.view, look_ahead.view, lookups.view                                   |
+| Editor          | Viewer + activities.create/edit, drafts.create/edit/delete, look_ahead.view                                 |
+| Advanced Viewer | Same as Viewer (view only; bypasses team scoping) + look_ahead.exec.view                                    |
+| Advanced Editor | Editor + activities.approve, reports.export, drafts.recover, look_ahead.exec.view                           |
 | Admin           | Advanced Editor + activities.delete/publish/unpublish, users.view/edit, teams._, lookups.manage, settings._ |
 | System Admin    | All permissions                                                                                             |
 
