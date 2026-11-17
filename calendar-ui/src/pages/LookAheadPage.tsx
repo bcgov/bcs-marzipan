@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
 } from 'react';
 
 import { activityFilterStateToQueryParams, PERMISSIONS } from '@corpcal/shared';
@@ -17,39 +17,73 @@ import { LookAheadCuratedFilters } from '@/components/look-ahead/LookAheadCurate
 import { LookAheadDateRangeControl } from '@/components/look-ahead/LookAheadDateRangeControl';
 import { LookAheadSectionToc } from '@/components/look-ahead/LookAheadSectionToc';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
-import { StatusMessage } from '@/components/shared';
+import {
+  ActivityConnectionStatusAlert,
+  StatusMessage,
+} from '@/components/shared';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { useAutoHideHeader } from '@/hooks/useAutoHideHeader';
+import { useLiveSyncConnectionAlert } from '@/hooks/useLiveSyncConnectionAlert';
 import { useActivityStatuses } from '@/hooks/useLookups';
 import { useReportDataFreshness } from '@/hooks/useReportDataFreshness';
 import analytics from '@/lib/analytics';
 import {
   clearLookAheadCuratedFilters,
   loadLookAheadPagePreferences,
+  sanitizeLookAheadPagePreferences,
   saveLookAheadPagePreferences,
   type LookAheadPagePreferences,
 } from '@/lib/lookAheadPagePreferences';
 import { stableSerializeReportQueryParams } from '@/lib/report-query-params';
 import { filterReportDataBySearchKeyword } from '@/lib/report-search-filter';
 import { reportQueryKeys } from '@/lib/reportQueryKeys';
-import { URL_PARAM_REPORT } from '@/lib/reportsTablePreferencesParams';
 import { cn } from '@/lib/utils';
 
 export function LookAheadPage() {
   const { hasPermission } = useAuth();
   const canExec = hasPermission(PERMISSIONS.LOOK_AHEAD.EXEC_VIEW);
-  const canOpenReports = hasPermission(PERMISSIONS.REPORTS.VIEW);
+  const canUsePublishedRange = hasPermission(
+    PERMISSIONS.REPORTS.PUBLISHED_LOOK_AHEAD_RANGE
+  );
   const headerVisible = useAutoHideHeader();
+  const liveSyncConnectionAlert = useLiveSyncConnectionAlert();
+  const stickyChromeRef = useRef<HTMLDivElement>(null);
+  const [stickyChromeHeightPx, setStickyChromeHeightPx] = useState(0);
 
   const [preferences, setPreferences] = useState<LookAheadPagePreferences>(() =>
     loadLookAheadPagePreferences()
   );
 
   useEffect(() => {
+    setPreferences((prev) => {
+      const next = sanitizeLookAheadPagePreferences(prev, {
+        canExec,
+        canUsePublishedRange,
+      });
+      return next === prev ? prev : next;
+    });
+  }, [canExec, canUsePublishedRange]);
+
+  useEffect(() => {
     saveLookAheadPagePreferences(preferences);
   }, [preferences]);
+
+  useLayoutEffect(() => {
+    const el = stickyChromeRef.current;
+    if (!el) return;
+    const syncHeight = () => setStickyChromeHeightPx(el.offsetHeight);
+    syncHeight();
+    const observer =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(syncHeight)
+        : null;
+    observer?.observe(el);
+    return () => observer?.disconnect();
+  }, [preferences.filtersExpanded, headerVisible]);
+
+  const sectionScrollMarginPx = stickyChromeHeightPx + 8;
 
   const activeReport = preferences.execMode && canExec ? 'exec' : 'look-ahead';
 
@@ -149,18 +183,6 @@ export function LookAheadPage() {
     setPreferences((prev) => clearLookAheadCuratedFilters(prev));
   }, []);
 
-  const reportsDeepLink = useMemo(() => {
-    const params = new URLSearchParams();
-    params.set(URL_PARAM_REPORT, activeReport);
-    if (preferences.filterState.dateRange.startDate) {
-      params.set('dateFrom', preferences.filterState.dateRange.startDate);
-    }
-    if (preferences.filterState.dateRange.endDate) {
-      params.set('dateTo', preferences.filterState.dateRange.endDate);
-    }
-    return `/reports?${params.toString()}`;
-  }, [activeReport, preferences.filterState.dateRange]);
-
   if (error) {
     return (
       <StatusMessage
@@ -175,55 +197,37 @@ export function LookAheadPage() {
 
   return (
     <div className="flex min-h-0 flex-col pb-12">
+      <ActivityConnectionStatusAlert display={liveSyncConnectionAlert} />
+
       <div
+        ref={stickyChromeRef}
         className={cn(
-          'bg-background border-border sticky top-0 z-30 border-b pb-3 transition-transform duration-200',
-          !headerVisible && '-translate-y-full border-transparent'
+          'bg-background border-border sticky top-0 z-30 overflow-hidden border-b transition-[max-height] duration-200 ease-in-out motion-reduce:transition-none',
+          headerVisible
+            ? 'max-h-[48rem] pb-3'
+            : 'max-h-0 border-transparent pb-0'
         )}
       >
         <PageHeader
           title="Look Ahead"
+          titleAddon={
+            <LookAheadDateRangeControl
+              dateRange={preferences.filterState.dateRange}
+              activePreset={preferences.activeCuratedPreset}
+              onDateRangeChange={handleDateRangeChange}
+              onPresetApplied={handlePresetApplied}
+            />
+          }
           action={
-            <div className="flex flex-wrap items-center gap-4">
-              <LookAheadDateRangeControl
-                dateRange={preferences.filterState.dateRange}
-                activePreset={preferences.activeCuratedPreset}
-                onDateRangeChange={handleDateRangeChange}
-                onPresetApplied={handlePresetApplied}
-              />
-              {canExec ? (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="look-ahead-exec-detail"
-                    checked={preferences.execMode}
-                    onCheckedChange={(checked) =>
-                      setPartialPreferences({ execMode: checked })
-                    }
-                    aria-label="Exec detail view"
-                  />
-                  <Label htmlFor="look-ahead-exec-detail" className="text-sm">
-                    Exec detail
-                  </Label>
-                </div>
-              ) : null}
-              {canOpenReports ? (
-                <Link
-                  to={reportsDeepLink}
-                  className="text-primary text-sm font-medium hover:underline"
-                >
-                  Open in Reports
-                </Link>
-              ) : null}
-              {dataUpdatedAt ? (
-                <span className="text-muted-foreground text-xs">
-                  Updated{' '}
-                  {new Date(dataUpdatedAt).toLocaleTimeString(undefined, {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
-                </span>
-              ) : null}
-            </div>
+            dataUpdatedAt ? (
+              <span className="text-muted-foreground text-xs">
+                Refreshed at{' '}
+                {new Date(dataUpdatedAt).toLocaleTimeString(undefined, {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </span>
+            ) : undefined
           }
           className="mb-2"
         />
@@ -242,17 +246,45 @@ export function LookAheadPage() {
             setPartialPreferences({ filterState })
           }
           onResetCuratedFilters={handleResetCuratedFilters}
+          trailingContent={
+            canExec ? (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="look-ahead-exec-detail"
+                  checked={preferences.execMode}
+                  onCheckedChange={(checked) =>
+                    setPartialPreferences({ execMode: checked })
+                  }
+                  aria-label="Exec detail view"
+                />
+                <Label htmlFor="look-ahead-exec-detail" className="text-sm">
+                  Exec detail
+                </Label>
+              </div>
+            ) : undefined
+          }
         />
       </div>
 
-      <div className="flex min-w-0 gap-6 lg:gap-8">
+      <div
+        className="flex min-w-0 items-start gap-6 lg:gap-8"
+        style={
+          {
+            '--look-ahead-toc-sticky-offset':
+              stickyChromeHeightPx > 0
+                ? `${sectionScrollMarginPx}px`
+                : undefined,
+          } as CSSProperties
+        }
+      >
         <LookAheadSectionToc
           displayData={displayData ?? undefined}
           isLoading={isPreviewLoading}
           isFresh={isFresh && !isWrongReport}
+          sectionScrollMarginPx={sectionScrollMarginPx}
         />
 
-        <PreviewColumn
+        <div
           className={cn(
             'min-w-0 flex-1',
             isFetching && !isPreviewLoading && 'opacity-[0.98]'
@@ -282,18 +314,8 @@ export function LookAheadPage() {
               No activities in the selected range.
             </p>
           )}
-        </PreviewColumn>
+        </div>
       </div>
     </div>
   );
-}
-
-function PreviewColumn({
-  className,
-  children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) {
-  return <div className={className}>{children}</div>;
 }

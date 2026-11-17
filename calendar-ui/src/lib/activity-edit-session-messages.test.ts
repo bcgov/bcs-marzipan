@@ -17,8 +17,10 @@ import {
   getActivityEditAcquireFailureToastVariant,
   getActivityEditRecoveryBannerMessage,
   getActivitySubmitBlockedToastTitle,
+  getLiveSyncConnectionBlockedAlertMessage,
   isActivityEditSessionActionsBlocked,
   isEditSessionConfirmGateClosed,
+  LIVE_SYNC_CONNECTION_OFFLINE_ALERT,
   shouldShowActivityConnectionAlert,
   shouldSuppressAcquireConnectionToast,
   shouldWarnActivityEditBeforeUnload,
@@ -66,6 +68,20 @@ describe('getActivityConnectionBlockedAlertMessage', () => {
     expect(
       getActivityConnectionBlockedAlertMessage('reconnecting', false)
     ).toBe(ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT);
+  });
+});
+
+describe('getLiveSyncConnectionBlockedAlertMessage', () => {
+  it('maps socket display states to live-sync alert copy', () => {
+    expect(getLiveSyncConnectionBlockedAlertMessage('browser-offline')).toBe(
+      LIVE_SYNC_CONNECTION_OFFLINE_ALERT
+    );
+    expect(getLiveSyncConnectionBlockedAlertMessage('disconnected')).toBe(
+      ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT
+    );
+    expect(getLiveSyncConnectionBlockedAlertMessage('reconnecting')).toBe(
+      ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT
+    );
   });
 });
 

@@ -27,7 +27,6 @@ export interface LookAheadCuratedDateRange {
 export interface LookAheadCuratedPresetMeta {
   id: LookAheadCuratedPresetId;
   label: string;
-  subtitle: string;
   /** When true, only shown if user has reports.published_look_ahead_range. */
   requiresPublishedRangePermission?: boolean;
 }
@@ -37,28 +36,23 @@ export const LOOK_AHEAD_CURATED_PRESET_META: readonly LookAheadCuratedPresetMeta
     {
       id: 'today',
       label: 'Today',
-      subtitle: 'Pacific calendar day only',
     },
     {
       id: 'published_range',
       label: 'Next 7 days',
-      subtitle: 'Starts tomorrow; for published Look Ahead',
       requiresPublishedRangePermission: true,
     },
     {
       id: 'inclusive7',
       label: '7 days',
-      subtitle: 'Includes today',
     },
     {
       id: 'inclusive14',
       label: '14 days',
-      subtitle: 'Includes today',
     },
     {
       id: 'inclusive30',
       label: '30 days',
-      subtitle: 'Includes today',
     },
   ];
 

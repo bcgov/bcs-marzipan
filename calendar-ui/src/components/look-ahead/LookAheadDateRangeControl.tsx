@@ -1,7 +1,13 @@
 import { ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { PERMISSIONS, type DateRangeValue } from '@corpcal/shared';
+import {
+  formatCalendarDateReleasePreview,
+  isCalendarDateString,
+  PERMISSIONS,
+  type CalendarDateString,
+  type DateRangeValue,
+} from '@corpcal/shared';
 import {
   LOOK_AHEAD_CURATED_PRESET_META,
   lookAheadCuratedPresetFromRange,
@@ -22,10 +28,24 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useAuth } from '@/hooks/useAuth';
-import { formatDateRange } from '@/lib/datetime-utils';
 import { cn } from '@/lib/utils';
 
 const PACIFIC_DATE_CHECK_MS = 60_000;
+
+function formatLookAheadBoundRange(
+  startDate: string,
+  endDate: string,
+  anchor: Date
+): string {
+  if (!isCalendarDateString(startDate) || !isCalendarDateString(endDate)) {
+    return '';
+  }
+  const options = { referenceInstant: anchor };
+  const formatBound = (date: CalendarDateString) =>
+    formatCalendarDateReleasePreview(date, options);
+  if (startDate === endDate) return formatBound(startDate);
+  return `${formatBound(startDate)} – ${formatBound(endDate)}`;
+}
 
 export interface LookAheadDateRangeControlProps {
   dateRange: DateRangeValue;
@@ -90,10 +110,27 @@ export function LookAheadDateRangeControl({
     applyPreset(activePreset);
   }, [activePreset, applyPreset, pacificToday]);
 
+  const { startDate: rangeStartDate, endDate: rangeEndDate } = dateRange;
+
   const displayLabel = useMemo(() => {
-    if (!dateRange.startDate && !dateRange.endDate) return 'Select dates';
-    return formatDateRange(dateRange.startDate, dateRange.endDate);
-  }, [dateRange.endDate, dateRange.startDate]);
+    if (!rangeStartDate && !rangeEndDate) return 'Select dates';
+    if (
+      isCalendarDateString(rangeStartDate) &&
+      isCalendarDateString(rangeEndDate)
+    ) {
+      return formatLookAheadBoundRange(rangeStartDate, rangeEndDate, anchor);
+    }
+    const options = { referenceInstant: anchor };
+    const formatBound = (date: CalendarDateString) =>
+      formatCalendarDateReleasePreview(date, options);
+    if (isCalendarDateString(rangeStartDate)) {
+      return formatBound(rangeStartDate);
+    }
+    if (isCalendarDateString(rangeEndDate)) {
+      return formatBound(rangeEndDate);
+    }
+    return 'Select dates';
+  }, [anchor, rangeEndDate, rangeStartDate]);
 
   const matchedPreset = useMemo(() => {
     if (!pacificToday) return null;
@@ -115,6 +152,18 @@ export function LookAheadDateRangeControl({
     [canUsePublishedRange]
   );
 
+  const presetMenuItems = useMemo(
+    () =>
+      presetOptions.map((meta) => {
+        const { start, end } = lookAheadCuratedPresetRange(meta.id, anchor);
+        return {
+          meta,
+          rangeLabel: formatLookAheadBoundRange(start, end, anchor),
+        };
+      }),
+    [anchor, presetOptions]
+  );
+
   return (
     <div
       className={cn(
@@ -129,7 +178,7 @@ export function LookAheadDateRangeControl({
             className="text-foreground hover:bg-accent/50 max-w-[min(100%,20rem)] min-w-0 truncate rounded-l-md px-3 py-1.5 text-left transition-colors"
             aria-label={`Date range: ${displayLabel}. Open calendar`}
           >
-            <span className="font-medium">{displayLabel}</span>
+            <span className="font-semibold">{displayLabel}</span>
             {matchedPreset ? (
               <span className="text-muted-foreground ml-2 text-xs font-normal">
                 {
@@ -172,7 +221,7 @@ export function LookAheadDateRangeControl({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-56">
-          {presetOptions.map((meta) => (
+          {presetMenuItems.map(({ meta, rangeLabel }) => (
             <DropdownMenuItem
               key={meta.id}
               onSelect={() => applyPreset(meta.id)}
@@ -180,7 +229,7 @@ export function LookAheadDateRangeControl({
               <div className="flex flex-col">
                 <span className="font-medium">{meta.label}</span>
                 <span className="text-muted-foreground text-xs">
-                  {meta.subtitle}
+                  {rangeLabel}
                 </span>
               </div>
             </DropdownMenuItem>

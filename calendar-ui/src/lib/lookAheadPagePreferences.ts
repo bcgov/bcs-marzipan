@@ -95,3 +95,42 @@ export function clearLookAheadCuratedFilters(
     },
   };
 }
+
+export type LookAheadPagePermissionFlags = {
+  canExec: boolean;
+  canUsePublishedRange: boolean;
+};
+
+/** Clamps session prefs when the user no longer has exec or published-range access. */
+export function sanitizeLookAheadPagePreferences(
+  prefs: LookAheadPagePreferences,
+  flags: LookAheadPagePermissionFlags
+): LookAheadPagePreferences {
+  let next = prefs;
+
+  if (next.execMode && !flags.canExec) {
+    next = { ...next, execMode: false };
+  }
+
+  if (
+    next.activeCuratedPreset === 'published_range' &&
+    !flags.canUsePublishedRange
+  ) {
+    const preset = defaultLookAheadCuratedDateRange();
+    next = {
+      ...next,
+      activeCuratedPreset: 'today',
+      filterState: {
+        ...next.filterState,
+        dateRange: {
+          startDate: preset.start,
+          endDate: preset.end,
+          noStartDate: false,
+          noEndDate: false,
+        },
+      },
+    };
+  }
+
+  return next;
+}

@@ -13,12 +13,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 const TOC_WIDTH_CLASS = 'w-48';
-const SCROLL_MARGIN_TOP = '7.5rem';
+const DEFAULT_SECTION_SCROLL_MARGIN_PX = 120;
 
 export interface LookAheadSectionTocProps {
   displayData: ReportDataResponse | undefined;
   isLoading: boolean;
   isFresh: boolean;
+  /** Measured sticky Look Ahead chrome height + gap; drives scroll-into-view and spy. */
+  sectionScrollMarginPx?: number;
   className?: string;
 }
 
@@ -35,9 +37,15 @@ export function LookAheadSectionToc({
   displayData,
   isLoading,
   isFresh,
+  sectionScrollMarginPx,
   className,
 }: LookAheadSectionTocProps) {
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+
+  const scrollMarginPx =
+    sectionScrollMarginPx != null && sectionScrollMarginPx > 0
+      ? sectionScrollMarginPx
+      : DEFAULT_SECTION_SCROLL_MARGIN_PX;
 
   const skeletonRows = useMemo(() => {
     const config = displayData?.report?.config;
@@ -48,27 +56,29 @@ export function LookAheadSectionToc({
   const tocEntries = useMemo(() => {
     if (!displayData || !isFresh) return [];
     const config = displayData.report?.config;
-    const labelById = new Map<string, string>();
     if (config) {
-      for (const row of resolveLookAheadSectionRows(config)) {
-        labelById.set(row.sectionId, row.reportLegendLabel);
-      }
+      return resolveLookAheadSectionRows(config).map((row) => ({
+        id: row.sectionId,
+        label: row.reportLegendLabel,
+      }));
     }
     return [...displayData.sections]
-      .filter((section) => section.activities.length > 0)
       .sort((a, b) => a.order - b.order)
       .map((section) => ({
         id: section.id,
-        label: labelById.get(section.id) ?? section.name,
+        label: section.name,
       }));
   }, [displayData, isFresh]);
 
-  const scrollToSection = useCallback((sectionId: string) => {
-    const el = document.getElementById(sectionId);
-    if (!el) return;
-    el.style.scrollMarginTop = SCROLL_MARGIN_TOP;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+  const scrollToSection = useCallback(
+    (sectionId: string) => {
+      const el = document.getElementById(sectionId);
+      if (!el) return;
+      el.style.scrollMarginTop = `${scrollMarginPx}px`;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    [scrollMarginPx]
+  );
 
   useEffect(() => {
     if (tocEntries.length === 0) return;
@@ -82,7 +92,10 @@ export function LookAheadSectionToc({
           setActiveSectionId(visible[0].target.id);
         }
       },
-      { rootMargin: `-${SCROLL_MARGIN_TOP} 0px -60% 0px`, threshold: 0 }
+      {
+        rootMargin: `-${scrollMarginPx}px 0px -60% 0px`,
+        threshold: 0,
+      }
     );
 
     for (const entry of tocEntries) {
@@ -91,7 +104,7 @@ export function LookAheadSectionToc({
     }
 
     return () => observer.disconnect();
-  }, [tocEntries]);
+  }, [scrollMarginPx, tocEntries]);
 
   const showSkeleton = isLoading && tocEntries.length === 0;
   const ariaBusy = isLoading && !isFresh;
@@ -131,20 +144,29 @@ export function LookAheadSectionToc({
 
   return (
     <>
-      <nav
-        aria-label="Report sections"
-        aria-busy={ariaBusy}
+      <div
         className={cn(
-          'sticky top-24 hidden shrink-0 lg:block',
+          'hidden shrink-0 self-stretch lg:block',
           TOC_WIDTH_CLASS,
           className
         )}
       >
-        <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
-          Sections
-        </p>
-        {navList}
-      </nav>
+        <nav
+          aria-label="Report sections"
+          aria-busy={ariaBusy}
+          className={cn(
+            'bg-background sticky z-10 pt-6 pb-2',
+            'top-(--look-ahead-toc-sticky-offset,7.5rem)',
+            'max-h-[calc(100svh-var(--header-height,3.5rem)-var(--look-ahead-toc-sticky-offset,7.5rem)-1rem)]',
+            'overflow-y-auto'
+          )}
+        >
+          <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+            Sections
+          </p>
+          {navList}
+        </nav>
+      </div>
 
       <div className="mb-3 lg:hidden">
         <Select

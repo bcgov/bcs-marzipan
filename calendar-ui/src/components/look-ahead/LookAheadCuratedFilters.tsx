@@ -1,12 +1,16 @@
-import { Search, SlidersHorizontal, X } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { SlidersHorizontal } from 'lucide-react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 
 import type { ActivityFilterState } from '@corpcal/shared';
 import { CategoriesFilterPanel } from '@/components/activity/ActivityTable/CategoriesFilter';
 import { LeadTeamFilterPanel } from '@/components/activity/ActivityTable/LeadTeamFilterPanel';
+import { HistorySearchInput } from '@/components/history/HistorySearchInput';
+import {
+  ResponsiveFilterRow,
+  type ResponsiveFilterSlot,
+} from '@/components/shared/ResponsiveFilterRow';
 import { TableFilterSummary } from '@/components/table/TableSummaryBar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useCategories, useTeams } from '@/hooks/useLookups';
 import { formatLeadTeamSelectLabel } from '@/lib/lead-team-display-label';
 import { cn } from '@/lib/utils';
@@ -19,6 +23,8 @@ export interface LookAheadCuratedFiltersProps {
   filterState: ActivityFilterState;
   onFilterStateChange: (next: ActivityFilterState) => void;
   onResetCuratedFilters: () => void;
+  /** Right-aligned controls on the filter row (e.g. Exec detail). */
+  trailingContent?: ReactNode;
 }
 
 function curatedActiveFilterCount(
@@ -40,6 +46,7 @@ export function LookAheadCuratedFilters({
   filterState,
   onFilterStateChange,
   onResetCuratedFilters,
+  trailingContent,
 }: LookAheadCuratedFiltersProps) {
   const { data: categories = [] } = useCategories();
   const { data: teams = [] } = useTeams();
@@ -89,68 +96,114 @@ export function LookAheadCuratedFilters({
     [filterState, onFilterStateChange]
   );
 
+  const categorySelectedIds = filterState.categoryIds;
+
+  const filterSlots = useMemo<ResponsiveFilterSlot[]>(
+    () => [
+      {
+        key: 'category',
+        label: 'Category',
+        panel: (
+          <CategoriesFilterPanel
+            categoryOptions={categoryOptions}
+            selectedCategoryIds={categorySelectedIds}
+            onCategoryIdsChange={handleCategoryChange}
+          />
+        ),
+        triggerProps: {
+          active: categorySelectedIds.length > 0,
+          count: categorySelectedIds.length,
+          onClear: () => handleCategoryChange([]),
+          clearAriaLabel: 'Clear Category filter',
+        },
+      },
+      {
+        key: 'lead',
+        label: 'Lead',
+        panel: (
+          <LeadTeamFilterPanel
+            teamOptions={leadTeamOptions}
+            selectedTeamIds={filterState.leadTeamIds}
+            onSelectedTeamIdsChange={(leadTeamIds) =>
+              onFilterStateChange({ ...filterState, leadTeamIds })
+            }
+          />
+        ),
+        triggerProps: {
+          active: filterState.leadTeamIds.length > 0,
+          count: filterState.leadTeamIds.length,
+          onClear: () =>
+            onFilterStateChange({ ...filterState, leadTeamIds: [] }),
+          clearAriaLabel: 'Clear Lead filter',
+        },
+      },
+    ],
+    [
+      categoryOptions,
+      categorySelectedIds,
+      filterState,
+      handleCategoryChange,
+      leadTeamOptions,
+      onFilterStateChange,
+    ]
+  );
+
+  const filterToggleLabel = expanded ? 'Hide filters' : 'Filter';
+
+  const filterToggleButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={cn(
+        'text-muted-foreground h-9 shrink-0 gap-2 px-2',
+        !expanded && 'w-fit'
+      )}
+      aria-expanded={expanded}
+      aria-label={filterToggleLabel}
+      onClick={() => onExpandedChange(!expanded)}
+    >
+      <SlidersHorizontal className="h-4 w-4" />
+      {filterToggleLabel}
+      {activeCount > 0 ? (
+        <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-xs">
+          {activeCount}
+        </span>
+      ) : null}
+    </Button>
+  );
+
   return (
     <div className="flex flex-col gap-2">
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="text-muted-foreground h-9 w-fit gap-2 px-2"
-        aria-expanded={expanded}
-        onClick={() => onExpandedChange(!expanded)}
-      >
-        <SlidersHorizontal className="h-4 w-4" />
-        Filter activities
-        {activeCount > 0 ? (
-          <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-xs">
-            {activeCount}
-          </span>
-        ) : null}
-      </Button>
-
-      {expanded ? (
-        <div
-          className="border-border flex flex-col gap-4 rounded-md border bg-white p-4"
-          role="search"
-          aria-label="Filter Look Ahead activities"
-        >
-          <div className="relative max-w-md">
-            <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-            <Input
-              type="text"
-              placeholder="Search activities..."
+      <div className="flex min-w-0 items-center gap-2">
+        {expanded ? (
+          <div
+            className="flex min-w-0 flex-1 items-center gap-2"
+            role="search"
+            aria-label="Filter Look Ahead activities"
+          >
+            <HistorySearchInput
               value={searchKeyword}
-              onChange={(e) => onSearchKeywordChange(e.target.value)}
-              className="pr-8 pl-8 shadow-none"
-              aria-label="Search activities"
+              onChange={onSearchKeywordChange}
+              placeholder="Search activities..."
+              ariaLabel="Search activities"
             />
-            {searchKeyword ? (
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2"
-                onClick={() => onSearchKeywordChange('')}
-                aria-label="Clear search"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
+            <ResponsiveFilterRow
+              slots={filterSlots}
+              overflowTriggerClassName="h-10"
+              onClearAll={activeCount > 0 ? onResetCuratedFilters : undefined}
+            />
+            {filterToggleButton}
           </div>
-          <div className="flex flex-wrap gap-3">
-            <CategoriesFilterPanel
-              categoryOptions={categoryOptions}
-              selectedCategoryIds={filterState.categoryIds}
-              onCategoryIdsChange={handleCategoryChange}
-            />
-            <LeadTeamFilterPanel
-              teamOptions={leadTeamOptions}
-              selectedTeamIds={filterState.leadTeamIds}
-              onSelectedTeamIdsChange={(leadTeamIds) =>
-                onFilterStateChange({ ...filterState, leadTeamIds })
-              }
-            />
+        ) : (
+          <div className="min-w-0 flex-1">{filterToggleButton}</div>
+        )}
+        {trailingContent ? (
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {trailingContent}
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <TableFilterSummary
         appliedFilterTypeLabels={appliedFilterTypeLabels}
