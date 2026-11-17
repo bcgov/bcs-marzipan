@@ -189,6 +189,7 @@ export const ORGANIZATION_JURISDICTIONS = [
   'bcgov',
   'federal',
   'provincial',
+  'local_government',
   'other',
 ] as const;
 
@@ -202,6 +203,7 @@ export const ORGANIZATION_JURISDICTION_LABELS: Record<
   bcgov: 'BC government',
   federal: 'Federal',
   provincial: 'Provincial',
+  local_government: 'Local government',
   other: 'Other',
 };
 
@@ -425,9 +427,10 @@ export const releaseTypeEmbeddedSchema = z.object({
   id: z.number().int(),
   name: z.string(),
   displayName: z.string(),
+  reportAbbreviation: z.string().nullable().optional(),
+  reportSortOrder: z.number().int().optional(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean(),
-  requiresNewsReleaseDetails: z.boolean(),
 });
 
 export const releaseTypeResponseSchema = z.object({
@@ -435,9 +438,10 @@ export const releaseTypeResponseSchema = z.object({
   name: z.string(),
   displayName: z.string(),
   sortOrder: z.number().int(),
+  reportAbbreviation: z.string().max(6).nullable(),
+  reportSortOrder: z.number().int(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean(),
-  requiresNewsReleaseDetails: z.boolean(),
   isActive: z.boolean(),
   description: z.string().nullable(),
 });
@@ -446,10 +450,11 @@ export const releaseTypeLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string(),
   sortOrder: z.number().int(),
+  reportAbbreviation: z.string().max(6).nullable().optional(),
+  reportSortOrder: z.number().int().optional(),
   isActive: z.boolean(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean(),
-  requiresNewsReleaseDetails: z.boolean(),
   description: z.string().nullable().optional(),
 });
 
@@ -855,11 +860,12 @@ export const createReleaseTypeRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
   sortOrder: optionalCreateSortOrderSchema,
+  reportAbbreviation: z.string().min(1).max(6).nullable().optional(),
+  reportSortOrder: z.number().int().min(0).optional(),
   isActive: z.boolean().default(true).optional(),
   description: z.string().nullable().optional(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean().default(false).optional(),
-  requiresNewsReleaseDetails: z.boolean().default(false).optional(),
 });
 
 export const updateReleaseTypeRequestSchema =

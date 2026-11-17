@@ -93,6 +93,7 @@ export function createMockActivityResponse(
     categoryIds: [],
     tags: [],
     commsMaterials: [],
+    commsMaterialReleases: [],
     translationsRequired: [],
     representativesAttending: [],
     sharedWith: [],

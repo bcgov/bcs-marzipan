@@ -1,6 +1,14 @@
 import { useFormContext, useWatch } from 'react-hook-form';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
+import {
+  buildNewsReleaseOriginSelectOptions,
+  formHasLeadOrganizationForOriginInference,
+  formOrganizationsToOriginLabelDetails,
+  inferNewsReleaseOriginId,
+  resolveOrganizationsForOriginInference,
+  type OrganizationCatalogRow,
+} from '@corpcal/shared';
 import type { TranslationRequiredStatusLookupItem } from '@corpcal/shared/api/types';
 import type { ActivityFormData } from '@corpcal/shared/schemas';
 import {
@@ -53,7 +61,6 @@ type CommsMaterialOption = {
   releaseType?: {
     audience: 'media' | 'public';
     allowsTranslation: boolean;
-    requiresNewsReleaseDetails: boolean;
   } | null;
 };
 
@@ -62,7 +69,14 @@ type ActivityCommsSectionProps = {
   dateStatuses: Array<{ id: number; name: string }>;
   timeStatuses: Array<{ id: number; name: string }>;
   newsReleaseDistributionOptions: OptionItem[];
+  /** @deprecated use {@link newsReleaseOriginLookups} + dynamic labels */
   newsReleaseOriginOptions: OptionItem[];
+  newsReleaseOriginLookups: Array<{
+    id: number;
+    name: string;
+    displayName: string;
+  }>;
+  organizationCatalog: OrganizationCatalogRow[];
   translationRequiredStatuses: TranslationRequiredStatusLookupItem[];
   translationLanguageOptions: Array<{
     id: number;
@@ -132,7 +146,9 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
   dateStatuses: _dateStatuses,
   timeStatuses: _timeStatuses,
   newsReleaseDistributionOptions,
-  newsReleaseOriginOptions,
+  newsReleaseOriginOptions: _newsReleaseOriginOptions,
+  newsReleaseOriginLookups,
+  organizationCatalog,
   translationRequiredStatuses,
   translationLanguageOptions,
   userTeamIds,
@@ -145,6 +161,15 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
     control: form.control,
     name: 'commsMaterialIds',
   });
+  const organizations = useWatch({
+    control: form.control,
+    name: 'organizations',
+  });
+  const newsReleaseOriginId = useWatch({
+    control: form.control,
+    name: 'newsReleaseOriginId',
+  });
+  const originDirty = Boolean(form.formState.dirtyFields.newsReleaseOriginId);
 
   const materialById = useMemo(
     () => new Map(commsMaterialOptions.map((m) => [m.id, m] as const)),
@@ -215,17 +240,59 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
   const selectedFlags = useMemo(() => {
     const ids = commsMaterialIds ?? [];
-    let requiresNewsReleaseDetails = false;
+    let hasReleaseTypeComms = false;
     let allowsTranslation = false;
     let showReleaseTime = false;
     for (const id of ids) {
       const rt = materialById.get(id)?.releaseType;
-      if (rt?.requiresNewsReleaseDetails) requiresNewsReleaseDetails = true;
+      if (rt != null) hasReleaseTypeComms = true;
       if (rt?.allowsTranslation) allowsTranslation = true;
       if (rt?.audience === 'public') showReleaseTime = true;
     }
-    return { requiresNewsReleaseDetails, allowsTranslation, showReleaseTime };
+    return { hasReleaseTypeComms, allowsTranslation, showReleaseTime };
   }, [commsMaterialIds, materialById]);
+
+  const organizationLabelDetails = useMemo(
+    () =>
+      formOrganizationsToOriginLabelDetails(
+        organizations ?? [],
+        organizationCatalog
+      ),
+    [organizations, organizationCatalog]
+  );
+
+  const newsReleaseOriginSelectOptions = useMemo(
+    () =>
+      buildNewsReleaseOriginSelectOptions(
+        newsReleaseOriginLookups,
+        organizationLabelDetails
+      ),
+    [newsReleaseOriginLookups, organizationLabelDetails]
+  );
+
+  useEffect(() => {
+    if (originDirty) return;
+    if (newsReleaseOriginId != null) return;
+    if (!selectedFlags.hasReleaseTypeComms) return;
+    if (!formHasLeadOrganizationForOriginInference(organizations ?? [])) return;
+    const orgs = resolveOrganizationsForOriginInference(
+      organizations ?? [],
+      organizationCatalog
+    );
+    const suggested = inferNewsReleaseOriginId(orgs);
+    form.setValue('newsReleaseOriginId', suggested, {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate: false,
+    });
+  }, [
+    form,
+    newsReleaseOriginId,
+    originDirty,
+    organizations,
+    organizationCatalog,
+    selectedFlags.hasReleaseTypeComms,
+  ]);
 
   const mergeComboboxItems = (
     pickable: CommsMaterialOptionItem[],
@@ -350,13 +417,12 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
 
       {selectedFlags.showReleaseTime ? <ActivityReleaseTimeField /> : null}
 
-      {selectedFlags.requiresNewsReleaseDetails ? (
-        <div className="space-y-6 rounded-md border border-gray-300 p-6">
-          <p className="font-bold text-slate-800">News release details</p>
+      {selectedFlags.hasReleaseTypeComms ? (
+        <>
           <OptionalLookupSelectField
             control={form.control}
             name="newsReleaseOriginId"
-            options={newsReleaseOriginOptions}
+            options={newsReleaseOriginSelectOptions}
             readOnly={readOnly}
             infoAriaLabel="About news release origin"
           />
@@ -367,19 +433,13 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
             readOnly={readOnly}
             infoAriaLabel="About news release distribution"
           />
-          <ActivityTranslationsField
-            translationRequiredStatuses={translationRequiredStatuses}
-            translationLanguageOptions={translationLanguageOptions}
-          />
-        </div>
-      ) : null}
-
-      {selectedFlags.allowsTranslation &&
-      !selectedFlags.requiresNewsReleaseDetails ? (
-        <ActivityTranslationsField
-          translationRequiredStatuses={translationRequiredStatuses}
-          translationLanguageOptions={translationLanguageOptions}
-        />
+          {selectedFlags.allowsTranslation ? (
+            <ActivityTranslationsField
+              translationRequiredStatuses={translationRequiredStatuses}
+              translationLanguageOptions={translationLanguageOptions}
+            />
+          ) : null}
+        </>
       ) : null}
     </ActivityFormSection>
   );

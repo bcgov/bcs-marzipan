@@ -7,6 +7,7 @@ import {
 } from '../constants/constants';
 import { activityFlagResponseSchema } from './activity-flag.schema';
 import { venueAddressSchema as baseVenueAddressSchema } from './activity.schema';
+import { organizationJurisdictionSchema } from './lookup.schema';
 
 /**
  * Activity API Response Schema
@@ -131,7 +132,20 @@ export const organizationDetailSchema = z.object({
   name: z.string(),
   abbreviation: z.string().nullable().optional(),
   isLead: z.boolean(),
+  jurisdiction: organizationJurisdictionSchema.nullable().optional(),
+  organizationTypeId: z.number().int().nullable().optional(),
 });
+
+export const commsMaterialReleaseSummarySchema = z.object({
+  releaseTypeId: z.number().int(),
+  reportAbbrev: z.string(),
+  reportSortOrder: z.number().int(),
+  allowsTranslation: z.boolean(),
+});
+
+export type CommsMaterialReleaseSummary = z.infer<
+  typeof commsMaterialReleaseSummarySchema
+>;
 
 export type OrganizationDetail = z.infer<typeof organizationDetailSchema>;
 
@@ -154,6 +168,7 @@ export const activityComputedFieldsSchema = z.object({
   categoryIds: z.array(z.number().int()).default([]),
   tags: z.array(tagSchema).default([]),
   commsMaterials: z.array(z.string()).default([]),
+  commsMaterialReleases: z.array(commsMaterialReleaseSummarySchema).default([]),
   translationsRequired: z.array(z.string()).default([]).optional(),
   representativesAttending: z.array(z.string()).default([]), // Representative display names
   sharedWith: z.array(z.string()).default([]), // Team names the activity is shared with
