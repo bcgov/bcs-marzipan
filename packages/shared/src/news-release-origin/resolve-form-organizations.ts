@@ -24,6 +24,18 @@ export type NewsReleaseOriginInferenceOrg = {
   organizationTypeId?: number | null;
 };
 
+/** True when the form has a lead org row with a catalog id or freeform name. */
+export function formHasLeadOrganizationForOriginInference(
+  formOrgs: readonly ActivityOrganizationFormEntry[]
+): boolean {
+  return formOrgs.some(
+    (entry) =>
+      entry.isLead === true &&
+      (entry.organizationId != null ||
+        (entry.organizationName?.trim().length ?? 0) > 0)
+  );
+}
+
 export function resolveOrganizationsForOriginInference(
   formOrgs: readonly ActivityOrganizationFormEntry[],
   catalog: readonly OrganizationCatalogRow[]

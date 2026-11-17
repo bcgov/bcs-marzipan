@@ -938,6 +938,7 @@ export class ActivitiesService {
     opts?: {
       canEdit?: boolean;
       flags?: ActivityFlagResponse[];
+      includeMutationAudit?: boolean;
     }
   ): ActivityResponse {
     const id = activity.id;
@@ -976,6 +977,7 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
       ...(opts?.canEdit !== undefined ? { canEdit: opts.canEdit } : {}),
+      ...(opts?.includeMutationAudit ? this.mutationResponseAuditFields() : {}),
       flags: opts?.flags ?? [],
     });
   }
@@ -3259,94 +3261,9 @@ export class ActivitiesService {
       }
     }
 
-    // Fetch related data for the updated activity
-    const [
-      categoriesResult,
-      tagsList,
-      activityStatus,
-      dateStatus,
-      timeStatus,
-      venueStatus,
-      venueAddressesMap,
-      commsMaterials,
-      translationsRequired,
-      representativesAttending,
-      sharedWithResult,
-      commsContacts,
-      organizationDetailsMap,
-      eventPlannerDetailsMap,
-      newsReleaseOriginsMap,
-      newsReleaseDistributionsMap,
-      premierRequestedMap,
-      translationsRequiredStatus,
-      leadMinistryName,
-      leadMinistryAbbreviation,
-      leadTeamDisplayMap,
-    ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities([id]),
-      this.dataFetcherService.fetchTagsForActivities([id]),
-      this.dataFetcherService.fetchActivityStatusesForActivities([id]),
-      this.dataFetcherService.fetchDateStatusesForActivities([id]),
-      this.dataFetcherService.fetchTimeStatusesForActivities([id]),
-      this.dataFetcherService.fetchVenueStatusesForActivities([id]),
-      this.dataFetcherService.fetchVenueAddressesForActivities([id]),
-      this.dataFetcherService.fetchCommsMaterialsForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchOrganizationDetailsForActivities([id]),
-      this.dataFetcherService.fetchEventPlannerDetailsForActivities([id]),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
-      this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
-        id,
-      ]),
-      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
-      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
-      this.dataFetcherService.fetchLeadTeamDisplayForActivities([
-        { id: updated.id, leadTeamId: updated.leadTeamId },
-      ]),
-    ]);
-
-    // Note: previously published category/tag refresh events to Redis here.
-    // Redis worker removed; propagation handled synchronously or via DB jobs if needed.
-
-    const eventPlannerDetails = eventPlannerDetailsMap.get(id) ?? [];
-
-    const { namesMap: categoriesList, idsMap: categoryIdsList } =
-      categoriesResult;
-
-    const result = this.mapperService.mapToResponseDto(updated, {
-      categories: categoriesList.get(id) ?? [],
-      categoryIds: categoryIdsList.get(id) ?? [],
-      tags: tagsList.get(id) ?? [],
-      activityStatus: activityStatus.get(id),
-      dateStatus: dateStatus.get(id),
-      timeStatus: timeStatus.get(id),
-      venueStatus: venueStatus.get(id),
-      venueAddress: venueAddressesMap.get(id) ?? null,
-      commsMaterials: commsMaterials.get(id) ?? [],
-      translationsRequired: translationsRequired.get(id) ?? [],
-      representativesAttending: representativesAttending.get(id) ?? [],
-      sharedWith: sharedWithResult.namesMap.get(id) ?? [],
-      sharedWithTeamIds: sharedWithResult.idsMap.get(id) ?? [],
-      commsContacts: commsContacts.get(id) ?? [],
-      eventPlannerDetails,
-      eventPlanners: eventPlannerDetails.map((d) => d.name),
-      eventPlannerLeadIds: eventPlannerDetails
-        .filter((d) => d.eventPlannerId != null)
-        .map((d) => d.eventPlannerId as number),
-      organizationDetails: organizationDetailsMap.get(id) ?? [],
-      newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
-      newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
-      premierRequested: premierRequestedMap.get(id) ?? null,
-      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
-      leadMinistry: leadMinistryName.get(id) ?? null,
-      leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
-      leadTeamDisplayName: leadTeamDisplayMap.get(id) ?? null,
-      ...this.mutationResponseAuditFields(),
+    const related = await this.fetchRelatedForActivityIds([id], [updated]);
+    const result = this.mapFetchedActivityToResponseDto(updated, related, {
+      includeMutationAudit: true,
     });
 
     // Generate change list for history tracking (main activity fields)

@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 
 import {
   buildNewsReleaseOriginSelectOptions,
+  formHasLeadOrganizationForOriginInference,
   formOrganizationsToOriginLabelDetails,
   inferNewsReleaseOriginId,
   resolveOrganizationsForOriginInference,
@@ -273,6 +274,7 @@ export const ActivityCommsSection: React.FC<ActivityCommsSectionProps> = ({
     if (originDirty) return;
     if (newsReleaseOriginId != null) return;
     if (!selectedFlags.hasReleaseTypeComms) return;
+    if (!formHasLeadOrganizationForOriginInference(organizations ?? [])) return;
     const orgs = resolveOrganizationsForOriginInference(
       organizations ?? [],
       organizationCatalog
