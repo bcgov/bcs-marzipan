@@ -134,6 +134,7 @@ import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showActionBlockedToast, showErrorToast } from '../lib/error-toast';
 import {
+  buildActivityFormValidationFailureLog,
   focusFirstInvalidField,
   focusRequiredField,
   getMissingRequiredFieldItemsFromZodError,
@@ -390,6 +391,7 @@ export function ActivityPage({
 
   const {
     form,
+    resolverSchema,
     lookups,
     leadTeamOptions,
     leadTeamOptionsError,
@@ -1540,16 +1542,23 @@ export function ActivityPage({
   };
 
   const onError = (errors: FieldErrors<ActivityFormData>) => {
-    logger.error('Form validation failed');
+    const values = form.getValues();
+    const validationLog = buildActivityFormValidationFailureLog(
+      errors,
+      values,
+      resolverSchema,
+      createActivityRequestSchema
+    );
+    logger.error('Form validation failed', validationLog);
     focusFirstInvalidField(errors, {
       getFieldLabel: getActivityFieldLabel,
       fieldOrder: getActivityFormSectionFieldKeys(),
       root: activityFormRef.current,
     });
-    const parsed = createActivityRequestSchema.safeParse(form.getValues());
-    const missingLabels = !parsed.success
+    const resolverParse = resolverSchema.safeParse(values);
+    const missingLabels = !resolverParse.success
       ? getMissingRequiredFieldItemsFromZodError(
-          parsed.error,
+          resolverParse.error,
           getActivityFieldLabel,
           getActivityFormSectionFieldKeys()
         ).map((field) => field.label)
@@ -1557,7 +1566,15 @@ export function ActivityPage({
     const detail =
       missingLabels.length > 0
         ? `Required fields missing: ${missingLabels.join(', ')}`
-        : 'Please fix the validation errors and try again.';
+        : validationLog.resolverIssues.length > 0
+          ? validationLog.resolverIssues
+              .map((issue) =>
+                issue.path
+                  ? `${getActivityFieldLabel(issue.path.split('.')[0] ?? issue.path) ?? issue.path}: ${issue.message}`
+                  : issue.message
+              )
+              .join('; ')
+          : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
       duration: TOAST_DURATION_MS.error,
