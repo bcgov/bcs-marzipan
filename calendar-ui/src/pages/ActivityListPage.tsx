@@ -22,6 +22,7 @@ import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
 import { useMinistries } from '@/hooks/useLookups';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import { cn } from '@/lib/utils';
+import { LegacyActivitiesView } from '@/pages/LegacyActivitiesPage';
 
 const ACTIVITY_LIST_TAB_STORAGE_KEY = 'activityListTab';
 
@@ -32,7 +33,8 @@ type ActivityListTabValue =
   | 'recent'
   | 'shared-with-me'
   | 'favourites'
-  | 'assigned-to-me';
+  | 'assigned-to-me'
+  | 'legacy';
 
 const ACTIVITY_LIST_TAB_VALUES: readonly ActivityListTabValue[] = [
   'all',
@@ -42,6 +44,7 @@ const ACTIVITY_LIST_TAB_VALUES: readonly ActivityListTabValue[] = [
   'shared-with-me',
   'favourites',
   'assigned-to-me',
+  'legacy',
 ];
 
 function getStoredActivityListTab(): ActivityListTabValue | null {
@@ -176,6 +179,8 @@ export const ActivityListPage = () => {
         return user?.id != null
           ? { ...base, flagAssigneeUserIds: [user.id] }
           : base;
+      case 'legacy':
+        return base;
       default:
         return base;
     }
@@ -274,11 +279,14 @@ export const ActivityListPage = () => {
             <TabsTrigger value="shared-with-me">Shared with us</TabsTrigger>
             <TabsTrigger value="assigned-to-me">Assigned to me</TabsTrigger>
             <TabsTrigger value="favourites">My watchlist</TabsTrigger>
+            <TabsTrigger value="legacy">Legacy data</TabsTrigger>
           </TabsList>
         </div>
 
         <div className="mt-0 min-w-0">
-          {activeTab === 'recent' ? (
+          {activeTab === 'legacy' ? (
+            <LegacyActivitiesView hideHeader />
+          ) : activeTab === 'recent' ? (
             <ActivityTable />
           ) : (
             <ActivityTable
