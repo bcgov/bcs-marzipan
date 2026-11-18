@@ -16,8 +16,11 @@ type CalendarAction = {
   filters?: CalendarActionFilters | null;
 };
 
+export type ReportAnalyticsSurface = 'reports_page' | 'look_ahead_page';
+
 type ReportSearchSubmittedEvent = {
   report_name: string;
+  surface?: ReportAnalyticsSurface;
   search_present: boolean;
   search_length_bucket: 'none' | 'lt20' | 'lt100' | 'gte100';
   active_filter_count: number;
@@ -32,6 +35,7 @@ type ReportSearchSubmittedEvent = {
 
 type ReportSearchResultsLoadedEvent = {
   report_name: string;
+  surface?: ReportAnalyticsSurface;
   results_count_bucket: '0' | '1' | '2to10' | '11to50' | 'gt50';
   latency_bucket_ms: 'lt250' | 'lt1000' | 'lt3000' | 'gte3000';
   search_present: boolean;
@@ -58,6 +62,7 @@ type ReportSearchClearedEvent = {
 
 type ReportFiltersAppliedEvent = {
   report_name: string;
+  surface?: ReportAnalyticsSurface;
   filter_keys_used: string[];
   active_filter_count: number;
   category_count?: number;
@@ -344,6 +349,32 @@ export function trackReportPaginationChanged(
   );
 }
 
+type LookAheadCuratedAnalyticsEvent = {
+  event: 'date_preset' | 'filters_reset' | 'exec_toggle';
+  report_name: string;
+  date_preset?: string;
+  surface?: ReportAnalyticsSurface;
+};
+
+export function trackLookAheadCuratedEvent(
+  payload: LookAheadCuratedAnalyticsEvent
+) {
+  trackSelfDescribingEvent(
+    'iglu:ca.bc.gov.bcs/report_filters_applied/jsonschema/1-0-0',
+    {
+      ...payload,
+      surface: payload.surface ?? 'look_ahead_page',
+      filter_keys_used:
+        payload.event === 'date_preset'
+          ? ['dateRange']
+          : payload.event === 'filters_reset'
+            ? []
+            : ['execMode'],
+      active_filter_count: payload.event === 'filters_reset' ? 0 : 1,
+    }
+  );
+}
+
 export default {
   bucketDurationMs,
   bucketFilterComplexity,
@@ -362,5 +393,6 @@ export default {
   trackReportSearchCleared,
   trackReportSearchResultsLoaded,
   trackReportSearchSubmitted,
+  trackLookAheadCuratedEvent,
   trackSavedFilterAction,
 };

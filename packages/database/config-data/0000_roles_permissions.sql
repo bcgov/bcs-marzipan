@@ -61,6 +61,9 @@ INSERT INTO permissions (key, display_name, category, subcategory, description, 
   ('reports.view', 'View reports', 'Reports', 'Basic', NULL, 'reports', NULL, 'view', 20),
   ('reports.export', 'Export reports', 'Reports', 'Basic', NULL, 'reports', NULL, 'export', 21),
   ('reports.create_custom', 'Create custom reports', 'Reports', 'Basic', NULL, 'reports', NULL, 'create_custom', 22),
+  ('look_ahead.view', 'View Look Ahead report', 'Reports', 'Basic', 'Curated Look Ahead page and look-ahead report data.', 'look_ahead', NULL, 'view', 23),
+  ('look_ahead.exec.view', 'View Exec Look Ahead detail', 'Reports', 'Basic', 'Exec detail on the Look Ahead page and exec report data.', 'look_ahead', NULL, 'view', 24),
+  ('reports.published_look_ahead_range', 'Use published Look Ahead date range', 'Reports', 'Admin', 'Select the publisher Look Ahead date preset (Next 7 days).', 'reports', 'published_look_ahead_range', 'view', 25),
   ('lookups.view', 'View lookups', 'Lookups', 'Basic', NULL, 'lookups', NULL, 'view', 30),
   ('lookups.manage', 'Manage lookups', 'Lookups', 'Admin', NULL, 'lookups', NULL, 'manage', 31),
   ('lookups.manage.comms_materials', 'Manage communications materials', 'Lookups', 'Admin', NULL, 'lookups', 'comms_materials', 'manage', 32),
@@ -225,6 +228,33 @@ WHERE (
     'settings.manage.recurring_lockout'
   )
 )
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Look Ahead curated page: all system roles
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.is_system = true
+  AND p.key = 'look_ahead.view'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Exec Look Ahead on curated page: Advanced Viewer and above
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name IN ('Advanced Viewer', 'Advanced Editor', 'Admin', 'System Admin')
+  AND p.key = 'look_ahead.exec.view'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Published Look Ahead date preset: Admin and System Admin only
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name IN ('Admin', 'System Admin')
+  AND p.key = 'reports.published_look_ahead_range'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO application_settings (key, value, updated_at)

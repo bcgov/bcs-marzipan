@@ -62,6 +62,7 @@ import { DatabaseService } from '../database/database.service';
 import { ApplicationSettingsService } from '../locks/application-settings.service';
 import { LookupsService } from '../lookups/lookups.service';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
+import { assertReportTypeAccess } from './assert-report-type-access';
 import { renderReportTableToExcelBuffer } from './formatters/report-excel.formatter';
 import { mergePinnedLookAheadSection } from './merge-pinned-look-ahead-section';
 import { mergePdfBuffersInOrder } from './merge-report-pdfs';
@@ -329,6 +330,7 @@ export class ReportsService {
     query: ReportDataQueryParams,
     ctx: RequestContextType
   ): Promise<ReportDataResponse> {
+    assertReportTypeAccess(reportName, ctx.user?.permissions);
     const { search } = query;
     const normalized = reportName.trim().toLowerCase();
 

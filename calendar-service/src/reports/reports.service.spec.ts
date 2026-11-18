@@ -39,7 +39,19 @@ describe('ReportsService.getReportData (thirty-sixty-ninety)', () => {
   const lookupsService = {} as never;
 
   let service: ReportsService;
-  const ctx = {} as never;
+  const ctx: RequestContext = {
+    dataScope: { bypass: true, teamIds: [] },
+    user: {
+      id: 1,
+      username: 'test',
+      displayName: 'Test',
+      email: 'test@example.com',
+      roleId: 5,
+      roleName: 'Admin',
+      permissions: ['reports.view'],
+      teamIds: [],
+    },
+  };
   const defaultQuery = reportDataQuerySchema.parse({});
 
   beforeEach(() => {
@@ -233,6 +245,16 @@ describe('ReportsService.getReportData (look-ahead)', () => {
   const activitiesService = { findAll: vi.fn() };
   const ctx: RequestContext = {
     dataScope: { bypass: true, teamIds: [] },
+    user: {
+      id: 1,
+      username: 'test',
+      displayName: 'Test',
+      email: 'test@example.com',
+      roleId: 1,
+      roleName: 'Viewer',
+      permissions: ['look_ahead.view'],
+      teamIds: [],
+    },
   };
   let service: ReportsService;
 

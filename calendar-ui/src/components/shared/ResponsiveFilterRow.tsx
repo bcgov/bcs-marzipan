@@ -912,8 +912,10 @@ export function ResponsiveFilterRow({
       fitCount = count;
     }
 
-    // UX: show 0 inline when only 1–2 would fit; use single "Filters" button instead
-    const displayCount = fitCount >= 3 ? fitCount : 0;
+    // UX: with many filters, show 0 inline when fewer than 3 fit (single "Filters" button).
+    // When there are only 1–2 slots total, always show each with its own trigger.
+    const displayCount =
+      count <= 2 ? Math.min(fitCount, count) : fitCount >= 3 ? fitCount : 0;
 
     setVisibleCount(displayCount);
   }, [

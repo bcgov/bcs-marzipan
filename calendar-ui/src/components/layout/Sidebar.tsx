@@ -5,6 +5,7 @@ import {
   NotebookText,
   PanelLeft,
   PanelLeftDashed,
+  ScrollText,
   SlidersHorizontal,
   Users,
 } from 'lucide-react';
@@ -49,6 +50,7 @@ function AppSidebarContent() {
   const { setOpenMobile, isMobile } = useSidebar();
 
   const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW);
+  const canViewLookAhead = hasPermission(PERMISSIONS.LOOK_AHEAD.VIEW);
   const canViewUsers = hasPermission(PERMISSIONS.USERS.VIEW);
   const canViewSettings = hasPermission(PERMISSIONS.SETTINGS.VIEW);
   const canViewNotifications = hasPermission(PERMISSIONS.NOTIFICATIONS.VIEW);
@@ -59,6 +61,9 @@ function AppSidebarContent() {
 
   const mainNavItems = [
     { to: '/', label: 'Activities', icon: CalendarDays },
+    ...(canViewLookAhead
+      ? [{ to: '/look-ahead', label: 'Look Ahead', icon: ScrollText }]
+      : []),
     ...(canViewNotifications
       ? [{ to: '/notifications', label: 'Notifications', icon: Bell }]
       : []),

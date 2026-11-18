@@ -30,6 +30,7 @@ export function PrintReportDocument({
   activityBaseUrl,
   highlightActivityIds,
   resolveTranslationLanguageLabel,
+  sectionAnchorIds = false,
 }: {
   data: ReportDataResponse;
   variant: PrintReportVariant;
@@ -37,6 +38,8 @@ export function PrintReportDocument({
   /** In-app preview: flash rows briefly after remote activity updates. */
   highlightActivityIds?: ReadonlySet<number>;
   resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
+  /** When true, each section block gets a stable `id` for in-app anchor navigation. */
+  sectionAnchorIds?: boolean;
 }) {
   const sections = collectPrintReportSections(data);
   const hasSections = sections.length > 0;
@@ -71,6 +74,7 @@ export function PrintReportDocument({
               highlightActivityIds={highlightActivityIds}
               resolvedDateRange={data.meta?.resolvedDateRange}
               resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
+              sectionAnchorIds={sectionAnchorIds}
             />
           ))
         )}
@@ -95,6 +99,7 @@ function SectionGroup({
   highlightActivityIds,
   resolvedDateRange,
   resolveTranslationLanguageLabel,
+  sectionAnchorIds,
 }: {
   section: PrintReportSortedSection;
   variant: PrintReportVariant;
@@ -103,6 +108,7 @@ function SectionGroup({
   highlightActivityIds?: ReadonlySet<number>;
   resolvedDateRange?: ReportDateRange;
   resolveTranslationLanguageLabel?: TranslationLanguageLabelResolver;
+  sectionAnchorIds?: boolean;
 }) {
   const dayBlocks = buildPrintGroupedDayBlocks({
     activitiesByKey: section.activitiesByKey,
@@ -114,7 +120,10 @@ function SectionGroup({
   });
 
   return (
-    <section className="corpcal-print-section-block">
+    <section
+      className="corpcal-print-section-block"
+      id={sectionAnchorIds ? section.id : undefined}
+    >
       <PrintGroupedSectionTable
         sectionPrintLabel={section.printHeadingLabel}
         sectionLegendColor={section.legendColor}
