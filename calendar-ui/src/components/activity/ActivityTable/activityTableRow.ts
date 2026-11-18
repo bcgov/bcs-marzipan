@@ -61,6 +61,8 @@ export interface ActivityTableRow {
   leadTeamId: number | null;
   leadOrganizationId: number | null;
   commsContactLeadUserId: number | null;
+  /** All comms contact user IDs (for bulk edit eligibility). */
+  commsContactUserIds: number[];
 
   // Materials column
   translationsRequired: string[];
@@ -175,6 +177,9 @@ export function mapActivityToTableRow(
       activity.organizationDetails?.find((o) => o.isLead)?.organizationId ??
       null,
     commsContactLeadUserId: commsLead?.userId ?? null,
+    commsContactUserIds: activity.commsContacts.map(
+      (contact) => contact.userId
+    ),
 
     // Materials
     translationsRequired: activity.translationsRequired ?? [],

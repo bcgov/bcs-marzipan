@@ -1,3 +1,5 @@
+import { clampGridColumnSizingRecord } from '@/components/activity/ActivityTable/activityGridDefaults';
+
 /**
  * Session-scoped preferences for Grid A column order, widths, and visibility.
  *
@@ -88,7 +90,7 @@ export function normalizeActivityGridLayoutPreferences(
 
     return {
       columnOrder,
-      columnSizing,
+      columnSizing: clampGridColumnSizingRecord(columnSizing),
       columnVisibility: parseVisibilityRecord(raw.columnVisibility, {
         legacyAllVisible: legacyLayoutWithoutVisibility,
       }),
@@ -100,7 +102,9 @@ export function normalizeActivityGridLayoutPreferences(
 
   return {
     columnOrder: parseStringArray(columnOrder.A),
-    columnSizing: parseSizingRecord(columnSizing.A),
+    columnSizing: clampGridColumnSizingRecord(
+      parseSizingRecord(columnSizing.A)
+    ),
     columnVisibility: DEFAULT_ACTIVITY_GRID_COLUMN_VISIBILITY,
   };
 }

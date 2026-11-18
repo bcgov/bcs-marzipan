@@ -76,6 +76,7 @@ export const ActivityListPage = () => {
   const location = useLocation();
   const { user, hasPermission } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
+  const canManageFavourites = hasPermission(PERMISSIONS.FAVOURITES.MANAGE);
 
   const [activeTab, setActiveTab] = useState<ActivityListTabValue>('all');
   const initialTabAppliedRef = useRef(false);
@@ -114,6 +115,9 @@ export const ActivityListPage = () => {
       if (stored === 'ministry' && !showMinistryTab) {
         setActiveTab('all');
         setStoredActivityListTab('all');
+      } else if (stored === 'favourites' && !canManageFavourites) {
+        setActiveTab('all');
+        setStoredActivityListTab('all');
       } else {
         setActiveTab(stored);
       }
@@ -125,7 +129,14 @@ export const ActivityListPage = () => {
       : 'all';
     setActiveTab(defaultTab);
     setStoredActivityListTab(defaultTab);
-  }, [showMinistryTab]);
+  }, [canManageFavourites, showMinistryTab]);
+
+  useEffect(() => {
+    if (activeTab === 'favourites' && !canManageFavourites) {
+      setActiveTab('all');
+      setStoredActivityListTab('all');
+    }
+  }, [activeTab, canManageFavourites]);
 
   const ministryAbbreviationByMinistryId = useMemo(() => {
     const map = new Map<number, string>();
@@ -273,7 +284,9 @@ export const ActivityListPage = () => {
             <TabsTrigger value="my-activities">My activities</TabsTrigger>
             <TabsTrigger value="shared-with-me">Shared with us</TabsTrigger>
             <TabsTrigger value="assigned-to-me">Assigned to me</TabsTrigger>
-            <TabsTrigger value="favourites">My watchlist</TabsTrigger>
+            {canManageFavourites ? (
+              <TabsTrigger value="favourites">My watchlist</TabsTrigger>
+            ) : null}
           </TabsList>
         </div>
 

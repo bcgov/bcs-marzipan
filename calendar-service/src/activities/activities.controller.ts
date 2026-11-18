@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 
 import {
+  ACTIVITY_BULK_UPDATE_ROUTE_PERMISSIONS,
   HYDRATION_PROFILES,
   PERMISSIONS,
   type AuthUser,
@@ -376,7 +377,7 @@ export class ActivitiesController {
   @ApiOperation({
     summary: 'Bulk update activities',
     description:
-      'Marks selected activities reviewed or applies other bulk list actions without acquiring individual edit locks. Requires activities.bulkUpdate and the permission required for the selected operation.',
+      'Marks selected activities reviewed or applies other bulk list actions without acquiring individual edit locks. Requires the permission for the selected operation (e.g. activities.bulk.issue and activities.edit for issue).',
   })
   @ApiBody({ type: BulkUpdateActivitiesDto })
   @ApiResponse({
@@ -384,7 +385,7 @@ export class ActivitiesController {
     description: 'Activities updated successfully',
     type: ActivityArrayResponseWrapperDto,
   })
-  @RequirePermission(PERMISSIONS.ACTIVITIES.BULK_UPDATE)
+  @RequireAnyPermission(...ACTIVITY_BULK_UPDATE_ROUTE_PERMISSIONS)
   @Post('bulk-update')
   async bulkUpdate(
     @Body(new ZodValidationPipe(bulkUpdateActivitiesRequestSchema))

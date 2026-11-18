@@ -46,7 +46,10 @@ INSERT INTO permissions (key, display_name, category, subcategory, description, 
   ('activities.unshare.all', 'Unshare activities for any team', 'Activities', 'Sharing', 'Remove any team from an activity''s Shared With list, not just your own.', 'activities', NULL, 'unshare', 15),
   ('activities.publicLastUpdated.defer', 'Defer public last updated on save', 'Activities', 'Basic', 'May save activity changes without updating the public last-updated timestamp shown to all viewers; operational last-updated always updates.', 'activities', 'publicLastUpdated', 'defer', 16),
   ('activities.lock.forceHandoff', 'Force unlock', 'Activities', 'Edit lock', 'Force unlock of a locked activity.', 'activities', 'lock', 'forceHandoff', 50),
-  ('activities.bulkUpdate','Bulk update activities','Activities', 'Workflow', 'Mark multiple activities reviewed or apply other bulk list actions (tags, flags, issue, delete)', 'activities', NULL, 'bulkUpdate', 12),
+  ('activities.bulkUpdate','Bulk update activities (legacy)','Activities', 'Workflow', 'Deprecated umbrella bulk list permission; prefer activities.bulk.issue, activities.bulk.tags, or activities.bulk.share.', 'activities', NULL, 'bulkUpdate', 12),
+  ('activities.bulk.issue', 'Batch mark issues', 'Activities', 'Workflow', 'Mark multiple activities as issues from the activity list.', 'activities', 'bulk', 'issue', 13),
+  ('activities.bulk.tags', 'Batch replace tags', 'Activities', 'Workflow', 'Replace tags on multiple activities from the activity list.', 'activities', 'bulk', 'tags', 14),
+  ('activities.bulk.share', 'Batch add shared-with teams', 'Activities', 'Workflow', 'Add teams to Shared with from the activity list. Requires edit access on each activity.', 'activities', 'bulk', 'share', 15),
   ('drafts.view', 'View drafts', 'Drafts', 'Basic', NULL, 'drafts', NULL, 'view', 10),
   ('drafts.create', 'Create drafts', 'Drafts', 'Basic', NULL, 'drafts', NULL, 'create', 11),
   ('drafts.edit', 'Edit drafts', 'Drafts', 'Basic', NULL, 'drafts', NULL, 'edit', 12),
@@ -126,7 +129,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Editor' AND p.key IN (
-  'activities.view','activities.create','activities.edit','activities.requestDelete',
+  'activities.view','activities.create','activities.edit','activities.bulk.share','activities.unshare','activities.requestDelete',
   'drafts.view','drafts.create','drafts.edit','drafts.delete',
   'reports.view','lookups.view','teams.view'
 )
@@ -144,7 +147,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r
 CROSS JOIN permissions p
 WHERE r.name = 'Advanced Editor' AND p.key IN (
-  'activities.view','activities.create','activities.edit','activities.requestDelete','activities.approve',
+  'activities.view','activities.create','activities.edit','activities.bulk.share','activities.unshare','activities.requestDelete','activities.approve',
   'drafts.view','drafts.create','drafts.edit','drafts.delete','drafts.recover',
   'reports.view','reports.export','lookups.view','teams.view'
 )
@@ -172,13 +175,17 @@ CROSS JOIN permissions p
 WHERE r.name = 'System Admin'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- 9. Admin/System Admin Bulk Update permission
+-- 9. Admin/System Admin list bulk operation permissions
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
 FROM roles r
 CROSS JOIN permissions p
 WHERE r.name IN ('Admin', 'System Admin')
-  AND p.key = 'activities.bulkUpdate'
+  AND p.key IN (
+    'activities.bulk.issue',
+    'activities.bulk.tags',
+    'activities.bulk.share'
+  )
 ON CONFLICT (role_id, permission_id) DO UPDATE
 SET is_active = true, updated_at = now();
 
@@ -287,8 +294,12 @@ WHERE key IN (
   'activities.delete',
   'activities.delete.any',
   'activities.edit',
+  'activities.bulk.issue',
+  'activities.bulk.tags',
+  'activities.bulk.share',
   'activities.unshare',
   'activities.publicLastUpdated.defer',
+  'favourites.manage',
   'reports.view',
   'reports.export',
   'reports.create_custom'

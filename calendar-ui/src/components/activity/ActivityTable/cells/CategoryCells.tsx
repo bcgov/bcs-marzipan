@@ -29,7 +29,7 @@ export function CategoryBadgesCell({
         label: category,
         variant: 'outline',
         className: cn(
-          'h-auto min-h-5 whitespace-normal border-slate-200 text-slate-600',
+          'h-auto min-h-5 max-w-full min-w-0 border-slate-200 text-slate-600',
           categoriesChanged && 'border-transparent',
           categoriesChanged && LIST_REVIEW_HIGHLIGHT_BG
         ),
@@ -37,8 +37,8 @@ export function CategoryBadgesCell({
       maxLines={1}
       lineHeight={24}
       badgeVariant="outline"
-      badgeClassName="h-auto min-h-5 whitespace-normal text-slate-600"
-      containerClassName="gap-1"
+      badgeClassName="h-auto min-h-5 max-w-full min-w-0 text-slate-600"
+      containerClassName="min-w-0 max-w-full gap-1"
     />
   );
 }

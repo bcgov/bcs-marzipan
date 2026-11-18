@@ -4334,6 +4334,26 @@ describe('ActivitiesService', () => {
   });
 
   describe('bulkUpdate', () => {
+    it('rejects tag updates when bulk tags permission is missing', async () => {
+      const updateSpy = vi.spyOn(service, 'update');
+
+      await expect(
+        service.bulkUpdate(
+          { activityIds: [1], operation: 'tags', tagIds: [1] },
+          2,
+          {
+            roleName: 'Editor',
+            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+            teamIds: [10],
+          }
+        )
+      ).rejects.toThrow(
+        'You do not have permission to perform this bulk activity operation.'
+      );
+
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
     it('rejects tag updates for a user with shared-with-only access', async () => {
       const updateSpy = vi.spyOn(service, 'update');
       mockPolicyService.isCommsContactForActivity.mockResolvedValue(false);
@@ -4345,7 +4365,10 @@ describe('ActivitiesService', () => {
           2,
           {
             roleName: 'Editor',
-            permissions: [PERMISSIONS.ACTIVITIES.EDIT],
+            permissions: [
+              PERMISSIONS.ACTIVITIES.EDIT,
+              PERMISSIONS.ACTIVITIES.BULK_TAGS,
+            ],
             teamIds: [20],
           }
         )

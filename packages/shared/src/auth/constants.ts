@@ -81,8 +81,18 @@ export const PERMISSIONS = {
     DELETE_ANY: 'activities.delete.any',
     APPROVE: 'activities.approve',
     REVIEW: 'activities.review',
-    /** Perform supported updates against multiple activities from the list. */
+    /**
+     * @deprecated Legacy list bulk gate. Prefer per-operation `activities.bulk.*` permissions.
+     */
     BULK_UPDATE: 'activities.bulkUpdate',
+    /** Batch mark activities as issues from the activity list. */
+    BULK_ISSUE: 'activities.bulk.issue',
+    /** Batch replace tags from the activity list. */
+    BULK_TAGS: 'activities.bulk.tags',
+    /**
+     * Batch add teams to Shared with from the list. Requires edit access per activity.
+     */
+    BULK_SHARE: 'activities.bulk.share',
     PUBLISH: 'activities.publish',
     UNPUBLISH: 'activities.unpublish',
     NOTES_VIEW: 'activities.notes.view',
@@ -106,6 +116,10 @@ export const PERMISSIONS = {
     UNSHARE_ALL: 'activities.unshare.all',
     /** May omit public last-updated on save unless renewPublicLastUpdated is true. */
     PUBLIC_LAST_UPDATED_DEFER: 'activities.publicLastUpdated.defer',
+  },
+  FAVOURITES: {
+    /** Add or remove activities on the user's personal watchlist. */
+    MANAGE: 'favourites.manage',
   },
   DRAFTS: {
     VIEW: 'drafts.view',

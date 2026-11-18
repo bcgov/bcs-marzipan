@@ -48,6 +48,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
   const layoutPreferences = useActivityGridLayoutPreferences();
   const {
     canBulkSelect,
+    bulkMenu,
     canFlag,
     showReviewHighlights,
     effectiveSortKey,
@@ -99,10 +100,11 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         meta: { sortKey: 'activityId' as const },
         ...gridColumnSize('overview', GRID_A_COLUMN_WIDTHS, storedSizing),
         cell: ({ row }) => (
-          <div className="flex flex-col gap-0.5">
+          <div className="flex min-w-0 flex-col gap-0.5">
             <OverviewIconsCell
               row={row.original}
               canFlag={canFlag}
+              canManageWatchlist={bulkMenu.canManageWatchlist}
               isFavourite={watchlistActivityIdSet.has(row.original.id)}
               onFavouriteToggle={() => toggleFavourite(row.original.id)}
               favouriteToggling={isFavouriteToggling}
@@ -187,7 +189,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         },
         ...gridColumnSize('status', GRID_A_COLUMN_WIDTHS, storedSizing),
         cell: ({ row }) => (
-          <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex max-w-full min-w-0 flex-col gap-1">
             <ActivityStatusCell row={row.original} orientation="inline" />
             <ActivityTimestampsCell
               row={row.original}
@@ -208,6 +210,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
       handleSortChange,
       showReviewHighlights,
       canFlag,
+      bulkMenu.canManageWatchlist,
       watchlistActivityIdSet,
       syncFlagsMutation,
       selectedActivityIds,

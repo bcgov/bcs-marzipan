@@ -36,7 +36,7 @@ export class FavouritesController {
     description: 'Favourite activity IDs retrieved',
     type: ActivityFavouritesResponseWrapperDto,
   })
-  @RequirePermission(PERMISSIONS.ACTIVITIES.VIEW)
+  @RequirePermission(PERMISSIONS.FAVOURITES.MANAGE)
   @Get()
   async list(
     @CurrentUser() user: AuthUser
@@ -54,7 +54,7 @@ export class FavouritesController {
     description: 'Activity added to favourites',
     type: SuccessOnlyResponseDto,
   })
-  @RequirePermission(PERMISSIONS.ACTIVITIES.VIEW)
+  @RequirePermission(PERMISSIONS.FAVOURITES.MANAGE)
   @Post(':activityId')
   @HttpCode(HttpStatus.CREATED)
   async add(
@@ -77,7 +77,7 @@ export class FavouritesController {
     description: 'Activity removed from favourites',
     type: SuccessOnlyResponseDto,
   })
-  @RequirePermission(PERMISSIONS.ACTIVITIES.VIEW)
+  @RequirePermission(PERMISSIONS.FAVOURITES.MANAGE)
   @Delete(':activityId')
   async remove(
     @CurrentUser() user: AuthUser,

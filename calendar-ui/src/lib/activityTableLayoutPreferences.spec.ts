@@ -106,4 +106,12 @@ describe('activityTableLayoutPreferences', () => {
       DEFAULT_ACTIVITY_GRID_LAYOUT_PREFERENCES
     );
   });
+
+  it('clamps overview and status column widths when normalizing stored prefs', () => {
+    expect(
+      normalizeActivityGridLayoutPreferences({
+        columnSizing: { overview: 400, status: 500, summary: 420 },
+      }).columnSizing
+    ).toEqual({ overview: 224, status: 280, summary: 420 });
+  });
 });

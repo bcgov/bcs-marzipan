@@ -37,6 +37,7 @@ const mockRow = (overrides: Partial<ActivityTableRow>): ActivityTableRow => ({
   leadTeamId: null,
   leadOrganizationId: null,
   commsContactLeadUserId: null,
+  commsContactUserIds: [],
   translationsRequired: [],
   translationsRequiredStatus: null,
   translationsRequiredStatusId: null,
