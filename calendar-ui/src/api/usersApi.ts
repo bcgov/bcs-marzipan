@@ -208,6 +208,7 @@ export async function fetchTeams(): Promise<
     | 'id'
     | 'name'
     | 'displayName'
+    | 'abbreviation'
     | 'primaryOrganizationId'
     | 'primaryOrganizationName'
   >[]
@@ -220,6 +221,7 @@ export async function fetchTeams(): Promise<
     id: t.id,
     name: t.name,
     displayName: t.displayName,
+    abbreviation: t.abbreviation,
     primaryOrganizationId: t.primaryOrganizationId ?? null,
     primaryOrganizationName: t.primaryOrganizationName ?? null,
   }));
