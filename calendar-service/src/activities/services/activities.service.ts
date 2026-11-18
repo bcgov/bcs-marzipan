@@ -44,12 +44,14 @@ import {
   ACTIVITY_CATEGORY_IDS_MESSAGE,
   buildEffectiveReviewExemptKeys,
   DEFAULT_CONFIGURABLE_REVIEW_EXEMPT_FIELD_KEYS,
+  hasAllPermissions,
   HYDRATION_PROFILES,
   isManualCompleteEligible,
   normalizeActivityStatusLabel,
   pacificCalendarDateFromInstant,
   PERMISSIONS,
   profileIncludesRelation,
+  requiredPermissionsForBulkUpdateOperation,
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
   TBD_LOOKUP_NAME,
@@ -59,6 +61,7 @@ import {
   type ActivityListItem,
   type ActivityStatusName,
   type EventPlannerDetail,
+  type PermissionKey,
   type TimestampWriteContext,
 } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
@@ -2359,22 +2362,16 @@ export class ActivitiesService {
       teamIds?: number[];
     }
   ): Promise<ActivityResponse[]> {
-    const requiredOperationPermissionByOperation = {
-      review: PERMISSIONS.ACTIVITIES.REVIEW,
-      issue: PERMISSIONS.ACTIVITIES.EDIT,
-      tags: PERMISSIONS.ACTIVITIES.EDIT,
-      sharedWith: PERMISSIONS.ACTIVITIES.EDIT,
-      flag: PERMISSIONS.ACTIVITIES.FLAG,
-      delete: PERMISSIONS.ACTIVITIES.DELETE,
-    } as const;
-    const requiredOperationPermission =
-      requiredOperationPermissionByOperation[dto.operation];
-    if (requiredOperationPermission == null) {
+    const operation = dto.operation;
+    let requiredKeys: readonly PermissionKey[];
+    try {
+      requiredKeys = requiredPermissionsForBulkUpdateOperation(operation);
+    } catch {
       throw new BadRequestException(
         `Unsupported bulk activity operation: ${dto.operation}`
       );
     }
-    if (!context.permissions?.includes(requiredOperationPermission)) {
+    if (!hasAllPermissions(context.permissions, requiredKeys)) {
       throw new ForbiddenException(
         `You do not have permission to perform this bulk activity operation.`
       );
@@ -2387,19 +2384,6 @@ export class ActivitiesService {
       throw new ForbiddenException(
         'You are not a member of the specified flag team.'
       );
-    }
-
-    // Bulk sharing grants other teams visibility across many activities at once,
-    // so it stays an admin action. Individual activities use the form's Shared with field.
-    if (dto.operation === 'sharedWith') {
-      const isAdmin =
-        context.roleName === SYSTEM_ROLES.ADMIN ||
-        context.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
-      if (!isAdmin) {
-        throw new ForbiddenException(
-          'Only admins can bulk share activities with teams.'
-        );
-      }
     }
 
     const results: ActivityResponse[] = [];

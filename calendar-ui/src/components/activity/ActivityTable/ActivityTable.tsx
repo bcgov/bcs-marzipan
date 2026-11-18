@@ -48,6 +48,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
   const layoutPreferences = useActivityGridLayoutPreferences();
   const {
     canBulkSelect,
+    bulkMenu,
     canFlag,
     showReviewHighlights,
     effectiveSortKey,
@@ -103,6 +104,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
             <OverviewIconsCell
               row={row.original}
               canFlag={canFlag}
+              canManageWatchlist={bulkMenu.canManageWatchlist}
               isFavourite={watchlistActivityIdSet.has(row.original.id)}
               onFavouriteToggle={() => toggleFavourite(row.original.id)}
               favouriteToggling={isFavouriteToggling}
@@ -208,6 +210,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
       handleSortChange,
       showReviewHighlights,
       canFlag,
+      bulkMenu.canManageWatchlist,
       watchlistActivityIdSet,
       syncFlagsMutation,
       selectedActivityIds,

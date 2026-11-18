@@ -37,6 +37,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { ActivityTableCore } from '@/hooks/useActivityTableCore';
+import { bulkDialogTargetCount } from '@/lib/activityBulkActions';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import { MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE } from '@/lib/ministry-tab-lead-filter-conflict';
 
@@ -69,9 +70,7 @@ export function ActivityTableFrame({
 }: ActivityTableFrameProps) {
   const {
     canBulkSelect,
-    canBulkUpdateActivities,
-    canBulkShareActivities,
-    canUnshare,
+    bulkMenu,
     loading,
     error,
     refetchActivities,
@@ -184,26 +183,40 @@ export function ActivityTableFrame({
     </FilterSection>
   );
 
+  const bulkTargetCount =
+    bulkDialog != null
+      ? bulkDialogTargetCount(bulkDialog, bulkMenu, selectedActivityCount)
+      : selectedActivityCount;
+
+  const showBulkWorkflowItems =
+    bulkMenu.issue.show ||
+    bulkMenu.tags.show ||
+    bulkMenu.sharing.show ||
+    bulkMenu.flag.show ||
+    bulkMenu.unshare.show ||
+    bulkMenu.review.show ||
+    bulkMenu.delete.show;
+
   const bulkSelectionLeading =
     canBulkSelect && selectedActivityCount > 0 ? (
       <span className="inline-flex flex-wrap items-center gap-5">
         <span className="font-medium">
           {selectedActivityCount} of {sortedData.length} activities selected
         </span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={bulkActionPending}
-            >
-              Batch actions <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-52">
-            {canBulkUpdateActivities ? (
-              <>
+        {bulkMenu.hasBatchActionsMenu ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={bulkActionPending}
+              >
+                Batch actions <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              {bulkMenu.watchlistAdd ? (
                 <DropdownMenuItem
                   onSelect={() => {
                     [...selectedActivityIds]
@@ -213,49 +226,72 @@ export function ActivityTableFrame({
                 >
                   Add to watchlist
                 </DropdownMenuItem>
+              ) : null}
+              {bulkMenu.watchlistRemove ? (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    [...selectedActivityIds]
+                      .filter((id) => watchlistIds.includes(id))
+                      .forEach((id) => toggleFavourite(id));
+                  }}
+                >
+                  Remove from watchlist
+                </DropdownMenuItem>
+              ) : null}
+              {showBulkWorkflowItems &&
+              (bulkMenu.watchlistAdd || bulkMenu.watchlistRemove) ? (
+                <DropdownMenuSeparator />
+              ) : null}
+              {bulkMenu.flag.show ? (
                 <DropdownMenuItem onSelect={() => setBulkDialog('flag')}>
                   Flag
                 </DropdownMenuItem>
+              ) : null}
+              {bulkMenu.issue.show ? (
                 <DropdownMenuItem onSelect={() => setBulkDialog('issue')}>
                   Issue
                 </DropdownMenuItem>
-                {canBulkShareActivities && (
-                  <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
-                    Shared with
-                  </DropdownMenuItem>
-                )}
-                {canUnshare && (
-                  <DropdownMenuItem
-                    onSelect={() => setUnshareModalOpen(true)}
-                    disabled={eligibleBulkUnshareTeams.length === 0}
-                  >
-                    Unshare
-                  </DropdownMenuItem>
-                )}
+              ) : null}
+              {bulkMenu.sharing.show ? (
+                <DropdownMenuItem onSelect={() => setBulkDialog('sharing')}>
+                  Shared with
+                </DropdownMenuItem>
+              ) : null}
+              {bulkMenu.unshare.show ? (
+                <DropdownMenuItem
+                  onSelect={() => setUnshareModalOpen(true)}
+                  disabled={eligibleBulkUnshareTeams.length === 0}
+                >
+                  Unshare
+                </DropdownMenuItem>
+              ) : null}
+              {bulkMenu.tags.show ? (
                 <DropdownMenuItem onSelect={() => setBulkDialog('tags')}>
                   Tags
                 </DropdownMenuItem>
+              ) : null}
+              {(bulkMenu.review.show || bulkMenu.delete.show) &&
+              (showBulkWorkflowItems ||
+                bulkMenu.watchlistAdd ||
+                bulkMenu.watchlistRemove) ? (
                 <DropdownMenuSeparator />
+              ) : null}
+              {bulkMenu.review.show ? (
                 <DropdownMenuItem onSelect={() => setBulkDialog('review')}>
                   Review
                 </DropdownMenuItem>
+              ) : null}
+              {bulkMenu.delete.show ? (
                 <DropdownMenuItem
                   variant="destructive"
                   onSelect={() => setBulkDialog('delete')}
                 >
                   Delete
                 </DropdownMenuItem>
-              </>
-            ) : canUnshare ? (
-              <DropdownMenuItem
-                onSelect={() => setUnshareModalOpen(true)}
-                disabled={eligibleBulkUnshareTeams.length === 0}
-              >
-                Unshare
-              </DropdownMenuItem>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </span>
     ) : null;
 
@@ -397,9 +433,36 @@ export function ActivityTableFrame({
                 {bulkDialog === 'delete' && 'Delete selected activities?'}
               </DialogTitle>
               <DialogDescription>
-                {bulkDialog === 'sharing'
-                  ? `Adds teams to the Shared with list for ${selectedActivityCount} selected activit${selectedActivityCount === 1 ? 'y' : 'ies'} without removing existing shares.`
-                  : `This updates ${selectedActivityCount} selected activit${selectedActivityCount === 1 ? 'y' : 'ies'}.`}
+                {bulkDialog === 'sharing' ? (
+                  bulkTargetCount < selectedActivityCount ? (
+                    <>
+                      Adds teams to the Shared with list for {bulkTargetCount}{' '}
+                      of {selectedActivityCount} selected activit
+                      {selectedActivityCount === 1 ? 'y' : 'ies'} without
+                      removing existing shares. Activities you cannot edit are
+                      skipped.
+                    </>
+                  ) : (
+                    <>
+                      Adds teams to the Shared with list for {bulkTargetCount}{' '}
+                      selected activit
+                      {bulkTargetCount === 1 ? 'y' : 'ies'} without removing
+                      existing shares.
+                    </>
+                  )
+                ) : bulkTargetCount < selectedActivityCount ? (
+                  <>
+                    This updates {bulkTargetCount} of {selectedActivityCount}{' '}
+                    selected activit
+                    {selectedActivityCount === 1 ? 'y' : 'ies'}. Activities you
+                    cannot edit are skipped.
+                  </>
+                ) : (
+                  <>
+                    This updates {bulkTargetCount} selected activit
+                    {bulkTargetCount === 1 ? 'y' : 'ies'}.
+                  </>
+                )}
               </DialogDescription>
             </DialogHeader>
             {bulkDialog === 'tags' && (
@@ -506,6 +569,8 @@ export function ActivityTableFrame({
                 type="button"
                 disabled={
                   bulkActionPending ||
+                  (bulkDialog != null && bulkTargetCount === 0) ||
+                  (bulkDialog === 'sharing' && selectedTeamIds.length === 0) ||
                   (bulkDialog === 'flag' &&
                     (!selectedFlagTeamId ||
                       selectedAssigneeIds.length === 0)) ||

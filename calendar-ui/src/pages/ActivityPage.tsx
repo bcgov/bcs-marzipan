@@ -375,6 +375,7 @@ export function ActivityPage({
   const { user, hasPermission } = useAuth();
   const id = activity.id;
   const {
+    canManageFavourites,
     isFavourite,
     toggle: toggleFavourite,
     isToggling: isFavouriteToggling,
@@ -1901,8 +1902,10 @@ export function ActivityPage({
         isFlagPending={
           syncFlagsMutation.isPending || removeAssigneeFlagMutation.isPending
         }
-        isFavourite={isFavourite(id)}
-        onFavouriteToggle={() => toggleFavourite(id)}
+        isFavourite={canManageFavourites ? isFavourite(id) : false}
+        onFavouriteToggle={
+          canManageFavourites ? () => toggleFavourite(id) : undefined
+        }
         isFavouriteToggling={isFavouriteToggling}
         sharedWith={activity.sharedWith ?? []}
         visibility={activity.visibility}

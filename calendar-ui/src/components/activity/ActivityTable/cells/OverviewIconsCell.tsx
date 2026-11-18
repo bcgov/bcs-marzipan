@@ -25,6 +25,8 @@ import { SharedWithPopover } from './SharedWithPopover';
 export interface OverviewIconsCellProps {
   row: ActivityTableRow;
   canFlag: boolean;
+  /** When false, the watchlist control is hidden. */
+  canManageWatchlist?: boolean;
   isFavourite: boolean;
   onFavouriteToggle: () => void;
   favouriteToggling: boolean;
@@ -43,6 +45,7 @@ export interface OverviewIconsCellProps {
 export function OverviewIconsCell({
   row,
   canFlag,
+  canManageWatchlist = true,
   isFavourite,
   onFavouriteToggle,
   favouriteToggling,
@@ -136,32 +139,34 @@ export function OverviewIconsCell({
       </span>
 
       <div ref={actionsRowRef} className={GRID_A_OVERVIEW_ACTIONS_ROW_CLASS}>
-        <button
-          type="button"
-          data-no-row-nav
-          onClick={(e) => {
-            e.stopPropagation();
-            onFavouriteToggle();
-          }}
-          disabled={favouriteToggling}
-          title={isFavourite ? 'Remove from watchlist' : 'Add to watchlist'}
-          aria-label={
-            isFavourite ? 'Remove from watchlist' : 'Add to watchlist'
-          }
-          aria-pressed={isFavourite}
-          className={GRID_A_OVERVIEW_ACTION_HITBOX_CLASS}
-        >
-          <Star
-            className={cn(
-              GRID_A_OVERVIEW_ACTION_ICON_CLASS,
-              isFavourite
-                ? ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS
-                : ACTIVITY_OVERVIEW_ICON_MUTED_CLASS
-            )}
-            fill={isFavourite ? 'currentColor' : 'none'}
-            aria-hidden
-          />
-        </button>
+        {canManageWatchlist ? (
+          <button
+            type="button"
+            data-no-row-nav
+            onClick={(e) => {
+              e.stopPropagation();
+              onFavouriteToggle();
+            }}
+            disabled={favouriteToggling}
+            title={isFavourite ? 'Remove from watchlist' : 'Add to watchlist'}
+            aria-label={
+              isFavourite ? 'Remove from watchlist' : 'Add to watchlist'
+            }
+            aria-pressed={isFavourite}
+            className={GRID_A_OVERVIEW_ACTION_HITBOX_CLASS}
+          >
+            <Star
+              className={cn(
+                GRID_A_OVERVIEW_ACTION_ICON_CLASS,
+                isFavourite
+                  ? ACTIVITY_WATCHLIST_ICON_ACTIVE_CLASS
+                  : ACTIVITY_OVERVIEW_ICON_MUTED_CLASS
+              )}
+              fill={isFavourite ? 'currentColor' : 'none'}
+              aria-hidden
+            />
+          </button>
+        ) : null}
         <SharedWithPopover
           teamNames={row.sharedWith}
           teamIds={row.sharedWithTeamIds}

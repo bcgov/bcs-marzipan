@@ -59,7 +59,7 @@ export function ActivityBulkSelectHeader({
     Math.max(sortedData.length - pagination.pageIndex * pagination.pageSize, 0)
   );
 
-  const userTeamIds = user?.teamIds ?? [];
+  const userTeamIds = useMemo(() => user?.teamIds ?? [], [user?.teamIds]);
   const activeLeadTeamFilterIds = filterState.leadTeamIds ?? [];
 
   const leadTeamCounts = useMemo(
