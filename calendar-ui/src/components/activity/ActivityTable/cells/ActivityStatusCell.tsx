@@ -20,15 +20,19 @@ export function ActivityStatusCell({
   return (
     <div
       className={cn(
-        'flex gap-1',
+        'flex max-w-full min-w-0 gap-1',
         orientation === 'stacked'
           ? 'flex-col items-start'
-          : 'flex-nowrap items-center',
+          : 'flex-wrap items-center',
         className
       )}
     >
-      <Badge variant={getActivityStatusBadgeVariant(row.activityStatus)}>
-        {row.activityStatus}
+      <Badge
+        variant={getActivityStatusBadgeVariant(row.activityStatus)}
+        className="max-w-full min-w-0"
+        title={row.activityStatus}
+      >
+        <span className="truncate">{row.activityStatus}</span>
       </Badge>
       <LookAheadStatusBadge
         status={row.lookAheadStatus}

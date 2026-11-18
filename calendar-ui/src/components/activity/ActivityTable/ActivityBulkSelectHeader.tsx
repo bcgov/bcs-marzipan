@@ -11,8 +11,8 @@ import type { ActivityTableCore } from '@/hooks/useActivityTableCore';
 
 import {
   GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS,
+  GRID_A_SELECT_CHECKBOX_HEADER_HIT_CLASS,
   GRID_A_SELECT_CHECKBOX_HEADER_TRIGGER_CLASS,
-  GRID_A_SELECT_CHECKBOX_HIT_CLASS,
 } from './selectColumnLayout';
 
 export interface ActivityBulkSelectHeaderProps {
@@ -65,7 +65,7 @@ export function ActivityBulkSelectHeader({
       <span
         data-no-row-nav
         onClick={(e) => e.stopPropagation()}
-        className={GRID_A_SELECT_CHECKBOX_HIT_CLASS}
+        className={GRID_A_SELECT_CHECKBOX_HEADER_HIT_CLASS}
       >
         <Checkbox
           aria-label="Select all activities"

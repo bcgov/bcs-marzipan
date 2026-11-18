@@ -84,7 +84,6 @@ export function ActivityTableFrame({
     selectedActivityIds,
     selectedActivityCount,
     selectedActivities,
-    clearSelection,
     bulkDialog,
     setBulkDialog,
     bulkActionPending,
@@ -185,13 +184,6 @@ export function ActivityTableFrame({
     </FilterSection>
   );
 
-  const bulkClearSelectionButton =
-    selectedActivityCount > 0 ? (
-      <Button type="button" size="sm" variant="ghost" onClick={clearSelection}>
-        Clear selection
-      </Button>
-    ) : null;
-
   const bulkSelectionLeading =
     canBulkSelect && selectedActivityCount > 0 ? (
       <span className="inline-flex flex-wrap items-center gap-5">
@@ -264,7 +256,6 @@ export function ActivityTableFrame({
             ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
-        {bulkClearSelectionButton}
       </span>
     ) : null;
 

@@ -38,7 +38,7 @@ export interface OverviewIconsCellProps {
 }
 
 /**
- * Compact identity row for Grid A: activity ID, watchlist, shares, and flag (rightmost).
+ * Compact identity block for Grid A: activity ID with watchlist, shares, and flag beneath.
  */
 export function OverviewIconsCell({
   row,
@@ -126,11 +126,11 @@ export function OverviewIconsCell({
   ) : null;
 
   return (
-    <div className="flex min-w-0 items-center gap-4 text-xs font-semibold text-slate-900">
+    <div className="flex min-w-0 flex-col gap-0.5 text-xs font-semibold text-slate-900">
       <span
         data-no-row-nav
         onClick={(e) => e.stopPropagation()}
-        className="shrink-0"
+        className="shrink-0 pl-1"
       >
         <ActivityDisplayIdCopy displayId={displayIdText} variant="subtle" />
       </span>

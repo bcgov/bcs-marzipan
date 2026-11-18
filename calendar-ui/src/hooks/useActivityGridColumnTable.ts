@@ -13,6 +13,7 @@ import {
 } from '@tanstack/react-table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { clampGridColumnSizingRecord } from '@/components/activity/ActivityTable/activityGridDefaults';
 import { GRID_A_PINNED_COLUMN_IDS } from '@/components/activity/ActivityTable/activityGridPinnedColumns';
 import type { ActivityTableRow } from '@/components/activity/ActivityTable/activityTableRow';
 import type { ActivityTableCore } from '@/hooks/useActivityTableCore';
@@ -90,7 +91,7 @@ export function useActivityGridColumnTable({
   }, [defaultOrderSignature]);
 
   const columnSizing = useMemo<ColumnSizingState>(
-    () => ({ ...storedSizing }),
+    () => clampGridColumnSizingRecord(storedSizing),
     [storedSizing]
   );
 
@@ -101,7 +102,7 @@ export function useActivityGridColumnTable({
       for (const [id, size] of Object.entries(next)) {
         if (Number.isFinite(size) && size > 0) rounded[id] = Math.round(size);
       }
-      setColumnSizing(rounded);
+      setColumnSizing(clampGridColumnSizingRecord(rounded));
     },
     [columnSizing, setColumnSizing]
   );

@@ -12,10 +12,17 @@ export const GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS = `${selectCheckboxAlignB
 /** Body checkbox row (top-aligned with grid content). */
 export const GRID_A_SELECT_CHECKBOX_ROW_ALIGN_CLASS = `${selectCheckboxAlignBase} items-start`;
 
-/** Row hit target; checkbox flush-left to match the header control. */
+/** Body row hit target (24px wide for a consistent click band). */
 export const GRID_A_SELECT_CHECKBOX_HIT_CLASS =
   'inline-flex h-6 min-w-6 items-center justify-start';
 
-/** Header menu trigger (compact; do not use row h-6 or it sits low vs text-sm titles). */
+/** Header checkbox: tight to the 16px control; menu trigger owns trailing slack. */
+export const GRID_A_SELECT_CHECKBOX_HEADER_HIT_CLASS =
+  'inline-flex h-6 shrink-0 items-center justify-start';
+
+/**
+ * Header menu trigger: fills trailing column width so the chevron hit target
+ * includes slack to the right of the checkbox (do not use row h-6 or it sits low vs text-sm titles).
+ */
 export const GRID_A_SELECT_CHECKBOX_HEADER_TRIGGER_CLASS =
-  'inline-flex shrink-0 cursor-pointer items-center justify-start gap-px border-0 bg-transparent p-0';
+  'inline-flex min-h-6 min-w-0 flex-1 cursor-pointer items-center justify-center border-0 bg-transparent p-0';

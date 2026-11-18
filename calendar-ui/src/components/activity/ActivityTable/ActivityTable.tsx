@@ -99,7 +99,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         meta: { sortKey: 'activityId' as const },
         ...gridColumnSize('overview', GRID_A_COLUMN_WIDTHS, storedSizing),
         cell: ({ row }) => (
-          <div className="flex flex-col gap-0.5">
+          <div className="flex min-w-0 flex-col gap-0.5">
             <OverviewIconsCell
               row={row.original}
               canFlag={canFlag}
@@ -187,7 +187,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         },
         ...gridColumnSize('status', GRID_A_COLUMN_WIDTHS, storedSizing),
         cell: ({ row }) => (
-          <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex max-w-full min-w-0 flex-col gap-1">
             <ActivityStatusCell row={row.original} orientation="inline" />
             <ActivityTimestampsCell
               row={row.original}
