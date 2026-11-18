@@ -187,6 +187,8 @@ vi.mock('@/hooks/useActivityGridLayoutPreferences', () => ({
     setColumnOrder: vi.fn(),
     getColumnSizing: vi.fn(() => ({})),
     setColumnSizing: vi.fn(),
+    getColumnVisibility: vi.fn(() => ({})),
+    setColumnVisibility: vi.fn(),
   }),
 }));
 

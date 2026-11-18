@@ -101,6 +101,7 @@ const mockLookupsReady: FormLookupData = {
   newsReleaseDistributions: [],
   premierRequested: [],
   newsReleaseOrigins: [],
+  newsReleaseOriginLookups: [],
   sharedWithTeams: [],
   quickShareGroups: [],
   dateStatuses: [],

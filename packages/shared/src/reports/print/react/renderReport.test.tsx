@@ -18,10 +18,10 @@ import {
 import { buildTranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
 
 const TEST_TRANSLATION_RESOLVER = buildTranslationLanguageLabelResolver([
-  { shortcode: 'FR', displayName: 'French' },
-  { shortcode: 'PUN', displayName: 'Punjabi' },
-  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
-  { shortcode: 'SPA', displayName: 'Spanish' },
+  { shortcode: 'fr', displayName: 'French' },
+  { shortcode: 'pa', displayName: 'Punjabi' },
+  { shortcode: 'zh-Hans', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'es', displayName: 'Spanish' },
 ]);
 
 const TEST_RENDER_OPTIONS = {
@@ -73,7 +73,8 @@ const BASE_ACTIVITY_RESPONSE = {
   categoryIds: [1],
   tags: [],
   commsMaterials: [],
-  translationsRequired: ['FR', 'PUN'],
+  commsMaterialReleases: [],
+  translationsRequired: ['fr', 'pa'],
   representativesAttending: [],
   sharedWith: [],
   sharedWithTeamIds: [],
@@ -110,6 +111,16 @@ const BASE_ACTIVITY_RESPONSE = {
 const BASE_ACTIVITY: ActivityListItem = activityResponseToListItem(
   BASE_ACTIVITY_RESPONSE
 );
+
+/** News release comms selection that enables Look Ahead translation column text. */
+const NR_COMMS_RELEASE = [
+  {
+    releaseTypeId: 4,
+    reportAbbrev: 'NR',
+    reportSortOrder: 1,
+    allowsTranslation: true,
+  },
+] as const;
 
 const FIXTURE: ReportDataResponse = {
   report: {
@@ -512,9 +523,23 @@ describe('renderPrintReportFragmentHtml', () => {
   });
 
   it('includes translations list when fewer than four languages are required', () => {
+    const fixture: ReportDataResponse = {
+      ...FIXTURE,
+      sections: [
+        {
+          ...FIXTURE.sections[0],
+          activities: [
+            {
+              ...BASE_ACTIVITY,
+              commsMaterialReleases: [...NR_COMMS_RELEASE],
+            },
+          ],
+        },
+      ],
+    };
     const html = renderPrintReportFragmentHtml(
       'look-ahead',
-      FIXTURE,
+      fixture,
       TEST_RENDER_OPTIONS
     );
 
@@ -533,7 +558,7 @@ describe('renderPrintReportFragmentHtml', () => {
               ...BASE_ACTIVITY,
               category: ['Announcement'],
               newsReleaseOrigin: null,
-              translationsRequired: ['FR', 'PUN'],
+              translationsRequired: ['fr', 'pa'],
             },
           ],
         },
@@ -560,6 +585,7 @@ describe('renderPrintReportFragmentHtml', () => {
               newsReleaseOrigin: null,
               translationsRequiredStatus: 'Pending review',
               translationsRequired: [],
+              commsMaterialReleases: [...NR_COMMS_RELEASE],
             },
           ],
         },
@@ -581,7 +607,8 @@ describe('renderPrintReportFragmentHtml', () => {
           activities: [
             {
               ...BASE_ACTIVITY,
-              translationsRequired: ['FR', 'PUN', 'ZH', 'ES'],
+              translationsRequired: ['fr', 'pa', 'zh-Hans', 'es'],
+              commsMaterialReleases: [...NR_COMMS_RELEASE],
             },
           ],
         },

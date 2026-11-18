@@ -23,6 +23,8 @@ export interface FormField {
   type: 'text' | 'number' | 'checkbox' | 'select';
   required?: boolean;
   placeholder?: string;
+  /** Shown below text/number inputs (e.g. format hints). */
+  helperText?: string;
   /** Options for select fields */
   options?: SelectOption[];
 }
@@ -140,15 +142,28 @@ export function LookupForm({
               </SelectContent>
             </Select>
           ) : (
-            <Input
-              id={field.name}
-              type={field.type}
-              placeholder={field.placeholder}
-              value={formData[field.name] || ''}
-              onChange={(e) => handleChange(field.name, e.target.value)}
-              required={field.required}
-              className="w-full"
-            />
+            <>
+              <Input
+                id={field.name}
+                type={field.type}
+                placeholder={field.placeholder}
+                value={formData[field.name] || ''}
+                onChange={(e) => handleChange(field.name, e.target.value)}
+                required={field.required}
+                aria-describedby={
+                  field.helperText ? `${field.name}-helper` : undefined
+                }
+                className="w-full"
+              />
+              {field.helperText && (
+                <p
+                  id={`${field.name}-helper`}
+                  className="text-muted-foreground text-xs"
+                >
+                  {field.helperText}
+                </p>
+              )}
+            </>
           )}
         </div>
       ))}

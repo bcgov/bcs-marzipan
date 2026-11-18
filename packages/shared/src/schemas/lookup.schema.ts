@@ -5,6 +5,10 @@ import {
   REPRESENTATIVE_TYPE,
   VISIBILITY,
 } from '../constants/constants';
+import {
+  BCP47_LANGUAGE_TAG_MAX_LENGTH,
+  isPlausibleBcp47LanguageTag,
+} from '../utils/bcp47-language-tag';
 import { venueAddressSchema } from './activity.schema';
 import {
   LOOKUP_SORT_MODES,
@@ -185,6 +189,7 @@ export const ORGANIZATION_JURISDICTIONS = [
   'bcgov',
   'federal',
   'provincial',
+  'local_government',
   'other',
 ] as const;
 
@@ -198,6 +203,7 @@ export const ORGANIZATION_JURISDICTION_LABELS: Record<
   bcgov: 'BC government',
   federal: 'Federal',
   provincial: 'Provincial',
+  local_government: 'Local government',
   other: 'Other',
 };
 
@@ -347,7 +353,7 @@ export const timeStatusLookupItemSchema = lookupItemSchema.extend({
 
 /**
  * Translation Required Status Response Schema
- * Values: pending, required, not_required
+ * Values: tbd, required (implicit when languages set), no_translations
  */
 export const translationRequiredStatusResponseSchema = z.object({
   id: z.number().int(),
@@ -421,9 +427,10 @@ export const releaseTypeEmbeddedSchema = z.object({
   id: z.number().int(),
   name: z.string(),
   displayName: z.string(),
+  reportAbbreviation: z.string().nullable().optional(),
+  reportSortOrder: z.number().int().optional(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean(),
-  requiresNewsReleaseDetails: z.boolean(),
 });
 
 export const releaseTypeResponseSchema = z.object({
@@ -431,9 +438,10 @@ export const releaseTypeResponseSchema = z.object({
   name: z.string(),
   displayName: z.string(),
   sortOrder: z.number().int(),
+  reportAbbreviation: z.string().max(6).nullable(),
+  reportSortOrder: z.number().int(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean(),
-  requiresNewsReleaseDetails: z.boolean(),
   isActive: z.boolean(),
   description: z.string().nullable(),
 });
@@ -442,10 +450,11 @@ export const releaseTypeLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
   displayName: z.string(),
   sortOrder: z.number().int(),
+  reportAbbreviation: z.string().max(6).nullable().optional(),
+  reportSortOrder: z.number().int().optional(),
   isActive: z.boolean(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean(),
-  requiresNewsReleaseDetails: z.boolean(),
   description: z.string().nullable().optional(),
 });
 
@@ -488,7 +497,7 @@ export const commsMaterialsLookupItemSchema = lookupItemSchema.extend({
 /**
  * Translation Language Response Schema
  * Fields from the translated_languages table exposed via API.
- * shortcode: internal language code when set.
+ * shortcode: BCP 47 language tag when set.
  */
 export const translationLanguageResponseSchema = z.object({
   id: z.number().int(),
@@ -502,7 +511,7 @@ export const translationLanguageResponseSchema = z.object({
 
 /**
  * Translation Language Lookup Item Schema.
- * shortcode: internal language code when set.
+ * shortcode: BCP 47 language tag when set.
  */
 export const translationLanguageLookupItemSchema = lookupItemSchema.extend({
   name: z.string(),
@@ -851,15 +860,25 @@ export const createReleaseTypeRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
   sortOrder: optionalCreateSortOrderSchema,
+  reportAbbreviation: z.string().min(1).max(6).nullable().optional(),
+  reportSortOrder: z.number().int().min(0).optional(),
   isActive: z.boolean().default(true).optional(),
   description: z.string().nullable().optional(),
   audience: z.enum(RELEASE_TYPE_AUDIENCE),
   allowsTranslation: z.boolean().default(false).optional(),
-  requiresNewsReleaseDetails: z.boolean().default(false).optional(),
 });
 
 export const updateReleaseTypeRequestSchema =
   createReleaseTypeRequestSchema.partial();
+
+const translationLanguageShortcodeSchema = z
+  .string()
+  .trim()
+  .min(1, 'Shortcode is required')
+  .max(BCP47_LANGUAGE_TAG_MAX_LENGTH)
+  .refine(isPlausibleBcp47LanguageTag, {
+    message: 'Shortcode must be a valid BCP 47 language tag (e.g. fr, zh-Hans)',
+  });
 
 /**
  * Create Translation Language Request Schema
@@ -867,7 +886,7 @@ export const updateReleaseTypeRequestSchema =
 export const createTranslationLanguageRequestSchema = z.object({
   name: z.string().min(1).max(255),
   displayName: z.string().min(1).max(255),
-  shortcode: z.string().max(15).nullable().optional(),
+  shortcode: translationLanguageShortcodeSchema,
   sortOrder: optionalCreateSortOrderSchema,
   isActive: z.boolean().optional(),
   description: z.string().nullable().optional(),

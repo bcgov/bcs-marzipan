@@ -1,11 +1,17 @@
+import type { ReleaseSchedulingMode } from '../constants/constants';
+import { activityHasReleaseTypeCommsMaterial } from '../releases/comms-material-release';
 import type { ActivityFormData } from '../schemas/activity.schema';
-import { activityNeedsReleaseTimeField } from './activity-release-time';
+import {
+  activityNeedsReleaseTimeField,
+  DEFAULT_RELEASE_TIME_OFFSET_MINUTES,
+} from './activity-release-time';
 
 /** Release-type workflow flags for a comms material (from lookup API). */
 export type CommsMaterialReleaseFlags = {
   audience: 'media' | 'public' | null;
   allowsTranslation: boolean;
-  requiresNewsReleaseDetails: boolean;
+  /** Present when material is linked to a sister-app release type. */
+  isReleaseType?: boolean;
 };
 
 export type CommsMaterialReleaseFlagsById = ReadonlyMap<
@@ -32,6 +38,43 @@ export function needsReleaseTimeDetails(
   return activityNeedsReleaseTimeField(commsMaterialIds, flagsById);
 }
 
+export type ReleaseTimeDefaultWhenCommsEnables = {
+  releaseSchedulingMode: 'relative';
+  releaseTimeOffsetMinutes: number;
+};
+
+/**
+ * When public comms newly requires release time and scheduling is unset, default to +15 minutes.
+ */
+export function applyReleaseTimeDefaultWhenCommsEnablesRelease(
+  previousCommsMaterialIds: number[] | undefined,
+  nextCommsMaterialIds: number[] | undefined,
+  flagsById: CommsMaterialReleaseFlagsById,
+  releaseSchedulingMode: ReleaseSchedulingMode | null | undefined,
+  releaseTimeOffsetMinutes: number | null | undefined
+): ReleaseTimeDefaultWhenCommsEnables | null {
+  const prevIds = previousCommsMaterialIds ?? [];
+  const nextIds = nextCommsMaterialIds ?? [];
+  const prevNeeds = needsReleaseTimeDetails(prevIds, flagsById);
+  const nextNeeds = needsReleaseTimeDetails(nextIds, flagsById);
+  if (prevNeeds || !nextNeeds) {
+    return null;
+  }
+  if (releaseSchedulingMode !== null && releaseSchedulingMode !== undefined) {
+    return null;
+  }
+  if (
+    releaseTimeOffsetMinutes !== null &&
+    releaseTimeOffsetMinutes !== undefined
+  ) {
+    return null;
+  }
+  return {
+    releaseSchedulingMode: 'relative',
+    releaseTimeOffsetMinutes: DEFAULT_RELEASE_TIME_OFFSET_MINUTES,
+  };
+}
+
 /**
  * Clears news-release, translation, and release-time activity fields when no
  * selected comms material warrants them (client submit + server save).
@@ -45,10 +88,9 @@ export function stripCommsDependentFields(
   }
 
   const ids = selectedMaterialIds(data.commsMaterialIds);
-  const needsNewsReleaseDetails = anySelectedHasFlag(
+  const hasReleaseTypeComms = activityHasReleaseTypeCommsMaterial(
     ids,
-    flagsById,
-    'requiresNewsReleaseDetails'
+    flagsById
   );
   const allowsTranslation = anySelectedHasFlag(
     ids,
@@ -59,7 +101,7 @@ export function stripCommsDependentFields(
 
   let next: ActivityFormData = { ...data };
 
-  if (!needsNewsReleaseDetails) {
+  if (!hasReleaseTypeComms) {
     next = {
       ...next,
       newsReleaseOriginId: null,
@@ -99,7 +141,7 @@ export function buildCommsMaterialReleaseFlagsById(
     map.set(m.id, {
       audience: m.releaseType.audience ?? null,
       allowsTranslation: m.releaseType.allowsTranslation,
-      requiresNewsReleaseDetails: m.releaseType.requiresNewsReleaseDetails,
+      isReleaseType: true,
     });
   }
   return map;

@@ -5,8 +5,18 @@ import {
   createResponseWrapperSchema,
   notificationBulkActionResultSchema,
   notificationPageSchema,
+  notificationPreferencesSchema,
+  notificationPreferencesUpdateSchema,
   unreadNotificationCountSchema,
 } from '@corpcal/shared/schemas';
+
+export class NotificationPreferencesUpdateDto extends createZodDto(
+  notificationPreferencesUpdateSchema
+) {}
+
+export class NotificationPreferencesResponseWrapperDto extends createZodDto(
+  createResponseWrapperSchema(notificationPreferencesSchema)
+) {}
 
 export class NotificationPageResponseWrapperDto extends createZodDto(
   createResponseWrapperSchema(notificationPageSchema)

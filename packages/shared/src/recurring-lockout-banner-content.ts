@@ -1,3 +1,4 @@
+import { CORP_PACIFIC_ABBREV } from './datetime/constants';
 import { formatCivilTime12h } from './datetime/format';
 import {
   isWithinRecurringEditLockoutWindow,
@@ -14,11 +15,9 @@ export const RECURRING_LOCKOUT_BANNER_LOCK_END_TIME_PLACEHOLDER =
 export const RECURRING_LOCKOUT_BANNER_CONTACT_EMAIL_PLACEHOLDER =
   '<report_look_ahead_cover_contact_email>' as const;
 
-export const DEFAULT_RECURRING_LOCKOUT_LEAD_CONTENT =
-  'Updates to activities will be locked <lockStartTime> - <lockEndTime> PT. Please make updates before lockout begins.';
+export const DEFAULT_RECURRING_LOCKOUT_LEAD_CONTENT = `Updates to activities will be locked <lockStartTime> - <lockEndTime> ${CORP_PACIFIC_ABBREV}. Please make updates before lockout begins.`;
 
-export const DEFAULT_RECURRING_LOCKOUT_ACTIVE_CONTENT =
-  'Updates to activities are locked out until <lockEndTime> PT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.';
+export const DEFAULT_RECURRING_LOCKOUT_ACTIVE_CONTENT = `Updates to activities are locked out until <lockEndTime> ${CORP_PACIFIC_ABBREV}. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.`;
 
 export const RECURRING_LOCKOUT_BANNER_CONTACT_FALLBACK =
   'the Corp Cal manager' as const;

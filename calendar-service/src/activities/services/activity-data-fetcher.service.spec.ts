@@ -89,4 +89,48 @@ describe('ActivityDataFetcherService', () => {
       expect(result.get(1)).toBeNull();
     });
   });
+
+  describe('fetchCommsMaterialReleasesForActivities', () => {
+    it('returns empty Map when activityIds is empty', async () => {
+      const result = await service.fetchCommsMaterialReleasesForActivities([]);
+      expect(result).toEqual(new Map());
+      expect(mockDb.select).not.toHaveBeenCalled();
+    });
+
+    it('maps rows and skips empty report abbreviations', async () => {
+      mockDb.select.mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        innerJoin: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([
+          {
+            activityId: 10,
+            releaseTypeId: 4,
+            reportAbbrev: 'NR',
+            reportSortOrder: 1,
+            allowsTranslation: true,
+          },
+          {
+            activityId: 10,
+            releaseTypeId: 5,
+            reportAbbrev: '   ',
+            reportSortOrder: 2,
+            allowsTranslation: false,
+          },
+        ]),
+      });
+
+      const result = await service.fetchCommsMaterialReleasesForActivities([
+        10,
+      ]);
+
+      expect(result.get(10)).toEqual([
+        {
+          releaseTypeId: 4,
+          reportAbbrev: 'NR',
+          reportSortOrder: 1,
+          allowsTranslation: true,
+        },
+      ]);
+    });
+  });
 });

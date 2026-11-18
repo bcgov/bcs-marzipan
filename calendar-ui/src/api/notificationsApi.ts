@@ -2,6 +2,10 @@ import type {
   NotificationBulkActionResult,
   NotificationPage,
 } from '@corpcal/shared/api/types';
+import type {
+  NotificationPreferences,
+  NotificationPreferencesUpdate,
+} from '@corpcal/shared/schemas';
 
 import { createLogger } from '../lib/logger';
 import api from './axios';
@@ -67,5 +71,25 @@ export async function dismissAllNotifications(): Promise<NotificationBulkActionR
     success: boolean;
     data: NotificationBulkActionResult;
   }>('/notifications/dismiss-all');
+  return res.data.data;
+}
+
+export async function getNotificationPreferences(): Promise<NotificationPreferences> {
+  logger.debug('Getting notification preferences');
+  const res = await api.get<{
+    success: boolean;
+    data: NotificationPreferences;
+  }>('/notifications/preferences');
+  return res.data.data;
+}
+
+export async function updateNotificationPreferences(
+  body: NotificationPreferencesUpdate
+): Promise<NotificationPreferences> {
+  logger.debug('Updating notification preferences', body);
+  const res = await api.put<{
+    success: boolean;
+    data: NotificationPreferences;
+  }>('/notifications/preferences', body);
   return res.data.data;
 }

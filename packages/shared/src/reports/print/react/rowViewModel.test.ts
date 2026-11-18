@@ -17,10 +17,10 @@ import {
 import { buildTranslationLanguageLabelResolver } from './translationLanguageDisplayLabels';
 
 const TEST_TRANSLATION_RESOLVER = buildTranslationLanguageLabelResolver([
-  { shortcode: 'FR', displayName: 'French' },
-  { shortcode: 'PUN', displayName: 'Punjabi' },
-  { shortcode: 'SC', displayName: 'Chinese (Simplified)' },
-  { shortcode: 'SPA', displayName: 'Spanish' },
+  { shortcode: 'fr', displayName: 'French' },
+  { shortcode: 'pa', displayName: 'Punjabi' },
+  { shortcode: 'zh-Hans', displayName: 'Chinese (Simplified)' },
+  { shortcode: 'es', displayName: 'Spanish' },
 ]);
 
 const BASE_ACTIVITY_RESPONSE = {
@@ -65,6 +65,7 @@ const BASE_ACTIVITY_RESPONSE = {
   categoryIds: [],
   tags: [],
   commsMaterials: [],
+  commsMaterialReleases: [],
   translationsRequired: [],
   representativesAttending: [],
   sharedWith: [],
@@ -92,6 +93,15 @@ const BASE_ACTIVITY_RESPONSE = {
 const BASE_ACTIVITY: ActivityListItem = activityResponseToListItem(
   BASE_ACTIVITY_RESPONSE
 );
+
+const NR_COMMS_RELEASE = [
+  {
+    releaseTypeId: 4,
+    reportAbbrev: 'NR',
+    reportSortOrder: 1,
+    allowsTranslation: true,
+  },
+] as const;
 
 describe('buildTranslationsLine', () => {
   it('returns explicit none for empty / missing lists', () => {
@@ -363,7 +373,7 @@ describe('toPrintRowViewModel', () => {
         ...BASE_ACTIVITY,
         commsMaterials: ['Media advisory', 'Backgrounder'],
         commsContacts: [{ userId: 7, name: 'Jordan Smith', isLead: true }],
-        translationsRequired: ['FR'],
+        translationsRequired: ['fr'],
       },
       {
         activityBaseUrl: 'http://localhost:3000',
@@ -388,13 +398,21 @@ describe('toPrintRowViewModel', () => {
     expect(many.release.translationsLine).toBe('Translations: 4 languages');
   });
 
-  it('omits look-ahead translations when not Release category and no news release origin', () => {
+  it('omits look-ahead translations without translation-enabled release comms', () => {
     const row = toPrintRowViewModel(
       {
         ...BASE_ACTIVITY,
         category: ['Announcement'],
         newsReleaseOrigin: null,
         translationsRequired: ['French'],
+        commsMaterialReleases: [
+          {
+            releaseTypeId: 7,
+            reportAbbrev: 'STMT',
+            reportSortOrder: 2,
+            allowsTranslation: false,
+          },
+        ],
       },
       {
         activityBaseUrl: 'http://localhost:3000',
@@ -404,13 +422,13 @@ describe('toPrintRowViewModel', () => {
     expect(row.release.translationsLine).toBe('');
   });
 
-  it('includes look-ahead translations when category is Release', () => {
+  it('includes look-ahead translations when NR release comms selected', () => {
     const row = toPrintRowViewModel(
       {
         ...BASE_ACTIVITY,
-        category: ['Release'],
         newsReleaseOrigin: null,
         translationsRequired: ['French'],
+        commsMaterialReleases: [...NR_COMMS_RELEASE],
       },
       {
         activityBaseUrl: 'http://localhost:3000',
@@ -424,9 +442,9 @@ describe('toPrintRowViewModel', () => {
     const row = toPrintRowViewModel(
       {
         ...BASE_ACTIVITY,
-        category: ['Release'],
         newsReleaseOrigin: null,
-        translationsRequired: ['FR', 'PUN'],
+        translationsRequired: ['fr', 'pa'],
+        commsMaterialReleases: [...NR_COMMS_RELEASE],
       },
       {
         activityBaseUrl: 'http://localhost:3000',
@@ -441,9 +459,9 @@ describe('toPrintRowViewModel', () => {
     const row = toPrintRowViewModel(
       {
         ...BASE_ACTIVITY,
-        category: ['Release'],
         newsReleaseOrigin: null,
-        translationsRequired: ['FR', 'PUN', 'SC', 'SPA'],
+        translationsRequired: ['fr', 'pa', 'zh-Hans', 'es'],
+        commsMaterialReleases: [...NR_COMMS_RELEASE],
       },
       {
         activityBaseUrl: 'http://localhost:3000',
@@ -458,9 +476,9 @@ describe('toPrintRowViewModel', () => {
     const row = toPrintRowViewModel(
       {
         ...BASE_ACTIVITY,
-        category: ['Release'],
         translationsRequiredStatus: 'Pending review',
         translationsRequired: [],
+        commsMaterialReleases: [...NR_COMMS_RELEASE],
       },
       {
         activityBaseUrl: 'http://localhost:3000',
@@ -474,9 +492,9 @@ describe('toPrintRowViewModel', () => {
     const row = toPrintRowViewModel(
       {
         ...BASE_ACTIVITY,
-        category: ['Release'],
         translationsRequiredStatus: 'pending',
         translationsRequired: [],
+        commsMaterialReleases: [...NR_COMMS_RELEASE],
       },
       {
         activityBaseUrl: 'http://localhost:3000',
@@ -490,9 +508,9 @@ describe('toPrintRowViewModel', () => {
     const row = toPrintRowViewModel(
       {
         ...BASE_ACTIVITY,
-        category: ['Release'],
         translationsRequiredStatus: 'Pending review',
         translationsRequired: ['French'],
+        commsMaterialReleases: [...NR_COMMS_RELEASE],
       },
       {
         activityBaseUrl: 'http://localhost:3000',

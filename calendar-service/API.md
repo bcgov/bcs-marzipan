@@ -56,7 +56,7 @@ Creates a new calendar activity with related junction table records.
 
 **`venueAddress`:** Optional object. Fields are nullable strings: `venueName`, `addressLine1`, `addressLine2` (floor, suite, unit, etc.), `city`, `provinceOrState`, `country`. Per-activity addresses persist `addressLine2` on `venue_addresses`; admin **venue presets** also store `addressLine2` (see lookups below).
 
-**`releaseSchedulingMode`:** Optional nullable enum: `relative` | `on_signal`. When `on_signal`, offset and derived instant are cleared. When `relative`, optional `releaseTimeOffsetMinutes` applies. Cleared when no selected comms material has a public release type. Requires `activities.release_time.edit` to change.
+**`releaseSchedulingMode`:** Optional nullable enum: `relative` | `on_signal`. When `on_signal`, offset and derived instant are cleared. When `relative`, optional `releaseTimeOffsetMinutes` applies. Cleared when no selected comms material has a public release type. Requires `activities.release_time.edit` to change (granted to Editor and Advanced Editor by default).
 
 **`releaseTimeOffsetMinutes`:** Optional nullable integer (0–10,080). Minutes after the activity schedule anchor when mode is `relative` (or inferred when offset is sent without mode). Must be null when mode is `on_signal`.
 
@@ -641,8 +641,7 @@ Returns active materials for the activity form. Pass `includeAll=true` (requires
         "name": "news_release",
         "displayName": "News release",
         "audience": "public",
-        "allowsTranslation": true,
-        "requiresNewsReleaseDetails": true
+        "allowsTranslation": true
       }
     }
   ]
@@ -692,8 +691,7 @@ Authenticated read for form and admin lists. Active rows only unless `includeAll
       "label": "News release",
       "value": 1,
       "audience": "public",
-      "allowsTranslation": true,
-      "requiresNewsReleaseDetails": true
+      "allowsTranslation": true
     }
   ]
 }
@@ -707,7 +705,7 @@ Authenticated read for form and admin lists. Active rows only unless `includeAll
 
 **Permission:** `lookups.manage.release_types`
 
-**Body:** `name`, `displayName`, `sortOrder`, `isActive`, `description`, `audience` (`media` | `public`), `allowsTranslation`, `requiresNewsReleaseDetails`.
+**Body:** `name`, `displayName`, `sortOrder`, `isActive`, `description`, `audience` (`media` | `public`), `allowsTranslation`.
 
 ---
 
@@ -737,6 +735,7 @@ Returns active languages by default. Admins with `lookups.manage` can pass `incl
       "id": 1,
       "name": "French",
       "displayName": "French",
+      "shortcode": "fr",
       "label": "French",
       "value": 1
     }
@@ -752,7 +751,7 @@ Returns active languages by default. Admins with `lookups.manage` can pass `incl
 
 **Permission:** `lookups.manage`
 
-**Body:** `name` (required), `displayName` (required), `shortcode`, `sortOrder` (required), `isActive` (default true), `description`.
+**Body:** `name` (required), `displayName` (required), `shortcode` (required BCP 47 tag, e.g. `fr`, `zh-Hans`), `sortOrder` (required), `isActive` (default true), `description`.
 
 ---
 
@@ -914,9 +913,9 @@ Returns the recurring lockout warning banner when settings are active and the cu
     "banner": {
       "id": 1,
       "isActive": true,
-      "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PT. Please make updates before lockout begins.",
-      "activeContent": "Updates to activities are locked out until <lockEndTime> PT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.",
-      "content": "Updates to activities will be locked 3:00 pm - 11:59 pm PT. Please make updates before lockout begins.",
+      "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PCT. Please make updates before lockout begins.",
+      "activeContent": "Updates to activities are locked out until <lockEndTime> PCT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.",
+      "content": "Updates to activities will be locked 3:00 pm - 11:59 pm PCT. Please make updates before lockout begins.",
       "phase": "lead-up",
       "backgroundColor": "#E6A635",
       "textColor": "#000000",
@@ -964,8 +963,8 @@ Returns the latest recurring lockout configuration, or `null` if never configure
 ```json
 {
   "isActive": true,
-  "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PT.",
-  "activeContent": "Updates to activities are locked out until <lockEndTime> PT.",
+  "leadContent": "Updates to activities will be locked <lockStartTime> - <lockEndTime> PCT.",
+  "activeContent": "Updates to activities are locked out until <lockEndTime> PCT.",
   "backgroundColor": "#E6A635",
   "textColor": "#000000",
   "variant": "warning",

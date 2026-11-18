@@ -4,6 +4,7 @@ import type {
   CityLookupItem,
   CommsMaterialsLookupItem,
   DateStatusLookupItem,
+  ExtendedLookupItem,
   GovernmentRepresentativeLookupItem,
   LookupItem,
   MinistryGroupResponse,
@@ -215,8 +216,8 @@ export async function fetchPremierRequested(): Promise<LookupItem[]> {
   return res.data.data;
 }
 
-export async function fetchNewsReleaseOrigins(): Promise<LookupItem[]> {
-  const res = await api.get<{ success: boolean; data: LookupItem[] }>(
+export async function fetchNewsReleaseOrigins(): Promise<ExtendedLookupItem[]> {
+  const res = await api.get<{ success: boolean; data: ExtendedLookupItem[] }>(
     '/lookups/news-release-origins'
   );
   return res.data.data;

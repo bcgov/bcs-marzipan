@@ -25,6 +25,7 @@ describe('activityTableLayoutPreferences', () => {
         'status',
       ],
       columnSizing: { summary: 420 },
+      columnVisibility: { materials: true, scheduling: false },
     };
 
     writeActivityGridLayoutPreferences(prefs);
@@ -56,7 +57,33 @@ describe('activityTableLayoutPreferences', () => {
     ).toEqual({
       columnOrder: ['select', 'summary'],
       columnSizing: { summary: 420 },
+      columnVisibility: { materials: false },
     });
+  });
+
+  it('hides the Comms column by default', () => {
+    expect(DEFAULT_ACTIVITY_GRID_LAYOUT_PREFERENCES.columnVisibility).toEqual({
+      materials: false,
+    });
+  });
+
+  it('keeps all columns visible when stored layout predates columnVisibility', () => {
+    expect(
+      normalizeActivityGridLayoutPreferences({
+        columnOrder: ['select', 'summary', 'materials'],
+        columnSizing: { summary: 400 },
+      }).columnVisibility
+    ).toEqual({});
+  });
+
+  it('treats an empty columnVisibility object as product defaults', () => {
+    expect(
+      normalizeActivityGridLayoutPreferences({
+        columnOrder: ['select', 'summary'],
+        columnSizing: {},
+        columnVisibility: {},
+      }).columnVisibility
+    ).toEqual({ materials: false });
   });
 
   it('reconciles stored column order with defaults', () => {

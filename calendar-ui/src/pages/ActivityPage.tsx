@@ -126,7 +126,7 @@ import {
   type UpdatePayloadOptions,
 } from '../lib/activity-form-payload';
 import { ACTIVITY_FORM_USER_EDIT_EVENT } from '../lib/activity-form-set-field';
-import { resolveTranslationRequiredStatusId } from '../lib/activity-form-translation-required';
+import { resolveTranslationStatusLookupIds } from '../lib/activity-form-translation-required';
 import { computeFormChanges } from '../lib/activity-history-format';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
 import { isActivitySocketConnectionBlocked } from '../lib/activity-socket-connection-display';
@@ -134,6 +134,7 @@ import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import { formatActivityEndDateTimeLabel } from '../lib/datetime-utils';
 import { showActionBlockedToast, showErrorToast } from '../lib/error-toast';
 import {
+  buildActivityFormValidationFailureLog,
   focusFirstInvalidField,
   focusRequiredField,
   getMissingRequiredFieldItemsFromZodError,
@@ -390,6 +391,7 @@ export function ActivityPage({
 
   const {
     form,
+    resolverSchema,
     lookups,
     leadTeamOptions,
     leadTeamOptionsError,
@@ -403,9 +405,9 @@ export function ActivityPage({
     userTeamIds: user?.teamIds,
     hasCreateAny,
   });
-  const requiredTranslationStatusId = useMemo(
+  const translationStatusLookupIds = useMemo(
     () =>
-      resolveTranslationRequiredStatusId(lookups.translationRequiredStatuses),
+      resolveTranslationStatusLookupIds(lookups.translationRequiredStatuses),
     [lookups.translationRequiredStatuses]
   );
   const commsMaterialReleaseFlagsById = useMemo(
@@ -1408,7 +1410,7 @@ export function ActivityPage({
             mode.kind === 'reviewWithSave'
               ? {
                   markAsReviewed: true,
-                  requiredTranslationStatusId,
+                  translationStatusLookupIds,
                   commsMaterialReleaseFlagsById,
                   includeRepresentatives:
                     !!form.formState.dirtyFields.representatives,
@@ -1418,7 +1420,7 @@ export function ActivityPage({
               : mode.kind === 'completeWithSave'
                 ? {
                     markAsCompleted: true,
-                    requiredTranslationStatusId,
+                    translationStatusLookupIds,
                     commsMaterialReleaseFlagsById,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
@@ -1426,7 +1428,7 @@ export function ActivityPage({
                       !!form.formState.dirtyFields.sharedWithTeamIds,
                   }
                 : {
-                    requiredTranslationStatusId,
+                    translationStatusLookupIds,
                     commsMaterialReleaseFlagsById,
                     includeRepresentatives:
                       !!form.formState.dirtyFields.representatives,
@@ -1517,7 +1519,7 @@ export function ActivityPage({
       canViewActivity,
       applyExternalLockReleased,
       navigate,
-      requiredTranslationStatusId,
+      translationStatusLookupIds,
       isBlockedByRecurringLockout,
       lockoutSubmitGenerationRef,
       ensureLockForSubmit,
@@ -1540,16 +1542,23 @@ export function ActivityPage({
   };
 
   const onError = (errors: FieldErrors<ActivityFormData>) => {
-    logger.error('Form validation failed');
+    const values = form.getValues();
+    const validationLog = buildActivityFormValidationFailureLog(
+      errors,
+      values,
+      resolverSchema,
+      createActivityRequestSchema
+    );
+    logger.error('Form validation failed', validationLog);
     focusFirstInvalidField(errors, {
       getFieldLabel: getActivityFieldLabel,
       fieldOrder: getActivityFormSectionFieldKeys(),
       root: activityFormRef.current,
     });
-    const parsed = createActivityRequestSchema.safeParse(form.getValues());
-    const missingLabels = !parsed.success
+    const resolverParse = resolverSchema.safeParse(values);
+    const missingLabels = !resolverParse.success
       ? getMissingRequiredFieldItemsFromZodError(
-          parsed.error,
+          resolverParse.error,
           getActivityFieldLabel,
           getActivityFormSectionFieldKeys()
         ).map((field) => field.label)
@@ -1557,7 +1566,15 @@ export function ActivityPage({
     const detail =
       missingLabels.length > 0
         ? `Required fields missing: ${missingLabels.join(', ')}`
-        : 'Please fix the validation errors and try again.';
+        : validationLog.resolverIssues.length > 0
+          ? validationLog.resolverIssues
+              .map((issue) =>
+                issue.path
+                  ? `${getActivityFieldLabel(issue.path.split('.')[0] ?? issue.path) ?? issue.path}: ${issue.message}`
+                  : issue.message
+              )
+              .join('; ')
+          : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
       duration: TOAST_DURATION_MS.error,

@@ -15,6 +15,8 @@ import {
   getMissingRequiredFields,
   getMissingRequiredFieldsFromZodError,
   sortMissingRequiredFieldItems,
+  summarizeFieldErrorsForLog,
+  summarizeZodIssuesForLog,
 } from './form-utils';
 
 function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
@@ -32,6 +34,47 @@ function minimalCreateRequest(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe('summarizeFieldErrorsForLog', () => {
+  it('flattens nested field error messages', () => {
+    const summarized = summarizeFieldErrorsForLog({
+      title: { type: 'too_small', message: 'An activity title is required' },
+      commsContacts: {
+        root: { type: 'custom', message: 'A lead contact is required' },
+      },
+    });
+
+    expect(summarized).toEqual(
+      expect.arrayContaining([
+        {
+          path: 'title',
+          message: 'An activity title is required',
+          type: 'too_small',
+        },
+        {
+          path: 'commsContacts.root',
+          message: 'A lead contact is required',
+          type: 'custom',
+        },
+      ])
+    );
+  });
+});
+
+describe('summarizeZodIssuesForLog', () => {
+  it('includes path, code, and issue kind', () => {
+    const result = createActivityRequestSchema.safeParse(
+      minimalCreateRequest({ title: '' })
+    );
+    expect(result.success).toBe(false);
+    if (result.success) return;
+
+    const issues = summarizeZodIssuesForLog(result.error);
+    expect(issues.some((i) => i.path === 'title' && i.message.length > 0)).toBe(
+      true
+    );
+  });
+});
 
 describe('formatMissingRequiredFieldsCountMessage', () => {
   it('returns null when count is zero', () => {

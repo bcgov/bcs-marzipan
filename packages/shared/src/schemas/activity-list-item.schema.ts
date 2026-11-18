@@ -80,6 +80,9 @@ export const activityListItemSchema = z.object({
   translationsRequiredStatusId:
     activityDbFieldsSchema.shape.translationsRequiredStatusId,
   commsMaterials: activityComputedFieldsSchema.shape.commsMaterials,
+  commsMaterialReleases:
+    activityComputedFieldsSchema.shape.commsMaterialReleases,
+  newsReleaseOriginId: activityDbFieldsSchema.shape.newsReleaseOriginId,
   newsReleaseOrigin: activityComputedFieldsSchema.shape.newsReleaseOrigin,
   newsReleaseDistribution:
     activityComputedFieldsSchema.shape.newsReleaseDistribution,
@@ -169,6 +172,8 @@ export function activityResponseToListItem(
     translationsRequiredStatus: activity.translationsRequiredStatus ?? null,
     translationsRequiredStatusId: activity.translationsRequiredStatusId ?? null,
     commsMaterials: activity.commsMaterials,
+    commsMaterialReleases: activity.commsMaterialReleases ?? [],
+    newsReleaseOriginId: activity.newsReleaseOriginId ?? null,
     newsReleaseOrigin: activity.newsReleaseOrigin ?? null,
     newsReleaseDistribution: activity.newsReleaseDistribution ?? null,
     activityStatus: activity.activityStatus,

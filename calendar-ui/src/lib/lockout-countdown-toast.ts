@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 
 import {
+  CORP_PACIFIC_ABBREV,
   formatCivilTime12h,
   type RecurringEditLockoutSettingsSlice,
 } from '@corpcal/shared';
@@ -22,7 +23,7 @@ export function startLockoutCountdownToast(options: {
   lockStartTimeLabel: string;
 }): LockoutCountdownToastHandle {
   const toastId = `lockout-countdown-${options.activityId}-${options.lockStartMs}`;
-  const title = `Activity editing will be locked at ${options.lockStartTimeLabel} PT.`;
+  const title = `Activity editing will be locked at ${options.lockStartTimeLabel} ${CORP_PACIFIC_ABBREV}.`;
 
   return startCountdownLoadingToast({
     toastId,

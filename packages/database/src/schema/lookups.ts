@@ -151,8 +151,9 @@ export const timeStatuses = pgTable('time_statuses', {
 });
 
 /**
- * TranslationRequiredStatus lookup table - Tri-state for whether translations are required
- * Values: 'pending', 'required', 'not_required'
+ * Translation required status lookup (comms-driven activity field).
+ * Seeded names: `tbd`, `required` (implicit when languages selected), `no_translations`.
+ * Activities may also leave the FK null when translations do not apply.
  */
 export const translationRequiredStatuses = pgTable(
   'translation_required_statuses',
@@ -407,12 +408,13 @@ export const releaseTypes = pgTable(
     name: varchar('name', { length: 255 }).notNull(),
     displayName: varchar('display_name', { length: 255 }).notNull(),
     sortOrder: integer('sort_order').notNull().default(0),
+    /** Look Ahead report abbrev (max 6 chars). */
+    reportAbbreviation: varchar('report_abbreviation', { length: 6 }),
+    /** Sort order for release abbrevs on Look Ahead reports (NR first). */
+    reportSortOrder: integer('report_sort_order').notNull().default(0),
     /** Sister-app audience: media or public (required on every row). */
     audience: varchar('audience', { length: 50 }).notNull(),
     allowsTranslation: boolean('allows_translation').notNull().default(false),
-    requiresNewsReleaseDetails: boolean('requires_news_release_details')
-      .notNull()
-      .default(false),
     isActive: boolean('is_active').notNull().default(true),
     description: text('description'),
     createdDateTime: timestamp('created_date_time', { withTimezone: true })
@@ -485,7 +487,7 @@ export const commsMaterials = pgTable(
 
 /**
  * TranslatedLanguage lookup table - Languages for translations (user-editable list).
- * shortcode: internal language code for display and APIs (not necessarily BCP 47).
+ * shortcode: BCP 47 language tag for display, APIs, and external integrations (e.g. Nexus culture).
  */
 export const translatedLanguages = pgTable(
   'translated_languages',
@@ -493,7 +495,7 @@ export const translatedLanguages = pgTable(
     id: serial('id').primaryKey(),
     name: varchar('name', { length: 255 }).notNull(),
     displayName: varchar('display_name', { length: 255 }).notNull(),
-    /** Internal language code (e.g. AR, SC, FR) */
+    /** BCP 47 language tag (e.g. fr, zh-Hans) */
     shortcode: varchar('shortcode', { length: 15 }),
     sortOrder: integer('sort_order').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),

@@ -15,7 +15,10 @@ export const RELEASE_TIME_PREVIEW_TIME_TBD = 'Time TBD';
 /** Maximum release offset: 7 days after schedule anchor. */
 export const RELEASE_TIME_OFFSET_MAX_MINUTES = 7 * 24 * 60;
 
-export const RELEASE_TIME_PRESET_OFFSETS = [0, 15, 30] as const;
+export const RELEASE_TIME_PRESET_OFFSETS = [0, 15] as const;
+
+/** Default offset when release time first becomes required via public comms selection. */
+export const DEFAULT_RELEASE_TIME_OFFSET_MINUTES = 15;
 
 export type ReleaseTimePresetOffset =
   (typeof RELEASE_TIME_PRESET_OFFSETS)[number];
@@ -161,8 +164,7 @@ export type ActivityReleaseTimePreviewInput = {
   isAllDay: boolean;
 };
 
-export const RELEASE_TIME_ON_SIGNAL_PREVIEW_MESSAGE =
-  'Release will be published on signal to Editors.';
+export const RELEASE_TIME_ON_SIGNAL_PREVIEW_MESSAGE = 'Manual publish';
 
 export type ActivityReleaseTimePreviewResult =
   { kind: 'preview'; label: string } | { kind: 'hint'; message: string };
@@ -273,6 +275,22 @@ export function getActivityReleaseTimePreview(
   return { kind: 'preview', label };
 }
 
+/**
+ * Short clock portion for release scheduling select trigger (e.g. `2:45 pm`).
+ */
+export function formatReleaseTimePreviewTriggerClock(
+  preview: ActivityReleaseTimePreviewResult | null | undefined
+): string | null {
+  if (!preview || preview.kind !== 'preview') {
+    return null;
+  }
+  const commaIdx = preview.label.indexOf(',');
+  const timePart =
+    commaIdx >= 0 ? preview.label.slice(0, commaIdx) : preview.label;
+  const withoutPt = timePart.replace(/\s+(PT|PCT)$/i, '').trim();
+  return withoutPt.length > 0 ? withoutPt : null;
+}
+
 function canComputeReleaseInstant(
   input: ActivityReleaseTimeScheduleInput
 ): boolean {
@@ -341,9 +359,6 @@ export function formatReleaseTimeOffsetLabel(
   }
   if (minutes === 15) {
     return '15 minutes after scheduled start';
-  }
-  if (minutes === 30) {
-    return '30 minutes after scheduled start';
   }
 
   if (minutes % (24 * 60) === 0) {

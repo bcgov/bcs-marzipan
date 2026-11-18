@@ -118,9 +118,9 @@ describe('instant formatters', () => {
     );
   });
 
-  it('formatInstantPacificReleasePreview uses time PT and short weekday date', () => {
+  it('formatInstantPacificReleasePreview uses time PCT and short weekday date', () => {
     expect(formatInstantPacificReleasePreview(INSTANT)).toBe(
-      '8:30 am PT, Mon Apr 27'
+      '8:30 am PCT, Mon Apr 27'
     );
   });
 
@@ -130,7 +130,7 @@ describe('instant formatters', () => {
       formatInstantPacificReleasePreview('2027-04-27T15:30:00.000Z', {
         referenceInstant: reference,
       })
-    ).toBe('8:30 am PT, Tue Apr 27, 2027');
+    ).toBe('8:30 am PCT, Tue Apr 27, 2027');
   });
 
   it('formatTimeTbdPacificReleasePreview formats date-only preview', () => {
@@ -150,7 +150,7 @@ describe('instant formatters', () => {
 
   it('formatCivilPacificReleasePreview formats civil clock with suffix', () => {
     expect(formatCivilPacificReleasePreview('14:45', 'Date TBD')).toBe(
-      '2:45 pm PT, Date TBD'
+      '2:45 pm PCT, Date TBD'
     );
   });
 

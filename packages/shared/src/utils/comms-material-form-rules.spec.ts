@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ActivityFormData } from '../schemas/activity.schema';
+import { DEFAULT_RELEASE_TIME_OFFSET_MINUTES } from './activity-release-time';
 import {
+  applyReleaseTimeDefaultWhenCommsEnablesRelease,
   buildCommsMaterialReleaseFlagsById,
   stripCommsDependentFields,
 } from './comms-material-form-rules';
@@ -17,6 +19,54 @@ const baseForm = (): ActivityFormData =>
     releaseTimeOffsetMinutes: 15,
   }) as unknown as ActivityFormData;
 
+describe('applyReleaseTimeDefaultWhenCommsEnablesRelease', () => {
+  const flags = buildCommsMaterialReleaseFlagsById([
+    {
+      id: 4,
+      releaseType: {
+        audience: 'public',
+        allowsTranslation: false,
+      },
+    },
+  ]);
+
+  it('returns default when public comms is first added and release is unset', () => {
+    expect(
+      applyReleaseTimeDefaultWhenCommsEnablesRelease([], [4], flags, null, null)
+    ).toEqual({
+      releaseSchedulingMode: 'relative',
+      releaseTimeOffsetMinutes: DEFAULT_RELEASE_TIME_OFFSET_MINUTES,
+    });
+  });
+
+  it('does not default when release time was already required', () => {
+    expect(
+      applyReleaseTimeDefaultWhenCommsEnablesRelease(
+        [4],
+        [4, 4],
+        flags,
+        null,
+        null
+      )
+    ).toBeNull();
+  });
+
+  it('does not default when offset or mode is already set', () => {
+    expect(
+      applyReleaseTimeDefaultWhenCommsEnablesRelease(
+        [],
+        [4],
+        flags,
+        'on_signal',
+        null
+      )
+    ).toBeNull();
+    expect(
+      applyReleaseTimeDefaultWhenCommsEnablesRelease([], [4], flags, null, 0)
+    ).toBeNull();
+  });
+});
+
 describe('stripCommsDependentFields', () => {
   const flags = buildCommsMaterialReleaseFlagsById([
     {
@@ -24,7 +74,6 @@ describe('stripCommsDependentFields', () => {
       releaseType: {
         audience: 'public',
         allowsTranslation: true,
-        requiresNewsReleaseDetails: true,
       },
     },
     {
@@ -32,7 +81,6 @@ describe('stripCommsDependentFields', () => {
       releaseType: {
         audience: 'public',
         allowsTranslation: false,
-        requiresNewsReleaseDetails: false,
       },
     },
   ]);
@@ -65,14 +113,13 @@ describe('stripCommsDependentFields', () => {
     expect(result.releaseTimeOffsetMinutes).toBe(15);
   });
 
-  it('clears NR fields but keeps translation when only allowsTranslation material selected', () => {
+  it('keeps origin and translation when release type allows translation', () => {
     const flagsTranslationOnly = buildCommsMaterialReleaseFlagsById([
       {
         id: 99,
         releaseType: {
           audience: 'public',
           allowsTranslation: true,
-          requiresNewsReleaseDetails: false,
         },
       },
     ]);
@@ -80,8 +127,8 @@ describe('stripCommsDependentFields', () => {
       { ...baseForm(), commsMaterialIds: [99] },
       flagsTranslationOnly
     );
-    expect(result.newsReleaseOriginId).toBeNull();
-    expect(result.newsReleaseDistributionId).toBeNull();
+    expect(result.newsReleaseOriginId).toBe(1);
+    expect(result.newsReleaseDistributionId).toBe(2);
     expect(result.translationsRequiredStatusId).toBe(3);
     expect(result.releaseTimeOffsetMinutes).toBe(15);
   });
@@ -103,7 +150,6 @@ describe('stripCommsDependentFields', () => {
         releaseType: {
           audience: 'media',
           allowsTranslation: false,
-          requiresNewsReleaseDetails: false,
         },
       },
     ]);

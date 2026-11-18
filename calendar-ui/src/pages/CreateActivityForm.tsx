@@ -37,7 +37,7 @@ import { useRecurringEditLockout } from '../hooks/useRecurringLockoutBanner';
 import { getActivityFieldLabel } from '../lib/activity-form-labels';
 import { getActivityFormBackTarget } from '../lib/activity-form-navigation-state';
 import { buildPayloadForCreate } from '../lib/activity-form-payload';
-import { resolveTranslationRequiredStatusId } from '../lib/activity-form-translation-required';
+import { resolveTranslationStatusLookupIds } from '../lib/activity-form-translation-required';
 import { showActivityMutationSuccessToast } from '../lib/activity-mutation-success-toast';
 import { resolveActivityToastDisplayId } from '../lib/activity-toast-options';
 import {
@@ -45,7 +45,12 @@ import {
   ACCESS_DENIED_TITLE,
 } from '../lib/error-messages';
 import { showErrorToast } from '../lib/error-toast';
-import { focusFirstInvalidField, focusRequiredField } from '../lib/form-utils';
+import {
+  buildActivityFormValidationFailureLog,
+  focusFirstInvalidField,
+  focusRequiredField,
+  getMissingRequiredFieldItemsFromZodError,
+} from '../lib/form-utils';
 import { createLogger } from '../lib/logger';
 import { getRecurringEditLockoutErrorMessage } from '../lib/recurring-edit-lockout-error';
 import { getRecurringLockoutInlineMessage } from '../lib/recurring-lockout-inline-message';
@@ -99,6 +104,7 @@ export const CreateActivityForm: FC = () => {
 
   const {
     form,
+    resolverSchema,
     lookups,
     leadTeamOptions,
     leadTeamOptionsError,
@@ -121,9 +127,9 @@ export const CreateActivityForm: FC = () => {
       schema: createActivityRequestSchema,
     });
 
-  const requiredTranslationStatusId = useMemo(
+  const translationStatusLookupIds = useMemo(
     () =>
-      resolveTranslationRequiredStatusId(lookups.translationRequiredStatuses),
+      resolveTranslationStatusLookupIds(lookups.translationRequiredStatuses),
     [lookups.translationRequiredStatuses]
   );
   const commsMaterialReleaseFlagsById = useMemo(
@@ -167,7 +173,7 @@ export const CreateActivityForm: FC = () => {
       const formValues = form.getValues();
       const submitData = buildPayloadForCreate(validatedData, formValues, {
         markAsReviewed: canReviewActivities ? markAsReviewed : undefined,
-        requiredTranslationStatusId,
+        translationStatusLookupIds,
         commsMaterialReleaseFlagsById,
       });
       const payload = {
@@ -216,16 +222,41 @@ export const CreateActivityForm: FC = () => {
   };
 
   const onError = (errors: FieldErrors<ActivityFormData>) => {
-    logger.error('Form validation failed');
+    const values = form.getValues();
+    const validationLog = buildActivityFormValidationFailureLog(
+      errors,
+      values,
+      resolverSchema,
+      createActivityRequestSchema
+    );
+    logger.error('Form validation failed', validationLog);
     focusFirstInvalidField(errors, {
       getFieldLabel: getActivityFieldLabel,
       fieldOrder: getActivityFormSectionFieldKeys(),
       root: createActivityFormRef.current,
     });
+    const resolverParse = resolverSchema.safeParse(values);
+    const missingLabels = !resolverParse.success
+      ? getMissingRequiredFieldItemsFromZodError(
+          resolverParse.error,
+          getActivityFieldLabel,
+          getActivityFormSectionFieldKeys()
+        ).map((field) => field.label)
+      : [];
     const detail =
-      missingFields.length > 0
-        ? `Required fields missing: ${missingFields.join(', ')}`
-        : 'Please fix the validation errors and try again.';
+      missingLabels.length > 0
+        ? `Required fields missing: ${missingLabels.join(', ')}`
+        : validationLog.resolverIssues.length > 0
+          ? validationLog.resolverIssues
+              .map((issue) =>
+                issue.path
+                  ? `${getActivityFieldLabel(issue.path.split('.')[0] ?? issue.path) ?? issue.path}: ${issue.message}`
+                  : issue.message
+              )
+              .join('; ')
+          : missingFields.length > 0
+            ? `Required fields missing: ${missingFields.join(', ')}`
+            : 'Please fix the validation errors and try again.';
     toast.error('Submission failed', {
       description: detail,
       duration: TOAST_DURATION_MS.error,

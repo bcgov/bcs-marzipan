@@ -1,4 +1,5 @@
 import {
+  CORP_PACIFIC_ABBREV,
   formatCivilTime12h,
   type RecurringEditLockoutSettingsSlice,
 } from '@corpcal/shared';
@@ -10,5 +11,5 @@ export function getRecurringLockoutInlineMessage(
   schedule: Pick<RecurringEditLockoutSettingsSlice, 'endTimeOfDay'>
 ): string {
   const endTime = formatCivilTime12h(schedule.endTimeOfDay);
-  return `Updates to activities are locked until ${endTime} PT. You can view in read-only.`;
+  return `Updates to activities are locked until ${endTime} ${CORP_PACIFIC_ABBREV}. You can view in read-only.`;
 }

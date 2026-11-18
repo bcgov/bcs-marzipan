@@ -50,12 +50,14 @@ import {
   createThemeRequestSchema,
   createTranslationLanguageRequestSchema,
   createVenuePresetRequestSchema,
+  isReorderableLookupKey,
   reorderLookupRequestSchema,
   updateActivityStatusRequestSchema,
   updateCategoryRequestSchema,
   updateCityRequestSchema,
   updateCommsMaterialRequestSchema,
   updateGovernmentRepresentativeRequestSchema,
+  updateLookupSortModeRequestSchema,
   updateMinistryGroupRequestSchema,
   updateMinistryRequestSchema,
   updateOrganizationRequestSchema,
@@ -100,6 +102,7 @@ import {
   UpdateCityDto,
   UpdateCommsMaterialDto,
   UpdateGovernmentRepresentativeDto,
+  UpdateLookupSortModeDto,
   UpdateMinistryDto,
   UpdateMinistryGroupDto,
   UpdateReleaseTypeDto,
@@ -1236,6 +1239,46 @@ export class LookupsController {
   ): Promise<{ success: boolean; data: any }> {
     const data = await this.lookupsService.createCity(body, user.id);
     return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Get sort mode for reorderable lookup types' })
+  @ApiResponse({ status: 200, description: 'Sort mode per lookup type' })
+  @RequirePermission('lookups.manage')
+  @Get('sort-settings')
+  async getLookupSortSettings(): Promise<{
+    success: boolean;
+    data: Record<string, string>;
+  }> {
+    const data = await this.lookupsService.getLookupSortSettings();
+    return { success: true, data };
+  }
+
+  @ApiOperation({ summary: 'Set published sort mode for a lookup type' })
+  @ApiResponse({ status: 200, description: 'Sort mode updated' })
+  @ApiParam({
+    name: 'entity',
+    description: `One of: ${REORDERABLE_LOOKUPS.join(', ')}`,
+  })
+  @ApiBody({ type: UpdateLookupSortModeDto })
+  @RequirePermission('lookups.manage')
+  @Patch(':entity/sort-mode')
+  async updateLookupSortMode(
+    @Param('entity') entity: string,
+    @Body(new ZodValidationPipe(updateLookupSortModeRequestSchema))
+    body: UpdateLookupSortModeDto,
+    @CurrentUser() user: AuthUser
+  ): Promise<{ success: boolean }> {
+    if (!isReorderableLookupKey(entity)) {
+      throw new NotFoundException(
+        `Lookup '${entity}' does not support sort mode`
+      );
+    }
+    await this.lookupsService.updateLookupSortMode(
+      entity,
+      body.sortMode,
+      user.id
+    );
+    return { success: true };
   }
 
   @ApiOperation({ summary: 'Set lookup display order' })

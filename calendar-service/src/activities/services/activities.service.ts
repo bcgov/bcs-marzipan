@@ -53,6 +53,8 @@ import {
   REVIEW_SNAPSHOT_VERSION,
   SYSTEM_ROLES,
   TBD_LOOKUP_NAME,
+  TRANSLATION_NO_TRANSLATIONS_LOOKUP_NAME,
+  TRANSLATION_REQUIRED_LOOKUP_NAME,
   type ActivityHydrationProfile,
   type ActivityListItem,
   type ActivityStatusName,
@@ -81,10 +83,12 @@ import {
   type VenueAddressBase,
 } from '@corpcal/shared/schemas';
 import {
+  activityTranslationWorkflowActive,
   applyFieldLevelWritePolicy,
   applyUpdateActivityRequestToFormData,
   buildReviewDiffLookups,
   buildReviewSnapshot,
+  canonicalizeTranslationFields,
   diffReviewFields,
   getEmptyReviewBaseline,
   isDeepEqual,
@@ -99,6 +103,7 @@ import {
   type CommsMaterialReleaseFlagsById,
   type FieldScopeUser,
   type MapResponseToFormDataLookups,
+  type TranslationStatusLookupIds,
 } from '@corpcal/shared/utils';
 import {
   collectActivitySchedulingValidationErrors,
@@ -386,7 +391,6 @@ export class ActivitiesService {
         id: commsMaterials.id,
         audience: releaseTypes.audience,
         allowsTranslation: releaseTypes.allowsTranslation,
-        requiresNewsReleaseDetails: releaseTypes.requiresNewsReleaseDetails,
       })
       .from(commsMaterials)
       .leftJoin(releaseTypes, eq(commsMaterials.releaseTypeId, releaseTypes.id))
@@ -400,7 +404,7 @@ export class ActivitiesService {
       map.set(row.id, {
         audience: row.audience as 'media' | 'public',
         allowsTranslation: row.allowsTranslation ?? false,
-        requiresNewsReleaseDetails: row.requiresNewsReleaseDetails ?? false,
+        isReleaseType: true,
       });
     }
     return map;
@@ -934,6 +938,7 @@ export class ActivitiesService {
     opts?: {
       canEdit?: boolean;
       flags?: ActivityFlagResponse[];
+      includeMutationAudit?: boolean;
     }
   ): ActivityResponse {
     const id = activity.id;
@@ -950,6 +955,7 @@ export class ActivitiesService {
       venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      commsMaterialReleases: related.commsMaterialReleasesMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
@@ -971,6 +977,7 @@ export class ActivitiesService {
         related.leadMinistryAbbreviationsMap.get(id) ?? null,
       leadTeamDisplayName: related.leadTeamDisplayMap.get(id) ?? null,
       ...(opts?.canEdit !== undefined ? { canEdit: opts.canEdit } : {}),
+      ...(opts?.includeMutationAudit ? this.mutationResponseAuditFields() : {}),
       flags: opts?.flags ?? [],
     });
   }
@@ -1029,6 +1036,7 @@ export class ActivitiesService {
         venueStatusesMap: new Map(),
         venueAddressesMap: new Map(),
         commsMaterialsMap: new Map(),
+        commsMaterialReleasesMap: new Map(),
         translationsRequiredMap: new Map(),
         representativesAttendingMap: new Map(),
         sharedWithResult: this.emptySharedWithResult(),
@@ -1059,6 +1067,7 @@ export class ActivitiesService {
       venueStatusesMap,
       venueAddressesMap,
       commsMaterialsMap,
+      commsMaterialReleasesMap,
       translationsRequiredMap,
       representativesAttendingMap,
       sharedWithResult,
@@ -1098,6 +1107,11 @@ export class ActivitiesService {
         : Promise.resolve(new Map()),
       needs('commsMaterials')
         ? this.dataFetcherService.fetchCommsMaterialsForActivities(activityIds)
+        : Promise.resolve(new Map()),
+      needs('commsMaterialReleases')
+        ? this.dataFetcherService.fetchCommsMaterialReleasesForActivities(
+            activityIds
+          )
         : Promise.resolve(new Map()),
       needs('translationsRequired')
         ? this.dataFetcherService.fetchTranslationsRequiredForActivities(
@@ -1190,6 +1204,7 @@ export class ActivitiesService {
       venueStatusesMap,
       venueAddressesMap,
       commsMaterialsMap,
+      commsMaterialReleasesMap,
       translationsRequiredMap,
       representativesAttendingMap,
       sharedWithResult,
@@ -1328,21 +1343,67 @@ export class ActivitiesService {
     return row?.name ?? 'unknown';
   }
 
-  /**
-   * Resolve DB ID for TBD row used as create default for translations required.
-   */
-  private async resolvePendingTranslationStatusId(): Promise<number> {
-    const [translationRow] = await this.databaseService.db
-      .select({ id: translationRequiredStatuses.id })
-      .from(translationRequiredStatuses)
-      .where(eq(translationRequiredStatuses.name, TBD_LOOKUP_NAME))
-      .limit(1);
-    if (translationRow?.id == null) {
+  private async resolveTranslationStatusLookupIds(): Promise<TranslationStatusLookupIds> {
+    const rows = await this.databaseService.db
+      .select({
+        id: translationRequiredStatuses.id,
+        name: translationRequiredStatuses.name,
+      })
+      .from(translationRequiredStatuses);
+
+    const byName = new Map(rows.map((row) => [row.name, row.id]));
+    const tbdId = byName.get(TBD_LOOKUP_NAME);
+    const requiredId = byName.get(TRANSLATION_REQUIRED_LOOKUP_NAME);
+    const noTranslationsId =
+      byName.get(TRANSLATION_NO_TRANSLATIONS_LOOKUP_NAME) ??
+      byName.get('not_required');
+
+    if (tbdId == null || requiredId == null || noTranslationsId == null) {
       throw new InternalServerErrorException(
-        'Translation required status "tbd" is not configured in lookups.'
+        'Translation required statuses are not fully configured in lookups.'
       );
     }
-    return translationRow.id;
+
+    return { tbdId, requiredId, noTranslationsId };
+  }
+
+  private async applyTranslationFieldCanonicalization(
+    commsMaterialIds: number[],
+    fields: Pick<
+      ActivityFormData,
+      'translationsRequiredStatusId' | 'translationLanguageIds'
+    >
+  ): Promise<
+    Pick<
+      ActivityFormData,
+      'translationsRequiredStatusId' | 'translationLanguageIds'
+    >
+  > {
+    const flagsById =
+      await this.loadCommsMaterialReleaseFlagsById(commsMaterialIds);
+    const cleaned = stripCommsDependentFields(
+      {
+        commsMaterialIds,
+        translationsRequiredStatusId:
+          fields.translationsRequiredStatusId ?? null,
+        translationLanguageIds: fields.translationLanguageIds ?? [],
+      } as ActivityFormData,
+      flagsById
+    );
+    const lookupIds = await this.resolveTranslationStatusLookupIds();
+    const workflowActive = activityTranslationWorkflowActive(
+      commsMaterialIds,
+      flagsById
+    );
+    return canonicalizeTranslationFields(
+      {
+        translationsRequiredStatusId:
+          cleaned.translationsRequiredStatusId ?? null,
+        translationLanguageIds: cleaned.translationLanguageIds ?? [],
+      },
+      lookupIds,
+      { translationWorkflowActive: workflowActive }
+    );
   }
 
   private async getSchedulingLookupResolvers(): Promise<ActivitySchedulingLookupResolvers> {
@@ -1544,14 +1605,20 @@ export class ActivitiesService {
       }
     );
     Object.assign(activityData, commsCleaned);
+    const translatedFields = await this.applyTranslationFieldCanonicalization(
+      commsMaterialIds ?? [],
+      {
+        translationsRequiredStatusId:
+          commsCleaned.translationsRequiredStatusId ?? null,
+        translationLanguageIds: commsCleaned.translationLanguageIds ?? [],
+      }
+    );
+    Object.assign(activityData, translatedFields);
     const translationLanguageIdsForInsert =
-      commsCleaned.translationLanguageIds ?? [];
+      translatedFields.translationLanguageIds ?? [];
     await this.lookAheadPolicy.assertAllowedLookAheadSection(
       activityData.lookAheadSection
     );
-
-    const pendingTranslationStatusId =
-      await this.resolvePendingTranslationStatusId();
     const {
       translationsRequiredStatusId: dtoTranslationStatus,
       dateStatusId: dtoDateStatus,
@@ -1568,8 +1635,7 @@ export class ActivitiesService {
       significance: dtoSignificance ?? null,
       dateStatusId: dtoDateStatus ?? defaultDateTimeStatuses.dateStatusId,
       timeStatusId: dtoTimeStatus ?? defaultDateTimeStatuses.timeStatusId,
-      translationsRequiredStatusId:
-        dtoTranslationStatus ?? pendingTranslationStatusId,
+      translationsRequiredStatusId: dtoTranslationStatus ?? null,
     };
 
     await this.assertActivitySchedulingRules(
@@ -2109,6 +2175,8 @@ export class ActivitiesService {
       venueStatus: ctx.related.venueStatusesMap.get(activity.id),
       venueAddress: ctx.related.venueAddressesMap.get(activity.id) ?? null,
       commsMaterials: ctx.related.commsMaterialsMap.get(activity.id) ?? [],
+      commsMaterialReleases:
+        ctx.related.commsMaterialReleasesMap.get(activity.id) ?? [],
       translationsRequired:
         ctx.related.translationsRequiredMap.get(activity.id) ?? [],
       representativesAttending:
@@ -2839,14 +2907,59 @@ export class ActivitiesService {
               : oldActivity.releaseTimeOffsetMinutes,
         }
       );
+      const translatedFields = await this.applyTranslationFieldCanonicalization(
+        commsMaterialIds,
+        {
+          translationsRequiredStatusId:
+            commsCleaned.translationsRequiredStatusId ?? null,
+          translationLanguageIds: commsCleaned.translationLanguageIds ?? [],
+        }
+      );
       Object.assign(activityUpdateData, {
         newsReleaseOriginId: commsCleaned.newsReleaseOriginId,
         newsReleaseDistributionId: commsCleaned.newsReleaseDistributionId,
-        translationsRequiredStatusId: commsCleaned.translationsRequiredStatusId,
+        translationsRequiredStatusId:
+          translatedFields.translationsRequiredStatusId,
         releaseSchedulingMode: commsCleaned.releaseSchedulingMode,
         releaseTimeOffsetMinutes: commsCleaned.releaseTimeOffsetMinutes,
       });
-      effectiveTranslationLanguageIds = commsCleaned.translationLanguageIds;
+      effectiveTranslationLanguageIds = translatedFields.translationLanguageIds;
+    } else if (
+      translationLanguageIds !== undefined ||
+      dto.translationsRequiredStatusId !== undefined
+    ) {
+      const existingCommsRows = await this.databaseService.db
+        .select({ commsMaterialId: activityCommsMaterials.commsMaterialId })
+        .from(activityCommsMaterials)
+        .where(eq(activityCommsMaterials.activityId, id));
+      const existingCommsMaterialIds = existingCommsRows.map(
+        (r) => r.commsMaterialId
+      );
+      const existingLangRows = await this.databaseService.db
+        .select({ languageId: activityTranslationsRequired.languageId })
+        .from(activityTranslationsRequired)
+        .where(
+          and(
+            eq(activityTranslationsRequired.activityId, id),
+            eq(activityTranslationsRequired.isActive, true)
+          )
+        );
+      const translatedFields = await this.applyTranslationFieldCanonicalization(
+        existingCommsMaterialIds,
+        {
+          translationsRequiredStatusId:
+            dto.translationsRequiredStatusId !== undefined
+              ? dto.translationsRequiredStatusId
+              : oldActivity.translationsRequiredStatusId,
+          translationLanguageIds:
+            translationLanguageIds !== undefined
+              ? translationLanguageIds
+              : existingLangRows.map((r) => r.languageId),
+        }
+      );
+      (activityUpdateData as Partial<Activity>).translationsRequiredStatusId =
+        translatedFields.translationsRequiredStatusId ?? null;
+      effectiveTranslationLanguageIds = translatedFields.translationLanguageIds;
     }
 
     // Build update payload after comms cleanup so dependent fields persist correctly.
@@ -3148,94 +3261,9 @@ export class ActivitiesService {
       }
     }
 
-    // Fetch related data for the updated activity
-    const [
-      categoriesResult,
-      tagsList,
-      activityStatus,
-      dateStatus,
-      timeStatus,
-      venueStatus,
-      venueAddressesMap,
-      commsMaterials,
-      translationsRequired,
-      representativesAttending,
-      sharedWithResult,
-      commsContacts,
-      organizationDetailsMap,
-      eventPlannerDetailsMap,
-      newsReleaseOriginsMap,
-      newsReleaseDistributionsMap,
-      premierRequestedMap,
-      translationsRequiredStatus,
-      leadMinistryName,
-      leadMinistryAbbreviation,
-      leadTeamDisplayMap,
-    ] = await Promise.all([
-      this.dataFetcherService.fetchCategoriesForActivities([id]),
-      this.dataFetcherService.fetchTagsForActivities([id]),
-      this.dataFetcherService.fetchActivityStatusesForActivities([id]),
-      this.dataFetcherService.fetchDateStatusesForActivities([id]),
-      this.dataFetcherService.fetchTimeStatusesForActivities([id]),
-      this.dataFetcherService.fetchVenueStatusesForActivities([id]),
-      this.dataFetcherService.fetchVenueAddressesForActivities([id]),
-      this.dataFetcherService.fetchCommsMaterialsForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredForActivities([id]),
-      this.dataFetcherService.fetchRepresentativesAttendingForActivities([id]),
-      this.dataFetcherService.fetchSharedWithTeamsForActivities([id]),
-      this.dataFetcherService.fetchCommsContactsForActivities([id]),
-      this.dataFetcherService.fetchOrganizationDetailsForActivities([id]),
-      this.dataFetcherService.fetchEventPlannerDetailsForActivities([id]),
-      this.dataFetcherService.fetchNewsReleaseOriginsForActivities([id]),
-      this.dataFetcherService.fetchNewsReleaseDistributionsForActivities([id]),
-      this.dataFetcherService.fetchPremierRequestedForActivities([id]),
-      this.dataFetcherService.fetchTranslationsRequiredStatusForActivities([
-        id,
-      ]),
-      this.dataFetcherService.fetchLeadMinistryNamesForActivities([id]),
-      this.dataFetcherService.fetchLeadMinistryAbbreviationsForActivities([id]),
-      this.dataFetcherService.fetchLeadTeamDisplayForActivities([
-        { id: updated.id, leadTeamId: updated.leadTeamId },
-      ]),
-    ]);
-
-    // Note: previously published category/tag refresh events to Redis here.
-    // Redis worker removed; propagation handled synchronously or via DB jobs if needed.
-
-    const eventPlannerDetails = eventPlannerDetailsMap.get(id) ?? [];
-
-    const { namesMap: categoriesList, idsMap: categoryIdsList } =
-      categoriesResult;
-
-    const result = this.mapperService.mapToResponseDto(updated, {
-      categories: categoriesList.get(id) ?? [],
-      categoryIds: categoryIdsList.get(id) ?? [],
-      tags: tagsList.get(id) ?? [],
-      activityStatus: activityStatus.get(id),
-      dateStatus: dateStatus.get(id),
-      timeStatus: timeStatus.get(id),
-      venueStatus: venueStatus.get(id),
-      venueAddress: venueAddressesMap.get(id) ?? null,
-      commsMaterials: commsMaterials.get(id) ?? [],
-      translationsRequired: translationsRequired.get(id) ?? [],
-      representativesAttending: representativesAttending.get(id) ?? [],
-      sharedWith: sharedWithResult.namesMap.get(id) ?? [],
-      sharedWithTeamIds: sharedWithResult.idsMap.get(id) ?? [],
-      commsContacts: commsContacts.get(id) ?? [],
-      eventPlannerDetails,
-      eventPlanners: eventPlannerDetails.map((d) => d.name),
-      eventPlannerLeadIds: eventPlannerDetails
-        .filter((d) => d.eventPlannerId != null)
-        .map((d) => d.eventPlannerId as number),
-      organizationDetails: organizationDetailsMap.get(id) ?? [],
-      newsReleaseOrigin: newsReleaseOriginsMap.get(id) ?? null,
-      newsReleaseDistribution: newsReleaseDistributionsMap.get(id) ?? null,
-      premierRequested: premierRequestedMap.get(id) ?? null,
-      translationsRequiredStatus: translationsRequiredStatus.get(id) ?? null,
-      leadMinistry: leadMinistryName.get(id) ?? null,
-      leadMinistryAbbreviation: leadMinistryAbbreviation.get(id) ?? null,
-      leadTeamDisplayName: leadTeamDisplayMap.get(id) ?? null,
-      ...this.mutationResponseAuditFields(),
+    const related = await this.fetchRelatedForActivityIds([id], [updated]);
+    const result = this.mapFetchedActivityToResponseDto(updated, related, {
+      includeMutationAudit: true,
     });
 
     // Generate change list for history tracking (main activity fields)
@@ -4015,6 +4043,7 @@ export class ActivitiesService {
       venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      commsMaterialReleases: related.commsMaterialReleasesMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
@@ -4158,6 +4187,7 @@ export class ActivitiesService {
       venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      commsMaterialReleases: related.commsMaterialReleasesMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],
@@ -4293,6 +4323,7 @@ export class ActivitiesService {
       venueStatus: related.venueStatusesMap.get(id),
       venueAddress: related.venueAddressesMap.get(id) ?? null,
       commsMaterials: related.commsMaterialsMap.get(id) ?? [],
+      commsMaterialReleases: related.commsMaterialReleasesMap.get(id) ?? [],
       translationsRequired: related.translationsRequiredMap.get(id) ?? [],
       representativesAttending:
         related.representativesAttendingMap.get(id) ?? [],

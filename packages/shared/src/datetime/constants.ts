@@ -23,3 +23,12 @@ export const CORP_PACIFIC_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 /** Human-facing label for admin UI copy and tooltips. */
 export const CORP_PACIFIC_LABEL = 'Pacific Time (UTC-7)' as const;
+
+/**
+ * BC official wall-clock zone abbreviation (fixed UTC&minus;7). Appended after
+ * formatted civil times in UI copy, e.g. `4:21 pm PCT`.
+ */
+export const CORP_PACIFIC_ABBREV = 'PCT' as const;
+
+/** Space-prefixed {@link CORP_PACIFIC_ABBREV} for string concatenation. */
+export const CORP_PACIFIC_ABBREV_SUFFIX = ` ${CORP_PACIFIC_ABBREV}` as const;

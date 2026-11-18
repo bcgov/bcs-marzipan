@@ -7,6 +7,7 @@ import { SYSTEM_ROLE_IDS, type AuthUser } from '@corpcal/shared';
 import type { LookupItem } from '@corpcal/shared/api/types';
 import {
   reorderLookupRequestSchema,
+  updateLookupSortModeRequestSchema,
   type TeamListItem,
 } from '@corpcal/shared/schemas';
 
@@ -69,6 +70,8 @@ describe('LookupsController', () => {
     updatePermissionVisibility: vi.fn(),
     getRolesPermissionsMap: vi.fn(),
     reorderLookup: vi.fn(),
+    getLookupSortSettings: vi.fn(),
+    updateLookupSortMode: vi.fn(),
   };
 
   const mockTeamsService = {
@@ -547,6 +550,89 @@ describe('LookupsController', () => {
       expect(
         mockLookupsService.updatePermissionVisibility
       ).toHaveBeenCalledWith(10, true, sysAdminUser.id);
+    });
+  });
+
+  describe('lookup sort settings', () => {
+    const sortModePipe = new ZodValidationPipe(
+      updateLookupSortModeRequestSchema
+    );
+    const validateSortMode = (body: unknown) =>
+      sortModePipe.transform(body, { type: 'body', data: undefined });
+
+    it('getLookupSortSettings requires lookups.manage', () => {
+      const handler = Object.getOwnPropertyDescriptor(
+        LookupsController.prototype,
+        'getLookupSortSettings'
+      )!.value as object;
+
+      expect(Reflect.getMetadata(PERMISSIONS_METADATA_KEY, handler)).toEqual({
+        keys: ['lookups.manage'],
+        mode: 'any',
+      });
+    });
+
+    it('returns sort settings from the service', async () => {
+      mockLookupsService.getLookupSortSettings.mockResolvedValue({
+        cities: 'manual',
+      });
+
+      const result = await controller.getLookupSortSettings();
+
+      expect(result).toEqual({
+        success: true,
+        data: { cities: 'manual' },
+      });
+    });
+
+    it.each(REORDERABLE_LOOKUPS)(
+      'updateLookupSortMode delegates to the service for %s',
+      async (entity) => {
+        mockLookupsService.updateLookupSortMode.mockResolvedValue(undefined);
+
+        const result = await controller.updateLookupSortMode(
+          entity,
+          { sortMode: 'alphabetical' },
+          mockUser
+        );
+
+        expect(result).toEqual({ success: true });
+        expect(mockLookupsService.updateLookupSortMode).toHaveBeenCalledWith(
+          entity,
+          'alphabetical',
+          mockUser.id
+        );
+      }
+    );
+
+    it.each(['users', 'permissions', '__proto__', 'constructor'])(
+      'rejects unsupported entity %s without calling the service',
+      async (entity) => {
+        await expect(
+          controller.updateLookupSortMode(
+            entity,
+            { sortMode: 'alphabetical' },
+            mockUser
+          )
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(mockLookupsService.updateLookupSortMode).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each([
+      ['missing sortMode', {}],
+      ['invalid sortMode', { sortMode: 'by-name' }],
+    ])('rejects a body with %s', (_label, body) => {
+      expect(() => validateSortMode(body)).toThrow(BadRequestException);
+    });
+
+    it('accepts manual and alphabetical sort modes', () => {
+      expect(validateSortMode({ sortMode: 'manual' })).toEqual({
+        sortMode: 'manual',
+      });
+      expect(validateSortMode({ sortMode: 'alphabetical' })).toEqual({
+        sortMode: 'alphabetical',
+      });
     });
   });
 

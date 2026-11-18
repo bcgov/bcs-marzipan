@@ -1,0 +1,2 @@
+ALTER TABLE "recurring_lockout_banner_settings" ALTER COLUMN "lead_content" SET DEFAULT 'Updates to activities will be locked <lockStartTime> - <lockEndTime> PCT. Please make updates before lockout begins.';--> statement-breakpoint
+ALTER TABLE "recurring_lockout_banner_settings" ALTER COLUMN "active_content" SET DEFAULT 'Updates to activities are locked out until <lockEndTime> PCT. Contact <report_look_ahead_cover_contact_email> to make emerging or urgent updates.';
