@@ -4,6 +4,7 @@ import {
   History,
   PanelLeft,
   PanelLeftDashed,
+  Plus,
   ScrollText,
   SlidersHorizontal,
   Users,
@@ -18,6 +19,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -27,6 +29,8 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
+import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
+import { cn } from '@/lib/utils';
 
 const SIDEBAR_PINNED_KEY = 'sidebar_pinned';
 const APP_VERSION = import.meta.env.VITE_APP_VERSION?.trim() || 'dev';
@@ -41,6 +45,64 @@ function getInitialPinned(): boolean {
   } catch {
     return false;
   }
+}
+
+const sidebarNewActivityMenuButtonClassName = cn(
+  'ml-0.5',
+  'h-9! min-h-11 text-sm shadow-none md:min-h-9',
+  'group-data-[collapsible=icon]:h-9! group-data-[collapsible=icon]:min-h-9!',
+  'group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:max-w-9',
+  'bg-primary text-primary-foreground',
+  'hover:bg-primary/90 hover:text-primary-foreground',
+  'active:bg-primary/90 active:text-primary-foreground',
+  'data-[active=true]:bg-primary data-[active=true]:text-primary-foreground',
+  'data-[active=true]:[&>svg]:text-primary-foreground',
+  '[&>svg]:size-5 [&>svg]:shrink-0 [&>svg]:text-primary-foreground'
+);
+
+const NEW_ACTIVITY_LABEL = 'New activity';
+
+function SidebarNewActivityButton({ onNavigate }: { onNavigate: () => void }) {
+  const location = useLocation();
+  const { hasPermission } = useAuth();
+  const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
+
+  return (
+    <SidebarHeader className="border-sidebar-border border-b py-4">
+      <SidebarMenu>
+        <SidebarMenuItem className="py-0.5">
+          {canCreateActivity ? (
+            <SidebarMenuButton
+              asChild
+              tooltip={NEW_ACTIVITY_LABEL}
+              aria-label={NEW_ACTIVITY_LABEL}
+              className={sidebarNewActivityMenuButtonClassName}
+            >
+              <Link
+                to="/create-activity"
+                {...activityFormLinkState(location)}
+                onClick={onNavigate}
+              >
+                <Plus className="size-5 shrink-0" />
+                <span>{NEW_ACTIVITY_LABEL}</span>
+              </Link>
+            </SidebarMenuButton>
+          ) : (
+            <SidebarMenuButton
+              disabled
+              tooltip={NEW_ACTIVITY_LABEL}
+              aria-label={NEW_ACTIVITY_LABEL}
+              title="You do not have permission to create activities"
+              className={sidebarNewActivityMenuButtonClassName}
+            >
+              <Plus className="size-5 shrink-0" />
+              <span>{NEW_ACTIVITY_LABEL}</span>
+            </SidebarMenuButton>
+          )}
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarHeader>
+  );
 }
 
 function AppSidebarContent() {
@@ -97,7 +159,7 @@ function AppSidebarContent() {
 
   return (
     <>
-      {/* <SidebarHeader className="border-sidebar-border border-b" /> */}
+      <SidebarNewActivityButton onNavigate={closeMobileSidebar} />
       <SidebarContent className="pt-2">
         <SidebarGroup>
           <SidebarGroupContent>
