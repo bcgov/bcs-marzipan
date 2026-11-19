@@ -46,9 +46,19 @@ describe('filterActivitiesQuerySchema', () => {
     expect(result.limit).toBe(20);
   });
 
+  it('parses activityIds and preserves an empty list', () => {
+    expect(filterActivitiesQuerySchema.parse({ activityIds: '1,2' })).toEqual(
+      expect.objectContaining({ activityIds: [1, 2] })
+    );
+    expect(filterActivitiesQuerySchema.parse({ activityIds: '' })).toEqual(
+      expect.objectContaining({ activityIds: [] })
+    );
+  });
+
   it('parses array filter params from comma-separated strings', () => {
     const result = filterActivitiesQuerySchema.parse({
       activityStatusIds: '1,2,3',
+      activityIds: '4,5',
       leadTeamIds: '7,8',
       commsContactLeadUserIds: '10',
       flagAssigneeUserIds: '20',
@@ -58,6 +68,7 @@ describe('filterActivitiesQuerySchema', () => {
       lookAheadSectionValues: 'events,issues',
     });
     expect(result.activityStatusIds).toEqual([1, 2, 3]);
+    expect(result.activityIds).toEqual([4, 5]);
     expect(result.leadTeamIds).toEqual([7, 8]);
     expect(result.commsContactLeadUserIds).toEqual([10]);
     expect(result.flagAssigneeUserIds).toEqual([20]);

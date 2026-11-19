@@ -190,6 +190,45 @@ describe('buildActivityFindAllConditions', () => {
     expect(conditions).toHaveLength(1);
   });
 
+  it('filters by activityIds when provided', () => {
+    const { db } = createMockDb();
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters({ activityIds: [101, 102] }),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      db,
+      dataScope: BYPASS_DATA_SCOPE,
+    });
+    expect(conditions).toHaveLength(3);
+  });
+
+  it('returns no rows when activityIds is an empty array', () => {
+    const { db } = createMockDb();
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters({ activityIds: [] }),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      db,
+      dataScope: BYPASS_DATA_SCOPE,
+    });
+    expect(conditions).toHaveLength(3);
+  });
+
+  it('combines activityIds with leadTeamIds', () => {
+    const { db } = createMockDb();
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters({ activityIds: [1], leadTeamIds: [10] }),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      db,
+      dataScope: BYPASS_DATA_SCOPE,
+    });
+    expect(conditions).toHaveLength(4);
+  });
+
   it('adds one condition per direct activities-table array filter', () => {
     const { db } = createMockDb();
     const conditions = buildActivityFindAllConditions({
