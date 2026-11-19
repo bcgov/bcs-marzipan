@@ -1,14 +1,17 @@
 import { ChevronDown, Plus } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem } from '@corpcal/shared/api/types';
+import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   ActivityTable,
   type ActivityTableActiveSavedFilter,
 } from '@/components/activity/ActivityTable';
 import { PageHeader } from '@/components/layout';
+import { ActivityListReportDialog } from '@/components/reports/ActivityListReportDialog';
+import { ActivityListReportsMenu } from '@/components/reports/ActivityListReportsMenu';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -16,67 +19,62 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useActivityListReportDialog } from '@/hooks/useActivityListReportDialog';
+import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
 import { useAuth } from '@/hooks/useAuth';
 import { useFavourites } from '@/hooks/useFavourites';
 import { useLeadTeamOptions } from '@/hooks/useLeadTeamOptions';
-import { useMinistries } from '@/hooks/useLookups';
+import { useMinistries, useReports } from '@/hooks/useLookups';
 import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
+import {
+  activityListTabServerScopeToTableProps,
+  buildActivityListEffectiveScope,
+  buildActivityListTabServerScope,
+} from '@/lib/activity-list-effective-scope';
+import { ACTIVITY_LIST_REPORT_NAMES } from '@/lib/activity-list-report-params';
+import {
+  getStoredActivityListTab,
+  setStoredActivityListTab,
+  type ActivityListTabValue,
+} from '@/lib/activity-list-tabs';
+import { hasMinistryTabLeadTeamFilterConflict } from '@/lib/ministry-tab-lead-filter-conflict';
 import { cn } from '@/lib/utils';
 
-const ACTIVITY_LIST_TAB_STORAGE_KEY = 'activityListTab';
-
-type ActivityListTabValue =
-  | 'all'
-  | 'ministry'
-  | 'my-activities'
-  | 'recent'
-  | 'shared-with-me'
-  | 'favourites'
-  | 'assigned-to-me';
-
-const ACTIVITY_LIST_TAB_VALUES: readonly ActivityListTabValue[] = [
-  'all',
-  'ministry',
-  'my-activities',
-  'recent',
-  'shared-with-me',
-  'favourites',
-  'assigned-to-me',
-];
-
-function getStoredActivityListTab(): ActivityListTabValue | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = sessionStorage.getItem(ACTIVITY_LIST_TAB_STORAGE_KEY);
-    if (!raw) return null;
-    if (ACTIVITY_LIST_TAB_VALUES.includes(raw as ActivityListTabValue)) {
-      return raw as ActivityListTabValue;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function setStoredActivityListTab(tab: ActivityListTabValue): void {
-  if (typeof window === 'undefined') return;
-  try {
-    sessionStorage.setItem(ACTIVITY_LIST_TAB_STORAGE_KEY, tab);
-  } catch {
-    // ignore
-  }
-}
+const ACTIVITY_LIST_REPORT_NAME_SET = new Set<string>(
+  ACTIVITY_LIST_REPORT_NAMES
+);
 
 /**
  * Activity list. Rendered inside Layout, which wraps content with
  * the shared PageContainer (max-width, padding) so this page fits viewport width.
- * Tabs filter the list: All, ministry lead team, My activities, Recent (disabled), Shared with me.
+ * Tabs filter the list: All, ministry lead team, My activities, Shared with us, and scoped views.
  */
 export const ActivityListPage = () => {
   const location = useLocation();
   const { user, hasPermission } = useAuth();
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
   const canManageFavourites = hasPermission(PERMISSIONS.FAVOURITES.MANAGE);
+  const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW);
+
+  const canSeeDeleted =
+    user?.roleName === SYSTEM_ROLES.ADMIN ||
+    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+
+  const { preferences: listPreferences } =
+    useActivityTablePreferences(canSeeDeleted);
+  const { data: reports = [] } = useReports();
+  const activityListReports = useMemo(
+    () => reports.filter((r) => ACTIVITY_LIST_REPORT_NAME_SET.has(r.name)),
+    [reports]
+  );
+
+  const {
+    activeReportName,
+    isOpen: isReportDialogOpen,
+    openReport,
+    closeReport,
+    onOpenChange: onReportDialogOpenChange,
+  } = useActivityListReportDialog();
 
   const [activeTab, setActiveTab] = useState<ActivityListTabValue>('all');
   const initialTabAppliedRef = useRef(false);
@@ -162,34 +160,108 @@ export const ActivityListPage = () => {
 
   const hasMultipleTeamsWithMinistry = teamsWithMinistry.length > 1;
 
-  const tableProps = useMemo(() => {
-    const base = { watchlistActivityIds: favouriteActivityIds };
-    switch (activeTab) {
-      case 'all':
-        return base;
-      case 'ministry':
-        return effectiveLeadTeamId != null
-          ? { ...base, leadTeamIds: [effectiveLeadTeamId] }
-          : base;
-      case 'my-activities':
-        return user?.id != null
-          ? { ...base, commsContactLeadUserIds: [user.id] }
-          : base;
-      case 'recent':
-        return base;
-      case 'shared-with-me':
-        return userTeamIds.length > 0
-          ? { ...base, sharedWithTeamIds: userTeamIds }
-          : base;
-      case 'favourites':
-        return { ...base, favouriteActivityIds };
-      case 'assigned-to-me':
-        return user?.id != null
-          ? { ...base, flagAssigneeUserIds: [user.id] }
-          : base;
-      default:
-        return base;
+  const ministryTabLeadTeamConflict = useMemo(
+    () =>
+      hasMinistryTabLeadTeamFilterConflict(
+        activeTab === 'ministry'
+          ? (effectiveLeadTeamId ?? undefined)
+          : undefined,
+        listPreferences.filterState.leadTeamIds
+      ),
+    [activeTab, effectiveLeadTeamId, listPreferences.filterState.leadTeamIds]
+  );
+
+  const listEffectiveScope = useMemo(
+    () =>
+      buildActivityListEffectiveScope({
+        tab: activeTab,
+        preferences: listPreferences,
+        statusArchiveIds: {},
+        canSeeDeleted,
+        watchlistActivityIds: favouriteActivityIds,
+        ministryConflict: ministryTabLeadTeamConflict,
+        ministryTabLabel,
+        userId: user?.id,
+        userTeamIds,
+        effectiveLeadTeamId,
+      }),
+    [
+      activeTab,
+      listPreferences,
+      canSeeDeleted,
+      favouriteActivityIds,
+      ministryTabLeadTeamConflict,
+      ministryTabLabel,
+      user?.id,
+      userTeamIds,
+      effectiveLeadTeamId,
+    ]
+  );
+
+  const scopeInput = useMemo(
+    () => ({
+      tab: activeTab,
+      canSeeDeleted,
+      watchlistActivityIds: favouriteActivityIds,
+      ministryConflict: ministryTabLeadTeamConflict,
+      ministryTabLabel,
+      userId: user?.id,
+      userTeamIds,
+      effectiveLeadTeamId,
+    }),
+    [
+      activeTab,
+      canSeeDeleted,
+      favouriteActivityIds,
+      ministryTabLeadTeamConflict,
+      ministryTabLabel,
+      user?.id,
+      userTeamIds,
+      effectiveLeadTeamId,
+    ]
+  );
+
+  const prevTabForReportRef = useRef(activeTab);
+  const prevLeadTeamForReportRef = useRef(effectiveLeadTeamId);
+
+  useEffect(() => {
+    if (!initialTabAppliedRef.current) return;
+
+    const tabChanged = prevTabForReportRef.current !== activeTab;
+    const teamChanged =
+      prevLeadTeamForReportRef.current !== effectiveLeadTeamId;
+
+    if (!tabChanged && !teamChanged) return;
+
+    prevTabForReportRef.current = activeTab;
+    prevLeadTeamForReportRef.current = effectiveLeadTeamId;
+
+    if (isReportDialogOpen) {
+      closeReport();
     }
+  }, [activeTab, effectiveLeadTeamId, isReportDialogOpen, closeReport]);
+
+  useEffect(() => {
+    if (
+      listEffectiveScope.reportAvailability !== 'allowed' &&
+      isReportDialogOpen
+    ) {
+      closeReport();
+    }
+  }, [listEffectiveScope.reportAvailability, isReportDialogOpen, closeReport]);
+
+  const tableProps = useMemo(() => {
+    const tabScope = buildActivityListTabServerScope({
+      tab: activeTab,
+      userId: user?.id,
+      userTeamIds,
+      effectiveLeadTeamId,
+    });
+    return activityListTabServerScopeToTableProps(
+      activeTab,
+      tabScope,
+      favouriteActivityIds
+    );
   }, [
     activeTab,
     effectiveLeadTeamId,
@@ -198,29 +270,51 @@ export const ActivityListPage = () => {
     favouriteActivityIds,
   ]);
 
+  const activeReportMeta = useMemo(
+    () =>
+      activeReportName != null
+        ? activityListReports.find((r) => r.name === activeReportName)
+        : undefined,
+    [activeReportName, activityListReports]
+  );
+
+  const handleShowFullActivityList = useCallback(() => {
+    setActiveTab('all');
+    setStoredActivityListTab('all');
+  }, []);
+
+  const headerActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      {canViewReports && activityListReports.length > 0 ? (
+        <ActivityListReportsMenu
+          reports={activityListReports}
+          availability={listEffectiveScope.reportAvailability}
+          onOpenReport={openReport}
+          onShowFullList={handleShowFullActivityList}
+        />
+      ) : null}
+      {canCreateActivity ? (
+        <Button asChild>
+          <Link to="/create-activity" {...activityFormLinkState(location)}>
+            <Plus className="h-4 w-4" />
+            New activity
+          </Link>
+        </Button>
+      ) : (
+        <Button
+          disabled
+          title="You do not have permission to create activities"
+        >
+          <Plus className="h-4 w-4" />
+          New activity
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <>
-      <PageHeader
-        title="Calendar activities"
-        action={
-          canCreateActivity ? (
-            <Button asChild>
-              <Link to="/create-activity" {...activityFormLinkState(location)}>
-                <Plus className="h-4 w-4" />
-                New activity
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              disabled
-              title="You do not have permission to create activities"
-            >
-              <Plus className="h-4 w-4" />
-              New activity
-            </Button>
-          )
-        }
-      />
+      <PageHeader title="Calendar activities" action={headerActions} />
 
       <Tabs
         value={activeTab}
@@ -291,17 +385,31 @@ export const ActivityListPage = () => {
         </div>
 
         <div className="mt-0 min-w-0">
-          {activeTab === 'recent' ? (
-            <ActivityTable />
-          ) : (
-            <ActivityTable
-              {...tableProps}
-              activeSavedFilter={activeSavedFilter}
-              onActiveSavedFilterChange={setActiveSavedFilter}
-            />
-          )}
+          <ActivityTable
+            {...tableProps}
+            activeSavedFilter={activeSavedFilter}
+            onActiveSavedFilterChange={setActiveSavedFilter}
+          />
         </div>
       </Tabs>
+
+      {canViewReports &&
+      activeReportName != null &&
+      activeReportMeta != null &&
+      listEffectiveScope.reportAvailability === 'allowed' ? (
+        <ActivityListReportDialog
+          reportName={activeReportName}
+          displayTitle={(activeReportMeta.displayName ?? '').replace(
+            /\bReport$/,
+            'report'
+          )}
+          listPreferences={listPreferences}
+          appliedSavedFilterName={activeSavedFilter?.name ?? null}
+          scopeInput={scopeInput}
+          open={isReportDialogOpen}
+          onOpenChange={onReportDialogOpenChange}
+        />
+      ) : null}
     </>
   );
 };

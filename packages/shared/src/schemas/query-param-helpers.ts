@@ -74,6 +74,21 @@ export function commaSeparatedIntArray() {
 }
 
 /**
+ * Like `commaSeparatedIntArray`, but preserves an explicit empty array (e.g.
+ * watchlist scope with no favourites → no activities).
+ */
+export function commaSeparatedIntArrayPreserveEmpty() {
+  return z
+    .union([z.array(intFromString), commaSeparatedIntsFromString])
+    .optional()
+    .transform((val) => {
+      if (val == null) return undefined;
+      if (Array.isArray(val)) return val;
+      return val;
+    });
+}
+
+/**
  * Required comma-separated positive ints. Any invalid segment fails validation
  * (strict — do not mix with lenient per-segment parsing).
  */

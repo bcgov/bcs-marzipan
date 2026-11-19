@@ -205,6 +205,16 @@ export function buildActivityFindAllConditions(
     conditions.push(eq(activities.isIssue, filters.isIssue));
   }
 
+  if (filters.activityIds != null) {
+    if (filters.activityIds.length === 0) {
+      conditions.push(sql`1 = 0`);
+    } else if (filters.activityIds.length > 500) {
+      conditions.push(sql`1 = 0`);
+    } else {
+      conditions.push(inArray(activities.id, filters.activityIds));
+    }
+  }
+
   if (filters.leadTeamIds != null && filters.leadTeamIds.length > 0) {
     conditions.push(inArray(activities.leadTeamId, filters.leadTeamIds));
   }
@@ -466,6 +476,7 @@ export function hasActivityFindAllFilterFields(
     query.endDateTo !== undefined ||
     query.scheduledDateRangeOverlaps === true ||
     (query.activityStatusIds != null && query.activityStatusIds.length > 0) ||
+    (query.activityIds != null && query.activityIds.length > 0) ||
     (query.leadTeamIds != null && query.leadTeamIds.length > 0) ||
     (query.commsContactLeadUserIds != null &&
       query.commsContactLeadUserIds.length > 0) ||

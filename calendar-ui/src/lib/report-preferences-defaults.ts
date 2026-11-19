@@ -5,7 +5,7 @@ import {
 import { defaultLookAheadDateRange } from '@corpcal/shared/reports/look-ahead';
 import { getReportTypeConfigByReportName } from '@corpcal/shared/reports/reportTypeConfig';
 import { defaultThirtySixtyNinetyTabDateRange } from '@corpcal/shared/reports/thirty-sixty-ninety';
-import type { ActivityTablePreferences } from '@/lib/reportsTablePreferencesParams';
+import type { ActivityTablePreferences } from '@/lib/activityTablePreferencesParams';
 
 const DEFAULT_SORT_KEY = 'startDate';
 const DEFAULT_SORT_DIRECTION = 'desc' as const;

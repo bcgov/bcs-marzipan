@@ -2,8 +2,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
+  applyPreferencesToSearchParams,
   getInitialPreferences,
-  preferencesToParams,
   SEARCH_SYNC_DEBOUNCE_MS,
   STORAGE_KEY,
   type ActivityTablePreferences,
@@ -60,7 +60,9 @@ export function useActivityTablePreferences(canSeeDeleted: boolean): {
   const syncToUrl = useCallback(
     (prefs: ActivityTablePreferences) => {
       lastUrlSyncRef.current = prefs;
-      setSearchParams(preferencesToParams(prefs), { replace: true });
+      setSearchParams((prev) => applyPreferencesToSearchParams(prev, prefs), {
+        replace: true,
+      });
     },
     [setSearchParams]
   );

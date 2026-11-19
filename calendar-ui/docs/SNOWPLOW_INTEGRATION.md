@@ -19,8 +19,7 @@ Files changed / added
 - `calendar-ui/public/config.js` — local default runtime config (ENABLE_SNOWPLOW: 'false').
 - `calendar-ui/src/lib/analytics.ts` — safe wrapper helpers: `trackCalendarClick(action)` and `trackCalendarAction(payload)`.
 - `calendar-ui/src/custom.d.ts` — added `window.snowplow` typing.
-- `calendar-ui/src/components/reports/ReportFiltersBar.tsx` — example instrumentation: sends `calendar_action` on search submit (Enter) and `calendar_click` for clear-search.
-- `calendar-ui/src/components/reports/__tests__/ReportFiltersBar.test.tsx` — unit tests that mock `@/lib/analytics` and `@/hooks/useAuth`.
+- Activity list report dialog (`ActivityListReportDialog.tsx`) — report export and results analytics via `@/lib/analytics`.
 - `openshift/deploy/base/calendar-ui/configmap.yaml` — now includes a `config.js` value (default `ENABLE_SNOWPLOW: 'false'`).
 - `openshift/deploy/base/calendar-ui/deployment.yaml` — mounts `config.js` into `/usr/share/nginx/html/config.js` so the app reads it at runtime.
 - `calendar-ui/docs/calendar-analytics.md` — usage and verification notes (existing doc, also updated).

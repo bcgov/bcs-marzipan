@@ -11,12 +11,14 @@ import {
 
 import { activityFilterStateToQueryParams, PERMISSIONS } from '@corpcal/shared';
 import type { LookAheadCuratedPresetId } from '@corpcal/shared/reports/look-ahead';
+import { reportPrintSheetLayoutWidthPx } from '@corpcal/shared/reports/reportPrintHtml';
 import { fetchReportData } from '@/api/reportsApi';
 import { PageHeader } from '@/components/layout';
 import { LookAheadCuratedFilters } from '@/components/look-ahead/LookAheadCuratedFilters';
 import { LookAheadDateRangeControl } from '@/components/look-ahead/LookAheadDateRangeControl';
 import { LookAheadSectionToc } from '@/components/look-ahead/LookAheadSectionToc';
 import { PrintReportPreview } from '@/components/reports/PrintReportPreview';
+import { ReportPrintWidthToggle } from '@/components/reports/ReportPrintWidthToggle';
 import {
   ActivityConnectionStatusAlert,
   StatusMessage,
@@ -28,6 +30,10 @@ import { useAutoHideHeader } from '@/hooks/useAutoHideHeader';
 import { useLiveSyncConnectionAlert } from '@/hooks/useLiveSyncConnectionAlert';
 import { useActivityStatuses } from '@/hooks/useLookups';
 import { useReportDataFreshness } from '@/hooks/useReportDataFreshness';
+import {
+  LOOK_AHEAD_PRINT_WIDTH_TOGGLE_VISIBLE,
+  useReportPreviewSheetWidth,
+} from '@/hooks/useReportPreviewSheetWidth';
 import analytics from '@/lib/analytics';
 import {
   clearLookAheadCuratedFilters,
@@ -86,6 +92,16 @@ export function LookAheadPage() {
   const sectionScrollMarginPx = stickyChromeHeightPx + 8;
 
   const activeReport = preferences.execMode && canExec ? 'exec' : 'look-ahead';
+
+  const { previewSheetWidthMode, setPreviewSheetWidthMode } =
+    useReportPreviewSheetWidth();
+
+  const lookAheadPrintPreviewRootStyle = useMemo((): CSSProperties => {
+    if (previewSheetWidthMode === 'full') {
+      return { '--corpcal-print-root-max-width': 'none' } as CSSProperties;
+    }
+    return { minWidth: reportPrintSheetLayoutWidthPx(activeReport) };
+  }, [activeReport, previewSheetWidthMode]);
 
   const { data: activityStatusesForFilter = [] } = useActivityStatuses();
   const statusArchiveIds = useMemo(() => {
@@ -247,21 +263,29 @@ export function LookAheadPage() {
           }
           onResetCuratedFilters={handleResetCuratedFilters}
           trailingContent={
-            canExec ? (
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="look-ahead-exec-detail"
-                  checked={preferences.execMode}
-                  onCheckedChange={(checked) =>
-                    setPartialPreferences({ execMode: checked })
-                  }
-                  aria-label="Exec detail view"
+            <div className="flex flex-col items-end gap-2">
+              {canExec ? (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="look-ahead-exec-detail"
+                    checked={preferences.execMode}
+                    onCheckedChange={(checked) =>
+                      setPartialPreferences({ execMode: checked })
+                    }
+                    aria-label="Exec detail view"
+                  />
+                  <Label htmlFor="look-ahead-exec-detail" className="text-sm">
+                    Exec detail
+                  </Label>
+                </div>
+              ) : null}
+              {LOOK_AHEAD_PRINT_WIDTH_TOGGLE_VISIBLE ? (
+                <ReportPrintWidthToggle
+                  mode={previewSheetWidthMode}
+                  onModeChange={setPreviewSheetWidthMode}
                 />
-                <Label htmlFor="look-ahead-exec-detail" className="text-sm">
-                  Exec detail
-                </Label>
-              </div>
-            ) : undefined
+              ) : null}
+            </div>
           }
         />
       </div>
@@ -296,12 +320,11 @@ export function LookAheadPage() {
             </p>
           ) : displayData ? (
             <div
-              className="report-print-preview-root px-2 pb-8 md:px-4"
-              style={
-                {
-                  '--corpcal-print-root-max-width': 'none',
-                } as CSSProperties
-              }
+              className={cn(
+                'report-print-preview-root px-2 pb-8 md:px-4',
+                previewSheetWidthMode === 'full' && 'min-w-0'
+              )}
+              style={lookAheadPrintPreviewRootStyle}
             >
               <PrintReportPreview
                 reportTypeName={activeReport}
