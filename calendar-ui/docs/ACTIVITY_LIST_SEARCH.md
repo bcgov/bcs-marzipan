@@ -13,11 +13,15 @@ All other filtering is **client-side** over the cached list: date range, status 
 
 ## Reports vs Activity List
 
-**Reports** apply the full `ActivityFilterState` on the **server** via `activityFilterStateToQueryParams` (array query params, OR semantics). Preview applies **keyword search client-side** over the cached report payload (search is excluded from the fetch query key). Export (PDF/CSV/XLSX) passes `search` to the server so downloaded files match the on-screen filter. The summary bar counts activities after client-side search.
+**Planning, 30/60/90, and Custom reports** open from the activity list **Reports** menu on every tab except **Recent**. At open, the dialog snapshots the list `filterState`, `searchKeyword`, and archive toggles from `activityTablePreferences` (URL + sessionStorage). Report fetch uses **effective scope** (`buildActivityListEffectiveScope` in `calendar-ui/src/lib/activity-list-effective-scope.ts`): panel criteria via `activityFilterStateToQueryParams` **plus** tab server scope (ministry lead team, my activities, shared with us, assigned to me). **My watchlist** adds `activityIds` on the server so preview and PDF/XLSX export match the tab. Overlapping tab and panel ID filters use **intersection** (empty intersection blocks reports; ministry lead conflict matches the table empty state). Preview applies **keyword search client-side** over the cached report payload (search is excluded from the fetch query key). Export (PDF/XLSX) passes `search` and the same merged query params to the server. Dialog-only date changes are ephemeral (not persisted to the list). Open/close uses `?report=` on `/`. The report dialog closes when the list tab or ministry team changes.
+
+**Recent** does not support reports; the Reports menu lists report names as disabled and offers **Show full activity list** in the footer.
+
+**Look Ahead** reports live on the dedicated Look Ahead page.
 
 **Activity List** keeps the hybrid model above: tab/archive params on the API; filter-panel criteria client-side for table responsiveness.
 
-**Saved filters** are shared globally (same API payload). Applying a saved filter on Reports sets the same `filterState` + `searchKeyword` as on the Activity List; Reports honor every field server-side.
+**Saved filters** are shared globally (same API payload). Tab scope is shown in the report dialog filter summary (**View:** line) but is not stored inside saved filters.
 
 Unified query shape: all ID-list filters use `…Ids` array params in HTTP (comma-separated). Single-select is represented as a one-element array.
 
@@ -31,8 +35,6 @@ Both surfaces interpret `ActivityFilterState` through one shared specification i
 - `hasActivityFilterCriteria` (in `activity-filter-active.ts`) detects applied criteria for "Clear filters" / summary affordances — purely value-based, so applied **Pitch** / **Look Ahead** criteria count even when their controls are hidden by field scope.
 
 Parity means the **same predicate rules**, not identical row **counts**. Counts can legitimately differ: Reports use report date windows, omitted-activity settings, and section pins, while the list applies tab scoping (ministry, favourites) and archive overlays.
-
-The Reports filter row exposes the same dimensions as the Activity List, including **Look Ahead**.
 
 ## Implemented approach
 

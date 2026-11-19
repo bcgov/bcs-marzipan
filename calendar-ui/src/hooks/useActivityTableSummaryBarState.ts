@@ -9,12 +9,12 @@ import type {
   TableSummaryFilterDetailLine,
 } from '@/components/table/TableSummaryBar';
 import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
-import type { ActivityTablePreferences } from '@/hooks/useReportsTablePreferences';
 import {
   buildActivityTableBooleanFilters,
   buildActivityTableFilterSummaryDetails,
   resolveEffectiveArchiveFilterVisibility,
 } from '@/lib/activity-table-summary-bar-state';
+import type { ActivityTablePreferences } from '@/lib/activityTablePreferencesParams';
 
 export interface UseActivityTableSummaryBarStateOptions {
   preferences: ActivityTablePreferences;

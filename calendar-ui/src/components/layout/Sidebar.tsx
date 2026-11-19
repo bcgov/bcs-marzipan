@@ -2,7 +2,6 @@ import {
   Bell,
   CalendarDays,
   History,
-  NotebookText,
   PanelLeft,
   PanelLeftDashed,
   ScrollText,
@@ -49,7 +48,6 @@ function AppSidebarContent() {
   const { hasPermission } = useAuth();
   const { setOpenMobile, isMobile } = useSidebar();
 
-  const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW);
   const canViewLookAhead = hasPermission(PERMISSIONS.LOOK_AHEAD.VIEW);
   const canViewUsers = hasPermission(PERMISSIONS.USERS.VIEW);
   const canViewSettings = hasPermission(PERMISSIONS.SETTINGS.VIEW);
@@ -66,9 +64,6 @@ function AppSidebarContent() {
       : []),
     ...(canViewNotifications
       ? [{ to: '/notifications', label: 'Notifications', icon: Bell }]
-      : []),
-    ...(canViewReports
-      ? [{ to: '/reports', label: 'Reports', icon: NotebookText }]
       : []),
     { to: '/global-history', label: 'History', icon: History },
   ];

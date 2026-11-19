@@ -5,7 +5,7 @@ Calendar Analytics (Snowplow) - Dev/Test Integration
 - Files added:
   - `src/lib/analytics.ts` — helper wrapper exposing `trackCalendarClick(action)` and `trackCalendarAction(payload)`.
   - `src/custom.d.ts` — added `window.snowplow` typing.
-  - `src/components/reports/ReportFiltersBar.tsx` — example instrumentation: sends `calendar_action` when user presses Enter in the search box and `calendar_click` when the clear-search button is clicked.
+  - Activity list report dialog — reuses `trackReportExport*` / `trackReportSearchResultsLoaded` from `src/lib/analytics.ts`.
 
 Verification steps (local/dev):
 

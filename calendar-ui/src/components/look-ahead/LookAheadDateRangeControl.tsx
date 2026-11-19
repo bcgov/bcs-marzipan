@@ -209,13 +209,12 @@ export function LookAheadDateRangeControl({
         </PopoverContent>
       </Popover>
 
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
             className="border-border hover:bg-accent/50 flex items-center border-l px-2 py-1.5"
             aria-label="Choose date preset"
-            onClick={(e) => e.stopPropagation()}
           >
             <ChevronDown className="text-muted-foreground h-4 w-4" />
           </button>
