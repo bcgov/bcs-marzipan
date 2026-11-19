@@ -111,14 +111,19 @@ describe('buildActivityListEffectiveScope', () => {
     expect(scope.reportAvailability).toBe('blocked-conflict');
   });
 
-  it('blocks Recent tab', () => {
+  it('blocks reports when watchlist exceeds id limit', () => {
     const scope = buildActivityListEffectiveScope({
-      tab: 'recent',
+      tab: 'favourites',
       preferences: basePreferences,
       statusArchiveIds: statusArchive,
       canSeeDeleted: false,
+      watchlistActivityIds: Array.from(
+        { length: 501 },
+        (_, index) => index + 1
+      ),
     });
-    expect(scope.reportAvailability).toBe('blocked-tab');
+    expect(scope.reportAvailability).toBe('blocked-watchlist-limit');
+    expect(scope.reportFetchParams.activityIds).toBeUndefined();
   });
 
   it('includes activityIds on watchlist tab', () => {
@@ -141,6 +146,6 @@ describe('buildActivityListEffectiveScope', () => {
       canSeeDeleted: false,
       watchlistActivityIds: [],
     });
-    expect(scope.reportFetchParams.activityIds).toEqual([0]);
+    expect(scope.reportFetchParams.activityIds).toEqual([]);
   });
 });

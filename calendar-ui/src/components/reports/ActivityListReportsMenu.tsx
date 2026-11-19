@@ -8,7 +8,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { ActivityListReportAvailability } from '@/lib/activity-list-effective-scope';
+import {
+  reportsMenuAvailabilityMessage,
+  reportsMenuItemsDisabled,
+  type ActivityListReportAvailability,
+} from '@/lib/activity-list-effective-scope';
 import type { ActivityListReportName } from '@/lib/activity-list-report-params';
 
 export type ActivityListReportMenuItem = {
@@ -34,8 +38,10 @@ export function ActivityListReportsMenu({
   onOpenReport,
   onShowFullList,
 }: ActivityListReportsMenuProps) {
-  const reportsDisabled =
-    availability === 'blocked-tab' || availability === 'blocked-conflict';
+  const reportsDisabled = reportsMenuItemsDisabled(availability);
+  const availabilityMessage = reportsMenuAvailabilityMessage(availability);
+  const showSwitchToAll =
+    availability === 'blocked-conflict' && onShowFullList != null;
 
   return (
     <DropdownMenu>
@@ -56,18 +62,20 @@ export function ActivityListReportsMenu({
             {formatReportMenuLabel(report.displayName)}
           </DropdownMenuItem>
         ))}
-        {availability === 'blocked-tab' ? (
+        {availabilityMessage != null ? (
           <>
             <DropdownMenuSeparator />
             <p className="text-muted-foreground px-2 py-1.5 text-xs">
-              Reports aren&apos;t available on the Recent tab.
+              {availabilityMessage}
             </p>
-            <DropdownMenuItem
-              className="text-primary font-medium"
-              onSelect={() => onShowFullList?.()}
-            >
-              Show full activity list
-            </DropdownMenuItem>
+            {showSwitchToAll ? (
+              <DropdownMenuItem
+                className="text-primary font-medium"
+                onSelect={() => onShowFullList()}
+              >
+                Show full activity list
+              </DropdownMenuItem>
+            ) : null}
           </>
         ) : null}
       </DropdownMenuContent>

@@ -11,6 +11,7 @@ import {
   pacificCalendarDateFromInstant,
   THIRTY_SIXTY_NINETY_TAB_DAY_COUNTS,
   thirtySixtyNinetyTabDateRangeFromPacificDate,
+  type CalendarDateString as PacificCalendarDateString,
   type ThirtySixtyNinetyTabDayCount,
 } from '@corpcal/shared/reports/thirty-sixty-ninety';
 import { ScheduledDateRangeFields } from '@/components/activity/ActivityTable/ScheduledDateRangeFields';
@@ -53,7 +54,7 @@ function formatBoundDateRange(
 function tabDayCountFromRange(
   startDate: string,
   endDate: string,
-  pacificToday: CalendarDateString
+  pacificToday: PacificCalendarDateString
 ): ThirtySixtyNinetyTabDayCount | null {
   if (!startDate || !endDate) return null;
   for (const tabDayCount of THIRTY_SIXTY_NINETY_TAB_DAY_COUNTS) {

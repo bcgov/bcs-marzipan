@@ -12,6 +12,16 @@ const STORAGE_KEY = 'activityTablePreferences' as const;
 const mockSetSearchParams = vi.fn();
 let mockSearchParams: URLSearchParams;
 
+function applySearchParamsUpdate(
+  updater: unknown,
+  prev: URLSearchParams
+): URLSearchParams {
+  if (typeof updater === 'function') {
+    return updater(prev) as URLSearchParams;
+  }
+  return new URLSearchParams(updater as Record<string, string>);
+}
+
 vi.mock('react-router-dom', () => ({
   useSearchParams: () => [mockSearchParams, mockSetSearchParams],
 }));
@@ -47,6 +57,12 @@ describe('useActivityTablePreferences', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchParams = new URLSearchParams();
+    mockSetSearchParams.mockImplementation((updater) => {
+      mockSearchParams = applySearchParamsUpdate(
+        updater,
+        new URLSearchParams(mockSearchParams)
+      );
+    });
     Object.defineProperty(window, 'sessionStorage', {
       value: makeMockStorage(),
       writable: true,
@@ -326,10 +342,21 @@ describe('useActivityTablePreferences', () => {
         result.current.setPreferences({ sortKey: 'activityId' });
       });
 
-      expect(mockSetSearchParams).toHaveBeenCalledWith(
-        expect.objectContaining({ sort: 'activityId' }),
-        { replace: true }
+      expect(mockSearchParams.get('sort')).toBe('activityId');
+    });
+
+    it('preserves unrelated URL params such as report when syncing preferences', () => {
+      mockSearchParams = new URLSearchParams('report=planning&sort=startDate');
+      const { result } = renderHook(() =>
+        useActivityTablePreferences(canSeeDeleted)
       );
+
+      act(() => {
+        result.current.setPreferences({ sortKey: 'lastUpdated' });
+      });
+
+      expect(mockSearchParams.get('report')).toBe('planning');
+      expect(mockSearchParams.get('sort')).toBe('lastUpdated');
     });
 
     it('syncs lead filter ids to URL when filter state changes', () => {
@@ -348,14 +375,9 @@ describe('useActivityTablePreferences', () => {
         });
       });
 
-      expect(mockSetSearchParams).toHaveBeenCalledWith(
-        expect.objectContaining({
-          leadTeam: '12',
-          commsLead: '34',
-          eventPlanner: '56',
-        }),
-        { replace: true }
-      );
+      expect(mockSearchParams.get('leadTeam')).toBe('12');
+      expect(mockSearchParams.get('commsLead')).toBe('34');
+      expect(mockSearchParams.get('eventPlanner')).toBe('56');
     });
   });
 
@@ -381,10 +403,27 @@ describe('useActivityTablePreferences', () => {
       act(() => {
         vi.advanceTimersByTime(400);
       });
-      expect(mockSetSearchParams).toHaveBeenCalledWith(
-        expect.objectContaining({ search: 'foo' }),
-        { replace: true }
+      expect(mockSearchParams.get('search')).toBe('foo');
+    });
+
+    it('preserves report param when debounced search sync runs', () => {
+      vi.useFakeTimers();
+      mockSearchParams = new URLSearchParams(
+        'report=custom&sort=startDate&dir=asc'
       );
+      const { result } = renderHook(() =>
+        useActivityTablePreferences(canSeeDeleted)
+      );
+
+      act(() => {
+        result.current.setPreferences({ searchKeyword: 'delayed' });
+      });
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+
+      expect(mockSearchParams.get('report')).toBe('custom');
+      expect(mockSearchParams.get('search')).toBe('delayed');
     });
   });
 });

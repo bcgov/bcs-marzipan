@@ -47,7 +47,7 @@ const ACTIVITY_LIST_REPORT_NAME_SET = new Set<string>(
 /**
  * Activity list. Rendered inside Layout, which wraps content with
  * the shared PageContainer (max-width, padding) so this page fits viewport width.
- * Tabs filter the list: All, ministry lead team, My activities, Recent (disabled), Shared with me.
+ * Tabs filter the list: All, ministry lead team, My activities, Shared with us, and scoped views.
  */
 export const ActivityListPage = () => {
   const location = useLocation();
@@ -385,15 +385,11 @@ export const ActivityListPage = () => {
         </div>
 
         <div className="mt-0 min-w-0">
-          {activeTab === 'recent' ? (
-            <ActivityTable />
-          ) : (
-            <ActivityTable
-              {...tableProps}
-              activeSavedFilter={activeSavedFilter}
-              onActiveSavedFilterChange={setActiveSavedFilter}
-            />
-          )}
+          <ActivityTable
+            {...tableProps}
+            activeSavedFilter={activeSavedFilter}
+            onActiveSavedFilterChange={setActiveSavedFilter}
+          />
         </div>
       </Tabs>
 

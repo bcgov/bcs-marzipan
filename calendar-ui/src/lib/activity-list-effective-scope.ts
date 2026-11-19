@@ -18,21 +18,19 @@ export { activityListTabDisplayLabel };
 /** Maximum watchlist activity IDs sent on report/list query strings. */
 export const ACTIVITY_LIST_WATCHLIST_IDS_MAX = 500;
 
-export type ActivityListTabServerScope = Pick<
-  ReportDataQueryParams,
-  | 'leadTeamIds'
-  | 'commsContactLeadUserIds'
-  | 'sharedWithTeamIds'
-  | 'flagAssigneeUserIds'
-  | 'activityIds'
+export type ActivityListTabServerScope = Partial<
+  Pick<
+    ReportDataQueryParams,
+    | 'leadTeamIds'
+    | 'commsContactLeadUserIds'
+    | 'sharedWithTeamIds'
+    | 'flagAssigneeUserIds'
+    | 'activityIds'
+  >
 >;
 
 export type ActivityListReportAvailability =
-  | 'allowed'
-  | 'allowed-with-warning'
-  | 'blocked-tab'
-  | 'blocked-conflict'
-  | 'blocked-watchlist-limit';
+  'allowed' | 'blocked-conflict' | 'blocked-watchlist-limit';
 
 export type ReportAvailability = ActivityListReportAvailability;
 
@@ -87,13 +85,21 @@ const TAB_PANEL_INTERSECT_KEYS = [
 export function reportsMenuItemsDisabled(
   availability: ActivityListReportAvailability
 ): boolean {
-  return availability !== 'allowed' && availability !== 'allowed-with-warning';
+  return availability !== 'allowed';
 }
 
-export function showReportsFullListFooter(
+/** Short explanation shown under disabled report menu items, if any. */
+export function reportsMenuAvailabilityMessage(
   availability: ActivityListReportAvailability
-): boolean {
-  return availability === 'blocked-tab';
+): string | null {
+  switch (availability) {
+    case 'blocked-conflict':
+      return "Reports aren't available — filters conflict with this view.";
+    case 'blocked-watchlist-limit':
+      return `Reports aren't available — watchlist has more than ${ACTIVITY_LIST_WATCHLIST_IDS_MAX} activities.`;
+    default:
+      return null;
+  }
 }
 
 export function buildActivityListTableProps(
@@ -176,8 +182,6 @@ export function buildActivityListTabServerScope(
         : {};
     case 'my-activities':
       return userId != null ? { commsContactLeadUserIds: [userId] } : {};
-    case 'recent':
-      return {};
     case 'shared-with-me':
       return userTeamIds.length > 0 ? { sharedWithTeamIds: userTeamIds } : {};
     case 'favourites':
@@ -250,7 +254,7 @@ export function buildActivityListEffectiveScope(
     if (watchlistActivityIds.length > ACTIVITY_LIST_WATCHLIST_IDS_MAX) {
       watchlistOverLimit = true;
     } else if (watchlistActivityIds.length === 0) {
-      merged.activityIds = [0];
+      merged.activityIds = [];
     } else {
       merged.activityIds = [...watchlistActivityIds].sort((a, b) => a - b);
     }
@@ -264,9 +268,7 @@ export function buildActivityListEffectiveScope(
     );
 
   let reportAvailability: ActivityListReportAvailability = 'allowed';
-  if (tab === 'recent') {
-    reportAvailability = 'blocked-tab';
-  } else if (watchlistOverLimit) {
+  if (watchlistOverLimit) {
     reportAvailability = 'blocked-watchlist-limit';
   } else if (ministryConflict || ministryLeadConflict || intersectConflict) {
     reportAvailability = 'blocked-conflict';
