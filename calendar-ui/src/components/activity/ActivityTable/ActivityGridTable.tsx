@@ -13,6 +13,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { flexRender, type Header, type Table } from '@tanstack/react-table';
+import { useNavigate } from 'react-router-dom';
 import type { CSSProperties, MouseEvent } from 'react';
 
 import {
@@ -186,6 +187,15 @@ export function ActivityGridTable({
   core,
 }: ActivityGridTableProps) {
   const { newRowIds, remoteHighlightIds, openActivityWithScroll } = core;
+  const navigate = useNavigate();
+
+  const openRow = (row: ActivityTableRow) => {
+    if (row.isLegacy && row.legacyId != null) {
+      void navigate(`/legacy-activities/${row.legacyId}`);
+      return;
+    }
+    openActivityWithScroll(row.id);
+  };
 
   const selectColumnWidth =
     table.getColumn(SELECT_COLUMN_ID)?.getSize() ??
@@ -288,12 +298,12 @@ export function ActivityGridTable({
                 tabIndex={0}
                 onClick={(e) => {
                   handleTableRowClick(e, () => {
-                    openActivityWithScroll(row.original.id);
+                    openRow(row.original);
                   });
                 }}
                 onKeyDown={(e) => {
                   handleTableRowKeyDown(e, () => {
-                    openActivityWithScroll(row.original.id);
+                    openRow(row.original);
                   });
                 }}
               >

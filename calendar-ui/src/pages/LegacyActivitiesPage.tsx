@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 
 import {
   fetchLegacyActivities,
   type LegacyActivityListItem,
 } from '@/api/legacyActivitiesApi';
+import { ActivityFormSection } from '@/components/activity/ActivityFormSections/ActivityFormSection';
 import { PageHeader } from '@/components/layout';
 import { ContentSection } from '@/components/table/ContentSection';
 import { FilterSection } from '@/components/table/FilterSection';
@@ -22,6 +24,23 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const DEFAULT_LIMIT = 100;
+
+type LegacySectionField = {
+  label: string;
+  value: string;
+};
+
+type LegacySection = {
+  title:
+    | 'Overview'
+    | 'Look Ahead'
+    | 'Schedule'
+    | 'Comms'
+    | 'Event'
+    | 'Location'
+    | 'Sharing';
+  fields: LegacySectionField[];
+};
 
 function formatDate(value: string | null): string {
   if (!value) return '-';
@@ -40,6 +59,159 @@ function toSourceOptions(rows: LegacyActivityListItem[]): string[] {
     if (row.sourceSystem?.trim()) unique.add(row.sourceSystem.trim());
   }
   return [...unique].sort((a, b) => a.localeCompare(b));
+}
+
+function toDisplayValue(value: string | null | undefined): string {
+  if (value == null) return '-';
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : '-';
+}
+
+function toLegacySections(row: LegacyActivityListItem): LegacySection[] {
+  return [
+    {
+      title: 'Overview',
+      fields: [
+        { label: 'Title', value: toDisplayValue(row.title) },
+        { label: 'Summary', value: toDisplayValue(row.summary) },
+        { label: 'Status', value: toDisplayValue(row.statusName) },
+        { label: 'Archived', value: row.isArchived ? 'Yes' : 'No' },
+      ],
+    },
+    {
+      title: 'Look Ahead',
+      fields: [
+        {
+          label: 'Look Ahead Status',
+          value: toDisplayValue(row.lookAheadStatus),
+        },
+      ],
+    },
+    {
+      title: 'Schedule',
+      fields: [
+        { label: 'Start Date', value: formatDate(row.startDate) },
+        { label: 'End Date', value: formatDate(row.endDate) },
+      ],
+    },
+    {
+      title: 'Comms',
+      fields: [
+        { label: 'Lead Organization', value: toDisplayValue(row.leadOrgName) },
+        { label: 'Ministry', value: toDisplayValue(row.ministryName) },
+      ],
+    },
+    {
+      title: 'Event',
+      fields: [
+        { label: 'Source System', value: toDisplayValue(row.sourceSystem) },
+        { label: 'Source Table', value: toDisplayValue(row.sourceTable) },
+        {
+          label: 'Source Record ID',
+          value: toDisplayValue(row.sourceRecordId),
+        },
+        { label: 'Imported At', value: formatDate(row.importedAt) },
+      ],
+    },
+    {
+      title: 'Location',
+      fields: [
+        { label: 'Location Name', value: toDisplayValue(row.locationName) },
+      ],
+    },
+    {
+      title: 'Sharing',
+      fields: [
+        {
+          label: 'Shared With',
+          value: 'No legacy sharing metadata available.',
+        },
+      ],
+    },
+  ];
+}
+
+type LegacySectionColumn = {
+  left: LegacySection[];
+  right: LegacySection[];
+};
+
+function splitSectionsForFormLayout(
+  row: LegacyActivityListItem
+): LegacySectionColumn {
+  const sections = toLegacySections(row);
+  const byTitle = new Map(sections.map((section) => [section.title, section]));
+
+  return {
+    left: [byTitle.get('Overview'), byTitle.get('Location')].filter(
+      (section): section is LegacySection => section != null
+    ),
+    right: [
+      byTitle.get('Look Ahead'),
+      byTitle.get('Schedule'),
+      byTitle.get('Comms'),
+      byTitle.get('Event'),
+      byTitle.get('Sharing'),
+    ].filter((section): section is LegacySection => section != null),
+  };
+}
+
+function LegacySectionCard({ section }: { section: LegacySection }) {
+  return (
+    <ActivityFormSection title={section.title}>
+      <dl className="space-y-4">
+        {section.fields.map((field) => (
+          <div key={`${section.title}-${field.label}`}>
+            <dt className="text-muted-foreground text-xs tracking-wide uppercase">
+              {field.label}
+            </dt>
+            <dd className="mt-1 text-sm text-slate-900">{field.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </ActivityFormSection>
+  );
+}
+
+export function LegacyActivityDetailsView({
+  row,
+}: {
+  row: LegacyActivityListItem;
+}) {
+  const { left, right } = splitSectionsForFormLayout(row);
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold text-slate-900">
+          {row.title || '(Untitled legacy record)'}
+        </h2>
+        <p className="text-muted-foreground text-sm">
+          {row.sourceSystem} / {row.sourceTable} / {row.sourceRecordId}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
+        <div className="space-y-12">
+          {left.map((section) => (
+            <LegacySectionCard
+              key={`left-${section.title}`}
+              section={section}
+            />
+          ))}
+        </div>
+
+        <div className="space-y-12">
+          {right.map((section) => (
+            <LegacySectionCard
+              key={`right-${section.title}`}
+              section={section}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function LegacyActivitiesPage() {
@@ -148,11 +320,11 @@ export function LegacyActivitiesView({
           <table className={tableTable}>
             <thead className={tableThead}>
               <tr>
-                <th className={tableTh}>Title</th>
-                <th className={tableTh}>Source</th>
+                <th className={tableTh}>Overview</th>
+                <th className={tableTh}>Summary</th>
+                <th className={tableTh}>Scheduling</th>
+                <th className={tableTh}>Comms</th>
                 <th className={tableTh}>Status</th>
-                <th className={tableTh}>Start Date</th>
-                <th className={tableTh}>Imported</th>
               </tr>
             </thead>
             <tbody>
@@ -179,26 +351,51 @@ export function LegacyActivitiesView({
                 rows.map((row) => (
                   <tr className={tableBodyRow} key={row.id}>
                     <td className={tableTd}>
-                      <div className="font-medium text-slate-900">
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {row.sourceSystem} / {row.sourceTable}#
+                        {row.sourceRecordId}
+                      </p>
+                    </td>
+                    <td className={tableTd}>
+                      <Link
+                        to={`/legacy-activities/${row.id}`}
+                        className="font-semibold text-slate-900 no-underline hover:no-underline"
+                      >
                         {row.title || '(Untitled legacy record)'}
-                      </div>
+                      </Link>
                       {row.summary && (
                         <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
                           {row.summary}
                         </p>
                       )}
+                      {!row.summary && (
+                        <p className="text-muted-foreground text-sm">-</p>
+                      )}
                     </td>
                     <td className={tableTd}>
                       <div className="text-sm text-slate-900">
-                        {row.sourceSystem}
+                        Start: {formatDate(row.startDate)}
                       </div>
                       <div className="text-muted-foreground text-xs">
-                        {row.sourceTable}#{row.sourceRecordId}
+                        End: {formatDate(row.endDate)}
                       </div>
                     </td>
-                    <td className={tableTd}>{row.statusName || '-'}</td>
-                    <td className={tableTd}>{formatDate(row.startDate)}</td>
-                    <td className={tableTd}>{formatDate(row.importedAt)}</td>
+                    <td className={tableTd}>
+                      <div className="text-sm text-slate-900">
+                        {row.leadOrgName || '-'}
+                      </div>
+                      <div className="text-muted-foreground text-xs">
+                        {row.ministryName || '-'}
+                      </div>
+                    </td>
+                    <td className={tableTd}>
+                      <div className="text-sm text-slate-900">
+                        {row.statusName || '-'}
+                      </div>
+                      <div className="text-muted-foreground text-xs">
+                        Look Ahead: {row.lookAheadStatus || '-'}
+                      </div>
+                    </td>
                   </tr>
                 ))}
             </tbody>

@@ -1,4 +1,11 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 
 import {
   LegacyActivitiesService,
@@ -24,5 +31,14 @@ export class LegacyActivitiesController {
       limit: query.limit ?? 25,
       offset: query.offset ?? 0,
     });
+  }
+
+  @Get(':id')
+  async getById(@Param('id', ParseIntPipe) id: number) {
+    const row = await this.legacyActivitiesService.getById(id);
+    if (!row) {
+      throw new NotFoundException(`Legacy activity ${id} not found`);
+    }
+    return row;
   }
 }

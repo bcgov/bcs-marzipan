@@ -57,3 +57,29 @@ export async function fetchLegacyActivities(
 
   return [];
 }
+
+const LEGACY_PAGE_SIZE = 100;
+const LEGACY_MAX_ROWS = 2000;
+
+/** Pages through the list endpoint (server caps page size at 100) up to a safety limit. */
+export async function fetchAllLegacyActivities(): Promise<
+  LegacyActivityListItem[]
+> {
+  const all: LegacyActivityListItem[] = [];
+  for (let offset = 0; offset < LEGACY_MAX_ROWS; offset += LEGACY_PAGE_SIZE) {
+    const page = await fetchLegacyActivities({
+      limit: LEGACY_PAGE_SIZE,
+      offset,
+    });
+    all.push(...page);
+    if (page.length < LEGACY_PAGE_SIZE) break;
+  }
+  return all;
+}
+
+export async function fetchLegacyActivity(
+  id: number
+): Promise<LegacyActivityListItem> {
+  const res = await api.get<LegacyActivityListItem>(`/legacy-activities/${id}`);
+  return res.data;
+}

@@ -38,6 +38,11 @@ const ActivityLayout = lazyWithRetry(() =>
     default: m.ActivityLayout,
   }))
 );
+const LegacyActivityLayout = lazyWithRetry(() =>
+  import('./pages/LegacyActivityLayout').then((m) => ({
+    default: m.LegacyActivityLayout,
+  }))
+);
 const Login = lazyWithRetry(() =>
   import('./pages/Login').then((m) => ({ default: m.Login }))
 );
@@ -149,6 +154,16 @@ function App() {
                       requiredPermission={PERMISSIONS.ACTIVITIES.VIEW}
                     >
                       <ActivityLayout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="legacy-activities/:id"
+                  element={
+                    <ProtectedRoute
+                      requiredPermission={PERMISSIONS.ACTIVITIES.VIEW}
+                    >
+                      <LegacyActivityLayout />
                     </ProtectedRoute>
                   }
                 />

@@ -98,6 +98,32 @@ export class LegacyActivitiesService {
     return rows;
   }
 
+  async getById(id: number): Promise<LegacyActivityListRow | null> {
+    const rows = await this.db.db
+      .select({
+        id: legacyActivities.id,
+        sourceSystem: legacyActivities.sourceSystem,
+        sourceTable: legacyActivities.sourceTable,
+        sourceRecordId: legacyActivities.sourceRecordId,
+        title: legacyActivities.title,
+        summary: legacyActivities.summary,
+        startDate: legacyActivities.startDate,
+        endDate: legacyActivities.endDate,
+        statusName: legacyActivities.statusName,
+        lookAheadStatus: legacyActivities.lookAheadStatus,
+        leadOrgName: legacyActivities.leadOrgName,
+        ministryName: legacyActivities.ministryName,
+        locationName: legacyActivities.locationName,
+        importedAt: legacyActivities.importedAt,
+        isArchived: legacyActivities.isArchived,
+      })
+      .from(legacyActivities)
+      .where(eq(legacyActivities.id, id))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
   private normalizeNumber(
     value: number | string | undefined,
     fallback: number,
