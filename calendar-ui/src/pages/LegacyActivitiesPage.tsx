@@ -182,15 +182,6 @@ export function LegacyActivityDetailsView({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-xl font-semibold text-slate-900">
-          {row.title || '(Untitled legacy record)'}
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          {row.sourceSystem} / {row.sourceTable} / {row.sourceRecordId}
-        </p>
-      </div>
-
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
         <div className="space-y-12">
           {left.map((section) => (
