@@ -183,7 +183,10 @@ export function BadgeGroup({
   return (
     <div
       ref={containerRef}
-      className={cn('flex flex-wrap items-center gap-1', containerClassName)}
+      className={cn(
+        'flex max-w-full min-w-0 flex-wrap items-center gap-1',
+        containerClassName
+      )}
       style={
         visibleCount == null && visibleCountOverride == null
           ? { maxHeight: maxLines * lineHeight, overflow: 'hidden' }
@@ -195,11 +198,12 @@ export function BadgeGroup({
           key={item.key}
           data-badge-item="true"
           data-badge-group-measure="true"
+          title={item.label}
           variant={item.variant ?? badgeVariant}
-          className={cn(badgeClassName, item.className)}
+          className={cn('max-w-full min-w-0', badgeClassName, item.className)}
           style={item.style}
         >
-          {item.label}
+          <span className="truncate">{item.label}</span>
         </Badge>
       ))}
 

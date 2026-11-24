@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query, Res } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 
+import { PERMISSIONS } from '@corpcal/shared';
 import type { ReportDataResponse } from '@corpcal/shared/api/types';
 import {
   reportDataQuerySchema,
@@ -12,17 +13,20 @@ import { ReportDataResponseWrapperDto } from '../common/dto';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ApiZodQueries } from '../common/swagger/zod-query.openapi';
 import { RequestContext } from '../policy/decorators/request-context.decorator';
-import { RequirePermission } from '../policy/decorators/require-permission.decorator';
+import {
+  RequireAnyPermission,
+  RequirePermission,
+} from '../policy/decorators/require-permission.decorator';
 import type { RequestContext as RequestContextType } from '../policy/dto/user-context.dto';
 import { ReportsService } from './reports.service';
 
 @ApiTags('reports')
 @Controller('reports')
-@RequirePermission('reports.view')
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('data/:type')
+  @RequireAnyPermission(PERMISSIONS.REPORTS.VIEW, PERMISSIONS.LOOK_AHEAD.VIEW)
   @ApiOperation({ summary: 'Get report data by type' })
   @ApiZodQueries(reportDataQuerySchema)
   @ApiResponse({
@@ -45,6 +49,7 @@ export class ReportsController {
   }
 
   @Get('export/:type/csv')
+  @RequirePermission(PERMISSIONS.REPORTS.VIEW)
   @ApiOperation({ summary: 'Export report as CSV' })
   @ApiZodQueries(reportDataQuerySchema)
   @ApiResponse({
@@ -71,6 +76,7 @@ export class ReportsController {
   }
 
   @Get('export/:type/xlsx')
+  @RequirePermission(PERMISSIONS.REPORTS.VIEW)
   @ApiOperation({ summary: 'Export report as Excel (XLSX)' })
   @ApiZodQueries(reportDataQuerySchema)
   @ApiResponse({
@@ -99,6 +105,7 @@ export class ReportsController {
   }
 
   @Get('export/:type/pdf')
+  @RequirePermission(PERMISSIONS.REPORTS.VIEW)
   @ApiOperation({ summary: 'Export report as PDF' })
   @ApiZodQueries(reportDataQuerySchema)
   @ApiResponse({

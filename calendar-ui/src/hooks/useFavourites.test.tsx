@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
+import { PERMISSIONS } from '@corpcal/shared';
 import {
   addFavourite,
   listFavouriteActivityIds,
@@ -11,6 +12,14 @@ import {
 import { showErrorToast } from '@/lib/error-toast';
 
 import { useFavourites } from './useFavourites';
+
+const mockHasPermission = vi.fn((_key: string) => true);
+
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    hasPermission: (key: string) => mockHasPermission(key),
+  }),
+}));
 
 vi.mock('@/api/favouritesApi', () => ({
   listFavouriteActivityIds: vi.fn(),
@@ -36,6 +45,7 @@ function makeWrapper() {
 describe('useFavourites', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockHasPermission.mockImplementation(() => true);
   });
 
   afterEach(() => {
@@ -141,6 +151,31 @@ describe('useFavourites', () => {
       });
 
       await waitFor(() => expect(result.current.isFavourite(5)).toBe(false));
+    });
+  });
+
+  describe('when favourites.manage is not granted', () => {
+    it('does not fetch favourites and no-ops toggle', async () => {
+      mockHasPermission.mockImplementation(
+        (key) => key !== PERMISSIONS.FAVOURITES.MANAGE
+      );
+
+      const { result } = renderHook(() => useFavourites(), {
+        wrapper: makeWrapper(),
+      });
+
+      await waitFor(() =>
+        expect(result.current.canManageFavourites).toBe(false)
+      );
+      expect(result.current.isLoading).toBe(false);
+      expect(listFavouriteActivityIds).not.toHaveBeenCalled();
+
+      act(() => {
+        result.current.toggle(5);
+      });
+
+      expect(addFavourite).not.toHaveBeenCalled();
+      expect(removeFavourite).not.toHaveBeenCalled();
     });
   });
 

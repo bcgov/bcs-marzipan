@@ -46,9 +46,10 @@ const LegacyActivityLayout = lazyWithRetry(() =>
 const Login = lazyWithRetry(() =>
   import('./pages/Login').then((m) => ({ default: m.Login }))
 );
-const ReportsPage = lazyWithRetry(() =>
-  import('./pages/ReportsPage').then((m) => ({
-    default: m.ReportsPage,
+
+const LookAheadPage = lazyWithRetry(() =>
+  import('./pages/LookAheadPage').then((m) => ({
+    default: m.LookAheadPage,
   }))
 );
 const GlobalHistory = lazyWithRetry(() =>
@@ -203,12 +204,12 @@ function App() {
                   }
                 />
                 <Route
-                  path="reports"
+                  path="look-ahead"
                   element={
                     <ProtectedRoute
-                      requiredPermission={PERMISSIONS.REPORTS.VIEW}
+                      requiredPermission={PERMISSIONS.LOOK_AHEAD.VIEW}
                     >
-                      <ReportsPage />
+                      <LookAheadPage />
                     </ProtectedRoute>
                   }
                 />

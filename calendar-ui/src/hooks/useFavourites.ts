@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { PERMISSIONS } from '@corpcal/shared';
 import {
   addFavourite,
   listFavouriteActivityIds,
   removeFavourite,
 } from '@/api/favouritesApi';
+import { useAuth } from '@/hooks/useAuth';
 import { showErrorToast } from '@/lib/error-toast';
 
 const FAVOURITES_QUERY_KEY = ['activity-favourites'] as const;
@@ -13,15 +15,20 @@ const EMPTY_FAVOURITE_IDS: number[] = [];
 
 export function useFavourites() {
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
+  const canManageFavourites = hasPermission(PERMISSIONS.FAVOURITES.MANAGE);
 
   const { data, isLoading } = useQuery({
     queryKey: FAVOURITES_QUERY_KEY,
     queryFn: listFavouriteActivityIds,
+    enabled: canManageFavourites,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
 
-  const favouriteActivityIds = data ?? EMPTY_FAVOURITE_IDS;
+  const favouriteActivityIds = canManageFavourites
+    ? (data ?? EMPTY_FAVOURITE_IDS)
+    : EMPTY_FAVOURITE_IDS;
 
   const addMutation = useMutation({
     mutationFn: (activityId: number) => addFavourite(activityId),
@@ -69,6 +76,7 @@ export function useFavourites() {
     favouriteActivityIds.includes(activityId);
 
   const toggle = (activityId: number) => {
+    if (!canManageFavourites) return;
     if (isFavourite(activityId)) {
       removeMutation.mutate(activityId);
     } else {
@@ -77,8 +85,9 @@ export function useFavourites() {
   };
 
   return {
+    canManageFavourites,
     favouriteActivityIds,
-    isLoading,
+    isLoading: canManageFavourites ? isLoading : false,
     isFavourite,
     toggle,
     isToggling: addMutation.isPending || removeMutation.isPending,

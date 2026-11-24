@@ -58,6 +58,10 @@ import {
   buildActivityTableFilterSummaryDetails,
   resolveEffectiveArchiveFilterVisibility,
 } from '@/lib/activity-table-summary-bar-state';
+import {
+  bulkDialogEligibleIds,
+  resolveActivityBulkMenu,
+} from '@/lib/activityBulkActions';
 import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import { dateRangeReachesPast } from '@/lib/legacy-date-gate';
@@ -131,21 +135,17 @@ export function useActivityTableCore({
   const location = useLocation();
   const isActivityListRoute = location.pathname === '/';
   const { user, hasPermission } = useAuth();
+  const userTeamIds = useMemo(() => user?.teamIds ?? [], [user?.teamIds]);
 
-  const canBulkUpdateActivities = hasPermission(
-    PERMISSIONS.ACTIVITIES.BULK_UPDATE
-  );
   const unsharePermissions = resolveUnsharePermissions(
     hasPermission,
     user?.roleName
   );
   const canUnshare =
     unsharePermissions.hasUnshare || unsharePermissions.hasUnshareAll;
-  const canBulkSelect = canBulkUpdateActivities || canUnshare;
   const canSeeDeleted =
     user?.roleName === SYSTEM_ROLES.ADMIN ||
     user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
-  const canBulkShareActivities = canSeeDeleted;
   const showReviewHighlights = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
 
@@ -588,6 +588,28 @@ export function useActivityTableCore({
     [sortedData, selectedActivityIds]
   );
 
+  const bulkMenu = useMemo(
+    () =>
+      resolveActivityBulkMenu({
+        hasPermission,
+        userId: user?.id,
+        teamIds: userTeamIds,
+        roleName: user?.roleName,
+        canUnshare,
+        selectedRows: selectedActivities,
+        watchlistIds,
+      }),
+    [
+      hasPermission,
+      user?.id,
+      userTeamIds,
+      user?.roleName,
+      canUnshare,
+      selectedActivities,
+      watchlistIds,
+    ]
+  );
+
   const eligibleBulkUnshareTeams = useMemo(
     () =>
       getUnshareableTeamsForBulk(
@@ -666,7 +688,15 @@ export function useActivityTableCore({
   }, []);
 
   const handleBulkReview = useCallback(async () => {
-    const activityIds = [...selectedActivityIds];
+    const activityIds = bulkDialogEligibleIds(
+      'review',
+      bulkMenu,
+      selectedActivityIds
+    );
+    if (activityIds.length === 0) {
+      toast.error('No selected activities can be marked reviewed.');
+      return;
+    }
     try {
       await bulkUpdateActivitiesMutation.mutateAsync({
         activityIds,
@@ -680,11 +710,19 @@ export function useActivityTableCore({
     } catch (error) {
       toast.error(getFriendlyErrorMessage(error));
     }
-  }, [selectedActivityIds, bulkUpdateActivitiesMutation]);
+  }, [bulkMenu, bulkUpdateActivitiesMutation, selectedActivityIds]);
 
   const handleBulkOperation = useCallback(async () => {
-    const activityIds = [...selectedActivityIds];
-    if (!bulkDialog || activityIds.length === 0) return;
+    if (!bulkDialog) return;
+    const activityIds = bulkDialogEligibleIds(
+      bulkDialog,
+      bulkMenu,
+      selectedActivityIds
+    );
+    if (activityIds.length === 0) {
+      toast.error('No selected activities are eligible for this batch action.');
+      return;
+    }
     if (bulkDialog === 'review') {
       await handleBulkReview();
       return;
@@ -712,6 +750,7 @@ export function useActivityTableCore({
     }
   }, [
     bulkDialog,
+    bulkMenu,
     bulkUpdateActivitiesMutation,
     deleteReason,
     handleBulkReview,
@@ -884,9 +923,8 @@ export function useActivityTableCore({
   return {
     // Permissions and visibility
     user,
-    canBulkSelect,
-    canBulkUpdateActivities,
-    canBulkShareActivities,
+    canBulkSelect: bulkMenu.canBulkSelect,
+    bulkMenu,
     canUnshare,
     canSeeDeleted,
     canFlag,

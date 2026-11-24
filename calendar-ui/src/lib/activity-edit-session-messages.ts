@@ -87,6 +87,26 @@ export function getActivityConnectionBlockedAlertMessage(
   }
 }
 
+/**
+ * Live activity sync (Look Ahead, Reports, activity list polling) — user can keep
+ * viewing cached data while offline; alert copy stresses sync, not blocking work.
+ */
+export const LIVE_SYNC_CONNECTION_OFFLINE_ALERT =
+  'You are offline. Reconnect to sync.';
+
+export function getLiveSyncConnectionBlockedAlertMessage(
+  socketConnection: Exclude<ActivitySocketConnectionDisplay, 'connected'>
+): string {
+  switch (socketConnection) {
+    case 'browser-offline':
+      return LIVE_SYNC_CONNECTION_OFFLINE_ALERT;
+    case 'disconnected':
+      return ACTIVITY_EDIT_CONNECTION_DISCONNECTED_ALERT;
+    case 'reconnecting':
+      return ACTIVITY_EDIT_CONNECTION_RECONNECTING_ALERT;
+  }
+}
+
 export const ACTIVITY_EDIT_CONNECTION_RESTORED_ALERT = 'Connection restored';
 
 export const ACTIVITY_EDIT_CONNECTION_VERIFYING_ALERT =

@@ -29,6 +29,32 @@ const URL_PARAM_EVENT_PLANNER = 'eventPlanner';
 const URL_PARAM_TRANSLATION = 'translation';
 const URL_PARAM_TRANSLATION_STATUS = 'translationStatus';
 
+/** Keys owned by activity table preferences URL sync (not report dialog, etc.). */
+export const ACTIVITY_TABLE_PREFERENCE_URL_PARAM_KEYS = [
+  URL_PARAM_SORT,
+  URL_PARAM_DIR,
+  URL_PARAM_COMPLETED,
+  URL_PARAM_DELETED,
+  URL_PARAM_PAGE_SIZE,
+  URL_PARAM_SEARCH,
+  URL_PARAM_DATE_FROM,
+  URL_PARAM_DATE_TO,
+  URL_PARAM_NO_START,
+  URL_PARAM_NO_END,
+  URL_PARAM_CATEGORY,
+  URL_PARAM_STATUS,
+  URL_PARAM_LOOK_AHEAD_STATUS,
+  URL_PARAM_LOOK_AHEAD_SECTION,
+  URL_PARAM_DATE_CONFIRMED,
+  URL_PARAM_TIME_CONFIRMED,
+  URL_PARAM_TAG,
+  URL_PARAM_LEAD_TEAM,
+  URL_PARAM_COMMS_LEAD,
+  URL_PARAM_EVENT_PLANNER,
+  URL_PARAM_TRANSLATION,
+  URL_PARAM_TRANSLATION_STATUS,
+] as const;
+
 /** Delay before syncing search keyword to URL so the input keeps focus while typing. */
 export const SEARCH_SYNC_DEBOUNCE_MS = 400;
 
@@ -342,29 +368,8 @@ function parseFromStorage(
 }
 
 export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
-  return (
-    searchParams.has(URL_PARAM_SORT) ||
-    searchParams.has(URL_PARAM_DIR) ||
-    searchParams.has(URL_PARAM_COMPLETED) ||
-    searchParams.has(URL_PARAM_DELETED) ||
-    searchParams.has(URL_PARAM_PAGE_SIZE) ||
-    searchParams.has(URL_PARAM_SEARCH) ||
-    searchParams.has(URL_PARAM_DATE_FROM) ||
-    searchParams.has(URL_PARAM_DATE_TO) ||
-    searchParams.has(URL_PARAM_NO_START) ||
-    searchParams.has(URL_PARAM_NO_END) ||
-    searchParams.has(URL_PARAM_CATEGORY) ||
-    searchParams.has(URL_PARAM_STATUS) ||
-    searchParams.has(URL_PARAM_LOOK_AHEAD_STATUS) ||
-    searchParams.has(URL_PARAM_LOOK_AHEAD_SECTION) ||
-    searchParams.has(URL_PARAM_DATE_CONFIRMED) ||
-    searchParams.has(URL_PARAM_TIME_CONFIRMED) ||
-    searchParams.has(URL_PARAM_TAG) ||
-    searchParams.has(URL_PARAM_LEAD_TEAM) ||
-    searchParams.has(URL_PARAM_COMMS_LEAD) ||
-    searchParams.has(URL_PARAM_EVENT_PLANNER) ||
-    searchParams.has(URL_PARAM_TRANSLATION) ||
-    searchParams.has(URL_PARAM_TRANSLATION_STATUS)
+  return ACTIVITY_TABLE_PREFERENCE_URL_PARAM_KEYS.some((key) =>
+    searchParams.has(key)
   );
 }
 
@@ -427,6 +432,25 @@ export function preferencesToParams(
     }
   }
   return out;
+}
+
+/**
+ * Writes preference params into `prev` and removes stale preference keys.
+ * Preserves unrelated query params (e.g. activity list `report` dialog).
+ */
+export function applyPreferencesToSearchParams(
+  prev: URLSearchParams,
+  prefs: ActivityTablePreferences
+): URLSearchParams {
+  const next = new URLSearchParams(prev);
+  for (const key of ACTIVITY_TABLE_PREFERENCE_URL_PARAM_KEYS) {
+    next.delete(key);
+  }
+  const preferenceParams = preferencesToParams(prefs);
+  for (const [key, value] of Object.entries(preferenceParams)) {
+    next.set(key, value);
+  }
+  return next;
 }
 
 /**

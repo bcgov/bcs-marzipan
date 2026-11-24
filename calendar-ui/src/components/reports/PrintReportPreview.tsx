@@ -41,11 +41,14 @@ export function PrintReportPreview({
   reportTypeName,
   data,
   highlightActivityIds,
+  sectionAnchorIds,
 }: {
   reportTypeName: string;
   data: ReportDataResponse;
   /** In-app: flash preview rows briefly after remote activity updates. */
   highlightActivityIds?: ReadonlySet<number>;
+  /** In-app: stable section `id`s for table-of-contents navigation. */
+  sectionAnchorIds?: boolean;
 }) {
   const activityBaseUrl = useMemo(() => resolveActivityBaseUrl(), []);
   const { data: translationLanguages = [] } = useTranslationLanguages();
@@ -66,6 +69,7 @@ export function PrintReportPreview({
       activityBaseUrl={activityBaseUrl}
       highlightActivityIds={highlightActivityIds}
       resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
+      sectionAnchorIds={sectionAnchorIds}
     />
   );
 }
@@ -76,6 +80,7 @@ function PrintReportPreviewRoot({
   activityBaseUrl,
   highlightActivityIds,
   resolveTranslationLanguageLabel,
+  sectionAnchorIds,
 }: {
   reportTypeName: ReactRenderableReportType;
   printData: ReturnType<typeof toPrintReportDocumentData>;
@@ -84,6 +89,7 @@ function PrintReportPreviewRoot({
   resolveTranslationLanguageLabel?: ReturnType<
     typeof buildTranslationLanguageLabelResolver
   >;
+  sectionAnchorIds?: boolean;
 }) {
   let document: ReactNode;
   if (reportTypeName === 'custom') {
@@ -101,6 +107,7 @@ function PrintReportPreviewRoot({
         activityBaseUrl={activityBaseUrl}
         highlightActivityIds={highlightActivityIds}
         resolveTranslationLanguageLabel={resolveTranslationLanguageLabel}
+        sectionAnchorIds={sectionAnchorIds}
       />
     );
   }

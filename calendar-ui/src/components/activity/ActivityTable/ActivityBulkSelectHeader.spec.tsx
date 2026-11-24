@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +11,15 @@ function makeCore(
     selectedActivityCount: number;
     selectActivityIds: ReturnType<typeof vi.fn>;
     clearSelection: ReturnType<typeof vi.fn>;
+    teams: {
+      id: number;
+      name: string;
+      displayName?: string | null;
+      abbreviation?: string;
+    }[];
+    filterState: { leadTeamIds: number[] };
+    canSeeDeleted: boolean;
+    user: { teamIds: number[] };
   }> = {}
 ) {
   const sortedData = overrides.sortedData ?? [{ id: 1 }, { id: 2 }];
@@ -22,7 +31,10 @@ function makeCore(
     selectActivityIds: overrides.selectActivityIds ?? vi.fn(),
     clearSelection: overrides.clearSelection ?? vi.fn(),
     pagination: { pageIndex: 0, pageSize: 25 },
-    user: { teamIds: [] },
+    user: overrides.user ?? { teamIds: [] },
+    teams: overrides.teams ?? [],
+    filterState: overrides.filterState ?? { leadTeamIds: [] },
+    canSeeDeleted: overrides.canSeeDeleted ?? false,
   } as never;
 }
 
@@ -114,6 +126,7 @@ describe('ActivityBulkSelectHeader', () => {
     expect(
       screen.getByRole('menuitem', { name: /All activities/ })
     ).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: 'Lead team' })).toBeTruthy();
   });
 
   it('does not open the selection menu when the header checkbox is clicked', async () => {
@@ -134,5 +147,109 @@ describe('ActivityBulkSelectHeader', () => {
     expect(
       screen.queryByRole('menuitem', { name: /All activities/ })
     ).toBeNull();
+  });
+
+  it('selects activities for a single lead team from the submenu', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const selectActivityIds = vi.fn();
+
+    render(
+      <ActivityBulkSelectHeader
+        core={makeCore({
+          selectActivityIds,
+          sortedData: [
+            { id: 1, leadTeamId: 10 },
+            { id: 2, leadTeamId: 20 },
+            { id: 3, leadTeamId: 10 },
+          ],
+          user: { teamIds: [10, 20] },
+          teams: [
+            { id: 10, name: 't10', abbreviation: 'T10' },
+            { id: 20, name: 't20', abbreviation: 'T20' },
+          ],
+        })}
+      />
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Select activities menu' })
+    );
+    await user.click(screen.getByRole('menuitem', { name: 'Lead team' }));
+    const teamItem = await screen.findByRole('menuitem', {
+      name: 'T10 activities (2)',
+    });
+    fireEvent.click(teamItem);
+
+    await waitFor(() => expect(selectActivityIds).toHaveBeenCalledWith([1, 3]));
+  });
+
+  it('disables lead teams outside an active lead team filter', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    render(
+      <ActivityBulkSelectHeader
+        core={makeCore({
+          sortedData: [
+            { id: 1, leadTeamId: 10 },
+            { id: 2, leadTeamId: 20 },
+          ],
+          user: { teamIds: [10, 20] },
+          teams: [
+            { id: 10, name: 't10', abbreviation: 'T10' },
+            { id: 20, name: 't20', abbreviation: 'T20' },
+          ],
+          filterState: { leadTeamIds: [10] },
+        })}
+      />
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Select activities menu' })
+    );
+    await user.click(screen.getByRole('menuitem', { name: 'Lead team' }));
+
+    const enabled = await screen.findByRole('menuitem', {
+      name: 'T10 activities (1)',
+    });
+    const disabled = await screen.findByRole('menuitem', {
+      name: 'T20 activities (1)',
+    });
+
+    expect(enabled).not.toHaveAttribute('data-disabled');
+    expect(disabled).toHaveAttribute('data-disabled');
+  });
+
+  it('selects all my teams from the submenu', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const selectActivityIds = vi.fn();
+
+    render(
+      <ActivityBulkSelectHeader
+        core={makeCore({
+          selectActivityIds,
+          sortedData: [
+            { id: 1, leadTeamId: 10 },
+            { id: 2, leadTeamId: 20 },
+            { id: 3, leadTeamId: 99 },
+          ],
+          user: { teamIds: [10, 20] },
+          teams: [
+            { id: 10, name: 't10', abbreviation: 'T10' },
+            { id: 20, name: 't20', abbreviation: 'T20' },
+          ],
+        })}
+      />
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Select activities menu' })
+    );
+    await user.click(screen.getByRole('menuitem', { name: 'Lead team' }));
+    const allMyTeamsItem = await screen.findByRole('menuitem', {
+      name: 'All my teams (2)',
+    });
+    fireEvent.click(allMyTeamsItem);
+
+    await waitFor(() => expect(selectActivityIds).toHaveBeenCalledWith([1, 2]));
   });
 });

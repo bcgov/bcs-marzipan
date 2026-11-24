@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   commaSeparatedIntArray,
+  commaSeparatedIntArrayPreserveEmpty,
   commaSeparatedStringArray,
   confirmedFilterEnum,
   requiredCommaSeparatedIntArray,
@@ -76,6 +77,7 @@ export const filterActivitiesQuerySchema = z.object({
       val === undefined ? undefined : val === 'true'
     ),
   activityStatusIds: commaSeparatedIntArray(),
+  activityIds: commaSeparatedIntArrayPreserveEmpty(),
   leadTeamIds: commaSeparatedIntArray(),
   commsContactLeadUserIds: commaSeparatedIntArray(),
   flagAssigneeUserIds: commaSeparatedIntArray(),
@@ -140,6 +142,7 @@ export type FilterActivitiesQueryParams = Pick<
 /** Int-array query fields serialized as comma-separated strings in HTTP. */
 export const FILTER_ACTIVITIES_INT_ARRAY_KEYS = [
   'activityStatusIds',
+  'activityIds',
   'leadTeamIds',
   'commsContactLeadUserIds',
   'flagAssigneeUserIds',
@@ -168,7 +171,7 @@ export function serializeFilterActivitiesQueryParams(
   for (const [key, value] of Object.entries(filters)) {
     if (value === undefined) continue;
     if (Array.isArray(value)) {
-      out[key] = value.join(',');
+      out[key] = value.length === 0 ? '' : value.join(',');
     } else {
       out[key] = value;
     }

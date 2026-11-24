@@ -530,6 +530,8 @@ function SidebarMenuButton({
   size = 'default',
   tooltip,
   className,
+  onFocus,
+  onBlur,
   ...props
 }: React.ComponentProps<'button'> & {
   asChild?: boolean;
@@ -538,6 +540,10 @@ function SidebarMenuButton({
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot.Root : 'button';
   const { isMobile, state } = useSidebar();
+  const [tooltipOpen, setTooltipOpen] = React.useState(false);
+
+  const showTooltipContent = state === 'collapsed' && !isMobile;
+  const useFocusOnlyTooltip = Boolean(tooltip) && showTooltipContent;
 
   const button = (
     <Comp
@@ -546,6 +552,21 @@ function SidebarMenuButton({
       data-size={size}
       data-active={isActive}
       className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+      onFocus={(event) => {
+        onFocus?.(event);
+        if (
+          useFocusOnlyTooltip &&
+          event.currentTarget.matches(':focus-visible')
+        ) {
+          setTooltipOpen(true);
+        }
+      }}
+      onBlur={(event) => {
+        onBlur?.(event);
+        if (useFocusOnlyTooltip) {
+          setTooltipOpen(false);
+        }
+      }}
       {...props}
     />
   );
@@ -554,20 +575,27 @@ function SidebarMenuButton({
     return button;
   }
 
+  let tooltipContentProps: React.ComponentProps<typeof TooltipContent>;
   if (typeof tooltip === 'string') {
-    tooltip = {
-      children: tooltip,
-    };
+    tooltipContentProps = { children: tooltip };
+  } else {
+    tooltipContentProps = tooltip;
   }
 
   return (
-    <Tooltip>
+    <Tooltip
+      open={showTooltipContent ? tooltipOpen : false}
+      onOpenChange={(next) => {
+        if (!showTooltipContent) return;
+        if (!next) setTooltipOpen(false);
+      }}
+    >
       <TooltipTrigger asChild>{button}</TooltipTrigger>
       <TooltipContent
         side="right"
         align="center"
-        hidden={state !== 'collapsed' || isMobile}
-        {...tooltip}
+        hidden={!showTooltipContent}
+        {...tooltipContentProps}
       />
     </Tooltip>
   );

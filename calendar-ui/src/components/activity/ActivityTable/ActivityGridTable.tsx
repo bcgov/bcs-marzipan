@@ -37,7 +37,10 @@ import type { ActivityTableCore } from '@/hooks/useActivityTableCore';
 import { cn } from '@/lib/utils';
 
 import { isGridHeaderSortBlocked } from './GridStatusColumnHeader';
-import { GRID_A_SELECT_COLUMN_CELL_CLASS } from './selectColumnLayout';
+import {
+  GRID_A_SELECT_COLUMN_CELL_CLASS,
+  GRID_A_SELECT_COLUMN_WIDTH_PX,
+} from './selectColumnLayout';
 
 function getGridPinnedLeftOffset(
   columnId: string,
@@ -112,7 +115,7 @@ function SortableGridHeader({
         tableTh,
         'relative wrap-break-word whitespace-normal',
         isSelect && GRID_A_SELECT_COLUMN_CELL_CLASS,
-        isPinned && 'bg-accent',
+        isPinned && 'bg-accent overflow-hidden',
         hasMultiSort && 'group',
         isDragging && 'z-20 bg-slate-200/80',
         isOver && !isDragging && 'ring-primary/40 ring-2 ring-inset'
@@ -203,7 +206,7 @@ export function ActivityGridTable({
       .getHeaderGroups()[0]
       ?.headers.find((h) => h.column.id === SELECT_COLUMN_ID)
       ?.getSize() ??
-    44;
+    GRID_A_SELECT_COLUMN_WIDTH_PX;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -323,7 +326,7 @@ export function ActivityGridTable({
                         'border-b border-slate-100',
                         isSelect && GRID_A_SELECT_COLUMN_CELL_CLASS,
                         isPinned &&
-                          'bg-white group-hover/row:bg-slate-50 group-focus-visible/row:bg-slate-50'
+                          'overflow-hidden bg-white group-hover/row:bg-slate-50 group-focus-visible/row:bg-slate-50'
                       )}
                       style={{
                         width: cell.column.getSize(),
