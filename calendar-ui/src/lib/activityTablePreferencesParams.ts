@@ -8,8 +8,6 @@ export const STORAGE_KEY = 'activityTablePreferences';
 
 const URL_PARAM_SORT = 'sort';
 const URL_PARAM_DIR = 'dir';
-const URL_PARAM_COMPLETED = 'completed';
-const URL_PARAM_DELETED = 'deleted';
 const URL_PARAM_PAGE_SIZE = 'pageSize';
 const URL_PARAM_SEARCH = 'search';
 const URL_PARAM_DATE_FROM = 'dateFrom';
@@ -33,8 +31,6 @@ const URL_PARAM_TRANSLATION_STATUS = 'translationStatus';
 export const ACTIVITY_TABLE_PREFERENCE_URL_PARAM_KEYS = [
   URL_PARAM_SORT,
   URL_PARAM_DIR,
-  URL_PARAM_COMPLETED,
-  URL_PARAM_DELETED,
   URL_PARAM_PAGE_SIZE,
   URL_PARAM_SEARCH,
   URL_PARAM_DATE_FROM,
@@ -58,6 +54,9 @@ export const ACTIVITY_TABLE_PREFERENCE_URL_PARAM_KEYS = [
 /** Delay before syncing search keyword to URL so the input keeps focus while typing. */
 export const SEARCH_SYNC_DEBOUNCE_MS = 400;
 
+/** Delay before refetching activities when date range affects archive scope. */
+export const ARCHIVE_SCOPE_DEBOUNCE_MS = 400;
+
 const VALID_SORT_KEYS = new Set([
   'activityId',
   'activityStatus',
@@ -76,8 +75,6 @@ const MAX_PAGE_SIZE = 100;
 export interface ActivityTablePreferences {
   sortKey: string;
   sortDirection: 'asc' | 'desc';
-  showCompleted: boolean;
-  showDeleted: boolean;
   pageSize: number;
   searchKeyword: string;
   filterState: ActivityFilterState;
@@ -86,8 +83,6 @@ export interface ActivityTablePreferences {
 const DEFAULT_PREFERENCES: ActivityTablePreferences = {
   sortKey: DEFAULT_SORT_KEY,
   sortDirection: DEFAULT_SORT_DIRECTION,
-  showCompleted: false,
-  showDeleted: false,
   pageSize: DEFAULT_PAGE_SIZE,
   searchKeyword: '',
   filterState: DEFAULT_ACTIVITY_FILTER_STATE,
@@ -110,13 +105,10 @@ function parsePageSize(value: string | null): number | null {
 }
 
 function parseFromSearchParams(
-  searchParams: URLSearchParams,
-  canSeeDeleted: boolean
+  searchParams: URLSearchParams
 ): ActivityTablePreferences {
   const sort = searchParams.get(URL_PARAM_SORT)?.trim() || null;
   const dir = searchParams.get(URL_PARAM_DIR)?.toLowerCase() || null;
-  const completed = parseBool(searchParams.get(URL_PARAM_COMPLETED));
-  const deleted = parseBool(searchParams.get(URL_PARAM_DELETED));
   const pageSize = parsePageSize(searchParams.get(URL_PARAM_PAGE_SIZE));
   const searchParam = searchParams.get(URL_PARAM_SEARCH);
   const searchKeyword =
@@ -203,22 +195,13 @@ function parseFromSearchParams(
       sort && VALID_SORT_KEYS.has(sort) ? sort : DEFAULT_PREFERENCES.sortKey,
     sortDirection:
       dir === 'asc' || dir === 'desc' ? dir : DEFAULT_PREFERENCES.sortDirection,
-    showCompleted:
-      completed !== null ? completed : DEFAULT_PREFERENCES.showCompleted,
-    showDeleted: !canSeeDeleted
-      ? false
-      : deleted !== null
-        ? deleted
-        : DEFAULT_PREFERENCES.showDeleted,
     pageSize: pageSize ?? DEFAULT_PREFERENCES.pageSize,
     searchKeyword,
     filterState,
   };
 }
 
-function parseFromStorage(
-  canSeeDeleted: boolean
-): ActivityTablePreferences | null {
+function parseFromStorage(): ActivityTablePreferences | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -234,15 +217,6 @@ function parseFromStorage(
       parsed.sortDirection === 'asc' || parsed.sortDirection === 'desc'
         ? parsed.sortDirection
         : DEFAULT_PREFERENCES.sortDirection;
-    const showCompleted =
-      typeof parsed.showCompleted === 'boolean'
-        ? parsed.showCompleted
-        : DEFAULT_PREFERENCES.showCompleted;
-    const showDeleted = !canSeeDeleted
-      ? false
-      : typeof parsed.showDeleted === 'boolean'
-        ? parsed.showDeleted
-        : DEFAULT_PREFERENCES.showDeleted;
     const pageSize =
       typeof parsed.pageSize === 'number' &&
       Number.isFinite(parsed.pageSize) &&
@@ -356,8 +330,6 @@ function parseFromStorage(
     return {
       sortKey,
       sortDirection,
-      showCompleted,
-      showDeleted,
       pageSize,
       searchKeyword,
       filterState,
@@ -374,19 +346,13 @@ export function hasAnyKnownParam(searchParams: URLSearchParams): boolean {
 }
 
 export function getInitialPreferences(
-  searchParams: URLSearchParams,
-  canSeeDeleted: boolean
+  searchParams: URLSearchParams
 ): ActivityTablePreferences {
   if (hasAnyKnownParam(searchParams)) {
-    return parseFromSearchParams(searchParams, canSeeDeleted);
+    return parseFromSearchParams(searchParams);
   }
-  const fromStorage = parseFromStorage(canSeeDeleted);
-  return (
-    fromStorage ?? {
-      ...DEFAULT_PREFERENCES,
-      showDeleted: canSeeDeleted ? DEFAULT_PREFERENCES.showDeleted : false,
-    }
-  );
+  const fromStorage = parseFromStorage();
+  return fromStorage ?? { ...DEFAULT_PREFERENCES };
 }
 
 /**
@@ -402,8 +368,6 @@ export function preferencesToParams(
   const raw: Record<string, string> = {
     [URL_PARAM_SORT]: prefs.sortKey,
     [URL_PARAM_DIR]: prefs.sortDirection,
-    [URL_PARAM_COMPLETED]: String(prefs.showCompleted),
-    [URL_PARAM_DELETED]: String(prefs.showDeleted),
     [URL_PARAM_PAGE_SIZE]: String(prefs.pageSize),
     [URL_PARAM_SEARCH]: prefs.searchKeyword,
     [URL_PARAM_DATE_FROM]: f.dateRange.startDate,
@@ -457,8 +421,8 @@ export function applyPreferencesToSearchParams(
  * Returns the activity list URL search string from sessionStorage (e.g. "?sort=lastUpdated&dir=desc")
  * for use in breadcrumb or other links back to the list. Returns "" if no valid stored preferences.
  */
-export function getStoredActivityListSearch(canSeeDeleted: boolean): string {
-  const prefs = parseFromStorage(canSeeDeleted);
+export function getStoredActivityListSearch(): string {
+  const prefs = parseFromStorage();
   if (!prefs) return '';
   const params = new URLSearchParams(preferencesToParams(prefs));
   const search = params.toString();

@@ -12,8 +12,6 @@ const statusArchive = { completedStatusId: 5, deletedStatusId: 9 };
 
 const basePreferences = {
   filterState: DEFAULT_ACTIVITY_FILTER_STATE,
-  showCompleted: false,
-  showDeleted: false,
 };
 
 describe('intersectIdArrays', () => {
@@ -67,7 +65,7 @@ describe('buildActivityListEffectiveScope', () => {
       tab: 'all',
       preferences: basePreferences,
       statusArchiveIds: statusArchive,
-      canSeeDeleted: false,
+      canViewDeleted: false,
     });
     expect(scope.reportAvailability).toBe('allowed');
     expect(scope.reportFetchParams.leadTeamIds).toBeUndefined();
@@ -85,7 +83,7 @@ describe('buildActivityListEffectiveScope', () => {
         },
       },
       statusArchiveIds: statusArchive,
-      canSeeDeleted: false,
+      canViewDeleted: false,
       effectiveLeadTeamId: 42,
       ministryTabLabel: 'CITZ',
     });
@@ -105,7 +103,7 @@ describe('buildActivityListEffectiveScope', () => {
         },
       },
       statusArchiveIds: statusArchive,
-      canSeeDeleted: false,
+      canViewDeleted: false,
       effectiveLeadTeamId: 42,
     });
     expect(scope.reportAvailability).toBe('blocked-conflict');
@@ -116,7 +114,7 @@ describe('buildActivityListEffectiveScope', () => {
       tab: 'favourites',
       preferences: basePreferences,
       statusArchiveIds: statusArchive,
-      canSeeDeleted: false,
+      canViewDeleted: false,
       watchlistActivityIds: Array.from(
         { length: 501 },
         (_, index) => index + 1
@@ -131,7 +129,7 @@ describe('buildActivityListEffectiveScope', () => {
       tab: 'favourites',
       preferences: basePreferences,
       statusArchiveIds: statusArchive,
-      canSeeDeleted: false,
+      canViewDeleted: false,
       watchlistActivityIds: [1, 2, 3],
     });
     expect(scope.reportAvailability).toBe('allowed');
@@ -143,7 +141,7 @@ describe('buildActivityListEffectiveScope', () => {
       tab: 'favourites',
       preferences: basePreferences,
       statusArchiveIds: statusArchive,
-      canSeeDeleted: false,
+      canViewDeleted: false,
       watchlistActivityIds: [],
     });
     expect(scope.reportFetchParams.activityIds).toEqual([]);

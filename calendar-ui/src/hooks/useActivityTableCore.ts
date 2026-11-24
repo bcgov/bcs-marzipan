@@ -6,8 +6,9 @@ import {
   DEFAULT_ACTIVITY_FILTER_STATE,
   formatLanguageTagForDisplay,
   PERMISSIONS,
+  resolveActivityArchiveQueryFlags,
+  shouldShowCompletedHiddenByStatusHint,
 } from '@corpcal/shared';
-import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { hasAnyActivityTableFilterActive } from '@/components/activity/ActivityTable/ActivityTableFilters';
 import {
   mapActivityToTableRow,
@@ -20,6 +21,7 @@ import {
   DEFAULT_SORT_KEY,
 } from '@/components/activity/ActivityTable/activityTableSortColumns';
 import type { SortLevel } from '@/components/table/SortDropdown';
+import type { BooleanFilter } from '@/components/table/TableSummaryBar';
 import { useActivityListScrollRestore } from '@/hooks/useActivityListScrollRestore';
 import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
 import { useActivityTablePreferences } from '@/hooks/useActivityTablePreferences';
@@ -44,6 +46,7 @@ import {
 } from '@/hooks/useLookups';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
 import { buildValidFilterLookupsFromOptions } from '@/lib/activity-filter-lookups';
+import { COMPLETED_HIDDEN_BY_STATUS_FILTER_NOTE } from '@/lib/activity-list-filter-messages';
 import {
   canResolveTranslationLanguageFilter,
   filterActivityRowsByFilters,
@@ -51,16 +54,15 @@ import {
   type ActivityListQueryParams,
   type FilterActivityRowsContext,
 } from '@/lib/activity-query-utils';
-import {
-  buildActivityTableBooleanFilters,
-  buildActivityTableFilterSummaryDetails,
-  resolveEffectiveArchiveFilterVisibility,
-} from '@/lib/activity-table-summary-bar-state';
+import { buildActivityTableFilterSummaryDetails } from '@/lib/activity-table-summary-bar-state';
 import {
   bulkDialogEligibleIds,
   resolveActivityBulkMenu,
 } from '@/lib/activityBulkActions';
-import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
+import {
+  ARCHIVE_SCOPE_DEBOUNCE_MS,
+  hasAnyKnownParam,
+} from '@/lib/activityTablePreferencesParams';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
 import { hasMinistryTabLeadTeamFilterConflict } from '@/lib/ministry-tab-lead-filter-conflict';
 import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
@@ -137,9 +139,7 @@ export function useActivityTableCore({
   );
   const canUnshare =
     unsharePermissions.hasUnshare || unsharePermissions.hasUnshareAll;
-  const canSeeDeleted =
-    user?.roleName === SYSTEM_ROLES.ADMIN ||
-    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const canViewDeleted = hasPermission(PERMISSIONS.ACTIVITIES.VIEW_DELETED);
   const showReviewHighlights = hasPermission(PERMISSIONS.ACTIVITIES.REVIEW);
   const canFlag = hasPermission(PERMISSIONS.ACTIVITIES.FLAG);
 
@@ -154,11 +154,10 @@ export function useActivityTableCore({
     translationStatusOptions,
     filterSummaryContext: filterSummaryContextForBar,
     hasActivityStatuses,
-  } = useActivityTableFilterLookups(canSeeDeleted);
+  } = useActivityTableFilterLookups(canViewDeleted);
 
   const tableScrollRef = useRef<HTMLDivElement>(null);
-  const { preferences, setPreferences } =
-    useActivityTablePreferences(canSeeDeleted);
+  const { preferences, setPreferences } = useActivityTablePreferences();
   const savedFiltersHook = useSavedFilters();
   const [currentSearchParams] = useSearchParams();
   const defaultAppliedRef = useRef(false);
@@ -192,10 +191,18 @@ export function useActivityTableCore({
 
   const sortKey = preferences.sortKey;
   const sortDirection = preferences.sortDirection;
-  const showCompleted = preferences.showCompleted;
-  const showDeleted = preferences.showDeleted;
   const searchKeyword = preferences.searchKeyword;
   const filterState = preferences.filterState;
+
+  const [debouncedDateRange, setDebouncedDateRange] = useState(
+    filterState.dateRange
+  );
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedDateRange(filterState.dateRange);
+    }, ARCHIVE_SCOPE_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [filterState.dateRange]);
 
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedActivityIds, setSelectedActivityIds] = useState<Set<number>>(
@@ -344,14 +351,20 @@ export function useActivityTableCore({
     savedFilterDefaultLookupsReady,
   ]);
 
-  const { hasStatusFilter, effectiveShowCompleted, effectiveShowDeleted } =
-    resolveEffectiveArchiveFilterVisibility(
-      filterState,
-      statusArchiveIds,
-      showCompleted,
-      showDeleted,
-      canSeeDeleted
-    );
+  const filterStateForArchiveFetch = useMemo(
+    () => ({ ...filterState, dateRange: debouncedDateRange }),
+    [filterState, debouncedDateRange]
+  );
+
+  const { includeCompleted, includeDeleted } = useMemo(
+    () =>
+      resolveActivityArchiveQueryFlags({
+        filterState: filterStateForArchiveFetch,
+        statusArchiveIds,
+        canViewDeleted,
+      }),
+    [filterStateForArchiveFetch, statusArchiveIds, canViewDeleted]
+  );
 
   const pagination = useMemo(
     () => ({ pageIndex, pageSize: preferences.pageSize }),
@@ -360,8 +373,8 @@ export function useActivityTableCore({
 
   const activityFilters = useMemo((): ActivityListQueryParams => {
     return {
-      includeCompleted: effectiveShowCompleted,
-      includeDeleted: effectiveShowDeleted,
+      includeCompleted,
+      includeDeleted,
       ...(leadTeamIds !== undefined &&
         leadTeamIds.length > 0 && { leadTeamIds }),
       ...(commsContactLeadUserIds !== undefined &&
@@ -372,8 +385,8 @@ export function useActivityTableCore({
         flagAssigneeUserIds.length > 0 && { flagAssigneeUserIds }),
     };
   }, [
-    effectiveShowCompleted,
-    effectiveShowDeleted,
+    includeCompleted,
+    includeDeleted,
     leadTeamIds,
     commsContactLeadUserIds,
     sharedWithTeamIds,
@@ -814,32 +827,6 @@ export function useActivityTableCore({
     [effectiveSortKey, effectiveSortDirection, handleSortChange]
   );
 
-  const booleanFilters = useMemo(
-    () =>
-      buildActivityTableBooleanFilters({
-        hasStatusFilter,
-        effectiveShowCompleted,
-        effectiveShowDeleted,
-        canSeeDeleted,
-        onShowCompletedChange: (checked) => {
-          setActiveSavedFilter(null);
-          setPreferences({ showCompleted: checked });
-        },
-        onShowDeletedChange: (checked) => {
-          setActiveSavedFilter(null);
-          setPreferences({ showDeleted: checked });
-        },
-      }),
-    [
-      hasStatusFilter,
-      effectiveShowCompleted,
-      effectiveShowDeleted,
-      canSeeDeleted,
-      setPreferences,
-      setActiveSavedFilter,
-    ]
-  );
-
   const handleFilterStateChange = useCallback(
     (nextFilterState: typeof filterState) => {
       setActiveSavedFilter(null);
@@ -886,9 +873,20 @@ export function useActivityTableCore({
           filterState,
           searchKeyword,
           filterSummaryContext: filterSummaryContextForBar,
+          statusArchiveIds,
         }),
-      [filterState, searchKeyword, filterSummaryContextForBar]
+      [filterState, searchKeyword, filterSummaryContextForBar, statusArchiveIds]
     );
+
+  const completedHiddenByStatusFilterNote = useMemo(
+    () =>
+      shouldShowCompletedHiddenByStatusHint(filterState, statusArchiveIds)
+        ? COMPLETED_HIDDEN_BY_STATUS_FILTER_NOTE
+        : undefined,
+    [filterState, statusArchiveIds]
+  );
+
+  const booleanFilters = useMemo((): BooleanFilter[] => [], []);
 
   const handleClearAllCriteria = useCallback(() => {
     defaultSuppressedByClearRef.current = true;
@@ -910,7 +908,7 @@ export function useActivityTableCore({
     canBulkSelect: bulkMenu.canBulkSelect,
     bulkMenu,
     canUnshare,
-    canSeeDeleted,
+    canViewDeleted,
     canFlag,
     showReviewHighlights,
     // Query state
@@ -991,6 +989,7 @@ export function useActivityTableCore({
     filterDetailLines,
     hasActiveCriteria,
     booleanFilters,
+    completedHiddenByStatusFilterNote,
     leadFilterConflictsWithMinistryTab,
     favouriteActivityIds,
 

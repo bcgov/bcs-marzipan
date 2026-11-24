@@ -17,13 +17,13 @@ export { getStoredActivityListSearch } from '@/lib/activityTablePreferencesParam
  * URL is source of truth when params are present (shareable links); when the user
  * lands on the page with no params, state is restored from sessionStorage.
  */
-export function useActivityTablePreferences(canSeeDeleted: boolean): {
+export function useActivityTablePreferences(): {
   preferences: ActivityTablePreferences;
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
 } {
   const [searchParams, setSearchParams] = useSearchParams();
   const [preferences, setPreferencesState] = useState<ActivityTablePreferences>(
-    () => getInitialPreferences(searchParams, canSeeDeleted)
+    () => getInitialPreferences(searchParams)
   );
   const hasUserChangedRef = useRef(false);
   const lastUrlSyncRef = useRef<ActivityTablePreferences | null>(null);
@@ -40,12 +40,6 @@ export function useActivityTablePreferences(canSeeDeleted: boolean): {
         const next: ActivityTablePreferences = {
           ...prev,
           ...partial,
-          showDeleted:
-            partial.showDeleted !== undefined
-              ? canSeeDeleted
-                ? partial.showDeleted
-                : false
-              : prev.showDeleted,
           filterState:
             partial.filterState !== undefined
               ? partial.filterState
@@ -54,7 +48,7 @@ export function useActivityTablePreferences(canSeeDeleted: boolean): {
         return next;
       });
     },
-    [canSeeDeleted]
+    []
   );
 
   const syncToUrl = useCallback(
@@ -83,8 +77,6 @@ export function useActivityTablePreferences(canSeeDeleted: boolean): {
       prev !== null &&
       prev.sortKey === preferences.sortKey &&
       prev.sortDirection === preferences.sortDirection &&
-      prev.showCompleted === preferences.showCompleted &&
-      prev.showDeleted === preferences.showDeleted &&
       prev.pageSize === preferences.pageSize &&
       JSON.stringify(prev.filterState) ===
         JSON.stringify(preferences.filterState) &&

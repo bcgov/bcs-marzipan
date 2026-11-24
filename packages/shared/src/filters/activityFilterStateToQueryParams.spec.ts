@@ -6,13 +6,21 @@ import {
 } from '../activity-filter-state';
 import { activityFilterStateToQueryParams } from './activityFilterStateToQueryParams';
 
+const pastRange = {
+  startDate: '2020-01-01',
+  endDate: '2020-01-31',
+  noStartDate: false,
+  noEndDate: false,
+};
+
 describe('activityFilterStateToQueryParams', () => {
-  it('maps archive toggles when no status filter', () => {
+  it('includes completed when past date range and no status filter', () => {
     const result = activityFilterStateToQueryParams(
       {
-        filterState: DEFAULT_ACTIVITY_FILTER_STATE,
-        showCompleted: true,
-        showDeleted: false,
+        filterState: {
+          ...DEFAULT_ACTIVITY_FILTER_STATE,
+          dateRange: pastRange,
+        },
       },
       { completedStatusId: 5, deletedStatusId: 9 },
       true
@@ -29,8 +37,6 @@ describe('activityFilterStateToQueryParams', () => {
           ...DEFAULT_ACTIVITY_FILTER_STATE,
           activityStatusIds: [1, 5],
         },
-        showCompleted: false,
-        showDeleted: false,
       },
       { completedStatusId: 5, deletedStatusId: 9 },
       true
@@ -40,12 +46,25 @@ describe('activityFilterStateToQueryParams', () => {
     expect(result.includeDeleted).toBe(false);
   });
 
+  it('omits deleted status id from activityStatusIds when user cannot view deleted', () => {
+    const result = activityFilterStateToQueryParams(
+      {
+        filterState: {
+          ...DEFAULT_ACTIVITY_FILTER_STATE,
+          activityStatusIds: [1, 9],
+        },
+      },
+      { completedStatusId: 5, deletedStatusId: 9 },
+      false
+    );
+    expect(result.activityStatusIds).toEqual([1]);
+    expect(result.includeDeleted).toBe(false);
+  });
+
   it('does not map keyword search (applied client-side or at export)', () => {
     const result = activityFilterStateToQueryParams(
       {
         filterState: DEFAULT_ACTIVITY_FILTER_STATE,
-        showCompleted: false,
-        showDeleted: false,
       },
       {},
       false
@@ -65,8 +84,6 @@ describe('activityFilterStateToQueryParams', () => {
             noEndDate: false,
           },
         },
-        showCompleted: false,
-        showDeleted: false,
       },
       {},
       false
@@ -86,8 +103,6 @@ describe('activityFilterStateToQueryParams', () => {
     const result = activityFilterStateToQueryParams(
       {
         filterState,
-        showCompleted: false,
-        showDeleted: false,
       },
       {},
       false

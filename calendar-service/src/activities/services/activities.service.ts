@@ -141,6 +141,8 @@ import { ActivityDataFetcherService } from './activity-data-fetcher.service';
 import {
   buildActivityFindAllConditions,
   buildActivityVisibilityCondition,
+  resolveAllowIncludeDeleted,
+  resolveCanViewDeleted,
 } from './activity-find-all-filters';
 import { ActivityFlagsService } from './activity-flags.service';
 import { ActivityHistoryService } from './activity-history.service';
@@ -1983,10 +1985,12 @@ export class ActivitiesService {
     const deletedStatusId = deletedStatus?.id;
     const completedStatusId = completedStatus?.id;
 
-    const allowIncludeDeleted =
-      filters?.includeDeleted === true &&
-      (ctx?.user?.roleName === SYSTEM_ROLES.ADMIN ||
-        ctx?.user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN);
+    const userPermissions = ctx?.user?.permissions;
+    const canViewDeleted = resolveCanViewDeleted(userPermissions);
+    const allowIncludeDeleted = resolveAllowIncludeDeleted(
+      filters?.includeDeleted,
+      userPermissions
+    );
 
     const dataScope = resolveDataScope(ctx?.dataScope);
 
@@ -1996,6 +2000,7 @@ export class ActivitiesService {
         deletedStatusId,
         completedStatusId,
         allowIncludeDeleted,
+        canViewDeleted,
         db: this.databaseService.db,
         dataScope,
       });

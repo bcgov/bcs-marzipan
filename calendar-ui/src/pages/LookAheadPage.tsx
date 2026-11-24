@@ -118,11 +118,7 @@ export function LookAheadPage() {
   const reportFetchParams = useMemo(
     () =>
       activityFilterStateToQueryParams(
-        {
-          filterState: preferences.filterState,
-          showCompleted: false,
-          showDeleted: false,
-        },
+        { filterState: preferences.filterState },
         statusArchiveIds,
         false
       ),

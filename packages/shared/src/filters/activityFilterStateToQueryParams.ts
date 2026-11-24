@@ -1,16 +1,15 @@
 import type { ActivityFilterState } from '../activity-filter-state';
 import type { ReportDataQueryParams } from '../schemas/query-params.schema';
+import {
+  resolveActivityArchiveQueryFlags,
+  type ActivityStatusArchiveIds,
+} from './activity-archive-include';
 import { isDateRangeActive } from './activity-filter-date';
 
-export interface ActivityStatusArchiveIds {
-  completedStatusId?: number;
-  deletedStatusId?: number;
-}
+export type { ActivityStatusArchiveIds } from './activity-archive-include';
 
 export interface ActivityFilterPreferencesInput {
   filterState: ActivityFilterState;
-  showCompleted: boolean;
-  showDeleted: boolean;
 }
 
 function nonEmptyArray<T>(arr: T[]): T[] | undefined {
@@ -29,28 +28,21 @@ function nonEmptyArray<T>(arr: T[]): T[] | undefined {
 export function activityFilterStateToQueryParams(
   input: ActivityFilterPreferencesInput,
   statusArchive: ActivityStatusArchiveIds,
-  canSeeDeleted: boolean
+  canViewDeleted: boolean
 ): Partial<ReportDataQueryParams> {
-  const { filterState: fs, showCompleted, showDeleted } = input;
+  const { filterState: fs } = input;
 
-  const hasStatusFilter = fs.activityStatusIds.length > 0;
-  const statusIncludesCompleted =
-    statusArchive.completedStatusId != null &&
-    fs.activityStatusIds.includes(statusArchive.completedStatusId);
-  const statusIncludesDeleted =
-    statusArchive.deletedStatusId != null &&
-    fs.activityStatusIds.includes(statusArchive.deletedStatusId);
-
-  const effectiveShowCompleted = hasStatusFilter
-    ? statusIncludesCompleted
-    : showCompleted;
-  const effectiveShowDeleted = hasStatusFilter
-    ? statusIncludesDeleted && canSeeDeleted
-    : showDeleted && canSeeDeleted;
+  const { includeCompleted, includeDeleted } = resolveActivityArchiveQueryFlags(
+    {
+      filterState: fs,
+      statusArchiveIds: statusArchive,
+      canViewDeleted,
+    }
+  );
 
   const params: Partial<ReportDataQueryParams> = {
-    includeCompleted: effectiveShowCompleted,
-    includeDeleted: canSeeDeleted ? effectiveShowDeleted : false,
+    includeCompleted,
+    includeDeleted,
   };
 
   if (isDateRangeActive(fs.dateRange)) {
@@ -63,7 +55,13 @@ export function activityFilterStateToQueryParams(
     params.scheduledDateRangeOverlaps = true;
   }
 
-  const statusIds = nonEmptyArray(fs.activityStatusIds);
+  let activityStatusIds = fs.activityStatusIds;
+  if (!canViewDeleted && statusArchive.deletedStatusId != null) {
+    activityStatusIds = activityStatusIds.filter(
+      (id) => id !== statusArchive.deletedStatusId
+    );
+  }
+  const statusIds = nonEmptyArray(activityStatusIds);
   if (statusIds) params.activityStatusIds = statusIds;
 
   const leadTeamIds = nonEmptyArray(fs.leadTeamIds);

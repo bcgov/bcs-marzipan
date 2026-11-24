@@ -11,8 +11,6 @@ import {
 const baseListPrefs: ActivityTablePreferences = {
   sortKey: 'startDate',
   sortDirection: 'desc',
-  showCompleted: false,
-  showDeleted: false,
   pageSize: 10,
   searchKeyword: 'pitch',
   filterState: DEFAULT_ACTIVITY_FILTER_STATE,

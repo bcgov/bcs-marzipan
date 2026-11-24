@@ -11,7 +11,7 @@ import { buildDefaultPreferencesForReport } from '@/lib/report-preferences-defau
 
 describe('buildReportClearFilterState', () => {
   it('preserves baseline date and clears other criteria for look-ahead', () => {
-    const baseline = buildDefaultPreferencesForReport('look-ahead', false);
+    const baseline = buildDefaultPreferencesForReport('look-ahead');
     const cleared = buildReportClearFilterState('look-ahead');
 
     expect(cleared.dateRange).toEqual(baseline.filterState.dateRange);
@@ -22,10 +22,7 @@ describe('buildReportClearFilterState', () => {
   });
 
   it('uses month-tab baseline for thirty-sixty-ninety', () => {
-    const baseline = buildDefaultPreferencesForReport(
-      'thirty-sixty-ninety',
-      false
-    );
+    const baseline = buildDefaultPreferencesForReport('thirty-sixty-ninety');
     const cleared = buildReportClearFilterState('thirty-sixty-ninety');
 
     expect(cleared.dateRange).toEqual(baseline.filterState.dateRange);

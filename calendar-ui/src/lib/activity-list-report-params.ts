@@ -42,21 +42,14 @@ export type ActivityListReportStatusArchiveIds = {
 };
 
 export function buildActivityListReportFetchParams(
-  preferences: Pick<
-    ActivityTablePreferences,
-    'filterState' | 'showCompleted' | 'showDeleted'
-  >,
+  preferences: Pick<ActivityTablePreferences, 'filterState'>,
   statusArchiveIds: ActivityListReportStatusArchiveIds,
-  canSeeDeleted: boolean
+  canViewDeleted: boolean
 ): ReportDataRequestParams {
   return activityFilterStateToQueryParams(
-    {
-      filterState: preferences.filterState,
-      showCompleted: preferences.showCompleted,
-      showDeleted: preferences.showDeleted,
-    },
+    { filterState: preferences.filterState },
     statusArchiveIds,
-    canSeeDeleted
+    canViewDeleted
   );
 }
 

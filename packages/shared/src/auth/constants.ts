@@ -73,6 +73,8 @@ export type SystemRoleId =
 export const PERMISSIONS = {
   ACTIVITIES: {
     VIEW: 'activities.view',
+    /** Include deleted-status activities in list/report queries when selected in status filter. */
+    VIEW_DELETED: 'activities.view.deleted',
     CREATE: 'activities.create',
     EDIT: 'activities.edit',
     DELETE: 'activities.delete',
