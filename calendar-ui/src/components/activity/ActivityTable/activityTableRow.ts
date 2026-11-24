@@ -263,6 +263,7 @@ export function mapLegacyActivityToTableRow(
     leadTeamId: null,
     leadOrganizationId: null,
     commsContactLeadUserId: null,
+    commsContactUserIds: [],
 
     translationsRequired: [],
     translationsRequiredStatus: null,
