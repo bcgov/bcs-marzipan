@@ -259,7 +259,7 @@ export const governmentRepresentatives = pgTable(
     sortOrder: integer('sort_order').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),
     title: varchar('title', { length: 255 }),
-    representativeType: varchar('representative_type', { length: 50 }), // 'premier', 'minister', 'cabinet_member', 'mla', 'other'
+    representativeType: varchar('representative_type', { length: 50 }), // 'premier', 'minister', 'minister_of_state', 'cabinet_member', 'mla', 'other'
     createdDateTime: timestamp('created_date_time', { withTimezone: true })
       .notNull()
       .defaultNow(),

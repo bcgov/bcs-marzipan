@@ -348,7 +348,7 @@ describe('toPrintRowViewModel', () => {
       {
         ...BASE_ACTIVITY,
         schedulingNotes: 'Tentative: first week of next month.',
-        premierRequested: 'Premier David Eby',
+        premierRequested: 'Premier Lorne Doerkson',
         significance: 'High-profile announcement.',
       },
       {
@@ -360,7 +360,7 @@ describe('toPrintRowViewModel', () => {
     expect(row.schedulingNotesStored).toBe(
       'Tentative: first week of next month.'
     );
-    expect(row.premierRequested).toBe('Premier David Eby');
+    expect(row.premierRequested).toBe('Premier Lorne Doerkson');
     expect(row.significanceStored).toBe('High-profile announcement.');
     expect(row.dateTime.dateStatus).toBe('');
     expect(row.dateTime.timeStatus).toBe('');

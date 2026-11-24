@@ -123,21 +123,21 @@ describe('LookupsService', () => {
         createChain(
           [
             {
-              id: 2,
-              name: 'Niki Sharma',
-              displayName: 'Attorney General Niki Sharma',
-              title: 'Attorney General and Deputy Premier',
-              ministryId: 3,
+              id: 2004,
+              name: 'Caroline Elliott',
+              displayName: 'Attorney General Caroline Elliott',
+              title: 'Attorney General',
+              ministryId: 4,
               representativeType: 'minister',
               sortOrder: 1,
               isActive: true,
             },
             {
-              id: 1,
-              name: 'Lana Popham',
-              displayName: 'Minister Lana Popham',
-              title: 'Minister of Agriculture and Food',
-              ministryId: 2,
+              id: 2003,
+              name: 'Ian Paton',
+              displayName: 'Minister Ian Paton',
+              title: 'Minister of Agriculture',
+              ministryId: 3,
               representativeType: 'minister',
               sortOrder: 2,
               isActive: true,
@@ -151,8 +151,8 @@ describe('LookupsService', () => {
     const result = await service.getGovernmentRepresentatives();
 
     expect(result.map((rep) => rep.name)).toEqual([
-      'Niki Sharma',
-      'Lana Popham',
+      'Caroline Elliott',
+      'Ian Paton',
     ]);
   });
 
@@ -163,13 +163,13 @@ describe('LookupsService', () => {
           {
             id: 2,
             adUsername: 'NSHARMA',
-            adDisplayName: 'Niki Sharma',
+            adDisplayName: 'Caroline Elliott',
             adEmail: 'n@gov.bc.ca',
           },
           {
             id: 1,
             adUsername: 'LPOPHAM',
-            adDisplayName: 'Lana Popham',
+            adDisplayName: 'Ian Paton',
             adEmail: 'l@gov.bc.ca',
           },
           {
@@ -186,11 +186,11 @@ describe('LookupsService', () => {
     const result = await service.getEventPlanners();
 
     expect(result.map((planner) => planner.label)).toEqual([
-      'Lana Popham',
-      'Niki Sharma',
+      'Caroline Elliott',
+      'Ian Paton',
       'planner@gov.bc.ca',
     ]);
-    expect(result.map((planner) => planner.value)).toEqual([1, 2, 3]);
+    expect(result.map((planner) => planner.value)).toEqual([2, 1, 3]);
     expect(result.find((planner) => planner.value === 3)?.label).toBe(
       'planner@gov.bc.ca'
     );
