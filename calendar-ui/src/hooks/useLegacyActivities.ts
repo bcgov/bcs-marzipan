@@ -3,12 +3,16 @@ import { useQuery } from '@tanstack/react-query';
 import {
   fetchAllLegacyActivities,
   fetchLegacyActivity,
+  type LegacyActivityListQuery,
 } from '@/api/legacyActivitiesApi';
 
-export function useLegacyActivities(enabled: boolean) {
+export function useLegacyActivities(
+  enabled: boolean,
+  query: Omit<LegacyActivityListQuery, 'limit' | 'offset'> = {}
+) {
   return useQuery({
-    queryKey: ['legacy-activities', 'all'],
-    queryFn: fetchAllLegacyActivities,
+    queryKey: ['legacy-activities', query],
+    queryFn: () => fetchAllLegacyActivities(query),
     enabled,
   });
 }

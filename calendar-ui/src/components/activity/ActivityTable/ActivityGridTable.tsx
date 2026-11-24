@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { flexRender, type Header, type Table } from '@tanstack/react-table';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { CSSProperties, MouseEvent } from 'react';
 
 import {
@@ -34,6 +34,7 @@ import {
 } from '@/components/table/tableRowNavigation';
 import { SELECT_COLUMN_ID } from '@/hooks/useActivityGridColumnTable';
 import type { ActivityTableCore } from '@/hooks/useActivityTableCore';
+import { activityFormLinkState } from '@/lib/activity-form-navigation-state';
 import { cn } from '@/lib/utils';
 
 import { isGridHeaderSortBlocked } from './GridStatusColumnHeader';
@@ -189,12 +190,30 @@ export function ActivityGridTable({
   onColumnDragEnd,
   core,
 }: ActivityGridTableProps) {
-  const { newRowIds, remoteHighlightIds, openActivityWithScroll } = core;
+  const {
+    newRowIds,
+    remoteHighlightIds,
+    openActivityWithScroll,
+    pagination,
+    tableScrollRef,
+  } = core;
   const navigate = useNavigate();
+  const location = useLocation();
 
   const openRow = (row: ActivityTableRow) => {
     if (row.isLegacy && row.legacyId != null) {
-      void navigate(`/legacy-activities/${row.legacyId}`);
+      const containerScrollTop = tableScrollRef.current?.scrollTop ?? 0;
+      const windowScrollTop =
+        typeof window !== 'undefined' ? window.scrollY : 0;
+      void navigate(
+        `/legacy-activities/${row.legacyId}`,
+        activityFormLinkState(
+          location,
+          containerScrollTop,
+          windowScrollTop,
+          pagination.pageIndex
+        )
+      );
       return;
     }
     openActivityWithScroll(row.id);

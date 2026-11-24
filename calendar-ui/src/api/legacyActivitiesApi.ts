@@ -5,6 +5,8 @@ export type LegacyActivityListQuery = {
   status?: string;
   archived?: boolean;
   sourceSystem?: string;
+  startDate?: string;
+  endDate?: string;
   limit?: number;
   offset?: number;
 };
@@ -37,6 +39,8 @@ export async function fetchLegacyActivities(
   if (typeof query.archived === 'boolean') params.archived = query.archived;
   if (query.sourceSystem?.trim())
     params.sourceSystem = query.sourceSystem.trim();
+  if (query.startDate?.trim()) params.startDate = query.startDate.trim();
+  if (query.endDate?.trim()) params.endDate = query.endDate.trim();
   if (typeof query.limit === 'number') params.limit = query.limit;
   if (typeof query.offset === 'number') params.offset = query.offset;
 
@@ -59,13 +63,15 @@ export async function fetchLegacyActivities(
 }
 
 const LEGACY_PAGE_SIZE = 100;
-const LEGACY_MAX_ROWS = 2000;
 
-/** Pages through the list endpoint (server caps page size at 100) up to a safety limit. */
-export async function fetchAllLegacyActivities(): Promise<LegacyActivity[]> {
+/** Pages through the server-filtered legacy result set until all matches are loaded. */
+export async function fetchAllLegacyActivities(
+  query: Omit<LegacyActivityListQuery, 'limit' | 'offset'> = {}
+): Promise<LegacyActivity[]> {
   const all: LegacyActivity[] = [];
-  for (let offset = 0; offset < LEGACY_MAX_ROWS; offset += LEGACY_PAGE_SIZE) {
+  for (let offset = 0; ; offset += LEGACY_PAGE_SIZE) {
     const page = await fetchLegacyActivities({
+      ...query,
       limit: LEGACY_PAGE_SIZE,
       offset,
     });

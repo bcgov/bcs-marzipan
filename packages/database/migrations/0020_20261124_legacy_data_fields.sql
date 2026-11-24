@@ -21,7 +21,7 @@ CREATE TABLE "legacy_activities" (
 	"is_archived" boolean DEFAULT false NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "legacy_activities" ADD CONSTRAINT "legacy_activities_matched_activity_id_activities_id_fk" FOREIGN KEY ("matched_activity_id") REFERENCES "public"."activities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "legacy_activities" ADD CONSTRAINT "legacy_activities_matched_activity_id_activities_id_fk" FOREIGN KEY ("matched_activity_id") REFERENCES "public"."activities"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "legacy_activities_source_unique" ON "legacy_activities" USING btree ("source_system","source_table","source_record_id");--> statement-breakpoint
 CREATE INDEX "idx_legacy_activities_title_trgm" ON "legacy_activities" USING gin (lower("title") gin_trgm_ops);--> statement-breakpoint
 CREATE INDEX "idx_legacy_activities_searchable_text_trgm" ON "legacy_activities" USING gin (lower("searchable_text") gin_trgm_ops);--> statement-breakpoint

@@ -291,7 +291,7 @@
           "tableTo": "date_statuses",
           "columnsFrom": ["date_status_id"],
           "columnsTo": ["id"],
-          "onDelete": "no action",
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "activities_time_status_id_time_statuses_id_fk": {

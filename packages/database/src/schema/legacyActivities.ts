@@ -37,7 +37,8 @@ export const legacyActivities = pgTable(
     externalReference: varchar('external_reference', { length: 128 }),
 
     matchedActivityId: integer('matched_activity_id').references(
-      () => activities.id
+      () => activities.id,
+      { onDelete: 'set null' }
     ),
 
     title: varchar('title', { length: 255 }),

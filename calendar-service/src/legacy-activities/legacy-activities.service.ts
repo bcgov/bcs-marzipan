@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, lte, or, sql } from 'drizzle-orm';
 
 import { schema } from '@corpcal/database';
 
@@ -12,6 +12,8 @@ export type LegacyActivityListQuery = {
   status?: string;
   archived?: boolean | string;
   sourceSystem?: string;
+  startDate?: string;
+  endDate?: string;
   limit?: number | string;
   offset?: number | string;
 };
@@ -64,6 +66,7 @@ export class LegacyActivitiesService {
       })
       .from(legacyActivities)
       .orderBy(desc(legacyActivities.importedAt), desc(legacyActivities.id));
+    const predicates = [];
 
     const searchValue =
       typeof query.search === 'string' ? query.search.trim() : '';
@@ -71,24 +74,41 @@ export class LegacyActivitiesService {
 
     if (hasSearch) {
       const searchTerm = `%${searchValue.toLowerCase()}%`;
-      baseQuery.where(
+      predicates.push(
         sql`lower(${legacyActivities.searchableText}) LIKE ${searchTerm}`
       );
     }
 
     if (typeof query.archived === 'boolean') {
-      baseQuery.where(eq(legacyActivities.isArchived, query.archived));
+      predicates.push(eq(legacyActivities.isArchived, query.archived));
     } else if (typeof query.archived === 'string') {
       const archivedValue = query.archived.toLowerCase() === 'true';
-      baseQuery.where(eq(legacyActivities.isArchived, archivedValue));
+      predicates.push(eq(legacyActivities.isArchived, archivedValue));
     }
 
     if (query.status) {
-      baseQuery.where(eq(legacyActivities.statusName, query.status));
+      predicates.push(eq(legacyActivities.statusName, query.status));
     }
 
     if (query.sourceSystem) {
-      baseQuery.where(eq(legacyActivities.sourceSystem, query.sourceSystem));
+      predicates.push(eq(legacyActivities.sourceSystem, query.sourceSystem));
+    }
+
+    if (query.startDate) {
+      predicates.push(
+        or(
+          isNull(legacyActivities.endDate),
+          gte(legacyActivities.endDate, query.startDate)
+        )
+      );
+    }
+
+    if (query.endDate) {
+      predicates.push(lte(legacyActivities.startDate, query.endDate));
+    }
+
+    if (predicates.length > 0) {
+      baseQuery.where(and(...predicates));
     }
 
     const rows = await baseQuery

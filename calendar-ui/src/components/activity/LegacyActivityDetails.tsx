@@ -1,4 +1,9 @@
 import type { LegacyActivity } from '@/api/legacyActivitiesApi';
+import {
+  CORP_PACIFIC_TIME_ZONE,
+  formatExactDate,
+  parseDateOnlyString,
+} from '@/lib/datetime-utils';
 
 import { ActivityFormSection } from './ActivityFormSections/ActivityFormSection';
 
@@ -21,12 +26,20 @@ type LegacySection = {
 
 function formatDate(value: string | null): string {
   if (!value) return '-';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = parseDateOnlyString(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : formatExactDate(date, { includeYear: true });
+}
+
+function formatImportedAt(value: string | null): string {
+  if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+  return formatExactDate(date, {
+    includeYear: true,
+    timeZone: CORP_PACIFIC_TIME_ZONE,
   });
 }
 
@@ -85,7 +98,7 @@ function toLegacySections(activity: LegacyActivity): LegacySection[] {
           label: 'Source Record ID',
           value: toDisplayValue(activity.sourceRecordId),
         },
-        { label: 'Imported At', value: formatDate(activity.importedAt) },
+        { label: 'Imported At', value: formatImportedAt(activity.importedAt) },
       ],
     },
     {

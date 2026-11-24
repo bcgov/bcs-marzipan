@@ -224,7 +224,7 @@ export function mapLegacyActivityToTableRow(
 
   return {
     id: -legacy.id,
-    displayId: null,
+    displayId: legacy.sourceRecordId,
     isLegacy: true,
     legacyId: legacy.id,
     legacySourceLabel: `${legacy.sourceSystem} #${legacy.sourceRecordId}`,

@@ -451,8 +451,6 @@ export function useActivityTableCore({
   );
 
   const usersQuery = useUsers();
-  const loading = activitiesQuery.isPending && !activitiesQuery.data;
-  const error = activitiesQuery.isError ? activitiesQuery.error : null;
 
   const syncFlagsMutation = useSyncActivityFlags();
 
@@ -491,16 +489,73 @@ export function useActivityTableCore({
 
   const legacyActive =
     includeLegacy && dateRangeReachesPast(filterState.dateRange);
-  const legacyQuery = useLegacyActivities(legacyActive);
+  const legacyQuery = useLegacyActivities(legacyActive, {
+    search: searchKeyword.trim() || undefined,
+    startDate: filterState.dateRange.noStartDate
+      ? undefined
+      : filterState.dateRange.startDate || undefined,
+    endDate: filterState.dateRange.noEndDate
+      ? undefined
+      : filterState.dateRange.endDate || undefined,
+  });
+  const legacyStatusIdByLabel = useMemo(
+    () =>
+      new Map(
+        statusOptions.map((option) => [
+          option.label.toLowerCase(),
+          Number(option.value),
+        ])
+      ),
+    [statusOptions]
+  );
 
   const data = useMemo(() => {
     const current = (activitiesQuery.data ?? []).map(mapActivityToTableRow);
     if (!legacyActive) return current;
-    return [
-      ...current,
-      ...(legacyQuery.data ?? []).map(mapLegacyActivityToTableRow),
-    ];
-  }, [activitiesQuery.data, legacyActive, legacyQuery.data]);
+    const legacy = (legacyQuery.data ?? [])
+      .map((legacyActivity) => {
+        const row = mapLegacyActivityToTableRow(legacyActivity);
+        const statusId = legacyActivity.statusName
+          ? legacyStatusIdByLabel.get(legacyActivity.statusName.toLowerCase())
+          : undefined;
+        return statusId == null ? row : { ...row, activityStatusId: statusId };
+      })
+      .filter((row) => {
+        if (
+          !effectiveShowCompleted &&
+          row.activityStatusId === statusArchiveIds.completedStatusId
+        ) {
+          return false;
+        }
+        if (
+          !effectiveShowDeleted &&
+          row.activityStatusId === statusArchiveIds.deletedStatusId
+        ) {
+          return false;
+        }
+        return true;
+      });
+    return [...current, ...legacy];
+  }, [
+    activitiesQuery.data,
+    effectiveShowCompleted,
+    effectiveShowDeleted,
+    legacyActive,
+    legacyQuery.data,
+    legacyStatusIdByLabel,
+    statusArchiveIds.completedStatusId,
+    statusArchiveIds.deletedStatusId,
+  ]);
+
+  const legacyLoading =
+    legacyActive && legacyQuery.isPending && !legacyQuery.data;
+  const loading =
+    (activitiesQuery.isPending && !activitiesQuery.data) || legacyLoading;
+  const error = activitiesQuery.isError
+    ? activitiesQuery.error
+    : legacyActive && legacyQuery.isError
+      ? legacyQuery.error
+      : null;
 
   const filterContext = useMemo((): FilterActivityRowsContext | undefined => {
     const hasTranslationStatus = translationStatusOptions.length > 0;
@@ -917,8 +972,11 @@ export function useActivityTableCore({
   }, [setPreferences, setActiveSavedFilter]);
 
   const refetchActivities = useCallback(() => {
-    void activitiesQuery.refetch();
-  }, [activitiesQuery]);
+    void Promise.all([
+      activitiesQuery.refetch(),
+      ...(legacyActive ? [legacyQuery.refetch()] : []),
+    ]);
+  }, [activitiesQuery, legacyActive, legacyQuery]);
 
   return {
     // Permissions and visibility
