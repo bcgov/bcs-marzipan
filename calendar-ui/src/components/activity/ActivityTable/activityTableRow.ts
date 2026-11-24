@@ -3,7 +3,7 @@ import type {
   ActivityListItem,
   ActivityResponse,
 } from '@corpcal/shared/api/types';
-import type { LegacyActivityListItem } from '@/api/legacyActivitiesApi';
+import type { LegacyActivity } from '@/api/legacyActivitiesApi';
 
 /**
  * View-model for the activity table. Mapped from {@link ActivityListItem}
@@ -212,7 +212,7 @@ export function mapActivityToTableRow(
 
 /** Map a flat legacy record into the shared table row so it can be filtered, sorted and paged with live activities. */
 export function mapLegacyActivityToTableRow(
-  legacy: LegacyActivityListItem
+  legacy: LegacyActivity
 ): ActivityTableRow {
   // Epoch fallback keeps date sorting safe; cells hide it.
   const imported = legacy.importedAt ?? new Date(0).toISOString();

@@ -1,35 +1,31 @@
-import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 
-import { fetchLegacyActivity } from '@/api/legacyActivitiesApi';
 import {
   ActivityFormStickyHeader,
   ActivityPageHeader,
+  LegacyActivityDetails,
 } from '@/components/activity';
-import { StatusMessage } from '@/components/shared';
-import { ContentSection } from '@/components/table/ContentSection';
-import { LegacyActivityDetailsView } from '@/pages/LegacyActivitiesPage';
+import { ErrorState, StatusMessage } from '@/components/shared';
+import { useLegacyActivity } from '@/hooks/useLegacyActivities';
+import { getFriendlyErrorMessage } from '@/lib/error-toast';
 
-export function LegacyActivityLayout() {
+const LEGACY_PAGE_TITLE = 'Legacy activity';
+
+export function LegacyActivityLayout(): React.ReactElement {
   const { id } = useParams();
-  const parsedId = Number(id);
-
+  const legacyId = Number(id);
   const {
-    data: row,
+    data: activity,
     isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ['legacy-activity', parsedId],
-    queryFn: () => fetchLegacyActivity(parsedId),
-    enabled: Number.isFinite(parsedId),
-  });
+    error,
+    refetch,
+  } = useLegacyActivity(legacyId);
 
-  if (!Number.isFinite(parsedId)) {
+  if (!Number.isFinite(legacyId)) {
     return (
-      <StatusMessage
-        title="Legacy data"
+      <ErrorState
+        title={LEGACY_PAGE_TITLE}
         message="Invalid legacy activity id."
-        variant="error"
       />
     );
   }
@@ -37,42 +33,41 @@ export function LegacyActivityLayout() {
   if (isLoading) {
     return (
       <StatusMessage
-        title="Legacy data"
+        title={LEGACY_PAGE_TITLE}
         message="Loading legacy activity..."
         variant="loading"
       />
     );
   }
 
-  if (isError || !row) {
+  if (error || !activity) {
     return (
-      <StatusMessage
-        title="Legacy data"
-        message="Could not load this legacy activity."
-        variant="error"
+      <ErrorState
+        title={LEGACY_PAGE_TITLE}
+        message={
+          error ? getFriendlyErrorMessage(error) : 'Legacy activity not found'
+        }
+        onRetry={() => void refetch()}
       />
     );
   }
 
-  const legacyId = `${row.sourceSystem}-${row.sourceRecordId}`;
+  const displayId = `${activity.sourceSystem}-${activity.sourceRecordId}`;
 
   return (
     <>
       <ActivityFormStickyHeader />
       <ActivityPageHeader
-        displayId={legacyId}
-        displayIdLabel={legacyId}
-        title={row.title ?? '(Untitled legacy record)'}
+        displayId={displayId}
+        displayIdLabel={displayId}
+        title={activity.title ?? '(Untitled legacy record)'}
         categories={[]}
-        leadMinistry={row.ministryName}
-        activityStatus={row.statusName}
-        createdDateTime={row.importedAt}
+        leadMinistry={activity.ministryName}
+        activityStatus={activity.statusName}
+        createdDateTime={activity.importedAt}
         createdLabel="Imported"
       />
-
-      <ContentSection>
-        <LegacyActivityDetailsView row={row} />
-      </ContentSection>
+      <LegacyActivityDetails activity={activity} />
     </>
   );
 }

@@ -5,3 +5,4 @@ export type { ActivityLeadTeamFieldConfig } from './activity-lead-team-field-con
 export { defaultActivityLeadTeamFieldConfig } from './activity-lead-team-field-config';
 export { ActivityPageHeader } from './ActivityPageHeader';
 export { ActivityStatusBanner } from './ActivityStatusBanner';
+export { LegacyActivityDetails } from './LegacyActivityDetails';

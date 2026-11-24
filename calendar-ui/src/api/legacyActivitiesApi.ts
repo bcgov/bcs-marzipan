@@ -9,7 +9,7 @@ export type LegacyActivityListQuery = {
   offset?: number;
 };
 
-export type LegacyActivityListItem = {
+export type LegacyActivity = {
   id: number;
   sourceSystem: string;
   sourceTable: string;
@@ -29,7 +29,7 @@ export type LegacyActivityListItem = {
 
 export async function fetchLegacyActivities(
   query: LegacyActivityListQuery
-): Promise<LegacyActivityListItem[]> {
+): Promise<LegacyActivity[]> {
   const params: Record<string, string | number | boolean> = {};
 
   if (query.search?.trim()) params.search = query.search.trim();
@@ -43,7 +43,7 @@ export async function fetchLegacyActivities(
   const res = await api.get('/legacy-activities', { params });
 
   if (Array.isArray(res.data)) {
-    return res.data as LegacyActivityListItem[];
+    return res.data as LegacyActivity[];
   }
 
   if (
@@ -52,7 +52,7 @@ export async function fetchLegacyActivities(
     'data' in res.data &&
     Array.isArray((res.data as { data?: unknown }).data)
   ) {
-    return (res.data as { data: LegacyActivityListItem[] }).data;
+    return (res.data as { data: LegacyActivity[] }).data;
   }
 
   return [];
@@ -62,10 +62,8 @@ const LEGACY_PAGE_SIZE = 100;
 const LEGACY_MAX_ROWS = 2000;
 
 /** Pages through the list endpoint (server caps page size at 100) up to a safety limit. */
-export async function fetchAllLegacyActivities(): Promise<
-  LegacyActivityListItem[]
-> {
-  const all: LegacyActivityListItem[] = [];
+export async function fetchAllLegacyActivities(): Promise<LegacyActivity[]> {
+  const all: LegacyActivity[] = [];
   for (let offset = 0; offset < LEGACY_MAX_ROWS; offset += LEGACY_PAGE_SIZE) {
     const page = await fetchLegacyActivities({
       limit: LEGACY_PAGE_SIZE,
@@ -77,9 +75,7 @@ export async function fetchAllLegacyActivities(): Promise<
   return all;
 }
 
-export async function fetchLegacyActivity(
-  id: number
-): Promise<LegacyActivityListItem> {
-  const res = await api.get<LegacyActivityListItem>(`/legacy-activities/${id}`);
+export async function fetchLegacyActivity(id: number): Promise<LegacyActivity> {
+  const res = await api.get<LegacyActivity>(`/legacy-activities/${id}`);
   return res.data;
 }

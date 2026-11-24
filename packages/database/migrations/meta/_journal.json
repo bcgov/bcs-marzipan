@@ -141,6 +141,13 @@
       "when": 1794869843487,
       "tag": "0019_20261116_release_type_report_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795540622478,
+      "tag": "0020_20261124_legacy_data_fields",
+      "breakpoints": true
     }
   ]
 }
