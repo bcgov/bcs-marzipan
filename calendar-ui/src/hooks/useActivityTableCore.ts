@@ -535,13 +535,13 @@ export function useActivityTableCore({
       })
       .filter((row) => {
         if (
-          !effectiveShowCompleted &&
+          !includeCompleted &&
           row.activityStatusId === statusArchiveIds.completedStatusId
         ) {
           return false;
         }
         if (
-          !effectiveShowDeleted &&
+          !includeDeleted &&
           row.activityStatusId === statusArchiveIds.deletedStatusId
         ) {
           return false;
@@ -551,8 +551,8 @@ export function useActivityTableCore({
     return [...current, ...legacy];
   }, [
     activitiesQuery.data,
-    effectiveShowCompleted,
-    effectiveShowDeleted,
+    includeCompleted,
+    includeDeleted,
     legacyActive,
     legacyQuery.data,
     legacyStatusIdByLabel,
