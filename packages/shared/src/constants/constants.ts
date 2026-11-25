@@ -47,6 +47,7 @@ export type CalendarVisibility = (typeof CALENDAR_VISIBILITY)[number];
 export const REPRESENTATIVE_TYPE = [
   'premier',
   'minister',
+  'minister_of_state',
   'cabinet_member',
   'mla',
   'other',

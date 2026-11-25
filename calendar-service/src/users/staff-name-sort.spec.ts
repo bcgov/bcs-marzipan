@@ -30,18 +30,18 @@ describe('staff-name-sort', () => {
     expect(compareStaffNames('Jane Smith (you)', 'Jane Smith')).toBe(0);
   });
 
-  it('sorts seeded personnel by canonical name instead of titled display name', () => {
+  it('sorts by canonical name field when present instead of titled display name', () => {
     const sorted = sortByStaffName(
       [
         {
           id: 2,
-          name: 'Niki Sharma',
-          displayName: 'Attorney General Niki Sharma',
+          name: 'Zoe Martens',
+          displayName: 'Minister Zoe Martens',
         },
         {
           id: 1,
-          name: 'Lana Popham',
-          displayName: 'Minister Lana Popham',
+          name: 'Aaron Brooks',
+          displayName: 'Attorney General Aaron Brooks',
         },
       ],
       (item) => item.name || item.displayName,
@@ -49,8 +49,8 @@ describe('staff-name-sort', () => {
     );
 
     expect(sorted.map((item) => item.name)).toEqual([
-      'Lana Popham',
-      'Niki Sharma',
+      'Aaron Brooks',
+      'Zoe Martens',
     ]);
   });
 });
