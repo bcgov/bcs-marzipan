@@ -112,6 +112,6 @@ describe('activityTableLayoutPreferences', () => {
       normalizeActivityGridLayoutPreferences({
         columnSizing: { overview: 400, status: 500, summary: 420 },
       }).columnSizing
-    ).toEqual({ overview: 224, status: 280, summary: 420 });
+    ).toEqual({ overview: 200, status: 280, summary: 420 });
   });
 });

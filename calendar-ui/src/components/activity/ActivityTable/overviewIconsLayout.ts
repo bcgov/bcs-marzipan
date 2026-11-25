@@ -22,7 +22,7 @@ export const ACTIVITY_SHARE_COUNT_BADGE_CLASS =
 export const ACTIVITY_HEADER_ACTION_HITBOX_CLASS =
   'hover:bg-accent focus-visible:ring-ring inline-flex size-9 shrink-0 cursor-default items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none';
 
-/** Action icons under the display ID; left-aligned for row-to-row consistency. */
+/** Action icons above the display ID; left-aligned for row-to-row consistency. */
 export const GRID_A_OVERVIEW_ACTIONS_ROW_CLASS =
   'flex min-w-0 items-center justify-start gap-1.5';
 

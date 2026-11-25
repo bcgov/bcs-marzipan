@@ -40,7 +40,7 @@ export interface OverviewIconsCellProps {
 }
 
 /**
- * Compact identity block for Grid A: activity ID with watchlist, shares, and flag beneath.
+ * Compact identity block for Grid A: watchlist, shares, and flag above the activity ID.
  */
 export function OverviewIconsCell({
   row,
@@ -130,14 +130,6 @@ export function OverviewIconsCell({
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5 text-xs font-semibold text-slate-900">
-      <span
-        data-no-row-nav
-        onClick={(e) => e.stopPropagation()}
-        className="shrink-0 pl-1"
-      >
-        <ActivityDisplayIdCopy displayId={displayIdText} variant="subtle" />
-      </span>
-
       <div ref={actionsRowRef} className={GRID_A_OVERVIEW_ACTIONS_ROW_CLASS}>
         {canManageWatchlist ? (
           <button
@@ -177,6 +169,14 @@ export function OverviewIconsCell({
         />
         {flagSlot}
       </div>
+
+      <span
+        data-no-row-nav
+        onClick={(e) => e.stopPropagation()}
+        className="shrink-0 pl-1"
+      >
+        <ActivityDisplayIdCopy displayId={displayIdText} variant="subtle" />
+      </span>
     </div>
   );
 }
