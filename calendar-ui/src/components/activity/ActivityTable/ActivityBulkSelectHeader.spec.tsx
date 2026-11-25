@@ -18,7 +18,7 @@ function makeCore(
       abbreviation?: string;
     }[];
     filterState: { leadTeamIds: number[] };
-    canSeeDeleted: boolean;
+    canViewDeleted: boolean;
     user: { teamIds: number[] };
   }> = {}
 ) {
@@ -34,7 +34,7 @@ function makeCore(
     user: overrides.user ?? { teamIds: [] },
     teams: overrides.teams ?? [],
     filterState: overrides.filterState ?? { leadTeamIds: [] },
-    canSeeDeleted: overrides.canSeeDeleted ?? false,
+    canViewDeleted: overrides.canViewDeleted ?? false,
   } as never;
 }
 

@@ -52,8 +52,6 @@ function makeMockStorage(): Storage {
 }
 
 describe('useActivityTablePreferences', () => {
-  const canSeeDeleted = true;
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchParams = new URLSearchParams();
@@ -76,14 +74,10 @@ describe('useActivityTablePreferences', () => {
 
   describe('initial preferences', () => {
     it('returns defaults when URL has no known params and storage is empty', () => {
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       expect(result.current.preferences.sortKey).toBe('startDate');
       expect(result.current.preferences.sortDirection).toBe('asc');
-      expect(result.current.preferences.showCompleted).toBe(false);
-      expect(result.current.preferences.showDeleted).toBe(false);
       expect(result.current.preferences.pageSize).toBe(25);
       expect(result.current.preferences.searchKeyword).toBe('');
       expect(result.current.preferences.filterState).toEqual(
@@ -100,9 +94,7 @@ describe('useActivityTablePreferences', () => {
     it('parses sort and dir from URL when present', () => {
       mockSearchParams = new URLSearchParams('sort=lastUpdated&dir=asc');
 
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       expect(result.current.preferences.sortKey).toBe('lastUpdated');
       expect(result.current.preferences.sortDirection).toBe('asc');
@@ -111,33 +103,16 @@ describe('useActivityTablePreferences', () => {
     it('falls back to default sort when URL sort is invalid', () => {
       mockSearchParams = new URLSearchParams('sort=invalidKey&dir=asc');
 
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       expect(result.current.preferences.sortKey).toBe('startDate');
       expect(result.current.preferences.sortDirection).toBe('asc');
     });
 
-    it('parses completed and deleted from URL', () => {
-      mockSearchParams = new URLSearchParams(
-        'sort=startDate&completed=true&deleted=true'
-      );
-
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
-
-      expect(result.current.preferences.showCompleted).toBe(true);
-      expect(result.current.preferences.showDeleted).toBe(true);
-    });
-
     it('parses pageSize from URL and clamps to valid range', () => {
       mockSearchParams = new URLSearchParams('sort=startDate&pageSize=25');
 
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       expect(result.current.preferences.pageSize).toBe(25);
     });
@@ -145,9 +120,7 @@ describe('useActivityTablePreferences', () => {
     it('falls back to default pageSize when URL pageSize is invalid', () => {
       mockSearchParams = new URLSearchParams('sort=startDate&pageSize=999');
 
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       expect(result.current.preferences.pageSize).toBe(25);
     });
@@ -155,9 +128,7 @@ describe('useActivityTablePreferences', () => {
     it('parses search from URL', () => {
       mockSearchParams = new URLSearchParams('sort=startDate&search=foo+bar');
 
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       expect(result.current.preferences.searchKeyword).toBe('foo bar');
     });
@@ -167,9 +138,7 @@ describe('useActivityTablePreferences', () => {
         'sort=startDate&dateFrom=2025-01-01&dateTo=2025-01-31&category=1,2&status=1,2&tag=10,20'
       );
 
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       const f = result.current.preferences.filterState;
       expect(f.dateRange.startDate).toBe('2025-01-01');
@@ -184,9 +153,7 @@ describe('useActivityTablePreferences', () => {
         'sort=startDate&leadTeam=5,6&commsLead=7&eventPlanner=8,9'
       );
 
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       const f = result.current.preferences.filterState;
       expect(f.leadTeamIds).toEqual([5, 6]);
@@ -199,9 +166,7 @@ describe('useActivityTablePreferences', () => {
         'sort=startDate&dateConfirmed=confirmed&timeConfirmed=tbd'
       );
 
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       expect(result.current.preferences.filterState.dateConfirmedFilter).toBe(
         'confirmed'
@@ -215,8 +180,6 @@ describe('useActivityTablePreferences', () => {
       const stored: ActivityTablePreferences = {
         sortKey: 'lastUpdated',
         sortDirection: 'asc',
-        showCompleted: true,
-        showDeleted: false,
         pageSize: 25,
         searchKeyword: 'stored search',
         filterState: {
@@ -244,9 +207,7 @@ describe('useActivityTablePreferences', () => {
         key === STORAGE_KEY ? JSON.stringify(stored) : null
       );
 
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       expect(result.current.preferences.sortKey).toBe('lastUpdated');
       expect(result.current.preferences.sortDirection).toBe('asc');
@@ -262,8 +223,6 @@ describe('useActivityTablePreferences', () => {
       const stored = {
         sortKey: 'lastUpdated',
         sortDirection: 'asc',
-        showCompleted: true,
-        showDeleted: false,
         pageSize: 25,
         searchKeyword: 'stored',
         filterState: {
@@ -292,28 +251,16 @@ describe('useActivityTablePreferences', () => {
       );
       mockSearchParams = new URLSearchParams('sort=startDate');
 
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       expect(result.current.preferences.sortKey).toBe('startDate');
       expect(result.current.preferences.searchKeyword).toBe('');
-    });
-
-    it('forces showDeleted false when canSeeDeleted is false', () => {
-      mockSearchParams = new URLSearchParams('sort=startDate&deleted=true');
-
-      const { result } = renderHook(() => useActivityTablePreferences(false));
-
-      expect(result.current.preferences.showDeleted).toBe(false);
     });
   });
 
   describe('setPreferences', () => {
     it('updates preferences and writes to sessionStorage', () => {
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       act(() => {
         result.current.setPreferences({
@@ -334,9 +281,7 @@ describe('useActivityTablePreferences', () => {
     });
 
     it('syncs to URL immediately when non-search preference changes', () => {
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       act(() => {
         result.current.setPreferences({ sortKey: 'activityId' });
@@ -347,9 +292,7 @@ describe('useActivityTablePreferences', () => {
 
     it('preserves unrelated URL params such as report when syncing preferences', () => {
       mockSearchParams = new URLSearchParams('report=planning&sort=startDate');
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       act(() => {
         result.current.setPreferences({ sortKey: 'lastUpdated' });
@@ -360,9 +303,7 @@ describe('useActivityTablePreferences', () => {
     });
 
     it('syncs lead filter ids to URL when filter state changes', () => {
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       act(() => {
         result.current.setPreferences({
@@ -385,9 +326,7 @@ describe('useActivityTablePreferences', () => {
     it('debounces URL update when only searchKeyword changes', () => {
       vi.useFakeTimers();
       mockSearchParams = new URLSearchParams('sort=startDate');
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       act(() => {
         result.current.setPreferences({ sortKey: 'lastUpdated' });
@@ -411,9 +350,7 @@ describe('useActivityTablePreferences', () => {
       mockSearchParams = new URLSearchParams(
         'report=custom&sort=startDate&dir=asc'
       );
-      const { result } = renderHook(() =>
-        useActivityTablePreferences(canSeeDeleted)
-      );
+      const { result } = renderHook(() => useActivityTablePreferences());
 
       act(() => {
         result.current.setPreferences({ searchKeyword: 'delayed' });
@@ -439,15 +376,13 @@ describe('getStoredActivityListSearch', () => {
   });
 
   it('returns empty string when storage has no preferences', () => {
-    expect(getStoredActivityListSearch(true)).toBe('');
+    expect(getStoredActivityListSearch()).toBe('');
   });
 
   it('returns query string from stored preferences', () => {
     const stored = {
       sortKey: 'lastUpdated',
       sortDirection: 'desc',
-      showCompleted: false,
-      showDeleted: false,
       pageSize: 10,
       searchKeyword: '',
       filterState: {
@@ -475,7 +410,7 @@ describe('getStoredActivityListSearch', () => {
       key === 'activityTablePreferences' ? JSON.stringify(stored) : null
     );
 
-    const result = getStoredActivityListSearch(true);
+    const result = getStoredActivityListSearch();
     expect(result).toContain('sort=lastUpdated');
     expect(result).toContain('dir=desc');
     expect(result.startsWith('?')).toBe(true);

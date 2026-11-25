@@ -26,7 +26,7 @@ import {
   timeStatuses,
   venueAddresses,
 } from '@corpcal/database/schema';
-import { CONFIRMED_STATUS_NAMES } from '@corpcal/shared';
+import { CONFIRMED_STATUS_NAMES, PERMISSIONS } from '@corpcal/shared';
 import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
 
 import type { DatabaseService } from '../../database/database.service';
@@ -65,11 +65,32 @@ function buildConfirmedStatusMatch(
   )!;
 }
 
+export function resolveCanViewDeleted(
+  userPermissions: readonly string[] | undefined
+): boolean {
+  return (
+    userPermissions?.includes(PERMISSIONS.ACTIVITIES.VIEW_DELETED) ?? false
+  );
+}
+
+/**
+ * Whether deleted-status rows may be included for this list query.
+ * Callers must request `includeDeleted=true` and hold `activities.view.deleted`.
+ */
+export function resolveAllowIncludeDeleted(
+  includeDeleted: boolean | undefined,
+  userPermissions: readonly string[] | undefined
+): boolean {
+  return includeDeleted === true && resolveCanViewDeleted(userPermissions);
+}
+
 export interface BuildActivityFindAllConditionsOptions {
   filters: FilterActivitiesQueryParams;
   deletedStatusId: number | undefined;
   completedStatusId: number | undefined;
   allowIncludeDeleted: boolean;
+  /** Caller holds `activities.view.deleted` (explicit deleted status filters). */
+  canViewDeleted: boolean;
   db: DatabaseService['db'];
   /** Resolved request data scope; visibility is enforced unless bypass is true. */
   dataScope: DataScope;
@@ -176,6 +197,7 @@ export function buildActivityFindAllConditions(
     deletedStatusId,
     completedStatusId,
     allowIncludeDeleted,
+    canViewDeleted,
     db,
     dataScope,
   } = options;
@@ -189,9 +211,15 @@ export function buildActivityFindAllConditions(
     filters.activityStatusIds != null &&
     filters.activityStatusIds.length > 0
   ) {
-    conditions.push(
-      inArray(activities.activityStatusId, filters.activityStatusIds)
-    );
+    let statusIds = filters.activityStatusIds;
+    if (!canViewDeleted && deletedStatusId !== undefined) {
+      statusIds = statusIds.filter((id) => id !== deletedStatusId);
+    }
+    if (statusIds.length === 0) {
+      conditions.push(sql`1 = 0`);
+    } else {
+      conditions.push(inArray(activities.activityStatusId, statusIds));
+    }
   } else {
     if (!allowIncludeDeleted && deletedStatusId !== undefined) {
       conditions.push(ne(activities.activityStatusId, deletedStatusId));

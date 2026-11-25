@@ -2,9 +2,7 @@ import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { ReactElement } from 'react';
 
-import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { getStoredActivityListSearch } from '@/hooks/useActivityTablePreferences';
-import { useAuth } from '@/hooks/useAuth';
 
 type ActivityBreadcrumbProps = {
   /** Label for the current page (e.g. displayId "ACT-123" or "New activity") */
@@ -19,11 +17,7 @@ type ActivityBreadcrumbProps = {
 export function ActivityBreadcrumb({
   currentLabel,
 }: ActivityBreadcrumbProps): ReactElement {
-  const { user } = useAuth();
-  const canSeeDeleted =
-    user?.roleName === SYSTEM_ROLES.ADMIN ||
-    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
-  const listSearch = getStoredActivityListSearch(canSeeDeleted);
+  const listSearch = getStoredActivityListSearch();
   const listPath = `/${listSearch}`;
 
   return (

@@ -15,11 +15,9 @@ describe('activity list scope parity', () => {
       tab: 'ministry',
       preferences: {
         filterState: DEFAULT_ACTIVITY_FILTER_STATE,
-        showCompleted: false,
-        showDeleted: false,
       },
       statusArchiveIds: statusArchive,
-      canSeeDeleted: false,
+      canViewDeleted: false,
       effectiveLeadTeamId: 42,
     });
 
@@ -58,11 +56,9 @@ describe('activity list scope parity', () => {
       tab: 'favourites',
       preferences: {
         filterState: DEFAULT_ACTIVITY_FILTER_STATE,
-        showCompleted: false,
-        showDeleted: false,
       },
       statusArchiveIds: statusArchive,
-      canSeeDeleted: false,
+      canViewDeleted: false,
       watchlistActivityIds: [10, 20],
     });
     expect(scope.reportFetchParams.activityIds).toEqual([10, 20]);

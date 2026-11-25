@@ -50,7 +50,7 @@ export function ActivityBulkSelectHeader({
     user,
     teams,
     filterState,
-    canSeeDeleted,
+    canViewDeleted,
   } = core;
 
   const selectableData = useMemo(
@@ -78,8 +78,8 @@ export function ActivityBulkSelectHeader({
   );
 
   const leadTeamsForMenu = useMemo(
-    () => bulkSelectLeadTeamsForMenu(teams, userTeamIds, canSeeDeleted),
-    [teams, userTeamIds, canSeeDeleted]
+    () => bulkSelectLeadTeamsForMenu(teams, userTeamIds, canViewDeleted),
+    [teams, userTeamIds, canViewDeleted]
   );
 
   const allMyTeamsCount = useMemo(

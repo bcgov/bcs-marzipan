@@ -120,6 +120,7 @@ export function ActivityTableFrame({
     filterDetailLines,
     hasActiveCriteria,
     booleanFilters,
+    completedHiddenByStatusFilterNote,
     leadFilterConflictsWithMinistryTab,
     favouriteActivityIds,
     categoryOptions,
@@ -383,7 +384,7 @@ export function ActivityTableFrame({
                 conflictNote={
                   leadFilterConflictsWithMinistryTab
                     ? MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE
-                    : undefined
+                    : completedHiddenByStatusFilterNote
                 }
                 onClearFilters={
                   hasActiveCriteria && favouriteActivityIds === undefined

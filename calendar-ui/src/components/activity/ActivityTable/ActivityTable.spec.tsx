@@ -110,8 +110,6 @@ vi.mock('@/hooks/useActivityTablePreferences', () => ({
     preferences: {
       sortKey: 'startDate',
       sortDirection: 'asc',
-      showCompleted: false,
-      showDeleted: false,
       searchKeyword: '',
       pageSize: 25,
       filterState: DEFAULT_ACTIVITY_FILTER_STATE,

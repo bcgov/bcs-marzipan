@@ -6,6 +6,7 @@ export * from './activity-reminders';
 export * from './activity-form-sections';
 export * from './activity-history-fields';
 export * from './datetime';
+export * from './filters/activity-archive-include';
 export * from './filters/activityFilterStateToQueryParams';
 export * from './filters/activity-filter-active';
 export * from './filters/activity-filter-date';

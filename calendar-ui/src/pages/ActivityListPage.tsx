@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem } from '@corpcal/shared/api/types';
-import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   ActivityTable,
   type ActivityTableActiveSavedFilter,
@@ -56,12 +55,9 @@ export const ActivityListPage = () => {
   const canManageFavourites = hasPermission(PERMISSIONS.FAVOURITES.MANAGE);
   const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW);
 
-  const canSeeDeleted =
-    user?.roleName === SYSTEM_ROLES.ADMIN ||
-    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const canViewDeleted = hasPermission(PERMISSIONS.ACTIVITIES.VIEW_DELETED);
 
-  const { preferences: listPreferences } =
-    useActivityTablePreferences(canSeeDeleted);
+  const { preferences: listPreferences } = useActivityTablePreferences();
   const { data: reports = [] } = useReports();
   const activityListReports = useMemo(
     () => reports.filter((r) => ACTIVITY_LIST_REPORT_NAME_SET.has(r.name)),
@@ -177,7 +173,7 @@ export const ActivityListPage = () => {
         tab: activeTab,
         preferences: listPreferences,
         statusArchiveIds: {},
-        canSeeDeleted,
+        canViewDeleted,
         watchlistActivityIds: favouriteActivityIds,
         ministryConflict: ministryTabLeadTeamConflict,
         ministryTabLabel,
@@ -188,7 +184,7 @@ export const ActivityListPage = () => {
     [
       activeTab,
       listPreferences,
-      canSeeDeleted,
+      canViewDeleted,
       favouriteActivityIds,
       ministryTabLeadTeamConflict,
       ministryTabLabel,
@@ -201,7 +197,7 @@ export const ActivityListPage = () => {
   const scopeInput = useMemo(
     () => ({
       tab: activeTab,
-      canSeeDeleted,
+      canViewDeleted,
       watchlistActivityIds: favouriteActivityIds,
       ministryConflict: ministryTabLeadTeamConflict,
       ministryTabLabel,
@@ -211,7 +207,7 @@ export const ActivityListPage = () => {
     }),
     [
       activeTab,
-      canSeeDeleted,
+      canViewDeleted,
       favouriteActivityIds,
       ministryTabLeadTeamConflict,
       ministryTabLabel,

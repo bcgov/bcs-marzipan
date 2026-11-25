@@ -4,24 +4,15 @@ import {
   DEFAULT_ACTIVITY_FILTER_STATE,
   type ActivityFilterState,
 } from '@corpcal/shared';
-import type {
-  BooleanFilter,
-  TableSummaryFilterDetailLine,
-} from '@/components/table/TableSummaryBar';
+import type { TableSummaryFilterDetailLine } from '@/components/table/TableSummaryBar';
 import { useActivityTableFilterLookups } from '@/hooks/useActivityTableFilterLookups';
-import {
-  buildActivityTableBooleanFilters,
-  buildActivityTableFilterSummaryDetails,
-  resolveEffectiveArchiveFilterVisibility,
-} from '@/lib/activity-table-summary-bar-state';
+import { buildActivityTableFilterSummaryDetails } from '@/lib/activity-table-summary-bar-state';
 import type { ActivityTablePreferences } from '@/lib/activityTablePreferencesParams';
 
 export interface UseActivityTableSummaryBarStateOptions {
   preferences: ActivityTablePreferences;
   setPreferences: (partial: Partial<ActivityTablePreferences>) => void;
-  canSeeDeleted: boolean;
-  /** When set, toggling show completed/deleted clears the saved filter selection. */
-  onClearSavedFilter?: () => void;
+  canViewDeleted: boolean;
   /** When set, panel clear resets to this state instead of {@link DEFAULT_ACTIVITY_FILTER_STATE}. */
   getResetFilterState?: () => ActivityFilterState;
   /** When set, overrides default panel-active detection for showing "Clear filters". */
@@ -29,7 +20,7 @@ export interface UseActivityTableSummaryBarStateOptions {
 }
 
 export interface ActivityTableSummaryBarState {
-  filters: BooleanFilter[];
+  filters: [];
   appliedFilterTypeLabels: string[];
   filterDetailLines: TableSummaryFilterDetailLine[];
   onClearFilters: (() => void) | undefined;
@@ -40,57 +31,15 @@ export interface ActivityTableSummaryBarState {
 export function useActivityTableSummaryBarState({
   preferences,
   setPreferences,
-  canSeeDeleted,
-  onClearSavedFilter,
+  canViewDeleted,
   getResetFilterState,
   hasClearablePanelFilters,
 }: UseActivityTableSummaryBarStateOptions): ActivityTableSummaryBarState {
   const filterState = preferences.filterState;
   const searchKeyword = preferences.searchKeyword;
-  const showCompleted = preferences.showCompleted;
-  const showDeleted = preferences.showDeleted;
 
   const { statusArchiveIds, filterSummaryContext } =
-    useActivityTableFilterLookups(canSeeDeleted);
-
-  const { hasStatusFilter, effectiveShowCompleted, effectiveShowDeleted } =
-    resolveEffectiveArchiveFilterVisibility(
-      filterState,
-      statusArchiveIds,
-      showCompleted,
-      showDeleted,
-      canSeeDeleted
-    );
-
-  const clearSavedFilterIfNeeded = useCallback(() => {
-    onClearSavedFilter?.();
-  }, [onClearSavedFilter]);
-
-  const filters = useMemo(
-    (): BooleanFilter[] =>
-      buildActivityTableBooleanFilters({
-        hasStatusFilter,
-        effectiveShowCompleted,
-        effectiveShowDeleted,
-        canSeeDeleted,
-        onShowCompletedChange: (checked) => {
-          clearSavedFilterIfNeeded();
-          setPreferences({ showCompleted: checked });
-        },
-        onShowDeletedChange: (checked) => {
-          clearSavedFilterIfNeeded();
-          setPreferences({ showDeleted: checked });
-        },
-      }),
-    [
-      hasStatusFilter,
-      effectiveShowCompleted,
-      effectiveShowDeleted,
-      canSeeDeleted,
-      setPreferences,
-      clearSavedFilterIfNeeded,
-    ]
-  );
+    useActivityTableFilterLookups(canViewDeleted);
 
   const { appliedFilterTypeLabels, filterDetailLines, hasActiveCriteria } =
     useMemo(
@@ -99,23 +48,23 @@ export function useActivityTableSummaryBarState({
           filterState,
           searchKeyword,
           filterSummaryContext,
+          statusArchiveIds,
         }),
-      [filterState, searchKeyword, filterSummaryContext]
+      [filterState, searchKeyword, filterSummaryContext, statusArchiveIds]
     );
 
   const handleClearPanelFilters = useCallback(() => {
-    clearSavedFilterIfNeeded();
     setPreferences({
       filterState: getResetFilterState?.() ?? DEFAULT_ACTIVITY_FILTER_STATE,
       searchKeyword: '',
     });
-  }, [setPreferences, clearSavedFilterIfNeeded, getResetFilterState]);
+  }, [setPreferences, getResetFilterState]);
 
   const showClearFilters = hasClearablePanelFilters ?? hasActiveCriteria;
   const onClearFilters = showClearFilters ? handleClearPanelFilters : undefined;
 
   return {
-    filters,
+    filters: [],
     appliedFilterTypeLabels,
     filterDetailLines,
     onClearFilters,

@@ -75,11 +75,7 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
       activityStatusIds: [1, 3],
     };
     const params = activityFilterStateToQueryParams(
-      {
-        filterState,
-        showCompleted: false,
-        showDeleted: false,
-      },
+      { filterState },
       { completedStatusId: 5, deletedStatusId: 9 },
       false
     );
@@ -97,15 +93,7 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
       commsContactLeadUserIds: [100],
       eventPlannerLeadIds: [5, 6],
     };
-    const params = activityFilterStateToQueryParams(
-      {
-        filterState,
-        showCompleted: true,
-        showDeleted: false,
-      },
-      {},
-      true
-    );
+    const params = activityFilterStateToQueryParams({ filterState }, {}, true);
     expect(params.leadTeamIds).toEqual([10, 20]);
     expect(params.commsContactLeadUserIds).toEqual([100]);
     expect(params.eventPlannerLeadIds).toEqual([5, 6]);
@@ -118,15 +106,7 @@ describe('activityFilterStateToQueryParams parity mapping', () => {
       lookAheadStatusValues: ['new', 'changed'],
       lookAheadSectionValues: ['events'],
     };
-    const params = activityFilterStateToQueryParams(
-      {
-        filterState,
-        showCompleted: false,
-        showDeleted: false,
-      },
-      {},
-      false
-    );
+    const params = activityFilterStateToQueryParams({ filterState }, {}, false);
     expect(params.lookAheadStatusValues).toEqual(['new', 'changed']);
     expect(params.lookAheadSectionValues).toEqual(['events']);
   });
@@ -149,15 +129,7 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
         noEndDate: false,
       },
     };
-    const params = activityFilterStateToQueryParams(
-      {
-        filterState,
-        showCompleted: false,
-        showDeleted: false,
-      },
-      {},
-      false
-    );
+    const params = activityFilterStateToQueryParams({ filterState }, {}, false);
     expect(params.startDateFrom).toBe('2025-01-01');
     expect(params.startDateTo).toBe('2025-01-31');
     expect(params.scheduledDateRangeOverlaps).toBe(true);
@@ -193,15 +165,7 @@ describe('activityFilterStateToQueryParams + activityMatchesFilterState parity',
       ...DEFAULT_ACTIVITY_FILTER_STATE,
       categoryIds: [1],
     };
-    const params = activityFilterStateToQueryParams(
-      {
-        filterState,
-        showCompleted: false,
-        showDeleted: false,
-      },
-      {},
-      false
-    );
+    const params = activityFilterStateToQueryParams({ filterState }, {}, false);
     expect(params.categoryIds).toEqual([1]);
     expect(
       activityMatchesFilterState(
