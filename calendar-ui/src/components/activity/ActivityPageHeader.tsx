@@ -30,6 +30,10 @@ import { cn } from '@/lib/utils';
 
 type ActivityPageHeaderProps = {
   displayId: string;
+  /** Shown instead of the formatted display ID (e.g. non-standard legacy IDs). */
+  displayIdLabel?: string;
+  /** Prefix for the created timestamp; defaults to "Created". */
+  createdLabel?: string;
   currentUserId?: number | null;
   title: string;
   categories: string[];
@@ -80,6 +84,8 @@ type ActivityPageHeaderProps = {
  */
 export function ActivityPageHeader({
   displayId,
+  displayIdLabel,
+  createdLabel = 'Created',
   currentUserId,
   title,
   categories,
@@ -137,7 +143,8 @@ export function ActivityPageHeader({
       : (sortedFlags.find((flag) => flag.assigneeId === currentUserId) ?? null);
   const flaggedLabel = activityFlagAssigneeTooltip(sortedFlags);
   const needsWideFlagButton = isFlagged && assignedFlags.length > 1;
-  const displayIdUiLabel = formatActivityDisplayIdForUi(displayId);
+  const displayIdUiLabel =
+    displayIdLabel ?? formatActivityDisplayIdForUi(displayId);
 
   const iconButtonClassName = 'shrink-0';
   const headerActionIconClassName = 'text-icon-muted-foreground size-4';
@@ -206,7 +213,7 @@ export function ActivityPageHeader({
             <div>Last updated (admin) {adminUpdatedLabel}</div>
           ) : null}
           <div>
-            Created{' '}
+            {createdLabel}{' '}
             {createdDateTime
               ? formatLongDate(new Date(createdDateTime), {
                   timeZone: CORP_PACIFIC_TIME_ZONE,

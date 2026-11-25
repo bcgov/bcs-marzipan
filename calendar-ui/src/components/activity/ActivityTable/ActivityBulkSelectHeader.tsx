@@ -43,7 +43,6 @@ export function ActivityBulkSelectHeader({
 }: ActivityBulkSelectHeaderProps) {
   const {
     sortedData,
-    sortedActivityIds,
     selectedActivityCount,
     selectActivityIds,
     clearSelection,
@@ -54,9 +53,20 @@ export function ActivityBulkSelectHeader({
     canSeeDeleted,
   } = core;
 
+  const selectableData = useMemo(
+    () => sortedData.filter((row) => !row.isLegacy),
+    [sortedData]
+  );
+  const selectableActivityIds = useMemo(
+    () => selectableData.map((row) => row.id),
+    [selectableData]
+  );
   const pageCount = Math.min(
     pagination.pageSize,
-    Math.max(sortedData.length - pagination.pageIndex * pagination.pageSize, 0)
+    Math.max(
+      selectableData.length - pagination.pageIndex * pagination.pageSize,
+      0
+    )
   );
 
   const userTeamIds = useMemo(() => user?.teamIds ?? [], [user?.teamIds]);
@@ -78,9 +88,10 @@ export function ActivityBulkSelectHeader({
   );
 
   const allSelected =
-    sortedData.length > 0 && selectedActivityCount === sortedData.length;
+    selectableData.length > 0 &&
+    selectedActivityCount === selectableData.length;
   const someSelected =
-    selectedActivityCount > 0 && selectedActivityCount < sortedData.length;
+    selectedActivityCount > 0 && selectedActivityCount < selectableData.length;
   const headerCheckboxChecked = allSelected
     ? true
     : someSelected
@@ -89,7 +100,7 @@ export function ActivityBulkSelectHeader({
 
   const handleHeaderCheckboxChange = (value: boolean | 'indeterminate') => {
     if (value === true) {
-      selectActivityIds(sortedActivityIds);
+      selectActivityIds(selectableActivityIds);
     } else {
       clearSelection();
     }
@@ -107,7 +118,7 @@ export function ActivityBulkSelectHeader({
         <Checkbox
           aria-label="Select all activities"
           checked={headerCheckboxChecked}
-          disabled={sortedData.length === 0}
+          disabled={selectableData.length === 0}
           onCheckedChange={handleHeaderCheckboxChange}
         />
       </span>
@@ -127,14 +138,14 @@ export function ActivityBulkSelectHeader({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuItem
-            onSelect={() => selectActivityIds(sortedActivityIds)}
+            onSelect={() => selectActivityIds(selectableActivityIds)}
           >
-            All activities ({sortedData.length})
+            All activities ({selectableData.length})
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() =>
               selectActivityIds(
-                sortedData
+                selectableData
                   .slice(
                     pagination.pageIndex * pagination.pageSize,
                     (pagination.pageIndex + 1) * pagination.pageSize

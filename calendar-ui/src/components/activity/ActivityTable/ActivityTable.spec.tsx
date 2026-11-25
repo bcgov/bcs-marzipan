@@ -165,6 +165,10 @@ vi.mock('@/hooks/useCalendar', () => ({
   }),
 }));
 
+vi.mock('@/hooks/useLegacyActivities', () => ({
+  useLegacyActivities: () => ({ data: undefined }),
+}));
+
 vi.mock('@/hooks/useLiveActivitySyncContext', () => ({
   useLiveActivitySyncContext: () => ({ isSocketConnected: false }),
   useLiveActivityRowHighlights: () => new Set<number>(),

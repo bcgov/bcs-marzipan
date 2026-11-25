@@ -387,6 +387,7 @@ export const ActivityListPage = () => {
         <div className="mt-0 min-w-0">
           <ActivityTable
             {...tableProps}
+            includeLegacy={activeTab === 'all'}
             activeSavedFilter={activeSavedFilter}
             onActiveSavedFilterChange={setActiveSavedFilter}
           />

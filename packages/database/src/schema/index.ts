@@ -32,4 +32,5 @@ export * from './userActivityFavourites';
 export * from './userSettings';
 export * from './permissionVisibilityAudit';
 export * from './lookAheadResetSnapshots';
+export * from './legacyActivities';
 export * from './notifications';

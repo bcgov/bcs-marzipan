@@ -26,6 +26,9 @@ import {
   ActivityStatusCell,
   ActivityTimestampsCell,
   CategoryBadgesCell,
+  LegacyCommsCell,
+  LegacyOverviewCell,
+  LegacyStatusCell,
   MaterialsCellCompact,
   OverviewIconsCell,
   SchedulingCellCompact,
@@ -76,7 +79,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         header: () =>
           canBulkSelect ? <ActivityBulkSelectHeader core={core} /> : null,
         cell: ({ row }) =>
-          canBulkSelect ? (
+          canBulkSelect && !row.original.isLegacy ? (
             <SelectCheckboxCell
               activityLabel={row.original.displayId ?? String(row.original.id)}
               checked={selectedActivityIds.has(row.original.id)}
@@ -99,35 +102,38 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         ),
         meta: { sortKey: 'activityId' as const },
         ...gridColumnSize('overview', GRID_A_COLUMN_WIDTHS, storedSizing),
-        cell: ({ row }) => (
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <OverviewIconsCell
-              row={row.original}
-              canFlag={canFlag}
-              canManageWatchlist={bulkMenu.canManageWatchlist}
-              isFavourite={watchlistActivityIdSet.has(row.original.id)}
-              onFavouriteToggle={() => toggleFavourite(row.original.id)}
-              favouriteToggling={isFavouriteToggling}
-              onFlagSync={(
-                teamId,
-                assigneeIds,
-                assigneeNames,
-                displayTeamPerAssignee
-              ) =>
-                syncFlagsMutation.mutate({
-                  activityId: row.original.id,
-                  body: { teamId, assigneeIds, displayTeamPerAssignee },
+        cell: ({ row }) =>
+          row.original.isLegacy ? (
+            <LegacyOverviewCell row={row.original} />
+          ) : (
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <OverviewIconsCell
+                row={row.original}
+                canFlag={canFlag}
+                isFavourite={watchlistActivityIdSet.has(row.original.id)}
+                canManageWatchlist={bulkMenu.canManageWatchlist}
+                onFavouriteToggle={() => toggleFavourite(row.original.id)}
+                favouriteToggling={isFavouriteToggling}
+                onFlagSync={(
+                  teamId,
+                  assigneeIds,
                   assigneeNames,
-                })
-              }
-              flagPending={syncFlagsMutation.isPending}
-            />
-            <CategoryBadgesCell
-              row={row.original}
-              showReviewHighlights={showReviewHighlights}
-            />
-          </div>
-        ),
+                  displayTeamPerAssignee
+                ) =>
+                  syncFlagsMutation.mutate({
+                    activityId: row.original.id,
+                    body: { teamId, assigneeIds, displayTeamPerAssignee },
+                    assigneeNames,
+                  })
+                }
+                flagPending={syncFlagsMutation.isPending}
+              />
+              <CategoryBadgesCell
+                row={row.original}
+                showReviewHighlights={showReviewHighlights}
+              />
+            </div>
+          ),
       }),
       columnHelper.display({
         id: 'summary',
@@ -173,7 +179,12 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         id: 'materials',
         header: 'Comms',
         ...gridColumnSize('materials', GRID_A_COLUMN_WIDTHS, storedSizing),
-        cell: ({ row }) => <MaterialsCellCompact row={row.original} />,
+        cell: ({ row }) =>
+          row.original.isLegacy ? (
+            <LegacyCommsCell row={row.original} />
+          ) : (
+            <MaterialsCellCompact row={row.original} />
+          ),
       }),
       columnHelper.display({
         id: 'status',
@@ -188,16 +199,19 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
           sortKeys: ['activityStatus', 'lastUpdated', 'createdDateTime'],
         },
         ...gridColumnSize('status', GRID_A_COLUMN_WIDTHS, storedSizing),
-        cell: ({ row }) => (
-          <div className="flex max-w-full min-w-0 flex-col gap-1">
-            <ActivityStatusCell row={row.original} orientation="inline" />
-            <ActivityTimestampsCell
-              row={row.original}
-              userMap={userMap}
-              showUpdatedByAvatar={false}
-            />
-          </div>
-        ),
+        cell: ({ row }) =>
+          row.original.isLegacy ? (
+            <LegacyStatusCell row={row.original} />
+          ) : (
+            <div className="flex max-w-full min-w-0 flex-col gap-1">
+              <ActivityStatusCell row={row.original} orientation="inline" />
+              <ActivityTimestampsCell
+                row={row.original}
+                userMap={userMap}
+                showUpdatedByAvatar={false}
+              />
+            </div>
+          ),
       }),
     ],
     [

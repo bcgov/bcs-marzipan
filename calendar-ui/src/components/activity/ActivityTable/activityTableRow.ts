@@ -3,6 +3,7 @@ import type {
   ActivityListItem,
   ActivityResponse,
 } from '@corpcal/shared/api/types';
+import type { LegacyActivity } from '@/api/legacyActivitiesApi';
 
 /**
  * View-model for the activity table. Mapped from {@link ActivityListItem}
@@ -12,8 +13,12 @@ import type {
  */
 export interface ActivityTableRow {
   // Identity
+  /** Legacy rows use `-legacyId` so they never collide with real activity ids. */
   id: number;
   displayId: string | null;
+  isLegacy?: boolean;
+  legacyId?: number;
+  legacySourceLabel?: string;
 
   // Overview column
   title: string;
@@ -207,5 +212,74 @@ export function mapActivityToTableRow(
 
     // Flags
     flags: activity.flags ?? [],
+  };
+}
+
+/** Map a flat legacy record into the shared table row so it can be filtered, sorted and paged with live activities. */
+export function mapLegacyActivityToTableRow(
+  legacy: LegacyActivity
+): ActivityTableRow {
+  // Epoch fallback keeps date sorting safe; cells hide it.
+  const imported = legacy.importedAt ?? new Date(0).toISOString();
+
+  return {
+    id: -legacy.id,
+    displayId: legacy.sourceRecordId,
+    isLegacy: true,
+    legacyId: legacy.id,
+    legacySourceLabel: `${legacy.sourceSystem} #${legacy.sourceRecordId}`,
+
+    title: legacy.title ?? '(Untitled legacy record)',
+    activityCategories: [],
+    categoryIds: [],
+    isConfidential: false,
+    isIssue: false,
+
+    summary: legacy.summary ?? '',
+    executiveSummary: '',
+    tags: [],
+    lookAheadStatus: legacy.lookAheadStatus,
+    lookAheadSection: null,
+
+    allDay: false,
+    startDate: legacy.startDate,
+    endDate: legacy.endDate,
+    dateStatus: '',
+    startTime: null,
+    endTime: null,
+    timeStatus: '',
+    venue: legacy.locationName,
+    premierRequested: null,
+    activityRepresentatives: [],
+
+    leadOrg: legacy.leadOrgName,
+    leadMinistry: legacy.ministryName,
+    leadMinistryAbbreviation: null,
+    leadTeamDisplayName: null,
+    commsLeadName: null,
+    commsContactName: null,
+    eventPlanners: [],
+    eventPlannerLeadIds: [],
+    leadTeamId: null,
+    leadOrganizationId: null,
+    commsContactLeadUserId: null,
+    commsContactUserIds: [],
+
+    translationsRequired: [],
+    translationsRequiredStatus: null,
+    translationsRequiredStatusId: null,
+    commsMaterials: [],
+
+    activityStatus: legacy.statusName ?? 'Legacy',
+    activityStatusId: 0,
+    lastUpdatedDateTime: imported,
+    lastUpdatedBy: 0,
+    createdDateTime: imported,
+    editLock: null,
+
+    flags: [],
+    sharedWith: [],
+    sharedWithTeamIds: [],
+    visibility: null,
   };
 }

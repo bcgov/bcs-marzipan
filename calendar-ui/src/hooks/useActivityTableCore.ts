@@ -11,6 +11,7 @@ import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import { hasAnyActivityTableFilterActive } from '@/components/activity/ActivityTable/ActivityTableFilters';
 import {
   mapActivityToTableRow,
+  mapLegacyActivityToTableRow,
   type ActivityTableRow,
 } from '@/components/activity/ActivityTable/activityTableRow';
 import { compareActivityRowsByLevels } from '@/components/activity/ActivityTable/activityTableSort';
@@ -31,6 +32,7 @@ import {
   useSyncActivityFlags,
 } from '@/hooks/useCalendar';
 import { useFavourites } from '@/hooks/useFavourites';
+import { useLegacyActivities } from '@/hooks/useLegacyActivities';
 import {
   useLiveActivityRowHighlights,
   useLiveActivitySyncContext,
@@ -62,6 +64,7 @@ import {
 } from '@/lib/activityBulkActions';
 import { hasAnyKnownParam } from '@/lib/activityTablePreferencesParams';
 import { getFriendlyErrorMessage } from '@/lib/error-toast';
+import { dateRangeReachesPast } from '@/lib/legacy-date-gate';
 import { hasMinistryTabLeadTeamFilterConflict } from '@/lib/ministry-tab-lead-filter-conflict';
 import { getSavedFilterAutoApplyDecision } from '@/lib/savedFilterAutoApplyDecision';
 import {
@@ -95,6 +98,8 @@ export interface ActivityTableCoreOptions {
   watchlistActivityIds?: number[];
   /** When set, only activities flag-assigned to any of these users are shown. */
   flagAssigneeUserIds?: number[];
+  /** Merge read-only legacy records into the list when the date range reaches the past. */
+  includeLegacy?: boolean;
   /**
    * When used with `onActiveSavedFilterChange`, the parent owns which saved filter
    * is considered applied (e.g. a single table across activity list tabs).
@@ -122,6 +127,7 @@ export function useActivityTableCore({
   favouriteActivityIds,
   watchlistActivityIds,
   flagAssigneeUserIds,
+  includeLegacy = false,
   activeSavedFilter: activeSavedFilterFromParent,
   onActiveSavedFilterChange,
 }: ActivityTableCoreOptions = {}) {
@@ -445,8 +451,6 @@ export function useActivityTableCore({
   );
 
   const usersQuery = useUsers();
-  const loading = activitiesQuery.isPending && !activitiesQuery.data;
-  const error = activitiesQuery.isError ? activitiesQuery.error : null;
 
   const syncFlagsMutation = useSyncActivityFlags();
 
@@ -483,10 +487,75 @@ export function useActivityTableCore({
     return map;
   }, [usersQuery.data]);
 
-  const data = useMemo(
-    () => (activitiesQuery.data ?? []).map(mapActivityToTableRow),
-    [activitiesQuery.data]
+  const legacyActive =
+    includeLegacy && dateRangeReachesPast(filterState.dateRange);
+  const legacyQuery = useLegacyActivities(legacyActive, {
+    search: searchKeyword.trim() || undefined,
+    startDate: filterState.dateRange.noStartDate
+      ? undefined
+      : filterState.dateRange.startDate || undefined,
+    endDate: filterState.dateRange.noEndDate
+      ? undefined
+      : filterState.dateRange.endDate || undefined,
+  });
+  const legacyStatusIdByLabel = useMemo(
+    () =>
+      new Map(
+        statusOptions.map((option) => [
+          option.label.toLowerCase(),
+          Number(option.value),
+        ])
+      ),
+    [statusOptions]
   );
+
+  const data = useMemo(() => {
+    const current = (activitiesQuery.data ?? []).map(mapActivityToTableRow);
+    if (!legacyActive) return current;
+    const legacy = (legacyQuery.data ?? [])
+      .map((legacyActivity) => {
+        const row = mapLegacyActivityToTableRow(legacyActivity);
+        const statusId = legacyActivity.statusName
+          ? legacyStatusIdByLabel.get(legacyActivity.statusName.toLowerCase())
+          : undefined;
+        return statusId == null ? row : { ...row, activityStatusId: statusId };
+      })
+      .filter((row) => {
+        if (
+          !effectiveShowCompleted &&
+          row.activityStatusId === statusArchiveIds.completedStatusId
+        ) {
+          return false;
+        }
+        if (
+          !effectiveShowDeleted &&
+          row.activityStatusId === statusArchiveIds.deletedStatusId
+        ) {
+          return false;
+        }
+        return true;
+      });
+    return [...current, ...legacy];
+  }, [
+    activitiesQuery.data,
+    effectiveShowCompleted,
+    effectiveShowDeleted,
+    legacyActive,
+    legacyQuery.data,
+    legacyStatusIdByLabel,
+    statusArchiveIds.completedStatusId,
+    statusArchiveIds.deletedStatusId,
+  ]);
+
+  const legacyLoading =
+    legacyActive && legacyQuery.isPending && !legacyQuery.data;
+  const loading =
+    (activitiesQuery.isPending && !activitiesQuery.data) || legacyLoading;
+  const error = activitiesQuery.isError
+    ? activitiesQuery.error
+    : legacyActive && legacyQuery.isError
+      ? legacyQuery.error
+      : null;
 
   const filterContext = useMemo((): FilterActivityRowsContext | undefined => {
     const hasTranslationStatus = translationStatusOptions.length > 0;
@@ -657,7 +726,9 @@ export function useActivityTableCore({
     []
   );
 
-  const selectActivityIds = useCallback((activityIds: number[]) => {
+  const selectActivityIds = useCallback((ids: number[]) => {
+    // Legacy rows have negative ids and cannot take part in bulk actions.
+    const activityIds = ids.filter((id) => id > 0);
     const nextIds = activityIds.slice(0, MAX_BULK_SELECTION);
     setSelectedActivityIds(new Set(nextIds));
     if (activityIds.length > MAX_BULK_SELECTION) {
@@ -901,8 +972,11 @@ export function useActivityTableCore({
   }, [setPreferences, setActiveSavedFilter]);
 
   const refetchActivities = useCallback(() => {
-    void activitiesQuery.refetch();
-  }, [activitiesQuery]);
+    void Promise.all([
+      activitiesQuery.refetch(),
+      ...(legacyActive ? [legacyQuery.refetch()] : []),
+    ]);
+  }, [activitiesQuery, legacyActive, legacyQuery]);
 
   return {
     // Permissions and visibility
