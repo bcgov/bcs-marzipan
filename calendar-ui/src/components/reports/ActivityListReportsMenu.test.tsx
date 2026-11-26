@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ActivityListReportsMenu } from './ActivityListReportsMenu';
@@ -43,6 +44,24 @@ describe('ActivityListReportsMenu', () => {
       screen.getByRole('menuitem', { name: /show full activity list/i })
     );
     expect(onShowFullList).toHaveBeenCalled();
+  });
+
+  it('shows Look Ahead page link when enabled', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <ActivityListReportsMenu
+          reports={reports}
+          availability="allowed"
+          onOpenReport={vi.fn()}
+          showLookAheadLink
+        />
+      </MemoryRouter>
+    );
+    await user.click(screen.getByRole('button', { name: /reports/i }));
+    const lookAheadLink = screen.getByRole('menuitem', { name: /look ahead/i });
+    expect(lookAheadLink).toHaveAttribute('href', '/look-ahead');
+    expect(lookAheadLink).not.toHaveAttribute('target');
   });
 
   it('disables items and shows watchlist limit message', async () => {

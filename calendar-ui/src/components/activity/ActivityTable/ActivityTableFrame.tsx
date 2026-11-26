@@ -44,11 +44,6 @@ import { MINISTRY_TAB_LEAD_FILTER_CONFLICT_NOTE } from '@/lib/ministry-tab-lead-
 import { ActivityTableEmptyState } from './ActivityTableEmptyState';
 import { ActivityTableFilters } from './ActivityTableFilters';
 import { ActivityTableLayout } from './ActivityTableLayout';
-import {
-  ACTIVITY_SORT_COLUMNS,
-  DEFAULT_SORT_DIRECTION,
-  DEFAULT_SORT_KEY,
-} from './activityTableSortColumns';
 
 export interface ActivityTableFrameProps {
   core: ActivityTableCore;
@@ -106,9 +101,6 @@ export function ActivityTableFrame({
     toggleFavourite,
     filterState,
     searchKeyword,
-    sortKey,
-    sortDirection,
-    handleSortChange,
     handleFilterStateChange,
     handleSearchKeywordChange,
     handleApplySavedFilter,
@@ -146,12 +138,6 @@ export function ActivityTableFrame({
       onFilterStateChange={handleFilterStateChange}
       searchKeyword={searchKeyword}
       onSearchKeywordChange={handleSearchKeywordChange}
-      sortKey={sortKey}
-      sortDirection={sortDirection}
-      onSortChange={handleSortChange}
-      defaultSortKey={DEFAULT_SORT_KEY}
-      defaultSortDirection={DEFAULT_SORT_DIRECTION}
-      sortColumns={ACTIVITY_SORT_COLUMNS}
       categoryOptions={categoryOptions}
       statusOptions={statusOptions}
       tagOptions={tagOptions}

@@ -35,6 +35,12 @@ interface SortDropdownProps {
   /** When true, do not append direction (e.g. "Newest", "A–Z") to the trigger label. */
   hideDirectionLabel?: boolean;
   triggerClassName?: string;
+  /** Button variant; activity list uses `ghost` to match column controls. */
+  triggerVariant?: 'outline' | 'ghost';
+  /** Prepended to the trigger label (e.g. `Sort:`). */
+  triggerLabelPrefix?: string;
+  /** Hides the trigger chevron (activity list compact trigger). */
+  hideTriggerChevron?: boolean;
   ariaLabel?: string;
 }
 
@@ -62,6 +68,9 @@ export function SortDropdown({
   triggerLabel: triggerLabelProp,
   hideDirectionLabel = false,
   triggerClassName,
+  triggerVariant = 'outline',
+  triggerLabelPrefix,
+  hideTriggerChevron = false,
   ariaLabel = 'Sort by',
 }: SortDropdownProps) {
   const effectiveKey = sortKey ?? defaultSortKey;
@@ -76,6 +85,8 @@ export function SortDropdown({
           ? activeColumn.label
           : `${activeColumn.label} ${directionLabel(activeColumn, effectiveDirection)}`
         : 'Sort by';
+  const hasLabelPrefix =
+    triggerLabelPrefix != null && triggerLabelPrefix !== '';
 
   const SortIcon = effectiveDirection === 'asc' ? ArrowUp : ArrowDown;
 
@@ -92,10 +103,12 @@ export function SortDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
+          type="button"
+          variant={triggerVariant}
           size="sm"
           className={cn(
-            'h-10 justify-between gap-2 font-normal',
+            'gap-1 font-normal',
+            triggerVariant === 'outline' && 'h-10 justify-between gap-2',
             triggerClassName
           )}
           aria-label={
@@ -104,9 +117,21 @@ export function SortDropdown({
               : ariaLabel
           }
         >
-          <SortIcon className="h-4 w-4 shrink-0" />
-          <span className="truncate">{triggerLabel}</span>
-          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          {hasLabelPrefix ? (
+            <>
+              <span className="shrink-0">{triggerLabelPrefix}</span>
+              <SortIcon className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">{triggerLabel}</span>
+            </>
+          ) : (
+            <>
+              <SortIcon className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">{triggerLabel}</span>
+            </>
+          )}
+          {!hideTriggerChevron ? (
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          ) : null}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

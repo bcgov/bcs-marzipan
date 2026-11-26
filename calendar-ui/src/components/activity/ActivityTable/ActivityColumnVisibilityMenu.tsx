@@ -1,4 +1,4 @@
-import { ChevronDown, Columns3 } from 'lucide-react';
+import { Columns3 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -28,8 +28,13 @@ export function ActivityColumnVisibilityMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" size="sm" variant="ghost">
-          <Columns3 /> Columns <ChevronDown />
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          aria-label="Show or hide columns"
+        >
+          <Columns3 className="h-4 w-4" aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
