@@ -1,10 +1,12 @@
-import type { LegacyActivity } from '@/api/legacyActivitiesApi';
+import type { LegacyActivityDetails as LegacyActivityDetailsData } from '@/api/legacyActivitiesApi';
+import { FormSectionDivider } from '@/components/ui/form-section-divider';
 import {
   CORP_PACIFIC_TIME_ZONE,
   formatExactDate,
   parseDateOnlyString,
 } from '@/lib/datetime-utils';
 
+import { ActivityFormHeading } from './ActivityFormSections/ActivityFormHeading';
 import { ActivityFormSection } from './ActivityFormSections/ActivityFormSection';
 
 type LegacySectionField = {
@@ -13,15 +15,9 @@ type LegacySectionField = {
 };
 
 type LegacySection = {
-  title:
-    | 'Overview'
-    | 'Look Ahead'
-    | 'Schedule'
-    | 'Comms'
-    | 'Event'
-    | 'Location'
-    | 'Sharing';
+  title: 'Overview' | 'Look Ahead' | 'Schedule' | 'Comms' | 'Event' | 'Sharing';
   fields: LegacySectionField[];
+  locationFields?: LegacySectionField[];
 };
 
 function formatDate(value: string | null): string {
@@ -33,12 +29,14 @@ function formatDate(value: string | null): string {
     : formatExactDate(date, { includeYear: true });
 }
 
-function formatImportedAt(value: string | null): string {
+function formatCreatedAt(value: string | null): string {
   if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return formatExactDate(date, {
     includeYear: true,
+    includeTime: true,
+    appendPacificTimeAbbrev: true,
     timeZone: CORP_PACIFIC_TIME_ZONE,
   });
 }
@@ -49,26 +47,66 @@ function toDisplayValue(value: string | null | undefined): string {
   return trimmed.length > 0 ? trimmed : '-';
 }
 
-function toLegacySections(activity: LegacyActivity): LegacySection[] {
+function toBooleanDisplayValue(value: boolean | null): string {
+  return value == null ? '-' : value ? 'Yes' : 'No';
+}
+
+function toLegacySections(
+  activity: LegacyActivityDetailsData
+): LegacySection[] {
   return [
     {
       title: 'Overview',
       fields: [
-        { label: 'Title', value: toDisplayValue(activity.title) },
-        { label: 'Summary', value: toDisplayValue(activity.summary) },
-        { label: 'Status', value: toDisplayValue(activity.statusName) },
-        { label: 'Archived', value: activity.isArchived ? 'Yes' : 'No' },
-      ],
-    },
-    {
-      title: 'Look Ahead',
-      fields: [
         {
-          label: 'Look Ahead Status',
-          value: toDisplayValue(activity.lookAheadStatus),
+          label: 'Category',
+          value: toDisplayValue(activity.overview.category.join(', ')),
         },
+        { label: 'Title', value: toDisplayValue(activity.title) },
+        {
+          label: 'Confidential',
+          value: toBooleanDisplayValue(activity.overview.confidential),
+        },
+        {
+          label: 'Issue',
+          value: toBooleanDisplayValue(activity.overview.issue),
+        },
+        { label: 'Summary', value: toDisplayValue(activity.summary) },
+        {
+          label: 'Lead Organization',
+          value: toDisplayValue(activity.leadOrgName),
+        },
+        { label: 'Ministry', value: toDisplayValue(activity.ministryName) },
+        {
+          label: 'Tags',
+          value: toDisplayValue(activity.overview.tags.join(', ')),
+        },
+        {
+          label: 'Significance',
+          value: toDisplayValue(activity.overview.significance),
+        },
+        ...('notes' in activity.overview
+          ? [{ label: 'Notes', value: toDisplayValue(activity.overview.notes) }]
+          : []),
       ],
     },
+    ...(activity.lookAhead
+      ? [
+          {
+            title: 'Look Ahead' as const,
+            fields: [
+              {
+                label: 'Executive Summary',
+                value: toDisplayValue(activity.lookAhead.executiveSummary),
+              },
+              {
+                label: 'Look Ahead Status',
+                value: toDisplayValue(activity.lookAheadStatus),
+              },
+            ],
+          },
+        ]
+      : []),
     {
       title: 'Schedule',
       fields: [
@@ -80,33 +118,49 @@ function toLegacySections(activity: LegacyActivity): LegacySection[] {
       title: 'Comms',
       fields: [
         {
-          label: 'Lead Organization',
-          value: toDisplayValue(activity.leadOrgName),
+          label: 'Comms Materials',
+          value: toDisplayValue(activity.comms.materials.join(', ')),
         },
-        { label: 'Ministry', value: toDisplayValue(activity.ministryName) },
+        {
+          label: 'News Release Origin',
+          value: toDisplayValue(activity.comms.newsReleaseOrigin),
+        },
+        {
+          label: 'News Release Distribution',
+          value: toDisplayValue(activity.comms.newsReleaseDistribution),
+        },
+        {
+          label: 'Translations',
+          value: toDisplayValue(activity.comms.translations.join(', ')),
+        },
       ],
     },
     {
       title: 'Event',
       fields: [
         {
-          label: 'Source System',
-          value: toDisplayValue(activity.sourceSystem),
+          label: 'Premier Status',
+          value: toDisplayValue(activity.event.premierStatus),
         },
-        { label: 'Source Table', value: toDisplayValue(activity.sourceTable) },
         {
-          label: 'Source Record ID',
-          value: toDisplayValue(activity.sourceRecordId),
+          label: 'Government Representatives',
+          value: toDisplayValue(
+            activity.event.governmentRepresentatives.join(', ')
+          ),
         },
-        { label: 'Imported At', value: formatImportedAt(activity.importedAt) },
+        {
+          label: 'Event Planners',
+          value: toDisplayValue(activity.event.eventPlanners.join(', ')),
+        },
+        {
+          label: 'Created At',
+          value: formatCreatedAt(activity.createdDateTime),
+        },
       ],
-    },
-    {
-      title: 'Location',
-      fields: [
+      locationFields: [
         {
-          label: 'Location Name',
-          value: toDisplayValue(activity.locationName),
+          label: 'Venue and City',
+          value: toDisplayValue(activity.event.venueCity),
         },
       ],
     },
@@ -128,13 +182,13 @@ type LegacySectionColumn = {
 };
 
 function splitSectionsForFormLayout(
-  activity: LegacyActivity
+  activity: LegacyActivityDetailsData
 ): LegacySectionColumn {
   const sections = toLegacySections(activity);
   const byTitle = new Map(sections.map((section) => [section.title, section]));
 
   return {
-    left: [byTitle.get('Overview'), byTitle.get('Location')].filter(
+    left: [byTitle.get('Overview')].filter(
       (section): section is LegacySection => section != null
     ),
     right: [
@@ -156,10 +210,30 @@ function LegacySectionCard({ section }: { section: LegacySection }) {
             <dt className="text-muted-foreground text-xs tracking-wide uppercase">
               {field.label}
             </dt>
-            <dd className="mt-1 text-sm text-slate-900">{field.value}</dd>
+            <dd className="mt-1 text-sm break-words whitespace-pre-wrap text-slate-900">
+              {field.value}
+            </dd>
           </div>
         ))}
       </dl>
+      {section.locationFields && (
+        <>
+          <FormSectionDivider />
+          <ActivityFormHeading>Location</ActivityFormHeading>
+          <dl className="space-y-4">
+            {section.locationFields.map((field) => (
+              <div key={field.label}>
+                <dt className="text-muted-foreground text-xs tracking-wide uppercase">
+                  {field.label}
+                </dt>
+                <dd className="mt-1 text-sm break-words whitespace-pre-wrap text-slate-900">
+                  {field.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      )}
     </ActivityFormSection>
   );
 }
@@ -168,7 +242,7 @@ function LegacySectionCard({ section }: { section: LegacySection }) {
 export function LegacyActivityDetails({
   activity,
 }: {
-  activity: LegacyActivity;
+  activity: LegacyActivityDetailsData;
 }) {
   const { left, right } = splitSectionsForFormLayout(activity);
 

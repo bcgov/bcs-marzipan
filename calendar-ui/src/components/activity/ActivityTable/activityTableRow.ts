@@ -18,7 +18,7 @@ export interface ActivityTableRow {
   displayId: string | null;
   isLegacy?: boolean;
   legacyId?: number;
-  legacySourceLabel?: string;
+  legacyCreatedDateTime?: string | null;
 
   // Overview column
   title: string;
@@ -224,10 +224,10 @@ export function mapLegacyActivityToTableRow(
 
   return {
     id: -legacy.id,
-    displayId: legacy.sourceRecordId,
+    displayId: legacy.displayId,
     isLegacy: true,
     legacyId: legacy.id,
-    legacySourceLabel: `${legacy.sourceSystem} #${legacy.sourceRecordId}`,
+    legacyCreatedDateTime: legacy.createdDateTime,
 
     title: legacy.title ?? '(Untitled legacy record)',
     activityCategories: [],
@@ -270,11 +270,11 @@ export function mapLegacyActivityToTableRow(
     translationsRequiredStatusId: null,
     commsMaterials: [],
 
-    activityStatus: legacy.statusName ?? 'Legacy',
-    activityStatusId: 0,
+    activityStatus: legacy.activityStatus,
+    activityStatusId: legacy.activityStatusId,
     lastUpdatedDateTime: imported,
     lastUpdatedBy: 0,
-    createdDateTime: imported,
+    createdDateTime: legacy.createdDateTime ?? new Date(0).toISOString(),
     editLock: null,
 
     flags: [],

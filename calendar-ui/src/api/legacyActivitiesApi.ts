@@ -3,8 +3,6 @@ import api from './axios';
 export type LegacyActivityListQuery = {
   search?: string;
   status?: string;
-  archived?: boolean;
-  sourceSystem?: string;
   startDate?: string;
   endDate?: string;
   limit?: number;
@@ -13,20 +11,45 @@ export type LegacyActivityListQuery = {
 
 export type LegacyActivity = {
   id: number;
-  sourceSystem: string;
-  sourceTable: string;
-  sourceRecordId: string;
+  displayId: string;
   title: string | null;
   summary: string | null;
   startDate: string | null;
   endDate: string | null;
-  statusName: string | null;
+  activityStatusId: number;
+  activityStatus: string;
   lookAheadStatus: string | null;
   leadOrgName: string | null;
   ministryName: string | null;
   locationName: string | null;
+  createdDateTime: string | null;
   importedAt: string | null;
-  isArchived: boolean;
+};
+
+export type LegacyActivityDetails = LegacyActivity & {
+  overview: {
+    category: string[];
+    confidential: boolean | null;
+    issue: boolean | null;
+    tags: string[];
+    significance: string | null;
+    notes?: string | null;
+  };
+  lookAhead?: {
+    executiveSummary: string | null;
+  };
+  comms: {
+    materials: string[];
+    newsReleaseOrigin: string | null;
+    newsReleaseDistribution: string | null;
+    translations: string[];
+  };
+  event: {
+    premierStatus: string | null;
+    governmentRepresentatives: string[];
+    eventPlanners: string[];
+    venueCity: string | null;
+  };
 };
 
 export async function fetchLegacyActivities(
@@ -36,9 +59,6 @@ export async function fetchLegacyActivities(
 
   if (query.search?.trim()) params.search = query.search.trim();
   if (query.status?.trim()) params.status = query.status.trim();
-  if (typeof query.archived === 'boolean') params.archived = query.archived;
-  if (query.sourceSystem?.trim())
-    params.sourceSystem = query.sourceSystem.trim();
   if (query.startDate?.trim()) params.startDate = query.startDate.trim();
   if (query.endDate?.trim()) params.endDate = query.endDate.trim();
   if (typeof query.limit === 'number') params.limit = query.limit;
@@ -81,7 +101,9 @@ export async function fetchAllLegacyActivities(
   return all;
 }
 
-export async function fetchLegacyActivity(id: number): Promise<LegacyActivity> {
-  const res = await api.get<LegacyActivity>(`/legacy-activities/${id}`);
+export async function fetchLegacyActivity(
+  id: number
+): Promise<LegacyActivityDetails> {
+  const res = await api.get<LegacyActivityDetails>(`/legacy-activities/${id}`);
   return res.data;
 }

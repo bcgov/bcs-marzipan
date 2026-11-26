@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_ACTIVITY_FILTER_STATE } from '@corpcal/shared';
 import { createMockActivityListItem } from '@corpcal/shared/test-utils/activity-list-item.fixture';
+import {
+  filterActivityRowsByFilters,
+  filterActivityRowsByKeyword,
+} from '@/lib/activity-query-utils';
 
 import {
   mapActivityToTableRow,
+  mapLegacyActivityToTableRow,
   resolveCommsContactName,
 } from './activityTableRow';
 
@@ -79,5 +85,38 @@ describe('mapActivityToTableRow', () => {
       })
     );
     expect(row.editLock).toEqual({ userId: 42, username: 'Editor User' });
+  });
+});
+
+describe('mapLegacyActivityToTableRow', () => {
+  it('uses the original ID, lookup status, and creation timestamp in the combined table', () => {
+    const row = mapLegacyActivityToTableRow({
+      id: 12,
+      displayId: 'LEG-1001',
+      title: 'Historical activity',
+      summary: null,
+      startDate: '2025-01-14',
+      endDate: null,
+      activityStatusId: 8,
+      activityStatus: 'Archived',
+      lookAheadStatus: null,
+      leadOrgName: null,
+      ministryName: null,
+      locationName: null,
+      createdDateTime: '2024-12-01T12:00:00.000Z',
+      importedAt: '2026-01-01T12:00:00.000Z',
+    });
+
+    expect(row.displayId).toBe('LEG-1001');
+    expect(row.activityStatusId).toBe(8);
+    expect(row.activityStatus).toBe('Archived');
+    expect(row.createdDateTime).toBe('2024-12-01T12:00:00.000Z');
+    expect(filterActivityRowsByKeyword([row], 'LEG-1001')).toEqual([row]);
+    expect(
+      filterActivityRowsByFilters([row], {
+        ...DEFAULT_ACTIVITY_FILTER_STATE,
+        activityStatusIds: [8],
+      })
+    ).toEqual([row]);
   });
 });

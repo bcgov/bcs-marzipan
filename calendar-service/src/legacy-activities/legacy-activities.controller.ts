@@ -7,8 +7,13 @@ import {
   Query,
 } from '@nestjs/common';
 
-import { PERMISSIONS } from '@corpcal/shared';
+import {
+  canViewActivityFieldScope,
+  PERMISSIONS,
+  type AuthUser,
+} from '@corpcal/shared';
 
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequirePermission } from '../policy/decorators/require-permission.decorator';
 import {
   LegacyActivitiesService,
@@ -27,11 +32,6 @@ export class LegacyActivitiesController {
     return this.legacyActivitiesService.list({
       search: query.search,
       status: query.status,
-      archived:
-        query.archived === undefined
-          ? undefined
-          : query.archived === 'true' || query.archived === true,
-      sourceSystem: query.sourceSystem,
       startDate: query.startDate,
       endDate: query.endDate,
       limit: query.limit ?? 25,
@@ -40,8 +40,15 @@ export class LegacyActivitiesController {
   }
 
   @Get(':id')
-  async getById(@Param('id', ParseIntPipe) id: number) {
-    const row = await this.legacyActivitiesService.getById(id);
+  async getById(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser | undefined
+  ) {
+    const row = await this.legacyActivitiesService.getById(
+      id,
+      user != null && canViewActivityFieldScope(user, 'notes'),
+      user != null && canViewActivityFieldScope(user, 'lookAhead')
+    );
     if (!row) {
       throw new NotFoundException(`Legacy activity ${id} not found`);
     }

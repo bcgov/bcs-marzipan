@@ -20,7 +20,8 @@ VALUES
   (4, 'deleted', 'Deleted', 4, true, 'Entry is deleted', 999, 999),
   (5, 'delete_requested', 'Delete requested', 5, true, 'Delete has been requested by comms contact', 999, 999),
   (6, 'completed', 'Completed', 6, true, 'Activity has ended (set by scheduler)', 999, 999),
-  (7, 'on_hold', 'On hold', 7, true, 'Activity is on hold (deferred)', 999, 999)
+  (7, 'on_hold', 'On hold', 7, true, 'Activity is on hold (deferred)', 999, 999),
+  (8, 'archived', 'Archived', 8, true, 'Activity is archived', 999, 999)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -36,13 +37,13 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM (VALUES
       (1, 'new'), (2, 'reviewed'), (3, 'changed'), (4, 'deleted'),
-      (5, 'delete_requested'), (6, 'completed'), (7, 'on_hold')
+      (5, 'delete_requested'), (6, 'completed'), (7, 'on_hold'), (8, 'archived')
     ) AS v(id, name)
     WHERE NOT EXISTS (
       SELECT 1 FROM activity_statuses a WHERE a.id = v.id AND a.name = v.name
     )
   ) THEN
-    RAISE EXCEPTION 'activity_statuses seed alignment failed: expected (id,name) 1=new, 2=reviewed, 3=changed, 4=deleted, 5=delete_requested, 6=completed, 7=on_hold. Code and activities seed depend on these ids.';
+    RAISE EXCEPTION 'activity_statuses seed alignment failed: expected (id,name) 1=new, 2=reviewed, 3=changed, 4=deleted, 5=delete_requested, 6=completed, 7=on_hold, 8=archived. Code and activities seed depend on these ids.';
   END IF;
 END $$;
 
