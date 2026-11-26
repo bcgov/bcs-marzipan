@@ -55,12 +55,9 @@ export type ActivityListScopeInput = Omit<
 
 export interface BuildActivityListEffectiveScopeInput {
   tab: ActivityListTabValue;
-  preferences: Pick<
-    ActivityTablePreferences,
-    'filterState' | 'showCompleted' | 'showDeleted'
-  >;
+  preferences: Pick<ActivityTablePreferences, 'filterState'>;
   statusArchiveIds: ActivityListReportStatusArchiveIds;
-  canSeeDeleted: boolean;
+  canViewDeleted: boolean;
   watchlistActivityIds?: number[];
   ministryConflict?: boolean;
   ministryTabLabel?: string;
@@ -200,7 +197,7 @@ export function buildActivityListEffectiveScope(
     tab,
     preferences,
     statusArchiveIds,
-    canSeeDeleted,
+    canViewDeleted,
     watchlistActivityIds = [],
     ministryConflict = false,
     ministryTabLabel,
@@ -219,7 +216,7 @@ export function buildActivityListEffectiveScope(
   const baseParams = buildActivityListReportFetchParams(
     preferences,
     statusArchiveIds,
-    canSeeDeleted
+    canViewDeleted
   );
 
   const merged: ReportDataRequestParams = { ...baseParams };

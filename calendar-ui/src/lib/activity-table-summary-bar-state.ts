@@ -1,86 +1,21 @@
-import type { ActivityFilterState } from '@corpcal/shared';
+import {
+  isImplicitCompletedWidenActive,
+  type ActivityFilterState,
+  type ActivityStatusArchiveIds,
+} from '@corpcal/shared';
 import { hasAnyActivityTableFilterActive } from '@/components/activity/ActivityTable/ActivityTableFilters';
-import type {
-  BooleanFilter,
-  TableSummaryFilterDetailLine,
-} from '@/components/table/TableSummaryBar';
-import type { ActivityStatusArchiveIds } from '@/hooks/useActivityTableFilterLookups';
+import type { TableSummaryFilterDetailLine } from '@/components/table/TableSummaryBar';
 import {
   buildActivityFilterSummaryLinesForDetailPopover,
   getAppliedActivityFilterTypeLabels,
   type ActivityFilterSummaryContext,
 } from '@/lib/activity-filter-summary';
 
-export interface EffectiveArchiveFilterVisibility {
-  hasStatusFilter: boolean;
-  effectiveShowCompleted: boolean;
-  effectiveShowDeleted: boolean;
-}
-
-export function resolveEffectiveArchiveFilterVisibility(
-  filterState: ActivityFilterState,
-  statusArchiveIds: ActivityStatusArchiveIds,
-  showCompleted: boolean,
-  showDeleted: boolean,
-  canSeeDeleted: boolean
-): EffectiveArchiveFilterVisibility {
-  const hasStatusFilter = filterState.activityStatusIds.length > 0;
-  const statusFilterIncludesCompleted =
-    statusArchiveIds.completedStatusId != null &&
-    filterState.activityStatusIds.includes(statusArchiveIds.completedStatusId);
-  const statusFilterIncludesDeleted =
-    statusArchiveIds.deletedStatusId != null &&
-    filterState.activityStatusIds.includes(statusArchiveIds.deletedStatusId);
-
-  return {
-    hasStatusFilter,
-    effectiveShowCompleted: hasStatusFilter
-      ? statusFilterIncludesCompleted
-      : showCompleted,
-    effectiveShowDeleted: hasStatusFilter
-      ? statusFilterIncludesDeleted && canSeeDeleted
-      : showDeleted && canSeeDeleted,
-  };
-}
-
-export function buildActivityTableBooleanFilters(options: {
-  hasStatusFilter: boolean;
-  effectiveShowCompleted: boolean;
-  effectiveShowDeleted: boolean;
-  canSeeDeleted: boolean;
-  onShowCompletedChange: (checked: boolean) => void;
-  onShowDeletedChange: (checked: boolean) => void;
-}): BooleanFilter[] {
-  const disabledTooltip = options.hasStatusFilter
-    ? 'Controlled by status filter'
-    : undefined;
-  const filters: BooleanFilter[] = [
-    {
-      id: 'show-completed',
-      label: 'Show completed',
-      checked: options.effectiveShowCompleted,
-      onCheckedChange: options.onShowCompletedChange,
-      disabled: options.hasStatusFilter,
-      disabledTooltip,
-    },
-  ];
-  if (options.canSeeDeleted) {
-    filters.push({
-      id: 'show-deleted',
-      label: 'Show deleted',
-      checked: options.effectiveShowDeleted,
-      onCheckedChange: options.onShowDeletedChange,
-      disabled: options.hasStatusFilter,
-      disabledTooltip,
-    });
-  }
-  return filters;
-}
-
 export function buildActivityTableFilterSummaryDetails(options: {
   filterState: ActivityFilterState;
   searchKeyword: string;
   filterSummaryContext: ActivityFilterSummaryContext;
+  statusArchiveIds?: ActivityStatusArchiveIds;
 }): {
   appliedFilterTypeLabels: string[];
   filterDetailLines: TableSummaryFilterDetailLine[];
@@ -103,6 +38,19 @@ export function buildActivityTableFilterSummaryDetails(options: {
         options.filterSummaryContext
       )
     : [];
+
+  if (
+    options.statusArchiveIds != null &&
+    isImplicitCompletedWidenActive(
+      options.filterState,
+      options.statusArchiveIds
+    )
+  ) {
+    filterDetailLines.push({
+      label: 'Completed',
+      value: 'Included for this date range',
+    });
+  }
 
   return {
     appliedFilterTypeLabels,

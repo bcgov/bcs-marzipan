@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   activityDateSpanOverlapsRange,
   activityScheduledRangeOverlaps,
+  PERMISSIONS,
   type DateRangeValue,
 } from '@corpcal/shared';
 import type { FilterActivitiesQueryParams } from '@corpcal/shared/schemas';
@@ -17,10 +18,50 @@ import {
   buildActivityVisibilityCondition,
   buildScheduledWindowOverlapConditions,
   hasActivityFindAllFilterFields,
+  resolveAllowIncludeDeleted,
+  resolveCanViewDeleted,
 } from './activity-find-all-filters';
 
 const DELETED_STATUS_ID = 99;
 const COMPLETED_STATUS_ID = 5;
+
+describe('resolveCanViewDeleted', () => {
+  it('returns false when permission is missing', () => {
+    expect(resolveCanViewDeleted([])).toBe(false);
+    expect(resolveCanViewDeleted(undefined)).toBe(false);
+  });
+
+  it('returns true when activities.view.deleted is granted', () => {
+    expect(resolveCanViewDeleted([PERMISSIONS.ACTIVITIES.VIEW_DELETED])).toBe(
+      true
+    );
+  });
+});
+
+describe('resolveAllowIncludeDeleted', () => {
+  it('returns false when includeDeleted is not true', () => {
+    expect(
+      resolveAllowIncludeDeleted(false, [PERMISSIONS.ACTIVITIES.VIEW_DELETED])
+    ).toBe(false);
+    expect(
+      resolveAllowIncludeDeleted(undefined, [
+        PERMISSIONS.ACTIVITIES.VIEW_DELETED,
+      ])
+    ).toBe(false);
+  });
+
+  it('returns false when user lacks activities.view.deleted', () => {
+    expect(resolveAllowIncludeDeleted(true, [])).toBe(false);
+    expect(resolveAllowIncludeDeleted(true, undefined)).toBe(false);
+    expect(resolveAllowIncludeDeleted(true, ['activities.view'])).toBe(false);
+  });
+
+  it('returns true when includeDeleted is true and permission is granted', () => {
+    expect(
+      resolveAllowIncludeDeleted(true, [PERMISSIONS.ACTIVITIES.VIEW_DELETED])
+    ).toBe(true);
+  });
+});
 /** Bypass visibility so filter-only tests stay focused on non-visibility conditions. */
 const BYPASS_DATA_SCOPE: DataScope = { teamIds: [], bypass: true };
 
@@ -145,6 +186,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -158,6 +200,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -171,6 +214,51 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
+      db,
+      dataScope: BYPASS_DATA_SCOPE,
+    });
+    expect(conditions).toHaveLength(1);
+  });
+
+  it('allows explicit deleted status id when caller has activities.view.deleted', () => {
+    const { db } = createMockDb();
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters({ activityStatusIds: [DELETED_STATUS_ID] }),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      canViewDeleted: true,
+      db,
+      dataScope: BYPASS_DATA_SCOPE,
+    });
+    expect(conditions).toHaveLength(1);
+  });
+
+  it('strips deleted status id from explicit filter when permission is absent', () => {
+    const { db } = createMockDb();
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters({
+        activityStatusIds: [1, DELETED_STATUS_ID],
+      }),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      canViewDeleted: false,
+      db,
+      dataScope: BYPASS_DATA_SCOPE,
+    });
+    expect(conditions).toHaveLength(1);
+  });
+
+  it('returns no rows when status filter is only deleted and permission is absent', () => {
+    const { db } = createMockDb();
+    const conditions = buildActivityFindAllConditions({
+      filters: baseFilters({ activityStatusIds: [DELETED_STATUS_ID] }),
+      deletedStatusId: DELETED_STATUS_ID,
+      completedStatusId: COMPLETED_STATUS_ID,
+      allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -184,6 +272,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: true,
+      canViewDeleted: true,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -197,6 +286,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -210,6 +300,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -223,6 +314,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -239,6 +331,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -256,6 +349,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -273,6 +367,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -291,6 +386,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -308,6 +404,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -325,6 +422,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -338,6 +436,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -351,6 +450,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -364,6 +464,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: BYPASS_DATA_SCOPE,
     });
@@ -380,6 +481,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: resolveDataScope(undefined),
     });
@@ -394,6 +496,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: { teamIds: [], bypass: false },
     });
@@ -408,6 +511,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: { teamIds: [1, 2], bypass: false },
     });
@@ -422,6 +526,7 @@ describe('buildActivityFindAllConditions', () => {
       deletedStatusId: DELETED_STATUS_ID,
       completedStatusId: COMPLETED_STATUS_ID,
       allowIncludeDeleted: false,
+      canViewDeleted: false,
       db,
       dataScope: { teamIds: [1], bypass: true },
     });

@@ -45,7 +45,7 @@ export interface UseActivityReportPreviewOptions {
   setPreferencesState: React.Dispatch<
     React.SetStateAction<ActivityTablePreferences>
   >;
-  canSeeDeleted: boolean;
+  canViewDeleted: boolean;
   statusArchiveIds: ActivityListReportStatusArchiveIds;
   reportFetchParams?: ReportDataRequestParams;
   reportFetchParamsKey?: string;
@@ -56,7 +56,7 @@ export function useActivityReportPreview({
   reportName,
   preferences,
   setPreferencesState,
-  canSeeDeleted,
+  canViewDeleted,
   statusArchiveIds,
   reportFetchParams: reportFetchParamsProp,
   reportFetchParamsKey: reportFetchParamsKeyProp,
@@ -67,10 +67,10 @@ export function useActivityReportPreview({
   const setPreferences = useCallback(
     (partial: Partial<ActivityTablePreferences>) => {
       setPreferencesState((prev) =>
-        mergeActivityTablePreferences(prev, partial, canSeeDeleted)
+        mergeActivityTablePreferences(prev, partial)
       );
     },
-    [canSeeDeleted, setPreferencesState]
+    [setPreferencesState]
   );
 
   const reportFetchParams = useMemo(() => {
@@ -80,9 +80,9 @@ export function useActivityReportPreview({
     return buildActivityListReportFetchParams(
       preferences,
       statusArchiveIds,
-      canSeeDeleted
+      canViewDeleted
     );
-  }, [reportFetchParamsProp, preferences, statusArchiveIds, canSeeDeleted]);
+  }, [reportFetchParamsProp, preferences, statusArchiveIds, canViewDeleted]);
 
   const reportFetchParamsKey = useMemo(
     () =>

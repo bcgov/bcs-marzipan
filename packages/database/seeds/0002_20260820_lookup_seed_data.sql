@@ -14,91 +14,85 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- ORGANIZATIONS (ministry catalog rows; extension in ministries)
--- MUST be seeded before ministries extension and government_representatives
+-- Ids 1–20. MUST be seeded before ministries extension and government_representatives.
 -- ============================================================================
 
 INSERT INTO organizations (id, name, display_name, abbreviation, organization_type_id, jurisdiction, is_active, sort_order, created_by, last_updated_by) VALUES
   (1, 'PREM', 'Office of the Premier', 'PREM', 1, 'bcgov', true, 1, 1, 1),
-  (2, 'AF', 'Agriculture and Food', 'AF', 1, 'bcgov', true, 2, 1, 1),
-  (3, 'AG', 'Attorney General', 'AG', 1, 'bcgov', true, 3, 1, 1),
-  (4, 'MCFD', 'Children and Family Development', 'MCFD', 1, 'bcgov', true, 4, 1, 1),
-  (5, 'CITZ', 'Citizens'' Services', 'CITZ', 1, 'bcgov', true, 5, 1, 1),
-  (6, 'ECC', 'Education and Child Care', 'ECC', 1, 'bcgov', true, 6, 1, 1),
-  (7, 'EMCR', 'Emergency Management and Climate Readiness', 'EMCR', 1, 'bcgov', true, 7, 1, 1),
-  (8, 'ECS', 'Energy and Climate Solutions', 'ECS', 1, 'bcgov', true, 8, 1, 1),
-  (9, 'ENV', 'Environment and Parks', 'ENV', 1, 'bcgov', true, 9, 1, 1),
-  (10, 'FIN', 'Finance', 'FIN', 1, 'bcgov', true, 10, 1, 1),
-  (11, 'FOR', 'Forests', 'FOR', 1, 'bcgov', true, 11, 1, 1),
-  (12, 'HLTH', 'Health', 'HLTH', 1, 'bcgov', true, 12, 1, 1),
-  (13, 'HMA', 'Housing and Municipal Affairs', 'HMA', 1, 'bcgov', true, 13, 1, 1),
+  (2, 'IGRS', 'Intergovernmental Relations Secretariat', 'IGRS', 1, 'bcgov', true, 2, 1, 1),
+  (3, 'AGRI', 'Agriculture', 'AGRI', 1, 'bcgov', true, 3, 1, 1),
+  (4, 'AG', 'Attorney General', 'AG', 1, 'bcgov', true, 4, 1, 1),
+  (5, 'CFD', 'Children and Family Development', 'CFD', 1, 'bcgov', true, 5, 1, 1),
+  (6, 'CITZ', 'Citizens'' Services and Technology', 'CITZ', 1, 'bcgov', true, 6, 1, 1),
+  (7, 'ECON', 'Economic Development and Tourism', 'ECON', 1, 'bcgov', true, 7, 1, 1),
+  (8, 'ECC', 'Education and Child Care', 'ECC', 1, 'bcgov', true, 8, 1, 1),
+  (9, 'EMPR', 'Energy, Mines and Petroleum Resources', 'EMPR', 1, 'bcgov', true, 9, 1, 1),
+  (10, 'ENV', 'Environment', 'ENV', 1, 'bcgov', true, 10, 1, 1),
+  (11, 'FIN', 'Finance', 'FIN', 1, 'bcgov', true, 11, 1, 1),
+  (12, 'FOR', 'Forests', 'FOR', 1, 'bcgov', true, 12, 1, 1),
+  (13, 'HLTH', 'Health', 'HLTH', 1, 'bcgov', true, 13, 1, 1),
   (14, 'IRR', 'Indigenous Relations and Reconciliation', 'IRR', 1, 'bcgov', true, 14, 1, 1),
-  (15, 'INF', 'Infrastructure', 'INF', 1, 'bcgov', true, 15, 1, 1),
-  (16, 'IGRS', 'Intergovernmental Relations Secretariat', 'IGRS', 1, 'bcgov', true, 16, 1, 1),
-  (17, 'JEG', 'Jobs and Economic Growth', 'JEG', 1, 'bcgov', true, 17, 1, 1),
-  (18, 'LRB', 'Labour', 'LRB', 1, 'bcgov', true, 18, 1, 1),
-  (19, 'MIN', 'Mining and Critical Minerals', 'MIN', 1, 'bcgov', true, 19, 1, 1),
-  (20, 'PSFS', 'Post-Secondary Education and Future Skills', 'PSFS', 1, 'bcgov', true, 20, 1, 1),
-  (21, 'PSSG', 'Public Safety and Solicitor General', 'PSSG', 1, 'bcgov', true, 21, 1, 1),
-  (22, 'SDPR', 'Social Development and Poverty Reduction', 'SDPR', 1, 'bcgov', true, 22, 1, 1),
-  (23, 'TACS', 'Tourism, Arts, Culture and Sport', 'TACS', 1, 'bcgov', true, 23, 1, 1),
-  (24, 'MOTT', 'Transportation and Transit', 'MOTT', 1, 'bcgov', true, 24, 1, 1),
-  (25, 'WLRS', 'Water, Land and Resource Stewardship', 'WLRS', 1, 'bcgov', true, 25, 1, 1)
+  (15, 'LOCL', 'Local Government, Housing, Sport and Culture', 'LOCL', 1, 'bcgov', true, 15, 1, 1),
+  (16, 'PSEL', 'Post-Secondary Education and Labour', 'PSEL', 1, 'bcgov', true, 16, 1, 1),
+  (17, 'PSSG', 'Public Safety and Solicitor General', 'PSSG', 1, 'bcgov', true, 17, 1, 1),
+  (18, 'SDEV', 'Social Development', 'SDEV', 1, 'bcgov', true, 18, 1, 1),
+  (19, 'MOTI', 'Transportation and Infrastructure', 'MOTI', 1, 'bcgov', true, 19, 1, 1),
+  (20, 'WLRO', 'Water, Land and Natural Resource Operations', 'WLRO', 1, 'bcgov', true, 20, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- ORGANIZATIONS (ABC / non-ministry catalog)
--- Ids 26+; ministries remain 1–25. Fixed UUIDs for stable external references.
+-- Ids 21+; ministries remain 1–20.
 -- ============================================================================
 
 INSERT INTO organizations (id, name, display_name, abbreviation, organization_type_id, jurisdiction, is_active, sort_order, created_by, last_updated_by) VALUES
-  (26, 'BC Hydro', 'BC Hydro and Power Authority', NULL, 4, 'bcgov', true, 26, 1, 1),
-  (27, 'ICBC', 'Insurance Corporation of British Columbia', 'ICBC', 4, 'bcgov', true, 27, 1, 1),
-  (28, 'BCLC', 'British Columbia Lottery Corporation', 'BCLC', 4, 'bcgov', true, 28, 1, 1),
-  (29, 'BC Transit', 'BC Transit', NULL, 4, 'bcgov', true, 29, 1, 1),
-  (30, 'BC Housing', 'BC Housing Management Commission', NULL, 4, 'bcgov', true, 30, 1, 1),
-  (31, 'Dest BC', 'Destination British Columbia Corp.', NULL, 4, 'bcgov', true, 31, 1, 1),
-  (32, 'CLBC', 'Community Living British Columbia', NULL, 4, 'bcgov', true, 32, 1, 1),
-  (33, 'BCSC', 'British Columbia Securities Commission', 'BCSC', 4, 'bcgov', true, 33, 1, 1),
-  (34, 'BC Assessment', 'British Columbia Assessment Authority', NULL, 4, 'bcgov', true, 34, 1, 1),
-  (35, 'Legal Aid BC', 'Legal Aid BC', NULL, 4, 'bcgov', true, 35, 1, 1),
-  (36, 'RBCM', 'Royal BC Museum', 'RBCM', 4, 'bcgov', true, 36, 1, 1),
-  (37, 'Knowledge Network', 'Knowledge Network Corporation', NULL, 4, 'bcgov', true, 37, 1, 1),
-  (38, 'Innovate BC', 'Innovate BC', NULL, 4, 'bcgov', true, 38, 1, 1),
-  (39, 'IBC', 'Infrastructure BC', 'IBC', 4, 'bcgov', true, 39, 1, 1),
-  (40, 'SkilledTradesBC', 'SkilledTradesBC', NULL, 4, 'bcgov', true, 40, 1, 1),
-  (41, 'FHA', 'Fraser Health Authority', 'FHA', 5, 'bcgov', true, 41, 1, 1),
-  (42, 'IHA', 'Interior Health Authority', 'IHA', 5, 'bcgov', true, 42, 1, 1),
-  (43, 'NHA', 'Northern Health Authority', 'NHA', 5, 'bcgov', true, 43, 1, 1),
-  (44, 'VCH', 'Vancouver Coastal Health Authority', 'VCH', 5, 'bcgov', true, 44, 1, 1),
-  (45, 'VIHA', 'Vancouver Island Health Authority', 'VIHA', 5, 'bcgov', true, 45, 1, 1),
-  (46, 'PHSA', 'Provincial Health Services Authority', 'PHSA', 5, 'bcgov', true, 46, 1, 1),
-  (47, 'FNHA', 'First Nations Health Authority', 'FNHA', 5, 'bcgov', true, 47, 1, 1),
-  (48, 'BCCS', 'BC Coroners Service', 'BCCS', 2, 'bcgov', true, 48, 1, 1),
-  (49, 'CRT', 'Civil Resolution Tribunal', 'CRT', 6, 'bcgov', true, 49, 1, 1),
-  (50, 'BCHRT', 'BC Human Rights Tribunal', 'BCHRT', 6, 'bcgov', true, 50, 1, 1),
-  (51, 'BCUC', 'BC Utilities Commission', 'BCUC', 6, 'bcgov', true, 51, 1, 1),
-  (52, 'BCER', 'BC Energy Regulator', 'BCER', 2, 'bcgov', true, 52, 1, 1),
-  (53, 'BCAC', 'BC Arts Council', 'BCAC', 3, 'bcgov', true, 53, 1, 1),
-  (54, 'FPCC', 'First Peoples'' Cultural Council', 'FPCC', 3, 'bcgov', true, 54, 1, 1),
-  (55, 'CBT', 'Columbia Basin Trust', 'CBT', 7, 'bcgov', true, 55, 1, 1)
+  (21, 'BC Hydro', 'BC Hydro and Power Authority', NULL, 4, 'bcgov', true, 21, 1, 1),
+  (22, 'ICBC', 'Insurance Corporation of British Columbia', 'ICBC', 4, 'bcgov', true, 22, 1, 1),
+  (23, 'BCLC', 'British Columbia Lottery Corporation', 'BCLC', 4, 'bcgov', true, 23, 1, 1),
+  (24, 'BC Transit', 'BC Transit', NULL, 4, 'bcgov', true, 24, 1, 1),
+  (25, 'BC Housing', 'BC Housing Management Commission', NULL, 4, 'bcgov', true, 25, 1, 1),
+  (26, 'Dest BC', 'Destination British Columbia Corp.', NULL, 4, 'bcgov', true, 26, 1, 1),
+  (27, 'CLBC', 'Community Living British Columbia', NULL, 4, 'bcgov', true, 27, 1, 1),
+  (28, 'BCSC', 'British Columbia Securities Commission', 'BCSC', 4, 'bcgov', true, 28, 1, 1),
+  (29, 'BC Assessment', 'British Columbia Assessment Authority', NULL, 4, 'bcgov', true, 29, 1, 1),
+  (30, 'Legal Aid BC', 'Legal Aid BC', NULL, 4, 'bcgov', true, 30, 1, 1),
+  (31, 'RBCM', 'Royal BC Museum', 'RBCM', 4, 'bcgov', true, 31, 1, 1),
+  (32, 'Knowledge Network', 'Knowledge Network Corporation', NULL, 4, 'bcgov', true, 32, 1, 1),
+  (33, 'Innovate BC', 'Innovate BC', NULL, 4, 'bcgov', true, 33, 1, 1),
+  (34, 'SkilledTradesBC', 'SkilledTradesBC', NULL, 4, 'bcgov', true, 34, 1, 1),
+  (35, 'FHA', 'Fraser Health Authority', 'FHA', 5, 'bcgov', true, 35, 1, 1),
+  (36, 'IHA', 'Interior Health Authority', 'IHA', 5, 'bcgov', true, 36, 1, 1),
+  (37, 'NHA', 'Northern Health Authority', 'NHA', 5, 'bcgov', true, 37, 1, 1),
+  (38, 'VCH', 'Vancouver Coastal Health Authority', 'VCH', 5, 'bcgov', true, 38, 1, 1),
+  (39, 'VIHA', 'Vancouver Island Health Authority', 'VIHA', 5, 'bcgov', true, 39, 1, 1),
+  (40, 'PHSA', 'Provincial Health Services Authority', 'PHSA', 5, 'bcgov', true, 40, 1, 1),
+  (41, 'FNHA', 'First Nations Health Authority', 'FNHA', 5, 'bcgov', true, 41, 1, 1),
+  (42, 'BCCS', 'BC Coroners Service', 'BCCS', 2, 'bcgov', true, 42, 1, 1),
+  (43, 'CRT', 'Civil Resolution Tribunal', 'CRT', 6, 'bcgov', true, 43, 1, 1),
+  (44, 'BCHRT', 'BC Human Rights Tribunal', 'BCHRT', 6, 'bcgov', true, 44, 1, 1),
+  (45, 'BCUC', 'BC Utilities Commission', 'BCUC', 6, 'bcgov', true, 45, 1, 1),
+  (46, 'BCER', 'BC Energy Regulator', 'BCER', 2, 'bcgov', true, 46, 1, 1),
+  (47, 'BCAC', 'BC Arts Council', 'BCAC', 3, 'bcgov', true, 47, 1, 1),
+  (48, 'FPCC', 'First Peoples'' Cultural Council', 'FPCC', 3, 'bcgov', true, 48, 1, 1),
+  (49, 'CBT', 'Columbia Basin Trust', 'CBT', 7, 'bcgov', true, 49, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- Federal departments (catalog orgs for joint/federal release scenarios)
 INSERT INTO organizations (id, name, display_name, abbreviation, organization_type_id, jurisdiction, is_active, sort_order, created_by, last_updated_by) VALUES
-  (56, 'Health Canada', 'Health Canada', 'HC', 2, 'federal', true, 56, 1, 1),
-  (57, 'Department of Justice Canada', 'Department of Justice Canada', 'DOJ', 2, 'federal', true, 57, 1, 1),
-  (58, 'Veterans Affairs Canada', 'Veterans Affairs Canada', 'VAC', 2, 'federal', true, 58, 1, 1),
-  (59, 'Housing Infrastructure and Communities Canada', 'Housing, Infrastructure and Communities Canada', 'HICC', 2, 'federal', true, 59, 1, 1),
-  (60, 'Employment and Social Development Canada', 'Employment and Social Development Canada', 'ESDC', 2, 'federal', true, 60, 1, 1),
-  (61, 'Natural Resources Canada', 'Natural Resources Canada', 'NRCan', 2, 'federal', true, 61, 1, 1),
-  (62, 'Indigenous Services Canada', 'Indigenous Services Canada', 'ISC', 2, 'federal', true, 62, 1, 1),
-  (63, 'Innovation Science and Economic Development Canada', 'Innovation, Science and Economic Development Canada', 'ISED', 2, 'federal', true, 63, 1, 1)
+  (50, 'Health Canada', 'Health Canada', 'HC', 2, 'federal', true, 50, 1, 1),
+  (51, 'Department of Justice Canada', 'Department of Justice Canada', 'DOJ', 2, 'federal', true, 51, 1, 1),
+  (52, 'Veterans Affairs Canada', 'Veterans Affairs Canada', 'VAC', 2, 'federal', true, 52, 1, 1),
+  (53, 'Housing Infrastructure and Communities Canada', 'Housing, Infrastructure and Communities Canada', 'HICC', 2, 'federal', true, 53, 1, 1),
+  (54, 'Employment and Social Development Canada', 'Employment and Social Development Canada', 'ESDC', 2, 'federal', true, 54, 1, 1),
+  (55, 'Natural Resources Canada', 'Natural Resources Canada', 'NRCan', 2, 'federal', true, 55, 1, 1),
+  (56, 'Indigenous Services Canada', 'Indigenous Services Canada', 'ISC', 2, 'federal', true, 56, 1, 1),
+  (57, 'Innovation Science and Economic Development Canada', 'Innovation, Science and Economic Development Canada', 'ISED', 2, 'federal', true, 57, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- Local government examples
 INSERT INTO organizations (id, name, display_name, abbreviation, organization_type_id, jurisdiction, is_active, sort_order, created_by, last_updated_by) VALUES
-  (64, 'City of Vancouver', 'City of Vancouver', 'Van', 7, 'local_government', true, 64, 1, 1),
-  (65, 'Capital Regional District', 'Capital Regional District', 'CRD', 7, 'local_government', true, 65, 1, 1)
+  (58, 'City of Vancouver', 'City of Vancouver', 'Van', 7, 'local_government', true, 58, 1, 1),
+  (59, 'Capital Regional District', 'Capital Regional District', 'CRD', 7, 'local_government', true, 59, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- Ministry extension rows (shared id with organizations)
@@ -122,34 +116,29 @@ INSERT INTO ministries (id, created_by, last_updated_by) VALUES
   (17, 1, 1),
   (18, 1, 1),
   (19, 1, 1),
-  (20, 1, 1),
-  (21, 1, 1),
-  (22, 1, 1),
-  (23, 1, 1),
-  (24, 1, 1),
-  (25, 1, 1)
+  (20, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
--- Safe for incremental re-seed: only sets canonical mapping when the row differs.
-UPDATE ministries SET ministry_group_id = 1 WHERE id IN (
-  5, 3, 4, 6, 12, 14, 20, 21, 22, 23
-) AND ministry_group_id IS DISTINCT FROM 1;
+-- Ministry quick-share groups (see config-data/0003_ministry_quick_share.sql)
+-- Social: AG, CFD, CITZ, ECC, HLTH, IRR, PSEL, PSSG, SDEV
+-- Resource: AGRI, EMPR, ENV, FOR, WLRO
+-- Economic: FIN, LOCL, MOTI, ECON
+-- PREM and IGRS: ungrouped
+UPDATE ministries SET ministry_group_id = 1 WHERE id IN (4, 5, 6, 8, 13, 14, 16, 17, 18)
+  AND ministry_group_id IS DISTINCT FROM 1;
 
-UPDATE ministries SET ministry_group_id = 2 WHERE id IN (
-  2, 7, 8, 9, 11, 19, 25
-) AND ministry_group_id IS DISTINCT FROM 2;
+UPDATE ministries SET ministry_group_id = 2 WHERE id IN (3, 9, 10, 12, 20)
+  AND ministry_group_id IS DISTINCT FROM 2;
 
-UPDATE ministries SET ministry_group_id = 3 WHERE id IN (
-  10, 13, 15, 17, 18, 24
-) AND ministry_group_id IS DISTINCT FROM 3;
+UPDATE ministries SET ministry_group_id = 3 WHERE id IN (11, 15, 19, 7)
+  AND ministry_group_id IS DISTINCT FROM 3;
+
 -- ============================================================================
 -- GOVERNMENT REPRESENTATIVES
--- Representatives for activities
 -- ============================================================================
 
--- PREMIER (portfolio link is ministries.minister_government_rep_id, not on this row)
 INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, representative_type, created_by, last_updated_by) VALUES
-  (1000, 'David Eby', 'Premier David Eby', 1, true, 'Premier of British Columbia', 'premier', 1, 1)
+  (1000, 'Lorne Doerkson', 'Premier Lorne Doerkson', 1, true, 'Premier of British Columbia', 'premier', 1, 1)
 ON CONFLICT (id) DO UPDATE
   SET name = EXCLUDED.name,
       display_name = EXCLUDED.display_name,
@@ -157,34 +146,28 @@ ON CONFLICT (id) DO UPDATE
       is_active = EXCLUDED.is_active,
       title = EXCLUDED.title,
       representative_type = EXCLUDED.representative_type,
-      created_by = EXCLUDED.created_by,
       last_updated_by = EXCLUDED.last_updated_by;
 
--- MINISTERS
+-- Ministers (rep id 2000 + ministry id for ids 3–20)
 INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, representative_type, created_by, last_updated_by) VALUES
-  (2002, 'Lana Popham', 'Minister Lana Popham', 2, true, 'Minister of Agriculture and Food', 'minister', 1, 1),
-  (2003, 'Niki Sharma', 'Attorney General Niki Sharma', 3, true, 'Attorney General and Deputy Premier', 'minister', 1, 1),
-  (2004, 'Jodie Wickens', 'Minister Jodie Wickens', 4, true, 'Minister of Children and Family Development', 'minister', 1, 1),
-  (2005, 'Diana Gibson', 'Minister Diana Gibson', 5, true, 'Minister of Citizens'' Services', 'minister', 1, 1),
-  (2006, 'Lisa Beare', 'Minister Lisa Beare', 6, true, 'Minister of Education and Child Care', 'minister', 1, 1),
-  (2007, 'Kelly Greene', 'Minister Kelly Greene', 7, true, 'Minister of Emergency Management and Climate Readiness', 'minister', 1, 1),
-  (2008, 'Adrian Dix', 'Minister Adrian Dix', 8, true, 'Minister of Energy and Climate Solutions', 'minister', 1, 1),
-  (2009, 'Tamara Davidson', 'Minister Tamara Davidson', 9, true, 'Minister of Environment and Parks', 'minister', 1, 1),
-  (2010, 'Brenda Bailey', 'Minister Brenda Bailey', 10, true, 'Minister of Finance', 'minister', 1, 1),
-  (2011, 'Ravi Parmar', 'Minister Ravi Parmar', 11, true, 'Minister of Forests', 'minister', 1, 1),
-  (2012, 'Josie Osborne', 'Minister Josie Osborne', 12, true, 'Minister of Health', 'minister', 1, 1),
-  (2013, 'Christine Boyle', 'Minister Christine Boyle', 13, true, 'Minister of Housing and Municipal Affairs', 'minister', 1, 1),
-  (2014, 'Spencer Chandra Herbert', 'Minister Spencer Chandra Herbert', 14, true, 'Minister of Indigenous Relations and Reconciliation', 'minister', 1, 1),
-  (2015, 'Bowinn Ma', 'Minister Bowinn Ma', 15, true, 'Minister of Infrastructure', 'minister', 1, 1),
-  (2017, 'Ravi Kahlon', 'Minister Ravi Kahlon', 17, true, 'Minister of Jobs and Economic Growth', 'minister', 1, 1),
-  (2018, 'Jennifer Whiteside', 'Minister Jennifer Whiteside', 18, true, 'Minister of Labour', 'minister', 1, 1),
-  (2019, 'Jagrup Brar', 'Minister Jagrup Brar', 19, true, 'Minister of Mining and Critical Minerals', 'minister', 1, 1),
-  (2020, 'Jessie Sunner', 'Minister Jessie Sunner', 20, true, 'Minister of Post-Secondary Education and Future Skills', 'minister', 1, 1),
-  (2021, 'Nina Krieger', 'Minister Nina Krieger', 21, true, 'Minister of Public Safety and Solicitor General', 'minister', 1, 1),
-  (2022, 'Sheila Malcolmson', 'Minister Sheila Malcolmson', 22, true, 'Minister of Social Development and Poverty Reduction', 'minister', 1, 1),
-  (2023, 'Anne Kang', 'Minister Anne Kang', 23, true, 'Minister of Tourism, Arts, Culture and Sport', 'minister', 1, 1),
-  (2024, 'Mike Farnworth', 'Minister Mike Farnworth', 24, true, 'Minister of Transportation and Transit', 'minister', 1, 1),
-  (2025, 'Randene Neill', 'Minister Randene Neill', 25, true, 'Minister of Water, Land and Resource Stewardship', 'minister', 1, 1)
+  (2003, 'Ian Paton', 'Minister Ian Paton', 3, true, 'Minister of Agriculture', 'minister', 1, 1),
+  (2004, 'Caroline Elliott', 'Attorney General Caroline Elliott', 4, true, 'Attorney General', 'minister', 1, 1),
+  (2005, 'Kristina Loewen', 'Minister Kristina Loewen', 5, true, 'Minister of Children and Family Development', 'minister', 1, 1),
+  (2006, 'Bruce Banman', 'Minister Bruce Banman', 6, true, 'Minister of Citizens'' Services and Technology', 'minister', 1, 1),
+  (2007, 'Gavin Dew', 'Minister Gavin Dew', 7, true, 'Minister of Economic Development and Tourism', 'minister', 1, 1),
+  (2008, 'Lynne Block', 'Minister Lynne Block', 8, true, 'Minister of Education and Child Care', 'minister', 1, 1),
+  (2009, 'Larry Neufeld', 'Minister Larry Neufeld', 9, true, 'Minister of Energy, Mines and Petroleum Resources', 'minister', 1, 1),
+  (2010, 'Áʼa:líya Warbus', 'Minister Áʼa:líya Warbus', 10, true, 'Minister of Environment', 'minister', 1, 1),
+  (2011, 'Peter Milobar', 'Minister Peter Milobar', 11, true, 'Minister of Finance', 'minister', 1, 1),
+  (2012, 'Kiel Giddens', 'Minister Kiel Giddens', 12, true, 'Minister of Forests', 'minister', 1, 1),
+  (2013, 'Ryan Peterson', 'Minister Ryan Peterson', 13, true, 'Minister of Health', 'minister', 1, 1),
+  (2014, 'Scott McInnis', 'Minister Scott McInnis', 14, true, 'Minister of Indigenous Relations and Reconciliation', 'minister', 1, 1),
+  (2015, 'Cathie Ounsted', 'Minister Cathie Ounsted', 15, true, 'Minister of Local Government, Housing, Sport and Culture', 'minister', 1, 1),
+  (2016, 'Korky Neufeld', 'Minister Korky Neufeld', 16, true, 'Minister of Post-Secondary Education and Labour', 'minister', 1, 1),
+  (2017, 'Jessy Sahota', 'Minister Jessy Sahota', 17, true, 'Minister of Public Safety and Solicitor General', 'minister', 1, 1),
+  (2018, 'Claire Rattée', 'Minister Claire Rattée', 18, true, 'Minister of Social Development and Deputy Premier', 'minister', 1, 1),
+  (2019, 'Trevor Halford', 'Minister Trevor Halford', 19, true, 'Minister of Transportation and Infrastructure', 'minister', 1, 1),
+  (2020, 'Donegal Wilson', 'Minister Donegal Wilson', 20, true, 'Minister of Water, Land and Natural Resource Operations', 'minister', 1, 1)
 ON CONFLICT (id) DO UPDATE
   SET name = EXCLUDED.name,
       display_name = EXCLUDED.display_name,
@@ -192,12 +175,52 @@ ON CONFLICT (id) DO UPDATE
       is_active = EXCLUDED.is_active,
       title = EXCLUDED.title,
       representative_type = EXCLUDED.representative_type,
-      created_by = EXCLUDED.created_by,
       last_updated_by = EXCLUDED.last_updated_by;
 
--- Designated minister per ministry (source of truth on ministries row)
+-- Ministers of state
+INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, representative_type, created_by, last_updated_by) VALUES
+  (2101, 'Carson Binda', 'Minister of State Carson Binda', 21, true, 'Minister of State for Red Tape Reduction', 'minister_of_state', 1, 1),
+  (2102, 'Anna Kindy', 'Minister of State Anna Kindy', 22, true, 'Minister of State for Rural Development', 'minister_of_state', 1, 1),
+  (2103, 'Pete Davis', 'Minister of State Pete Davis', 23, true, 'Minister of State for Mining', 'minister_of_state', 1, 1),
+  (2104, 'Zeeshan Wahla', 'Minister of State Zeeshan Wahla', 24, true, 'Minister of State for Housing', 'minister_of_state', 1, 1),
+  (2105, 'Harman Bhangu', 'Minister of State Harman Bhangu', 25, true, 'Minister of State for Labour', 'minister_of_state', 1, 1),
+  (2106, 'Ward Stamer', 'Minister of State Ward Stamer', 26, true, 'Minister of State for Emergency Management', 'minister_of_state', 1, 1)
+ON CONFLICT (id) DO UPDATE
+  SET name = EXCLUDED.name,
+      display_name = EXCLUDED.display_name,
+      sort_order = EXCLUDED.sort_order,
+      is_active = EXCLUDED.is_active,
+      title = EXCLUDED.title,
+      representative_type = EXCLUDED.representative_type,
+      last_updated_by = EXCLUDED.last_updated_by;
+
+-- Non-cabinet MLAs
+INSERT INTO government_representatives (id, name, display_name, sort_order, is_active, title, representative_type, created_by, last_updated_by) VALUES
+  (2201, 'Darryl Kropp', 'MLA Darryl Kropp', 31, true, 'MLA', 'mla', 1, 1),
+  (2202, 'Heather Maahs', 'MLA Heather Maahs', 32, true, 'MLA', 'mla', 1, 1),
+  (2203, 'Matt Liang', 'MLA Matt Liang', 33, true, 'MLA', 'mla', 1, 1),
+  (2204, 'Monica Mohan', 'MLA Monica Mohan', 34, true, 'MLA', 'mla', 1, 1),
+  (2205, 'Tony Luck', 'MLA Tony Luck', 35, true, 'MLA', 'mla', 1, 1),
+  (2206, 'Mike Hicks', 'MLA Mike Hicks', 36, true, 'MLA', 'mla', 1, 1),
+  (2207, 'Lawrence Mok', 'MLA Lawrence Mok', 37, true, 'MLA', 'mla', 1, 1),
+  (2208, 'Doug Morneau', 'MLA Doug Morneau', 38, true, 'MLA', 'mla', 1, 1),
+  (2209, 'Curtis Whitford', 'MLA Curtis Whitford', 39, true, 'MLA', 'mla', 1, 1),
+  (2210, 'John McEwen', 'MLA John McEwen', 40, true, 'MLA', 'mla', 1, 1),
+  (2211, 'Sheldon Clare', 'MLA Sheldon Clare', 41, true, 'MLA', 'mla', 1, 1),
+  (2212, 'David Williams', 'MLA David Williams', 42, true, 'MLA', 'mla', 1, 1),
+  (2213, 'Garry Thind', 'MLA Garry Thind', 43, true, 'MLA', 'mla', 1, 1)
+ON CONFLICT (id) DO UPDATE
+  SET name = EXCLUDED.name,
+      display_name = EXCLUDED.display_name,
+      sort_order = EXCLUDED.sort_order,
+      is_active = EXCLUDED.is_active,
+      title = EXCLUDED.title,
+      representative_type = EXCLUDED.representative_type,
+      last_updated_by = EXCLUDED.last_updated_by;
+
+-- Designated minister per ministry
 UPDATE ministries SET minister_government_rep_id = 1000 WHERE id = 1;
-UPDATE ministries SET minister_government_rep_id = 2002 WHERE id = 2;
+UPDATE ministries SET minister_government_rep_id = NULL WHERE id = 2;
 UPDATE ministries SET minister_government_rep_id = 2003 WHERE id = 3;
 UPDATE ministries SET minister_government_rep_id = 2004 WHERE id = 4;
 UPDATE ministries SET minister_government_rep_id = 2005 WHERE id = 5;
@@ -211,20 +234,14 @@ UPDATE ministries SET minister_government_rep_id = 2012 WHERE id = 12;
 UPDATE ministries SET minister_government_rep_id = 2013 WHERE id = 13;
 UPDATE ministries SET minister_government_rep_id = 2014 WHERE id = 14;
 UPDATE ministries SET minister_government_rep_id = 2015 WHERE id = 15;
+UPDATE ministries SET minister_government_rep_id = 2016 WHERE id = 16;
 UPDATE ministries SET minister_government_rep_id = 2017 WHERE id = 17;
 UPDATE ministries SET minister_government_rep_id = 2018 WHERE id = 18;
 UPDATE ministries SET minister_government_rep_id = 2019 WHERE id = 19;
 UPDATE ministries SET minister_government_rep_id = 2020 WHERE id = 20;
-UPDATE ministries SET minister_government_rep_id = 2021 WHERE id = 21;
-UPDATE ministries SET minister_government_rep_id = 2022 WHERE id = 22;
-UPDATE ministries SET minister_government_rep_id = 2023 WHERE id = 23;
-UPDATE ministries SET minister_government_rep_id = 2024 WHERE id = 24;
-UPDATE ministries SET minister_government_rep_id = 2025 WHERE id = 25;
 
 -- ============================================================================
 -- TAGS
--- Tags teams can apply to activities; currently limited to use by admin
--- Updated with new values
 -- ============================================================================
 
 INSERT INTO tags (id, name, display_name, sort_order, visibility, is_active, description, created_by, last_updated_by) VALUES
@@ -241,8 +258,6 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- THEMES
--- Classification themes for activities
--- Legacy: used UUID primary key. Now uses serial (integer) id.
 -- ============================================================================
 
 INSERT INTO themes (id, name, display_name, sort_order, is_active, created_by, last_updated_by) VALUES
@@ -268,7 +283,6 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- EVENT PLANNERS
--- Event planners for activities
 -- ============================================================================
 
 INSERT INTO event_planners (id, name, display_name, sort_order, is_active, email, phone, created_by, last_updated_by) VALUES
@@ -283,8 +297,6 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- NEWS RELEASE ORIGINS
--- News release origins
--- Updated with new values
 -- ============================================================================
 
 INSERT INTO news_release_origins (id, name, display_name, sort_order, is_active, description, created_by, last_updated_by) VALUES
@@ -299,9 +311,6 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- SECTORS
--- Government sectors
--- Uses UUID primary key
--- Updated with new values
 -- ============================================================================
 
 INSERT INTO sectors (id, name, display_name, sort_order, is_active, description, created_by, last_updated_by) VALUES

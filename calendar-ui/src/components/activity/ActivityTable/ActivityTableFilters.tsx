@@ -10,10 +10,6 @@ import {
   ResponsiveFilterRow,
   type ResponsiveFilterSlot,
 } from '@/components/shared/ResponsiveFilterRow';
-import {
-  SortDropdown,
-  type SortColumnConfig,
-} from '@/components/table/SortDropdown';
 import { Input } from '@/components/ui/input';
 import { FilterCheckboxDropdownPanel } from '@/components/users/FilterCheckboxDropdown';
 import {
@@ -94,12 +90,6 @@ export interface ActivityTableFiltersProps {
   onFilterStateChange: (state: ActivityFilterState) => void;
   searchKeyword: string;
   onSearchKeywordChange: (value: string) => void;
-  sortKey: string | null;
-  sortDirection: 'asc' | 'desc';
-  onSortChange: (key: string | null, direction: 'asc' | 'desc') => void;
-  defaultSortKey: string;
-  defaultSortDirection: 'asc' | 'desc';
-  sortColumns: SortColumnConfig[];
   categoryOptions: CategoryFilterOption[];
   statusOptions: OptionItem[];
   tagOptions: TagFilterOption[];
@@ -135,12 +125,6 @@ export function ActivityTableFilters({
   onFilterStateChange,
   searchKeyword,
   onSearchKeywordChange,
-  sortKey,
-  sortDirection,
-  onSortChange,
-  defaultSortKey,
-  defaultSortDirection,
-  sortColumns,
   categoryOptions,
   statusOptions,
   tagOptions,
@@ -498,7 +482,7 @@ export function ActivityTableFilters({
 
   return (
     <div
-      className="flex flex-nowrap items-center justify-between gap-8"
+      className="flex flex-nowrap items-center gap-2"
       role="search"
       aria-label="Filter activities by date, category, lead team, comms contact, status, Look Ahead, tags, translations, event planner, and keyword"
     >
@@ -536,19 +520,6 @@ export function ActivityTableFilters({
           filterSummaryContext={summaryContext}
           parseSavedFilterForDraft={parseSavedFilterForDraft}
           validFilterLookups={validFilterLookupsForPreview}
-        />
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <SortDropdown
-          hideDirectionLabel
-          columns={sortColumns}
-          sortKey={sortKey}
-          sortDirection={sortDirection}
-          onSortChange={onSortChange}
-          defaultSortKey={defaultSortKey}
-          defaultSortDirection={defaultSortDirection}
-          ariaLabel="Sort by"
-          triggerClassName="shadow-none"
         />
       </div>
     </div>

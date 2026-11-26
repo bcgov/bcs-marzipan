@@ -416,7 +416,7 @@ describe('renderPrintReportFragmentHtml', () => {
       significance:
         'Major policy announcement with province-wide housing impact.',
       schedulingNotes: 'Date TBD; align with regional council schedule.',
-      premierRequested: 'Premier David Eby',
+      premierRequested: 'Premier Lorne Doerkson',
       venueAddress: {
         venueName: 'Legislative Assembly',
         addressLine1: '501 Belleville St',
@@ -471,7 +471,7 @@ describe('renderPrintReportFragmentHtml', () => {
       'Major policy announcement with province-wide housing impact.'
     );
     expect(html).toContain('Date TBD; align with regional council schedule.');
-    expect(html).toContain('Premier David Eby');
+    expect(html).toContain('Premier Lorne Doerkson');
     expect(html).toContain('Victoria, Legislative Assembly');
     expect(html).toContain('Last updated Apr');
     expect(html).not.toContain('PLANNING template placeholder');

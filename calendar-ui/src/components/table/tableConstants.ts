@@ -62,15 +62,15 @@ export const tableTable = 'w-full table-fixed border-collapse';
 export const tableThead =
   'sticky top-0 z-10 border-b border-slate-200 bg-accent shadow-[0_1px_0_0_rgba(0,0,0,0.05)]';
 
-/** Header cell: 12px vertical / 16px horizontal padding (py-3 px-4), content aligned top */
+/** Header cell: 8px top / 4px bottom / 16px horizontal (pt-2 pb-1 px-4), content aligned top */
 export const tableTh =
-  'px-4 py-3 text-left text-sm font-medium text-slate-700 align-top';
+  'px-4 pt-2 pb-1 text-left text-sm font-medium text-slate-700 align-top';
 
 /** Body row */
 export const tableBodyRow = 'border-b border-slate-100 hover:bg-accent/30';
 
-/** Body cell: 12px vertical / 16px horizontal padding (py-3 px-4), content aligned top. Matches Users table. */
-export const tableTd = 'px-4 py-3 align-top';
+/** Body cell: 8px top / 4px bottom / 16px horizontal (pt-2 pb-1 px-4), content aligned top. */
+export const tableTd = 'px-4 pt-2 pb-1 align-top';
 
 /** ActivityTable (Activities) column widths in pixels. minSize/maxSize used for layout bounds. */
 export const ACTIVITY_TABLE_COLUMN_WIDTHS = {

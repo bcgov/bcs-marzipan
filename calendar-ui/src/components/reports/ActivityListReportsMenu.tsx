@@ -1,4 +1,5 @@
 import { ChevronDown, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -25,11 +26,15 @@ function formatReportMenuLabel(displayName: string | undefined): string {
   return (displayName ?? '').replace(/\bReport$/, 'report');
 }
 
+const LOOK_AHEAD_PAGE_PATH = '/look-ahead';
+
 export interface ActivityListReportsMenuProps {
   reports: ActivityListReportMenuItem[];
   availability: ActivityListReportAvailability;
   onOpenReport: (name: ActivityListReportName) => void;
   onShowFullList?: () => void;
+  /** When true, shows a bottom link to the Look Ahead page. */
+  showLookAheadLink?: boolean;
 }
 
 export function ActivityListReportsMenu({
@@ -37,6 +42,7 @@ export function ActivityListReportsMenu({
   availability,
   onOpenReport,
   onShowFullList,
+  showLookAheadLink = false,
 }: ActivityListReportsMenuProps) {
   const reportsDisabled = reportsMenuItemsDisabled(availability);
   const availabilityMessage = reportsMenuAvailabilityMessage(availability);
@@ -46,7 +52,12 @@ export function ActivityListReportsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" className="gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="default"
+          className="gap-2"
+        >
           <FileText className="h-4 w-4" />
           Reports
           <ChevronDown className="h-4 w-4 opacity-70" />
@@ -76,6 +87,14 @@ export function ActivityListReportsMenu({
                 Show full activity list
               </DropdownMenuItem>
             ) : null}
+          </>
+        ) : null}
+        {showLookAheadLink ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to={LOOK_AHEAD_PAGE_PATH}>Look Ahead</Link>
+            </DropdownMenuItem>
           </>
         ) : null}
       </DropdownMenuContent>

@@ -55,14 +55,12 @@ So URL and sessionStorage are updated together; they are not sources of truth fo
 
 Defined in [calendar-ui/src/hooks/useActivityTablePreferences.ts](src/hooks/useActivityTablePreferences.ts):
 
-| Preference    | URL param   | Type                                    | Default     |
-| ------------- | ----------- | --------------------------------------- | ----------- |
-| sortKey       | `sort`      | string (must be in VALID_SORT_KEYS)     | `startDate` |
-| sortDirection | `dir`       | `asc` \| `desc`                         | `asc`       |
-| showCompleted | `completed` | boolean                                 | `false`     |
-| showDeleted   | `deleted`   | boolean                                 | `false`     |
-| pageSize      | `pageSize`  | number (1–100)                          | `25`        |
-| searchKeyword | `search`    | string (keyword; sync to URL debounced) | `''`        |
+| Preference    | URL param  | Type                                    | Default     |
+| ------------- | ---------- | --------------------------------------- | ----------- |
+| sortKey       | `sort`     | string (must be in VALID_SORT_KEYS)     | `startDate` |
+| sortDirection | `dir`      | `asc` \| `desc`                         | `asc`       |
+| pageSize      | `pageSize` | number (1–100)                          | `25`        |
+| searchKeyword | `search`   | string (keyword; sync to URL debounced) | `''`        |
 
 - **sessionStorage key**: `activityTablePreferences`. Stored value is a single JSON object with these keys.
 - **pageIndex** is not persisted; it is local component state and resets when filters change.
@@ -89,15 +87,13 @@ Do all of the following so the new field is read from URL, read from sessionStor
    In `hasAnyKnownParam`, add `searchParams.has(URL_PARAM_MY_FILTER)` so that when this param is present we treat the URL as source of truth.
 
 5. **Parsing from sessionStorage**  
-   In `parseFromStorage`, read `parsed.myFilter`, validate type and bounds, and add the field to the returned object. If invalid, use the default from `DEFAULT_PREFERENCES`. Apply any permission gating here if needed (e.g. like `showDeleted` and `canSeeDeleted`).
+   In `parseFromStorage`, read `parsed.myFilter`, validate type and bounds, and add the field to the returned object. If invalid, use the default from `DEFAULT_PREFERENCES`.
 
 6. **Serialization to URL and storage**  
    In `preferencesToParams`, add a line so the new field is included in the object passed to `URLSearchParams` and thus to the URL. sessionStorage already stores the full `preferences` object as JSON, so no extra step there.
 
 7. **Optional: permission gating**  
-   If the filter should be hidden or forced off for some users (e.g. `showDeleted` and `canSeeDeleted`):
-   - In `parseFromSearchParams` and `parseFromStorage`, when the user cannot use the feature, set the field to the safe default (e.g. `false`).
-   - In `setPreferences`, when merging `partial`, if the field is in `partial` and the user cannot use it, ignore or override it (same pattern as `showDeleted`).
+   If the filter should be hidden or forced off for some users, set safe defaults in parsers and guard `setPreferences` merges (see **Deleted** in the status dropdown, gated by `activities.view.deleted`).
 
 ### 2. Consumer: [ActivityTable.tsx](src/components/activity/ActivityTable/ActivityTable.tsx)
 
@@ -107,7 +103,7 @@ Do all of the following so the new field is read from URL, read from sessionStor
 
 ### 3. Breadcrumb (if the list is linked from elsewhere)
 
-The breadcrumb “Activities list” link uses `getStoredActivityListSearch(canSeeDeleted)` to build the list URL. That function reads from sessionStorage and builds a query string from the same `preferencesToParams` shape. So once the new field is in `ActivityTablePreferences` and `preferencesToParams`, the breadcrumb will include it automatically. No change needed in [ActivityBreadcrumb.tsx](src/components/shared/ActivityBreadcrumb.tsx) unless the new filter is permission-gated (then ensure `canSeeDeleted` or an equivalent is passed where needed; the breadcrumb already passes `canSeeDeleted` for `showDeleted`).
+The breadcrumb “Activities list” link uses `getStoredActivityListSearch()` to build the list URL. That function reads from sessionStorage and builds a query string from the same `preferencesToParams` shape.
 
 ### Checklist for a new filter
 
@@ -123,11 +119,12 @@ The breadcrumb “Activities list” link uses `getStoredActivityListSearch(canS
 | File                                                                                                                  | Purpose                                                                                                                                                                                                       |
 | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [calendar-ui/src/hooks/useActivityTablePreferences.ts](src/hooks/useActivityTablePreferences.ts)                      | Hook that holds preferences state, reads from URL or sessionStorage on mount, and syncs writes to both. Exports `useActivityTablePreferences`, `getStoredActivityListSearch`, and `ActivityTablePreferences`. |
-| [calendar-ui/src/components/ActivityTable/ActivityTable.tsx](src/components/activity/ActivityTable/ActivityTable.tsx) | Uses `useActivityTablePreferences(canSeeDeleted)` and passes `preferences` / `setPreferences` into sort and filter UI.                                                                                        |
-| [calendar-ui/src/components/ActivityBreadcrumb.tsx](src/components/shared/ActivityBreadcrumb.tsx)                     | “Activities list” link uses `getStoredActivityListSearch(canSeeDeleted)` so View/Edit/Create breadcrumbs return to the list with stored sort/filters in the URL.                                              |
+| [calendar-ui/src/components/ActivityTable/ActivityTable.tsx](src/components/activity/ActivityTable/ActivityTable.tsx) | Uses `useActivityTablePreferences()` and passes `preferences` / `setPreferences` into sort and filter UI.                                                                                                     |
+| [calendar-ui/src/components/ActivityBreadcrumb.tsx](src/components/shared/ActivityBreadcrumb.tsx)                     | “Activities list” link uses `getStoredActivityListSearch()` so View/Edit/Create breadcrumbs return to the list with stored sort/filters in the URL.                                                           |
 
 ## Edge cases
 
 - **Invalid or missing stored data**: Parsers fall back to defaults; the table always renders.
-- **canSeeDeleted**: When the user cannot see deleted activities, `showDeleted` is forced to `false` when reading (URL or storage) and when applying updates in `setPreferences`. The breadcrumb passes `canSeeDeleted` into `getStoredActivityListSearch` so the link never includes `deleted=true` for those users.
+- **Completed archive**: `includeCompleted` for list/report fetch is derived from the scheduled date filter and status filter (`resolveActivityArchiveQueryFlags` in `@corpcal/shared`), not stored in preferences.
+- **Deleted status**: Users without `activities.view.deleted` do not see **Deleted** in the status dropdown; selecting **Deleted** is the only way to set `includeDeleted` on the API.
 - **Replace vs push**: `setSearchParams(..., { replace: true })` avoids one history entry per sort/filter change.

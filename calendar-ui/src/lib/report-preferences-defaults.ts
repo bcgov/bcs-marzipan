@@ -47,8 +47,7 @@ export function buildDefaultFilterDateRangeForReport(
  * Report-type default filters for a tab the user has not customized yet.
  */
 export function buildDefaultPreferencesForReport(
-  reportName: string,
-  _canSeeDeleted: boolean
+  reportName: string
 ): ActivityTablePreferences {
   const configDefaults = getReportTypeConfigByReportName(reportName)?.defaults;
   const dateRange: DateRangeValue =
@@ -64,8 +63,6 @@ export function buildDefaultPreferencesForReport(
   return {
     sortKey: DEFAULT_SORT_KEY,
     sortDirection: DEFAULT_SORT_DIRECTION,
-    showCompleted: false,
-    showDeleted: false,
     pageSize: DEFAULT_PAGE_SIZE,
     searchKeyword: '',
     filterState: {
@@ -77,18 +74,11 @@ export function buildDefaultPreferencesForReport(
 
 export function mergeActivityTablePreferences(
   prev: ActivityTablePreferences,
-  partial: Partial<ActivityTablePreferences>,
-  canSeeDeleted: boolean
+  partial: Partial<ActivityTablePreferences>
 ): ActivityTablePreferences {
   return {
     ...prev,
     ...partial,
-    showDeleted:
-      partial.showDeleted !== undefined
-        ? canSeeDeleted
-          ? partial.showDeleted
-          : false
-        : prev.showDeleted,
     filterState:
       partial.filterState !== undefined
         ? partial.filterState

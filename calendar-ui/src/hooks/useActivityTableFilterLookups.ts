@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 
-import { formatLanguageTagForDisplay } from '@corpcal/shared';
+import {
+  formatLanguageTagForDisplay,
+  type ActivityStatusArchiveIds,
+} from '@corpcal/shared';
 import type { LeadTeamFilterOption } from '@/components/activity/ActivityTable/LeadTeamFilterPanel';
 import {
   useActivityStatuses,
@@ -15,16 +18,11 @@ import {
 import type { ActivityFilterSummaryContext } from '@/lib/activity-filter-summary';
 import { formatLeadTeamSelectLabel } from '@/lib/lead-team-display-label';
 
-export interface ActivityStatusArchiveIds {
-  completedStatusId?: number;
-  deletedStatusId?: number;
-}
-
 /**
  * Shared lookup labels for activity table filters and summary bar chips.
  * Category options are included for saved-filter sanitization and summary chips.
  */
-export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
+export function useActivityTableFilterLookups(canViewDeleted: boolean): {
   statusArchiveIds: ActivityStatusArchiveIds;
   statusOptions: { value: string; label: string }[];
   tagOptions: { value: string; label: string }[];
@@ -62,12 +60,12 @@ export function useActivityTableFilterLookups(canSeeDeleted: boolean): {
   const statusOptions = useMemo(
     () =>
       activityStatusesForFilter
-        .filter((s) => canSeeDeleted || s.name !== 'deleted')
+        .filter((s) => canViewDeleted || s.name !== 'deleted')
         .map((s) => ({
           value: String(s.id),
           label: s.displayName,
         })),
-    [activityStatusesForFilter, canSeeDeleted]
+    [activityStatusesForFilter, canViewDeleted]
   );
 
   const tagOptions = useMemo(

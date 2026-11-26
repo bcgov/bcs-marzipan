@@ -1,7 +1,7 @@
 import { Download, SlidersHorizontal } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { SYSTEM_ROLES } from '@corpcal/shared/auth';
+import { PERMISSIONS } from '@corpcal/shared';
 import { ActivityListReportDateRangeControl } from '@/components/reports/ActivityListReportDateRangeControl';
 import { ActivityReportPreviewShell } from '@/components/reports/ActivityReportPreviewShell';
 import { TableContentSummary } from '@/components/table/TableSummaryBar';
@@ -59,10 +59,8 @@ export function ActivityListReportDialog({
   open,
   onOpenChange,
 }: ActivityListReportDialogProps) {
-  const { user } = useAuth();
-  const canSeeDeleted =
-    user?.roleName === SYSTEM_ROLES.ADMIN ||
-    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const { hasPermission } = useAuth();
+  const canViewDeleted = hasPermission(PERMISSIONS.ACTIVITIES.VIEW_DELETED);
 
   const [ephemeralPreferences, setEphemeralPreferences] =
     useState<ActivityTablePreferences>(() =>
@@ -98,8 +96,6 @@ export function ActivityListReportDialog({
         statusArchiveIds: scopeInput.statusArchiveIds ?? statusArchiveIds,
         preferences: {
           filterState: ephemeralPreferences.filterState,
-          showCompleted: ephemeralPreferences.showCompleted,
-          showDeleted: ephemeralPreferences.showDeleted,
         },
       }),
     [scopeInput, statusArchiveIds, ephemeralPreferences]
@@ -109,14 +105,15 @@ export function ActivityListReportDialog({
     reportName,
     preferences: ephemeralPreferences,
     setPreferencesState: setEphemeralPreferences,
-    canSeeDeleted,
+    canViewDeleted,
     statusArchiveIds,
     reportFetchParams: effectiveScope.reportFetchParams,
     reportFetchParamsKey: effectiveScope.reportFetchParamsKey,
     reportFetchEnabled: effectiveScope.reportAvailability === 'allowed',
   });
 
-  const { filterSummaryContext } = useActivityTableFilterLookups(canSeeDeleted);
+  const { filterSummaryContext, statusArchiveIds: summaryArchiveIds } =
+    useActivityTableFilterLookups(canViewDeleted);
 
   const filterSummary = useMemo(
     () =>
@@ -124,11 +121,13 @@ export function ActivityListReportDialog({
         filterState: ephemeralPreferences.filterState,
         searchKeyword: ephemeralPreferences.searchKeyword,
         filterSummaryContext,
+        statusArchiveIds: summaryArchiveIds,
       }),
     [
       ephemeralPreferences.filterState,
       ephemeralPreferences.searchKeyword,
       filterSummaryContext,
+      summaryArchiveIds,
     ]
   );
 

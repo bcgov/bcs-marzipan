@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PERMISSIONS } from '@corpcal/shared';
 import type { TeamListItem } from '@corpcal/shared/api/types';
-import { SYSTEM_ROLES } from '@corpcal/shared/auth';
 import {
   ActivityTable,
   type ActivityTableActiveSavedFilter,
@@ -55,13 +54,11 @@ export const ActivityListPage = () => {
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
   const canManageFavourites = hasPermission(PERMISSIONS.FAVOURITES.MANAGE);
   const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW);
+  const canViewLookAhead = hasPermission(PERMISSIONS.LOOK_AHEAD.VIEW);
 
-  const canSeeDeleted =
-    user?.roleName === SYSTEM_ROLES.ADMIN ||
-    user?.roleName === SYSTEM_ROLES.SYSTEM_ADMIN;
+  const canViewDeleted = hasPermission(PERMISSIONS.ACTIVITIES.VIEW_DELETED);
 
-  const { preferences: listPreferences } =
-    useActivityTablePreferences(canSeeDeleted);
+  const { preferences: listPreferences } = useActivityTablePreferences();
   const { data: reports = [] } = useReports();
   const activityListReports = useMemo(
     () => reports.filter((r) => ACTIVITY_LIST_REPORT_NAME_SET.has(r.name)),
@@ -177,7 +174,7 @@ export const ActivityListPage = () => {
         tab: activeTab,
         preferences: listPreferences,
         statusArchiveIds: {},
-        canSeeDeleted,
+        canViewDeleted,
         watchlistActivityIds: favouriteActivityIds,
         ministryConflict: ministryTabLeadTeamConflict,
         ministryTabLabel,
@@ -188,7 +185,7 @@ export const ActivityListPage = () => {
     [
       activeTab,
       listPreferences,
-      canSeeDeleted,
+      canViewDeleted,
       favouriteActivityIds,
       ministryTabLeadTeamConflict,
       ministryTabLabel,
@@ -201,7 +198,7 @@ export const ActivityListPage = () => {
   const scopeInput = useMemo(
     () => ({
       tab: activeTab,
-      canSeeDeleted,
+      canViewDeleted,
       watchlistActivityIds: favouriteActivityIds,
       ministryConflict: ministryTabLeadTeamConflict,
       ministryTabLabel,
@@ -211,7 +208,7 @@ export const ActivityListPage = () => {
     }),
     [
       activeTab,
-      canSeeDeleted,
+      canViewDeleted,
       favouriteActivityIds,
       ministryTabLeadTeamConflict,
       ministryTabLabel,
@@ -285,16 +282,8 @@ export const ActivityListPage = () => {
 
   const headerActions = (
     <div className="flex flex-wrap items-center gap-2">
-      {canViewReports && activityListReports.length > 0 ? (
-        <ActivityListReportsMenu
-          reports={activityListReports}
-          availability={listEffectiveScope.reportAvailability}
-          onOpenReport={openReport}
-          onShowFullList={handleShowFullActivityList}
-        />
-      ) : null}
       {canCreateActivity ? (
-        <Button asChild>
+        <Button asChild size="default">
           <Link to="/create-activity" {...activityFormLinkState(location)}>
             <Plus className="h-4 w-4" />
             New activity
@@ -302,6 +291,7 @@ export const ActivityListPage = () => {
         </Button>
       ) : (
         <Button
+          size="default"
           disabled
           title="You do not have permission to create activities"
         >
@@ -309,6 +299,15 @@ export const ActivityListPage = () => {
           New activity
         </Button>
       )}
+      {canViewReports && activityListReports.length > 0 ? (
+        <ActivityListReportsMenu
+          reports={activityListReports}
+          availability={listEffectiveScope.reportAvailability}
+          onOpenReport={openReport}
+          onShowFullList={handleShowFullActivityList}
+          showLookAheadLink={canViewLookAhead}
+        />
+      ) : null}
     </div>
   );
 
