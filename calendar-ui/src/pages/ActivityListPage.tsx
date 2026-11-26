@@ -54,6 +54,7 @@ export const ActivityListPage = () => {
   const canCreateActivity = hasPermission(PERMISSIONS.ACTIVITIES.CREATE);
   const canManageFavourites = hasPermission(PERMISSIONS.FAVOURITES.MANAGE);
   const canViewReports = hasPermission(PERMISSIONS.REPORTS.VIEW);
+  const canViewLookAhead = hasPermission(PERMISSIONS.LOOK_AHEAD.VIEW);
 
   const canViewDeleted = hasPermission(PERMISSIONS.ACTIVITIES.VIEW_DELETED);
 
@@ -281,16 +282,8 @@ export const ActivityListPage = () => {
 
   const headerActions = (
     <div className="flex flex-wrap items-center gap-2">
-      {canViewReports && activityListReports.length > 0 ? (
-        <ActivityListReportsMenu
-          reports={activityListReports}
-          availability={listEffectiveScope.reportAvailability}
-          onOpenReport={openReport}
-          onShowFullList={handleShowFullActivityList}
-        />
-      ) : null}
       {canCreateActivity ? (
-        <Button asChild>
+        <Button asChild size="default">
           <Link to="/create-activity" {...activityFormLinkState(location)}>
             <Plus className="h-4 w-4" />
             New activity
@@ -298,6 +291,7 @@ export const ActivityListPage = () => {
         </Button>
       ) : (
         <Button
+          size="default"
           disabled
           title="You do not have permission to create activities"
         >
@@ -305,6 +299,15 @@ export const ActivityListPage = () => {
           New activity
         </Button>
       )}
+      {canViewReports && activityListReports.length > 0 ? (
+        <ActivityListReportsMenu
+          reports={activityListReports}
+          availability={listEffectiveScope.reportAvailability}
+          onOpenReport={openReport}
+          onShowFullList={handleShowFullActivityList}
+          showLookAheadLink={canViewLookAhead}
+        />
+      ) : null}
     </div>
   );
 

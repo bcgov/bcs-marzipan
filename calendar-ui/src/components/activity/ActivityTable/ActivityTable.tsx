@@ -2,6 +2,7 @@ import { createColumnHelper } from '@tanstack/react-table';
 import { useMemo } from 'react';
 
 import { SortableColumnHeader } from '@/components/table/SortableColumnHeader';
+import { SortDropdown } from '@/components/table/SortDropdown';
 import { useActivityGridColumnTable } from '@/hooks/useActivityGridColumnTable';
 import { useActivityGridLayoutPreferences } from '@/hooks/useActivityGridLayoutPreferences';
 import {
@@ -21,7 +22,11 @@ import {
 import { ActivityGridTable } from './ActivityGridTable';
 import { ActivityTableFrame } from './ActivityTableFrame';
 import type { ActivityTableRow } from './activityTableRow';
-import { ACTIVITY_SORT_COLUMNS } from './activityTableSortColumns';
+import {
+  ACTIVITY_SORT_COLUMNS,
+  DEFAULT_SORT_DIRECTION,
+  DEFAULT_SORT_KEY,
+} from './activityTableSortColumns';
 import {
   ActivityStatusCell,
   ActivityTimestampsCell,
@@ -54,6 +59,8 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
     bulkMenu,
     canFlag,
     showReviewHighlights,
+    sortKey,
+    sortDirection,
     effectiveSortKey,
     effectiveSortDirection,
     handleSortChange,
@@ -270,10 +277,24 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
     <ActivityTableFrame
       core={core}
       columnsMenu={
-        <ActivityColumnVisibilityMenu
-          options={columnOptions}
-          onToggle={toggleColumnVisibility}
-        />
+        <span className="inline-flex items-center gap-1">
+          <SortDropdown
+            hideDirectionLabel
+            triggerVariant="ghost"
+            hideTriggerChevron
+            columns={ACTIVITY_SORT_COLUMNS}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSortChange={handleSortChange}
+            defaultSortKey={DEFAULT_SORT_KEY}
+            defaultSortDirection={DEFAULT_SORT_DIRECTION}
+            ariaLabel="Sort by"
+          />
+          <ActivityColumnVisibilityMenu
+            options={columnOptions}
+            onToggle={toggleColumnVisibility}
+          />
+        </span>
       }
     >
       <ActivityGridTable

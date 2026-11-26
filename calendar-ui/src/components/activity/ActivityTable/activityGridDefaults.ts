@@ -22,7 +22,7 @@ export const GRID_A_HIDEABLE_COLUMNS = [
 export const GRID_A_COLUMN_WIDTHS: Record<string, number> = {
   select: GRID_A_SELECT_COLUMN_WIDTH_PX,
   /** Stacked display ID + actions; category badges truncate within this width. */
-  overview: 172,
+  overview: 148,
   summary: 400,
   scheduling: 306,
   materials: 221,
@@ -35,7 +35,7 @@ export const GRID_A_DEFAULT_MAX_COLUMN_WIDTH_PX = 900;
 
 /** Per-column resize caps (overview is pinned; status content truncates). */
 export const GRID_A_COLUMN_MAX_WIDTHS: Record<string, number> = {
-  overview: 224,
+  overview: 200,
   status: 280,
 };
 

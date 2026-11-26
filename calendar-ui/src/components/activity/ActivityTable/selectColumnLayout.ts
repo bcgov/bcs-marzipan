@@ -2,12 +2,15 @@
 
 export const GRID_A_SELECT_COLUMN_CELL_CLASS = 'overflow-visible px-0';
 
+/** Select column header: vertical center for bulk checkbox (overrides tableTh align-top). */
+export const GRID_A_SELECT_COLUMN_HEADER_CELL_CLASS = `${GRID_A_SELECT_COLUMN_CELL_CLASS} align-middle`;
+
 export const GRID_A_SELECT_COLUMN_WIDTH_PX = 52;
 
 const selectCheckboxAlignBase = 'flex w-full justify-start pl-3';
 
 /** Header checkbox + menu trigger row. */
-export const GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS = `${selectCheckboxAlignBase} mt-0.5 min-h-5 items-center`;
+export const GRID_A_SELECT_CHECKBOX_HEADER_ALIGN_CLASS = `${selectCheckboxAlignBase} min-h-5 -translate-y-0.5 items-center`;
 
 /** Body checkbox row (top-aligned with grid content). */
 export const GRID_A_SELECT_CHECKBOX_ROW_ALIGN_CLASS = `${selectCheckboxAlignBase} items-start`;

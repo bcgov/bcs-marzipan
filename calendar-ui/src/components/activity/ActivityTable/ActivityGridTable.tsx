@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { isGridHeaderSortBlocked } from './GridStatusColumnHeader';
 import {
   GRID_A_SELECT_COLUMN_CELL_CLASS,
+  GRID_A_SELECT_COLUMN_HEADER_CELL_CLASS,
   GRID_A_SELECT_COLUMN_WIDTH_PX,
 } from './selectColumnLayout';
 
@@ -115,7 +116,7 @@ function SortableGridHeader({
       className={cn(
         tableTh,
         'relative wrap-break-word whitespace-normal',
-        isSelect && GRID_A_SELECT_COLUMN_CELL_CLASS,
+        isSelect && GRID_A_SELECT_COLUMN_HEADER_CELL_CLASS,
         isPinned && 'bg-accent overflow-hidden',
         hasMultiSort && 'group',
         isDragging && 'z-20 bg-slate-200/80',
