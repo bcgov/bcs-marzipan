@@ -25,8 +25,8 @@ import {
   updateUserSettings,
 } from '@/api/usersApi';
 import { PageContainer } from '@/components/layout/PageContainer';
+import { ActiveInactiveBadge } from '@/components/shared/ActiveInactiveBadge';
 import RemoveTeamMemberModal from '@/components/teams/RemoveTeamMemberModal';
-import { Badge } from '@/components/ui/badge';
 // removed PageHeader to use a compact header with a Go back link
 import { Button } from '@/components/ui/button';
 import {
@@ -386,7 +386,7 @@ export default function UserDetailPage() {
           <div className="max-w-2xl">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <UserColouredAvatar
                     userColourKey={userDetail.userColourKey}
                     initials={
@@ -401,21 +401,12 @@ export default function UserDetailPage() {
                   <h2 className="text-2xl leading-tight font-semibold">
                     {userDetail.adDisplayName || userDetail.adUsername}
                   </h2>
-                </div>
-                <div className="mt-1">
-                  <div className="text-sm text-slate-900">
-                    {userDetail.roleName}
-                  </div>
-                  <div className="mt-2">
-                    <Badge
-                      variant={userDetail.isActive ? 'success' : 'outline'}
-                    >
-                      {userDetail.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="mt-1 text-[16px] font-medium text-slate-900">
-                  {userDetail.jobTitle}
+                  {userDetail.jobTitle ? (
+                    <span className="text-base font-medium text-slate-900">
+                      {userDetail.jobTitle}
+                    </span>
+                  ) : null}
+                  <ActiveInactiveBadge isActive={userDetail.isActive} />
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-slate-600">
@@ -498,72 +489,70 @@ export default function UserDetailPage() {
                 </div>
 
                 <div>
-                  <Label className="text-base font-semibold">Teams</Label>
-                  <div className="mt-2">
-                    <Combobox
-                      items={teamOptions}
-                      multiple
-                      value={selectedTeamOptions}
-                      onValueChange={(selected: OptionItem[]) => {
-                        void handleTeamSelectionChange(selected);
-                      }}
-                      itemToStringValue={(o: OptionItem) => o.label}
-                      disabled={
-                        !canEdit ||
-                        isProcessingTeamRemove ||
-                        teamRemovalModal != null
-                      }
+                  <Label>Teams</Label>
+                  <Combobox
+                    items={teamOptions}
+                    multiple
+                    value={selectedTeamOptions}
+                    onValueChange={(selected: OptionItem[]) => {
+                      void handleTeamSelectionChange(selected);
+                    }}
+                    itemToStringValue={(o: OptionItem) => o.label}
+                    disabled={
+                      !canEdit ||
+                      isProcessingTeamRemove ||
+                      teamRemovalModal != null
+                    }
+                  >
+                    <ComboboxChips
+                      ref={teamsComboboxAnchorRef}
+                      className="w-full"
                     >
-                      <ComboboxChips
-                        ref={teamsComboboxAnchorRef}
-                        className="w-full"
-                      >
-                        <ComboboxValue>
-                          {(values: OptionItem[]) => (
-                            <>
-                              {values.map((option) => (
-                                <ComboboxChip key={option.value}>
-                                  {option.label}
-                                </ComboboxChip>
-                              ))}
-                              <ComboboxChipsInput placeholder="Select teams..." />
-                            </>
-                          )}
-                        </ComboboxValue>
-                      </ComboboxChips>
-                      <ComboboxContent
-                        anchor={teamsComboboxAnchorRef}
-                        className="popover-list-scroll flex max-h-[min(var(--popover-list-max-height),24rem)] flex-col overflow-x-hidden overflow-y-auto p-0"
-                      >
-                        <div className="bg-popover px-1 py-1">
-                          <TeamsComboboxSelectAllRow
-                            allSelected={allTeamsSelected}
-                            disabled={!canEdit || teamOptions.length === 0}
-                            onToggleSelectAll={() => {
-                              if (allTeamsSelected) {
-                                toast.error(
-                                  'Remove one team at a time using the team chips.'
-                                );
-                                return;
-                              }
-                              setLocalTeamIds(allSelectableTeamIds);
-                            }}
-                          />
-                          {teamOptions.length > 0 ? (
-                            <ComboboxSeparator className="my-1" />
-                          ) : null}
-                          <ComboboxEmpty>No teams found.</ComboboxEmpty>
-                          <ComboboxList className="max-h-none scroll-py-1 overflow-visible p-0 data-empty:p-0">
-                            {(option: OptionItem) => (
-                              <ComboboxItem key={option.value} value={option}>
+                      <ComboboxValue>
+                        {(values: OptionItem[]) => (
+                          <>
+                            {values.map((option) => (
+                              <ComboboxChip key={option.value}>
                                 {option.label}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxList>
-                        </div>
-                      </ComboboxContent>
-                    </Combobox>
-                  </div>
+                              </ComboboxChip>
+                            ))}
+                            <ComboboxChipsInput placeholder="Select teams..." />
+                          </>
+                        )}
+                      </ComboboxValue>
+                    </ComboboxChips>
+                    <ComboboxContent
+                      anchor={teamsComboboxAnchorRef}
+                      className="popover-list-scroll flex max-h-[min(var(--popover-list-max-height),24rem)] flex-col overflow-x-hidden overflow-y-auto p-0"
+                    >
+                      <div className="bg-popover px-1 py-1">
+                        <TeamsComboboxSelectAllRow
+                          allSelected={allTeamsSelected}
+                          disabled={!canEdit || teamOptions.length === 0}
+                          onToggleSelectAll={() => {
+                            if (allTeamsSelected) {
+                              toast.error(
+                                'Remove one team at a time using the team chips.'
+                              );
+                              return;
+                            }
+                            setLocalTeamIds(allSelectableTeamIds);
+                          }}
+                        />
+                        {teamOptions.length > 0 ? (
+                          <ComboboxSeparator className="my-1" />
+                        ) : null}
+                        <ComboboxEmpty>No teams found.</ComboboxEmpty>
+                        <ComboboxList className="max-h-none scroll-py-1 overflow-visible p-0 data-empty:p-0">
+                          {(option: OptionItem) => (
+                            <ComboboxItem key={option.value} value={option}>
+                              {option.label}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                      </div>
+                    </ComboboxContent>
+                  </Combobox>
                 </div>
 
                 <div>
@@ -577,21 +566,18 @@ export default function UserDetailPage() {
                 </div>
 
                 <div>
-                  <div className="font-semibold">Direct login</div>
+                  <Label htmlFor="user-direct-login">Direct login</Label>
 
                   <div className="mt-2 flex items-center gap-3">
-                    <div>
-                      <Switch
-                        checked={directLoginEnabled}
-                        onCheckedChange={(v) =>
-                          setDirectLoginEnabled(Boolean(v))
-                        }
-                        disabled={!canEdit}
-                      />
-                    </div>
-                    <div className="text-sm text-slate-500">
+                    <Switch
+                      id="user-direct-login"
+                      checked={directLoginEnabled}
+                      onCheckedChange={(v) => setDirectLoginEnabled(Boolean(v))}
+                      disabled={!canEdit}
+                    />
+                    <span className="text-muted-foreground text-sm">
                       Enable direct login
-                    </div>
+                    </span>
                   </div>
 
                   <div className="mt-3 flex items-center gap-2">

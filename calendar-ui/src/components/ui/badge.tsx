@@ -48,6 +48,11 @@ const badgeVariants = cva(
           'border-transparent bg-status-dark text-white hover:bg-status-dark/90',
         'status-purple':
           'border-transparent bg-status-purple text-slate-900 hover:bg-status-purple/90',
+        /* Entity lifecycle (users, teams, settings lookups) */
+        'entity-active':
+          'border-transparent bg-status-green text-slate-900 hover:bg-status-green/90',
+        'entity-inactive':
+          'border-transparent bg-status-grey text-slate-700 hover:bg-status-grey/90',
       },
     },
     defaultVariants: {

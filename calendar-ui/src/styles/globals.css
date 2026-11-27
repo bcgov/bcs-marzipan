@@ -87,6 +87,10 @@
     --activity-status-on-hold: var(--status-grey);
     --activity-status-completed: var(--status-dark);
 
+    /* Entity Active / Inactive badges (user, team, lookup tables) */
+    --entity-status-active: var(--status-green);
+    --entity-status-inactive: var(--status-grey);
+
     /* Required field asterisk — matches Deleted activity status badge background */
     --required-field-indicator: var(--activity-status-deleted);
 

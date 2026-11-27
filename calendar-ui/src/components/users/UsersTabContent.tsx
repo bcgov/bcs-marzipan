@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
 import { fetchRoles, fetchTeams, fetchUsers } from '@/api/usersApi';
+import { ActiveInactiveBadge } from '@/components/shared/ActiveInactiveBadge';
 import { ContentSection } from '@/components/table/ContentSection';
 import { FilterSection } from '@/components/table/FilterSection';
 import { SortIndicator } from '@/components/table/SortIndicator';
@@ -77,20 +78,6 @@ function formatLastUpdated(iso: string | null | undefined): string {
   } catch {
     return '-';
   }
-}
-
-function statusBadge(isActive: boolean) {
-  return (
-    <span
-      className={
-        isActive
-          ? 'rounded bg-green-100 px-2 py-0.5 text-xs text-green-800'
-          : 'rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600'
-      }
-    >
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
-  );
 }
 
 function compareUsers(
@@ -477,7 +464,9 @@ export function UsersTabContent() {
                         )}
                       </div>
                     </td>
-                    <td className={tableTd}>{statusBadge(user.isActive)}</td>
+                    <td className={tableTd}>
+                      <ActiveInactiveBadge isActive={user.isActive} />
+                    </td>
                     <td className={`${tableTd} text-sm text-slate-600`}>
                       {formatLastUpdated(
                         (user as { lastUpdatedDateTime?: string | null })

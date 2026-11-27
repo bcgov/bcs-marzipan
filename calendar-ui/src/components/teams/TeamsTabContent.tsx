@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TeamListItem } from '@corpcal/shared/api/types';
 import { fetchTeamsList } from '@/api/teamsApi';
+import { ActiveInactiveBadge } from '@/components/shared/ActiveInactiveBadge';
 import { ContentSection } from '@/components/table/ContentSection';
 import { FilterSection } from '@/components/table/FilterSection';
 import { SortIndicator } from '@/components/table/SortIndicator';
@@ -67,20 +68,6 @@ function compareTeams(
     default:
       return 0;
   }
-}
-
-function statusBadge(isActive: boolean) {
-  return (
-    <span
-      className={
-        isActive
-          ? 'rounded bg-green-100 px-2 py-0.5 text-xs text-green-800'
-          : 'rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600'
-      }
-    >
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
-  );
 }
 
 export function TeamsTabContent() {
@@ -360,7 +347,9 @@ export function TeamsTabContent() {
                       <td className={`${tableTd} text-slate-600`}>
                         {team.primaryOrganizationName ?? '-'}
                       </td>
-                      <td className={tableTd}>{statusBadge(team.isActive)}</td>
+                      <td className={tableTd}>
+                        <ActiveInactiveBadge isActive={team.isActive} />
+                      </td>
                     </tr>
                   );
                 })

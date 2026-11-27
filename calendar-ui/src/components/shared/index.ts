@@ -1,3 +1,4 @@
+export { ActiveInactiveBadge } from './ActiveInactiveBadge';
 export { ActivityBreadcrumb } from './ActivityBreadcrumb';
 export { AnyPermissionGate, PermissionGate } from './PermissionGate';
 export { AutosaveIndicator } from './AutosaveIndicator';
