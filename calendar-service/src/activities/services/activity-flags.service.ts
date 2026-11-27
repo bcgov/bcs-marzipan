@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 import {
   activities,
@@ -16,6 +16,7 @@ import {
 import { coerceUserColourKey } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 
+import { userEffectiveDisplayNameSql } from '../../common/user-display-name-sql';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { sortByStaffName } from '../../users/staff-name-sort';
@@ -65,7 +66,7 @@ export class ActivityFlagsService {
         : await db
             .select({
               userId: userTeams.userId,
-              name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+              name: userEffectiveDisplayNameSql,
             })
             .from(userTeams)
             .innerJoin(users, eq(users.id, userTeams.userId))
@@ -144,7 +145,7 @@ export class ActivityFlagsService {
     const existingFlags = await db
       .select({
         assigneeId: activityFlags.assigneeId,
-        name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+        name: userEffectiveDisplayNameSql,
       })
       .from(activityFlags)
       .innerJoin(users, eq(users.id, activityFlags.assigneeId))
@@ -310,7 +311,7 @@ export class ActivityFlagsService {
     const existing = await db
       .select({
         assigneeId: activityFlags.assigneeId,
-        name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+        name: userEffectiveDisplayNameSql,
       })
       .from(activityFlags)
       .innerJoin(users, eq(users.id, activityFlags.assigneeId))
@@ -365,7 +366,7 @@ export class ActivityFlagsService {
 
     const [existing] = await db
       .select({
-        name: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+        name: userEffectiveDisplayNameSql,
       })
       .from(activityFlags)
       .innerJoin(users, eq(users.id, activityFlags.assigneeId))
@@ -430,7 +431,7 @@ export class ActivityFlagsService {
         teamName: teams.name,
         displayTeamId: activityFlags.displayTeamId,
         assigneeId: activityFlags.assigneeId,
-        assigneeName: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
+        assigneeName: userEffectiveDisplayNameSql,
         assignedById: activityFlags.assignedById,
         note: activityFlags.note,
         userColourKeyRaw: userSettings.userColourKey,

@@ -80,6 +80,8 @@ export function ActivityFlagPopover({
   const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [membersLoadedSuccessfully, setMembersLoadedSuccessfully] =
+    useState(false);
   const [draftAssigneeIds, setDraftAssigneeIds] = useState<number[]>([]);
   const [selectedTeamPerUser, setSelectedTeamPerUser] = useState<
     Record<number, number>
@@ -127,6 +129,7 @@ export function ActivityFlagPopover({
   useEffect(() => {
     if (!open || teamIds.length === 0) return;
     setLoadingMembers(true);
+    setMembersLoadedSuccessfully(false);
     fetchUsers({ teamIds })
       .then((userList) => {
         // Expand each user into one TeamMemberOption per team that overlaps with
@@ -166,10 +169,12 @@ export function ActivityFlagPopover({
           }
         });
         setSelectedTeamPerUser(initialSelectedTeam);
+        setMembersLoadedSuccessfully(true);
       })
       .catch(() => {
         setMembers([]);
         setSelectedTeamPerUser({});
+        setMembersLoadedSuccessfully(false);
       })
       .finally(() => setLoadingMembers(false));
   }, [open, teamIds, teamIdSet, existingFlags, primaryTeamId]);
@@ -235,7 +240,14 @@ export function ActivityFlagPopover({
   };
 
   const commitAssignmentsIfDirty = useCallback(() => {
-    if (isPending || !primaryTeamId || loadingMembers) return;
+    if (
+      isPending ||
+      !primaryTeamId ||
+      loadingMembers ||
+      !membersLoadedSuccessfully
+    ) {
+      return;
+    }
 
     const nextAssigneeIds = draftAssigneeIds.filter((assigneeId) => {
       const userTeams = userTeamsMap.get(assigneeId) ?? [];
@@ -281,6 +293,7 @@ export function ActivityFlagPopover({
     primaryTeamId,
     selectedAssigneeIds,
     selectedTeamPerUser,
+    membersLoadedSuccessfully,
     userTeamsMap,
   ]);
 

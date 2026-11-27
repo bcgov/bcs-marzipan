@@ -50,6 +50,7 @@ import {
 } from '@corpcal/database/schema';
 import {
   coerceUserColourKey,
+  resolveUserDisplayName,
   SYSTEM_ROLE_IDS,
   type ActivityStatusName,
   type Visibility,
@@ -902,7 +903,7 @@ export class LookupsService {
 
   /**
    * Get all active users
-   * Computes display name from adDisplayName or falls back to adUsername
+   * Computes effective display name via resolveUserDisplayName
    * Supports filtering by userIds to fetch specific users
    * TODO: Implement scoping based on role, organizationId
    */
@@ -920,6 +921,7 @@ export class LookupsService {
     const results = await this.databaseService.db
       .select({
         id: users.id,
+        displayName: users.displayName,
         adUsername: users.adUsername,
         adDisplayName: users.adDisplayName,
         adEmail: users.adEmail,
@@ -929,20 +931,16 @@ export class LookupsService {
       .from(users)
       .leftJoin(userSettings, eq(userSettings.userId, users.id))
       .where(and(...conditions))
-      .orderBy(users.adDisplayName, users.adUsername);
+      .orderBy(users.displayName, users.adDisplayName, users.adUsername);
 
     const sortedResults = sortByStaffName(
       results,
-      (user) =>
-        user.adDisplayName ??
-        user.adUsername ??
-        user.adEmail ??
-        `User ${user.id}`,
+      (user) => resolveUserDisplayName(user),
       (user) => user.id
     );
 
     return sortedResults.map((user) => {
-      const label = user.adDisplayName ?? user.adUsername ?? `User ${user.id}`;
+      const label = resolveUserDisplayName(user);
       return {
         id: user.id,
         label,
@@ -1774,6 +1772,7 @@ export class LookupsService {
     const results = await this.databaseService.db
       .select({
         id: users.id,
+        displayName: users.displayName,
         adUsername: users.adUsername,
         adDisplayName: users.adDisplayName,
         adEmail: users.adEmail,
@@ -1783,13 +1782,12 @@ export class LookupsService {
 
     const sorted = sortByStaffName(
       results,
-      (u) => u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`,
+      (u) => resolveUserDisplayName(u),
       (u) => u.id
     );
 
     return sorted.map((u) => {
-      const label =
-        u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`;
+      const label = resolveUserDisplayName(u);
       return {
         id: u.id,
         label,

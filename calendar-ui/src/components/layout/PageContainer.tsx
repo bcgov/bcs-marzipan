@@ -24,7 +24,7 @@ const variants = {
     PAGE_CONTAINER_DEFAULT_LAYOUT.maxWidthClass,
     PAGE_CONTAINER_DEFAULT_LAYOUT.gutterXClass
   ),
-  narrow: 'min-w-0 mx-auto max-w-4xl',
+  narrow: 'min-w-0 w-full mx-auto max-w-4xl',
 } as const;
 
 interface PageContainerProps {

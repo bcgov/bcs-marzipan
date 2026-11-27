@@ -29,6 +29,7 @@ import {
   NOTIFICATION_ENTITY_TYPES,
   NOTIFICATION_EVENT_TYPES,
   NOTIFICATION_RECIPIENT_STATUSES,
+  resolveUserDisplayName,
   type NotificationChangeType,
   type NotificationEntityType,
   type NotificationEventType,
@@ -132,6 +133,8 @@ export class NotificationsService {
   ): Promise<string> {
     const [actor] = await executor
       .select({
+        id: users.id,
+        displayName: users.displayName,
         adDisplayName: users.adDisplayName,
         adUsername: users.adUsername,
         adEmail: users.adEmail,
@@ -140,12 +143,7 @@ export class NotificationsService {
       .where(eq(users.id, actorUserId))
       .limit(1);
 
-    return (
-      actor?.adDisplayName ??
-      actor?.adUsername ??
-      actor?.adEmail ??
-      `User ${actorUserId}`
-    );
+    return actor ? resolveUserDisplayName(actor) : `User ${actorUserId}`;
   }
 
   private toIso(value: Date | string | null): string | null {
@@ -1642,6 +1640,7 @@ export class NotificationsService {
         this.databaseService.db
           .select({
             id: users.id,
+            displayName: users.displayName,
             adDisplayName: users.adDisplayName,
             adUsername: users.adUsername,
             adEmail: users.adEmail,
@@ -1678,11 +1677,7 @@ export class NotificationsService {
       return [];
     }
 
-    const targetLabel =
-      targetUser.adDisplayName ??
-      targetUser.adUsername ??
-      targetUser.adEmail ??
-      `User ${targetUser.id}`;
+    const targetLabel = resolveUserDisplayName(targetUser);
 
     const teamLabel = teamRow.displayName ?? teamRow.name;
     const recipientUserIds = [

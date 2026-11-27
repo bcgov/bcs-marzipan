@@ -17,6 +17,7 @@ describe('userListItemSchema', () => {
   it('accepts valid user list item', () => {
     const result = userListItemSchema.parse({
       id: 1,
+      displayName: null,
       adUsername: 'user1',
       adDisplayName: 'User One',
       adEmail: 'user@example.com',
@@ -37,6 +38,7 @@ describe('userListItemSchema', () => {
   it('accepts null ad fields', () => {
     const result = userListItemSchema.parse({
       id: 2,
+      displayName: 'Override',
       adUsername: null,
       adDisplayName: null,
       adEmail: null,
@@ -57,11 +59,9 @@ describe('createUserBodySchema', () => {
   it('accepts valid body with email and roleId', () => {
     const result = createUserBodySchema.parse({
       email: 'user@gov.bc.ca',
-      idirUsername: 'JSMITH',
       roleId: 1,
     });
     expect(result.email).toBe('user@gov.bc.ca');
-    expect(result.idirUsername).toBe('JSMITH');
     expect(result.roleId).toBe(1);
     expect(result.displayName).toBeUndefined();
     expect(result.teams).toBeUndefined();
@@ -70,7 +70,6 @@ describe('createUserBodySchema', () => {
   it('accepts optional displayName and teams', () => {
     const result = createUserBodySchema.parse({
       email: 'user@gov.bc.ca',
-      idirUsername: 'JDOE',
       roleId: 2,
       displayName: 'Jane Doe',
       teams: [
@@ -87,7 +86,6 @@ describe('createUserBodySchema', () => {
   it('accepts optional userColourKey', () => {
     const result = createUserBodySchema.parse({
       email: 'user@gov.bc.ca',
-      idirUsername: 'JDOE',
       roleId: 2,
       userColourKey: 'teal',
     });
@@ -97,7 +95,6 @@ describe('createUserBodySchema', () => {
   it('enforces displayName max length (255)', () => {
     const valid = createUserBodySchema.parse({
       email: 'user@gov.bc.ca',
-      idirUsername: 'JDOE',
       roleId: 2,
       displayName: 'd'.repeat(255),
     });
@@ -106,7 +103,6 @@ describe('createUserBodySchema', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: 'user@gov.bc.ca',
-        idirUsername: 'JDOE',
         roleId: 2,
         displayName: 'd'.repeat(256),
       })
@@ -114,22 +110,13 @@ describe('createUserBodySchema', () => {
   });
 
   it('rejects missing email', () => {
-    expect(() =>
-      createUserBodySchema.parse({ idirUsername: 'JDOE', roleId: 1 })
-    ).toThrow();
-  });
-
-  it('rejects missing IDIR username', () => {
-    expect(() =>
-      createUserBodySchema.parse({ email: 'u@gov.bc.ca', roleId: 1 })
-    ).toThrow();
+    expect(() => createUserBodySchema.parse({ roleId: 1 })).toThrow();
   });
 
   it('rejects missing roleId', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: 'u@gov.bc.ca',
-        idirUsername: 'JDOE',
       })
     ).toThrow();
   });
@@ -138,7 +125,6 @@ describe('createUserBodySchema', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: 'not-an-email',
-        idirUsername: 'JDOE',
         roleId: 1,
       })
     ).toThrow();
@@ -148,17 +134,6 @@ describe('createUserBodySchema', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: 'user@example.com',
-        idirUsername: 'JDOE',
-        roleId: 1,
-      })
-    ).toThrow();
-  });
-
-  it('rejects IDIR values that look like emails', () => {
-    expect(() =>
-      createUserBodySchema.parse({
-        email: 'user@gov.bc.ca',
-        idirUsername: 'user@gov.bc.ca',
         roleId: 1,
       })
     ).toThrow();
@@ -168,7 +143,6 @@ describe('createUserBodySchema', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: '   ',
-        idirUsername: 'JDOE',
         roleId: 1,
       })
     ).toThrow();
@@ -369,6 +343,7 @@ describe('removeUserFromTeamBodySchema', () => {
 describe('userDetailSchema', () => {
   const base = {
     id: 1,
+    displayName: null,
     adUsername: 'user1',
     adDisplayName: 'User One',
     adEmail: 'user@example.com',

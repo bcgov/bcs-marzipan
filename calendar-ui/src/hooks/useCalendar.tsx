@@ -313,10 +313,8 @@ export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
       body: UpsertActivityFlagsRequest;
       assigneeNames?: string[];
     }) => syncActivityFlags(activityId, body),
-    onMutate: (vars) => {
-      suppressLiveRowHighlightForActivity(vars.activityId);
-    },
     onSuccess: (_, vars) => {
+      suppressLiveRowHighlightForActivity(vars.activityId);
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
       scheduleLiveActivityRefresh(qc, {
@@ -353,10 +351,8 @@ export function useRemoveAssigneeActivityFlag(options?: {
       assigneeName?: string;
       suppressSuccessToast?: boolean;
     }) => removeAssigneeActivityFlag(activityId, teamId, assigneeId),
-    onMutate: (vars) => {
-      suppressLiveRowHighlightForActivity(vars.activityId);
-    },
     onSuccess: (_, vars) => {
+      suppressLiveRowHighlightForActivity(vars.activityId);
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
       scheduleLiveActivityRefresh(qc, {

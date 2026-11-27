@@ -23,6 +23,7 @@ import {
 import {
   coerceUserColourKey,
   defaultUserColourKeyForUserId,
+  resolveUserDisplayName,
   SYSTEM_ROLE_IDS,
   type ActivityStatusName,
 } from '@corpcal/shared';
@@ -66,7 +67,6 @@ interface CrossTeamContext {
 }
 
 const GOV_BC_EMAIL_SUFFIX = '@gov.bc.ca';
-const IDIR_USERNAME_PATTERN = /^[^\s@]+$/;
 
 @Injectable()
 export class UsersService {
@@ -184,23 +184,10 @@ export class UsersService {
     createdByUserId: number
   ): Promise<UserDetail> {
     const normalizedEmail = dto.email.trim().toLowerCase();
-    const idirUsername = dto.idirUsername.trim();
 
     if (!normalizedEmail.endsWith(GOV_BC_EMAIL_SUFFIX)) {
       throw new BadRequestException('Email must be a @gov.bc.ca address');
     }
-
-    if (!idirUsername) {
-      throw new BadRequestException('IDIR username is required');
-    }
-
-    if (!IDIR_USERNAME_PATTERN.test(idirUsername)) {
-      throw new BadRequestException(
-        'IDIR username must not contain spaces or @'
-      );
-    }
-
-    const normalizedIdirUsername = idirUsername.toUpperCase();
 
     const [existingByEmail] = await this.databaseService.db
       .select({ id: users.id })
@@ -256,9 +243,8 @@ export class UsersService {
         .insert(users)
         .values({
           roleId: dto.roleId,
-          adUsername: normalizedIdirUsername,
           adEmail: normalizedEmail,
-          adDisplayName: dto.displayName?.trim() || null,
+          displayName: dto.displayName?.trim() || null,
           adJobTitle: dto.adJobTitle?.trim() || null,
           adPhone: dto.adPhone?.trim() || null,
           isActive: true,
@@ -326,7 +312,7 @@ export class UsersService {
     if (search?.trim()) {
       const term = `%${search.trim().toLowerCase()}%`;
       conditions.push(
-        sql`(lower(${users.adDisplayName}) like ${term} OR lower(${users.adUsername}) like ${term} OR lower(${users.adEmail}) like ${term})`
+        sql`(lower(${users.displayName}) like ${term} OR lower(${users.adDisplayName}) like ${term} OR lower(${users.adUsername}) like ${term} OR lower(${users.adEmail}) like ${term})`
       );
     }
     if (roleIds?.length) {
@@ -351,6 +337,7 @@ export class UsersService {
     const userRows = await this.databaseService.db
       .select({
         id: users.id,
+        displayName: users.displayName,
         adUsername: users.adUsername,
         adDisplayName: users.adDisplayName,
         adEmail: users.adEmail,
@@ -363,7 +350,7 @@ export class UsersService {
       .from(users)
       .leftJoin(userSettings, eq(userSettings.userId, users.id))
       .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(users.adDisplayName, users.adUsername);
+      .orderBy(users.displayName, users.adDisplayName, users.adUsername);
 
     const roleRows = await this.databaseService.db
       .select({ id: roles.id, name: roles.name })
@@ -405,12 +392,13 @@ export class UsersService {
 
     const sortedUserRows = sortByStaffName(
       userRows,
-      (u) => u.adDisplayName ?? u.adUsername ?? u.adEmail ?? `User ${u.id}`,
+      (u) => resolveUserDisplayName(u),
       (u) => u.id
     );
 
     return sortedUserRows.map((u) => ({
       id: u.id,
+      displayName: u.displayName,
       adUsername: u.adUsername,
       adDisplayName: u.adDisplayName,
       adEmail: u.adEmail,
@@ -432,6 +420,7 @@ export class UsersService {
     const [u] = await this.databaseService.db
       .select({
         id: users.id,
+        displayName: users.displayName,
         adUsername: users.adUsername,
         adDisplayName: users.adDisplayName,
         adEmail: users.adEmail,
@@ -625,13 +614,14 @@ export class UsersService {
 
     if (
       dto.displayName !== undefined &&
-      dto.displayName !== existing.adDisplayName
+      dto.displayName !== existing.displayName
     ) {
-      updates.adDisplayName = dto.displayName;
+      const normalizedDisplayName = dto.displayName?.trim() || null;
+      updates.displayName = normalizedDisplayName;
       changes.push({
-        field: 'adDisplayName',
-        oldValue: existing.adDisplayName,
-        newValue: dto.displayName,
+        field: 'displayName',
+        oldValue: existing.displayName,
+        newValue: normalizedDisplayName,
       });
     }
     let normalizedUpdateEmail: string | null | undefined;
@@ -1096,17 +1086,16 @@ export class UsersService {
         ? await this.databaseService.db
             .select({
               id: users.id,
+              displayName: users.displayName,
               adDisplayName: users.adDisplayName,
               adUsername: users.adUsername,
+              adEmail: users.adEmail,
             })
             .from(users)
             .where(inArray(users.id, changerIds))
         : [];
     const changerMap = new Map(
-      changerRows.map((r) => [
-        r.id,
-        r.adDisplayName || r.adUsername || `User ${r.id}`,
-      ])
+      changerRows.map((r) => [r.id, resolveUserDisplayName(r)])
     );
 
     const colourKeyMap = await loadUserColourKeysByIds(
@@ -1223,15 +1212,15 @@ export class UsersService {
     const rows = await this.databaseService.db
       .select({
         id: users.id,
+        displayName: users.displayName,
         adDisplayName: users.adDisplayName,
         adUsername: users.adUsername,
+        adEmail: users.adEmail,
       })
       .from(users)
       .where(inArray(users.id, uniqueIds));
 
-    return new Map(
-      rows.map((u) => [u.id, u.adDisplayName || u.adUsername || `User ${u.id}`])
-    );
+    return new Map(rows.map((u) => [u.id, resolveUserDisplayName(u)]));
   }
 
   /**

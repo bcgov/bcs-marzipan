@@ -30,6 +30,7 @@ export * from './report-cover-contact';
 export * from './review-exempt-settings';
 export * from './schemas';
 export * from './user-colour';
+export * from './user-display-name';
 export * from './news-release-origin';
 export * from './releases';
 export * from './utils';

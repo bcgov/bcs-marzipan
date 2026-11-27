@@ -19,6 +19,7 @@ import {
 import {
   DEFAULT_JWT_EXPIRES_IN,
   defaultUserColourKeyForUserId,
+  resolveUserDisplayName,
   type AuthUser,
   type CheckEmailResponse,
   type UserColourKey,
@@ -31,6 +32,7 @@ import { PolicyService } from '../policy/policy.service';
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
 import {
+  findAuthUserById,
   findUserByEmail,
   findUserByEmailAnyStatus,
   findUserByExternalId,
@@ -567,8 +569,7 @@ export class AuthService {
     const user: AuthUser = {
       id: dbUser.id,
       username: dbUser.adUsername ?? String(dbUser.id),
-      displayName:
-        dbUser.adDisplayName ?? dbUser.adUsername ?? String(dbUser.id),
+      displayName: resolveUserDisplayName(dbUser),
       email: dbUser.adEmail ?? '',
       roleId: dbUser.roleId,
       roleName,
@@ -657,6 +658,28 @@ export class AuthService {
       userId,
     ]);
     return map.get(userId) ?? defaultUserColourKeyForUserId(userId);
+  }
+
+  /**
+   * Re-read identity fields from the database for GET /auth/me (JWT may be stale).
+   */
+  async hydrateCurrentUser(user: AuthUser): Promise<AuthUser> {
+    const [userColourKey, dbUser] = await Promise.all([
+      this.resolveLiveUserColourKey(user.id),
+      findAuthUserById(this.databaseService.db, user.id),
+    ]);
+
+    if (!dbUser) {
+      return { ...user, userColourKey };
+    }
+
+    return {
+      ...user,
+      username: dbUser.adUsername ?? String(dbUser.id),
+      displayName: resolveUserDisplayName(dbUser),
+      email: dbUser.adEmail ?? user.email,
+      userColourKey,
+    };
   }
 
   hashToken(token: string): string {

@@ -79,7 +79,10 @@ export type UserPermissionOverrideInput = z.infer<
  */
 export const userListItemSchema = z.object({
   id: z.number().int(),
+  /** CorpCal display override; effective label uses resolveUserDisplayName. */
+  displayName: z.string().nullable(),
   adUsername: z.string().nullable(),
+  /** Microsoft directory display name (updated on sign-in). */
   adDisplayName: z.string().nullable(),
   adEmail: z.string().nullable(),
   roleId: z.number().int(),
@@ -141,12 +144,6 @@ export const createUserBodySchema = z.object({
       (value) => value.toLowerCase().endsWith(GOV_BC_EMAIL_DOMAIN),
       'Email must be a @gov.bc.ca address'
     ),
-  idirUsername: z
-    .string()
-    .trim()
-    .min(1, 'IDIR username is required')
-    .max(255)
-    .regex(/^[^\s@]+$/, 'IDIR username must not contain spaces or @'),
   roleId: z.number().int(),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).optional(),
   isEventPlanner: z.boolean().optional(),

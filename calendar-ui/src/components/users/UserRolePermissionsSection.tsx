@@ -182,93 +182,86 @@ export function UserRolePermissionsSection({
         ) : null}
       </button>
 
-      <div
-        className={cn(
-          'grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none',
-          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-        )}
-      >
-        <div className="overflow-hidden">
-          <div id={panelId} className="space-y-4 pt-1">
-            {roleChangeNotice ? (
-              <p className="text-sm text-amber-800">
-                Permission customizations were reset for the new role.
-              </p>
-            ) : null}
+      {expanded ? (
+        <div id={panelId} className="space-y-4 pt-1">
+          {roleChangeNotice ? (
+            <p className="text-sm text-amber-800">
+              Permission customizations were reset for the new role.
+            </p>
+          ) : null}
 
-            {groupedRows.map((group) => (
-              <div key={group.category} className="space-y-3">
-                <div className="text-sm font-semibold text-slate-900">
-                  {group.category}
-                </div>
-                <div className="space-y-3">
-                  {group.rows.map((row) => {
-                    const override = row.allowUserOverride
-                      ? (overrideEffects[row.key] ?? null)
-                      : null;
-                    const checked = getEffectivePermission(
-                      row.roleHasPermission,
-                      override
-                    );
-                    const customized =
-                      row.allowUserOverride && isPermissionCustomized(override);
-                    const switchInteractive =
-                      canEditOverrides && row.allowUserOverride;
+          {groupedRows.map((group) => (
+            <div key={group.category} className="space-y-3">
+              <div className="text-sm font-semibold text-slate-900">
+                {group.category}
+              </div>
+              <div className="space-y-3">
+                {group.rows.map((row) => {
+                  const override = row.allowUserOverride
+                    ? (overrideEffects[row.key] ?? null)
+                    : null;
+                  const checked = getEffectivePermission(
+                    row.roleHasPermission,
+                    override
+                  );
+                  const customized =
+                    row.allowUserOverride && isPermissionCustomized(override);
+                  const switchInteractive =
+                    canEditOverrides && row.allowUserOverride;
 
-                    return (
-                      <div
-                        key={row.key}
-                        className="flex items-start justify-between gap-3"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="text-sm font-medium text-slate-900">
-                              {row.displayName}
-                            </div>
-                            {customized ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-                                <CircleAlert
-                                  className="size-3 shrink-0"
-                                  aria-hidden
-                                />
-                                Custom
-                              </span>
-                            ) : null}
+                  return (
+                    <div
+                      key={row.key}
+                      className="flex items-start justify-between gap-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-sm font-medium text-slate-900">
+                            {row.displayName}
                           </div>
-                          {row.description ? (
-                            <p className="text-muted-foreground mt-0.5 text-xs">
-                              {row.description}
-                            </p>
+                          {customized ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                              <CircleAlert
+                                className="size-3 shrink-0"
+                                aria-hidden
+                              />
+                              Custom
+                            </span>
                           ) : null}
                         </div>
-                        {switchInteractive ? (
-                          <Switch
-                            checked={checked}
-                            onCheckedChange={(nextChecked) => {
-                              setOverrideEffects((current) => ({
-                                ...current,
-                                [row.key]: resolveToggleOverride(
-                                  row.roleHasPermission,
-                                  current[row.key] ?? null,
-                                  Boolean(nextChecked)
-                                ),
-                              }));
-                              setRoleChangeNotice(false);
-                            }}
-                            aria-label={`${row.displayName} permission`}
-                          />
-                        ) : (
-                          <PermissionValueIndicator allowed={checked} />
-                        )}
+                        {row.description ? (
+                          <p className="text-muted-foreground mt-0.5 text-xs">
+                            {row.description}
+                          </p>
+                        ) : null}
                       </div>
-                    );
-                  })}
-                </div>
+                      {switchInteractive ? (
+                        <Switch
+                          checked={checked}
+                          onCheckedChange={(nextChecked) => {
+                            setOverrideEffects((current) => ({
+                              ...current,
+                              [row.key]: resolveToggleOverride(
+                                row.roleHasPermission,
+                                current[row.key] ?? null,
+                                Boolean(nextChecked)
+                              ),
+                            }));
+                            setRoleChangeNotice(false);
+                          }}
+                          aria-label={`${row.displayName} permission`}
+                        />
+                      ) : (
+                        <PermissionValueIndicator allowed={checked} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

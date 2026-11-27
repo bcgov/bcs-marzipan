@@ -402,12 +402,10 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Current user' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   async me(@CurrentUser() user: AuthUser) {
-    const userColourKey = await this.authService.resolveLiveUserColourKey(
-      user.id
-    );
+    const data = await this.authService.hydrateCurrentUser(user);
     return {
       success: true as const,
-      data: { ...user, userColourKey },
+      data,
     };
   }
 

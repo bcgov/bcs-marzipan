@@ -570,18 +570,19 @@ Report datasets include activities the user can view that match each report’s 
 
 ### New Fields (Not in Legacy Schema)
 
-| New Field Name      | Type                       | New Constraints | Description                                          |
-| ------------------- | -------------------------- | --------------- | ---------------------------------------------------- |
-| `externalId`        | `varchar(255)`             | nullable        | Active Directory user ID (for AD integration)        |
-| `adDivision`        | `varchar(255)`             | nullable        | Active Directory division                            |
-| `adDepartment`      | `varchar(255)`             | nullable        | Active Directory department                          |
-| `phone`             | `varchar(50)`              | nullable        | User's phone (separate from AD phone)                |
-| `groupId`           | `integer`                  | nullable        | FK to Groups (TODO - for future group functionality) |
-| `lastLoginDateTime` | `timestamp with time zone` | nullable        | Last login timestamp for audit purposes              |
+| New Field Name      | Type                       | New Constraints | Description                                           |
+| ------------------- | -------------------------- | --------------- | ----------------------------------------------------- |
+| `externalId`        | `varchar(255)`             | nullable        | Active Directory user ID (for AD integration)         |
+| `adDivision`        | `varchar(255)`             | nullable        | Active Directory division                             |
+| `adDepartment`      | `varchar(255)`             | nullable        | Active Directory department                           |
+| `phone`             | `varchar(50)`              | nullable        | User's phone (separate from AD phone)                 |
+| `groupId`           | `integer`                  | nullable        | FK to Groups (TODO - for future group functionality)  |
+| `lastLoginDateTime` | `timestamp with time zone` | nullable        | Last login timestamp for audit purposes               |
+| `displayName`       | `varchar(255)`             | nullable        | CorpCal display label (admin override; not AD-synced) |
 
 ### Key Transformations
 
-1. **AD Fields**: User profile fields have been prefixed with `ad` to clearly indicate they come from Active Directory integration. This allows for separate local overrides if needed.
+1. **AD Fields**: User profile fields have been prefixed with `ad` to clearly indicate they come from Active Directory integration. `adDisplayName` and `adUsername` are refreshed on Microsoft sign-in. Optional `displayName` is the CorpCal label when set (`displayName ?? adDisplayName ?? adUsername ?? adEmail`).
 2. **Role Assignment**: The `RoleId` FK remains the same, but now references the expanded `roles` table with 6 system roles and extensible custom roles.
 3. **Removed UI Preferences**: `FilterDisplayValue` and `HiddenColumns` have been removed as UI preferences will be handled separately.
 

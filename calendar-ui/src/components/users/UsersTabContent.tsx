@@ -40,6 +40,7 @@ import {
   buildUserFilterDetailLines,
   hasUserClearableFilters,
 } from '@/lib/management-filter-summary';
+import { resolveUserDisplayName } from '@/lib/user-team-toast-messages';
 
 const SKELETON_ROW_COUNT = 8;
 const SKELETON_DELAY_MS = 300;
@@ -50,12 +51,12 @@ const DEFAULT_PAGE_SIZE = 10;
 
 type UserSortKey = 'name' | 'role' | 'lastUpdated';
 
-function displayName(user: UserListItem): string {
-  return user.adDisplayName || user.adUsername || `User ${user.id}`;
+function userListLabel(user: UserListItem): string {
+  return resolveUserDisplayName(user);
 }
 
 function displayInitials(user: UserListItem): string {
-  const name = displayName(user);
+  const name = userListLabel(user);
   return name
     .split(' ')
     .slice(0, 2)
@@ -89,8 +90,8 @@ function compareUsers(
   const mult = direction === 'asc' ? 1 : -1;
   switch (sortKey) {
     case 'name': {
-      const na = (a.adDisplayName ?? a.adUsername ?? '').toLowerCase();
-      const nb = (b.adDisplayName ?? b.adUsername ?? '').toLowerCase();
+      const na = userListLabel(a).toLowerCase();
+      const nb = userListLabel(b).toLowerCase();
       return mult * na.localeCompare(nb);
     }
     case 'role': {
@@ -412,7 +413,7 @@ export function UsersTabContent() {
                   <tr
                     key={user.id}
                     role="button"
-                    aria-label={`View user ${displayName(user)}`}
+                    aria-label={`View user ${userListLabel(user)}`}
                     className={`${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`}
                     tabIndex={0}
                     onClick={(e) => {
@@ -434,7 +435,7 @@ export function UsersTabContent() {
                           size="sm"
                           decorative
                         />
-                        {displayName(user)}
+                        {userListLabel(user)}
                       </span>
                     </td>
                     <td className={`${tableTd} text-slate-600`}>

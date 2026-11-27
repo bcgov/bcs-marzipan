@@ -176,6 +176,7 @@ export const createMockUserListItem = (
   overrides?: Partial<UserListItem>
 ): UserListItem => ({
   id: 1,
+  displayName: null,
   adUsername: 'user1',
   adDisplayName: 'Test User',
   adEmail: 'user@example.com',

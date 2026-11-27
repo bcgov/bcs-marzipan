@@ -55,6 +55,7 @@ import { Input } from '@/components/ui/input';
 import {
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput,
 } from '@/components/ui/input-group';
 import { Switch } from '@/components/ui/switch';
@@ -77,6 +78,11 @@ import type { OptionItem } from '@/schemas/types';
 
 const GOV_BC_EMAIL_DOMAIN = '@gov.bc.ca';
 
+function emailLocalPart(email: string): string {
+  const at = email.indexOf('@');
+  return (at > 0 ? email.slice(0, at) : email).trim();
+}
+
 const createUserFormSchema = z.object({
   email: z
     .string()
@@ -88,12 +94,6 @@ const createUserFormSchema = z.object({
       (value) => value.toLowerCase().endsWith(GOV_BC_EMAIL_DOMAIN),
       'Email must be a @gov.bc.ca address'
     ),
-  idirUsername: z
-    .string()
-    .trim()
-    .min(1, 'IDIR username is required')
-    .max(255)
-    .regex(/^[^\s@]+$/, 'IDIR username must not contain spaces or @'),
   roleId: z.string().min(1, 'Role is required'),
   displayName: z.string().trim().max(USER_DISPLAY_NAME_MAX_LENGTH).default(''),
   adJobTitle: z.string().trim().max(USER_JOB_TITLE_MAX_LENGTH).default(''),
@@ -107,7 +107,6 @@ type CreateUserFormData = z.infer<typeof createUserFormSchema>;
 
 const defaultValues: CreateUserFormData = {
   email: '',
-  idirUsername: '',
   roleId: '',
   displayName: '',
   adJobTitle: '',
@@ -146,6 +145,7 @@ export function UserCreateModal({
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const [isTeamsComboboxOpen, setIsTeamsComboboxOpen] = useState(false);
   const [colourPickerExpanded, setColourPickerExpanded] = useState(false);
+  const [showCustomDisplayName, setShowCustomDisplayName] = useState(false);
   const [permissionOverrideInputs, setPermissionOverrideInputs] = useState<
     UserPermissionOverrideInput[]
   >([]);
@@ -160,15 +160,17 @@ export function UserCreateModal({
   });
 
   const watchedDisplayName = form.watch('displayName');
-  const watchedIdirUsername = form.watch('idirUsername');
+  const watchedEmail = form.watch('email');
   const watchedUserColourKey = form.watch('userColourKey');
-  const previewAssigneeName =
-    watchedDisplayName?.trim() ||
-    watchedIdirUsername?.trim().toUpperCase() ||
-    'User';
   const trimmedDisplayName = watchedDisplayName?.trim() ?? '';
-  const createAvatarInitials = initialsFromDisplayName(trimmedDisplayName);
-  const showAppearanceControls = trimmedDisplayName.length > 0;
+  const trimmedEmail = watchedEmail?.trim() ?? '';
+  const previewAssigneeName =
+    trimmedDisplayName || emailLocalPart(watchedEmail ?? '') || 'User';
+  const createAvatarInitials = initialsFromDisplayName(
+    trimmedDisplayName || emailLocalPart(watchedEmail ?? '')
+  );
+  const showAppearancePreview =
+    trimmedDisplayName.length > 0 || trimmedEmail.length > 0;
 
   const { data: roles = [] } = useQuery({
     queryKey: ['roles'],
@@ -211,6 +213,7 @@ export function UserCreateModal({
       form.reset(defaultValues);
       setPermissionOverrideInputs([]);
       setColourPickerExpanded(false);
+      setShowCustomDisplayName(false);
       onSaved?.();
       onClose();
     },
@@ -233,6 +236,7 @@ export function UserCreateModal({
     if (!open) {
       form.reset(defaultValues);
       setColourPickerExpanded(false);
+      setShowCustomDisplayName(false);
     }
   }, [open, form]);
 
@@ -245,8 +249,19 @@ export function UserCreateModal({
     if (!isOpen) {
       form.reset(defaultValues);
       setColourPickerExpanded(false);
+      setShowCustomDisplayName(false);
       onClose();
     }
+  };
+
+  const handleShowCustomDisplayName = () => {
+    setShowCustomDisplayName(true);
+  };
+
+  const handleUseMicrosoftName = () => {
+    form.setValue('displayName', '', { shouldDirty: true });
+    setColourPickerExpanded(false);
+    setShowCustomDisplayName(false);
   };
 
   const onSubmit = (data: CreateUserFormData) => {
@@ -257,7 +272,6 @@ export function UserCreateModal({
     }
     const body: CreateUserRequest = {
       email: data.email.trim(),
-      idirUsername: data.idirUsername.trim().toUpperCase(),
       roleId: parsedRoleId,
       ...(data.isEventPlanner && { isEventPlanner: true }),
       ...(data.displayName?.trim() && {
@@ -281,9 +295,7 @@ export function UserCreateModal({
       }),
       userColourKey: data.userColourKey,
     };
-    const displayLabel =
-      data.displayName?.trim() ||
-      `${data.idirUsername.trim().toUpperCase()} (${data.email.trim().toLowerCase()})`;
+    const displayLabel = data.displayName?.trim() || data.email.trim();
     const teamLabels = data.teamIds
       .map(
         (teamId) =>
@@ -306,8 +318,8 @@ export function UserCreateModal({
         <DialogHeader>
           <DialogTitle>Add user</DialogTitle>
           <DialogDescription>
-            Create a new user. Use a @gov.bc.ca email and the user&apos;s IDIR
-            username.
+            Create a new user with a @gov.bc.ca email. They will sign in with
+            Microsoft using that address.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -341,100 +353,103 @@ export function UserCreateModal({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="idirUsername"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel showDirtyIndicator={false}>
-                    IDIR username{' '}
-                    <span
-                      className="text-required-field-indicator font-semibold"
-                      aria-hidden
-                    >
-                      *
-                    </span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      placeholder="JSMITH"
-                      autoComplete="off"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="space-y-1">
-              <FormField
-                control={form.control}
-                name="displayName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel showDirtyIndicator={false}>
-                      Display name
-                    </FormLabel>
-                    <FormControl>
-                      <InputGroup>
-                        <InputGroupAddon
-                          align="inline-start"
-                          className={cn(
-                            'pl-2 transition-[padding,width]',
-                            !showAppearanceControls &&
-                              'w-0 overflow-hidden border-0 p-0'
-                          )}
-                          aria-hidden={!showAppearanceControls}
-                        >
-                          {showAppearanceControls ? (
-                            <UserColouredAvatar
-                              userColourKey={watchedUserColourKey}
-                              initials={createAvatarInitials}
-                              size="sm"
-                              title={previewAssigneeName}
-                              decorative
-                            />
-                          ) : null}
-                        </InputGroupAddon>
-                        <InputGroupInput
-                          type="text"
-                          maxLength={USER_DISPLAY_NAME_MAX_LENGTH}
-                          {...field}
-                        />
-                      </InputGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="userColourKey"
-                render={({ field }) => (
-                  <FormItem
-                    className={cn(
-                      'space-y-2',
-                      !showAppearanceControls && 'hidden'
-                    )}
+            <div className="space-y-2">
+              {!showCustomDisplayName ? (
+                <div className="space-y-1">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-primary h-auto p-0 text-sm font-normal"
+                    onClick={handleShowCustomDisplayName}
                   >
-                    <FormControl>
-                      <UserColourIdentityField
-                        id="create-user-colour"
-                        value={field.value}
-                        onChange={field.onChange}
-                        previewAssigneeName={previewAssigneeName}
-                        avatarInitials={createAvatarInitials}
-                        collapsible
-                        embedded
-                        expanded={colourPickerExpanded}
-                        onExpandedChange={setColourPickerExpanded}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    + Display name
+                  </Button>
+                  <p className="text-muted-foreground text-sm">
+                    When blank, display name inherits from Microsoft IDIR
+                    account
+                    <span className="block">e.g. Jane Smith GCPE:EX</span>
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <FormField
+                    control={form.control}
+                    name="displayName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel showDirtyIndicator={false}>
+                          Display name
+                        </FormLabel>
+                        <FormControl>
+                          <InputGroup>
+                            <InputGroupAddon
+                              align="inline-start"
+                              className={cn(
+                                'pl-2 transition-[padding,width]',
+                                !showAppearancePreview &&
+                                  'w-0 overflow-hidden border-0 p-0'
+                              )}
+                              aria-hidden={!showAppearancePreview}
+                            >
+                              {showAppearancePreview ? (
+                                <UserColouredAvatar
+                                  userColourKey={watchedUserColourKey}
+                                  initials={createAvatarInitials}
+                                  size="sm"
+                                  title={previewAssigneeName}
+                                  decorative
+                                />
+                              ) : null}
+                            </InputGroupAddon>
+                            <InputGroupInput
+                              type="text"
+                              maxLength={USER_DISPLAY_NAME_MAX_LENGTH}
+                              {...field}
+                            />
+                            <InputGroupAddon
+                              align="inline-end"
+                              className="shrink-0 pr-1"
+                            >
+                              <InputGroupButton
+                                variant="link"
+                                className="text-primary h-auto px-2 text-xs font-normal whitespace-nowrap"
+                                onClick={handleUseMicrosoftName}
+                              >
+                                Use Microsoft name
+                              </InputGroupButton>
+                            </InputGroupAddon>
+                          </InputGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+              {showAppearancePreview ? (
+                <FormField
+                  control={form.control}
+                  name="userColourKey"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormControl>
+                        <UserColourIdentityField
+                          id="create-user-colour"
+                          value={field.value}
+                          onChange={field.onChange}
+                          previewAssigneeName={previewAssigneeName}
+                          avatarInitials={createAvatarInitials}
+                          collapsible
+                          embedded
+                          expanded={colourPickerExpanded}
+                          onExpandedChange={setColourPickerExpanded}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
             </div>
             <FormField
               control={form.control}

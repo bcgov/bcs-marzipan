@@ -24,7 +24,6 @@ import {
   updateUser,
   updateUserSettings,
 } from '@/api/usersApi';
-import { PageContainer } from '@/components/layout/PageContainer';
 import { ActiveInactiveBadge } from '@/components/shared/ActiveInactiveBadge';
 import RemoveTeamMemberModal from '@/components/teams/RemoveTeamMemberModal';
 // removed PageHeader to use a compact header with a Go back link
@@ -49,6 +48,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { UserChangeLogTabContent } from '@/components/users/UserChangeLogTabContent';
 import { UserColouredAvatar } from '@/components/users/UserColouredAvatar';
+import { initialsFromDisplayName } from '@/components/users/UserColourIdentityField';
 import { UserEditModal } from '@/components/users/UserEditModal';
 import { UserRoleField } from '@/components/users/UserRoleField';
 import { UserTransferTabContent } from '@/components/users/UserTransferTabContent';
@@ -365,7 +365,7 @@ export default function UserDetailPage() {
   };
 
   return (
-    <PageContainer variant="narrow" className="space-y-6">
+    <div className="mx-auto w-full max-w-3xl space-y-6">
       <div className="flex items-center justify-start">
         <Button
           type="button"
@@ -383,23 +383,21 @@ export default function UserDetailPage() {
         <div className="text-slate-500">Loading…</div>
       ) : (
         <div className="space-y-4">
-          <div className="max-w-2xl">
+          <div>
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <UserColouredAvatar
                     userColourKey={userDetail.userColourKey}
                     initials={
-                      (userDetail.adDisplayName || userDetail.adUsername || '')
-                        .split(' ')
-                        .map((s) => s[0])
-                        .slice(0, 2)
-                        .join('') || 'U'
+                      initialsFromDisplayName(
+                        resolveUserDisplayName(userDetail)
+                      ) || 'U'
                     }
                     size="sm"
                   />
                   <h2 className="text-2xl leading-tight font-semibold">
-                    {userDetail.adDisplayName || userDetail.adUsername}
+                    {resolveUserDisplayName(userDetail)}
                   </h2>
                   {userDetail.jobTitle ? (
                     <span className="text-base font-medium text-slate-900">
@@ -409,21 +407,45 @@ export default function UserDetailPage() {
                   <ActiveInactiveBadge isActive={userDetail.isActive} />
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-slate-600">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-slate-400" aria-hidden />
-                    <span className="text-sm text-slate-700">
-                      {userDetail.adEmail}
-                    </span>
-                  </div>
-                  {userDetail.phone && (
+                <div className="mt-2 space-y-1 text-sm text-slate-600">
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-slate-400" aria-hidden />
-                      <span className="text-sm text-slate-700">
-                        {userDetail.phone}
+                      <Mail className="h-4 w-4 text-slate-400" aria-hidden />
+                      <span className="text-slate-700">
+                        {userDetail.adEmail}
                       </span>
                     </div>
-                  )}
+                    {userDetail.phone ? (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-slate-400" aria-hidden />
+                        <span className="text-slate-700">
+                          {userDetail.phone}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                  {userDetail.adUsername || userDetail.adDisplayName?.trim() ? (
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+                      {userDetail.adUsername ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500">IDIR:</span>
+                          <span className="text-slate-700">
+                            {userDetail.adUsername}
+                          </span>
+                        </div>
+                      ) : null}
+                      {userDetail.adDisplayName?.trim() ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500">
+                            Microsoft account:
+                          </span>
+                          <span className="text-slate-700">
+                            {userDetail.adDisplayName}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="mt-1 text-xs text-slate-400">
@@ -469,7 +491,7 @@ export default function UserDetailPage() {
             </div>
 
             <TabsContent value="account" className="mt-0 space-y-6">
-              <div className="max-w-2xl space-y-6 bg-transparent p-0">
+              <div className="space-y-6 bg-transparent p-0">
                 <div>
                   <Label>Role</Label>
                   <UserRoleField
@@ -630,10 +652,8 @@ export default function UserDetailPage() {
                     )}
                   </div>
                 </div>
-              </div>
 
-              <div className="pt-4">
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 pt-4">
                   <Button
                     variant="secondary"
                     onClick={() => void navigate('/users')}
@@ -697,6 +717,6 @@ export default function UserDetailPage() {
           )}
         </div>
       )}
-    </PageContainer>
+    </div>
   );
 }

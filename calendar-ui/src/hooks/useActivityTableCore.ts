@@ -495,9 +495,8 @@ export function useActivityTableCore({
     >();
     const users = usersQuery.data ?? [];
     users.forEach((u) => {
-      const displayName = u.name || u.email || String(u.id);
       map.set(String(u.id), {
-        name: displayName,
+        name: u.name || String(u.id),
         jobTitle: u.jobTitle ?? null,
         userColourKey: u.userColourKey,
       });

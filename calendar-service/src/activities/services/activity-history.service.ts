@@ -18,6 +18,7 @@ import {
   coerceUserColourKey,
   pacificCalendarDayStartInstant,
   pacificCalendarNextDayStartInstant,
+  resolveUserDisplayName,
   type UserColourKey,
 } from '@corpcal/shared';
 import type {
@@ -70,8 +71,10 @@ export class ActivityHistoryService {
         ? await this.databaseService.db
             .select({
               id: users.id,
+              displayName: users.displayName,
               adDisplayName: users.adDisplayName,
               adUsername: users.adUsername,
+              adEmail: users.adEmail,
               userColourKey: userSettings.userColourKey,
             })
             .from(users)
@@ -83,8 +86,7 @@ export class ActivityHistoryService {
       userRows.map((user) => [
         user.id,
         {
-          displayName:
-            user.adDisplayName || user.adUsername || `User ${user.id}`,
+          displayName: resolveUserDisplayName(user),
           username: user.adUsername ?? null,
           userColourKey: coerceUserColourKey(user.userColourKey, user.id),
         },
@@ -1000,15 +1002,17 @@ export class ActivityHistoryService {
     const rows = await db
       .select({
         id: users.id,
+        displayName: users.displayName,
         adDisplayName: users.adDisplayName,
         adUsername: users.adUsername,
+        adEmail: users.adEmail,
       })
       .from(users)
       .where(inArray(users.id, userIds));
 
     const nameMap = new Map<number, string>();
     for (const r of rows) {
-      nameMap.set(r.id, r.adDisplayName || r.adUsername || `User ${r.id}`);
+      nameMap.set(r.id, resolveUserDisplayName(r));
     }
 
     return contacts.map((c) => ({
@@ -1049,14 +1053,16 @@ export class ActivityHistoryService {
       const rows = await db
         .select({
           id: users.id,
+          displayName: users.displayName,
           adDisplayName: users.adDisplayName,
           adUsername: users.adUsername,
+          adEmail: users.adEmail,
         })
         .from(users)
         .where(inArray(users.id, userIds));
       const userMap = new Map<number, string>();
       for (const r of rows) {
-        userMap.set(r.id, r.adDisplayName || r.adUsername || `User ${r.id}`);
+        userMap.set(r.id, resolveUserDisplayName(r));
       }
       result.set('lastUpdatedBy', userMap);
       result.set('createdBy', userMap);

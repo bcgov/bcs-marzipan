@@ -101,10 +101,13 @@ function installPagedHistoryDbMock(
       };
     }
 
+    const userWhere = vi.fn().mockResolvedValue(config.users ?? []);
+    const userChain = {
+      leftJoin: vi.fn().mockReturnValue({ where: userWhere }),
+      where: userWhere,
+    };
     return {
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(config.users ?? []),
-      }),
+      from: vi.fn().mockReturnValue(userChain),
     };
   });
 }
@@ -272,16 +275,19 @@ describe('ActivityHistoryService', () => {
           };
         }
 
+        const userWhere = vi.fn().mockResolvedValue([
+          {
+            id: 2,
+            adDisplayName: 'Alice',
+            adUsername: 'alice',
+          },
+        ]);
+        const userChain = {
+          leftJoin: vi.fn().mockReturnValue({ where: userWhere }),
+          where: userWhere,
+        };
         return {
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([
-              {
-                id: 2,
-                adDisplayName: 'Alice',
-                adUsername: 'alice',
-              },
-            ]),
-          }),
+          from: vi.fn().mockReturnValue(userChain),
         };
       });
 

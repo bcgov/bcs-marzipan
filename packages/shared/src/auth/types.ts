@@ -16,7 +16,8 @@ export interface AuthUser {
   teamIds: number[];
   /** When true, user sees all activities (from user role or any team role). Set at login. */
   bypassDataScoping?: boolean;
-  userColourKey: UserColourKey;
+  /** Present on authenticated JWT/session user; omitted in some test fixtures. */
+  userColourKey?: UserColourKey;
 }
 
 export interface Permission {
