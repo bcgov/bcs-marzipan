@@ -52,7 +52,7 @@ export function LegacyActivityLayout(): React.ReactElement {
     );
   }
 
-  const displayId = `${activity.sourceSystem}-${activity.sourceRecordId}`;
+  const displayId = activity.displayId;
 
   return (
     <>
@@ -63,9 +63,8 @@ export function LegacyActivityLayout(): React.ReactElement {
         title={activity.title ?? '(Untitled legacy record)'}
         categories={[]}
         leadMinistry={activity.ministryName}
-        activityStatus={activity.statusName}
-        createdDateTime={activity.importedAt}
-        createdLabel="Imported"
+        activityStatus={activity.activityStatus}
+        createdDateTime={activity.createdDateTime}
       />
       <LegacyActivityDetails activity={activity} />
     </>

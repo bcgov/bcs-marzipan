@@ -148,6 +148,13 @@
       "when": 1795540622478,
       "tag": "0020_20261124_legacy_data_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795727536909,
+      "tag": "0021_20261126-legacy-activity-status",
+      "breakpoints": true
     }
   ]
 }

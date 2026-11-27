@@ -1,14 +1,21 @@
-import { Badge } from '@/components/ui/badge';
 import { CORP_PACIFIC_TIME_ZONE, formatExactDate } from '@/lib/datetime-utils';
 
 import type { ActivityTableRow } from '../activityTableRow';
+import { ActivityDisplayIdCopy } from './ActivityDisplayIdCopy';
+import { ActivityStatusCell } from './ActivityStatusCell';
 
 export function LegacyOverviewCell({ row }: { row: ActivityTableRow }) {
   return (
-    <div className="flex min-w-0 flex-col items-start gap-1">
-      <Badge variant="secondary">Legacy</Badge>
-      <span className="text-muted-foreground text-xs wrap-anywhere">
-        {row.legacySourceLabel}
+    <div className="flex min-w-0 flex-col gap-0.5 text-xs font-semibold text-slate-900">
+      <span
+        data-no-row-nav
+        onClick={(event) => event.stopPropagation()}
+        className="shrink-0 pl-1"
+      >
+        <ActivityDisplayIdCopy
+          displayId={row.displayId ?? String(row.legacyId)}
+          variant="subtle"
+        />
       </span>
     </div>
   );
@@ -29,21 +36,18 @@ export function LegacyCommsCell({ row }: { row: ActivityTableRow }) {
 }
 
 export function LegacyStatusCell({ row }: { row: ActivityTableRow }) {
-  const imported = new Date(row.createdDateTime);
-  const hasImported = imported.getTime() > 0;
+  const created = row.legacyCreatedDateTime
+    ? new Date(row.legacyCreatedDateTime)
+    : null;
+  const hasCreated = created != null && !Number.isNaN(created.getTime());
 
   return (
     <div className="flex min-w-0 flex-col gap-1 text-xs">
-      <div className="flex flex-wrap items-center gap-1">
-        <Badge variant="secondary">{row.activityStatus}</Badge>
-        {row.lookAheadStatus && (
-          <Badge variant="outline">{row.lookAheadStatus}</Badge>
-        )}
-      </div>
-      {hasImported && (
+      <ActivityStatusCell row={row} orientation="inline" />
+      {hasCreated && created && (
         <span>
-          Imported{' '}
-          {formatExactDate(imported, {
+          Created{' '}
+          {formatExactDate(created, {
             includeYear: true,
             timeZone: CORP_PACIFIC_TIME_ZONE,
           })}

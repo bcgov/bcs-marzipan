@@ -1,6 +1,5 @@
 import { relations, sql } from 'drizzle-orm';
 import {
-  boolean,
   date,
   index,
   integer,
@@ -13,7 +12,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-import { activities } from './activity';
+import { activityStatuses } from './lookups';
 
 /**
  * Legacy activity flat table.
@@ -27,25 +26,16 @@ export const legacyActivities = pgTable(
   {
     id: serial('id').primaryKey(),
 
-    sourceSystem: varchar('source_system', { length: 64 })
-      .notNull()
-      .default('legacy'),
-    sourceTable: varchar('source_table', { length: 64 })
-      .notNull()
-      .default('activity'),
-    sourceRecordId: varchar('source_record_id', { length: 128 }).notNull(),
+    displayId: varchar('display_id', { length: 128 }).notNull(),
     externalReference: varchar('external_reference', { length: 128 }),
-
-    matchedActivityId: integer('matched_activity_id').references(
-      () => activities.id,
-      { onDelete: 'set null' }
-    ),
 
     title: varchar('title', { length: 255 }),
     summary: text('summary'),
     startDate: date('start_date'),
     endDate: date('end_date'),
-    statusName: varchar('status_name', { length: 100 }),
+    activityStatusId: integer('activity_status_id')
+      .notNull()
+      .references(() => activityStatuses.id),
     lookAheadStatus: varchar('look_ahead_status', { length: 64 }),
     leadOrgName: varchar('lead_org_name', { length: 255 }),
     ministryName: varchar('ministry_name', { length: 255 }),
@@ -54,18 +44,14 @@ export const legacyActivities = pgTable(
 
     rawRecord: jsonb('raw_record').notNull(),
 
+    createdDateTime: timestamp('created_date_time', { withTimezone: true }),
     importedAt: timestamp('imported_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
     lastReviewedAt: timestamp('last_reviewed_at', { withTimezone: true }),
-    isArchived: boolean('is_archived').notNull().default(false),
   },
   (table) => [
-    uniqueIndex('legacy_activities_source_unique').on(
-      table.sourceSystem,
-      table.sourceTable,
-      table.sourceRecordId
-    ),
+    uniqueIndex('legacy_activities_display_id_unique').on(table.displayId),
     index('idx_legacy_activities_title_trgm').using(
       'gin',
       sql`lower(${table.title}) gin_trgm_ops`
@@ -75,17 +61,16 @@ export const legacyActivities = pgTable(
       sql`lower(${table.searchableText}) gin_trgm_ops`
     ),
     index('idx_legacy_activities_start_date').on(table.startDate),
-    index('idx_legacy_activities_status_name').on(table.statusName),
+    index('idx_legacy_activities_status_id').on(table.activityStatusId),
   ]
 );
 
 export const legacyActivitiesRelations = relations(
   legacyActivities,
   ({ one }) => ({
-    matchedActivity: one(activities, {
-      fields: [legacyActivities.matchedActivityId],
-      references: [activities.id],
-      relationName: 'legacyMatchedActivity',
+    activityStatus: one(activityStatuses, {
+      fields: [legacyActivities.activityStatusId],
+      references: [activityStatuses.id],
     }),
   })
 );

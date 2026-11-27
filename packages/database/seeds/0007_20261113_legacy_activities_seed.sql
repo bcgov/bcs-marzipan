@@ -3,46 +3,55 @@
 -- It is not a full migration of the legacy record set and is meant to support local testing.
 
 INSERT INTO legacy_activities (
-  source_system,
-  source_table,
-  source_record_id,
+  display_id,
   external_reference,
-  matched_activity_id,
   title,
   summary,
   start_date,
   end_date,
-  status_name,
+  activity_status_id,
   look_ahead_status,
   lead_org_name,
   ministry_name,
   location_name,
   searchable_text,
   raw_record,
+  created_date_time,
   imported_at,
-  last_reviewed_at,
-  is_archived
+  last_reviewed_at
 ) VALUES
   (
-    'legacy',
-    'activity',
     'LEG-1001',
     'LEG-1001',
-    NULL,
     'Minister update for North Coast region',
     'Legacy record describing a ministerial regional update for agriculture and community investment.',
     '2025-01-14',
     '2025-01-15',
-    'Reviewed',
+    (SELECT id FROM activity_statuses WHERE name = 'archived'),
     'changed',
     'Ministry of Agriculture and Food',
     'Agriculture and Food',
     'Prince Rupert',
-    'minister update north coast region agriculture food prince rupert reviewed legacy activity',
+    'minister update north coast region agriculture food prince rupert archived legacy activity',
     '{
       "id": "LEG-1001",
       "title": "Minister update for North Coast region",
-      "status": "Reviewed",
+      "status": "Archived ",
+      "category": ["Announcement", "Community"],
+      "confidential": false,
+      "issue": false,
+      "tags": ["North Coast", "Investment"],
+      "significance": "Regional update on community investment.",
+      "notes": "Prepared for the regional team.",
+      "executiveSummary": "The minister will provide a regional update on community investment.",
+      "commsMaterials": ["News release", "Social media"],
+      "newsReleaseOrigin": "Ministry",
+      "newsReleaseDistribution": "Province-wide",
+      "translations": ["French", "Punjabi"],
+      "premierStatus": "Requested",
+      "governmentRepresentatives": ["Minister of Agriculture and Food"],
+      "eventPlanners": ["Regional events team"],
+      "venueCity": "Community Hall, Prince Rupert",
       "summary": "Legacy record describing a ministerial regional update for agriculture and community investment.",
       "lead_org_name": "Ministry of Agriculture and Food",
       "location": "Prince Rupert",
@@ -51,30 +60,27 @@ INSERT INTO legacy_activities (
         "owner": "regional team"
       }
     }'::jsonb,
+    NULL,
     NOW(),
-    NOW(),
-    false
+    NOW()
   ),
   (
-    'legacy',
-    'activity',
     'LEG-2002',
     'LEG-2002',
-    1,
     'Attorney General public safety briefing',
     'Historical briefing on digital filing process improvements and cross-agency victim services coordination.',
     '2024-11-07',
     '2024-11-07',
-    'Completed',
+    (SELECT id FROM activity_statuses WHERE name = 'archived'),
     'new',
     'Ministry of Public Safety and Solicitor General',
     'Public Safety and Solicitor General',
     'Burnaby',
-    'attorney general public safety briefing burnaby digital filing victim services completed legacy record',
+    'attorney general public safety briefing burnaby digital filing victim services archived legacy record',
     '{
       "id": "LEG-2002",
       "title": "Attorney General public safety briefing",
-      "status": "Completed",
+      "status": "Archived",
       "summary": "Historical briefing on digital filing process improvements and cross-agency victim services coordination.",
       "lead_org_name": "Ministry of Public Safety and Solicitor General",
       "location": "Burnaby",
@@ -83,21 +89,18 @@ INSERT INTO legacy_activities (
         "contact": "civil justice team"
       }
     }'::jsonb,
+    NULL,
     NOW(),
-    NOW(),
-    false
+    NOW()
   ),
   (
-    'legacy',
-    'activity',
     'LEG-3003',
     'LEG-3003',
-    NULL,
     'Education classroom expansion announcement',
     'Archived legacy education announcement related to classroom additions and early learning facilities.',
     '2023-09-20',
     '2023-09-21',
-    'Archived',
+    (SELECT id FROM activity_statuses WHERE name = 'archived'),
     'none',
     'Ministry of Education and Child Care',
     'Education and Child Care',
@@ -115,7 +118,7 @@ INSERT INTO legacy_activities (
         "archive_reason": "superseded"
       }
     }'::jsonb,
+    NULL,
     NOW(),
-    NOW(),
-    true
+    NOW()
   );

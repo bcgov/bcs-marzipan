@@ -511,28 +511,11 @@ export function useActivityTableCore({
       ? undefined
       : filterState.dateRange.endDate || undefined,
   });
-  const legacyStatusIdByLabel = useMemo(
-    () =>
-      new Map(
-        statusOptions.map((option) => [
-          option.label.toLowerCase(),
-          Number(option.value),
-        ])
-      ),
-    [statusOptions]
-  );
-
   const data = useMemo(() => {
     const current = (activitiesQuery.data ?? []).map(mapActivityToTableRow);
     if (!legacyActive) return current;
     const legacy = (legacyQuery.data ?? [])
-      .map((legacyActivity) => {
-        const row = mapLegacyActivityToTableRow(legacyActivity);
-        const statusId = legacyActivity.statusName
-          ? legacyStatusIdByLabel.get(legacyActivity.statusName.toLowerCase())
-          : undefined;
-        return statusId == null ? row : { ...row, activityStatusId: statusId };
-      })
+      .map(mapLegacyActivityToTableRow)
       .filter((row) => {
         if (
           !includeCompleted &&
@@ -555,7 +538,6 @@ export function useActivityTableCore({
     includeDeleted,
     legacyActive,
     legacyQuery.data,
-    legacyStatusIdByLabel,
     statusArchiveIds.completedStatusId,
     statusArchiveIds.deletedStatusId,
   ]);
