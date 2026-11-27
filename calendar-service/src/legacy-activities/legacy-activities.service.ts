@@ -29,6 +29,9 @@ export type LegacyActivityListRow = {
   leadOrgName: string | null;
   ministryName: string | null;
   locationName: string | null;
+  commsMaterials: string[];
+  translations: string[];
+  commsContactName: string | null;
   createdDateTime: Date | string | null;
   importedAt: Date | string | null;
 };
@@ -102,6 +105,9 @@ export class LegacyActivitiesService {
         leadOrgName: legacyActivities.leadOrgName,
         ministryName: legacyActivities.ministryName,
         locationName: legacyActivities.locationName,
+        rawCommsMaterials: sql<unknown>`${legacyActivities.rawRecord} -> 'commsMaterials'`,
+        rawTranslations: sql<unknown>`${legacyActivities.rawRecord} -> 'translations'`,
+        rawCommsContactName: sql<unknown>`${legacyActivities.rawRecord} -> 'commsContactName'`,
         createdDateTime: legacyActivities.createdDateTime,
         importedAt: legacyActivities.importedAt,
       })
@@ -152,7 +158,19 @@ export class LegacyActivitiesService {
       .limit(normalizedLimit)
       .offset(normalizedOffset);
 
-    return rows;
+    return rows.map(
+      ({
+        rawCommsMaterials,
+        rawTranslations,
+        rawCommsContactName,
+        ...row
+      }) => ({
+        ...row,
+        commsMaterials: readLegacyTextList(rawCommsMaterials),
+        translations: readLegacyTextList(rawTranslations),
+        commsContactName: readLegacyText(rawCommsContactName),
+      })
+    );
   }
 
   async getById(
@@ -197,6 +215,9 @@ export class LegacyActivitiesService {
 
     return {
       ...activity,
+      commsMaterials: readLegacyTextList(raw.commsMaterials),
+      translations: readLegacyTextList(raw.translations),
+      commsContactName: readLegacyText(raw.commsContactName),
       lookAheadStatus: canViewLookAhead ? activity.lookAheadStatus : null,
       overview: {
         category: readLegacyTextList(raw.category ?? raw.categories),

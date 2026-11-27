@@ -103,6 +103,9 @@ describe('mapLegacyActivityToTableRow', () => {
       leadOrgName: null,
       ministryName: null,
       locationName: null,
+      commsMaterials: ['News release'],
+      translations: ['French'],
+      commsContactName: 'Jane Smith',
       createdDateTime: '2024-12-01T12:00:00.000Z',
       importedAt: '2026-01-01T12:00:00.000Z',
     });
@@ -110,6 +113,9 @@ describe('mapLegacyActivityToTableRow', () => {
     expect(row.displayId).toBe('LEG-1001');
     expect(row.activityStatusId).toBe(8);
     expect(row.activityStatus).toBe('Archived');
+    expect(row.commsMaterials).toEqual(['News release']);
+    expect(row.translationsRequired).toEqual(['French']);
+    expect(row.commsContactName).toBe('Jane Smith');
     expect(row.createdDateTime).toBe('2024-12-01T12:00:00.000Z');
     expect(filterActivityRowsByKeyword([row], 'LEG-1001')).toEqual([row]);
     expect(

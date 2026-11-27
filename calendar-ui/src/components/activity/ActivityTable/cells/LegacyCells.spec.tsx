@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { mapLegacyActivityToTableRow } from '../activityTableRow';
 import { LegacyOverviewCell, LegacyStatusCell } from './LegacyCells';
+import { MaterialsCellCompact } from './MaterialsCellCompact';
 
 vi.mock('@/hooks/useLookAheadSectionRows', () => ({
   useLookAheadSectionRows: () => ({ rows: [] }),
@@ -23,11 +24,36 @@ const row = mapLegacyActivityToTableRow({
   leadOrgName: null,
   ministryName: null,
   locationName: null,
+  commsMaterials: ['News release'],
+  translations: ['French'],
+  commsContactName: 'Jane Smith',
   createdDateTime: '2025-01-15T20:00:00.000Z',
   importedAt: '2026-03-20T20:00:00.000Z',
 });
 
 describe('legacy table cells', () => {
+  it('shows Comms contact, materials, and original translation labels', () => {
+    render(<MaterialsCellCompact row={row} />);
+
+    expect(screen.getByText('Jane Smith')).toBeVisible();
+    expect(screen.getByText('News release')).toBeVisible();
+    expect(screen.getByText('French')).toBeVisible();
+  });
+
+  it('shows a placeholder when Comms information is missing', () => {
+    render(
+      <MaterialsCellCompact
+        row={{
+          ...row,
+          commsContactName: null,
+          commsMaterials: [],
+          translationsRequired: [],
+        }}
+      />
+    );
+
+    expect(screen.getByText('—')).toBeVisible();
+  });
   it('formats and copies the full activity ID without opening the row', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     const openRow = vi.fn();

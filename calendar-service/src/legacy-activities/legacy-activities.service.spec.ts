@@ -56,6 +56,37 @@ describe('LegacyActivitiesService', () => {
     expect(mockOffset).toHaveBeenCalledWith(0);
   });
 
+  it('returns only the selected Comms fields for legacy list rows', async () => {
+    const chain = {
+      from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      offset: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          rawCommsMaterials: ['News release', null],
+          rawTranslations: 'French',
+          rawCommsContactName: '  Jane Smith  ',
+        },
+      ]),
+    };
+    const select = vi.fn().mockReturnValue(chain);
+    const service = new LegacyActivitiesService({
+      db: { select },
+    } as unknown as DatabaseService);
+
+    expect(await service.list()).toEqual([
+      {
+        id: 1,
+        commsMaterials: ['News release'],
+        translations: ['French'],
+        commsContactName: 'Jane Smith',
+      },
+    ]);
+    expect(select.mock.calls[0][0]).not.toHaveProperty('rawRecord');
+  });
+
   it('projects only Overview fields and restricts notes', async () => {
     const chain = {
       from: vi.fn().mockReturnThis(),
@@ -78,6 +109,7 @@ describe('LegacyActivitiesService', () => {
             newsReleaseOrigin: 'Ministry',
             newsReleaseDistribution: 'Province-wide',
             translations: ['French', 'Punjabi'],
+            commsContactName: 'Jane Smith',
             premierStatus: 'Requested',
             governmentRepresentatives: ['Minister One', 'Minister Two'],
             eventPlanners: ['Planner One'],
@@ -97,6 +129,9 @@ describe('LegacyActivitiesService', () => {
       id: 1,
       lookAheadStatus: null,
       locationName: 'Prince Rupert',
+      commsMaterials: ['News release', 'Social media'],
+      translations: ['French', 'Punjabi'],
+      commsContactName: 'Jane Smith',
       overview: {
         category: ['Announcement', 'Event'],
         confidential: true,
@@ -166,6 +201,9 @@ describe('LegacyActivitiesService', () => {
       id: 2,
       lookAheadStatus: null,
       locationName: 'Burnaby',
+      commsMaterials: ['News release'],
+      translations: ['French'],
+      commsContactName: null,
       overview: {
         category: ['Event'],
         confidential: false,

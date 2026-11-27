@@ -18,6 +18,9 @@ const activity: LegacyActivityDetailsData = {
   leadOrgName: null,
   ministryName: null,
   locationName: null,
+  commsMaterials: [],
+  translations: [],
+  commsContactName: null,
   createdDateTime: '2025-01-15T20:00:00.000Z',
   importedAt: '2026-03-20T20:00:00.000Z',
   overview: {

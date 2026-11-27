@@ -45,6 +45,8 @@ export interface ActivityTimestampsCellProps {
   userMap: Map<string, { name: string; jobTitle?: string | null }>;
   /** Show the avatar of the user who last updated the activity. */
   showUpdatedByAvatar?: boolean;
+  /** Omit the Updated line when only the original creation timestamp is available. */
+  showUpdatedTimestamp?: boolean;
   className?: string;
 }
 
@@ -56,6 +58,7 @@ export function ActivityTimestampsCell({
   row,
   userMap,
   showUpdatedByAvatar = true,
+  showUpdatedTimestamp = true,
   className,
 }: ActivityTimestampsCellProps) {
   const updatedDate = formatRelativeTime(new Date(row.lastUpdatedDateTime), {
@@ -65,6 +68,12 @@ export function ActivityTimestampsCell({
     includeYear: true,
     timeZone: CORP_PACIFIC_TIME_ZONE,
   });
+  const legacyCreatedDateTime = row.isLegacy
+    ? row.legacyCreatedDateTime
+    : row.createdDateTime;
+  const hasCreatedDate =
+    legacyCreatedDateTime != null &&
+    !Number.isNaN(new Date(legacyCreatedDateTime).getTime());
 
   const editLock = row.editLock;
   const editorDisplayName =
@@ -103,17 +112,19 @@ export function ActivityTimestampsCell({
           </span>
         </div>
       ) : null}
-      <div className="flex flex-wrap items-center gap-x-1 gap-y-0">
-        <span>Updated {updatedDate}</span>
-        {showUpdatedByAvatar ? (
-          <UserAvatar
-            userMap={userMap}
-            userId={row.lastUpdatedBy}
-            fallbackName="Unknown"
-          />
-        ) : null}
-      </div>
-      <span>Created {createdDate}</span>
+      {showUpdatedTimestamp && (
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-0">
+          <span>Updated {updatedDate}</span>
+          {showUpdatedByAvatar ? (
+            <UserAvatar
+              userMap={userMap}
+              userId={row.lastUpdatedBy}
+              fallbackName="Unknown"
+            />
+          ) : null}
+        </div>
+      )}
+      {hasCreatedDate && <span>Created {createdDate}</span>}
     </div>
   );
 }

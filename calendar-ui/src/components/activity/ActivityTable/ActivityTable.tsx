@@ -31,7 +31,6 @@ import {
   ActivityStatusCell,
   ActivityTimestampsCell,
   CategoryBadgesCell,
-  LegacyCommsCell,
   LegacyOverviewCell,
   LegacyStatusCell,
   MaterialsCellCompact,
@@ -186,12 +185,7 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
         id: 'materials',
         header: 'Comms',
         ...gridColumnSize('materials', GRID_A_COLUMN_WIDTHS, storedSizing),
-        cell: ({ row }) =>
-          row.original.isLegacy ? (
-            <LegacyCommsCell row={row.original} />
-          ) : (
-            <MaterialsCellCompact row={row.original} />
-          ),
+        cell: ({ row }) => <MaterialsCellCompact row={row.original} />,
       }),
       columnHelper.display({
         id: 'status',

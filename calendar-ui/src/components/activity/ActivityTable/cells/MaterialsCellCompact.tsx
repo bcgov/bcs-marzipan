@@ -20,7 +20,7 @@ export interface MaterialsCellCompactProps {
 export function MaterialsCellCompact({ row }: MaterialsCellCompactProps) {
   const status = row.translationsRequiredStatus;
   const languages = row.translationsRequired.map((s) =>
-    formatLanguageTagForDisplay(s)
+    row.isLegacy ? s : formatLanguageTagForDisplay(s)
   );
   const hasLanguages = languages.length > 0;
   const hasMaterials = row.commsMaterials.length > 0;
