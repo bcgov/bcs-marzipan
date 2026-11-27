@@ -15,6 +15,9 @@ import { cn } from '@/lib/utils';
 
 import { FilterCheckboxItem } from './FilterCheckboxItem';
 
+/** Show the search field when option count exceeds this (i.e. length > 6). */
+export const FILTER_SEARCHABLE_LIST_SEARCH_THRESHOLD = 6;
+
 export interface FilterSearchableListOption {
   value: string;
   label: string;
@@ -48,6 +51,8 @@ export interface FilterSearchableListProps {
   showClearButton?: boolean;
   onClear?: () => void;
   maxHeight?: string;
+  /** When false, omits the search field and lists all options (default true). */
+  showSearch?: boolean;
   /** When provided with onSearchChange, search is controlled (parent can reset on close). */
   searchValue?: string;
   onSearchChange?: (value: string) => void;
@@ -87,6 +92,7 @@ export function FilterSearchableList({
   showClearButton = false,
   onClear,
   maxHeight = '250px',
+  showSearch = true,
   searchValue: controlledSearchValue,
   onSearchChange: controlledOnSearchChange,
   renderOption,
@@ -95,7 +101,11 @@ export function FilterSearchableList({
   const isControlled =
     controlledSearchValue !== undefined &&
     controlledOnSearchChange !== undefined;
-  const searchTerm = isControlled ? controlledSearchValue : internalSearch;
+  const searchTerm = showSearch
+    ? isControlled
+      ? controlledSearchValue
+      : internalSearch
+    : '';
   const setSearchTerm = isControlled
     ? controlledOnSearchChange
     : setInternalSearch;
@@ -172,23 +182,25 @@ export function FilterSearchableList({
 
   return (
     <>
-      <div className="border-b p-2">
-        <div className="relative">
-          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
-          <Input
-            ref={searchInputRef}
-            type="text"
-            className="h-8 pr-3 pl-8 text-sm"
-            placeholder={searchPlaceholder}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-            }}
-            aria-label={searchAriaLabel}
-          />
+      {showSearch ? (
+        <div className="border-b p-2">
+          <div className="relative">
+            <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
+            <Input
+              ref={searchInputRef}
+              type="text"
+              className="h-8 pr-3 pl-8 text-sm"
+              placeholder={searchPlaceholder}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+              }}
+              aria-label={searchAriaLabel}
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
       <div
         className="overflow-y-auto py-1"
         style={{ maxHeight }}

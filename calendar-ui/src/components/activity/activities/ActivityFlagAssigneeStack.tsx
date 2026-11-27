@@ -112,11 +112,19 @@ export function ActivityFlagAssigneeStack({
   );
 }
 
-/** Comma-separated assignee names for tooltips. */
-export function activityFlagAssigneeTooltip(
+/** Assignee names for flagged activities (no prefix). */
+export function activityFlagAssigneeNames(
   flags: ReadonlyArray<ActivityFlagStackItem>
 ): string {
   return uniqueActivityFlagsByAssignee(flags)
     .map((flag) => flag.assigneeName)
     .join(', ');
+}
+
+/** Accessible label for flagged activities (e.g. tooltips). */
+export function activityFlagAssigneeTooltip(
+  flags: ReadonlyArray<ActivityFlagStackItem>
+): string {
+  const names = activityFlagAssigneeNames(flags);
+  return names ? `Flagged: ${names}` : '';
 }

@@ -4,7 +4,7 @@ export type ActivityListTabValue =
   | 'my-activities'
   | 'shared-with-me'
   | 'favourites'
-  | 'assigned-to-me';
+  | 'flagged';
 
 export const ACTIVITY_LIST_TAB_STORAGE_KEY = 'activityListTab';
 
@@ -14,7 +14,7 @@ export const ACTIVITY_LIST_TAB_VALUES: readonly ActivityListTabValue[] = [
   'my-activities',
   'shared-with-me',
   'favourites',
-  'assigned-to-me',
+  'flagged',
 ];
 
 export function getStoredActivityListTab(): ActivityListTabValue | null {
@@ -59,8 +59,8 @@ export function activityListTabDisplayLabel(
       return 'Shared with us';
     case 'favourites':
       return 'My watchlist';
-    case 'assigned-to-me':
-      return 'Assigned to me';
+    case 'flagged':
+      return 'Flagged';
     default:
       return tab;
   }

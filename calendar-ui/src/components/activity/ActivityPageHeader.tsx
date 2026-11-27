@@ -9,7 +9,7 @@ import {
   uniqueActivityFlagsByAssignee,
 } from '@/components/activity/activities/ActivityFlagAssigneeStack';
 import { ActivityFlagIcon } from '@/components/activity/activities/ActivityFlagIcon';
-import { AssignActivityModal } from '@/components/activity/activities/AssignActivityModal';
+import { FlagActivityModal } from '@/components/activity/activities/FlagActivityModal';
 import { SharedWithPopover } from '@/components/activity/ActivityTable/cells/SharedWithPopover';
 import {
   ACTIVITY_OVERVIEW_ICON_MUTED_CLASS,
@@ -46,7 +46,7 @@ type ActivityPageHeaderProps = {
   adminOperationalLastUpdatedDateTime?: string | null;
   showAdminOperationalTimestamp?: boolean;
   onHistoryClick?: () => void;
-  /** Flags for activities assigned to the current user's teams. */
+  /** Flags for activities flagged on the current user's teams. */
   flags?: ActivityFlagResponse[];
   canFlag?: boolean;
   onFlagSync?: (
@@ -231,14 +231,10 @@ export function ActivityPageHeader({
               variant="ghost"
               size="icon"
               title={
-                isFlagged
-                  ? `Assigned to ${flaggedLabel} — click to edit`
-                  : 'Assign activity'
+                isFlagged ? `${flaggedLabel} — click to edit` : 'Flag activity'
               }
               aria-label={
-                isFlagged
-                  ? `Assigned to ${flaggedLabel} — click to edit`
-                  : 'Assign activity'
+                isFlagged ? `${flaggedLabel} — click to edit` : 'Flag activity'
               }
               onClick={() => setAssignModalOpen(true)}
               disabled={isFlagPending}
@@ -265,8 +261,8 @@ export function ActivityPageHeader({
               type="button"
               variant="ghost"
               size="icon"
-              title={`Assigned to ${currentUserFlag.assigneeName} — click to unassign`}
-              aria-label={`Assigned to ${currentUserFlag.assigneeName} — click to unassign`}
+              title={`Flagged: ${currentUserFlag.assigneeName} — click to unflag`}
+              aria-label={`Flagged: ${currentUserFlag.assigneeName} — click to unflag`}
               onClick={() =>
                 onFlagUnassign(
                   currentUserFlag.teamId,
@@ -358,7 +354,7 @@ export function ActivityPageHeader({
       )}
 
       {canFlag && onFlagSync && (
-        <AssignActivityModal
+        <FlagActivityModal
           open={assignModalOpen}
           onOpenChange={setAssignModalOpen}
           flags={flags ?? []}

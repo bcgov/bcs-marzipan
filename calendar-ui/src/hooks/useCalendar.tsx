@@ -38,7 +38,10 @@ import {
   type ActivityListQueryParams,
 } from '../lib/activity-query-utils';
 import { showErrorToast } from '../lib/error-toast';
-import { scheduleLiveActivityRefresh } from '../lib/liveActivitySync';
+import {
+  scheduleLiveActivityRefresh,
+  suppressLiveRowHighlightForActivity,
+} from '../lib/liveActivitySync';
 
 export type { ActivityListQueryParams };
 
@@ -310,6 +313,9 @@ export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
       body: UpsertActivityFlagsRequest;
       assigneeNames?: string[];
     }) => syncActivityFlags(activityId, body),
+    onMutate: (vars) => {
+      suppressLiveRowHighlightForActivity(vars.activityId);
+    },
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
@@ -318,14 +324,14 @@ export function useSyncActivityFlags(options?: { onSuccess?: () => void }) {
         activityId: vars.activityId,
       });
       if ((vars.assigneeNames?.length ?? 0) > 0) {
-        toast.success(`Activity assigned to ${vars.assigneeNames!.join(', ')}`);
+        toast.success(`Activity flagged for ${vars.assigneeNames!.join(', ')}`);
       } else {
-        toast.success('Activity assignments updated');
+        toast.success('Activity flags updated');
       }
       options?.onSuccess?.();
     },
     onError: (error) => {
-      showErrorToast(error, 'Failed to update activity assignments');
+      showErrorToast(error, 'Failed to update activity flags');
     },
   });
 }
@@ -347,6 +353,9 @@ export function useRemoveAssigneeActivityFlag(options?: {
       assigneeName?: string;
       suppressSuccessToast?: boolean;
     }) => removeAssigneeActivityFlag(activityId, teamId, assigneeId),
+    onMutate: (vars) => {
+      suppressLiveRowHighlightForActivity(vars.activityId);
+    },
     onSuccess: (_, vars) => {
       void qc.invalidateQueries({ queryKey: ['activities'] });
       void qc.invalidateQueries({ queryKey: ['activity', vars.activityId] });
@@ -357,14 +366,14 @@ export function useRemoveAssigneeActivityFlag(options?: {
       if (!vars.suppressSuccessToast) {
         toast.success(
           vars.assigneeName
-            ? `Activity unassigned from ${vars.assigneeName}`
-            : 'Activity unassigned'
+            ? `Activity unflagged for ${vars.assigneeName}`
+            : 'Activity unflagged'
         );
       }
       options?.onSuccess?.();
     },
     onError: (error) => {
-      showErrorToast(error, 'Failed to unassign activity');
+      showErrorToast(error, 'Failed to unflag activity');
     },
   });
 }

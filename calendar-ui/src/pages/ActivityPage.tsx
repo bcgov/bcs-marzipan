@@ -1585,9 +1585,9 @@ export function ActivityPage({
   const handleReviewConfirm = async (
     payload: import('@/components/activity/activities/ReviewActivityModal').ReviewActivityConfirmPayload
   ) => {
-    const { notes, markAsCompleted, unassignMe, renewPublicLastUpdated } =
+    const { notes, markAsCompleted, unflagMe, renewPublicLastUpdated } =
       payload;
-    if (unassignMe && user?.id != null) {
+    if (unflagMe && user?.id != null) {
       const myFlags = (activity.flags ?? []).filter(
         (flag) => flag.assigneeId === user.id
       );
@@ -1612,8 +1612,8 @@ export function ActivityPage({
       if (fulfilled.length > 0) {
         toast.success(
           fulfilled.length === 1
-            ? 'Activity unassigned'
-            : `Activity unassigned from ${fulfilled.length} teams`
+            ? 'Activity unflagged'
+            : `Activity unflagged on ${fulfilled.length} teams`
         );
       }
 
@@ -1621,11 +1621,11 @@ export function ActivityPage({
         if (fulfilled.length > 0) {
           toast.error(
             rejected.length === 1
-              ? 'Failed to unassign from 1 team'
-              : `Failed to unassign from ${rejected.length} teams`
+              ? 'Failed to unflag on 1 team'
+              : `Failed to unflag on ${rejected.length} teams`
           );
         } else {
-          toast.error('Failed to unassign activity');
+          toast.error('Failed to unflag activity');
         }
       }
     }
@@ -2161,7 +2161,7 @@ export function ActivityPage({
         displayId={displayId}
         showMarkAsCompletedOption={showCompleteActionInReviewModal}
         activityEndedAtLabel={reviewModalActivityEndedAtLabel}
-        showUnassignMeOption={(activity.flags ?? []).some(
+        showUnflagMeOption={(activity.flags ?? []).some(
           (f) => f.assigneeId === user?.id
         )}
         confirmDisabled={editSessionActionsBlocked}

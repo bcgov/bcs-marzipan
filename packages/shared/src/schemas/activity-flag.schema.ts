@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * Activity Flag schemas
  *
- * An activity flag assigns one team member to an activity per team.
+ * An activity flag marks one team member per activity per team for follow-up.
  * Rules:
  *   - At most one flag per (activity_id, team_id).
  *   - Any team member with activities.flag permission can set or replace the flag.
