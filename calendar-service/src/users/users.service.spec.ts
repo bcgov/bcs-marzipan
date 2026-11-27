@@ -252,7 +252,7 @@ describe('UsersService', () => {
           isActive: true,
           isEventPlanner: false,
           notes: null,
-          flagColour: null,
+          userColourKey: 'blue',
           directLoginEnabled: false,
           jobTitle: null,
           phone: null,
@@ -270,7 +270,7 @@ describe('UsersService', () => {
           isActive: true,
           isEventPlanner: false,
           notes: null,
-          flagColour: null,
+          userColourKey: 'blue',
           directLoginEnabled: true,
           jobTitle: null,
           phone: null,
@@ -285,11 +285,7 @@ describe('UsersService', () => {
         }),
       });
 
-      await service.updateUserSettings(
-        1,
-        { flagColour: null, directLoginEnabled: true },
-        7
-      );
+      await service.updateUserSettings(1, { directLoginEnabled: true }, 7);
 
       expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
         userId: 1,
@@ -1063,7 +1059,10 @@ describe('UsersService', () => {
       mockDatabaseService.db.select = vi
         .fn()
         .mockReturnValueOnce(createChain(historyRows, 'orderBy'))
-        .mockReturnValueOnce(createChain(userRows, 'where'));
+        .mockReturnValueOnce(createChain(userRows, 'where'))
+        .mockReturnValueOnce(
+          createChain([{ userId: 2, userColourKey: 'teal' }], 'where')
+        );
 
       const result = await service.getUserHistory(1);
 

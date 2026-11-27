@@ -401,8 +401,14 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Current user' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
-  me(@CurrentUser() user: AuthUser) {
-    return { success: true as const, data: user };
+  async me(@CurrentUser() user: AuthUser) {
+    const userColourKey = await this.authService.resolveLiveUserColourKey(
+      user.id
+    );
+    return {
+      success: true as const,
+      data: { ...user, userColourKey },
+    };
   }
 
   @Post('logout')

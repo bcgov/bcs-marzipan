@@ -8,6 +8,7 @@ import {
   PERMISSIONS,
   resolveActivityArchiveQueryFlags,
   shouldShowCompletedHiddenByStatusHint,
+  type UserColourKey,
 } from '@corpcal/shared';
 import { hasAnyActivityTableFilterActive } from '@/components/activity/ActivityTable/ActivityTableFilters';
 import {
@@ -488,13 +489,17 @@ export function useActivityTableCore({
   );
 
   const userMap = useMemo(() => {
-    const map = new Map<string, { name: string; jobTitle?: string | null }>();
+    const map = new Map<
+      string,
+      { name: string; jobTitle?: string | null; userColourKey: UserColourKey }
+    >();
     const users = usersQuery.data ?? [];
     users.forEach((u) => {
       const displayName = u.name || u.email || String(u.id);
       map.set(String(u.id), {
         name: displayName,
         jobTitle: u.jobTitle ?? null,
+        userColourKey: u.userColourKey,
       });
     });
     return map;

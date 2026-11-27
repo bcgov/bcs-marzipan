@@ -302,7 +302,7 @@ export function ActivityFlagPopover({
       >
         <ActivityFlagIcon
           assigneeName={iconFlag.assigneeName}
-          assigneeFlagColour={iconFlag.assigneeFlagColour}
+          userColourKey={iconFlag.userColourKey}
           size={iconSize}
         />
       </span>
@@ -345,7 +345,7 @@ export function ActivityFlagPopover({
           {triggerContent ?? (
             <ActivityFlagIcon
               assigneeName={isFlagged ? (iconFlag?.assigneeName ?? null) : null}
-              assigneeFlagColour={iconFlag?.assigneeFlagColour}
+              userColourKey={iconFlag?.userColourKey}
               size={iconSize}
             />
           )}

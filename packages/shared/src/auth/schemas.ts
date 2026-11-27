@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { userColourKeySchema } from '../user-colour/userColourPalette';
+
 /**
  * Zod schemas for auth request/response validation
  */
@@ -77,6 +79,7 @@ export const authResponseSchema = z.object({
     roleName: z.string(),
     permissions: z.array(z.string()),
     teamIds: z.array(z.number()),
+    userColourKey: userColourKeySchema,
   }),
   accessToken: z.string(),
   expiresIn: z.number().optional(),

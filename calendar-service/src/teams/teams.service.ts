@@ -28,6 +28,7 @@ import type {
 } from '@corpcal/shared/api/types';
 
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
+import { loadUserColourKeysByIds } from '../common/user-colour-keys';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -647,6 +648,11 @@ export class TeamsService {
       ])
     );
 
+    const colourKeyMap = await loadUserColourKeysByIds(
+      this.databaseService.db,
+      changerIds
+    );
+
     return entries.map((e) => ({
       id: e.id,
       teamId: e.teamId,
@@ -659,6 +665,7 @@ export class TeamsService {
           ? e.timestamp.toISOString()
           : String(e.timestamp),
       changedByUserName: changerMap.get(e.changedByUserId),
+      changedByUserColourKey: colourKeyMap.get(e.changedByUserId),
     }));
   }
 }

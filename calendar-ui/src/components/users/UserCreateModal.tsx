@@ -5,7 +5,12 @@ import { useForm, type Resolver } from 'react-hook-form';
 import { z } from 'zod';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import {
+  PERMISSIONS,
+  SYSTEM_ROLE_IDS,
+  userColourKeySchema,
+  type UserColourKey,
+} from '@corpcal/shared';
 import type {
   CreateUserBody,
   UserPermissionOverrideInput,
@@ -47,8 +52,18 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from '@/components/ui/input-group';
 import { Switch } from '@/components/ui/switch';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
+import { UserColouredAvatar } from '@/components/users/UserColouredAvatar';
+import {
+  initialsFromDisplayName,
+  UserColourIdentityField,
+} from '@/components/users/UserColourIdentityField';
 import { UserRoleField } from '@/components/users/UserRoleField';
 import { useAuth } from '@/hooks/useAuth';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
@@ -57,6 +72,7 @@ import {
   showEntityToast,
 } from '@/lib/user-team-toast-messages';
 import { userQueryKeys } from '@/lib/userQueryKeys';
+import { cn } from '@/lib/utils';
 import type { OptionItem } from '@/schemas/types';
 
 const GOV_BC_EMAIL_DOMAIN = '@gov.bc.ca';
@@ -84,6 +100,7 @@ const createUserFormSchema = z.object({
   adPhone: z.string().trim().max(USER_PHONE_MAX_LENGTH).default(''),
   teamIds: z.array(z.number().int()).default([]),
   isEventPlanner: z.boolean().default(false),
+  userColourKey: userColourKeySchema.default('blue' satisfies UserColourKey),
 });
 
 type CreateUserFormData = z.infer<typeof createUserFormSchema>;
@@ -97,6 +114,7 @@ const defaultValues: CreateUserFormData = {
   adPhone: '',
   teamIds: [],
   isEventPlanner: false,
+  userColourKey: 'blue',
 };
 
 interface UserCreateModalProps {
@@ -127,6 +145,7 @@ export function UserCreateModal({
   const teamsAnchorRef = useComboboxAnchor();
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const [isTeamsComboboxOpen, setIsTeamsComboboxOpen] = useState(false);
+  const [colourPickerExpanded, setColourPickerExpanded] = useState(false);
   const [permissionOverrideInputs, setPermissionOverrideInputs] = useState<
     UserPermissionOverrideInput[]
   >([]);
@@ -139,6 +158,17 @@ export function UserCreateModal({
       createUserFormSchema as any
     ) as Resolver<CreateUserFormData>,
   });
+
+  const watchedDisplayName = form.watch('displayName');
+  const watchedIdirUsername = form.watch('idirUsername');
+  const watchedUserColourKey = form.watch('userColourKey');
+  const previewAssigneeName =
+    watchedDisplayName?.trim() ||
+    watchedIdirUsername?.trim().toUpperCase() ||
+    'User';
+  const trimmedDisplayName = watchedDisplayName?.trim() ?? '';
+  const createAvatarInitials = initialsFromDisplayName(trimmedDisplayName);
+  const showAppearanceControls = trimmedDisplayName.length > 0;
 
   const { data: roles = [] } = useQuery({
     queryKey: ['roles'],
@@ -180,6 +210,7 @@ export function UserCreateModal({
       });
       form.reset(defaultValues);
       setPermissionOverrideInputs([]);
+      setColourPickerExpanded(false);
       onSaved?.();
       onClose();
     },
@@ -201,6 +232,7 @@ export function UserCreateModal({
   useEffect(() => {
     if (!open) {
       form.reset(defaultValues);
+      setColourPickerExpanded(false);
     }
   }, [open, form]);
 
@@ -212,6 +244,7 @@ export function UserCreateModal({
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       form.reset(defaultValues);
+      setColourPickerExpanded(false);
       onClose();
     }
   };
@@ -246,6 +279,7 @@ export function UserCreateModal({
       ...(permissionOverrideInputs.length > 0 && {
         permissionOverrides: permissionOverrideInputs,
       }),
+      userColourKey: data.userColourKey,
     };
     const displayLabel =
       data.displayName?.trim() ||
@@ -333,23 +367,75 @@ export function UserCreateModal({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="displayName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel showDirtyIndicator={false}>Display name</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      maxLength={USER_DISPLAY_NAME_MAX_LENGTH}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="space-y-1">
+              <FormField
+                control={form.control}
+                name="displayName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel showDirtyIndicator={false}>
+                      Display name
+                    </FormLabel>
+                    <FormControl>
+                      <InputGroup>
+                        <InputGroupAddon
+                          align="inline-start"
+                          className={cn(
+                            'pl-2 transition-[padding,width]',
+                            !showAppearanceControls &&
+                              'w-0 overflow-hidden border-0 p-0'
+                          )}
+                          aria-hidden={!showAppearanceControls}
+                        >
+                          {showAppearanceControls ? (
+                            <UserColouredAvatar
+                              userColourKey={watchedUserColourKey}
+                              initials={createAvatarInitials}
+                              size="sm"
+                              title={previewAssigneeName}
+                              decorative
+                            />
+                          ) : null}
+                        </InputGroupAddon>
+                        <InputGroupInput
+                          type="text"
+                          maxLength={USER_DISPLAY_NAME_MAX_LENGTH}
+                          {...field}
+                        />
+                      </InputGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="userColourKey"
+                render={({ field }) => (
+                  <FormItem
+                    className={cn(
+                      'space-y-2',
+                      !showAppearanceControls && 'hidden'
+                    )}
+                  >
+                    <FormControl>
+                      <UserColourIdentityField
+                        id="create-user-colour"
+                        value={field.value}
+                        onChange={field.onChange}
+                        previewAssigneeName={previewAssigneeName}
+                        avatarInitials={createAvatarInitials}
+                        collapsible
+                        embedded
+                        expanded={colourPickerExpanded}
+                        onExpandedChange={setColourPickerExpanded}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="adJobTitle"

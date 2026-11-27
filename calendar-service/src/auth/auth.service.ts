@@ -18,10 +18,13 @@ import {
 } from '@corpcal/database';
 import {
   DEFAULT_JWT_EXPIRES_IN,
+  defaultUserColourKeyForUserId,
   type AuthUser,
   type CheckEmailResponse,
+  type UserColourKey,
 } from '@corpcal/shared';
 
+import { loadUserColourKeysByIds } from '../common/user-colour-keys';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
@@ -56,6 +59,7 @@ export interface JwtPayload {
   permissions: string[];
   teamIds: number[];
   bypassDataScoping: boolean;
+  userColourKey?: UserColourKey;
 }
 
 @Injectable()
@@ -559,6 +563,7 @@ export class AuthService {
     }
 
     const teamIds = await this.policyService.getTeamIdsForUser(dbUser.id);
+    const userColourKey = await this.resolveLiveUserColourKey(dbUser.id);
     const user: AuthUser = {
       id: dbUser.id,
       username: dbUser.adUsername ?? String(dbUser.id),
@@ -570,6 +575,7 @@ export class AuthService {
       permissions: effective.permissions,
       teamIds,
       bypassDataScoping: effective.bypass,
+      userColourKey,
     };
 
     const raw = this.configService.get<string | number>(
@@ -588,6 +594,7 @@ export class AuthService {
         permissions: user.permissions,
         teamIds: user.teamIds,
         bypassDataScoping: user.bypassDataScoping ?? false,
+        userColourKey: user.userColourKey,
       } satisfies JwtPayload,
       { expiresIn }
     );
@@ -640,7 +647,16 @@ export class AuthService {
       permissions: payload.permissions ?? [],
       teamIds: payload.teamIds ?? [],
       bypassDataScoping: payload.bypassDataScoping ?? false,
+      userColourKey:
+        payload.userColourKey ?? defaultUserColourKeyForUserId(payload.sub),
     };
+  }
+
+  async resolveLiveUserColourKey(userId: number): Promise<UserColourKey> {
+    const map = await loadUserColourKeysByIds(this.databaseService.db, [
+      userId,
+    ]);
+    return map.get(userId) ?? defaultUserColourKeyForUserId(userId);
   }
 
   hashToken(token: string): string {

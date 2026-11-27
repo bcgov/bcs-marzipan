@@ -25,6 +25,7 @@ describe('userListItemSchema', () => {
       isActive: true,
       isEventPlanner: true,
       teams: [{ teamId: 1, teamName: 'Team One', role: 'member' }],
+      userColourKey: 'blue',
     });
     expect(result.id).toBe(1);
     expect(result.roleName).toBe('Editor');
@@ -44,6 +45,7 @@ describe('userListItemSchema', () => {
       isActive: false,
       isEventPlanner: false,
       teams: [],
+      userColourKey: 'red',
     });
     expect(result.adUsername).toBeNull();
     expect(result.isEventPlanner).toBe(false);
@@ -80,6 +82,16 @@ describe('createUserBodySchema', () => {
     expect(result.teams).toHaveLength(2);
     expect(result.teams?.[0].role).toBe('member');
     expect(result.teams?.[1].role).toBe('owner');
+  });
+
+  it('accepts optional userColourKey', () => {
+    const result = createUserBodySchema.parse({
+      email: 'user@gov.bc.ca',
+      idirUsername: 'JDOE',
+      roleId: 2,
+      userColourKey: 'teal',
+    });
+    expect(result.userColourKey).toBe('teal');
   });
 
   it('enforces displayName max length (255)', () => {
@@ -366,56 +378,33 @@ describe('userDetailSchema', () => {
     isEventPlanner: false,
     teams: [],
     notes: null,
-    flagColour: null,
+    userColourKey: 'blue' as const,
   };
 
-  it('accepts null flagColour', () => {
+  it('accepts userColourKey', () => {
     const result = userDetailSchema.parse(base);
-    expect(result.flagColour).toBeNull();
+    expect(result.userColourKey).toBe('blue');
     expect(result.isEventPlanner).toBe(false);
   });
 
-  it('accepts a hex flagColour string', () => {
-    const result = userDetailSchema.parse({ ...base, flagColour: '#FF5733' });
-    expect(result.flagColour).toBe('#FF5733');
+  it('rejects unknown userColourKey', () => {
+    expect(() =>
+      userDetailSchema.parse({ ...base, userColourKey: 'magenta' })
+    ).toThrow();
   });
 });
 
 describe('updateUserSettingsBodySchema', () => {
-  it('accepts a valid 6-digit hex colour', () => {
+  it('accepts a valid userColourKey', () => {
     const result = updateUserSettingsBodySchema.parse({
-      flagColour: '#1A2B3C',
+      userColourKey: 'teal',
     });
-    expect(result.flagColour).toBe('#1A2B3C');
+    expect(result.userColourKey).toBe('teal');
   });
 
-  it('accepts uppercase hex', () => {
-    const result = updateUserSettingsBodySchema.parse({
-      flagColour: '#AABBCC',
-    });
-    expect(result.flagColour).toBe('#AABBCC');
-  });
-
-  it('accepts null to reset to default', () => {
-    const result = updateUserSettingsBodySchema.parse({ flagColour: null });
-    expect(result.flagColour).toBeNull();
-  });
-
-  it('rejects a colour missing the # prefix', () => {
+  it('rejects invalid userColourKey', () => {
     expect(() =>
-      updateUserSettingsBodySchema.parse({ flagColour: 'FF5733' })
-    ).toThrow();
-  });
-
-  it('rejects a 3-digit short hex', () => {
-    expect(() =>
-      updateUserSettingsBodySchema.parse({ flagColour: '#FFF' })
-    ).toThrow();
-  });
-
-  it('rejects non-hex characters', () => {
-    expect(() =>
-      updateUserSettingsBodySchema.parse({ flagColour: '#GGGGGG' })
+      updateUserSettingsBodySchema.parse({ userColourKey: 'navy' })
     ).toThrow();
   });
 });

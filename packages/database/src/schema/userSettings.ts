@@ -21,11 +21,10 @@ export const userSettings = pgTable('user_settings', {
     .unique()
     .references(() => users.id, { onDelete: 'cascade' }),
   /**
-   * Hex colour (e.g. #FF5733) for the flag icon shown when an activity is
-   * assigned to this user. Null means use the application default.
-   * Only settable for admin / sys-admin users via the Edit User modal.
+   * Key into the shared 12-hue user colour palette (avatar + flag badge).
+   * Set on user create; admins may change on user detail.
    */
-  flagColour: varchar('flag_colour', { length: 7 }),
+  userColourKey: varchar('user_colour_key', { length: 20 }).notNull(),
   /**
    * Whether the user is allowed to sign in directly using local credentials.
    * False means direct login is disabled.

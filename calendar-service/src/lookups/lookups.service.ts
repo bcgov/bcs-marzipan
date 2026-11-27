@@ -43,11 +43,13 @@ import {
   translatedLanguages,
   translationRequiredStatuses,
   users,
+  userSettings,
   userTeams,
   venuePresets,
   venueStatuses,
 } from '@corpcal/database/schema';
 import {
+  coerceUserColourKey,
   SYSTEM_ROLE_IDS,
   type ActivityStatusName,
   type Visibility,
@@ -922,8 +924,10 @@ export class LookupsService {
         adDisplayName: users.adDisplayName,
         adEmail: users.adEmail,
         adJobTitle: users.adJobTitle,
+        userColourKey: userSettings.userColourKey,
       })
       .from(users)
+      .leftJoin(userSettings, eq(userSettings.userId, users.id))
       .where(and(...conditions))
       .orderBy(users.adDisplayName, users.adUsername);
 
@@ -947,6 +951,7 @@ export class LookupsService {
         email: user.adEmail,
         username: user.adUsername,
         jobTitle: user.adJobTitle,
+        userColourKey: coerceUserColourKey(user.userColourKey, user.id),
       };
     });
   }

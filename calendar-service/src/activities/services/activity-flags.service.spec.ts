@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { defaultUserColourKeyForUserId } from '@corpcal/shared';
+
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { ActivityFlagsService } from './activity-flags.service';
@@ -361,7 +363,7 @@ describe('ActivityFlagsService', () => {
           assigneeName: 'John Doe',
           assignedById: 3,
           note: null,
-          assigneeFlagColour: '#FF5733',
+          userColourKeyRaw: 'red',
           createdAt: new Date('2026-01-01'),
           updatedAt: new Date('2026-01-01'),
         },
@@ -373,7 +375,7 @@ describe('ActivityFlagsService', () => {
           assigneeName: 'Jane Smith',
           assignedById: 3,
           note: null,
-          assigneeFlagColour: null,
+          userColourKeyRaw: null,
           createdAt: new Date('2026-01-01'),
           updatedAt: new Date('2026-01-01'),
         },
@@ -385,7 +387,7 @@ describe('ActivityFlagsService', () => {
           assigneeName: 'Jane Smith',
           assignedById: 3,
           note: null,
-          assigneeFlagColour: null,
+          userColourKeyRaw: null,
           createdAt: new Date('2026-01-01'),
           updatedAt: new Date('2026-01-01'),
         },
@@ -425,12 +427,10 @@ describe('ActivityFlagsService', () => {
         'Jane Smith',
         'John Doe',
       ]);
-      expect(flags1.find((f) => f.assigneeId === 4)?.assigneeFlagColour).toBe(
-        '#FF5733'
+      expect(flags1.find((f) => f.assigneeId === 4)?.userColourKey).toBe('red');
+      expect(flags1.find((f) => f.assigneeId === 2)?.userColourKey).toBe(
+        defaultUserColourKeyForUserId(2)
       );
-      expect(
-        flags1.find((f) => f.assigneeId === 2)?.assigneeFlagColour
-      ).toBeNull();
     });
   });
 });

@@ -31,6 +31,7 @@ import {
   TableFilterSummary,
 } from '@/components/table/TableSummaryBar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserColouredAvatar } from '@/components/users/UserColouredAvatar';
 import { UserManagementFilters } from '@/components/users/UserManagementFilters';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import {
@@ -50,6 +51,16 @@ type UserSortKey = 'name' | 'role' | 'lastUpdated';
 
 function displayName(user: UserListItem): string {
   return user.adDisplayName || user.adUsername || `User ${user.id}`;
+}
+
+function displayInitials(user: UserListItem): string {
+  const name = displayName(user);
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
 }
 
 function formatLastUpdated(iso: string | null | undefined): string {
@@ -376,7 +387,10 @@ export function UsersTabContent() {
                 Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
                   <tr key={i} className={tableBodyRow} aria-hidden>
                     <td className={tableTd}>
-                      <Skeleton className="h-5 w-28" />
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="size-8 shrink-0 rounded-full" />
+                        <Skeleton className="h-5 w-28" />
+                      </div>
                     </td>
                     <td className={tableTd}>
                       <Skeleton className="h-5 w-36" />
@@ -426,7 +440,15 @@ export function UsersTabContent() {
                     }}
                   >
                     <td className={`${tableTd} font-medium text-slate-900`}>
-                      {displayName(user)}
+                      <span className="inline-flex items-center gap-2">
+                        <UserColouredAvatar
+                          userColourKey={user.userColourKey}
+                          initials={displayInitials(user)}
+                          size="sm"
+                          decorative
+                        />
+                        {displayName(user)}
+                      </span>
                     </td>
                     <td className={`${tableTd} text-slate-600`}>
                       {user.adEmail ?? '-'}

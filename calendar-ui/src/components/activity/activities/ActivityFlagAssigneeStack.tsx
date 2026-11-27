@@ -29,7 +29,7 @@ function stackItemZIndex(
 
 export type ActivityFlagStackItem = Pick<
   ActivityFlagResponse,
-  'teamId' | 'assigneeId' | 'assigneeName' | 'assigneeFlagColour'
+  'teamId' | 'assigneeId' | 'assigneeName' | 'userColourKey'
 >;
 
 /** One row per assignee (first team wins when duplicated). */
@@ -91,7 +91,7 @@ export function ActivityFlagAssigneeStack({
         >
           <ActivityFlagIcon
             assigneeName={flag.assigneeName}
-            assigneeFlagColour={flag.assigneeFlagColour}
+            userColourKey={flag.userColourKey}
             size={size}
           />
         </span>

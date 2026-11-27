@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { userColourKeySchema } from '../user-colour/userColourPalette';
+
 /**
  * User API Schemas
  *
@@ -86,6 +88,7 @@ export const userListItemSchema = z.object({
   isEventPlanner: z.boolean(),
   teams: z.array(userTeamSchema),
   lastUpdatedDateTime: z.string().nullable().optional(),
+  userColourKey: userColourKeySchema,
 });
 
 export type UserListItem = z.infer<typeof userListItemSchema>;
@@ -96,7 +99,6 @@ export type UserListItem = z.infer<typeof userListItemSchema>;
  */
 export const userDetailSchema = userListItemSchema.extend({
   notes: z.string().nullable(),
-  flagColour: z.string().nullable(),
   directLoginEnabled: z.boolean().optional(),
   /** Active Directory job title (if available) */
   jobTitle: z.string().nullable().optional(),
@@ -164,6 +166,7 @@ export const createUserBodySchema = z.object({
     )
     .optional(),
   permissionOverrides: z.array(userPermissionOverrideInputSchema).optional(),
+  userColourKey: userColourKeySchema.optional(),
 });
 
 export type CreateUserBody = z.infer<typeof createUserBodySchema>;
@@ -212,13 +215,7 @@ export type UpdateUserBody = z.infer<typeof updateUserBodySchema>;
  * PATCH /users/:id/settings - Update per-user configurable settings.
  */
 export const updateUserSettingsBodySchema = z.object({
-  flagColour: z
-    .string()
-    .regex(
-      /^#[0-9a-fA-F]{6}$/,
-      'Must be a valid 6-digit hex colour (e.g. #FF0000)'
-    )
-    .nullable(),
+  userColourKey: userColourKeySchema.optional(),
   /**
    * Allow admins to enable or disable direct (email+password) login for a user.
    */

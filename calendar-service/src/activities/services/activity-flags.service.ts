@@ -13,6 +13,7 @@ import {
   userSettings,
   userTeams,
 } from '@corpcal/database/schema';
+import { coerceUserColourKey } from '@corpcal/shared';
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 
 import { DatabaseService } from '../../database/database.service';
@@ -432,7 +433,7 @@ export class ActivityFlagsService {
         assigneeName: sql<string>`COALESCE(${users.adDisplayName}, ${users.adEmail})`,
         assignedById: activityFlags.assignedById,
         note: activityFlags.note,
-        assigneeFlagColour: userSettings.flagColour,
+        userColourKeyRaw: userSettings.userColourKey,
         createdAt: activityFlags.createdAt,
         updatedAt: activityFlags.updatedAt,
       })
@@ -481,7 +482,10 @@ export class ActivityFlagsService {
         assigneeName: row.assigneeName,
         assignedById: row.assignedById,
         note: row.note,
-        assigneeFlagColour: row.assigneeFlagColour ?? null,
+        userColourKey: coerceUserColourKey(
+          row.userColourKeyRaw,
+          row.assigneeId
+        ),
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
       };

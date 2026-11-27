@@ -5,6 +5,7 @@ import {
   REPRESENTATIVE_TYPE,
   VISIBILITY,
 } from '../constants/constants';
+import { userColourKeySchema } from '../user-colour/userColourPalette';
 import {
   BCP47_LANGUAGE_TAG_MAX_LENGTH,
   isPlausibleBcp47LanguageTag,
@@ -279,6 +280,7 @@ export const userLookupItemSchema = lookupItemSchema.extend({
   email: z.string().nullable(),
   username: z.string().nullable(),
   jobTitle: z.string().nullable().optional(),
+  userColourKey: userColourKeySchema,
 });
 
 // ============================================

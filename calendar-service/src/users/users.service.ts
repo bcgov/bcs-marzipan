@@ -20,7 +20,12 @@ import {
   userSettings,
   userTeams,
 } from '@corpcal/database/schema';
-import { SYSTEM_ROLE_IDS, type ActivityStatusName } from '@corpcal/shared';
+import {
+  coerceUserColourKey,
+  defaultUserColourKeyForUserId,
+  SYSTEM_ROLE_IDS,
+  type ActivityStatusName,
+} from '@corpcal/shared';
 import type {
   AddUserToTeamBody,
   CreateUserBody,
@@ -40,6 +45,7 @@ import { ActivityHistoryService } from '../activities/services/activity-history.
 import { ActivityUtilsService } from '../activities/services/activity-utils.service';
 import { getActivityTimestampUpdateForWrite } from '../activities/utils/activity-timestamp-write';
 import { AuthService } from '../auth/auth.service';
+import { loadUserColourKeysByIds } from '../common/user-colour-keys';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -290,6 +296,13 @@ export class UsersService {
         tx
       );
 
+      await tx.insert(userSettings).values({
+        userId: newUserId,
+        userColourKey:
+          dto.userColourKey ?? defaultUserColourKeyForUserId(newUserId),
+        directLoginEnabled: false,
+      });
+
       return newUserId;
     });
 
@@ -345,8 +358,10 @@ export class UsersService {
         isActive: users.isActive,
         isEventPlanner: users.isEventPlanner,
         lastUpdatedDateTime: users.lastUpdatedDateTime,
+        userColourKey: userSettings.userColourKey,
       })
       .from(users)
+      .leftJoin(userSettings, eq(userSettings.userId, users.id))
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(users.adDisplayName, users.adUsername);
 
@@ -409,6 +424,7 @@ export class UsersService {
           ? u.lastUpdatedDateTime.toISOString()
           : String(u.lastUpdatedDateTime)
         : null,
+      userColourKey: coerceUserColourKey(u.userColourKey, u.id),
     }));
   }
 
@@ -423,7 +439,7 @@ export class UsersService {
         isActive: users.isActive,
         isEventPlanner: users.isEventPlanner,
         notes: users.notes,
-        flagColour: userSettings.flagColour,
+        userColourKey: userSettings.userColourKey,
         directLoginEnabled: userSettings.directLoginEnabled,
         adJobTitle: users.adJobTitle,
         adPhone: users.adPhone,
@@ -469,8 +485,8 @@ export class UsersService {
         effect: o.effect,
       })),
       ...u,
-      flagColour: u.flagColour ?? null,
-      directLoginEnabled: u.directLoginEnabled ?? undefined,
+      userColourKey: coerceUserColourKey(u.userColourKey, u.id),
+      directLoginEnabled: u.directLoginEnabled ?? false,
       jobTitle: u.adJobTitle ?? null,
       phone: u.adPhone ?? null,
       lastLoginDateTime: u.lastLoginDateTime
@@ -488,7 +504,7 @@ export class UsersService {
   }
 
   /**
-   * Upsert per-user settings (flag colour, etc.).
+   * Upsert per-user settings (user colour, direct login, etc.).
    * Uses INSERT … ON CONFLICT to avoid a separate select.
    */
   async updateUserSettings(
@@ -499,11 +515,13 @@ export class UsersService {
     const existing = await this.findOne(id);
     if (!existing) throw new NotFoundException('User not found');
 
+    const nextColourKey = dto.userColourKey ?? existing.userColourKey;
+
     await this.databaseService.db
       .insert(userSettings)
       .values({
         userId: id,
-        flagColour: dto.flagColour ?? null,
+        userColourKey: nextColourKey,
         directLoginEnabled:
           dto.directLoginEnabled ?? existing.directLoginEnabled ?? false,
         updatedAt: new Date(),
@@ -511,7 +529,7 @@ export class UsersService {
       .onConflictDoUpdate({
         target: userSettings.userId,
         set: {
-          flagColour: dto.flagColour ?? null,
+          userColourKey: nextColourKey,
           directLoginEnabled:
             dto.directLoginEnabled ?? existing.directLoginEnabled ?? false,
           updatedAt: new Date(),
@@ -520,13 +538,13 @@ export class UsersService {
 
     const changes = [] as HistoryChange[];
     if (
-      dto.flagColour !== undefined &&
-      dto.flagColour !== existing.flagColour
+      dto.userColourKey !== undefined &&
+      dto.userColourKey !== existing.userColourKey
     ) {
       changes.push({
-        field: 'flagColour',
-        oldValue: existing.flagColour,
-        newValue: dto.flagColour,
+        field: 'userColourKey',
+        oldValue: existing.userColourKey,
+        newValue: dto.userColourKey,
       });
     }
     if (
@@ -1091,6 +1109,11 @@ export class UsersService {
       ])
     );
 
+    const colourKeyMap = await loadUserColourKeysByIds(
+      this.databaseService.db,
+      changerIds
+    );
+
     return entries.map((e) => ({
       ...e,
       changes: (e.changes as UserHistoryEntry['changes']) ?? null,
@@ -1099,6 +1122,7 @@ export class UsersService {
           ? e.timestamp.toISOString()
           : String(e.timestamp),
       changedByUserName: changerMap.get(e.changedByUserId),
+      changedByUserColourKey: colourKeyMap.get(e.changedByUserId),
     }));
   }
 

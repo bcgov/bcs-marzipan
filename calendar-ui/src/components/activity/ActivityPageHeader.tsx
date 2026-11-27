@@ -244,10 +244,7 @@ export function ActivityPageHeader({
               )}
             >
               {!isFlagged ? (
-                <ActivityFlagIcon
-                  assigneeName={null}
-                  assigneeFlagColour={null}
-                />
+                <ActivityFlagIcon assigneeName={null} userColourKey={null} />
               ) : (
                 <ActivityFlagAssigneeStack
                   flags={sortedFlags}
@@ -275,7 +272,7 @@ export function ActivityPageHeader({
             >
               <ActivityFlagIcon
                 assigneeName={currentUserFlag.assigneeName}
-                assigneeFlagColour={currentUserFlag.assigneeFlagColour}
+                userColourKey={currentUserFlag.userColourKey}
               />
             </Button>
           )}

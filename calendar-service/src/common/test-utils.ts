@@ -184,6 +184,7 @@ export const createMockUserListItem = (
   isActive: true,
   isEventPlanner: false,
   teams: [{ teamId: 1, teamName: 'Team One', role: 'member' }],
+  userColourKey: 'blue',
   ...overrides,
 });
 
@@ -192,7 +193,6 @@ export const createMockUserDetail = (
 ): UserDetail => ({
   ...createMockUserListItem(),
   notes: null,
-  flagColour: null,
   permissionOverrides: [],
   ...overrides,
 });

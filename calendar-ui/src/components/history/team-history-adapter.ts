@@ -24,7 +24,11 @@ export function toTeamHistoryViewModel(
 ): HistoryEntryViewModel {
   return {
     id: entry.id,
-    actor: fallbackHistoryActor(entry.changedByUserName, entry.changedByUserId),
+    actor: fallbackHistoryActor(
+      entry.changedByUserName,
+      entry.changedByUserId,
+      entry.changedByUserColourKey
+    ),
     actionLabel: humanizeHistoryAction(entry.actionType),
     changes: normalizeTransitionChanges(entry.changes, {
       getLabel: humanizeHistoryAction,

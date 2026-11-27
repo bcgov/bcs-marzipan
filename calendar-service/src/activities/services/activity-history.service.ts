@@ -11,11 +11,14 @@ import {
   tags,
   teams,
   users,
+  userSettings,
 } from '@corpcal/database/schema';
 import type { ActivityHistory } from '@corpcal/database/types';
 import {
+  coerceUserColourKey,
   pacificCalendarDayStartInstant,
   pacificCalendarNextDayStartInstant,
+  type UserColourKey,
 } from '@corpcal/shared';
 import type {
   ActivityHistoryEntry,
@@ -58,6 +61,7 @@ export class ActivityHistoryService {
       {
         displayName: string;
         username: string | null;
+        userColourKey: UserColourKey;
       }
     >
   > {
@@ -68,8 +72,10 @@ export class ActivityHistoryService {
               id: users.id,
               adDisplayName: users.adDisplayName,
               adUsername: users.adUsername,
+              userColourKey: userSettings.userColourKey,
             })
             .from(users)
+            .leftJoin(userSettings, eq(userSettings.userId, users.id))
             .where(inArray(users.id, userIds))
         : [];
 
@@ -80,6 +86,7 @@ export class ActivityHistoryService {
           displayName:
             user.adDisplayName || user.adUsername || `User ${user.id}`,
           username: user.adUsername ?? null,
+          userColourKey: coerceUserColourKey(user.userColourKey, user.id),
         },
       ])
     );
@@ -124,7 +131,14 @@ export class ActivityHistoryService {
       notes: string | null;
       timestamp: Date | string;
     }>,
-    userMap: Map<number, { displayName: string; username: string | null }>,
+    userMap: Map<
+      number,
+      {
+        displayName: string;
+        username: string | null;
+        userColourKey: UserColourKey;
+      }
+    >,
     viewer?: FieldScopeUser
   ): ActivityHistoryEntry[] {
     return entries.flatMap((entry) => {
@@ -152,6 +166,9 @@ export class ActivityHistoryService {
             id: entry.userId,
             displayName,
             username: actor?.username ?? null,
+            userColourKey:
+              actor?.userColourKey ??
+              coerceUserColourKey(undefined, entry.userId),
           },
           userName: displayName,
         },

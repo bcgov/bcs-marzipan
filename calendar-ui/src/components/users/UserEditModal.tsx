@@ -2,18 +2,28 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { PERMISSIONS, SYSTEM_ROLE_IDS } from '@corpcal/shared';
+import {
+  PERMISSIONS,
+  SYSTEM_ROLE_IDS,
+  type UserColourKey,
+} from '@corpcal/shared';
 import type {
   UpdateUserBody,
   UserDetail,
   UserListItem,
   UserPermissionOverrideInput,
 } from '@corpcal/shared/api/types';
-import { fetchRoles, fetchUser, updateUser } from '@/api/usersApi';
+import {
+  fetchRoles,
+  fetchUser,
+  updateUser,
+  updateUserSettings,
+} from '@/api/usersApi';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -21,6 +31,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { UserColourIdentityField } from '@/components/users/UserColourIdentityField';
 import { UserRoleField } from '@/components/users/UserRoleField';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -57,9 +68,10 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
   const [permissionOverrideInputs, setPermissionOverrideInputs] = useState<
     UserPermissionOverrideInput[]
   >([]);
+  const [userColourKey, setUserColourKey] = useState<UserColourKey>('blue');
 
   const queryClient = useQueryClient();
-  const { user: currentUser, hasPermission } = useAuth();
+  const { user: currentUser, hasPermission, refreshUser } = useAuth();
   const canEditOverrides = hasPermission(PERMISSIONS.USERS.MANAGE_ROLES);
 
   // Editing personal profile details is limited to admins / sys-admins.
@@ -106,6 +118,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
       setJobTitle(detail.jobTitle ?? '');
       setIsActive(Boolean(detail.isActive));
       setIsEventPlanner(Boolean(detail.isEventPlanner));
+      setUserColourKey(detail.userColourKey);
     }
   }, [detail]);
 
@@ -118,7 +131,6 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
         description: variables.displayLabel,
         id: `user-updated-${user.id}`,
       });
-      onSaved();
     },
     onError: (err: Error, variables) => {
       showEntityToast('error', 'Could not update user', {
@@ -130,7 +142,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
     },
   });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newRoleId = parseInt(roleId, 10);
     if (Number.isNaN(newRoleId)) return;
 
@@ -180,16 +192,55 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
         ? combinedName
         : resolveUserDisplayName(user);
 
-    updateMutation.mutate({ body, displayLabel });
+    const colourChanged =
+      detail != null && userColourKey !== detail.userColourKey;
+
+    try {
+      await updateMutation.mutateAsync({ body, displayLabel });
+    } catch {
+      return;
+    }
+
+    if (colourChanged) {
+      try {
+        await updateUserSettings(user.id, { userColourKey });
+        invalidateUserCaches(queryClient, user.id);
+        if (currentUser?.id === user.id) {
+          await refreshUser();
+        }
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : 'Could not update user colour';
+        showEntityToast('error', 'Could not update user colour', {
+          description: message,
+          id: `user-colour-updated-${user.id}`,
+        });
+        return;
+      }
+    }
+
+    onSaved();
   };
 
   const displayName = resolveUserDisplayName(user);
+  const previewAssigneeName =
+    [firstName, lastName]
+      .map((part) => (part ?? '').trim())
+      .filter(Boolean)
+      .join(' ') ||
+    detail?.adDisplayName ||
+    detail?.adUsername ||
+    displayName;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Edit user: {displayName}</DialogTitle>
+          <DialogTitle>Identity: {displayName}</DialogTitle>
+          <DialogDescription>
+            Profile details and how this user appears in CorpCal (avatar and
+            activity flags).
+          </DialogDescription>
         </DialogHeader>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -294,6 +345,13 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
               />
               <div className="text-sm">Active</div>
             </div>
+
+            <UserColourIdentityField
+              id="edit-user-colour"
+              value={userColourKey}
+              onChange={setUserColourKey}
+              previewAssigneeName={previewAssigneeName}
+            />
           </div>
         )}
         <DialogFooter>
@@ -301,7 +359,7 @@ export function UserEditModal({ user, onClose, onSaved }: UserEditModalProps) {
             Cancel
           </Button>
           <Button
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={updateMutation.isPending || isLoading}
           >
             Save changes

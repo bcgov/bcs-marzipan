@@ -26,7 +26,6 @@ import {
 } from '@/api/usersApi';
 import { PageContainer } from '@/components/layout/PageContainer';
 import RemoveTeamMemberModal from '@/components/teams/RemoveTeamMemberModal';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 // removed PageHeader to use a compact header with a Go back link
 import { Button } from '@/components/ui/button';
@@ -43,13 +42,13 @@ import {
   ComboboxValue,
   useComboboxAnchor,
 } from '@/components/ui/combobox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { TeamsComboboxSelectAllRow } from '@/components/users/TeamsComboboxSelectAllRow';
 import { UserChangeLogTabContent } from '@/components/users/UserChangeLogTabContent';
+import { UserColouredAvatar } from '@/components/users/UserColouredAvatar';
 import { UserEditModal } from '@/components/users/UserEditModal';
 import { UserRoleField } from '@/components/users/UserRoleField';
 import { UserTransferTabContent } from '@/components/users/UserTransferTabContent';
@@ -70,7 +69,7 @@ export default function UserDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const userId = Number(id);
-  const { hasPermission, user: currentUser } = useAuth();
+  const { hasPermission, user: currentUser, refreshUser } = useAuth();
 
   const { data: userDetail, isLoading } = useQuery<UserDetail | null>({
     queryKey: userQueryKeys.detail(userId),
@@ -104,7 +103,6 @@ export default function UserDetailPage() {
     setLocalNotes(userDetail.notes ?? '');
     setSelectedRoleId(userDetail.roleId ?? null);
     setDirectLoginEnabled(Boolean(userDetail.directLoginEnabled));
-    setFlagColour(userDetail.flagColour ?? null);
     setLocalTeamIds(userDetail.teams.map((t) => t.teamId));
   }, [userDetail, userId]);
 
@@ -165,7 +163,6 @@ export default function UserDetailPage() {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [directLoginEnabled, setDirectLoginEnabled] = useState(false);
-  const [flagColour, setFlagColour] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
     'account' | 'transfer' | 'change-log'
   >('account');
@@ -196,16 +193,13 @@ export default function UserDetailPage() {
   });
 
   const settingsMutation = useMutation({
-    mutationFn: (body: {
-      directLoginEnabled?: boolean;
-      flagColour?: string | null;
-    }) =>
-      updateUserSettings(userId, {
-        flagColour: body.flagColour ?? flagColour,
-        directLoginEnabled: body.directLoginEnabled,
-      }),
-    onSuccess: () => {
+    mutationFn: (body: { directLoginEnabled?: boolean }) =>
+      updateUserSettings(userId, body),
+    onSuccess: async () => {
       invalidateUserCaches(queryClient, userId);
+      if (currentUser?.id === userId) {
+        await refreshUser();
+      }
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to update user settings');
@@ -389,79 +383,81 @@ export default function UserDetailPage() {
         <div className="text-slate-500">Loading…</div>
       ) : (
         <div className="space-y-4">
-          <div>
-            <div className="flex items-start gap-4">
-              <div className="flex items-start gap-4">
-                <Avatar className="h-12 w-12">
-                  <AvatarFallback className="text-lg font-semibold">
-                    {(userDetail.adDisplayName || userDetail.adUsername || '')
-                      .split(' ')
-                      .map((s) => s[0])
-                      .slice(0, 2)
-                      .join('') || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
+          <div className="max-w-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-3">
+                  <UserColouredAvatar
+                    userColourKey={userDetail.userColourKey}
+                    initials={
+                      (userDetail.adDisplayName || userDetail.adUsername || '')
+                        .split(' ')
+                        .map((s) => s[0])
+                        .slice(0, 2)
+                        .join('') || 'U'
+                    }
+                    size="sm"
+                  />
                   <h2 className="text-2xl leading-tight font-semibold">
                     {userDetail.adDisplayName || userDetail.adUsername}
                   </h2>
-                  <div className="mt-1">
-                    <div className="text-sm text-slate-900">
-                      {userDetail.roleName}
-                    </div>
-                    <div className="mt-2">
-                      <Badge
-                        variant={userDetail.isActive ? 'success' : 'outline'}
-                      >
-                        {userDetail.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
+                </div>
+                <div className="mt-1">
+                  <div className="text-sm text-slate-900">
+                    {userDetail.roleName}
                   </div>
-                  <div className="mt-1 text-[16px] font-medium text-slate-900">
-                    {userDetail.jobTitle}
+                  <div className="mt-2">
+                    <Badge
+                      variant={userDetail.isActive ? 'success' : 'outline'}
+                    >
+                      {userDetail.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
                   </div>
+                </div>
+                <div className="mt-1 text-[16px] font-medium text-slate-900">
+                  {userDetail.jobTitle}
+                </div>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-slate-600">
+                <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-slate-400" aria-hidden />
+                    <span className="text-sm text-slate-700">
+                      {userDetail.adEmail}
+                    </span>
+                  </div>
+                  {userDetail.phone && (
                     <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-slate-400" aria-hidden />
+                      <Phone className="h-4 w-4 text-slate-400" aria-hidden />
                       <span className="text-sm text-slate-700">
-                        {userDetail.adEmail}
+                        {userDetail.phone}
                       </span>
                     </div>
-                    {userDetail.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-slate-400" aria-hidden />
-                        <span className="text-sm text-slate-700">
-                          {userDetail.phone}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  )}
+                </div>
 
-                  <div className="mt-1 text-xs text-slate-400">
-                    Last login:{' '}
-                    {userDetail.lastLoginDateTime
-                      ? format(
-                          new Date(userDetail.lastLoginDateTime),
-                          'MMM d, yyyy HH:mm'
-                        )
-                      : '-'}
-                  </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  Last login:{' '}
+                  {userDetail.lastLoginDateTime
+                    ? format(
+                        new Date(userDetail.lastLoginDateTime),
+                        'MMM d, yyyy HH:mm'
+                      )
+                    : '-'}
                 </div>
               </div>
 
               {canEdit && (
-                <div className="ml-0.5">
-                  <Button
-                    size="sm"
-                    onClick={() => setShowEditModal(true)}
-                    className="focus-visible:ring-primary/30 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:ring-2"
-                    aria-label="Edit user"
-                  >
-                    <Edit className="h-4 w-4" aria-hidden />
-                    Edit
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEditModal(true)}
+                  className="shrink-0 gap-2"
+                  aria-label="Edit user"
+                >
+                  <Edit className="h-4 w-4" aria-hidden />
+                  Edit
+                </Button>
               )}
             </div>
           </div>
@@ -567,29 +563,6 @@ export default function UserDetailPage() {
                         </div>
                       </ComboboxContent>
                     </Combobox>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="font-semibold">User colour</div>
-
-                  <div className="mt-2 flex items-center gap-3">
-                    <Input
-                      type="color"
-                      aria-label="User colour"
-                      value={flagColour || '#0F6CBD'}
-                      onChange={(e) => setFlagColour(e.target.value)}
-                      onBlur={() => {
-                        if (!canEdit || flagColour === null) return;
-                        if (flagColour !== (userDetail?.flagColour ?? null))
-                          settingsMutation.mutate({ flagColour });
-                      }}
-                      disabled={!canEdit}
-                      className="h-10 w-16 cursor-pointer p-1"
-                    />
-                    <div className="text-sm text-slate-500">
-                      Flag colour for this user
-                    </div>
                   </div>
                 </div>
 
