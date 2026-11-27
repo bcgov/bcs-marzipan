@@ -401,8 +401,12 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Current user' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
-  me(@CurrentUser() user: AuthUser) {
-    return { success: true as const, data: user };
+  async me(@CurrentUser() user: AuthUser) {
+    const data = await this.authService.hydrateCurrentUser(user);
+    return {
+      success: true as const,
+      data,
+    };
   }
 
   @Post('logout')

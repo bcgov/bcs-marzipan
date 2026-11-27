@@ -104,7 +104,6 @@ describe('UsersController', () => {
     it('should reject assigning the system admin role for a regular admin', async () => {
       const dto = {
         email: 'newuser@gov.bc.ca',
-        idirUsername: 'JNEWUSER',
         roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
       };
 
@@ -117,7 +116,6 @@ describe('UsersController', () => {
     it('should allow a system admin to assign the system admin role', async () => {
       const dto = {
         email: 'newuser@gov.bc.ca',
-        idirUsername: 'JNEWUSER',
         roleId: SYSTEM_ROLE_IDS.SYSTEM_ADMIN,
       };
       const systemAdmin: AuthUser = {
@@ -141,7 +139,6 @@ describe('UsersController', () => {
     it('should reject permission overrides without users.manage_roles', async () => {
       const dto = {
         email: 'newuser@gov.bc.ca',
-        idirUsername: 'JNEWUSER',
         roleId: 2,
         permissionOverrides: [
           { permissionKey: 'activities.unshare', effect: 'grant' as const },
@@ -161,7 +158,6 @@ describe('UsersController', () => {
     it('should create user and return 201 with data', async () => {
       const dto = {
         email: 'newuser@gov.bc.ca',
-        idirUsername: 'JNEWUSER',
         roleId: 2,
         displayName: 'New User',
       };
@@ -169,7 +165,7 @@ describe('UsersController', () => {
         id: 99,
         adEmail: 'newuser@gov.bc.ca',
         roleId: 2,
-        adDisplayName: 'New User',
+        displayName: 'New User',
       });
       mockUsersService.create.mockResolvedValue(created);
 
@@ -183,7 +179,6 @@ describe('UsersController', () => {
     it('should throw when service throws ConflictException for duplicate email', async () => {
       const dto = {
         email: 'existing@gov.bc.ca',
-        idirUsername: 'JEXIST',
         roleId: 1,
       };
       mockUsersService.create.mockRejectedValue(

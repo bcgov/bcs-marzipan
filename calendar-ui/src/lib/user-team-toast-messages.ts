@@ -1,24 +1,11 @@
 import { toast } from 'sonner';
 
+import { resolveUserDisplayName as resolveUserDisplayNameShared } from '@corpcal/shared';
 import { TOAST_DURATION_MS } from '@/lib/toast-durations';
 
 export type EntityToastVariant = 'success' | 'error' | 'info' | 'warning';
 
-export function resolveUserDisplayName(user: {
-  adDisplayName?: string | null;
-  adUsername?: string | null;
-  displayName?: string | null;
-  idirUsername?: string | null;
-  id?: number;
-}): string {
-  return (
-    user.adDisplayName?.trim() ||
-    user.displayName?.trim() ||
-    user.adUsername?.trim() ||
-    user.idirUsername?.trim() ||
-    (user.id != null ? `User ${user.id}` : 'User')
-  );
-}
+export const resolveUserDisplayName = resolveUserDisplayNameShared;
 
 export function resolveTeamDisplayName(team: {
   displayName?: string | null;

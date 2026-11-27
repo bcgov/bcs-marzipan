@@ -27,12 +27,15 @@ vi.mock('@/api/lookupsApi', () => ({
 vi.mock('@/api/usersApi', () => ({
   fetchUser: vi.fn().mockResolvedValue({
     id: 7,
+    displayName: null,
     adDisplayName: 'Jane Tester',
     adUsername: 'jtester',
     adEmail: 'jane@example.com',
     roleId: 2,
     roleName: 'Editor',
     isActive: true,
+    isEventPlanner: false,
+    userColourKey: 'blue',
     notes: null,
     directLoginEnabled: false,
     teams: [],

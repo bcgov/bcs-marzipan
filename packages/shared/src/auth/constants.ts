@@ -108,7 +108,7 @@ export const PERMISSIONS = {
     LOCK_FORCE_HANDOFF: 'activities.lock.forceHandoff',
     /** Manually progress an activity to Completed status. */
     COMPLETE: 'activities.complete',
-    /** Assign (flag) an activity to a team member for follow-up. Team-scoped. */
+    /** Flag an activity for a team member for follow-up. Team-scoped. */
     FLAG: 'activities.flag',
     /** Edit activities during the recurring daily lockout window. */
     BYPASS_RECURRING_LOCKOUT: 'activities.bypass_recurring_lockout',

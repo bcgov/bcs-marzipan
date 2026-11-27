@@ -155,6 +155,13 @@
       "when": 1795727536909,
       "tag": "0021_20261126-legacy-activity-status",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795801222297,
+      "tag": "0022_20261127_user-identity-and-colour-key",
+      "breakpoints": true
     }
   ]
 }

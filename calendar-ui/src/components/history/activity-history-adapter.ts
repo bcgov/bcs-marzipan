@@ -38,7 +38,7 @@ function activityActor(entry: ActivityHistoryEntry) {
     formatHistoryUsername(entry.actor?.username ?? entry.userName) ||
     entry.userName;
   return {
-    ...fallbackHistoryActor(name, entry.userId),
+    ...fallbackHistoryActor(name, entry.userId, entry.actor?.userColourKey),
     username: entry.actor?.username,
   };
 }

@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   appendRecurringLockoutBypassNotice,
+  defaultUserColourKeyForUserId,
   PERMISSIONS,
 } from '@corpcal/shared';
 import type { BannerSettings } from '@corpcal/shared/api/types';
@@ -21,7 +22,6 @@ import { fetchActiveBanner } from '@/api/bannerApi';
 import logo from '@/assets/Logo.svg';
 import { NotificationPreferencesModal } from '@/components/notifications/NotificationPreferencesModal';
 import { MOCK_USERS } from '@/components/shared/UserSwitcher';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { UserColouredAvatar } from '@/components/users/UserColouredAvatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useBannerSettingsWebSocket } from '@/hooks/useBannerSettingsWebSocket';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -449,11 +450,14 @@ const Header = () => {
                     variant="ghost"
                     className="flex items-center gap-2 px-2"
                   >
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                        {getInitials(user.displayName)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserColouredAvatar
+                      userColourKey={
+                        user.userColourKey ??
+                        defaultUserColourKeyForUserId(user.id)
+                      }
+                      initials={getInitials(user.displayName)}
+                      size="sm"
+                    />
                     <span className="hidden text-sm font-medium text-slate-700 sm:inline">
                       {user.displayName}
                     </span>

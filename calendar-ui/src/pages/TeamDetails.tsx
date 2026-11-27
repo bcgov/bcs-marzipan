@@ -7,6 +7,7 @@ import { PERMISSIONS } from '@corpcal/shared';
 import { fetchTeamById, updateTeam } from '@/api/teamsApi';
 import { fetchUserActivityCounts, fetchUsers } from '@/api/usersApi';
 import { PageContainer } from '@/components/layout';
+import { ActiveInactiveBadge } from '@/components/shared/ActiveInactiveBadge';
 import AddTeamMemberModal from '@/components/teams/AddTeamMemberModal';
 import RemoveTeamMemberModal from '@/components/teams/RemoveTeamMemberModal';
 import { TeamChangeLogTabContent } from '@/components/teams/TeamChangeLogTabContent';
@@ -260,15 +261,7 @@ export function TeamDetails() {
                 </p>
               ) : null}
               <div className="pt-2">
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-sm font-medium ${
-                    team.isActive
-                      ? 'bg-green-600 text-white'
-                      : 'bg-slate-400 text-white'
-                  }`}
-                >
-                  {team.isActive ? 'Active' : 'Inactive'}
-                </span>
+                <ActiveInactiveBadge isActive={team.isActive} size="md" />
               </div>
             </div>
           </div>
@@ -377,17 +370,11 @@ export function TeamDetails() {
                               })()}
                             </td>
                             <td className="px-3 py-2">
-                              <span
-                                className={`rounded px-2 py-0.5 text-xs font-medium ${
-                                  userIsActiveById.get(m.userId)
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-slate-100 text-slate-700'
-                                }`}
-                              >
-                                {userIsActiveById.get(m.userId)
-                                  ? 'Active'
-                                  : 'Inactive'}
-                              </span>
+                              <ActiveInactiveBadge
+                                isActive={
+                                  userIsActiveById.get(m.userId) ?? false
+                                }
+                              />
                             </td>
                             <td className="px-3 py-2 text-slate-700">
                               {formatMemberLastUpdated(m)}

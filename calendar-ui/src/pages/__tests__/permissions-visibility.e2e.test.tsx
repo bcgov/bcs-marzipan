@@ -72,6 +72,7 @@ vi.mock('@/api/usersApi', () => ({
     isActive: true,
     notes: null,
     directLoginEnabled: false,
+    userColourKey: 'blue',
     teams: [],
     permissionOverrides: [],
   }),

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { isCalendarDateString } from '../datetime';
+import { userColourKeySchema } from '../user-colour/userColourPalette';
 import {
   commaSeparatedIntArray,
   commaSeparatedStringArray,
@@ -24,6 +25,7 @@ export const historyActorSchema = z.object({
   id: z.number().int(),
   displayName: z.string(),
   username: z.string().nullable().optional(),
+  userColourKey: userColourKeySchema.optional(),
 });
 
 export type HistoryActor = z.infer<typeof historyActorSchema>;
@@ -198,6 +200,7 @@ export const userHistoryEntrySchema = z.object({
   notes: z.string().nullable(),
   timestamp: z.string(),
   changedByUserName: z.string().optional(),
+  changedByUserColourKey: userColourKeySchema.optional(),
 });
 
 export type UserHistoryEntry = z.infer<typeof userHistoryEntrySchema>;
@@ -221,6 +224,7 @@ export const teamHistoryEntrySchema = z.object({
   notes: z.string().nullable(),
   timestamp: z.string(),
   changedByUserName: z.string().optional(),
+  changedByUserColourKey: userColourKeySchema.optional(),
 });
 
 export type TeamHistoryEntry = z.infer<typeof teamHistoryEntrySchema>;

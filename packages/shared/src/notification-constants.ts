@@ -87,7 +87,7 @@ export const NOTIFICATION_PREFERENCE_CATEGORY_OPTIONS: ReadonlyArray<{
     category: NOTIFICATION_PREFERENCE_CATEGORIES.ACTIVITY_SHARING,
     label: 'Sharing & review flags',
     description:
-      'When activities are shared with your team or you are assigned or unassigned as a reviewer.',
+      'When activities are shared with your team or you are flagged or unflagged as a reviewer.',
   },
   {
     category: NOTIFICATION_PREFERENCE_CATEGORIES.ACTIVITY_REMINDERS,

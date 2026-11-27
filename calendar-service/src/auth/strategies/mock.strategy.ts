@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { users } from '@corpcal/database/schema';
 
 import type { Database } from '../../database/database.provider';
+import type { AuthDbUser } from './ad.strategy';
 
 /**
  * Mock auth strategy: find user by ad_username
@@ -11,18 +12,12 @@ import type { Database } from '../../database/database.provider';
 export async function findUserByUsername(
   db: Database,
   username: string
-): Promise<{
-  id: number;
-  roleId: number;
-  adUsername: string | null;
-  adDisplayName: string | null;
-  adEmail: string | null;
-  status: string;
-} | null> {
+): Promise<AuthDbUser | null> {
   const [row] = await db
     .select({
       id: users.id,
       roleId: users.roleId,
+      displayName: users.displayName,
       adUsername: users.adUsername,
       adDisplayName: users.adDisplayName,
       adEmail: users.adEmail,

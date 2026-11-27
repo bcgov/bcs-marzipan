@@ -176,6 +176,7 @@ export const createMockUserListItem = (
   overrides?: Partial<UserListItem>
 ): UserListItem => ({
   id: 1,
+  displayName: null,
   adUsername: 'user1',
   adDisplayName: 'Test User',
   adEmail: 'user@example.com',
@@ -184,6 +185,7 @@ export const createMockUserListItem = (
   isActive: true,
   isEventPlanner: false,
   teams: [{ teamId: 1, teamName: 'Team One', role: 'member' }],
+  userColourKey: 'blue',
   ...overrides,
 });
 
@@ -192,7 +194,6 @@ export const createMockUserDetail = (
 ): UserDetail => ({
   ...createMockUserListItem(),
   notes: null,
-  flagColour: null,
   permissionOverrides: [],
   ...overrides,
 });

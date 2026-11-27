@@ -87,6 +87,31 @@ export const LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS = 1_500;
 /** Matches CSS animation duration used for `.live-row-highlight`. */
 export const LIVE_ROW_HIGHLIGHT_ANIMATION_MS = 1_500;
 
+/**
+ * After a local save, the server still broadcasts `activityUpdated`; skip the
+ * cross-user yellow flash for that activity so the editor does not see an echo.
+ */
+export const LIVE_ROW_HIGHLIGHT_LOCAL_ECHO_SUPPRESS_MS = 4_000;
+
+const suppressedLiveRowHighlightUntil = new Map<number, number>();
+
+export function suppressLiveRowHighlightForActivity(
+  activityId: number,
+  durationMs = LIVE_ROW_HIGHLIGHT_LOCAL_ECHO_SUPPRESS_MS
+): void {
+  suppressedLiveRowHighlightUntil.set(activityId, Date.now() + durationMs);
+}
+
+function isLiveRowHighlightSuppressed(activityId: number): boolean {
+  const until = suppressedLiveRowHighlightUntil.get(activityId);
+  if (until == null) return false;
+  if (Date.now() > until) {
+    suppressedLiveRowHighlightUntil.delete(activityId);
+    return false;
+  }
+  return true;
+}
+
 export type RemoteHighlightQueue = {
   queueRemoteHighlight: (activityId: number) => void;
 };
@@ -141,7 +166,8 @@ export function scheduleLiveActivityRefresh(
     pendingInvalidateActivities = true;
     if (
       typeof options.activityId === 'number' &&
-      Number.isFinite(options.activityId)
+      Number.isFinite(options.activityId) &&
+      !isLiveRowHighlightSuppressed(options.activityId)
     ) {
       remoteHighlightQueue?.queueRemoteHighlight(options.activityId);
     }
@@ -165,4 +191,5 @@ export function __resetLiveActivitySyncForTests(): void {
   }
   pendingInvalidateActivities = false;
   remoteHighlightQueue = null;
+  suppressedLiveRowHighlightUntil.clear();
 }

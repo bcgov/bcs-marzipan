@@ -17,6 +17,7 @@ describe('userListItemSchema', () => {
   it('accepts valid user list item', () => {
     const result = userListItemSchema.parse({
       id: 1,
+      displayName: null,
       adUsername: 'user1',
       adDisplayName: 'User One',
       adEmail: 'user@example.com',
@@ -25,6 +26,7 @@ describe('userListItemSchema', () => {
       isActive: true,
       isEventPlanner: true,
       teams: [{ teamId: 1, teamName: 'Team One', role: 'member' }],
+      userColourKey: 'blue',
     });
     expect(result.id).toBe(1);
     expect(result.roleName).toBe('Editor');
@@ -36,6 +38,7 @@ describe('userListItemSchema', () => {
   it('accepts null ad fields', () => {
     const result = userListItemSchema.parse({
       id: 2,
+      displayName: 'Override',
       adUsername: null,
       adDisplayName: null,
       adEmail: null,
@@ -44,6 +47,7 @@ describe('userListItemSchema', () => {
       isActive: false,
       isEventPlanner: false,
       teams: [],
+      userColourKey: 'red',
     });
     expect(result.adUsername).toBeNull();
     expect(result.isEventPlanner).toBe(false);
@@ -55,11 +59,9 @@ describe('createUserBodySchema', () => {
   it('accepts valid body with email and roleId', () => {
     const result = createUserBodySchema.parse({
       email: 'user@gov.bc.ca',
-      idirUsername: 'JSMITH',
       roleId: 1,
     });
     expect(result.email).toBe('user@gov.bc.ca');
-    expect(result.idirUsername).toBe('JSMITH');
     expect(result.roleId).toBe(1);
     expect(result.displayName).toBeUndefined();
     expect(result.teams).toBeUndefined();
@@ -68,7 +70,6 @@ describe('createUserBodySchema', () => {
   it('accepts optional displayName and teams', () => {
     const result = createUserBodySchema.parse({
       email: 'user@gov.bc.ca',
-      idirUsername: 'JDOE',
       roleId: 2,
       displayName: 'Jane Doe',
       teams: [
@@ -82,10 +83,18 @@ describe('createUserBodySchema', () => {
     expect(result.teams?.[1].role).toBe('owner');
   });
 
+  it('accepts optional userColourKey', () => {
+    const result = createUserBodySchema.parse({
+      email: 'user@gov.bc.ca',
+      roleId: 2,
+      userColourKey: 'teal',
+    });
+    expect(result.userColourKey).toBe('teal');
+  });
+
   it('enforces displayName max length (255)', () => {
     const valid = createUserBodySchema.parse({
       email: 'user@gov.bc.ca',
-      idirUsername: 'JDOE',
       roleId: 2,
       displayName: 'd'.repeat(255),
     });
@@ -94,7 +103,6 @@ describe('createUserBodySchema', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: 'user@gov.bc.ca',
-        idirUsername: 'JDOE',
         roleId: 2,
         displayName: 'd'.repeat(256),
       })
@@ -102,22 +110,13 @@ describe('createUserBodySchema', () => {
   });
 
   it('rejects missing email', () => {
-    expect(() =>
-      createUserBodySchema.parse({ idirUsername: 'JDOE', roleId: 1 })
-    ).toThrow();
-  });
-
-  it('rejects missing IDIR username', () => {
-    expect(() =>
-      createUserBodySchema.parse({ email: 'u@gov.bc.ca', roleId: 1 })
-    ).toThrow();
+    expect(() => createUserBodySchema.parse({ roleId: 1 })).toThrow();
   });
 
   it('rejects missing roleId', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: 'u@gov.bc.ca',
-        idirUsername: 'JDOE',
       })
     ).toThrow();
   });
@@ -126,7 +125,6 @@ describe('createUserBodySchema', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: 'not-an-email',
-        idirUsername: 'JDOE',
         roleId: 1,
       })
     ).toThrow();
@@ -136,17 +134,6 @@ describe('createUserBodySchema', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: 'user@example.com',
-        idirUsername: 'JDOE',
-        roleId: 1,
-      })
-    ).toThrow();
-  });
-
-  it('rejects IDIR values that look like emails', () => {
-    expect(() =>
-      createUserBodySchema.parse({
-        email: 'user@gov.bc.ca',
-        idirUsername: 'user@gov.bc.ca',
         roleId: 1,
       })
     ).toThrow();
@@ -156,7 +143,6 @@ describe('createUserBodySchema', () => {
     expect(() =>
       createUserBodySchema.parse({
         email: '   ',
-        idirUsername: 'JDOE',
         roleId: 1,
       })
     ).toThrow();
@@ -357,6 +343,7 @@ describe('removeUserFromTeamBodySchema', () => {
 describe('userDetailSchema', () => {
   const base = {
     id: 1,
+    displayName: null,
     adUsername: 'user1',
     adDisplayName: 'User One',
     adEmail: 'user@example.com',
@@ -366,56 +353,33 @@ describe('userDetailSchema', () => {
     isEventPlanner: false,
     teams: [],
     notes: null,
-    flagColour: null,
+    userColourKey: 'blue' as const,
   };
 
-  it('accepts null flagColour', () => {
+  it('accepts userColourKey', () => {
     const result = userDetailSchema.parse(base);
-    expect(result.flagColour).toBeNull();
+    expect(result.userColourKey).toBe('blue');
     expect(result.isEventPlanner).toBe(false);
   });
 
-  it('accepts a hex flagColour string', () => {
-    const result = userDetailSchema.parse({ ...base, flagColour: '#FF5733' });
-    expect(result.flagColour).toBe('#FF5733');
+  it('rejects unknown userColourKey', () => {
+    expect(() =>
+      userDetailSchema.parse({ ...base, userColourKey: 'magenta' })
+    ).toThrow();
   });
 });
 
 describe('updateUserSettingsBodySchema', () => {
-  it('accepts a valid 6-digit hex colour', () => {
+  it('accepts a valid userColourKey', () => {
     const result = updateUserSettingsBodySchema.parse({
-      flagColour: '#1A2B3C',
+      userColourKey: 'teal',
     });
-    expect(result.flagColour).toBe('#1A2B3C');
+    expect(result.userColourKey).toBe('teal');
   });
 
-  it('accepts uppercase hex', () => {
-    const result = updateUserSettingsBodySchema.parse({
-      flagColour: '#AABBCC',
-    });
-    expect(result.flagColour).toBe('#AABBCC');
-  });
-
-  it('accepts null to reset to default', () => {
-    const result = updateUserSettingsBodySchema.parse({ flagColour: null });
-    expect(result.flagColour).toBeNull();
-  });
-
-  it('rejects a colour missing the # prefix', () => {
+  it('rejects invalid userColourKey', () => {
     expect(() =>
-      updateUserSettingsBodySchema.parse({ flagColour: 'FF5733' })
-    ).toThrow();
-  });
-
-  it('rejects a 3-digit short hex', () => {
-    expect(() =>
-      updateUserSettingsBodySchema.parse({ flagColour: '#FFF' })
-    ).toThrow();
-  });
-
-  it('rejects non-hex characters', () => {
-    expect(() =>
-      updateUserSettingsBodySchema.parse({ flagColour: '#GGGGGG' })
+      updateUserSettingsBodySchema.parse({ userColourKey: 'navy' })
     ).toThrow();
   });
 });

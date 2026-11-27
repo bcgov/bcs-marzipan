@@ -1,14 +1,19 @@
 import { Flag } from 'lucide-react';
 import type { ReactElement } from 'react';
 
+import {
+  resolveUserColourPresentation,
+  type UserColourKey,
+} from '@corpcal/shared';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { UserColouredAvatar } from '@/components/users/UserColouredAvatar';
 import { cn } from '@/lib/utils';
 
 export type ActivityFlagIconSize = 'default' | 'compact';
 
 type ActivityFlagIconProps = {
   assigneeName?: string | null;
-  assigneeFlagColour?: string | null;
+  userColourKey?: UserColourKey | null;
   className?: string;
   size?: ActivityFlagIconSize;
 };
@@ -34,7 +39,7 @@ function sizeClasses(size: ActivityFlagIconSize) {
       container: 'size-[18px]',
       emptyFlag: 'size-[18px]',
       flagBadge: 'size-2',
-      initials: 'text-[7px] font-medium',
+      initialsFallback: 'text-[7px] font-medium',
       overflowText: 'text-[6px] font-semibold',
       avatarClassName: 'size-[18px] border border-white/70',
     };
@@ -43,7 +48,7 @@ function sizeClasses(size: ActivityFlagIconSize) {
     container: 'size-6',
     emptyFlag: 'size-4',
     flagBadge: 'size-2.5',
-    initials: 'text-[8px] font-medium',
+    initialsFallback: 'text-[8px] font-medium',
     overflowText: 'text-[7px] font-semibold',
     avatarClassName: 'size-full border border-white/70',
   };
@@ -55,7 +60,7 @@ function sizeClasses(size: ActivityFlagIconSize) {
  */
 export function ActivityFlagIcon({
   assigneeName,
-  assigneeFlagColour,
+  userColourKey,
   className,
   size = 'default',
 }: ActivityFlagIconProps): ReactElement {
@@ -77,15 +82,33 @@ export function ActivityFlagIcon({
     );
   }
 
-  const flagColour = assigneeFlagColour ?? 'var(--flag-button-icon)';
+  const flagColour = userColourKey
+    ? resolveUserColourPresentation(userColourKey).flagHex
+    : 'var(--flag-button-icon)';
 
   return (
     <span className={iconContainerClassName}>
-      <Avatar size="sm" className={sizes.avatarClassName}>
-        <AvatarFallback className={sizes.initials}>
-          {getAssigneeInitials(assigneeName)}
-        </AvatarFallback>
-      </Avatar>
+      {userColourKey ? (
+        <UserColouredAvatar
+          userColourKey={userColourKey}
+          initials={getAssigneeInitials(assigneeName)}
+          size="xs"
+          className={sizes.avatarClassName}
+          title={assigneeName}
+          decorative
+        />
+      ) : (
+        <Avatar className={sizes.avatarClassName} title={assigneeName}>
+          <AvatarFallback
+            className={cn(
+              sizes.initialsFallback,
+              'bg-slate-100 text-slate-700'
+            )}
+          >
+            {getAssigneeInitials(assigneeName)}
+          </AvatarFallback>
+        </Avatar>
+      )}
       <Flag
         className={cn('absolute -right-0.5 -bottom-0.5', sizes.flagBadge)}
         style={{ fill: flagColour, color: flagColour }}

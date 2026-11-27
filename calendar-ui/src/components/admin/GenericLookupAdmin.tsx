@@ -1,7 +1,7 @@
 import { arrayMove } from '@dnd-kit/sortable';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { Edit, Search, Trash2, XCircle } from 'lucide-react';
+import { Edit, Search, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import api from '@/api/axios';
@@ -17,12 +17,12 @@ import {
   LookupForm,
 } from '@/components/admin';
 import { LookupReorderMenu } from '@/components/admin/LookupReorderMenu';
+import { ActiveInactiveBadge } from '@/components/shared/ActiveInactiveBadge';
 import { GenericDataTable } from '@/components/table/GenericDataTable';
 import {
   tableContainer,
   tableScrollWrapper,
 } from '@/components/table/tableConstants';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -392,15 +392,9 @@ export function GenericLookupAdmin<T extends BaseLookupItem>({
       {
         accessorKey: 'isActive',
         header: 'Status',
-        cell: ({ row }) =>
-          row.original.isActive ? (
-            <Badge variant="primary">Active</Badge>
-          ) : (
-            <Badge variant="secondary" className="gap-1">
-              <XCircle className="h-3 w-3" />
-              Inactive
-            </Badge>
-          ),
+        cell: ({ row }) => (
+          <ActiveInactiveBadge isActive={Boolean(row.original.isActive)} />
+        ),
       },
       {
         id: 'actions',

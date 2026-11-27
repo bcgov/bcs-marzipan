@@ -183,7 +183,7 @@ export function buildActivityListTabServerScope(
       return userTeamIds.length > 0 ? { sharedWithTeamIds: userTeamIds } : {};
     case 'favourites':
       return {};
-    case 'assigned-to-me':
+    case 'flagged':
       return userId != null ? { flagAssigneeUserIds: [userId] } : {};
     default:
       return {};

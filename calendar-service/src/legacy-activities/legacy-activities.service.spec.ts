@@ -19,7 +19,9 @@ describe('LegacyActivitiesService', () => {
       select: mockSelect,
     };
 
-    const service = new LegacyActivitiesService({ db: mockDb } as any);
+    const service = new LegacyActivitiesService({
+      db: mockDb,
+    } as unknown as DatabaseService);
 
     const limitResult = {
       offset: mockOffset.mockResolvedValue([]),

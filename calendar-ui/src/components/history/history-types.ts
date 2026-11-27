@@ -1,9 +1,11 @@
+import type { UserColourKey } from '@corpcal/shared';
 import type { HistoryChange } from '@corpcal/shared/api/types';
 
 export type HistoryActorViewModel = {
   id?: number;
   name: string;
   username?: string | null;
+  userColourKey?: UserColourKey;
 };
 
 export type HistorySubjectViewModel = {

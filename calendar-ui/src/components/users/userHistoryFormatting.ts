@@ -1,3 +1,4 @@
+import { getUserColourLabel, isUserColourKey } from '@corpcal/shared';
 import type { HistoryChange } from '@corpcal/shared/api/types';
 
 export interface UserHistoryLookups {
@@ -24,7 +25,7 @@ const USER_HISTORY_FIELD_LABELS: Record<string, string> = {
   isEventPlanner: 'Event planner',
   directLoginEnabled: 'Direct login enabled',
   notes: 'Notes',
-  flagColour: 'Flag colour',
+  userColourKey: 'User colour',
   teamRole: 'Team role',
   targetUserId: 'Transfer target',
   fromTeamId: 'From team',
@@ -116,6 +117,10 @@ export function formatUserHistoryValue(
       return `${countLabel}: ${labels.join(', ')}`;
     }
     return `${countLabel}: ${labels.slice(0, maxListed).join(', ')}, …`;
+  }
+
+  if (field === 'userColourKey' && typeof value === 'string') {
+    return isUserColourKey(value) ? getUserColourLabel(value) : value;
   }
 
   if (typeof value === 'boolean') return formatBooleanValue(field, value);

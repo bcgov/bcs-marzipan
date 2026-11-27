@@ -13,7 +13,11 @@ export function toUserHistoryViewModel(
 ): HistoryEntryViewModel {
   return {
     id: entry.id,
-    actor: fallbackHistoryActor(entry.changedByUserName, entry.changedByUserId),
+    actor: fallbackHistoryActor(
+      entry.changedByUserName,
+      entry.changedByUserId,
+      entry.changedByUserColourKey
+    ),
     actionLabel: humanizeHistoryAction(entry.actionType),
     changes: (entry.changes ?? []).map((change, index) => ({
       key: `${change.field}-${index}`,

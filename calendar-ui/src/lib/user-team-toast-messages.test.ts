@@ -9,14 +9,15 @@ import {
 } from './user-team-toast-messages';
 
 describe('resolveUserDisplayName', () => {
-  it('prefers adDisplayName', () => {
+  it('prefers CorpCal displayName override over AD fields', () => {
     expect(
       resolveUserDisplayName({
+        displayName: 'CorpCal Name',
         adDisplayName: 'Jane Smith',
         adUsername: 'jsmith',
         id: 1,
       })
-    ).toBe('Jane Smith');
+    ).toBe('CorpCal Name');
   });
 });
 

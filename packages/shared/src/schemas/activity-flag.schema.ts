@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
+import { userColourKeySchema } from '../user-colour/userColourPalette';
+
 /**
  * Activity Flag schemas
  *
- * An activity flag assigns one team member to an activity per team.
+ * An activity flag marks one team member per activity per team for follow-up.
  * Rules:
  *   - At most one flag per (activity_id, team_id).
  *   - Any team member with activities.flag permission can set or replace the flag.
@@ -20,8 +22,8 @@ export const activityFlagResponseSchema = z.object({
   assigneeName: z.string(),
   assignedById: z.number().int(),
   note: z.string().nullable(),
-  /** Hex flag colour set by an admin for this assignee. Null means use the app default. */
-  assigneeFlagColour: z.string().nullable(),
+  /** Identity colour for the flagged user (avatar + flag badge). */
+  userColourKey: userColourKeySchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
