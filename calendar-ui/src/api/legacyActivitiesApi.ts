@@ -22,6 +22,9 @@ export type LegacyActivity = {
   leadOrgName: string | null;
   ministryName: string | null;
   locationName: string | null;
+  commsMaterials: string[];
+  translations: string[];
+  commsContactName: string | null;
   createdDateTime: string | null;
   importedAt: string | null;
 };

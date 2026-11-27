@@ -4,11 +4,7 @@ export { CategoryBadgesCell } from './CategoryCells';
 export { ConfidentialIssueLabels } from './ConfidentialIssueLabels';
 export { formatLookAheadBadgeLabel } from './formatLookAheadBadgeLabel';
 export { LeadContactLine } from './LeadContactLine';
-export {
-  LegacyCommsCell,
-  LegacyOverviewCell,
-  LegacyStatusCell,
-} from './LegacyCells';
+export { LegacyOverviewCell, LegacyStatusCell } from './LegacyCells';
 export { LookAheadStatusBadge } from './LookAheadStatusBadge';
 export { MaterialsCellCompact } from './MaterialsCellCompact';
 export { OverflowTextList } from './OverflowTextList';

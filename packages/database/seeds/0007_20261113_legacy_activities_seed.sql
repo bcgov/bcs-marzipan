@@ -45,6 +45,7 @@ INSERT INTO legacy_activities (
       "notes": "Prepared for the regional team.",
       "executiveSummary": "The minister will provide a regional update on community investment.",
       "commsMaterials": ["News release", "Social media"],
+      "commsContactName": "Jordan Lee",
       "newsReleaseOrigin": "Ministry",
       "newsReleaseDistribution": "Province-wide",
       "translations": ["French", "Punjabi"],

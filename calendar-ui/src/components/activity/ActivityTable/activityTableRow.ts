@@ -257,7 +257,7 @@ export function mapLegacyActivityToTableRow(
     leadMinistryAbbreviation: null,
     leadTeamDisplayName: null,
     commsLeadName: null,
-    commsContactName: null,
+    commsContactName: legacy.commsContactName,
     eventPlanners: [],
     eventPlannerLeadIds: [],
     leadTeamId: null,
@@ -265,10 +265,10 @@ export function mapLegacyActivityToTableRow(
     commsContactLeadUserId: null,
     commsContactUserIds: [],
 
-    translationsRequired: [],
+    translationsRequired: legacy.translations,
     translationsRequiredStatus: null,
     translationsRequiredStatusId: null,
-    commsMaterials: [],
+    commsMaterials: legacy.commsMaterials,
 
     activityStatus: legacy.activityStatus,
     activityStatusId: legacy.activityStatusId,
