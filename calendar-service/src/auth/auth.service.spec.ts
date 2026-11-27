@@ -49,6 +49,16 @@ function makeChain(resolvedValue: unknown = []) {
   chain['limit'].mockResolvedValue(resolvedValue);
   chain['values'].mockResolvedValue(resolvedValue);
   chain['catch'].mockResolvedValue(resolvedValue);
+  // Drizzle builders are thenable when the chain ends without limit()
+  (
+    chain as unknown as {
+      then: (
+        onFulfilled: (value: unknown) => unknown,
+        onRejected?: (reason: unknown) => unknown
+      ) => Promise<unknown>;
+    }
+  ).then = (onFulfilled, onRejected) =>
+    Promise.resolve(resolvedValue).then(onFulfilled, onRejected);
   return chain;
 }
 
@@ -70,6 +80,7 @@ vi.mock('./strategies/local.strategy', () => ({
 }));
 
 vi.mock('./strategies/ad.strategy', () => ({
+  findAuthUserById: vi.fn(),
   findUserByEmail: vi.fn(),
   findUserByEmailAnyStatus: vi.fn(),
   findUserByExternalId: vi.fn(),
@@ -202,6 +213,7 @@ describe('AuthService — local auth methods', () => {
     overrides: Partial<{
       id: number;
       roleId: number;
+      displayName: string | null;
       adUsername: string | null;
       adDisplayName: string | null;
       adEmail: string | null;
@@ -214,6 +226,7 @@ describe('AuthService — local auth methods', () => {
     return {
       id: 1,
       roleId: 1,
+      displayName: null,
       adUsername: 'testuser',
       adDisplayName: 'Test User',
       adEmail: 'test@example.com',
@@ -606,6 +619,46 @@ describe('AuthService — local auth methods', () => {
       vi.mocked(findUserByIdLocal).mockResolvedValue(makeLocalUser());
       const token = await service.createPasswordResetToken(1);
       expect(token).toMatch(/^[0-9a-f]{32}$/);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // hydrateCurrentUser()
+  // -------------------------------------------------------------------------
+
+  describe('hydrateCurrentUser()', () => {
+    it('re-reads display name and colour from the database', async () => {
+      vi.mocked(adStrategy.findAuthUserById).mockResolvedValue({
+        id: 5,
+        roleId: 2,
+        displayName: 'CorpCal Override',
+        adUsername: 'user5',
+        adDisplayName: 'AD Name',
+        adEmail: 'five@gov.bc.ca',
+        status: 'active',
+      });
+      localMockDb.select = vi
+        .fn()
+        .mockReturnValue(makeChain([{ userId: 5, userColourKey: 'teal' }]));
+
+      const result = await service.hydrateCurrentUser({
+        id: 5,
+        username: 'stale',
+        displayName: 'Stale JWT',
+        email: 'old@gov.bc.ca',
+        roleId: 2,
+        roleName: 'Editor',
+        permissions: [],
+        teamIds: [],
+        bypassDataScoping: false,
+        userColourKey: 'red',
+      });
+
+      expect(result.displayName).toBe('CorpCal Override');
+      expect(result.username).toBe('user5');
+      expect(result.email).toBe('five@gov.bc.ca');
+      expect(result.userColourKey).toBe('teal');
+      expect(result.roleName).toBe('Editor');
     });
   });
 

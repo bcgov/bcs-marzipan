@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserListItem } from '@corpcal/shared/api/types';
 import { fetchRoles, fetchTeams, fetchUsers } from '@/api/usersApi';
+import { ActiveInactiveBadge } from '@/components/shared/ActiveInactiveBadge';
 import { ContentSection } from '@/components/table/ContentSection';
 import { FilterSection } from '@/components/table/FilterSection';
 import { SortIndicator } from '@/components/table/SortIndicator';
@@ -31,6 +32,7 @@ import {
   TableFilterSummary,
 } from '@/components/table/TableSummaryBar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserColouredAvatar } from '@/components/users/UserColouredAvatar';
 import { UserManagementFilters } from '@/components/users/UserManagementFilters';
 import { lookupQueryKeys } from '@/lib/lookupQueryKeys';
 import {
@@ -38,6 +40,7 @@ import {
   buildUserFilterDetailLines,
   hasUserClearableFilters,
 } from '@/lib/management-filter-summary';
+import { resolveUserDisplayName } from '@/lib/user-team-toast-messages';
 
 const SKELETON_ROW_COUNT = 8;
 const SKELETON_DELAY_MS = 300;
@@ -48,8 +51,18 @@ const DEFAULT_PAGE_SIZE = 10;
 
 type UserSortKey = 'name' | 'role' | 'lastUpdated';
 
-function displayName(user: UserListItem): string {
-  return user.adDisplayName || user.adUsername || `User ${user.id}`;
+function userListLabel(user: UserListItem): string {
+  return resolveUserDisplayName(user);
+}
+
+function displayInitials(user: UserListItem): string {
+  const name = userListLabel(user);
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
 }
 
 function formatLastUpdated(iso: string | null | undefined): string {
@@ -68,20 +81,6 @@ function formatLastUpdated(iso: string | null | undefined): string {
   }
 }
 
-function statusBadge(isActive: boolean) {
-  return (
-    <span
-      className={
-        isActive
-          ? 'rounded bg-green-100 px-2 py-0.5 text-xs text-green-800'
-          : 'rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600'
-      }
-    >
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
-  );
-}
-
 function compareUsers(
   a: UserListItem,
   b: UserListItem,
@@ -91,8 +90,8 @@ function compareUsers(
   const mult = direction === 'asc' ? 1 : -1;
   switch (sortKey) {
     case 'name': {
-      const na = (a.adDisplayName ?? a.adUsername ?? '').toLowerCase();
-      const nb = (b.adDisplayName ?? b.adUsername ?? '').toLowerCase();
+      const na = userListLabel(a).toLowerCase();
+      const nb = userListLabel(b).toLowerCase();
       return mult * na.localeCompare(nb);
     }
     case 'role': {
@@ -376,7 +375,10 @@ export function UsersTabContent() {
                 Array.from({ length: SKELETON_ROW_COUNT }, (_, i) => (
                   <tr key={i} className={tableBodyRow} aria-hidden>
                     <td className={tableTd}>
-                      <Skeleton className="h-5 w-28" />
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="size-8 shrink-0 rounded-full" />
+                        <Skeleton className="h-5 w-28" />
+                      </div>
                     </td>
                     <td className={tableTd}>
                       <Skeleton className="h-5 w-36" />
@@ -411,7 +413,7 @@ export function UsersTabContent() {
                   <tr
                     key={user.id}
                     role="button"
-                    aria-label={`View user ${displayName(user)}`}
+                    aria-label={`View user ${userListLabel(user)}`}
                     className={`${tableBodyRow} focus-visible:bg-accent/30 cursor-pointer focus-visible:outline-none`}
                     tabIndex={0}
                     onClick={(e) => {
@@ -426,7 +428,15 @@ export function UsersTabContent() {
                     }}
                   >
                     <td className={`${tableTd} font-medium text-slate-900`}>
-                      {displayName(user)}
+                      <span className="inline-flex items-center gap-2">
+                        <UserColouredAvatar
+                          userColourKey={user.userColourKey}
+                          initials={displayInitials(user)}
+                          size="sm"
+                          decorative
+                        />
+                        {userListLabel(user)}
+                      </span>
                     </td>
                     <td className={`${tableTd} text-slate-600`}>
                       {user.adEmail ?? '-'}
@@ -455,7 +465,9 @@ export function UsersTabContent() {
                         )}
                       </div>
                     </td>
-                    <td className={tableTd}>{statusBadge(user.isActive)}</td>
+                    <td className={tableTd}>
+                      <ActiveInactiveBadge isActive={user.isActive} />
+                    </td>
                     <td className={`${tableTd} text-sm text-slate-600`}>
                       {formatLastUpdated(
                         (user as { lastUpdatedDateTime?: string | null })

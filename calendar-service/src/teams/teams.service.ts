@@ -17,6 +17,7 @@ import {
   users,
   userTeams,
 } from '@corpcal/database/schema';
+import { resolveUserDisplayName } from '@corpcal/shared';
 import type {
   CommsContactCandidate,
   CreateTeamBody,
@@ -28,6 +29,7 @@ import type {
 } from '@corpcal/shared/api/types';
 
 import { ActivityDisplayIdSyncService } from '../activities/services/activity-display-id-sync.service';
+import { loadUserColourKeysByIds } from '../common/user-colour-keys';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -90,15 +92,19 @@ export class TeamsService {
   private async fetchCommsEligibleUsersForTeam(teamId: number): Promise<
     Array<{
       id: number;
+      displayName: string | null;
       adDisplayName: string | null;
       adUsername: string | null;
+      adEmail: string | null;
     }>
   > {
     return this.databaseService.db
       .select({
         id: users.id,
+        displayName: users.displayName,
         adDisplayName: users.adDisplayName,
         adUsername: users.adUsername,
+        adEmail: users.adEmail,
       })
       .from(userTeams)
       .innerJoin(users, eq(users.id, userTeams.userId))
@@ -143,12 +149,12 @@ export class TeamsService {
     const rows = await this.fetchCommsEligibleUsersForTeam(teamId);
     const sorted = sortByStaffName(
       rows,
-      (u) => u.adDisplayName ?? u.adUsername ?? `User ${u.id}`,
+      (u) => resolveUserDisplayName(u),
       (u) => u.id
     );
 
     return sorted.map((u) => {
-      const label = u.adDisplayName ?? u.adUsername ?? `User ${u.id}`;
+      const label = resolveUserDisplayName(u);
       return { id: u.id, label, value: u.id };
     });
   }
@@ -331,17 +337,16 @@ export class TeamsService {
         ? await this.databaseService.db
             .select({
               id: users.id,
+              displayName: users.displayName,
               adDisplayName: users.adDisplayName,
               adUsername: users.adUsername,
+              adEmail: users.adEmail,
             })
             .from(users)
             .where(inArray(users.id, userIds))
         : [];
     const userMap = new Map(
-      userRows.map((u) => [
-        u.id,
-        u.adDisplayName || u.adUsername || `User ${u.id}`,
-      ])
+      userRows.map((u) => [u.id, resolveUserDisplayName(u)])
     );
 
     let primaryOrganizationName: string | null = null;
@@ -634,17 +639,21 @@ export class TeamsService {
         ? await this.databaseService.db
             .select({
               id: users.id,
+              displayName: users.displayName,
               adDisplayName: users.adDisplayName,
               adUsername: users.adUsername,
+              adEmail: users.adEmail,
             })
             .from(users)
             .where(inArray(users.id, changerIds))
         : [];
     const changerMap = new Map(
-      changerRows.map((u) => [
-        u.id,
-        u.adDisplayName || u.adUsername || `User ${u.id}`,
-      ])
+      changerRows.map((u) => [u.id, resolveUserDisplayName(u)])
+    );
+
+    const colourKeyMap = await loadUserColourKeysByIds(
+      this.databaseService.db,
+      changerIds
     );
 
     return entries.map((e) => ({
@@ -659,6 +668,7 @@ export class TeamsService {
           ? e.timestamp.toISOString()
           : String(e.timestamp),
       changedByUserName: changerMap.get(e.changedByUserId),
+      changedByUserColourKey: colourKeyMap.get(e.changedByUserId),
     }));
   }
 }

@@ -59,11 +59,11 @@ export class ActivityFlagsController {
   ) {}
 
   @ApiOperation({
-    summary: 'Assign (flag) an activity',
+    summary: 'Flag an activity (single assignee, legacy)',
     description:
-      'Legacy single-assignee endpoint. Assigns one team member to an activity for follow-up. ' +
-      'Internally syncs the full assignee set for the given (activity, team) pair to exactly one assignee, ' +
-      'so calling this route will remove any other existing assignees for that team. ' +
+      'Legacy single-assignee endpoint. Flags one team member on an activity for follow-up. ' +
+      'Internally syncs the full flagged set for the given (activity, team) pair to exactly one assignee, ' +
+      'so calling this route will remove any other existing flags for that team. ' +
       'Prefer PUT /activities/:id/flags for multi-assignee updates. ' +
       "Requires activities.flag permission. The caller's teamId must be provided in the body.",
   })
@@ -103,10 +103,10 @@ export class ActivityFlagsController {
   }
 
   @ApiOperation({
-    summary: 'Sync reviewer assignees for an activity',
+    summary: 'Sync flagged reviewers for an activity',
     description:
-      'Sets the full assignee list for the given (activity, team) pair. ' +
-      'Adds missing assignees and removes assignees not present in the provided list. ' +
+      'Sets the full flagged assignee list for the given (activity, team) pair. ' +
+      'Adds missing flags and removes assignees not present in the provided list. ' +
       'This is the only write endpoint for activity flags. ' +
       'Requires activities.flag permission and a teamId the caller belongs to.',
   })

@@ -716,14 +716,14 @@ When `AUTH_STRATEGY=azure`:
 2. Backend redirects to Azure AD using OpenID Connect authorization code flow.
 3. Callback (`/auth/azure/callback`) validates state/nonce and exchanges code for tokens.
 4. User is matched by `externalId` first, then by email if needed.
-5. Local user profile is synced (`externalId`, username, display name, email, last login).
+5. Microsoft identity fields are synced on each sign-in: `externalId`, `ad_username`, `ad_display_name`, `ad_email`, and last login. The optional CorpCal `display_name` override is **not** changed by sign-in.
 6. JWT is issued and stored in the httpOnly auth cookie.
 
 If no active local account can be linked, login is denied with `azure_no_account`.
 
 ### Adding users
 
-Admins with the `users.create` permission can add users via **Add user** on the User Management page. They provide the user's **email** (required), role, and optionally display name and initial team(s). A local account is created; email is required so the user can be matched when they first sign in with Microsoft. When that person signs in with Azure AD, they are matched by email and their identity is linked. No separate invite email is sent; the user must use the same email address when signing in.
+Admins with the `users.create` permission can add users via **Add user** on the User Management page. They provide the user's **email** (required), role, and optionally a CorpCal **display name**, colour, and initial team(s). No IDIR username is required at provision time. Email is used to match the account on first Microsoft sign-in. When Azure AD sync runs, Microsoft mirror fields update automatically; an admin-set display name override continues to win in the UI until cleared ( **Use Microsoft name** in edit user).
 
 ## Active Directory Integration (Production)
 
@@ -754,6 +754,15 @@ The new system provides:
 - JWT-based stateless authentication
 
 See [SCHEMA_MAPPING.md](../packages/database/src/schema/docs/SCHEMA_MAPPING.md) for detailed field mappings.
+
+## Manual verification (display name split)
+
+After applying the `display_name` migration:
+
+1. Create a user with email and a CorpCal display name override; confirm list/detail show the override.
+2. Sign in as that user with Microsoft (or mock Azure claims); confirm `ad_display_name` updates and the override still shows in CorpCal.
+3. Edit user, choose **Use Microsoft name**, save; confirm the effective label matches Microsoft name.
+4. Create user with email only (no override); before first SSO, list shows email; after SSO, name comes from Microsoft unless override is set.
 
 ## Future Work
 

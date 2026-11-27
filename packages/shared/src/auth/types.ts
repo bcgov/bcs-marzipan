@@ -3,6 +3,8 @@
  * Used by calendar-service and calendar-ui (and future MediaHub)
  */
 
+import type { UserColourKey } from '../user-colour/userColourPalette';
+
 export interface AuthUser {
   id: number;
   username: string;
@@ -14,6 +16,8 @@ export interface AuthUser {
   teamIds: number[];
   /** When true, user sees all activities (from user role or any team role). Set at login. */
   bypassDataScoping?: boolean;
+  /** Present on authenticated JWT/session user; omitted in some test fixtures. */
+  userColourKey?: UserColourKey;
 }
 
 export interface Permission {

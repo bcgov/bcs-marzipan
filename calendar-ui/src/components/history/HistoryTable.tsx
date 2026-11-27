@@ -18,6 +18,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { defaultUserColourKeyForUserId } from '@corpcal/shared';
 import {
   tableBodyRow,
   tableTable,
@@ -25,6 +26,7 @@ import {
   tableTh,
   tableThead,
 } from '@/components/table/tableConstants';
+import { UserColouredAvatar } from '@/components/users/UserColouredAvatar';
 import { cn } from '@/lib/utils';
 
 import {
@@ -32,6 +34,7 @@ import {
   historyDetailsHideLabel,
   historyDetailsShowLabel,
 } from './history-details-label';
+import { historyActorInitials } from './history-format';
 import { buildHistoryTableRows } from './history-table-rows';
 import {
   historyTableEntryRowId,
@@ -152,23 +155,36 @@ function pruneExpandedState(
 
 function UserCell({ entry }: { entry: HistoryEntryViewModel }) {
   const team = entry.team?.trim();
+  const actorColourKey =
+    entry.actor.userColourKey ??
+    (entry.actor.id != null
+      ? defaultUserColourKeyForUserId(entry.actor.id)
+      : 'blue');
 
   return (
-    <div className="min-w-0">
-      <span
-        className="text-foreground block truncate text-sm font-medium"
-        title={entry.actor.name}
-      >
-        {entry.actor.name}
-      </span>
-      {team ? (
+    <div className="flex min-w-0 items-center gap-2">
+      <UserColouredAvatar
+        userColourKey={actorColourKey}
+        initials={historyActorInitials(entry.actor)}
+        size="xs"
+        decorative
+      />
+      <div className="min-w-0">
         <span
-          className="text-muted-foreground block truncate text-xs"
-          title={team}
+          className="text-foreground block truncate text-sm font-medium"
+          title={entry.actor.name}
         >
-          {team}
+          {entry.actor.name}
         </span>
-      ) : null}
+        {team ? (
+          <span
+            className="text-muted-foreground block truncate text-xs"
+            title={team}
+          >
+            {team}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }

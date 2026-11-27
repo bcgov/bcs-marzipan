@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom';
 
+import { defaultUserColourKeyForUserId } from '@corpcal/shared';
+import { UserColouredAvatar } from '@/components/users/UserColouredAvatar';
+
+import { historyActorInitials } from './history-format';
 import type {
   HistoryEntryViewModel,
   HistoryListVariant,
@@ -58,12 +62,25 @@ export function HistoryEntry({
       <div className="@container min-w-0">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 gap-y-0.5 text-sm leading-5 @md:grid-cols-[auto_minmax(0,1fr)_auto]">
           <div className="col-start-1 row-start-1 min-w-0">
-            <span
-              className="text-foreground block truncate font-medium"
-              title={entry.actor.name}
-            >
-              {entry.actor.name}
-            </span>
+            <div className="flex min-w-0 items-center gap-2">
+              <UserColouredAvatar
+                userColourKey={
+                  entry.actor.userColourKey ??
+                  (entry.actor.id != null
+                    ? defaultUserColourKeyForUserId(entry.actor.id)
+                    : 'blue')
+                }
+                initials={historyActorInitials(entry.actor)}
+                size="xs"
+                decorative
+              />
+              <span
+                className="text-foreground block min-w-0 truncate font-medium"
+                title={entry.actor.name}
+              >
+                {entry.actor.name}
+              </span>
+            </div>
             {entry.team ? (
               <span
                 className="text-muted-foreground block truncate text-xs"

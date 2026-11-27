@@ -133,7 +133,7 @@ export function UserTransferTabContent({
   }
 
   return (
-    <div className="max-w-2xl space-y-4 py-4">
+    <div className="w-full space-y-4 py-4">
       <TransferActivitiesFields
         mode="transfer"
         sourceUserId={sourceUser.id}

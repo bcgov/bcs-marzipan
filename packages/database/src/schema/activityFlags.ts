@@ -14,7 +14,7 @@ import { teams } from './teams';
 import { users } from './user';
 
 /**
- * ActivityFlags table - Tracks which user is assigned ("flagged") per activity per team.
+ * ActivityFlags table - Tracks which user is flagged per activity per team.
  * Rules:
  *   - Multiple assignees are allowed per (activity, team) pair.
  *   - At most one row per (activity, team, assignee) tuple.

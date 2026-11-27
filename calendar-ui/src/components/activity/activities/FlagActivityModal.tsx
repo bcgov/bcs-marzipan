@@ -29,7 +29,7 @@ interface TeamMemberOption {
   teamName: string;
 }
 
-interface AssignActivityModalProps {
+interface FlagActivityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Existing flags for the current user's teams. */
@@ -46,14 +46,14 @@ interface AssignActivityModalProps {
   displayId?: string;
 }
 
-export function AssignActivityModal({
+export function FlagActivityModal({
   open,
   onOpenChange,
   flags,
   isSubmitting,
   onSync,
   displayId,
-}: AssignActivityModalProps) {
+}: FlagActivityModalProps) {
   const { user } = useAuth();
   const [note, setNote] = useState('');
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
@@ -257,10 +257,10 @@ export function AssignActivityModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Assign activity</DialogTitle>
+          <DialogTitle>Flag activity</DialogTitle>
           <DialogDescription>
-            Select teammates to assign for follow-up. Assignments are visible to
-            all teammates in the activities list.
+            Select teammates to flag for follow-up. Flags are visible to all
+            teammates in the activities list.
           </DialogDescription>
         </DialogHeader>
 
@@ -273,9 +273,9 @@ export function AssignActivityModal({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Assignees</Label>
+            <Label>Flagged</Label>
             <p className="text-muted-foreground text-xs">
-              Select assignees and choose their team below
+              Select teammates and choose their team below
             </p>
             {loadingMembers ? (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
@@ -299,7 +299,7 @@ export function AssignActivityModal({
                   >
                     {selectedMemberIds.length === 0 ? (
                       <span className="text-muted-foreground px-1">
-                        Select assignees…
+                        Select teammates…
                       </span>
                     ) : (
                       selectedMemberIds.map((memberId) => {
@@ -495,7 +495,7 @@ export function AssignActivityModal({
                   Saving…
                 </>
               ) : (
-                'Save assignments'
+                'Save flags'
               )}
             </Button>
           </div>

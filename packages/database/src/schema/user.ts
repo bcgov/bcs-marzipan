@@ -37,6 +37,8 @@ export const users = pgTable(
     adDivision: varchar('ad_division', { length: 255 }), // Active Directory division
     adDepartment: varchar('ad_department', { length: 255 }), // Active Directory department
     adJobTitle: varchar('ad_job_title', { length: 255 }), // Active Directory job title
+    /** CorpCal display label; overrides adDisplayName in UI when set. Not synced from AD. */
+    displayName: varchar('display_name', { length: 255 }),
     // Local auth credentials (AUTH_STRATEGY=local)
     passwordHash: varchar('password_hash', { length: 255 }), // bcrypt hash; null for pending/Azure-only users
     status: varchar('status', { length: 30 }).notNull().default('active'), // pending | active | inactive | password_reset_required
@@ -72,6 +74,10 @@ export const users = pgTable(
     index('idx_users_ad_username_trgm').using(
       'gin',
       sql`lower(${table.adUsername}) gin_trgm_ops`
+    ),
+    index('idx_users_display_name_trgm').using(
+      'gin',
+      sql`lower(${table.displayName}) gin_trgm_ops`
     ),
   ]
 );

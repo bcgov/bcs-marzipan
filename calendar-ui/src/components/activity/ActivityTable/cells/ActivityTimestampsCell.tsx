@@ -1,4 +1,8 @@
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  defaultUserColourKeyForUserId,
+  type UserColourKey,
+} from '@corpcal/shared';
+import { UserColouredAvatar } from '@/components/users/UserColouredAvatar';
 import {
   CORP_PACIFIC_TIME_ZONE,
   formatExactDate,
@@ -9,9 +13,11 @@ import { cn } from '@/lib/utils';
 import type { ActivityTableRow } from '../activityTableRow';
 import { getInitialsFromName } from '../activityTableRowDisplay';
 
-/** Compact avatar for inline “updated by” / editor rows in Grid A status column. */
-const COMPACT_AVATAR_CLASS = 'size-[18px]';
-const COMPACT_AVATAR_FALLBACK_CLASS = 'text-[10px] leading-none';
+type UserMapEntry = {
+  name: string;
+  jobTitle?: string | null;
+  userColourKey?: UserColourKey;
+};
 
 function UserAvatar({
   userMap,
@@ -19,30 +25,30 @@ function UserAvatar({
   fallbackName,
   compact = false,
 }: {
-  userMap: Map<string, { name: string; jobTitle?: string | null }>;
+  userMap: Map<string, UserMapEntry>;
   userId: number;
   fallbackName: string;
   compact?: boolean;
 }) {
-  const userName = userMap.get(String(userId))?.name || fallbackName;
+  const entry = userMap.get(String(userId));
+  const userName = entry?.name || fallbackName;
+  const userColourKey =
+    entry?.userColourKey ?? defaultUserColourKeyForUserId(userId);
+
   return (
-    <Avatar
-      className={compact ? COMPACT_AVATAR_CLASS : undefined}
-      size={compact ? undefined : 'sm'}
+    <UserColouredAvatar
+      userColourKey={userColourKey}
+      initials={getInitialsFromName(userName)}
+      size={compact ? 'xs' : 'sm'}
       title={userName}
-    >
-      <AvatarFallback
-        className={compact ? COMPACT_AVATAR_FALLBACK_CLASS : undefined}
-      >
-        {getInitialsFromName(userName)}
-      </AvatarFallback>
-    </Avatar>
+      decorative
+    />
   );
 }
 
 export interface ActivityTimestampsCellProps {
   row: ActivityTableRow;
-  userMap: Map<string, { name: string; jobTitle?: string | null }>;
+  userMap: Map<string, UserMapEntry>;
   /** Show the avatar of the user who last updated the activity. */
   showUpdatedByAvatar?: boolean;
   /** Omit the Updated line when only the original creation timestamp is available. */

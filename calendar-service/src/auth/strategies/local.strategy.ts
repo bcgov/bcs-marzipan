@@ -18,6 +18,7 @@ export interface LocalAuthDbUser extends AuthDbUser {
 const LOCAL_AUTH_COLUMNS = {
   id: users.id,
   roleId: users.roleId,
+  displayName: users.displayName,
   adUsername: users.adUsername,
   adDisplayName: users.adDisplayName,
   adEmail: users.adEmail,

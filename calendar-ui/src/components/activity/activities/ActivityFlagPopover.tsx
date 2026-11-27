@@ -2,13 +2,19 @@
  * ActivityFlagPopover
  *
  * A quick-assign popover shown from the Activity List row (no modal, no notes).
- * Opens when the Flag button is clicked; shows a searchable list of teammates
- * with a multi-select checkbox pattern.
+ * Opens when the Flag button is clicked; lists teammates with checkboxes.
+ * Flags sync when the popover closes (search appears for large teams).
  *
- * Same flag semantics as AssignActivityModal but inline, no note field.
+ * Same flag semantics as FlagActivityModal but inline, no note field.
  */
 import { ChevronDown } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import type { ActivityFlagResponse } from '@corpcal/shared/api/types';
 import { fetchUsers } from '@/api/usersApi';
@@ -16,9 +22,12 @@ import {
   ActivityFlagIcon,
   type ActivityFlagIconSize,
 } from '@/components/activity/activities/ActivityFlagIcon';
-import { FilterSearchableList } from '@/components/activity/ActivityTable/FilterSearchableList';
+import { FilterCheckboxItem } from '@/components/activity/ActivityTable/FilterCheckboxItem';
+import {
+  FILTER_SEARCHABLE_LIST_SEARCH_THRESHOLD,
+  FilterSearchableList,
+} from '@/components/activity/ActivityTable/FilterSearchableList';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Popover,
   PopoverContent,
@@ -71,6 +80,8 @@ export function ActivityFlagPopover({
   const [open, setOpen] = useState(false);
   const [members, setMembers] = useState<TeamMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [membersLoadedSuccessfully, setMembersLoadedSuccessfully] =
+    useState(false);
   const [draftAssigneeIds, setDraftAssigneeIds] = useState<number[]>([]);
   const [selectedTeamPerUser, setSelectedTeamPerUser] = useState<
     Record<number, number>
@@ -111,13 +122,6 @@ export function ActivityFlagPopover({
     .map((f) => f.assigneeName)
     .join(', ');
   const iconFlag = existingFlagsForPrimaryTeam[0] ?? null;
-  const primaryTeamMembers = useMemo(
-    () =>
-      primaryTeamId == null
-        ? []
-        : members.filter((member) => member.teamId === primaryTeamId),
-    [members, primaryTeamId]
-  );
 
   // Fetch team members each time the popover opens.
   // Uses GET /users?teamIds=... which returns each user with their full teams array,
@@ -125,6 +129,7 @@ export function ActivityFlagPopover({
   useEffect(() => {
     if (!open || teamIds.length === 0) return;
     setLoadingMembers(true);
+    setMembersLoadedSuccessfully(false);
     fetchUsers({ teamIds })
       .then((userList) => {
         // Expand each user into one TeamMemberOption per team that overlaps with
@@ -164,10 +169,12 @@ export function ActivityFlagPopover({
           }
         });
         setSelectedTeamPerUser(initialSelectedTeam);
+        setMembersLoadedSuccessfully(true);
       })
       .catch(() => {
         setMembers([]);
         setSelectedTeamPerUser({});
+        setMembersLoadedSuccessfully(false);
       })
       .finally(() => setLoadingMembers(false));
   }, [open, teamIds, teamIdSet, existingFlags, primaryTeamId]);
@@ -214,12 +221,11 @@ export function ActivityFlagPopover({
     });
   }, [members, primaryTeamId, user]);
 
-  // Seed draft selection from server state when opening so users can multi-select before saving.
+  // Seed draft from server when opening; reset nested UI on close (keep members until
+  // unmount/exit animation so the list does not flash empty).
   useEffect(() => {
     if (!open) {
       setOpenTeamSubmenuForUser(null);
-      setMembers([]);
-      setSelectedTeamPerUser({});
       return;
     }
     setDraftAssigneeIds(selectedAssigneeIds);
@@ -233,13 +239,43 @@ export function ActivityFlagPopover({
     );
   };
 
-  const handleSave = () => {
-    if (!primaryTeamId) return;
+  const commitAssignmentsIfDirty = useCallback(() => {
+    if (
+      isPending ||
+      !primaryTeamId ||
+      loadingMembers ||
+      !membersLoadedSuccessfully
+    ) {
+      return;
+    }
+
     const nextAssigneeIds = draftAssigneeIds.filter((assigneeId) => {
       const userTeams = userTeamsMap.get(assigneeId) ?? [];
-      // Assign to the primary team only
       return userTeams.some((m) => m.teamId === primaryTeamId);
     });
+
+    const sortedNext = [...nextAssigneeIds].sort((a, b) => a - b);
+    const sortedServer = [...selectedAssigneeIds].sort((a, b) => a - b);
+    const assigneesDirty =
+      sortedNext.length !== sortedServer.length ||
+      sortedNext.some((id, index) => id !== sortedServer[index]);
+
+    let displayTeamsDirty = false;
+    if (!assigneesDirty) {
+      for (const assigneeId of sortedNext) {
+        const serverFlag = existingFlagsForPrimaryTeam.find(
+          (f) => f.assigneeId === assigneeId
+        );
+        const serverTeam = serverFlag?.displayTeamId ?? primaryTeamId;
+        const draftTeam = selectedTeamPerUser[assigneeId] ?? primaryTeamId;
+        if (serverTeam !== draftTeam) {
+          displayTeamsDirty = true;
+          break;
+        }
+      }
+    }
+
+    if (!assigneesDirty && !displayTeamsDirty) return;
 
     const selectedNames = members
       .filter(
@@ -247,20 +283,39 @@ export function ActivityFlagPopover({
       )
       .map((m) => m.label);
     onSync(primaryTeamId, nextAssigneeIds, selectedNames, selectedTeamPerUser);
+  }, [
+    draftAssigneeIds,
+    existingFlagsForPrimaryTeam,
+    isPending,
+    loadingMembers,
+    members,
+    onSync,
+    primaryTeamId,
+    selectedAssigneeIds,
+    selectedTeamPerUser,
+    membersLoadedSuccessfully,
+    userTeamsMap,
+  ]);
 
-    setOpen(false);
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setOpen(false);
+      commitAssignmentsIfDirty();
+      return;
+    }
+    setOpen(true);
   };
 
   if (readOnly) {
     if (!isFlagged || !iconFlag) return null;
     return (
       <span
-        title={`Assigned to ${flaggedLabel}`}
-        aria-label={`Assigned to ${flaggedLabel}`}
+        title={`Flagged: ${flaggedLabel}`}
+        aria-label={`Flagged: ${flaggedLabel}`}
       >
         <ActivityFlagIcon
           assigneeName={iconFlag.assigneeName}
-          assigneeFlagColour={iconFlag.assigneeFlagColour}
+          userColourKey={iconFlag.userColourKey}
           size={iconSize}
         />
       </span>
@@ -268,7 +323,7 @@ export function ActivityFlagPopover({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -276,10 +331,14 @@ export function ActivityFlagPopover({
           size={triggerClassName ? 'icon-xs' : triggerContent ? 'sm' : 'icon'}
           aria-label={
             isFlagged
-              ? 'Assigned — click to edit assignments'
-              : 'Assign activity'
+              ? `Flagged: ${flaggedLabel} — click to edit`
+              : 'Flag activity'
           }
-          title={isFlagged ? `Assigned to ${flaggedLabel}` : 'Assign activity'}
+          title={
+            isFlagged
+              ? `Flagged: ${flaggedLabel} — click to edit`
+              : 'Flag activity'
+          }
           disabled={isPending || !primaryTeamId}
           data-no-row-nav
           onClick={(e) => e.stopPropagation()}
@@ -299,7 +358,7 @@ export function ActivityFlagPopover({
           {triggerContent ?? (
             <ActivityFlagIcon
               assigneeName={isFlagged ? (iconFlag?.assigneeName ?? null) : null}
-              assigneeFlagColour={iconFlag?.assigneeFlagColour}
+              userColourKey={iconFlag?.userColourKey}
               size={iconSize}
             />
           )}
@@ -312,7 +371,7 @@ export function ActivityFlagPopover({
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-muted-foreground px-3 pt-3 pb-1 text-[12px] font-medium tracking-wide uppercase">
-          Assign activity
+          Flag activity
         </p>
         {loadingMembers ? (
           <div className="text-muted-foreground px-3 py-4 text-center text-sm">
@@ -321,6 +380,9 @@ export function ActivityFlagPopover({
         ) : (
           <FilterSearchableList
             options={options}
+            showSearch={
+              options.length > FILTER_SEARCHABLE_LIST_SEARCH_THRESHOLD
+            }
             searchPlaceholder="Search teammates..."
             emptyMessage="No teammates found."
             renderOption={(opt) => {
@@ -339,22 +401,13 @@ export function ActivityFlagPopover({
               return (
                 <>
                   <div className="flex w-full items-center gap-2 px-3 py-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleToggle(memberId)}
-                      aria-pressed={isSelected}
-                      className="hover:bg-accent hover:text-accent-foreground flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1 text-left"
+                    <FilterCheckboxItem
+                      checked={isSelected}
+                      onCheckedChange={() => handleToggle(memberId)}
+                      className="min-w-0 flex-1 rounded px-1.5 py-1 pl-1.5"
                     >
-                      <Checkbox
-                        checked={isSelected}
-                        tabIndex={-1}
-                        className="pointer-events-none size-4 shrink-0"
-                        aria-hidden
-                      />
-                      <span className="min-w-0 truncate text-sm">
-                        {opt.label}
-                      </span>
-                    </button>
+                      {opt.label}
+                    </FilterCheckboxItem>
                     <div className="flex items-center gap-1">
                       {hasMultipleTeams ? (
                         <Popover
@@ -423,20 +476,6 @@ export function ActivityFlagPopover({
               );
             }}
           />
-        )}
-        {!loadingMembers && (
-          <div className="flex justify-end border-t px-3 py-2">
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleSave}
-              disabled={
-                isPending || !primaryTeamId || primaryTeamMembers.length === 0
-              }
-            >
-              Save assignments
-            </Button>
-          </div>
         )}
       </PopoverContent>
     </Popover>

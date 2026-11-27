@@ -10,6 +10,7 @@ import {
   parseActivityLockChangedPayload,
   registerRemoteHighlightQueue,
   scheduleLiveActivityRefresh,
+  suppressLiveRowHighlightForActivity,
 } from './liveActivitySync';
 
 describe('liveActivitySync', () => {
@@ -110,6 +111,25 @@ describe('liveActivitySync', () => {
     ).toBe(true);
 
     invalidateSpy.mockRestore();
+  });
+
+  it('does not queue remote highlight for a recently local-saved activity', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const queued: number[] = [];
+    registerRemoteHighlightQueue({
+      queueRemoteHighlight: (id) => queued.push(id),
+    });
+
+    suppressLiveRowHighlightForActivity(42);
+    scheduleLiveActivityRefresh(queryClient, {
+      source: 'remote',
+      activityId: 42,
+    });
+    vi.advanceTimersByTime(LIVE_ACTIVITY_REFRESH_DEBOUNCE_MS + 1);
+
+    expect(queued).toEqual([]);
   });
 
   it('forwards remote highlight ids to the registered queue without consuming', () => {

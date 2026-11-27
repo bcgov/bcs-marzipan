@@ -132,7 +132,10 @@ export function ActivityTable(coreOptions: ActivityTableProps = {}) {
                     assigneeNames,
                   })
                 }
-                flagPending={syncFlagsMutation.isPending}
+                flagPending={
+                  syncFlagsMutation.isPending &&
+                  syncFlagsMutation.variables?.activityId === row.original.id
+                }
               />
               <CategoryBadgesCell
                 row={row.original}

@@ -163,10 +163,7 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain([{ id: 1 }], 'limit'));
 
       await expect(
-        service.create(
-          { email: 'existing@gov.bc.ca', idirUsername: 'JEXIST', roleId: 1 },
-          1
-        )
+        service.create({ email: 'existing@gov.bc.ca', roleId: 1 }, 1)
       ).rejects.toThrow(ConflictException);
       expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
     });
@@ -178,10 +175,7 @@ describe('UsersService', () => {
         .mockReturnValueOnce(createChain([], 'limit'));
 
       await expect(
-        service.create(
-          { email: 'new@gov.bc.ca', idirUsername: 'JNEW', roleId: 999 },
-          1
-        )
+        service.create({ email: 'new@gov.bc.ca', roleId: 999 }, 1)
       ).rejects.toThrow(BadRequestException);
       expect(mockDatabaseService.db.insert).not.toHaveBeenCalled();
     });
@@ -189,8 +183,9 @@ describe('UsersService', () => {
     it('should create user and return UserDetail', async () => {
       const userRow = {
         id: 1,
-        adUsername: 'JNEWUSER',
-        adDisplayName: 'New User',
+        displayName: 'New User',
+        adUsername: null,
+        adDisplayName: null,
         adEmail: 'newuser@gov.bc.ca',
         roleId: 2,
         isActive: true,
@@ -218,7 +213,6 @@ describe('UsersService', () => {
       const result = await service.create(
         {
           email: 'newuser@gov.bc.ca',
-          idirUsername: 'jnewuser',
           roleId: 2,
           displayName: 'New User',
         },
@@ -228,7 +222,8 @@ describe('UsersService', () => {
       expect(result).not.toBeNull();
       expect(result.id).toBe(1);
       expect(result.adEmail).toBe('newuser@gov.bc.ca');
-      expect(result.adUsername).toBe('JNEWUSER');
+      expect(result.displayName).toBe('New User');
+      expect(result.adUsername).toBeNull();
       expect(result.roleId).toBe(2);
       expect(mockDatabaseService.db.transaction).toHaveBeenCalledTimes(1);
       expect(mockDatabaseService.db.insert).toHaveBeenCalled();
@@ -244,6 +239,7 @@ describe('UsersService', () => {
       vi.spyOn(service, 'findOne')
         .mockResolvedValueOnce({
           id: 1,
+          displayName: null,
           adUsername: 'u1',
           adDisplayName: 'User One',
           adEmail: 'u1@gov.bc.ca',
@@ -252,7 +248,7 @@ describe('UsersService', () => {
           isActive: true,
           isEventPlanner: false,
           notes: null,
-          flagColour: null,
+          userColourKey: 'blue',
           directLoginEnabled: false,
           jobTitle: null,
           phone: null,
@@ -262,6 +258,7 @@ describe('UsersService', () => {
         })
         .mockResolvedValueOnce({
           id: 1,
+          displayName: null,
           adUsername: 'u1',
           adDisplayName: 'User One',
           adEmail: 'u1@gov.bc.ca',
@@ -270,7 +267,7 @@ describe('UsersService', () => {
           isActive: true,
           isEventPlanner: false,
           notes: null,
-          flagColour: null,
+          userColourKey: 'blue',
           directLoginEnabled: true,
           jobTitle: null,
           phone: null,
@@ -285,11 +282,7 @@ describe('UsersService', () => {
         }),
       });
 
-      await service.updateUserSettings(
-        1,
-        { flagColour: null, directLoginEnabled: true },
-        7
-      );
+      await service.updateUserSettings(1, { directLoginEnabled: true }, 7);
 
       expect(mockNotificationsService.notifyUserUpdated).toHaveBeenCalledWith({
         userId: 1,
@@ -308,6 +301,7 @@ describe('UsersService', () => {
       const userRows = [
         {
           id: 1,
+          displayName: null,
           adUsername: 'u1',
           adDisplayName: 'User One',
           adEmail: 'u1@test.com',
@@ -356,6 +350,7 @@ describe('UsersService', () => {
     it('should return UserDetail with teams when user exists', async () => {
       const userRow = {
         id: 1,
+        displayName: null,
         adUsername: 'u1',
         adDisplayName: 'User One',
         adEmail: 'u1@test.com',
@@ -522,6 +517,7 @@ describe('UsersService', () => {
     it('should update user and record history when changes exist', async () => {
       const userRow = {
         id: 1,
+        displayName: null,
         adUsername: 'u1',
         adDisplayName: 'User One',
         adEmail: 'u1@test.com',
@@ -567,6 +563,7 @@ describe('UsersService', () => {
     it('should include inactive recipients when deactivating a user', async () => {
       const userRow = {
         id: 1,
+        displayName: null,
         adUsername: 'u1',
         adDisplayName: 'User One',
         adEmail: 'u1@test.com',
@@ -609,6 +606,7 @@ describe('UsersService', () => {
     it('should not include inactive recipients when reactivating a user', async () => {
       const userRow = {
         id: 1,
+        displayName: null,
         adUsername: 'u1',
         adDisplayName: 'User One',
         adEmail: 'u1@test.com',
@@ -650,6 +648,7 @@ describe('UsersService', () => {
     it('should reject non-BC Gov email updates', async () => {
       const userRow = {
         id: 1,
+        displayName: null,
         adUsername: 'u1',
         adDisplayName: 'User One',
         adEmail: 'u1@gov.bc.ca',
@@ -675,6 +674,7 @@ describe('UsersService', () => {
     it('should reject null email updates', async () => {
       const userRow = {
         id: 1,
+        displayName: null,
         adUsername: 'u1',
         adDisplayName: 'User One',
         adEmail: 'u1@gov.bc.ca',
@@ -700,6 +700,7 @@ describe('UsersService', () => {
     it('should sync permission overrides when provided', async () => {
       const userRow = {
         id: 1,
+        displayName: null,
         adUsername: 'u1',
         adDisplayName: 'User One',
         adEmail: 'u1@test.com',
@@ -773,6 +774,7 @@ describe('UsersService', () => {
     it('should throw ConflictException when user already in team', async () => {
       const userRow = {
         id: 1,
+        displayName: null,
         adUsername: 'u1',
         adDisplayName: 'User One',
         adEmail: 'u1@test.com',
@@ -797,6 +799,7 @@ describe('UsersService', () => {
     it('should insert user_teams and record history on success', async () => {
       const userRow = {
         id: 1,
+        displayName: null,
         adUsername: 'u1',
         adDisplayName: 'User One',
         adEmail: 'u1@test.com',
@@ -824,6 +827,7 @@ describe('UsersService', () => {
     it('should reactivate existing inactive membership', async () => {
       const userRow = {
         id: 1,
+        displayName: null,
         adUsername: 'u1',
         adDisplayName: 'User One',
         adEmail: 'u1@test.com',
@@ -1063,7 +1067,10 @@ describe('UsersService', () => {
       mockDatabaseService.db.select = vi
         .fn()
         .mockReturnValueOnce(createChain(historyRows, 'orderBy'))
-        .mockReturnValueOnce(createChain(userRows, 'where'));
+        .mockReturnValueOnce(createChain(userRows, 'where'))
+        .mockReturnValueOnce(
+          createChain([{ userId: 2, userColourKey: 'teal' }], 'where')
+        );
 
       const result = await service.getUserHistory(1);
 

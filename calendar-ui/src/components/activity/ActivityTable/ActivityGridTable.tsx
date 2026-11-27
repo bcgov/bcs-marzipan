@@ -341,6 +341,7 @@ export function ActivityGridTable({
                   return (
                     <td
                       key={cell.id}
+                      data-grid-pinned={isPinned ? 'true' : undefined}
                       className={cn(
                         tableTd,
                         'border-b border-slate-100',

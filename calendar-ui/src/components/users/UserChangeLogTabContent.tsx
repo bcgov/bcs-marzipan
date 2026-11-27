@@ -91,5 +91,5 @@ export function UserChangeLogTabContent({
     return <p className="text-slate-500">No history entries.</p>;
   }
 
-  return <HistoryList entries={historyEntries} className="max-w-3xl py-4" />;
+  return <HistoryList entries={historyEntries} className="w-full py-4" />;
 }

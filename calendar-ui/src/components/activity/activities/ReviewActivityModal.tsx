@@ -27,7 +27,7 @@ import { RenewPublicLastUpdatedField } from './RenewPublicLastUpdatedField';
 
 export type ReviewActivityConfirmPayload = ActivitySaveConfirmPayload & {
   markAsCompleted?: boolean;
-  unassignMe?: boolean;
+  unflagMe?: boolean;
 };
 
 interface ReviewActivityModalProps {
@@ -44,8 +44,8 @@ interface ReviewActivityModalProps {
   showMarkAsCompletedOption?: boolean;
   /** Formatted end from saved activity; woven into description when completion is offered. */
   activityEndedAtLabel?: string | null;
-  /** When true, show "Unassign me" checkbox (current user is an assignee on this activity). */
-  showUnassignMeOption?: boolean;
+  /** When true, show "Unflag me" checkbox (current user is flagged on this activity). */
+  showUnflagMeOption?: boolean;
   confirmDisabled?: boolean;
   confirmBlockedNotice?: ActivityConfirmBlockedNotice | null;
 }
@@ -60,14 +60,14 @@ export function ReviewActivityModal({
   displayId,
   showMarkAsCompletedOption = false,
   activityEndedAtLabel = null,
-  showUnassignMeOption = false,
+  showUnflagMeOption = false,
   confirmDisabled = false,
   confirmBlockedNotice = null,
 }: ReviewActivityModalProps) {
   const { user } = useAuth();
   const [notes, setNotes] = useState('');
   const [markAsCompleted, setMarkAsCompleted] = useState(false);
-  const [unassignMe, setUnassignMe] = useState(false);
+  const [unflagMe, setUnflagMe] = useState(false);
   const [renewPublicLastUpdated, setRenewPublicLastUpdated] = useState(false);
 
   useEffect(() => {
@@ -81,7 +81,7 @@ export function ReviewActivityModal({
       notes: notes.trim() || undefined,
       ...(renewPublicLastUpdated ? { renewPublicLastUpdated: true } : {}),
       ...(markAsCompleted ? { markAsCompleted: true } : {}),
-      ...(unassignMe ? { unassignMe: true } : {}),
+      ...(unflagMe ? { unflagMe: true } : {}),
     });
   };
 
@@ -89,7 +89,7 @@ export function ReviewActivityModal({
     if (!value) {
       setNotes('');
       setMarkAsCompleted(false);
-      setUnassignMe(false);
+      setUnflagMe(false);
       setRenewPublicLastUpdated(false);
     }
     onOpenChange(value);
@@ -168,18 +168,18 @@ export function ReviewActivityModal({
             </div>
           )}
 
-          {showUnassignMeOption && (
+          {showUnflagMeOption && (
             <div className="flex items-center space-x-2">
               <Checkbox
-                id="review-confirm-unassign-me"
-                checked={unassignMe}
-                onCheckedChange={(checked) => setUnassignMe(checked === true)}
+                id="review-confirm-unflag-me"
+                checked={unflagMe}
+                onCheckedChange={(checked) => setUnflagMe(checked === true)}
               />
               <Label
-                htmlFor="review-confirm-unassign-me"
+                htmlFor="review-confirm-unflag-me"
                 className="cursor-pointer text-sm font-normal"
               >
-                Unassign me
+                Unflag me
               </Label>
             </div>
           )}

@@ -87,10 +87,14 @@
     --activity-status-on-hold: var(--status-grey);
     --activity-status-completed: var(--status-dark);
 
+    /* Entity Active / Inactive badges (user, team, lookup tables) */
+    --entity-status-active: var(--status-green);
+    --entity-status-inactive: var(--status-grey);
+
     /* Required field asterisk — matches Deleted activity status badge background */
     --required-field-indicator: var(--activity-status-deleted);
 
-    /* Flag / assignment feature */
+    /* Activity flag feature */
     --fluent-success-foreground-inverted: #13a10e;
     --flag-button-icon: var(--fluent-success-foreground-inverted);
 
@@ -291,7 +295,20 @@
   }
 }
 
+@keyframes live-row-highlight-fade-pinned {
+  0% {
+    background-color: rgb(254 249 195 / 0.55);
+  }
+  100% {
+    background-color: rgb(255 255 255);
+  }
+}
+
 /* Cross-user refresh flash (reports preview + Look Ahead table). Animated from globals.css in app shell only. */
-.live-row-highlight {
+.live-row-highlight > td {
   animation: live-row-highlight-fade 1.5s ease-out forwards;
+}
+
+.live-row-highlight > td[data-grid-pinned='true'] {
+  animation-name: live-row-highlight-fade-pinned;
 }

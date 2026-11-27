@@ -529,7 +529,7 @@ export function ActivityTableFrame({
                           )
                         }
                       />
-                      Assign to me ({user.displayName})
+                      Flag me ({user.displayName})
                     </label>
                   </div>
                 )}

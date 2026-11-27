@@ -18,16 +18,21 @@ import {
 } from '@corpcal/database';
 import {
   DEFAULT_JWT_EXPIRES_IN,
+  defaultUserColourKeyForUserId,
+  resolveUserDisplayName,
   type AuthUser,
   type CheckEmailResponse,
+  type UserColourKey,
 } from '@corpcal/shared';
 
+import { loadUserColourKeysByIds } from '../common/user-colour-keys';
 import type { DrizzleDbExecutor } from '../database/database.provider';
 import { DatabaseService } from '../database/database.service';
 import { PolicyService } from '../policy/policy.service';
 import type { AuthResponseDto } from './dto/auth-response.dto';
 import type { LoginDto } from './dto/login.dto';
 import {
+  findAuthUserById,
   findUserByEmail,
   findUserByEmailAnyStatus,
   findUserByExternalId,
@@ -56,6 +61,7 @@ export interface JwtPayload {
   permissions: string[];
   teamIds: number[];
   bypassDataScoping: boolean;
+  userColourKey?: UserColourKey;
 }
 
 @Injectable()
@@ -559,17 +565,18 @@ export class AuthService {
     }
 
     const teamIds = await this.policyService.getTeamIdsForUser(dbUser.id);
+    const userColourKey = await this.resolveLiveUserColourKey(dbUser.id);
     const user: AuthUser = {
       id: dbUser.id,
       username: dbUser.adUsername ?? String(dbUser.id),
-      displayName:
-        dbUser.adDisplayName ?? dbUser.adUsername ?? String(dbUser.id),
+      displayName: resolveUserDisplayName(dbUser),
       email: dbUser.adEmail ?? '',
       roleId: dbUser.roleId,
       roleName,
       permissions: effective.permissions,
       teamIds,
       bypassDataScoping: effective.bypass,
+      userColourKey,
     };
 
     const raw = this.configService.get<string | number>(
@@ -588,6 +595,7 @@ export class AuthService {
         permissions: user.permissions,
         teamIds: user.teamIds,
         bypassDataScoping: user.bypassDataScoping ?? false,
+        userColourKey: user.userColourKey,
       } satisfies JwtPayload,
       { expiresIn }
     );
@@ -640,6 +648,37 @@ export class AuthService {
       permissions: payload.permissions ?? [],
       teamIds: payload.teamIds ?? [],
       bypassDataScoping: payload.bypassDataScoping ?? false,
+      userColourKey:
+        payload.userColourKey ?? defaultUserColourKeyForUserId(payload.sub),
+    };
+  }
+
+  async resolveLiveUserColourKey(userId: number): Promise<UserColourKey> {
+    const map = await loadUserColourKeysByIds(this.databaseService.db, [
+      userId,
+    ]);
+    return map.get(userId) ?? defaultUserColourKeyForUserId(userId);
+  }
+
+  /**
+   * Re-read identity fields from the database for GET /auth/me (JWT may be stale).
+   */
+  async hydrateCurrentUser(user: AuthUser): Promise<AuthUser> {
+    const [userColourKey, dbUser] = await Promise.all([
+      this.resolveLiveUserColourKey(user.id),
+      findAuthUserById(this.databaseService.db, user.id),
+    ]);
+
+    if (!dbUser) {
+      return { ...user, userColourKey };
+    }
+
+    return {
+      ...user,
+      username: dbUser.adUsername ?? String(dbUser.id),
+      displayName: resolveUserDisplayName(dbUser),
+      email: dbUser.adEmail ?? user.email,
+      userColourKey,
     };
   }
 

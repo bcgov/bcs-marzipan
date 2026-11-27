@@ -41,11 +41,13 @@ export function historyActorInitials(actor: HistoryActorViewModel): string {
 
 export function fallbackHistoryActor(
   name: string | null | undefined,
-  id?: number
+  id?: number,
+  userColourKey?: HistoryActorViewModel['userColourKey']
 ): HistoryActorViewModel {
   return {
     ...(id == null ? {} : { id }),
     name: name?.trim() || (id == null ? 'Unknown user' : `User ${id}`),
+    ...(userColourKey ? { userColourKey } : {}),
   };
 }
 

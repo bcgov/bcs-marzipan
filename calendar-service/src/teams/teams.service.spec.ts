@@ -551,7 +551,10 @@ describe('TeamsService', () => {
         .mockReturnValueOnce(createChain([teamRow], 'limit'))
         .mockReturnValueOnce(createChain([], 'where'))
         .mockReturnValueOnce(createChain(historyRows, 'orderBy'))
-        .mockReturnValueOnce(createChain(userRows, 'where'));
+        .mockReturnValueOnce(createChain(userRows, 'where'))
+        .mockReturnValueOnce(
+          createChain([{ userId: 2, userColourKey: 'blue' }], 'where')
+        );
 
       const result = await service.getTeamHistory(1);
 
@@ -562,6 +565,7 @@ describe('TeamsService', () => {
         changedByUserId: 2,
       });
       expect(result[0].changedByUserName).toBeDefined();
+      expect(result[0].changedByUserColourKey).toBe('blue');
     });
   });
 

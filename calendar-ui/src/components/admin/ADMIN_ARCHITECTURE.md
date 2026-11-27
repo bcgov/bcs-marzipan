@@ -301,9 +301,9 @@ className = 'border-bc-blue-light';
 ### Component Variants
 
 ```tsx
-<Badge variant="success" />   // Green checkmark
-<Badge variant="warning" />   // BC Gold
-<Badge variant="info" />      // BC Blue
+<ActiveInactiveBadge isActive />  // entity-active / entity-inactive (settings, users, teams)
+<Badge variant="warning" />     // BC Gold
+<Badge variant="info" />        // BC Blue
 <Button variant="destructive" />  // Red for delete
 ```
 

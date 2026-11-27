@@ -10,6 +10,7 @@ import type {
 export interface AuthDbUser {
   id: number;
   roleId: number;
+  displayName: string | null;
   adUsername: string | null;
   adDisplayName: string | null;
   adEmail: string | null;
@@ -23,6 +24,7 @@ export interface AuthDbUserWithActive extends AuthDbUser {
 const authUserSelection = {
   id: users.id,
   roleId: users.roleId,
+  displayName: users.displayName,
   adUsername: users.adUsername,
   adDisplayName: users.adDisplayName,
   adEmail: users.adEmail,
@@ -55,6 +57,19 @@ export async function findUserByExternalIdAnyStatus(
     .select(authUserWithActiveSelection)
     .from(users)
     .where(eq(users.externalId, externalId))
+    .limit(1);
+
+  return row ?? null;
+}
+
+export async function findAuthUserById(
+  db: Database,
+  userId: number
+): Promise<AuthDbUser | null> {
+  const [row] = await db
+    .select(authUserSelection)
+    .from(users)
+    .where(eq(users.id, userId))
     .limit(1);
 
   return row ?? null;

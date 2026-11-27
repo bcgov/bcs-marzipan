@@ -36,6 +36,7 @@ import type {
   OrganizationDetail,
 } from '@corpcal/shared/schemas';
 
+import { userEffectiveDisplayNameSql } from '../../common/user-display-name-sql';
 import { DatabaseService } from '../../database/database.service';
 import { sortByStaffName } from '../../users/staff-name-sort';
 
@@ -805,10 +806,7 @@ export class ActivityDataFetcherService {
       .select({
         activityId: activityCommsContacts.activityId,
         userId: activityCommsContacts.userId,
-        userName:
-          sql<string>`COALESCE(${users.adDisplayName}, ${users.adUsername}, 'User ' || ${users.id}::text)`.as(
-            'userName'
-          ),
+        userName: userEffectiveDisplayNameSql.as('userName'),
         isLead: activityCommsContacts.isLead,
       })
       .from(activityCommsContacts)
@@ -867,10 +865,7 @@ export class ActivityDataFetcherService {
     const results = await this.databaseService.db
       .select({
         userId: users.id,
-        userName:
-          sql<string>`COALESCE(${users.adDisplayName}, ${users.adUsername}, 'User ' || ${users.id}::text)`.as(
-            'userName'
-          ),
+        userName: userEffectiveDisplayNameSql.as('userName'),
       })
       .from(users)
       .where(and(inArray(users.id, userIds), eq(users.isActive, true)));
@@ -971,9 +966,7 @@ export class ActivityDataFetcherService {
         eventPlannerName: activityEventPlanners.eventPlannerName,
         isLead: activityEventPlanners.isLead,
         displayName: users.adDisplayName,
-        name: sql<
-          string | null
-        >`coalesce(${users.adDisplayName}, ${users.adUsername}, ${users.adEmail})`,
+        name: userEffectiveDisplayNameSql,
       })
       .from(activityEventPlanners)
       .leftJoin(users, eq(activityEventPlanners.eventPlannerId, users.id))

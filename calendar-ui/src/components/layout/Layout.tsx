@@ -13,7 +13,7 @@ export const Layout = () => {
     <LiveActivitySyncProvider>
       <Sidebar>
         <Header />
-        <SidebarInset className="min-w-0 overflow-auto">
+        <SidebarInset className="min-w-0 [scrollbar-gutter:stable_both-edges] overflow-auto">
           <Suspense
             fallback={
               <div className="text-muted-foreground flex min-h-[50vh] items-center justify-center">

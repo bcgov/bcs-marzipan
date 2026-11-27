@@ -26,6 +26,7 @@ import {
   savedFilterPayloadIsEmpty,
 } from '@corpcal/shared/utils';
 import {
+  FILTER_SEARCHABLE_LIST_SEARCH_THRESHOLD,
   FilterSearchableList,
   type FilterSearchableListOption,
 } from '@/components/activity/ActivityTable/FilterSearchableList';
@@ -86,8 +87,6 @@ const OVERFLOW_BUTTON_RESERVE_PX = 110;
 const MY_FILTERS_TRIGGER_RESERVE_PX = 108;
 /** `ml-6` before "Saved filters" so it stays visually separated from "More". */
 const MY_FILTERS_LEAD_IN_PX = 24;
-/** Show search + scroll list when saved filter count exceeds this (i.e. length > 6). */
-const SAVED_FILTERS_SEARCH_THRESHOLD = 6;
 const TRAILING_GROUP_OFFSET_PX = 32;
 /** Min change in container width (px) before re-measuring. Avoids resize loop from small reflows. */
 const WIDTH_CHANGE_THRESHOLD_PX = 10;
@@ -1134,7 +1133,7 @@ export function ResponsiveFilterRow({
                         No saved filters yet
                       </div>
                     ) : savedFiltersList.length >
-                      SAVED_FILTERS_SEARCH_THRESHOLD ? (
+                      FILTER_SEARCHABLE_LIST_SEARCH_THRESHOLD ? (
                       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                         <FilterSearchableList
                           options={savedFiltersSearchOptions}

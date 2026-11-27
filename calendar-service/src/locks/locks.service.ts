@@ -15,6 +15,7 @@ import {
   editLocks,
   users,
 } from '@corpcal/database/schema';
+import { resolveUserDisplayName } from '@corpcal/shared';
 
 import { ActivitiesGateway } from '../activities/activities.gateway';
 import type {
@@ -103,16 +104,17 @@ export class LocksService {
   ): Promise<string> {
     const [row] = await executor
       .select({
+        id: users.id,
+        displayName: users.displayName,
         adDisplayName: users.adDisplayName,
         adUsername: users.adUsername,
+        adEmail: users.adEmail,
       })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
     if (!row) return `User ${userId}`;
-    return (
-      row.adDisplayName?.trim() || row.adUsername?.trim() || `User ${userId}`
-    );
+    return resolveUserDisplayName(row);
   }
 
   private rowToLockForEntity(row: EditLockRow): LockForEntity {
